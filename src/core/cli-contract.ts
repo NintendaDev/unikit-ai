@@ -97,8 +97,13 @@ export const GENERAL_COMMANDS: CommandEntry[] = [
   },
   {
     command: 'unikit-ai update',
-    description: 'Update installed skills, agents, and rules to latest version',
+    description: 'Update installed skills, agents, and rules to latest version. To update the CLI package itself, run `unikit-ai self-update`.',
     flags: ['--force'],
+  },
+  {
+    command: 'unikit-ai self-update',
+    description: 'Update the unikit-ai CLI itself to the latest version from npm registry. Detects the package manager (npm/pnpm/yarn/bun/mise/volta) from the binary path and runs the appropriate install command. Interactive by design — skips silently in non-TTY environments. No flags.',
+    outputFormat: 'Exit 0 (updated, up to date, skipped, or fetch failure). Exit 1 (install command failed).',
   },
 ];
 

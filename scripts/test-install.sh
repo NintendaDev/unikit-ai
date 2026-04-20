@@ -63,6 +63,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$CLAUDE_DIR"
 
 # Seed rule files on disk so syncRulesState registers them and regenerates
 # RULES_INDEX.md in Phase 3 (test 4 asserts on rule names in the index).
@@ -131,6 +132,7 @@ cat > "$NOSUB_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$NOSUB_DIR"
 
 seed_rule "$NOSUB_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$NOSUB_DIR"
@@ -170,6 +172,7 @@ cat > "$CODEX_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$CODEX_DIR"
 
 seed_rule "$CODEX_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$CODEX_DIR"
@@ -240,6 +243,7 @@ cat > "$QWEN_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$QWEN_DIR"
 
 seed_rule "$QWEN_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$QWEN_DIR"
@@ -335,6 +339,7 @@ cat > "$LOCAL_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$LOCAL_DIR"
 
 seed_rule "$LOCAL_DIR" unity stack "$STACK_RULE_UNITY_UNITASK"
 run_update "$LOCAL_DIR"
@@ -400,6 +405,7 @@ cat > "$GODOT_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$GODOT_DIR"
 
 seed_rule "$GODOT_DIR" godot core "$CORE_RULE_GODOT_CODE_STYLE"
 run_update "$GODOT_DIR"
@@ -455,6 +461,7 @@ cat > "$MCP_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$MCP_DIR"
 
 seed_rule "$MCP_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$MCP_DIR"
@@ -794,6 +801,7 @@ cat > "$CODEX_MCP_RULES_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$CODEX_MCP_RULES_DIR"
 
 seed_rule "$CODEX_MCP_RULES_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$CODEX_MCP_RULES_DIR"

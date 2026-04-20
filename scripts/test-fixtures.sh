@@ -394,6 +394,46 @@ use_fake_registry() {
 JSON
 }
 
+# inject_fake_registry <project_dir> [fixture_name]
+#
+# Merges `rulesRegistry: "<fake-fixture-path>"` into an existing
+# `<project_dir>/.unikit.json`. Unlike `use_fake_registry`, this helper
+# does NOT create the config from scratch — it assumes the caller (e.g.
+# a smoke-test heredoc) already wrote `.unikit.json`.
+#
+# Default fixture is `minimal-valid`. The fixture path is resolved via
+# `fake_registry_path` so it gets the same cygpath-mixed-slash treatment
+# and passes Node.js path validation on Git Bash / WSL.
+#
+# Point: reroutes `GitRegistry` fetches to the local fixture, removing
+# `raw.githubusercontent.com/NintendaDev/unikit-ai-rules` from the smoke
+# hot-path. This makes smoke tests offline-hermetic without touching src/.
+inject_fake_registry() {
+    local project_dir="$1"
+    local fixture_name="${2:-minimal-valid}"
+
+    local config_file="$project_dir/.unikit.json"
+    if [[ ! -f "$config_file" ]]; then
+        echo "inject_fake_registry: $config_file does not exist (call after the .unikit.json heredoc)" >&2
+        exit 1
+    fi
+
+    local fixture_path
+    fixture_path="$(fake_registry_path "$fixture_name")"
+    if [[ ! -f "$fixture_path/manifest.json" ]]; then
+        echo "inject_fake_registry: fixture '$fixture_name' missing manifest.json at $fixture_path" >&2
+        exit 1
+    fi
+
+    CONFIG="$config_file" FIXTURE="$fixture_path" node -e "
+        const fs = require('fs');
+        const file = process.env.CONFIG;
+        const c = JSON.parse(fs.readFileSync(file, 'utf8'));
+        c.rulesRegistry = process.env.FIXTURE;
+        fs.writeFileSync(file, JSON.stringify(c, null, 2));
+    "
+}
+
 # assert_exit <expected> <actual> <label> [<log_file>]
 # Reports pass/fail on a captured exit code and dumps the log on failure.
 assert_exit() {

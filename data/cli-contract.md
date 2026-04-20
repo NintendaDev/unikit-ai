@@ -82,6 +82,11 @@ Initialize UniKit in current project (interactive wizard)
 
 ### `unikit-ai update`
 
-Update installed skills, agents, and rules to latest version
+Update installed skills, agents, and rules to latest version. To update the CLI package itself, run `unikit-ai self-update`.
 Flags: `--force`
+
+### `unikit-ai self-update`
+
+Update the unikit-ai CLI itself to the latest version from npm registry. Detects the package manager (npm/pnpm/yarn/bun/mise/volta) from the binary path and runs the appropriate install command. Interactive by design — skips silently in non-TTY environments. No flags.
+Output: Exit 0 (updated, up to date, skipped, or fetch failure). Exit 1 (install command failed).
 
