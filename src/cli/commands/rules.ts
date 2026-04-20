@@ -482,7 +482,7 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   const manifest = await registry.fetchManifest();
 
   if (!manifest) {
-    console.error(chalk.red('Registry chain unreachable (primary → official → bundled all failed).'));
+    console.error(chalk.red('Registry chain unreachable.'));
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 

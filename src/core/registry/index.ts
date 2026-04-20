@@ -12,13 +12,17 @@ export type {
 export { GitRegistry } from './git-registry.js';
 export { FsRegistry } from './fs-registry.js';
 export { ApiRegistry } from './api-registry.js';
+export { ChainedRegistry } from './chained-registry.js';
 export { HybridRegistry } from './hybrid-registry.js';
+export { OfficialRegistry } from './official-registry.js';
 
 import type { RegistryManifest, RuleCategory, FetchedRule, FetchedReference } from './manifest-types.js';
 import { GitRegistry } from './git-registry.js';
 import { FsRegistry } from './fs-registry.js';
 import { ApiRegistry } from './api-registry.js';
+import { ChainedRegistry } from './chained-registry.js';
 import { HybridRegistry } from './hybrid-registry.js';
+import { OfficialRegistry } from './official-registry.js';
 import { getBundledRegistryDir } from '../../utils/fs.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 
@@ -76,7 +80,8 @@ export function detectRegistryKind(input: string | null | undefined): RegistryKi
  *  - GitRegistry  — HTTP via raw.githubusercontent.com
  *  - FsRegistry   — local filesystem (absolute path / file:// / ~/)
  *  - ApiRegistry   — REST API stub (always fails, Phase 2)
- *  - HybridRegistry — primary → official chain with per-engine fallback
+ *  - HybridRegistry — primary → official → bundled chain (custom URL)
+ *  - OfficialRegistry — official → bundled chain (no custom URL / official URL)
  */
 export interface RulesRegistry {
   /** Human-readable label for logging (e.g. "git:NintendaDev/unikit-ai-rules", "fs:/home/dev/rules"). */
@@ -104,11 +109,13 @@ export interface RulesRegistry {
  * Build a registry chain for the given URL and engine.
  *
  * URL detection:
- *  - http:// or https:// → GitRegistry
- *  - file:// or absolute path or ~/ → FsRegistry
- *  - null → official GitRegistry only (no primary)
+ *  - null | '' | url === OFFICIAL_REGISTRY_URL → OfficialRegistry (official → bundled)
+ *  - http(s):// → HybridRegistry with GitRegistry primary
+ *  - file:// | absolute path | ~/... | drive-letter path → HybridRegistry with FsRegistry primary
+ *  - otherwise → HybridRegistry with ApiRegistry primary (stub fallback)
  *
- * Returns a HybridRegistry that chains primary → official → bundled with per-engine fallback.
+ * Returns a ChainedRegistry; the concrete subclass reflects the chain
+ * semantics and is what origin tagging keys off of.
  *
  * The bundled registry is an FsRegistry over `./rules-registry` (populated by
  * scripts/download-rules.sh at npm publish / CI / dev test-guards). It is the
@@ -119,26 +126,18 @@ export function createRegistry(
   url: string | null,
   engineId: string,
   bundledPath?: string | null,
-): HybridRegistry {
-  const official = new GitRegistry(OFFICIAL_REGISTRY_URL);
+): ChainedRegistry {
+  const officialGit = new GitRegistry(OFFICIAL_REGISTRY_URL);
 
   const resolvedBundledPath = bundledPath === undefined ? getBundledRegistryDir() : bundledPath;
   const bundled = resolvedBundledPath ? new FsRegistry(resolvedBundledPath) : undefined;
 
-  // Treat "url equals the official URL" the same as "no custom URL". The
-  // wizard stores OFFICIAL_REGISTRY_URL verbatim into `.unikit.json.rulesRegistry`
-  // when the user declines a custom registry (so `rules status` always
-  // advertises a concrete source). Without this short-circuit we would build
-  // a separate `primary` GitRegistry instance pointing at the same URL as
-  // `official`, the reference-identity check in
-  // `HybridRegistry.getResolvedOrigin()` would fail, and every installed rule
-  // would be tagged `origin: 'primary'` in `.unikit.json` even though the
-  // content actually came from the official registry. Folding the two cases
-  // here keeps the origin semantics honest.
+  // No-custom-URL / explicit-official case: origin tagging is intrinsic to
+  // `OfficialRegistry` (chain = [official, bundled]), so we avoid the duplicate
+  // fetch that would happen if we built a HybridRegistry with primary===official.
   if (!url || url === OFFICIAL_REGISTRY_URL) {
-    // No custom registry — official is both primary and fallback
-    logInfo('createRegistry', 'no custom URL (or url equals official), using official only');
-    return new HybridRegistry(official, official, engineId, bundled);
+    logInfo('createRegistry', 'no custom URL (or url equals official), using OfficialRegistry (official → bundled)');
+    return new OfficialRegistry(officialGit, engineId, bundled);
   }
 
   let primary: RulesRegistry;
@@ -154,6 +153,6 @@ export function createRegistry(
   }
 
   const bundledLabel = bundled ? bundled.label : 'none';
-  logInfo('createRegistry', `primary=${primary.label}, official=${official.label}, bundled=${bundledLabel}, engine=${engineId}`);
-  return new HybridRegistry(primary, official, engineId, bundled);
+  logInfo('createRegistry', `primary=${primary.label}, official=${officialGit.label}, bundled=${bundledLabel}, engine=${engineId}`);
+  return new HybridRegistry(primary, officialGit, engineId, bundled);
 }
