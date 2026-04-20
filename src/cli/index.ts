@@ -3,6 +3,7 @@ import { pathToFileURL } from 'url';
 import { Command } from 'commander';
 import { initCommand } from './commands/init.js';
 import { updateCommand } from './commands/update.js';
+import { selfUpdateCommand } from './commands/self-update.js';
 import {
   extensionAddCommand, extensionRemoveCommand,
   extensionListCommand, extensionUpdateCommand,
@@ -40,6 +41,11 @@ program
   .description('Update installed skills, agents, and rules to latest version')
   .option('--force', 'Force clean reinstall of currently installed skills and force-refresh every installed rule from registry')
   .action(updateCommand);
+
+program
+  .command('self-update')
+  .description('Update the unikit-ai CLI itself to the latest version from npm')
+  .action(selfUpdateCommand);
 
 const ext = program
   .command('extension')
