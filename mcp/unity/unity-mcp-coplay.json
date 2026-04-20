@@ -1,0 +1,47 @@
+{
+  "key": "UnityMCP",
+  "is_engine": true,
+  "displayName": "Coplay Unity MCP (Unity Editor integration)",
+  "instruction": "Coplay Unity MCP: Ensure Unity Editor is running with UnityMCP package installed. Server connects via HTTP at localhost:8085.",
+  "config": {
+    "type": "http",
+    "url": "http://localhost:8085/mcp"
+  },
+  "allowed-tools": {
+    "agents": {
+      "unikit-implement-coordinator": [
+        "read_console",
+        "run_tests",
+        "get_test_job",
+        "refresh_unity",
+        "validate_script"
+      ],
+	  "unikit-implement-worker": [
+        "read_console",
+        "run_tests",
+        "get_test_job",
+        "refresh_unity",
+        "validate_script"
+      ],
+	  "unikit-review-sidecar": [
+        "read_console"
+      ]
+    },
+    "skills": {
+      "unikit-implement": [
+        "read_console",
+        "run_tests",
+        "get_test_job",
+        "refresh_unity",
+        "validate_script"
+      ],
+      "unikit-fix": [
+        "read_console",
+        "run_tests",
+        "get_test_job",
+        "refresh_unity",
+        "validate_script"
+      ]
+    }
+  }
+}

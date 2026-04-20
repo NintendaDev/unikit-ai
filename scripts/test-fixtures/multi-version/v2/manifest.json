@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "generated": "2026-04-14T00:00:00.000Z",
+  "engines": {
+    "unity": {
+      "core": [
+        {
+          "id": "code-style",
+          "description": "Core rule (multi-version v2) — bumped so sync observes a version change",
+          "version": "1.1.0"
+        }
+      ],
+      "stack": [
+        {
+          "id": "unitask",
+          "description": "Stack rule at v2.0.0 used to exercise upgrade paths in rules sync",
+          "version": "2.0.0"
+        }
+      ]
+    }
+  }
+}

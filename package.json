@@ -1,0 +1,81 @@
+{
+  "name": "unikit-ai",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "CLI tool for installing AI agent skills and knowledge base rules for game development projects",
+  "main": "dist/cli/index.js",
+  "types": "dist/cli/index.d.ts",
+  "bin": {
+    "unikit-ai": "./bin/unikit-ai.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "bash scripts/test-skills.sh",
+    "lint:unused": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
+    "lint:dead": "knip --reporter compact",
+    "lint": "npm run lint:unused && npm run lint:dead",
+    "clean": "rm -rf dist",
+    "download:rules": "bash scripts/download-rules.sh",
+    "prepublishOnly": "npm run clean && npm run download:rules && npm run build",
+    "link": "npm run build && npm link",
+    "generate:contract": "npm run build && node dist/core/cli-contract-gen.js"
+  },
+  "keywords": [
+    "unity",
+    "godot",
+    "unreal-engine",
+    "gamedev",
+    "claude-code",
+    "cursor",
+    "codex",
+    "ai",
+    "skills",
+    "automation",
+    "cli"
+  ],
+  "author": "Dmitrii Vasilev (NintendaDev)",
+  "license": "MIT",
+  "files": [
+    "bin",
+    "dist",
+    "skills",
+    "agents",
+    "rules-registry",
+    "mcp",
+    "data",
+    "NOTICES"
+  ],
+  "knip": {
+    "ignoreExportsUsedInFile": true,
+    "exclude": [
+      "types"
+    ],
+    "ignore": [
+      "examples/**",
+      "scripts/generate-cli-contract.ts",
+      "scripts/test-agent-filter.mjs",
+      "scripts/validate-agent-markers.mjs",
+      "src/core/cli-contract.ts"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^9.2.15",
+    "semver": "^7.7.4",
+    "smol-toml": "^1.5.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.11.0",
+    "@types/semver": "^7.7.1",
+    "knip": "^5.85.0",
+    "typescript": "^5.3.3"
+  }
+}

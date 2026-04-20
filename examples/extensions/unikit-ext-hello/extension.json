@@ -1,0 +1,22 @@
+{
+  "name": "unikit-ext-hello",
+  "version": "1.0.0",
+  "description": "Example extension for testing",
+  "commands": [
+    {
+      "name": "hello",
+      "description": "Say hello from extension",
+      "module": "./commands/hello.js"
+    }
+  ],
+  "skills": ["skills/hello-world"],
+  "subagents": ["subagents/hello-agent.md"],
+  "injections": [
+    {
+      "target": "unikit",
+      "targetType": "skill",
+      "position": "append",
+      "file": "./injections/extra-rules.md"
+    }
+  ]
+}

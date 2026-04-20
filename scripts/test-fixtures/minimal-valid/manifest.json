@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "generated": "2026-04-13T00:00:00.000Z",
+  "engines": {
+    "unity": {
+      "core": [
+        {
+          "id": "code-style",
+          "description": "Minimal core rule used by rules-cli smoke tests — content is synthetic and has no real guidance",
+          "version": "1.0.0"
+        }
+      ],
+      "stack": [
+        {
+          "id": "sample-stack-rule",
+          "description": "Minimal stack rule used by rules-cli smoke tests — referenced by a single quickref doc",
+          "version": "1.0.0",
+          "references": [
+            "sample-stack-rule-quickref.md"
+          ]
+        }
+      ]
+    },
+    "godot": {
+      "core": [
+        {
+          "id": "code-style",
+          "description": "Godot core rule (minimal-valid fixture) — synthetic content for smoke tests",
+          "version": "1.0.0"
+        }
+      ],
+      "stack": []
+    }
+  }
+}

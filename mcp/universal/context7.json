@@ -1,0 +1,30 @@
+{
+  "key": "context7",
+  "displayName": "Context7 (library documentation)",
+  "instruction": "Context7: No additional configuration needed. Provides up-to-date library documentation.",
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@upstash/context7-mcp@latest"]
+  },
+  "allowed-tools": {
+    "agents": {},
+    "skills": {
+	  "unikit": [
+        "resolve-library-id",
+        "query-docs"
+      ],
+      "unikit-architecture": [
+        "resolve-library-id",
+        "query-docs"
+      ],
+      "unikit-explore": [
+        "resolve-library-id",
+        "query-docs"
+      ],
+      "unikit-memory": [
+        "resolve-library-id",
+        "query-docs"
+      ]
+    }
+  }
+}

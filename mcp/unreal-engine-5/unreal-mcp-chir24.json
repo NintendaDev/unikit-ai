@@ -1,0 +1,122 @@
+{
+  "key": "UnrealMCP",
+  "is_engine": true,
+  "displayName": "ChiR24 Unreal MCP (Unreal Engine >= 5.0)",
+  "instruction": "Unreal MCP: Requires Unreal Editor running. Start via npx unreal-engine-mcp-server. Supports Unreal Engine >= 5.0.",
+  "config": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "unreal-engine-mcp-server"
+    ],
+    "env": {
+	  "UE_PROJECT_PATH": "./",
+	  "MCP_AUTOMATION_PORT": "8091"
+    }
+  },
+  "allowed-tools": {
+    "agents": {
+      "unikit-implement-coordinator": [
+        "system_control",
+		"manage_pipeline",
+        "inspect",
+        "control_editor",
+        "manage_asset",
+        "manage_blueprint",
+        "manage_performance",
+        "control_actor",
+        "manage_level"
+      ],
+	  "unikit-implement-worker": [
+        "system_control",
+		"inspect",
+		"manage_game_framework",
+		"manage_character",
+		"manage_combat",
+		"manage_gas",
+		"manage_input",
+		"manage_interaction",
+		"manage_inventory",
+		"manage_blueprint",
+		"manage_ai",
+		"manage_behavior_tree",
+		"manage_navigation",
+		"manage_performance",
+		"manage_navigation",
+		"manage_navigation",
+		"manage_pipeline",
+        "control_editor",
+        "manage_asset"
+      ],
+	  "unikit-review-sidecar": [
+        "system_control",
+        "inspect"
+      ]
+    },
+    "skills": {
+	  "unikit-devcontext": [
+	    "system_control",
+		"inspect",
+		"manage_game_framework",
+		"manage_character",
+		"manage_combat",
+		"manage_gas",
+		"manage_input",
+		"manage_interaction",
+		"manage_inventory",
+		"manage_blueprint",
+		"manage_ai",
+		"manage_behavior_tree",
+		"manage_navigation",
+		"manage_performance",
+		"manage_navigation",
+		"manage_navigation",
+		"manage_pipeline",
+        "control_editor",
+        "manage_asset"
+	  ],
+      "unikit-implement": [
+	    "system_control",
+		"inspect",
+		"manage_game_framework",
+		"manage_character",
+		"manage_combat",
+		"manage_gas",
+		"manage_input",
+		"manage_interaction",
+		"manage_inventory",
+		"manage_blueprint",
+		"manage_ai",
+		"manage_behavior_tree",
+		"manage_navigation",
+		"manage_performance",
+		"manage_navigation",
+		"manage_navigation",
+		"manage_pipeline",
+        "control_editor",
+        "manage_asset"
+      ],
+      "unikit-fix": [
+	    "system_control",
+		"inspect",
+		"manage_game_framework",
+		"manage_character",
+		"manage_combat",
+		"manage_gas",
+		"manage_input",
+		"manage_interaction",
+		"manage_inventory",
+		"manage_blueprint",
+		"manage_ai",
+		"manage_behavior_tree",
+		"manage_navigation",
+		"manage_performance",
+		"manage_navigation",
+		"manage_navigation",
+		"manage_pipeline",
+        "control_editor",
+        "manage_asset"
+      ]
+    }
+  }
+}

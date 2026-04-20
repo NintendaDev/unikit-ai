@@ -1,0 +1,47 @@
+{
+  "key": "GodotMCP",
+  "is_engine": true,
+  "displayName": "Coding-Solo Godot MCP [Free]",
+  "instruction": "Coding-Solo Godot MCP: Ensure Godot Editor path is configured via GODOT_PATH environment variable.",
+  "config": {
+    "command": "npx",
+    "args": ["@coding-solo/godot-mcp"],
+    "env": {
+      "GODOT_PATH": "/path/to/godot",
+      "DEBUG": "true"
+    }
+  },
+  "allowed-tools": {
+    "agents": {
+      "unikit-implement-coordinator": [
+        "execute_in_editor",
+        "read_output",
+        "run_scene",
+        "get_project_info"
+      ],
+	  "unikit-implement-worker": [
+        "execute_in_editor",
+        "read_output",
+        "run_scene",
+        "get_project_info"
+      ],
+	  "unikit-review-sidecar": [
+        "read_output"
+      ]
+    },
+    "skills": {
+      "unikit-implement": [
+        "execute_in_editor",
+        "read_output",
+        "run_scene",
+        "get_project_info"
+      ],
+      "unikit-fix": [
+        "execute_in_editor",
+        "read_output",
+        "run_scene",
+        "get_project_info"
+      ]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "unikit-ext-replace",
+  "version": "1.0.0",
+  "description": "Example extension for replaces and MCP testing",
+  "replaces": { "skills/custom-commit": "unikit-commit" },
+  "mcpServers": [{ "key": "ext-test-server", "template": "./mcp/test-server.json" }]
+}

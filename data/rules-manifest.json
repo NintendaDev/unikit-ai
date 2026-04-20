@@ -1,0 +1,15 @@
+{
+  "requiredBy": {
+    "code-style": "all",
+    "design-principles": "all",
+    "folders-structure": "all",
+    "performance": "all",
+    "testing": "all",
+    "pipeline": [
+      "unikit-explore",
+      "unikit-plan",
+      "unikit-improve",
+      "unikit-plan-polisher"
+    ]
+  }
+}

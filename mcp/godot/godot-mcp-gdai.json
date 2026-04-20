@@ -1,0 +1,47 @@
+{
+  "key": "GodotMCP",
+  "is_engine": true,
+  "displayName": "GDAI Godot MCP [Paid][Recommended]",
+  "instruction": "",
+  "config": {
+	  "command": "uv",
+      "args": ["run", "./addons/gdai-mcp-plugin-godot/gdai_mcp_server.py"]
+  },
+  "allowed-tools": {
+    "agents": {
+      "unikit-implement-coordinator": [
+	    "get_godot_errors",
+		"get_project_info",
+		"clear_output_logs",
+		"view_script",
+		"search_files"
+      ],
+	  "unikit-implement-worker": [
+	    "get_godot_errors",
+		"get_project_info",
+		"clear_output_logs",
+		"view_script",
+		"search_files"
+      ],
+	  "unikit-review-sidecar": [
+        "get_godot_errors"
+      ]
+    },
+    "skills": {
+      "unikit-implement": [
+	    "get_godot_errors",
+		"get_project_info",
+		"clear_output_logs",
+		"view_script",
+		"search_files"
+      ],
+      "unikit-fix": [
+	    "get_godot_errors",
+		"get_project_info",
+		"clear_output_logs",
+		"view_script",
+		"search_files"
+      ]
+    }
+  }
+}

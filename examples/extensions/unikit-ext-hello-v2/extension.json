@@ -1,0 +1,15 @@
+{
+  "name": "unikit-ext-hello",
+  "version": "2.0.0",
+  "description": "Example extension v2 for upgrade testing",
+  "skills": ["skills/hello-world"],
+  "subagents": ["subagents/hello-agent.md"],
+  "injections": [
+    {
+      "target": "unikit",
+      "targetType": "skill",
+      "position": "append",
+      "file": "./injections/extra-rules.md"
+    }
+  ]
+}
