@@ -66,6 +66,7 @@ cat > "$PROJECT_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$PROJECT_DIR"
 
 run_update() {
   local mode="$1"
@@ -289,6 +290,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$CLAUDE_DIR"
 
 seed_rule "$CLAUDE_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 CLAUDE_OUTPUT="$TMPDIR/update-claude.log"
@@ -342,6 +344,7 @@ cat > "$HASH_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$HASH_DIR"
 
 # First run to build managed state
 HASH_FIRST="$TMPDIR/update-hash-first.log"
@@ -391,6 +394,7 @@ cat > "$ARTIFACT_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$ARTIFACT_DIR"
 
 # First run to install and build managed state
 ARTIFACT_FIRST="$TMPDIR/update-artifact-first.log"
@@ -436,6 +440,7 @@ cat > "$SA_DRIFT_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$SA_DRIFT_DIR"
 
 # First run to install subagent and build managed state
 SA_DRIFT_FIRST="$TMPDIR/update-sa-drift-first.log"
@@ -496,6 +501,7 @@ cat > "$MULTI_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$MULTI_DIR"
 
 MULTI_OUTPUT="$TMPDIR/update-multi.log"
 (cd "$MULTI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MULTI_OUTPUT" 2>&1)
@@ -562,6 +568,7 @@ cat > "$ENGINE_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$ENGINE_DIR"
 
 # Seed unity rule, run first update, then switch engine and verify only skills
 # reinstall — rules are now engine-scoped via the registry, not via bundled
@@ -633,6 +640,7 @@ cat > "$NEWSKILL_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$NEWSKILL_DIR"
 
 NEWSKILL_OUTPUT="$TMPDIR/update-newskill.log"
 (cd "$NEWSKILL_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NEWSKILL_OUTPUT" 2>&1)
@@ -675,6 +683,7 @@ cat > "$LEGACY_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$LEGACY_DIR"
 
 LEGACY_OUTPUT="$TMPDIR/update-legacy-declined.log"
 LEGACY_EXIT=0
@@ -727,6 +736,7 @@ cat > "$SA_REMOVED_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$SA_REMOVED_DIR"
 
 SA_REMOVED_OUTPUT="$TMPDIR/update-sa-removed.log"
 (cd "$SA_REMOVED_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$SA_REMOVED_OUTPUT" 2>&1)
@@ -790,6 +800,7 @@ cat > "$SKILLCTX_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$SKILLCTX_DIR"
 
 # First run to build managed state
 SKILLCTX_FIRST="$TMPDIR/update-skillctx-first.log"
@@ -864,6 +875,7 @@ cat > "$SA_HASH_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$SA_HASH_DIR"
 
 # First run to build managed state
 SA_HASH_FIRST="$TMPDIR/update-sa-hash-first.log"
@@ -925,6 +937,7 @@ cat > "$SA_ARTIFACT_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$SA_ARTIFACT_DIR"
 
 # First run to install subagent and build managed state
 SA_ARTIFACT_FIRST="$TMPDIR/update-sa-artifact-first.log"
@@ -961,6 +974,7 @@ cat > "$ZERO_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$ZERO_DIR"
 
 seed_rule "$ZERO_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 seed_rule "$ZERO_DIR" unity core "$CORE_RULE_UNITY_DESIGN_PRINCIPLES"
@@ -1016,6 +1030,7 @@ cat > "$EXTMISSING_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$EXTMISSING_DIR"
 
 # Install base skills first
 (cd "$EXTMISSING_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1073,6 +1088,7 @@ cat > "$ENGEXT_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$ENGEXT_DIR"
 
 # Install base skills with unity engine
 (cd "$ENGEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1136,6 +1152,7 @@ cat > "$SAFRC_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$SAFRC_DIR"
 
 # Install base state with subagents
 (cd "$SAFRC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1184,6 +1201,7 @@ cat > "$SAMMS_DIR/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$SAMMS_DIR"
 
 # Install base state to build managedSubagents
 (cd "$SAMMS_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1261,6 +1279,7 @@ cat > "$DEVPRIN_DIR/.unikit.json" << 'EOF'
   "rules": { "installed": { "version": "1.0.0", "core": [], "stack": [] } }
 }
 EOF
+inject_fake_registry "$DEVPRIN_DIR"
 
 DEVPRIN_OUT1="$TMPDIR/update-dev-principles-1.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT1" 2>&1)

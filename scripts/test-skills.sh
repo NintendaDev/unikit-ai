@@ -1033,6 +1033,27 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7h: CLI command registration smoke
+# ─────────────────────────────────────────────
+# Catch the "forgot to wire a new command into src/cli/index.ts" regression
+# by running `unikit-ai self-update --help` and checking that commander
+# registered the subcommand. Keeps the assertion inside test-skills.sh
+# instead of delegating to test-update.sh (self-update must stay out of
+# the update command flow).
+
+set +e
+SELF_UPDATE_OUTPUT=$(node "$ROOT_DIR/dist/cli/index.js" self-update --help 2>&1)
+SELF_UPDATE_EXIT=$?
+set -e
+
+if [[ $SELF_UPDATE_EXIT -eq 0 ]] && grep -qi 'self-update' <<< "$SELF_UPDATE_OUTPUT"; then
+    pass "unikit-ai self-update registered"
+else
+    fail "unikit-ai self-update --help (exit=$SELF_UPDATE_EXIT)"
+    echo "$SELF_UPDATE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 8: Update command smoke tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Update command smoke tests ===${NC}\n"

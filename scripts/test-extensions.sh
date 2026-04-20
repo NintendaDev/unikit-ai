@@ -9,6 +9,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# shellcheck source=./test-fixtures.sh
+source "$SCRIPT_DIR/test-fixtures.sh"
+
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
@@ -184,6 +187,7 @@ cat > "$EXT_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$EXT_PROJECT"
 
 # First install base skills so injection targets exist
 (cd "$EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -327,6 +331,7 @@ cat > "$REPLACE_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$REPLACE_PROJECT"
 
 # Install base skills first
 (cd "$REPLACE_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -414,6 +419,7 @@ cat > "$MCP_EXT_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$MCP_EXT_PROJECT"
 
 (cd "$MCP_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
 (cd "$MCP_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension add "$REPLACE_DIR" > /dev/null 2>&1)
@@ -462,6 +468,7 @@ cat > "$MCP_EXT_CODEX_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$MCP_EXT_CODEX_PROJECT"
 
 (cd "$MCP_EXT_CODEX_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
 
@@ -518,6 +525,7 @@ cat > "$IDEMP_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$IDEMP_PROJECT"
 
 (cd "$IDEMP_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
 
@@ -653,6 +661,7 @@ cat > "$REMOVE_NX_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$REMOVE_NX_PROJECT"
 
 REMOVE_NX_OUTPUT="$TMPDIR/ext-remove-nx.log"
 EXIT_CODE=0
@@ -706,6 +715,7 @@ cat > "$MINIMAL_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$MINIMAL_PROJECT"
 
 MINIMAL_OUTPUT="$TMPDIR/ext-minimal.log"
 EXIT_CODE=0
@@ -766,6 +776,7 @@ cat > "$LIST_EMPTY_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$LIST_EMPTY_PROJECT"
 
 LIST_EMPTY_OUTPUT="$TMPDIR/ext-list-empty.log"
 (cd "$LIST_EMPTY_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension list > "$LIST_EMPTY_OUTPUT" 2>&1)
@@ -822,6 +833,7 @@ cat > "$INJ_NF_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$INJ_NF_PROJECT"
 
 # Install base skills first
 (cd "$INJ_NF_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -896,6 +908,7 @@ cat > "$MULTI_EXT_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$MULTI_EXT_PROJECT"
 
 # Install base skills for both agents
 (cd "$MULTI_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -954,6 +967,7 @@ cat > "$CORRUPT_EXT_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$CORRUPT_EXT_PROJECT"
 
 # Install base skills and add v1 extension
 (cd "$CORRUPT_EXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1029,6 +1043,7 @@ cat > "$UPDATE_EMPTY_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$UPDATE_EMPTY_PROJECT"
 
 UPDATE_EMPTY_OUTPUT="$TMPDIR/ext-update-empty.log"
 (cd "$UPDATE_EMPTY_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension update > "$UPDATE_EMPTY_OUTPUT" 2>&1)
@@ -1067,6 +1082,7 @@ cat > "$UPDATE_UTD_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$UPDATE_UTD_PROJECT"
 
 # Install base skills, then add extension
 (cd "$UPDATE_UTD_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1123,6 +1139,7 @@ cat > "$UPDATE_VER_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$UPDATE_VER_PROJECT"
 
 # Copy example extension to TMPDIR so we can modify it
 UPDATE_VER_EXT="$TMPDIR/unikit-ext-vertest"
@@ -1193,6 +1210,7 @@ cat > "$UPDATE_FAIL_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$UPDATE_FAIL_PROJECT"
 
 # Install base skills and add extension
 (cd "$UPDATE_FAIL_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1266,6 +1284,7 @@ cat > "$LIST_REPL_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$LIST_REPL_PROJECT"
 
 # Install base skills and add replace extension
 (cd "$LIST_REPL_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1308,6 +1327,7 @@ cat > "$NOSUB_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$NOSUB_PROJECT"
 
 # Install base skills and add extension that has subagents
 (cd "$NOSUB_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1370,6 +1390,7 @@ cat > "$PREPEND_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$PREPEND_PROJECT"
 
 # Install base skills first
 (cd "$PREPEND_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1509,6 +1530,7 @@ cat > "$CMD_MISSING_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$CMD_MISSING_PROJECT"
 
 CMD_MISSING_OUTPUT="$TMPDIR/ext-cmdmissing.log"
 EXIT_CODE=0
@@ -1558,6 +1580,7 @@ cat > "$CMD_INSTALL_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$CMD_INSTALL_PROJECT"
 
 # Install base skills first
 (cd "$CMD_INSTALL_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
@@ -1629,6 +1652,7 @@ cat > "$DEDUP_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$DEDUP_PROJECT"
 
 (cd "$DEDUP_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
 (cd "$DEDUP_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension add "$EXAMPLE_DIR" > /dev/null 2>&1)
@@ -1727,6 +1751,7 @@ cat > "$MCP_INJECT_PROJECT/.unikit.json" << 'EOF'
   }
 }
 EOF
+inject_fake_registry "$MCP_INJECT_PROJECT"
 
 # Install base skills + MCP injection
 (cd "$MCP_INJECT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
