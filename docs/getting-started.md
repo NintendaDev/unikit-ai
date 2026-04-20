@@ -86,11 +86,14 @@ From then on, the dynamic memory is ready and you can start building features:
 
 ```bash
 unikit-ai init                 # Run the wizard, install skills / subagents / MCP
+unikit-ai self-update          # Update the unikit-ai CLI itself to the latest npm version
 unikit-ai update               # Re-install only changed skills (hash-based) and sync rules
 unikit-ai update --force       # Clean reinstall of skills and force-refresh every installed rule
 ```
 
-`update` uses SHA-256 hashes on every skill directory + engine template to detect drift, and reconciles `.unikit/memory/` against the configured registry (pulling newer versions of rules already marked `source: registry` and regenerating `RULES_INDEX.md`).
+`update` uses SHA-256 hashes on every skill directory + engine template to detect drift, and reconciles `.unikit/memory/` against the configured registry (pulling newer versions of rules already marked `source: registry` and regenerating `RULES_INDEX.md`). It never contacts `registry.npmjs.org`.
+
+`self-update` is a separate command dedicated to upgrading the `unikit-ai` binary itself. It detects the active package manager (`npm`/`pnpm`/`yarn`/`bun`/`mise`/`volta`) from the binary path and runs the matching global install. Interactive by design - in non-TTY environments it prints a "skipping" notice and exits 0. No flags. Run it before `unikit-ai update` whenever you want to pick up a newer package.
 
 ### Rules management
 
