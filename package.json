@@ -29,6 +29,10 @@
     "claude-code",
     "cursor",
     "codex",
+    "gemini",
+    "opencode",
+    "qwen",
+    "qwen-code",
     "ai",
     "skills",
     "automation",
@@ -36,14 +40,26 @@
   ],
   "author": "Dmitrii Vasilev (NintendaDev)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NintendaDev/unikit-ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NintendaDev/unikit-ai/issues"
+  },
+  "homepage": "https://unikit.nintenda.dev",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "bin",
     "dist",
     "skills",
-    "agents",
+    "subagents",
     "rules-registry",
     "mcp",
     "data",
+    "docs",
     "NOTICES"
   ],
   "knip": {
@@ -68,14 +84,14 @@
     "fs-extra": "^11.2.0",
     "inquirer": "^9.2.15",
     "semver": "^7.7.4",
-    "smol-toml": "^1.5.2"
+    "smol-toml": "^1.6.1"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/inquirer": "^9.0.7",
-    "@types/node": "^20.11.0",
+    "@types/node": "^20.19.39",
     "@types/semver": "^7.7.1",
-    "knip": "^5.85.0",
+    "knip": "^5.88.1",
     "typescript": "^5.3.3"
   }
 }

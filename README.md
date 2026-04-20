@@ -2,11 +2,11 @@
   <a href="https://www.npmjs.com/package/unikit-ai">
     <img src="https://img.shields.io/npm/v/unikit-ai?label=version" alt="Version" />
   </a>
-  <a href="https://github.com/NintendaDev/unikit-ai/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/NintendaDev/unikit-ai/ci.yml?branch=main&label=tests" alt="Tests" />
+  <a href="https://github.com/NintendaDev/unikit-ai/actions/workflows/tests.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/NintendaDev/unikit-ai/tests.yml?branch=main&label=tests" alt="Tests" />
   </a>
-  <a href="https://github.com/NintendaDev/unikit-ai/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" />
+  <a href="https://unikit.nintenda.dev/">
+    <img src="https://img.shields.io/badge/official%20site-unikit.nintenda.dev-0ea5e9" alt="Official Site" />
   </a>
 </p>
 
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="img/unikit-logo.png" alt="UniKit AI Logo" />
+  <img src="https://github.com/NintendaDev/unikit-ai/blob/main/img/unikit-logo.png" alt="UniKit AI Logo" />
 </p>
 
 # UniKit AI
