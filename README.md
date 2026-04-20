@@ -73,15 +73,17 @@ Select one or more during `unikit-ai init`. The wizard renders a single flat che
 ## Installation & Updating
 
 ```bash
-npm install -g unikit-ai    # install
-```
+# install
+npm install -g unikit-ai
 
-```bash
-unikit-ai update            # reinstall only what changed (hash-based detection)
-```
+# update the CLI package itself to the latest version from npm
+unikit-ai self-update
 
-```bash
-unikit-ai update --force    # clean reinstall
+# reinstall only what changed in the user project (hash-based detection)
+unikit-ai update
+
+# clean reinstall
+unikit-ai update --force
 ```
 
 ## Quick Start
