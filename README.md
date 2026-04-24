@@ -25,11 +25,9 @@
 
 # UniKit AI
 
-> **AI-powered game code development toolkit.**
+> **AI-Powered Code Toolkit for Game Engines**
 
-You want to write game code with AI, but setting up the right context, rules, and workflows takes time. UniKit AI handles all of that - skills, knowledge base, MCP servers - so you can focus on shipping quality gameplay.
-
----
+You want to write game code with AI, but setting up the right context, rules, and workflows takes time. UniKit AI handles all of that - skills, knowledge base, MCP servers. An engineered pipeline instead of vibe-coded prompts.
 
 ## Why UniKit AI?
 
@@ -40,7 +38,11 @@ You want to write game code with AI, but setting up the right context, rules, an
 - **Flexible, not rigid** - full spec-driven pipeline when you need predictability, or classic prompt-based work when you need speed. In both modes the agent has the full framework memory - core rules, architecture, stack - and loads stack-specific rules dynamically
 - **Built for game engines, by a game developer** - no generic boilerplate from general-purpose frameworks. Every skill, rule, and workflow is designed specifically for game code development with native support for each engine
 
----
+## Scope
+
+UniKit AI focuses on **game code** - architecture, systems, tests, refactoring. 
+Scene setup, prefabs, and assets are not covered yet - asset-level workflows 
+are on the roadmap.
 
 ## Supported Engines
 
@@ -69,6 +71,8 @@ You want to write game code with AI, but setting up the right context, rules, an
 | OpenCode | `.opencode/` | Yes (`opencode.json`) | Beta |
 
 Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in but rough edges are still possible. See [docs/agents.md](docs/agents.md) for agent-specific caveats and [docs/configuration.md](docs/configuration.md) for configuration details.
+
+---
 
 ## Installation & Updating
 
@@ -118,7 +122,7 @@ Say you want to add an item rarity system with visual effects.
 
 **1. Explore** - research the idea, analyze the codebase, find integration points:
 ```
-/unikit-explore Add item rarity system with visual effects
+/unikit-explore Add item rarity system with rarity tiers and drop logic
 ```
 The agent produces a research document with diagrams, option comparisons, and architectural recommendations. Save it or feed it directly into the next step.
 
@@ -229,6 +233,12 @@ Uses its own config directory and skill format, never touches standard agent fil
 
 ---
 
+## Community
+- [**Telegram Community**](https://t.me/nintendadev_community) - chat with other users, share your rules, get quick help
+- [**Author Telegram Channel**](https://t.me/nintendadev_channel) - follow updates, roadmap previews, and dev blog posts
+- [**Github Discussions**](https://github.com/NintendaDev/unikit-ai/discussions) - deeper technical discussions and framework proposals
+- [**Github Issues**](https://github.com/NintendaDev/unikit-ai/issues) - bug reports and feature requests
+
 ## Links
 
 - [Unity](https://unity.com) | [Godot](https://godotengine.org) | [Unreal Engine](https://www.unrealengine.com) - Supported game engines
@@ -236,11 +246,6 @@ Uses its own config directory and skill format, never touches standard agent fil
 - [Claude Code](https://claude.ai/code) - Anthropic's AI coding agent
 - [Qwen Code](https://github.com/QwenLM/qwen-code) - Alibaba's AI coding agent
 - [OpenCode](https://opencode.ai) - Open-source AI coding agent
-
-## Community
-
-- **Discussions** - [GitHub Discussions](https://github.com/NintendaDev/unikit-ai/discussions) for questions, ideas, and showcasing what you've built
-- **Issues** - [Bug reports and feature requests](https://github.com/NintendaDev/unikit-ai/issues)
 
 ## License
 
