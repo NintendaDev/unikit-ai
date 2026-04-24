@@ -234,13 +234,13 @@ Uses its own config directory and skill format, never touches standard agent fil
 ---
 
 ## Community
-- [**Telegram Community**](https://t.me/nintendadev_community) - chat with other users, share your rules, get quick help
-- [**Author Telegram Channel**](https://t.me/nintendadev_channel) - follow updates, roadmap previews, and dev blog posts
-- [**Github Discussions**](https://github.com/NintendaDev/unikit-ai/discussions) - deeper technical discussions and framework proposals
-- [**Github Issues**](https://github.com/NintendaDev/unikit-ai/issues) - bug reports and feature requests
+- [Telegram Community](https://t.me/nintendadev_community) - chat with other users, share your rules, get quick help
+- [Github Discussions](https://github.com/NintendaDev/unikit-ai/discussions) - deeper technical discussions and framework proposals
+- [Github Issues](https://github.com/NintendaDev/unikit-ai/issues) - bug reports and feature requests
 
 ## Links
-
+- [Author Official Site](https://nintenda.dev) - personal website and hub for all author's projects
+- [Author Telegram Channel](https://t.me/nintendadev_channel) - follow updates, roadmap previews, and dev blog posts
 - [Unity](https://unity.com) | [Godot](https://godotengine.org) | [Unreal Engine](https://www.unrealengine.com) - Supported game engines
 - [UnityMCP](https://github.com/CoplayDev/unity-mcp) | [Godot MCP](https://github.com/Coding-Solo/godot-mcp) | [Unreal MCP](https://github.com/ChiR24/Unreal_mcp) - Engine MCP servers
 - [Claude Code](https://claude.ai/code) - Anthropic's AI coding agent
