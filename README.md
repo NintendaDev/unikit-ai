@@ -74,6 +74,18 @@ Select one or more during `unikit-ai init`. The wizard renders a single flat che
 
 ---
 
+## Educational materials on YouTube
+
+🎞 [Как мы пишем игру на Unity полностью с AI](https://youtu.be/vAjTv0E4slo)
+
+🎞 [От установки в проект Unity до первого AI коммита](https://youtu.be/YPwjqy6Uc_M)
+
+🎞 [Как заставить ИИ-агента перестать угадывать архитектуру для игры в Unity](https://youtu.be/i0pY65_gNoI)
+
+🎞 [От ИИ-плана до закоммиченной фичи на Unity](https://youtu.be/IFdmcxNRPZE)
+
+---
+
 ## Installation & Updating
 
 ```bash
