@@ -74,7 +74,7 @@ Select one or more during `unikit-ai init`. The wizard renders a single flat che
 
 ---
 
-## Educational materials on YouTube
+## Educational materials on YouTube (Russian)
 
 🎞 [Как мы пишем игру на Unity полностью с AI](https://youtu.be/vAjTv0E4slo)
 
