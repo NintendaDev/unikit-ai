@@ -1,0 +1,48 @@
+{
+  "schema": 2,
+  "generated": "2026-06-07T00:00:00.000Z",
+  "modules": {
+    "code": {
+      "engines": {
+        "unity": {
+          "core": [
+            {
+              "id": "code-style",
+              "description": "Minimal core rule used by schema:2 rules-cli smoke tests — content is synthetic and has no real guidance",
+              "version": "1.0.0",
+              "always": true
+            }
+          ],
+          "stack": [
+            {
+              "id": "sample-stack-rule",
+              "description": "Minimal stack rule used by schema:2 rules-cli smoke tests — referenced by a single quickref doc",
+              "version": "1.0.0",
+              "always": false,
+              "references": [
+                "sample-stack-rule-quickref.md"
+              ]
+            }
+          ]
+        },
+        "godot": {
+          "core": [
+            {
+              "id": "code-style",
+              "description": "Godot core rule (schema2-valid fixture) — synthetic content for smoke tests",
+              "version": "1.0.0",
+              "always": true
+            }
+          ],
+          "stack": []
+        }
+      }
+    },
+    "gamedesign": {
+      "tiers": {
+        "core": [],
+        "library": []
+      }
+    }
+  }
+}

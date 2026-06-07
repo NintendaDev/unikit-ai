@@ -501,7 +501,7 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   // Fetch manifest exactly once per invocation — the single biggest reason
   // the legacy per-id `rulesInstallCommand` was painful to call from
   // `/unikit` Step 9.2 is that it hit the registry chain N times for N
-  // whitelisted rules. The aggregated report below closes that loop.
+  // always-tagged rules. The aggregated report below closes that loop.
   const registry = buildRegistry(config);
   const manifest = await registry.fetchManifest();
 
@@ -589,7 +589,7 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
 
   // Regenerate RULES_INDEX.md on every invocation — matches the old
   // `core-install` contract (Phase 3 of sync) so /unikit Step 9.2 always sees
-  // a fresh index after the bootstrap, even when every whitelisted rule was
+  // a fresh index after the bootstrap, even when every always-tagged rule was
   // already on disk.
   const requiredBy = await loadRequiredByMap();
   const codeModule = MODULE_REGISTRY[CODE_MODULE_ID];
@@ -687,7 +687,7 @@ export interface RulesSyncOptions {
   replace?: boolean;
   /**
    * Remove obsolete stack rules that vanished from the registry manifest.
-   * Scoped to stack (core rules are whitelist-governed). Composable with
+   * Scoped to stack (core rules are always-tagged). Composable with
    * `--replace`: `sync --replace --prune` is the old `sync --force`.
    */
   prune?: boolean;

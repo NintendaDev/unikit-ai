@@ -152,7 +152,8 @@ done
 echo -e "\n${BOLD}Part 5: Bundled rules snapshot${NC}"
 
 for engine in unity godot godot-net unreal-engine-5; do
-    CORE_DIR="$ROOT_DIR/rules-registry/$engine/core"
+    # schema:2 bundled layout: engines live under code/<engine>/.
+    CORE_DIR="$ROOT_DIR/rules-registry/code/$engine/core"
 
     if [[ -d "$CORE_DIR" ]]; then
         CORE_COUNT=$(find "$CORE_DIR" -name "*.md" | wc -l)
@@ -408,23 +409,38 @@ run_nested_test "Part 15: rules sync smoke tests" "$SCRIPT_DIR/test-rules-sync.s
 run_nested_test "Part 16: rules registry smoke tests" "$SCRIPT_DIR/test-rules-registry.sh"
 
 # ─────────────────────────────────────────────
-# Part 17: memory migration smoke tests
+# Part 17: `rules registry migrate` smoke tests
 # ─────────────────────────────────────────────
-run_nested_test "Part 17: memory migration smoke tests" "$SCRIPT_DIR/test-memory-migration.sh"
+run_nested_test "Part 17: rules registry migrate smoke tests" "$SCRIPT_DIR/test-rules-migrate.sh"
 
 # ─────────────────────────────────────────────
-# Part 18: golden-guard #1 — modular memory layout
+# Part 18: `rules registry status` smoke tests (schema 1/2/99 × local/remote)
 # ─────────────────────────────────────────────
-run_nested_test "Part 18: golden-guard #1 (modular memory layout)" "$SCRIPT_DIR/test-golden-guard.sh"
+run_nested_test "Part 18: rules registry status smoke tests" "$SCRIPT_DIR/test-rules-registry-status.sh"
 
 # ─────────────────────────────────────────────
-# Part 19: rules CLI exit-code matrix guard
+# Part 19: registry format guard (schema:2 bundled + build-manifest output)
+# ─────────────────────────────────────────────
+run_nested_test "Part 19: registry format smoke tests" "$SCRIPT_DIR/test-registry-format.sh"
+
+# ─────────────────────────────────────────────
+# Part 20: memory migration smoke tests
+# ─────────────────────────────────────────────
+run_nested_test "Part 20: memory migration smoke tests" "$SCRIPT_DIR/test-memory-migration.sh"
+
+# ─────────────────────────────────────────────
+# Part 21: golden-guard #1 — modular memory layout
+# ─────────────────────────────────────────────
+run_nested_test "Part 21: golden-guard #1 (modular memory layout)" "$SCRIPT_DIR/test-golden-guard.sh"
+
+# ─────────────────────────────────────────────
+# Part 22: rules CLI exit-code matrix guard
 # ─────────────────────────────────────────────
 # Must run last: parses the other test-rules-*.sh files for
 # assert_exit / assert_cmd_exit / `if [[ $CODE -eq N ]]` patterns and
 # confirms every contract-documented exit code is covered by at least
 # one assertion.
-run_nested_test "Part 19: rules CLI exit-code matrix" "$SCRIPT_DIR/test-exit-codes.sh"
+run_nested_test "Part 22: rules CLI exit-code matrix" "$SCRIPT_DIR/test-exit-codes.sh"
 
 # ─────────────────────────────────────────────
 # Summary

@@ -7,19 +7,20 @@
 # call, and asserts that every documented exit code in cli-contract.md
 # (0-7) is exercised by at least one test.
 #
-# Two codes are intentionally exempt from the strict check:
-#   - 2 (NETWORK_ERROR) — requires disabling the whole registry
-#     fallback chain; cannot be reproduced deterministically on a
-#     developer machine without network isolation. Covered by manual
-#     smoke tests when the network is known bad.
+# One code is intentionally exempt from the strict check:
 #   - 4 (NOT_PERMITTED) — the EXIT enum reserves this slot but rules.ts
 #     does NOT currently wire any code path to it (the variadic install
 #     absorbs "already installed" into the report as ↻, so the legacy
 #     single-id handler's exit-4 branch is gone). The check prints a
 #     note but does not fail while the reservation is unused.
 #
-# When NET_WORK/NOT_PERMITTED start being used, extend the strict
-# covered set and remove the exemptions.
+# Code 2 (NETWORK_ERROR) used to be exempt — it now has a DETERMINISTIC
+# reproduction: `rules registry status http://127.0.0.1:1` hits a refused
+# connection (no listener on port 1) → unreachable → exit 2, with no real
+# network or fallback-chain teardown needed (see test-rules-registry-status.sh).
+#
+# When NOT_PERMITTED starts being used, extend the strict covered set and
+# remove its exemption.
 #
 # Usage: ./scripts/test-exit-codes.sh
 
@@ -41,6 +42,9 @@ RULES_TEST_FILES=(
     "$SCRIPT_DIR/test-rules-sync.sh"
     "$SCRIPT_DIR/test-rules-registry.sh"
     "$SCRIPT_DIR/test-rules-registry-init.sh"
+    "$SCRIPT_DIR/test-rules-registry-status.sh"
+    "$SCRIPT_DIR/test-rules-migrate.sh"
+    "$SCRIPT_DIR/test-registry-format.sh"
 )
 
 # Extract the set of exit codes referenced by the rules test suite.
@@ -66,9 +70,9 @@ done
 # Exit codes the contract requires tests for. Keep in sync with the
 # EXIT enum in src/cli/commands/rules.ts and the table in
 # data/cli-contract.md.
-REQUIRED_CODES=(0 1 3 5 6 7)
+REQUIRED_CODES=(0 1 2 3 5 6 7)
 # Exempt codes — documented but not deterministically reachable.
-EXEMPT_CODES=(2 4)
+EXEMPT_CODES=(4)
 
 echo -e "\nStrict check: codes ${REQUIRED_CODES[*]} must each have at least one test"
 

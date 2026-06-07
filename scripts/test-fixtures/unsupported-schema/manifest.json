@@ -1,0 +1,14 @@
+{
+  "schema": 99,
+  "generated": "2026-06-07T00:00:00.000Z",
+  "modules": {
+    "code": {
+      "engines": {
+        "unity": {
+          "core": [],
+          "stack": []
+        }
+      }
+    }
+  }
+}
