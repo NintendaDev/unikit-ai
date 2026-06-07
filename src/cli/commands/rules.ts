@@ -959,10 +959,16 @@ export async function rulesRegistryResetCommand(options: RulesRegistryResetOptio
 
 const REGISTRY_INIT_TAG = 'rules:registry-init';
 
+// The maintainer's schema:2 manifest regeneration tool, relative to a registry
+// root. Copied on `registry init` and refreshed on `registry migrate` so a
+// migrated registry never keeps a stale schema:1 build script (which would
+// rebuild the flat layout and throw on the now-expected `gamedesign` module).
+const BUILD_MANIFEST_SCRIPT_REL = path.join('scripts', 'build-manifest.js');
+
 const REGISTRY_TEMPLATE_FILES = [
   'package.json',
   'RULE_TEMPLATE.md',
-  path.join('scripts', 'build-manifest.js'),
+  BUILD_MANIFEST_SCRIPT_REL,
 ];
 
 async function classifyRegistryInitTarget(targetDir: string): Promise<'ok' | 'already-registry' | 'occupied'> {
@@ -1105,26 +1111,84 @@ export async function rulesRegistryInitCommand(pathArg?: string): Promise<void> 
 //
 // Physically relocates a LOCAL registry from the flat schema:1 layout
 // (`<engine>/<tier>/`) to the schema:2 layout (`code/<engine>/<tier>/`) and
-// rewrites manifest.json to a clean schema:2. Idempotent: a second run is a
-// sha-stable no-op (the migration's `detect` treats schema ≥ 2 as "no work").
+// rewrites manifest.json to a clean schema:2. On a real migration it also
+// refreshes the registry's `scripts/build-manifest.js` to the current schema:2
+// builder — the schema:1 one ships with a schema:1 registry, rebuilds the flat
+// layout, and throws on the now-expected `gamedesign` module. Idempotent: a
+// second run is a sha-stable no-op (the migration's `detect` treats schema ≥ 2
+// as "no work", so the build script is touched only when a relocation runs).
 //
-// Target resolution:
+// Target resolution (no UniKit project required — registries are standalone
+// repos, not `unikit-ai init` projects):
 //   - an explicit `path` argument wins;
-//   - otherwise the configured `rulesRegistry`, but ONLY when it is local —
-//     remote registries cannot be migrated by the CLI (clone locally first).
+//   - otherwise the current directory WHEN it is itself a registry (a
+//     `manifest.json` at its root) — the common maintainer case of running
+//     `migrate` from inside a cloned/local registry checkout;
+//   - otherwise the configured `rulesRegistry`, but ONLY when it is local AND a
+//     UniKit project is present — remote registries cannot be migrated by the
+//     CLI (clone locally first).
 //
-// Exit codes: 0 (migrated or already-latest), 1 (target manifest missing),
+// Exit codes: 0 (migrated or already-latest), 1 (target manifest missing OR
+//   the current directory is not a registry and not a UniKit project),
 //   3 (no local target to migrate), 5 (resulting manifest fails validation —
 //   e.g. an unsupported schema the migration could not lower).
 
 const REGISTRY_MIGRATE_TAG = 'rules:registry-migrate';
+
+/**
+ * Refresh the migrated registry's `scripts/build-manifest.js` from the bundled
+ * snapshot (the same source `registry init` copies). A schema:1 registry still
+ * carries its OLD schema:1 build script after the on-disk relocation; left in
+ * place it would regenerate the flat layout and throw on the now-expected
+ * `gamedesign` module. The bundled schema:2 builder is itself tolerant of a
+ * missing `gamedesign/` directory, so the refreshed script is safe to run on a
+ * registry that has no game-design rules.
+ *
+ * Best-effort: a missing bundled snapshot warns but never fails the migration —
+ * the schema relocation already succeeded and is the command's contract.
+ */
+async function refreshBuildManifestScript(targetDir: string): Promise<void> {
+  const src = path.join(getBundledRegistryDir(), BUILD_MANIFEST_SCRIPT_REL);
+  if (!(await fileExists(src))) {
+    logWarn(
+      REGISTRY_MIGRATE_TAG,
+      `bundled ${BUILD_MANIFEST_SCRIPT_REL} missing — left the existing build script untouched`,
+    );
+    return;
+  }
+  const dst = path.join(targetDir, BUILD_MANIFEST_SCRIPT_REL);
+  await fs.ensureDir(path.dirname(dst));
+  await fs.copy(src, dst, { overwrite: true });
+  logInfo(REGISTRY_MIGRATE_TAG, `refreshed ${BUILD_MANIFEST_SCRIPT_REL} to the schema:${LATEST_SCHEMA} builder`);
+}
 
 async function resolveMigrateTarget(pathArg: string | undefined, projectDir: string): Promise<string> {
   if (pathArg) {
     return path.resolve(projectDir, pathArg);
   }
 
-  const config = await loadConfigOrExit(projectDir);
+  // No path: prefer the current directory when it is itself a registry. A
+  // registry is identified by a `manifest.json` at its root — independent of
+  // any `.unikit.json`, because a rules-registry checkout is not a UniKit
+  // project and must not require `unikit-ai init`.
+  if (await fileExists(path.join(projectDir, 'manifest.json'))) {
+    logInfo(REGISTRY_MIGRATE_TAG, `using current directory as registry target: ${projectDir}`);
+    return projectDir;
+  }
+
+  // Fall back to the configured `rulesRegistry`. This path needs a UniKit
+  // project (the registry URL lives in `.unikit.json`); when neither a
+  // manifest nor a project is present, report that the current directory is
+  // not a registry rather than the misleading "run `unikit-ai init`".
+  const config = await loadConfig(projectDir);
+  if (!config) {
+    console.error(chalk.red(
+      'Current directory is not a rules registry (no manifest.json) and not a UniKit project. '
+      + 'Run `rules registry migrate` from inside a registry, or pass a path: '
+      + '`rules registry migrate <path>`.',
+    ));
+    exitWithCode(EXIT.NOT_FOUND);
+  }
   if (detectRegistryKind(config.rulesRegistry) !== 'local') {
     console.error(chalk.red(
       'No local registry to migrate. The configured registry is remote (or unset) — '
@@ -1164,8 +1228,10 @@ export async function rulesRegistryMigrateCommand(pathArg?: string): Promise<voi
   if (result.applied.length === 0) {
     console.log(chalk.dim(`✓ Registry already at schema:${LATEST_SCHEMA} — nothing to migrate (${targetDir})`));
   } else {
+    await refreshBuildManifestScript(targetDir);
     console.log(chalk.green(`✓ Registry migrated to schema:${LATEST_SCHEMA} (${targetDir})`));
-    console.log(chalk.dim(`  Applied: ${result.applied.join(', ')}`));
+    console.log(chalk.dim(`  Applied:   ${result.applied.join(', ')}`));
+    console.log(chalk.dim(`  Refreshed: ${BUILD_MANIFEST_SCRIPT_REL}`));
   }
 }
 
