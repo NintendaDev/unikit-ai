@@ -2,7 +2,7 @@
 // Always returns null/empty — triggers fallback to Git or FS transports.
 
 import type { RulesRegistry } from './index.js';
-import type { RegistryManifest, RuleCategory, FetchedRule, FetchedReference } from './manifest-types.js';
+import type { RegistryManifest, RuleCategory, ModuleId, FetchedRule, FetchedReference } from './manifest-types.js';
 import { logInfo } from '../../utils/log.js';
 
 export class ApiRegistry implements RulesRegistry {
@@ -17,11 +17,17 @@ export class ApiRegistry implements RulesRegistry {
     return null;
   }
 
-  async fetchRule(_engineId: string, _category: RuleCategory, _ruleId: string): Promise<FetchedRule | null> {
+  async fetchRule(
+    _module: ModuleId,
+    _engineId: string,
+    _category: RuleCategory,
+    _ruleId: string,
+  ): Promise<FetchedRule | null> {
     return null;
   }
 
   async fetchReferences(
+    _module: ModuleId,
     _engineId: string,
     _category: RuleCategory,
     _ruleId: string,

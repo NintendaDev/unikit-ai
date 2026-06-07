@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { getAgentChoices } from '../../core/agents.js';
 import { getEngineChoices, getAllEngineIds } from '../../core/engines.js';
 import { discoverMcpServers } from '../../core/mcp.js';
-import { normalizeRegistryUrl, validateRegistry } from '../../core/registry/validator.js';
+import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
 import { OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
 
 export interface AgentWizardSelection {
@@ -99,7 +99,7 @@ async function promptRulesRegistry(engineId: string, existingRegistry: string | 
     }
 
     if (result.code === 'ENGINE_NOT_FOUND' && result.manifest) {
-      const available = Object.keys(result.manifest.engines).join(', ');
+      const available = manifestEngineIds(result.manifest).join(', ');
       console.log(chalk.red(
         `! This registry does not contain rules for engine "${engineId}". Available engines: ${available}.`,
       ));

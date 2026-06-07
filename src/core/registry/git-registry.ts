@@ -1,7 +1,9 @@
 // --- GitRegistry: HTTP transport via raw.githubusercontent.com ---
 
 import type { RulesRegistry } from './index.js';
-import type { RegistryManifest, RuleCategory, FetchedRule, FetchedReference } from './manifest-types.js';
+import type { RegistryManifest, RuleCategory, ModuleId, FetchedRule, FetchedReference } from './manifest-types.js';
+import { manifestSummary } from './manifest-types.js';
+import { ruleTierSegments } from './rule-path.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 
 const TAG = 'GitRegistry';
@@ -10,6 +12,9 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 export class GitRegistry implements RulesRegistry {
   readonly label: string;
   private readonly baseUrl: string;
+  // PHYSICAL schema of the source, cached from the last successful
+  // `fetchManifest`. Drives the rule path layout (flat vs `code/`-prefixed).
+  private physicalSchema: number | null = null;
 
   /**
    * @param url — Raw base URL, e.g. "https://raw.githubusercontent.com/NintendaDev/unikit-ai-rules/main"
@@ -31,7 +36,8 @@ export class GitRegistry implements RulesRegistry {
 
     try {
       const parsed = JSON.parse(text) as RegistryManifest;
-      logInfo(TAG, `manifest parsed, schema=${parsed.schema}, engines=[${Object.keys(parsed.engines ?? {}).join(', ')}]`);
+      this.physicalSchema = typeof parsed.schema === 'number' ? parsed.schema : null;
+      logInfo(TAG, `manifest parsed, schema=${parsed.schema}, ${manifestSummary(parsed)}`);
       return parsed;
     } catch (err) {
       logWarn(TAG, `manifest JSON parse error: ${(err as Error).message}`);
@@ -39,8 +45,15 @@ export class GitRegistry implements RulesRegistry {
     }
   }
 
-  async fetchRule(engineId: string, category: RuleCategory, ruleId: string): Promise<FetchedRule | null> {
-    const url = `${this.baseUrl}/${engineId}/${category}/${ruleId}.md`;
+  async fetchRule(
+    module: ModuleId,
+    engineId: string,
+    category: RuleCategory,
+    ruleId: string,
+  ): Promise<FetchedRule | null> {
+    const schema = await this.resolvePhysicalSchema();
+    const dir = ruleTierSegments(schema, module, engineId, category).join('/');
+    const url = `${this.baseUrl}/${dir}/${ruleId}.md`;
     logInfo(TAG, `fetchRule ${url}`);
 
     const content = await this.httpGet(url);
@@ -52,6 +65,7 @@ export class GitRegistry implements RulesRegistry {
   }
 
   async fetchReferences(
+    module: ModuleId,
     engineId: string,
     category: RuleCategory,
     ruleId: string,
@@ -61,11 +75,13 @@ export class GitRegistry implements RulesRegistry {
       return [];
     }
 
-    logInfo(TAG, `fetchReferences ${engineId}/${category}/${ruleId}: [${filenames.join(', ')}]`);
+    const schema = await this.resolvePhysicalSchema();
+    const dir = ruleTierSegments(schema, module, engineId, category).join('/');
+    logInfo(TAG, `fetchReferences ${dir}/${ruleId}: [${filenames.join(', ')}]`);
     const results: FetchedReference[] = [];
 
     for (const filename of filenames) {
-      const url = `${this.baseUrl}/${engineId}/${category}/references/${filename}`;
+      const url = `${this.baseUrl}/${dir}/references/${filename}`;
       const content = await this.httpGet(url);
       if (content !== null) {
         results.push({ filename, content });
@@ -75,6 +91,18 @@ export class GitRegistry implements RulesRegistry {
     }
 
     return results;
+  }
+
+  /**
+   * Physical schema for path building. Lazily fetches the manifest once if a
+   * rule fetch races ahead of it; defaults to 1 (flat layout) when the source
+   * is unreachable so behaviour matches the legacy default.
+   */
+  private async resolvePhysicalSchema(): Promise<number> {
+    if (this.physicalSchema === null) {
+      await this.fetchManifest();
+    }
+    return this.physicalSchema ?? 1;
   }
 
   // --- Internal ---

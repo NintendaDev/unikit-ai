@@ -10,7 +10,7 @@ import { loadConfig, saveConfig, getModuleTier } from '../../core/config.js';
 import type { UniKitConfig } from '../../core/config.js';
 import { createRegistry, detectRegistryKind, resolveRegistryUrl, OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
 import type { RulesRegistry, RegistryRule, RuleCategory, RegistryKind } from '../../core/registry/index.js';
-import { validateRegistry, validateUrlFormat, normalizeRegistryUrl } from '../../core/registry/validator.js';
+import { validateRegistry, validateUrlFormat, normalizeRegistryUrl, manifestEngineIds } from '../../core/registry/validator.js';
 import { getAllEngineIds } from '../../core/engines.js';
 import {
   generateRulesIndex, loadRequiredByMap,
@@ -84,7 +84,7 @@ export async function rulesListCommand(options: { json?: boolean; engine?: strin
   const engineRules = manifest.engines[engineId];
   if (!engineRules) {
     console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
-    const available = Object.keys(manifest.engines).join(', ');
+    const available = manifestEngineIds(manifest).join(', ');
     console.error(chalk.dim(`Available: ${available}`));
     exitWithCode(EXIT.NOT_FOUND);
   }
@@ -179,7 +179,7 @@ export async function rulesShowCommand(id: string, options: { references?: boole
   }
 
   const category: RuleCategory = engineRules.core.some(r => r.id === found.id) ? 'core' : 'stack';
-  const fetched = await registry.fetchRule(engineId, category, found.id);
+  const fetched = await registry.fetchRule(CODE_MODULE_ID, engineId, category, found.id);
 
   if (!fetched) {
     console.error(chalk.red(`Failed to fetch rule content for "${found.id}".`));
@@ -198,7 +198,7 @@ export async function rulesShowCommand(id: string, options: { references?: boole
   console.log(fetched.content);
 
   if (options.references && found.references && found.references.length > 0) {
-    const refs = await registry.fetchReferences(engineId, category, found.id, found.references);
+    const refs = await registry.fetchReferences(CODE_MODULE_ID, engineId, category, found.id, found.references);
     for (const ref of refs) {
       console.log(chalk.bold(`\n--- Reference: ${ref.filename} ---\n`));
       console.log(ref.content);
@@ -354,7 +354,7 @@ async function installOneRule(
   }
 
   // Fetch rule content.
-  const fetched = await registry.fetchRule(engineId, category, found.id);
+  const fetched = await registry.fetchRule(CODE_MODULE_ID, engineId, category, found.id);
   if (!fetched) {
     return {
       status: 'failed',
@@ -388,7 +388,7 @@ async function installOneRule(
   // `.unikit/memory/<category>/references/` and are matched by filename prefix
   // on cleanup (see re-categorisation block below).
   if (found.references && found.references.length > 0) {
-    const refs = await registry.fetchReferences(engineId, category, found.id, found.references);
+    const refs = await registry.fetchReferences(CODE_MODULE_ID, engineId, category, found.id, found.references);
     const destRefsDir = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, category), REFERENCES_DIR_NAME);
     for (const ref of refs) {
       await writeTextFile(path.join(destRefsDir, ref.filename), ref.content);
@@ -498,7 +498,7 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   const engineRules = manifest.engines[engineId];
   if (!engineRules) {
     console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
-    const available = Object.keys(manifest.engines).join(', ');
+    const available = manifestEngineIds(manifest).join(', ');
     console.error(chalk.dim(`Available: ${available}`));
     exitWithCode(EXIT.VALIDATION_FAILED);
   }

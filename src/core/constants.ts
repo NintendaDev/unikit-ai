@@ -86,8 +86,14 @@ export function moduleDir(projectDir: string, module: string): string {
   return path.join(memoryDir(projectDir), module);
 }
 
-/** `<projectDir>/.unikit/memory/<module>/<tier>` — a module tier's rule dir. */
-export function moduleTierDir(projectDir: string, module: string, tier: Tier): string {
+/**
+ * `<projectDir>/.unikit/memory/<module>/<tier>` — a module tier's rule dir.
+ * `tier` is widened to `string` (not the narrow `Tier` union) so registry-layer
+ * tiers — which are `string` (`manifest-types.Tier`) to allow non-engine modules
+ * extra tiers — can reach the on-disk path without a cast. The path join is
+ * tier-agnostic; the narrow `Tier` union still gates config/module state.
+ */
+export function moduleTierDir(projectDir: string, module: string, tier: string): string {
   return path.join(moduleDir(projectDir, module), tier);
 }
 
