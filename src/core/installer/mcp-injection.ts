@@ -16,16 +16,12 @@ export async function injectMcpRules(
   installedAgents: AgentInstallation[],
   allowedTools: McpAllowedTools,
 ): Promise<void> {
-  let agentCount = 0;
-  let skillCount = 0;
-
   // Inject into subagent files
   for (const [agentName, tools] of Object.entries(allowedTools.agents)) {
     for (const agent of installedAgents) {
       const filePath = path.join(projectDir, agent.subagentsDir, agentName + '.md');
       if (await fileExists(filePath)) {
-        const modified = await injectToolsIntoAgentFrontmatter(filePath, tools);
-        if (modified) agentCount++;
+        await injectToolsIntoAgentFrontmatter(filePath, tools);
       }
     }
   }
@@ -36,10 +32,8 @@ export async function injectMcpRules(
       const sourceSkillDir = path.join(getSkillsDir(), skillName);
       const paths = resolveSkillPaths(projectDir, agent.skillsDir, agent.id, skillName, sourceSkillDir);
       if (await fileExists(paths.targetSkillFile)) {
-        const modified = await injectToolsIntoSkillFrontmatter(paths.targetSkillFile, tools);
-        if (modified) skillCount++;
+        await injectToolsIntoSkillFrontmatter(paths.targetSkillFile, tools);
       }
     }
   }
-
 }
