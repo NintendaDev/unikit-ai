@@ -2,14 +2,17 @@ import chalk from 'chalk';
 import path from 'path';
 import { getCurrentVersion, loadConfig, saveConfig } from '../../core/config.js';
 import {
-  buildManagedSkillsState, buildManagedSubagentsState, getAvailableSkills,
-  updateSkills, updateSubagents, installEngineTemplates, injectMcpRules,
-  installExtensionSkills, installExtensionSubagents,
-  syncRulesState,
-  installCliContract,
-  installDevPrinciples,
-  type SkillUpdateEntry, type SubagentUpdateEntry,
-} from '../../core/installer.js';
+  buildManagedSkillsState, getAvailableSkills, updateSkills,
+  type SkillUpdateEntry,
+} from '../../core/installer/skills.js';
+import {
+  buildManagedSubagentsState, updateSubagents,
+  type SubagentUpdateEntry,
+} from '../../core/installer/subagents.js';
+import { installEngineTemplates, installCliContract, installDevPrinciples } from '../../core/installer/system-assets.js';
+import { injectMcpRules } from '../../core/installer/mcp-injection.js';
+import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
+import { syncRulesState } from '../../core/installer/rules-sync.js';
 import { renderSyncRulesEvents } from './rules.js';
 import { discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
 import { getAgentConfig } from '../../core/agents.js';

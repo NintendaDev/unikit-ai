@@ -13,10 +13,11 @@ import type { RulesRegistry, RegistryRule, RuleCategory, RegistryKind } from '..
 import { validateRegistry, validateUrlFormat, normalizeRegistryUrl } from '../../core/registry/validator.js';
 import { getAllEngineIds } from '../../core/engines.js';
 import {
-  generateRulesIndex, loadRequiredByMap, CORE_RULE_WHITELIST, syncRulesState,
+  generateRulesIndex, loadRequiredByMap, CORE_RULE_WHITELIST,
   parseRuleMetadataFromContent, normalizeRuleId,
-  type SyncRulesEvent,
-} from '../../core/installer.js';
+} from '../../core/installer/rules-index.js';
+import { syncRulesState, type SyncRulesEvent } from '../../core/installer/rules-sync.js';
+import { memoryDir } from '../../core/constants.js';
 import { writeTextFile, fileExists, listFiles, removeFile, getBundledRegistryDir } from '../../utils/fs.js';
 import { createHash } from 'crypto';
 import { logInfo, logWarn, logError } from '../../utils/log.js';
@@ -353,7 +354,7 @@ async function installOneRule(
   }
 
   const newHash = computeHash(fetched.content);
-  const targetMemoryDir = path.join(projectDir, '.unikit', 'memory');
+  const targetMemoryDir = memoryDir(projectDir);
   const destPath = path.join(targetMemoryDir, category, `${found.id}.md`);
   const destExists = await fileExists(destPath);
 

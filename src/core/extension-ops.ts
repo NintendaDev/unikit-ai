@@ -10,10 +10,12 @@ import {
   loadExtensionManifest, buildExtensionRecord, checkReplacementConflicts,
   resolveExtension,
 } from './extensions.js';
+import { installSkillWithTransformer } from './installer/skills.js';
 import {
-  installSkillWithTransformer, installExtensionSkills, removeExtensionSkills,
-  installExtensionSubagents, removeExtensionSubagents, injectMcpRules,
-} from './installer.js';
+  installExtensionSkills, removeExtensionSkills,
+  installExtensionSubagents, removeExtensionSubagents,
+} from './installer/extensions.js';
+import { injectMcpRules } from './installer/mcp-injection.js';
 import { applyAllInjections, stripAllInjections } from './injections.js';
 import {
   configureExtensionMcpServers, removeExtensionMcpServers, validateMcpTemplate,
@@ -323,7 +325,7 @@ export async function restoreBaseSkills(
   skillNames: string[],
 ): Promise<void> {
   // Re-import dynamically to avoid circular dependency issues
-  const { installSkills } = await import('./installer.js');
+  const { installSkills } = await import('./installer/skills.js');
 
   for (const agent of config.agents) {
     const skillsToRestore = skillNames.filter(s => agent.installedSkills.includes(s));
