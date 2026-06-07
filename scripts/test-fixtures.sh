@@ -303,13 +303,19 @@ seed_rule() {
     local category="$3"
     local rule="$4"
     local source_root="${SEED_RULE_SOURCE_ROOT:-$ROOT_DIR/rules-registry}"
-    local src="$source_root/$engine/$category/$rule.md"
+    # schema:2 sources nest engines under code/<engine>/<tier>/; legacy schema:1
+    # sources keep the flat <engine>/<tier>/ layout. Prefer the schema:2 path and
+    # fall back to flat so both the bundled snapshot and schema:1 fixtures work.
+    local src="$source_root/code/$engine/$category/$rule.md"
+    if [[ ! -f "$src" ]]; then
+        src="$source_root/$engine/$category/$rule.md"
+    fi
     local dest_dir="$project/.unikit/memory/code/$category"
     mkdir -p "$dest_dir"
     if [[ -f "$src" ]]; then
         cp "$src" "$dest_dir/$rule.md"
     else
-        echo "seed_rule: source rule $src is missing; test setup is broken" >&2
+        echo "seed_rule: source rule for $engine/$category/$rule not found under $source_root (tried code/ and flat); test setup is broken" >&2
         exit 1
     fi
 }

@@ -283,7 +283,8 @@ echo -e "\n${BOLD}=== Validate per-engine memory rules ===${NC}\n"
 ENGINES=("unity" "godot" "godot-net" "unreal-engine-5")
 
 for engine in "${ENGINES[@]}"; do
-    ENGINE_REGISTRY="$ROOT_DIR/rules-registry/$engine"
+    # schema:2 bundled layout: engines live under code/<engine>/.
+    ENGINE_REGISTRY="$ROOT_DIR/rules-registry/code/$engine"
 
     # Check engine directory exists inside the cloned registry snapshot
     if [[ ! -d "$ENGINE_REGISTRY" ]]; then
@@ -305,7 +306,7 @@ done
 
 # Unity-specific: check stack rules and references (ids from test-fixtures.sh).
 for rule_id in "${EXPECTED_UNITY_STACK_RULES[@]}"; do
-    rule_path="$ROOT_DIR/rules-registry/unity/stack/${rule_id}.md"
+    rule_path="$ROOT_DIR/rules-registry/code/unity/stack/${rule_id}.md"
     rule_name="unity/stack/${rule_id}"
     if [[ -f "$rule_path" && -s "$rule_path" ]]; then
         pass "$rule_name"
@@ -315,7 +316,7 @@ for rule_id in "${EXPECTED_UNITY_STACK_RULES[@]}"; do
 done
 
 # Unity stack references
-REF_COUNT=$(find "$ROOT_DIR/rules-registry/unity/stack/references/" -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
+REF_COUNT=$(find "$ROOT_DIR/rules-registry/code/unity/stack/references/" -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
 if [[ "$REF_COUNT" -ge 9 ]]; then
     pass "unity/stack/references ($REF_COUNT files)"
 else
@@ -744,7 +745,8 @@ if [[ -f "$MANIFEST" ]]; then
       const engines = ['unity', 'godot', 'godot-net', 'unreal-engine-5'];
       const allCoreIds = new Set();
       for (const e of engines) {
-        const dir = path.join(registryRoot, e, 'core');
+        // schema:2 bundled layout: engines live under code/<engine>/.
+        const dir = path.join(registryRoot, 'code', e, 'core');
         if (!fs.existsSync(dir)) continue;
         for (const f of fs.readdirSync(dir)) {
           if (!f.endsWith('.md')) continue;
@@ -1054,16 +1056,21 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7i: installer module file-size guard
+# Part 7i: installer/registry module file-size guard
 # ─────────────────────────────────────────────
-# Keep the post-refactor installer/* submodules and the shared constants.ts
-# under a hard 500-line ceiling so the former monolith cannot silently regrow.
-# The limit leaves comfortable headroom over the largest module (skills.ts).
-echo -e "\n${BOLD}Part 7i: installer module file-size guard${NC}"
+# Keep the post-refactor installer/* and registry/* submodules and the shared
+# constants.ts under a hard 500-line ceiling so neither the former installer
+# monolith nor the schema-aware registry layer can silently regrow. The limit
+# leaves comfortable headroom over the largest module (installer/rules-sync.ts
+# at ~427, registry/validator.ts at ~297).
+echo -e "\n${BOLD}Part 7i: installer/registry module file-size guard${NC}"
 
 SIZE_LIMIT=500
 SIZE_VIOLATIONS=""
-for f in "$ROOT_DIR"/src/core/installer/*.ts "$ROOT_DIR"/src/core/constants.ts; do
+for f in "$ROOT_DIR"/src/core/installer/*.ts \
+         "$ROOT_DIR"/src/core/registry/*.ts \
+         "$ROOT_DIR"/src/core/registry/migrations/*.ts \
+         "$ROOT_DIR"/src/core/constants.ts; do
     [[ -f "$f" ]] || continue
     lines=$(wc -l < "$f" | tr -d ' ')
     if [[ "$lines" -gt "$SIZE_LIMIT" ]]; then
@@ -1072,9 +1079,9 @@ for f in "$ROOT_DIR"/src/core/installer/*.ts "$ROOT_DIR"/src/core/constants.ts; 
 done
 
 if [[ -z "$SIZE_VIOLATIONS" ]]; then
-    pass "installer modules within $SIZE_LIMIT-line limit"
+    pass "installer/registry modules within $SIZE_LIMIT-line limit"
 else
-    fail "installer modules exceed $SIZE_LIMIT-line limit"
+    fail "installer/registry modules exceed $SIZE_LIMIT-line limit"
     echo -e "$SIZE_VIOLATIONS"
 fi
 
