@@ -1,0 +1,104 @@
+// System asset installation: engine templates + .unikit/system files.
+//
+// These flat-write per-engine ENGINE_RULES.md into installed skill reference
+// dirs (installEngineTemplates) and the cli-contract / dev-principles files
+// into .unikit/system (installCliContract / installDevPrinciples). The system
+// files are NOT hash-tracked — every init/update rewrites them with the
+// current engine vars substituted.
+
+import path from 'path';
+import {
+  getDataDir, getEngineTemplatesDir,
+  fileExists, readTextFile, writeTextFile,
+} from '../../utils/fs.js';
+import type { AgentInstallation } from '../config.js';
+import { getAgentConfig } from '../agents.js';
+import { getEngineConfig } from '../engines.js';
+import { getTransformer } from '../transformer.js';
+import { processTemplate } from '../template.js';
+import { logInfo, logWarn } from '../../utils/log.js';
+import {
+  REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
+  systemDir,
+} from '../constants.js';
+import { buildSubagentTemplateVars } from './shared.js';
+
+// --- Engine template installation ---
+
+export async function installEngineTemplates(
+  projectDir: string,
+  engineId: string,
+  installedAgents: AgentInstallation[],
+): Promise<void> {
+  let engineConfig;
+  try {
+    engineConfig = getEngineConfig(engineId);
+  } catch {
+    return;
+  }
+
+  const templatesBaseDir = path.join(getEngineTemplatesDir(), 'skills');
+
+  for (const [skillName, templateFilename] of Object.entries(engineConfig.skillTemplates)) {
+    const sourcePath = path.join(templatesBaseDir, skillName, templateFilename);
+    if (!(await fileExists(sourcePath))) continue;
+
+    const content = await readTextFile(sourcePath);
+    if (!content) continue;
+
+    for (const agent of installedAgents) {
+      const transformer = getTransformer(agent.id);
+      const agentConfig = getAgentConfig(agent.id);
+      const transformed = transformer.transform(skillName, '');
+
+      let targetRefsDir: string;
+      if (transformed.flat) {
+        targetRefsDir = path.join(projectDir, agentConfig.configDir, transformed.targetDir, REFERENCES_DIR_NAME);
+      } else {
+        targetRefsDir = path.join(projectDir, agent.skillsDir, transformed.targetDir, REFERENCES_DIR_NAME);
+      }
+
+      await writeTextFile(path.join(targetRefsDir, ENGINE_RULES_FILE), content);
+    }
+  }
+}
+
+// --- CLI Contract installation ---
+
+export async function installCliContract(projectDir: string): Promise<void> {
+  const srcPath = path.join(getDataDir(), CLI_CONTRACT_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, CLI_CONTRACT_FILE);
+
+  const content = await readTextFile(srcPath);
+  if (!content) {
+    logWarn('installCliContract', 'cli-contract.md not found in data/, skipping');
+    return;
+  }
+
+  await writeTextFile(destPath, content);
+  logInfo('installCliContract', 'installed .unikit/system/cli-contract.md');
+}
+
+// --- Dev Principles installation ---
+
+export async function installDevPrinciples(
+  projectDir: string,
+  engineId: string,
+  engineMcpKey?: string | null,
+): Promise<void> {
+  const srcPath = path.join(getDataDir(), DEV_PRINCIPLES_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, DEV_PRINCIPLES_FILE);
+
+  const raw = await readTextFile(srcPath);
+  if (!raw) {
+    logWarn('installDevPrinciples', 'dev-principles.md not found in data/, skipping');
+    return;
+  }
+
+  const vars = buildSubagentTemplateVars('dev-principles', engineId, engineMcpKey);
+  const content = processTemplate(raw, vars);
+  await writeTextFile(destPath, content);
+  logInfo('installDevPrinciples', 'installed .unikit/system/dev-principles.md');
+}
