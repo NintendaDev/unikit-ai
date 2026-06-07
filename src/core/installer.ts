@@ -1,11 +1,10 @@
 import path from 'path';
-import { createHash } from 'crypto';
 import semver from 'semver';
 import {
-  copyDirectory, getSkillsDir, getSubagentsDir, getDataDir, getEngineTemplatesDir,
-  ensureDir, listDirectories, listFiles, listFilesRecursive,
-  readTextFile, readFileBuffer, writeTextFile, removeDirectory, removeFile,
-  fileExists, hashDirectory, hashFile,
+  getSubagentsDir, getDataDir,
+  ensureDir, listFiles,
+  readTextFile, writeTextFile, removeDirectory, removeFile,
+  fileExists, hashFile,
 } from '../utils/fs.js';
 import type { AgentInstallation, ManagedSkillState, RuleOrigin, UniKitConfig } from './config.js';
 import type { RulesRegistry } from './registry/index.js';
@@ -14,41 +13,19 @@ import {
   computeContentHash, isMarkdownFile, stripMdExtension,
   buildSubagentTemplateVars, loadSourceForAgent, warnActionFailed,
 } from './installer/shared.js';
-import { getEngineConfig } from './engines.js';
-import { processSkillTemplates, buildTemplateVars, buildEngineVars, processTemplate } from './template.js';
-import type { TemplateVars } from './template.js';
-import { getTransformer, extractFrontmatterName, replaceFrontmatterName } from './transformer.js';
-import { injectToolsIntoSkillFrontmatter, injectToolsIntoAgentFrontmatter } from './mcp.js';
-import type { McpAllowedTools } from './mcp.js';
-import { logInfo, logWarn } from '../utils/log.js';
+import { computeSubagentSourceHash } from './installer/hashing.js';
+import { installSkillWithTransformer } from './installer/skills.js';
+import { processTemplate } from './template.js';
+import { getTransformer } from './transformer.js';
+import { logInfo } from '../utils/log.js';
 import {
   DEFAULT_ENGINE_ID, RULE_CATEGORIES,
-  REFERENCES_DIR_NAME, SKILL_FILE, RULES_INDEX_FILE, RULES_INDEX_TEMPLATE_FILE,
-  RULES_MANIFEST_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE, ENGINE_RULES_FILE,
-  CORE_TABLE_MARKER, STACK_TABLE_MARKER, memoryDir, systemDir,
+  REFERENCES_DIR_NAME, RULES_INDEX_FILE, RULES_INDEX_TEMPLATE_FILE,
+  RULES_MANIFEST_FILE,
+  CORE_TABLE_MARKER, STACK_TABLE_MARKER, memoryDir,
 } from './constants.js';
 
 // --- Types ---
-
-export type SkillUpdateStatus = 'changed' | 'unchanged' | 'skipped' | 'removed' | 'replaced';
-
-export interface SkillUpdateEntry {
-  skill: string;
-  status: SkillUpdateStatus;
-  reason: string;
-}
-
-export interface UpdateSkillsResult {
-  installedSkills: string[];
-  entries: SkillUpdateEntry[];
-}
-
-export interface UpdateSkillsOptions {
-  force?: boolean;
-  engineId?: string;
-  engineMcpKey?: string | null;
-  replacedSkills?: Set<string>;
-}
 
 export type SubagentUpdateStatus = 'changed' | 'unchanged' | 'skipped' | 'removed';
 
@@ -67,330 +44,6 @@ export interface UpdateSubagentsOptions {
   force?: boolean;
   engineId?: string;
   engineMcpKey?: string | null;
-}
-
-export interface InstallSkillsOptions {
-  projectDir: string;
-  skillsDir: string;
-  skills: string[];
-  agentId: string;
-  engineId?: string;
-  engineMcpKey?: string | null;
-}
-
-interface ResolvedSkillPaths {
-  sourceSkillDir: string;
-  targetSkillDir: string;
-  targetSkillFile: string;
-  targetRefsDir: string;
-  sourceRefsDir: string;
-  flat: boolean;
-}
-
-// --- Hashing utilities ---
-
-async function hashManagedFiles(files: Array<{ absPath: string; relPath: string }>): Promise<string | null> {
-  if (files.length === 0) {
-    return null;
-  }
-
-  const sortedFiles = [...files].sort((a, b) => a.relPath.localeCompare(b.relPath));
-  const hasher = createHash('sha256');
-
-  for (const file of sortedFiles) {
-    const content = await readFileBuffer(file.absPath);
-    if (!content) {
-      return null;
-    }
-    hasher.update(`path:${file.relPath}\n`);
-    hasher.update(content);
-    hasher.update('\n');
-  }
-
-  return hasher.digest('hex');
-}
-
-async function hashManagedDirectory(dirPath: string): Promise<string | null> {
-  const files = await listFilesRecursive(dirPath);
-  if (files.length === 0) {
-    return null;
-  }
-
-  const mapped = files.map(absPath => ({
-    absPath,
-    relPath: path.relative(dirPath, absPath).replaceAll('\\', '/'),
-  }));
-
-  return hashManagedFiles(mapped);
-}
-
-// --- Skill path resolution ---
-
-function resolveSkillPaths(
-  projectDir: string,
-  skillsDir: string,
-  agentId: string,
-  skillName: string,
-  sourceSkillDir: string,
-): ResolvedSkillPaths {
-  const transformer = getTransformer(agentId);
-  const agentConfig = getAgentConfig(agentId);
-  const transformed = transformer.transform(skillName, '');
-
-  const sourceRefsDir = path.join(sourceSkillDir, REFERENCES_DIR_NAME);
-  if (transformed.flat) {
-    const targetSkillDir = path.join(projectDir, agentConfig.configDir, transformed.targetDir);
-    return {
-      sourceSkillDir,
-      targetSkillDir,
-      targetSkillFile: path.join(targetSkillDir, transformed.targetName),
-      targetRefsDir: path.join(targetSkillDir, REFERENCES_DIR_NAME),
-      sourceRefsDir,
-      flat: true,
-    };
-  }
-
-  const targetSkillDir = path.join(projectDir, skillsDir, transformed.targetDir);
-  return {
-    sourceSkillDir,
-    targetSkillDir,
-    targetSkillFile: path.join(targetSkillDir, SKILL_FILE),
-    targetRefsDir: path.join(targetSkillDir, REFERENCES_DIR_NAME),
-    sourceRefsDir,
-    flat: false,
-  };
-}
-
-async function hashInstalledSkill(paths: ResolvedSkillPaths): Promise<string | null> {
-  if (!paths.flat) {
-    return hashManagedDirectory(paths.targetSkillDir);
-  }
-
-  const mainFileExists = await fileExists(paths.targetSkillFile);
-  if (!mainFileExists) {
-    return null;
-  }
-
-  const filesToHash: Array<{ absPath: string; relPath: string }> = [
-    {
-      absPath: paths.targetSkillFile,
-      relPath: path.basename(paths.targetSkillFile),
-    },
-  ];
-
-  const sourceRefs = await listFilesRecursive(paths.sourceRefsDir);
-  for (const sourceRef of sourceRefs) {
-    const relPath = path.relative(paths.sourceRefsDir, sourceRef).replaceAll('\\', '/');
-    const targetRef = path.join(paths.targetRefsDir, relPath);
-    filesToHash.push({
-      absPath: targetRef,
-      relPath: `references/${relPath}`,
-    });
-  }
-
-  return hashManagedFiles(filesToHash);
-}
-
-// --- Managed skill state ---
-
-async function computeSourceHashWithTemplate(
-  sourceSkillDir: string,
-  engineId: string,
-  skillName: string,
-  agentId: string,
-): Promise<string | null> {
-  const baseHash = await hashDirectory(sourceSkillDir);
-  if (!baseHash) return null;
-
-  // Always include engine ID + agent ID in hash so engine switch and
-  // agent-specific filter output both trigger a reinstall for every skill.
-  const combined = createHash('sha256');
-  combined.update(baseHash);
-  combined.update(`engine:${engineId}`);
-  combined.update(`agent:${agentId}`);
-  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} skill=${skillName}`);
-
-  let engineConfig;
-  try {
-    engineConfig = getEngineConfig(engineId);
-  } catch {
-    return combined.digest('hex');
-  }
-
-  const templateFilename = engineConfig.skillTemplates[skillName];
-  if (!templateFilename) return combined.digest('hex');
-
-  const templatePath = path.join(getEngineTemplatesDir(), 'skills', skillName, templateFilename);
-  const templateHash = await hashFile(templatePath);
-  if (!templateHash) return combined.digest('hex');
-
-  combined.update(templateHash);
-
-  return combined.digest('hex');
-}
-
-async function getManagedSkillState(
-  projectDir: string,
-  agent: AgentInstallation,
-  skillName: string,
-  engineId: string,
-): Promise<ManagedSkillState | null> {
-  const sourceSkillDir = path.join(getSkillsDir(), skillName);
-  const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id);
-  if (!sourceHash) {
-    return null;
-  }
-
-  const paths = resolveSkillPaths(projectDir, agent.skillsDir, agent.id, skillName, sourceSkillDir);
-  const installedHash = await hashInstalledSkill(paths);
-  if (!installedHash) {
-    return null;
-  }
-
-  return { sourceHash, installedHash };
-}
-
-export async function buildManagedSkillsState(
-  projectDir: string,
-  agent: AgentInstallation,
-  baseSkills: string[],
-  engineId: string,
-): Promise<Record<string, ManagedSkillState>> {
-  const state: Record<string, ManagedSkillState> = {};
-
-  for (const skillName of baseSkills) {
-    const managed = await getManagedSkillState(projectDir, agent, skillName, engineId);
-    if (managed) {
-      state[skillName] = managed;
-    }
-  }
-
-  return state;
-}
-
-// --- Skill installation ---
-
-export async function installSkillWithTransformer(
-  sourceSkillDir: string,
-  skillName: string,
-  projectDir: string,
-  skillsDir: string,
-  agentId: string,
-  agentConfig: ReturnType<typeof getAgentConfig>,
-  engineId?: string,
-  engineMcpKey?: string | null,
-): Promise<void> {
-  const transformer = getTransformer(agentId);
-  const skillMdPath = path.join(sourceSkillDir, SKILL_FILE);
-  const content = await loadSourceForAgent(skillMdPath, agentId);
-  if (!content) {
-    throw new Error(`SKILL.md not found in ${sourceSkillDir}`);
-  }
-
-  const fmName = extractFrontmatterName(content);
-  const adjustedContent = (fmName && fmName !== skillName) ? replaceFrontmatterName(content, skillName) : content;
-
-  const result = transformer.transform(skillName, adjustedContent);
-  const vars: TemplateVars = engineId
-    ? { ...buildTemplateVars(agentConfig), ...buildEngineVars(engineId, engineMcpKey) }
-    : buildTemplateVars(agentConfig);
-  vars.self_name = skillName;
-
-  if (result.flat) {
-    const targetPath = path.join(projectDir, agentConfig.configDir, result.targetDir, result.targetName);
-    await writeTextFile(targetPath, processTemplate(result.content, vars));
-
-    const sourceRefsDir = path.join(sourceSkillDir, REFERENCES_DIR_NAME);
-    if (await fileExists(sourceRefsDir)) {
-      const targetRefsDir = path.join(projectDir, agentConfig.configDir, result.targetDir, REFERENCES_DIR_NAME);
-      await copyDirectory(sourceRefsDir, targetRefsDir);
-    }
-  } else {
-    const targetSkillDir = path.join(projectDir, skillsDir, result.targetDir);
-    await copyDirectory(sourceSkillDir, targetSkillDir);
-    // Always overwrite the copied SKILL.md with the transformer/filter output —
-    // `content` is already post-agent-filter, so even when the transformer
-    // returns it unchanged (DefaultTransformer), the raw source from
-    // copyDirectory must be replaced so guarded blocks and their markers do
-    // not leak into the installed file.
-    await writeTextFile(path.join(targetSkillDir, SKILL_FILE), result.content);
-    await processSkillTemplates(targetSkillDir, agentConfig, engineId, engineMcpKey, skillName);
-  }
-}
-
-export async function installSkills(options: InstallSkillsOptions): Promise<string[]> {
-  const { projectDir, skillsDir, skills, agentId, engineId, engineMcpKey } = options;
-  const installedSkills: string[] = [];
-  const agentConfig = getAgentConfig(agentId);
-
-  const targetDir = path.join(projectDir, skillsDir);
-  await ensureDir(targetDir);
-
-  const packageSkillsDir = getSkillsDir();
-
-  for (const skill of skills) {
-    const sourceSkillDir = path.join(packageSkillsDir, skill);
-
-    try {
-      await installSkillWithTransformer(sourceSkillDir, skill, projectDir, skillsDir, agentId, agentConfig, engineId, engineMcpKey);
-      installedSkills.push(skill);
-    } catch (error) {
-      warnActionFailed('install skill', skill, error);
-    }
-  }
-
-  const transformer = getTransformer(agentId);
-  if (transformer.postInstall) {
-    await transformer.postInstall(projectDir);
-  }
-
-  return installedSkills;
-}
-
-export async function getAvailableSkills(): Promise<string[]> {
-  const packageSkillsDir = getSkillsDir();
-  const dirs = await listDirectories(packageSkillsDir);
-  return dirs.filter(dir => !dir.startsWith('_'));
-}
-
-// --- Engine template installation ---
-
-export async function installEngineTemplates(
-  projectDir: string,
-  engineId: string,
-  installedAgents: AgentInstallation[],
-): Promise<void> {
-  let engineConfig;
-  try {
-    engineConfig = getEngineConfig(engineId);
-  } catch {
-    return;
-  }
-
-  const templatesBaseDir = path.join(getEngineTemplatesDir(), 'skills');
-
-  for (const [skillName, templateFilename] of Object.entries(engineConfig.skillTemplates)) {
-    const sourcePath = path.join(templatesBaseDir, skillName, templateFilename);
-    if (!(await fileExists(sourcePath))) continue;
-
-    const content = await readTextFile(sourcePath);
-    if (!content) continue;
-
-    for (const agent of installedAgents) {
-      const transformer = getTransformer(agent.id);
-      const agentConfig = getAgentConfig(agent.id);
-      const transformed = transformer.transform(skillName, '');
-
-      let targetRefsDir: string;
-      if (transformed.flat) {
-        targetRefsDir = path.join(projectDir, agentConfig.configDir, transformed.targetDir, REFERENCES_DIR_NAME);
-      } else {
-        targetRefsDir = path.join(projectDir, agent.skillsDir, transformed.targetDir, REFERENCES_DIR_NAME);
-      }
-
-      await writeTextFile(path.join(targetRefsDir, ENGINE_RULES_FILE), content);
-    }
-  }
 }
 
 // --- Agent installation ---
@@ -442,23 +95,6 @@ export async function installSubagents(
 }
 
 // --- Managed subagent state ---
-
-async function computeSubagentSourceHash(
-  sourcePath: string,
-  engineId: string,
-  agentId: string,
-): Promise<string | null> {
-  const fileHash = await hashFile(sourcePath);
-  if (!fileHash) return null;
-
-  const combined = createHash('sha256');
-  combined.update(fileHash);
-  combined.update(`engine:${engineId}`);
-  combined.update(`agent:${agentId}`);
-  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} subagent=${stripMdExtension(path.basename(sourcePath))}`);
-
-  return combined.digest('hex');
-}
 
 export async function buildManagedSubagentsState(
   projectDir: string,
@@ -738,41 +374,6 @@ export async function removeExtensionSubagents(
   return removed;
 }
 
-// --- MCP rules injection ---
-
-export async function injectMcpRules(
-  projectDir: string,
-  installedAgents: AgentInstallation[],
-  allowedTools: McpAllowedTools,
-): Promise<void> {
-  let agentCount = 0;
-  let skillCount = 0;
-
-  // Inject into subagent files
-  for (const [agentName, tools] of Object.entries(allowedTools.agents)) {
-    for (const agent of installedAgents) {
-      const filePath = path.join(projectDir, agent.subagentsDir, agentName + '.md');
-      if (await fileExists(filePath)) {
-        const modified = await injectToolsIntoAgentFrontmatter(filePath, tools);
-        if (modified) agentCount++;
-      }
-    }
-  }
-
-  // Inject into skill files
-  for (const [skillName, tools] of Object.entries(allowedTools.skills)) {
-    for (const agent of installedAgents) {
-      const sourceSkillDir = path.join(getSkillsDir(), skillName);
-      const paths = resolveSkillPaths(projectDir, agent.skillsDir, agent.id, skillName, sourceSkillDir);
-      if (await fileExists(paths.targetSkillFile)) {
-        const modified = await injectToolsIntoSkillFrontmatter(paths.targetSkillFile, tools);
-        if (modified) skillCount++;
-      }
-    }
-  }
-
-}
-
 // --- Rules: data loaders and shared state ---
 
 export type RequiredByMap = Record<string, string | string[]>;
@@ -958,168 +559,6 @@ export async function generateRulesIndex(
 
   await writeTextFile(indexPath, result);
   return 'written';
-}
-
-// --- Skill removal ---
-
-async function removeSkillsByName(
-  projectDir: string,
-  agent: AgentInstallation,
-  skillNames: string[],
-): Promise<string[]> {
-  const agentConfig = getAgentConfig(agent.id);
-  const transformer = getTransformer(agent.id);
-  const removed: string[] = [];
-
-  for (const skillName of skillNames) {
-    try {
-      const result = transformer.transform(skillName, '');
-      if (result.flat) {
-        const targetPath = path.join(projectDir, agentConfig.configDir, result.targetDir, result.targetName);
-        await removeDirectory(targetPath);
-      } else {
-        const targetSkillDir = path.join(projectDir, agent.skillsDir, result.targetDir);
-        await removeDirectory(targetSkillDir);
-      }
-      removed.push(skillName);
-    } catch {
-      // Skill may not exist, ignore
-    }
-  }
-
-  return removed;
-}
-
-// --- Skill update ---
-
-export async function updateSkills(
-  agent: AgentInstallation,
-  projectDir: string,
-  options: UpdateSkillsOptions = {},
-): Promise<UpdateSkillsResult> {
-  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, replacedSkills } = options;
-  const availableSkills = await getAvailableSkills();
-  const availableSet = new Set(availableSkills);
-
-  const entries: SkillUpdateEntry[] = [];
-  const previousSkills = agent.installedSkills;
-  const previousSet = new Set(previousSkills);
-  const previousManaged = agent.managedSkills ?? {};
-
-  // Detect removed skills
-  const removedSkills = previousSkills.filter(s => !availableSet.has(s));
-  if (removedSkills.length > 0) {
-    await removeSkillsByName(projectDir, agent, removedSkills);
-    for (const skill of removedSkills) {
-      entries.push({ skill, status: 'removed', reason: 'package-removed' });
-    }
-  }
-
-  // Detect new skills
-  const newlyAvailable = availableSkills.filter(s => !previousSet.has(s));
-  for (const skill of newlyAvailable) {
-    entries.push({ skill, status: 'skipped', reason: 'new-skill-not-installed' });
-  }
-
-  // Skip replaced skills (handled by extensions)
-  if (replacedSkills && replacedSkills.size > 0) {
-    for (const skill of previousSkills) {
-      if (replacedSkills.has(skill) && availableSet.has(skill)) {
-        entries.push({ skill, status: 'replaced', reason: 'replaced-by-extension' });
-      }
-    }
-  }
-
-  // Updatable skills (exclude replaced)
-  const updatableSkills = previousSkills.filter(s => availableSet.has(s) && !(replacedSkills?.has(s)));
-  const shouldInstall = new Map<string, { install: boolean; reason: string }>();
-
-  for (const skillName of updatableSkills) {
-    const sourceSkillDir = path.join(getSkillsDir(), skillName);
-    const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id);
-    const paths = resolveSkillPaths(projectDir, agent.skillsDir, agent.id, skillName, sourceSkillDir);
-    const installedHash = await hashInstalledSkill(paths);
-    const previousState = previousManaged[skillName];
-
-    if (force) {
-      shouldInstall.set(skillName, { install: true, reason: 'force-clean-reinstall' });
-      continue;
-    }
-
-    if (!sourceHash) {
-      shouldInstall.set(skillName, { install: true, reason: 'source-missing' });
-      continue;
-    }
-
-    if (!previousState) {
-      shouldInstall.set(skillName, { install: true, reason: 'missing-managed-state' });
-      continue;
-    }
-
-    if (!installedHash) {
-      shouldInstall.set(skillName, { install: true, reason: 'missing-installed-artifact' });
-      continue;
-    }
-
-    if (previousState.sourceHash !== sourceHash) {
-      shouldInstall.set(skillName, { install: true, reason: 'source-hash-changed' });
-      continue;
-    }
-
-    if (previousState.installedHash !== installedHash) {
-      console.warn(`Warning: Local modifications detected in skill "${skillName}" — will be overwritten by update.`);
-      shouldInstall.set(skillName, { install: true, reason: 'installed-hash-drift' });
-      continue;
-    }
-
-    shouldInstall.set(skillName, { install: false, reason: 'up-to-date' });
-  }
-
-  const skillsToInstall = updatableSkills.filter(skillName => shouldInstall.get(skillName)?.install === true);
-
-  if (force && skillsToInstall.length > 0) {
-    await removeSkillsByName(projectDir, agent, skillsToInstall);
-  }
-
-  const installedBaseSkills = skillsToInstall.length > 0
-    ? await installSkills({
-      projectDir,
-      skillsDir: agent.skillsDir,
-      skills: skillsToInstall,
-      agentId: agent.id,
-      engineId,
-      engineMcpKey,
-    })
-    : [];
-
-  const installedSet = new Set(installedBaseSkills);
-
-  for (const skillName of updatableSkills) {
-    const decision = shouldInstall.get(skillName);
-    if (!decision) continue;
-
-    if (decision.install) {
-      entries.push({
-        skill: skillName,
-        status: installedSet.has(skillName) ? 'changed' : 'skipped',
-        reason: installedSet.has(skillName) ? decision.reason : 'install-failed',
-      });
-      continue;
-    }
-
-    entries.push({
-      skill: skillName,
-      status: 'unchanged',
-      reason: decision.reason,
-    });
-  }
-
-  const retainedSkills = previousSkills.filter(s => availableSet.has(s));
-
-  return {
-    installedSkills: retainedSkills,
-    entries,
-  };
 }
 
 // --- Rules sync ---
@@ -1469,42 +908,14 @@ export async function syncRulesState(
   return { changed, events };
 }
 
-// --- CLI Contract installation ---
 
-export async function installCliContract(projectDir: string): Promise<void> {
-  const srcPath = path.join(getDataDir(), CLI_CONTRACT_FILE);
-  const destDir = systemDir(projectDir);
-  const destPath = path.join(destDir, CLI_CONTRACT_FILE);
-
-  const content = await readTextFile(srcPath);
-  if (!content) {
-    logWarn('installCliContract', 'cli-contract.md not found in data/, skipping');
-    return;
-  }
-
-  await writeTextFile(destPath, content);
-  logInfo('installCliContract', 'installed .unikit/system/cli-contract.md');
-}
-
-// --- Dev Principles installation ---
-
-export async function installDevPrinciples(
-  projectDir: string,
-  engineId: string,
-  engineMcpKey?: string | null,
-): Promise<void> {
-  const srcPath = path.join(getDataDir(), DEV_PRINCIPLES_FILE);
-  const destDir = systemDir(projectDir);
-  const destPath = path.join(destDir, DEV_PRINCIPLES_FILE);
-
-  const raw = await readTextFile(srcPath);
-  if (!raw) {
-    logWarn('installDevPrinciples', 'dev-principles.md not found in data/, skipping');
-    return;
-  }
-
-  const vars = buildSubagentTemplateVars('dev-principles', engineId, engineMcpKey);
-  const content = processTemplate(raw, vars);
-  await writeTextFile(destPath, content);
-  logInfo('installDevPrinciples', 'installed .unikit/system/dev-principles.md');
-}
+// --- Temporary re-exports (dropped in the final unbundling task) ---
+export { installEngineTemplates, installCliContract, installDevPrinciples } from './installer/system-assets.js';
+export { injectMcpRules } from './installer/mcp-injection.js';
+export {
+  installSkillWithTransformer, installSkills, getAvailableSkills,
+  buildManagedSkillsState, updateSkills,
+} from './installer/skills.js';
+export type {
+  SkillUpdateStatus, SkillUpdateEntry, UpdateSkillsResult, UpdateSkillsOptions, InstallSkillsOptions,
+} from './installer/skills.js';
