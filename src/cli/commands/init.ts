@@ -1,11 +1,11 @@
 import chalk from 'chalk';
 import path from 'path';
 import { runWizard } from '../wizard/prompts.js';
-import {
-  buildManagedSkillsState, buildManagedSubagentsState,
-  installSkills, installSubagents, injectMcpRules,
-  installEngineTemplates, getAvailableSkills, installCliContract, installDevPrinciples,
-} from '../../core/installer.js';
+import { buildManagedSkillsState, installSkills, getAvailableSkills } from '../../core/installer/skills.js';
+import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
+import { injectMcpRules } from '../../core/installer/mcp-injection.js';
+import { installEngineTemplates, installCliContract, installDevPrinciples } from '../../core/installer/system-assets.js';
+import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, getCurrentVersion,
   type AgentInstallation,
@@ -174,7 +174,7 @@ export async function initCommand(): Promise<void> {
       console.log('');
     }
 
-    console.log(chalk.dim(`  Memory directory: ${path.join(projectDir, '.unikit', 'memory')}`));
+    console.log(chalk.dim(`  Memory directory: ${memoryDir(projectDir)}`));
     console.log(chalk.dim(`  Rules: run /unikit to install (core + stack via registry)`));
     console.log(chalk.dim(`  Engine: ${engineId}`));
     console.log(chalk.dim(`  Note: run /unikit (in your AI agent) to bootstrap .unikit/config.yaml — it will ask for language and write paths/git/workflow defaults.`));

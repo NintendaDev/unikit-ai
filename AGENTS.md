@@ -51,7 +51,7 @@ unikit-ai/
 
 ## User project layout (`.unikit/`)
 
-What `unikit-ai init` / `update` produces in the user's project root. Detailed write-paths live in `src/core/installer.ts`.
+What `unikit-ai init` / `update` produces in the user's project root. Detailed write-paths live in the `src/core/installer/` modules.
 
 | Path | Owner command | Purpose |
 |---|---|---|
@@ -94,7 +94,7 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 ## Update mechanism
 
 - **Skills**: SHA-256 hash-based. Source hash compared against `managedSkills` state in `.unikit.json`; only diverged skills reinstall. Engine switch reinstalls everything.
-- **Rules**: sync-based (`syncRulesState` in `src/core/installer.ts`), three phases — disk↔state reconciliation, registry pull, `RULES_INDEX.md` regen. `unikit-ai rules sync` is a thin wrapper.
+- **Rules**: sync-based (`syncRulesState` in `src/core/installer/rules-sync.ts`), three phases — disk↔state reconciliation, registry pull, `RULES_INDEX.md` regen. `unikit-ai rules sync` is a thin wrapper.
 - **System files** (`cli-contract.md`, `dev-principles.md`): flat-rewritten on every `init`/`update` with current engine vars.
 
 Detailed semantics: `CLAUDE.md` § Update Mechanism.

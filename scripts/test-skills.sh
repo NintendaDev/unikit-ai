@@ -1054,6 +1054,31 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7i: installer module file-size guard
+# ─────────────────────────────────────────────
+# Keep the post-refactor installer/* submodules and the shared constants.ts
+# under a hard 500-line ceiling so the former monolith cannot silently regrow.
+# The limit leaves comfortable headroom over the largest module (skills.ts).
+echo -e "\n${BOLD}Part 7i: installer module file-size guard${NC}"
+
+SIZE_LIMIT=500
+SIZE_VIOLATIONS=""
+for f in "$ROOT_DIR"/src/core/installer/*.ts "$ROOT_DIR"/src/core/constants.ts; do
+    [[ -f "$f" ]] || continue
+    lines=$(wc -l < "$f" | tr -d ' ')
+    if [[ "$lines" -gt "$SIZE_LIMIT" ]]; then
+        SIZE_VIOLATIONS+="    $(basename "$f"): $lines lines (> $SIZE_LIMIT)\n"
+    fi
+done
+
+if [[ -z "$SIZE_VIOLATIONS" ]]; then
+    pass "installer modules within $SIZE_LIMIT-line limit"
+else
+    fail "installer modules exceed $SIZE_LIMIT-line limit"
+    echo -e "$SIZE_VIOLATIONS"
+fi
+
+# ─────────────────────────────────────────────
 # Part 8: Update command smoke tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Update command smoke tests ===${NC}\n"

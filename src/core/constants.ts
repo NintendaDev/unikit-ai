@@ -3,7 +3,7 @@
 // Single source of truth for runtime path segments, file names, rule
 // categories, template markers, and the default engine id. Centralizing
 // these here removes the duplicated string literals that were previously
-// scattered across installer.ts and the CLI commands, and keeps the on-disk
+// scattered across the installer modules and the CLI commands, and keeps the on-disk
 // layout (.unikit/memory/{core,stack}, .unikit/system, RULES_INDEX.md)
 // byte-for-byte identical — these constants only collapse TS-level duplicates.
 
