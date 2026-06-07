@@ -10,6 +10,26 @@ import type { Migration, MigrationChainResult, RunMigrationChainOptions } from '
 
 const DEFAULT_LOG_TAG = 'migrate';
 
+/**
+ * Detect-only pass: return the ids of the migrations whose `detect` reports
+ * pending work, in chain order. Pure inspection — no `apply`, no side effects,
+ * no logging. Callers that only need to answer "is there pending work?" (a CLI
+ * staleness guard, a status probe) use this without triggering a relocation.
+ * `runMigrationChain` runs this same pass before applying.
+ */
+export async function planMigrationChain<Ctx>(
+  ctx: Ctx,
+  migrations: readonly Migration<Ctx>[],
+): Promise<string[]> {
+  const pendingIds: string[] = [];
+  for (const migration of migrations) {
+    if (await migration.detect(ctx)) {
+      pendingIds.push(migration.id);
+    }
+  }
+  return pendingIds;
+}
+
 export async function runMigrationChain<Ctx>(
   ctx: Ctx,
   migrations: readonly Migration<Ctx>[],
@@ -18,25 +38,24 @@ export async function runMigrationChain<Ctx>(
   const logTag = options.logTag ?? DEFAULT_LOG_TAG;
 
   // Phase 1 — detect: select the steps that report pending work.
-  const pending: Migration<Ctx>[] = [];
-  for (const migration of migrations) {
-    if (await migration.detect(ctx)) {
-      pending.push(migration);
-    }
-  }
+  const pendingIds = await planMigrationChain(ctx, migrations);
 
   // Phase 2 — plan: a clean detect pass means there is nothing to do.
-  if (pending.length === 0) {
+  if (pendingIds.length === 0) {
     logInfo(logTag, 'no pending migrations');
     return { applied: [] };
   }
 
+  const byId = new Map(migrations.map(m => [m.id, m]));
+
   // Phase 3 — applySequential: steps may build on each other, so order matters.
   const applied: string[] = [];
-  for (const migration of pending) {
-    logInfo(logTag, `applying ${migration.id}`);
+  for (const id of pendingIds) {
+    const migration = byId.get(id);
+    if (!migration) continue; // unreachable: ids originate from `migrations`
+    logInfo(logTag, `applying ${id}`);
     await migration.apply(ctx);
-    applied.push(migration.id);
+    applied.push(id);
   }
 
   // Phase 4 — stamp: report the applied steps for the caller to persist/render.

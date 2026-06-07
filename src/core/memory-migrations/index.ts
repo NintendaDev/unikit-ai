@@ -21,6 +21,16 @@ interface MemoryMigrationContext {
 }
 
 /**
+ * Minimum `.unikit.json` `version` that guarantees the modular memory layout
+ * (`.unikit/memory/code/<tier>`) is in place. A project below this version
+ * predates `codeWrapMigration` and must run `unikit-ai update` (the sole
+ * migrator) before any command that reconciles rule state against the new
+ * path. This is a migration fact pinned to `codeWrapMigration` — NOT the
+ * current package version — so it never moves when the release version bumps.
+ */
+export const MEMORY_MODULAR_MIN_VERSION = '1.1.0';
+
+/**
  * Wrap the legacy flat layout (`memory/{core,stack}` + top-level
  * `RULES_INDEX.md`) under `memory/code/`. References live inside each tier
  * subtree (`memory/<tier>/references/`) and relocate together with it — they
