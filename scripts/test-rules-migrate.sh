@@ -11,6 +11,8 @@
 #   - missing target manifest → exit 1 (NOT_FOUND)
 #   - no path + configured registry is remote/unset → exit 3 (INVALID_ARGS)
 #   - no path + configured registry is local → resolves and migrates it
+#   - no path + CWD is itself a registry (no .unikit.json) → migrates CWD
+#   - no path + CWD is neither a registry nor a UniKit project → exit 1
 #
 # Usage: ./scripts/test-rules-migrate.sh
 
@@ -72,6 +74,23 @@ TOP_ENGINES=$(node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.o
 [[ "$TOP_ENGINES" == "no" ]] && pass "post: no top-level engines (modules-only)" || fail "post: unexpected top-level engines in on-disk manifest"
 CODE_ENGINES=$(node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const m=JSON.parse(d);console.log((m.modules&&m.modules.code&&m.modules.code.engines&&('unity' in m.modules.code.engines))?'yes':'no')})" < "$REG1/manifest.json")
 [[ "$CODE_ENGINES" == "yes" ]] && pass "post: modules.code.engines.unity present" || fail "post: modules.code.engines.unity missing"
+
+# The migration must REFRESH scripts/build-manifest.js to the schema:2 builder.
+# A schema:1 registry (the minimal-valid fixture) ships none / a stale one; after
+# migrate it must exist and be the current builder (it knows the `gamedesign`
+# module — a schema:1 builder does not).
+assert_stdout_contains "$TMPDIR/m1.log" "build-manifest.js" "row1 reports the refreshed build script"
+check_exists "$REG1/scripts/build-manifest.js" "post: scripts/build-manifest.js written"
+assert_contains "$REG1/scripts/build-manifest.js" "gamedesign" "post: refreshed build script is the schema:2 builder"
+
+# Issue guard: the refreshed builder must run cleanly on a registry that has NO
+# gamedesign/ folder (the fixture has none) — exit 0, regenerated manifest stays
+# schema:2. This is the regression for "migrate-time build-manifest must not
+# error without a gamedesign module".
+check_absent "$REG1/gamedesign" "pre: migrated registry has no gamedesign/"
+capture_stdout_exit "$TMPDIR/m1-build.log" env -C "$REG1" node "$REG1/scripts/build-manifest.js"
+assert_exit 0 "$CAPTURED_EXIT" "refreshed builder runs without gamedesign (exit 0)" "$TMPDIR/m1-build.log"
+[[ "$(schema_of "$REG1/manifest.json")" == "2" ]] && pass "post: rebuilt manifest still schema:2" || fail "post: rebuilt manifest not schema:2"
 
 # ─────────────────────────────────────────────
 # Scenario 2: idempotency — 2nd migrate is a sha-stable no-op
@@ -162,5 +181,29 @@ capture_stdout_exit "$TMPDIR/m7.log" env -C "$PROJ_LOCAL" node "$CLI" rules regi
 assert_exit 0 "$CAPTURED_EXIT" "no-path local registry exits 0" "$TMPDIR/m7.log"
 assert_stdout_contains "$TMPDIR/m7.log" "migrated to schema:2" "row7 migrated the configured local registry"
 check_exists "$REG7/code/unity/core/code-style.md" "row7 configured registry relocated under code/"
+
+# ─────────────────────────────────────────────
+# Scenario 8: no path + CWD is itself a registry (no .unikit.json)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 8: no-path from inside a registry folder${NC}"
+
+REG8="$TMPDIR/reg8"
+cp -r "$ROOT_DIR/scripts/test-fixtures/minimal-valid" "$REG8"
+check_absent "$REG8/.unikit.json" "pre: registry folder is not a UniKit project"
+capture_stdout_exit "$TMPDIR/m8.log" env -C "$REG8" node "$CLI" rules registry migrate
+assert_exit 0 "$CAPTURED_EXIT" "no-path CWD-registry exits 0" "$TMPDIR/m8.log"
+assert_stdout_contains "$TMPDIR/m8.log" "migrated to schema:2" "row8 migrated the current directory"
+check_exists "$REG8/code/unity/core/code-style.md" "row8 CWD registry relocated under code/"
+
+# ─────────────────────────────────────────────
+# Scenario 9: no path + CWD is neither registry nor project → exit 1
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 9: no-path from a plain directory${NC}"
+
+PLAIN="$TMPDIR/plain"
+mkdir -p "$PLAIN"
+capture_stdout_exit "$TMPDIR/m9.log" env -C "$PLAIN" node "$CLI" rules registry migrate
+assert_exit 1 "$CAPTURED_EXIT" "no-path plain dir exits 1 (NOT_FOUND)" "$TMPDIR/m9.log"
+assert_stdout_contains "$TMPDIR/m9.log" "not a rules registry" "row9 explains it is not a registry"
 
 print_summary_and_exit "rules registry migrate Smoke Tests"
