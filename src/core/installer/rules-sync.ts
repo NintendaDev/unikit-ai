@@ -3,36 +3,40 @@ import semver from 'semver';
 import {
   listFiles, readTextFile, writeTextFile, removeFile, fileExists,
 } from '../../utils/fs.js';
-import type { RuleOrigin, UniKitConfig } from '../config.js';
+import { getModuleTier, type RuleOrigin, type UniKitConfig } from '../config.js';
 import type { RulesRegistry } from '../registry/index.js';
 import { computeContentHash, isMarkdownFile, stripMdExtension } from './shared.js';
-import { RULE_CATEGORIES, REFERENCES_DIR_NAME, RULES_INDEX_FILE, memoryDir } from '../constants.js';
-import { loadRequiredByMap, generateRulesIndex } from './rules-index.js';
+import { REFERENCES_DIR_NAME, RULES_INDEX_FILE, moduleTierDir, type Tier } from '../constants.js';
+import { listModules, type Module } from '../modules.js';
+import { loadRequiredByMap, generateRulesIndex, type InstalledByTier } from './rules-index.js';
 
 // --- Rules sync ---
 //
-// `syncRulesState` is the single source of truth for the `rules sync` semantics:
-//   Phase 1: Disk ↔ state reconciliation (local .md files vs config.rules.installed)
+// `syncRulesState` is the single source of truth for the per-module `rules sync`
+// semantics:
+//   Phase 1: Disk ↔ state reconciliation (local .md files vs the module's state)
 //   Phase 2: Registry version sync (fetch updates, optional replace/prune of obsolete stack)
-//   Phase 3: Regenerate RULES_INDEX.md from registry metadata or disk fallback
+//   Phase 3: Regenerate <module>/RULES_INDEX.md from registry metadata or disk fallback
 //
-// Used by both `unikit-ai rules sync` (thin wrapper) and `unikit-ai update`
-// (replaces the legacy `updateRules`). Mutates `config.rules.installed` in-place
-// and emits structured events; the caller is responsible for calling
-// `saveConfig` when `changed` is true and for rendering human output.
+// It operates on ONE module at a time (`config.rules.installed.modules[module]`);
+// `syncAllModules` loops the MODULE_REGISTRY for callers that want every module
+// reconciled in one pass. Used by both `unikit-ai rules sync` (thin wrapper) and
+// `unikit-ai update`. Mutates `config.rules.installed` in-place and emits
+// structured events; the caller is responsible for calling `saveConfig` when
+// `changed` is true and for rendering human output.
 
 export type SyncRulesEvent =
-  | { kind: 'phase1:untracked-found'; category: 'core' | 'stack'; name: string }
-  | { kind: 'phase1:missing-removed'; category: 'core' | 'stack'; name: string }
+  | { kind: 'phase1:untracked-found'; tier: Tier; name: string }
+  | { kind: 'phase1:missing-removed'; tier: Tier; name: string }
   | { kind: 'phase1:state-reconciled' }
   | { kind: 'phase1:state-in-sync' }
   | { kind: 'phase2:registry-unreachable' }
   | { kind: 'phase2:engine-missing'; engineId: string }
-  | { kind: 'phase2:updating'; category: 'core' | 'stack'; name: string; fromVersion?: string; toVersion: string; action: 'install' | 'update' }
-  | { kind: 'phase2:fetch-failed'; category: 'core' | 'stack'; name: string }
-  | { kind: 'phase2:skipped-local-mod'; category: 'core' | 'stack'; name: string }
-  | { kind: 'phase2:overwrite-local-mod'; category: 'core' | 'stack'; name: string }
-  | { kind: 'phase2:downgrade'; category: 'core' | 'stack'; name: string; fromVersion: string; toVersion: string }
+  | { kind: 'phase2:updating'; tier: Tier; name: string; fromVersion?: string; toVersion: string; action: 'install' | 'update' }
+  | { kind: 'phase2:fetch-failed'; tier: Tier; name: string }
+  | { kind: 'phase2:skipped-local-mod'; tier: Tier; name: string }
+  | { kind: 'phase2:overwrite-local-mod'; tier: Tier; name: string }
+  | { kind: 'phase2:downgrade'; tier: Tier; name: string; fromVersion: string; toVersion: string }
   | { kind: 'phase2:updated' }
   | { kind: 'phase2:up-to-date' }
   | { kind: 'phase2:obsolete-removed'; name: string }
@@ -55,7 +59,7 @@ export interface SyncRulesOptions {
   replace?: boolean;
   /**
    * Remove obsolete stack rules that vanished from the registry manifest.
-   * Scoped to stack rules only (core rules are whitelist-governed).
+   * Scoped to stack rules only (core rules are tier-gated, not pruned).
    */
   prune?: boolean;
 }
@@ -64,7 +68,7 @@ export interface SyncRulesOptions {
 //
 // Design note — intentional strict (case-sensitive) equality.
 //
-// Phase 1 matches filenames against `.unikit.json` entries via a raw
+// Phase 1 matches filenames against the module state entries via a raw
 // `Set<string>` of `entry.name`, with NO normalization. That is on
 // purpose: if a user has a legacy `CODE-STYLE` state entry and a fresh
 // lowercase `code-style.md` file on disk, Phase 1 treats them as two
@@ -80,16 +84,17 @@ export interface SyncRulesOptions {
 // doubles as an intentional migration opt-in (obsolete-removed block at
 // the bottom of Phase 2).
 async function reconcileDiskState(
-  targetMemoryDir: string,
+  projectDir: string,
+  module: Module,
   config: UniKitConfig,
   events: SyncRulesEvent[],
 ): Promise<boolean> {
   let phase1Changed = false;
 
-  for (const category of RULE_CATEGORIES) {
-    const dir = path.join(targetMemoryDir, category);
+  for (const tier of module.tiers) {
+    const dir = moduleTierDir(projectDir, module.id, tier);
     const files = await listFiles(dir);
-    const stateList = category === 'core' ? config.rules.installed.core : config.rules.installed.stack;
+    const stateList = getModuleTier(config, module.id, tier);
     const stateNames = new Set(stateList.map(e => e.name));
 
     for (const file of files) {
@@ -97,7 +102,7 @@ async function reconcileDiskState(
       const name = stripMdExtension(file);
 
       if (!stateNames.has(name)) {
-        events.push({ kind: 'phase1:untracked-found', category, name });
+        events.push({ kind: 'phase1:untracked-found', tier, name });
         const content = await readTextFile(path.join(dir, file));
         const hash = content ? computeContentHash(content) : undefined;
         stateList.push({ name, source: 'local', installed_hash: hash });
@@ -109,7 +114,7 @@ async function reconcileDiskState(
       const entry = stateList[i];
       const filePath = path.join(dir, `${entry.name}.md`);
       if (!(await fileExists(filePath))) {
-        events.push({ kind: 'phase1:missing-removed', category, name: entry.name });
+        events.push({ kind: 'phase1:missing-removed', tier, name: entry.name });
         stateList.splice(i, 1);
         phase1Changed = true;
       }
@@ -145,10 +150,11 @@ async function reconcileDiskState(
 // the end user can still reach their rules — the legacy state simply
 // coexists with the canonical entry until cleaned up.
 async function syncRegistry(
+  projectDir: string,
   engineId: string,
+  module: Module,
   config: UniKitConfig,
   registry: RulesRegistry,
-  targetMemoryDir: string,
   replace: boolean,
   prune: boolean,
   events: SyncRulesEvent[],
@@ -174,10 +180,10 @@ async function syncRegistry(
 
   let phase2Changed = false;
 
-  for (const category of RULE_CATEGORIES) {
-    const registryRules = category === 'core' ? engineRules.core : engineRules.stack;
+  for (const tier of module.tiers) {
+    const registryRules = engineRules[tier];
     const registryIds = new Set(registryRules.map(r => r.id));
-    const stateList = category === 'core' ? config.rules.installed.core : config.rules.installed.stack;
+    const stateList = getModuleTier(config, module.id, tier);
     const stateMap = new Map(stateList.map(e => [e.name, e]));
 
     for (const regRule of registryRules) {
@@ -197,7 +203,7 @@ async function syncRegistry(
       //   - `/unikit` Step 9 — interactive, asks the user what to add
       //   - `unikit-ai rules install <id> [<id>...]` — explicit per-rule
       //     install (variadic) or `rules install` with no args for the
-      //     whitelisted core bootstrap
+      //     core-tier bootstrap
       //   - `unikit-ai rules list [--json]` — read-only catalog view
       //
       // The guard is unconditional on purpose: it applies even when
@@ -225,7 +231,7 @@ async function syncRegistry(
         && semver.lt(regRule.version, existing.version)) {
         events.push({
           kind: 'phase2:downgrade',
-          category,
+          tier,
           name: regRule.id,
           fromVersion: existing.version,
           toVersion: regRule.version,
@@ -237,31 +243,32 @@ async function syncRegistry(
       // only ever UPDATES, never installs from scratch.
       events.push({
         kind: 'phase2:updating',
-        category,
+        tier,
         name: regRule.id,
         fromVersion: existing.version,
         toVersion: regRule.version,
         action: 'update',
       });
 
-      const fetched = await registry.fetchRule(engineId, category, regRule.id);
+      const fetched = await registry.fetchRule(engineId, tier, regRule.id);
       if (!fetched) {
-        events.push({ kind: 'phase2:fetch-failed', category, name: regRule.id });
+        events.push({ kind: 'phase2:fetch-failed', tier, name: regRule.id });
         continue;
       }
 
       // Local modification handling:
       //   --replace → overwrite + WARN event per file (no silent path)
       //   normal    → skip with WARN event, leave disk alone
-      const destPath = path.join(targetMemoryDir, category, `${regRule.id}.md`);
+      const tierDir = moduleTierDir(projectDir, module.id, tier);
+      const destPath = path.join(tierDir, `${regRule.id}.md`);
       const diskContent = await readTextFile(destPath);
       const diskHash = diskContent ? computeContentHash(diskContent) : null;
       const locallyModified = !!(diskHash && existing.installed_hash && diskHash !== existing.installed_hash);
       if (locallyModified) {
         if (replace) {
-          events.push({ kind: 'phase2:overwrite-local-mod', category, name: regRule.id });
+          events.push({ kind: 'phase2:overwrite-local-mod', tier, name: regRule.id });
         } else {
-          events.push({ kind: 'phase2:skipped-local-mod', category, name: regRule.id });
+          events.push({ kind: 'phase2:skipped-local-mod', tier, name: regRule.id });
           continue;
         }
       }
@@ -270,8 +277,8 @@ async function syncRegistry(
       const newHash = computeContentHash(fetched.content);
 
       if (regRule.references && regRule.references.length > 0) {
-        const refs = await registry.fetchReferences(engineId, category, regRule.id, regRule.references);
-        const destRefsDir = path.join(targetMemoryDir, category, REFERENCES_DIR_NAME);
+        const refs = await registry.fetchReferences(engineId, tier, regRule.id, regRule.references);
+        const destRefsDir = path.join(tierDir, REFERENCES_DIR_NAME);
         for (const ref of refs) {
           await writeTextFile(path.join(destRefsDir, ref.filename), ref.content);
         }
@@ -286,10 +293,10 @@ async function syncRegistry(
 
     // --prune: remove obsolete stack rules that vanished from registry.
     //
-    // Scoped to `category === 'stack'` on purpose: core rules are
-    // governed by `CORE_RULE_WHITELIST` and have no such escape hatch
-    // (see the design note on the core-state map in the variadic install
-    // handler in rules.ts).
+    // Scoped to `tier === 'stack'` on purpose: core rules are tier-gated
+    // (every core-tier rule the registry ships is installed by the
+    // bootstrap) and have no such escape hatch — see the design note on
+    // the core-state map in the variadic install handler in rules.ts.
     //
     // Design note — legacy UPPER_CASE → canonical lowercase migration
     // is NO LONGER silently handled here. Previously, the install loop
@@ -306,13 +313,13 @@ async function syncRegistry(
     // UPPER_CASE state entry, run `unikit-ai rules install <id>`
     // explicitly after the sync — the CLI normalizes the id and
     // installs the canonical version.
-    if (prune && category === 'stack') {
+    if (prune && tier === 'stack') {
       for (let i = stateList.length - 1; i >= 0; i--) {
         const entry = stateList[i];
         if (entry.source === 'local') continue;
         if (registryIds.has(entry.name)) continue;
 
-        const destPath = path.join(targetMemoryDir, 'stack', `${entry.name}.md`);
+        const destPath = path.join(moduleTierDir(projectDir, module.id, tier), `${entry.name}.md`);
         if (await fileExists(destPath)) {
           await removeFile(destPath);
         }
@@ -332,22 +339,25 @@ async function syncRegistry(
   return phase2Changed;
 }
 
-// --- Phase 3: Regenerate RULES_INDEX.md ---
+// --- Phase 3: Regenerate <module>/RULES_INDEX.md ---
 //
 // The index is cheap to rebuild and is the single authoritative map the
 // /unikit skill reads to decide what to load per task, so we regenerate it
 // on every sync — even when Phase 1 and Phase 2 were no-ops. That keeps the
-// file in sync with `.unikit/memory/` contents if the user has added local
+// file in sync with the module's on-disk contents if the user has added local
 // rules by hand or deleted some outside of `rules install`.
 async function regenerateIndex(
   projectDir: string,
+  module: Module,
   config: UniKitConfig,
   events: SyncRulesEvent[],
 ): Promise<boolean> {
   const requiredBy = await loadRequiredByMap();
-  const coreNames = config.rules.installed.core.map(e => e.name);
-  const stackNames = config.rules.installed.stack.map(e => e.name);
-  const indexStatus = await generateRulesIndex(projectDir, coreNames, stackNames, requiredBy);
+  const installedByTier: InstalledByTier = {};
+  for (const tier of module.tiers) {
+    installedByTier[tier] = getModuleTier(config, module.id, tier).map(e => e.name);
+  }
+  const indexStatus = await generateRulesIndex(projectDir, module, installedByTier, requiredBy);
   switch (indexStatus) {
     case 'written':
       events.push({ kind: 'phase3:index-regenerated' });
@@ -363,9 +373,15 @@ async function regenerateIndex(
   }
 }
 
+/**
+ * Reconcile a single module's rule state with disk + registry. The per-module
+ * worker behind both `unikit-ai rules sync` and `unikit-ai update` (via
+ * `syncAllModules`).
+ */
 export async function syncRulesState(
   projectDir: string,
   engineId: string,
+  module: Module,
   config: UniKitConfig,
   registry: RulesRegistry,
   options: SyncRulesOptions = {},
@@ -373,12 +389,35 @@ export async function syncRulesState(
   const replace = options.replace === true;
   const prune = options.prune === true;
   const events: SyncRulesEvent[] = [];
-  const targetMemoryDir = memoryDir(projectDir);
   let changed = false;
 
-  if (await reconcileDiskState(targetMemoryDir, config, events)) changed = true;
-  if (await syncRegistry(engineId, config, registry, targetMemoryDir, replace, prune, events)) changed = true;
-  if (await regenerateIndex(projectDir, config, events)) changed = true;
+  if (await reconcileDiskState(projectDir, module, config, events)) changed = true;
+  if (await syncRegistry(projectDir, engineId, module, config, registry, replace, prune, events)) changed = true;
+  if (await regenerateIndex(projectDir, module, config, events)) changed = true;
+
+  return { changed, events };
+}
+
+/**
+ * Run `syncRulesState` for every module in the registry, aggregating their
+ * change flags and events. PR#1 ships a single module (`code`); this is the
+ * forward-compatible entry point callers use instead of pinning to one module.
+ */
+export async function syncAllModules(
+  projectDir: string,
+  engineId: string,
+  config: UniKitConfig,
+  registry: RulesRegistry,
+  options: SyncRulesOptions = {},
+): Promise<SyncRulesResult> {
+  const events: SyncRulesEvent[] = [];
+  let changed = false;
+
+  for (const module of listModules()) {
+    const result = await syncRulesState(projectDir, engineId, module, config, registry, options);
+    if (result.changed) changed = true;
+    events.push(...result.events);
+  }
 
   return { changed, events };
 }
