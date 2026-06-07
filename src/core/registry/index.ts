@@ -15,7 +15,7 @@ export { LATEST_SCHEMA } from './manifest-types.js';
 export { manifestEngineIds } from './validator.js';
 
 export { GitRegistry } from './git-registry.js';
-export { FsRegistry } from './fs-registry.js';
+export { FsRegistry, resolveRegistryPath } from './fs-registry.js';
 export { ApiRegistry } from './api-registry.js';
 export { ChainedRegistry } from './chained-registry.js';
 export { HybridRegistry } from './hybrid-registry.js';

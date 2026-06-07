@@ -15,8 +15,12 @@ const TAG = 'FsRegistry';
  * Resolve a user-supplied path to an absolute directory.
  * Supports: absolute paths, file:// URIs, ~/ home expansion.
  * Rejects relative paths (returns null).
+ *
+ * Exported so the maintainer `rules registry migrate` / `status` commands can
+ * resolve a configured local `rulesRegistry` value through the exact same logic
+ * the FS transport uses — no duplicated path handling.
  */
-function resolveRegistryPath(raw: string): string | null {
+export function resolveRegistryPath(raw: string): string | null {
   let cleaned = raw;
 
   // file:// URI → path

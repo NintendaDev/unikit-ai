@@ -4,7 +4,8 @@ import {
   listFiles, readTextFile, writeTextFile, removeFile, fileExists,
 } from '../../utils/fs.js';
 import { getModuleTier, type RuleOrigin, type UniKitConfig } from '../config.js';
-import type { RulesRegistry } from '../registry/index.js';
+import type { ChainedRegistry } from '../registry/index.js';
+import { manifestEngineIds } from '../registry/validator.js';
 import { computeContentHash, isMarkdownFile, stripMdExtension } from './shared.js';
 import { REFERENCES_DIR_NAME, RULES_INDEX_FILE, moduleTierDir, type Tier } from '../constants.js';
 import { listModules, type Module } from '../modules.js';
@@ -154,7 +155,7 @@ async function syncRegistry(
   engineId: string,
   module: Module,
   config: UniKitConfig,
-  registry: RulesRegistry,
+  registry: ChainedRegistry,
   replace: boolean,
   prune: boolean,
   events: SyncRulesEvent[],
@@ -166,22 +167,25 @@ async function syncRegistry(
     return false;
   }
 
-  const engineRules = registryManifest.engines[engineId];
-  if (!engineRules) {
+  // Engine-existence predicate (engine-partitioned modules only). The accessor
+  // `getModuleRules` collapses "engine missing" and "tier empty" to `[]`, so the
+  // engine-missing signal must be derived from the manifest's engine list. The
+  // raw schema:2 manifest has no flat `engines` map, hence the schema-agnostic
+  // `manifestEngineIds` helper rather than a direct `manifest.engines` read.
+  if (module.enginePartitioned && !manifestEngineIds(registryManifest).includes(engineId)) {
     events.push({ kind: 'phase2:engine-missing', engineId });
     return false;
   }
 
-  // Determine origin for tagging
-  let origin: RuleOrigin | undefined;
-  if ('getResolvedOrigin' in registry) {
-    origin = (registry as { getResolvedOrigin(): RuleOrigin | null }).getResolvedOrigin() ?? undefined;
-  }
+  // Determine origin for tagging — per-module resolution keys off this module.
+  const origin: RuleOrigin | undefined = registry.getResolvedOrigin(module.id) ?? undefined;
 
   let phase2Changed = false;
 
   for (const tier of module.tiers) {
-    const registryRules = engineRules[tier];
+    // Rules come exclusively through the registry accessor — the single read
+    // channel that resolves the module's normalized schema:2 manifest.
+    const registryRules = registry.getModuleRules(module.id, tier);
     const registryIds = new Set(registryRules.map(r => r.id));
     const stateList = getModuleTier(config, module.id, tier);
     const stateMap = new Map(stateList.map(e => [e.name, e]));
@@ -383,7 +387,7 @@ export async function syncRulesState(
   engineId: string,
   module: Module,
   config: UniKitConfig,
-  registry: RulesRegistry,
+  registry: ChainedRegistry,
   options: SyncRulesOptions = {},
 ): Promise<SyncRulesResult> {
   const replace = options.replace === true;
@@ -407,7 +411,7 @@ export async function syncAllModules(
   projectDir: string,
   engineId: string,
   config: UniKitConfig,
-  registry: RulesRegistry,
+  registry: ChainedRegistry,
   options: SyncRulesOptions = {},
 ): Promise<SyncRulesResult> {
   const events: SyncRulesEvent[] = [];

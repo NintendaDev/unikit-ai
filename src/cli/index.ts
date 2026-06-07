@@ -13,6 +13,7 @@ import {
   rulesSyncCommand, rulesStatusCommand,
   rulesRegistryShowCommand, rulesRegistrySetCommand,
   rulesRegistryResetCommand, rulesRegistryInitCommand,
+  rulesRegistryMigrateCommand, rulesRegistryStatusCommand,
 } from './commands/rules.js';
 import { getCurrentVersion, loadConfig } from '../core/config.js';
 import { loadAllExtensions } from '../core/extensions.js';
@@ -94,7 +95,7 @@ rules
 
 rules
   .command('install [ids...]')
-  .description('Install rules from the registry. Without arguments installs the core whitelist (bootstrap used by /unikit Step 9.2). With one or more ids installs each rule and prints an aggregated report.')
+  .description('Install rules from the registry. Without arguments installs all always-tagged (core) rules (bootstrap used by /unikit Step 9.2). With one or more ids installs each rule and prints an aggregated report.')
   .option('--force', 'Re-fetch and overwrite rules that are already installed')
   .action((ids: string[], options: { force?: boolean }) => rulesInstallCommand(ids, options));
 
@@ -128,7 +129,7 @@ rules
 
 const registryCmd = rules
   .command('registry')
-  .description('Manage the rules registry URL (nested subcommands: show, set, reset, init). Bare invocation is an alias for `rules registry show`; pass `--json` for JSON output.')
+  .description('Manage the rules registry URL (nested subcommands: show, set, reset, init, migrate, status). Bare invocation is an alias for `rules registry show`; pass `--json` for JSON output.')
   .allowUnknownOption(true)
   .action(() => {
     const wantsJson = process.argv.includes('--json');
@@ -157,6 +158,17 @@ registryCmd
   .command('init [path]')
   .description('Scaffold a new local rules registry at the target path')
   .action(rulesRegistryInitCommand);
+
+registryCmd
+  .command('migrate [path]')
+  .description('Migrate a local rules registry on disk from schema:1 to schema:2 (idempotent). Targets the given path, or the configured registry when it is local. Remote registries cannot be migrated.')
+  .action(rulesRegistryMigrateCommand);
+
+registryCmd
+  .command('status [target]')
+  .description('Report a registry\'s physical schema and whether the CLI can migrate/write it (distinct from `rules status`, which lists installed project rules). Defaults to the configured registry.')
+  .option('--json', 'Output as JSON')
+  .action((target: string | undefined, options: { json?: boolean }) => rulesRegistryStatusCommand(target, options));
 
 async function loadExtensionCommands(): Promise<void> {
   try {
