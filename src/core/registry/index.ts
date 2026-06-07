@@ -4,10 +4,15 @@ export type {
   RegistryManifest,
   RegistryRule,
   EngineRules,
+  ModuleManifest,
   RuleCategory,
+  Tier,
+  ModuleId,
   FetchedRule,
   FetchedReference,
 } from './manifest-types.js';
+export { LATEST_SCHEMA } from './manifest-types.js';
+export { manifestEngineIds } from './validator.js';
 
 export { GitRegistry } from './git-registry.js';
 export { FsRegistry } from './fs-registry.js';
@@ -16,7 +21,7 @@ export { ChainedRegistry } from './chained-registry.js';
 export { HybridRegistry } from './hybrid-registry.js';
 export { OfficialRegistry } from './official-registry.js';
 
-import type { RegistryManifest, RuleCategory, FetchedRule, FetchedReference } from './manifest-types.js';
+import type { RegistryManifest, RuleCategory, ModuleId, FetchedRule, FetchedReference } from './manifest-types.js';
 import { GitRegistry } from './git-registry.js';
 import { FsRegistry } from './fs-registry.js';
 import { ApiRegistry } from './api-registry.js';
@@ -92,17 +97,23 @@ export interface RulesRegistry {
 
   /**
    * Fetch the markdown content of a single rule.
-   * Path derivation: <engineId>/<category>/<ruleId>.md
+   *
+   * Path derivation depends on the source's PHYSICAL schema (see
+   * `rule-path.ruleTierSegments`):
+   *   schema 1 → `<engineId>/<category>/<ruleId>.md`
+   *   schema 2 → `<module>/<engineId>/<category>/<ruleId>.md` (engine-partitioned)
+   *            → `<module>/<category>/<ruleId>.md`            (non-engine module)
    * Returns null if the rule file cannot be fetched.
    */
-  fetchRule(engineId: string, category: RuleCategory, ruleId: string): Promise<FetchedRule | null>;
+  fetchRule(module: ModuleId, engineId: string, category: RuleCategory, ruleId: string): Promise<FetchedRule | null>;
 
   /**
-   * Fetch all reference files for a rule.
-   * Path derivation: <engineId>/<category>/references/<filename>
+   * Fetch all reference files for a rule. References live in a `references/`
+   * subdirectory of the rule's tier dir; the tier dir is derived exactly as in
+   * `fetchRule` (schema-aware, module-shaped).
    * Returns an empty array if no references or on failure.
    */
-  fetchReferences(engineId: string, category: RuleCategory, ruleId: string, filenames: string[]): Promise<FetchedReference[]>;
+  fetchReferences(module: ModuleId, engineId: string, category: RuleCategory, ruleId: string, filenames: string[]): Promise<FetchedReference[]>;
 }
 
 /**

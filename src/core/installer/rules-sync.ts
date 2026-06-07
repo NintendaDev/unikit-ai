@@ -250,7 +250,7 @@ async function syncRegistry(
         action: 'update',
       });
 
-      const fetched = await registry.fetchRule(engineId, tier, regRule.id);
+      const fetched = await registry.fetchRule(module.id, engineId, tier, regRule.id);
       if (!fetched) {
         events.push({ kind: 'phase2:fetch-failed', tier, name: regRule.id });
         continue;
@@ -277,7 +277,7 @@ async function syncRegistry(
       const newHash = computeContentHash(fetched.content);
 
       if (regRule.references && regRule.references.length > 0) {
-        const refs = await registry.fetchReferences(engineId, tier, regRule.id, regRule.references);
+        const refs = await registry.fetchReferences(module.id, engineId, tier, regRule.id, regRule.references);
         const destRefsDir = path.join(tierDir, REFERENCES_DIR_NAME);
         for (const ref of refs) {
           await writeTextFile(path.join(destRefsDir, ref.filename), ref.content);

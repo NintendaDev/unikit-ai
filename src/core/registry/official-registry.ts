@@ -7,7 +7,9 @@
 // `official` or `bundled`, never `primary`.
 
 import type { RulesRegistry } from './index.js';
+import type { ModuleId } from './manifest-types.js';
 import type { RuleOrigin } from '../config.js';
+import { CODE_MODULE_ID } from '../constants.js';
 import { ChainedRegistry } from './chained-registry.js';
 
 export class OfficialRegistry extends ChainedRegistry {
@@ -28,9 +30,16 @@ export class OfficialRegistry extends ChainedRegistry {
     return this.bundled ? [this.official, this.bundled] : [this.official];
   }
 
-  getResolvedOrigin(): RuleOrigin | null {
-    if (!this.resolvedSource) return null;
-    if (this.resolvedSource === this.bundled) return 'bundled';
+  // Default `module = CODE_MODULE_ID` so no-arg callers get the code module's
+  // origin. The chain has no `primary` tier, so origin is `official` or
+  // `bundled` per the requested module's winning source.
+  getResolvedOrigin(module: ModuleId = CODE_MODULE_ID): RuleOrigin | null {
+    // `resolvedSource` is the documented back-compat shadow of the code module's
+    // resolution (kept in sync by `cacheResolved`); honor it for `code`.
+    const source = this.resolvedByModule.get(module)?.source
+      ?? (module === CODE_MODULE_ID ? this.resolvedSource : null);
+    if (!source) return null;
+    if (source === this.bundled) return 'bundled';
     return 'official';
   }
 }
