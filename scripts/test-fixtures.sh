@@ -19,7 +19,7 @@
 # Engine: unity
 # ─────────────────────────────────────────────
 
-# Core rules — whitelisted set shared across all engines.
+# Core rules — full core-tier set shared across all engines.
 CORE_RULE_UNITY_CODE_STYLE="code-style"
 CORE_RULE_UNITY_DESIGN_PRINCIPLES="design-principles"
 CORE_RULE_UNITY_FOLDERS_STRUCTURE="folders-structure"
@@ -56,7 +56,7 @@ EXPECTED_UNITY_STACK_RULES=(
 )
 
 # ─────────────────────────────────────────────
-# Engine: godot (and godot-net — uses the same core whitelist)
+# Engine: godot (and godot-net — uses the same core-tier set)
 # ─────────────────────────────────────────────
 
 CORE_RULE_GODOT_CODE_STYLE="code-style"
@@ -135,8 +135,13 @@ write_unikit_config() {
   "agents": $agents_json,
   "rules": {
     "installed": {
-      "core": $core_json,
-      "stack": $stack_json
+      "version": "1.0.0",
+      "modules": {
+        "code": {
+          "core": $core_json,
+          "stack": $stack_json
+        }
+      }
     }
   },
   "managedSkills": {}
@@ -299,7 +304,7 @@ seed_rule() {
     local rule="$4"
     local source_root="${SEED_RULE_SOURCE_ROOT:-$ROOT_DIR/rules-registry}"
     local src="$source_root/$engine/$category/$rule.md"
-    local dest_dir="$project/.unikit/memory/$category"
+    local dest_dir="$project/.unikit/memory/code/$category"
     mkdir -p "$dest_dir"
     if [[ -f "$src" ]]; then
         cp "$src" "$dest_dir/$rule.md"
@@ -345,9 +350,9 @@ fake_registry_path() {
 #
 # Creates a minimal .unikit.json inside <project_dir> with:
 #   - engine pinned to <engine>
-#   - rules.installed.core / stack empty
+#   - rules.installed.modules.code.core / stack empty
 #   - rulesRegistry pointing at the fixture fake registry
-#   - .unikit/memory/{core,stack} created
+#   - .unikit/memory/code/{core,stack} created
 #
 # The fixture path is written verbatim so FsRegistry picks it as the
 # primary registry source. Tests that need a seeded state entry should
@@ -373,7 +378,7 @@ use_fake_registry() {
         agents_json='[{"id":"claude","installedSkills":[],"installedSubagents":[]}]'
     fi
 
-    mkdir -p "$project_dir/.unikit/memory/core" "$project_dir/.unikit/memory/stack"
+    mkdir -p "$project_dir/.unikit/memory/code/core" "$project_dir/.unikit/memory/code/stack"
     cat > "$project_dir/.unikit.json" <<JSON
 {
   "version": "1.0.0",
@@ -385,8 +390,12 @@ use_fake_registry() {
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": [],
-      "stack": []
+      "modules": {
+        "code": {
+          "core": [],
+          "stack": []
+        }
+      }
     }
   },
   "managedSkills": {}
@@ -509,7 +518,7 @@ _detect_jq() {
 
 # Convert a dotted field path (node-fallback shape) into jq-compatible syntax:
 #   rules.0.id                     -> rules[0].id
-#   rules.installed.core.0.name    -> rules.installed.core[0].name
+#   rules.installed.modules.code.core.0.name    -> rules.installed.modules.code.core[0].name
 #   rules.1                        -> rules[1]
 # jq rejects bare numeric identifiers (`.rules.0.id` is a syntax error); it needs
 # `.rules[0].id` for array access. Node-fallback uses `obj[p]` which works with

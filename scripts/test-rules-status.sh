@@ -72,7 +72,7 @@ assert_json_array_length "$TMPDIR/s2.log" rules 0 "rules array is empty"
 echo -e "\n${BOLD}Scenario 3: populated state${NC}"
 
 S3_DIR="$TMPDIR/s3-populated"
-mkdir -p "$S3_DIR/.unikit/memory/core" "$S3_DIR/.unikit/memory/stack"
+mkdir -p "$S3_DIR/.unikit/memory/code/core" "$S3_DIR/.unikit/memory/code/stack"
 cat > "$S3_DIR/.unikit.json" <<EOF
 {
   "version": "1.0.0",
@@ -84,12 +84,16 @@ cat > "$S3_DIR/.unikit.json" <<EOF
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": [
-        { "name": "code-style", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "deadbeef" }
-      ],
-      "stack": [
-        { "name": "sample-stack-rule", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "cafef00d" }
-      ]
+      "modules": {
+        "code": {
+          "core": [
+            { "name": "code-style", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "deadbeef" }
+          ],
+          "stack": [
+            { "name": "sample-stack-rule", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "cafef00d" }
+          ]
+        }
+      }
     }
   }
 }
@@ -132,7 +136,7 @@ assert_json_field "$TMPDIR/s4.log" registryKind local \
 echo -e "\n${BOLD}Scenario 5: null rulesRegistry (legacy)${NC}"
 
 S5_DIR="$TMPDIR/s5-null-registry"
-mkdir -p "$S5_DIR/.unikit/memory/core" "$S5_DIR/.unikit/memory/stack"
+mkdir -p "$S5_DIR/.unikit/memory/code/core" "$S5_DIR/.unikit/memory/code/stack"
 cat > "$S5_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
@@ -142,7 +146,7 @@ cat > "$S5_DIR/.unikit.json" << 'EOF'
   "agents": [],
   "rulesRegistry": null,
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -193,7 +197,7 @@ fi
 echo -e "\n${BOLD}Scenario 7: unknown engine pass-through${NC}"
 
 S7_DIR="$TMPDIR/s7-unknown-engine"
-mkdir -p "$S7_DIR/.unikit/memory/core" "$S7_DIR/.unikit/memory/stack"
+mkdir -p "$S7_DIR/.unikit/memory/code/core" "$S7_DIR/.unikit/memory/code/stack"
 cat > "$S7_DIR/.unikit.json" <<EOF
 {
   "version": "1.0.0",
@@ -203,7 +207,7 @@ cat > "$S7_DIR/.unikit.json" <<EOF
   "agents": [],
   "rulesRegistry": "$(fake_registry_path minimal-valid)",
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF

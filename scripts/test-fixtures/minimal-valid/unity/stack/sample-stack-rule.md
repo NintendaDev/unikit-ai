@@ -6,7 +6,7 @@ version: 1.0.0
 
 > **Scope**: Minimal stack rule used by rules-cli smoke tests — referenced by a single quickref doc.
 > **Load when**: running rules-cli smoke tests that exercise stack install, sync, or reference fetching.
-> **References**: .unikit/memory/stack/references/sample-stack-rule-quickref.md
+> **References**: .unikit/memory/code/stack/references/sample-stack-rule-quickref.md
 
 ---
 

@@ -60,8 +60,12 @@ cat > "$PROJECT_DIR/.unikit.json" << 'EOF'
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": ["code-style", "design-principles", "folders-structure", "performance", "testing"],
-      "stack": ["unitask", "r3"]
+      "modules": {
+        "code": {
+          "core": ["code-style", "design-principles", "folders-structure", "performance", "testing"],
+          "stack": ["unitask", "r3"]
+        }
+      }
     }
   }
 }
@@ -108,9 +112,9 @@ assert_exists "$PROJECT_DIR/.claude/skills/unikit-plan/SKILL.md" "unikit-plan sk
 assert_exists "$PROJECT_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"
 
 # Rules should be installed
-assert_exists "$PROJECT_DIR/.unikit/memory/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "core rule must be installed"
-assert_exists "$PROJECT_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_UNITASK}.md" "stack rule must be installed"
-assert_exists "$PROJECT_DIR/.unikit/memory/RULES_INDEX.md" "RULES_INDEX.md must be generated"
+assert_exists "$PROJECT_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "core rule must be installed"
+assert_exists "$PROJECT_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_UNITASK}.md" "stack rule must be installed"
+assert_exists "$PROJECT_DIR/.unikit/memory/code/RULES_INDEX.md" "RULES_INDEX.md must be generated"
 
 # Engine templates should be installed
 assert_exists "$PROJECT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" "ENGINE_RULES.md must be installed for unikit"
@@ -226,8 +230,12 @@ cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": ["code-style"],
-      "stack": []
+      "modules": {
+        "code": {
+          "core": ["code-style"],
+          "stack": []
+        }
+      }
     }
   }
 }
@@ -241,7 +249,7 @@ COMPAT_OUTPUT="$TMPDIR/update-compat.log"
 assert_contains "$COMPAT_OUTPUT" "Engine: unity" "backward compat should show unity engine"
 
 # Should preserve the seeded core rule (sync tags it as source=local).
-assert_exists "$COMPAT_DIR/.unikit/memory/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "backward compat: core rule present"
+assert_exists "$COMPAT_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "backward compat: core rule present"
 
 # Config should now have engine and new MCP format
 COMPAT_ENGINE=$(node -e "
@@ -286,7 +294,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -340,7 +348,7 @@ cat > "$HASH_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -390,7 +398,7 @@ cat > "$ARTIFACT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -436,7 +444,7 @@ cat > "$SA_DRIFT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -497,7 +505,7 @@ cat > "$MULTI_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -564,7 +572,7 @@ cat > "$ENGINE_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -608,7 +616,7 @@ else
 fi
 
 # Godot core rule must be present after the seed + sync cycle.
-assert_exists "$ENGINE_DIR/.unikit/memory/core/${CORE_RULE_GODOT_CODE_STYLE}.md" "godot core rule present after switch"
+assert_exists "$ENGINE_DIR/.unikit/memory/code/core/${CORE_RULE_GODOT_CODE_STYLE}.md" "godot core rule present after switch"
 
 echo "  ✓ engine switch: unity->godot triggers reinstall, ENGINE_RULES shows Godot, core rule preserved"
 
@@ -636,7 +644,7 @@ cat > "$NEWSKILL_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -678,7 +686,7 @@ cat > "$LEGACY_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] },
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } },
     "declined": ["FOO", "BAR"]
   }
 }
@@ -732,7 +740,7 @@ cat > "$SA_REMOVED_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -796,7 +804,7 @@ cat > "$SKILLCTX_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -871,7 +879,7 @@ cat > "$SA_HASH_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -933,7 +941,7 @@ cat > "$SA_ARTIFACT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -970,7 +978,7 @@ cat > "$ZERO_DIR/.unikit.json" << 'EOF'
   "mcp": { "servers": [] },
   "agents": [],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style", "design-principles"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style", "design-principles"], "stack": [] } } }
   }
 }
 EOF
@@ -989,9 +997,9 @@ if [[ "$EXIT_CODE" -ne 0 ]]; then
 fi
 
 # Seeded rules must survive the update (sync tags them source=local).
-assert_exists "$ZERO_DIR/.unikit/memory/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "core rule present with zero agents"
-assert_exists "$ZERO_DIR/.unikit/memory/core/${CORE_RULE_UNITY_DESIGN_PRINCIPLES}.md" "second core rule present with zero agents"
-assert_exists "$ZERO_DIR/.unikit/memory/RULES_INDEX.md" "RULES_INDEX.md must be generated with zero agents"
+assert_exists "$ZERO_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "core rule present with zero agents"
+assert_exists "$ZERO_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_DESIGN_PRINCIPLES}.md" "second core rule present with zero agents"
+assert_exists "$ZERO_DIR/.unikit/memory/code/RULES_INDEX.md" "RULES_INDEX.md must be generated with zero agents"
 
 echo "  ✓ zero agents: no crash, seeded rules preserved"
 
@@ -1026,7 +1034,7 @@ cat > "$EXTMISSING_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -1084,7 +1092,7 @@ cat > "$ENGEXT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -1148,7 +1156,7 @@ cat > "$SAFRC_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -1197,7 +1205,7 @@ cat > "$SAMMS_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -1276,7 +1284,7 @@ cat > "$DEVPRIN_DIR/.unikit.json" << 'EOF'
       "installedSubagents": []
     }
   ],
-  "rules": { "installed": { "version": "1.0.0", "core": [], "stack": [] } }
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
 }
 EOF
 inject_fake_registry "$DEVPRIN_DIR"
