@@ -1,8 +1,8 @@
 // Rule metadata loaders + RULES_INDEX.md generation.
 //
-// Owns the rule-id normalization rules, the core whitelist, the requiredBy
-// manifest loader, the Scope / Load when parser, and the RULES_INDEX.md
-// generator that the /unikit skill reads to decide what to load per task.
+// Owns the rule-id normalization rules, the requiredBy manifest loader, the
+// Scope / Load when parser, and the module-generic RULES_INDEX.md generator
+// that the /unikit skill reads to decide what to load per task.
 
 import path from 'path';
 import {
@@ -11,8 +11,9 @@ import {
 import { logInfo } from '../../utils/log.js';
 import {
   RULES_MANIFEST_FILE, RULES_INDEX_FILE, RULES_INDEX_TEMPLATE_FILE,
-  CORE_TABLE_MARKER, STACK_TABLE_MARKER, memoryDir,
+  TIER_TABLE_MARKERS, moduleDir, moduleTierDir, type Tier,
 } from '../constants.js';
+import type { Module } from '../modules.js';
 import { isMarkdownFile, stripMdExtension } from './shared.js';
 
 // --- Rules: data loaders and shared state ---
@@ -41,17 +42,6 @@ export async function loadRequiredByMap(): Promise<RequiredByMap> {
 export function normalizeRuleId(raw: string): string {
   return raw.trim().toLowerCase();
 }
-
-/**
- * Known core rule ids — registry can override content but cannot introduce new core names.
- *
- * Stored in the canonical lowercase-hyphen form. Consumers MUST feed registry
- * ids through `normalizeRuleId()` before lookup so unofficial registries that
- * ship `CODE-STYLE` / `code_style` variants still resolve to the same entry.
- */
-export const CORE_RULE_WHITELIST = new Set([
-  'code-style', 'design-principles', 'folders-structure', 'performance', 'testing', 'pipeline',
-]);
 
 // installRules() and loadRulesManifest() were removed — rules are now installed via
 // `unikit-ai rules install` (no-args core whitelist bootstrap + variadic, see
@@ -118,10 +108,41 @@ async function parseRuleFileMetadata(filePath: string): Promise<{ description: s
  */
 export type GenerateRulesIndexStatus = 'written' | 'skipped-empty' | 'removed-empty';
 
+/** Installed rule names to render, keyed by tier. Empty/absent tier = render all on disk. */
+export type InstalledByTier = Partial<Record<Tier, string[]>>;
+
+/**
+ * Render one rule row for a tier. The core tier carries a `Required By` column
+ * (core rules are mandatory-gated); other tiers are load-on-demand and omit it.
+ */
+function renderRuleRow(
+  tier: Tier,
+  file: string,
+  meta: { description: string; loadWhen: string },
+  requiredBy: RequiredByMap,
+): string {
+  if (tier === 'core') {
+    // requiredBy keys are canonical lowercase-hyphen ids (no .md); normalize the
+    // on-disk filename so legacy `CODE-STYLE.md` files still resolve correctly.
+    const rb = requiredBy[normalizeRuleId(stripMdExtension(file))] ?? 'all';
+    const rbStr = Array.isArray(rb) ? rb.join(', ') : rb;
+    return `| ${file} | ${meta.description} | ${rbStr} | ${meta.loadWhen} |`;
+  }
+  return `| ${file} | ${meta.description} | ${meta.loadWhen} |`;
+}
+
+/**
+ * Generate `<module>/RULES_INDEX.md` for one module by iterating its tiers and
+ * filling the per-tier table markers in the shared template.
+ *
+ * Filter: if `installedByTier[tier]` is non-empty, emit only rules tracked in
+ * that list. If it is empty/absent, emit every `.md` file found on disk for
+ * that tier (matches legacy behavior for projects without populated state).
+ */
 export async function generateRulesIndex(
   projectDir: string,
-  installedCore: string[],
-  installedStack: string[],
+  module: Module,
+  installedByTier: InstalledByTier = {},
   requiredBy: RequiredByMap = {},
 ): Promise<GenerateRulesIndexStatus> {
   const templatePath = path.join(getDataDir(), RULES_INDEX_TEMPLATE_FILE);
@@ -130,51 +151,34 @@ export async function generateRulesIndex(
     throw new Error(`RULES_INDEX template not found: ${templatePath}`);
   }
 
-  const targetMemoryDir = memoryDir(projectDir);
-  const installedCoreSet = new Set(installedCore);
-  const installedStackSet = new Set(installedStack);
+  let result = template;
+  let totalRows = 0;
 
-  // Filter: if the caller passed an install list (set non-empty), emit only
-  // rules tracked in that list. If the set is empty, we are in "no tracking"
-  // mode — emit every .md file found on disk (matches legacy behavior for
-  // projects without a populated .unikit.json rules state).
+  for (const tier of module.tiers) {
+    const dir = moduleTierDir(projectDir, module.id, tier);
+    const installedSet = new Set(installedByTier[tier] ?? []);
+    const rows: string[] = [];
 
-  const coreRows: string[] = [];
-  const coreDir = path.join(targetMemoryDir, 'core');
-  for (const file of await listFiles(coreDir)) {
-    if (!isMarkdownFile(file)) continue;
-    const name = stripMdExtension(file);
-    if (installedCoreSet.size > 0 && !installedCoreSet.has(name)) continue;
-    const meta = await parseRuleFileMetadata(path.join(coreDir, file));
-    // requiredBy keys are canonical lowercase-hyphen ids (no .md); normalize the
-    // on-disk filename so legacy `CODE-STYLE.md` files still resolve correctly.
-    const rb = requiredBy[normalizeRuleId(name)] ?? 'all';
-    const rbStr = Array.isArray(rb) ? rb.join(', ') : rb;
-    coreRows.push(`| ${file} | ${meta.description} | ${rbStr} | ${meta.loadWhen} |`);
+    for (const file of await listFiles(dir)) {
+      if (!isMarkdownFile(file)) continue;
+      const name = stripMdExtension(file);
+      if (installedSet.size > 0 && !installedSet.has(name)) continue;
+      const meta = await parseRuleFileMetadata(path.join(dir, file));
+      rows.push(renderRuleRow(tier, file, meta, requiredBy));
+    }
+
+    rows.sort((a, b) => a.localeCompare(b));
+    totalRows += rows.length;
+    result = result.replace(TIER_TABLE_MARKERS[tier], rows.join('\n'));
   }
 
-  const stackRows: string[] = [];
-  const stackDir = path.join(targetMemoryDir, 'stack');
-  for (const file of await listFiles(stackDir)) {
-    if (!isMarkdownFile(file)) continue;
-    const name = stripMdExtension(file);
-    if (installedStackSet.size > 0 && !installedStackSet.has(name)) continue;
-    const meta = await parseRuleFileMetadata(path.join(stackDir, file));
-    stackRows.push(`| ${file} | ${meta.description} | ${meta.loadWhen} |`);
-  }
-
-  // Sort all rows alphabetically by filename
-  coreRows.sort((a, b) => a.localeCompare(b));
-  stackRows.sort((a, b) => a.localeCompare(b));
-
-  const indexPath = path.join(targetMemoryDir, RULES_INDEX_FILE);
+  const indexPath = path.join(moduleDir(projectDir, module.id), RULES_INDEX_FILE);
 
   // Empty-rules guard.
   //
-  // When neither `.unikit/memory/core/` nor `.unikit/memory/stack/` have
-  // renderable rules (e.g. a fresh project running `unikit-ai rules sync`
-  // before installing anything), writing a stub `RULES_INDEX.md` with empty
-  // CORE_TABLE / STACK_TABLE sections is pure noise — the file tells the
+  // When none of the module's tiers have renderable rules (e.g. a fresh project
+  // running `unikit-ai rules sync` before installing anything), writing a stub
+  // `RULES_INDEX.md` with empty tier tables is pure noise — the file tells the
   // `/unikit` skill "there is an index", but that index points at nothing.
   //
   // Two branches:
@@ -184,7 +188,7 @@ export async function generateRulesIndex(
   //      the skill on the next run.
   //
   // Both branches are idempotent and safe to hit multiple times per session.
-  if (coreRows.length === 0 && stackRows.length === 0) {
+  if (totalRows === 0) {
     if (await fileExists(indexPath)) {
       logInfo('rules:index', '[FIX] no rules on disk/in state — removing stale RULES_INDEX.md');
       await removeFile(indexPath);
@@ -193,10 +197,6 @@ export async function generateRulesIndex(
     logInfo('rules:index', '[FIX] no rules on disk/in state — skipping RULES_INDEX.md creation');
     return 'skipped-empty';
   }
-
-  const result = template
-    .replace(CORE_TABLE_MARKER, coreRows.join('\n'))
-    .replace(STACK_TABLE_MARKER, stackRows.join('\n'));
 
   await writeTextFile(indexPath, result);
   return 'written';
