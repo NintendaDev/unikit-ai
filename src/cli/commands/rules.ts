@@ -6,18 +6,19 @@ import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs-extra';
 import { spawnSync } from 'child_process';
-import { loadConfig, saveConfig } from '../../core/config.js';
+import { loadConfig, saveConfig, getModuleTier } from '../../core/config.js';
 import type { UniKitConfig } from '../../core/config.js';
 import { createRegistry, detectRegistryKind, resolveRegistryUrl, OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
 import type { RulesRegistry, RegistryRule, RuleCategory, RegistryKind } from '../../core/registry/index.js';
 import { validateRegistry, validateUrlFormat, normalizeRegistryUrl } from '../../core/registry/validator.js';
 import { getAllEngineIds } from '../../core/engines.js';
 import {
-  generateRulesIndex, loadRequiredByMap, CORE_RULE_WHITELIST,
-  parseRuleMetadataFromContent, normalizeRuleId,
+  generateRulesIndex, loadRequiredByMap,
+  parseRuleMetadataFromContent, normalizeRuleId, type InstalledByTier,
 } from '../../core/installer/rules-index.js';
-import { syncRulesState, type SyncRulesEvent } from '../../core/installer/rules-sync.js';
-import { memoryDir } from '../../core/constants.js';
+import { syncAllModules, type SyncRulesEvent } from '../../core/installer/rules-sync.js';
+import { CODE_MODULE_ID, REFERENCES_DIR_NAME, moduleTierDir } from '../../core/constants.js';
+import { MODULE_REGISTRY, getModule } from '../../core/modules.js';
 import { writeTextFile, fileExists, listFiles, removeFile, getBundledRegistryDir } from '../../utils/fs.js';
 import { createHash } from 'crypto';
 import { logInfo, logWarn, logError } from '../../utils/log.js';
@@ -59,10 +60,18 @@ function buildRegistry(config: UniKitConfig): RulesRegistry {
 // list — lean catalog from registry
 // =====================================================================
 
-export async function rulesListCommand(options: { json?: boolean; engine?: string }): Promise<void> {
+export async function rulesListCommand(options: { json?: boolean; engine?: string; module?: string }): Promise<void> {
   const projectDir = process.cwd();
   const config = await loadConfigOrExit(projectDir);
   const engineId = options.engine ?? config.engine;
+
+  // `--module` mirrors `--engine` for parity. In PR#1 it is validation-only:
+  // the single registered module is `code`, so any other value is rejected.
+  // PR#3 (generic module-aware skills) gives the flag real scoping behaviour.
+  if (options.module !== undefined && !getModule(options.module)) {
+    console.error(chalk.red(`Unknown module "${options.module}". Available: ${Object.keys(MODULE_REGISTRY).join(', ')}`));
+    exitWithCode(EXIT.INVALID_ARGS);
+  }
 
   const registry = buildRegistry(config);
   const manifest = await registry.fetchManifest();
@@ -201,9 +210,9 @@ export async function rulesShowCommand(id: string, options: { references?: boole
 // install — variadic fetch + write + state update (+ no-args core bootstrap)
 // =====================================================================
 //
-// `unikit-ai rules install`              — no args: install the CORE_RULE_WHITELIST
-//                                          batch (core bootstrap, replaces the
-//                                          old `rules core-install` used by
+// `unikit-ai rules install`              — no args: install every core-tier rule
+//                                          (core bootstrap, replaces the old
+//                                          `rules core-install` used by
 //                                          /unikit Step 9.2).
 // `unikit-ai rules install <id>...`      — variadic: install one or more
 //                                          user-specified rules in one call,
@@ -291,14 +300,16 @@ async function installOneRule(
   // `code-style`, and vice versa. This is the guard that kept pre-migration
   // projects usable and must not be lost in the variadic rewrite.
   const normalizedId = normalizeRuleId(rawId);
-  const existingCore = config.rules.installed.core.find(e => normalizeRuleId(e.name) === normalizedId);
-  const existingStack = config.rules.installed.stack.find(e => normalizeRuleId(e.name) === normalizedId);
+  const coreState = getModuleTier(config, CODE_MODULE_ID, 'core');
+  const stackState = getModuleTier(config, CODE_MODULE_ID, 'stack');
+  const existingCore = coreState.find(e => normalizeRuleId(e.name) === normalizedId);
+  const existingStack = stackState.find(e => normalizeRuleId(e.name) === normalizedId);
   const existing = existingCore ?? existingStack;
 
   // Find rule by id in registry (canonical lowercase-hyphen comparison). When
-  // the caller hints a preferred category (core whitelist bootstrap), try that
-  // side first so a rule shipped in both sides of the manifest goes where the
-  // bootstrap wants it.
+  // the caller hints a preferred category (core bootstrap), try that side first
+  // so a rule shipped in both sides of the manifest goes where the bootstrap
+  // wants it.
   let found: RegistryRule | undefined;
   let category: RuleCategory = options.preferredCategory ?? 'core';
 
@@ -354,8 +365,7 @@ async function installOneRule(
   }
 
   const newHash = computeHash(fetched.content);
-  const targetMemoryDir = memoryDir(projectDir);
-  const destPath = path.join(targetMemoryDir, category, `${found.id}.md`);
+  const destPath = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, category), `${found.id}.md`);
   const destExists = await fileExists(destPath);
 
   // Idempotent skip for the no-args bootstrap path: if the file is on disk
@@ -379,7 +389,7 @@ async function installOneRule(
   // on cleanup (see re-categorisation block below).
   if (found.references && found.references.length > 0) {
     const refs = await registry.fetchReferences(engineId, category, found.id, found.references);
-    const destRefsDir = path.join(targetMemoryDir, category, 'references');
+    const destRefsDir = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, category), REFERENCES_DIR_NAME);
     for (const ref of refs) {
       await writeTextFile(path.join(destRefsDir, ref.filename), ref.content);
     }
@@ -408,14 +418,14 @@ async function installOneRule(
     const oldCategory: RuleCategory = existingCore ? 'core' : 'stack';
     if (oldCategory !== category) {
       logInfo('rules:install', `re-categorized ${existing.name}: ${oldCategory} → ${category}`);
-      const oldPath = path.join(targetMemoryDir, oldCategory, `${existing.name}.md`);
+      const oldPath = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, oldCategory), `${existing.name}.md`);
       if (await fileExists(oldPath)) {
         await removeFile(oldPath);
       }
       // Clean up orphan reference files from the old category. References are
       // matched by filename prefix (aspid-mvvm-*.md style), mirroring how
       // fetchReferences writes them next to the rule file.
-      const oldRefsDir = path.join(targetMemoryDir, oldCategory, 'references');
+      const oldRefsDir = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, oldCategory), REFERENCES_DIR_NAME);
       if (await fileExists(oldRefsDir)) {
         const refs = await listFiles(oldRefsDir);
         const prefix = existing.name.toLowerCase();
@@ -441,13 +451,11 @@ async function installOneRule(
       existing.origin = origin;
     } else {
       // Legacy-name migration OR cross-category move. Splice the old entry
-      // out and push a fresh canonical entry under the correct category list.
-      const oldList = existingCore
-        ? config.rules.installed.core
-        : config.rules.installed.stack;
+      // out and push a fresh canonical entry under the correct tier list.
+      const oldList = existingCore ? coreState : stackState;
       const idx = oldList.indexOf(existing);
       if (idx >= 0) oldList.splice(idx, 1);
-      const targetList = category === 'core' ? config.rules.installed.core : config.rules.installed.stack;
+      const targetList = category === 'core' ? coreState : stackState;
       targetList.push({
         name: found.id,
         source: 'registry',
@@ -457,7 +465,7 @@ async function installOneRule(
       });
     }
   } else {
-    const targetList = category === 'core' ? config.rules.installed.core : config.rules.installed.stack;
+    const targetList = category === 'core' ? coreState : stackState;
     targetList.push({
       name: found.id,
       source: 'registry',
@@ -504,29 +512,33 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
 
   const noArgsBootstrap = ids.length === 0;
 
-  // Design note — case-sensitive FS + whitelist bootstrap.
+  // Design note — case-sensitive FS + core bootstrap.
   //
   // The legacy `core-install` command keyed its in-memory state map by the
   // raw `entry.name` from `.unikit.json` (NOT canonical) on purpose: users
   // migrating from a legacy UPPER_CASE entry will see a duplicate in
-  // `.unikit.json.rules.installed.core` after the bootstrap
+  // `.unikit.json.rules.installed.modules.code.core` after the bootstrap
   // (legacy `CODE-STYLE` + new `code-style`). The escape hatch for core is
   // MANUAL cleanup only — edit `.unikit.json` and remove the legacy entry,
-  // then delete the corresponding `.unikit/memory/core/CODE-STYLE.md` file.
-  // `rules sync --replace --prune` does NOT help for core rules: the
-  // obsolete-remove block in `syncRulesState` is scoped to
-  // `category === 'stack'`, so a legacy `CODE-STYLE.md` core file is
-  // re-registered as `source: local` on the next Phase 1 pass and the
-  // duplicate persists. The new variadic `installOneRule` preserves the
-  // same semantics.
+  // then delete the corresponding `.unikit/memory/code/core/CODE-STYLE.md`
+  // file. `rules sync --replace --prune` does NOT help for core rules: the
+  // obsolete-remove block in `syncRulesState` is scoped to the stack tier,
+  // so a legacy `CODE-STYLE.md` core file is re-registered as `source: local`
+  // on the next Phase 1 pass and the duplicate persists. The variadic
+  // `installOneRule` preserves the same semantics.
+  //
+  // Core-gate (interim for PR#1): the no-args bootstrap installs EVERY
+  // core-tier rule the registry ships for this engine. `CORE_RULE_WHITELIST`
+  // is gone — on the official registry this set equals the former whitelist;
+  // for unofficial registries it is the intended target behaviour. PR#2
+  // (D3/OQ2) replaces this implicit `tier === 'core'` gate with an explicit
+  // `rule.always === true` field injected by the schema:1→2 registry migration.
   const resolvedIds: string[] = noArgsBootstrap
-    ? engineRules.core
-      .filter(r => CORE_RULE_WHITELIST.has(normalizeRuleId(r.id)))
-      .map(r => r.id)
+    ? engineRules.core.map(r => r.id)
     : ids;
 
   if (noArgsBootstrap && resolvedIds.length === 0) {
-    console.error(chalk.red(`No whitelisted core rules found in registry for engine "${engineId}".`));
+    console.error(chalk.red(`No core-tier rules found in registry for engine "${engineId}".`));
     exitWithCode(EXIT.VALIDATION_FAILED);
   }
 
@@ -562,9 +574,12 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   // a fresh index after the bootstrap, even when every whitelisted rule was
   // already on disk.
   const requiredBy = await loadRequiredByMap();
-  const coreNames = config.rules.installed.core.map(e => e.name);
-  const stackNames = config.rules.installed.stack.map(e => e.name);
-  await generateRulesIndex(projectDir, coreNames, stackNames, requiredBy);
+  const codeModule = MODULE_REGISTRY[CODE_MODULE_ID];
+  const installedByTier: InstalledByTier = {};
+  for (const tier of codeModule.tiers) {
+    installedByTier[tier] = getModuleTier(config, CODE_MODULE_ID, tier).map(e => e.name);
+  }
+  await generateRulesIndex(projectDir, codeModule, installedByTier, requiredBy);
 
   printInstallReport(report);
   console.log(chalk.dim('✓ RULES_INDEX.md regenerated'));
@@ -587,10 +602,10 @@ export function renderSyncRulesEvents(events: SyncRulesEvent[]): void {
   for (const ev of events) {
     switch (ev.kind) {
       case 'phase1:untracked-found':
-        console.log(chalk.yellow(`Found untracked rule: ${ev.category}/${ev.name} — registering as local`));
+        console.log(chalk.yellow(`Found untracked rule: ${ev.tier}/${ev.name} — registering as local`));
         break;
       case 'phase1:missing-removed':
-        console.log(chalk.yellow(`Rule ${ev.category}/${ev.name} missing from disk — removing from state`));
+        console.log(chalk.yellow(`Rule ${ev.tier}/${ev.name} missing from disk — removing from state`));
         break;
       case 'phase1:state-reconciled':
         console.log(chalk.green('✓ State reconciled'));
@@ -607,7 +622,7 @@ export function renderSyncRulesEvents(events: SyncRulesEvent[]): void {
       case 'phase2:updating': {
         const verb = ev.action === 'install' ? 'Installing' : 'Updating';
         const from = ev.fromVersion ? `v${ev.fromVersion}` : '—';
-        console.log(chalk.cyan(`${verb} ${ev.category}/${ev.name}: ${from} → v${ev.toVersion}`));
+        console.log(chalk.cyan(`${verb} ${ev.tier}/${ev.name}: ${from} → v${ev.toVersion}`));
         break;
       }
       case 'phase2:fetch-failed':
@@ -666,7 +681,7 @@ export async function rulesSyncCommand(options: RulesSyncOptions = {}): Promise<
   const engineId = config.engine;
 
   const registry = buildRegistry(config);
-  const result = await syncRulesState(projectDir, engineId, config, registry, {
+  const result = await syncAllModules(projectDir, engineId, config, registry, {
     replace: options.replace === true,
     prune: options.prune === true,
   });
@@ -687,8 +702,8 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
   const config = await loadConfigOrExit(projectDir);
 
   const allRules = [
-    ...config.rules.installed.core.map(e => ({ ...e, category: 'core' as const })),
-    ...config.rules.installed.stack.map(e => ({ ...e, category: 'stack' as const })),
+    ...getModuleTier(config, CODE_MODULE_ID, 'core').map(e => ({ ...e, category: 'core' as const })),
+    ...getModuleTier(config, CODE_MODULE_ID, 'stack').map(e => ({ ...e, category: 'stack' as const })),
   ];
 
   // Resolve null/empty `rulesRegistry` to the official URL — the runtime
@@ -726,8 +741,8 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
   }
   console.log('');
 
-  const coreRules = config.rules.installed.core;
-  const stackRules = config.rules.installed.stack;
+  const coreRules = getModuleTier(config, CODE_MODULE_ID, 'core');
+  const stackRules = getModuleTier(config, CODE_MODULE_ID, 'stack');
 
   // Compute column widths
   const nameWidth = Math.max(4, ...allRules.map(r => r.name.length));

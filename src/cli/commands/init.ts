@@ -4,7 +4,7 @@ import { runWizard } from '../wizard/prompts.js';
 import { buildManagedSkillsState, installSkills, getAvailableSkills } from '../../core/installer/skills.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installDevPrinciples } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installDevPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
@@ -140,6 +140,9 @@ export async function initCommand(): Promise<void> {
 
     // Install engine development principles (shared system file)
     await installDevPrinciples(projectDir, engineId, answers.engineMcpKey);
+
+    // Install module registry snapshot (forward-compat SSOT)
+    await installModulesYml(projectDir);
 
     // Summary
     console.log(chalk.bold.green('\n✅ Setup complete!\n'));

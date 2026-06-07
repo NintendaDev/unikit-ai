@@ -9,10 +9,11 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installDevPrinciples } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installDevPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
-import { syncRulesState } from '../../core/installer/rules-sync.js';
+import { syncAllModules } from '../../core/installer/rules-sync.js';
+import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
 import { renderSyncRulesEvents } from './rules.js';
 import { discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
 import { getAgentConfig } from '../../core/agents.js';
@@ -89,6 +90,12 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
   }
 
   try {
+    // Migrate on-disk memory layout BEFORE anything reads it. This relocates a
+    // legacy flat `.unikit/memory/{core,stack}` layout under `code/` so that the
+    // skill reinstall and (later) `syncAllModules` Phase 1 reconciliation both
+    // operate on the modular layout. Idempotent: a no-op once already wrapped.
+    await runProjectMemoryMigrations(projectDir);
+
     // Refresh extensions from sources (check for updates)
     let extensions = config.extensions ?? [];
     if (extensions.length > 0) {
@@ -175,8 +182,8 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       }
     }
 
-    // Sync rules (shared) — single call into syncRulesState handles Phase 1-3
-    // (disk↔state reconciliation, registry sync, RULES_INDEX.md regeneration).
+    // Sync rules (shared) — single call into syncAllModules runs each module's
+    // Phase 1-3 (disk↔state reconciliation, registry sync, RULES_INDEX.md regen).
     // `update --force` propagates as `{ replace: true, prune: true }` — the
     // exact composition that used to be called `sync --force`: overwrite local
     // modifications AND remove obsolete stack rules. Normal `update` (no
@@ -185,7 +192,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     console.log(chalk.dim('Syncing rules...\n'));
 
     const registry = createRegistry(config.rulesRegistry, engineId);
-    const syncResult = await syncRulesState(projectDir, engineId, config, registry, {
+    const syncResult = await syncAllModules(projectDir, engineId, config, registry, {
       replace: force,
       prune: force,
     });
@@ -196,6 +203,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Update engine development principles (shared system file, plain rewrite)
     await installDevPrinciples(projectDir, engineId, config.engineMcpKey);
+
+    // Refresh module registry snapshot (flat rewrite, forward-compat SSOT)
+    await installModulesYml(projectDir);
 
     // Rebuild managed state per agent (exclude replaced skills)
     const availableSkills = await getAvailableSkills();
@@ -272,7 +282,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       }
     }
 
-    // Rules summary — syncRulesState already printed per-event detail via
+    // Rules summary — syncAllModules already printed per-event detail via
     // renderSyncRulesEvents; here we just emit a one-line status marker.
     const rulesUpdated = syncResult.events.filter(e =>
       e.kind === 'phase2:updating' || e.kind === 'phase1:untracked-found' ||
