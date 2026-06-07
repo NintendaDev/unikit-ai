@@ -174,3 +174,13 @@ export async function removeDirectory(dirPath: string): Promise<void> {
 export async function removeFile(filePath: string): Promise<void> {
   await fs.remove(filePath);
 }
+
+/**
+ * Move a file or directory subtree from `src` to `dest`, creating the
+ * destination's parent directory first. `overwrite: false` keeps the move
+ * non-destructive — callers guard against an existing `dest` before calling.
+ */
+export async function movePath(src: string, dest: string): Promise<void> {
+  await fs.ensureDir(path.dirname(dest));
+  await fs.move(src, dest, { overwrite: false });
+}
