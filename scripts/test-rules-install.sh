@@ -40,8 +40,9 @@ echo -e "${BOLD}=== rules install Smoke Tests ===${NC}"
 # ─────────────────────────────────────────────
 # Scenario 1 — Bootstrap: fresh install (no args, empty state)
 # ─────────────────────────────────────────────
-# With no args the CLI installs CORE_RULE_WHITELIST ∩ manifest.core.
-# minimal-valid has exactly one whitelisted rule (`code-style`), so the
+# With no args the CLI installs every core-tier rule the registry ships
+# for the engine (interim `tier === 'core'` gate; CORE_RULE_WHITELIST is
+# gone). minimal-valid has exactly one core rule (`code-style`), so the
 # bootstrap should report 1 installed + 0 already-installed + 0 failed.
 echo -e "\n${BOLD}Scenario 1: bootstrap fresh install${NC}"
 
@@ -56,11 +57,11 @@ assert_stdout_contains "$TMPDIR/s1.log" "installed core/code-style v1.0.0" \
     "fresh install line for code-style"
 assert_stdout_contains "$TMPDIR/s1.log" "Rules: 1 installed, 0 already-installed, 0 failed" \
     "bootstrap summary counts"
-assert_exists "$S1_DIR/.unikit/memory/core/code-style.md" \
+assert_exists "$S1_DIR/.unikit/memory/code/core/code-style.md" \
     "bootstrap wrote the core rule to disk"
-assert_exists "$S1_DIR/.unikit/memory/RULES_INDEX.md" \
+assert_exists "$S1_DIR/.unikit/memory/code/RULES_INDEX.md" \
     "bootstrap regenerated RULES_INDEX.md"
-assert_json_field "$S1_DIR/.unikit.json" "rules.installed.core.0.name" code-style \
+assert_json_field "$S1_DIR/.unikit.json" "rules.installed.modules.code.core.0.name" code-style \
     "bootstrap recorded code-style in state"
 
 # ─────────────────────────────────────────────
@@ -87,14 +88,14 @@ echo -e "\n${BOLD}Scenario 3: bootstrap drift recovery${NC}"
 
 S3_DIR="$TMPDIR/s3-bootstrap-drift"
 cp -r "$S1_DIR" "$S3_DIR"
-echo "DRIFT" > "$S3_DIR/.unikit/memory/core/code-style.md"
+echo "DRIFT" > "$S3_DIR/.unikit/memory/code/core/code-style.md"
 # Replace installed_hash with "stale" so the hash-match early exit is
 # skipped and the full fetch-and-rewrite path runs.
 node -e "
     const fs = require('fs');
     const p = process.argv[1];
     const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-    j.rules.installed.core[0].installed_hash = 'stale';
+    j.rules.installed.modules.code.core[0].installed_hash = 'stale';
     fs.writeFileSync(p, JSON.stringify(j, null, 2));
 " "$S3_DIR/.unikit.json"
 
@@ -103,13 +104,13 @@ assert_cmd_exit 0 "bootstrap with drift exits 0" "$TMPDIR/s3.log" -- \
 
 assert_stdout_contains "$TMPDIR/s3.log" "installed core/code-style v1.0.0" \
     "drift triggers re-install (not already-installed)"
-assert_stdout_contains "$S3_DIR/.unikit/memory/core/code-style.md" \
+assert_stdout_contains "$S3_DIR/.unikit/memory/code/core/code-style.md" \
     "Minimal core rule" \
     "drifted file was overwritten with fixture content"
 # Hash in state should no longer match the 'stale' sentinel.
 ACTUAL_HASH=$(node -e "
     const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-    console.log(j.rules.installed.core[0].installed_hash);
+    console.log(j.rules.installed.modules.code.core[0].installed_hash);
 " "$S3_DIR/.unikit.json")
 if [[ "$ACTUAL_HASH" != "stale" && -n "$ACTUAL_HASH" ]]; then
     pass "drift recovery refreshed installed_hash to '$ACTUAL_HASH'"
@@ -131,7 +132,7 @@ assert_cmd_exit 0 "rules install code-style exits 0" "$TMPDIR/s4.log" -- \
 
 assert_stdout_contains "$TMPDIR/s4.log" "installed core/code-style v1.0.0" \
     "single install report"
-assert_exists "$S4_DIR/.unikit/memory/core/code-style.md" \
+assert_exists "$S4_DIR/.unikit/memory/code/core/code-style.md" \
     "single install wrote the rule file"
 
 # ─────────────────────────────────────────────
@@ -182,7 +183,7 @@ assert_stdout_contains "$TMPDIR/s7.log" "installed stack/sample-stack-rule v1.0.
     "second id installed (stack category)"
 assert_stdout_contains "$TMPDIR/s7.log" "Rules: 2 installed, 0 already-installed, 0 failed" \
     "variadic summary counts both"
-assert_exists "$S7_DIR/.unikit/memory/stack/references/sample-stack-rule-quickref.md" \
+assert_exists "$S7_DIR/.unikit/memory/code/stack/references/sample-stack-rule-quickref.md" \
     "variadic install fetches reference files alongside the parent rule"
 
 # ─────────────────────────────────────────────
@@ -233,7 +234,7 @@ assert_cmd_exit 0 "rules install CODE-STYLE exits 0" "$TMPDIR/s10.log" -- \
 
 assert_stdout_contains "$TMPDIR/s10.log" "installed core/code-style v1.0.0" \
     "legacy upper-case id resolves to canonical rule"
-assert_json_field "$S10_DIR/.unikit.json" "rules.installed.core.0.name" code-style \
+assert_json_field "$S10_DIR/.unikit.json" "rules.installed.modules.code.core.0.name" code-style \
     "state entry uses canonical lowercase name"
 
 # ─────────────────────────────────────────────
@@ -283,7 +284,7 @@ assert_cmd_exit 0 "rules install --force on empty state" "$TMPDIR/s13.log" -- \
 
 assert_stdout_contains "$TMPDIR/s13.log" "installed core/code-style v1.0.0" \
     "fresh --force installs the rule"
-assert_exists "$S13_DIR/.unikit/memory/core/code-style.md" \
+assert_exists "$S13_DIR/.unikit/memory/code/core/code-style.md" \
     "fresh --force wrote the rule file"
 
 # ─────────────────────────────────────────────
@@ -314,7 +315,7 @@ assert_stdout_contains "$TMPDIR/s14.log" "failed bogus" \
 echo -e "\n${BOLD}Scenario 15: engine missing from resolved manifest (exit 5)${NC}"
 
 S15_DIR="$TMPDIR/s15-engine-missing"
-mkdir -p "$S15_DIR/.unikit/memory/core" "$S15_DIR/.unikit/memory/stack"
+mkdir -p "$S15_DIR/.unikit/memory/code/core" "$S15_DIR/.unikit/memory/code/stack"
 cat > "$S15_DIR/.unikit.json" <<EOF
 {
   "version": "1.0.0",
@@ -324,7 +325,7 @@ cat > "$S15_DIR/.unikit.json" <<EOF
   "agents": [],
   "rulesRegistry": "$(fake_registry_path minimal-valid)",
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -336,13 +337,14 @@ assert_stdout_contains "$TMPDIR/s15.log" "unreal-engine-6" \
     "error mentions the missing engine"
 
 # ─────────────────────────────────────────────
-# Scenario 16 — Error path: empty whitelist intersection (exit 5)
+# Scenario 16 — Error path: no core-tier rules in registry (exit 5)
 # ─────────────────────────────────────────────
-# multi-version/v1 core list only contains `code-style`, which IS in
-# CORE_RULE_WHITELIST. To trigger the empty-whitelist exit 5 path we
-# need a fixture whose core[] contains no whitelisted ids. We craft
-# one inline in a fresh tmp dir.
-echo -e "\n${BOLD}Scenario 16: bootstrap with empty whitelist intersection${NC}"
+# PR#1 dropped CORE_RULE_WHITELIST: the no-args bootstrap now installs
+# EVERY core-tier rule the registry ships (interim `tier === 'core'`
+# gate). The exit 5 path therefore triggers only when the engine's
+# `core[]` is empty — there is nothing to bootstrap. We craft a fixture
+# whose unity core list is empty inline in a fresh tmp dir.
+echo -e "\n${BOLD}Scenario 16: bootstrap with no core-tier rules${NC}"
 
 S16_FIXTURE="$TMPDIR/s16-fixture"
 mkdir -p "$S16_FIXTURE/unity/core" "$S16_FIXTURE/unity/stack"
@@ -352,26 +354,26 @@ cat > "$S16_FIXTURE/manifest.json" << 'EOF'
   "generated": "2026-04-13T00:00:00.000Z",
   "engines": {
     "unity": {
-      "core": [
-        { "id": "custom-non-whitelisted-rule", "description": "Not in CORE_RULE_WHITELIST — forces bootstrap to exit 5", "version": "1.0.0" }
-      ],
-      "stack": []
+      "core": [],
+      "stack": [
+        { "id": "stack-only-rule", "description": "Stack rule with no core counterpart — bootstrap finds no core tier", "version": "1.0.0" }
+      ]
     }
   }
 }
 EOF
-cat > "$S16_FIXTURE/unity/core/custom-non-whitelisted-rule.md" << 'EOF'
+cat > "$S16_FIXTURE/unity/stack/stack-only-rule.md" << 'EOF'
 ---
 version: 1.0.0
 ---
-# Non-whitelisted core rule (test fixture)
+# Stack-only rule (test fixture)
 
-> **Scope**: Fixture rule used to exercise the empty-whitelist exit 5 path.
-> **Load when**: running the bootstrap empty-intersection regression test.
+> **Scope**: Fixture rule used to exercise the empty-core exit 5 path.
+> **Load when**: running the bootstrap no-core-tier regression test.
 EOF
 
-S16_DIR="$TMPDIR/s16-empty-whitelist"
-mkdir -p "$S16_DIR/.unikit/memory/core" "$S16_DIR/.unikit/memory/stack"
+S16_DIR="$TMPDIR/s16-empty-core"
+mkdir -p "$S16_DIR/.unikit/memory/code/core" "$S16_DIR/.unikit/memory/code/stack"
 cat > "$S16_DIR/.unikit.json" <<EOF
 {
   "version": "1.0.0",
@@ -381,16 +383,16 @@ cat > "$S16_DIR/.unikit.json" <<EOF
   "agents": [],
   "rulesRegistry": "$(normalize_path_for_json "$S16_FIXTURE")",
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
 
-assert_cmd_exit 5 "bootstrap with empty whitelist intersection exits 5" "$TMPDIR/s16.log" -- \
+assert_cmd_exit 5 "bootstrap with no core-tier rules exits 5" "$TMPDIR/s16.log" -- \
     env -C "$S16_DIR" node "$CLI" rules install
 
-assert_stdout_contains "$TMPDIR/s16.log" "whitelisted core rules" \
-    "error mentions the whitelist"
+assert_stdout_contains "$TMPDIR/s16.log" "No core-tier rules found" \
+    "error mentions the missing core tier"
 
 # ─────────────────────────────────────────────
 # Scenario 17 — Variadic install: --force refreshes disk content
@@ -402,12 +404,12 @@ echo -e "\n${BOLD}Scenario 17: --force overwrites manually-edited rule${NC}"
 
 S17_DIR="$TMPDIR/s17-force-overwrite"
 cp -r "$S12_DIR" "$S17_DIR"
-echo "MANUAL EDIT" >> "$S17_DIR/.unikit/memory/core/code-style.md"
+echo "MANUAL EDIT" >> "$S17_DIR/.unikit/memory/code/core/code-style.md"
 
 assert_cmd_exit 0 "rules install --force on edited file" "$TMPDIR/s17.log" -- \
     env -C "$S17_DIR" node "$CLI" rules install code-style --force
 
-if grep -q "MANUAL EDIT" "$S17_DIR/.unikit/memory/core/code-style.md"; then
+if grep -q "MANUAL EDIT" "$S17_DIR/.unikit/memory/code/core/code-style.md"; then
     fail "--force did not overwrite the manual edit"
 else
     pass "--force overwrote the manual edit"

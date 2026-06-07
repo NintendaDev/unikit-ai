@@ -50,7 +50,7 @@ make_registry_project() {
     local dir="$1"
     local engine="$2"
     local registry_value="$3"
-    mkdir -p "$dir/.unikit/memory/core" "$dir/.unikit/memory/stack"
+    mkdir -p "$dir/.unikit/memory/code/core" "$dir/.unikit/memory/code/stack"
     if [[ "$registry_value" == "__NULL__" ]]; then
         cat > "$dir/.unikit.json" <<EOF
 {
@@ -61,7 +61,7 @@ make_registry_project() {
   "agents": [],
   "rulesRegistry": null,
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -75,7 +75,7 @@ EOF
   "agents": [],
   "rulesRegistry": "$registry_value",
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -234,7 +234,7 @@ echo -e "\n${BOLD}Scenario 11: CRITICAL — set does not trigger sync${NC}"
 
 S11_DIR="$TMPDIR/s11-set-no-sync"
 make_registry_project "$S11_DIR" unity __NULL__
-cat > "$S11_DIR/.unikit/memory/core/code-style.md" << 'EOF'
+cat > "$S11_DIR/.unikit/memory/code/core/code-style.md" << 'EOF'
 # Locally-modified copy
 <!-- LOCAL-MODIFICATION-MARKER -->
 EOF
@@ -242,7 +242,7 @@ EOF
 node -e "
     const fs = require('fs');
     const j = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
-    j.rules.installed.core.push({
+    j.rules.installed.modules.code.core.push({
         name: 'code-style',
         source: 'local',
         origin: null,
@@ -252,12 +252,12 @@ node -e "
     fs.writeFileSync(process.argv[1], JSON.stringify(j, null, 2));
 " "$S11_DIR/.unikit.json"
 
-BEFORE_HASH="$(sha_of "$S11_DIR/.unikit/memory/core/code-style.md")"
+BEFORE_HASH="$(sha_of "$S11_DIR/.unikit/memory/code/core/code-style.md")"
 
 assert_cmd_exit 0 "registry set with locally-modified rule" "$TMPDIR/s11.log" -- \
     env -C "$S11_DIR" node "$CLI" rules registry set "$(fake_registry_path minimal-valid)"
 
-assert_file_unchanged "$S11_DIR/.unikit/memory/core/code-style.md" "$BEFORE_HASH" \
+assert_file_unchanged "$S11_DIR/.unikit/memory/code/core/code-style.md" "$BEFORE_HASH" \
     "registry set left the rule file untouched (no silent sync)"
 
 # ─────────────────────────────────────────────
@@ -299,16 +299,16 @@ echo -e "\n${BOLD}Scenario 14: CRITICAL — reset does not trigger sync${NC}"
 
 S14_DIR="$TMPDIR/s14-reset-no-sync"
 make_registry_project "$S14_DIR" unity "$(fake_registry_path minimal-valid)"
-cat > "$S14_DIR/.unikit/memory/core/code-style.md" << 'EOF'
+cat > "$S14_DIR/.unikit/memory/code/core/code-style.md" << 'EOF'
 # Locally-modified copy (reset scenario)
 <!-- MARKER -->
 EOF
-BEFORE_HASH_RESET="$(sha_of "$S14_DIR/.unikit/memory/core/code-style.md")"
+BEFORE_HASH_RESET="$(sha_of "$S14_DIR/.unikit/memory/code/core/code-style.md")"
 
 assert_cmd_exit 0 "rules registry reset with locally-modified rule" "$TMPDIR/s14.log" -- \
     env -C "$S14_DIR" node "$CLI" rules registry reset
 
-assert_file_unchanged "$S14_DIR/.unikit/memory/core/code-style.md" "$BEFORE_HASH_RESET" \
+assert_file_unchanged "$S14_DIR/.unikit/memory/code/core/code-style.md" "$BEFORE_HASH_RESET" \
     "reset left the rule file untouched (no silent sync)"
 
 # ─────────────────────────────────────────────

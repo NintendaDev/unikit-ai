@@ -59,7 +59,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -128,7 +128,7 @@ cat > "$NOSUB_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -168,7 +168,7 @@ cat > "$CODEX_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -239,7 +239,7 @@ cat > "$QWEN_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -290,7 +290,7 @@ fi
 # scripts/test-rules-sync.sh — this block only keeps the end-to-end
 # smoke that catches "update flow forgot to call sync".
 
-RULES_INDEX="$CLAUDE_DIR/.unikit/memory/RULES_INDEX.md"
+RULES_INDEX="$CLAUDE_DIR/.unikit/memory/code/RULES_INDEX.md"
 assert_exists "$RULES_INDEX" "RULES_INDEX.md should exist after update"
 assert_contains "$RULES_INDEX" "## Core" "RULES_INDEX should have Core section"
 assert_contains "$RULES_INDEX" "code-style" "RULES_INDEX should contain seeded core rule"
@@ -313,11 +313,11 @@ assert_contains "$RULES_INDEX" "code-style" "RULES_INDEX should contain seeded c
 # the same id exists in the remote catalog.
 
 LOCAL_DIR="$TMPDIR/test-local-pres"
-mkdir -p "$LOCAL_DIR/.unikit/memory/stack"
+mkdir -p "$LOCAL_DIR/.unikit/memory/code/stack"
 
 CUSTOM_CONTENT="# My custom rngneeds rules
 This file was manually edited by the user."
-echo "$CUSTOM_CONTENT" > "$LOCAL_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_RNGNEEDS}.md"
+echo "$CUSTOM_CONTENT" > "$LOCAL_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_RNGNEEDS}.md"
 
 cat > "$LOCAL_DIR/.unikit.json" << 'EOF'
 {
@@ -335,7 +335,7 @@ cat > "$LOCAL_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -346,10 +346,10 @@ run_update "$LOCAL_DIR"
 
 # Custom rngneeds.md content must survive the update (syncRulesState Phase 1
 # tags it as `source: local`; Phase 2 skips it because origin != registry).
-assert_exists "$LOCAL_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_RNGNEEDS}.md" "local rule file should not be deleted"
-assert_file_content "$LOCAL_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_RNGNEEDS}.md" "$CUSTOM_CONTENT" \
+assert_exists "$LOCAL_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_RNGNEEDS}.md" "local rule file should not be deleted"
+assert_file_content "$LOCAL_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_RNGNEEDS}.md" "$CUSTOM_CONTENT" \
   "local rule should preserve user content, not be overwritten by registry"
-assert_exists "$LOCAL_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_UNITASK}.md" "seeded rule should be present"
+assert_exists "$LOCAL_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_UNITASK}.md" "seeded rule should be present"
 
 # Config should no longer carry the legacy `declined` field after save.
 DECLINED_FIELD=$(node -e "
@@ -401,7 +401,7 @@ cat > "$GODOT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -426,7 +426,7 @@ echo "  ✓ ENGINE_RULES.md: installed for godot engine (both skills)"
 # ─────────────────────────────────────────────────────
 
 # Godot core rules should be installed from memory/godot/core/
-assert_exists "$GODOT_DIR/.unikit/memory/core/${CORE_RULE_GODOT_CODE_STYLE}.md" "godot core rule should be installed"
+assert_exists "$GODOT_DIR/.unikit/memory/code/core/${CORE_RULE_GODOT_CODE_STYLE}.md" "godot core rule should be installed"
 
 echo "  ✓ engine-specific rules: godot core rules installed"
 
@@ -457,7 +457,7 @@ cat > "$MCP_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -527,7 +527,7 @@ cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -537,8 +537,8 @@ seed_rule "$COMPAT_DIR" unity stack "$STACK_RULE_UNITY_UNITASK"
 run_update "$COMPAT_DIR"
 
 # Seeded rules must survive the update (sync registers them as local).
-assert_exists "$COMPAT_DIR/.unikit/memory/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "backward compat: core rule present after sync"
-assert_exists "$COMPAT_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_UNITASK}.md" "backward compat: stack rule present after sync"
+assert_exists "$COMPAT_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "backward compat: core rule present after sync"
+assert_exists "$COMPAT_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_UNITASK}.md" "backward compat: stack rule present after sync"
 
 # Engine templates should be installed (defaults to unity)
 assert_exists "$COMPAT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" \
@@ -797,7 +797,7 @@ cat > "$CODEX_MCP_RULES_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
