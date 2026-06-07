@@ -54,7 +54,7 @@ write_sync_config() {
     mkdir -p "$project/.unikit/memory/code/core" "$project/.unikit/memory/code/stack"
     cat > "$project/.unikit.json" <<EOF
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engine": "$engine",
   "engineMcpKey": null,
   "mcp": { "servers": [] },
@@ -543,6 +543,35 @@ assert_exists "$S19_DIR/.unikit/memory/code/RULES_INDEX.md" \
     "in-sync project still regenerated RULES_INDEX.md"
 assert_stdout_contains "$S19_DIR/.unikit/memory/code/RULES_INDEX.md" "code-style" \
     "RULES_INDEX lists code-style"
+
+# ─────────────────────────────────────────────
+# Scenario 21 — un-migrated project: sync refuses with exit 8
+# ─────────────────────────────────────────────
+# Regression for the real footgun: on a version:1.0.1 project with the legacy
+# flat layout, `rules sync` used to reconcile against the (empty) modular path
+# and splice every rule out of .unikit.json. The guard must refuse (exit 8) and
+# leave the config byte-for-byte unchanged BEFORE any disk reconciliation.
+echo -e "\n${BOLD}Scenario 21: un-migrated project refused (exit 8)${NC}"
+
+S21_DIR="$TMPDIR/s21-unmigrated"
+use_unmigrated_registry "$S21_DIR" unity minimal-valid
+S21_SHA="$(sha_of "$S21_DIR/.unikit.json")"
+
+assert_cmd_exit 8 "rules sync on un-migrated project exits 8" "$TMPDIR/s21.log" -- \
+    env -C "$S21_DIR" node "$CLI" rules sync
+assert_stdout_contains "$TMPDIR/s21.log" "out of date" "row21 explains the project is out of date"
+assert_file_unchanged "$S21_DIR/.unikit.json" "$S21_SHA" \
+    "row21 .unikit.json left byte-for-byte unchanged (state not wiped)"
+
+# ─────────────────────────────────────────────
+# Scenario 22 — migrated project still syncs (exit 0)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 22: migrated project still syncs (exit 0)${NC}"
+
+S22_DIR="$TMPDIR/s22-migrated"
+use_fake_registry "$S22_DIR" unity minimal-valid
+assert_cmd_exit 0 "rules sync on migrated project exits 0" "$TMPDIR/s22.log" -- \
+    env -C "$S22_DIR" node "$CLI" rules sync
 
 # ─────────────────────────────────────────────
 # Summary

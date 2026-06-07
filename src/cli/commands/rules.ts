@@ -5,8 +5,11 @@
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs-extra';
+import semver from 'semver';
 import { loadConfig, saveConfig, getModuleTier } from '../../core/config.js';
 import type { UniKitConfig } from '../../core/config.js';
+import { planMigrationChain } from '../../core/migrations/runner.js';
+import { PROJECT_MEMORY_MIGRATIONS, MEMORY_MODULAR_MIN_VERSION } from '../../core/memory-migrations/index.js';
 import {
   createRegistry, detectRegistryKind, resolveRegistryUrl, resolveRegistryPath,
   OFFICIAL_REGISTRY_URL, LATEST_SCHEMA, GitRegistry, FsRegistry,
@@ -39,6 +42,7 @@ export const EXIT = {
   VALIDATION_FAILED: 5,
   REGISTRY_ALREADY_INITIALIZED: 6,
   PATH_OCCUPIED: 7,
+  PROJECT_OUT_OF_DATE: 8,
 } as const;
 
 function exitWithCode(code: number): never {
@@ -60,6 +64,52 @@ async function loadConfigOrExit(projectDir: string): Promise<UniKitConfig> {
 
 function buildRegistry(config: UniKitConfig): ChainedRegistry {
   return createRegistry(config.rulesRegistry, config.engine);
+}
+
+/**
+ * True when the project's memory layout has not been migrated to the modular
+ * `code/` module. Two signals, OR-combined (defense-in-depth — they answer
+ * different questions):
+ *
+ *   - versionStale: `.unikit.json.version` is a valid semver below
+ *     `MEMORY_MODULAR_MIN_VERSION`. Broad staleness — the CLI was upgraded but
+ *     `update` (the sole migrator) never ran, so skills/system are stale too.
+ *     A missing or unparseable `version` cannot signal staleness here (a bare
+ *     `semver.lt` would THROW on garbage); `diskPending` is the ground-truth
+ *     fallback in that case.
+ *   - diskPending: the project memory migration chain still reports pending
+ *     work (legacy flat `memory/{core,stack}` not yet wrapped under `code/`).
+ *     Operational hazard — a sync now reconciles against the empty new path and
+ *     splices every rule out of `.unikit.json` state.
+ *
+ * Truth table (ver × disk): ok/ok → false; ok/pending → true (disk is ground
+ * truth); stale/modular → true (accepted false-positive: cost = run `update`
+ * once); stale/pending → true. OR (not AND) keeps the two mixed rows true.
+ */
+async function isProjectStale(projectDir: string, config: UniKitConfig): Promise<boolean> {
+  const version = config.version;
+  const versionStale = !!semver.valid(version) && semver.lt(version, MEMORY_MODULAR_MIN_VERSION);
+  const diskPending = (await planMigrationChain({ projectDir }, PROJECT_MEMORY_MIGRATIONS)).length > 0;
+  return versionStale || diskPending;
+}
+
+/**
+ * Refuse `rules sync` / `rules install` on a stale project (exit 8). `update`
+ * is the sole migrator — running sync/install first would reconcile against the
+ * empty modular path and wipe the installed-rule state. Refuse-over-autofix:
+ * point the user at `update` rather than silently migrating inside a command
+ * that is not the migrator. Must be called AFTER `loadConfigOrExit` but BEFORE
+ * the registry is built/fetched, so a stale project fails fast with exit 8 and
+ * never surfaces an unrelated exit 2 from an unreachable registry.
+ */
+async function assertProjectMigrated(projectDir: string, config: UniKitConfig): Promise<void> {
+  if (await isProjectStale(projectDir, config)) {
+    console.error(chalk.red(
+      'Project is out of date — its memory layout has not been migrated to the modular `code/` module.',
+    ));
+    console.error(chalk.yellow('Run `unikit-ai update` first, then retry.'));
+    exitWithCode(EXIT.PROJECT_OUT_OF_DATE);
+  }
 }
 
 // =====================================================================
@@ -498,6 +548,11 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   const config = await loadConfigOrExit(projectDir);
   const engineId = config.engine;
 
+  // Refuse on a stale (un-migrated) project BEFORE touching the registry, so a
+  // stale project fails fast with exit 8 instead of an unreachable-registry
+  // exit 2. `update` is the sole migrator.
+  await assertProjectMigrated(projectDir, config);
+
   // Fetch manifest exactly once per invocation — the single biggest reason
   // the legacy per-id `rulesInstallCommand` was painful to call from
   // `/unikit` Step 9.2 is that it hit the registry chain N times for N
@@ -698,6 +753,11 @@ export async function rulesSyncCommand(options: RulesSyncOptions = {}): Promise<
   const config = await loadConfigOrExit(projectDir);
   const engineId = config.engine;
 
+  // Refuse on a stale (un-migrated) project BEFORE touching the registry — a
+  // sync against the empty modular path would splice every rule out of state.
+  // `update` is the sole migrator.
+  await assertProjectMigrated(projectDir, config);
+
   const registry = buildRegistry(config);
   const result = await syncAllModules(projectDir, engineId, config, registry, {
     replace: options.replace === true,
@@ -731,12 +791,18 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
   const effectiveRegistry = resolveRegistryUrl(config.rulesRegistry);
   const registryConfigured = config.rulesRegistry !== null && config.rulesRegistry.trim().length > 0;
 
+  // Non-blocking staleness probe. `rules status` is a read — it never refuses,
+  // so this is surfaced as a warning (human) / `outOfDate` field (JSON), NOT an
+  // exit code. It uses the same signal `rules sync` / `rules install` refuse on.
+  const outOfDate = await isProjectStale(projectDir, config);
+
   if (options.json) {
     const output = {
       engine: config.engine,
       registry: effectiveRegistry,
       registryKind: detectRegistryKind(effectiveRegistry),
       registryConfigured,
+      outOfDate,
       rules: allRules.map(r => ({
         name: r.name,
         category: r.category,
@@ -751,6 +817,14 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
   }
 
   console.log(chalk.bold(`\nInstalled rules (engine: ${config.engine}):\n`));
+
+  if (outOfDate) {
+    console.log(chalk.yellow(
+      '⚠ Project is out of date — memory layout not migrated to the modular `code/` module.',
+    ));
+    console.log(chalk.yellow('  Run `unikit-ai update` before `rules sync` / `rules install`.'));
+    console.log('');
+  }
 
   if (registryConfigured) {
     console.log(chalk.dim(`Registry: ${effectiveRegistry}`));

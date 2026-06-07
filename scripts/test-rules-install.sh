@@ -318,7 +318,7 @@ S15_DIR="$TMPDIR/s15-engine-missing"
 mkdir -p "$S15_DIR/.unikit/memory/code/core" "$S15_DIR/.unikit/memory/code/stack"
 cat > "$S15_DIR/.unikit.json" <<EOF
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engine": "unreal-engine-6",
   "engineMcpKey": null,
   "mcp": { "servers": [] },
@@ -376,7 +376,7 @@ S16_DIR="$TMPDIR/s16-empty-core"
 mkdir -p "$S16_DIR/.unikit/memory/code/core" "$S16_DIR/.unikit/memory/code/stack"
 cat > "$S16_DIR/.unikit.json" <<EOF
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engine": "unity",
   "engineMcpKey": null,
   "mcp": { "servers": [] },
@@ -414,6 +414,39 @@ if grep -q "MANUAL EDIT" "$S17_DIR/.unikit/memory/code/core/code-style.md"; then
 else
     pass "--force overwrote the manual edit"
 fi
+
+# ─────────────────────────────────────────────
+# Scenario 18 — un-migrated project: install refuses with exit 8
+# ─────────────────────────────────────────────
+# Both the no-arg bootstrap (/unikit Step 9.2) and the variadic form must
+# refuse on a stale project and leave .unikit.json untouched. The guard runs
+# before the manifest fetch, so the local fixture is never consulted.
+echo -e "\n${BOLD}Scenario 18: un-migrated project refused (exit 8)${NC}"
+
+S18_DIR="$TMPDIR/s18-unmigrated"
+use_unmigrated_registry "$S18_DIR" unity minimal-valid
+S18_SHA="$(sha_of "$S18_DIR/.unikit.json")"
+
+# No-arg bootstrap path.
+assert_cmd_exit 8 "rules install (no-arg bootstrap) on un-migrated project exits 8" "$TMPDIR/s18a.log" -- \
+    env -C "$S18_DIR" node "$CLI" rules install
+assert_stdout_contains "$TMPDIR/s18a.log" "out of date" "row18a explains the project is out of date"
+
+# Variadic path.
+assert_cmd_exit 8 "rules install <id> on un-migrated project exits 8" "$TMPDIR/s18b.log" -- \
+    env -C "$S18_DIR" node "$CLI" rules install code-style
+assert_file_unchanged "$S18_DIR/.unikit.json" "$S18_SHA" \
+    "row18 .unikit.json left byte-for-byte unchanged (state not wiped)"
+
+# ─────────────────────────────────────────────
+# Scenario 19 — migrated project still installs (exit 0)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 19: migrated project still installs (exit 0)${NC}"
+
+S19_DIR="$TMPDIR/s19-migrated"
+use_fake_registry "$S19_DIR" unity minimal-valid
+assert_cmd_exit 0 "rules install code-style on migrated project exits 0" "$TMPDIR/s19.log" -- \
+    env -C "$S19_DIR" node "$CLI" rules install code-style
 
 # ─────────────────────────────────────────────
 # Summary

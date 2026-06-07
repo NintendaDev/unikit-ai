@@ -10,9 +10,11 @@
 #     would be vacuous.
 #   Part B (static) — grep src + scripts + skills + subagents for residual
 #     path-qualified flat literals. Only docs/ (rewritten in PR#5) and the bare
-#     `RULES_INDEX.md` filename are out of scope. Two files are excluded because
-#     their job is to handle/prove the legacy layout: this guard itself and the
-#     memory-migration smoke test (which must seed the flat layout to migrate it).
+#     `RULES_INDEX.md` filename are out of scope. Three files are excluded
+#     because their job is to handle/prove the legacy layout: this guard itself,
+#     the memory-migration smoke test (which must seed the flat layout to
+#     migrate it), and test-fixtures.sh (its `use_unmigrated_registry` helper
+#     seeds the flat layout so the exit-8 staleness guard can be exercised).
 #
 # Usage: ./scripts/test-golden-guard.sh
 
@@ -81,7 +83,8 @@ set +e
 OFFENDERS=$(grep -rnE "$FLAT_PATTERN" \
     "$ROOT_DIR/src" "$ROOT_DIR/scripts" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" \
     --exclude=test-golden-guard.sh \
-    --exclude=test-memory-migration.sh)
+    --exclude=test-memory-migration.sh \
+    --exclude=test-fixtures.sh)
 set -e
 
 if [[ -z "$OFFENDERS" ]]; then

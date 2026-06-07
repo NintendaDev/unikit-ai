@@ -387,7 +387,7 @@ use_fake_registry() {
     mkdir -p "$project_dir/.unikit/memory/code/core" "$project_dir/.unikit/memory/code/stack"
     cat > "$project_dir/.unikit.json" <<JSON
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engine": "$engine",
   "engineMcpKey": null,
   "mcp": { "servers": [] },
@@ -399,6 +399,68 @@ use_fake_registry() {
       "modules": {
         "code": {
           "core": [],
+          "stack": []
+        }
+      }
+    }
+  },
+  "managedSkills": {}
+}
+JSON
+}
+
+# use_unmigrated_registry <project_dir> <engine> <fixture_name>
+#
+# Like `use_fake_registry`, but seeds a project that PREDATES the modular
+# memory migration — the exact shape the exit-8 staleness guard refuses on:
+#   - legacy flat layout `.unikit/memory/{core,stack}` (NO `memory/code/`),
+#     so the project memory migration chain still reports pending work
+#     (diskPending);
+#   - top-level `version: "1.0.1"` (< MEMORY_MODULAR_MIN_VERSION), so the
+#     version signal also fires (versionStale);
+#   - `rules.installed.modules.code.core` lists `code-style` with a real file
+#     on disk under the flat `memory/core/`, so a wipe (sync reconciling
+#     against the empty `memory/code/`) would be observable in state.
+#
+# A project in this state must make `rules sync` / `rules install` exit 8 and
+# leave `.unikit.json` byte-for-byte unchanged.
+use_unmigrated_registry() {
+    local project_dir="$1"
+    local engine="$2"
+    local fixture_name="$3"
+
+    local fixture_path
+    fixture_path="$(fake_registry_path "$fixture_name")"
+    if [[ ! -f "$fixture_path/manifest.json" ]]; then
+        echo "use_unmigrated_registry: fixture '$fixture_name' missing manifest.json at $fixture_path" >&2
+        exit 1
+    fi
+
+    # Legacy flat layout — deliberately NO memory/code/ wrapper.
+    mkdir -p "$project_dir/.unikit/memory/core" "$project_dir/.unikit/memory/stack"
+    cat > "$project_dir/.unikit/memory/core/code-style.md" <<'MD'
+# code-style
+
+> **Scope**: project
+> **Load when**: writing code in an un-migrated project fixture.
+MD
+
+    cat > "$project_dir/.unikit.json" <<JSON
+{
+  "version": "1.0.1",
+  "engine": "$engine",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
+  "rulesRegistry": "$fixture_path",
+  "rules": {
+    "installed": {
+      "version": "1.0.1",
+      "modules": {
+        "code": {
+          "core": [
+            { "name": "code-style", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "deadbeef" }
+          ],
           "stack": []
         }
       }

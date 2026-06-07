@@ -219,6 +219,45 @@ assert_json_field "$TMPDIR/s7.log" engine unknown-xyz \
     "status echoes the bogus engine without validating it"
 
 # ─────────────────────────────────────────────
+# Scenario 8: un-migrated project → non-blocking out-of-date warning
+# ─────────────────────────────────────────────
+# `rules status` is a read — it never refuses, so a stale project still exits 0
+# but surfaces the warning (human) / `outOfDate: true` (JSON). Same signal the
+# sync/install guard refuses on.
+echo -e "\n${BOLD}Scenario 8: un-migrated project warns (outOfDate)${NC}"
+
+S8_DIR="$TMPDIR/s8-unmigrated"
+use_unmigrated_registry "$S8_DIR" unity minimal-valid
+
+assert_cmd_exit 0 "rules status --json on un-migrated exits 0" "$TMPDIR/s8-json.log" -- \
+    env -C "$S8_DIR" node "$CLI" rules status --json
+assert_json_field "$TMPDIR/s8-json.log" outOfDate true \
+    "status JSON reports outOfDate=true on a stale project"
+
+assert_cmd_exit 0 "rules status (human) on un-migrated exits 0" "$TMPDIR/s8-human.log" -- \
+    env -C "$S8_DIR" node "$CLI" rules status
+assert_stdout_contains "$TMPDIR/s8-human.log" "out of date" \
+    "human status shows the out-of-date warning"
+
+# ─────────────────────────────────────────────
+# Scenario 9: migrated project → no warning, outOfDate=false
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 9: migrated project — no warning${NC}"
+
+S9_DIR="$TMPDIR/s9-migrated"
+use_fake_registry "$S9_DIR" unity minimal-valid
+
+assert_cmd_exit 0 "rules status --json on migrated exits 0" "$TMPDIR/s9-json.log" -- \
+    env -C "$S9_DIR" node "$CLI" rules status --json
+assert_json_field "$TMPDIR/s9-json.log" outOfDate false \
+    "status JSON reports outOfDate=false on a migrated project"
+
+assert_cmd_exit 0 "rules status (human) on migrated exits 0" "$TMPDIR/s9-human.log" -- \
+    env -C "$S9_DIR" node "$CLI" rules status
+assert_not_contains "$TMPDIR/s9-human.log" "out of date" \
+    "human status omits the warning when migrated"
+
+# ─────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────
 print_summary_and_exit "rules status Smoke Tests"

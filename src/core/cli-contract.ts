@@ -25,6 +25,7 @@ export const RULES_EXIT_CODES: ExitCodeEntry[] = [
   { code: 5, meaning: 'Registry validation failed (bad manifest, schema mismatch, engine missing, no always-tagged (core) rules)' },
   { code: 6, meaning: 'Registry already initialized at target path (rules registry init)' },
   { code: 7, meaning: 'Target path occupied by non-registry files (rules registry init)' },
+  { code: 8, meaning: 'Project out of date — run `unikit-ai update` before `rules sync` / `rules install` (memory layout not migrated to the modular `code/` module)' },
 ];
 
 // --- Commands ---
@@ -45,11 +46,11 @@ export const RULES_COMMANDS: CommandEntry[] = [
     command: 'unikit-ai rules install [ids...]',
     description: 'Install rules from the registry. With no arguments, installs all always-tagged (core) rules (the bootstrap used by /unikit Step 9.2). With one or more ids, installs them in a single call with one manifest fetch and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.',
     flags: ['--force'],
-    outputFormat: 'Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 5 engine missing or no always-tagged (core) rules.',
+    outputFormat: 'Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 5 engine missing or no always-tagged (core) rules; exit 8 project out of date (run `unikit-ai update` first).',
   },
   {
     command: 'unikit-ai rules sync',
-    description: 'Reconcile disk ↔ .unikit.json state and regenerate RULES_INDEX.md. By default refreshes registry-sourced rules whose version changed and skips locally-modified files with a warning. Use --replace to overwrite local modifications and re-fetch rules at the same version; use --prune to remove obsolete stack rules that vanished from the registry; combine both for a full mirror (the old `sync --force`).',
+    description: 'Reconcile disk ↔ .unikit.json state and regenerate RULES_INDEX.md. By default refreshes registry-sourced rules whose version changed and skips locally-modified files with a warning. Use --replace to overwrite local modifications and re-fetch rules at the same version; use --prune to remove obsolete stack rules that vanished from the registry; combine both for a full mirror (the old `sync --force`). Exits 8 when the project memory layout has not been migrated to the modular `code/` module — run `unikit-ai update` first.',
     flags: ['--replace', '--prune'],
   },
   {
