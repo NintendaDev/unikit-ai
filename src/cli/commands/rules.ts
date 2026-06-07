@@ -5,21 +5,27 @@
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs-extra';
-import { spawnSync } from 'child_process';
 import { loadConfig, saveConfig, getModuleTier } from '../../core/config.js';
 import type { UniKitConfig } from '../../core/config.js';
-import { createRegistry, detectRegistryKind, resolveRegistryUrl, OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
-import type { RulesRegistry, RegistryRule, RuleCategory, RegistryKind } from '../../core/registry/index.js';
-import { validateRegistry, validateUrlFormat, normalizeRegistryUrl, manifestEngineIds } from '../../core/registry/validator.js';
+import {
+  createRegistry, detectRegistryKind, resolveRegistryUrl, resolveRegistryPath,
+  OFFICIAL_REGISTRY_URL, LATEST_SCHEMA, GitRegistry, FsRegistry,
+} from '../../core/registry/index.js';
+import type { RulesRegistry, ChainedRegistry, RegistryRule, RegistryManifest, RuleCategory, RegistryKind } from '../../core/registry/index.js';
+import { validateRegistry, validateUrlFormat, normalizeRegistryUrl, validateManifestShape, manifestEngineIds } from '../../core/registry/validator.js';
+import { runRegistryDiskMigration } from '../../core/registry/migrations/index.js';
 import { getAllEngineIds } from '../../core/engines.js';
 import {
   generateRulesIndex, loadRequiredByMap,
   parseRuleMetadataFromContent, normalizeRuleId, type InstalledByTier,
 } from '../../core/installer/rules-index.js';
 import { syncAllModules, type SyncRulesEvent } from '../../core/installer/rules-sync.js';
-import { CODE_MODULE_ID, REFERENCES_DIR_NAME, moduleTierDir } from '../../core/constants.js';
+import {
+  CODE_MODULE_ID, GAMEDESIGN_MODULE_ID, GAMEDESIGN_TIERS,
+  RULE_CATEGORIES, REFERENCES_DIR_NAME, moduleTierDir,
+} from '../../core/constants.js';
 import { MODULE_REGISTRY, getModule } from '../../core/modules.js';
-import { writeTextFile, fileExists, listFiles, removeFile, getBundledRegistryDir } from '../../utils/fs.js';
+import { writeTextFile, fileExists, listFiles, removeFile, readJsonFile, writeJsonFile, getBundledRegistryDir } from '../../utils/fs.js';
 import { createHash } from 'crypto';
 import { logInfo, logWarn, logError } from '../../utils/log.js';
 
@@ -52,7 +58,7 @@ async function loadConfigOrExit(projectDir: string): Promise<UniKitConfig> {
   return config;
 }
 
-function buildRegistry(config: UniKitConfig): RulesRegistry {
+function buildRegistry(config: UniKitConfig): ChainedRegistry {
   return createRegistry(config.rulesRegistry, config.engine);
 }
 
@@ -73,7 +79,9 @@ export async function rulesListCommand(options: { json?: boolean; engine?: strin
     exitWithCode(EXIT.INVALID_ARGS);
   }
 
-  const registry = buildRegistry(config);
+  // Build the registry keyed to the (possibly overridden) engine so the
+  // module accessors below resolve the same engine the user asked for.
+  const registry = createRegistry(config.rulesRegistry, engineId);
   const manifest = await registry.fetchManifest();
 
   if (!manifest) {
@@ -81,13 +89,17 @@ export async function rulesListCommand(options: { json?: boolean; engine?: strin
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  const engineRules = manifest.engines[engineId];
-  if (!engineRules) {
+  // Explicit engine-existence predicate. The registry accessors return `[]` for
+  // BOTH "engine missing" and "tier empty", so the not-found (exit 1) contract
+  // must be re-established here before reading rules through the accessors.
+  if (!manifestEngineIds(manifest).includes(engineId)) {
     console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
     const available = manifestEngineIds(manifest).join(', ');
     console.error(chalk.dim(`Available: ${available}`));
     exitWithCode(EXIT.NOT_FOUND);
   }
+
+  const engineRules = { core: registry.getEngineRules('core'), stack: registry.getEngineRules('stack') };
 
   const allRules = [
     ...engineRules.core.map(r => ({ ...r, category: 'core' as const })),
@@ -163,11 +175,14 @@ export async function rulesShowCommand(id: string, options: { references?: boole
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  const engineRules = manifest.engines[engineId];
-  if (!engineRules) {
+  // Explicit engine-existence predicate before reading via the accessors —
+  // they cannot tell "engine missing" (exit 1) from "tier empty" on their own.
+  if (!manifestEngineIds(manifest).includes(engineId)) {
     console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
     exitWithCode(EXIT.NOT_FOUND);
   }
+
+  const engineRules = { core: registry.getEngineRules('core'), stack: registry.getEngineRules('stack') };
 
   // Find rule by id via canonical lowercase-hyphen normalization.
   const normalizedId = normalizeRuleId(id);
@@ -227,7 +242,7 @@ export async function rulesShowCommand(id: string, options: { references?: boole
 //   0  at least one rule installed/already-installed, no fatal errors
 //   1  every requested id failed (fetch-failed or not-found)
 //   2  registry chain unreachable (fatal — abort partition, nothing installed)
-//   5  engine missing from manifest OR no-args call with empty whitelist
+//   5  engine missing from manifest OR no-args call with no always-tagged rules
 //
 //   "Already installed" is absorbed into the aggregated report as a per-rule
 //   `↻` line and does NOT emit exit 4 — that keeps `/unikit` Step 9.2 idempotent
@@ -495,20 +510,22 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  const engineRules = manifest.engines[engineId];
-  if (!engineRules) {
+  // Explicit engine-existence predicate. The accessors below collapse "engine
+  // missing" and "tier empty" to `[]`, so the exit-5 contract is re-established
+  // here before reading rules.
+  if (!manifestEngineIds(manifest).includes(engineId)) {
     console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
     const available = manifestEngineIds(manifest).join(', ');
     console.error(chalk.dim(`Available: ${available}`));
     exitWithCode(EXIT.VALIDATION_FAILED);
   }
 
+  const engineRules = { core: registry.getEngineRules('core'), stack: registry.getEngineRules('stack') };
+
   // Resolve origin once — every rule installed in one invocation comes from
-  // the same resolved registry tier.
-  let origin: 'primary' | 'official' | 'bundled' | undefined;
-  if ('getResolvedOrigin' in registry) {
-    origin = (registry as { getResolvedOrigin(): 'primary' | 'official' | 'bundled' | null }).getResolvedOrigin() ?? undefined;
-  }
+  // the same resolved registry tier (the `code` module's winning source).
+  const origin: 'primary' | 'official' | 'bundled' | undefined =
+    registry.getResolvedOrigin(CODE_MODULE_ID) ?? undefined;
 
   const noArgsBootstrap = ids.length === 0;
 
@@ -527,18 +544,19 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   // on the next Phase 1 pass and the duplicate persists. The variadic
   // `installOneRule` preserves the same semantics.
   //
-  // Core-gate (interim for PR#1): the no-args bootstrap installs EVERY
-  // core-tier rule the registry ships for this engine. `CORE_RULE_WHITELIST`
-  // is gone — on the official registry this set equals the former whitelist;
-  // for unofficial registries it is the intended target behaviour. PR#2
-  // (D3/OQ2) replaces this implicit `tier === 'core'` gate with an explicit
-  // `rule.always === true` field injected by the schema:1→2 registry migration.
+  // Core-gate (always-tagged): the no-args bootstrap installs every rule the
+  // registry marks `always === true` for this engine, across both tiers. The
+  // flag is injected by the schema:1→2 registry normalization
+  // (`always = tier === 'core'`) and emitted directly by schema:2 sources, so
+  // on the official registry this set equals the former core whitelist while
+  // custom registries can opt stack rules into the bootstrap. The legacy
+  // `CORE_RULE_WHITELIST` and the interim `tier === 'core'` gate are both gone.
   const resolvedIds: string[] = noArgsBootstrap
-    ? engineRules.core.map(r => r.id)
+    ? [...engineRules.core, ...engineRules.stack].filter(r => r.always === true).map(r => r.id)
     : ids;
 
   if (noArgsBootstrap && resolvedIds.length === 0) {
-    console.error(chalk.red(`No core-tier rules found in registry for engine "${engineId}".`));
+    console.error(chalk.red(`No always-tagged (core) rules found in registry for engine "${engineId}".`));
     exitWithCode(EXIT.VALIDATION_FAILED);
   }
 
@@ -959,14 +977,11 @@ async function classifyRegistryInitTarget(targetDir: string): Promise<'ok' | 'al
 
   if (entries.includes('manifest.json')) return 'already-registry';
 
-  // If any known engine dir is present, treat as initialized.
-  const engineIds = getAllEngineIds();
-  for (const engineId of engineIds) {
-    if (entries.includes(engineId)) {
-      const engineDir = path.join(targetDir, engineId);
-      const s = await fs.stat(engineDir);
-      if (s.isDirectory()) return 'already-registry';
-    }
+  // schema:2 layout: a `code/` module directory signals an initialized registry.
+  if (entries.includes(CODE_MODULE_ID)) {
+    const codeDir = path.join(targetDir, CODE_MODULE_ID);
+    const s = await fs.stat(codeDir);
+    if (s.isDirectory()) return 'already-registry';
   }
 
   return 'occupied';
@@ -986,9 +1001,17 @@ async function copyRegistryTemplateFiles(bundledDir: string, targetDir: string):
 }
 
 async function createRegistryEngineDirs(targetDir: string, engineIds: string[]): Promise<void> {
+  // Code module — engine-partitioned: `code/<engine>/<tier>`.
   for (const engineId of engineIds) {
-    await fs.ensureDir(path.join(targetDir, engineId, 'core'));
-    await fs.ensureDir(path.join(targetDir, engineId, 'stack'));
+    for (const tier of RULE_CATEGORIES) {
+      await fs.ensureDir(path.join(targetDir, CODE_MODULE_ID, engineId, tier));
+    }
+  }
+  // Reserved game-design module — non-engine: `gamedesign/<tier>`. Scaffolded
+  // so a fresh registry matches the full D8 layout, even though it is not yet
+  // fetched or registered as a module.
+  for (const tier of GAMEDESIGN_TIERS) {
+    await fs.ensureDir(path.join(targetDir, GAMEDESIGN_MODULE_ID, tier));
   }
 }
 
@@ -1042,23 +1065,230 @@ export async function rulesRegistryInitCommand(pathArg?: string): Promise<void> 
   await copyRegistryTemplateFiles(bundledDir, targetDir);
   await createRegistryEngineDirs(targetDir, engineIds);
 
-  // Run build-manifest.js via absolute Node binary — works even when `node`
-  // is absent from the user's PATH (npx-launched sessions, etc.).
-  const buildScript = path.join(targetDir, 'scripts', 'build-manifest.js');
-  const result = spawnSync(process.execPath, [buildScript], {
-    cwd: targetDir,
-    stdio: 'inherit',
+  // Write a schema:2 manifest directly. `init` only runs on an empty/ok target
+  // (see `classifyRegistryInitTarget`), so every tier array is empty — this is
+  // self-contained local CLI code, independent of the (cross-repo) schema of the
+  // copied build-manifest.js. The copied build-manifest.js stays as the
+  // maintainer's regeneration tool once they add rule files.
+  await writeJsonFile(path.join(targetDir, 'manifest.json'), {
+    schema: LATEST_SCHEMA,
+    generated: new Date().toISOString(),
+    modules: {
+      [CODE_MODULE_ID]: {
+        engines: Object.fromEntries(
+          engineIds.map(engineId => [
+            engineId,
+            Object.fromEntries(RULE_CATEGORIES.map(tier => [tier, []])),
+          ]),
+        ),
+      },
+      [GAMEDESIGN_MODULE_ID]: {
+        tiers: Object.fromEntries(GAMEDESIGN_TIERS.map(tier => [tier, []])),
+      },
+    },
   });
-  if (result.status !== 0) {
-    logError(REGISTRY_INIT_TAG, `build-manifest.js failed with exit code ${result.status}`);
-    exitWithCode(EXIT.VALIDATION_FAILED);
-  }
 
   logInfo(
     REGISTRY_INIT_TAG,
-    `initialized at ${targetDir} (engines: ${engineIds.join(', ')})`,
+    `initialized at ${targetDir} (schema:${LATEST_SCHEMA}, engines: ${engineIds.join(', ')})`,
   );
-  console.log(chalk.green(`✓ Registry scaffold created at ${targetDir}`));
+  console.log(chalk.green(`✓ Registry scaffold created at ${targetDir} (schema:${LATEST_SCHEMA})`));
   console.log(chalk.dim(`  Engines: ${engineIds.join(', ')}`));
   console.log(chalk.dim(`  Files:   package.json, RULE_TEMPLATE.md, scripts/build-manifest.js, manifest.json`));
+}
+
+// =====================================================================
+// registry migrate — maintainer on-disk schema:1 → schema:2 relocation
+// =====================================================================
+//
+// `unikit-ai rules registry migrate [path]`
+//
+// Physically relocates a LOCAL registry from the flat schema:1 layout
+// (`<engine>/<tier>/`) to the schema:2 layout (`code/<engine>/<tier>/`) and
+// rewrites manifest.json to a clean schema:2. Idempotent: a second run is a
+// sha-stable no-op (the migration's `detect` treats schema ≥ 2 as "no work").
+//
+// Target resolution:
+//   - an explicit `path` argument wins;
+//   - otherwise the configured `rulesRegistry`, but ONLY when it is local —
+//     remote registries cannot be migrated by the CLI (clone locally first).
+//
+// Exit codes: 0 (migrated or already-latest), 1 (target manifest missing),
+//   3 (no local target to migrate), 5 (resulting manifest fails validation —
+//   e.g. an unsupported schema the migration could not lower).
+
+const REGISTRY_MIGRATE_TAG = 'rules:registry-migrate';
+
+async function resolveMigrateTarget(pathArg: string | undefined, projectDir: string): Promise<string> {
+  if (pathArg) {
+    return path.resolve(projectDir, pathArg);
+  }
+
+  const config = await loadConfigOrExit(projectDir);
+  if (detectRegistryKind(config.rulesRegistry) !== 'local') {
+    console.error(chalk.red(
+      'No local registry to migrate. The configured registry is remote (or unset) — '
+      + 'pass a path, or clone the registry locally and run `rules registry migrate <path>`.',
+    ));
+    exitWithCode(EXIT.INVALID_ARGS);
+  }
+  const resolved = resolveRegistryPath(config.rulesRegistry as string);
+  if (!resolved) {
+    console.error(chalk.red(`Could not resolve a local path from registry: ${config.rulesRegistry}`));
+    exitWithCode(EXIT.INVALID_ARGS);
+  }
+  return resolved;
+}
+
+export async function rulesRegistryMigrateCommand(pathArg?: string): Promise<void> {
+  const projectDir = process.cwd();
+  const targetDir = await resolveMigrateTarget(pathArg, projectDir);
+
+  const manifestPath = path.join(targetDir, 'manifest.json');
+  if (!(await fileExists(manifestPath))) {
+    logError(REGISTRY_MIGRATE_TAG, `no registry manifest found at ${manifestPath}`);
+    exitWithCode(EXIT.NOT_FOUND);
+  }
+
+  const result = await runRegistryDiskMigration(targetDir);
+
+  // Validate the on-disk manifest AFTER migration. A schema the migration could
+  // not bring down to LATEST (e.g. schema:99) surfaces here as exit 5.
+  const migrated = await readJsonFile<RegistryManifest>(manifestPath);
+  const shapeError = validateManifestShape(migrated);
+  if (shapeError) {
+    console.error(chalk.red(`Registry manifest invalid after migrate: ${shapeError}`));
+    exitWithCode(EXIT.VALIDATION_FAILED);
+  }
+
+  if (result.applied.length === 0) {
+    console.log(chalk.dim(`✓ Registry already at schema:${LATEST_SCHEMA} — nothing to migrate (${targetDir})`));
+  } else {
+    console.log(chalk.green(`✓ Registry migrated to schema:${LATEST_SCHEMA} (${targetDir})`));
+    console.log(chalk.dim(`  Applied: ${result.applied.join(', ')}`));
+  }
+}
+
+// =====================================================================
+// registry status — writability / migrate-capability introspection
+// =====================================================================
+//
+// `unikit-ai rules registry status [target] [--json]`
+//
+// Distinct from the top-level `rules status` (which reports the project's
+// INSTALLED rules). This reports whether the configured (or a passed `target`)
+// registry is reachable, what PHYSICAL schema it carries, and whether the CLI
+// can migrate/write it. The raw physical schema is read from a SINGLE-source
+// transport (no fallback chain) so the verdict reflects that exact registry.
+//
+// JSON shape is 6 facts only — derived signals (a `migrate?` hint, action
+// strings) are the consumer's job:
+//   { target, kind: 'local'|'remote', schema: int|null, isLatestSchema,
+//     readable, writable }
+//
+// Exit codes: 0 (reachable, schema ≤ LATEST), 2 (unreachable),
+//   5 (schema > LATEST — unsupported).
+
+export interface RulesRegistryStatusOptions {
+  json?: boolean;
+}
+
+interface RegistryStatusFacts {
+  target: string;
+  kind: 'local' | 'remote';
+  schema: number | null;
+  isLatestSchema: boolean;
+  readable: boolean;
+  writable: boolean;
+}
+
+function registryStatusVerdict(facts: RegistryStatusFacts): string {
+  if (facts.schema === null) {
+    return chalk.red(`✗ unreachable`);
+  }
+  if (facts.schema > LATEST_SCHEMA) {
+    return chalk.red(`✗ unsupported schema ${facts.schema} (max ${LATEST_SCHEMA}), upgrade unikit-ai`);
+  }
+  if (facts.isLatestSchema) {
+    // `•` (bullet, punctuation) rather than a letter-like info glyph (U+2139):
+    // src/ is guarded against non-Latin letters (test-skills.sh Part 14), which
+    // `\p{Letter}` would flag. Decorative symbol glyphs (check/cross/warn/bullet)
+    // are exempt because they are not letters.
+    return facts.kind === 'local'
+      ? chalk.green(`✓ up to date and writable`)
+      : chalk.cyan(`• remote, read-only via CLI`);
+  }
+  // Readable but behind the latest schema.
+  return facts.kind === 'local'
+    ? chalk.yellow(`⚠ run \`rules registry migrate\``)
+    : chalk.yellow(`⚠ remote — migrate can't write; clone/upstream`);
+}
+
+function printRegistryStatusHuman(facts: RegistryStatusFacts): void {
+  const glyph = (ok: boolean): string => (ok ? chalk.green('✓') : chalk.red('✗'));
+  const rows: [string, string][] = [
+    ['Target', facts.target],
+    ['Kind', facts.kind],
+    ['Schema', facts.schema === null ? chalk.dim('unknown') : String(facts.schema)],
+    ['Latest', String(LATEST_SCHEMA)],
+    ['Readable', glyph(facts.readable)],
+    ['Writable', glyph(facts.writable)],
+  ];
+  const keyWidth = Math.max(...rows.map(([k]) => k.length));
+
+  console.log(chalk.bold('\nRegistry status\n'));
+  for (const [key, value] of rows) {
+    console.log(`  ${chalk.dim(key.padEnd(keyWidth))}  ${value}`);
+  }
+  console.log(`\n${registryStatusVerdict(facts)}`);
+}
+
+export async function rulesRegistryStatusCommand(
+  targetArg?: string,
+  options: RulesRegistryStatusOptions = {},
+): Promise<void> {
+  const projectDir = process.cwd();
+
+  // An explicit target needs no UniKit project; only fall back to the
+  // configured registry (which requires a project) when none was passed.
+  let target: string;
+  if (targetArg) {
+    target = targetArg;
+  } else {
+    const config = await loadConfigOrExit(projectDir);
+    target = resolveRegistryUrl(config.rulesRegistry);
+  }
+
+  const rawKind = detectRegistryKind(target);
+  if (!rawKind) {
+    console.error(chalk.red(`Invalid registry target: "${target}" — use absolute path, file://, http(s)://, or ~/`));
+    exitWithCode(EXIT.INVALID_ARGS);
+  }
+  const kind: 'local' | 'remote' = rawKind === 'url' ? 'remote' : 'local';
+
+  // Single-source transport — NO fallback chain, so the schema we read is this
+  // registry's physical schema, not whatever the resolution chain would adopt.
+  const source: RulesRegistry = rawKind === 'url' ? new GitRegistry(target) : new FsRegistry(target);
+  const manifest = await source.fetchManifest();
+  const schema = manifest && typeof manifest.schema === 'number' ? manifest.schema : null;
+
+  const isLatestSchema = schema === LATEST_SCHEMA;
+  const readable = schema !== null && schema <= LATEST_SCHEMA;
+  const writable = isLatestSchema && kind === 'local';
+
+  const facts: RegistryStatusFacts = { target, kind, schema, isLatestSchema, readable, writable };
+
+  if (options.json) {
+    console.log(JSON.stringify(facts, null, 2));
+  } else {
+    printRegistryStatusHuman(facts);
+  }
+
+  // Exit code: unreachable (2) > unsupported schema (5) > ok (0).
+  if (schema === null) {
+    exitWithCode(EXIT.NETWORK_ERROR);
+  }
+  if (schema > LATEST_SCHEMA) {
+    exitWithCode(EXIT.VALIDATION_FAILED);
+  }
 }

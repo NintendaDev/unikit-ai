@@ -22,7 +22,7 @@ export const RULES_EXIT_CODES: ExitCodeEntry[] = [
   { code: 2, meaning: 'Network error / registry unreachable' },
   { code: 3, meaning: 'Invalid arguments (bad id format, relative path, url format)' },
   { code: 4, meaning: 'Operation not permitted (file-exists guards outside variadic install)' },
-  { code: 5, meaning: 'Registry validation failed (bad manifest, schema mismatch, engine missing, empty core whitelist)' },
+  { code: 5, meaning: 'Registry validation failed (bad manifest, schema mismatch, engine missing, no always-tagged (core) rules)' },
   { code: 6, meaning: 'Registry already initialized at target path (rules registry init)' },
   { code: 7, meaning: 'Target path occupied by non-registry files (rules registry init)' },
 ];
@@ -43,9 +43,9 @@ export const RULES_COMMANDS: CommandEntry[] = [
   },
   {
     command: 'unikit-ai rules install [ids...]',
-    description: 'Install rules from the registry. With no arguments, installs the whitelisted core bootstrap (used by /unikit Step 9.2). With one or more ids, installs them in a single call with one manifest fetch and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.',
+    description: 'Install rules from the registry. With no arguments, installs all always-tagged (core) rules (the bootstrap used by /unikit Step 9.2). With one or more ids, installs them in a single call with one manifest fetch and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.',
     flags: ['--force'],
-    outputFormat: 'Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 5 engine missing or empty core whitelist.',
+    outputFormat: 'Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 5 engine missing or no always-tagged (core) rules.',
   },
   {
     command: 'unikit-ai rules sync',
@@ -84,7 +84,17 @@ export const RULES_COMMANDS: CommandEntry[] = [
   },
   {
     command: 'unikit-ai rules registry init [path]',
-    description: 'Scaffold a new local rules registry at the target path. Copies package.json, RULE_TEMPLATE.md, scripts/build-manifest.js from the bundled snapshot and creates <engine>/{core,stack}/ for the project engine (from .unikit.json) or all 4 engines when run outside a UniKit project. Runs build-manifest.js on creation. Does not touch git or the caller project .unikit.json. Exit codes: 6 (already initialized), 7 (path occupied).',
+    description: 'Scaffold a new local schema:2 rules registry at the target path. Copies package.json, RULE_TEMPLATE.md, scripts/build-manifest.js from the bundled snapshot and creates code/<engine>/{core,stack}/ for the project engine (from .unikit.json) or all 4 engines when run outside a UniKit project, plus the reserved gamedesign/{core,library}/ tree. Writes a schema:2 manifest.json directly (does not run build-manifest.js). Does not touch git or the caller project .unikit.json. Exit codes: 6 (already initialized), 7 (path occupied).',
+  },
+  {
+    command: 'unikit-ai rules registry migrate [path]',
+    description: 'Migrate a local rules registry on disk from schema:1 (flat <engine>/<tier>/) to schema:2 (code/<engine>/<tier>/), relocating rule files and rewriting manifest.json. Idempotent — a second run is a no-op. Targets the given path, or the configured rulesRegistry when it is local; remote registries cannot be migrated (clone locally first). Exit codes: 0 (migrated or already latest), 1 (target manifest missing), 3 (no local target), 5 (resulting manifest invalid / unsupported schema).',
+  },
+  {
+    command: 'unikit-ai rules registry status [target]',
+    description: 'Report a registry\'s physical schema and whether the CLI can migrate/write it. Distinct from `unikit-ai rules status`, which lists the project\'s installed rules — this inspects the registry SOURCE (write/migrate capability). Reads the raw schema from a single source (no fallback chain). Defaults to the configured registry; pass [target] to inspect another. Exit codes: 0 (reachable, schema ≤ latest), 2 (unreachable), 5 (schema > latest, unsupported).',
+    flags: ['--json'],
+    outputFormat: 'Human table + verdict line, or --json: { target, kind: "local" | "remote", schema: number | null, isLatestSchema, readable, writable }',
   },
 ];
 

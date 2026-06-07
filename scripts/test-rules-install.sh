@@ -337,14 +337,14 @@ assert_stdout_contains "$TMPDIR/s15.log" "unreal-engine-6" \
     "error mentions the missing engine"
 
 # ─────────────────────────────────────────────
-# Scenario 16 — Error path: no core-tier rules in registry (exit 5)
+# Scenario 16 — Error path: no always-tagged rules in registry (exit 5)
 # ─────────────────────────────────────────────
-# PR#1 dropped CORE_RULE_WHITELIST: the no-args bootstrap now installs
-# EVERY core-tier rule the registry ships (interim `tier === 'core'`
-# gate). The exit 5 path therefore triggers only when the engine's
-# `core[]` is empty — there is nothing to bootstrap. We craft a fixture
-# whose unity core list is empty inline in a fresh tmp dir.
-echo -e "\n${BOLD}Scenario 16: bootstrap with no core-tier rules${NC}"
+# The no-args bootstrap installs every rule tagged `always === true`. On a
+# schema:1 fixture the 1→2 normalization injects `always = (tier === 'core')`,
+# so a manifest with an EMPTY core list and only stack rules (always=false)
+# yields zero always-tagged rules — nothing to bootstrap → exit 5. We craft
+# that fixture inline in a fresh tmp dir.
+echo -e "\n${BOLD}Scenario 16: bootstrap with no always-tagged rules${NC}"
 
 S16_FIXTURE="$TMPDIR/s16-fixture"
 mkdir -p "$S16_FIXTURE/unity/core" "$S16_FIXTURE/unity/stack"
@@ -388,11 +388,11 @@ cat > "$S16_DIR/.unikit.json" <<EOF
 }
 EOF
 
-assert_cmd_exit 5 "bootstrap with no core-tier rules exits 5" "$TMPDIR/s16.log" -- \
+assert_cmd_exit 5 "bootstrap with no always-tagged rules exits 5" "$TMPDIR/s16.log" -- \
     env -C "$S16_DIR" node "$CLI" rules install
 
-assert_stdout_contains "$TMPDIR/s16.log" "No core-tier rules found" \
-    "error mentions the missing core tier"
+assert_stdout_contains "$TMPDIR/s16.log" "No always-tagged (core) rules found" \
+    "error mentions the missing always-tagged rules"
 
 # ─────────────────────────────────────────────
 # Scenario 17 — Variadic install: --force refreshes disk content

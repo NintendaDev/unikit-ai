@@ -28,6 +28,22 @@ export const DEFAULT_ENGINE_ID = 'unity';
  */
 export const CODE_MODULE_ID = 'code';
 
+/**
+ * Reserved game-design module id. `rules registry init` scaffolds its directory
+ * tree (`gamedesign/<tier>`) so a fresh schema:2 registry already carries the
+ * full D8 layout, but it is deliberately NOT registered in `MODULE_REGISTRY` —
+ * no game-design consumers/skills ship yet and it is never fetched. Only the
+ * scaffold references this id.
+ */
+export const GAMEDESIGN_MODULE_ID = 'gamedesign';
+
+/**
+ * Tiers for the reserved game-design module (`core` + `library`). Unlike the
+ * `code` module it is NOT engine-partitioned, so the scaffold lays it out as
+ * `gamedesign/<tier>` with no engine segment.
+ */
+export const GAMEDESIGN_TIERS = ['core', 'library'] as const;
+
 // --- Rule tiers ---
 
 /**

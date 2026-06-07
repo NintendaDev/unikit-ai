@@ -73,9 +73,21 @@ assert_exists "$SCENARIO1/RULE_TEMPLATE.md" "RULE_TEMPLATE.md copied"
 assert_exists "$SCENARIO1/scripts/build-manifest.js" "build-manifest.js copied"
 
 for engine in unity godot godot-net unreal-engine-5; do
-  assert_exists "$SCENARIO1/$engine/core" "core dir for $engine"
-  assert_exists "$SCENARIO1/$engine/stack" "stack dir for $engine"
+  assert_exists "$SCENARIO1/code/$engine/core" "code/$engine/core dir"
+  assert_exists "$SCENARIO1/code/$engine/stack" "code/$engine/stack dir"
 done
+
+# Reserved game-design module (non-engine: core/library)
+assert_exists "$SCENARIO1/gamedesign/core" "gamedesign/core created"
+assert_exists "$SCENARIO1/gamedesign/library" "gamedesign/library created"
+
+# Manifest must be schema:2
+if grep -q '"schema": 2' "$SCENARIO1/manifest.json"; then
+  pass "manifest.json is schema:2"
+else
+  fail "manifest.json must be schema:2"
+  cat "$SCENARIO1/manifest.json"
+fi
 
 # Files that must NOT be copied
 assert_not_exists "$SCENARIO1/LICENSE" "LICENSE must not be copied"
@@ -117,11 +129,14 @@ else
   cat $TMPDIR/registry-init-s2.log
 fi
 
-assert_exists "$SCENARIO2/unity/core" "unity/core created"
-assert_exists "$SCENARIO2/unity/stack" "unity/stack created"
-assert_not_exists "$SCENARIO2/godot" "godot must NOT be created when caller pins engine=unity"
-assert_not_exists "$SCENARIO2/godot-net" "godot-net must NOT be created"
-assert_not_exists "$SCENARIO2/unreal-engine-5" "unreal-engine-5 must NOT be created"
+assert_exists "$SCENARIO2/code/unity/core" "code/unity/core created"
+assert_exists "$SCENARIO2/code/unity/stack" "code/unity/stack created"
+assert_not_exists "$SCENARIO2/code/godot" "godot must NOT be created when caller pins engine=unity"
+assert_not_exists "$SCENARIO2/code/godot-net" "godot-net must NOT be created"
+assert_not_exists "$SCENARIO2/code/unreal-engine-5" "unreal-engine-5 must NOT be created"
+# gamedesign is always scaffolded regardless of the engine pin
+assert_exists "$SCENARIO2/gamedesign/core" "gamedesign/core created"
+assert_exists "$SCENARIO2/gamedesign/library" "gamedesign/library created"
 
 # ─────────────────────────────────────────────
 # Scenario 3: Directory already contains manifest.json → exit 6
