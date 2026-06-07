@@ -7,7 +7,7 @@ import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installEngineTemplates, installCliContract, installDevPrinciples } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
-  saveConfig, configExists, loadConfig, getCurrentVersion,
+  saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
   type AgentInstallation,
 } from '../../core/config.js';
 import { configureMcp, getMcpInstructions, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
@@ -129,11 +129,7 @@ export async function initCommand(): Promise<void> {
       },
       agents: installedAgents,
       rules: {
-        installed: {
-          version: getCurrentVersion(),
-          core: [],
-          stack: [],
-        },
+        installed: emptyRulesInstallation(),
       },
     });
 

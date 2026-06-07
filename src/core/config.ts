@@ -2,6 +2,7 @@ import path from 'path';
 import { createRequire } from 'module';
 import { readJsonFile, writeJsonFile, fileExists } from '../utils/fs.js';
 import { getAgentConfig } from './agents.js';
+import { CODE_MODULE_ID, RULE_CATEGORIES, type Tier } from './constants.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -43,10 +44,14 @@ export interface InstalledRuleEntry {
   installed_hash?: string;
 }
 
+/**
+ * Installed-rule state, keyed by module then tier:
+ * `modules[<module>][<tier>]`. Replaces the legacy flat `{ core, stack }`
+ * shape; `normalizeRulesInstallation` migrates legacy configs in place on load.
+ */
 export interface RulesInstallation {
   version: string;
-  core: InstalledRuleEntry[];
-  stack: InstalledRuleEntry[];
+  modules: Record<string, Record<Tier, InstalledRuleEntry[]>>;
 }
 
 export interface UniKitConfig {
@@ -130,17 +135,82 @@ function normalizeRuleEntries(raw: unknown): InstalledRuleEntry[] {
   });
 }
 
+/** A fresh, empty per-tier container for one module. */
+function emptyTierMap(): Record<Tier, InstalledRuleEntry[]> {
+  const map = {} as Record<Tier, InstalledRuleEntry[]>;
+  for (const tier of RULE_CATEGORIES) {
+    map[tier] = [];
+  }
+  return map;
+}
+
+/** Empty module-keyed rules state with the `code` module pre-created. */
+export function emptyRulesInstallation(): RulesInstallation {
+  return { version: CURRENT_VERSION, modules: { [CODE_MODULE_ID]: emptyTierMap() } };
+}
+
+/** Normalize one module's tier map from raw JSON, filling missing tiers. */
+function normalizeModuleTiers(raw: unknown): Record<Tier, InstalledRuleEntry[]> {
+  const map = emptyTierMap();
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    for (const tier of RULE_CATEGORIES) {
+      map[tier] = normalizeRuleEntries(obj[tier]);
+    }
+  }
+  return map;
+}
+
 function normalizeRulesInstallation(raw: unknown): RulesInstallation {
   if (!raw || typeof raw !== 'object') {
-    return { version: CURRENT_VERSION, core: [], stack: [] };
+    return emptyRulesInstallation();
   }
 
   const inst = raw as Record<string, unknown>;
-  return {
-    version: (inst.version as string) ?? CURRENT_VERSION,
-    core: normalizeRuleEntries(inst.core),
-    stack: normalizeRuleEntries(inst.stack),
-  };
+  const version = (inst.version as string) ?? CURRENT_VERSION;
+
+  // New module-keyed format: { version, modules: { <module>: { core, stack } } }.
+  // Idempotent — re-normalizing an already-migrated config returns the same shape.
+  if (inst.modules && typeof inst.modules === 'object') {
+    const rawModules = inst.modules as Record<string, unknown>;
+    const modules: Record<string, Record<Tier, InstalledRuleEntry[]>> = {};
+    for (const [moduleId, tiers] of Object.entries(rawModules)) {
+      modules[moduleId] = normalizeModuleTiers(tiers);
+    }
+    // Guarantee the code module's container exists so accessors never miss it.
+    if (!modules[CODE_MODULE_ID]) {
+      modules[CODE_MODULE_ID] = emptyTierMap();
+    }
+    return { version, modules };
+  }
+
+  // Legacy flat format: { version, core, stack } → wrap under the code module.
+  // `normalizeModuleTiers` reads `inst.core` / `inst.stack` directly off the
+  // top-level object, so the legacy entries land in `modules.code`.
+  return { version, modules: { [CODE_MODULE_ID]: normalizeModuleTiers(inst) } };
+}
+
+/**
+ * Return the LIVE `InstalledRuleEntry[]` for `modules[module][tier]`, lazily
+ * creating the module/tier containers when absent. Call sites mutate the
+ * returned array in place (`push` / `splice`), so a copy would silently break
+ * them — this must always hand back the array stored on the config.
+ */
+export function getModuleTier(
+  config: UniKitConfig,
+  module: string,
+  tier: Tier,
+): InstalledRuleEntry[] {
+  const installed = config.rules.installed;
+  let moduleMap = installed.modules[module];
+  if (!moduleMap) {
+    moduleMap = emptyTierMap();
+    installed.modules[module] = moduleMap;
+  }
+  if (!moduleMap[tier]) {
+    moduleMap[tier] = [];
+  }
+  return moduleMap[tier];
 }
 
 function normalizeExtensions(raw: unknown): ExtensionRecord[] {
