@@ -10,7 +10,10 @@ import {
 import type { AgentInstallation, ManagedSkillState, RuleOrigin, UniKitConfig } from './config.js';
 import type { RulesRegistry } from './registry/index.js';
 import { getAgentConfig } from './agents.js';
-import { readSourceForAgent } from './agent-filter.js';
+import {
+  computeContentHash, isMarkdownFile, stripMdExtension,
+  buildSubagentTemplateVars, loadSourceForAgent, warnActionFailed,
+} from './installer/shared.js';
 import { getEngineConfig } from './engines.js';
 import { processSkillTemplates, buildTemplateVars, buildEngineVars, processTemplate } from './template.js';
 import type { TemplateVars } from './template.js';
@@ -18,6 +21,12 @@ import { getTransformer, extractFrontmatterName, replaceFrontmatterName } from '
 import { injectToolsIntoSkillFrontmatter, injectToolsIntoAgentFrontmatter } from './mcp.js';
 import type { McpAllowedTools } from './mcp.js';
 import { logInfo, logWarn } from '../utils/log.js';
+import {
+  DEFAULT_ENGINE_ID, RULE_CATEGORIES,
+  REFERENCES_DIR_NAME, SKILL_FILE, RULES_INDEX_FILE, RULES_INDEX_TEMPLATE_FILE,
+  RULES_MANIFEST_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE, ENGINE_RULES_FILE,
+  CORE_TABLE_MARKER, STACK_TABLE_MARKER, memoryDir, systemDir,
+} from './constants.js';
 
 // --- Types ---
 
@@ -128,14 +137,14 @@ function resolveSkillPaths(
   const agentConfig = getAgentConfig(agentId);
   const transformed = transformer.transform(skillName, '');
 
-  const sourceRefsDir = path.join(sourceSkillDir, 'references');
+  const sourceRefsDir = path.join(sourceSkillDir, REFERENCES_DIR_NAME);
   if (transformed.flat) {
     const targetSkillDir = path.join(projectDir, agentConfig.configDir, transformed.targetDir);
     return {
       sourceSkillDir,
       targetSkillDir,
       targetSkillFile: path.join(targetSkillDir, transformed.targetName),
-      targetRefsDir: path.join(targetSkillDir, 'references'),
+      targetRefsDir: path.join(targetSkillDir, REFERENCES_DIR_NAME),
       sourceRefsDir,
       flat: true,
     };
@@ -145,8 +154,8 @@ function resolveSkillPaths(
   return {
     sourceSkillDir,
     targetSkillDir,
-    targetSkillFile: path.join(targetSkillDir, 'SKILL.md'),
-    targetRefsDir: path.join(targetSkillDir, 'references'),
+    targetSkillFile: path.join(targetSkillDir, SKILL_FILE),
+    targetRefsDir: path.join(targetSkillDir, REFERENCES_DIR_NAME),
     sourceRefsDir,
     flat: false,
   };
@@ -272,9 +281,8 @@ export async function installSkillWithTransformer(
   engineMcpKey?: string | null,
 ): Promise<void> {
   const transformer = getTransformer(agentId);
-  const skillMdPath = path.join(sourceSkillDir, 'SKILL.md');
-  logInfo('installer', `loading ${skillMdPath} via readSourceForAgent(${agentId})`);
-  const content = await readSourceForAgent(skillMdPath, agentId);
+  const skillMdPath = path.join(sourceSkillDir, SKILL_FILE);
+  const content = await loadSourceForAgent(skillMdPath, agentId);
   if (!content) {
     throw new Error(`SKILL.md not found in ${sourceSkillDir}`);
   }
@@ -292,9 +300,9 @@ export async function installSkillWithTransformer(
     const targetPath = path.join(projectDir, agentConfig.configDir, result.targetDir, result.targetName);
     await writeTextFile(targetPath, processTemplate(result.content, vars));
 
-    const sourceRefsDir = path.join(sourceSkillDir, 'references');
+    const sourceRefsDir = path.join(sourceSkillDir, REFERENCES_DIR_NAME);
     if (await fileExists(sourceRefsDir)) {
-      const targetRefsDir = path.join(projectDir, agentConfig.configDir, result.targetDir, 'references');
+      const targetRefsDir = path.join(projectDir, agentConfig.configDir, result.targetDir, REFERENCES_DIR_NAME);
       await copyDirectory(sourceRefsDir, targetRefsDir);
     }
   } else {
@@ -305,7 +313,7 @@ export async function installSkillWithTransformer(
     // returns it unchanged (DefaultTransformer), the raw source from
     // copyDirectory must be replaced so guarded blocks and their markers do
     // not leak into the installed file.
-    await writeTextFile(path.join(targetSkillDir, 'SKILL.md'), result.content);
+    await writeTextFile(path.join(targetSkillDir, SKILL_FILE), result.content);
     await processSkillTemplates(targetSkillDir, agentConfig, engineId, engineMcpKey, skillName);
   }
 }
@@ -327,7 +335,7 @@ export async function installSkills(options: InstallSkillsOptions): Promise<stri
       await installSkillWithTransformer(sourceSkillDir, skill, projectDir, skillsDir, agentId, agentConfig, engineId, engineMcpKey);
       installedSkills.push(skill);
     } catch (error) {
-      console.warn(`Warning: Could not install skill "${skill}": ${error}`);
+      warnActionFailed('install skill', skill, error);
     }
   }
 
@@ -375,12 +383,12 @@ export async function installEngineTemplates(
 
       let targetRefsDir: string;
       if (transformed.flat) {
-        targetRefsDir = path.join(projectDir, agentConfig.configDir, transformed.targetDir, 'references');
+        targetRefsDir = path.join(projectDir, agentConfig.configDir, transformed.targetDir, REFERENCES_DIR_NAME);
       } else {
-        targetRefsDir = path.join(projectDir, agent.skillsDir, transformed.targetDir, 'references');
+        targetRefsDir = path.join(projectDir, agent.skillsDir, transformed.targetDir, REFERENCES_DIR_NAME);
       }
 
-      await writeTextFile(path.join(targetRefsDir, 'ENGINE_RULES.md'), content);
+      await writeTextFile(path.join(targetRefsDir, ENGINE_RULES_FILE), content);
     }
   }
 }
@@ -402,7 +410,7 @@ export async function installSubagents(
   const files = await listFiles(packageSubagentsDir);
 
   for (const file of files) {
-    if (!file.endsWith('.md')) continue;
+    if (!isMarkdownFile(file)) continue;
 
     try {
       const sourcePath = path.join(packageSubagentsDir, file);
@@ -412,35 +420,21 @@ export async function installSubagents(
         const sourceHash = await hashFile(sourcePath);
         const targetHash = await hashFile(targetPath);
         if (sourceHash && targetHash && sourceHash === targetHash) {
-          installedSubagents.push(file.replace(/\.md$/, ''));
+          installedSubagents.push(stripMdExtension(file));
           continue;
         }
       }
 
-      logInfo('installer', `loading ${sourcePath} via readSourceForAgent(${agentId})`);
-      const content = await readSourceForAgent(sourcePath, agentId);
+      const content = await loadSourceForAgent(sourcePath, agentId);
       if (content) {
-        const subagentName = file.replace(/\.md$/, '');
-        let processed = content;
-        const vars: TemplateVars = {
-          skills_dir: '',
-          home_skills_dir: '',
-          settings_file: '',
-          skills_cli_agent_flag: '',
-          self_name: subagentName,
-          engine_name: '',
-          engine_code_language: '',
-          engine_mcp_tool: '',
-        };
-        if (options?.engineId) {
-          Object.assign(vars, buildEngineVars(options.engineId, options.engineMcpKey));
-        }
-        processed = processTemplate(processed, vars);
+        const subagentName = stripMdExtension(file);
+        const vars = buildSubagentTemplateVars(subagentName, options?.engineId, options.engineMcpKey);
+        const processed = processTemplate(content, vars);
         await writeTextFile(targetPath, processed);
         installedSubagents.push(subagentName);
       }
     } catch (error) {
-      console.warn(`Warning: Could not install subagent "${file}": ${error}`);
+      warnActionFailed('install subagent', file, error);
     }
   }
 
@@ -461,7 +455,7 @@ async function computeSubagentSourceHash(
   combined.update(fileHash);
   combined.update(`engine:${engineId}`);
   combined.update(`agent:${agentId}`);
-  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} subagent=${path.basename(sourcePath, '.md')}`);
+  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} subagent=${stripMdExtension(path.basename(sourcePath))}`);
 
   return combined.digest('hex');
 }
@@ -497,13 +491,13 @@ export async function updateSubagents(
   projectDir: string,
   options: UpdateSubagentsOptions = {},
 ): Promise<UpdateSubagentsResult> {
-  const { force = false, engineId = 'unity', engineMcpKey } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey } = options;
 
   const packageSubagentsDir = getSubagentsDir();
   const availableFiles = await listFiles(packageSubagentsDir);
   const availableSubagents = availableFiles
-    .filter(f => f.endsWith('.md'))
-    .map(f => f.replace(/\.md$/, ''));
+    .filter(f => isMarkdownFile(f))
+    .map(f => stripMdExtension(f));
   const availableSet = new Set(availableSubagents);
 
   const entries: SubagentUpdateEntry[] = [];
@@ -582,30 +576,16 @@ export async function updateSubagents(
     try {
       const sourcePath = path.join(packageSubagentsDir, sa + '.md');
       const targetPath = path.join(targetDir, sa + '.md');
-      logInfo('installer', `loading ${sourcePath} via readSourceForAgent(${agent.id})`);
-      const content = await readSourceForAgent(sourcePath, agent.id);
+      const content = await loadSourceForAgent(sourcePath, agent.id);
 
       if (content) {
-        let processed = content;
-        const vars: TemplateVars = {
-          skills_dir: '',
-          home_skills_dir: '',
-          settings_file: '',
-          skills_cli_agent_flag: '',
-          self_name: sa,
-          engine_name: '',
-          engine_code_language: '',
-          engine_mcp_tool: '',
-        };
-        if (engineId) {
-          Object.assign(vars, buildEngineVars(engineId, engineMcpKey));
-        }
-        processed = processTemplate(processed, vars);
+        const vars = buildSubagentTemplateVars(sa, engineId, engineMcpKey);
+        const processed = processTemplate(content, vars);
         await writeTextFile(targetPath, processed);
         installedSet.add(sa);
       }
     } catch (error) {
-      console.warn(`Warning: Could not update subagent "${sa}": ${error}`);
+      warnActionFailed('update subagent', sa, error);
     }
   }
 
@@ -661,7 +641,7 @@ export async function installExtensionSkills(
       );
       installed.push(skillName);
     } catch (error) {
-      console.warn(`Warning: Could not install extension skill "${skillName}": ${error}`);
+      warnActionFailed('install extension skill', skillName, error);
     }
   }
 
@@ -718,34 +698,20 @@ export async function installExtensionSubagents(
     const sourcePath = path.join(extensionDir, subagentPath);
     const fileName = path.basename(subagentPath);
 
-    if (!fileName.endsWith('.md')) continue;
+    if (!isMarkdownFile(fileName)) continue;
 
     try {
-      logInfo('installer', `loading ${sourcePath} via readSourceForAgent(${agent.id})`);
-      const content = await readSourceForAgent(sourcePath, agent.id);
+      const content = await loadSourceForAgent(sourcePath, agent.id);
       if (!content) continue;
 
-      const subagentName = fileName.replace(/\.md$/, '');
-      let processed = content;
-      const vars: TemplateVars = {
-        skills_dir: '',
-        home_skills_dir: '',
-        settings_file: '',
-        skills_cli_agent_flag: '',
-        self_name: subagentName,
-        engine_name: '',
-        engine_code_language: '',
-        engine_mcp_tool: '',
-      };
-      if (engineId) {
-        Object.assign(vars, buildEngineVars(engineId, engineMcpKey));
-      }
-      processed = processTemplate(processed, vars);
+      const subagentName = stripMdExtension(fileName);
+      const vars = buildSubagentTemplateVars(subagentName, engineId, engineMcpKey);
+      const processed = processTemplate(content, vars);
 
       await writeTextFile(path.join(targetDir, fileName), processed);
       installed.push(subagentName);
     } catch (error) {
-      console.warn(`Warning: Could not install extension subagent "${fileName}": ${error}`);
+      warnActionFailed('install extension subagent', fileName, error);
     }
   }
 
@@ -812,15 +778,11 @@ export async function injectMcpRules(
 export type RequiredByMap = Record<string, string | string[]>;
 
 export async function loadRequiredByMap(): Promise<RequiredByMap> {
-  const manifestPath = path.join(getDataDir(), 'rules-manifest.json');
+  const manifestPath = path.join(getDataDir(), RULES_MANIFEST_FILE);
   const { readJsonFile: readJson } = await import('../utils/fs.js');
   const full = await readJson<Record<string, unknown>>(manifestPath);
   if (!full || typeof full.requiredBy !== 'object' || full.requiredBy === null) return {};
   return full.requiredBy as RequiredByMap;
-}
-
-function computeContentHash(content: string): string {
-  return createHash('sha256').update(content, 'utf-8').digest('hex');
 }
 
 /**
@@ -920,13 +882,13 @@ export async function generateRulesIndex(
   installedStack: string[],
   requiredBy: RequiredByMap = {},
 ): Promise<GenerateRulesIndexStatus> {
-  const templatePath = path.join(getDataDir(), 'RULES_INDEX_TEMPLATE.md');
+  const templatePath = path.join(getDataDir(), RULES_INDEX_TEMPLATE_FILE);
   const template = await readTextFile(templatePath);
   if (!template) {
     throw new Error(`RULES_INDEX template not found: ${templatePath}`);
   }
 
-  const targetMemoryDir = path.join(projectDir, '.unikit', 'memory');
+  const targetMemoryDir = memoryDir(projectDir);
   const installedCoreSet = new Set(installedCore);
   const installedStackSet = new Set(installedStack);
 
@@ -938,8 +900,8 @@ export async function generateRulesIndex(
   const coreRows: string[] = [];
   const coreDir = path.join(targetMemoryDir, 'core');
   for (const file of await listFiles(coreDir)) {
-    if (!file.endsWith('.md')) continue;
-    const name = file.replace(/\.md$/, '');
+    if (!isMarkdownFile(file)) continue;
+    const name = stripMdExtension(file);
     if (installedCoreSet.size > 0 && !installedCoreSet.has(name)) continue;
     const meta = await parseRuleFileMetadata(path.join(coreDir, file));
     // requiredBy keys are canonical lowercase-hyphen ids (no .md); normalize the
@@ -952,8 +914,8 @@ export async function generateRulesIndex(
   const stackRows: string[] = [];
   const stackDir = path.join(targetMemoryDir, 'stack');
   for (const file of await listFiles(stackDir)) {
-    if (!file.endsWith('.md')) continue;
-    const name = file.replace(/\.md$/, '');
+    if (!isMarkdownFile(file)) continue;
+    const name = stripMdExtension(file);
     if (installedStackSet.size > 0 && !installedStackSet.has(name)) continue;
     const meta = await parseRuleFileMetadata(path.join(stackDir, file));
     stackRows.push(`| ${file} | ${meta.description} | ${meta.loadWhen} |`);
@@ -963,7 +925,7 @@ export async function generateRulesIndex(
   coreRows.sort((a, b) => a.localeCompare(b));
   stackRows.sort((a, b) => a.localeCompare(b));
 
-  const indexPath = path.join(targetMemoryDir, 'RULES_INDEX.md');
+  const indexPath = path.join(targetMemoryDir, RULES_INDEX_FILE);
 
   // Empty-rules guard.
   //
@@ -991,8 +953,8 @@ export async function generateRulesIndex(
   }
 
   const result = template
-    .replace('<!-- CORE_TABLE -->', coreRows.join('\n'))
-    .replace('<!-- STACK_TABLE -->', stackRows.join('\n'));
+    .replace(CORE_TABLE_MARKER, coreRows.join('\n'))
+    .replace(STACK_TABLE_MARKER, stackRows.join('\n'));
 
   await writeTextFile(indexPath, result);
   return 'written';
@@ -1035,7 +997,7 @@ export async function updateSkills(
   projectDir: string,
   options: UpdateSkillsOptions = {},
 ): Promise<UpdateSkillsResult> {
-  const { force = false, engineId = 'unity', engineMcpKey, replacedSkills } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, replacedSkills } = options;
   const availableSkills = await getAvailableSkills();
   const availableSet = new Set(availableSkills);
 
@@ -1221,7 +1183,7 @@ export async function syncRulesState(
   const replace = options.replace === true;
   const prune = options.prune === true;
   const events: SyncRulesEvent[] = [];
-  const targetMemoryDir = path.join(projectDir, '.unikit', 'memory');
+  const targetMemoryDir = memoryDir(projectDir);
   let changed = false;
 
   // --- Phase 1: Disk ↔ state reconciliation ---
@@ -1246,15 +1208,15 @@ export async function syncRulesState(
 
   let phase1Changed = false;
 
-  for (const category of ['core', 'stack'] as const) {
+  for (const category of RULE_CATEGORIES) {
     const dir = path.join(targetMemoryDir, category);
     const files = await listFiles(dir);
     const stateList = category === 'core' ? config.rules.installed.core : config.rules.installed.stack;
     const stateNames = new Set(stateList.map(e => e.name));
 
     for (const file of files) {
-      if (!file.endsWith('.md') || file === 'RULES_INDEX.md') continue;
-      const name = file.replace(/\.md$/, '');
+      if (!isMarkdownFile(file) || file === RULES_INDEX_FILE) continue;
+      const name = stripMdExtension(file);
 
       if (!stateNames.has(name)) {
         events.push({ kind: 'phase1:untracked-found', category, name });
@@ -1319,7 +1281,7 @@ export async function syncRulesState(
         origin = (registry as { getResolvedOrigin(): RuleOrigin | null }).getResolvedOrigin() ?? undefined;
       }
 
-      for (const category of ['core', 'stack'] as const) {
+      for (const category of RULE_CATEGORIES) {
         const registryRules = category === 'core' ? engineRules.core : engineRules.stack;
         const registryIds = new Set(registryRules.map(r => r.id));
         const stateList = category === 'core' ? config.rules.installed.core : config.rules.installed.stack;
@@ -1416,7 +1378,7 @@ export async function syncRulesState(
 
           if (regRule.references && regRule.references.length > 0) {
             const refs = await registry.fetchReferences(engineId, category, regRule.id, regRule.references);
-            const destRefsDir = path.join(targetMemoryDir, category, 'references');
+            const destRefsDir = path.join(targetMemoryDir, category, REFERENCES_DIR_NAME);
             for (const ref of refs) {
               await writeTextFile(path.join(destRefsDir, ref.filename), ref.content);
             }
@@ -1510,9 +1472,9 @@ export async function syncRulesState(
 // --- CLI Contract installation ---
 
 export async function installCliContract(projectDir: string): Promise<void> {
-  const srcPath = path.join(getDataDir(), 'cli-contract.md');
-  const destDir = path.join(projectDir, '.unikit', 'system');
-  const destPath = path.join(destDir, 'cli-contract.md');
+  const srcPath = path.join(getDataDir(), CLI_CONTRACT_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, CLI_CONTRACT_FILE);
 
   const content = await readTextFile(srcPath);
   if (!content) {
@@ -1531,9 +1493,9 @@ export async function installDevPrinciples(
   engineId: string,
   engineMcpKey?: string | null,
 ): Promise<void> {
-  const srcPath = path.join(getDataDir(), 'dev-principles.md');
-  const destDir = path.join(projectDir, '.unikit', 'system');
-  const destPath = path.join(destDir, 'dev-principles.md');
+  const srcPath = path.join(getDataDir(), DEV_PRINCIPLES_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, DEV_PRINCIPLES_FILE);
 
   const raw = await readTextFile(srcPath);
   if (!raw) {
@@ -1541,15 +1503,7 @@ export async function installDevPrinciples(
     return;
   }
 
-  const vars: TemplateVars = {
-    skills_dir: '',
-    home_skills_dir: '',
-    settings_file: '',
-    skills_cli_agent_flag: '',
-    self_name: 'dev-principles',
-    ...buildEngineVars(engineId, engineMcpKey),
-  };
-
+  const vars = buildSubagentTemplateVars('dev-principles', engineId, engineMcpKey);
   const content = processTemplate(raw, vars);
   await writeTextFile(destPath, content);
   logInfo('installDevPrinciples', 'installed .unikit/system/dev-principles.md');
