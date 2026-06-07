@@ -30,8 +30,8 @@ allowed-tools:
 
 Manage project rules in `.unikit/memory/`. This skill owns two rule categories:
 
-- **Core** (`.unikit/memory/core/`) — universal best practices: code style, design principles, testing conventions, performance guidelines
-- **Stack** (`.unikit/memory/stack/`) — framework-specific rules: API patterns, conventions, anti-patterns, code examples for Zenject, DOTween, R3, UniTask, Addressables, etc.
+- **Core** (`.unikit/memory/code/core/`) — universal best practices: code style, design principles, testing conventions, performance guidelines
+- **Stack** (`.unikit/memory/code/stack/`) — framework-specific rules: API patterns, conventions, anti-patterns, code examples for Zenject, DOTween, R3, UniTask, Addressables, etc.
 
 ## What Belongs Here
 
@@ -64,7 +64,7 @@ Do not announce, confirm, or mention the language setting.
 ### Step 0: Load Configuration (silent — do NOT print or announce any of these values)
 
 1. Read `.unikit/config.yaml` — extract `language.ui` for user-facing messages (default: `en`)
-2. Read `.unikit/memory/RULES_INDEX.md` — current index of all rule files.
+2. Read `.unikit/memory/code/RULES_INDEX.md` — current index of all rule files.
 3. **Read `.unikit/skill-context/{{self_name}}/SKILL.md`** — MANDATORY if the file exists.
 
 This file contains project-specific workflow rules added by `/unikit-skills-context` or `/unikit-evolve`.
@@ -245,8 +245,8 @@ Bypass the lookup completely when any of the following is true:
 Analyze the content and determine its category:
 
 1. **Core or Stack?**
-   - **Stack** — content about a specific framework or technology (Zenject, DOTween, R3, etc.) → `.unikit/memory/stack/`
-   - **Core** — content about universal practices (code style, design principles, testing, performance) → `.unikit/memory/core/`
+   - **Stack** — content about a specific framework or technology (Zenject, DOTween, R3, etc.) → `.unikit/memory/code/stack/`
+   - **Core** — content about universal practices (code style, design principles, testing, performance) → `.unikit/memory/code/core/`
    - **Neither** — redirect the user to the correct destination:
      - Architecture → `.unikit/ARCHITECTURE.md`
      - Project-specific overrides → `.unikit/RULES.md` via `unikit-rules` skill
@@ -256,7 +256,7 @@ Analyze the content and determine its category:
    - For **Stack**: framework name → filename (e.g., `dotween.md`, `zenject.md`, `addressables.md`)
    - For **Core**: topic → filename (e.g., `code-style.md`, `testing.md`, `performance.md`). Consult `RULES_INDEX.md` Core section.
 
-3. **Does the file already exist?** Check the target directory (`.unikit/memory/stack/` or `.unikit/memory/core/`).
+3. **Does the file already exist?** Check the target directory (`.unikit/memory/code/stack/` or `.unikit/memory/code/core/`).
 
 ### Step 3: Route by Intent
 
@@ -505,11 +505,11 @@ The choice of strategy is driven by the content: choose what makes sense for thi
 I propose extracting the following data into reference files
 using a {strategy name} strategy:
 
-1. `.unikit/memory/stack/references/{filename}.md`
+1. `.unikit/memory/code/stack/references/{filename}.md`
    Contains: {what goes here}
    Reason: {why this content warrants a separate file}
 
-2. `.unikit/memory/stack/references/{filename}.md`
+2. `.unikit/memory/code/stack/references/{filename}.md`
    Contains: {what goes here}
    Reason: {why}
 
@@ -556,7 +556,7 @@ Transfer mature entries from `.unikit/RULES.md` (quick-capture staging area) int
 
 Read:
 1. **`.unikit/RULES.md`** — current entries
-3. **`.unikit/memory/RULES_INDEX.md`** — available rule files with descriptions
+3. **`.unikit/memory/code/RULES_INDEX.md`** — available rule files with descriptions
 
 **Skip entirely** if RULES.md has no entries — report "No entries in RULES.md to migrate" and stop.
 
@@ -690,13 +690,13 @@ The rephrased text replaces the original for all downstream steps (C.4 applies t
 
 ## Branch D: Validate Index
 
-Sync `.unikit/memory/RULES_INDEX.md` with the actual files on disk. No user interaction — fully automatic.
+Sync `.unikit/memory/code/RULES_INDEX.md` with the actual files on disk. No user interaction — fully automatic.
 
 ### D.1: Scan Actual Files
 
-1. `Glob: .unikit/memory/core/*.md` — collect all real core rule files
-2. `Glob: .unikit/memory/stack/*.md` — collect all real stack rule files
-3. Read `.unikit/memory/RULES_INDEX.md` — parse both tables (Core and Stack), extract filenames from each row
+1. `Glob: .unikit/memory/code/core/*.md` — collect all real core rule files
+2. `Glob: .unikit/memory/code/stack/*.md` — collect all real stack rule files
+3. Read `.unikit/memory/code/RULES_INDEX.md` — parse both tables (Core and Stack), extract filenames from each row
 
 ### D.2: Diff
 
@@ -745,7 +745,7 @@ Use existing rules as a template (stack: `reactive-async.md`, `odin.md`; core: `
 
 > **Scope**: {What this file covers — specific APIs, patterns, conventions}
 > **Load when**: {Comma-separated keywords and contexts that trigger loading this file}
-> **References**: {Optional — omit if no reference files. List each with a parenthetical label: `.unikit/memory/stack/references/{rule-id}-binders-quickref.md` (quick lookup), `.unikit/memory/stack/references/{rule-id}-binders-full.md` (exhaustive index).}
+> **References**: {Optional — omit if no reference files. List each with a parenthetical label: `.unikit/memory/code/stack/references/{rule-id}-binders-quickref.md` (quick lookup), `.unikit/memory/code/stack/references/{rule-id}-binders-full.md` (exhaustive index).}
 
 ---
 
@@ -796,14 +796,14 @@ Both lines follow `language.rules` from `.unikit/config.yaml` like the rest of t
 
 **Guidelines:**
 - Filename: `lower-case-with-hyphens.md` (e.g., stack: `dotween.md`, `zenject.md`; core: `code-style.md`, `testing.md`)
-- Location: `.unikit/memory/stack/` for Stack, `.unikit/memory/core/` for Core
+- Location: `.unikit/memory/code/stack/` for Stack, `.unikit/memory/code/core/` for Core
 - Language: follow `language.rules` from `.unikit/config.yaml` (default: `en`). Rule prose, section headings, explanations, and examples use that language. Frontmatter keys (`> **Scope**:`, `> **Load when**:`), filenames, rule ids, code identifiers, file paths, and framework names always stay in English regardless of `language.rules`. See `.unikit/system/LANGUAGE_RULES.md` → "Knowledge base rule files" for the full specification. Never prompt the user for this setting and never write to it — it is manually edited only.
 - Include code examples wherever they clarify usage
 - Keep rules actionable — "Use X", "Never Y", "Prefer Z over W"
 
 ## Reference File Format
 
-Reference files live in `.unikit/memory/stack/references/` and hold lookup/catalog data extracted from a main stack rule. They have no frontmatter — they are supplementary documents, not standalone rules.
+Reference files live in `.unikit/memory/code/stack/references/` and hold lookup/catalog data extracted from a main stack rule. They have no frontmatter — they are supplementary documents, not standalone rules.
 
 **Naming convention:** `{rule-id}-{descriptor}.md`
 
@@ -908,10 +908,10 @@ Skip the question entirely (do not ask, do not print a fallback hint) when:
 ## Access Rules
 
 **Writable** (this skill can create and edit):
-- `.unikit/memory/core/` — core rules: code style, design principles, testing, performance
-- `.unikit/memory/stack/` — stack rules: framework-specific patterns and conventions
-- `.unikit/memory/stack/references/` — supplementary reference docs for stack rules
-- `.unikit/memory/RULES_INDEX.md` — index of all rule files
+- `.unikit/memory/code/core/` — core rules: code style, design principles, testing, performance
+- `.unikit/memory/code/stack/` — stack rules: framework-specific patterns and conventions
+- `.unikit/memory/code/stack/references/` — supplementary reference docs for stack rules
+- `.unikit/memory/code/RULES_INDEX.md` — index of all rule files
 
 **Writable only during Branch C (Migrate Rules):**
 - `.unikit/RULES.md` — removal of migrated entries only; adding new entries goes through `unikit-rules` skill

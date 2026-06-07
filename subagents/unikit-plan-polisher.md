@@ -43,7 +43,7 @@ coordinator run fails. Track your turn count mentally and honor the phase budget
 
 ### Phase A — Bootstrap (≤4 tool calls)
 
-1. Read `.unikit/memory/RULES_INDEX.md`.
+1. Read `.unikit/memory/code/RULES_INDEX.md`.
 2. Read `.unikit/DESCRIPTION.md`.
 3. Read `.unikit/ARCHITECTURE.md`.
 4. Read `.unikit/RULES.md`.

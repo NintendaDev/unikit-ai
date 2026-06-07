@@ -149,8 +149,8 @@ Bootstrap loads coding rules and principles ONCE upfront so the fix can be imple
 **Read in parallel (rules + principles):**
 1. `.unikit/system/dev-principles.md` — engine development principles
 2. `.unikit/RULES.md` — project overrides (highest priority)
-3. `.unikit/memory/RULES_INDEX.md` — index of core/stack rules
-4. For EACH row in the Core table where Required By = `all` or contains `unikit-fix` — read that file from `.unikit/memory/core/` using the Read tool.
+3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
+4. For EACH row in the Core table where Required By = `all` or contains `unikit-fix` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
 Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask).
 

@@ -110,7 +110,7 @@ Read the following files:
 
 1. **`.unikit/DESCRIPTION.md`** — tech stack, project constraints
 2. **`.unikit/RULES.md`** — current project rules. If doesn't exist, will be created in Step 6
-3. **`.unikit/memory/RULES_INDEX.md`** — index of knowledge base rule files. If doesn't exist or empty, skip knowledge base cross-check in Step 4 (check only RULES.md)
+3. **`.unikit/memory/code/RULES_INDEX.md`** — index of knowledge base rule files. If doesn't exist or empty, skip knowledge base cross-check in Step 4 (check only RULES.md)
 
 ### Step 3: Build Prevention Point Registry
 

@@ -153,7 +153,7 @@ For each category in `core`, `stack`:
 
 Track per-category totals: `rulesCopied` (top-level rule files) and `referencesCopied` (everything else). These feed the final table in `create.7`.
 
-Why recursive: rule files reference reference files via `> **References**:` headers (e.g. `.unikit/memory/stack/references/aspid-mvvm-binders-full.md`). A seed that copies only `*.md` at the top level would publish rules pointing at paths that do not exist in the registry. Mirroring the full tree keeps the references intact.
+Why recursive: rule files reference reference files via `> **References**:` headers (e.g. `.unikit/memory/code/stack/references/aspid-mvvm-binders-full.md`). A seed that copies only `*.md` at the top level would publish rules pointing at paths that do not exist in the registry. Mirroring the full tree keeps the references intact.
 
 ### create.5: Regenerate registry manifest
 

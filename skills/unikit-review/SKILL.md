@@ -32,9 +32,9 @@ Read (they always apply):
 - `.unikit/ARCHITECTURE.md` — module boundaries, dependency rules
 - `.unikit/ROADMAP.md` (if present) — milestone alignment
 
-Read `.unikit/memory/RULES_INDEX.md`. Load rules:
+Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
 - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
-- **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
+- **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
 - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 
 Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-level overrides that win over this SKILL.md when conflicting.

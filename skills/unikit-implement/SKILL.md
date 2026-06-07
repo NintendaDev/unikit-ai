@@ -339,8 +339,8 @@ Load the project knowledge base ONCE at the start of execution. This replaces pe
 **Read in parallel:**
 1. `.unikit/system/dev-principles.md` — engine development principles (Core Principles + Workflow that used to live in /unikit-devcontext)
 2. `.unikit/RULES.md` — project overrides (highest priority)
-3. `.unikit/memory/RULES_INDEX.md` — index of core/stack rules
-4. For EACH row in the Core table where Required By = `all` or contains `unikit-implement` — read that file from `.unikit/memory/core/` using the Read tool.
+3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
+4. For EACH row in the Core table where Required By = `all` or contains `unikit-implement` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
 Stack rules are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
 
@@ -378,10 +378,10 @@ Keep a running list of files you create, modify, or delete during execution — 
 **3.0: Phase Rules Refresh (before starting each phase)**
 
 Before executing the first task of any phase (including the first phase):
-1. Re-read `.unikit/memory/RULES_INDEX.md` (it may have been updated by `/unikit-memory` since Bootstrap).
+1. Re-read `.unikit/memory/code/RULES_INDEX.md` (it may have been updated by `/unikit-memory` since Bootstrap).
 2. Match the phase name and its task descriptions against the Stack table's `Load When` column.
 3. Compute delta: stack rules needed for this phase that are NOT in `loaded_rules`.
-4. Read each delta rule from `.unikit/memory/stack/` using the Read tool.
+4. Read each delta rule from `.unikit/memory/code/stack/` using the Read tool.
 5. Add them to `loaded_rules`.
 
 Inside a phase, do NOT re-check rules between individual tasks — they share the same loaded set.
