@@ -83,6 +83,7 @@ rules
   .description('List available rules from registry')
   .option('--json', 'Output as JSON')
   .option('--engine <id>', 'Override engine')
+  .option('--module <module>', 'Scope to a knowledge module (PR#1: only "code")')
   .action(rulesListCommand);
 
 rules
