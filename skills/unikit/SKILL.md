@@ -30,7 +30,7 @@ Set up AI agent context for a game project by:
 2. Bootstrapping `.unikit/config.yaml` (user-editable source of truth for language, git, and workflow)
 3. Generating `.unikit/DESCRIPTION.md` — project specification
 4. Generating `AGENTS.md` — structural map for AI agents
-5. Bootstrapping the knowledge base (`.unikit/memory/core/` + `.unikit/memory/stack/`) via the rules registry
+5. Bootstrapping the knowledge base (`.unikit/memory/code/core/` + `.unikit/memory/code/stack/`) via the rules registry
 6. Delegating architecture generation to `/unikit-architecture`
 7. Printing the setup summary as the final, user-facing confirmation that all artifacts are in place
 
@@ -413,15 +413,15 @@ Prepare the rules knowledge base in a few passes. Core rules are installed silen
 Create directories and index file if they don't exist:
 
 - Memory root → `.unikit/memory/`
-- Core memory subdir → `.unikit/memory/core/`
-- Stack memory subdir → `.unikit/memory/stack/`
-- Rules index file → `.unikit/memory/RULES_INDEX.md`
+- Core memory subdir → `.unikit/memory/code/core/`
+- Stack memory subdir → `.unikit/memory/code/stack/`
+- Rules index file → `.unikit/memory/code/RULES_INDEX.md`
 
 ```bash
-mkdir -p .unikit/memory/core .unikit/memory/stack
+mkdir -p .unikit/memory/code/core .unikit/memory/code/stack
 ```
 
-Check whether `.unikit/memory/RULES_INDEX.md` exists. If not, create it from this template:
+Check whether `.unikit/memory/code/RULES_INDEX.md` exists. If not, create it from this template:
 
 ```markdown
 # Rules Index
@@ -432,8 +432,8 @@ Knowledge base rules for the project. Located in `.unikit/memory/`.
 
 1. **`.unikit/RULES.md`** — project-specific overrides (always wins)
 2. **`.unikit/ARCHITECTURE.md`** — project architecture decisions
-3. **`.unikit/memory/core/*.md`** — universal best practices
-4. **`.unikit/memory/stack/*.md`** — framework-specific knowledge
+3. **`.unikit/memory/code/core/*.md`** — universal best practices
+4. **`.unikit/memory/code/stack/*.md`** — framework-specific knowledge
 
 When a project rule in `RULES.md` conflicts with a template rule in `rules/`, the project rule wins.
 
@@ -441,12 +441,12 @@ When a project rule in `RULES.md` conflicts with a template rule in `rules/`, th
 
 Read this index to determine which rule files are relevant for the current task, then load only the needed files.
 
-## Core — universal game development knowledge (`.unikit/memory/core/`)
+## Core — universal game development knowledge (`.unikit/memory/code/core/`)
 
 | File | Description | Load When |
 |------|-------------|-----------|
 
-## Stack — framework-specific knowledge (`.unikit/memory/stack/`)
+## Stack — framework-specific knowledge (`.unikit/memory/code/stack/`)
 
 | File | Description | Load When |
 |------|-------------|-----------|
@@ -478,7 +478,7 @@ This is strictly a transform applied at the call-site (set-difference comparison
 
 - **UI layer** — Step 9.3 presenting, Step 9.4 `AskUserQuestion`, Step 9.5 `Technology` column: names stay in display-raw form (a multi-word framework like `"Input Manager"`, a plugin folder like `"Databrain"`, an aliased package id like `"URP"`).
 - **Comparison layer** — Step 9.3 set-difference, Step 9.5 registry cross-reference, Step 9.7 `rules install` argv: apply `toCanonicalRuleId` to both sides. Arrays are never mutated in place.
-- **Storage layer** — `.unikit/memory/stack/*.md` filenames and `.unikit.json` `entry.name` are always canonical lowercase-hyphen. The writers (`rules install` CLI and the `/unikit-memory` subagent) enforce that filename form themselves — this skill does not need to rename anything on disk.
+- **Storage layer** — `.unikit/memory/code/stack/*.md` filenames and `.unikit.json` `entry.name` are always canonical lowercase-hyphen. The writers (`rules install` CLI and the `/unikit-memory` subagent) enforce that filename form themselves — this skill does not need to rename anything on disk.
 
 Build the "already installed" set from **two authoritative sources** (not from `RULES_INDEX.md` — that file is derived and can lag behind reality between runs):
 
@@ -490,7 +490,7 @@ Build the "already installed" set from **two authoritative sources** (not from `
 
    Parse the JSON output and collect every entry where `category === "stack"`. Every `name` in that list is considered installed regardless of `source` (`registry` / `local`) — both sources mean a file on disk that we must leave alone.
 
-2. Disk scan — list `.unikit/memory/stack/*.md` (excluding `RULES_INDEX.md`). Treat every `<name>.md` filename as also installed. This catches rules that exist on disk but have not yet been reconciled into state (e.g. a rule generated in a parallel skill run that never triggered `rules sync`).
+2. Disk scan — list `.unikit/memory/code/stack/*.md` (excluding `RULES_INDEX.md`). Treat every `<name>.md` filename as also installed. This catches rules that exist on disk but have not yet been reconciled into state (e.g. a rule generated in a parallel skill run that never triggered `rules sync`).
 
 Union both sets into `already_installed`.
 
@@ -534,7 +534,7 @@ Then compute the set-difference against `already_installed`. An entry counts as 
 already_installed_canonical = {
   toCanonicalRuleId(name) for name in
     (rules_status_json.entries where category == "stack")
-    ∪ disk_scan(.unikit/memory/stack/*.md)
+    ∪ disk_scan(.unikit/memory/code/stack/*.md)
 }
 
 def canonical_for(r):
@@ -689,7 +689,7 @@ Launch up to **10 agents in parallel**. If more than 10 technologies remain, bat
 
 #### 9.9: Final reconciliation
 
-Close the loop with a sync pass so that `.unikit/memory/RULES_INDEX.md`, `.unikit.json`, and the contents of `.unikit/memory/` end up in agreement (including rules generated in Step 9.8 which went straight to disk without touching state).
+Close the loop with a sync pass so that `.unikit/memory/code/RULES_INDEX.md`, `.unikit.json`, and the contents of `.unikit/memory/` end up in agreement (including rules generated in Step 9.8 which went straight to disk without touching state).
 
 ```bash
 unikit-ai rules sync
@@ -790,7 +790,7 @@ as the basis for the structure section, but only include directories and files t
 | .unikit/DESCRIPTION.md | Project specification and tech stack |
 | .unikit/ARCHITECTURE.md | Architecture decisions and guidelines |
 | .unikit/RULES.md | Coding conventions and rules |
-| .unikit/memory/RULES_INDEX.md | Index of framework-specific rule files |
+| .unikit/memory/code/RULES_INDEX.md | Index of framework-specific rule files |
 ```
 
 **Rules:**

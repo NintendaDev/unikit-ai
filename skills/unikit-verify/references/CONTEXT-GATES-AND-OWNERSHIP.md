@@ -26,8 +26,8 @@ Canonical contract for unikit workflow commands. This file defines:
 | Artifact                          | Description                                            |
 |-----------------------------------|--------------------------------------------------------|
 | `.unikit/RULES.md`          | Naming, access modifiers, class structure, DI conventions |
-| `.unikit/memory/core/*.md`, `.unikit/memory/stack/*.md` | Design principles and framework-specific rules |
-| `.unikit/memory/RULES_INDEX.md` | Index of rules files                           |
+| `.unikit/memory/code/core/*.md`, `.unikit/memory/code/stack/*.md` | Design principles and framework-specific rules |
+| `.unikit/memory/code/RULES_INDEX.md` | Index of rules files                           |
 | `CLAUDE.md`                       | Anti-patterns, conventions, project overview           |
 
 These files are **read-only for all commands**. Only the user creates and edits them directly.

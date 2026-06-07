@@ -164,7 +164,7 @@ When only one phase is ready, execute it directly within the coordinator (no wor
 For each task in the phase, sequentially:
 1. Mark `[~]` in TASKS.md
 2. Implement using direct tool calls (Read, Write, Edit, Glob, Grep, Bash)
-3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
+3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
 4. Run verification pass scoped to changed files
 5. If material issues found, fix and re-verify (max 2 rounds)
 6. Mark `[x]` or `[!]` in TASKS.md

@@ -37,7 +37,7 @@ All user-facing output uses the configured language unless explicitly listed in 
 
 ## Knowledge base rule files
 
-The language of knowledge base rules — everything under `.unikit/memory/` (core/, stack/, references/), `.unikit/memory/RULES_INDEX.md`, `.unikit/RULES.md`, and skill-context rules — is controlled by **`language.rules`** in `.unikit/config.yaml` (default: `en`).
+The language of knowledge base rules — everything under `.unikit/memory/` (core/, stack/, references/), `.unikit/memory/code/RULES_INDEX.md`, `.unikit/RULES.md`, and skill-context rules — is controlled by **`language.rules`** in `.unikit/config.yaml` (default: `en`).
 
 When generating or editing rule files (Branch A / B / C of `/unikit-memory`, Step 9.2 / 9.7 / 9.8 of `/unikit`, or any other rule-writing code path), write rule prose, section headings, explanations, examples, and comments in the language specified by `language.rules`. If the key is missing, the key is unreadable, or `.unikit/config.yaml` does not exist — use English.
 
