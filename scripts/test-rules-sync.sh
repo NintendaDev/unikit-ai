@@ -10,7 +10,7 @@
 #
 # Regression guards:
 #   - HARD GUARD: `sync --replace --prune` never materialises rules that
-#     are absent from state (see installer.ts:1337 `if (!existing) continue`).
+#     are absent from state (see installer/rules-sync.ts `if (!existing) continue`).
 #   - Phase 1 case-sensitive coexistence: a legacy `CODE-STYLE` state
 #     entry and a fresh `code-style.md` disk file must stay distinct.
 #   - phase2:downgrade: `--replace` against a registry with a LOWER
