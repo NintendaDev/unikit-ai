@@ -104,10 +104,10 @@ async function isProjectStale(projectDir: string, config: UniKitConfig): Promise
  */
 async function assertProjectMigrated(projectDir: string, config: UniKitConfig): Promise<void> {
   if (await isProjectStale(projectDir, config)) {
-    console.error(chalk.red(
-      'Project is out of date — its memory layout has not been migrated to the modular `code/` module.',
+    console.error(chalk.red('Project is out of date'));
+    console.error(chalk.yellow(
+      'Run `unikit-ai update` in the current project folder first, then retry.',
     ));
-    console.error(chalk.yellow('Run `unikit-ai update` first, then retry.'));
     exitWithCode(EXIT.PROJECT_OUT_OF_DATE);
   }
 }
@@ -1370,7 +1370,7 @@ function printRegistryStatusHuman(facts: RegistryStatusFacts): void {
     ['Target', facts.target],
     ['Kind', facts.kind],
     ['Schema', facts.schema === null ? chalk.dim('unknown') : String(facts.schema)],
-    ['Latest', String(LATEST_SCHEMA)],
+    ['Is Latest Schema', glyph(facts.isLatestSchema)],
     ['Readable', glyph(facts.readable)],
     ['Writable', glyph(facts.writable)],
   ];
