@@ -673,19 +673,22 @@ The `generate_set` list contains stack technologies that either had no registry 
 ```
 Agent(
   subagent_type: "general-purpose",
-  prompt: "/unikit-memory --skip-registry Add stack rules for {technology name}",
+  prompt: "/unikit-memory --module code --skip-registry Add stack rules for {technology name}",
   description: "Generate {technology} rules",
   skills: ["unikit-memory"]
 )
 ```
 
-The `--skip-registry` flag tells `/unikit-memory` to bypass its own registry-lookup step (9.5 already covered it) and go straight to generation.
+Two flags are passed, and both are mandatory:
+
+- `--module code` pins the delegation to the `code` knowledge-base module. `/unikit` is deliberately `code`-pinned, so it must name the target module explicitly rather than relying on `unikit-memory`'s module-inference fallback (which only resolves to `code` by accident while `code` is the sole registered module). This keeps the delegation deterministic and self-documenting once additional modules are registered.
+- `--skip-registry` tells `/unikit-memory` to bypass its own registry-lookup step (9.5 already covered it) and go straight to generation.
 
 Launch up to **10 agents in parallel**. If more than 10 technologies remain, batch them: launch 10, wait for completion, launch next batch.
 
 **Wait for all launched agents to finish** before proceeding to Step 9.9.
 
-**Fallback** (if the `Agent` tool is unavailable in the current environment): do NOT execute `/unikit-memory` yourself inline — that violates the invariant above. Instead, print one invocation per item in `generate_set`, each on its own line, **outside any code fence**, prefixed with `Run: `, so the user can copy-paste and run them. The N=1 case takes the same path: one `Run: /unikit-memory ...` line. After printing, proceed to Step 9.9 without waiting — the user runs them asynchronously.
+**Fallback** (if the `Agent` tool is unavailable in the current environment): do NOT execute `/unikit-memory` yourself inline — that violates the invariant above. Instead, print one invocation per item in `generate_set`, each on its own line, **outside any code fence**, prefixed with `Run: ` and using the same `--module code --skip-registry` form as the `Agent` prompt above, so the user can copy-paste and run them. The N=1 case takes the same path: one `Run: /unikit-memory --module code --skip-registry Add stack rules for {technology name}` line. After printing, proceed to Step 9.9 without waiting — the user runs them asynchronously.
 
 #### 9.9: Final reconciliation
 
