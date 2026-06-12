@@ -39,7 +39,7 @@ Do not announce, confirm, or mention the language setting.
 The user provides a planning request. Examples:
 - `"implement day/night cycle with customer scheduling"`
 - `"refactor inventory system to use new categories"`
-- `"@.unikit/plans/2026-03-10_core-loop"` (polish an existing plan)
+- `"@.unikit/code/plans/2026-03-10_core-loop"` (polish an existing plan)
 
 ## Configuration
 

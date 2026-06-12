@@ -117,3 +117,38 @@ export function moduleTierDir(projectDir: string, module: string, tier: string):
 export function systemDir(projectDir: string): string {
   return path.join(projectDir, UNIKIT_DIR, SYSTEM_DIR_NAME);
 }
+
+/**
+ * `<projectDir>/.unikit/<module>` — root of one module's working files
+ * (plans, patches, researches, the plan/fix-plan documents), as opposed to its
+ * rules under `memory/<module>` (see `moduleDir`). The two are siblings under
+ * `.unikit/`. Assemble every workspace path through this helper so the layout
+ * stays derivable from one place — never a raw `.unikit/code` literal.
+ */
+export function workspaceDir(projectDir: string, module: string): string {
+  return path.join(projectDir, UNIKIT_DIR, module);
+}
+
+// --- Workspace artifacts (module-scoped project working files) ---
+//
+// Single source of truth for the flat→module relocation: pre-modular projects
+// keep these directly under `.unikit/`; the workspace migration moves each one
+// under `.unikit/<code-module>/`. The same inventory backs (a) the migration
+// (`workspace-migrations`), (b) the skill-layer path references that now carry
+// the `code/` segment, and (c) the golden-guard #3 regex that forbids the bare
+// form from reappearing in tracked content.
+
+/** Directory artifacts that relocate 1:1 (same basename under the module dir). */
+export const WORKSPACE_ARTIFACT_DIRS = ['plans', 'patches', 'researches'] as const;
+
+/** File artifacts that relocate 1:1 (same basename under the module dir). */
+export const WORKSPACE_ARTIFACT_FILES = ['PLAN.md', 'FIX_PLAN.md'] as const;
+
+/**
+ * Artifacts that relocate AND change name. The legacy top-level researches
+ * index (`RESEARCHES_INDEX.md`) becomes the per-directory `researches/INDEX.md`,
+ * matching the convention that an index lives inside the directory it indexes.
+ */
+export const WORKSPACE_ARTIFACT_RENAMES: readonly { from: string; to: string }[] = [
+  { from: 'RESEARCHES_INDEX.md', to: path.join('researches', 'INDEX.md') },
+];

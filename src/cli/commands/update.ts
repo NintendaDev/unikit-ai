@@ -90,10 +90,12 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
   }
 
   try {
-    // Migrate on-disk memory layout BEFORE anything reads it. This relocates a
-    // legacy flat `.unikit/memory/{core,stack}` layout under `code/` so that the
-    // skill reinstall and (later) `syncAllModules` Phase 1 reconciliation both
-    // operate on the modular layout. Idempotent: a no-op once already wrapped.
+    // Migrate the on-disk `.unikit/` layout BEFORE anything reads it. The chain
+    // relocates the legacy flat `.unikit/memory/{core,stack}` under `code/` AND
+    // the flat project workspace (plans/patches/researches + PLAN/FIX_PLAN docs)
+    // under `.unikit/code/`, so the skill reinstall and (later) `syncAllModules`
+    // Phase 1 reconciliation both operate on the modular layout. Idempotent: a
+    // no-op once already migrated. Runs before the `config.version` stamp below.
     await runProjectMemoryMigrations(projectDir);
 
     // Refresh extensions from sources (check for updates)

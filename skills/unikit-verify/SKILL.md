@@ -1,7 +1,7 @@
 ---
 name: unikit-verify
 description: >-
-  Verify completed implementation against the feature plan from .unikit/plans/.
+  Verify completed implementation against the feature plan from .unikit/code/plans/.
   Checks that all tasks were fully implemented, nothing was forgotten, code compiles,
   tests pass, and {{engine_name}}-specific conventions are followed (per ENGINE_RULES.md).
   Use after "/unikit-implement" completes, or when user says "verify", "check work",
@@ -105,10 +105,10 @@ Search logic — same as `/unikit-implement` (unified plan detection):
 
 1. If `$ARGUMENTS` specifies a folder name (e.g. `2026-03-10_core-loop` or legacy `NNN-feature-name`) → use it
 2. Otherwise → auto-detect:
-   a. **Fast plan check** — if `.unikit/PLAN.md` exists, use it (flat fast-mode plan)
+   a. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan)
    b. **Git branch match** — if on `feature/*` branch, find folder ending with `_<feature-name>` (new format) or `*-<feature-name>` (legacy)
    c. **Latest by date** (fallback) — sort all folders lexicographically descending, pick first (YYYY-MM-DD gives chronological order; legacy `DDD-*` sorts before `2xxx-*`)
-3. If no plan found (no `.unikit/PLAN.md` and `.unikit/plans/` is empty or doesn't exist):
+3. If no plan found (no `.unikit/code/PLAN.md` and `.unikit/code/plans/` is empty or doesn't exist):
 
 ```
 No plan found. What should I verify?
@@ -124,19 +124,19 @@ Based on choice:
 - Last N commits → ask user for the number of commits via AskUserQuestion. Gather files via `git diff --name-only HEAD~N..HEAD`. Skip Step 1. Execute Steps 2-3 on collected files. Same standalone report header.
 - Cancel → **STOP**
 
-**If both `.unikit/PLAN.md` and a matching folder plan exist**, ask the user which one to verify.
+**If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to verify.
 
 Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Strict Mode section).
 
 ### 0.2 Read Plan & Context
 
-**If using `.unikit/PLAN.md`** (fast-mode plan):
-- Read **`.unikit/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
+**If using `.unikit/code/PLAN.md`** (fast-mode plan):
+- Read **`.unikit/code/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
 
-**If using a folder plan** (`.unikit/plans/<folder>/`):
+**If using a folder plan** (`.unikit/code/plans/<folder>/`):
 - Read **`TASKS.md`** — feature overview (`## Overview`), task checklist with phases and statuses
 - Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, files, DI bindings (if exists in plan folder)
 - If `TASKS.md` has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
@@ -391,7 +391,7 @@ Check whether the implementation introduced user-facing changes that should be r
 
 **a) Check plan's Docs policy:**
 
-Read the `## Settings` section from `TASKS.md` (or `.unikit/PLAN.md`):
+Read the `## Settings` section from `TASKS.md` (or `.unikit/code/PLAN.md`):
 - If `Docs: yes` — verify that documentation was actually updated during implementation (check `CHANGED_FILES` for `README.md`, `docs/*.md`, or `.unikit/docs-config.json`). If no doc files were modified: `WARN [docs] Docs policy was 'yes' but no documentation files were changed — run /unikit-docs`
 - If `Docs: no` or missing — check whether the implementation introduced new public APIs, new modules, changed configuration, or modified user-facing behavior. If yes: `WARN [docs] Implementation changed public API/behavior but Docs policy was no/unset — consider /unikit-docs`
 

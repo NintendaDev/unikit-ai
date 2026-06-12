@@ -159,7 +159,7 @@ Launch the plan coordinator for a new feature:
 claude --agent unikit-plan-coordinator "add item rarity system with visual effects"
 ```
 
-This creates a plan in `.unikit/plans/<date>_<feature>/`, critiques it, refines it, and stops when it is implementation-ready (or after the iteration budget).
+This creates a plan in `.unikit/code/plans/<date>_<feature>/`, critiques it, refines it, and stops when it is implementation-ready (or after the iteration budget).
 
 Execute the resulting plan:
 

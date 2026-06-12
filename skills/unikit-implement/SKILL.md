@@ -1,12 +1,12 @@
 ---
 name: unikit-implement
 description: >-
-  Execute implementation tasks from a feature plan in .unikit/plans/.
+  Execute implementation tasks from a feature plan in .unikit/code/plans/.
   Reads TASKS.md and PLAN-BRIEF.md, then implements uncompleted tasks sequentially
   executing tasks inline (Read/Edit/Write/Bash) with rules loaded once at start. Supports selective execution by phase
   or task numbers. Use when the user says "implement", "start coding", "execute plan",
   "continue implementation", "do the next task", "implement phase 3", or wants to work
-  through a planned feature. Also use when the user references tasks from .unikit/plans/
+  through a planned feature. Also use when the user references tasks from .unikit/code/plans/
   or asks to "continue where we left off".
 argument-hint: "[--list] [@<folder>] [Phase N | Phases N-M | Tasks N.M N.K | status | empty for all pending]"
 allowed-tools:
@@ -32,7 +32,7 @@ metadata:
 
 # {{engine_name}} Feature Implementation
 
-Execute tasks from a feature plan stored in `.unikit/plans/`. This skill reads the plan, identifies pending work, and implements tasks inline with `Read/Edit/Write/Bash` after a one-time Bootstrap of rules and principles. The `develop-agent` alias is reserved for true parallel scopes or deep-dive single tasks.
+Execute tasks from a feature plan stored in `.unikit/code/plans/`. This skill reads the plan, identifies pending work, and implements tasks inline with `Read/Edit/Write/Bash` after a one-time Bootstrap of rules and principles. The `develop-agent` alias is reserved for true parallel scopes or deep-dive single tasks.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -100,17 +100,17 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
 
 `$ARGUMENTS` — optional. Can be:
 - **Empty** — execute all pending tasks from the latest feature, in order
-- **`--list`** — list available feature plans in `.unikit/plans/` and STOP (no implementation)
-- **`@<path>`** — explicit path to a feature folder, resolved from project root. Bypasses all auto-detection. Use when you need to point to a plan outside `.unikit/plans/` or want an unambiguous full path (e.g. `@.unikit/plans/2026-03-10_core-loop`, `@/absolute/path/to/plan-folder`)
+- **`--list`** — list available feature plans in `.unikit/code/plans/` and STOP (no implementation)
+- **`@<path>`** — explicit path to a feature folder, resolved from project root. Bypasses all auto-detection. Use when you need to point to a plan outside `.unikit/code/plans/` or want an unambiguous full path (e.g. `@.unikit/code/plans/2026-03-10_core-loop`, `@/absolute/path/to/plan-folder`)
 - **`status`** — show progress without executing any tasks
 - **`Phase N`** (e.g. `Phase 3`) — execute only tasks from Phase N
 - **`Phases N-M`** (e.g. `Phases 1-3`) — execute tasks from Phases N through M
 - **`Task N.M`** or **`Tasks N.M N.K`** (e.g. `Tasks 2.1 2.3 5.2`) — execute only the specified tasks
-- **Feature name** (e.g. `core-loop`) — shorthand lookup: scans `.unikit/plans/` for a folder whose name **contains** this value. Compared to `@<path>`, this is a convenience shorthand that only searches inside `.unikit/plans/`
+- **Feature name** (e.g. `core-loop`) — shorthand lookup: scans `.unikit/code/plans/` for a folder whose name **contains** this value. Compared to `@<path>`, this is a convenience shorthand that only searches inside `.unikit/code/plans/`
 
-**`@<path>` vs Feature name:** `@` takes an explicit path (relative or absolute) and expects a folder with `TASKS.md` inside — no searching. A bare name without `@` is a fuzzy match inside `.unikit/plans/`. When both could apply, `@` wins (highest priority).
+**`@<path>` vs Feature name:** `@` takes an explicit path (relative or absolute) and expects a folder with `TASKS.md` inside — no searching. A bare name without `@` is a fuzzy match inside `.unikit/code/plans/`. When both could apply, `@` wins (highest priority).
 
-Mixed input is supported: `@.unikit/plans/2026-03-08_customers-system Phase 3` (explicit path + phase), `core-loop Phase 3` (name search + phase), `Tasks 2.1 2.3` (specific tasks from latest feature).
+Mixed input is supported: `@.unikit/code/plans/2026-03-08_customers-system Phase 3` (explicit path + phase), `core-loop Phase 3` (name search + phase), `Tasks 2.1 2.3` (specific tasks from latest feature).
 
 ## Workflow
 
@@ -127,7 +127,7 @@ Mixed input is supported: `@.unikit/plans/2026-03-08_customers-system Phase 3` (
    - `Phase N` — single phase
    - `Phases N-M` — phase range
    - `Task N.M` or `Tasks N.M N.K` — specific tasks
-5. If no `@<path>` was found, check remaining args for a **feature name** — a bare string (no `@` prefix) that matches a folder name in `.unikit/plans/` by substring (e.g. `core-loop` matches `2026-03-10_core-loop`). This is a convenience shorthand that only searches inside `.unikit/plans/`.
+5. If no `@<path>` was found, check remaining args for a **feature name** — a bare string (no `@` prefix) that matches a folder name in `.unikit/code/plans/` by substring (e.g. `core-loop` matches `2026-03-10_core-loop`). This is a convenience shorthand that only searches inside `.unikit/code/plans/`.
 6. Bare numbers without prefix are NOT selectors — they might be part of the feature name. Phases and tasks must be explicitly prefixed.
 
 #### List Available Plans (`--list`)
@@ -135,13 +135,13 @@ Mixed input is supported: `@.unikit/plans/2026-03-08_customers-system Phase 3` (
 If `$ARGUMENTS` contains `--list`, run read-only plan discovery and stop.
 
 1. Get current branch: `git branch --show-current` (if git is unavailable, skip branch matching)
-2. Scan `.unikit/plans/` for all feature folders
-3. Check existence of `.unikit/FIX_PLAN.md`
+2. Scan `.unikit/code/plans/` for all feature folders
+3. Check existence of `.unikit/code/FIX_PLAN.md`
 4. For each feature folder, read its `TASKS.md` and count completed/total tasks
 5. Print plan availability summary:
 
 ```
-Available plans in .unikit/plans/:
+Available plans in .unikit/code/plans/:
 
   Branch match:
     2026-03-10_core-loop      (12/40 tasks, 30%)  ← matches current branch
@@ -150,11 +150,11 @@ Available plans in .unikit/plans/:
     2026-03-08_customers-system   (18/18 tasks, 100% — completed)
     2026-03-05_inventory-rework   (5/22 tasks, 23%)
 
-  Fix plan: .unikit/FIX_PLAN.md — exists
+  Fix plan: .unikit/code/FIX_PLAN.md — exists
 
 Usage:
   /unikit-implement                              — auto-detect by branch
-  /unikit-implement @.unikit/plans/<folder>      — use specific plan
+  /unikit-implement @.unikit/code/plans/<folder>      — use specific plan
   /unikit-implement <folder-name> Phase 3        — specific folder + phase
 ```
 
@@ -164,51 +164,51 @@ Usage:
 
 If `$ARGUMENTS` contains `@<path>`:
 
-1. Extract path after `@` (e.g. `@.unikit/plans/2026-03-08_customers-system` → `.unikit/plans/2026-03-08_customers-system`)
+1. Extract path after `@` (e.g. `@.unikit/code/plans/2026-03-08_customers-system` → `.unikit/code/plans/2026-03-08_customers-system`)
 2. Resolve relative to project root (absolute paths are also valid)
 3. If folder does not exist or does not contain `TASKS.md`:
    ```
    Feature folder not found or invalid: <path>
    Expected a folder with TASKS.md inside, for example:
-     /unikit-implement @.unikit/plans/2026-03-10_core-loop
+     /unikit-implement @.unikit/code/plans/2026-03-10_core-loop
    ```
    → STOP
 4. Use this folder as the active feature — skip all auto-detection logic
 
-The `@<path>` argument can be combined with selectors: `/unikit-implement @.unikit/plans/2026-03-08_customers-system Phase 3`
+The `@<path>` argument can be combined with selectors: `/unikit-implement @.unikit/code/plans/2026-03-08_customers-system Phase 3`
 
 **Feature folder resolution priority:**
 1. `@<path>` — explicit path, no searching (highest)
-2. **Feature name** — bare string, substring match inside `.unikit/plans/`
+2. **Feature name** — bare string, substring match inside `.unikit/code/plans/`
 3. **Auto-detect** — git branch match or latest by date (lowest, see below)
 
 **If no feature folder specified (no `@<path>`, no feature name in args) — auto-detect:**
 
 Use unified plan detection (priority order):
 
-1. **Fast plan check** — if `.unikit/PLAN.md` exists, use it (flat fast-mode plan).
+1. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan).
    The plan is a single file containing all sections (Overview, Checklist, Technical Context).
-   When using `.unikit/PLAN.md`, there is no separate `PLAN-BRIEF.md` — everything is inline.
+   When using `.unikit/code/PLAN.md`, there is no separate `PLAN-BRIEF.md` — everything is inline.
 
 2. **Git branch match** — get current branch via `git branch --show-current`.
    If git is unavailable, skip to the next priority level.
    If on a `feature/*` branch, extract the feature name (e.g. `feature/core-loop-part1` → `core-loop-part1`).
-   Scan `.unikit/plans/` for a folder whose name **ends with** `_<feature-name>` (new format)
+   Scan `.unikit/code/plans/` for a folder whose name **ends with** `_<feature-name>` (new format)
    or matches `*-<feature-name>` (legacy `DDD-*` format).
    If match found → use it.
 
-3. **Latest by date** (fallback) — sort all folders in `.unikit/plans/` **lexicographically descending**
+3. **Latest by date** (fallback) — sort all folders in `.unikit/code/plans/` **lexicographically descending**
    and pick the first one. Since new-format folders start with `YYYY-MM-DD`, this gives chronological order.
    Legacy `DDD-*` folders sort before `2xxx-*`, so new-format plans take natural priority.
 
-4. If `.unikit/plans/` is empty or doesn't exist (and no `.unikit/PLAN.md`):
+4. If `.unikit/code/plans/` is empty or doesn't exist (and no `.unikit/code/PLAN.md`):
 
-**First, check for `.unikit/FIX_PLAN.md`:**
+**First, check for `.unikit/code/FIX_PLAN.md`:**
 
-If `.unikit/FIX_PLAN.md` exists — a fix plan was created by `/unikit-fix` in plan mode. Redirect to fix workflow:
+If `.unikit/code/FIX_PLAN.md` exists — a fix plan was created by `/unikit-fix` in plan mode. Redirect to fix workflow:
 
 ```
-Fix plan detected (.unikit/FIX_PLAN.md).
+Fix plan detected (.unikit/code/FIX_PLAN.md).
 
 This plan was created via /unikit-fix and should be executed through the fix workflow
 (it creates a patch and automatically cleans up the plan after execution).
@@ -241,7 +241,7 @@ Based on choice:
 
 STOP here after handling the choice.
 
-**If both `.unikit/PLAN.md` and a matching folder plan exist**, ask the user which one to use.
+**If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to use.
 
 #### 0.2: Check for Uncommitted Changes
 
@@ -288,12 +288,12 @@ Then reconcile plan state with reality:
 
 ### Step 1: Load Plan Context
 
-**If using `.unikit/PLAN.md`** (fast-mode plan):
-- Read **`.unikit/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
+**If using `.unikit/code/PLAN.md`** (fast-mode plan):
+- Read **`.unikit/code/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules
 
-**If using a folder plan** (`.unikit/plans/<folder>/`):
+**If using a folder plan** (`.unikit/code/plans/<folder>/`):
 - Read **`TASKS.md`** — feature overview (`## Overview`), task checklist with phases, dependencies, and completion status
 - Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, dependency graph, files, DI bindings (if exists in plan folder)
 - If `TASKS.md` has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
@@ -609,10 +609,10 @@ Append one of these lines to the Implementation Summary:
 
 **5.4: Handle plan file after completion**
 
-**If using `.unikit/PLAN.md`** (fast-mode plan):
+**If using `.unikit/code/PLAN.md`** (fast-mode plan):
 
 ```
-All tasks completed. Delete .unikit/PLAN.md? (It's no longer needed)
+All tasks completed. Delete .unikit/code/PLAN.md? (It's no longer needed)
 
 Options:
 1. Yes, delete it
@@ -620,10 +620,10 @@ Options:
 ```
 
 Based on choice:
-- Yes → delete `.unikit/PLAN.md`
+- Yes → delete `.unikit/code/PLAN.md`
 - No → leave as is
 
-**If using a folder-based plan** (e.g. `.unikit/plans/2026-03-10_core-loop/`):
+**If using a folder-based plan** (e.g. `.unikit/code/plans/2026-03-10_core-loop/`):
 - Keep it — documents what was done
 - User can delete before merging if desired
 
@@ -703,7 +703,7 @@ Based on choice:
 
 ## Important Rules
 
-1. **Check FIX_PLAN.md** — if no feature plan exists but `.unikit/FIX_PLAN.md` is found, redirect to `/unikit-fix` and STOP
+1. **Check FIX_PLAN.md** — if no feature plan exists but `.unikit/code/FIX_PLAN.md` is found, redirect to `/unikit-fix` and STOP
 2. **Read before implementing** — always read both `TASKS.md` and `PLAN-BRIEF.md` (or linked research's EXPLORE-BRIEF) before starting any work
 3. **Respect task order** — within a phase, execute tasks sequentially (1.1 → 1.2 → 1.3); across phases, respect dependency graph
 4. **Mark progress** — update TASKS.md checkboxes after each completed task so progress is preserved across sessions
@@ -794,7 +794,7 @@ User: /unikit-implement 2026-03-08_customers-system Phase 4
 ```
 User: /unikit-implement --list
 
-Available plans in .unikit/plans/:
+Available plans in .unikit/code/plans/:
 
   Branch match:
     2026-03-10_core-loop          (12/40 tasks, 30%)  ← matches feature/core-loop-part1
@@ -807,13 +807,13 @@ Available plans in .unikit/plans/:
 
 Usage:
   /unikit-implement                                          — auto-detect by branch
-  /unikit-implement @.unikit/plans/2026-03-05_inventory-rework   — use specific plan
+  /unikit-implement @.unikit/code/plans/2026-03-05_inventory-rework   — use specific plan
   /unikit-implement 2026-03-05_inventory-rework Phase 2          — specific folder + phase
 ```
 
 ### Example 8: Explicit folder override
 ```
-User: /unikit-implement @.unikit/plans/2026-03-05_inventory-rework Phase 2
+User: /unikit-implement @.unikit/code/plans/2026-03-05_inventory-rework Phase 2
 
 > Feature: 2026-03-05_inventory-rework (explicit @path)
 > Phase 2: Migrate item categories
@@ -824,7 +824,7 @@ User: /unikit-implement @.unikit/plans/2026-03-05_inventory-rework Phase 2
 
 ### Example 9: Explicit folder + status
 ```
-User: /unikit-implement @.unikit/plans/2026-03-08_customers-system status
+User: /unikit-implement @.unikit/code/plans/2026-03-08_customers-system status
 
 ┌──────────────────────────────────────────────────────────┐
 │ Feature: 2026-03-08_customers-system (explicit @path)  │

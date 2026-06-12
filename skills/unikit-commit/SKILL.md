@@ -61,7 +61,7 @@ Do not announce, confirm, or mention the language setting.
    - Never modify these files
 
 4. **Plan Task Linkage**
-   - Check if `.unikit/plans/` contains an active plan (look for `TASKS.md`)
+   - Check if `.unikit/code/plans/` contains an active plan (look for `TASKS.md`)
    - If a plan exists and staged changes clearly relate to a planned task, suggest referencing the phase/task number in the commit message body (e.g., "Phase 8, tasks 8.1-8.3")
    - This is optional — suggest it, don't require it
 

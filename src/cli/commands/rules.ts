@@ -77,10 +77,13 @@ function buildRegistry(config: UniKitConfig): ChainedRegistry {
  *     A missing or unparseable `version` cannot signal staleness here (a bare
  *     `semver.lt` would THROW on garbage); `diskPending` is the ground-truth
  *     fallback in that case.
- *   - diskPending: the project memory migration chain still reports pending
- *     work (legacy flat `memory/{core,stack}` not yet wrapped under `code/`).
- *     Operational hazard — a sync now reconciles against the empty new path and
- *     splices every rule out of `.unikit.json` state.
+ *   - diskPending: the project migration chain still reports pending work —
+ *     legacy flat `memory/{core,stack}` not yet wrapped under `code/`, OR the
+ *     flat workspace (`plans/`, `patches/`, `researches/`, `PLAN.md`,
+ *     `FIX_PLAN.md`) not yet relocated under `.unikit/code/`. Operational
+ *     hazard — a sync now reconciles against the empty new path and splices
+ *     every rule out of `.unikit.json` state. This signal, not `versionStale`,
+ *     is what gates the workspace relocation (it ships to 1.1.0 projects).
  *
  * Truth table (ver × disk): ok/ok → false; ok/pending → true (disk is ground
  * truth); stale/modular → true (accepted false-positive: cost = run `update`
@@ -820,7 +823,7 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
 
   if (outOfDate) {
     console.log(chalk.yellow(
-      '⚠ Project is out of date — memory layout not migrated to the modular `code/` module.',
+      '⚠ Project is out of date — `.unikit/` layout (memory and/or workspace) not migrated to the modular `code/` module.',
     ));
     console.log(chalk.yellow('  Run `unikit-ai update` before `rules sync` / `rules install`.'));
     console.log('');

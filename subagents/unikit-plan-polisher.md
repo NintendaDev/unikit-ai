@@ -32,7 +32,7 @@ Purpose:
 
 - You are a normal subagent. Never invoke nested subagents or agent teams.
 - When injected `/unikit-plan` or `/unikit-improve` instructions mention `Agent(...)` or other delegated exploration, replace that with direct `Read`, `Glob`, `Grep`, and `Bash` work.
-- Do not implement code. Your write scope is limited to `.unikit/plans/` plan files (TASKS.md, PLAN-BRIEF.md, and related plan artifacts).
+- Do not implement code. Your write scope is limited to `.unikit/code/plans/` plan files (TASKS.md, PLAN-BRIEF.md, and related plan artifacts).
 - Respect `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`.
 
 ## Workflow — phased with hard budget
@@ -63,7 +63,7 @@ they are NOT a reason for more tool calls.
 
 Parse the caller's request here and pick the target plan folder:
 - If the caller provided an explicit `@<path>` → use that folder.
-- Otherwise → create or find the appropriate folder in `.unikit/plans/`.
+- Otherwise → create or find the appropriate folder in `.unikit/code/plans/`.
 
 ### Phase C — Write plan (MANDATORY, no budget)
 
@@ -129,7 +129,7 @@ Rules for the block:
 
 - Keep each key on its own line, exactly as shown. The coordinator parses by
   literal key names — renaming, reordering, or inlining values breaks parsing.
-- Use relative paths (e.g. `.unikit/plans/2026-04-19_foo/`), not absolute.
+- Use relative paths (e.g. `.unikit/code/plans/2026-04-19_foo/`), not absolute.
 - If you ran out of budget or could not write the plan, STILL emit the block
   with `plan_created: no`, `plan_path: none`, `tasks_count: 0`, and put the
   reason in `summary`. The coordinator relies on this to decide retry vs abort.

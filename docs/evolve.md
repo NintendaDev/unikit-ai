@@ -131,7 +131,7 @@ Reads all new patches incrementally and proposes rules across all skills.
 
 | Step | What happens |
 |------|--------------|
-| **1: Read patches** | Glob `.unikit/patches/*.md`, apply incremental cursor + overlap window (tail-5 anti-miss guard). Extract prevention points, root causes, and tags from each patch. A single patch can produce multiple independent prevention points |
+| **1: Read patches** | Glob `.unikit/code/patches/*.md`, apply incremental cursor + overlap window (tail-5 anti-miss guard). Extract prevention points, root causes, and tags from each patch. A single patch can produce multiple independent prevention points |
 | **2: Load context** | Read `DESCRIPTION.md` (tech stack), `RULES.md` (current rules), `RULES_INDEX.md` (knowledge base index) |
 | **3: Build registry** | Build flat list of all prevention points. Classify each as `code` (patterns, null-checks, async, DI - destination: RULES.md) or `workflow:<skill>` (delegation, compilation checks, parallelism - destination: skill-context) |
 | **4: Filter covered** | Cross-check each point against existing rules. Code rules checked against RULES.md + knowledge base via RULES_INDEX.md. Workflow rules checked against skill-context + base SKILL.md. Only truly uncovered points survive |
