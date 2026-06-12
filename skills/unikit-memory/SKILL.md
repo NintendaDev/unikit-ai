@@ -2,18 +2,16 @@
 name: unikit-memory
 description: >-
   Add or update rules in .unikit/memory/: a module-agnostic router over the knowledge base.
-  Resolves the active module (today: code — core rules like code style, design principles, testing,
-  performance; and stack rules — framework-specific patterns for Zenject, DOTween, Addressables, R3,
-  UniTask, etc.), then loads that module's contract and drives add/research/migrate/validate.
+  Resolves the active module (today: code — core rules like code style, design principles,
+  testing, performance; stack rules — framework patterns for Zenject, DOTween, R3, UniTask,
+  Addressables, etc.), loads that module's contract, and drives add/research/migrate/validate.
   Accepts descriptions, URLs, or file paths; enriches docs via Context7 MCP when available.
   Use when user says "add rule", "add core rule", "add stack rule", "document how we use X",
-  "add rules for DOTween", "add coding convention", pastes framework docs URLs,
-  or wants to codify coding standards, best practices, or tech-specific conventions.
-  Pass "--module <id>" to target a specific knowledge-base module explicitly.
-  Use "--migrate-rules" (or pass RULES.md / .unikit/RULES.md as input) to migrate mature rules
-  from RULES.md into permanent rule files; also trigger on "migrate rules", "transfer rules to memory".
-  Use "validate" to sync RULES_INDEX.md with actual files in memory/ — adds missing entries, removes phantom ones.
-  Do NOT use for architecture decisions — those belong in ARCHITECTURE.md.
+  "add rules for DOTween", "add coding convention", pastes framework docs URLs, or wants to
+  codify coding standards or tech-specific conventions. Pass "--module <id>" to target a
+  module explicitly. Use "--migrate-rules" (or pass RULES.md) to migrate mature rules into
+  permanent files; also "migrate rules". Use "validate" to sync RULES_INDEX.md with files on
+  disk. Do NOT use for architecture decisions — those belong in ARCHITECTURE.md.
 argument-hint: "[description | URL(s) | file path | --module <id> | --migrate-rules | --skip-registry | validate]"
 allowed-tools:
   - Read

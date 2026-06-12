@@ -434,13 +434,18 @@ run_nested_test "Part 20: memory migration smoke tests" "$SCRIPT_DIR/test-memory
 run_nested_test "Part 21: golden-guard #1 (modular memory layout)" "$SCRIPT_DIR/test-golden-guard.sh"
 
 # ─────────────────────────────────────────────
-# Part 22: rules CLI exit-code matrix guard
+# Part 22: module-contract guard #2 (per-module completeness + tier-agnostic routers)
+# ─────────────────────────────────────────────
+run_nested_test "Part 22: module-contract guard #2" "$SCRIPT_DIR/test-module-contract.sh"
+
+# ─────────────────────────────────────────────
+# Part 23: rules CLI exit-code matrix guard
 # ─────────────────────────────────────────────
 # Must run last: parses the other test-rules-*.sh files for
 # assert_exit / assert_cmd_exit / `if [[ $CODE -eq N ]]` patterns and
 # confirms every contract-documented exit code is covered by at least
 # one assertion.
-run_nested_test "Part 22: rules CLI exit-code matrix" "$SCRIPT_DIR/test-exit-codes.sh"
+run_nested_test "Part 23: rules CLI exit-code matrix" "$SCRIPT_DIR/test-exit-codes.sh"
 
 # ─────────────────────────────────────────────
 # Summary

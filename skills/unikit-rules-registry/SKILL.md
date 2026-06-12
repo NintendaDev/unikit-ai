@@ -96,6 +96,13 @@ modules and the tiers each partitions its rules into. If the file is missing
 and `enginePartitioned: true`, and surface a `WARN` suggesting `unikit-ai update`
 to regenerate it.
 
+This skill needs only the **structural** fields here (`tiers`, `enginePartitioned`)
+to mirror the on-disk layout. A module's tier **semantics** and file/format
+contract are documented separately in
+`{{skills_dir}}/unikit-memory/references/module-<id>.md` (owned by the
+`unikit-memory` router) — consult it if you need to understand what a tier holds,
+never to derive registry paths.
+
 **Resolve the target modules** (the policy mirrors `--engine`):
 
 1. **Explicit `--module <id>`** in `$ARGUMENTS` → validate against the parsed ids.
