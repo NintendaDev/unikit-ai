@@ -85,6 +85,36 @@ pick the tier for the `code` module:
 3. **Does the file already exist?** Check the target tier directory
    (`.unikit/memory/code/stack/` or `.unikit/memory/code/core/`).
 
+## Integration Intent (stack rules only)
+
+The `stack` tier may carry **integration content** — rules about how one framework
+combines with another. This is gated behind an explicit `integrationIntent` flag,
+**off by default**. The `core` tier is framework-agnostic and never subject to this
+gate. The router detects `integrationIntent` while classifying the request and
+threads it into the Add Rule / Research workflows; the detection signals live here
+because they are specific to this module's `stack` tier.
+
+Set `integrationIntent=true` if **any** of these fire:
+
+- **T1 (prompt text):** $ARGUMENTS contains any of `integration`, `интеграция`,
+  `with <framework>`, `связка X и Y`, `X + Y`, `использовать X из Y`, or equivalent
+  phrasing that names two frameworks together.
+- **T2 (URL or filename):** any input URL path or file path contains the tokens
+  `integration` / `integrate` (case-insensitive).
+- **T3 (post-fetch content, Research only):** after gathering material, the content
+  shows integration signals — headings titled `integration` / `integrate` /
+  `with <other framework>`, substantial blocks dedicated to combining the target
+  framework with another library (not a one-line mention), or code examples whose
+  central point is a cross-framework pattern (**not** a placeholder usage like
+  `.ToUniTask()` on an arbitrary awaitable). T3 may upgrade `false` → `true` mid-run.
+
+If none fire, `integrationIntent` stays `false`.
+
+**Threading:** when `integrationIntent=true` and a rule spans two existing framework
+files, use `AskUserQuestion` to pick the main framework's file — never split the rule
+across both. The exact allowed/forbidden content for each value is defined in "Scope
+Isolation" below.
+
 ## Scope Isolation (stack rules only)
 
 The rule describes ONLY the target framework/module. Apply this filter as a

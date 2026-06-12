@@ -1,17 +1,17 @@
 ---
 name: unikit-memory
 description: >-
-  Add or update rules in .unikit/memory/: a module-agnostic router over the knowledge base.
-  Resolves the active module (today: code — core rules like code style, design principles,
-  testing, performance; stack rules — framework patterns for Zenject, DOTween, R3, UniTask,
-  Addressables, etc.), loads that module's contract, and drives add/research/migrate/validate.
-  Accepts descriptions, URLs, or file paths; enriches docs via Context7 MCP when available.
-  Use when user says "add rule", "add core rule", "add stack rule", "document how we use X",
-  "add rules for DOTween", "add coding convention", pastes framework docs URLs, or wants to
-  codify coding standards or tech-specific conventions. Pass "--module <id>" to target a
-  module explicitly. Use "--migrate-rules" (or pass RULES.md) to migrate mature rules into
-  permanent files; also "migrate rules". Use "validate" to sync RULES_INDEX.md with files on
-  disk. Do NOT use for architecture decisions — those belong in ARCHITECTURE.md.
+  Curate the project's knowledge base in .unikit/memory/ — the long-term reference library of
+  documented coding standards (code style, design, testing, performance) and framework usage
+  patterns (Zenject, DOTween, R3, UniTask, Addressables, Odin, etc.), researched and indexed.
+  This is the knowledge base, distinct from project rules in .unikit/RULES.md. Use when the user
+  wants to document or research how the project uses a framework ("document how we use
+  Addressables", "add knowledge for DOTween", "best practices for R3"), add a core or stack entry
+  to the knowledge base, or pastes framework docs URLs/files to turn into vetted entries. Also:
+  "--migrate-rules" (or passing RULES.md) promotes mature project rules into the knowledge base;
+  "validate" re-syncs RULES_INDEX.md; "--module <id>" targets a module. For a quick project rule,
+  override, or "remember this / always-never X" correction use /unikit-rules (RULES.md); for
+  architecture decisions use ARCHITECTURE.md.
 argument-hint: "[description | URL(s) | file path | --module <id> | --migrate-rules | --skip-registry | validate]"
 allowed-tools:
   - Read
@@ -203,20 +203,14 @@ Intent?
 | Vague topic, delegation words | **Research** | "add rules for DOTween", "document how we use Addressables", "figure out best practices for R3" |
 | Imperative, specific convention, code examples | **Add Rule** | "add rule: always use `.SetEase(Ease.OutQuad)`", "never use coroutines", "use `NonLazy()` for controllers" |
 
-**Phase C — Detect integration intent (where the module contract defines it):**
+**Phase C — Detect integration intent (contract-defined):**
 
-Some modules define a tier whose rules may carry **integration content** (how one
-framework combines with another) and gate it behind explicit intent. The `code`
-module does this for its `stack` tier (see the contract's "Scope Isolation"
-section). Integration content is off by default. Set `integrationIntent=true` if
-**any** of the following is true at classification time:
-
-- **T1 (prompt text):** $ARGUMENTS contains any of: `integration`, `интеграция`, `with <framework>`, `связка X и Y`, `X + Y`, `использовать X из Y`, or equivalent phrasing that names two frameworks together.
-- **T2 (URL or filename):** any input URL path or file path contains the tokens `integration` / `integrate` (case-insensitive).
-
-If neither T1 nor T2 fires, leave `integrationIntent=false`. Branch B.1.5 may still upgrade it later based on fetched content (T3). Module tiers that the contract marks framework-agnostic (e.g. the `code` module's `core` tier) are unaffected — the scope filter applies only to the tier(s) the contract names.
-
-Store `integrationIntent` alongside the classified intent and thread it through to Branch A / Branch B. In Branch A (Add Rule), when `integrationIntent=true` and the rule spans two existing framework files, use `AskUserQuestion` to pick the main framework's file — never split the rule across both files.
+If the active module's contract defines integration-gated tiers, detect
+`integrationIntent` per the contract's "Integration Intent" section and store it
+alongside the classified intent to thread into Branch A / Branch B. The `code`
+contract defines this for its `stack` tier (detection signals T1/T2, plus T3
+post-fetch in the Research pipeline). Modules with no integration-gated tier skip
+this phase and leave `integrationIntent=false`.
 
 ### Step 1.5: Registry-first Lookup
 
@@ -341,11 +335,17 @@ Based on intent (Step 1) and classification (Step 2), follow the appropriate bra
 
 ```
 Intent?
-├── VALIDATE INDEX → Branch D (skip Steps 2-3 entirely)
-├── MIGRATE RULES  → Branch C (skip Step 2 — migration handles its own classification)
-├── ADD RULE       → Branch A
-└── RESEARCH       → Branch B
+├── VALIDATE INDEX → Branch D (inline below; skip Steps 2-3 entirely)
+├── MIGRATE RULES  → read references/migrate-rules.md and follow it (skip Step 2)
+├── ADD RULE       → Branch A (inline below)
+└── RESEARCH       → read references/research-pipeline.md and follow it
 ```
+
+Branches B (Research) and C (Migrate) are intent-gated and live in dedicated
+reference files loaded relative to this skill
+(`{{skills_dir}}/{{self_name}}/references/`): open the matching file only when its
+intent is selected, then return here for the **Final Step: Confirm**. Branch A and
+Branch D stay inline below since they are short and on the common path.
 
 ---
 
@@ -404,7 +404,7 @@ Ask the user: *"I don't have a rules file for {framework/topic} yet. Would you l
 
 ```
 User answer?
-├── YES (research) → Switch to Branch B (start from B.1)
+├── YES (research) → read references/research-pipeline.md and follow it (start at B.1)
 └── NO (save as-is)
     ├── Create the rule file with user's rule(s) only
     ├── Update RULES_INDEX.md — add to the tier's table
@@ -415,304 +415,22 @@ User answer?
 
 ## Branch B: Research
 
-Full research pipeline — gather material, enrich, synthesize, then write.
-
-### B.1: Gather Material
-
-Depends on the original input type from Step 1:
-
-**URL input** — Two-phase deep extraction.
-
-*Phase A — Collect & Study.* For EACH URL:
-
-1. **Fetch the page** using `WebFetch` with a targeted prompt:
-   ```
-   WebFetch(url, "Extract ALL key information about this framework/technology:
-   - Main topic and purpose
-   - Key concepts, terms, and definitions
-   - Code examples and usage patterns
-   - API methods, parameters, return types
-   - Configuration options
-   - Best practices and recommendations
-   - Anti-patterns and common mistakes
-   - Links to related important pages
-   Provide a comprehensive, structured summary.")
-   ```
-2. **Assess depth** — if the page references critical sub-pages (API reference, guides, examples), fetch those too (up to 5 additional pages per source URL, prioritize by relevance).
-3. **Record findings** — for each source, capture: topic, core concepts, practical patterns with code examples, configuration / API surface, common pitfalls.
-4. If a URL fails, report and continue with others.
-
-*Phase B — Enrich with Web Search.* After collecting all URLs, evaluate coverage gaps. If the fetched URLs don't already provide comprehensive coverage, run 1-3 targeted `WebSearch` queries:
-
-- `"<framework> best practices"` — latest recommendations
-- `"<framework> common mistakes"` — pitfalls to document
-- `"<framework> cheat sheet"` — concise reference material
-
-Skip this phase if the URLs already cover the topic comprehensively.
-
-**File input** — Two-phase enrichment.
-
-1. Use `Read` to load the file content.
-2. Identify the framework/technology/topic from the file content.
-3. Run 1-3 targeted `WebSearch` queries to enrich and validate:
-   - `"<topic> best practices"` — latest recommendations
-   - `"<topic> common mistakes"` — pitfalls to document
-   - `"<topic> cheat sheet"` or `"<topic> API reference"` — concise reference material
-4. For each promising search result, use `WebFetch` to extract detailed content (up to 3 pages).
-5. B.2 will perform Context7 enrichment — do not skip web search here.
-
-**Mixed input (URL + File)** — Process both sources together.
-
-1. Apply the **URL input** pipeline to all http(s) URLs (WebFetch + conditional WebSearch).
-2. Apply the **File input** pipeline to all file paths (Read + WebSearch).
-3. Merge all gathered material before proceeding to B.2.
-
-**Description input** (exploratory tone):
-
-1. Use the provided text to identify the target framework/technology/topic.
-2. Run 1-3 targeted `WebSearch` queries to gather material:
-   - `"<topic> best practices {{engine_name}}"` — recommended approaches
-   - `"<topic> common mistakes"` — pitfalls to document
-   - `"<topic> cheat sheet"` or `"<topic> API reference"` — concise reference material
-3. For each promising search result, use `WebFetch` to extract detailed content (up to 3 pages).
-4. B.2 will attempt Context7 enrichment — but do not skip web search here.
-
-**Interactive mode**: Ask the user which framework or technology they want to document. Offer examples based on the project's tech stack from `DESCRIPTION.md`.
-
-### B.1.5: Upgrade Integration Intent (post-fetch)
-
-This step applies only to tiers the module contract gates for integration content
-(e.g. the `code` module's `stack` tier). After B.1 finishes gathering material,
-scan the collected content for integration signals (T3):
-
-- Headings or sections whose titles include `integration`, `integrate`, `with <other framework>`, or equivalent wording
-- Substantial blocks dedicated to combining the target framework with another library (not just a one-line mention)
-- Code examples whose central point is a cross-framework pattern — **not** a placeholder usage like `.ToUniTask()` on an arbitrary awaitable
-
-If **any** such signal is found AND `integrationIntent` is currently `false`, upgrade it to `true`. This honors user-supplied sources that document an integration even when the original prompt did not explicitly ask for it.
-
-If no signals are found, leave `integrationIntent` unchanged.
-
-### B.2: Enrich with Context7
-
-Always attempt when a specific framework/topic was identified:
-
-1. Use `mcp__context7__resolve-library-id` to find the library ID.
-2. Query the documentation with `mcp__context7__query-docs` across **all** topics (separate queries for each):
-   - **Usage patterns** — key API conventions, core workflows, typical setup
-   - **Best practices** — recommended approaches, idiomatic usage, performance tips
-   - **Cheat sheets** — quick reference for common operations, method signatures, configuration options
-   - **Common mistakes** — typical errors, pitfalls, misuse patterns, debugging hints
-3. Integrate relevant findings into the gathered material.
-
-**Fallback:** If context7 tools are unavailable or the lookup fails — print a yellow warning and proceed with web search results and training knowledge:
-
-```
-⚠️ Context7 MCP is not available — documentation enrichment skipped. Results may be less comprehensive.
-```
-
-Use yellow/warning styling if the output supports it. Do not block the workflow — this is informational only.
-
-### B.3: Synthesize
-
-Combine all gathered material (B.1 input + B.2 enrichment) into a structured Knowledge Base.
-
-Structure the material into these sections (omit empty ones):
-
-- **Core Concepts** — key terms, definitions, fundamental ideas
-- **API / Interface** — method signatures, parameters, return types, key classes
-- **Patterns & Examples** — practical code examples with context on when to use each
-- **Configuration** — setup options, defaults, valid values, initialization patterns
-- **Best Practices** — recommended approaches with reasoning
-- **Common Pitfalls** — typical mistakes, what goes wrong, how to avoid
-
-Keep only information relevant to using the framework in a {{engine_name}}/{{engine_code_language}} project. Discard web-framework specifics, non-{{engine_name}} platforms, and irrelevant content. Transform passive documentation into actionable rules ("Use X when..." instead of "X is a feature that...").
-
-**Scope Isolation:** Apply the module contract's "Scope Isolation" section as a
-second, independent pass over the synthesized material. The contract defines which
-tier(s) it governs and the exact allowed/forbidden cases for integration content
-based on `integrationIntent`. For the `code` module this applies to `stack` rules
-only; `core` rules are framework-agnostic by construction and exempt. Run the
-contract's self-test before writing.
-
-### B.3.5: Identify Reference Candidates
-
-Follow the module contract's "Reference Candidate Extraction" guidance to decide
-whether parts of the synthesized content should be split into separate reference
-files (large subsystems, lookup catalogs, exhaustive indexes). Reference files live
-under the tier's `references/` subfolder as defined by the contract.
-
-**If 0 candidates found** — skip to B.4.
-
-**If 1+ candidates found** — propose the split strategy and the exact file list (per
-the contract's format) before writing anything, then use `AskUserQuestion`:
-
-Options:
-1. Yes — create all proposed reference files
-2. Adjust — user specifies changes (rename, merge, split, drop a file, change strategy) → revise proposal and ask again
-3. No — keep all data inline in the main rule file
-
-- **Yes / approved Adjust** → mark the approved files for creation; proceed to B.4.
-- **No** → skip reference extraction; proceed to B.4 with all content staying inline.
-
-### B.4: Cross-Check (if target file exists)
-
-Same logic as **A.2** — read existing file and related files, compare, resolve contradictions with user.
-
-If the target file doesn't exist — skip this step.
-
-### B.5: Generate / Update File
-
-Create or update the rule file following the **File Format Template** from the module contract. If updating, merge into existing sections without overwriting useful content.
-
-If reference files were approved in B.3.5:
-1. Create each reference file following the **Reference File Format** from the module contract.
-2. Add `> **References**:` to the main rule file header, listing each file with a one-word parenthetical (e.g., `(quick lookup)`, `(exhaustive index)`, `(converter catalog)`).
-3. Add a `## {Content} Lookup Workflow` section to the main rule file instructing the LLM when to open which reference. Do **not** duplicate catalog data in the main file — only pointers and instructions.
-
-If a NEW file was created — update `RULES_INDEX.md` (add row to appropriate table in alphabetical order).
-
-→ Go to **Final Step: Confirm**
+Full research pipeline — gather material, enrich, synthesize, then write into the
+active module's tier. The complete workflow (B.1–B.5: gather → integration upgrade →
+Context7 → synthesize → reference candidates → cross-check → write) lives in
+`{{skills_dir}}/{{self_name}}/references/research-pipeline.md`. Read that file and
+follow it, then return here for the **Final Step: Confirm**. All file-format and
+scope decisions in it defer to the module contract.
 
 ---
 
 ## Branch C: Migrate Rules from RULES.md
 
-Transfer mature entries from `.unikit/RULES.md` (quick-capture staging area) into permanent rule files under `.unikit/memory/<module>/`. RULES.md holds project-specific overrides — over time, entries that clearly belong to a specific rule file should graduate into the knowledge base.
-
-### C.1: Load Context
-
-Read:
-1. **`.unikit/RULES.md`** — current entries
-2. **`.unikit/memory/<module>/RULES_INDEX.md`** — available rule files with descriptions
-
-**Skip entirely** if RULES.md has no entries — report "No entries in RULES.md to migrate" and stop.
-
-### C.2: Classify Entries
-
-For each rule entry in RULES.md:
-
-0. **Check for `@no-migrate` tag** — if the rule line ends with `<!-- @no-migrate -->`, skip it entirely. This tag means the user previously decided this rule must stay in RULES.md. Do not present it as a transfer candidate, do not mention it in the output. Proceed to the next entry.
-1. **Classify destination** — match topic against RULES_INDEX.md "Description" and "Load When" columns to find the target file. If no file covers this topic — mark as **New File** candidate (needs a new rule file in the module). Use the module contract's tier semantics to pick the tier for a New File candidate.
-2. **Check maturity** — ready for transfer when:
-   - Clearly belongs to a specific rule file (existing or proposed new one)
-   - Specific and actionable (not a vague note)
-3. **Detect conflicts** (skip for New File candidates) — read the target rule file and check whether the RULES.md entry **contradicts** an existing rule. Mark each candidate as:
-   - **Compatible** — no conflict, standard transfer
-   - **Override** — contradicts an existing rule in the target file (e.g., "Never use var" overrides a {{engine_code_language}} convention, "Factory classes instead of Zenject PlaceholderFactory" overrides a DI pattern). Record which specific rule(s) in the target file conflict.
-   - **New File** — no existing file covers this topic; propose creating a new rule file
-
-### C.3: Present Transfer Candidates
-
-**Compatible entries:**
-
-```
-### Transfer: "[rule text]"
-- **From:** `.unikit/RULES.md` (section: {section name})
-- **To:** `.unikit/memory/<module>/<tier>/{FILE}.md` (section: {target section})
-- **Reason:** {why this belongs in the target file}
-```
-
-Options via `AskUserQuestion` (batches of up to 4):
-1. Transfer — move to target file, remove from RULES.md
-2. Keep — leave in RULES.md permanently, tag `<!-- @no-migrate -->`
-3. Skip — decide later (no tag — will be presented again on next migration)
-
-Based on choice:
-- Transfer → apply C.4 "Transfer" procedure for this entry
-- Keep → append `<!-- @no-migrate -->` tag, do not touch memory files
-- Skip → leave as-is, no changes
-
-**Override entries (conflict detected):**
-
-```
-### Override: "[rule text]"
-- **From:** `.unikit/RULES.md` (section: {section name})
-- **To:** `.unikit/memory/<module>/<tier>/{FILE}.md` (section: {target section})
-- **Conflicts with:** "[existing rule text in memory file]"
-- **Reason:** {why the RULES.md entry overrides the base convention}
-```
-
-Options via `AskUserQuestion` (batches of up to 4):
-1. Replace — delete conflicting rule(s) from memory file, insert RULES.md entry verbatim, remove from RULES.md
-2. Keep — leave in RULES.md permanently, tag `<!-- @no-migrate -->`
-3. Delete — remove from RULES.md without transferring (base convention wins)
-
-Based on choice:
-- Replace → apply C.4 "Replace" procedure for this entry
-- Keep → append `<!-- @no-migrate -->` tag, do not touch memory files
-- Delete → remove entry from RULES.md, leave memory file unchanged
-
-**New File entries (no matching file in the module):**
-
-```
-### New File: "[rule text]"
-- **From:** `.unikit/RULES.md` (section: {section name})
-- **Proposed file:** `.unikit/memory/<module>/<tier>/{PROPOSED-NAME}.md`
-- **Tier:** {tier} — {reasoning for the choice, per the module contract}
-- **Reason:** {why no existing file covers this topic}
-```
-
-Options via `AskUserQuestion` (batches of up to 4):
-1. Create & Transfer — create proposed file and move the rule there
-2. Custom — user specifies own filename and/or tier
-3. Keep — leave in RULES.md permanently, tag `<!-- @no-migrate -->`
-4. Skip — decide later (no tag — will be presented again on next migration)
-
-Based on choice:
-- Create & Transfer → apply C.4 "Create & Transfer" procedure with proposed filename
-- Custom → ask user for filename and tier, confirm, then apply C.4 "Create & Transfer" with user's values
-- Keep → append `<!-- @no-migrate -->` tag, do not touch memory files
-- Skip → leave as-is, no changes
-
-If no transfer candidates found across all three types (Compatible, Override, New File) → report "No mature entries to transfer" and stop.
-
-### C.3a: Handle Rephrasing Requests
-
-If the user rephrases a rule, requests changes to the wording, or asks to modify a rule before saving:
-
-1. **Generate a new variant** — rewrite the rule text according to the user's instructions.
-2. **Present the updated rule** using the same format as C.3 (Compatible / Override / New File — whichever applies), showing the **new wording** instead of the original.
-3. **Offer the same options** as C.3 for this entry (Transfer / Replace / Create & Transfer / Keep / Skip / etc.).
-4. **Repeat** if the user requests further changes — keep iterating until the user approves or skips.
-
-The rephrased text replaces the original for all downstream steps (C.4 applies the approved wording, not the original RULES.md text).
-
-### C.4: Apply Approved Actions
-
-**For "Transfer" (compatible entries):**
-1. Read the target rule file
-2. Add the rule text **verbatim** (or the approved rephrased variant from C.3a) — copy exact wording without rephrasing or paraphrasing
-3. Remove the rule from RULES.md using `Edit`
-4. If a RULES.md section becomes empty after removal, remove the section header too
-
-**For "Replace" (override entries):**
-1. Read the target rule file
-2. Locate and **delete** the conflicting rule(s) from the target memory file using `Edit`
-3. Insert the RULES.md entry **verbatim** (or the approved rephrased variant from C.3a) in the same section where the conflicting rule was
-4. Remove the rule from RULES.md using `Edit`
-5. If a RULES.md section becomes empty after removal, remove the section header too
-
-**For "Create & Transfer" (new file entries):**
-1. Create the new rule file following the **File Format Template** from the module contract, using the approved filename and tier
-2. Write the rule text (original or approved rephrased variant from C.3a) into the appropriate section
-3. Update `RULES_INDEX.md` — add a new row to the appropriate table in alphabetical order
-4. Remove the rule from RULES.md using `Edit`
-5. If a RULES.md section becomes empty after removal, remove the section header too
-
-**For "Delete" (discard override):**
-1. Remove the rule from RULES.md using `Edit`
-2. If a RULES.md section becomes empty after removal, remove the section header too
-3. Do not touch the memory file — the base convention remains
-
-**For "Keep" (leave in RULES.md permanently):**
-1. Append ` <!-- @no-migrate -->` to the end of the rule line in RULES.md using `Edit`
-2. The tag is an HTML comment — invisible when rendered, but detectable during future migrations (see C.2 step 0)
-3. Do not modify any memory files
-
-**Verbatim transfer is critical:** rules in RULES.md were carefully worded. Changing wording during transfer risks losing nuance. The only acceptable change is adding a section header in the target file if needed.
-
-→ Go to **Final Step: Confirm** (report which rules were transferred, replaced, or deleted)
+Transfer mature entries from `.unikit/RULES.md` (the quick-capture staging area owned
+by `unikit-rules`) into permanent rule files under `.unikit/memory/<module>/`. The
+complete workflow (C.1–C.4: load → classify → present candidates → rephrase → apply)
+lives in `{{skills_dir}}/{{self_name}}/references/migrate-rules.md`. Read that file
+and follow it, then return here for the **Final Step: Confirm**.
 
 ---
 
