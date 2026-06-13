@@ -160,7 +160,12 @@ async function syncRegistry(
   prune: boolean,
   events: SyncRulesEvent[],
 ): Promise<boolean> {
-  const registryManifest = await registry.fetchManifest();
+  // Per-module manifest resolution: each module finds its own winning chain
+  // source (a code-only custom registry still syncs gamedesign rules through
+  // the official/bundled fallback). A module missing from every source keeps
+  // the manifest non-null while the accessors below yield `[]` — Phase 2 then
+  // no-ops for that module instead of erroring.
+  const registryManifest = await registry.fetchModuleManifest(module.id);
 
   if (!registryManifest) {
     events.push({ kind: 'phase2:registry-unreachable' });

@@ -86,6 +86,17 @@ export abstract class ChainedRegistry implements RulesRegistry {
     return this.resolveModule(CODE_MODULE_ID);
   }
 
+  /**
+   * Module-aware sibling of `fetchManifest()`: resolve and return the
+   * normalized manifest carrying `module` (per-module chain walk, cached).
+   * Returns the last reachable manifest when no source carries the module —
+   * callers distinguish "module missing" (non-null, accessors yield `[]`)
+   * from "chain unreachable" (`null`, the exit-2 signal).
+   */
+  async fetchModuleManifest(module: ModuleId): Promise<RegistryManifest | null> {
+    return this.resolveModule(module);
+  }
+
   async fetchRule(
     module: ModuleId,
     engineId: string,

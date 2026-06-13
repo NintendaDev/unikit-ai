@@ -10,7 +10,7 @@ import {
 } from '../../utils/fs.js';
 import { logInfo } from '../../utils/log.js';
 import {
-  RULES_MANIFEST_FILE, RULES_INDEX_FILE, RULES_INDEX_TEMPLATE_FILE,
+  RULES_MANIFEST_FILE, RULES_INDEX_FILE,
   TIER_TABLE_MARKERS, moduleDir, moduleTierDir, type Tier,
 } from '../constants.js';
 import type { Module } from '../modules.js';
@@ -133,7 +133,9 @@ function renderRuleRow(
 
 /**
  * Generate `<module>/RULES_INDEX.md` for one module by iterating its tiers and
- * filling the per-tier table markers in the shared template.
+ * filling the per-tier table markers in the module's template. The template is
+ * selected per module via `module.rulesIndexTemplate` (data-dir-relative) —
+ * `code` and `gamedesign` carry different tier tables and prose.
  *
  * Filter: if `installedByTier[tier]` is non-empty, emit only rules tracked in
  * that list. If it is empty/absent, emit every `.md` file found on disk for
@@ -145,7 +147,7 @@ export async function generateRulesIndex(
   installedByTier: InstalledByTier = {},
   requiredBy: RequiredByMap = {},
 ): Promise<GenerateRulesIndexStatus> {
-  const templatePath = path.join(getDataDir(), RULES_INDEX_TEMPLATE_FILE);
+  const templatePath = path.join(getDataDir(), module.rulesIndexTemplate);
   const template = await readTextFile(templatePath);
   if (!template) {
     throw new Error(`RULES_INDEX template not found: ${templatePath}`);

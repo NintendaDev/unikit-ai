@@ -454,7 +454,7 @@ Read this index to determine which rule files are relevant for the current task,
 
 #### 9.2: Core bootstrap
 
-Install the whitelisted core rule set via the registry chain (primary → official → bundled). This is a quiet, idempotent step — on a re-run it will either skip everything (hash match) or pull fresh content when the registry has been updated. The no-args form of `rules install` owns the core-bootstrap contract: it fetches the manifest once, installs the whitelisted core ids, and regenerates `RULES_INDEX.md` on every invocation.
+Install the baseline rule set via the registry chain (primary → official → bundled). This is a quiet, idempotent step — on a re-run it will either skip everything (hash match) or pull fresh content when the registry has been updated. The no-args form of `rules install` owns the bootstrap contract: it walks every registered module by its bootstrap policy — the `code` module installs the always-tagged (core) rules, the `gamedesign` module installs its entire catalog (core + library); modules absent from the registry are skipped gracefully. Each module's manifest is fetched once, and `RULES_INDEX.md` is regenerated on every invocation.
 
 ```bash
 unikit-ai rules install

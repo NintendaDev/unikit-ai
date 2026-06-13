@@ -3,6 +3,7 @@ import { createRequire } from 'module';
 import { readJsonFile, writeJsonFile, fileExists } from '../utils/fs.js';
 import { getAgentConfig } from './agents.js';
 import { CODE_MODULE_ID, RULE_CATEGORIES, type Tier } from './constants.js';
+import { getModule, listModules } from './modules.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -135,26 +136,41 @@ function normalizeRuleEntries(raw: unknown): InstalledRuleEntry[] {
   });
 }
 
+/**
+ * The tier list used to (de)serialize one module's state. Registered modules
+ * use their own `tiers` (the gamedesign module persists `library`, not
+ * `stack`); unknown module ids in a loaded config fall back to the `code`
+ * tier list so foreign entries survive a round-trip unchanged in shape.
+ */
+function tiersOf(moduleId: string): readonly Tier[] {
+  return getModule(moduleId)?.tiers ?? RULE_CATEGORIES;
+}
+
 /** A fresh, empty per-tier container for one module. */
-function emptyTierMap(): Record<Tier, InstalledRuleEntry[]> {
+function emptyTierMap(tiers: readonly Tier[]): Record<Tier, InstalledRuleEntry[]> {
   const map = {} as Record<Tier, InstalledRuleEntry[]>;
-  for (const tier of RULE_CATEGORIES) {
+  for (const tier of tiers) {
     map[tier] = [];
   }
   return map;
 }
 
-/** Empty module-keyed rules state with the `code` module pre-created. */
+/** Empty module-keyed rules state with every registered module pre-created. */
 export function emptyRulesInstallation(): RulesInstallation {
-  return { version: CURRENT_VERSION, modules: { [CODE_MODULE_ID]: emptyTierMap() } };
+  const modules: Record<string, Record<Tier, InstalledRuleEntry[]>> = {};
+  for (const module of listModules()) {
+    modules[module.id] = emptyTierMap(module.tiers);
+  }
+  return { version: CURRENT_VERSION, modules };
 }
 
 /** Normalize one module's tier map from raw JSON, filling missing tiers. */
-function normalizeModuleTiers(raw: unknown): Record<Tier, InstalledRuleEntry[]> {
-  const map = emptyTierMap();
+function normalizeModuleTiers(moduleId: string, raw: unknown): Record<Tier, InstalledRuleEntry[]> {
+  const tiers = tiersOf(moduleId);
+  const map = emptyTierMap(tiers);
   if (raw && typeof raw === 'object') {
     const obj = raw as Record<string, unknown>;
-    for (const tier of RULE_CATEGORIES) {
+    for (const tier of tiers) {
       map[tier] = normalizeRuleEntries(obj[tier]);
     }
   }
@@ -169,25 +185,31 @@ function normalizeRulesInstallation(raw: unknown): RulesInstallation {
   const inst = raw as Record<string, unknown>;
   const version = (inst.version as string) ?? CURRENT_VERSION;
 
-  // New module-keyed format: { version, modules: { <module>: { core, stack } } }.
+  // New module-keyed format: { version, modules: { <module>: { <tier>: [] } } }.
   // Idempotent — re-normalizing an already-migrated config returns the same shape.
   if (inst.modules && typeof inst.modules === 'object') {
     const rawModules = inst.modules as Record<string, unknown>;
     const modules: Record<string, Record<Tier, InstalledRuleEntry[]>> = {};
     for (const [moduleId, tiers] of Object.entries(rawModules)) {
-      modules[moduleId] = normalizeModuleTiers(tiers);
+      modules[moduleId] = normalizeModuleTiers(moduleId, tiers);
     }
-    // Guarantee the code module's container exists so accessors never miss it.
-    if (!modules[CODE_MODULE_ID]) {
-      modules[CODE_MODULE_ID] = emptyTierMap();
+    // Guarantee every registered module's container exists so accessors never
+    // miss it (configs written before a module was registered lack its key).
+    for (const module of listModules()) {
+      if (!modules[module.id]) {
+        modules[module.id] = emptyTierMap(module.tiers);
+      }
     }
     return { version, modules };
   }
 
   // Legacy flat format: { version, core, stack } → wrap under the code module.
   // `normalizeModuleTiers` reads `inst.core` / `inst.stack` directly off the
-  // top-level object, so the legacy entries land in `modules.code`.
-  return { version, modules: { [CODE_MODULE_ID]: normalizeModuleTiers(inst) } };
+  // top-level object, so the legacy entries land in `modules.code`; the other
+  // registered modules get fresh empty containers.
+  const modules = emptyRulesInstallation().modules;
+  modules[CODE_MODULE_ID] = normalizeModuleTiers(CODE_MODULE_ID, inst);
+  return { version, modules };
 }
 
 /**
@@ -204,7 +226,7 @@ export function getModuleTier(
   const installed = config.rules.installed;
   let moduleMap = installed.modules[module];
   if (!moduleMap) {
-    moduleMap = emptyTierMap();
+    moduleMap = emptyTierMap(tiersOf(module));
     installed.modules[module] = moduleMap;
   }
   if (!moduleMap[tier]) {

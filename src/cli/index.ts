@@ -84,20 +84,22 @@ rules
   .description('List available rules from registry')
   .option('--json', 'Output as JSON')
   .option('--engine <id>', 'Override engine')
-  .option('--module <module>', 'Scope to a knowledge module (PR#1: only "code")')
+  .option('--module <module>', 'Scope to a knowledge module (default: "code")')
   .action(rulesListCommand);
 
 rules
   .command('show <id>')
   .description('Preview a rule from registry')
   .option('--references', 'Include reference files')
+  .option('--module <module>', 'Scope to a knowledge module (default: "code")')
   .action(rulesShowCommand);
 
 rules
   .command('install [ids...]')
-  .description('Install rules from the registry. Without arguments installs all always-tagged (core) rules (bootstrap used by /unikit Step 9.2). With one or more ids installs each rule and prints an aggregated report.')
+  .description('Install rules from the registry. Without arguments bootstraps every registered module by its policy: code installs the always-tagged (core) set, gamedesign installs all core+library rules (bootstrap used by /unikit Step 9.2). With one or more ids installs each rule and prints an aggregated report.')
   .option('--force', 'Re-fetch and overwrite rules that are already installed')
-  .action((ids: string[], options: { force?: boolean }) => rulesInstallCommand(ids, options));
+  .option('--module <module>', 'Scope to a knowledge module (default: "code")')
+  .action((ids: string[], options: { force?: boolean; module?: string }) => rulesInstallCommand(ids, options));
 
 rules
   .command('sync')
@@ -111,6 +113,7 @@ rules
   .description('Show installed rules and their sources')
   .option('--json', 'Output as JSON')
   .option('--check-updates', 'Check for available updates')
+  .option('--module <module>', 'Scope to a knowledge module (default: all modules)')
   .action(rulesStatusCommand);
 
 // Nested `registry` command group: show / set / reset / init.

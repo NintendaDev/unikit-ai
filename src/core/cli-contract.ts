@@ -33,20 +33,20 @@ export const RULES_EXIT_CODES: ExitCodeEntry[] = [
 export const RULES_COMMANDS: CommandEntry[] = [
   {
     command: 'unikit-ai rules list',
-    description: 'List available rules from registry catalog',
-    flags: ['--json', '--engine <id>'],
-    outputFormat: 'JSON: { engine, rules: [{ id, category, description, version }] }',
+    description: 'List available rules from registry catalog. Scoped to one knowledge module (default: code); pass --module gamedesign for the game-design catalog. A module absent from the registry yields an empty catalog (exit 0), unknown --module values exit 3.',
+    flags: ['--json', '--engine <id>', '--module <module>'],
+    outputFormat: 'JSON: { engine, module, rules: [{ id, category, description, version }] } — category is the module tier (core/stack for code, core/library for gamedesign)',
   },
   {
     command: 'unikit-ai rules show <id>',
-    description: 'Preview a rule from registry (full content with frontmatter)',
-    flags: ['--references'],
+    description: 'Preview a rule from registry (full content with frontmatter). Scoped to one knowledge module (default: code); pass --module gamedesign to preview game-design rules.',
+    flags: ['--references', '--module <module>'],
   },
   {
     command: 'unikit-ai rules install [ids...]',
-    description: 'Install rules from the registry. With no arguments, installs all always-tagged (core) rules (the bootstrap used by /unikit Step 9.2). With one or more ids, installs them in a single call with one manifest fetch and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.',
-    flags: ['--force'],
-    outputFormat: 'Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 5 engine missing or no always-tagged (core) rules; exit 8 project out of date (run `unikit-ai update` first).',
+    description: 'Install rules from the registry. With no arguments, bootstraps EVERY registered module by its policy: the code module installs all always-tagged (core) rules, the gamedesign module installs its entire catalog (core + library) — this is the bootstrap used by /unikit Step 9.2; modules absent from the registry are skipped gracefully. With one or more ids, installs them in a single call with one manifest fetch per module, scoped to the code module unless --module says otherwise, and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` (non-code modules prefix the label with the module id, e.g. `gamedesign/library/<id>`) followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.',
+    flags: ['--force', '--module <module>'],
+    outputFormat: 'Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 3 unknown --module; exit 5 engine missing or the summed bootstrap set across all modules is empty; exit 8 project out of date (run `unikit-ai update` first).',
   },
   {
     command: 'unikit-ai rules sync',
@@ -55,9 +55,9 @@ export const RULES_COMMANDS: CommandEntry[] = [
   },
   {
     command: 'unikit-ai rules status',
-    description: 'Show installed rules with source, origin, version, hash',
-    flags: ['--json', '--check-updates'],
-    outputFormat: 'JSON: { engine, registry, registryKind: "url" | "local" | null, rules: [{ name, category, source, origin, version, installed_hash }] }',
+    description: 'Show installed rules with source, origin, version, hash. Covers every registered module by default (code first, then gamedesign); pass --module to scope to one.',
+    flags: ['--json', '--check-updates', '--module <module>'],
+    outputFormat: 'JSON: { engine, registry, registryKind: "url" | "local" | null, rules: [{ name, module, category, source, origin, version, installed_hash }] }',
   },
   {
     command: 'unikit-ai rules registry',

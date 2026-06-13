@@ -19,7 +19,7 @@
     "download:rules": "bash scripts/download-rules.sh",
     "prepublishOnly": "npm run clean && npm run download:rules && npm run build",
     "link": "npm run build && npm link",
-    "generate:contract": "npm run build && node dist/core/cli-contract-gen.js"
+    "generate:contract": "npm run build && npx tsx scripts/generate-cli-contract.ts"
   },
   "keywords": [
     "unity",
@@ -63,6 +63,9 @@
   ],
   "knip": {
     "ignoreExportsUsedInFile": true,
+    "ignoreBinaries": [
+      "tsx"
+    ],
     "exclude": [
       "types"
     ],

@@ -12,7 +12,11 @@
 #     1. a registry section (manifest `modules.<id>` + top-level `rules-registry/<id>/`)
 #     2. an entry in the generated `.unikit/system/modules.yml`
 #     3. a content contract `skills/unikit-memory/references/module-<id>.md`
-#     4. the router skills for its skillPrefix (`<prefix>-memory`, `<prefix>-rules-registry`)
+#     4. the GLOBAL router skills exist (unikit-memory, unikit-rules-registry —
+#        they serve every module via --module / inference; a per-prefix router
+#        like `unikit-gd-memory` must NOT be required), plus ≥1 skill carrying
+#        the module's `<skillPrefix>-` prefix (WARN while the family has not
+#        shipped yet — tightened to a hard fail by PR#4 task #18)
 #   Arc B (no-hardcode tiers) — grep EXACTLY the two router SKILL.md bodies
 #     (`unikit-memory`, `unikit-rules-registry`, excluding their `references/`)
 #     for concrete module/tier path literals built from MODULE_REGISTRY. No broad
@@ -117,14 +121,29 @@ while IFS=$'\t' read -r MID TIERS EP PREFIX; do
         fail "[$MID] missing contract references/module-$MID.md"
     fi
 
-    # 4. router skills for the module's skillPrefix
-    for suffix in memory rules-registry; do
-        if [[ -f "$ROOT_DIR/skills/$PREFIX-$suffix/SKILL.md" ]]; then
-            pass "[$MID] router skill $PREFIX-$suffix exists (skillPrefix=$PREFIX)"
+    # 4. global routers + skill family for the module's skillPrefix.
+    #
+    # The routers are GLOBAL by design (unikit-memory / unikit-rules-registry
+    # serve every module via --module / inference) — deriving router names from
+    # the prefix would demand a nonexistent `unikit-gd-memory`. The per-module
+    # signal is instead "≥1 skill carries the `<skillPrefix>-` prefix". While a
+    # module's skill family has not shipped yet (gamedesign before PR#4 Phase D)
+    # zero matches is a WARN, not a fail; task #18 (Phase G) tightens it to a
+    # hard fail once the gd-skills exist.
+    for router in unikit-memory unikit-rules-registry; do
+        if [[ -f "$ROOT_DIR/skills/$router/SKILL.md" ]]; then
+            pass "[$MID] global router skill $router exists"
         else
-            fail "[$MID] router skill $PREFIX-$suffix missing (skillPrefix=$PREFIX)"
+            fail "[$MID] global router skill $router missing"
         fi
     done
+
+    PREFIX_SKILLS=$(find "$ROOT_DIR/skills" -mindepth 1 -maxdepth 1 -type d -name "$PREFIX-*" | wc -l | tr -d '[:space:]')
+    if [[ "$PREFIX_SKILLS" -ge 1 ]]; then
+        pass "[$MID] $PREFIX_SKILLS skill(s) carry the $PREFIX- prefix"
+    else
+        echo -e "  ${YELLOW}⚠${NC} [$MID] no skills with prefix $PREFIX- yet (family not shipped — WARN only, see header)"
+    fi
 done <<< "$MODULE_LINES"
 
 # ─────────────────────────────────────────────

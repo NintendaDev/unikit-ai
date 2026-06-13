@@ -21,43 +21,45 @@ export const DEFAULT_ENGINE_ID = 'unity';
 // --- Module identifiers ---
 
 /**
- * Id of the single built-in module shipped in PR#1 (engine-partitioned code
- * rules). It is the directory segment under `.unikit/memory/` and the key in
- * `MODULE_REGISTRY`. Every module-id reference outside `constants.ts` /
- * `modules.ts` MUST use this constant — never a raw `'code'` literal.
+ * Id of the engine-partitioned code-rules module (shipped in PR#1). It is the
+ * directory segment under `.unikit/memory/` and the key in `MODULE_REGISTRY`.
+ * Every module-id reference outside `constants.ts` / `modules.ts` MUST use
+ * this constant — never a raw `'code'` literal.
  */
 export const CODE_MODULE_ID = 'code';
 
 /**
- * Reserved game-design module id. `rules registry init` scaffolds its directory
- * tree (`gamedesign/<tier>`) so a fresh schema:2 registry already carries the
- * full D8 layout, but it is deliberately NOT registered in `MODULE_REGISTRY` —
- * no game-design consumers/skills ship yet and it is never fetched. Only the
- * scaffold references this id.
+ * Game-design module id (registered in `MODULE_REGISTRY` since PR#4). The
+ * directory segment under `.unikit/memory/` and in the registry layout
+ * (`gamedesign/<tier>`). `rules registry init` scaffolds its directory tree so
+ * a fresh schema:2 registry carries the full layout.
  */
 export const GAMEDESIGN_MODULE_ID = 'gamedesign';
 
 /**
- * Tiers for the reserved game-design module (`core` + `library`). Unlike the
- * `code` module it is NOT engine-partitioned, so the scaffold lays it out as
- * `gamedesign/<tier>` with no engine segment.
+ * Tiers of the game-design module (`core` + `library`). Unlike the `code`
+ * module it is NOT engine-partitioned, so both the registry and the on-disk
+ * memory lay it out as `gamedesign/<tier>` with no engine segment.
  */
 export const GAMEDESIGN_TIERS = ['core', 'library'] as const;
 
 // --- Rule tiers ---
 
 /**
- * A rule tier within a module. Deliberately a narrow union (`'core' | 'stack'`)
- * rather than `string`: it stays structurally assignable to the registry's
- * `RuleCategory`, so `registry.fetchRule(engineId, tier, id)` type-checks
- * without touching the registry transport signatures (that widening is PR#2).
+ * A rule tier within a module. Deliberately a narrow union rather than
+ * `string`: it stays structurally assignable to the registry's `RuleCategory`
+ * (which is `string`), so `registry.fetchRule(engineId, tier, id)` type-checks
+ * without touching the registry transport signatures, while config/module
+ * state stays gated to known tiers. `core`/`stack` belong to the `code`
+ * module; `library` is the game-design module's on-demand tier (PR#4).
  */
-export type Tier = 'core' | 'stack';
+export type Tier = 'core' | 'stack' | 'library';
 
 /**
- * Canonical ordered tier list. `MODULE_REGISTRY.code.tiers` aliases this array
- * (modules.ts → constants.ts), so the two are always the same value and the
- * dependency stays one-directional.
+ * Canonical ordered tier list of the `code` module.
+ * `MODULE_REGISTRY.code.tiers` aliases this array (modules.ts → constants.ts),
+ * so the two are always the same value and the dependency stays
+ * one-directional.
  */
 export const RULE_CATEGORIES = ['core', 'stack'] as const;
 
@@ -72,7 +74,10 @@ export const REFERENCES_DIR_NAME = 'references';
 
 export const SKILL_FILE = 'SKILL.md';
 export const RULES_INDEX_FILE = 'RULES_INDEX.md';
+/** Data-dir-relative RULES_INDEX template of the `code` module. */
 export const RULES_INDEX_TEMPLATE_FILE = 'RULES_INDEX_TEMPLATE.md';
+/** Data-dir-relative RULES_INDEX template of the `gamedesign` module. */
+export const GAMEDESIGN_RULES_INDEX_TEMPLATE_FILE = path.join('gamedesign', 'templates', 'GD_RULES_INDEX.md');
 export const RULES_MANIFEST_FILE = 'rules-manifest.json';
 export const CLI_CONTRACT_FILE = 'cli-contract.md';
 export const DEV_PRINCIPLES_FILE = 'dev-principles.md';
@@ -83,11 +88,13 @@ export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 
 export const CORE_TABLE_MARKER = '<!-- CORE_TABLE -->';
 export const STACK_TABLE_MARKER = '<!-- STACK_TABLE -->';
+export const LIBRARY_TABLE_MARKER = '<!-- LIBRARY_TABLE -->';
 
 /** Per-tier template marker map, so index generation stays tier-generic. */
 export const TIER_TABLE_MARKERS: Record<Tier, string> = {
   core: CORE_TABLE_MARKER,
   stack: STACK_TABLE_MARKER,
+  library: LIBRARY_TABLE_MARKER,
 };
 
 // --- Path helpers ---
