@@ -158,6 +158,25 @@ assert_stdout_contains "$TMPDIR/s7.log" "sentinel: v2" \
     "v2 body content reached show output"
 
 # ─────────────────────────────────────────────
+# Scenario 8: --module gamedesign shows a backfilled canonical rule
+# ─────────────────────────────────────────────
+# `rules show` accepts --module (but not --engine). minimal-valid ships no
+# gamedesign tier, so `balance` resolves via the bundled backfill (#R2a).
+echo -e "\n${BOLD}Scenario 8: --module gamedesign show (backfill)${NC}"
+
+S8_DIR="$TMPDIR/s8-gd-show"
+mkdir -p "$S8_DIR"
+use_fake_registry "$S8_DIR" unity minimal-valid
+
+assert_cmd_exit 0 "rules show --module gamedesign balance exits 0" "$TMPDIR/s8.log" -- \
+    env -C "$S8_DIR" node "$CLI" rules show --module gamedesign balance
+
+assert_stdout_contains "$TMPDIR/s8.log" "balance (core) v1.0.0" \
+    "gamedesign core rule header shows id/category/version"
+assert_stdout_contains "$TMPDIR/s8.log" "Load when:" \
+    "gamedesign rule header prints Load when label"
+
+# ─────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────
 print_summary_and_exit "rules show Smoke Tests"

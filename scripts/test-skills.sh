@@ -778,6 +778,86 @@ if [[ -f "$MANIFEST" ]]; then
     fi
 fi
 
+# ─────────────────────────────────────────────────────
+# data/gamedesign — GDD authoring templates + gd-principles system asset
+# ─────────────────────────────────────────────────────
+GD_DATA="$ROOT_DIR/data/gamedesign"
+
+# The 8 GDD authoring templates (Phase C / #9) must exist and be non-empty.
+# GD-IDS ships as .yaml (machine truth); the rest are .md.
+for tpl in CONCEPT GAME GD-IDS GD-INDEX GD_RULES_INDEX PITCH REVIEW SYSTEM; do
+    ext=md
+    [[ "$tpl" == "GD-IDS" ]] && ext=yaml
+    if [[ -s "$GD_DATA/templates/$tpl.$ext" ]]; then
+        pass "data/gamedesign/templates/$tpl.$ext"
+    else
+        fail "data/gamedesign/templates/$tpl.$ext — missing or empty"
+    fi
+done
+
+# gd-principles.md — the cross-skill working contract installed as a system
+# asset (.unikit/system/gd-principles.md). It is PROCESS, not domain: it must
+# carry the protocol + severity-rubric sections and, like dev-principles.md,
+# stay free of agent/engine template vars (it is copied without substitution).
+GD_PRINCIPLES="$GD_DATA/gd-principles.md"
+if [[ ! -f "$GD_PRINCIPLES" ]]; then
+    fail "data/gamedesign/gd-principles.md — missing"
+else
+    for section in "Collaborative Protocol" "Section-Cycle Contract" "One-Way Boundary" "Severity Rubric"; do
+        if grep -q "## $section" "$GD_PRINCIPLES"; then
+            pass "gd-principles.md — has '$section' section"
+        else
+            fail "gd-principles.md — missing '$section' section"
+        fi
+    done
+    if grep -qE '\{\{settings_file\}\}|\{\{skills_dir\}\}|\{\{engine_' "$GD_PRINCIPLES"; then
+        fail "gd-principles.md — contains agent/engine vars (must be substitution-free like dev-principles.md)"
+    else
+        pass "gd-principles.md — no agent/engine vars (system-file safe)"
+    fi
+fi
+
+# Regression (#R3) — gamedesign CORE rules carry domain knowledge ONLY. Phase R
+# stripped the process hook from the relocated library→core rules; severity and
+# section-letter semantics live in gd-principles, never in a rule. Guard the
+# bundled snapshot so a re-clone of process-laden rules fails loudly, and assert
+# every core rule still exposes its Scope / Load when header.
+GD_CORE_DIR="$ROOT_DIR/rules-registry/gamedesign/core"
+if [[ -d "$GD_CORE_DIR" ]]; then
+    GD_CORE_PROCESS=$(grep -lE '^## (Authoring|Process|Documenting)|recorded delta' "$GD_CORE_DIR"/*.md 2>/dev/null || true)
+    if [[ -z "$GD_CORE_PROCESS" ]]; then
+        pass "gamedesign core rules — no process sections (domain knowledge only, #R3)"
+    else
+        fail "gamedesign core rules carry process content (belongs in gd-principles): $GD_CORE_PROCESS"
+    fi
+    GD_CORE_HEADERLESS=""
+    for f in "$GD_CORE_DIR"/*.md; do
+        grep -q '^> \*\*Scope\*\*:' "$f" && grep -q '^> \*\*Load when\*\*:' "$f" || GD_CORE_HEADERLESS+=" $(basename "$f")"
+    done
+    if [[ -z "$GD_CORE_HEADERLESS" ]]; then
+        pass "gamedesign core rules — every rule has Scope + Load when header"
+    else
+        fail "gamedesign core rules missing Scope/Load when header:$GD_CORE_HEADERLESS"
+    fi
+else
+    fail "rules-registry/gamedesign/core — missing (run download-rules.sh)"
+fi
+
+# Defective GDD fixture — test data for the agent-driven /unikit-gd-review and
+# /unikit-gd-verify smoke (Phase H #19). No bash assertion can run an LLM skill,
+# so only validate the fixture is present and well-formed; its README.md carries
+# the planted-defect ground truth a reviewer checks skill output against.
+GD_DEFECTIVE="$ROOT_DIR/scripts/test-fixtures/gamedesign/defective-gdd"
+GD_DEFECTIVE_OK=1
+for f in README.md GAME.md GD-IDS.yaml systems/combat.md; do
+    [[ -s "$GD_DEFECTIVE/$f" ]] || GD_DEFECTIVE_OK=0
+done
+if [[ "$GD_DEFECTIVE_OK" -eq 1 ]]; then
+    pass "defective-gdd fixture present (GAME.md, GD-IDS.yaml, systems/combat.md, README ground truth)"
+else
+    fail "defective-gdd fixture incomplete under scripts/test-fixtures/gamedesign/defective-gdd"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

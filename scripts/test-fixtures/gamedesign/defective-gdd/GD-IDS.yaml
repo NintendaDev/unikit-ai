@@ -1,0 +1,20 @@
+# Machine truth for the defective-gdd fixture. Intentionally inconsistent with
+# systems/combat.md — see README.md for the planted defects.
+pillars:
+  - id: PIL-1
+    name: Momentum is king
+    source: GAME.md
+    added: 2026-06-13
+  - id: PIL-2
+    name: Feels skillful
+    source: GAME.md
+    added: 2026-06-13
+
+systems:
+  - id: SYS-combat
+    name: Combat
+    version: 2            # defect #1: combat.md header says Version 1
+    status: detailed
+    depends: []           # defect #2: combat.md section F depends on SYS-inventory (absent)
+
+facts: []                # defect #4: combat.md cites FORM-combat-dps, not registered here

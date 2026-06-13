@@ -8,6 +8,8 @@
 #   - core vs stack partitioning in the catalog
 #   - multi-version fixture (v1 vs v2) so the listed version actually matches
 #     the manifest currently on disk
+#   - --module gamedesign: lists the canonical catalog backfilled from the
+#     bundled snapshot (#R2a B-merge); --module bogus → exit 3
 #
 # These scenarios replace the rules-list drive-by assertions that used to
 # live in test-install.sh / test-update.sh. The fake registries let us
@@ -193,6 +195,47 @@ assert_stdout_contains "$TMPDIR/s8.log" "Stack rules:" \
     "human output has Stack rules section header"
 assert_stdout_contains "$TMPDIR/s8.log" "1 core, 1 stack" \
     "footer reports exact 1/1 partition of the minimal fixture"
+
+# ─────────────────────────────────────────────
+# Scenario 9: --module gamedesign lists the backfilled canonical catalog
+# ─────────────────────────────────────────────
+# gamedesign is non-engine-partitioned. minimal-valid ships no gamedesign tier,
+# so the module-aware catalog backfills the canonical core rules from the
+# bundled snapshot (#R2a per-id B-merge). The exact count tracks the snapshot,
+# so assert on stable canonical ids + the empty library tier, not a hardcoded
+# total.
+echo -e "\n${BOLD}Scenario 9: --module gamedesign catalog (backfill)${NC}"
+
+S9_DIR="$TMPDIR/s9-gd-list"
+mkdir -p "$S9_DIR"
+use_fake_registry "$S9_DIR" unity minimal-valid
+
+assert_cmd_exit 0 "rules list --module gamedesign exits 0" "$TMPDIR/s9.log" -- \
+    env -C "$S9_DIR" node "$CLI" rules list --module gamedesign
+
+assert_stdout_contains "$TMPDIR/s9.log" "Rules catalog for gamedesign" \
+    "header names the gamedesign module"
+assert_stdout_contains "$TMPDIR/s9.log" "balance" \
+    "a canonical gamedesign core rule appears (backfilled from bundled)"
+assert_stdout_contains "$TMPDIR/s9.log" "0 library" \
+    "library tier is empty (custom-only slot, no official/bundled backfill)"
+
+# ─────────────────────────────────────────────
+# Scenario 10: --module bogus → exit 3 (INVALID_ARGS)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 10: --module bogus (exit 3)${NC}"
+
+S10_DIR="$TMPDIR/s10-bad-module"
+mkdir -p "$S10_DIR"
+use_fake_registry "$S10_DIR" unity minimal-valid
+
+assert_cmd_exit 3 "rules list --module bogus exits 3" "$TMPDIR/s10.log" -- \
+    env -C "$S10_DIR" node "$CLI" rules list --module bogus
+
+assert_stdout_contains "$TMPDIR/s10.log" "Unknown module" \
+    "error names the unknown module"
+assert_stdout_contains "$TMPDIR/s10.log" "gamedesign" \
+    "error lists gamedesign among available modules"
 
 # ─────────────────────────────────────────────
 # Summary

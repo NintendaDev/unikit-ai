@@ -13,6 +13,8 @@
 #     an `updateAvailable` field (regression guard for the day it lands)
 #   - Unknown engine in .unikit.json → pass-through, exit 0 (the command
 #     never validates engine against the registry)
+#   - --module gamedesign: after the no-args bootstrap, the backfilled
+#     canonical catalog is reported with a per-rule `registry:bundled` origin
 #
 # Usage: ./scripts/test-rules-status.sh
 
@@ -256,6 +258,29 @@ assert_cmd_exit 0 "rules status (human) on migrated exits 0" "$TMPDIR/s9-human.l
     env -C "$S9_DIR" node "$CLI" rules status
 assert_not_contains "$TMPDIR/s9-human.log" "out of date" \
     "human status omits the warning when migrated"
+
+# ─────────────────────────────────────────────
+# Scenario 10: --module gamedesign reports per-rule backfill origin
+# ─────────────────────────────────────────────
+# After the no-args bootstrap, the gamedesign canonical catalog is installed
+# from the bundled snapshot. `rules status --module gamedesign` must list those
+# rules with a per-rule origin of `registry:bundled` (#R2a/#R2b — backfill ids
+# are tagged bundled at install time, not module-wide).
+echo -e "\n${BOLD}Scenario 10: --module gamedesign per-rule backfill origin${NC}"
+
+S10_DIR="$TMPDIR/s10-gd-status"
+use_fake_registry "$S10_DIR" unity minimal-valid
+env -C "$S10_DIR" node "$CLI" rules install >/dev/null 2>&1
+
+assert_cmd_exit 0 "rules status --module gamedesign exits 0" "$TMPDIR/s10.log" -- \
+    env -C "$S10_DIR" node "$CLI" rules status --module gamedesign
+
+assert_stdout_contains "$TMPDIR/s10.log" "gamedesign core:" \
+    "status groups installed rules under the gamedesign core tier"
+assert_stdout_contains "$TMPDIR/s10.log" "balance" \
+    "an installed gamedesign rule is listed"
+assert_stdout_contains "$TMPDIR/s10.log" "registry:bundled" \
+    "backfilled gamedesign rules carry a per-rule bundled origin"
 
 # ─────────────────────────────────────────────
 # Summary
