@@ -81,6 +81,16 @@ export const GAMEDESIGN_RULES_INDEX_TEMPLATE_FILE = path.join('gamedesign', 'tem
 export const RULES_MANIFEST_FILE = 'rules-manifest.json';
 export const CLI_CONTRACT_FILE = 'cli-contract.md';
 export const DEV_PRINCIPLES_FILE = 'dev-principles.md';
+/**
+ * Game-design principles system-asset basename. Installed flat into
+ * `.unikit/system/gd-principles.md` from `data/<gamedesign>/gd-principles.md`.
+ * Engine-agnostic (no `{{engine_*}}` substitution, unlike `dev-principles.md`)
+ * and NOT hash-tracked — rewritten on every init/update. The `unikit-gd-*`
+ * skills read it on Bootstrap. It is a system asset, NOT a memory rule: the
+ * game-design collaboration/authoring contract lives here, not in
+ * `gamedesign/core/`.
+ */
+export const GD_PRINCIPLES_FILE = 'gd-principles.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

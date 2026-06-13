@@ -19,7 +19,7 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  MODULES_YML_FILE, systemDir,
+  GD_PRINCIPLES_FILE, GAMEDESIGN_MODULE_ID, MODULES_YML_FILE, systemDir,
 } from '../constants.js';
 import { listModules } from '../modules.js';
 import { buildSubagentTemplateVars } from './shared.js';
@@ -102,6 +102,31 @@ export async function installDevPrinciples(
   const content = processTemplate(raw, vars);
   await writeTextFile(destPath, content);
   logInfo('installDevPrinciples', 'installed .unikit/system/dev-principles.md');
+}
+
+// --- Game-design principles installation ---
+
+/**
+ * Install the game-design principles system asset into
+ * `.unikit/system/gd-principles.md`. Modeled on {@link installCliContract}:
+ * a flat copy with NO engine-var substitution (gd-principles is
+ * engine-agnostic, unlike {@link installDevPrinciples}). Source lives under
+ * `data/<gamedesign>/gd-principles.md`. NOT hash-tracked — every init/update
+ * rewrites it; the `unikit-gd-*` skills read it on Bootstrap.
+ */
+export async function installGdPrinciples(projectDir: string): Promise<void> {
+  const srcPath = path.join(getDataDir(), GAMEDESIGN_MODULE_ID, GD_PRINCIPLES_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, GD_PRINCIPLES_FILE);
+
+  const content = await readTextFile(srcPath);
+  if (!content) {
+    logWarn('installGdPrinciples', 'gd-principles.md not found in data/gamedesign/, skipping');
+    return;
+  }
+
+  await writeTextFile(destPath, content);
+  logInfo('installGdPrinciples', 'installed .unikit/system/gd-principles.md');
 }
 
 // --- Module registry snapshot installation ---

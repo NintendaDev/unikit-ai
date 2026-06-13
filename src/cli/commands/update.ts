@@ -9,7 +9,7 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installDevPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installDevPrinciples, installGdPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -208,6 +208,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh module registry snapshot (flat rewrite, forward-compat SSOT)
     await installModulesYml(projectDir);
+
+    // Refresh game-design principles system asset (engine-agnostic flat rewrite)
+    await installGdPrinciples(projectDir);
 
     // Rebuild managed state per agent (exclude replaced skills)
     const availableSkills = await getAvailableSkills();
