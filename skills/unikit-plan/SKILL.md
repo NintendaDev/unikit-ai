@@ -118,7 +118,7 @@ alternative.
 /unikit-plan Item appraisal system                         → mode: ?, ask user
 ```
 
-Initialize flags: `research_pre_linked = false`, `research_linked = false`.
+Initialize flags: `research_pre_linked = false`, `research_linked = false`, `design_linked = false`.
 
 **If mode is `--list`** → skip to **List Mode** section below.
 
@@ -220,6 +220,21 @@ If `.unikit/code/patches/` exists:
 - Use `Glob` to find all `*.md` files
 - Read each patch to learn from past fixes
 - Account for known pitfalls when designing the plan — tasks should avoid patterns that caused bugs
+
+#### Design context (game-design module — optional)
+
+Check whether `.unikit/gamedesign/GD-INDEX.md` exists.
+
+- **Exists** → this project carries a game-design workspace. Set `design_linked = true`
+  and note it for **Step 4.5**, which reads the relevant system design and produces the
+  plan's `## Design` snapshot. Do NOT read the design docs here — Step 4.5 owns that,
+  after the feature scope is clear.
+- **Absent** → set `design_linked = false` and skip every design step. The plan is
+  purely code-side, exactly as before — projects without a design module are unaffected.
+
+**One-way boundary:** planning *reads* design (`GD-INDEX.md`, `systems/*.md`); it never
+writes or edits any `.unikit/gamedesign/` artifact. Design changes flow only through the
+`/unikit-gd-*` skills.
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
@@ -605,6 +620,77 @@ Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules, patch
 - Use it to link this plan to a specific milestone (when applicable)
 - This reduces ambiguity in `/unikit-implement` milestone completion and `/unikit-verify` roadmap gates
 
+### Step 4.5: Resolve Design Context (game-design module)
+
+**Runs only when `design_linked = true`** (a `.unikit/gamedesign/GD-INDEX.md` exists). It
+grounds the plan in the game's design and is the source of the plan's `## Design` section.
+When `design_linked = false`, skip this step entirely.
+
+This step embodies the **one-way boundary**: it only *reads* design artifacts. Never write
+to `.unikit/gamedesign/`.
+
+#### 4.5.1 — Resolve the target system
+
+1. Read `.unikit/gamedesign/GD-INDEX.md` (the system map: one row per system with `ID`,
+   `System`, `Category`, `Tier`, `Status`, `Ver`, `Depends`, `Doc`).
+2. Match the feature description against the `System` names (and `Category`). One confident
+   match → use it. Several plausible matches, or none → resolve with `AskUserQuestion`
+   (list the candidate systems); **never guess** the system. If the user confirms the
+   feature has no design system (pure code/tech work) → set `design_linked = false` and
+   continue to Step 5 with no `## Design` section.
+3. For the resolved row, read its system GDD from the `Doc` path
+   (`.unikit/gamedesign/systems/*.md`). Capture: the system `SYS-id`, current `Ver`,
+   `Status`, and the **Acceptance Criteria** (verbatim, keyed by `AC-<id>`).
+
+#### 4.5.2 — Status gate (warn, never block)
+
+Plan generation continues regardless of status, but surface a `WARN [design]` line when the
+resolved system's `Status` is not `detailed` or `approved`:
+
+- `not-started` / `skeleton` — the design is incomplete; the plan may rest on a partial
+  spec. Suggest finishing `/unikit-gd-detail <system>` first.
+- `revised` — the design moved ahead of the code after a `/unikit-gd-improve` edit; treat
+  this as a delta plan (4.5.3) and call out that old behavior may need removal.
+- `implemented` — code already exists for this version; confirm intent (a re-plan usually
+  implies an unrecorded delta).
+
+#### 4.5.3 — Delta plan (design moved ahead of code)
+
+Prompts like "plan the new version of Combat" or "bring combat up to the design" need no
+`SYS-id` or version number — resolve them here:
+
+1. **System** — resolved in 4.5.1.
+2. **What is already implemented** — search prior `## Design` blocks for this `SYS-id`
+   across `.unikit/code/plans/*/PLAN-BRIEF.md` (and `.unikit/code/PLAN.md`). The highest
+   version found in a completed plan is the implemented baseline. No prior plan → ask:
+   "no implementation found — plan the full system?".
+3. **Delta** — collect the system GDD's changelog blocks (section K) over the interval
+   `(implemented, current]`. Multiple edits → multiple blocks.
+4. **Tasks** — new/changed `AC` → implementation tasks; **removed `AC` → tasks to rip out
+   the old behavior**; changed formulas / tuning knobs → config tasks. If the delta is
+   large or unclear, suggest `/unikit-explore` before planning.
+
+#### 4.5.4 — Produce the `## Design` snapshot
+
+Prepare a `## Design` block for the plan (written in Step 5 — in `PLAN-BRIEF.md` for full
+mode, in the `## Technical Context` area for fast mode). It is a **snapshot at planning
+time**: cite AC text by reference to the live doc (do not fork it), and record the version.
+Checklist tasks reference the `AC-<id>`s.
+
+```markdown
+## Design
+- **System**: SYS-combat — `.unikit/gamedesign/systems/combat.md`
+- **Version**: 4 (prior plan 2026-06-10_combat-core implemented v3)
+- **Delta v3→v4** (from changelog): stacks up to 5 (section C); FORM-status-tick → config; knob max_stacks → config
+- **Acceptance Criteria (current, cited):**
+  - AC-combat-3 (changed): Given …, When …, Then …
+  - AC-combat-7, AC-combat-8 (new): …
+  - AC-combat-5 — **removed in v4** → task to remove the old behavior
+```
+
+For a first-time plan (no prior implementation), drop the `Delta` line and list the
+system's full current AC set.
+
 ### Step 5: Create the Plan
 
 Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
@@ -619,6 +705,12 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 
 2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Set `Attached` to the current timestamp (`YYYY-MM-DD HH:MM`). After all research entries, add "`PLAN-BRIEF.md` (in this folder)" for full mode or "see `## Technical Context` section below" for fast mode.
    If no research: fast mode → "see `## Technical Context` section below"; full mode → "`PLAN-BRIEF.md` (in this folder)."
+
+   **`## Design`** (game-design module — only when `design_linked = true`) — insert the
+   design snapshot prepared in Step 4.5 directly after `## Based on`: System + `SYS-id`,
+   version, optional delta, and cited Acceptance Criteria. In full mode it lives in
+   `PLAN-BRIEF.md`; in fast mode it goes into `PLAN.md`. Omit this section entirely for
+   pure-code plans (`design_linked = false`).
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether to generate tests after each phase
@@ -725,6 +817,7 @@ Bad examples:
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
 11. **Always create PLAN-BRIEF.md** — even when a research's `RESEARCH_BRIEF.md` exists, the plan always generates its own `PLAN-BRIEF.md` (full mode) or `## Technical Context` (fast mode) based on the current codebase state. The research brief is used as input, not as a replacement — code may have changed since the research was conducted. The plan's brief is the authoritative source for `/unikit-implement`
 12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
+13. **Design is read-only and cited, not copied** — when a game-design workspace exists (`.unikit/gamedesign/GD-INDEX.md`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`/`approved`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
 
 ## Code Analysis & Delegation Rules
 

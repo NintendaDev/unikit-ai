@@ -408,6 +408,19 @@ Include documentation findings in the verification report under a `### Documenta
 - `✅ Documentation up to date` — docs policy satisfied or no doc-impacting changes
 - `⚠️ Documentation may need update` — with specific findings and suggestion to run `/unikit-docs`
 
+### 3.8 Design Acceptance Criteria (game-design module)
+
+**Only when the plan carries a `## Design` section** (added by `/unikit-plan` Step 4.5 when the project has a game-design workspace). If there is no `## Design` section, skip this check silently.
+
+Verify the implementation against the Acceptance Criteria **snapshotted in the plan** — not against the live `.unikit/gamedesign/` docs. The plan's `## Design` block pins the system `SYS-id`, the version, and the cited `AC-<id>`s; checking against the plan (not the current design) preserves the one-way boundary (verify reads the plan; design changes flow only through `/unikit-gd-*`) and validates against the exact version the plan was written for.
+
+For each cited `AC-<id>` (Given-When-Then):
+- Confirm the implementing code (from `CHANGED_FILES` / the Step 1 audit) satisfies the Then-clause under the Given/When conditions. Be concrete — cite `file:line`.
+- An `AC` marked **removed in vN** → confirm the old behavior was actually ripped out; a lingering old code path is a finding.
+- Unmet or partially-met `AC` → record it as an issue.
+
+Report findings under a `### Design Acceptance` section (see Step 4.1). This is read-only — never edit `.unikit/gamedesign/`.
+
 ---
 
 ## Step 4: Verification Report
@@ -443,6 +456,9 @@ Include documentation findings in the verification report under a `### Documenta
 
 ### Documentation
 - Documentation: ✅ up to date / ⚠️ may need update (run /unikit-docs)
+
+### Design Acceptance
+- Design AC: ✅ all cited AC met / ⚠️ N unmet (see issues) / ⏭️ no ## Design section
 
 ### No Issues
 - Engine-specific checks passed (per ENGINE_RULES.md)
@@ -541,6 +557,7 @@ Normal mode already checks all items below but tolerates partial results and war
 | Tests ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if test assemblies exist for affected modules |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
+| Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |
 
 Items that behave **the same** in both modes (always checked, always fail on violation):
 - Engine-specific checks (per ENGINE_RULES.md strict mode items)

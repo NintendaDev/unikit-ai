@@ -30,7 +30,7 @@ Set up AI agent context for a game project by:
 2. Bootstrapping `.unikit/config.yaml` (user-editable source of truth for language, git, and workflow)
 3. Generating `.unikit/DESCRIPTION.md` — project specification
 4. Generating `AGENTS.md` — structural map for AI agents
-5. Bootstrapping the knowledge base (`.unikit/memory/code/core/` + `.unikit/memory/code/stack/`) via the rules registry
+5. Bootstrapping the knowledge base under `.unikit/memory/` via the rules registry — the `code` module (`core/` + `stack/`) always, plus the `gamedesign` design library when that module is registered
 6. Delegating architecture generation to `/unikit-architecture`
 7. Printing the setup summary as the final, user-facing confirmation that all artifacts are in place
 
@@ -794,6 +794,7 @@ as the basis for the structure section, but only include directories and files t
 | .unikit/ARCHITECTURE.md | Architecture decisions and guidelines |
 | .unikit/RULES.md | Coding conventions and rules |
 | .unikit/memory/code/RULES_INDEX.md | Index of framework-specific rule files |
+| .unikit/memory/gamedesign/RULES_INDEX.md | Game-design knowledge index (only if the gamedesign module installed rules) |
 ```
 
 **Rules:**
@@ -846,6 +847,12 @@ Next steps:
 - /unikit-plan <feature> — Plan a feature implementation
 - /unikit-implement — Execute an existing plan
 - /unikit-review — Review code quality
+
+Game design (optional):
+- /unikit-gd-brainstorm <idea> — Ideate a concept (pillars, loops, pre-mortem)
+- /unikit-gd-spec — Author the master GDD (GAME.md) + system map
+  The design workspace (.unikit/gamedesign/) is created on first use.
+  /unikit-plan then cites the design's acceptance criteria in its ## Design section.
 
 Ready when you are!
 ```
