@@ -396,7 +396,6 @@ async function installOneRule(
   module: Module,
   catalogRules: CatalogRule[],
   engineId: string,
-  origin: RuleOrigin | undefined,
   rawId: string,
   options: { force?: boolean; allowAlreadyInstalled?: boolean; preferredTier?: Tier },
 ): Promise<InstallReportLine> {
@@ -439,6 +438,11 @@ async function installOneRule(
 
   const category = foundHit.tier;
   const found = foundHit.rule;
+  // Per-rule B-merge origin from the catalog ROW (not a module-wide value):
+  // for gamedesign each id may resolve from a different chain level (custom
+  // override vs official/bundled backfill); for code it is the module-wide
+  // origin on every row. Stamped onto every state entry written below.
+  const origin = foundHit.origin;
 
   // Idempotency / already-installed handling.
   //
@@ -695,7 +699,6 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
       item.module,
       catalog?.rules ?? [],
       engineId,
-      catalog?.origin,
       item.id,
       {
         force: options.force === true,
@@ -723,10 +726,15 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   const requiredBy = await loadRequiredByMap();
   for (const module of listModules()) {
     const installedByTier: InstalledByTier = {};
+    const originByRule: Record<string, RuleOrigin> = {};
     for (const tier of module.tiers) {
-      installedByTier[tier] = getModuleTier(config, module.id, tier).map(e => e.name);
+      const entries = getModuleTier(config, module.id, tier);
+      installedByTier[tier] = entries.map(e => e.name);
+      for (const e of entries) {
+        if (e.origin) originByRule[e.name] = e.origin;
+      }
     }
-    await generateRulesIndex(projectDir, module, installedByTier, requiredBy);
+    await generateRulesIndex(projectDir, module, installedByTier, requiredBy, originByRule);
   }
 
   printInstallReport(report);
@@ -781,6 +789,9 @@ export function renderSyncRulesEvents(events: SyncRulesEvent[]): void {
         break;
       case 'phase2:overwrite-local-mod':
         console.log(chalk.yellow(`  ${ev.name} has local modifications — overwriting from registry (--replace)`));
+        break;
+      case 'phase2:override-retained':
+        console.log(chalk.dim(`  ${ev.name}: keeping studio override (custom) — not overwriting with official (use --replace to force)`));
         break;
       case 'phase2:downgrade':
         console.log(chalk.yellow(`  ${ev.name} downgraded: v${ev.fromVersion} → v${ev.toVersion}`));

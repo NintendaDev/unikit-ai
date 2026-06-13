@@ -16,6 +16,14 @@ import type { Module } from '../modules.js';
 export interface CatalogRule {
   tier: Tier;
   rule: RegistryRule;
+  /**
+   * Per-rule B-merge origin: which chain level this specific rule resolved from
+   * (`primary` studio override vs `official`/`bundled` canonical backfill). For
+   * `module-winner` modules this equals the module-wide origin for every row;
+   * for `per-id-merge` modules (gamedesign) it varies per id. The install path
+   * stamps `InstalledRuleEntry.origin` from THIS field, not the module-wide one.
+   */
+  origin: RuleOrigin | undefined;
 }
 
 export interface ModuleCatalog {
@@ -65,7 +73,11 @@ export async function resolveModuleCatalog(
   if (engineAvailable) {
     for (const tier of module.tiers) {
       for (const rule of registry.getModuleRules(module.id, tier)) {
-        rules.push({ tier, rule });
+        rules.push({
+          tier,
+          rule,
+          origin: registry.getResolvedOriginForRule(module.id, tier, rule.id) ?? undefined,
+        });
       }
     }
   }
@@ -76,6 +88,8 @@ export async function resolveModuleCatalog(
     engineAvailable,
     engines,
     rules,
+    // Module-wide origin summary (back-compat). Per-rule origin lives on each
+    // CatalogRule above and is what the install path stamps onto state.
     origin: registry.getResolvedOrigin(module.id) ?? undefined,
   };
 }

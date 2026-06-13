@@ -30,6 +30,14 @@ export class OfficialRegistry extends ChainedRegistry {
     return this.bundled ? [this.official, this.bundled] : [this.official];
   }
 
+  // Reference-identity source→origin map. The chain has no `primary` tier, so a
+  // source is `bundled` or (by elimination) `official`. Shared by both
+  // `getResolvedOrigin` and the base's per-rule origin accessor.
+  protected originOf(source: RulesRegistry): RuleOrigin {
+    if (source === this.bundled) return 'bundled';
+    return 'official';
+  }
+
   // Default `module = CODE_MODULE_ID` so no-arg callers get the code module's
   // origin. The chain has no `primary` tier, so origin is `official` or
   // `bundled` per the requested module's winning source.
@@ -38,8 +46,6 @@ export class OfficialRegistry extends ChainedRegistry {
     // resolution (kept in sync by `cacheResolved`); honor it for `code`.
     const source = this.resolvedByModule.get(module)?.source
       ?? (module === CODE_MODULE_ID ? this.resolvedSource : null);
-    if (!source) return null;
-    if (source === this.bundled) return 'bundled';
-    return 'official';
+    return source ? this.originOf(source) : null;
   }
 }

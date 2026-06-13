@@ -32,6 +32,25 @@ import {
  */
 export type BootstrapPolicy = 'always-core' | 'all-rules';
 
+/**
+ * How the `core` tier is resolved across the registry fallback chain:
+ *
+ *  - `module-winner` — the whole module resolves to the FIRST chain source that
+ *    carries it (primary → official → bundled); that one source provides every
+ *    rule. This is the `code` module's behavior and the historical default.
+ *  - `per-id-merge`  — the `core` tier is merged PER RULE ID: the canonical id
+ *    list comes from the official→bundled sources, and for each id a studio's
+ *    own (primary/custom) version overrides the canonical one while missing ids
+ *    backfill from official→bundled. Non-`core` tiers (e.g. `library`) resolve
+ *    from the custom source only, with no official/bundled backfill. This is the
+ *    `gamedesign` module's behavior (canonical knowledge + studio overrides).
+ *
+ * TS-only field consumed by the resolver in `registry/chained-registry.ts`;
+ * deliberately NOT emitted into `modules.yml` (the skill-side routers never read
+ * it) — same convention as `bootstrap`.
+ */
+export type CoreResolution = 'module-winner' | 'per-id-merge';
+
 export interface Module {
   /** Stable module id; also the directory segment under `.unikit/memory/`. */
   id: string;
@@ -43,6 +62,8 @@ export interface Module {
   skillPrefix: string;
   /** No-args `rules install` bootstrap policy (TS-only, not in modules.yml). */
   bootstrap: BootstrapPolicy;
+  /** Core-tier registry resolution strategy (TS-only, not in modules.yml). */
+  coreResolution: CoreResolution;
   /** Data-dir-relative path of the module's RULES_INDEX.md template. */
   rulesIndexTemplate: string;
 }
@@ -54,6 +75,7 @@ export const MODULE_REGISTRY: Record<string, Module> = {
     enginePartitioned: true,
     skillPrefix: 'unikit',
     bootstrap: 'always-core',
+    coreResolution: 'module-winner',
     rulesIndexTemplate: RULES_INDEX_TEMPLATE_FILE,
   },
   [GAMEDESIGN_MODULE_ID]: {
@@ -62,6 +84,7 @@ export const MODULE_REGISTRY: Record<string, Module> = {
     enginePartitioned: false,
     skillPrefix: 'unikit-gd',
     bootstrap: 'all-rules',
+    coreResolution: 'per-id-merge',
     rulesIndexTemplate: GAMEDESIGN_RULES_INDEX_TEMPLATE_FILE,
   },
 };

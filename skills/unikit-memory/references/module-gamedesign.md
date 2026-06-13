@@ -12,6 +12,15 @@ This contract is deliberately **simpler** than `module-code.md`: the module is
 not engine-partitioned and carries no integration-intent machinery — game-design
 knowledge has no engine axis and no cross-framework integration concern.
 
+> **This module does NOT store process.** The game-design *working contract* —
+> the collaboration protocol, the section-cycle authoring discipline, the
+> one-way design→code boundary, the `gd-improve` delta discipline, the ID and
+> language conventions, the Braintrust critique stance, and the shared severity
+> rubric — is **not** a memory rule. It lives in the `gd-principles` **system
+> asset** (`.unikit/system/gd-principles.md`), loaded once at Bootstrap by every
+> `unikit-gd-*` skill the same way the code pipeline loads `dev-principles.md`.
+> This module holds domain *knowledge*, never *process*.
+
 ## Module Identity
 
 | Field | Value |
@@ -21,7 +30,7 @@ knowledge has no engine axis and no cross-framework integration concern.
 | `enginePartitioned` | `false` (registry side: `<registry>/gamedesign/<tier>` — no engine segment) |
 | `skillPrefix` | `unikit-gd` |
 | Memory layout | `.unikit/memory/gamedesign/<tier>` → `.unikit/memory/gamedesign/core/`, `.unikit/memory/gamedesign/library/` |
-| Reference subfolder | `.unikit/memory/gamedesign/library/references/` (supplementary lookup docs for library rules) |
+| Reference subfolder | `.unikit/memory/gamedesign/core/references/` (supplementary lookup docs for core rules) |
 | Index file | `.unikit/memory/gamedesign/RULES_INDEX.md` |
 
 These values mirror the `gamedesign` entry in `.unikit/system/modules.yml`. When
@@ -31,35 +40,50 @@ and file *format*.
 
 ## Tiers — What Belongs Where
 
-- **`core/`** — the working discipline of the game-design skill family, loaded
-  always: the collaborative protocol (Question → Options → Decision → Draft →
-  Approval; files are written only by the main session after approval), the
-  section-cycle contract for GDD authoring, the one-way boundary invariant
-  (game-design skills never read the `code/` workspace or project source — code
-  reads design, design does not know code), the `gd-improve` delta discipline
-  (every design edit bumps Version and writes a changelog block), ID conventions
-  (`PIL-*`, `SYS-*`, `ENT-*`, `FORM-*`, `AC-<sys>-N`, `DD-*`), language rules
-  (artifacts in the configured language, identifiers/keywords/canonical
-  terms/formulas in English), and the Braintrust critique stance (diagnose,
-  don't prescribe).
-- **`library/`** — transferable game-design domain expertise, loaded on demand
-  by design domain: frameworks (MDA, SDT/PENS, Flow), player motivation
-  (Quantic Foundry), core loops, brainstorm methods, review lenses, balance,
-  economy, progression, level design, narrative, UX/onboarding, accessibility,
-  live-ops, monetization ethics. **Genre rules** (`genre-<slug>.md`) also live
-  here — generated per project/studio through the `unikit-memory` research
-  pipeline, never shipped by the official registry.
+Both tiers are **load-on-demand** by `Load when` — neither is mandatory-gated.
+The distinction is *provenance and resolution*, not load policy:
+
+- **`core/`** — **canonical, official-backed** game-design domain expertise:
+  frameworks (MDA, SDT/PENS, Flow), player motivation (Quantic Foundry), core
+  loops, balance, economy, progression, level design, narrative, UX/onboarding,
+  accessibility, live-ops, monetization ethics. This tier ships from the
+  registry and is resolved **per-id via B-merge**: for each rule id, a studio's
+  own version (if present) overrides the canonical one (`origin: custom`),
+  otherwise the canonical file backfills from the official registry
+  (`origin: official`) or the bundled fallback snapshot (`origin: bundled`). A
+  studio rarely *adds* a brand-new core id by hand — it overrides an existing
+  canonical id with its own house take.
+- **`library/`** — the **studio's own custom-rule slot**, empty by default. It
+  carries design rules that are specific to this studio/project and are NOT part
+  of the canonical catalog: house conventions, opinionated heuristics, and
+  **genre rules** (`genre-<slug>.md`) researched per project through the
+  `unikit-memory` research pipeline. Library is resolved **from the custom
+  registry only** — there is no official/bundled backfill, because the official
+  registry never ships library content. In an override conflict, a library rule
+  outranks a core rule (it is the studio's deliberate house position).
 
 ### What belongs in which tier
 
-- Collaboration protocol, authoring discipline, ID/language conventions → `core/`
-- Domain knowledge that transfers between projects (balance math, economy
-  patterns, accessibility guidelines, …) → `library/`
+- Canonical, transferable domain knowledge (balance math, economy patterns,
+  accessibility guidelines, framework theory) → `core/` — and only as a studio
+  **override** of an existing canonical id, since the registry owns this tier.
+- The studio's own custom design rules and house conventions → `library/`
 - Genre-specific design knowledge the user researches (roguelike pacing,
   match-3 economy, …) → `library/` as `genre-<slug>.md`
 
+When in doubt about whether new content is a canonical-knowledge override
+(`core/`) or a studio-specific rule (`library/`), prefer `library/` — it is the
+sanctioned slot for everything a studio authors itself.
+
 ## What Does NOT Belong in This Module
 
+- **Process / working contract** — the collaboration protocol, section-cycle
+  authoring discipline, one-way design→code boundary, `gd-improve` delta
+  discipline, ID conventions (`PIL-*`, `SYS-*`, …), language rules, Braintrust
+  critique stance, and the **severity rubric** → the `gd-principles` **system
+  asset** (`.unikit/system/gd-principles.md`), NOT a memory rule. Never write a
+  memory rule that re-specifies process, grades findings by severity, or
+  references GDD section letters (A–K).
 - **The project's own design content** (pillars, systems, facts, formulas,
   decisions of THIS game) → the `gamedesign` workspace artifacts:
   `.unikit/gamedesign/GAME.md`, `.unikit/gamedesign/systems/*.md`,
@@ -83,18 +107,25 @@ When the router has classified the **intent** and reaches content
 classification, pick the tier for the `gamedesign` module:
 
 1. **`core` or `library`?**
-   - **`library`** — domain or genre design expertise (balance, economy,
-     narrative, a researched genre, …) → `.unikit/memory/gamedesign/library/`
-   - **`core`** — a change to the working discipline itself (protocol,
-     conventions). Core content ships from the registry; user additions here
-     are rare — confirm with the user before writing.
-   - **Neither** — redirect to the correct destination (see "What Does NOT
-     Belong"). **Stop here. Do NOT create any files.**
+   - **`library`** — a studio-specific custom design rule, house convention, or
+     a researched genre rule → `.unikit/memory/gamedesign/library/`. This is the
+     default destination for anything the studio authors itself.
+   - **`core`** — only when the content is a deliberate studio **override** of an
+     existing canonical rule id (B-merge: the custom version wins, the official
+     one backfills). Confirm with the user before writing into `core/` — they are
+     shadowing canonical knowledge, and the override will NOT auto-update from
+     upstream.
+   - **Neither** — it is process, project truth, or another module's concern;
+     redirect to the correct destination (see "What Does NOT Belong"). **Stop
+     here. Do NOT create any files.**
 
 2. **Identify the target file.**
-   - Domain knowledge → the matching library file (e.g. `balance.md`,
-     `economy.md`, `narrative.md`). Consult `RULES_INDEX.md` Library section.
+   - Studio custom rule → a descriptive `lower-case-with-hyphens.md`. Consult
+     `RULES_INDEX.md` Library section.
    - Genre knowledge → `genre-<slug>.md` (e.g. `genre-roguelike.md`).
+   - Core override → match the canonical rule id exactly (e.g. `balance.md`,
+     `economy.md`) so the B-merge resolver recognizes it as an override of that
+     id.
 
 3. **Does the file already exist?** Check the target tier directory.
 
@@ -103,15 +134,14 @@ concepts belong to the `code` module's stack tier.
 
 ## Project Isolation
 
-Library rules describe **transferable** knowledge. Apply this filter as an
+Memory rules describe **transferable** knowledge. Apply this filter as an
 independent pass before writing:
 
 - Project-stack and project-design awareness (DESCRIPTION.md, GAME.md, GD-IDS)
   may inform *routing* decisions, never *content* synthesis.
-- A library rule must stay valid if the current project is deleted. Concrete
-  numbers from the current game's design (entity stats, formula constants,
-  economy values) are project facts → `.unikit/gamedesign/GD-IDS.yaml`, not
-  memory.
+- A rule must stay valid if the current project is deleted. Concrete numbers
+  from the current game's design (entity stats, formula constants, economy
+  values) are project facts → `.unikit/gamedesign/GD-IDS.yaml`, not memory.
 - **Self-test before writing:** mentally move the rule to a different game
   project. If any sentence stops being true, it is project content — relocate
   it.
@@ -125,7 +155,7 @@ Use the same header/format contract as the `code` module's rules:
 
 > **Scope**: {What this file covers — the design domain and the kinds of decisions it helps make}
 > **Load when**: {Comma-separated designer situations that trigger loading this file}
-> **References**: {Optional — omit if no reference files. List each with a parenthetical label: `.unikit/memory/gamedesign/library/references/{rule-id}-{descriptor}.md` (quick lookup).}
+> **References**: {Optional — omit if no reference files. List each with a parenthetical label: `.unikit/memory/gamedesign/core/references/{rule-id}-{descriptor}.md` (quick lookup).}
 
 ---
 
@@ -141,6 +171,11 @@ Use the same header/format contract as the `code` module's rules:
 
 {Common design mistakes to avoid — if applicable}
 ```
+
+Rule files hold **domain knowledge only**. They never carry an `## Authoring` /
+`## Process` / `## Documenting` section, GDD section-letter bindings (A–K),
+GD-IDS attachment instructions, "recorded delta" language, or severity grading —
+all of that is process and lives in `gd-principles`.
 
 **Writing `Scope` and `Load when`:**
 
@@ -163,10 +198,10 @@ Both lines must read as **prose** a future LLM can match against a design task.
 
 - Filename: `lower-case-with-hyphens.md` (e.g. `player-motivation.md`,
   `genre-roguelike.md`)
-- Location: `.unikit/memory/gamedesign/library/` for library,
-  `.unikit/memory/gamedesign/core/` for core
+- Location: `.unikit/memory/gamedesign/library/` for studio custom/genre rules,
+  `.unikit/memory/gamedesign/core/` for canonical overrides
 - Language: follow `language.rules` from `.unikit/config.yaml` (default: `en`).
-  The registry-shipped rules are authored in English. Frontmatter keys, rule
+  The registry-shipped core rules are authored in English. Frontmatter keys, rule
   ids, canonical terms, framework names, and formulas always stay in English
   regardless of `language.rules`. See `.unikit/system/LANGUAGE_RULES.md` →
   "Knowledge base rule files".
@@ -176,10 +211,10 @@ Both lines must read as **prose** a future LLM can match against a design task.
 
 ## Reference File Format
 
-Reference files live in `.unikit/memory/gamedesign/library/references/` and hold
-lookup/catalog data extracted from a main library rule (e.g. a motivation
-taxonomy table, an accessibility checklist). They have no frontmatter — they are
-supplementary documents, not standalone rules.
+Reference files live in `.unikit/memory/gamedesign/core/references/` (alongside
+the canonical rule they belong to) and hold lookup/catalog data extracted from a
+main rule (e.g. a motivation taxonomy table, an accessibility checklist). They
+have no frontmatter — they are supplementary documents, not standalone rules.
 
 **Naming convention:** `{rule-id}-{descriptor}.md` (e.g.
 `accessibility-gag-checklist.md`, `player-motivation-quantic-table.md`).
@@ -192,22 +227,29 @@ files; the main rule lists approved references in its `> **References**:` line.
 ## RULES_INDEX.md Format
 
 The index lives at `.unikit/memory/gamedesign/RULES_INDEX.md` and carries two
-tables. The Core table has a **Required By** column (core rules are
-mandatory-gated); the Library table is load-on-demand:
+tables, neither mandatory-gated (both load-on-demand by `Load When`). The Core
+table carries an **Origin** column (per-rule B-merge provenance:
+`custom`/`official`/`bundled`) so the agent can tell a studio override from
+canonical knowledge; the Library table is purely custom and omits it:
 
 ```markdown
 ## Core (`.unikit/memory/gamedesign/core/`)
 
-| File | Description | Required By | Load When |
+| File | Description | Origin | Load When |
 
 ## Library (`.unikit/memory/gamedesign/library/`)
 
 | File | Description | Load When |
 ```
 
+The Core table deliberately has **no "Required By" column** — that is `code`-core
+mandatory-gate semantics. Game-design core rules are canonical *knowledge* loaded
+on demand by `Load When`, not rules required by a set of tasks.
+
 Place new entries in alphabetical order within the appropriate table. When
 validating the index against disk, scan `.unikit/memory/gamedesign/core/*.md`
 and `.unikit/memory/gamedesign/library/*.md`, then add missing rows (read each
 file's `> **Scope**:` / `> **Load when**:` header) and remove phantom rows whose
 files no longer exist. The CLI regenerates this index on `rules install` /
-`rules sync` from the same headers.
+`rules sync` from the same headers, filling the Core Origin column from the
+installed per-rule state.
