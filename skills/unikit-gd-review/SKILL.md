@@ -46,9 +46,10 @@ write is the review report and (with approval) the Status cell in GD-INDEX.
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
-and apply it to all output and the report. Regardless of the configured language,
-keep **English**: IDs (`SYS-*`, `PIL-*`, `FORM-*`, `AC-*`…), keywords, canonical
-terms, MDA aesthetic names. Do not announce the language setting.
+and apply it to all output and the report (fall back to English if it is missing) —
+including the rule to **translate concepts, not transliterate jargon**.
+`gd-principles` → "Language" adds the game-design specifics: which IDs and stored
+field values stay English. Do not announce the language setting.
 
 <!-- unikit:agents codex -->
 ## Subagent Delegation — BLOCKING PRE-REQUISITE

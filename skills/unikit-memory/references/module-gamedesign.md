@@ -202,9 +202,10 @@ Both lines must read as **prose** a future LLM can match against a design task.
   `.unikit/memory/gamedesign/core/` for canonical overrides
 - Language: follow `language.rules` from `.unikit/config.yaml` (default: `en`).
   The registry-shipped core rules are authored in English. Frontmatter keys, rule
-  ids, canonical terms, framework names, and formulas always stay in English
-  regardless of `language.rules`. See `.unikit/system/LANGUAGE_RULES.md` →
-  "Knowledge base rule files".
+  ids, canonical English term names (the names in GD-IDS `terms`), framework names,
+  and formulas always stay in English regardless of `language.rules` — this is a
+  closed list of stable identifiers, not a licence to keep arbitrary jargon English.
+  See `.unikit/system/LANGUAGE_RULES.md` → "Knowledge base rule files".
 - Numbers in tables, intent in prose; name the source framework when one exists
   (MDA, Quantic Foundry, GAG, …)
 - Keep rules actionable — "Anchor X to Y", "Never ship Z without W"

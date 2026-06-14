@@ -48,11 +48,10 @@ Optionally it produces **`PITCH.md`**. Per-system detail (`systems/<slug>.md`) i
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
-and apply its rules to all subsequent output and to every artifact you write.
-If the file is missing or unreadable, fall back to English. Regardless of the
-configured language, the following always stay **English**: IDs (`PIL-*`,
-`SYS-*`, `ENT-*`, `FORM-*`, `DD-*`), keywords, canonical terms, and formula
-expressions/variables. Do not announce or mention the language setting.
+and apply it to all output and artifacts (fall back to English if it is missing) —
+including the rule to **translate concepts, not transliterate jargon**.
+`gd-principles` → "Language" adds the game-design specifics: which IDs and stored
+field values stay English. Do not announce or mention the language setting.
 
 ## Bootstrap — Working Contract & Domain Knowledge (MANDATORY)
 

@@ -186,10 +186,20 @@ user is the arbiter of every conflict.
 
 ## Language
 
-- Design artifacts follow the configured artifact language (see
-  `.unikit/system/LANGUAGE_RULES.md`).
-- Always English regardless of configuration: IDs, keywords, canonical terms,
-  formula expressions and variables, telemetry event names.
+- Design artifacts follow the configured artifact language; conversation follows the
+  configured UI language (see `.unikit/system/LANGUAGE_RULES.md`). The general
+  **"translate the concept, not the label"** rule — no transliterating jargon, no
+  mid-sentence code-switching — lives there and applies to every skill; this section
+  adds only the game-design specifics.
+- **Always English — but only stored identifiers and machine values, never
+  vocabulary:** IDs (`PIL-*`, `SYS-*`, `ENT-*`, `FORM-*`, `AC-*`, `DD-*`), MDA
+  aesthetic names, formula expressions and variables, telemetry event names, and the
+  literal **field values** stored in artifacts (e.g. `market_signal: red-ocean`,
+  `validation_confidence: B`). These are parsed or referenced as stable tokens, so
+  they never translate. The list is exhaustive — "keywords" and "canonical terms"
+  are *not* a licence to keep arbitrary jargon English. A stored `market_signal:
+  red-ocean` field in the card is correct; the same words spliced into chat are not —
+  render them in the user's language.
 - **Numbers live in tables, intent lives in prose.** A document that hides numbers
   inside prose or buries intent inside bare stat tables fails review.
 

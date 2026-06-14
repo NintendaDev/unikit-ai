@@ -51,10 +51,27 @@ center idea into its own center).
 
 ## Phase 4 — Convergence methods
 
-- **Pugh / decision-matrix scoring.** Score each surviving concept against
-  criteria the user weights — typically *hook*, *scope-fit*, *team-fit*,
-  *market-signal*, *personal-fire*. Show the arithmetic transparently; the score
-  *informs*, it does not decide. Hybridize the strongest traits across concepts.
+- **Two-pass Pugh / decision-matrix scoring.** Single-pass scoring lets an
+  evidence-free *market-signal* guess ride at the same weight as a locked creative
+  judgment — so split the matrix into two passes:
+  - **Pass 1 — creative (lock it *before* the Phase 3.5 scan):** *hook*,
+    *scope-fit*, *team-fit*, *personal-fire*. These are judgments the author owns;
+    locking them first stops the market data from anchoring them.
+  - **Pass 2 — evidence (from the explore brief):** *market-signal* and
+    *validation-confidence*. Scored only after the scan returns.
+  - **Hard rule — market ≤ validation confidence:** the *market-signal* score may
+    **not exceed what *validation-confidence* allows.** A "huge market" read backed
+    by one C-grade proxy is capped at the confidence of that proxy — optimism cannot
+    out-vote evidence. Show Pass 1 and Pass 2 side by side; the score *informs*, it
+    does not decide. A tie Pass 2 cannot break on confident evidence goes to the
+    Phase 8.5 validation plan, not to taste. If Phase 3.5 was skipped (no commercial
+    frame), *market-signal* is simply another Pass-1 judgment.
+
+  **Terminology — keep the boundary explicit.** `market-signal` (hyphen) is the
+  **human Pugh criterion** scored here. `market_signal` (underscore) is the
+  **machine field** the explore brief returns and the CONCEPT card stores. The
+  criterion is the judgment; the field is the evidence the judgment may lean on —
+  never conflate the two.
 - **How-Now-Wow** (when "I like all of them"): plot ideas on
   *novelty × feasibility* — **Now** (easy, normal), **How** (hard, normal),
   **Wow** (easy, novel ← target), park **hard+normal**. Cuts an over-full field
@@ -62,6 +79,23 @@ center idea into its own center).
 - **Idea backlog:** every rejected concept goes to `IDEAS.md` with *idea, essence,
   reason* (scope / not-fun / off-theme / duplicate) and a **revival condition** —
   so a killed idea is not re-pitched, and a good idea parked for scope can return.
+
+## Phase 5 — Loop stack & discoverability loops
+
+Beyond the play loops (30 s / 5 min / session / meta), a commercial concept lives or
+dies on **discoverability loops** — the ones that decide whether anyone *starts*:
+
+- **First-session loop** — the first ~10 minutes that decide retention: does the core
+  fun land before the player bounces?
+- **Trailer moment** — the **6-second hook** the game can show in a trailer / GIF /
+  capsule that makes a stranger stop scrolling. A concept with no trailer moment is a
+  marketing risk, not just a design note.
+- **Retention hook** — the "one more run / one more day" pull that brings the player
+  back (the meta-loop read from the *retention* angle).
+
+These are not separate loops — they are the play loops read from the *acquisition /
+retention* angle. A concept strong on the 30-second loop but with no trailer moment
+is a discoverability risk worth flagging into Phase 8.
 
 ## Phase 8 — Pre-mortem (Klein, HBR 2007)
 
@@ -82,6 +116,26 @@ Before committing, define the **smallest prototype that proves or kills the core
 fun** — the find-the-fun test. It must be buildable quickly and must answer the
 single question "is the 30-second loop actually fun?" A concept whose core fun
 cannot be cheaply tested is a scope risk — flag it.
+
+## Phase 8.5 — Validation plan & kill criteria
+
+The pre-mortem names the risks; the validation plan **retires them cheaply, before
+full production**. For each *real* Critical risk, pick the cheapest test that proves
+or kills it:
+
+| Test | Retires | Typical signal |
+|------|---------|----------------|
+| **Fake-door Steam page** | "will anyone wishlist this?" | wishlist velocity vs the genre / Next-Fest median |
+| **Prototype (find-the-fun)** | "is the core loop fun?" | playtest verdict on the 30-second loop |
+| **Discord / subreddit poll** | "which direction do players want?" | direct audience preference before you build |
+| **Capsule / key-art A/B** | "does the hook read?" | click-through on the framing |
+
+Each test states a **pass threshold + a deadline + the single risk it retires**.
+State **2–4 explicit kill criteria with numbers**, reusing the explore brief's
+benchmarks — e.g. *"wishlists below the genre median after one month → the hook does
+not read; reframe before spec."* The discipline is to spend the *cheapest* test that
+retires the *biggest* market risk before committing to the whole game (Cerny's
+find-the-fun logic, extended from fun to market).
 
 ## References
 

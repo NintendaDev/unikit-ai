@@ -46,10 +46,10 @@ Structural changes redirect to the owner skill.
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
-and apply it to all output and artifacts. Regardless of the configured language,
-keep **English**: IDs (`SYS-*`, `ENT-*`, `FORM-*`, `AC-*`, `DD-*`, `PIL-*`),
-keywords, canonical terms, formula expressions/variables, telemetry event names.
-Do not announce the language setting.
+and apply it to all output and artifacts (fall back to English if it is missing) —
+including the rule to **translate concepts, not transliterate jargon**.
+`gd-principles` → "Language" adds the game-design specifics: which IDs and stored
+field values stay English. Do not announce the language setting.
 
 ## Phase 0 — Bootstrap
 

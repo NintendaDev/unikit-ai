@@ -4,6 +4,13 @@
 > **Version**: 1
 > **Created**: [YYYY-MM-DD]
 
+<!-- Market evidence (machine fields, set at Phase 3.5 when a commercial frame
+     exists; OUTSIDE the nine-field table — the table stays nine fields, no more).
+     market_signal/validation_confidence (underscore) are evidence, distinct from
+     the hyphenated `market-signal` Pugh criterion. Omit / mark n/a when skipped. -->
+> **market_signal**: white-space | contested | red-ocean | unknown | n/a
+> **validation_confidence**: A | B | C | n/a
+
 A one-card concept — nine fields, no more. It is the seed for `unikit-gd-spec`
 (which decomposes it into GAME.md + a system map). If a field cannot be filled
 in one or two sentences, the idea is not yet a concept; keep brainstorming.
@@ -25,5 +32,7 @@ in one or two sentences, the idea is not yet a concept; keep brainstorming.
 ## Notes
 
 [Free-form space for the reasoning behind the card: rejected alternatives,
-references that inspired it, anything the nine fields could not hold. Decisions
-belong in the table; this is the margin.]
+references that inspired it, the Phase 3.5 market argument (comparables, the unmet
+need, reach risk) behind the machine fields above, the Phase 8.5 validation tests
+and kill criteria, anything the nine fields could not hold. Decisions belong in the
+table; this is the margin.]

@@ -23,6 +23,15 @@ When `language.technical_terms` is `keep`: preserve original English technical t
 
 When `language.technical_terms` is `translate`: translate technical terms where a common, widely-understood translation exists in the target language. Keep terms that have no established translation in English.
 
+## Translate the concept, not the label
+
+Producing output in a non-English language means conveying the *idea* in that language — not keeping English words and bending them to fit. Two failure modes to avoid, independent of `language.technical_terms`:
+
+- **No transliteration.** Never take an English word and inflect it with the target language's grammar; use the language's own word for the concept. (E.g. for Russian: «сохраняю», not «персистю»; «снижаю риск», not «митигирую»; «предсмертный разбор», not «пре-мортем».)
+- **No mid-sentence code-switching.** Never drop a raw English term into a sentence in another language when a natural translation exists. (E.g. «красный океан без свободной ниши», not «red-ocean без white-space».)
+
+This is narrower than the "always English" list below: genuine technical terms, code identifiers, and machine-parsed values stay English **as whole tokens**. The rule here governs *prose and speech* — method names, domain jargon, and process verbs are explained in the user's language, never half-translated.
+
 ## What uses the configured language
 
 All user-facing output uses the configured language unless explicitly listed in the "always English" section below. This includes:

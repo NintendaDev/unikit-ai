@@ -2,15 +2,18 @@
 name: unikit-gd-explore
 description: >-
   A research partner for game design — dissect a reference game, scan a genre or
-  market, or compare mechanics before committing to a design. Mirrors
-  /unikit-explore in the design domain: a thinking partner that reads the existing
-  design (GAME.md, the system map), researches the web, and dissects references
-  mechanics → dynamics → aesthetics (MDA backwards), producing trade-off tables
-  and a brief usable by /unikit-gd-spec or /unikit-gd-detail. Use when the user
-  says "research roguelike economies", "break down the combat of Hades", "compare
-  progression systems", "explore this genre", or wants to study existing designs
-  before creating new ones. Use "init" to rebuild the researches index.
-argument-hint: "init | <topic | game reference | URL | design question>"
+  market for viability, or compare mechanics before committing to a design.
+  Mirrors /unikit-explore in the design domain: a thinking partner that reads the
+  existing design (GAME.md, the system map), researches the web, and dissects
+  references mechanics → dynamics → aesthetics (MDA backwards), producing
+  trade-off tables and a brief usable by /unikit-gd-spec or /unikit-gd-detail. A
+  market lens engages on commercial intent (inferred from the prompt, no flag).
+  Use when the user says "research roguelike economies", "break down the combat of
+  Hades", "compare progression systems", "explore this genre", "is there a market
+  for X", "who would buy this", "is this genre saturated", or wants to study
+  existing designs before creating new ones. Use "init" to rebuild the researches
+  index.
+argument-hint: "init | <topic | game reference | URL | design or market question>"
 allowed-tools:
   - Read
   - Glob
@@ -53,9 +56,11 @@ them at the owner skill and stop researching.
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
-and apply it to all output and artifacts. Regardless of the configured language,
-keep **English**: IDs, keywords, canonical terms, MDA aesthetic names, and formula
-expressions/variables. Do not announce the language setting.
+and apply it to all output and artifacts (fall back to English if it is missing) —
+including the rule to **translate concepts, not transliterate jargon**.
+`gd-principles` → "Language" adds the game-design specifics: which IDs and stored
+field values (e.g. `market_signal: red-ocean`) stay English. Do not announce the
+language setting.
 
 ## Bootstrap Context (MANDATORY)
 
@@ -77,6 +82,11 @@ Before responding — before any analysis — silently load (do not narrate):
    constraints and milestones; routing context only.
 5. **`.unikit/gamedesign/researches/INDEX.md`** (optional) — prior researches;
    check for related work before starting fresh.
+6. **`{{skills_dir}}/{{self_name}}/references/market-scan.md`** — the
+   market-research engine (the *how* of a scan). Load it **only when the prompt
+   carries market intent** — the "Market lens — when it engages" section below
+   classifies this. A design-only prompt does **not** load it; this keeps reference
+   dissection lean.
 
 **One-way boundary:** this skill never reads `.unikit/code/`, project source, or
 build artifacts. Web research **is allowed** here (market and reference scans —
@@ -96,6 +106,10 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
 
 **Fallback:** if the Agent tool is unavailable, use `WebSearch` / `WebFetch`
 directly. Agents and web fetches are read-only advisors — they never write files.
+**When this skill is itself running as a spawned subagent** (serving a brainstorm
+delegation — see "Serving a brainstorm request"), prefer **direct `WebSearch` /
+`WebFetch`** over a nested `Agent(subagent_type: Explore)`: nested spawning from
+inside a subagent is unreliable.
 
 ## The Stance
 
@@ -124,8 +138,10 @@ permadeath + meta    →   run-to-run escalation   →   Discovery, Submission
   "What to borrow: <portable mechanic>.  What is incidental: <bound to its IP/scope>."
 ```
 
-**Genre / market scan.** Survey how a genre solves a problem — map the spread of
-approaches, the conventions players expect, the saturated vs open niches.
+**Genre / market scan.** Survey how a genre solves a problem — the spread of
+approaches, the conventions players expect, the saturated vs open niches. When the
+prompt is **commercial** (viability, audience, competition, demand, platform-fit),
+this becomes a full **market scan** — see "Market lens — when it engages" below.
 
 **Mechanics comparison.** Build trade-off tables (each option × axes like depth,
 readability, dev-cost, retention, audience). Recommend a path **only if asked**
@@ -133,6 +149,70 @@ readability, dev-cost, retention, audience). Recommend a path **only if asked**
 
 **Surface risks & unknowns.** Name what a design choice would cost, what is unproven,
 what needs a prototype.
+
+## Market lens — when it engages
+
+The market lens is **inferred from the prompt, never a flag** — `argument-hint`
+stays free-form. Classify the request by its signals:
+
+| Signal class | Triggers (examples) |
+|--------------|---------------------|
+| **Viability** | "is there a market", "will it sell", "worth making", monetiz* |
+| **Discoverability / audience** | discoverability, wishlists, "who buys this", audience, reachable players, TAM |
+| **Competition / saturation** | competitors, comparables, "saturated", red ocean, white space, differentiation |
+| **Demand** | demand, "do players want this", "are they asking for it" |
+| **Platform / store** | Steam tags, store page, genre fit on a platform |
+
+**Decision rule:**
+
+- **Market signals present** → market lens **ON**: load `market-scan.md` and run its
+  techniques alongside (or instead of) MDA dissection.
+- **Only design signals** (a game name / URL / "break down the combat" / "compare
+  mechanics" / pure MDA) → **MDA dissection**; `market-scan.md` is **not** loaded.
+- **Both** → run **both** lenses.
+
+**Tie-breaker (genuine ambiguity only).** When the prompt is clearly a decision
+question but the *cut* is unclear and the two readings mean materially different
+work, ask **one** question — not one per ambiguous prompt:
+
+```
+AskUserQuestion: What kind of read do you want?
+Options:
+1. Design dissection (recommended)
+2. Market viability
+3. Both
+```
+
+"Always run both lenses" is rejected — it breaks the conditional load. This
+tie-breaker is **skipped entirely** in subagent mode (next section).
+
+## Serving a brainstorm request (subagent mode)
+
+`unikit-gd-brainstorm` delegates market validation to this skill by spawning it as a
+subagent (`Agent(subagent_type: general-purpose, skills: ["unikit-gd-explore"], …)`).
+The full contract — input, output fields, ownership, gate — lives in `gd-principles`
+→ "Cross-Skill Delegation (brainstorm → explore)"; `references/market-scan.md` →
+"Subagent mode" holds the engine behavior. This section is the SKILL-level switch.
+
+**Detect delegation by the canonical marker** — the prompt contains, verbatim:
+
+> **"Return the brief into this session as text; do not save any files."**
+
+Detection is by this **exact phrase**, not by a loose reading of the prompt. On a
+match, run **deterministically**:
+
+- **Bypass every interactive `AskUserQuestion`** — the lens tie-breaker above **and**
+  the save-offer under "Saving Research Results". A subagent is non-interactive; a
+  prompt would hang it. The market lens is already mandated by the commercial frame
+  in the prompt, so there is nothing left to disambiguate.
+- **Run the market lens** and produce the **brainstorm-delegation brief**
+  (`market-scan.md`): per concept `market_signal` + `validation_confidence` +
+  evidence.
+- **Return the brief into the session as text — save no file.** "Do not save" means
+  **skip the save step**, not answer "no" to a prompt (there is no prompt). The
+  calling session owns persistence.
+- **Prefer direct `WebSearch` / `WebFetch`** over a nested `Agent(subagent_type:
+  Explore)` (see "Parallel investigation").
 
 ## Saving Research Results
 
@@ -255,6 +335,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
 /unikit-gd-explore                              → enter design-research mode
 /unikit-gd-explore break down the combat of Hades   → reference dissection (MDA backwards)
 /unikit-gd-explore roguelike meta-progression       → genre / mechanics scan
+/unikit-gd-explore is this roguelike niche saturated?  → market lens (viability / white-space)
 /unikit-gd-explore https://…                         → dissect a linked design source
 /unikit-gd-explore init                              → rebuild researches/INDEX.md
 ```
