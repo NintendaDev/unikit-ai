@@ -6,7 +6,7 @@ description: >-
   or workflow rules (→ skill-context), and proposes them to the user.
   Use when user says "evolve", "evolve rules", "learn from mistakes", "update rules",
   "analyze patches", or wants to feed accumulated patch experience into coding rules.
-  Also trigger after a series of /unikit-fix runs when patches have accumulated in .unikit/patches/.
+  Also trigger after a series of /unikit-fix runs when patches have accumulated in .unikit/code/patches/.
   To migrate mature RULES.md entries to core/stack rule files, use `/unikit-memory --migrate-rules` instead.
 allowed-tools:
   - Read
@@ -63,7 +63,7 @@ Do not announce, confirm, or mention the language setting.
 ### Step 1: Read Patches (Incremental)
 
 ```
-Glob: .unikit/patches/*.md
+Glob: .unikit/code/patches/*.md
 ```
 
 **If no patches found** → report "No patches to analyze" and **STOP**.

@@ -30,7 +30,7 @@ Set up AI agent context for a game project by:
 2. Bootstrapping `.unikit/config.yaml` (user-editable source of truth for language, git, and workflow)
 3. Generating `.unikit/DESCRIPTION.md` — project specification
 4. Generating `AGENTS.md` — structural map for AI agents
-5. Bootstrapping the knowledge base (`.unikit/memory/code/core/` + `.unikit/memory/code/stack/`) via the rules registry
+5. Bootstrapping the knowledge base under `.unikit/memory/` via the rules registry — the `code` module (`core/` + `stack/`) always, plus the `gamedesign` design library when that module is registered
 6. Delegating architecture generation to `/unikit-architecture`
 7. Printing the setup summary as the final, user-facing confirmation that all artifacts are in place
 
@@ -78,7 +78,7 @@ Check whether `.unikit/config.yaml` already exists. This step is a pure file rea
 - **If it exists** — Read it. Treat its values as the source of truth for `language.*`, `git.*`, `workflow.*`. Mark Steps 1 / 2 / 3 as "merge mode": prefer existing values, prompt only when a critical field is missing or empty.
 - **If it does not exist** — set "bootstrap mode": Steps 1 / 2 / 3 will collect values from the user / git and write a fresh `config.yaml`.
 
-All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
+All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/code/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
 
 ---
 
@@ -454,7 +454,7 @@ Read this index to determine which rule files are relevant for the current task,
 
 #### 9.2: Core bootstrap
 
-Install the whitelisted core rule set via the registry chain (primary → official → bundled). This is a quiet, idempotent step — on a re-run it will either skip everything (hash match) or pull fresh content when the registry has been updated. The no-args form of `rules install` owns the core-bootstrap contract: it fetches the manifest once, installs the whitelisted core ids, and regenerates `RULES_INDEX.md` on every invocation.
+Install the baseline rule set via the registry chain (primary → official → bundled). This is a quiet, idempotent step — on a re-run it will either skip everything (hash match) or pull fresh content when the registry has been updated. The no-args form of `rules install` owns the bootstrap contract: it walks every registered module by its bootstrap policy — the `code` module installs the always-tagged (core) rules, the `gamedesign` module installs its entire catalog (core + library); modules absent from the registry are skipped gracefully. Each module's manifest is fetched once, and `RULES_INDEX.md` is regenerated on every invocation.
 
 ```bash
 unikit-ai rules install
@@ -520,10 +520,10 @@ where:
 
 `required` entries stay in display-raw form throughout; canonicalization happens only at comparison / CLI-boundary sites.
 
-Before computing `missing`, query the registry catalog so the same result feeds both the set-difference here and the informational table in Step 9.5. `rules list` returns `{ engine, rules: [{ id, category, description, version }] }` — filter to `category === "stack"`:
+Before computing `missing`, query the registry catalog so the same result feeds both the set-difference here and the informational table in Step 9.5. Always pass `--module code` — a bare `rules list` now defaults to **all modules** (flat-all), and this orchestrator only wants the `code` catalog. `rules list --module code --json` returns the flat-single shape `{ engine, module, rules: [{ id, category, description, version }] }` — filter to `category === "stack"`:
 
 ```bash
-unikit-ai rules list --json
+unikit-ai rules list --module code --json
 ```
 
 For each entry in `required`, **semantically match** it against that stack pool. See Step 9.5 for the matching criteria — the key point is that id-similarity, description match, and common aliases all count; strict canonical equality is the strongest signal but not the only one (`Odin Inspector` → registry `odin`, `ASPID MVVM` → registry `aspid-mvvm`, and so on). Record `{ display, resolved_id, resolved_version }` per entry; `resolved_id` is the registry id when match confidence is high, otherwise `null`.
@@ -592,7 +592,7 @@ Based on choice, build the `targets` list:
 
 #### 9.5: Registry lookup — semantic matching
 
-`targets` carries the resolved registry metadata from Step 9.3 (skill already ran `rules list --json` and kept `resolved_id` / `resolved_version` per entry during the `missing` computation). Reuse that cached result — do **not** re-query `rules list`.
+`targets` carries the resolved registry metadata from Step 9.3 (skill already ran `rules list --module code --json` and kept `resolved_id` / `resolved_version` per entry during the `missing` computation). Reuse that cached result — do **not** re-query `rules list`.
 
 **Semantic matching — NOT strict id equality.** The matching procedure Step 9.3 applied is documented here because this step surfaces the result to the user. For each `target`, search the stack pool for the registry rule that represents the same framework. Three signals — any one at high confidence is enough, but combining them strengthens the verdict:
 
@@ -794,6 +794,7 @@ as the basis for the structure section, but only include directories and files t
 | .unikit/ARCHITECTURE.md | Architecture decisions and guidelines |
 | .unikit/RULES.md | Coding conventions and rules |
 | .unikit/memory/code/RULES_INDEX.md | Index of framework-specific rule files |
+| .unikit/memory/gamedesign/RULES_INDEX.md | Game-design knowledge index (only if the gamedesign module installed rules) |
 ```
 
 **Rules:**
@@ -846,6 +847,12 @@ Next steps:
 - /unikit-plan <feature> — Plan a feature implementation
 - /unikit-implement — Execute an existing plan
 - /unikit-review — Review code quality
+
+Game design (optional):
+- /unikit-gd-brainstorm <idea> — Ideate a concept (pillars, loops, pre-mortem)
+- /unikit-gd-spec — Author the master GDD (GAME.md) + system map
+  The design workspace (.unikit/gamedesign/) is created on first use.
+  /unikit-plan then cites the design's acceptance criteria in its ## Design section.
 
 Ready when you are!
 ```

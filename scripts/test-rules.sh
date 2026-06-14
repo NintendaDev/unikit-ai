@@ -330,16 +330,21 @@ else
     fail "unikit-memory SKILL.md missing Bash in allowed-tools"
 fi
 
-if grep -q "rules list --json" "$MEMORY_SKILL" 2>/dev/null; then
-    pass "unikit-memory has registry list step"
+# After the multi-module CLI rework, `rules list` with no `--module` defaults to
+# ALL modules (flat-all). unikit-memory therefore ALWAYS scopes its registry
+# probes with `--module <moduleId>` (flat-single form). Grep the always-`--module`
+# stems — not the old continuous `rules list --json` substring, which no longer
+# exists after `--module <moduleId>` was inserted between the command and `--json`.
+if grep -q "rules list --module" "$MEMORY_SKILL" 2>/dev/null; then
+    pass "unikit-memory has registry list step (always scoped with --module)"
 else
-    fail "unikit-memory missing registry list step"
+    fail "unikit-memory missing always-scoped registry list step (rules list --module ...)"
 fi
 
-if grep -q "rules status --json" "$MEMORY_SKILL" 2>/dev/null; then
-    pass "unikit-memory has registry status step"
+if grep -q "rules status --module" "$MEMORY_SKILL" 2>/dev/null; then
+    pass "unikit-memory has registry status step (always scoped with --module)"
 else
-    fail "unikit-memory missing registry status step"
+    fail "unikit-memory missing always-scoped registry status step (rules status --module ...)"
 fi
 
 if grep -q "Semantic matching\|semantic match" "$MEMORY_SKILL" 2>/dev/null; then

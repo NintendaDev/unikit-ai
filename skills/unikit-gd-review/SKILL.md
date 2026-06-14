@@ -1,0 +1,226 @@
+---
+name: unikit-gd-review
+description: >-
+  Quality review of game design documents — "is this design good?" — through a
+  fan-out of adversarial lenses (completeness, clarity, pillar alignment,
+  systems-math, feasibility, scope, plus domain lenses), each prompted to find
+  problems, not validate. Produces a severity-graded verdict and a report. Scope
+  is inferred from the prompt — no flags: a named system reviews that document;
+  "all" / "all systems" runs a cross-system review with end-to-end checks. Use
+  when the user says "review the combat GDD", "is this design good", "critique
+  this system", "review all the GDDs", or "what's wrong with this design".
+argument-hint: "[system name | SYS-slug | path | \"all\"]  (scope inferred; no flags)"
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Write
+  - Edit
+  - Bash(ls *)
+  - Bash(find *)
+  - Bash(wc *)
+  - Bash(date *)
+  - Bash(mkdir *)
+  - Agent
+  - AskUserQuestion
+disable-model-invocation: false
+user-invocable: true
+metadata:
+  author: unikit
+  version: "1.0"
+  category: game-design
+---
+
+# Game Design — Quality Review
+
+Answer **"is this design good?"** — expert judgment on a finished design document,
+delivered as a severity-graded verdict with evidence. This is the design-side
+mirror of `unikit-review`. It is distinct from `unikit-gd-verify`, which answers
+the cheaper, binary **"is the design consistent with itself?"** — a review finding
+*can* be declined; a verify conflict cannot.
+
+A review is most honest in a **fresh session** — the reviewer should not be the
+author of the document. This skill is **read-only** to design documents; its only
+write is the review report and (with approval) the Status cell in GD-INDEX.
+
+## Language Awareness — BLOCKING PRE-REQUISITE
+
+**BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
+and apply it to all output and the report. Regardless of the configured language,
+keep **English**: IDs (`SYS-*`, `PIL-*`, `FORM-*`, `AC-*`…), keywords, canonical
+terms, MDA aesthetic names. Do not announce the language setting.
+
+<!-- unikit:agents codex -->
+## Subagent Delegation — BLOCKING PRE-REQUISITE
+
+When the workflow reaches the lens fan-out (`Agent`), the assistant MUST spawn the
+review lenses as parallel sub-agents if agent execution is supported and not
+prohibited by higher-priority instructions. Only if agent execution is unavailable
+or blocked does the assistant run the lenses sequentially in the main session.
+<!-- unikit:end -->
+
+## Phase 0 — Bootstrap
+
+Silently load — do not narrate:
+
+1. **`.unikit/system/gd-principles.md`** — the working contract. The **severity
+   rubric** (Critical / Major / Minor / Suggestion), the **critique stance**
+   (Braintrust: diagnose don't prescribe; critique vs review; plussing), and the
+   language rules live there. This skill **applies** them. If missing, warn
+   (`unikit-ai update`) and fall back to the rubric summarized in `references/lenses.md`.
+2. **`.unikit/gamedesign/GAME.md`**, **`GD-INDEX.md`**, **`GD-IDS.yaml`** — pillars,
+   the map, and the facts every finding is checked against.
+3. **`{{skills_dir}}/{{self_name}}/references/lenses.md`** — the lens catalog and
+   the adversarial prompts (absorbed from the former `review-lenses` rule).
+4. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load the **core** domain rules
+   for the target's category (by `Load When`) so each domain lens has its theory:
+   `economy`, `balance`, `progression`, `ux-onboarding`, `accessibility`,
+   `monetization-ethics`, `liveops`, `frameworks`.
+5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+
+**One-way boundary:** never read `.unikit/code/`, project source, or build
+artifacts. **Single sanctioned exception:** the **feasibility lens** may read
+`.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` to flag implementability
+risks — nothing else.
+
+## Phase 1 — Resolve Scope & Mode (no flags)
+
+**Scope** is a function of the prompt:
+
+1. The argument names a system or a path → **single** review of that document.
+2. The prompt says "all" / "all systems" / "все" → **cross** review of every
+   `detailed`/`reviewed`/`approved` system.
+3. Empty argument and several systems are detailed → **ask**:
+
+   ```
+   AskUserQuestion: What should I review?
+   Options: <each detailed system> · All systems (cross-review) · None
+   ```
+
+**Mode** is the user's call — **critique** (iterate on a draft) or **review**
+(verdict on a finished document). Default to review on a `detailed`/`approved`
+document; offer critique if the user is mid-authoring. Announce scope + mode in one
+line, then proceed.
+
+## Phase 2 — Run the Lenses (adversarial fan-out)
+
+Select the lenses from `references/lenses.md`: the **core** lenses always, plus the
+**domain** lenses matching the system's category.
+
+Run them as **2–4 parallel inline `Agent()`** calls, each given one lens and the
+adversarial framing *"find what is wrong — do NOT validate"*. Each agent is
+**read-only** and returns findings only; it never writes. Fall back to running the
+lenses sequentially in this session if the Agent tool is unavailable.
+
+```
+Agent(subagent_type: general-purpose, model: sonnet, prompt:
+  "Review <doc path> through the <lens> lens. Your job is to FIND PROBLEMS, not
+   validate. For each: severity (Critical/Major/Minor/Suggestion per the rubric),
+   the document section, and the contradicted fact/pillar/rule as evidence.
+   Diagnose — do not prescribe a fix. Return a findings list; write nothing.")
+```
+
+Collect and de-duplicate the findings. Drop any finding with no section+evidence
+citation to **Suggestion** (`gd-principles`).
+
+## Phase 3 — Cross-Scope Checks (cross review only)
+
+When the scope is "all", add the cross-system lenses from `references/lenses.md`:
+Depends bidirectionality, formula compatibility, cross-AC consistency, pillar
+drift, total scope vs tiers, and **3–5 end-to-end "one moment through N systems"**
+scenarios. These are the checks no single-document review can make.
+
+## Phase 4 — Verdict & Report
+
+Compute the verdict from the findings:
+
+- **Single:** `APPROVED` (no Critical/Major) · `NEEDS REVISION` (Major, no
+  Critical) · `MAJOR REVISION` (≥1 Critical).
+- **Cross:** `PASS` · `CONCERNS` · `FAIL` (≥1 Critical anywhere).
+
+Write **`.unikit/gamedesign/reviews/<date>_review-<scope>.md`** (`mkdir -p` the
+`reviews/` dir; `<scope>` is the SYS-slug or `all`). The report is the only memory
+that survives a fresh-session review:
+
+```markdown
+# Review: <scope> — <YYYY-MM-DD>
+> Verdict: <APPROVED|NEEDS REVISION|MAJOR REVISION | PASS|CONCERNS|FAIL>
+> Scope signal: <single SYS-slug | cross: N systems>  ·  Mode: <review|critique>
+
+## Findings
+| Severity | Document / Section | Lens | Diagnosis (problem + evidence) |
+|----------|--------------------|------|--------------------------------|
+| Critical | SYS-combat / D | systems-math | FORM-damage output contradicts PIL-2's design test |
+
+## Required before implementation
+<all Critical + Major, as an actionable checklist>
+
+## Suggestions (non-blocking — plussing)
+<"what if…" items; only if the user asked for prescriptions>
+
+## I like
+<what genuinely works — honest calibration, not flattery>
+```
+
+A **clean** single review with zero findings still writes the report (the audit
+trail behind the Status change).
+
+## Phase 5 — Status (soft gate)
+
+The verdict feeds the **Status** cell in `GD-INDEX.md` — with the user's approval,
+never silently:
+
+```
+AskUserQuestion: Verdict is <verdict>. Update SYS-<slug> Status in GD-INDEX?
+Options:
+1. Set Status: reviewed/approved (recommended on APPROVED/PASS)
+2. Leave as-is — I'll address findings first
+```
+
+The gate is soft: `unikit-plan` warns when a system's Status is not
+`detailed`/`approved` or is `revised`. A review never auto-applies fixes — route
+revisions to `unikit-gd-improve`.
+
+## Final: Compact Report & Next Steps
+
+```
+Scope: <SYS-slug | all (N systems)>   Mode: <review|critique>
+Verdict: <verdict>
+Findings: <C> Critical · <M> Major · <m> Minor · <s> Suggestion
+Report: .unikit/gamedesign/reviews/<date>_review-<scope>.md
+Status: <updated to … | unchanged>
+```
+
+```
+AskUserQuestion: Review complete. What's next?
+
+Options:
+1. Address the findings — /unikit-gd-improve <system> "<finding>" (recommended if not APPROVED)
+2. Verify consistency — /unikit-gd-verify <system>
+3. Nothing — I'll continue later
+```
+
+If repeated conflicts recur across reviews, suggest capturing them via
+`/unikit-evolve` into `skill-context` (the design-side analogue of patches).
+No summary document beyond the report file.
+
+## Ownership Boundaries
+
+- **Owns:** `.unikit/gamedesign/reviews/` report files; the GD-INDEX Status cell
+  (with approval).
+- **Read-only:** every design document, `GD-IDS.yaml`, `GAME.md`; plus
+  `DESCRIPTION.md`/`ARCHITECTURE.md` for the feasibility lens only.
+- **Not this skill:** consistency/impact checks → `unikit-gd-verify`; applying
+  fixes → `unikit-gd-improve`; authoring → `unikit-gd-detail`/`unikit-gd-spec`.
+- **Never:** edit a design document; prescribe a fix the user did not ask for;
+  inflate severity past the evidence; change a Status without approval; read the
+  code workspace beyond the feasibility exception.
+
+## Quick Reference
+
+```
+/unikit-gd-review SYS-combat              → single review (verdict + report)
+/unikit-gd-review combat                  → resolve to the SYS-slug; same flow
+/unikit-gd-review all systems             → cross-review with end-to-end checks
+/unikit-gd-review systems/SYS-combat.md   → review a specific document path
+```

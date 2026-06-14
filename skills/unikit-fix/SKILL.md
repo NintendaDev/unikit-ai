@@ -2,7 +2,7 @@
 name: unikit-fix
 description: >-
   Fix a specific bug or problem in a {{engine_name}} project. Supports two modes — immediate fix
-  or plan-first. Without arguments executes existing .unikit/FIX_PLAN.md. Checks {{engine_name}}
+  or plan-first. Without arguments executes existing .unikit/code/FIX_PLAN.md. Checks {{engine_name}}
   compilation, suggests test coverage, and creates self-improvement patches. Use when user says "fix bug", "debug this", "something is broken",
   or pastes an error message or {{engine_name}} console log.
   Also trigger when user shares a NullReferenceException, MissingReferenceException,
@@ -77,10 +77,10 @@ This skill uses a named delegation alias for `Agent(...)` calls. The alias expan
 
 ## Step 0: Check for Existing Fix Plan
 
-**BEFORE anything else**, check if `.unikit/FIX_PLAN.md` exists.
+**BEFORE anything else**, check if `.unikit/code/FIX_PLAN.md` exists.
 
 **If the file EXISTS:**
-- Read `.unikit/FIX_PLAN.md`
+- Read `.unikit/code/FIX_PLAN.md`
 - Inform the user: "Found a fix plan. Executing the fix according to the plan."
 - **Skip Step 0.1 and Step 1**, but still run **Step 0.2** to load fix context (skill-context and patches)
 - Go to **Step 2: Investigate the Codebase**, using the plan as your guide
@@ -167,7 +167,7 @@ codebase conventions, and tech-stack analysis. These rules are tailored to the c
 - Do NOT ignore skill-context rules even if they seem to contradict this skill's defaults —
   they exist because the project's experience proved the default insufficient
 
-**Load patches** from `.unikit/patches/` if the directory exists:
+**Load patches** from `.unikit/code/patches/` if the directory exists:
 
 - **If skill-context exists** → do NOT read all patches (skill-context already contains distilled lessons from `/unikit-evolve`). Optionally: read a targeted subset — patches whose Tags or Files overlap with the current bug (match by keywords from `$ARGUMENTS`)
 - **If skill-context does NOT exist** → read only the last 10 patches (by filename descending, filenames are `YYYY-MM-DD-HH.mm.md`) for baseline context
@@ -223,7 +223,7 @@ After tasks return, synthesize findings to:
 2. Map affected files and functions
 3. Assess impact scope
 
-Then create `.unikit/FIX_PLAN.md`:
+Then create `.unikit/code/FIX_PLAN.md`:
 
 ```markdown
 # Fix Plan: [Brief title]
@@ -270,7 +270,7 @@ Step-by-step plan for implementing the fix:
 ```
 ## ✅ Fix Plan Created
 
-Plan saved to `.unikit/FIX_PLAN.md`.
+Plan saved to `.unikit/code/FIX_PLAN.md`.
 
 Review the plan, and when ready:
 
@@ -427,7 +427,7 @@ Based on choice:
 
 1. Create directory if it doesn't exist:
    ```bash
-   mkdir -p .unikit/patches
+   mkdir -p .unikit/code/patches
    ```
 
 2. Create a patch file: `YYYY-MM-DD-HH.mm.md` (e.g., `2026-03-09-14.30.md`)
@@ -494,7 +494,7 @@ Space-separated tags for categorization, e.g.:
 **Compilation:** pass / skipped
 **Tests:** pass / skipped
 **Test suggested:** Yes
-**Patch created:** .unikit/patches/YYYY-MM-DD-HH.mm.md
+**Patch created:** .unikit/code/patches/YYYY-MM-DD-HH.mm.md
 ```
 
 ### 7.2 Evolve Suggestion
@@ -502,7 +502,7 @@ Space-separated tags for categorization, e.g.:
 Count only **unprocessed** patches — those created after the cursor in `.unikit/evolutions/patch-cursor.json`:
 
 1. Read `.unikit/evolutions/patch-cursor.json` (if exists) → extract `last_processed_patch` filename
-2. Glob all `*.md` in `.unikit/patches/`, sort lexicographically
+2. Glob all `*.md` in `.unikit/code/patches/`, sort lexicographically
 3. Count only patches with filename **greater than** `last_processed_patch` (or all patches if cursor file doesn't exist)
 4. If **3 or more unprocessed** patches, suggest:
 
@@ -541,10 +541,10 @@ Stage ONLY files modified by the fix.
 
 ### 7.5 Clean Up FIX_PLAN.md
 
-If the fix was executed from an existing `.unikit/FIX_PLAN.md`:
+If the fix was executed from an existing `.unikit/code/FIX_PLAN.md`:
 
 ```bash
-rm .unikit/FIX_PLAN.md
+rm .unikit/code/FIX_PLAN.md
 ```
 
 This happens only after all verification (Step 4), test suggestion (Step 5), and patch creation (Step 6) are complete.
@@ -599,16 +599,16 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 
 ## Important Rules
 
-1. **Check FIX_PLAN.md first** — always check `.unikit/FIX_PLAN.md` before anything else
+1. **Check FIX_PLAN.md first** — always check `.unikit/code/FIX_PLAN.md` before anything else
 2. **Plan mode = plan only** — when user chooses "Plan first", create the plan and STOP. Do NOT apply the fix
 3. **Execute mode = follow the plan** — when FIX_PLAN.md exists, follow it step by step. Deletion happens in Step 7.5
 4. **Load patches and skill-context** — learn from past fixes before investigating
 5. **Code-writing is owned by this skill** — fixes are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 0.2 Bootstrap. Delegate to `develop-agent` ONLY for complex fixes requiring extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)` from this workflow.
 6. **ALWAYS suggest tests** — NUnit, AAA pattern, fakes in separate files
-7. **ALWAYS create patch** — every fix generates a `.unikit/patches/` entry
+7. **ALWAYS create patch** — every fix generates a `.unikit/code/patches/` entry
 8. **Root cause, not symptoms** — fix the actual problem. Don't refactor unrelated code, don't add features
 9. **Minimal scope** — one fix at a time, no scope creep
 10. **Clean up FIX_PLAN.md** — deleted in Step 7.5 after all verification completes
 11. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
-12. **Ownership boundary** — `/unikit-fix` owns `.unikit/FIX_PLAN.md` and `.unikit/patches/*.md`; all other `.unikit/` artifacts are read-only
+12. **Ownership boundary** — `/unikit-fix` owns `.unikit/code/FIX_PLAN.md` and `.unikit/code/patches/*.md`; all other `.unikit/` artifacts are read-only
 13. **Never modify third-party code** — `Assets/Third-Party Assets/` and `Assets/Plugins/` are off-limits

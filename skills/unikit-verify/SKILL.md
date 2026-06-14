@@ -1,7 +1,7 @@
 ---
 name: unikit-verify
 description: >-
-  Verify completed implementation against the feature plan from .unikit/plans/.
+  Verify completed implementation against the feature plan from .unikit/code/plans/.
   Checks that all tasks were fully implemented, nothing was forgotten, code compiles,
   tests pass, and {{engine_name}}-specific conventions are followed (per ENGINE_RULES.md).
   Use after "/unikit-implement" completes, or when user says "verify", "check work",
@@ -105,10 +105,10 @@ Search logic — same as `/unikit-implement` (unified plan detection):
 
 1. If `$ARGUMENTS` specifies a folder name (e.g. `2026-03-10_core-loop` or legacy `NNN-feature-name`) → use it
 2. Otherwise → auto-detect:
-   a. **Fast plan check** — if `.unikit/PLAN.md` exists, use it (flat fast-mode plan)
+   a. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan)
    b. **Git branch match** — if on `feature/*` branch, find folder ending with `_<feature-name>` (new format) or `*-<feature-name>` (legacy)
    c. **Latest by date** (fallback) — sort all folders lexicographically descending, pick first (YYYY-MM-DD gives chronological order; legacy `DDD-*` sorts before `2xxx-*`)
-3. If no plan found (no `.unikit/PLAN.md` and `.unikit/plans/` is empty or doesn't exist):
+3. If no plan found (no `.unikit/code/PLAN.md` and `.unikit/code/plans/` is empty or doesn't exist):
 
 ```
 No plan found. What should I verify?
@@ -124,19 +124,19 @@ Based on choice:
 - Last N commits → ask user for the number of commits via AskUserQuestion. Gather files via `git diff --name-only HEAD~N..HEAD`. Skip Step 1. Execute Steps 2-3 on collected files. Same standalone report header.
 - Cancel → **STOP**
 
-**If both `.unikit/PLAN.md` and a matching folder plan exist**, ask the user which one to verify.
+**If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to verify.
 
 Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Strict Mode section).
 
 ### 0.2 Read Plan & Context
 
-**If using `.unikit/PLAN.md`** (fast-mode plan):
-- Read **`.unikit/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
+**If using `.unikit/code/PLAN.md`** (fast-mode plan):
+- Read **`.unikit/code/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
 
-**If using a folder plan** (`.unikit/plans/<folder>/`):
+**If using a folder plan** (`.unikit/code/plans/<folder>/`):
 - Read **`TASKS.md`** — feature overview (`## Overview`), task checklist with phases and statuses
 - Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, files, DI bindings (if exists in plan folder)
 - If `TASKS.md` has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
@@ -391,7 +391,7 @@ Check whether the implementation introduced user-facing changes that should be r
 
 **a) Check plan's Docs policy:**
 
-Read the `## Settings` section from `TASKS.md` (or `.unikit/PLAN.md`):
+Read the `## Settings` section from `TASKS.md` (or `.unikit/code/PLAN.md`):
 - If `Docs: yes` — verify that documentation was actually updated during implementation (check `CHANGED_FILES` for `README.md`, `docs/*.md`, or `.unikit/docs-config.json`). If no doc files were modified: `WARN [docs] Docs policy was 'yes' but no documentation files were changed — run /unikit-docs`
 - If `Docs: no` or missing — check whether the implementation introduced new public APIs, new modules, changed configuration, or modified user-facing behavior. If yes: `WARN [docs] Implementation changed public API/behavior but Docs policy was no/unset — consider /unikit-docs`
 
@@ -407,6 +407,19 @@ If `README.md` and/or `docs/` exist:
 Include documentation findings in the verification report under a `### Documentation` section:
 - `✅ Documentation up to date` — docs policy satisfied or no doc-impacting changes
 - `⚠️ Documentation may need update` — with specific findings and suggestion to run `/unikit-docs`
+
+### 3.8 Design Acceptance Criteria (game-design module)
+
+**Only when the plan carries a `## Design` section** (added by `/unikit-plan` Step 4.5 when the project has a game-design workspace). If there is no `## Design` section, skip this check silently.
+
+Verify the implementation against the Acceptance Criteria **snapshotted in the plan** — not against the live `.unikit/gamedesign/` docs. The plan's `## Design` block pins the system `SYS-id`, the version, and the cited `AC-<id>`s; checking against the plan (not the current design) preserves the one-way boundary (verify reads the plan; design changes flow only through `/unikit-gd-*`) and validates against the exact version the plan was written for.
+
+For each cited `AC-<id>` (Given-When-Then):
+- Confirm the implementing code (from `CHANGED_FILES` / the Step 1 audit) satisfies the Then-clause under the Given/When conditions. Be concrete — cite `file:line`.
+- An `AC` marked **removed in vN** → confirm the old behavior was actually ripped out; a lingering old code path is a finding.
+- Unmet or partially-met `AC` → record it as an issue.
+
+Report findings under a `### Design Acceptance` section (see Step 4.1). This is read-only — never edit `.unikit/gamedesign/`.
 
 ---
 
@@ -443,6 +456,9 @@ Include documentation findings in the verification report under a `### Documenta
 
 ### Documentation
 - Documentation: ✅ up to date / ⚠️ may need update (run /unikit-docs)
+
+### Design Acceptance
+- Design AC: ✅ all cited AC met / ⚠️ N unmet (see issues) / ⏭️ no ## Design section
 
 ### No Issues
 - Engine-specific checks passed (per ENGINE_RULES.md)
@@ -541,6 +557,7 @@ Normal mode already checks all items below but tolerates partial results and war
 | Tests ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if test assemblies exist for affected modules |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
+| Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |
 
 Items that behave **the same** in both modes (always checked, always fail on violation):
 - Engine-specific checks (per ENGINE_RULES.md strict mode items)

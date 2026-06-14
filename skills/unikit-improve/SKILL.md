@@ -6,7 +6,7 @@ description: >-
   wrong dependencies, architectural issues, and improves plan quality.
   Also detects updated or new researches from /unikit-explore and incorporates
   their findings into the plan. Use this skill whenever the user wants to review,
-  polish, or improve a feature plan from .unikit/plans/, even if they say
+  polish, or improve a feature plan from .unikit/code/plans/, even if they say
   "check the plan", "review the feature", "improve the roadmap",
   "what's wrong with the plan", or "update plan from research".
 argument-hint: "[--list] [@plan-folder] [feature-name or improvement prompt]"
@@ -112,8 +112,8 @@ If `$ARGUMENTS` contains `@<path>`:
 Remaining argument text (after removing `@<path>`) is the improvement prompt.
 
 ```
-/unikit-improve @.unikit/plans/2026-03-08_customers-system добавь обработку ошибок
-→ folder: .unikit/plans/2026-03-08_customers-system, prompt: "добавь обработку ошибок"
+/unikit-improve @.unikit/code/plans/2026-03-08_customers-system добавь обработку ошибок
+→ folder: .unikit/code/plans/2026-03-08_customers-system, prompt: "добавь обработку ошибок"
 ```
 
 #### Priority 2: `--list` — show available plans
@@ -121,11 +121,11 @@ Remaining argument text (after removing `@<path>`) is the improvement prompt.
 If `$ARGUMENTS` contains `--list`, run read-only discovery and **STOP**:
 
 ```
-1. Check if .unikit/PLAN.md exists (fast-mode plan)
-2. Check if .unikit/FIX_PLAN.md exists (bugfix plan from /unikit-fix)
+1. Check if .unikit/code/PLAN.md exists (fast-mode plan)
+2. Check if .unikit/code/FIX_PLAN.md exists (bugfix plan from /unikit-fix)
 3. Get current branch:
    git branch --show-current
-4. Scan .unikit/plans/ for all feature folders (both YYYY-MM-DD_name and legacy DDD-name formats)
+4. Scan .unikit/code/plans/ for all feature folders (both YYYY-MM-DD_name and legacy DDD-name formats)
 5. For each, check if TASKS.md has uncompleted tasks (- [ ])
 6. Mark which folder matches the current git branch (if any):
    - Extract feature name from branch (e.g. feature/customers-system → customers-system)
@@ -136,8 +136,8 @@ If `$ARGUMENTS` contains `--list`, run read-only discovery and **STOP**:
 
 Current branch: feature/customers-system
 
-💾 Fast plan: .unikit/PLAN.md (3 tasks remaining)
-🔧 Fix plan:  .unikit/FIX_PLAN.md (2 tasks remaining)
+💾 Fast plan: .unikit/code/PLAN.md (3 tasks remaining)
+🔧 Fix plan:  .unikit/code/FIX_PLAN.md (2 tasks remaining)
 
   * 🔄 2026-03-08_customers-system        ← matches branch (4 tasks remaining)
     ✅ 2026-03-10_customers-service-pool   (completed)
@@ -146,7 +146,7 @@ Current branch: feature/customers-system
 Use:
   /unikit-improve                                              # auto-detect (PLAN.md → branch → latest)
   /unikit-improve customers-system                             # by name
-  /unikit-improve @.unikit/plans/2026-03-08_customers-system  # by path
+  /unikit-improve @.unikit/code/plans/2026-03-08_customers-system  # by path
 
 8. STOP.
 ```
@@ -157,14 +157,14 @@ Use:
 
 If `$ARGUMENTS` contains a feature name (e.g., `2026-03-08_customers-system`, `customers-system`, or legacy `001-customers-system`):
 
-1. Look for `.unikit/plans/$ARGUMENTS/` directory (exact match)
-2. If not found by exact match → try partial match: scan `.unikit/plans/` for folders
+1. Look for `.unikit/code/plans/$ARGUMENTS/` directory (exact match)
+2. If not found by exact match → try partial match: scan `.unikit/code/plans/` for folders
    whose name **ends with** `_$ARGUMENTS` (new format) or `*-$ARGUMENTS` (legacy `DDD-*` format)
 3. If found → use it
 4. If NOT found → tell the user:
 
 ```
-Feature "$ARGUMENTS" not found in .unikit/plans/.
+Feature "$ARGUMENTS" not found in .unikit/code/plans/.
 
 Available features:
 - [list existing feature folders]
@@ -181,11 +181,11 @@ What would you like to do?
 If `$ARGUMENTS` is empty (no parameters):
 
 1. **Collect candidates:**
-   - Check if `.unikit/PLAN.md` exists (flat fast-mode plan)
-   - Check if `.unikit/FIX_PLAN.md` exists (bugfix plan from `/unikit-fix`)
+   - Check if `.unikit/code/PLAN.md` exists (flat fast-mode plan)
+   - Check if `.unikit/code/FIX_PLAN.md` exists (bugfix plan from `/unikit-fix`)
    - Get current git branch: `git branch --show-current`
    - If on a `feature/*` branch → extract the feature name part (e.g., `feature/customers-system` → `customers-system`)
-   - Scan `.unikit/plans/` for folders whose name **ends with** `_<feature-name>` (new format)
+   - Scan `.unikit/code/plans/` for folders whose name **ends with** `_<feature-name>` (new format)
      or matches `*-<feature-name>` (legacy `DDD-*` format)
      - Example: branch `feature/customers-system` matches folder `2026-03-08_customers-system` or `001-customers-system`
    - If no branch match → sort all folders **lexicographically descending** and note the first one as "latest folder plan"
@@ -193,7 +193,7 @@ If `$ARGUMENTS` is empty (no parameters):
 2. **Resolve ambiguity:**
    - If **no candidates** found (no flat plans, no folder plans) → show "No plans found" message and **STOP**:
      ```
-     ⚠️ No plans found in .unikit/plans/, .unikit/PLAN.md, or .unikit/FIX_PLAN.md.
+     ⚠️ No plans found in .unikit/code/plans/, .unikit/code/PLAN.md, or .unikit/code/FIX_PLAN.md.
 
      Create a plan first:
      - /unikit-plan <description>  — for a feature plan
@@ -223,10 +223,10 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 
 ### Step 1: Load Feature Plan
 
-**If using `.unikit/PLAN.md`** (fast-mode plan):
-- Read **`.unikit/PLAN.md`** — single file containing overview, checklist, settings, and optionally technical context inline
+**If using `.unikit/code/PLAN.md`** (fast-mode plan):
+- Read **`.unikit/code/PLAN.md`** — single file containing overview, checklist, settings, and optionally technical context inline
 
-**If using a folder plan** (`.unikit/plans/<folder>/`):
+**If using a folder plan** (`.unikit/code/plans/<folder>/`):
 - Read `TASKS.md` — feature overview (`## Overview`), task checklist with phases, settings, and dependencies
 - Read `PLAN-BRIEF.md` — technical context: constraints, interfaces, key patterns, dependency graph, files, DI bindings (if exists in plan folder)
 - If `TASKS.md` has a `## Based on` section → parse all linked research entries (folder name + `Attached` timestamp for each). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** `PLAN-BRIEF.md` (not instead of it) — both are needed for cross-referencing in Step 3.8.
@@ -246,7 +246,7 @@ Check whether research context has changed since the plan was created or if new 
 #### Case A: Plan has linked researches (`## Based on` exists with entries)
 
 1. For each entry in `linked_researches`:
-   - Read `.unikit/RESEARCHES_INDEX.md` and find the matching entry by `Path`
+   - Read `.unikit/code/researches/INDEX.md` and find the matching entry by `Path`
    - Compare its `Updated` timestamp against the `Attached` timestamp from the plan
    - If `Updated > Attached` → the research was revised after being linked to the plan. Mark it as `research_updated = true`
 
@@ -256,7 +256,7 @@ Check whether research context has changed since the plan was created or if new 
    - Collect differences as `research_improvements` (these will appear in the report under a dedicated section)
 
 3. After processing linked researches → check for **new** researches:
-   - Read `.unikit/RESEARCHES_INDEX.md`
+   - Read `.unikit/code/researches/INDEX.md`
    - Find the latest `Attached` timestamp among all `linked_researches` entries
    - Filter index for researches with `Date` **newer** than this latest `Attached` timestamp
    - Take up to 5 entries, check relevance against the plan's feature scope (compare Summary against plan Overview)
@@ -283,7 +283,7 @@ Check whether research context has changed since the plan was created or if new 
 1. **Check current session** — look in the conversation history for results of `/unikit-explore`. If found and relevant to the plan → use as research context, add to `research_improvements`.
 
 2. **Check index** — if no session context:
-   - Read `.unikit/RESEARCHES_INDEX.md`
+   - Read `.unikit/code/researches/INDEX.md`
    - Take the **last 5 entries** (index is sorted newest-first)
    - Check relevance against the plan's feature scope
    - If relevant entries found → ask user (same question format as Case A step 3)
@@ -599,8 +599,8 @@ Research updates: (only if research_improvements was non-empty)
 - Files updated: N
 
 Updated files:
-- .unikit/plans/[feature]/TASKS.md
-- .unikit/plans/[feature]/PLAN-BRIEF.md (if updated)
+- .unikit/code/plans/[feature]/TASKS.md
+- .unikit/code/plans/[feature]/PLAN-BRIEF.md (if updated)
 ```
 
 ### Step 6: Next Steps
@@ -615,7 +615,7 @@ Options:
 ```
 
 Based on choice:
-- **Implement now** → invoke `/unikit-implement @<resolved-plan-path>`, passing the same plan path used in this session (e.g., `@.unikit/plans/2026-03-08_customers-system` or `@.unikit/PLAN.md`)
+- **Implement now** → invoke `/unikit-implement @<resolved-plan-path>`, passing the same plan path used in this session (e.g., `@.unikit/code/plans/2026-03-08_customers-system` or `@.unikit/code/PLAN.md`)
 - **Review again** → invoke `/unikit-improve @<resolved-plan-path>` to reload the skill from scratch with full re-analysis
 - **Done for now** → suggest `/clear` or `/compact` → **STOP**
 
@@ -643,7 +643,7 @@ User: /unikit-improve
 (current branch: feature/customers-system)
 
 → Branch: feature/customers-system → looking for *_customers-system
-→ Found: .unikit/plans/2026-03-08_customers-system/
+→ Found: .unikit/code/plans/2026-03-08_customers-system/
 → Reading TASKS.md and PLAN-BRIEF.md...
 → Bootstrap: loading rules from RULES_INDEX...
 → Deep codebase analysis via Explore tasks...
@@ -667,7 +667,7 @@ User: /unikit-improve
 ```
 User: /unikit-improve 2026-03-08_customers-system
 
-→ Found: .unikit/plans/2026-03-08_customers-system/
+→ Found: .unikit/code/plans/2026-03-08_customers-system/
 → Reading feature files...
 → Analysis...
 → Report...
@@ -679,16 +679,16 @@ User: /unikit-improve 2026-03-08_customers-system
 User: /unikit-improve customers-system
 
 → No exact match for "customers-system"
-→ Partial match: .unikit/plans/2026-03-08_customers-system/
+→ Partial match: .unikit/code/plans/2026-03-08_customers-system/
 → Using it...
 ```
 
 ### Example 5: Explicit path override
 
 ```
-User: /unikit-improve @.unikit/plans/2026-03-08_customers-system добавь обработку ошибок
+User: /unikit-improve @.unikit/code/plans/2026-03-08_customers-system добавь обработку ошибок
 
-→ Explicit path: .unikit/plans/2026-03-08_customers-system/
+→ Explicit path: .unikit/code/plans/2026-03-08_customers-system/
 → Improvement prompt: "добавь обработку ошибок"
 → Reading feature files...
 → Analysis focused on error handling...
@@ -703,7 +703,7 @@ User: /unikit-improve --list
 
 Current branch: feature/customers-system
 
-  Fix plan:  .unikit/FIX_PLAN.md (2 tasks remaining)
+  Fix plan:  .unikit/code/FIX_PLAN.md (2 tasks remaining)
 
   * 2026-03-08_customers-system        ← matches branch (3 tasks remaining)
     2026-03-09_customer-config-refactor (completed)
@@ -712,16 +712,16 @@ Current branch: feature/customers-system
 Use:
   /unikit-improve                                              # auto-detect
   /unikit-improve customers-system                             # by name
-  /unikit-improve @.unikit/plans/2026-03-08_customers-system  # by path
+  /unikit-improve @.unikit/code/plans/2026-03-08_customers-system  # by path
 ```
 
 ### Example 7: Fix plan auto-detected
 
 ```
 User: /unikit-improve
-(no .unikit/PLAN.md, .unikit/FIX_PLAN.md exists)
+(no .unikit/code/PLAN.md, .unikit/code/FIX_PLAN.md exists)
 
-→ Found fix plan: .unikit/FIX_PLAN.md
+→ Found fix plan: .unikit/code/FIX_PLAN.md
 → Reading plan...
 → Bootstrap: loading rules from RULES_INDEX...
 → Deep codebase analysis via Explore tasks...
@@ -733,7 +733,7 @@ User: /unikit-improve
 ```
 User: /unikit-improve nonexistent-feature
 
-→ Feature "nonexistent-feature" not found in .unikit/plans/.
+→ Feature "nonexistent-feature" not found in .unikit/code/plans/.
 
 Available features:
 - 2026-03-08_customers-system

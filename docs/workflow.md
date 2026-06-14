@@ -136,13 +136,13 @@ Optional discovery step: use `/unikit-explore` before planning to investigate id
 |---------|----------|-----------------|--------|
 | `/unikit-roadmap` | Strategic planning, milestones, long-term vision | No | `.unikit/ROADMAP.md` |
 | `/unikit-roadmap check` | Automated progress scan | No | Reads existing roadmap |
-| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/researches/<date>_<name>/` (optional - output can be used directly in the current session for fast planning) |
-| `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/PLAN.md` |
-| `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/plans/{date}_{name}/` |
+| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<date>_<name>/` (optional - output can be used directly in the current session for fast planning) |
+| `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
+| `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/{date}_{name}/` |
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
 | `/unikit-implement` | Execute plan tasks one by one | No | Updates `TASKS.md` status |
-| `/unikit-fix` | Bug fixes, errors, hotfixes | No | Optional `.unikit/FIX_PLAN.md` |
+| `/unikit-fix` | Bug fixes, errors, hotfixes | No | Optional `.unikit/code/FIX_PLAN.md` |
 | `/unikit-verify` | Post-implementation quality check | No | Verification report |
 | `/unikit-review` | Code review against rules | No | Review report |
 | `/unikit-commit` | Conventional commits with Unity checks | No | Git commit |
@@ -156,7 +156,7 @@ UniKit AI has a built-in learning loop that makes skills smarter over time:
 /unikit-fix → creates patch → /unikit-evolve → classifies → updates rules/skill-context
 ```
 
-`/unikit-evolve` analyzes accumulated patches from `.unikit/patches/` and classifies them into **two categories**:
+`/unikit-evolve` analyzes accumulated patches from `.unikit/code/patches/` and classifies them into **two categories**:
 
 1. **Code and architecture rules** - problems in code, architectural patterns, recurring mistakes → written to `RULES.md` and correct the framework's general memory
 2. **Skill workflow issues** - when a skill worked incorrectly, gave bad recommendations → written to `skill-context/` as overrides for the specific skill
@@ -175,13 +175,13 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit-architecture` | `.unikit/ARCHITECTURE.md` | Architecture guidelines |
 | `/unikit-roadmap` | `.unikit/ROADMAP.md` | Milestone tracking |
 | `/unikit-rules` | `.unikit/RULES.md` | Append/update rules only |
-| `/unikit-plan` | `.unikit/plans/*/TASKS.md`, `PLAN-BRIEF.md` | `/unikit-improve` refines |
-| `/unikit-explore` | `.unikit/researches/` | Exploration artifacts |
-| `/unikit-fix` | `.unikit/FIX_PLAN.md`, `.unikit/patches/*.md` | Bug-fix learning loop |
+| `/unikit-plan` | `.unikit/code/plans/*/TASKS.md`, `PLAN-BRIEF.md` | `/unikit-improve` refines |
+| `/unikit-explore` | `.unikit/code/researches/` | Exploration artifacts |
+| `/unikit-fix` | `.unikit/code/FIX_PLAN.md`, `.unikit/code/patches/*.md` | Bug-fix learning loop |
 | `/unikit-evolve` | `.unikit/evolutions/*`, `.unikit/skill-context/*` | Evolution logs + skill overrides |
 | `/unikit-memory` | `.unikit/memory/core/`, `stack/`, `RULES_INDEX.md` | Dynamic memory management |
 | `/unikit-skills-context` | `.unikit/skill-context/<skill>/SKILL.md` | Skill workflow overrides |
-| `/unikit-implement` | `.unikit/plans/*/TASKS.md` (status updates) | Marks tasks complete |
+| `/unikit-implement` | `.unikit/code/plans/*/TASKS.md` (status updates) | Marks tasks complete |
 | `/unikit-todo` | `.unikit/TODO.md` | Lightweight task list |
 | `/unikit-docs` | `README.md`, `docs/*.md`, `AGENTS.md` | Documentation generation |
 | `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report, no writes |
@@ -210,7 +210,7 @@ Creates `.unikit/ROADMAP.md` - a strategic checklist of major milestones (not gr
 /unikit-explore init
 ```
 
-Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/researches/YYYY-MM-DD_name/` with three files:
+Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/YYYY-MM-DD_name/` with three files:
 
 - `RESEARCH_RESULT.md` - structured research output with comparison tables, ASCII diagrams, and trade-off analysis
 - `RESEARCH_BRIEF.md` - agent-optimized summary designed for downstream workflow skills to consume efficiently
@@ -218,7 +218,7 @@ Thinking-partner mode for exploring ideas, constraints, and trade-offs without i
 
 All three files are automatically picked up by `/unikit-plan` - the planner reads them, incorporates context from all angles (structured analysis, agent-readable brief, raw decision history), and links the research as a source in the generated plan. Saving artifacts is the recommended approach for maximum code quality, but not mandatory. For quick, straightforward solutions you can skip saving and call `/unikit-plan` directly in the current explore session - the planner will use the conversation context instead.
 
-Maintains `RESEARCHES_INDEX.md`; use `init` to rebuild the index from disk. When direction is clear, transition to `/unikit-plan`. Uses parallel Explore agents for deep codebase investigation.
+Maintains `researches/INDEX.md`; use `init` to rebuild the index from disk. When direction is clear, transition to `/unikit-plan`. Uses parallel Explore agents for deep codebase investigation.
 
 ### `/unikit-plan [fast|full|add|--list] <description>` - plan the work
 
@@ -232,8 +232,8 @@ Maintains `RESEARCHES_INDEX.md`; use `init` to rebuild the index from disk. When
 
 Three planning modes plus list:
 
-- **Fast** - no git branch, saves to `.unikit/PLAN.md` (single flat file)
-- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/plans/YYYY-MM-DD_name/` with `TASKS.md` + `PLAN-BRIEF.md`
+- **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
+- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/YYYY-MM-DD_name/` with `TASKS.md` + `PLAN-BRIEF.md`
 - **Add** - extends an existing plan with new tasks
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
@@ -244,7 +244,7 @@ Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, a
 /unikit-improve                                          # Improve latest plan
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
-/unikit-improve @.unikit/plans/2026-03-10_core-loop      # Improve specific plan
+/unikit-improve @.unikit/code/plans/2026-03-10_core-loop      # Improve specific plan
 ```
 
 Optional but recommended step. For complex tasks the agent rarely produces a complete plan on the first attempt - edge cases, risks, and dependencies get missed. Improve lets the agent review the finished plan from multiple angles and refine it. Recommended to run at least once after planning; for complex tasks - 2-3 times.
@@ -267,7 +267,7 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 /unikit-implement Phase 3            # Execute only Phase 3
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
-/unikit-implement @.unikit/plans/2026-03-10_core-loop  # Explicit plan path
+/unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
 ```
 
 Reads skill-context rules first, then plan TASKS.md. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
@@ -294,9 +294,9 @@ Post-completion:
 Two modes - choose when you invoke:
 
 - **Fix now** - investigates codebase with 2-3 Explore agents, applies the fix inline after Bootstrap (rules + engine principles loaded in Step 0.2), verifies (compilation, tests, .meta, asmdef)
-- **Plan first** - creates `.unikit/FIX_PLAN.md` with root cause analysis, fix steps, affected files, risks, and test coverage suggestions, then stops for review. When a plan exists, run without arguments to execute it
+- **Plan first** - creates `.unikit/code/FIX_PLAN.md` with root cause analysis, fix steps, affected files, risks, and test coverage suggestions, then stops for review. When a plan exists, run without arguments to execute it
 
-Recommended to always fix bugs through this skill - every fix creates a **self-improvement patch** in `.unikit/patches/` (mandatory), enabling the system to learn from mistakes via `/unikit-evolve`. Can be used during `/unikit-implement` while working through plan phases, or independently when a bug is found in existing functionality - no prior planning stages required. Always suggests NUnit test coverage.
+Recommended to always fix bugs through this skill - every fix creates a **self-improvement patch** in `.unikit/code/patches/` (mandatory), enabling the system to learn from mistakes via `/unikit-evolve`. Can be used during `/unikit-implement` while working through plan phases, or independently when a bug is found in existing functionality - no prior planning stages required. Always suggests NUnit test coverage.
 
 ### `/unikit-evolve` - improve skills from experience
 

@@ -10,9 +10,18 @@
 #   - --force: re-fetch existing, fresh with --force, partial --force
 #   - error paths: engine missing from resolved manifest (exit 5)
 #
-# All scenarios use the minimal-valid fake registry (unity + godot)
-# installed under scripts/test-fixtures/ so assertions are fully
-# deterministic without touching the bundled production snapshot.
+# Variadic / single / --force scenarios use the minimal-valid fake registry
+# (unity + godot) installed under scripts/test-fixtures/ so assertions are
+# fully deterministic without touching the bundled production snapshot.
+#
+# EXCEPTION — the no-args bootstrap (Scenarios 1, 2, 16): it walks every
+# registered module by its bootstrap policy. The `gamedesign` module
+# (policy `all-rules`) has no tier in the code-only minimal-valid fixture, so
+# its canonical catalog backfills from the bundled snapshot ("code from
+# registry, GD from bundled" — RESEARCH Session 2026-06-13). Those scenarios
+# therefore install code-style PLUS every bundled gamedesign rule; the expected
+# count is derived from the bundled manifest (GD_BOOTSTRAP_COUNT) so it tracks
+# the snapshot rather than a hardcoded number.
 #
 # Usage: ./scripts/test-rules-install.sh
 
@@ -37,13 +46,33 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 echo -e "${BOLD}=== rules install Smoke Tests ===${NC}"
 
+# The no-args bootstrap walks every registered module by its bootstrap policy:
+# `code` → always-tagged rules from the configured registry; `gamedesign` →
+# its ENTIRE canonical catalog (policy `all-rules`), which backfills from the
+# bundled snapshot when the custom registry ships no gamedesign tier. Derive
+# that count from the bundled manifest so the bootstrap assertions track the
+# snapshot instead of a hardcoded number. minimal-valid ships exactly one
+# always-tagged code rule (code-style), so the fresh-bootstrap total is
+# 1 + GD_BOOTSTRAP_COUNT.
+# Count the bundled gamedesign rule files directly (the manifest is generated
+# from these files by build-manifest.js, so the file count equals the catalog
+# size). Non-recursive globs, so `references/` subdirs are not counted.
+# `nullglob` makes a non-matching glob expand to nothing (no failing `ls` under
+# `set -e`/`pipefail`); the shell path avoids node's MSYS-path issue on Windows.
+shopt -s nullglob
+_gd_core_files=("$ROOT_DIR"/rules-registry/gamedesign/core/*.md)
+_gd_lib_files=("$ROOT_DIR"/rules-registry/gamedesign/library/*.md)
+shopt -u nullglob
+GD_BOOTSTRAP_COUNT=$(( ${#_gd_core_files[@]} + ${#_gd_lib_files[@]} ))
+BOOTSTRAP_TOTAL=$((1 + GD_BOOTSTRAP_COUNT))
+
 # ─────────────────────────────────────────────
 # Scenario 1 — Bootstrap: fresh install (no args, empty state)
 # ─────────────────────────────────────────────
-# With no args the CLI installs every core-tier rule the registry ships
-# for the engine (interim `tier === 'core'` gate; CORE_RULE_WHITELIST is
-# gone). minimal-valid has exactly one core rule (`code-style`), so the
-# bootstrap should report 1 installed + 0 already-installed + 0 failed.
+# With no args the CLI installs every always-tagged rule the `code` module
+# ships for the engine, PLUS the whole gamedesign catalog backfilled from the
+# bundled snapshot. minimal-valid has exactly one always-tagged code rule
+# (`code-style`), so the bootstrap reports (1 + GD_BOOTSTRAP_COUNT) installed.
 echo -e "\n${BOLD}Scenario 1: bootstrap fresh install${NC}"
 
 S1_DIR="$TMPDIR/s1-bootstrap-fresh"
@@ -55,14 +84,20 @@ assert_cmd_exit 0 "rules install (no args) exits 0" "$TMPDIR/s1.log" -- \
 
 assert_stdout_contains "$TMPDIR/s1.log" "installed core/code-style v1.0.0" \
     "fresh install line for code-style"
-assert_stdout_contains "$TMPDIR/s1.log" "Rules: 1 installed, 0 already-installed, 0 failed" \
-    "bootstrap summary counts"
+assert_stdout_contains "$TMPDIR/s1.log" "Rules: $BOOTSTRAP_TOTAL installed, 0 already-installed, 0 failed" \
+    "bootstrap summary counts (code-style + $GD_BOOTSTRAP_COUNT bundled gamedesign rules)"
 assert_exists "$S1_DIR/.unikit/memory/code/core/code-style.md" \
     "bootstrap wrote the core rule to disk"
 assert_exists "$S1_DIR/.unikit/memory/code/RULES_INDEX.md" \
     "bootstrap regenerated RULES_INDEX.md"
 assert_json_field "$S1_DIR/.unikit.json" "rules.installed.modules.code.core.0.name" code-style \
     "bootstrap recorded code-style in state"
+assert_stdout_contains "$TMPDIR/s1.log" "installed gamedesign/core/balance" \
+    "bootstrap backfilled the gamedesign catalog from the bundled snapshot"
+assert_exists "$S1_DIR/.unikit/memory/gamedesign/core/balance.md" \
+    "bootstrap wrote a backfilled gamedesign rule to disk"
+assert_exists "$S1_DIR/.unikit/memory/gamedesign/RULES_INDEX.md" \
+    "bootstrap regenerated the gamedesign RULES_INDEX.md"
 
 # ─────────────────────────────────────────────
 # Scenario 2 — Bootstrap: idempotent re-run
@@ -74,8 +109,8 @@ assert_cmd_exit 0 "second rules install run exits 0" "$TMPDIR/s2.log" -- \
 
 assert_stdout_contains "$TMPDIR/s2.log" "already installed core/code-style" \
     "re-run reports already-installed"
-assert_stdout_contains "$TMPDIR/s2.log" "Rules: 0 installed, 1 already-installed, 0 failed" \
-    "idempotent summary counts"
+assert_stdout_contains "$TMPDIR/s2.log" "Rules: 0 installed, $BOOTSTRAP_TOTAL already-installed, 0 failed" \
+    "idempotent summary counts (code + gamedesign all already-installed)"
 
 # ─────────────────────────────────────────────
 # Scenario 3 — Bootstrap: drift recovery (local hash mismatch)
@@ -337,14 +372,18 @@ assert_stdout_contains "$TMPDIR/s15.log" "unreal-engine-6" \
     "error mentions the missing engine"
 
 # ─────────────────────────────────────────────
-# Scenario 16 — Error path: no always-tagged rules in registry (exit 5)
+# Scenario 16 — Empty code core: gamedesign backfill keeps the bootstrap alive (exit 0)
 # ─────────────────────────────────────────────
-# The no-args bootstrap installs every rule tagged `always === true`. On a
-# schema:1 fixture the 1→2 normalization injects `always = (tier === 'core')`,
-# so a manifest with an EMPTY core list and only stack rules (always=false)
-# yields zero always-tagged rules — nothing to bootstrap → exit 5. We craft
-# that fixture inline in a fresh tmp dir.
-echo -e "\n${BOLD}Scenario 16: bootstrap with no always-tagged rules${NC}"
+# The no-args bootstrap sums work across ALL registered modules. A schema:1
+# fixture with an EMPTY core list (only a stack rule, always=false) contributes
+# zero `code` rules — but the `gamedesign` module (policy `all-rules`) still
+# backfills its entire canonical catalog from the bundled snapshot ("code from
+# registry, GD from bundled"). The summed work is therefore non-empty and the
+# bootstrap succeeds (exit 0), installing only gamedesign rules. The
+# empty-bootstrap exit-5 gate (rules.ts) fires only when EVERY module resolves
+# empty, which the populated bundled gamedesign catalog now prevents; exit 5
+# stays covered by Scenario 15 (engine missing).
+echo -e "\n${BOLD}Scenario 16: empty code core, gamedesign backfill (exit 0)${NC}"
 
 S16_FIXTURE="$TMPDIR/s16-fixture"
 mkdir -p "$S16_FIXTURE/unity/core" "$S16_FIXTURE/unity/stack"
@@ -388,11 +427,18 @@ cat > "$S16_DIR/.unikit.json" <<EOF
 }
 EOF
 
-assert_cmd_exit 5 "bootstrap with no always-tagged rules exits 5" "$TMPDIR/s16.log" -- \
+assert_cmd_exit 0 "bootstrap with empty code core still exits 0 via gamedesign" "$TMPDIR/s16.log" -- \
     env -C "$S16_DIR" node "$CLI" rules install
 
-assert_stdout_contains "$TMPDIR/s16.log" "No always-tagged (core) rules found" \
-    "error mentions the missing always-tagged rules"
+assert_stdout_contains "$TMPDIR/s16.log" "installed gamedesign/core/balance" \
+    "gamedesign catalog backfilled despite the empty code core tier"
+assert_exists "$S16_DIR/.unikit/memory/gamedesign/core/balance.md" \
+    "backfilled gamedesign rule written to disk"
+if ls "$S16_DIR/.unikit/memory/code/core/"*.md >/dev/null 2>&1; then
+    fail "no code core rule should be installed from an empty-core fixture"
+else
+    pass "no code core rule installed (empty-core fixture contributes zero code rules)"
+fi
 
 # ─────────────────────────────────────────────
 # Scenario 17 — Variadic install: --force refreshes disk content
@@ -447,6 +493,48 @@ S19_DIR="$TMPDIR/s19-migrated"
 use_fake_registry "$S19_DIR" unity minimal-valid
 assert_cmd_exit 0 "rules install code-style on migrated project exits 0" "$TMPDIR/s19.log" -- \
     env -C "$S19_DIR" node "$CLI" rules install code-style
+
+# ─────────────────────────────────────────────
+# Scenario 20 — B-merge per-id override + bundled backfill (#R2a / #R2b)
+# ─────────────────────────────────────────────
+# The gamedesign-override fixture ships ONE custom gamedesign core rule
+# (`balance`, v9.9.9) matching a canonical id. The no-args bootstrap resolves the
+# gamedesign core tier PER-ID: `balance` from the custom registry (origin
+# `primary`; custom content + version win — not auto-updated from upstream),
+# every OTHER canonical id backfilled from the bundled snapshot (origin
+# `bundled`). Per-rule origin is stamped at INSTALL time (not only on a later
+# sync), recorded in `.unikit.json`, surfaced in `rules status`, and rendered in
+# the GD RULES_INDEX Origin column.
+echo -e "\n${BOLD}Scenario 20: B-merge per-id override + bundled backfill${NC}"
+
+S20_DIR="$TMPDIR/s20-bmerge"
+use_fake_registry "$S20_DIR" unity gamedesign-override
+
+assert_cmd_exit 0 "bootstrap on override fixture exits 0" "$TMPDIR/s20.log" -- \
+    env -C "$S20_DIR" node "$CLI" rules install
+
+assert_stdout_contains "$TMPDIR/s20.log" "installed gamedesign/core/balance v9.9.9" \
+    "override id installs the custom version (9.9.9), not the bundled 1.0.0"
+assert_stdout_contains "$TMPDIR/s20.log" "installed gamedesign/core/economy v1.0.0" \
+    "a non-overridden canonical id backfills from bundled at its bundled version"
+assert_stdout_contains "$S20_DIR/.unikit/memory/gamedesign/core/balance.md" "STUDIO OVERRIDE MARKER" \
+    "override file carries the studio's custom content, not the bundled rule"
+assert_stdout_contains "$S20_DIR/.unikit/memory/gamedesign/RULES_INDEX.md" "| File | Description | Origin | Load When |" \
+    "GD RULES_INDEX core table carries the per-rule Origin column"
+
+# Per-rule origin (robust to install ordering): override → primary, backfill → bundled.
+assert_cmd_exit 0 "status --module gamedesign on override exits 0" "$TMPDIR/s20-status.log" -- \
+    env -C "$S20_DIR" node "$CLI" rules status --module gamedesign
+if grep -qE "balance[[:space:]].*registry:primary" "$TMPDIR/s20-status.log"; then
+    pass "override 'balance' carries per-rule origin registry:primary"
+else
+    fail "override 'balance' not tagged registry:primary"
+fi
+if grep -qE "economy[[:space:]].*registry:bundled" "$TMPDIR/s20-status.log"; then
+    pass "backfilled 'economy' carries per-rule origin registry:bundled"
+else
+    fail "backfilled 'economy' not tagged registry:bundled"
+fi
 
 # ─────────────────────────────────────────────
 # Summary

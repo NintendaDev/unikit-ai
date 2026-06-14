@@ -104,6 +104,19 @@ assert_contains "$PRINCIPLES_PATH" 'C# code adhering to Unity' \
   "engine_name + engine_code_language substituted in Core Principle 1"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-gd: gd-principles.md installed as a system asset (flat copy, no vars)
+# Unlike dev-principles.md, gd-principles is engine-agnostic: installGdPrinciples
+# copies it verbatim (no engine-var substitution). It must land in .unikit/system/
+# and carry the shared severity rubric.
+# ─────────────────────────────────────────────────────
+GD_PRINCIPLES_PATH="$CLAUDE_DIR/.unikit/system/gd-principles.md"
+assert_exists "$GD_PRINCIPLES_PATH" "gd-principles.md created in .unikit/system/"
+assert_contains "$GD_PRINCIPLES_PATH" 'Severity Rubric' \
+  "gd-principles.md carries the shared severity rubric"
+assert_not_contains "$GD_PRINCIPLES_PATH" '\{\{engine_name\}\}' \
+  "gd-principles.md has no engine vars (flat copy, unlike dev-principles.md)"
+
+# ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path
 # Even when a subagent is explicitly listed in installedSubagents,
 # agents with supportsSubagents:false must not materialize the file on disk.

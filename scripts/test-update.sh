@@ -1306,5 +1306,25 @@ fi
 
 echo "  ✓ dev-principles.md: update refreshes from data/ (tamper marker removed)"
 
+# ─────────────────────────────────────────────
+# Test 30: gd-principles.md is a system asset — installed on update and
+# flat-rewritten every time (not hash-tracked), same contract as dev-principles.
+# Reuses the DEVPRIN_DIR project that already ran `update` above.
+# ─────────────────────────────────────────────
+GD_PRINCIPLES="$DEVPRIN_DIR/.unikit/system/gd-principles.md"
+assert_exists "$GD_PRINCIPLES" "gd-principles.md must be installed on update (system asset)"
+
+echo "GD_TAMPERED_BY_TEST" >> "$GD_PRINCIPLES"
+
+DEVPRIN_OUT3="$TMPDIR/update-gd-principles-3.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT3" 2>&1)
+
+if grep -q "GD_TAMPERED_BY_TEST" "$GD_PRINCIPLES"; then
+    echo "Assertion failed: update did NOT refresh gd-principles.md from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ gd-principles.md: update refreshes from data/ (tamper marker removed)"
+
 echo ""
 echo "update smoke tests passed"

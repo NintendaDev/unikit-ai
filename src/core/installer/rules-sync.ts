@@ -9,7 +9,7 @@ import { manifestEngineIds } from '../registry/validator.js';
 import { computeContentHash, isMarkdownFile, stripMdExtension } from './shared.js';
 import { REFERENCES_DIR_NAME, RULES_INDEX_FILE, moduleTierDir, type Tier } from '../constants.js';
 import { listModules, type Module } from '../modules.js';
-import { loadRequiredByMap, generateRulesIndex, type InstalledByTier } from './rules-index.js';
+import { loadRequiredByMap, generateRulesIndex, type InstalledByTier, type OriginByRule } from './rules-index.js';
 
 // --- Rules sync ---
 //
@@ -37,6 +37,7 @@ export type SyncRulesEvent =
   | { kind: 'phase2:fetch-failed'; tier: Tier; name: string }
   | { kind: 'phase2:skipped-local-mod'; tier: Tier; name: string }
   | { kind: 'phase2:overwrite-local-mod'; tier: Tier; name: string }
+  | { kind: 'phase2:override-retained'; tier: Tier; name: string }
   | { kind: 'phase2:downgrade'; tier: Tier; name: string; fromVersion: string; toVersion: string }
   | { kind: 'phase2:updated' }
   | { kind: 'phase2:up-to-date' }
@@ -160,7 +161,12 @@ async function syncRegistry(
   prune: boolean,
   events: SyncRulesEvent[],
 ): Promise<boolean> {
-  const registryManifest = await registry.fetchManifest();
+  // Per-module manifest resolution: each module finds its own winning chain
+  // source (a code-only custom registry still syncs gamedesign rules through
+  // the official/bundled fallback). A module missing from every source keeps
+  // the manifest non-null while the accessors below yield `[]` — Phase 2 then
+  // no-ops for that module instead of erroring.
+  const registryManifest = await registry.fetchModuleManifest(module.id);
 
   if (!registryManifest) {
     events.push({ kind: 'phase2:registry-unreachable' });
@@ -176,9 +182,6 @@ async function syncRegistry(
     events.push({ kind: 'phase2:engine-missing', engineId });
     return false;
   }
-
-  // Determine origin for tagging — per-module resolution keys off this module.
-  const origin: RuleOrigin | undefined = registry.getResolvedOrigin(module.id) ?? undefined;
 
   let phase2Changed = false;
 
@@ -217,6 +220,12 @@ async function syncRegistry(
       // the catalog.
       if (!existing) continue;
 
+      // Per-rule B-merge origin for THIS id (override→primary,
+      // backfill→official/bundled). For module-winner modules it equals the
+      // module-wide origin; for per-id-merge modules it varies per id.
+      const ruleOrigin: RuleOrigin | undefined =
+        registry.getResolvedOriginForRule(module.id, tier, regRule.id) ?? undefined;
+
       // `--replace` bypasses the remaining guards so it can overwrite
       // existing entries even when source is local or the version matches
       // the registry. Normal sync only updates existing registry-sourced
@@ -224,6 +233,18 @@ async function syncRegistry(
       if (!replace) {
         if (existing.source !== 'registry') continue;
         if (existing.version === regRule.version) continue;
+
+        // Override-retention guard (per-id-merge modules only): a deliberate
+        // studio override (origin `primary`) does NOT auto-update from the
+        // canonical official/bundled version. Once the per-id resolution no
+        // longer points at the custom source for this id, leave the installed
+        // override untouched — only an explicit `--replace` overwrites it.
+        if (module.coreResolution === 'per-id-merge'
+          && existing.origin === 'primary'
+          && ruleOrigin !== 'primary') {
+          events.push({ kind: 'phase2:override-retained', tier, name: regRule.id });
+          continue;
+        }
       }
 
       // Downgrade detection is emitted whenever `--replace` is walking
@@ -291,7 +312,7 @@ async function syncRegistry(
       existing.source = 'registry';
       existing.version = regRule.version;
       existing.installed_hash = newHash;
-      existing.origin = origin;
+      existing.origin = ruleOrigin;
       phase2Changed = true;
     }
 
@@ -358,10 +379,15 @@ async function regenerateIndex(
 ): Promise<boolean> {
   const requiredBy = await loadRequiredByMap();
   const installedByTier: InstalledByTier = {};
+  const originByRule: OriginByRule = {};
   for (const tier of module.tiers) {
-    installedByTier[tier] = getModuleTier(config, module.id, tier).map(e => e.name);
+    const entries = getModuleTier(config, module.id, tier);
+    installedByTier[tier] = entries.map(e => e.name);
+    for (const e of entries) {
+      if (e.origin) originByRule[e.name] = e.origin;
+    }
   }
-  const indexStatus = await generateRulesIndex(projectDir, module, installedByTier, requiredBy);
+  const indexStatus = await generateRulesIndex(projectDir, module, installedByTier, requiredBy, originByRule);
   switch (indexStatus) {
     case 'written':
       events.push({ kind: 'phase3:index-regenerated' });

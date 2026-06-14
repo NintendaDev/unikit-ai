@@ -100,8 +100,8 @@ unikit-ai update --force       # Clean reinstall of skills and force-refresh eve
 Rules are first-class and have their own subcommand group. Full reference lives in [Rules Registry](rules-registry.md); the common commands:
 
 ```bash
-unikit-ai rules list                     # List available rules from the registry
-unikit-ai rules show <id>                # Preview a rule (frontmatter + body)
+unikit-ai rules list                     # List available rules (all modules; scope with --module)
+unikit-ai rules show <id>                # Preview a rule (searches all modules; scope with --module)
 unikit-ai rules install                  # Install the core bootstrap (no args)
 unikit-ai rules install <id> [<id>...]   # Install specific rules
 unikit-ai rules sync                     # Reconcile disk ↔ state, regenerate RULES_INDEX.md

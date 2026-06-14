@@ -574,6 +574,34 @@ assert_cmd_exit 0 "rules sync on migrated project exits 0" "$TMPDIR/s22.log" -- 
     env -C "$S22_DIR" node "$CLI" rules sync
 
 # ─────────────────────────────────────────────
+# Scenario 23 — sync preserves a gamedesign B-merge override (#R2b)
+# ─────────────────────────────────────────────
+# The gamedesign-override fixture installs `balance` from the custom registry
+# (origin `primary`, v9.9.9). A studio override is NOT auto-updated from
+# upstream: a plain `rules sync` must leave it intact — same version, same
+# `primary` origin, same custom content — while the backfilled canonical rules
+# (origin `bundled`) stay put too. This guards Phase 2's "do not overwrite a
+# primary override" rule.
+echo -e "\n${BOLD}Scenario 23: sync preserves a gamedesign override${NC}"
+
+S23_DIR="$TMPDIR/s23-gd-override-sync"
+use_fake_registry "$S23_DIR" unity gamedesign-override
+env -C "$S23_DIR" node "$CLI" rules install > "$TMPDIR/s23-install.log" 2>&1 || true
+
+assert_cmd_exit 0 "rules sync on override project exits 0" "$TMPDIR/s23.log" -- \
+    env -C "$S23_DIR" node "$CLI" rules sync
+
+assert_cmd_exit 0 "status --module gamedesign after sync exits 0" "$TMPDIR/s23-status.log" -- \
+    env -C "$S23_DIR" node "$CLI" rules status --module gamedesign
+if grep -qE "balance[[:space:]].*v9\.9\.9[[:space:]].*registry:primary" "$TMPDIR/s23-status.log"; then
+    pass "sync left the override intact (balance v9.9.9, origin primary)"
+else
+    fail "sync changed the override (balance should stay v9.9.9 / registry:primary)"
+fi
+assert_stdout_contains "$S23_DIR/.unikit/memory/gamedesign/core/balance.md" "STUDIO OVERRIDE MARKER" \
+    "sync did not overwrite the override's custom content with the bundled rule"
+
+# ─────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────
 print_summary_and_exit "rules sync Smoke Tests"

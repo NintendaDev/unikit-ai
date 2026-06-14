@@ -10,7 +10,7 @@ Read this file before using `unikit-ai` commands via Bash tool.
 | 0 | Success |
 | 1 | Not found (rule id, config file, variadic install with every id failing) |
 | 2 | Network error / registry unreachable |
-| 3 | Invalid arguments (bad id format, relative path, url format) |
+| 3 | Invalid arguments (bad id format, relative path, url format, unknown --module value, ambiguous `rules show` id that resolves in multiple modules) |
 | 4 | Operation not permitted (file-exists guards outside variadic install) |
 | 5 | Registry validation failed (bad manifest, schema mismatch, engine missing, no always-tagged (core) rules) |
 | 6 | Registry already initialized at target path (rules registry init) |
@@ -21,20 +21,20 @@ Read this file before using `unikit-ai` commands via Bash tool.
 
 ### `unikit-ai rules list`
 
-List available rules from registry catalog
-Flags: `--json`, `--engine <id>`
-Output: JSON: { engine, rules: [{ id, category, description, version }] }
+List available rules from the registry catalog. With NO --module it lists EVERY registered module as separate blocks (code first, then gamedesign) and emits a flat-all JSON; pass --module <id> to scope to one module (back-compat flat-single JSON). A module absent from the registry chain is skipped silently; an engine-partitioned module (code) whose engine is missing from the registry prints a warning to stderr and contributes an empty section (exit 0, NOT exit 1). exit 2 only when EVERY catalog in scope is unreachable; unknown --module values exit 3; exit 1 is reserved for a missing .unikit.json.
+Flags: `--json`, `--engine <id>`, `--module <module>`
+Output: JSON flat-all (no --module): { engine, rules: [{ id, module, category, description, version }] }. JSON flat-single (with --module): { engine, module, rules: [{ id, category, description, version }] }. category is the module tier (core/stack for code, core/library for gamedesign). Machine consumers should always send --module to get the stable flat-single form.
 
 ### `unikit-ai rules show <id>`
 
-Preview a rule from registry (full content with frontmatter)
-Flags: `--references`
+Preview a rule from the registry (full content with frontmatter). Module-agnostic by default: searches the id across EVERY registered module; pass --module <id> to restrict the search to one module. An id that resolves in more than one module is ambiguous and exits 3 (pass --module to disambiguate); an id found in none while at least one catalog is reachable exits 1; every catalog unreachable exits 2.
+Flags: `--references`, `--module <module>`
 
 ### `unikit-ai rules install [ids...]`
 
-Install rules from the registry. With no arguments, installs all always-tagged (core) rules (the bootstrap used by /unikit Step 9.2). With one or more ids, installs them in a single call with one manifest fetch and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.
-Flags: `--force`
-Output: Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 5 engine missing or no always-tagged (core) rules; exit 8 project out of date (run `unikit-ai update` first).
+Install rules from the registry. With no arguments, bootstraps EVERY registered module by its policy: the code module installs all always-tagged (core) rules, the gamedesign module installs its entire catalog (core + library) — this is the bootstrap used by /unikit Step 9.2; modules absent from the registry are skipped gracefully. With one or more ids, installs them in a single call with one manifest fetch per module, scoped to the code module unless --module says otherwise, and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` (non-code modules prefix the label with the module id, e.g. `gamedesign/library/<id>`) followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.
+Flags: `--force`, `--module <module>`
+Output: Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 3 unknown --module; exit 5 engine missing or the summed bootstrap set across all modules is empty; exit 8 project out of date (run `unikit-ai update` first).
 
 ### `unikit-ai rules sync`
 
@@ -43,9 +43,9 @@ Flags: `--replace`, `--prune`
 
 ### `unikit-ai rules status`
 
-Show installed rules with source, origin, version, hash
-Flags: `--json`, `--check-updates`
-Output: JSON: { engine, registry, registryKind: "url" | "local" | null, rules: [{ name, category, source, origin, version, installed_hash }] }
+Show installed rules with source, origin, version, hash. Covers every registered module by default (code first, then gamedesign); pass --module to scope to one.
+Flags: `--json`, `--check-updates`, `--module <module>`
+Output: JSON: { engine, registry, registryKind: "url" | "local" | null, rules: [{ name, module, category, source, origin, version, installed_hash }] }
 
 ### `unikit-ai rules registry`
 

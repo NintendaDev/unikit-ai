@@ -7,15 +7,15 @@ import path from 'path';
 import fs from 'fs-extra';
 import semver from 'semver';
 import { loadConfig, saveConfig, getModuleTier } from '../../core/config.js';
-import type { UniKitConfig } from '../../core/config.js';
+import type { UniKitConfig, InstalledRuleEntry, RuleOrigin } from '../../core/config.js';
 import { planMigrationChain } from '../../core/migrations/runner.js';
 import { PROJECT_MEMORY_MIGRATIONS, MEMORY_MODULAR_MIN_VERSION } from '../../core/memory-migrations/index.js';
 import {
   createRegistry, detectRegistryKind, resolveRegistryUrl, resolveRegistryPath,
   OFFICIAL_REGISTRY_URL, LATEST_SCHEMA, GitRegistry, FsRegistry,
 } from '../../core/registry/index.js';
-import type { RulesRegistry, ChainedRegistry, RegistryRule, RegistryManifest, RuleCategory, RegistryKind } from '../../core/registry/index.js';
-import { validateRegistry, validateUrlFormat, normalizeRegistryUrl, validateManifestShape, manifestEngineIds } from '../../core/registry/validator.js';
+import type { RulesRegistry, ChainedRegistry, RegistryManifest, RuleCategory, RegistryKind } from '../../core/registry/index.js';
+import { validateRegistry, validateUrlFormat, normalizeRegistryUrl, validateManifestShape } from '../../core/registry/validator.js';
 import { runRegistryDiskMigration } from '../../core/registry/migrations/index.js';
 import { getAllEngineIds } from '../../core/engines.js';
 import {
@@ -23,11 +23,12 @@ import {
   parseRuleMetadataFromContent, normalizeRuleId, type InstalledByTier,
 } from '../../core/installer/rules-index.js';
 import { syncAllModules, type SyncRulesEvent } from '../../core/installer/rules-sync.js';
+import { resolveModuleCatalog, type ModuleCatalog, type CatalogRule } from '../../core/installer/module-catalog.js';
 import {
   CODE_MODULE_ID, GAMEDESIGN_MODULE_ID, GAMEDESIGN_TIERS,
-  RULE_CATEGORIES, REFERENCES_DIR_NAME, moduleTierDir,
+  RULE_CATEGORIES, REFERENCES_DIR_NAME, moduleTierDir, type Tier,
 } from '../../core/constants.js';
-import { MODULE_REGISTRY, getModule } from '../../core/modules.js';
+import { MODULE_REGISTRY, getModule, listModules, type Module } from '../../core/modules.js';
 import { writeTextFile, fileExists, listFiles, removeFile, readJsonFile, writeJsonFile, getBundledRegistryDir } from '../../utils/fs.js';
 import { createHash } from 'crypto';
 import { logInfo, logWarn, logError } from '../../utils/log.js';
@@ -77,10 +78,13 @@ function buildRegistry(config: UniKitConfig): ChainedRegistry {
  *     A missing or unparseable `version` cannot signal staleness here (a bare
  *     `semver.lt` would THROW on garbage); `diskPending` is the ground-truth
  *     fallback in that case.
- *   - diskPending: the project memory migration chain still reports pending
- *     work (legacy flat `memory/{core,stack}` not yet wrapped under `code/`).
- *     Operational hazard — a sync now reconciles against the empty new path and
- *     splices every rule out of `.unikit.json` state.
+ *   - diskPending: the project migration chain still reports pending work —
+ *     legacy flat `memory/{core,stack}` not yet wrapped under `code/`, OR the
+ *     flat workspace (`plans/`, `patches/`, `researches/`, `PLAN.md`,
+ *     `FIX_PLAN.md`) not yet relocated under `.unikit/code/`. Operational
+ *     hazard — a sync now reconciles against the empty new path and splices
+ *     every rule out of `.unikit.json` state. This signal, not `versionStale`,
+ *     is what gates the workspace relocation (it ships to 1.1.0 projects).
  *
  * Truth table (ver × disk): ok/ok → false; ok/pending → true (disk is ground
  * truth); stale/modular → true (accepted false-positive: cost = run `update`
@@ -113,138 +117,287 @@ async function assertProjectMigrated(projectDir: string, config: UniKitConfig): 
 }
 
 // =====================================================================
-// list — lean catalog from registry
+// Shared `--module` resolution
 // =====================================================================
+
+/**
+ * Resolve the `--module` flag to a registered module descriptor (default:
+ * `code`, the back-compat scope of every `rules` command). Unknown ids are an
+ * argument error (exit 3) — the available set is `MODULE_REGISTRY`.
+ */
+function resolveModuleOptionOrExit(moduleOpt: string | undefined): Module {
+  const id = moduleOpt ?? CODE_MODULE_ID;
+  const module = getModule(id);
+  if (!module) {
+    console.error(chalk.red(`Unknown module "${id}". Available: ${Object.keys(MODULE_REGISTRY).join(', ')}`));
+    exitWithCode(EXIT.INVALID_ARGS);
+  }
+  return module;
+}
+
+/** Capitalized tier label for human tables (`core` → `Core`). */
+function tierLabel(tier: string): string {
+  return tier.charAt(0).toUpperCase() + tier.slice(1);
+}
+
+// =====================================================================
+// list — lean catalog from registry (multi-module)
+// =====================================================================
+//
+// Scope resolution (mirrors `rulesStatusCommand`): no `--module` → every
+// registered module as blocks; `--module X` → one module (bad id → exit 3).
+//
+// Exit / empty-catalog contract — THREE distinct per-catalog branches that must
+// not be collapsed into one (each module resolves its own reachability):
+//   (a) EVERY catalog `!reachable`            → exit 2 (the ONLY path to exit 2)
+//   (b) catalog reachable && !engineAvailable → warning (stderr) + empty
+//                                               contribution + exit 0
+//   (c) catalog `!reachable`                  → silent skip (no block, no rows),
+//                                               still counted toward (a)
+// `exit 1` is reserved exclusively for "no `.unikit.json`" (loadConfigOrExit);
+// engine-missing is NO LONGER an exit-1 path.
+
+/** One rendered catalog row, tagged with its module + tier. */
+interface ListRow {
+  id: string;
+  module: string;
+  category: Tier;
+  description: string;
+  version: string;
+}
+
+/**
+ * A surviving (reachable) module's contribution to the listing. Absent
+ * (`!reachable`) modules are dropped before this stage (branch (c)).
+ */
+type ListSection =
+  | { kind: 'rules'; module: Module; rows: ListRow[] }
+  | { kind: 'engine-missing'; module: Module; engines: string[] };
 
 export async function rulesListCommand(options: { json?: boolean; engine?: string; module?: string }): Promise<void> {
   const projectDir = process.cwd();
   const config = await loadConfigOrExit(projectDir);
   const engineId = options.engine ?? config.engine;
 
-  // `--module` mirrors `--engine` for parity. In PR#1 it is validation-only:
-  // the single registered module is `code`, so any other value is rejected.
-  // PR#3 (generic module-aware skills) gives the flag real scoping behaviour.
-  if (options.module !== undefined && !getModule(options.module)) {
-    console.error(chalk.red(`Unknown module "${options.module}". Available: ${Object.keys(MODULE_REGISTRY).join(', ')}`));
-    exitWithCode(EXIT.INVALID_ARGS);
+  // Scope: a single module with `--module`, every registered module otherwise.
+  // Registry order keeps `code` first so the flat-all JSON stays stable.
+  const singleModule = options.module !== undefined;
+  const scope: Module[] = singleModule
+    ? [resolveModuleOptionOrExit(options.module)]
+    : listModules();
+
+  logInfo('rules:list', `scope=${options.module ?? 'all'}, modules=[${scope.map(m => m.id).join(', ')}]`);
+
+  // Build the registry ONCE keyed to the (possibly overridden) engine, then
+  // resolve one catalog per module from it. `--engine` must keep working, so
+  // this uses createRegistry(config.rulesRegistry, engineId) — NOT install's
+  // buildRegistry (which has no engine override). Resolution is sequential to
+  // avoid racing the ChainedRegistry's shared per-instance resolution state.
+  const registry = createRegistry(config.rulesRegistry, engineId);
+  const catalogs: { module: Module; catalog: ModuleCatalog }[] = [];
+  for (const module of scope) {
+    catalogs.push({ module, catalog: await resolveModuleCatalog(registry, module, engineId) });
   }
 
-  // Build the registry keyed to the (possibly overridden) engine so the
-  // module accessors below resolve the same engine the user asked for.
-  const registry = createRegistry(config.rulesRegistry, engineId);
-  const manifest = await registry.fetchManifest();
+  logInfo('rules:list', `catalogs=[${catalogs.map(c => `${c.module.id}:${c.catalog.reachable ? 'reachable' : 'absent'}`).join(', ')}]`);
 
-  if (!manifest) {
-    console.warn(chalk.yellow('WARN: Registry unreachable. No catalog available.'));
+  // (a) Every catalog unreachable → exit 2 (the ONLY path to exit 2). A module
+  // merely absent from the chain (branch (c)) is also `!reachable`, so this
+  // fires only when NOTHING in scope resolved from any chain source.
+  if (catalogs.every(({ catalog }) => !catalog.reachable)) {
+    console.error(chalk.red('Registry chain unreachable. No catalog available.'));
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  // Explicit engine-existence predicate. The registry accessors return `[]` for
-  // BOTH "engine missing" and "tier empty", so the not-found (exit 1) contract
-  // must be re-established here before reading rules through the accessors.
-  if (!manifestEngineIds(manifest).includes(engineId)) {
-    console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
-    const available = manifestEngineIds(manifest).join(', ');
-    console.error(chalk.dim(`Available: ${available}`));
-    exitWithCode(EXIT.NOT_FOUND);
+  // Classify each catalog into the three branches above. The SAME `sections`
+  // set feeds both the human render and the JSON branch (#json-parity — never
+  // count the rule set twice in two different ways).
+  const sections: ListSection[] = [];
+  for (const { module, catalog } of catalogs) {
+    // (c) module absent from the whole chain → silent skip.
+    if (!catalog.reachable) continue;
+    // (b) engine-partitioned module whose engine is missing → warning + empty
+    // contribution + exit 0. The warning goes to stderr (logWarn) so `--json`
+    // stdout stays a clean, parseable document.
+    if (!catalog.engineAvailable) {
+      logWarn('rules:list', `engine "${engineId}" not in registry for module "${module.id}" — section empty (available: ${catalog.engines.join(', ')})`);
+      sections.push({ kind: 'engine-missing', module, engines: catalog.engines });
+      continue;
+    }
+    // (a-survivor) normal: tier-ordered rows tagged with module + category.
+    const rows: ListRow[] = catalog.rules.map(({ tier, rule }) => ({
+      id: rule.id,
+      module: module.id,
+      category: tier,
+      description: rule.description,
+      version: rule.version,
+    }));
+    sections.push({ kind: 'rules', module, rows });
   }
 
-  const engineRules = { core: registry.getEngineRules('core'), stack: registry.getEngineRules('stack') };
+  const allRows = sections.flatMap(s => (s.kind === 'rules' ? s.rows : []));
 
-  const allRules = [
-    ...engineRules.core.map(r => ({ ...r, category: 'core' as const })),
-    ...engineRules.stack.map(r => ({ ...r, category: 'stack' as const })),
-  ];
-
+  // ── JSON ──
   if (options.json) {
+    if (singleModule) {
+      // FLAT-SINGLE (back-compat, byte-for-byte): a scoped `--module` request
+      // returns `{ engine, module, rules:[{ id, category, description, version }] }`
+      // with NO per-row `module` key — machine consumers always send `--module`
+      // and rely on this exact shape.
+      const output = {
+        engine: engineId,
+        module: scope[0].id,
+        rules: allRows.map(r => ({ id: r.id, category: r.category, description: r.description, version: r.version })),
+      };
+      console.log(JSON.stringify(output, null, 2));
+      return;
+    }
+    // FLAT-ALL: `{ engine, rules:[{ id, module, category, description, version }] }`
+    // — every row carries its `module` (key placement mirrors `rules status`).
     const output = {
       engine: engineId,
-      rules: allRules.map(r => ({
-        id: r.id,
-        category: r.category,
-        description: r.description,
-        version: r.version,
-      })),
+      rules: allRows.map(r => ({ id: r.id, module: r.module, category: r.category, description: r.description, version: r.version })),
     };
     console.log(JSON.stringify(output, null, 2));
     return;
   }
 
-  console.log(chalk.bold(`\nRules catalog for ${engineId}:\n`));
-
-  // Compute column widths for aligned table
-  const idWidth = Math.max(4, ...allRules.map(r => r.id.length));
-  const verWidth = Math.max(7, ...allRules.map(r => `v${r.version}`.length));
-
+  // ── Human ──
+  // Shared column widths so every per-module table aligns identically.
+  const idWidth = Math.max(4, ...allRows.map(r => r.id.length));
+  const verWidth = Math.max(7, ...allRows.map(r => `v${r.version}`.length));
   const termWidth = process.stdout.columns || 120;
-  // 2 indent + idWidth + 2 gap + verWidth + 2 gap = prefix length
   const prefixLen = 2 + idWidth + 2 + verWidth + 2;
   const descMax = Math.max(20, termWidth - prefixLen);
 
-  function truncate(text: string, max: number): string {
-    return text.length <= max ? text : text.slice(0, max - 1) + '…';
-  }
+  const truncate = (text: string, max: number): string =>
+    text.length <= max ? text : text.slice(0, max - 1) + '…';
 
-  function printRuleTable(title: string, rules: typeof allRules): void {
-    if (rules.length === 0) return;
-
+  const printRuleTable = (title: string, rows: ListRow[]): void => {
+    if (rows.length === 0) return;
     console.log(chalk.bold.cyan(title));
     const header = `  ${'ID'.padEnd(idWidth)}  ${'Version'.padEnd(verWidth)}  Description`;
     console.log(chalk.dim(truncate(header, termWidth)));
     console.log(chalk.dim(`  ${'─'.repeat(idWidth)}  ${'─'.repeat(verWidth)}  ${'─'.repeat(Math.min(40, descMax))}`));
-
-    for (const rule of rules) {
-      const id = chalk.bold(rule.id.padEnd(idWidth));
-      const ver = chalk.dim(`v${rule.version}`.padEnd(verWidth));
-      const desc = truncate(rule.description, descMax);
+    for (const row of rows) {
+      const id = chalk.bold(row.id.padEnd(idWidth));
+      const ver = chalk.dim(`v${row.version}`.padEnd(verWidth));
+      const desc = truncate(row.description, descMax);
       console.log(`  ${id}  ${ver}  ${desc}`);
     }
     console.log('');
+  };
+
+  const tierCountsFor = (module: Module, rows: ListRow[]): string =>
+    module.tiers.map(tier => `${rows.filter(r => r.category === tier).length} ${tier}`).join(', ');
+
+  if (singleModule) {
+    // Single-module human render — byte-for-byte the pre-multimodule format so
+    // `--module <id>` stays back-compatible (Sc.9 gamedesign asserts on it).
+    const section = sections[0];
+    const module = scope[0];
+    const catalogLabel = module.enginePartitioned ? engineId : module.id;
+    console.log(chalk.bold(`\nRules catalog for ${catalogLabel}:\n`));
+    if (section.kind === 'engine-missing') {
+      console.log(chalk.yellow(`Engine "${engineId}" not in registry — catalog empty.`));
+      console.log(chalk.dim(`Available engines: ${section.engines.join(', ')}`));
+      console.log(chalk.dim(`\nTotal: 0 rules (${module.tiers.map(t => `0 ${t}`).join(', ')})`));
+      return;
+    }
+    for (const tier of module.tiers) {
+      printRuleTable(`${tierLabel(tier)} rules:`, section.rows.filter(r => r.category === tier));
+    }
+    console.log(chalk.dim(`Total: ${section.rows.length} rules (${tierCountsFor(module, section.rows)})`));
+    return;
   }
 
-  printRuleTable('Core rules:', allRules.filter(r => r.category === 'core'));
-  printRuleTable('Stack rules:', allRules.filter(r => r.category === 'stack'));
-
-  console.log(chalk.dim(`Total: ${allRules.length} rules (${engineRules.core.length} core, ${engineRules.stack.length} stack)`));
+  // Multi-module human render — one block per surviving module.
+  console.log(chalk.bold(`\nRules catalog (engine: ${engineId}):\n`));
+  const footerParts: string[] = [];
+  for (const section of sections) {
+    const module = section.module;
+    const header = module.enginePartitioned ? `── ${module.id} (${engineId}) ──` : `── ${module.id} ──`;
+    console.log(chalk.bold(header));
+    if (section.kind === 'engine-missing') {
+      console.log(chalk.yellow(`  engine "${engineId}" not in registry — section empty`));
+      console.log(chalk.dim(`  available: ${section.engines.join(', ')}\n`));
+      footerParts.push(`${module.id}: engine missing`);
+      continue;
+    }
+    for (const tier of module.tiers) {
+      printRuleTable(`${tierLabel(tier)} rules:`, section.rows.filter(r => r.category === tier));
+    }
+    footerParts.push(`${module.id}: ${tierCountsFor(module, section.rows)}`);
+  }
+  console.log(chalk.dim(`Total: ${allRows.length} rules (${footerParts.join('; ')})`));
 }
 
 // =====================================================================
-// show — preview a single rule from registry
+// show — preview a single rule from registry (module-agnostic)
 // =====================================================================
+//
+// Scope: no `--module` → search the id across EVERY registered module;
+// `--module X` → search one module only. Exit contract:
+//   - ALL catalogs `!reachable`                 → exit 2 (network guard, parity
+//                                                 with list (a) + install)
+//   - exactly 1 hit                             → fetch + print (exit 0)
+//   - >1 hits (same id in multiple modules)     → exit 3 (ambiguous — pass
+//                                                 --module to disambiguate)
+//   - 0 hits while ≥1 catalog is reachable      → exit 1 (not found anywhere)
+// Engine-missing for `code` is NOT a hard fail — it just yields no `code` hits
+// (other modules are still searched).
 
-export async function rulesShowCommand(id: string, options: { references?: boolean }): Promise<void> {
+export async function rulesShowCommand(id: string, options: { references?: boolean; module?: string }): Promise<void> {
   const projectDir = process.cwd();
   const config = await loadConfigOrExit(projectDir);
   const engineId = config.engine;
 
-  const registry = buildRegistry(config);
-  const manifest = await registry.fetchManifest();
+  const scope: Module[] = options.module !== undefined
+    ? [resolveModuleOptionOrExit(options.module)]
+    : listModules();
 
-  if (!manifest) {
+  logInfo('rules:show', `searching ${id} across modules=[${scope.map(m => m.id).join(', ')}]`);
+
+  const registry = buildRegistry(config);
+  const catalogs: { module: Module; catalog: ModuleCatalog }[] = [];
+  for (const module of scope) {
+    catalogs.push({ module, catalog: await resolveModuleCatalog(registry, module, engineId) });
+  }
+
+  // Network guard FIRST (do not lose it in the multi-catalog refactor): only
+  // when EVERY catalog is unreachable is this a network error. As long as one
+  // catalog is reachable, 0 hits means "not found", not "unreachable".
+  if (catalogs.every(({ catalog }) => !catalog.reachable)) {
     console.error(chalk.red('Registry unreachable.'));
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  // Explicit engine-existence predicate before reading via the accessors —
-  // they cannot tell "engine missing" (exit 1) from "tier empty" on their own.
-  if (!manifestEngineIds(manifest).includes(engineId)) {
-    console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
-    exitWithCode(EXIT.NOT_FOUND);
-  }
-
-  const engineRules = { core: registry.getEngineRules('core'), stack: registry.getEngineRules('stack') };
-
-  // Find rule by id via canonical lowercase-hyphen normalization.
+  // Gather hits across reachable + engine-available catalogs by canonical id.
+  // An engine-missing `code` catalog simply contributes no hits (skipped here)
+  // rather than hard-failing the whole lookup.
   const normalizedId = normalizeRuleId(id);
-  const found = [...engineRules.core, ...engineRules.stack].find(r => normalizeRuleId(r.id) === normalizedId);
+  const hits: { module: Module; tier: Tier; rule: CatalogRule['rule'] }[] = [];
+  for (const { module, catalog } of catalogs) {
+    if (!catalog.reachable || !catalog.engineAvailable) continue;
+    const hit = catalog.rules.find(r => normalizeRuleId(r.rule.id) === normalizedId);
+    if (hit) hits.push({ module, tier: hit.tier, rule: hit.rule });
+  }
 
-  if (!found) {
-    console.error(chalk.red(`Rule "${id}" not found in registry for engine "${engineId}".`));
+  if (hits.length === 0) {
+    const where = options.module !== undefined ? `module "${scope[0].id}"` : 'any module';
+    console.error(chalk.red(`Rule "${id}" not found in registry for ${where}.`));
     exitWithCode(EXIT.NOT_FOUND);
   }
 
-  const category: RuleCategory = engineRules.core.some(r => r.id === found.id) ? 'core' : 'stack';
-  const fetched = await registry.fetchRule(CODE_MODULE_ID, engineId, category, found.id);
+  if (hits.length > 1) {
+    const mods = hits.map(h => h.module.id).join(', ');
+    logWarn('rules:show', `ambiguous id "${id}" across modules: ${mods}`);
+    console.error(chalk.red(`Rule "${id}" found in multiple modules: ${mods} — pass --module to disambiguate.`));
+    exitWithCode(EXIT.INVALID_ARGS);
+  }
+
+  const { module, tier, rule: found } = hits[0];
+  const fetched = await registry.fetchRule(module.id, engineId, tier, found.id);
 
   if (!fetched) {
     console.error(chalk.red(`Failed to fetch rule content for "${found.id}".`));
@@ -253,7 +406,7 @@ export async function rulesShowCommand(id: string, options: { references?: boole
 
   const { loadWhen } = parseRuleMetadataFromContent(fetched.content);
 
-  console.log(chalk.bold(`\n${found.id} (${category}) v${found.version}\n`));
+  console.log(chalk.bold(`\n${found.id} (${tier}) v${found.version}\n`));
   console.log(chalk.dim(`Description: ${found.description}`));
   console.log(chalk.dim(`Load when:   ${loadWhen}`));
   if (found.references && found.references.length > 0) {
@@ -263,7 +416,7 @@ export async function rulesShowCommand(id: string, options: { references?: boole
   console.log(fetched.content);
 
   if (options.references && found.references && found.references.length > 0) {
-    const refs = await registry.fetchReferences(CODE_MODULE_ID, engineId, category, found.id, found.references);
+    const refs = await registry.fetchReferences(module.id, engineId, tier, found.id, found.references);
     for (const ref of refs) {
       console.log(chalk.bold(`\n--- Reference: ${ref.filename} ---\n`));
       console.log(ref.content);
@@ -272,16 +425,22 @@ export async function rulesShowCommand(id: string, options: { references?: boole
 }
 
 // =====================================================================
-// install — variadic fetch + write + state update (+ no-args core bootstrap)
+// install — variadic fetch + write + state update (+ no-args bootstrap)
 // =====================================================================
 //
-// `unikit-ai rules install`              — no args: install every core-tier rule
-//                                          (core bootstrap, replaces the old
-//                                          `rules core-install` used by
-//                                          /unikit Step 9.2).
+// `unikit-ai rules install`              — no args: walk every registered
+//                                          module and install rules by its
+//                                          bootstrap policy (`code` →
+//                                          always-tagged set, `gamedesign` →
+//                                          every core+library rule). This is
+//                                          the bootstrap used by /unikit
+//                                          Step 9.2.
 // `unikit-ai rules install <id>...`      — variadic: install one or more
 //                                          user-specified rules in one call,
-//                                          fetching the manifest once.
+//                                          fetching each module manifest once.
+//                                          Scope defaults to the `code` module;
+//                                          pass `--module <id>` to target
+//                                          another module's catalog.
 // `unikit-ai rules install <id> --force` — re-fetch even rules already in state
 //                                          (per-rule force; NOT the same as the
 //                                          old `sync --force`, which has been
@@ -292,7 +451,11 @@ export async function rulesShowCommand(id: string, options: { references?: boole
 //   0  at least one rule installed/already-installed, no fatal errors
 //   1  every requested id failed (fetch-failed or not-found)
 //   2  registry chain unreachable (fatal — abort partition, nothing installed)
-//   5  engine missing from manifest OR no-args call with no always-tagged rules
+//   3  unknown `--module` value
+//   5  engine missing from manifest OR no-args call where the SUMMED bootstrap
+//      set across all target modules is empty. A module that is merely absent
+//      from the registry (schema:1 source, code-only custom registry) yields
+//      an empty per-module catalog and is skipped gracefully — never an error.
 //
 //   "Already installed" is absorbed into the aggregated report as a per-rule
 //   `↻` line and does NOT emit exit 4 — that keeps `/unikit` Step 9.2 idempotent
@@ -305,13 +468,17 @@ export async function rulesShowCommand(id: string, options: { references?: boole
 //   ✗ failed core/<id>: <reason>      — fetch/lookup error, continues loop
 //   Rules: N installed, M already-installed, K failed
 //
-// The `/unikit` Step 9.7 skill-side update parses this format — keep the per-
-// rule prefix characters (`✓` / `↻` / `✗`) and the summary wording stable.
+// Non-code modules prefix their label with the module id
+// (`✓ installed gamedesign/library/<id> v<ver>`); the code module keeps the
+// bare `<tier>/<id>` form. The `/unikit` Step 9.7 skill-side update parses
+// this format — keep the per-rule prefix characters (`✓` / `↻` / `✗`), the
+// code-module label shape, and the summary wording stable.
 
 type InstallReportStatus = 'installed' | 'already-installed' | 'failed';
 
 interface InstallReportLine {
   status: InstallReportStatus;
+  module: string;
   category: RuleCategory | 'unknown';
   id: string;
   version?: string;
@@ -320,7 +487,8 @@ interface InstallReportLine {
 
 function printInstallReport(lines: InstallReportLine[]): void {
   for (const line of lines) {
-    const label = line.category === 'unknown' ? line.id : `${line.category}/${line.id}`;
+    const base = line.category === 'unknown' ? line.id : `${line.category}/${line.id}`;
+    const label = line.module === CODE_MODULE_ID ? base : `${line.module}/${base}`;
     switch (line.status) {
       case 'installed':
         console.log(chalk.green(`✓ installed ${label}${line.version ? ` v${line.version}` : ''}`));
@@ -344,62 +512,68 @@ function printInstallReport(lines: InstallReportLine[]): void {
  * and returns a report line — never exits the process. Caller decides the final
  * exit code from the aggregated report.
  *
- * Preserves the single-id behaviour from the old `rulesInstallCommand`:
+ * Module-generic: state lookups, catalog search, destination paths, and
+ * re-categorisation walk `module.tiers` instead of a hardcoded core/stack
+ * pair. Preserves the single-id behaviour from the old code-pinned handler:
  *   - canonical id normalisation on lookup (so legacy `CODE-STYLE` state still
  *     resolves when the user passes `code-style` and vice versa),
- *   - re-categorisation cleanup (rule moved between core/stack),
+ *   - re-categorisation cleanup (rule moved between tiers),
  *   - orphan reference cleanup when re-categorising.
  */
 async function installOneRule(
   projectDir: string,
   config: UniKitConfig,
   registry: RulesRegistry,
-  engineRules: { core: RegistryRule[]; stack: RegistryRule[] },
+  module: Module,
+  catalogRules: CatalogRule[],
   engineId: string,
-  origin: 'primary' | 'official' | 'bundled' | undefined,
   rawId: string,
-  options: { force?: boolean; allowAlreadyInstalled?: boolean; preferredCategory?: RuleCategory },
+  options: { force?: boolean; allowAlreadyInstalled?: boolean; preferredTier?: Tier },
 ): Promise<InstallReportLine> {
   // Canonical lowercase-hyphen comparison lets legacy state entries like
   // `CODE-STYLE` still resolve when the user (or a script) passes the canonical
   // `code-style`, and vice versa. This is the guard that kept pre-migration
   // projects usable and must not be lost in the variadic rewrite.
   const normalizedId = normalizeRuleId(rawId);
-  const coreState = getModuleTier(config, CODE_MODULE_ID, 'core');
-  const stackState = getModuleTier(config, CODE_MODULE_ID, 'stack');
-  const existingCore = coreState.find(e => normalizeRuleId(e.name) === normalizedId);
-  const existingStack = stackState.find(e => normalizeRuleId(e.name) === normalizedId);
-  const existing = existingCore ?? existingStack;
+  const tierStates = module.tiers.map(tier => ({
+    tier,
+    list: getModuleTier(config, module.id, tier),
+  }));
+  const existingHit = tierStates
+    .map(({ tier, list }) => ({ tier, entry: list.find(e => normalizeRuleId(e.name) === normalizedId) }))
+    .find(h => h.entry !== undefined) as { tier: Tier; entry: InstalledRuleEntry } | undefined;
+  const existing = existingHit?.entry;
 
-  // Find rule by id in registry (canonical lowercase-hyphen comparison). When
-  // the caller hints a preferred category (core bootstrap), try that side first
-  // so a rule shipped in both sides of the manifest goes where the bootstrap
-  // wants it.
-  let found: RegistryRule | undefined;
-  let category: RuleCategory = options.preferredCategory ?? 'core';
+  // Find rule by id in the module catalog (canonical lowercase-hyphen
+  // comparison). When the caller hints a preferred tier (bootstrap knows the
+  // exact tier from the catalog), try that tier first so a rule shipped in two
+  // tiers of the manifest goes where the bootstrap wants it.
+  const ordered = options.preferredTier
+    ? [
+      ...catalogRules.filter(r => r.tier === options.preferredTier),
+      ...catalogRules.filter(r => r.tier !== options.preferredTier),
+    ]
+    : catalogRules;
+  const foundHit = ordered.find(r => normalizeRuleId(r.rule.id) === normalizedId);
 
-  if (options.preferredCategory === 'stack') {
-    found = engineRules.stack.find(r => normalizeRuleId(r.id) === normalizedId);
-    if (!found) {
-      found = engineRules.core.find(r => normalizeRuleId(r.id) === normalizedId);
-      category = 'core';
-    }
-  } else {
-    found = engineRules.core.find(r => normalizeRuleId(r.id) === normalizedId);
-    if (!found) {
-      found = engineRules.stack.find(r => normalizeRuleId(r.id) === normalizedId);
-      category = 'stack';
-    }
-  }
-
-  if (!found) {
+  if (!foundHit) {
+    const scope = module.enginePartitioned ? `engine "${engineId}"` : `module "${module.id}"`;
     return {
       status: 'failed',
+      module: module.id,
       category: 'unknown',
       id: rawId,
-      reason: `not found in registry for engine "${engineId}"`,
+      reason: `not found in registry for ${scope}`,
     };
   }
+
+  const category = foundHit.tier;
+  const found = foundHit.rule;
+  // Per-rule B-merge origin from the catalog ROW (not a module-wide value):
+  // for gamedesign each id may resolve from a different chain level (custom
+  // override vs official/bundled backfill); for code it is the module-wide
+  // origin on every row. Stamped onto every state entry written below.
+  const origin = foundHit.origin;
 
   // Idempotency / already-installed handling.
   //
@@ -415,14 +589,15 @@ async function installOneRule(
   //                                                   here, we absorb into
   //                                                   the report instead.
   if (existing && !options.force && options.allowAlreadyInstalled !== true) {
-    return { status: 'already-installed', category, id: found.id };
+    return { status: 'already-installed', module: module.id, category, id: found.id };
   }
 
   // Fetch rule content.
-  const fetched = await registry.fetchRule(CODE_MODULE_ID, engineId, category, found.id);
+  const fetched = await registry.fetchRule(module.id, engineId, category, found.id);
   if (!fetched) {
     return {
       status: 'failed',
+      module: module.id,
       category,
       id: found.id,
       reason: 'failed to fetch rule content',
@@ -430,7 +605,7 @@ async function installOneRule(
   }
 
   const newHash = computeHash(fetched.content);
-  const destPath = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, category), `${found.id}.md`);
+  const destPath = path.join(moduleTierDir(projectDir, module.id, category), `${found.id}.md`);
   const destExists = await fileExists(destPath);
 
   // Idempotent skip for the no-args bootstrap path: if the file is on disk
@@ -444,29 +619,34 @@ async function installOneRule(
     && existing.installed_hash === newHash
     && destExists
   ) {
-    return { status: 'already-installed', category, id: found.id };
+    return { status: 'already-installed', module: module.id, category, id: found.id };
   }
 
   await writeTextFile(destPath, fetched.content);
 
   // Install references if any. Reference files live alongside the rule under
-  // `.unikit/memory/<category>/references/` and are matched by filename prefix
-  // on cleanup (see re-categorisation block below).
+  // `.unikit/memory/<module>/<tier>/references/` and are matched by filename
+  // prefix on cleanup (see re-categorisation block below).
   if (found.references && found.references.length > 0) {
-    const refs = await registry.fetchReferences(CODE_MODULE_ID, engineId, category, found.id, found.references);
-    const destRefsDir = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, category), REFERENCES_DIR_NAME);
+    const refs = await registry.fetchReferences(module.id, engineId, category, found.id, found.references);
+    const destRefsDir = path.join(moduleTierDir(projectDir, module.id, category), REFERENCES_DIR_NAME);
     for (const ref of refs) {
       await writeTextFile(path.join(destRefsDir, ref.filename), ref.content);
     }
   }
 
-  if (existing) {
-    // Design note — re-categorisation cleanup (rule moved between core/stack
-    // in the registry) + legacy name migration escape hatch for core rules.
+  const listOf = (tier: Tier): InstalledRuleEntry[] => {
+    const state = tierStates.find(s => s.tier === tier);
+    return state ? state.list : getModuleTier(config, module.id, tier);
+  };
+
+  if (existing && existingHit) {
+    // Design note — re-categorisation cleanup (rule moved between tiers in
+    // the registry) + legacy name migration escape hatch for core rules.
     //
     // Without cleanup the old file would survive on disk, and the next
     // `rules sync` Phase 1 would register it as a `source: local` entry in
-    // the stale category — producing a phantom duplicate of the rule.
+    // the stale tier — producing a phantom duplicate of the rule.
     //
     // If `existing.name` is legacy (e.g. `CODE-STYLE`) and `found.id` is
     // canonical (`code-style`), the block below swaps the `.unikit.json`
@@ -480,17 +660,17 @@ async function installOneRule(
     // `category === 'stack'`. Core rules require MANUAL cleanup — edit
     // `.unikit.json` and remove the legacy entry, then delete the orphan
     // file on disk. This is the documented escape hatch for core.
-    const oldCategory: RuleCategory = existingCore ? 'core' : 'stack';
+    const oldCategory = existingHit.tier;
     if (oldCategory !== category) {
       logInfo('rules:install', `re-categorized ${existing.name}: ${oldCategory} → ${category}`);
-      const oldPath = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, oldCategory), `${existing.name}.md`);
+      const oldPath = path.join(moduleTierDir(projectDir, module.id, oldCategory), `${existing.name}.md`);
       if (await fileExists(oldPath)) {
         await removeFile(oldPath);
       }
-      // Clean up orphan reference files from the old category. References are
+      // Clean up orphan reference files from the old tier. References are
       // matched by filename prefix (aspid-mvvm-*.md style), mirroring how
       // fetchReferences writes them next to the rule file.
-      const oldRefsDir = path.join(moduleTierDir(projectDir, CODE_MODULE_ID, oldCategory), REFERENCES_DIR_NAME);
+      const oldRefsDir = path.join(moduleTierDir(projectDir, module.id, oldCategory), REFERENCES_DIR_NAME);
       if (await fileExists(oldRefsDir)) {
         const refs = await listFiles(oldRefsDir);
         const prefix = existing.name.toLowerCase();
@@ -504,7 +684,7 @@ async function installOneRule(
     }
 
     // Update-in-place path — reuse the existing state entry when the rule
-    // stayed in the same category AND the stored name already matches the
+    // stayed in the same tier AND the stored name already matches the
     // canonical id. The no-args bootstrap relies on this branch for its
     // drift-recovery flow (rule in state but stale hash on disk).
     const sameCategory = oldCategory === category;
@@ -515,13 +695,12 @@ async function installOneRule(
       existing.installed_hash = newHash;
       existing.origin = origin;
     } else {
-      // Legacy-name migration OR cross-category move. Splice the old entry
+      // Legacy-name migration OR cross-tier move. Splice the old entry
       // out and push a fresh canonical entry under the correct tier list.
-      const oldList = existingCore ? coreState : stackState;
+      const oldList = listOf(oldCategory);
       const idx = oldList.indexOf(existing);
       if (idx >= 0) oldList.splice(idx, 1);
-      const targetList = category === 'core' ? coreState : stackState;
-      targetList.push({
+      listOf(category).push({
         name: found.id,
         source: 'registry',
         origin,
@@ -530,8 +709,7 @@ async function installOneRule(
       });
     }
   } else {
-    const targetList = category === 'core' ? coreState : stackState;
-    targetList.push({
+    listOf(category).push({
       name: found.id,
       source: 'registry',
       origin,
@@ -540,10 +718,10 @@ async function installOneRule(
     });
   }
 
-  return { status: 'installed', category, id: found.id, version: found.version };
+  return { status: 'installed', module: module.id, category, id: found.id, version: found.version };
 }
 
-export async function rulesInstallCommand(ids: string[], options: { force?: boolean } = {}): Promise<void> {
+export async function rulesInstallCommand(ids: string[], options: { force?: boolean; module?: string } = {}): Promise<void> {
   const projectDir = process.cwd();
   const config = await loadConfigOrExit(projectDir);
   const engineId = config.engine;
@@ -553,36 +731,45 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   // exit 2. `update` is the sole migrator.
   await assertProjectMigrated(projectDir, config);
 
-  // Fetch manifest exactly once per invocation — the single biggest reason
-  // the legacy per-id `rulesInstallCommand` was painful to call from
-  // `/unikit` Step 9.2 is that it hit the registry chain N times for N
-  // always-tagged rules. The aggregated report below closes that loop.
   const registry = buildRegistry(config);
-  const manifest = await registry.fetchManifest();
+  const noArgsBootstrap = ids.length === 0;
 
-  if (!manifest) {
+  // Target modules: an explicit `--module` wins; otherwise the no-args
+  // bootstrap walks every registered module by its bootstrap policy, while a
+  // variadic id list keeps the back-compat `code` scope.
+  const targetModules: Module[] = options.module !== undefined
+    ? [resolveModuleOptionOrExit(options.module)]
+    : noArgsBootstrap
+      ? listModules()
+      : [resolveModuleOptionOrExit(undefined)];
+
+  // Resolve each target module's catalog once per invocation — the single
+  // biggest reason the legacy per-id `rulesInstallCommand` was painful to call
+  // from `/unikit` Step 9.2 is that it hit the registry chain N times for N
+  // always-tagged rules. The aggregated report below closes that loop.
+  const catalogs = new Map<string, ModuleCatalog>();
+  for (const module of targetModules) {
+    catalogs.set(module.id, await resolveModuleCatalog(registry, module, engineId));
+  }
+
+  if ([...catalogs.values()].every(c => !c.reachable)) {
     console.error(chalk.red('Registry chain unreachable.'));
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  // Explicit engine-existence predicate. The accessors below collapse "engine
-  // missing" and "tier empty" to `[]`, so the exit-5 contract is re-established
-  // here before reading rules.
-  if (!manifestEngineIds(manifest).includes(engineId)) {
-    console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
-    const available = manifestEngineIds(manifest).join(', ');
-    console.error(chalk.dim(`Available: ${available}`));
-    exitWithCode(EXIT.VALIDATION_FAILED);
+  // Explicit engine-existence predicate (engine-partitioned targets only). The
+  // accessors collapse "engine missing" and "tier empty" to `[]`, so the
+  // exit-5 contract is re-established here before reading rules. A module
+  // merely ABSENT from the registry is NOT an error — its catalog is empty
+  // and the bootstrap skips it gracefully (schema:1 and code-only custom
+  // registries stay valid sources).
+  for (const catalog of catalogs.values()) {
+    if (catalog.reachable && !catalog.engineAvailable) {
+      console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
+      console.error(chalk.dim(`Available: ${catalog.engines.join(', ')}`));
+      exitWithCode(EXIT.VALIDATION_FAILED);
+    }
   }
-
-  const engineRules = { core: registry.getEngineRules('core'), stack: registry.getEngineRules('stack') };
-
-  // Resolve origin once — every rule installed in one invocation comes from
-  // the same resolved registry tier (the `code` module's winning source).
-  const origin: 'primary' | 'official' | 'bundled' | undefined =
-    registry.getResolvedOrigin(CODE_MODULE_ID) ?? undefined;
-
-  const noArgsBootstrap = ids.length === 0;
 
   // Design note — case-sensitive FS + core bootstrap.
   //
@@ -599,39 +786,58 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   // on the next Phase 1 pass and the duplicate persists. The variadic
   // `installOneRule` preserves the same semantics.
   //
-  // Core-gate (always-tagged): the no-args bootstrap installs every rule the
-  // registry marks `always === true` for this engine, across both tiers. The
-  // flag is injected by the schema:1→2 registry normalization
-  // (`always = tier === 'core'`) and emitted directly by schema:2 sources, so
-  // on the official registry this set equals the former core whitelist while
-  // custom registries can opt stack rules into the bootstrap. The legacy
-  // `CORE_RULE_WHITELIST` and the interim `tier === 'core'` gate are both gone.
-  const resolvedIds: string[] = noArgsBootstrap
-    ? [...engineRules.core, ...engineRules.stack].filter(r => r.always === true).map(r => r.id)
-    : ids;
+  // Bootstrap policy (per module descriptor):
+  //   - `always-core` (code) — install every rule the registry marks
+  //     `always === true` for this engine, across both tiers. The flag is
+  //     injected by the schema:1→2 normalization (`always = tier === 'core'`)
+  //     and emitted directly by schema:2 sources, so on the official registry
+  //     this set equals the former core whitelist while custom registries can
+  //     opt stack rules into the bootstrap.
+  //   - `all-rules` (gamedesign) — install the module's ENTIRE catalog
+  //     (core + library) regardless of the `always` flag; the library is a
+  //     compact domain-expertise set that ships whole.
+  interface WorkItem { module: Module; id: string; preferredTier?: Tier }
+  let work: WorkItem[];
 
-  if (noArgsBootstrap && resolvedIds.length === 0) {
-    console.error(chalk.red(`No always-tagged (core) rules found in registry for engine "${engineId}".`));
-    exitWithCode(EXIT.VALIDATION_FAILED);
+  if (noArgsBootstrap) {
+    work = [];
+    for (const module of targetModules) {
+      const catalog = catalogs.get(module.id);
+      if (!catalog || !catalog.reachable) continue;
+      const selected = module.bootstrap === 'all-rules'
+        ? catalog.rules
+        : catalog.rules.filter(r => r.rule.always === true);
+      work.push(...selected.map(r => ({ module, id: r.rule.id, preferredTier: r.tier })));
+    }
+    // The empty-bootstrap gate sums over ALL target modules — an empty
+    // gamedesign catalog next to a populated code catalog must not fail.
+    if (work.length === 0) {
+      console.error(chalk.red(`No always-tagged (core) rules found in registry for engine "${engineId}".`));
+      exitWithCode(EXIT.VALIDATION_FAILED);
+    }
+  } else {
+    const module = targetModules[0];
+    work = ids.map(id => ({ module, id }));
   }
 
   const report: InstallReportLine[] = [];
-  for (const id of resolvedIds) {
+  for (const item of work) {
+    const catalog = catalogs.get(item.module.id);
     const line = await installOneRule(
       projectDir,
       config,
       registry,
-      engineRules,
+      item.module,
+      catalog?.rules ?? [],
       engineId,
-      origin,
-      id,
+      item.id,
       {
         force: options.force === true,
         // No-args bootstrap is idempotent by design (hash-match skip, drift
         // recovery). Explicit variadic calls without `--force` absorb
         // "already installed" into the report instead of emitting EXIT 4.
         allowAlreadyInstalled: noArgsBootstrap,
-        preferredCategory: noArgsBootstrap ? 'core' : undefined,
+        preferredTier: noArgsBootstrap ? item.preferredTier : undefined,
       },
     );
     report.push(line);
@@ -645,14 +851,22 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   // Regenerate RULES_INDEX.md on every invocation — matches the old
   // `core-install` contract (Phase 3 of sync) so /unikit Step 9.2 always sees
   // a fresh index after the bootstrap, even when every always-tagged rule was
-  // already on disk.
+  // already on disk. Walks EVERY registered module (not just the targets):
+  // the generator skips/removes empty indexes on its own, so untouched
+  // modules stay consistent at no cost.
   const requiredBy = await loadRequiredByMap();
-  const codeModule = MODULE_REGISTRY[CODE_MODULE_ID];
-  const installedByTier: InstalledByTier = {};
-  for (const tier of codeModule.tiers) {
-    installedByTier[tier] = getModuleTier(config, CODE_MODULE_ID, tier).map(e => e.name);
+  for (const module of listModules()) {
+    const installedByTier: InstalledByTier = {};
+    const originByRule: Record<string, RuleOrigin> = {};
+    for (const tier of module.tiers) {
+      const entries = getModuleTier(config, module.id, tier);
+      installedByTier[tier] = entries.map(e => e.name);
+      for (const e of entries) {
+        if (e.origin) originByRule[e.name] = e.origin;
+      }
+    }
+    await generateRulesIndex(projectDir, module, installedByTier, requiredBy, originByRule);
   }
-  await generateRulesIndex(projectDir, codeModule, installedByTier, requiredBy);
 
   printInstallReport(report);
   console.log(chalk.dim('✓ RULES_INDEX.md regenerated'));
@@ -706,6 +920,9 @@ export function renderSyncRulesEvents(events: SyncRulesEvent[]): void {
         break;
       case 'phase2:overwrite-local-mod':
         console.log(chalk.yellow(`  ${ev.name} has local modifications — overwriting from registry (--replace)`));
+        break;
+      case 'phase2:override-retained':
+        console.log(chalk.dim(`  ${ev.name}: keeping studio override (custom) — not overwriting with official (use --replace to force)`));
         break;
       case 'phase2:downgrade':
         console.log(chalk.yellow(`  ${ev.name} downgraded: v${ev.fromVersion} → v${ev.toVersion}`));
@@ -775,14 +992,21 @@ export async function rulesSyncCommand(options: RulesSyncOptions = {}): Promise<
 // status — installed rules with source/origin/version/hash
 // =====================================================================
 
-export async function rulesStatusCommand(options: { json?: boolean; checkUpdates?: boolean }): Promise<void> {
+export async function rulesStatusCommand(options: { json?: boolean; checkUpdates?: boolean; module?: string }): Promise<void> {
   const projectDir = process.cwd();
   const config = await loadConfigOrExit(projectDir);
 
-  const allRules = [
-    ...getModuleTier(config, CODE_MODULE_ID, 'core').map(e => ({ ...e, category: 'core' as const })),
-    ...getModuleTier(config, CODE_MODULE_ID, 'stack').map(e => ({ ...e, category: 'stack' as const })),
-  ];
+  // Scope: one module with `--module`, every registered module otherwise.
+  // Registry order keeps `code` first, so the JSON rules array stays
+  // back-compatible (code core, code stack, then other modules).
+  const scope: Module[] = options.module !== undefined
+    ? [resolveModuleOptionOrExit(options.module)]
+    : listModules();
+
+  const allRules = scope.flatMap(module =>
+    module.tiers.flatMap(tier =>
+      getModuleTier(config, module.id, tier).map(e => ({ ...e, module: module.id, category: tier })),
+    ));
 
   // Resolve null/empty `rulesRegistry` to the official URL — the runtime
   // does this anyway in `createRegistry()`, and exposing the resolved value
@@ -805,6 +1029,7 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
       outOfDate,
       rules: allRules.map(r => ({
         name: r.name,
+        module: r.module,
         category: r.category,
         source: r.source,
         origin: r.origin ?? null,
@@ -820,7 +1045,7 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
 
   if (outOfDate) {
     console.log(chalk.yellow(
-      '⚠ Project is out of date — memory layout not migrated to the modular `code/` module.',
+      '⚠ Project is out of date — `.unikit/` layout (memory and/or workspace) not migrated to the modular `code/` module.',
     ));
     console.log(chalk.yellow('  Run `unikit-ai update` before `rules sync` / `rules install`.'));
     console.log('');
@@ -832,9 +1057,6 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
     console.log(chalk.dim(`Registry: ${effectiveRegistry} ${chalk.gray('(default — official)')}`));
   }
   console.log('');
-
-  const coreRules = getModuleTier(config, CODE_MODULE_ID, 'core');
-  const stackRules = getModuleTier(config, CODE_MODULE_ID, 'stack');
 
   // Compute column widths
   const nameWidth = Math.max(4, ...allRules.map(r => r.name.length));
@@ -858,10 +1080,26 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
     console.log('');
   }
 
-  printStatusTable('Core:', allRules.filter(r => r.category === 'core'));
-  printStatusTable('Stack:', allRules.filter(r => r.category === 'stack'));
+  // Per-(module, tier) tables. The code module keeps the bare `Core:`/`Stack:`
+  // titles (back-compat output shape); other modules qualify the tier with
+  // their id (`gamedesign core:`) so two same-named tiers stay distinguishable.
+  const tierCounts: string[] = [];
+  for (const module of scope) {
+    for (const tier of module.tiers) {
+      const rules = allRules.filter(r => r.module === module.id && r.category === tier);
+      const isCode = module.id === CODE_MODULE_ID;
+      printStatusTable(isCode ? `${tierLabel(tier)}:` : `${module.id} ${tier}:`, rules);
+      // The code module always shows its counts (legacy shape, zeros included);
+      // in the all-modules scope other modules appear only when they hold
+      // rules, while an explicit single-module `--module` scope always shows
+      // its tiers (a bare `Total: 0 rules ()` would be malformed otherwise).
+      if (isCode || rules.length > 0 || scope.length === 1) {
+        tierCounts.push(`${rules.length} ${isCode ? tier : `${module.id}/${tier}`}`);
+      }
+    }
+  }
 
-  console.log(chalk.dim(`\nTotal: ${allRules.length} rules (${coreRules.length} core, ${stackRules.length} stack)`));
+  console.log(chalk.dim(`\nTotal: ${allRules.length} rules (${tierCounts.join(', ')})`));
 }
 
 // (The old `rulesCoreInstallCommand` has been merged into the variadic

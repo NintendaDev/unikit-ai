@@ -83,7 +83,7 @@ For per-skill details, read the corresponding `skills/unikit-<name>/SKILL.md`.
        rules bootstrap                        |
        (`unikit-ai rules install`)            v
                                        /unikit-fix on bugs ->
-                                       .unikit/patches/ -> /unikit-evolve
+                                       .unikit/code/patches/ -> /unikit-evolve
 
        Quality lane (read-only context):
        /unikit-commit  /unikit-review  /unikit-verify  /unikit-docs

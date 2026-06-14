@@ -45,6 +45,15 @@ export class HybridRegistry extends ChainedRegistry {
     return this.bundled ? [this.primary, this.official, this.bundled] : [this.primary, this.official];
   }
 
+  // Reference-identity source→origin map. Shared by `getResolvedOrigin` (module-
+  // wide) and the base's per-rule origin accessor (`getResolvedOriginForRule`),
+  // so the two never disagree on which chain level a source represents.
+  protected originOf(source: RulesRegistry): RuleOrigin {
+    if (source === this.bundled) return 'bundled';
+    if (source === this.primary) return 'primary';
+    return 'official';
+  }
+
   // Default `module = CODE_MODULE_ID` (the abstract signature leaves it optional)
   // so no-arg callers get the code module's origin. Origin is per-module: the
   // winning source for the requested module decides the tier.
@@ -54,9 +63,6 @@ export class HybridRegistry extends ChainedRegistry {
     // stays the single source of truth for that module's origin.
     const source = this.resolvedByModule.get(module)?.source
       ?? (module === CODE_MODULE_ID ? this.resolvedSource : null);
-    if (!source) return null;
-    if (source === this.bundled) return 'bundled';
-    if (source === this.primary) return 'primary';
-    return 'official';
+    return source ? this.originOf(source) : null;
   }
 }

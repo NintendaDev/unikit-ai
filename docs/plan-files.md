@@ -10,10 +10,10 @@ Plans are stored in two locations depending on mode:
 
 | Source | Plan Location | Contents |
 |--------|--------------|----------|
-| `/unikit-plan fast` | `.unikit/PLAN.md` | Single flat file: overview, settings, checklist, commit plan, and `## Technical Context` inline |
-| `/unikit-plan full` | `.unikit/plans/{YYYY-MM-DD}_{feature-name}/` | `TASKS.md` + `PLAN-BRIEF.md` |
+| `/unikit-plan fast` | `.unikit/code/PLAN.md` | Single flat file: overview, settings, checklist, commit plan, and `## Technical Context` inline |
+| `/unikit-plan full` | `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/` | `TASKS.md` + `PLAN-BRIEF.md` |
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
-| `/unikit-fix` (plan mode) | `.unikit/FIX_PLAN.md` | Single file with analysis + fix steps |
+| `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
 
 ### TASKS.md - Task Checklist
 
@@ -75,12 +75,12 @@ In fast mode, this content is included inline as `## Technical Context` inside `
 ## Plan Discovery
 
 `/unikit-implement` finds plans in this order:
-1. **Fast plan** → `.unikit/PLAN.md` (if exists, used directly)
-2. **Git branch match** → `.unikit/plans/` directory matching current `feature/*` branch name
+1. **Fast plan** → `.unikit/code/PLAN.md` (if exists, used directly)
+2. **Git branch match** → `.unikit/code/plans/` directory matching current `feature/*` branch name
 3. **Latest by date** → most recent `{YYYY-MM-DD}_{name}/` directory (lexicographic sort)
-4. **Fix plan fallback** → `.unikit/FIX_PLAN.md` → redirects to `/unikit-fix`
+4. **Fix plan fallback** → `.unikit/code/FIX_PLAN.md` → redirects to `/unikit-fix`
 
-If both `.unikit/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
+If both `.unikit/code/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
 
 ## Artifact Ownership
 
@@ -88,15 +88,15 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 
 | Artifact | Primary owner | Notes |
 |----------|--------------|-------|
-| `.unikit/PLAN.md` | `/unikit-plan` | Fast-mode plan (temporary, single file) |
+| `.unikit/code/PLAN.md` | `/unikit-plan` | Fast-mode plan (temporary, single file) |
 | `.unikit/DESCRIPTION.md` | `/unikit` | Project specification |
 | `.unikit/ARCHITECTURE.md` | `/unikit-architecture` | Architecture guidelines |
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
 | `.unikit/RULES.md` | `/unikit-rules` | Convention source of truth |
-| `.unikit/plans/*/TASKS.md` | `/unikit-plan` | `/unikit-improve` refines existing |
-| `.unikit/plans/*/PLAN-BRIEF.md` | `/unikit-plan` | Always created; research used as input, not replacement |
-| `.unikit/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
-| `.unikit/patches/*.md` | `/unikit-fix` | Self-improvement patches |
+| `.unikit/code/plans/*/TASKS.md` | `/unikit-plan` | `/unikit-improve` refines existing |
+| `.unikit/code/plans/*/PLAN-BRIEF.md` | `/unikit-plan` | Always created; research used as input, not replacement |
+| `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
+| `.unikit/code/patches/*.md` | `/unikit-fix` | Self-improvement patches |
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |
 | `.unikit/evolutions/*` | `/unikit-evolve` | Evolution logs + patch cursor |
 
@@ -112,12 +112,12 @@ UniKit AI has a built-in learning loop. Every bug fix creates a **patch** - a st
 
 **How it works:**
 
-1. `/unikit-fix` fixes a bug and creates a patch file in `.unikit/patches/YYYY-MM-DD-HH.mm.md`
+1. `/unikit-fix` fixes a bug and creates a patch file in `.unikit/code/patches/YYYY-MM-DD-HH.mm.md`
 2. Each patch documents: **Problem**, **Root Cause**, **Solution**, **Prevention**, and **Tags**
 3. `/unikit-evolve` reads patches incrementally using `.unikit/evolutions/patch-cursor.json`
 4. Evolve classifies patches and writes rules to `RULES.md` or `skill-context/`
 
-**Example patch** (`.unikit/patches/2026-03-15-14.30.md`):
+**Example patch** (`.unikit/code/patches/2026-03-15-14.30.md`):
 
 ```markdown
 # NullReferenceException in CustomerItemView.OnInit
@@ -170,7 +170,7 @@ Plan files are the shared state between exploration, planning, implementation, a
   └────────┬─────────┘
            │
            ▼
-    .unikit/researches/
+    .unikit/code/researches/
            │
            ▼
   ┌──────────────────┐
@@ -178,10 +178,10 @@ Plan files are the shared state between exploration, planning, implementation, a
   └────────┬─────────┘
            │                          ┌──────────────────┐
            ▼                          │   /unikit-fix    │
-  .unikit/plans/                      └────────┬─────────┘
-  .unikit/PLAN.md                              │
+  .unikit/code/plans/                      └────────┬─────────┘
+  .unikit/code/PLAN.md                              │
            │                                   ▼
-           ▼                            .unikit/patches/
+           ▼                            .unikit/code/patches/
   ┌──────────────────┐                         │
   │ /unikit-implement │                        ▼
   └────────┬─────────┘                ┌──────────────────┐
@@ -192,7 +192,7 @@ Plan files are the shared state between exploration, planning, implementation, a
 
 ### /unikit-explore → /unikit-plan
 
-Explore saves research artifacts to `.unikit/researches/<date>_<name>/` (three files: `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, `RESEARCH_SOURCE.md`). When planning begins, `/unikit-plan` reads `RESEARCHES_INDEX.md` and offers to link relevant researches. If linked, the plan reads `RESEARCH_BRIEF.md` as a starting point for its own `PLAN-BRIEF.md` - verifying and extending the research against the current codebase state. The plan references linked research via a `## Based on` section.
+Explore saves research artifacts to `.unikit/code/researches/<date>_<name>/` (three files: `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, `RESEARCH_SOURCE.md`). When planning begins, `/unikit-plan` reads `researches/INDEX.md` and offers to link relevant researches. If linked, the plan reads `RESEARCH_BRIEF.md` as a starting point for its own `PLAN-BRIEF.md` - verifying and extending the research against the current codebase state. The plan references linked research via a `## Based on` section.
 
 ### /unikit-plan → /unikit-implement
 
@@ -204,7 +204,7 @@ If implement finds `FIX_PLAN.md` but no feature plan, it redirects to `/unikit-f
 
 ### /unikit-fix → /unikit-evolve
 
-Every fix creates a mandatory patch in `.unikit/patches/`. Evolve reads patches incrementally (via `patch-cursor.json`) and distills prevention rules: code/architecture rules go to `RULES.md`, skill workflow issues go to `.unikit/skill-context/`. These improved rules make future runs of `/unikit-fix`, `/unikit-implement`, and `/unikit-plan` smarter - closing the learning loop.
+Every fix creates a mandatory patch in `.unikit/code/patches/`. Evolve reads patches incrementally (via `patch-cursor.json`) and distills prevention rules: code/architecture rules go to `RULES.md`, skill workflow issues go to `.unikit/skill-context/`. These improved rules make future runs of `/unikit-fix`, `/unikit-implement`, and `/unikit-plan` smarter - closing the learning loop.
 
 ### /unikit-explore → /unikit-fix
 

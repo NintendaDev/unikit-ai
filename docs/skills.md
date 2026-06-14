@@ -41,8 +41,8 @@ These skills form the core development loop. See [Development Workflow](workflow
 ```
 - Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code
 - Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the knowledge base
-- Saves results to `.unikit/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
-- Maintains `RESEARCHES_INDEX.md`; use `init` to rebuild the index
+- Saves results to `.unikit/code/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
+- Maintains `researches/INDEX.md`; use `init` to rebuild the index
 - When direction is clear, transition to `/unikit-plan`
 
 ### `/unikit-plan [fast|full|add|--list] [--base <branch>] <description>` - plan the work
@@ -57,7 +57,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 ```
 
 Three modes:
-- **Fast** - no git branch, saves plan to `.unikit/PLAN.md` (single flat file)
+- **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - creates git branch, asks about testing/logging, saves plan
 - **Add** - extends an existing plan with new tasks
 
@@ -69,7 +69,7 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 /unikit-improve                                          # Improve latest plan
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
-/unikit-improve @.unikit/plans/2026-03-10_core-loop      # Improve specific plan
+/unikit-improve @.unikit/code/plans/2026-03-10_core-loop      # Improve specific plan
 ```
 - Second-pass analysis: finds missing tasks, fixes dependencies, removes redundant work
 - Performs deeper codebase analysis than initial `/unikit-plan`
@@ -86,7 +86,7 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
 /unikit-implement core-loop          # Find plan by name
-/unikit-implement @.unikit/plans/2026-03-10_core-loop  # Explicit plan path
+/unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
 ```
 - Reads skill-context rules first, then plan TASKS.md
 - Executes tasks one by one with commit checkpoints
@@ -99,10 +99,10 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 ```
 /unikit-fix NullReferenceException in CustomerItemView.OnInit
 ```
-- Two modes: **Fix now** (immediate) or **Plan first** (creates `.unikit/FIX_PLAN.md`)
+- Two modes: **Fix now** (immediate) or **Plan first** (creates `.unikit/code/FIX_PLAN.md`)
 - Investigates codebase to find root cause
 - Applies fix and suggests test coverage
-- Creates a **self-improvement patch** in `.unikit/patches/`
+- Creates a **self-improvement patch** in `.unikit/code/patches/`
 - Every fix makes the AI smarter through `/unikit-evolve`
 
 ### `/unikit-verify [--strict] [feature-name]` - check completeness
@@ -138,7 +138,7 @@ Creates conventional commits with Unity-specific checks:
 ```
 /unikit-evolve
 ```
-- Reads patches from `.unikit/patches/` incrementally using an evolve cursor
+- Reads patches from `.unikit/code/patches/` incrementally using an evolve cursor
 - Extracts prevention points from each patch (multiple per patch)
 - Classifies: code/architecture rules → `RULES.md`; skill workflow issues → `skill-context/`
 - Cross-checks against existing rules and knowledge base to avoid duplicates

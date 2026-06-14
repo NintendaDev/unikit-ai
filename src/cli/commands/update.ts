@@ -9,7 +9,7 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installDevPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installDevPrinciples, installGdPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -90,10 +90,12 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
   }
 
   try {
-    // Migrate on-disk memory layout BEFORE anything reads it. This relocates a
-    // legacy flat `.unikit/memory/{core,stack}` layout under `code/` so that the
-    // skill reinstall and (later) `syncAllModules` Phase 1 reconciliation both
-    // operate on the modular layout. Idempotent: a no-op once already wrapped.
+    // Migrate the on-disk `.unikit/` layout BEFORE anything reads it. The chain
+    // relocates the legacy flat `.unikit/memory/{core,stack}` under `code/` AND
+    // the flat project workspace (plans/patches/researches + PLAN/FIX_PLAN docs)
+    // under `.unikit/code/`, so the skill reinstall and (later) `syncAllModules`
+    // Phase 1 reconciliation both operate on the modular layout. Idempotent: a
+    // no-op once already migrated. Runs before the `config.version` stamp below.
     await runProjectMemoryMigrations(projectDir);
 
     // Refresh extensions from sources (check for updates)
@@ -206,6 +208,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh module registry snapshot (flat rewrite, forward-compat SSOT)
     await installModulesYml(projectDir);
+
+    // Refresh game-design principles system asset (engine-agnostic flat rewrite)
+    await installGdPrinciples(projectDir);
 
     // Rebuild managed state per agent (exclude replaced skills)
     const availableSkills = await getAvailableSkills();
