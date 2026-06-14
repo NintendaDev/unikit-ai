@@ -10,7 +10,7 @@ Read this file before using `unikit-ai` commands via Bash tool.
 | 0 | Success |
 | 1 | Not found (rule id, config file, variadic install with every id failing) |
 | 2 | Network error / registry unreachable |
-| 3 | Invalid arguments (bad id format, relative path, url format) |
+| 3 | Invalid arguments (bad id format, relative path, url format, unknown --module value, ambiguous `rules show` id that resolves in multiple modules) |
 | 4 | Operation not permitted (file-exists guards outside variadic install) |
 | 5 | Registry validation failed (bad manifest, schema mismatch, engine missing, no always-tagged (core) rules) |
 | 6 | Registry already initialized at target path (rules registry init) |
@@ -21,13 +21,13 @@ Read this file before using `unikit-ai` commands via Bash tool.
 
 ### `unikit-ai rules list`
 
-List available rules from registry catalog. Scoped to one knowledge module (default: code); pass --module gamedesign for the game-design catalog. A module absent from the registry yields an empty catalog (exit 0), unknown --module values exit 3.
+List available rules from the registry catalog. With NO --module it lists EVERY registered module as separate blocks (code first, then gamedesign) and emits a flat-all JSON; pass --module <id> to scope to one module (back-compat flat-single JSON). A module absent from the registry chain is skipped silently; an engine-partitioned module (code) whose engine is missing from the registry prints a warning to stderr and contributes an empty section (exit 0, NOT exit 1). exit 2 only when EVERY catalog in scope is unreachable; unknown --module values exit 3; exit 1 is reserved for a missing .unikit.json.
 Flags: `--json`, `--engine <id>`, `--module <module>`
-Output: JSON: { engine, module, rules: [{ id, category, description, version }] } — category is the module tier (core/stack for code, core/library for gamedesign)
+Output: JSON flat-all (no --module): { engine, rules: [{ id, module, category, description, version }] }. JSON flat-single (with --module): { engine, module, rules: [{ id, category, description, version }] }. category is the module tier (core/stack for code, core/library for gamedesign). Machine consumers should always send --module to get the stable flat-single form.
 
 ### `unikit-ai rules show <id>`
 
-Preview a rule from registry (full content with frontmatter). Scoped to one knowledge module (default: code); pass --module gamedesign to preview game-design rules.
+Preview a rule from the registry (full content with frontmatter). Module-agnostic by default: searches the id across EVERY registered module; pass --module <id> to restrict the search to one module. An id that resolves in more than one module is ambiguous and exits 3 (pass --module to disambiguate); an id found in none while at least one catalog is reachable exits 1; every catalog unreachable exits 2.
 Flags: `--references`, `--module <module>`
 
 ### `unikit-ai rules install [ids...]`

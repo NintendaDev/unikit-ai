@@ -81,17 +81,17 @@ const rules = program
 
 rules
   .command('list')
-  .description('List available rules from registry')
+  .description('List available rules from registry (all modules as blocks by default; scope with --module)')
   .option('--json', 'Output as JSON')
   .option('--engine <id>', 'Override engine')
-  .option('--module <module>', 'Scope to a knowledge module (default: "code")')
+  .option('--module <module>', 'Scope to a single knowledge module (default: all modules)')
   .action(rulesListCommand);
 
 rules
   .command('show <id>')
-  .description('Preview a rule from registry')
+  .description('Preview a rule from registry (searches all modules by default)')
   .option('--references', 'Include reference files')
-  .option('--module <module>', 'Scope to a knowledge module (default: "code")')
+  .option('--module <module>', 'Scope the search to a single knowledge module (default: module-agnostic — search all)')
   .action(rulesShowCommand);
 
 rules

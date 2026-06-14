@@ -183,26 +183,41 @@ unikit-ai rules sync --replace --prune      # Mirror
 
 ## CLI Commands
 
-### `unikit-ai rules list [--json] [--engine <id>]`
+### `unikit-ai rules list [--json] [--engine <id>] [--module <module>]`
 
-List available rules from the registry catalog.
+List available rules from the registry catalog. With **no `--module`** the command
+defaults to **all registered modules**, rendered as separate blocks (`code` first,
+then `gamedesign`); `--module <id>` scopes the output to a single module.
 
 ```bash
-unikit-ai rules list                 # Human-readable
-unikit-ai rules list --json          # JSON for AI skills
-unikit-ai rules list --engine godot  # Override engine filter
+unikit-ai rules list                      # All modules as blocks (human)
+unikit-ai rules list --json               # flat-all JSON (each row carries `module`)
+unikit-ai rules list --module code --json # flat-single JSON (back-compat, no per-row `module`)
+unikit-ai rules list --engine godot       # Override engine filter
 ```
 
-### `unikit-ai rules show <id> [--references]`
+- **flat-all** (no `--module`): `{ engine, rules: [{ id, module, category, description, version }] }`
+- **flat-single** (with `--module`): `{ engine, module, rules: [{ id, category, description, version }] }`
 
-Preview a rule from the registry without installing it.
+Empty-catalog handling is per module: a module absent from the registry chain is
+skipped silently; an engine-partitioned module (`code`) whose engine is missing
+from the registry prints a warning and contributes an empty section — both stay
+**exit 0**. `exit 1` is reserved for a missing `.unikit.json`; `exit 2` fires only
+when *every* catalog in scope is unreachable; an unknown `--module` is `exit 3`.
+
+### `unikit-ai rules show <id> [--references] [--module <module>]`
+
+Preview a rule from the registry without installing it. The lookup is
+**module-agnostic** by default — the id is searched across every registered module;
+`--module <id>` restricts the search to one module.
 
 ```bash
-unikit-ai rules show dotween
+unikit-ai rules show dotween                       # searches all modules
+unikit-ai rules show balance --module gamedesign   # scope to one module
 unikit-ai rules show aspid-mvvm --references
 ```
 
-Rule IDs use canonical lowercase-hyphen form. The CLI matches IDs case-insensitively, so `CODE-STYLE` resolves to the same file as `code-style`.
+Rule IDs use canonical lowercase-hyphen form. The CLI matches IDs case-insensitively, so `CODE-STYLE` resolves to the same file as `code-style`. An id that resolves in **more than one** module is ambiguous and exits `3` (pass `--module` to disambiguate); an id found in none exits `1`.
 
 ### `unikit-ai rules install [ids...] [--force]`
 
@@ -398,8 +413,8 @@ scripts/
 │   │   ├── v1/                          # unitask v1.0.0 baseline
 │   │   └── v2/                          # unitask v2.0.0 upgraded (bumped hash + sentinel)
 │   └── corrupted-manifest/              # Invalid JSON → exit 5 on `rules registry set`
-├── test-rules-list.sh                   # `rules list` - exit codes, --json shape, --engine override
-├── test-rules-show.sh                   # `rules show` - id normalization, --references expansion
+├── test-rules-list.sh                   # `rules list` - all-modules blocks, flat-all/flat-single JSON, exit codes, --engine override
+├── test-rules-show.sh                   # `rules show` - module-agnostic lookup, id normalization, --references expansion
 ├── test-rules-status.sh                 # `rules status` - populated state, registryKind, --check-updates guard
 ├── test-rules-install.sh                # `rules install` - no-args bootstrap, variadic, --force, drift recovery
 ├── test-rules-sync.sh                   # `rules sync` - 4 modes × 4 states + 4 regression guards

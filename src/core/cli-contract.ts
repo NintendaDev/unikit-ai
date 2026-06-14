@@ -20,7 +20,7 @@ export const RULES_EXIT_CODES: ExitCodeEntry[] = [
   { code: 0, meaning: 'Success' },
   { code: 1, meaning: 'Not found (rule id, config file, variadic install with every id failing)' },
   { code: 2, meaning: 'Network error / registry unreachable' },
-  { code: 3, meaning: 'Invalid arguments (bad id format, relative path, url format)' },
+  { code: 3, meaning: 'Invalid arguments (bad id format, relative path, url format, unknown --module value, ambiguous `rules show` id that resolves in multiple modules)' },
   { code: 4, meaning: 'Operation not permitted (file-exists guards outside variadic install)' },
   { code: 5, meaning: 'Registry validation failed (bad manifest, schema mismatch, engine missing, no always-tagged (core) rules)' },
   { code: 6, meaning: 'Registry already initialized at target path (rules registry init)' },
@@ -33,13 +33,13 @@ export const RULES_EXIT_CODES: ExitCodeEntry[] = [
 export const RULES_COMMANDS: CommandEntry[] = [
   {
     command: 'unikit-ai rules list',
-    description: 'List available rules from registry catalog. Scoped to one knowledge module (default: code); pass --module gamedesign for the game-design catalog. A module absent from the registry yields an empty catalog (exit 0), unknown --module values exit 3.',
+    description: 'List available rules from the registry catalog. With NO --module it lists EVERY registered module as separate blocks (code first, then gamedesign) and emits a flat-all JSON; pass --module <id> to scope to one module (back-compat flat-single JSON). A module absent from the registry chain is skipped silently; an engine-partitioned module (code) whose engine is missing from the registry prints a warning to stderr and contributes an empty section (exit 0, NOT exit 1). exit 2 only when EVERY catalog in scope is unreachable; unknown --module values exit 3; exit 1 is reserved for a missing .unikit.json.',
     flags: ['--json', '--engine <id>', '--module <module>'],
-    outputFormat: 'JSON: { engine, module, rules: [{ id, category, description, version }] } — category is the module tier (core/stack for code, core/library for gamedesign)',
+    outputFormat: 'JSON flat-all (no --module): { engine, rules: [{ id, module, category, description, version }] }. JSON flat-single (with --module): { engine, module, rules: [{ id, category, description, version }] }. category is the module tier (core/stack for code, core/library for gamedesign). Machine consumers should always send --module to get the stable flat-single form.',
   },
   {
     command: 'unikit-ai rules show <id>',
-    description: 'Preview a rule from registry (full content with frontmatter). Scoped to one knowledge module (default: code); pass --module gamedesign to preview game-design rules.',
+    description: 'Preview a rule from the registry (full content with frontmatter). Module-agnostic by default: searches the id across EVERY registered module; pass --module <id> to restrict the search to one module. An id that resolves in more than one module is ambiguous and exits 3 (pass --module to disambiguate); an id found in none while at least one catalog is reachable exits 1; every catalog unreachable exits 2.',
     flags: ['--references', '--module <module>'],
   },
   {
