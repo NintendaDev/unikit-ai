@@ -4,9 +4,10 @@ description: >-
   Ideate a new game concept with the user — from a blank page or a one-line hint
   to a finished CONCEPT card. A structured divergence/convergence dialogue:
   creative discovery, How-Might-We framing, five concepts by five methods,
-  delegated market validation (a market scan via /unikit-gd-explore), two-pass
-  evidence-based Pugh scoring, loop stack, pillars, player + buyer motivation, and a
-  pre-mortem with a find-the-fun test. Auto-resumes an in-progress concept from the index — no
+  platform-aware market validation across Steam / mobile / web (a delegated scan via
+  /unikit-gd-explore, with cross-market clone-checking), two-pass evidence-based Pugh
+  scoring (hook, scope, content-velocity), loop stack, pillars, player + buyer
+  motivation, and a pre-mortem with a find-the-fun test. Auto-resumes an in-progress concept from the index — no
   flags; writes incrementally so an interrupted session is never lost. Use when
   the user says "brainstorm a game", "I have no idea yet", "help me come up with a
   concept", "explore game ideas", or gives a rough hint to develop into a concept.
@@ -70,9 +71,18 @@ Before responding, silently load — do not narrate:
    skill start; never rely on a prior conversation's cache.
 3. **`{{skills_dir}}/{{self_name}}/references/methods.md`** — the method
    cheat-sheets (divergence/convergence techniques, HMW, pre-mortem, find-the-fun).
-4. **`.unikit/DESCRIPTION.md`** (optional) — existing project constraints, if this
+   **Do not load up front — read on demand, per phase:** when you enter a phase that
+   points to it (Phases 1, 3, 4, 5, 8, 8.5), read that section then. The phase
+   summaries below carry the workflow; `methods.md` carries the deep "how", so a
+   resume or a phase that needs no method theory never pays for it.
+4. **`{{skills_dir}}/{{self_name}}/references/tables.md`** — the canonical shapes of the
+   output tables Phases 2–3 emit (the HMW table, the nine-field concept card, the
+   five-concept comparison). **Read on demand** when you enter Phase 2 or Phase 3; it is
+   the single source of truth for those tables — SKILL.md and `methods.md` only point to
+   it, never re-spell a table.
+5. **`.unikit/DESCRIPTION.md`** (optional) — existing project constraints, if this
    is ideation inside an established project.
-5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+6. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
 
 **Market validation is delegated, not ad-hoc.** This skill does **not** research the
 market inline or early — early data anchors timid ideas (anti-anchoring,
@@ -83,6 +93,10 @@ this session** (see Phase 3.5 and `gd-principles` → "Cross-Skill Delegation").
 write and never substitute for the Phase 3.5 scan.
 
 ## Phase 0 — Auto-Resume (no flags)
+
+*Brainstorming runs across many turns, so this step looks in the concepts index for
+an unfinished concept that matches the hint and offers to continue it — a session
+interrupted by a `/clear` or a closed terminal is never lost.*
 
 Read `.unikit/gamedesign/concepts/INDEX.md` (if it exists). Each row carries a
 slug, title, keywords, **status** (`in-progress | complete | promoted | abandoned`),
@@ -110,47 +124,108 @@ on a fresh start, begin at Phase 1.
 
 ## Phases 1–9
 
-Run the phases in order (full method detail in `references/methods.md`). Diverge
-and converge as **separate** moves — never score an idea as you generate it.
+Run the phases in order. Each phase below is the **workflow**; its deep method detail
+lives in `references/methods.md` — read that section when you reach the phase, not up
+front. Diverge and converge as **separate** moves — never score an idea as you
+generate it.
+
+### How to respond in each phase
+
+- **Go deep, not terse.** Each phase is a consultation, not a form to fill in. When
+  you present options, loops, pillars, or risks, explain the *reasoning* in a few
+  sentences — the framework it draws on, the comparable game that proves it, the
+  trade-off it carries — not a bare one-line bullet. The user is making a creative
+  decision and needs the *why*, not just the *what*. A phase answered in a single line
+  is almost always too thin; spend the words.
+- **Open every phase with its purpose.** The italic line under each heading below says
+  what the phase is and why it exists — orient the user the same way in your own words
+  before you dive into the questions, so no phase arrives unexplained.
+- **Readable plain markdown only.** Number options and concepts with plain `1.` / `2.`
+  and label variants `A)` / `B)`. Never use circled or enclosed glyphs (①②③, 🅰🅱, Ⓐ)
+  or other decorative unicode — they render as boxes or unreadable smudges in most
+  terminals. Bold, short tables, and plain headings carry all the structure you need.
 
 ### Phase 1 — Creative Discovery (+ commercial frame)
+
+*Find the seed before generating anything: who you are designing for, the feeling you
+are chasing, and what "success" means commercially. This is what makes every idea that
+follows aimed and yours, instead of generic.*
+
 Ask about the **person**, not the game: emotional anchors, three games they love
 and what those left them wanting, plus constraints (solo/team, deadline, engine,
 experience). Synthesize a **Creative Brief** (3–5 sentences) and confirm it.
 
 Then capture a **commercial frame** (one screen, kept separate from the person
-questions): target outcome tier (hobby / recoup / commercial), platform hypothesis
-to test (Steam-first / mobile / cross), and kill-readiness (drop on bad data, or
-passion-project regardless?). The frame **scopes Phase 3.5; it does not censor
-divergence.** A user with no commercial intent leaves it **empty** — that is valid
-and **skips Phase 3.5** (`market-signal` then stays an ordinary Pugh judgment, not a
-delegated scan).
+questions): target outcome tier (hobby / recoup / commercial), the **target
+platform**, and kill-readiness (drop on bad data, or passion-project regardless?).
+**Ask the platform explicitly — never default to Steam:**
+
+1. **PC / Steam** — wishlist-driven, long tail, premium or early-access pricing.
+2. **Mobile** — store-feed and UA-driven, F2P norms, short sessions, clone-dense.
+3. **Web / instant** — portal- and embed-driven (itch, CrazyGames, Poki): instant
+   play, near-zero install friction, ad/portal economics.
+4. **Cross / console** — still name a *lead* platform; one store shapes every later
+   signal.
+
+The platform is a real market decision, not a deployment detail — it **steers the
+Phase 3.5 scan** (each platform has its own demand signals, sources, and
+clone-density; the cross-market rule there turns a mobile/web target into a Steam
+demand-check plus a target-store clone-check — full per-platform table and the
+cross-market rule in `references/methods.md` § Phase 1). The frame **scopes Phase 3.5;
+it does
+not censor divergence.** A user with no commercial intent leaves it **empty** — that
+is valid and **skips Phase 3.5** (`market-signal` then stays an ordinary Pugh
+judgment, not a delegated scan).
 
 ### Phase 2 — How-Might-We Framing
+
+*Recast the brief as open "How might we…" questions that invite many answers instead
+of smuggling in one solution. Good framing is what keeps the next step — divergence —
+genuinely wide.*
+
 Reframe the brief as **3–5 "How might we…"** questions (positively framed, no
-baked-in solution). The user picks one to diverge on.
+baked-in solution). **Present them as a table** so the user can weigh the framings side
+by side instead of reading a flat list, and mark the strongest **(Recommended)** with a
+one-line WHY; the user picks one to diverge on. The table's columns and a worked example
+live in `references/tables.md` § Phase 2 (the single source of truth for this table).
 
 ### Phase 3 — Divergence
+
+*Generate breadth on purpose: five concepts from five different idea-generators, so
+the field is genuinely varied and not five repaints of the first thought. Hold all
+judgment for later — quantity now, scoring in Phase 4.*
+
 Generate **five concepts using five different methods** (verb-first, genre mashup
 with the intersection-audience caveat, experience-first/MDA-backward, world-first,
-constraint-first). Capture each as the **nine-field card**:
+constraint-first — each method's prompt and source in `references/methods.md`
+§ Phase 3). Render **each** concept as its own **nine-field card** — a `Field | Value`
+table so the fields stay aligned and scannable instead of buried in prose. Then, after
+the five cards, present one **comparison table** across all of them: the shortlist
+decision is a side-by-side judgment ("which two hooks are strongest?") that five separate
+cards cannot support at a glance. The nine fields, the comparison columns, and worked
+examples of both live in `references/tables.md` § Phase 3 (the single source of truth for
+these tables).
 
-| # | Field |
-|---|-------|
-| 1 | **Elevator pitch** — one sentence a stranger gets in 10 seconds |
-| 2 | **Core fantasy** — "You are X doing Y, feeling Z" |
-| 3 | **Unique hook** — passes the "and also" test (changes play, not just art) |
-| 4 | **Primary aesthetics (MDA)** — top 2–3 of the 8 |
-| 5 | **Core loop (30 s)** — the most-repeated moment-to-moment action |
-| 6 | **Target player** — specific, with session length and the unmet need |
-| 7 | **Comparables** — 2–3 titles, each with what we borrow and our twist |
-| 8 | **Scope signal** — S/M/L + platform + player count |
-| 9 | **Biggest risk / open question** — what most likely makes this not work |
+Once the five are on the table, ask the user how to proceed — and offer three
+distinct moves, not just "pick some":
 
-Offer **"five more"** on request via a stimulus method (random input / SCAMPER /
-Lotus Blossom) over the current favorite.
+1. **Shortlist 2–4** to carry forward into validation / scoring.
+2. **Five more** — *extend* the field with a stimulus method (random input / SCAMPER /
+   Lotus Blossom) built on the current favorite; keeps what is working and pushes for
+   adjacent variety.
+3. **Regenerate from scratch** — *discard this whole batch* and generate five **new**
+   concepts from different methods or a different How-Might-We angle. This is the right
+   call when none of the five land or they all feel like one idea wearing five hats.
+   The discarded batch still goes to `IDEAS.md` (with its revival condition) so nothing
+   is silently lost or re-pitched later.
 
 ### Phase 3.5 — Market validation (delegated to explore) — **gated**
+
+*Pressure-test the shortlist against the real market — does a reachable audience
+exist, and is there unmet room for it — delegated to explore so brainstorm never
+grades a market from memory. It runs after divergence, on purpose: early data anchors
+timid ideas.*
+
 **Gate:** run this phase **only if Phase 1 produced a non-empty commercial frame.**
 Empty frame → **skip**; `market-signal` stays an ordinary Phase 4 judgment, no
 subagent.
@@ -160,11 +235,28 @@ Run **after** divergence, on the user's **shortlist (2–4 concepts)** — never
 the market itself — it **delegates** to `unikit-gd-explore` and consumes the
 evidence (`gd-principles` → "Cross-Skill Delegation").
 
-**Delegate** — spawn explore as a subagent and **wait for the return**:
+**Delegate** — spawn explore as a subagent and **wait for the return**. Expands to:
 
-> `Agent(subagent_type: general-purpose, skills: ["unikit-gd-explore"],`
-> `  prompt: "/unikit-gd-explore <commercial frame + shortlist>. Return the brief`
-> `  into this session as text; do not save any files.")`
+```
+Agent(
+  subagent_type: "general-purpose",
+  prompt: "/unikit-gd-explore <commercial frame incl. target platform + shortlist>. Validate cross-market per the platform rule. Return the brief into this session as text; do not save any files.",
+  description: "Market-validate the shortlist",
+  skills: ["unikit-gd-explore"]
+)
+```
+
+**Fallback (no Agent tool).** If the `Agent` tool is unavailable in this environment,
+do **not** print the delegation as a recommendation — that is a known failure mode
+where the model renders the call instead of running it. Instead, invoke
+`/unikit-gd-explore` **inline** as a real skill call, passing the same commercial
+frame + shortlist and the canonical marker verbatim, and wait for its brief. If skill
+invocation is *also* unavailable, run the scan yourself inline with `WebSearch` /
+`WebFetch` against the technique catalogue in
+`unikit-gd-explore/references/market-scan.md` (comparable mapping, demand
+classification, review mining, and the cross-market rule above), and label every
+finding with the same `market_signal` + `validation_confidence` fields so the rest of
+the flow is unchanged.
 
 The prompt MUST carry the **canonical marker** verbatim, on one line:
 
@@ -173,6 +265,18 @@ The prompt MUST carry the **canonical marker** verbatim, on one line:
 so explore runs its market lens deterministically and persists nothing (the
 contract). The subagent returns, per concept, `market_signal` +
 `validation_confidence` + a short evidence brief **into this session**.
+
+**Carry the platform — the cross-market rule.** A market is platform-specific (a genre
+that thrives on Steam can be a clone-saturated graveyard on mobile, and the reverse
+happens too), so the delegation prompt names the **target platform from Phase 1** and,
+for a non-PC target, asks explore to validate *across* markets: prove the genre on Steam
+(the clearest *demand* signal even when you ship elsewhere), then scan the *target* store
+for clones, then read the gap — Steam-proven + no strong clone on the target store is the
+prize; Steam-proven **but** the target store already clone-dense is a red ocean on the
+platform that actually matters. The mechanics of that rule live in
+`references/methods.md` § Phase 1, and the scan engine that runs it in
+`unikit-gd-explore/references/market-scan.md`. Report the read **per platform** in the
+brief; it feeds the kill gate below.
 
 **Consume — the calling session owns persistence:**
 - Lift `market_signal` and `validation_confidence` into the **CONCEPT card** header
@@ -187,17 +291,39 @@ contract). The subagent returns, per concept, `market_signal` +
 white-space** is a **KILL candidate** — surface it explicitly **before** Phase 4
 scoring; never silently carry it forward. The gate informs; the user decides.
 
+**Cross-pollinate before you cut.** A red-ocean concept is not only a kill candidate —
+it is also raw material. When one shortlisted concept reads **red-ocean** while another
+reads **white-space / contested**, do not just drop the crowded one: proactively offer
+a **genre mash-up** that grafts the under-competed concept's angle onto the stronger
+one (the genre-mashup divergence method, with its intersection-audience caveat — the
+hybrid must please *both* audiences, not merely exist). A saturated genre often hides a
+strong twist the moment it is crossed with a fresher one. The hybrid is a **new candidate
+concept**, so present it as a full **nine-field concept card** — the same `Field | Value`
+table as Phase 3 (`references/tables.md` § Phase 3), not a loose prose pitch — so it is
+directly comparable to the shortlist; route it to Phase 4 / Phase 8.5. Recommend it when
+the evidence supports it, but never impose it — the user decides.
+
 ### Phase 4 — Convergence (two-pass Pugh) → **incremental write**
-Score the surviving concepts with a **two-pass Pugh matrix** (full method in
-`references/methods.md`):
+
+*Now judge. A two-pass Pugh matrix scores the survivors on locked creative criteria
+first, then on the market evidence — keeping the two apart so optimism can never
+out-vote data. Pugh scoring just compares each option against criteria to rank them
+transparently.*
+
+Score the surviving concepts with a **two-pass Pugh matrix** (full method, the hard
+rule, and the `market-signal` vs `market_signal` terminology in `references/methods.md`
+§ Phase 4 + § Content velocity):
 - **Pass 1 — creative** (lock *before* the scan): hook / scope-fit / team-fit /
-  personal-fire.
+  personal-fire / **content-velocity** — can the design *feed itself* cheaply
+  (procedural / systemic / competitive / UGC), or does every play-hour cost
+  author-hours of hand-made content? A low-velocity model is a hidden scope and
+  live-game risk, scored here as a real feasibility axis, not a footnote.
 - **Pass 2 — evidence** (from the Phase 3.5 brief, only if it ran): market-signal +
   validation-confidence.
 
 **Hard rule:** the **market-signal** score may **not exceed what
 validation-confidence allows** — an unproven market read cannot win on optimism.
-Show Pass 1 and Pass 2 side by side; the user weights; arithmetic transparent. If
+Show both passes side by side; the user weights; arithmetic transparent. If
 Phase 3.5 was skipped, `market-signal` is scored as an ordinary Pass-1 judgment. Use
 **How-Now-Wow** if "I like all of them". Do **not** approve a hybrid whose winning
 bet rests on a low-confidence market assumption — route it to Phase 8.5 instead.
@@ -206,13 +332,23 @@ revival condition). **Persist now** — write the chosen card draft and `IDEAS.m
 interruption after this loses nothing.
 
 ### Phase 5 — Loop Stack
+
+*Map the nested gameplay loops — from the 30-second core action up to the meta-game —
+plus the discoverability loops that decide whether anyone starts and comes back. This
+is the spine of moment-to-moment fun and the first read on whether the game retains.*
+
 Define the nested loops (30 s / 5 min / session / meta) plus the **discoverability
 loops** (first-session → retention, the 6-second trailer moment, the "one more run"
-retention hook — full detail in `references/methods.md`). Audit **SDT** (Autonomy /
+retention hook — full detail in `references/methods.md` § Phase 5). Audit **SDT** (Autonomy /
 Competence / Relatedness — flag if only 1 of 3 is served). Confirm the core verb has
 **≤100 ms** feel feedback (Swink).
 
 ### Phase 6 — Pillars & Anti-Pillars → **incremental write**
+
+*Pillars are the 3–5 load-bearing design values every later decision gets tested
+against ("does this serve a pillar?"). Anti-pillars name what the game deliberately
+refuses to be — together they keep scope honest and decisions consistent.*
+
 Derive **3–5 pillars**: active, each serving ≥1 emotion, each with a **design test**
 and mutual tension; reject empty pillars and task-pillars. For each pillar add
 **Evidence** (the data / comparable that justifies it — ideally the Phase 3.5 brief's
@@ -222,6 +358,11 @@ because PIL-n"); the brief's review-mining (love / hate / wish) feeds these. Run
 Lock / Rename / Swap cycle. **Persist now.**
 
 ### Phase 7 — Player Motivation (player + buyer)
+
+*Pin who this is for psychologically (what drives them to play) and commercially (what
+makes them buy or wishlist) — and, just as sharply, who it is NOT for. A concept that
+serves everyone usually moves no one.*
+
 **Quantic Foundry:** the user ranks the **top 3 of 12** motivations; the skill
 checks them against the pillars and loops. Set MDA primary/secondary and a one-line
 Bartle read. Then separate **player from buyer**: the **buying trigger** and the
@@ -229,16 +370,30 @@ Bartle read. Then separate **player from buyer**: the **buying trigger** and the
 explicit **anti-persona** — "who this is NOT for".
 
 ### Phase 8 — Pre-mortem & Scope → **incremental write**
-Run **Klein's pre-mortem verbatim** ("six months from now the project failed —
-that is a fact — why?"): 8–12 reasons across fun/scope/market/tech/team; the user
-marks the real ones; mitigate only those. Then settle the platform, the **MVP cut**,
-and the **find-the-fun test** (Cerny: the smallest prototype that proves or kills
-the core). **Persist now.**
+
+*Klein's pre-mortem: imagine it is six months out and the project already failed —
+treat that as a fact — and list why. The certainty framing surfaces the doubts
+optimism normally hides, so you can cut scope down to the part that proves the fun.*
+
+Run **Klein's pre-mortem verbatim** ("six months from now the project failed — that is
+a fact — why?" — the certainty framing *is* the technique; `references/methods.md`
+§ Phase 8): 8–12 reasons across fun / scope / market / tech / team / **content** (ran
+out of content, or it got too slow/expensive to make — the content-velocity risk as a
+failure mode); the user marks the real ones; mitigate only those. Then settle the
+platform, the **MVP cut** — does the chosen scope match how fast you can actually ship
+content? — and the **find-the-fun test** (Cerny: the smallest prototype that proves or
+kills the core; `references/methods.md` § Phase 8). **Persist now.**
 
 ### Phase 8.5 — Validation Plan & Kill Criteria
+
+*Turn each real risk the pre-mortem found into the cheapest test that proves or kills
+it before full production — every test with a pass threshold, a deadline, and explicit
+kill-criteria numbers. The goal: spend the least to retire the biggest risk.*
+
 For each **Critical** risk the pre-mortem marked real, design the **cheapest test
-that proves or kills it** before building the full game (prototype / fake-door Steam
-page / Discord poll / capsule A/B). Each test names a **pass threshold + deadline +
+that proves or kills it** before building the full game (the test catalogue — fake-door
+Steam page / prototype / Discord poll / capsule A/B, each with its typical signal — in
+`references/methods.md` § Phase 8.5). Each test names a **pass threshold + deadline +
 the risk it retires**. State **2–4 explicit kill criteria with numbers** (reuse the
 Phase 3.5 brief's benchmarks, e.g. genre wishlist medians). This is where a
 low-confidence market bet from Phase 4 gets a cheap real-world check instead of a
@@ -246,6 +401,11 @@ taste call. Record the tests and kill criteria in the card's **`## Notes`** — 
 separate file** (brainstorm owns one card, not a research bundle).
 
 ### Phase 9 — Record & Handoff
+
+*Lock the finished concept into one approved CONCEPT card and hand off to the next
+step. The card is the only artifact that survives the session, so it must carry the
+reasoning and the market evidence, not just the verdict.*
+
 Present the **complete CONCEPT card** for **one approval** ("not yet" → edit
 sections, do not split the approval). When Phase 3.5 ran, the card must carry the
 **market evidence** so it is traceable: the `market_signal` / `validation_confidence`

@@ -44,11 +44,14 @@ prompt — see "Subagent mode" below):
 - **The commercial question** — viability / discoverability / competition / demand /
   platform-fit. Different questions weight different techniques.
 - **The anchor comparables** — 2–4 nearest existing titles to orient from.
-- **Platform & store** — Steam, mobile, console; the store shapes every signal.
+- **Platform & store** — Steam, mobile, web, or console; the store shapes every
+  signal, and demand vs. competition often live on *different* stores (see T7,
+  cross-market validation). Name the **target** store and, when it is non-PC, the
+  Steam reference market used to prove the underlying demand.
 - **Time budget** — a 3-query sanity check and a deep scan use the same engine; say
   which depth before starting so the brief's confidence is honest about its effort.
 
-## The six techniques
+## The techniques
 
 | # | Technique | What it produces | Lead question |
 |---|-----------|------------------|---------------|
@@ -58,6 +61,7 @@ prompt — see "Subagent mode" below):
 | **T4** | **Review mining** | Recurring praise / complaint themes from comparables' reviews — the unmet need in players' own words. | What do players of the nearest games keep asking for? |
 | **T5** | **Audience ↔ buyer dissection** | The player profile *and* the buyer profile (often not identical: who plays vs who pays / wishlists). | Who plays this, and who actually spends on it? |
 | **T6** | **Platform / store fit** | Tag/category fit, discoverability surface, price-point norms for the chosen store. | Will the storefront surface this to the right people? |
+| **T7** | **Cross-market validation** | For a non-PC target: a Steam **demand** proof plus a target-store **clone** check — the "proven elsewhere, open lane here" read, per platform. | Is this proven somewhere, and is my actual store still open? |
 
 **T2 — the demand classification framework** (the load-bearing verdict):
 
@@ -75,6 +79,23 @@ demand) → strong; **contested** (reachable demand, no clear white-space) → n
 differentiation-dependent; **red-ocean** (demand exists but saturated and/or
 unreachable at our scope) → weak/kill-candidate; **unknown** → not enough signal,
 say so rather than guessing.
+
+**T7 — cross-market validation (platform transfer):** demand and competition often
+live on *different* stores. Steam is the richest demand signal — hard sales bands,
+wishlist data, tag volume — even for a game shipping to mobile or web, while the
+*destination* store is where the clone risk is real. So when the prompt names a non-PC
+target, scan in two moves and report a signal **per platform**:
+
+1. **Demand, on Steam.** Is the genre proven on PC (sales bands, tag health, wishlist
+   signal)? A genre that cannot sell on Steam rarely invents demand on mobile.
+2. **Competition, on the target store.** App Store / Google Play / the web portal: how
+   many clones, how good, how entrenched (ratings, install bands, update cadence)?
+
+The read: **proven on Steam + no strong clone on the target store** → `white-space` on
+the platform that matters (proven demand, open lane — the strongest signal for fast
+mobile/web development). **Proven on Steam + clone-saturated target store** →
+`red-ocean` *for this platform*, however well it does on PC. Never collapse PC and the
+target store into one verdict — the whole point is that they can disagree.
 
 ## Source map
 

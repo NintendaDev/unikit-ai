@@ -22,12 +22,37 @@ discipline (collaborative protocol, anti-anchoring, severity, language) lives in
 - **Idea-box over timebox:** "here is a batch of N — say *more* for another batch."
   The user controls depth.
 
+## Phase 1 — Platform choice & the cross-market rule
+
+The platform is a first-class commercial decision, asked **explicitly** — never
+defaulted to Steam. Each platform is a *different market* with its own demand signals,
+sources, clone-density, and economics:
+
+| Platform | Demand signal | Economics | Clone / content note |
+|----------|---------------|-----------|----------------------|
+| **PC / Steam** | wishlists, tag volume, sales bands | premium / early access | long tail; discoverability is wishlist-driven |
+| **Mobile** | store charts, retention, UA cost | F2P / ads / IAP | clone-dense — a proven genre is copied fast |
+| **Web / instant** | portal plays, embed reach | ad / portal rev-share | instant play; hits get cloned across portals |
+
+**The cross-market rule (the mobile/web shortcut).** Steam is the clearest *demand*
+signal even for a game you will not ship there, so for a mobile or web target the Phase
+3.5 scan validates across markets: **(1)** is the genre **proven on Steam**? **(2)** if
+so, is the **target store already full of clones**? Genre proven on Steam **with no
+strong clone on the target store** is the sweet spot — demand proven elsewhere, an open
+lane on your platform — an excellent bet for fast mobile/web development. Proven on
+Steam **but** the target store is clone-saturated → that lane is a red ocean no matter
+how well the genre does on PC. Brainstorm only *states* this question; the scan engine
+that runs it lives in `unikit-gd-explore/references/market-scan.md` (T7).
+
 ## Phase 2 — How-Might-We framing (Basadur / NN/g)
 
 Reframe the creative brief as 3–5 **"How might we…"** questions. Each must be:
 positively framed, broad enough to admit many solutions, narrow enough to guide,
 and **free of a baked-in solution** ("How might we make the player feel powerful?"
 not "How might we add a combo system?"). The user picks one to diverge on.
+
+The questions are emitted as a table; its columns and a worked example are the single
+source of truth in `references/tables.md` § Phase 2 — not duplicated here.
 
 ## Phase 3 — Divergence methods (generate 5, five different ways)
 
@@ -48,6 +73,10 @@ template). Lead methods:
 concept), **SCAMPER** (Substitute, Combine, Adapt, Modify, Put to other use,
 Eliminate, Reverse — Eberle), or **Lotus Blossom** (expand each petal of the
 center idea into its own center).
+
+The nine-field concept card and the five-concept comparison are emitted as tables; their
+columns and worked examples are the single source of truth in `references/tables.md`
+§ Phase 3 — not duplicated here.
 
 ## Phase 4 — Convergence methods
 
@@ -79,6 +108,40 @@ center idea into its own center).
 - **Idea backlog:** every rejected concept goes to `IDEAS.md` with *idea, essence,
   reason* (scope / not-fun / off-theme / duplicate) and a **revival condition** —
   so a killed idea is not re-pitched, and a good idea parked for scope can return.
+- **Cross-pollinate, don't just cut (post-scan).** When the Phase 3.5 brief shows one
+  shortlisted concept in a **red ocean** and another in **white-space / contested**,
+  the crowded concept is raw material, not just a kill: offer a **genre mash-up** that
+  grafts the under-competed angle onto the stronger concept (genre-mashup method, with
+  the intersection-audience caveat — the hybrid must please *both* audiences). A
+  saturated genre often hides a strong twist once crossed with a fresher one. Render the
+  hybrid as a full nine-field card (`references/tables.md` § Phase 3) so it is comparable
+  to the shortlist, then route it back through Pugh / the Phase 8.5 validation plan;
+  recommend it on the evidence, never impose it.
+
+## Content velocity — the hidden scope axis
+
+Two games with the same headline scope can have wildly different *true* costs, because
+the cost lives in the **content the design consumes**, not the systems. This is the
+"how hard is it to make and keep making content" axis — scored in the Phase 3 card
+(field 8), in Phase 4 Pass-1, and surfaced in the Phase 8 pre-mortem.
+
+- **High velocity — content scales itself.** Procedural generation, systemic/emergent
+  content, simulation, PvP, or user-generated content: a handful of systems produce
+  effectively unbounded play. The author writes *rules*, and the rules make the content
+  (roguelikes, sandbox sims, deckbuilders, competitive games).
+- **Low velocity — content is hand-made.** Bespoke levels, scripted story, hand-drawn
+  art, voiced dialogue: every hour of play costs author-hours, and players burn it
+  *faster than you can make it* (narrative adventures, linear puzzle/platformers,
+  hand-authored campaigns).
+- **Hybrid** — a systemic core (high velocity) seeded with hand-made set-pieces (low
+  velocity): the common, often best answer; always name *which* parts are which.
+
+Why it belongs in the analysis: a low-velocity content model quietly caps a game's
+length, replayability, and live-ops runway, and is one of the most common reasons a
+promising scope is secretly impossible for a small team. Ask it early (it shapes the
+concept), score it in Pugh (a real feasibility axis, not a footnote), and treat "we
+ran out of content / it became too slow to make more" as a first-class pre-mortem
+failure mode.
 
 ## Phase 5 — Loop stack & discoverability loops
 
