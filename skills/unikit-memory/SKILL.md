@@ -222,24 +222,33 @@ Read `.unikit/system/cli-contract.md` to confirm available `unikit-ai rules *` c
 
 #### 1.5.2: Fetch catalog and installed state
 
-Run two CLI commands (sequential is fine). `rules list` accepts `--module <id>` to
-scope the catalog to the resolved module — pass it when the resolved module is not
-the default. `rules status` does **not** take `--module` (it reports the whole
-project); filter its rows to the resolved module client-side after parsing.
+Run two CLI commands (sequential is fine). **Always pass `--module <moduleId>`** —
+the router already resolved the active module (Step 0.5), and every machine consumer
+sends its `--module` so the CLI returns the stable flat-single form no matter how
+many modules the registry carries (no-`--module` `rules list` now defaults to **all
+modules** blocked + a flat-all JSON, which this skill does not want):
 
 ```bash
-unikit-ai rules list --json   # add --module <moduleId> to scope the catalog
+unikit-ai rules list --module <moduleId> --json
 ```
 ```bash
-unikit-ai rules status --json
+unikit-ai rules status --module <moduleId> --json
 ```
+
+`rules list --module <moduleId> --json` returns the flat-single shape
+`{ engine, module, rules: [...] }` — parse `catalog.rules` exactly as before (the
+scoped form carries **no** per-row `module` key, so the parser is unchanged).
+`rules status` **does** accept `--module` (it scopes the reported rows to that
+module); pass it so `status.rules[]` is already limited to the active module — no
+client-side filtering needed.
 
 Exit code handling:
-- `rules list` exit 2 (network error) → skip to Step 2 silently, proceed without registry
-- `rules list` exit 1 (`.unikit.json` not found) → the project is not a UniKit project, skip to Step 2
+- `rules list` exit 2 (registry chain unreachable) → skip to Step 2 silently, proceed without registry
+- `rules list` exit 1 → **strictly** "no `.unikit.json`" (not a UniKit project) → skip to Step 2. Engine-missing is **no longer** exit 1: a valid project whose engine is absent from the registry now exits **0** with an empty `catalog.rules`, which flows normally into Step 2.
+- `rules list` exit 3 (unknown `--module`) → the resolved module id is not registered; report the error and skip to Step 2
 - any other non-zero → report the error and skip to Step 2
 
-Parse `rules list --json` into `catalog.rules[]` and `rules status --json` into `status.rules[]`.
+Parse `rules list --module <moduleId> --json` into `catalog.rules[]` and `rules status --module <moduleId> --json` into `status.rules[]`.
 
 #### 1.5.3: Semantic matching
 
@@ -282,7 +291,9 @@ Match result?
 │   │     regenerates RULES_INDEX.md — no extra sync needed.
 │   │
 │   └── preview path:
-│       Bash: unikit-ai rules show <id> --references
+│       Bash: unikit-ai rules show <id> --module <moduleId> --references
+│       (rules show is module-agnostic: a bare id that collides across modules
+│        exits 3, so the already-resolved router always scopes with --module)
 │       → Show content to user, then AskUserQuestion again:
 │         1. Install → install path above
 │         2. Generate a new rule → Step 2
