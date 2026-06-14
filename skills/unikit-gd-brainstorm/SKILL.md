@@ -75,11 +75,10 @@ Before responding, silently load — do not narrate:
    points to it (Phases 1, 3, 4, 5, 8, 8.5), read that section then. The phase
    summaries below carry the workflow; `methods.md` carries the deep "how", so a
    resume or a phase that needs no method theory never pays for it.
-4. **`{{skills_dir}}/{{self_name}}/references/tables.md`** — the canonical shapes of the
-   output tables Phases 2–3 emit (the HMW table, the nine-field concept card, the
-   five-concept comparison). **Read on demand** when you enter Phase 2 or Phase 3; it is
-   the single source of truth for those tables — SKILL.md and `methods.md` only point to
-   it, never re-spell a table.
+4. **`{{skills_dir}}/{{self_name}}/references/tables.md`** — the canonical shapes of every
+   output table the phases emit (Phases 2, 3, 4, 5, 6, 7, 8, 8.5). **Read on demand** when
+   you enter a phase that emits a table; it is the single source of truth for those tables —
+   SKILL.md and `methods.md` only point to it, never re-spell a table.
 5. **`.unikit/DESCRIPTION.md`** (optional) — existing project constraints, if this
    is ideation inside an established project.
 6. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
@@ -323,7 +322,9 @@ rule, and the `market-signal` vs `market_signal` terminology in `references/meth
 
 **Hard rule:** the **market-signal** score may **not exceed what
 validation-confidence allows** — an unproven market read cannot win on optimism.
-Show both passes side by side; the user weights; arithmetic transparent. If
+Show the two passes as **two separate tables** (columns and a worked matrix in
+`references/tables.md` § Phase 4) — kept apart so locked creative scores and market
+evidence never share a column; the user weights, arithmetic transparent. If
 Phase 3.5 was skipped, `market-signal` is scored as an ordinary Pass-1 judgment. Use
 **How-Now-Wow** if "I like all of them". Do **not** approve a hybrid whose winning
 bet rests on a low-confidence market assumption — route it to Phase 8.5 instead.
@@ -339,9 +340,12 @@ is the spine of moment-to-moment fun and the first read on whether the game reta
 
 Define the nested loops (30 s / 5 min / session / meta) plus the **discoverability
 loops** (first-session → retention, the 6-second trailer moment, the "one more run"
-retention hook — full detail in `references/methods.md` § Phase 5). Audit **SDT** (Autonomy /
-Competence / Relatedness — flag if only 1 of 3 is served). Confirm the core verb has
-**≤100 ms** feel feedback (Swink).
+retention hook — full detail in `references/methods.md` § Phase 5). Then audit **SDT**
+(Autonomy / Competence / Relatedness — flag if only 1 of 3 is served) and **game feel**
+(does the core verb get ≤100 ms, multi-channel feedback? — Swink). Present all three as
+tables — the loop stack, the SDT audit, the game-feel check — so a gap (an unserved need,
+a flat verb) is visible at a glance rather than lost in prose. Columns and worked examples
+are in `references/tables.md` § Phase 5 (the single source of truth).
 
 ### Phase 6 — Pillars & Anti-Pillars → **incremental write**
 
@@ -354,8 +358,12 @@ and mutual tension; reject empty pillars and task-pillars. For each pillar add
 **Evidence** (the data / comparable that justifies it — ideally the Phase 3.5 brief's
 review-mining) and a **Cut rule** (what is cut first under scope pressure); a pillar
 with no evidence is a slogan — flag it. Add **≥3 anti-pillars** ("We will NOT <X>
-because PIL-n"); the brief's review-mining (love / hate / wish) feeds these. Run a
-Lock / Rename / Swap cycle. **Persist now.**
+because PIL-n"); the brief's review-mining (love / hate / wish) feeds these. Present the
+pillars and anti-pillars as **two tables** — a pillar carries five columns (emotion,
+design test, evidence, cut rule) that only line up under scrutiny in a grid, and the
+table makes a sloganeering pillar (empty evidence cell) impossible to hide. Columns and
+worked examples are in `references/tables.md` § Phase 6. Run a Lock / Rename / Swap cycle.
+**Persist now.**
 
 ### Phase 7 — Player Motivation (player + buyer)
 
@@ -367,7 +375,9 @@ serves everyone usually moves no one.*
 checks them against the pillars and loops. Set MDA primary/secondary and a one-line
 Bartle read. Then separate **player from buyer**: the **buying trigger** and the
 **quitting / refund trigger** (from the Phase 3.5 brief when it ran), plus an
-explicit **anti-persona** — "who this is NOT for".
+explicit **anti-persona** — "who this is NOT for". Capture the whole read as one table
+(player psychology → buyer triggers → anti-persona) — columns and a worked example in
+`references/tables.md` § Phase 7.
 
 ### Phase 8 — Pre-mortem & Scope → **incremental write**
 
@@ -379,8 +389,9 @@ Run **Klein's pre-mortem verbatim** ("six months from now the project failed —
 a fact — why?" — the certainty framing *is* the technique; `references/methods.md`
 § Phase 8): 8–12 reasons across fun / scope / market / tech / team / **content** (ran
 out of content, or it got too slow/expensive to make — the content-velocity risk as a
-failure mode); the user marks the real ones; mitigate only those. Then settle the
-platform, the **MVP cut** — does the chosen scope match how fast you can actually ship
+failure mode). Present the 8–12 reasons as a table (reason · category · real? ·
+mitigation — `references/tables.md` § Phase 8); the user marks the real ones; mitigate
+only those. Then settle the platform, the **MVP cut** — does the chosen scope match how fast you can actually ship
 content? — and the **find-the-fun test** (Cerny: the smallest prototype that proves or
 kills the core; `references/methods.md` § Phase 8). **Persist now.**
 
@@ -395,7 +406,8 @@ that proves or kills it** before building the full game (the test catalogue — 
 Steam page / prototype / Discord poll / capsule A/B, each with its typical signal — in
 `references/methods.md` § Phase 8.5). Each test names a **pass threshold + deadline +
 the risk it retires**. State **2–4 explicit kill criteria with numbers** (reuse the
-Phase 3.5 brief's benchmarks, e.g. genre wishlist medians). This is where a
+Phase 3.5 brief's benchmarks, e.g. genre wishlist medians). Present both as tables — the
+validation tests and the kill criteria — per `references/tables.md` § Phase 8.5. This is where a
 low-confidence market bet from Phase 4 gets a cheap real-world check instead of a
 taste call. Record the tests and kill criteria in the card's **`## Notes`** — **no
 separate file** (brainstorm owns one card, not a research bundle).

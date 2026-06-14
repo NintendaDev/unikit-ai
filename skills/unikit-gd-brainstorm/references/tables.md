@@ -1,11 +1,11 @@
 # Output table formats — single source of truth
 
-The exact table shapes Phases 2 and 3 of `unikit-gd-brainstorm` emit. SKILL.md and
+The exact table shapes the phases of `unikit-gd-brainstorm` emit. SKILL.md and
 `methods.md` point here so each table is defined **once** — edit a format here and both
 the workflow and the method notes follow it. Every table below shows its columns (the
 header row *is* the contract) plus a worked example, so the format is unambiguous. One
-running brief threads all of them — *"solo dev, wants a calm-but-tense feeling, loves
-deckbuilders, needs short sessions"* — so Phase 2 and Phase 3 read as one session.
+running brief threads them all — *"solo dev, wants a calm-but-tense feeling, loves
+deckbuilders, needs short sessions"* — so the examples read as one continuous session.
 
 Render as plain markdown only: no circled/enclosed glyphs (①②③, 🅰), which smudge in
 terminals — bold and short cells carry the structure (see SKILL.md "Readable plain
@@ -63,3 +63,144 @@ not five repaints of one idea.
 | 3 (experience-first) | Quiet Harvest | aesthetic-led: calm mastery | slow-burn resource tending | S · systemic | "calm" may read as "boring" |
 | 4 (world-first) | The Last Greenhouse | post-collapse seed vault | scavenge → cultivate → defend | L · hybrid | scope balloons past a solo dev |
 | 5 (constraint-first) | One-Bed Garden | one tile, one action per turn | optimize a single plot | S · systemic | one tile may exhaust fast |
+
+## Phase 4 — Two-pass Pugh matrix
+
+A decision matrix *is* a table: concepts as rows, criteria as columns. Keep the two
+passes in **separate** tables so locked creative judgment and market evidence stay
+visibly apart — optimism cannot out-vote data when they never share a column. Score each
+criterion (here 0–3, higher = stronger fit) and sum.
+
+**Pass 1 — creative** (lock *before* the Phase 3.5 scan):
+
+| Concept | Hook | Scope-fit | Team-fit | Fire | Content-velocity | Σ Pass 1 |
+|---------|:----:|:---------:|:--------:|:----:|:----------------:|:--------:|
+| **Gardener's Gambit** | 3 | 2 | 2 | 3 | 2 | **12** |
+| Spire & Soil | 2 | 1 | 1 | 2 | 2 | 8 |
+| Quiet Harvest | 2 | 3 | 2 | 1 | 3 | 11 |
+
+**Pass 2 — evidence** (only if Phase 3.5 ran; the **hard rule** caps the market score at
+what validation-confidence allows):
+
+| Concept | Market-signal (raw) | Validation-confidence | Market score (capped) |
+|---------|---------------------|------------------------|:---------------------:|
+| **Gardener's Gambit** | white-space (3) | B / medium → cap 2 | **2** |
+| Spire & Soil | contested (2) | C / low → cap 1 | 1 |
+| Quiet Harvest | unknown (—) | D / none → cap 0 | 0 |
+
+Combine = Σ Pass 1 + capped market score. A tie Pass 2 cannot break on *confident*
+evidence goes to the Phase 8.5 validation plan, not to taste. If Phase 3.5 was skipped,
+`market-signal` is simply one more Pass-1 column.
+
+## Phase 5 — Loop stack, SDT audit, game feel
+
+Three small tables, so a gap is visible at a glance instead of lost in prose: the nested
++ discoverability loops, the Self-Determination audit, and the game-feel check on the
+core verb.
+
+**Loop stack** — the nested play loops plus the discoverability loops (the same loops
+read from the acquisition/retention angle):
+
+| Loop | Cadence | What repeats (the pull) |
+|------|---------|-------------------------|
+| **Core** | 30 s | play a plant-card → it matures/wilts → harvest → soil shifts |
+| **Short** | ~5 min | clear a plant-boss with a tuned bed |
+| **Session** | one sitting | finish a run, bank a meta-unlock |
+| **Meta** | across sessions | grow the seed-vault, unlock new soil rules |
+| **First-session** | first ~10 min | does "tending = fighting" click before the bounce? |
+| **Trailer moment** | 6 s | a card visibly *blooms* into a board-clearing effect |
+| **Retention hook** | "one more run" | a new seed teased at run's end |
+
+**SDT audit** — name what serves each need; **flag if only 1 of 3 is served** (a single
+strong axis is a thin motivational base):
+
+| SDT need | Served by (loop / mechanic) | Verdict |
+|----------|-----------------------------|---------|
+| **Autonomy** | which plants to grow, when to harvest vs hold | served |
+| **Competence** | mastering the tend↔fight rhythm under threat | served |
+| **Relatedness** | none yet — solo, no sharing | **gap — flag** |
+
+**Game feel (core verb, Swink)** — the core verb must answer instantly and on more than
+one channel, or it reads flat:
+
+| Aspect | The read | Verdict |
+|--------|----------|---------|
+| **Latency** | bloom/harvest fires ~80 ms after the play | within ≤100 ms |
+| **Channels** | visual bloom + audio chime + card settle | multi-channel |
+| **Overall** | reads "juicy", not a spreadsheet click | pass |
+
+## Phase 6 — Pillars & anti-pillars
+
+Two tables. A pillar earns its place only if every column fills: an empty **Evidence**
+cell is a slogan, an empty **Cut rule** means it was never scope-tested — the grid makes
+that visible where prose hides it.
+
+**Pillars** (3–5, each active, each serving ≥1 emotion, with mutual tension):
+
+| ID | Pillar | Emotion | Design test | Evidence | Cut rule |
+|----|--------|---------|-------------|----------|----------|
+| PIL-1 | Tending *is* mastery | Competence | "Does this reward skilled cultivation, not luck?" | StS reviews praise build depth | cut cosmetic plant variants first |
+| PIL-2 | Calm under threat | Sensation | "Does the threat stay legible, never frantic?" | players want "StS without the math stress" | cut any timed pressure first |
+| PIL-3 | Every card has a life | Expression | "Can the player tell a story about one card?" | Stardew-style attachment to crops | cut filler cards first |
+
+**Anti-pillars** (≥3, each tied to a pillar or a review-mining "hate"):
+
+| We will NOT… | Because |
+|--------------|---------|
+| add twitch / real-time combat | PIL-2 (calm) |
+| gate plant growth behind paywalls | PIL-1 (mastery, not wallet) |
+| ship 200 hand-drawn unique cards | content-velocity / solo scope |
+
+## Phase 7 — Player + buyer
+
+One table that pins the player psychologically *and* commercially, then names who it is
+NOT for — the split matters because the person who plays and the person who
+pays/wishlists are often not moved by the same thing.
+
+| Lens | Read |
+|------|------|
+| **Plays for (Quantic Foundry top-3)** | Mastery · Discovery · Completion |
+| **MDA primary / secondary** | Challenge / Discovery |
+| **Bartle** | Achiever-leaning Explorer |
+| **Buys / wishlists because** | "a calm Slay-the-Spire with real build depth" |
+| **Quits / refunds because** | early hours feel grindy, breaking the calm promise |
+| **Anti-persona (NOT for)** | twitch & PvP players who want fast, reflex combat |
+
+## Phase 8 — Pre-mortem
+
+The reasons-it-failed list, marked for which are real (the user marks them), with a
+mitigation written **only** for the real ones. The table keeps the verdict and the
+mitigation on the same row, so an unmitigated real risk is obvious.
+
+| # | Reason it failed | Category | Real? | Mitigation (real only) |
+|---|------------------|----------|:-----:|------------------------|
+| 1 | tending removed all tension → it's boring | fun | yes | add a visible per-turn threat clock |
+| 2 | ran out of hand-made cards by month 3 | content | yes | systemize 70% of cards, hand-author 30% |
+| 3 | target store already clone-dense | market | no | — |
+| 4 | scope crept past a solo dev | scope | yes | cut to one biome for the MVP |
+| 5 | mobile save/sync bugs | tech | no | — |
+
+Categories: fun / scope / market / tech / team / content. Mitigate **only** the rows
+marked real — a "no" row needs no work.
+
+## Phase 8.5 — Validation plan & kill criteria
+
+Two tables: the cheapest test that retires each real risk, and the kill criteria with
+numbers. (The *catalogue* of test types lives in `methods.md` § Phase 8.5; this is the
+concept's actual plan.)
+
+**Validation plan** — one test per real Critical risk, each with a pass threshold and a
+deadline:
+
+| Test | Risk it retires | Pass threshold | Deadline |
+|------|-----------------|----------------|----------|
+| Fake-door Steam page | "will anyone want this?" | ≥ genre-median wishlists in 2 weeks | before prototype |
+| Prototype (find-the-fun) | "is tending tense *and* fun?" | testers replay the 30-s loop unprompted | week 4 |
+| Discord poll | "which threat model do players want?" | clear majority for one direction | week 2 |
+
+**Kill criteria** (2–4, with numbers — reuse the Phase 3.5 brief's benchmarks):
+
+| Metric | Kill threshold | What it means |
+|--------|----------------|---------------|
+| Wishlists (1 month) | below genre median | hook doesn't read → reframe before spec |
+| Prototype replay rate | < 30% replay the core loop | tending isn't fun → kill or pivot |

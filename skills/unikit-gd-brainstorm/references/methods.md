@@ -80,6 +80,9 @@ columns and worked examples are the single source of truth in `references/tables
 
 ## Phase 4 — Convergence methods
 
+The two-pass matrix is emitted as two tables; their columns and a worked matrix are the
+single source of truth in `references/tables.md` § Phase 4 — not duplicated here.
+
 - **Two-pass Pugh / decision-matrix scoring.** Single-pass scoring lets an
   evidence-free *market-signal* guess ride at the same weight as a locked creative
   judgment — so split the matrix into two passes:
@@ -160,6 +163,10 @@ These are not separate loops — they are the play loops read from the *acquisit
 retention* angle. A concept strong on the 30-second loop but with no trailer moment
 is a discoverability risk worth flagging into Phase 8.
 
+The loop stack, the SDT audit, and the game-feel check are emitted as tables; their
+columns and worked examples are the single source of truth in `references/tables.md`
+§ Phase 5 — not duplicated here.
+
 ## Phase 8 — Pre-mortem (Klein, HBR 2007)
 
 Run the protocol **verbatim** — the framing is what makes it work:
@@ -172,6 +179,10 @@ Generate **8–12 reasons** across fun / scope / market / tech / team. The
 be?") is the entire technique: it licenses the team to voice doubts that
 optimism normally suppresses. The user marks which reasons are *real*; write
 mitigations **only** for those.
+
+The reasons are emitted as a table (reason · category · real? · mitigation); its columns
+and a worked example are the single source of truth in `references/tables.md` § Phase 8 —
+not duplicated here.
 
 ## Phase 8 — Find-the-fun test (Cerny Method)
 
@@ -199,6 +210,10 @@ benchmarks — e.g. *"wishlists below the genre median after one month → the h
 not read; reframe before spec."* The discipline is to spend the *cheapest* test that
 retires the *biggest* market risk before committing to the whole game (Cerny's
 find-the-fun logic, extended from fun to market).
+
+The catalogue above is the *menu* of test types. The concept's actual plan — the chosen
+tests and the kill criteria — is emitted as tables, single-sourced in
+`references/tables.md` § Phase 8.5 (not duplicated here).
 
 ## References
 
