@@ -141,131 +141,262 @@ function tierLabel(tier: string): string {
 }
 
 // =====================================================================
-// list — lean catalog from registry
+// list — lean catalog from registry (multi-module)
 // =====================================================================
+//
+// Scope resolution (mirrors `rulesStatusCommand`): no `--module` → every
+// registered module as blocks; `--module X` → one module (bad id → exit 3).
+//
+// Exit / empty-catalog contract — THREE distinct per-catalog branches that must
+// not be collapsed into one (each module resolves its own reachability):
+//   (a) EVERY catalog `!reachable`            → exit 2 (the ONLY path to exit 2)
+//   (b) catalog reachable && !engineAvailable → warning (stderr) + empty
+//                                               contribution + exit 0
+//   (c) catalog `!reachable`                  → silent skip (no block, no rows),
+//                                               still counted toward (a)
+// `exit 1` is reserved exclusively for "no `.unikit.json`" (loadConfigOrExit);
+// engine-missing is NO LONGER an exit-1 path.
+
+/** One rendered catalog row, tagged with its module + tier. */
+interface ListRow {
+  id: string;
+  module: string;
+  category: Tier;
+  description: string;
+  version: string;
+}
+
+/**
+ * A surviving (reachable) module's contribution to the listing. Absent
+ * (`!reachable`) modules are dropped before this stage (branch (c)).
+ */
+type ListSection =
+  | { kind: 'rules'; module: Module; rows: ListRow[] }
+  | { kind: 'engine-missing'; module: Module; engines: string[] };
 
 export async function rulesListCommand(options: { json?: boolean; engine?: string; module?: string }): Promise<void> {
   const projectDir = process.cwd();
   const config = await loadConfigOrExit(projectDir);
   const engineId = options.engine ?? config.engine;
-  const module = resolveModuleOptionOrExit(options.module);
 
-  // Build the registry keyed to the (possibly overridden) engine so the
-  // module accessors below resolve the same engine the user asked for.
+  // Scope: a single module with `--module`, every registered module otherwise.
+  // Registry order keeps `code` first so the flat-all JSON stays stable.
+  const singleModule = options.module !== undefined;
+  const scope: Module[] = singleModule
+    ? [resolveModuleOptionOrExit(options.module)]
+    : listModules();
+
+  logInfo('rules:list', `scope=${options.module ?? 'all'}, modules=[${scope.map(m => m.id).join(', ')}]`);
+
+  // Build the registry ONCE keyed to the (possibly overridden) engine, then
+  // resolve one catalog per module from it. `--engine` must keep working, so
+  // this uses createRegistry(config.rulesRegistry, engineId) — NOT install's
+  // buildRegistry (which has no engine override). Resolution is sequential to
+  // avoid racing the ChainedRegistry's shared per-instance resolution state.
   const registry = createRegistry(config.rulesRegistry, engineId);
-  const catalog = await resolveModuleCatalog(registry, module, engineId);
+  const catalogs: { module: Module; catalog: ModuleCatalog }[] = [];
+  for (const module of scope) {
+    catalogs.push({ module, catalog: await resolveModuleCatalog(registry, module, engineId) });
+  }
 
-  if (!catalog.reachable) {
-    console.warn(chalk.yellow('WARN: Registry unreachable. No catalog available.'));
+  logInfo('rules:list', `catalogs=[${catalogs.map(c => `${c.module.id}:${c.catalog.reachable ? 'reachable' : 'absent'}`).join(', ')}]`);
+
+  // (a) Every catalog unreachable → exit 2 (the ONLY path to exit 2). A module
+  // merely absent from the chain (branch (c)) is also `!reachable`, so this
+  // fires only when NOTHING in scope resolved from any chain source.
+  if (catalogs.every(({ catalog }) => !catalog.reachable)) {
+    console.error(chalk.red('Registry chain unreachable. No catalog available.'));
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  // Explicit engine-existence predicate (engine-partitioned modules only). The
-  // registry accessors return `[]` for BOTH "engine missing" and "tier empty",
-  // so the not-found (exit 1) contract is re-established by the catalog.
-  if (!catalog.engineAvailable) {
-    console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
-    console.error(chalk.dim(`Available: ${catalog.engines.join(', ')}`));
-    exitWithCode(EXIT.NOT_FOUND);
+  // Classify each catalog into the three branches above. The SAME `sections`
+  // set feeds both the human render and the JSON branch (#json-parity — never
+  // count the rule set twice in two different ways).
+  const sections: ListSection[] = [];
+  for (const { module, catalog } of catalogs) {
+    // (c) module absent from the whole chain → silent skip.
+    if (!catalog.reachable) continue;
+    // (b) engine-partitioned module whose engine is missing → warning + empty
+    // contribution + exit 0. The warning goes to stderr (logWarn) so `--json`
+    // stdout stays a clean, parseable document.
+    if (!catalog.engineAvailable) {
+      logWarn('rules:list', `engine "${engineId}" not in registry for module "${module.id}" — section empty (available: ${catalog.engines.join(', ')})`);
+      sections.push({ kind: 'engine-missing', module, engines: catalog.engines });
+      continue;
+    }
+    // (a-survivor) normal: tier-ordered rows tagged with module + category.
+    const rows: ListRow[] = catalog.rules.map(({ tier, rule }) => ({
+      id: rule.id,
+      module: module.id,
+      category: tier,
+      description: rule.description,
+      version: rule.version,
+    }));
+    sections.push({ kind: 'rules', module, rows });
   }
 
-  const allRules = catalog.rules.map(({ tier, rule }) => ({ ...rule, category: tier }));
+  const allRows = sections.flatMap(s => (s.kind === 'rules' ? s.rows : []));
 
+  // ── JSON ──
   if (options.json) {
+    if (singleModule) {
+      // FLAT-SINGLE (back-compat, byte-for-byte): a scoped `--module` request
+      // returns `{ engine, module, rules:[{ id, category, description, version }] }`
+      // with NO per-row `module` key — machine consumers always send `--module`
+      // and rely on this exact shape.
+      const output = {
+        engine: engineId,
+        module: scope[0].id,
+        rules: allRows.map(r => ({ id: r.id, category: r.category, description: r.description, version: r.version })),
+      };
+      console.log(JSON.stringify(output, null, 2));
+      return;
+    }
+    // FLAT-ALL: `{ engine, rules:[{ id, module, category, description, version }] }`
+    // — every row carries its `module` (key placement mirrors `rules status`).
     const output = {
       engine: engineId,
-      module: module.id,
-      rules: allRules.map(r => ({
-        id: r.id,
-        category: r.category,
-        description: r.description,
-        version: r.version,
-      })),
+      rules: allRows.map(r => ({ id: r.id, module: r.module, category: r.category, description: r.description, version: r.version })),
     };
     console.log(JSON.stringify(output, null, 2));
     return;
   }
 
-  // Non-engine modules have no engine axis — title them by module id.
-  const catalogLabel = module.enginePartitioned ? engineId : module.id;
-  console.log(chalk.bold(`\nRules catalog for ${catalogLabel}:\n`));
-
-  // Compute column widths for aligned table
-  const idWidth = Math.max(4, ...allRules.map(r => r.id.length));
-  const verWidth = Math.max(7, ...allRules.map(r => `v${r.version}`.length));
-
+  // ── Human ──
+  // Shared column widths so every per-module table aligns identically.
+  const idWidth = Math.max(4, ...allRows.map(r => r.id.length));
+  const verWidth = Math.max(7, ...allRows.map(r => `v${r.version}`.length));
   const termWidth = process.stdout.columns || 120;
-  // 2 indent + idWidth + 2 gap + verWidth + 2 gap = prefix length
   const prefixLen = 2 + idWidth + 2 + verWidth + 2;
   const descMax = Math.max(20, termWidth - prefixLen);
 
-  function truncate(text: string, max: number): string {
-    return text.length <= max ? text : text.slice(0, max - 1) + '…';
-  }
+  const truncate = (text: string, max: number): string =>
+    text.length <= max ? text : text.slice(0, max - 1) + '…';
 
-  function printRuleTable(title: string, rules: typeof allRules): void {
-    if (rules.length === 0) return;
-
+  const printRuleTable = (title: string, rows: ListRow[]): void => {
+    if (rows.length === 0) return;
     console.log(chalk.bold.cyan(title));
     const header = `  ${'ID'.padEnd(idWidth)}  ${'Version'.padEnd(verWidth)}  Description`;
     console.log(chalk.dim(truncate(header, termWidth)));
     console.log(chalk.dim(`  ${'─'.repeat(idWidth)}  ${'─'.repeat(verWidth)}  ${'─'.repeat(Math.min(40, descMax))}`));
-
-    for (const rule of rules) {
-      const id = chalk.bold(rule.id.padEnd(idWidth));
-      const ver = chalk.dim(`v${rule.version}`.padEnd(verWidth));
-      const desc = truncate(rule.description, descMax);
+    for (const row of rows) {
+      const id = chalk.bold(row.id.padEnd(idWidth));
+      const ver = chalk.dim(`v${row.version}`.padEnd(verWidth));
+      const desc = truncate(row.description, descMax);
       console.log(`  ${id}  ${ver}  ${desc}`);
     }
     console.log('');
+  };
+
+  const tierCountsFor = (module: Module, rows: ListRow[]): string =>
+    module.tiers.map(tier => `${rows.filter(r => r.category === tier).length} ${tier}`).join(', ');
+
+  if (singleModule) {
+    // Single-module human render — byte-for-byte the pre-multimodule format so
+    // `--module <id>` stays back-compatible (Sc.9 gamedesign asserts on it).
+    const section = sections[0];
+    const module = scope[0];
+    const catalogLabel = module.enginePartitioned ? engineId : module.id;
+    console.log(chalk.bold(`\nRules catalog for ${catalogLabel}:\n`));
+    if (section.kind === 'engine-missing') {
+      console.log(chalk.yellow(`Engine "${engineId}" not in registry — catalog empty.`));
+      console.log(chalk.dim(`Available engines: ${section.engines.join(', ')}`));
+      console.log(chalk.dim(`\nTotal: 0 rules (${module.tiers.map(t => `0 ${t}`).join(', ')})`));
+      return;
+    }
+    for (const tier of module.tiers) {
+      printRuleTable(`${tierLabel(tier)} rules:`, section.rows.filter(r => r.category === tier));
+    }
+    console.log(chalk.dim(`Total: ${section.rows.length} rules (${tierCountsFor(module, section.rows)})`));
+    return;
   }
 
-  for (const tier of module.tiers) {
-    printRuleTable(`${tierLabel(tier)} rules:`, allRules.filter(r => r.category === tier));
+  // Multi-module human render — one block per surviving module.
+  console.log(chalk.bold(`\nRules catalog (engine: ${engineId}):\n`));
+  const footerParts: string[] = [];
+  for (const section of sections) {
+    const module = section.module;
+    const header = module.enginePartitioned ? `── ${module.id} (${engineId}) ──` : `── ${module.id} ──`;
+    console.log(chalk.bold(header));
+    if (section.kind === 'engine-missing') {
+      console.log(chalk.yellow(`  engine "${engineId}" not in registry — section empty`));
+      console.log(chalk.dim(`  available: ${section.engines.join(', ')}\n`));
+      footerParts.push(`${module.id}: engine missing`);
+      continue;
+    }
+    for (const tier of module.tiers) {
+      printRuleTable(`${tierLabel(tier)} rules:`, section.rows.filter(r => r.category === tier));
+    }
+    footerParts.push(`${module.id}: ${tierCountsFor(module, section.rows)}`);
   }
-
-  const tierCounts = module.tiers
-    .map(tier => `${allRules.filter(r => r.category === tier).length} ${tier}`)
-    .join(', ');
-  console.log(chalk.dim(`Total: ${allRules.length} rules (${tierCounts})`));
+  console.log(chalk.dim(`Total: ${allRows.length} rules (${footerParts.join('; ')})`));
 }
 
 // =====================================================================
-// show — preview a single rule from registry
+// show — preview a single rule from registry (module-agnostic)
 // =====================================================================
+//
+// Scope: no `--module` → search the id across EVERY registered module;
+// `--module X` → search one module only. Exit contract:
+//   - ALL catalogs `!reachable`                 → exit 2 (network guard, parity
+//                                                 with list (a) + install)
+//   - exactly 1 hit                             → fetch + print (exit 0)
+//   - >1 hits (same id in multiple modules)     → exit 3 (ambiguous — pass
+//                                                 --module to disambiguate)
+//   - 0 hits while ≥1 catalog is reachable      → exit 1 (not found anywhere)
+// Engine-missing for `code` is NOT a hard fail — it just yields no `code` hits
+// (other modules are still searched).
 
 export async function rulesShowCommand(id: string, options: { references?: boolean; module?: string }): Promise<void> {
   const projectDir = process.cwd();
   const config = await loadConfigOrExit(projectDir);
   const engineId = config.engine;
-  const module = resolveModuleOptionOrExit(options.module);
+
+  const scope: Module[] = options.module !== undefined
+    ? [resolveModuleOptionOrExit(options.module)]
+    : listModules();
+
+  logInfo('rules:show', `searching ${id} across modules=[${scope.map(m => m.id).join(', ')}]`);
 
   const registry = buildRegistry(config);
-  const catalog = await resolveModuleCatalog(registry, module, engineId);
+  const catalogs: { module: Module; catalog: ModuleCatalog }[] = [];
+  for (const module of scope) {
+    catalogs.push({ module, catalog: await resolveModuleCatalog(registry, module, engineId) });
+  }
 
-  if (!catalog.reachable) {
+  // Network guard FIRST (do not lose it in the multi-catalog refactor): only
+  // when EVERY catalog is unreachable is this a network error. As long as one
+  // catalog is reachable, 0 hits means "not found", not "unreachable".
+  if (catalogs.every(({ catalog }) => !catalog.reachable)) {
     console.error(chalk.red('Registry unreachable.'));
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  // Explicit engine-existence predicate before reading via the accessors —
-  // they cannot tell "engine missing" (exit 1) from "tier empty" on their own.
-  if (!catalog.engineAvailable) {
-    console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
-    exitWithCode(EXIT.NOT_FOUND);
-  }
-
-  // Find rule by id via canonical lowercase-hyphen normalization.
+  // Gather hits across reachable + engine-available catalogs by canonical id.
+  // An engine-missing `code` catalog simply contributes no hits (skipped here)
+  // rather than hard-failing the whole lookup.
   const normalizedId = normalizeRuleId(id);
-  const hit = catalog.rules.find(r => normalizeRuleId(r.rule.id) === normalizedId);
+  const hits: { module: Module; tier: Tier; rule: CatalogRule['rule'] }[] = [];
+  for (const { module, catalog } of catalogs) {
+    if (!catalog.reachable || !catalog.engineAvailable) continue;
+    const hit = catalog.rules.find(r => normalizeRuleId(r.rule.id) === normalizedId);
+    if (hit) hits.push({ module, tier: hit.tier, rule: hit.rule });
+  }
 
-  if (!hit) {
-    const scope = module.enginePartitioned ? `engine "${engineId}"` : `module "${module.id}"`;
-    console.error(chalk.red(`Rule "${id}" not found in registry for ${scope}.`));
+  if (hits.length === 0) {
+    const where = options.module !== undefined ? `module "${scope[0].id}"` : 'any module';
+    console.error(chalk.red(`Rule "${id}" not found in registry for ${where}.`));
     exitWithCode(EXIT.NOT_FOUND);
   }
 
-  const { tier, rule: found } = hit;
+  if (hits.length > 1) {
+    const mods = hits.map(h => h.module.id).join(', ');
+    logWarn('rules:show', `ambiguous id "${id}" across modules: ${mods}`);
+    console.error(chalk.red(`Rule "${id}" found in multiple modules: ${mods} — pass --module to disambiguate.`));
+    exitWithCode(EXIT.INVALID_ARGS);
+  }
+
+  const { module, tier, rule: found } = hits[0];
   const fetched = await registry.fetchRule(module.id, engineId, tier, found.id);
 
   if (!fetched) {

@@ -46,11 +46,29 @@ export interface ModuleCatalog {
 }
 
 /**
- * Resolve `module`'s catalog through the registry chain. Graceful by design:
- * a module missing from every chain source yields `reachable: true` with an
- * empty `rules` list — the no-args bootstrap and `list --module` must treat
- * "registry has no such module yet" as an empty catalog, not an error
- * (schema:1 registries and code-only custom registries are valid sources).
+ * Resolve `module`'s catalog through the registry chain. Reachability semantics
+ * (consumed by `rules list`/`show`/`install` to pick exit codes) — verified
+ * against `ChainedRegistry.resolveModule*`, NOT assumed:
+ *
+ *   - `reachable: false` happens ONLY when the chain is effectively unusable for
+ *     this module — no source returned a manifest (every source unreachable),
+ *     or every reachable source was rejected as schema-too-new. In both cases
+ *     `fetchModuleManifest` returns null. This is the exit-2 signal when EVERY
+ *     catalog in scope is `!reachable`.
+ *   - a module ABSENT from an otherwise-reachable chain yields `reachable: true`
+ *     with an EMPTY catalog — `resolveModuleWinner`/`resolveModulePerIdMerge`
+ *     return the last reachable manifest (`lastSeenManifest`, non-null) even
+ *     when no source carries the module, and `getModuleRules` then yields `[]`.
+ *     Callers treat "reachable but empty" as a graceful no-op, not an error
+ *     (schema:1 registries and code-only custom registries are valid sources).
+ *   - module present but its requested engine missing (engine-partitioned only)
+ *     → `reachable: true`, `engineAvailable: false` (warn + empty, exit 0).
+ *   - module present and engine available → `reachable: true`,
+ *     `engineAvailable: true`, `rules` populated.
+ *
+ * Because the modules in a scope share one chain, `reachable` reflects chain
+ * health, not per-module presence — when the chain is up, EVERY module reads as
+ * reachable (an absent one simply has empty `rules`).
  *
  * `engineId` must be the same engine the registry chain was created with —
  * the chain's accessors read that engine internally; the parameter here only
