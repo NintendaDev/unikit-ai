@@ -30,6 +30,8 @@ jobs:
 
       - name: Download rules repository
         run: npm run download:rules
+        env:
+          UNIKIT_RULES_REPO_BRANCH: ${{ github.ref == 'refs/heads/development' && 'development' || 'main' }}
 
       - name: Build
         run: npm run build
