@@ -79,6 +79,10 @@ mode allows; this feeds the Pugh hard rule downstream (market ≤ validation).
   `validation_confidence: A` is a contract violation. Round down, never up.
 - A scan may upgrade its own mode mid-run only by saying so explicitly and
   spending the extra budget; it never silently exceeds the cap.
+- **Deep-scan paid data.** Only a deep scan may lean on paid tools (Sensor Tower,
+  VG Insights, Gamalytic pro) — and only when the user actually has access. A
+  paid-tool figure with a check-date is the one path to an **A** grade; without it,
+  deep caps at **B** like standard. Never assume paid data the user did not provide.
 
 ## The techniques
 
@@ -127,6 +131,22 @@ mobile/web development). **Proven on Steam + clone-saturated target store** →
 `red-ocean` *for this platform*, however well it does on PC. Never collapse PC and the
 target store into one verdict — the whole point is that they can disagree.
 
+**T7 web & hybrid extensions:**
+
+- **Web target.** Prove demand on **Steam OR mobile**, then check clones on the **web
+  portals** (Poki / CrazyGames / itch / Y8) and read the gap. Proven-elsewhere plus an
+  open web lane is the strongest signal for fast web development; raw web demand
+  (portal playcounts) is thin and fragmented, so it rarely stands on its own.
+- **PC-proven mechanic → mobile/web (hybrid).** Check three things *separately*, never
+  as one verdict: (a) does the loop survive the target platform's **session compression
+  and control scheme** (game-feel risk)? (b) does the **monetization** survive the swap
+  — a premium PC loop usually has no model on an ad-portal (T8)? (c) has the "open lane"
+  already become a **clone graveyard** after the PC hit? A "yes" on game-feel and
+  monetization with an open lane is the green light; any "no" is a per-axis flag, not a
+  blanket kill.
+- **Rule:** never collapse a verdict across two platforms into one — demand and
+  competition live on different stores and routinely disagree.
+
 **T8 — monetization & business-model fit:** a concept can be white-space and still
 have no viable model on the target platform. Read the platform's dominant model
 (Steam premium / mobile F2P-IAP-ads / web ad-portal rev-share) against the concept's
@@ -170,6 +190,35 @@ cite a tool's number without a check-date.
 
 Prefer **primary store signals** over aggregator opinion. Every secondary claim
 inherits its source's grade; an A conclusion needs an A chain.
+
+## Trend Radar & Freshness Rules
+
+A market is a moving target. The scan must read *direction*, not just current size — a
+rising niche strengthens a white-space read; an overheating niche is a pivot signal
+even when demand "exists".
+
+**Freshness Rules (hard):**
+
+- Every data point carries a **check-date**. No date → it is an inference (grade **C**),
+  never a hard signal.
+- **Staleness cap:** a *trend* claim (rising / declining / overheated) must cite a
+  source dated within **6 months**, or it is downgraded to a hypothesis and the trend
+  cell reads "unknown". A *structural* fact (genre exists, tag is large) tolerates 12
+  months.
+- A "the genre is dead" take older than 6 months is a hypothesis to test, not a fact to
+  act on.
+
+**Trend Radar** (deep scan: required; standard: include only trends that bear on a
+load-bearing claim; quick: skip). One row per relevant trend:
+
+| Trend | Platform | Evidence (dated) | Direction | Relevance to concept | Risk | Confidence |
+|-------|----------|------------------|-----------|----------------------|------|------------|
+| <e.g. cozy-management rising> | steam | <source + date> | rising / flat / declining / overheated | high / med / low | <timing / saturation> | A/B/C |
+
+- **overheated** is distinct from **declining**: high demand *and* high supply with
+  falling per-title returns → routes the concept to **pivot**, not kill.
+- The Trend Radar feeds the `trend_fit` field in the subagent brief and the Phase 8
+  pre-mortem's market-timing failure mode.
 
 ## Query templates
 

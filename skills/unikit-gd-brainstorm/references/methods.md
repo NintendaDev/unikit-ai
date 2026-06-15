@@ -104,8 +104,14 @@ single source of truth in `references/tables.md` § Phase 4 — not duplicated h
     score**, never extra columns:
     - `monetization_fit: mismatch` → cap the market score at **1** regardless of
       signal (a market you cannot monetize on the target platform is not reachable
-      demand for *you*). The cap stacks with the validation-confidence cap — the
-      **lower of the two wins** (min-of-caps).
+      demand for *you*).
+    - `trend_fit: overheated` → do not raise the market score above **"contested"**
+      even if raw demand reads white-space; route the concept to **pivot** (high demand
+      + high supply + falling per-title returns is a timing trap, not a kill).
+    - `trend_fit: rising` with conf ≥ B → the one case the market score may sit at the
+      top of what confidence allows.
+    - All caps compose by **min-of-caps** — the validation-confidence cap and any
+      monetization/trend cap stack, and the **lowest ceiling wins**.
   - **Verdict mapping.** The brief's `recommendation` (proceed / proceed-with-
     differentiation / validate-later / pivot / kill) bridges Pass-2 to action:
     `validate-later` concepts are scored but their open risk is carried to Phase 8.5;

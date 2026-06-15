@@ -92,8 +92,9 @@ Combine = Σ Pass 1 + capped market score. A tie Pass 2 cannot break on *confide
 evidence goes to the Phase 8.5 validation plan, not to taste. If Phase 3.5 was skipped,
 `market-signal` is simply one more Pass-1 column.
 
-> **Cap before scoring:** `monetization_fit: mismatch` → market score ≤ 1. This cap
-> applies on top of the validation-confidence cap — the **lower of the two wins**
+> **Caps before scoring:** `monetization_fit: mismatch` → market score ≤ 1;
+> `trend_fit: overheated` → market score ≤ "contested" (route the concept to pivot).
+> These apply on top of the validation-confidence cap — the **lowest ceiling wins**
 > (min-of-caps).
 
 ## Phase 5 — Loop stack, SDT audit, game feel
