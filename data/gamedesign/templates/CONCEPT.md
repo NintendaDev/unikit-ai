@@ -6,10 +6,15 @@
 
 <!-- Market evidence (machine fields, set at Phase 3.5 when a commercial frame
      exists; OUTSIDE the nine-field table — the table stays nine fields, no more).
-     market_signal/validation_confidence (underscore) are evidence, distinct from
-     the hyphenated `market-signal` Pugh criterion. Omit / mark n/a when skipped. -->
+     These underscore fields are lifted VERBATIM from the explore delegation brief
+     (references/delegation-contract.md), distinct from the hyphenated `market-signal`
+     Pugh criterion. Omit / mark n/a when Phase 3.5 was skipped. -->
 > **market_signal**: white-space | contested | red-ocean | unknown | n/a
 > **validation_confidence**: A | B | C | n/a
+> **clone_density**: none | light | moderate | saturated | n/a
+> **trend_fit**: rising | flat | declining | overheated | unknown | n/a
+> **monetization_fit**: strong | workable | mismatch | unknown | n/a
+> **recommendation**: proceed | proceed-with-differentiation | validate-later | pivot | kill | n/a
 
 A one-card concept — nine fields, no more. It is the seed for `unikit-gd-spec`
 (which decomposes it into GAME.md + a system map). If a field cannot be filled
@@ -24,7 +29,7 @@ in one or two sentences, the idea is not yet a concept; keep brainstorming.
 | 5 | **Core loop (30 s)** | [The most-repeated moment-to-moment action. Must be intrinsically satisfying before any progression is layered on.] |
 | 6 | **Target player** | [Specific, not "gamers": audience, session length, the unmet need this fills.] |
 | 7 | **Comparables** | [2–3 existing titles, each with what we borrow and our twist.] |
-| 8 | **Scope signal** | [S / M / L, plus platform and player count. A first instinct, refined in GAME.md.] |
+| 8 | **Scope signal** | [S / M / L, plus platform and player count. A first instinct, refined in GAME.md. **Platform-fit sanity** (brainstorm Phase 8): does the core loop survive the target platform's session length and control scheme?] |
 | 9 | **Biggest risk / open question** | [The one thing most likely to make this not work — design, technical, or market — and how it could be answered.] |
 
 ---

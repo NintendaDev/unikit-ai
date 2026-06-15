@@ -10,9 +10,8 @@ at the start of a task (Bootstrap), the same way the code pipeline loads
 
 This file owns the cross-skill **process** contract: the user-driven
 collaboration protocol, the section-cycle authoring contract, the one-way
-design→code boundary, the cross-skill delegation contract (brainstorm → explore),
-delta discipline, the facts-registry / ID conventions, the language rules, the
-critique stance, and the shared severity rubric. **Domain
+design→code boundary, delta discipline, the facts-registry / ID conventions, the
+language rules, the critique stance, and the shared severity rubric. **Domain
 knowledge** (frameworks, motivation, balance, economy, progression, level design,
 narrative, UX, accessibility, liveops, monetization ethics) lives in the
 `gamedesign` memory rules under `.unikit/memory/gamedesign/` and is loaded on
@@ -85,50 +84,6 @@ Code reads design; design knows nothing about code.
   document; never reverse-engineer design from an implementation.
 - Single sanctioned exception: the **feasibility lens** inside `unikit-gd-review`
   may read `DESCRIPTION.md` / `ARCHITECTURE.md` to flag implementability risks.
-
-## Cross-Skill Delegation (brainstorm → explore)
-
-A market existing is not an opportunity, and ideation must not grade a market from
-memory. `unikit-gd-brainstorm` therefore does not *own* market research — it
-**delegates** to `unikit-gd-explore`'s market lens and consumes the evidence. The
-discipline mirrors the design→code boundary: brainstorm depends on this **contract**
-(what the delegate must return), never on the engine
-(`explore/references/market-scan.md` — how the fields are produced).
-
-**Principle.** A market signal without data is a hypothesis. `market_signal` is only
-as trustworthy as its `validation_confidence` tag — an ungraded or evidence-free
-signal is a guess and must be labelled one. Brainstorm never promotes a hypothesis
-to a fact by restating it.
-
-**The call.** Brainstorm spawns Explore as a subagent — mirroring how the code
-orchestrator delegates a skill — and **waits for the return**:
-
-> `Agent(subagent_type: general-purpose, skills: ["unikit-gd-explore"],`
-> `  prompt: "/unikit-gd-explore <commercial frame + shortlist>. Return the brief`
-> `  into this session as text; do not save any files.")`
-
-- **Input** — the shortlist of surviving concepts plus a **commercial frame**: each
-  concept phrased as an explicit market question (viability / discoverability /
-  competition / demand / platform-fit). The frame being explicit is what makes the
-  delegate's market lens fire deterministically, with no flag and no question.
-- **Canonical marker (normative).** The prompt MUST contain, verbatim, the marker
-  **"Return the brief into this session as text; do not save any files."** Explore
-  detects subagent / delegation mode by this exact phrase — deterministically, not
-  by heuristic — and in that mode skips every `AskUserQuestion` and writes no file.
-- **Output** — per concept: `market_signal` (white-space / contested / red-ocean /
-  unknown) + `validation_confidence` (A / B / C) + a short evidence brief, all
-  **returned into the session as text**. The subagent persists nothing.
-- **Ownership** — the calling brainstorm session lifts `market_signal` and
-  `validation_confidence` into the **CONCEPT card** (outside the nine-field table)
-  and distils the argument into the card's `## Notes`. **No `researches/` file is
-  created** for a delegated scan — that avoids an ownership collision with Explore's
-  own `researches/` output.
-- **Gate** — a concept whose `market_signal` is **red-ocean with no reachable
-  white-space** is a **kill candidate**: surface it for the user's pre-mortem, never
-  cut it silently. The gate informs; the user decides.
-
-This contract is the only sanctioned brainstorm→explore coupling. Brainstorm never
-reads `market-scan.md` itself; Explore never reaches back into `concepts/`.
 
 ## Delta Discipline (`unikit-gd-improve`)
 

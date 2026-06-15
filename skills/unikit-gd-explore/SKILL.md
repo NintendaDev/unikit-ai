@@ -190,16 +190,19 @@ tie-breaker is **skipped entirely** in subagent mode (next section).
 
 `unikit-gd-brainstorm` delegates market validation to this skill by spawning it as a
 subagent (`Agent(subagent_type: general-purpose, skills: ["unikit-gd-explore"], …)`).
-The full contract — input, output fields, ownership, gate — lives in `gd-principles`
-→ "Cross-Skill Delegation (brainstorm → explore)"; `references/market-scan.md` →
-"Subagent mode" holds the engine behavior. This section is the SKILL-level switch.
+The full contract — input, output fields, ownership, gate — is **this skill's own**
+`references/delegation-contract.md` (Explore owns the spec, provider-owns-spec);
+`references/market-scan.md` → "Subagent mode" holds the engine behavior. This section
+is the SKILL-level switch.
 
 **Detect delegation by the canonical marker** — the prompt contains, verbatim:
 
 > **"Return the brief into this session as text; do not save any files."**
 
 Detection is by this **exact phrase**, not by a loose reading of the prompt. On a
-match, run **deterministically**:
+match, **load `references/delegation-contract.md`** — it fixes the brief's field shape,
+the machine fields, and the four-verdict gate the brief's `recommendation` feeds — then
+run **deterministically**:
 
 - **Bypass every interactive `AskUserQuestion`** — the lens tie-breaker above **and**
   the save-offer under "Saving Research Results". A subagent is non-interactive; a
@@ -322,6 +325,9 @@ crystallize, you might summarize the findings — but the thinking is often the 
 
 - **Owns:** `.unikit/gamedesign/researches/` — `RESEARCH_RESULT.md`,
   `RESEARCH_BRIEF.md`, and the researches `INDEX.md`.
+- **Owns (spec):** `references/delegation-contract.md` — the brainstorm→explore
+  contract. This skill is its provider; brainstorm reads it as the interface. Keep its
+  canonical marker and brief field-list in sync with `references/market-scan.md`.
 - **Read-only:** `GAME.md`, `GD-INDEX.md`, `GD-IDS.yaml`, systems, concepts — route
   any design change to its owner skill, never edit them here.
 - **Not this skill:** generating new concepts → `unikit-gd-brainstorm`; authoring

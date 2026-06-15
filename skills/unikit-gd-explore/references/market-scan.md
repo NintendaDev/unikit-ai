@@ -5,8 +5,9 @@ demand when a prompt carries **market intent**. The *when/what* — the market-s
 table and the decision rule that triggers this load — lives in
 `unikit-gd-explore/SKILL.md` → "Market lens — when it engages". The cross-skill
 **delegation contract** that lets `unikit-gd-brainstorm` pull a scan without owning
-this engine lives in `gd-principles` → "Cross-Skill Delegation". This file is
-**method, not process** — the same split methods.md keeps for `unikit-gd-brainstorm`.
+this engine lives in `references/delegation-contract.md` (Explore owns the spec).
+This file is **method, not process** — the same split methods.md keeps for
+`unikit-gd-brainstorm`.
 
 A scan answers one question: **does a reachable audience exist for this design, and
 is there room in the market for it** — not "is the genre big". It produces evidence,
@@ -33,7 +34,14 @@ the owning skill's gate).
   load-bearing chain, not the average.
 - **A market existing is not an opportunity.** Demand with no *reachable white-space*
   is a red ocean. A `market_signal` with no evidence behind it is a hypothesis —
-  tag it with its `validation_confidence` and say so (`gd-principles`).
+  tag it with its `validation_confidence` and say so (`references/delegation-contract.md`
+  → "Principle").
+- **No bare numbers (anti-hallucination).** Every quantitative market claim (sales,
+  owners, installs, wishlists, ratings, revenue) MUST either cite a source with a
+  check-date, or be stated as an explicit inference (grade **C**) with a low/high
+  band and the proxy named. A number with neither is a fabrication — delete it. When
+  unsure of a figure, report the band and the method, never a confident point. This
+  rule overrides any request to "just give a number".
 
 ## Pre-scan — frame before you search
 
@@ -50,6 +58,27 @@ prompt — see "Subagent mode" below):
   Steam reference market used to prove the underlying demand.
 - **Time budget** — a 3-query sanity check and a deep scan use the same engine; say
   which depth before starting so the brief's confidence is honest about its effort.
+  Formalized below as the **scan mode**, chosen before the first query.
+
+## Scan modes — staged deepening (manage token cost up front)
+
+A scan declares its **mode before the first query**. The mode fixes the query
+budget, the triangulation bar, and — critically — the **confidence ceiling** a
+scan in that mode may report. A scan can never claim more confidence than its
+mode allows; this feeds the Pugh hard rule downstream (market ≤ validation).
+
+| Mode | Query budget | Triangulation | Confidence ceiling | Output |
+|------|--------------|---------------|--------------------|--------|
+| **quick** | 3–6 | 1 estimator/claim (all flagged partial) | **C** | signal + one-line evidence per concept + mini Evidence Table |
+| **standard** (delegation default) | 8–15 | ≥2 estimators per load-bearing claim | **B** | full delegation brief + Evidence Table + Comparable Games Map |
+| **deep** (standalone for spec/detail) | 15–30 (+ paid data if the user has it) | ≥2; A-grade needs hard data | **A** (dated sales / paid-tool / large-n only) | RESEARCH_RESULT + brief + all matrices + Trend Radar |
+
+- In delegation (subagent) mode the caller passes the mode in the prompt
+  (`scan_mode: quick|standard|deep`); absent → default to **standard**.
+- The confidence ceiling is a hard cap: a quick scan reporting
+  `validation_confidence: A` is a contract violation. Round down, never up.
+- A scan may upgrade its own mode mid-run only by saying so explicitly and
+  spending the extra budget; it never silently exceeds the cap.
 
 ## The techniques
 
@@ -62,6 +91,7 @@ prompt — see "Subagent mode" below):
 | **T5** | **Audience ↔ buyer dissection** | The player profile *and* the buyer profile (often not identical: who plays vs who pays / wishlists). | Who plays this, and who actually spends on it? |
 | **T6** | **Platform / store fit** | Tag/category fit, discoverability surface, price-point norms for the chosen store. | Will the storefront surface this to the right people? |
 | **T7** | **Cross-market validation** | For a non-PC target: a Steam **demand** proof plus a target-store **clone** check — the "proven elsewhere, open lane here" read, per platform. | Is this proven somewhere, and is my actual store still open? |
+| **T8** | **Monetization & business-model fit** | A verdict (strong / workable / mismatch) on whether the concept's natural business model survives the target platform's economics. | Can this concept make money *on this store* the way it must be built? |
 
 **T2 — the demand classification framework** (the load-bearing verdict):
 
@@ -125,6 +155,23 @@ inherits its source's grade; an A conclusion needs an A chain.
 Adapt to the store; chain at least two templates per load-bearing claim
 (triangulation principle).
 
+## Evidence Table — the anti-hallucination backbone (mandatory)
+
+Every market scan builds an Evidence Table *first*; the brief and the verdict are
+distilled **from it**, never written ahead of it. In a standalone scan it lives in
+`RESEARCH_RESULT.md` § Findings; in delegation it is the substrate the `key_evidence`
+block is lifted from (each brief claim must trace to a row).
+
+| Claim | Source | Date checked | Platform | Evidence type | Strength | Notes |
+|-------|--------|--------------|----------|---------------|----------|-------|
+| <one factual claim> | <url / title / tool> | <YYYY-MM-DD> | steam/mobile/web | store-data / review-proxy / community / press / inference | A/B/C | band, caveat, disagreement |
+
+- A claim with no source row cannot appear in the brief.
+- The scan's overall `validation_confidence` = the **weakest** strength among the
+  load-bearing rows (weakest-link, not average), and is then capped by scan_mode.
+- Where two sources disagree, log both rows and report the disagreement — never
+  average it away.
+
 ## Output → brief
 
 A scan yields a **brief**, in one of two shapes:
@@ -136,24 +183,18 @@ Recommended follow-up. Saved to `researches/` **only on the user's explicit yes*
 
 **2. Brainstorm-delegation brief** (Explore spawned by `unikit-gd-brainstorm`) — a
 per-concept evidence packet, **returned into the session as text, never written to a
-file** (the delegation contract — `gd-principles`). Per concept on the shortlist:
+file** (the delegation contract — `references/delegation-contract.md`). Its exact
+shape is the contract's **per-concept brief** (the 13-field YAML block there) —
+**do not re-spell the field list here**; build the brief to the contract. The engine
+side is only the discipline: every `key_evidence` row traces to a row in the Evidence
+Table below, and every machine field is capped by the scan mode.
 
-```markdown
-### <concept frame>
-- market_signal: white-space | contested | red-ocean | unknown
-- validation_confidence: A | B | C
-- demand: exists? / reachable? / white-space? (one line each, with the proxy used)
-- comparables: <2–4 titles> — borrow / twist / what they leave unmet
-- unmet need (T4): <the recurring complaint, in players' words> — or "none found"
-- reach risk: <discoverability / saturation note>
-- sources: <the chain, each dated + graded>
-```
-
-The fields `market_signal` and `validation_confidence` are **machine fields**
-(underscore) the calling session lifts verbatim into the CONCEPT card. They are
-distinct from the human Pugh criterion `market-signal` (hyphen) in
-`brainstorm/references/methods.md` — the criterion is a *judgment*; the field is
-the *evidence* that judgment may now lean on.
+The machine fields (`market_signal`, `validation_confidence`, `clone_density`,
+`trend_fit`, `monetization_fit`, `recommendation`) are **machine fields** (underscore)
+the calling session lifts verbatim into the CONCEPT card header; `key_evidence` and
+`go_to_market_risk` distil into its `## Notes`. They are distinct from the human Pugh
+criterion `market-signal` (hyphen) in `brainstorm/references/methods.md` — the
+criterion is a *judgment*; the field is the *evidence* that judgment may now lean on.
 
 ## Subagent mode (deterministic, no questions)
 

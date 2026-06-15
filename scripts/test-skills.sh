@@ -858,6 +858,63 @@ else
     fail "defective-gdd fixture incomplete under scripts/test-fixtures/gamedesign/defective-gdd"
 fi
 
+# Market-research delegation upgrade — explore-owned delegation contract + strict
+# market-scan. The brainstorm→explore contract moved OUT of gd-principles into
+# unikit-gd-explore/references/delegation-contract.md (provider-owns-spec); the
+# CONCEPT machine-block grew 2→6 fields. Guard the wiring so a re-introduced
+# dangling gd-principles→delegation pointer, a shrunk machine-block, a dropped
+# verdict enum, or a contract missing its canonical marker fails loudly.
+GD_CONTRACT="$ROOT_DIR/skills/unikit-gd-explore/references/delegation-contract.md"
+GD_CONCEPT_TPL="$GD_DATA/templates/CONCEPT.md"
+GD_CANONICAL_MARKER='Return the brief into this session as text; do not save any files.'
+
+# (1) CONCEPT machine-block carries all 6 machine fields lifted from the brief.
+GD_CONCEPT_FIELDS_OK=1
+for field in market_signal validation_confidence clone_density trend_fit monetization_fit recommendation; do
+    grep -qE "^> \*\*$field\*\*:" "$GD_CONCEPT_TPL" || GD_CONCEPT_FIELDS_OK=0
+done
+if [[ "$GD_CONCEPT_FIELDS_OK" -eq 1 ]]; then
+    pass "CONCEPT.md — 6 machine fields present (market_signal…recommendation)"
+else
+    fail "CONCEPT.md — machine-block missing one of the 6 fields (market_signal/validation_confidence/clone_density/trend_fit/monetization_fit/recommendation)"
+fi
+# A 6-field count would not catch a dropped enum value, so also assert the
+# recommendation verdict keeps its 5th value (the brief does not lift without it).
+if grep -qE '^> \*\*recommendation\*\*:.*proceed-with-differentiation' "$GD_CONCEPT_TPL"; then
+    pass "CONCEPT.md — recommendation keeps the proceed-with-differentiation verdict"
+else
+    fail "CONCEPT.md — recommendation enum dropped proceed-with-differentiation"
+fi
+
+# (2) gd-principles is silent on delegation (case-insensitive — a stray lowercase
+#     mention in the intro must also fail).
+if grep -qi "cross-skill delegation" "$GD_PRINCIPLES"; then
+    fail "gd-principles.md — still mentions 'cross-skill delegation' (contract moved to unikit-gd-explore)"
+else
+    pass "gd-principles.md — no 'cross-skill delegation' (delegation is explore-owned)"
+fi
+
+# (3) The explore-owned contract exists and carries the canonical marker verbatim.
+#     'contains', NOT 'sole home' — the marker is duplicated verbatim by design in
+#     brainstorm's delegate prompt, explore's detector, and market-scan.
+if [[ ! -s "$GD_CONTRACT" ]]; then
+    fail "delegation-contract.md — missing or empty (skills/unikit-gd-explore/references/)"
+elif grep -qF "$GD_CANONICAL_MARKER" "$GD_CONTRACT"; then
+    pass "delegation-contract.md — present + carries the canonical marker"
+else
+    fail "delegation-contract.md — missing the canonical marker verbatim"
+fi
+
+# (4) Permanent orphan assert: nothing in skills/ or data/ couples gd-principles to
+#     the delegation contract anymore — both the section-name form and rephrased
+#     forms. A re-introduced dangling pointer fails here, not only at commit time.
+GD_DELEG_ORPHANS=$(grep -rniE "gd-principles[^.]{0,40}(cross-skill )?delegation|delegation contract.{0,20}gd-principles" "$ROOT_DIR/skills" "$ROOT_DIR/data" 2>/dev/null || true)
+if [[ -z "$GD_DELEG_ORPHANS" ]]; then
+    pass "no gd-principles→delegation orphan references in skills/ + data/"
+else
+    fail "gd-principles→delegation orphan reference(s) found: $GD_DELEG_ORPHANS"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

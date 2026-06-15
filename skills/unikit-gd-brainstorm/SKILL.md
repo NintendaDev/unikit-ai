@@ -87,9 +87,13 @@ Before responding, silently load — do not narrate:
 market inline or early — early data anchors timid ideas (anti-anchoring,
 `gd-principles`). Market evidence enters at **Phase 3.5**, where brainstorm spawns
 `unikit-gd-explore` as a subagent to scan the shortlist and **return a brief into
-this session** (see Phase 3.5 and `gd-principles` → "Cross-Skill Delegation"). General
-`WebSearch` / `WebFetch` lookups remain available as read-only advisors — they never
-write and never substitute for the Phase 3.5 scan.
+this session**. The delegation **interface** — the brief's fields, the canonical
+marker, the four-verdict gate — is the contract at
+`{{skills_dir}}/unikit-gd-explore/references/delegation-contract.md`, **loaded on
+entering Phase 3.5** (per-phase, like `methods.md`), not up front; brainstorm reads
+that *interface*, never explore's engine (`market-scan.md`). General `WebSearch` /
+`WebFetch` lookups remain available as read-only advisors — they never write and
+never substitute for the Phase 3.5 scan.
 
 ## Phase 0 — Auto-Resume (no flags)
 
@@ -231,19 +235,32 @@ subagent.
 
 Run **after** divergence, on the user's **shortlist (2–4 concepts)** — never earlier
 (early data anchors timid ideas; `gd-principles`). brainstorm does **not** research
-the market itself — it **delegates** to `unikit-gd-explore` and consumes the
-evidence (`gd-principles` → "Cross-Skill Delegation").
+the market itself — it **delegates** to `unikit-gd-explore` and consumes the evidence.
+
+**Load the contract first.** On entering this phase, read
+`{{skills_dir}}/unikit-gd-explore/references/delegation-contract.md` — the interface
+this delegation follows: the brief's fields, the canonical marker, and the
+four-verdict gate. brainstorm reads that *interface*, never explore's engine
+(`market-scan.md`). (Hard-code the `unikit-gd-explore` path — it is **not**
+`{{self_name}}`.)
 
 **Delegate** — spawn explore as a subagent and **wait for the return**. Expands to:
 
 ```
 Agent(
   subagent_type: "general-purpose",
-  prompt: "/unikit-gd-explore <commercial frame incl. target platform + shortlist>. Validate cross-market per the platform rule. Return the brief into this session as text; do not save any files.",
+  prompt: "/unikit-gd-explore <commercial frame incl. target platform + budget/team + shortlist>. scan_mode: <quick|standard|default standard>. Validate cross-market per the platform rule. Return the brief into this session as text; do not save any files.",
   description: "Market-validate the shortlist",
   skills: ["unikit-gd-explore"]
 )
 ```
+
+Pass **`scan_mode`** explicitly: `standard` is the default; use `quick` for an early
+3–4 concept red-ocean sweep (it returns C-capped signals — enough to flag, not to
+commit on). Carry the **budget/team** slot from the commercial frame as a reachability
+input; until Phase 1 captures it, it arrives `unknown` and the scan degrades
+gracefully (never fabricates a budget read). Substitute the real frame values into the
+`<…>` placeholders.
 
 **Fallback (no Agent tool).** If the `Agent` tool is unavailable in this environment,
 do **not** print the delegation as a recommendation — that is a known failure mode
@@ -278,21 +295,35 @@ platform that actually matters. The mechanics of that rule live in
 brief; it feeds the kill gate below.
 
 **Consume — the calling session owns persistence:**
-- Lift `market_signal` and `validation_confidence` into the **CONCEPT card** header
-  machine-block, **outside the nine-field table** (the card stays "nine fields, no
-  more").
-- Distil the market argument (comparables, the unmet need, the reach risk) into the
-  card's **`## Notes`** — not just the two fields.
+- Lift the **six machine fields** (`market_signal`, `validation_confidence`,
+  `clone_density`, `trend_fit`, `monetization_fit`, `recommendation`) **verbatim** into
+  the **CONCEPT card** header machine-block, **outside the nine-field table** (the card
+  stays "nine fields, no more").
+- Distil `key_evidence` and `go_to_market_risk` (comparables, the unmet need, the reach
+  risk) into the card's **`## Notes`** — not just the machine fields.
 - **Write no `researches/` file** — that directory is explore's; a delegated scan is
   evidence for *this* concept, carried in the card.
 
-**Decision gate:** a concept whose `market_signal` is **red-ocean with no
-white-space** is a **KILL candidate** — surface it explicitly **before** Phase 4
-scoring; never silently carry it forward. The gate informs; the user decides.
+**Decision gate — four verdicts, not a binary.** Consume the brief's `recommendation`
+per concept and surface it **before** Phase 4 scoring (the contract's gate table):
 
-**Cross-pollinate before you cut.** A red-ocean concept is not only a kill candidate —
-it is also raw material. When one shortlisted concept reads **red-ocean** while another
-reads **white-space / contested**, do not just drop the crowded one: proactively offer
+| Verdict | Meaning | Action |
+|---------|---------|--------|
+| **proceed** | white-space, confidence ≥ B | carry into Phase 4 as a strong candidate |
+| **proceed-with-differentiation** | contested, conf ≥ B, a clear twist exists | carry forward; sharpen the hook |
+| **validate-later** | white-space/contested at conf C, or `unknown` | carry forward but route the open risk to the Phase 8.5 validation plan |
+| **pivot** | red-ocean **but** an adjacent white-space exists | cross-pollinate (below): graft the under-competed angle onto a stronger concept; render the hybrid as a full nine-field card |
+| **kill** | red-ocean, no adjacent white-space, unreachable at scope | park in `IDEAS.md` with a revival condition |
+
+Never silently carry a `kill`/`pivot` concept forward, and never `proceed` or `kill`
+on `unknown` — `unknown` always routes to `validate-later`. The gate informs; the
+user decides.
+
+**Cross-pollinate before you cut (the `pivot` verdict).** A red-ocean concept is not
+only a kill candidate — it is also raw material, and the gate's **`pivot`** verdict
+routes here rather than to `kill`. When one shortlisted concept reads **red-ocean**
+while another reads **white-space / contested**, do not just drop the crowded one:
+proactively offer
 a **genre mash-up** that grafts the under-competed concept's angle onto the stronger
 one (the genre-mashup divergence method, with its intersection-audience caveat — the
 hybrid must please *both* audiences, not merely exist). A saturated genre often hides a
@@ -420,8 +451,9 @@ reasoning and the market evidence, not just the verdict.*
 
 Present the **complete CONCEPT card** for **one approval** ("not yet" → edit
 sections, do not split the approval). When Phase 3.5 ran, the card must carry the
-**market evidence** so it is traceable: the `market_signal` / `validation_confidence`
-machine fields in the header block **and** the distilled argument in `## Notes` (no
+**market evidence** so it is traceable: the **six machine fields** (`market_signal`,
+`validation_confidence`, `clone_density`, `trend_fit`, `monetization_fit`,
+`recommendation`) in the header block **and** the distilled argument in `## Notes` (no
 `researches/` file was written — the card *is* the citation). Set the card header
 (`> Status: drafted · Version: 1 · Created: <date>`). Set the INDEX row status to
 `complete`. Then recommend the follow-up (do not auto-invoke).
@@ -435,9 +467,11 @@ mkdir -p .unikit/gamedesign/concepts/<date>_<slug>
 - **`CONCEPT.md`** — the nine-field card with a `## Notes` section for the reasoning
   the table cannot hold (rejected alternatives, inspirations, the Phase 3.5 market
   argument, the Phase 8.5 validation tests). When Phase 3.5 ran, the header carries a
-  **machine block** with `market_signal` and `validation_confidence` **outside** the
-  nine-field table (the table stays "nine fields, no more"). These underscore fields
-  are *evidence* — distinct from the hyphenated `market-signal` Pugh *criterion*.
+  **machine block** with the six machine fields (`market_signal`,
+  `validation_confidence`, `clone_density`, `trend_fit`, `monetization_fit`,
+  `recommendation`) **outside** the nine-field table (the table stays "nine fields, no
+  more"). These underscore fields are *evidence* — distinct from the hyphenated
+  `market-signal` Pugh *criterion*.
   Header: `> Status: <exploring|drafted|approved> · Version: 1 · Created: <date>`.
 - **`IDEAS.md`** — the rejected-idea backlog: each entry is *idea · essence ·
   reason (scope / not-fun / off-theme / duplicate) · revival condition*.
