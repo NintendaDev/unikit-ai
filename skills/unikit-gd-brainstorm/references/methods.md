@@ -98,6 +98,18 @@ single source of truth in `references/tables.md` § Phase 4 — not duplicated h
     does not decide. A tie Pass 2 cannot break on confident evidence goes to the
     Phase 8.5 validation plan, not to taste. If Phase 3.5 was skipped (no commercial
     frame), *market-signal* is simply another Pass-1 judgment.
+  - **Modifiers on the market score (caps/flags, not new vote-columns).** Keep Pass-2
+    to its two scored criteria (`market-signal`, `validation-confidence`) so the
+    matrix stays readable; fields from the brief act as **caps and flags on the market
+    score**, never extra columns:
+    - `monetization_fit: mismatch` → cap the market score at **1** regardless of
+      signal (a market you cannot monetize on the target platform is not reachable
+      demand for *you*). The cap stacks with the validation-confidence cap — the
+      **lower of the two wins** (min-of-caps).
+  - **Verdict mapping.** The brief's `recommendation` (proceed / proceed-with-
+    differentiation / validate-later / pivot / kill) bridges Pass-2 to action:
+    `validate-later` concepts are scored but their open risk is carried to Phase 8.5;
+    `pivot` concepts are re-entered as hybrid cards before scoring.
 
   **Terminology — keep the boundary explicit.** `market-signal` (hyphen) is the
   **human Pugh criterion** scored here. `market_signal` (underscore) is the

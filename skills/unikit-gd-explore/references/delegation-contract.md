@@ -54,18 +54,20 @@ The frame carried from brainstorm Phase 1:
 - **`scan_mode`** — `quick | standard | deep`; `standard` is the delegation
   default. Caps the confidence the scan may report (see `market-scan.md` →
   "Scan modes"). Absent from the prompt → default to `standard`.
-- **Budget / team size** — solo / small team / funded; a *reachability*
-  constraint the scan reads demand against. Until brainstorm Phase 1 captures it
-  (commercial-frame expansion), it arrives `unknown` and the scan degrades
-  gracefully — an `unknown` reachability input never fabricates a budget read.
-- **`monetization_intent`** — premium / F2P-IAP / ads / portal rev-share / none.
-  Feeds the T8 monetization-fit read. `unknown` until captured → `monetization_fit`
+- **Budget / team size** — solo / small team / funded; a *reachability* constraint
+  the scan reads demand against (a clone-dense mobile market is unreachable without a
+  UA budget). From brainstorm's Phase 1 commercial frame; left blank → arrives
+  `unknown`, and the scan never fabricates a budget read.
+- **`monetization_intent`** — premium / F2P-IAP / ads / portal rev-share / none. From
+  the Phase 1 frame; feeds the T8 `monetization_fit` read. Blank → `monetization_fit`
   returns `unknown`, never a guess.
-- **Target session length** — shapes platform fit. `unknown` until captured.
+- **Target session length** — shapes platform fit (and the card's platform-fit sanity
+  line). From the Phase 1 frame; blank → `unknown`.
 
-`scan_mode`, `budget/team`, `monetization_intent`, and `session_length` are filled
-once brainstorm's commercial frame carries them; until then the delegate treats a
-missing field as `unknown` and never invents a value to fill it.
+All four — `scan_mode`, `budget/team`, `monetization_intent`, `session_length` — are
+carried by brainstorm's **Phase 1 commercial frame**. A field the user left blank
+arrives `unknown`; the delegate never invents a value to fill it. (An entirely empty
+frame skips Phase 3.5 — no scan is delegated at all.)
 
 ## Canonical marker (normative)
 

@@ -159,9 +159,24 @@ and what those left them wanting, plus constraints (solo/team, deadline, engine,
 experience). Synthesize a **Creative Brief** (3–5 sentences) and confirm it.
 
 Then capture a **commercial frame** (one screen, kept separate from the person
-questions): target outcome tier (hobby / recoup / commercial), the **target
-platform**, and kill-readiness (drop on bad data, or passion-project regardless?).
-**Ask the platform explicitly — never default to Steam:**
+questions):
+
+- **Target outcome tier** — hobby / recoup / commercial.
+- **Target platform** — ask explicitly, **never default to Steam** (the four options
+  below). Platform is a market-shaping decision, not a deployment detail.
+- **Budget / team size** — solo / small team / funded. A **reachability** constraint:
+  a clone-dense mobile market is unreachable without a UA budget, however good the
+  concept. Phase 3.5 reads demand as *reachable* vs *someone else's* against it, and
+  passes it to the delegated scan as the `budget/team` input.
+- **Target session length** — shapes platform fit (web rewards short instant loops;
+  premium PC tolerates long sessions); sets the card's platform-fit sanity line (field 8).
+- **Monetization intent** — premium / F2P-IAP / ads / portal rev-share / none. Feeds
+  the T8 `monetization_fit` read in Phase 3.5 (`monetization_intent` in the scan).
+- **Scan mode** — `quick` / `standard` / `deep` for the Phase 3.5 delegation;
+  `standard` is the default, `quick` for an early red-ocean sweep of 3–4 concepts.
+- **Kill-readiness** — drop on bad data, or passion-project regardless?
+
+Platform options (name a *lead* even for cross/console):
 
 1. **PC / Steam** — wishlist-driven, long tail, premium or early-access pricing.
 2. **Mobile** — store-feed and UA-driven, F2P norms, short sessions, clone-dense.
@@ -170,15 +185,20 @@ platform**, and kill-readiness (drop on bad data, or passion-project regardless?
 4. **Cross / console** — still name a *lead* platform; one store shapes every later
    signal.
 
-The platform is a real market decision, not a deployment detail — it **steers the
-Phase 3.5 scan** (each platform has its own demand signals, sources, and
-clone-density; the cross-market rule there turns a mobile/web target into a Steam
-demand-check plus a target-store clone-check — full per-platform table and the
-cross-market rule in `references/methods.md` § Phase 1). The frame **scopes Phase 3.5;
-it does
-not censor divergence.** A user with no commercial intent leaves it **empty** — that
-is valid and **skips Phase 3.5** (`market-signal` then stays an ordinary Pugh
-judgment, not a delegated scan).
+The platform **steers the Phase 3.5 scan** (each platform has its own demand signals,
+sources, and clone-density; the cross-market rule turns a mobile/web target into a
+Steam demand-check plus a target-store clone-check — full per-platform table and the
+cross-market rule in `references/methods.md` § Phase 1).
+
+**Anti-anchoring boundary (explicit).** Structural *platform* facts (mobile is
+clone-dense; web rewards an instant hook; Steam is wishlist-driven) may inform this
+frame now — they are not about any specific concept and do not anchor divergence.
+**Concept-specific demand data** (does *this* idea sell, how many clones of *this*
+concept exist) is withheld until Phase 3.5, after divergence.
+
+The frame **scopes Phase 3.5; it does not censor divergence.** A user with no
+commercial intent leaves it **empty** — that is valid and **skips Phase 3.5**
+(`market-signal` then stays an ordinary Pugh judgment, not a delegated scan).
 
 ### Phase 2 — How-Might-We Framing
 

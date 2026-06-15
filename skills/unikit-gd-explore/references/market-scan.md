@@ -127,7 +127,37 @@ mobile/web development). **Proven on Steam + clone-saturated target store** →
 `red-ocean` *for this platform*, however well it does on PC. Never collapse PC and the
 target store into one verdict — the whole point is that they can disagree.
 
-## Source map
+**T8 — monetization & business-model fit:** a concept can be white-space and still
+have no viable model on the target platform. Read the platform's dominant model
+(Steam premium / mobile F2P-IAP-ads / web ad-portal rev-share) against the concept's
+natural model. A slow premium-feeling loop on an ad-supported web portal, or a no-IAP
+cozy game on a F2P mobile chart, is a **mismatch** — flag it; it caps the market score
+(Phase 4, via the brief's `monetization_fit`). A model that fits but is unproven is
+**workable**; one the platform clearly rewards is **strong**; `unknown` when no
+`monetization_intent` was framed. Sources: store price norms (T6), ARPDAU/retention
+bands by genre (mobile), portal rev-share + exclusivity terms (web).
+
+## Platform scan matrix — where each signal lives
+
+The generic Source map below still applies, but the *primary* source for each signal
+differs by platform. Scan the target store for competition; scan the richest-demand
+store (usually Steam) for demand — they are often different stores (see T7).
+Tools/figures drift — re-verify, do not hardcode.
+
+| Platform | Demand signal (where) | Supply / clone (where) | Monetization read | Discoverability surface | Key freshness risk |
+|----------|----------------------|------------------------|-------------------|-------------------------|--------------------|
+| **PC / Steam** | wishlist/follower count (store page, SteamDB); tag volume; Next-Fest medians; Boxleiter (reviews × ~20–60×, genre-dependent, median ~35×) triangulated w/ Gamalytic + VG Insights | tags + "More like this"; releases 2024–2026 by tag | premium / EA price norms by tag | wishlist-driven; trailer moment + capsule CTR | tag meanings + Discovery Queue drift; Next-Fest medians shift per season |
+| **Mobile** | top-charts by category; ASO keyword volume; retention/session norms | category top-grossing; clone density (high) | F2P/IAP/ads; ARPDAU + retention norms (T8) | featuring + ASO + paid UA | ATT/privacy degrades download/revenue estimates — treat as less reliable than Steam |
+| **Web / instant** | portal playcounts/MAU (Poki largest, CrazyGames ~20M, itch, Y8) | clones across *multiple* portals (fragmented) | ad/portal rev-share; realistic 1st-game ceiling ~$500–3000/mo; IAP rising | instant hook (first seconds), embeddability | portal algorithm + exclusivity terms change fast |
+| **Cross / hybrid** | prove demand on Steam OR mobile | check clones on the *target* store/portals | model must survive the platform swap (premium-loop ≠ ad-portal) | per-target surface | "open lane" can close after a PC hit |
+
+**Tooling note (re-verify each run):** App Annie is dead — it became data.ai,
+acquired by Sensor Tower (2024). SteamSpy is historical-only post-2018. Prefer SteamDB
+(free wishlist/follower/concurrent) + a sales estimator (Gamalytic / VG Insights) for
+Steam; Sensor Tower / AppMagic for mobile; portal dev-docs for web economics. Never
+cite a tool's number without a check-date.
+
+### Source map (generic, grade inheritance unchanged)
 
 | Source | Gives | Typical grade |
 |--------|-------|---------------|
@@ -171,6 +201,27 @@ block is lifted from (each brief claim must trace to a row).
   load-bearing rows (weakest-link, not average), and is then capped by scan_mode.
 - Where two sources disagree, log both rows and report the disagreement — never
   average it away.
+
+## Demand / Supply / White-space Matrix
+
+The output of **T2 + T3** — one row per concept × platform. It produces the
+`market_signal` (white-space read), supplies `clone_density` for the brief, and feeds
+the Pugh Pass-2 and the four-verdict gate. (standard: build it; quick: a one-line
+read per concept; deep: full.)
+
+| Concept | Platform | Demand signal | Supply density | Clone density | Player pain (T4) | White-space read | Confidence |
+|---------|----------|---------------|----------------|---------------|------------------|------------------|------------|
+| <frame> | steam | <band + proxy> | low/med/high | none/light/moderate/saturated | "<complaint>" | white-space/contested/red-ocean/unknown | A/B/C |
+
+## Comparable Games Map
+
+The output of **T1** — feeds field 7 (Comparables) of the CONCEPT card, the Evidence
+cells under each pillar, and the anti-pillars (review-mining "hate"). The
+**Monetization** column is what ties a comparable to the T8 read.
+
+| Game | Platform | Why comparable | Audience signal | Monetization | Differentiation lesson | Risk |
+|------|----------|----------------|-----------------|--------------|------------------------|------|
+| <title> | steam | <axis of likeness> | <owners/review band> | <model + price> | <borrow / twist / what it leaves unmet> | <survivorship / IP-bound> |
 
 ## Output → brief
 
