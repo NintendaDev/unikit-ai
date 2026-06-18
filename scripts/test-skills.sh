@@ -1506,6 +1506,16 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 15: Skill grouping guard
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 15: Skill grouping guard${NC}"
+if bash "$SCRIPT_DIR/test-skill-groups.sh"; then
+    pass "Skill grouping guard passed"
+else
+    fail "Skill grouping guard failed"
+fi
+
+# ─────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Results ===${NC}"
