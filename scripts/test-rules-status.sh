@@ -269,8 +269,8 @@ assert_not_contains "$TMPDIR/s9-human.log" "out of date" \
 echo -e "\n${BOLD}Scenario 10: --module gamedesign per-rule backfill origin${NC}"
 
 S10_DIR="$TMPDIR/s10-gd-status"
-use_fake_registry "$S10_DIR" unity minimal-valid
-env -C "$S10_DIR" node "$CLI" rules install >/dev/null 2>&1
+use_fake_registry "$S10_DIR" unity minimal-valid '[{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}]'
+env -C "$S10_DIR" node "$CLI" rules install defaults >/dev/null 2>&1
 
 assert_cmd_exit 0 "rules status --module gamedesign exits 0" "$TMPDIR/s10.log" -- \
     env -C "$S10_DIR" node "$CLI" rules status --module gamedesign

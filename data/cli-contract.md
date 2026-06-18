@@ -8,11 +8,11 @@ Read this file before using `unikit-ai` commands via Bash tool.
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | Not found (rule id, config file, variadic install with every id failing) |
+| 1 | Not found (rule id, config file, variadic install with every id failing, or `rules install defaults` where every bootstrap work item failed) |
 | 2 | Network error / registry unreachable |
-| 3 | Invalid arguments (bad id format, relative path, url format, unknown --module value, ambiguous `rules show` id that resolves in multiple modules) |
+| 3 | Invalid arguments (bad id format, relative path, url format, unknown --module value, `rules install defaults` combined with rule ids, ambiguous `rules show` id that resolves in multiple modules) |
 | 4 | Operation not permitted (file-exists guards outside variadic install) |
-| 5 | Registry validation failed (bad manifest, schema mismatch, engine missing, no always-tagged (core) rules) |
+| 5 | Registry validation failed (bad manifest, schema mismatch, engine missing, empty `rules install defaults` bootstrap set — no rules for any module whose skills are installed) |
 | 6 | Registry already initialized at target path (rules registry init) |
 | 7 | Target path occupied by non-registry files (rules registry init) |
 | 8 | Project out of date — run `unikit-ai update` before `rules sync` / `rules install` (memory layout not migrated to the modular `code/` module) |
@@ -30,11 +30,11 @@ Output: JSON flat-all (no --module): { engine, rules: [{ id, module, category, d
 Preview a rule from the registry (full content with frontmatter). Module-agnostic by default: searches the id across EVERY registered module; pass --module <id> to restrict the search to one module. An id that resolves in more than one module is ambiguous and exits 3 (pass --module to disambiguate); an id found in none while at least one catalog is reachable exits 1; every catalog unreachable exits 2.
 Flags: `--references`, `--module <module>`
 
-### `unikit-ai rules install [ids...]`
+### `unikit-ai rules install [defaults | ids...]`
 
-Install rules from the registry. With no arguments, bootstraps EVERY registered module by its policy: the code module installs all always-tagged (core) rules, the gamedesign module installs its entire catalog (core + library) — this is the bootstrap used by /unikit Step 9.2; modules absent from the registry are skipped gracefully. With one or more ids, installs them in a single call with one manifest fetch per module, scoped to the code module unless --module says otherwise, and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` (non-code modules prefix the label with the module id, e.g. `gamedesign/library/<id>`) followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.
+Install rules from the registry. Bare (no arguments) prints command help and exits 0 — it installs nothing. The `defaults` keyword bootstraps every module whose SKILLS are installed, by each module policy: the code module installs all always-tagged (core) rules, the gamedesign module installs its entire catalog (core + library) when its skills are present — this is the bootstrap used by /unikit Step 9.2; modules absent from the registry are skipped gracefully. `defaults` cannot be combined with rule ids (exit 3). With one or more ids, installs them in a single call with one manifest fetch per module, scoped to the code module unless --module says otherwise, and prints an aggregated report: per-rule `✓ installed <cat>/<id> v<ver>` / `↻ already installed <cat>/<id>` / `✗ failed <cat>/<id>: <reason>` (non-code modules prefix the label with the module id, e.g. `gamedesign/library/<id>`) followed by a summary line `Rules: N installed, M already-installed, K failed`. Re-runs are idempotent; use --force to re-fetch rules already in state.
 Flags: `--force`, `--module <module>`
-Output: Human-readable aggregated report. Exit 0 when ≥1 rule is installed or already-installed; exit 1 when every requested id failed; exit 2 registry unreachable; exit 3 unknown --module; exit 5 engine missing or the summed bootstrap set across all modules is empty; exit 8 project out of date (run `unikit-ai update` first).
+Output: Human-readable aggregated report (or help text for the bare form). Exit 0 when bare (help) or ≥1 rule is installed/already-installed; exit 1 when every requested id failed (or every `defaults` bootstrap work item failed); exit 2 registry unreachable; exit 3 unknown --module value or `defaults` combined with ids; exit 5 engine missing or the `defaults` bootstrap set across all in-scope modules is empty; exit 8 project out of date (run `unikit-ai update` first).
 
 ### `unikit-ai rules sync`
 

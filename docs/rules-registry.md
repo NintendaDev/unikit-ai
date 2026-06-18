@@ -219,15 +219,17 @@ unikit-ai rules show aspid-mvvm --references
 
 Rule IDs use canonical lowercase-hyphen form. The CLI matches IDs case-insensitively, so `CODE-STYLE` resolves to the same file as `code-style`. An id that resolves in **more than one** module is ambiguous and exits `3` (pass `--module` to disambiguate); an id found in none exits `1`.
 
-### `unikit-ai rules install [ids...] [--force]`
+### `unikit-ai rules install [defaults | ids...] [--force]`
 
-Install rules from the registry. The command is variadic with two contracts:
+Install rules from the registry. Three contracts:
 
-- **No arguments** - installs the whitelisted core rule set (used internally by `/unikit` Step 9.2). Fetches the manifest once, writes each missing core rule to `.unikit/memory/core/`, regenerates `RULES_INDEX.md`.
-- **With one or more IDs** - installs every listed ID in a single pass, prints an aggregated report with per-rule `✓ installed` / `↻ already installed` / `✗ failed` lines followed by a summary.
+- **No arguments** - prints command help and exits 0; installs nothing.
+- **`defaults`** - bootstraps every module whose **skills are installed** (used internally by `/unikit` Step 9.2). The `code` module installs its always-tagged (core) rules; the `gamedesign` module installs its entire catalog (core + library) when its skills are present. Modules absent from the registry are skipped gracefully; the manifest is fetched once per module and `RULES_INDEX.md` is regenerated. `defaults` cannot be combined with ids (exit 3).
+- **With one or more IDs** - installs every listed ID in a single pass (the `code` module by default, `--module` to scope), prints an aggregated report with per-rule `✓ installed` / `↻ already installed` / `✗ failed` lines followed by a summary.
 
 ```bash
-unikit-ai rules install                            # Core whitelist bootstrap
+unikit-ai rules install                            # Print help (installs nothing)
+unikit-ai rules install defaults                   # Bootstrap rules for every installed module
 unikit-ai rules install urp dotween unitask        # Variadic install
 unikit-ai rules install code-style --force         # Force re-fetch an already-installed rule
 ```
@@ -416,7 +418,7 @@ scripts/
 ├── test-rules-list.sh                   # `rules list` - all-modules blocks, flat-all/flat-single JSON, exit codes, --engine override
 ├── test-rules-show.sh                   # `rules show` - module-agnostic lookup, id normalization, --references expansion
 ├── test-rules-status.sh                 # `rules status` - populated state, registryKind, --check-updates guard
-├── test-rules-install.sh                # `rules install` - no-args bootstrap, variadic, --force, drift recovery
+├── test-rules-install.sh                # `rules install` - bare help, defaults bootstrap, variadic, --force, drift recovery
 ├── test-rules-sync.sh                   # `rules sync` - 4 modes × 4 states + 4 regression guards
 ├── test-rules-registry.sh               # `rules registry` - show/set/reset, no-auto-sync guards, origin fold
 ├── test-rules-registry-init.sh          # `rules registry init` - scaffold smoke tests

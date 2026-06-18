@@ -46,10 +46,10 @@ echo -e "\n${BOLD}Part A: rules install lands under .unikit/memory/code/${NC}"
 
 G_DIR="$TMPDIR/golden-install"
 mkdir -p "$G_DIR"
-use_fake_registry "$G_DIR" unity minimal-valid
+use_fake_registry "$G_DIR" unity minimal-valid '[{"id":"claude","installedSkills":["unikit"],"installedSubagents":[]}]'
 
-assert_cmd_exit 0 "rules install (no-args bootstrap) exits 0" "$TMPDIR/golden.log" -- \
-    env -C "$G_DIR" node "$CLI" rules install
+assert_cmd_exit 0 "rules install defaults exits 0" "$TMPDIR/golden.log" -- \
+    env -C "$G_DIR" node "$CLI" rules install defaults
 
 # Memory is populated under the module-keyed layout …
 assert_exists "$G_DIR/.unikit/memory/code/core/code-style.md" \

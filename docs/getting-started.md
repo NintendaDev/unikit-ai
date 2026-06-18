@@ -51,8 +51,9 @@ The `init` wizard asks only about installation concerns - it does **not** genera
 
 1. **Agents** - multi-select checkbox where each agent is shown with a right-aligned `[Stable]` / `[Beta]` tag (stable agents listed first): `[Stable]` for Claude Code; `[Beta]` for Codex CLI, Cursor, Gemini CLI, Qwen Code, OpenCode. Pick one or more; each selected agent gets its own skills / subagents / MCP files written in the correct per-agent format
 2. **Engine** - Unity / Godot 4 / Godot 4 .NET / Unreal Engine 5. On a repeat `init` the engine is reused from `.unikit.json` and the prompt is skipped
-3. **Custom rules registry** - confirm Y/N. If yes, enter a URL or local path; invalid registries offer retry / skip (skip falls back to the official registry `NintendaDev/unikit-ai-rules`)
-4. **MCP servers** - discovered automatically for the selected engine (engine MCP + Context7). For MCP keys with multiple implementations you pick one from a radio list, for the rest it is a checkbox
+3. **Skills** - grouped multi-select checkbox (Core, Memory and rules, Code, Game Design, Tools). On a fresh `init` every skill is checked by default; uncheck any you don't want (at least one is required). On a repeat `init` the previously installed set is pre-checked, and de-selecting a skill removes it on save
+4. **Custom rules registry** - confirm Y/N. If yes, enter a URL or local path; invalid registries offer retry / skip (skip falls back to the official registry `NintendaDev/unikit-ai-rules`)
+5. **MCP servers** - discovered automatically for the selected engine (engine MCP + Context7). For MCP keys with multiple implementations you pick one from a radio list, for the rest it is a checkbox
 
 After `init` finishes, open your AI agent and run `/unikit`:
 
@@ -64,7 +65,7 @@ After `init` finishes, open your AI agent and run `/unikit`:
 
 - scans the game project, detects the full tech stack, asks targeted questions to fill in gaps
 - generates `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `AGENTS.md`, and `.unikit/config.yaml`
-- calls `unikit-ai rules install` to bootstrap the core rules from the registry
+- calls `unikit-ai rules install defaults` to bootstrap rules for every module whose skills are installed
 - drives stack rule selection - for each detected framework it either pulls a pre-built rule from the registry or generates one on the fly via `/unikit-memory` (Context7 + web research)
 
 From then on, the dynamic memory is ready and you can start building features:
@@ -88,10 +89,13 @@ From then on, the dynamic memory is ready and you can start building features:
 unikit-ai init                 # Run the wizard, install skills / subagents / MCP
 unikit-ai self-update          # Update the unikit-ai CLI itself to the latest npm version
 unikit-ai update               # Re-install only changed skills (hash-based) and sync rules
+unikit-ai update --install-new # Also install skills newly added to the package (non-interactive)
 unikit-ai update --force       # Clean reinstall of skills and force-refresh every installed rule
 ```
 
 `update` uses SHA-256 hashes on every skill directory + engine template to detect drift, and reconciles `.unikit/memory/` against the configured registry (pulling newer versions of rules already marked `source: registry` and regenerating `RULES_INDEX.md`). It never contacts `registry.npmjs.org`.
+
+When a package upgrade adds new skills, an interactive `update` (on a TTY, no flag) lists them and asks which to install — defaulting to **none**, so pressing Enter never reinstalls a skill you deliberately de-selected. `--install-new` installs them all non-interactively, `--skip-new` always skips, and a non-TTY `update` skips them silently (CI-safe). Installing the first skill of a module (for example a `unikit-gd-*` game-design skill) also bootstraps that module's rules, so opting into a new module's skills delivers its rules too.
 
 `self-update` is a separate command dedicated to upgrading the `unikit-ai` binary itself. It detects the active package manager (`npm`/`pnpm`/`yarn`/`bun`/`mise`/`volta`) from the binary path and runs the matching global install. Interactive by design - in non-TTY environments it prints a "skipping" notice and exits 0. No flags. Run it before `unikit-ai update` whenever you want to pick up a newer package.
 
