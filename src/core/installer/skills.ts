@@ -178,7 +178,7 @@ export async function getAvailableSkills(): Promise<string[]> {
 
 // --- Skill removal ---
 
-async function removeSkillsByName(
+export async function removeSkillsByName(
   projectDir: string,
   agent: AgentInstallation,
   skillNames: string[],

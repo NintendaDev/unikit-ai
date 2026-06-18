@@ -1,7 +1,8 @@
 import chalk from 'chalk';
 import path from 'path';
 import { runWizard } from '../wizard/prompts.js';
-import { buildManagedSkillsState, installSkills, getAvailableSkills } from '../../core/installer/skills.js';
+import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../../core/installer/skills.js';
+import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installEngineTemplates, installCliContract, installDevPrinciples, installGdPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
@@ -35,10 +36,18 @@ export async function initCommand(): Promise<void> {
 
   try {
     const existingAgentIds = existingConfig?.agents.map(a => a.id) ?? [];
+    // null = fresh install (the wizard checks every skill); an array = re-init,
+    // where the wizard mirrors the previously installed set. The union is built
+    // ONLY from a successfully loaded config, so a fresh project stays null and
+    // we never conflate "deselected everything on re-init" with "fresh".
+    const existingInstalledSkills = existingConfig
+      ? [...new Set(existingConfig.agents.flatMap(a => a.installedSkills))]
+      : null;
     const answers = await runWizard(
       existingAgentIds,
       existingConfig?.rulesRegistry ?? null,
       existingConfig?.engine ?? null,
+      existingInstalledSkills,
     );
     const engineId = answers.engine;
 
@@ -56,10 +65,24 @@ export async function initCommand(): Promise<void> {
       }
     }
 
+    // Re-init prune: for agents that remain selected, remove the skills the
+    // user de-selected this run. Deselected agents are already fully removed
+    // above (removeAgentSetup wipes the whole skillsDir); the install loop
+    // below only (re)installs the selected set and never removes, so without
+    // this step deselected skills would linger on retained agents. The prune
+    // set is the pure resolveSkillPrune(baseline, selected) per agent.
+    const retainedExistingAgents = (existingConfig?.agents ?? []).filter(a => selectedAgentIds.has(a.id));
+    for (const agent of retainedExistingAgents) {
+      const toPrune = resolveSkillPrune(agent.installedSkills, answers.selectedSkills);
+      if (toPrune.length > 0) {
+        await removeSkillsByName(projectDir, agent, toPrune);
+        console.log(chalk.yellow(`  Pruned ${toPrune.length} deselected skill(s) from ${agent.id}`));
+      }
+    }
+
     // Install skills & agents per agent
     console.log(chalk.dim('\nInstalling skills and agents...\n'));
 
-    const availableSkills = await getAvailableSkills();
     const installedAgents: AgentInstallation[] = [];
 
     // Discover MCP servers for the selected engine
@@ -71,7 +94,7 @@ export async function initCommand(): Promise<void> {
       const installedSkills = await installSkills({
         projectDir,
         skillsDir: agentConfig.skillsDir,
-        skills: availableSkills,
+        skills: answers.selectedSkills,
         agentId: agentSelection.id,
         engineId,
         engineMcpKey: answers.engineMcpKey,
