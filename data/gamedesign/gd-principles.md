@@ -85,6 +85,64 @@ Code reads design; design knows nothing about code.
 - Single sanctioned exception: the **feasibility lens** inside `unikit-gd-review`
   may read `DESCRIPTION.md` / `ARCHITECTURE.md` to flag implementability risks.
 
+## Lifecycle & Status
+
+Every system carries a `doc_status` recording how far its GDD has progressed. The
+value lives in **three places that must always agree** — the document header
+(the `> Status:` line in `SYSTEM.md`), the system's row in `GD-INDEX.md`, and its
+`doc_status` field in `GD-IDS.yaml`. On any disagreement **`GD-IDS.yaml` wins**
+(it is the machine truth); the conflict surfaces through `unikit-gd-verify`.
+
+**System `doc_status` — the design-writable set, in order:**
+
+| Status | Meaning | Set by | Next |
+|---|---|---|---|
+| `not-started` | mapped in the index, no document yet | `unikit-gd-spec` | `skeleton` |
+| `skeleton` | A–K headers + `[To be designed]` placeholders | `unikit-gd-detail` | `detailed` |
+| `detailed` | every section authored, facts registered | `unikit-gd-detail` | `reviewed` / `revised` |
+| `reviewed` | passed `unikit-gd-review` with no Critical/Major | `unikit-gd-review` (on approval) | `revised` |
+| `revised` | edited after `detailed`/`reviewed`; **pending re-verify** | `unikit-gd-improve` (edit) · `unikit-gd-verify` (flags a stale dependent) | `reviewed` (after re-review) |
+
+- `not-started` carries **no version** — `Ver —` in the GD-INDEX row, no
+  `version` in GD-IDS. A version of `1` appears only from `skeleton` onward.
+- `revised` is the "needs re-verify" state: a system stays `revised` until
+  `unikit-gd-review` re-clears it back to `reviewed`.
+- `approved` is **not** a system `doc_status` — it was merged into `reviewed`.
+  The word "approved" elsewhere in this contract ("approved content", "approved
+  edit", "after approval") means collaborative approval, not a status. `GAME.md`
+  (`drafted | approved`) and `CONCEPT.md` (`exploring | drafted | approved`) keep
+  their **own** lifecycle enums — those are not system `doc_status`.
+- `doc_status: revised` (this lifecycle state) is distinct from the GD-IDS
+  `revised:` **date field** (when a fact's value last changed). Status writers
+  touch `doc_status` only; they never repurpose the `revised:` date as a status.
+
+**Two values that design never writes as `doc_status`:**
+
+- `deprecated` lives in the system's **`status` field** (`active | deprecated`),
+  not in `doc_status`. `unikit-gd-spec` sets it on a remap; the document file and
+  the GD-IDS entry are **kept** (never deleted — dangling references are verify
+  conflicts). **Display precedence:** while `status: deprecated`, the GD-INDEX
+  Status column shows `deprecated` regardless of the row's underlying
+  `doc_status`.
+- `implemented` is **code-set only** — the lone sanctioned code→design write,
+  applied by the code pipeline (wired in a later tier) and **read-only** to every
+  design skill. It appears in the GD-INDEX Status legend as a display value;
+  design skills never set it and never read code to learn it.
+
+**Who writes the three places.** The authoring skills — `unikit-gd-spec`,
+`unikit-gd-detail`, `unikit-gd-review`, `unikit-gd-improve` — write the status
+into **all three places** on every status change, so the spine stays coherent.
+
+**Dependent-lag exception (intentional).** `unikit-gd-verify` is deliberately
+**not** a full three-place writer. When it flags a *dependent* system as stale it
+bumps that dependent to `revised` in the **GD-INDEX row and GD-IDS `doc_status`
+only**, leaving the dependent's document header to catch up on its next authoring
+touch. So a verify-flagged dependent may transiently carry a header `Status`
+behind its GD-INDEX/GD-IDS value — this is expected, and full header alignment
+for flagged dependents is a later tier. The "all three agree" invariant holds for
+every system **except** a dependent caught between a verify flag and its next
+authoring edit.
+
 ## Delta Discipline (`unikit-gd-improve`)
 
 Every edit to an approved design document goes through `unikit-gd-improve`. A
@@ -101,13 +159,19 @@ The mandatory tail of every design edit:
    #### v<N> — <YYYY-MM-DD> — <essence of the change> (DD-<n>)
    - <Section>: <what changed>
    - AC: + AC-<sys>-7, AC-<sys>-8 (new); AC-<sys>-3 changed; **AC-<sys>-5 removed**
-   - Affected (gd-verify): <systems with Still Valid / Needs Review verdicts>
+   - Affected (gd-verify): <systems with Still Valid / Needs Review / Likely Stale verdicts>
    ```
 
    Mandatory elements: version, date, essence, DD reference for significant
    decisions; one line per affected section; the **AC delta line** (new / changed /
    removed) — the planning side consumes exactly this line to build delta plans.
-   The "Affected" line is appended by `unikit-gd-verify`, never by the editor.
+   The "Affected" line is appended by `unikit-gd-verify`, never by the editor — it
+   is a **human-readable record** of the impact pass, not the mechanism that
+   re-checks dependents. The pending-loop is driven by each system's own `Status:
+   revised`: the editor (`unikit-gd-improve`) marks **only the system it edited**
+   `revised`, and `unikit-gd-verify` marks affected **dependents** `revised`
+   (verdict-gated — see Lifecycle & Status). A `revised` system stays in the loop
+   until `unikit-gd-review` clears it back to `reviewed`.
 3. **Registry check:** new numbers vs GD-IDS facts — conflicts surface, they never
    silently win.
 4. Recommend `unikit-gd-verify` (changed scope) after the edit.

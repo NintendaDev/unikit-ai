@@ -19,7 +19,7 @@ through `unikit-gd-verify`.
 
 ## Systems
 
-`Status`: not-started · skeleton · detailed · approved · implemented.
+`Status`: not-started · skeleton · detailed · reviewed · revised · deprecated · `implemented` (set by the code side only; read-only here). See `.unikit/system/gd-principles.md` → Lifecycle & Status.
 `Depends`: SYS-ids this one needs (must match each system's section F).
 
 | ID | System | Category | Tier | Status | Ver | Depends | Doc |
@@ -50,7 +50,7 @@ through `unikit-gd-verify`.
 ## Design Order
 
 [Dependency sort × priority. Independent systems in the same layer can be
-designed in parallel; a system's GDD should reach `approved` before systems that
+designed in parallel; a system's GDD should reach `reviewed` before systems that
 depend on it are detailed.]
 
 1. [SYS-slug] — [MVP] — [Foundation] — [why first]

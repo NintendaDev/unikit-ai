@@ -40,8 +40,10 @@ the cheaper, binary **"is the design consistent with itself?"** — a review fin
 *can* be declined; a verify conflict cannot.
 
 A review is most honest in a **fresh session** — the reviewer should not be the
-author of the document. This skill is **read-only** to design documents; its only
-write is the review report and (with approval) the Status cell in GD-INDEX.
+author of the document. This skill never authors or edits design **content**; its
+only writes are the review report and — with the user's approval, to record a
+verdict — the system's `doc_status` in its three coherent places (the `SYSTEM.md`
+header `> Status:` line, the `GD-INDEX.md` row, and `GD-IDS.yaml`).
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -90,7 +92,7 @@ risks — nothing else.
 
 1. The argument names a system or a path → **single** review of that document.
 2. The prompt says "all" / "all systems" / "все" → **cross** review of every
-   `detailed`/`reviewed`/`approved` system.
+   `detailed`/`reviewed` system.
 3. Empty argument and several systems are detailed → **ask**:
 
    ```
@@ -99,7 +101,7 @@ risks — nothing else.
    ```
 
 **Mode** is the user's call — **critique** (iterate on a draft) or **review**
-(verdict on a finished document). Default to review on a `detailed`/`approved`
+(verdict on a finished document). Default to review on a `detailed`/`reviewed`
 document; offer critique if the user is mid-authoring. Announce scope + mode in one
 line, then proceed.
 
@@ -168,18 +170,24 @@ trail behind the Status change).
 
 ## Phase 5 — Status (soft gate)
 
-The verdict feeds the **Status** cell in `GD-INDEX.md` — with the user's approval,
-never silently:
+On approval, the verdict updates the system's `doc_status` to `reviewed` in **all
+three coherent places** — the `SYSTEM.md` header (the `> Status:` token in the
+combined header line, never a separate bold line), the `GD-INDEX.md` row, and
+`GD-IDS.yaml` (see gd-principles → Lifecycle & Status). Never silently:
 
 ```
-AskUserQuestion: Verdict is <verdict>. Update SYS-<slug> Status in GD-INDEX?
+AskUserQuestion: Verdict is <verdict>. Set SYS-<slug> Status → reviewed?
 Options:
-1. Set Status: reviewed/approved (recommended on APPROVED/PASS)
+1. Set Status: reviewed (recommended on APPROVED/PASS — writes all three places)
 2. Leave as-is — I'll address findings first
 ```
 
+- A clean re-review of a `revised` system clears it **back to `reviewed`** — the
+  `revised` → `reviewed` exit after re-verification.
+- Report the write in the compact summary: which of the three surfaces changed.
+
 The gate is soft: `unikit-plan` warns when a system's Status is not
-`detailed`/`approved` or is `revised`. A review never auto-applies fixes — route
+`detailed`/`reviewed` or is `revised`. A review never auto-applies fixes — route
 revisions to `unikit-gd-improve`.
 
 ## Final: Compact Report & Next Steps
@@ -189,7 +197,7 @@ Scope: <SYS-slug | all (N systems)>   Mode: <review|critique>
 Verdict: <verdict>
 Findings: <C> Critical · <M> Major · <m> Minor · <s> Suggestion
 Report: .unikit/gamedesign/reviews/<date>_review-<scope>.md
-Status: <updated to … | unchanged>
+Status: <set to `reviewed` across header + GD-INDEX + GD-IDS | unchanged>
 ```
 
 ```
@@ -207,15 +215,20 @@ No summary document beyond the report file.
 
 ## Ownership Boundaries
 
-- **Owns:** `.unikit/gamedesign/reviews/` report files; the GD-INDEX Status cell
-  (with approval).
-- **Read-only:** every design document, `GD-IDS.yaml`, `GAME.md`; plus
-  `DESCRIPTION.md`/`ARCHITECTURE.md` for the feasibility lens only.
+- **Owns:** `.unikit/gamedesign/reviews/` report files; and — with approval, to
+  record a verdict — the system's `doc_status` in its three coherent places: the
+  `GD-INDEX.md` Status cell, the `GD-IDS.yaml` `doc_status`, and the `SYSTEM.md`
+  header `> Status:` line.
+- **Read-only:** the **content** of every design document (sections A–K, `GAME.md`,
+  the fact values in `GD-IDS.yaml`); plus `DESCRIPTION.md`/`ARCHITECTURE.md` for the
+  feasibility lens only. The only design-surface writes are the three status fields
+  above.
 - **Not this skill:** consistency/impact checks → `unikit-gd-verify`; applying
   fixes → `unikit-gd-improve`; authoring → `unikit-gd-detail`/`unikit-gd-spec`.
-- **Never:** edit a design document; prescribe a fix the user did not ask for;
-  inflate severity past the evidence; change a Status without approval; read the
-  code workspace beyond the feasibility exception.
+- **Never:** edit design **content** (any section A–K, `GAME.md`, or a `GD-IDS.yaml`
+  fact value); prescribe a fix the user did not ask for; inflate severity past the
+  evidence; change a Status without approval; read the code workspace beyond the
+  feasibility exception.
 
 ## Quick Reference
 

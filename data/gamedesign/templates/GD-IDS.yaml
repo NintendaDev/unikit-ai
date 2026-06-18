@@ -43,9 +43,9 @@ systems: []
 # Example:
 #   - id: SYS-combat
 #     name: "Combat"
-#     status: active
+#     status: active            # active | deprecated
 #     tier: MVP                 # MVP | VS | Alpha | Full
-#     doc_status: detailed      # not-started | skeleton | detailed | approved | implemented
+#     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised
 #     version: 1
 #     implements: [PIL-1]
 #     depends_on: [SYS-stamina]

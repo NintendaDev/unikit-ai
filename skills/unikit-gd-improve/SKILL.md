@@ -98,7 +98,7 @@ argument and the prompt; on ambiguity, **ask — never guess** (`gd-principles`)
 
    ```
    AskUserQuestion: Which document should I revise?
-   Options: <each detailed/approved system from GD-INDEX> · GAME.md · None
+   Options: <each detailed/reviewed system from GD-INDEX> · GAME.md · None
    ```
 
 If the resolved document does **not exist** yet, stop: there is nothing to
@@ -166,8 +166,11 @@ current document.
 
 Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional:
 
-1. **Version +1** in the document header **and** in its `GD-INDEX.md` row; set the
-   row Status to `revised`; bump `version` in `GD-IDS.yaml`.
+1. **Version +1** in the document header **and** in its `GD-INDEX.md` row; bump
+   `version` in `GD-IDS.yaml`. Set the system's Status → `revised` in **all three
+   coherent places**: the `SYSTEM.md` header (the `> Status:` token in the combined
+   header line, not a separate bold line), the `GD-INDEX.md` row, and the
+   `GD-IDS.yaml` `doc_status` (see gd-principles → Lifecycle & Status).
 2. **Changelog block** appended to section **K** (format owned by `gd-principles`):
 
    ```markdown
@@ -178,7 +181,12 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
 
    The **AC-delta line** (new / changed / removed) is mandatory — the planning
    side consumes exactly this line to build delta plans. The `Affected
-   (gd-verify):` line is added later by `unikit-gd-verify`, never here.
+   (gd-verify):` line is added later by `unikit-gd-verify`, never here — it is a
+   **human-readable record** of the impact pass, not what drives re-verification.
+   The pending-loop is driven by `Status: revised` itself: this skill marks **only
+   the edited system** `revised` (step 1), and `unikit-gd-verify` marks affected
+   **dependents** `revised` (verdict-gated). Each stays in the loop until
+   `unikit-gd-review` clears it back to `reviewed`.
 3. **Registry check:** new numbers/names vs GD-IDS facts — conflicts surface, they
    never silently win. A significant decision also gets a **`DD-<n>`** record in
    `GD-IDS.yaml` `decisions` (options, rationale, affected systems).

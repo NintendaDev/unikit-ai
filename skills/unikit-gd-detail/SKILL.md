@@ -207,8 +207,13 @@ After the sections are authored:
 2. Present a **NEW / KNOWN** summary and get approval to write `GD-IDS.yaml`
    (`entities`, `formulas`, plus the `systems` entry's `doc_status`/`version`).
    Existing values are never changed silently; every fact carries its `source`.
-3. **Update state:** set the system's Status → `detailed` and bump **Ver** in both
-   `GD-INDEX.md` and `GD-IDS.yaml`. Append the initial changelog block to section
+3. **Update state:** set the system's Status → `detailed` in **all three places** —
+   the `SYSTEM.md` header (edit the `> Status:` token inside the combined header
+   line, not a separate bold line), the `GD-INDEX.md` row, and the `GD-IDS.yaml`
+   `doc_status` — so the spine stays coherent (see gd-principles → Lifecycle &
+   Status). Bump **Ver** in `GD-INDEX.md` and `GD-IDS.yaml` as before (extending
+   version coherence to the header is out of scope here). Append the initial
+   changelog block to section
    K (`#### v1 — <date> — initial design` with the `AC: + AC-<slug>-1 … N (new)`
    line). Record a `DD-<n>` in `GD-IDS.yaml` `decisions` for any significant
    decision.

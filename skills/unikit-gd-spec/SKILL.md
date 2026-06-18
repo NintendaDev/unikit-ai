@@ -207,8 +207,10 @@ remove) before writing. Then write:
   table, Categories, Priority Tiers, Design Order, and Risks/Circular-Dependencies
   sections (header `> Last Updated: <date>`).
 - **`GD-IDS.yaml`** `systems` — one entry per system (`id: SYS-<slug>`, name,
-  `status: active`, tier, `doc_status: not-started`, `version: 1`, `implements`,
-  `depends_on`, `source: systems/SYS-<slug>.md`, `added: <date>`).
+  `status: active`, tier, `doc_status: not-started`, `implements`, `depends_on`,
+  `source: systems/SYS-<slug>.md`, `added: <date>`). A `not-started` system carries
+  **no `version`** — it gets `version: 1` only when `unikit-gd-detail` creates the
+  skeleton (see gd-principles → Lifecycle & Status).
 
 Each system is `not-started` until `unikit-gd-detail` authors its GDD.
 
@@ -253,11 +255,12 @@ or the map drifted). This touches **structure**, not GAME.md content.
 3. Reconcile against existing rows — **never silently change a registry value or
    delete an ID**. Present a diff (added / changed / removed-→-deprecated systems)
    and get approval.
-4. **Preserve detailed work:** a system that already has a `detailed`/`approved`
+4. **Preserve detailed work:** a system that already has a `detailed`/`reviewed`
    GDD keeps its Status and Ver; only its map metadata (category, depends, tier)
    may change, with approval. Deprecate (never delete) systems that no longer fit
-   — set `status: deprecated` in `GD-IDS.yaml`; dangling references become verify
-   conflicts.
+   — set `status: deprecated` in `GD-IDS.yaml` **and `deprecated` in the system's
+   `GD-INDEX.md` Status cell** (the display-precedence writer — see gd-principles →
+   Lifecycle & Status); dangling references become verify conflicts.
 5. Recommend `/unikit-gd-verify` afterwards to catch any dependency drift.
 
 ---

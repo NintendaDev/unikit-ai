@@ -106,8 +106,12 @@ registry wins until the user resolves it the other way (`gd-principles`).
 
 Compute the blast radius of a recent edit:
 
-1. `git diff HEAD` (and `git status`) restricted to `.unikit/gamedesign/` → the
-   **changed systems**.
+1. **Changed set** = the union of two sources:
+   - `git diff HEAD` (and `git status`) restricted to `.unikit/gamedesign/` → the
+     systems whose documents changed on disk, **and**
+   - every system already carrying `Status: revised` in `GD-INDEX` — a pending edit
+     not yet cleared back to `reviewed`, so a `revised` system is re-checked even
+     when its file shows no fresh git diff.
 2. Walk `GD-INDEX` Depends edges to the **transitive closure** of systems that
    depend (directly or indirectly) on a changed one.
 3. Classify each affected system into an **Affected** table:
@@ -119,10 +123,20 @@ Compute the blast radius of a recent edit:
    | SYS-loot | uses a removed AC | **Likely Stale** |
 
    Verdicts: **Still Valid** / **Needs Review** / **Likely Stale**.
-4. **Append the `Affected (gd-verify):` line** to the latest changelog block in the
-   changed system's section **K** — this is the line `unikit-gd-improve` leaves for
-   verify to fill (`gd-principles` Delta Discipline, §11.1). With approval, bump
-   affected rows to `Status: revised` in `GD-INDEX`.
+4. **Record the impact** (with approval):
+   - **Append the `Affected (gd-verify):` line** to the latest changelog block in the
+     changed system's section **K** — the line `unikit-gd-improve` leaves for verify
+     to fill (`gd-principles` → Delta Discipline).
+   - For each affected **dependent**, bump it to `Status: revised` **only when its
+     verdict is `Needs Review` or `Likely Stale`** (a `Still Valid` dependent is left
+     untouched). Write the bump in **two places** — the `GD-INDEX` row and the
+     dependent's `GD-IDS.yaml` `doc_status`; the dependent's `SYSTEM.md` header is
+     left to catch up on its next authoring touch (full header coherence for flagged
+     dependents is a later tier — see gd-principles → Lifecycle & Status).
+   - A `revised` dependent returns to `reviewed` only through `unikit-gd-review`,
+     never here.
+   - **Idempotent:** re-running on the same diff yields the same Affected table and
+     re-bumps nothing already at `revised`.
 
 ## Phase 4 — Resolve Conflicts
 
@@ -190,9 +204,11 @@ No summary document beyond the conditional report file.
 ## Ownership Boundaries
 
 - **Owns:** the `Affected (gd-verify):` changelog line; verify report files; the
-  GD-INDEX `revised` Status bumps (with approval).
-- **Read-only:** every design document and (except the `Affected` line / approved
-  conflict resolutions) `GD-IDS.yaml`, `GD-INDEX.md`, `GAME.md`.
+  GD-INDEX `revised` Status bumps and the matching `GD-IDS.yaml` `doc_status: revised`
+  bump for a flagged dependent (with approval).
+- **Read-only:** every design document and (except the `Affected` line, approved
+  conflict resolutions, and a flagged dependent's `doc_status: revised` bump)
+  `GD-IDS.yaml`, `GD-INDEX.md`, `GAME.md`.
 - **Not this skill:** quality judgment → `unikit-gd-review`; applying design fixes →
   `unikit-gd-improve`; authoring → `unikit-gd-detail`/`unikit-gd-spec`.
 - **Never:** use web research; guess where a grep settles it; change a `GD-IDS`

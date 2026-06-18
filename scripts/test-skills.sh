@@ -817,6 +817,45 @@ else
     fi
 fi
 
+# Status spine (Tier 1) — the system doc_status enum spans three surfaces that
+# carry DIFFERENT sets (GD-IDS doc_status = 5; SYSTEM header legend = 4, no
+# `not-started`; GD-INDEX = a display-union with `deprecated` + read-only
+# `implemented`). So this guard asserts the shared MERGE invariant, not enum
+# equality: `reviewed` and `revised` on all three legends, and no `approved`-as-
+# status on any (it merged into `reviewed`). Each grep targets the one status
+# legend line per surface — never the whole file — so GAME.md/CONCEPT.md (their
+# own `approved` lifecycle enums) and the GD-IDS `revised:` date field stay out.
+GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
+GD_INDEX_TPL="$GD_DATA/templates/GD-INDEX.md"
+GD_SYSTEM_TPL="$GD_DATA/templates/SYSTEM.md"
+SPINE_IDS_LINE=$(grep -F 'doc_status:' "$GD_IDS_TPL" 2>/dev/null | head -1 || true)
+SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head -1 || true)
+SPINE_INDEX_LINE=$(grep -F '`Status`:' "$GD_INDEX_TPL" 2>/dev/null | head -1 || true)
+SPINE_OK=1
+SPINE_WHY=""
+for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "GD-INDEX.md:$SPINE_INDEX_LINE"; do
+    name="${pair%%:*}"
+    line="${pair#*:}"
+    if [[ -z "$line" ]]; then
+        SPINE_OK=0; SPINE_WHY+=" $name(no-status-legend)"; continue
+    fi
+    if ! echo "$line" | grep -q "reviewed"; then SPINE_OK=0; SPINE_WHY+=" $name(no-reviewed)"; fi
+    if ! echo "$line" | grep -q "revised";  then SPINE_OK=0; SPINE_WHY+=" $name(no-revised)"; fi
+    if echo "$line" | grep -q "approved";   then SPINE_OK=0; SPINE_WHY+=" $name(approved-as-status)"; fi
+done
+if [[ "$SPINE_OK" -eq 1 ]]; then
+    pass "status spine — reviewed+revised on all 3 surfaces, no approved-as-status (GD-IDS/SYSTEM/GD-INDEX)"
+else
+    fail "status spine enum drift:$SPINE_WHY"
+fi
+# The state machine is defined once in gd-principles (#2); skills reference it by
+# name ("Lifecycle & Status"). Guard a re-clone that drops the section.
+if grep -q '^## Lifecycle & Status' "$GD_PRINCIPLES"; then
+    pass "gd-principles.md — has 'Lifecycle & Status' section"
+else
+    fail "gd-principles.md — missing 'Lifecycle & Status' section"
+fi
+
 # Regression (#R3) — gamedesign CORE rules carry domain knowledge ONLY. Phase R
 # stripped the process hook from the relocated library→core rules; severity and
 # section-letter semantics live in gd-principles, never in a rule. Guard the

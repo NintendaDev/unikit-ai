@@ -1,6 +1,6 @@
 # [System Name] — SYS-[slug]
 
-> **Status**: skeleton | detailed | approved | implemented
+> **Status**: skeleton | detailed | reviewed | revised
 > **Version**: 1
 > **Last Updated**: [YYYY-MM-DD]
 > **Implements**: [PIL-n, PIL-m] · **Layer**: [Foundation | Core | Feature | Presentation] · **Scope**: [S | M | L | XL]
@@ -132,7 +132,9 @@ Name impairment categories addressed and the concrete option/setting.]
 
 [Appended by `unikit-gd-improve` on every approved edit. Newest first. The
 **AC delta line** is what the planning side consumes to build delta plans; the
-**Affected** line is appended by `unikit-gd-verify`.]
+**Affected** line is appended by `unikit-gd-verify` as a human-readable record. The
+pending-loop is driven by each system's own `Status: revised` (the editor marks the
+edited system; `unikit-gd-verify` marks affected dependents), not by this line.]
 
 ```markdown
 #### v1 — [YYYY-MM-DD] — initial design

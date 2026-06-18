@@ -633,11 +633,13 @@ to `.unikit/gamedesign/`.
 
 1. Read `.unikit/gamedesign/GD-INDEX.md` (the system map: one row per system with `ID`,
    `System`, `Category`, `Tier`, `Status`, `Ver`, `Depends`, `Doc`).
-2. Match the feature description against the `System` names (and `Category`). One confident
-   match → use it. Several plausible matches, or none → resolve with `AskUserQuestion`
-   (list the candidate systems); **never guess** the system. If the user confirms the
-   feature has no design system (pure code/tech work) → set `design_linked = false` and
-   continue to Step 5 with no `## Design` section.
+2. Match the feature description against the `System` names (and `Category`). Exclude rows
+   whose `Status` is `deprecated` from candidate matching — emit
+   `WARN [design] SYS-<id> deprecated; excluded from candidates` and do not plan against
+   one. One confident match → use it. Several plausible matches, or none → resolve with
+   `AskUserQuestion` (list the candidate systems); **never guess** the system. If the user
+   confirms the feature has no design system (pure code/tech work) → set
+   `design_linked = false` and continue to Step 5 with no `## Design` section.
 3. For the resolved row, read its system GDD from the `Doc` path
    (`.unikit/gamedesign/systems/*.md`). Capture: the system `SYS-id`, current `Ver`,
    `Status`, and the **Acceptance Criteria** (verbatim, keyed by `AC-<id>`).
@@ -645,7 +647,7 @@ to `.unikit/gamedesign/`.
 #### 4.5.2 — Status gate (warn, never block)
 
 Plan generation continues regardless of status, but surface a `WARN [design]` line when the
-resolved system's `Status` is not `detailed` or `approved`:
+resolved system's `Status` is not `detailed` or `reviewed`:
 
 - `not-started` / `skeleton` — the design is incomplete; the plan may rest on a partial
   spec. Suggest finishing `/unikit-gd-detail <system>` first.
@@ -653,6 +655,9 @@ resolved system's `Status` is not `detailed` or `approved`:
   this as a delta plan (4.5.3) and call out that old behavior may need removal.
 - `implemented` — code already exists for this version; confirm intent (a re-plan usually
   implies an unrecorded delta).
+- `deprecated` — the system was dropped in a remap; 4.5.1 filters it out of candidate
+  matching. If the user explicitly targets it, `WARN [design]` and confirm intent before
+  planning — a deprecated system normally should not receive new code.
 
 #### 4.5.3 — Delta plan (design moved ahead of code)
 
@@ -817,7 +822,7 @@ Bad examples:
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
 11. **Always create PLAN-BRIEF.md** — even when a research's `RESEARCH_BRIEF.md` exists, the plan always generates its own `PLAN-BRIEF.md` (full mode) or `## Technical Context` (fast mode) based on the current codebase state. The research brief is used as input, not as a replacement — code may have changed since the research was conducted. The plan's brief is the authoritative source for `/unikit-implement`
 12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
-13. **Design is read-only and cited, not copied** — when a game-design workspace exists (`.unikit/gamedesign/GD-INDEX.md`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`/`approved`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
+13. **Design is read-only and cited, not copied** — when a game-design workspace exists (`.unikit/gamedesign/GD-INDEX.md`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`/`reviewed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
 
 ## Code Analysis & Delegation Rules
 
