@@ -98,3 +98,42 @@ export function getModule(id: string): Module | undefined {
 export function listModules(): Module[] {
   return Object.values(MODULE_REGISTRY);
 }
+
+/**
+ * Resolve the knowledge module a skill belongs to by LONGEST matching
+ * `skillPrefix`, or `undefined` when none match.
+ *
+ * Longest-prefix is required, not a convenience: the `code` module's prefix is
+ * `unikit` and `gamedesign`'s is `unikit-gd`, and every gamedesign skill id
+ * (`unikit-gd-*`) also starts with `unikit`. A naive
+ * `startsWith(code.skillPrefix)` would mis-assign gamedesign skills to `code`.
+ * A skill matches a module when it equals the prefix exactly (the `unikit`
+ * orchestrator) or begins with `<prefix>-` (a hyphen boundary, so `unikit-gd`
+ * never swallows an unrelated `unikit-gdx`).
+ */
+export function resolveSkillModule(skill: string): Module | undefined {
+  let best: Module | undefined;
+  for (const module of listModules()) {
+    const matches = skill === module.skillPrefix || skill.startsWith(`${module.skillPrefix}-`);
+    if (matches && (!best || module.skillPrefix.length > best.skillPrefix.length)) {
+      best = module;
+    }
+  }
+  return best;
+}
+
+/** Minimal shape of the config fields {@link moduleHasInstalledSkills} reads. */
+interface InstalledSkillsConfig {
+  agents: ReadonlyArray<{ installedSkills: string[] }>;
+}
+
+/**
+ * Whether any skill installed across all agents resolves (by longest-prefix,
+ * via {@link resolveSkillModule}) to the given module. This is the invariant
+ * driver for rule bootstrap: a module's rules are bootstrapped because its
+ * SKILLS are installed, not because the module is registered.
+ */
+export function moduleHasInstalledSkills(config: InstalledSkillsConfig, module: Module): boolean {
+  const installed = config.agents.flatMap(a => a.installedSkills);
+  return installed.some(s => resolveSkillModule(s)?.id === module.id);
+}

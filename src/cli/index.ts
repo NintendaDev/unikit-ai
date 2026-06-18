@@ -98,7 +98,7 @@ rules
 
 rules
   .command('install [ids...]')
-  .description('Install rules from the registry. Without arguments bootstraps every registered module by its policy: code installs the always-tagged (core) set, gamedesign installs all core+library rules (bootstrap used by /unikit Step 9.2). With one or more ids installs each rule and prints an aggregated report.')
+  .description('Install rules from the registry. Bare (no args) prints help. The "defaults" keyword bootstraps every module whose skills are installed (code: the always-tagged core set; gamedesign: all core+library rules) — the bootstrap used by /unikit Step 9.2. One or more ids install those specific rules (code module by default) and print an aggregated report.')
   .option('--force', 'Re-fetch and overwrite rules that are already installed')
   .option('--module <module>', 'Scope to a knowledge module (default: "code")')
   .action((ids: string[], options: { force?: boolean; module?: string }) => rulesInstallCommand(ids, options));

@@ -7,14 +7,14 @@ import path from 'path';
 import fs from 'fs-extra';
 import semver from 'semver';
 import { loadConfig, saveConfig, getModuleTier } from '../../core/config.js';
-import type { UniKitConfig, InstalledRuleEntry, RuleOrigin } from '../../core/config.js';
+import type { UniKitConfig, RuleOrigin } from '../../core/config.js';
 import { planMigrationChain } from '../../core/migrations/runner.js';
 import { PROJECT_MEMORY_MIGRATIONS, MEMORY_MODULAR_MIN_VERSION } from '../../core/memory-migrations/index.js';
 import {
   createRegistry, detectRegistryKind, resolveRegistryUrl, resolveRegistryPath,
   OFFICIAL_REGISTRY_URL, LATEST_SCHEMA, GitRegistry, FsRegistry,
 } from '../../core/registry/index.js';
-import type { RulesRegistry, ChainedRegistry, RegistryManifest, RuleCategory, RegistryKind } from '../../core/registry/index.js';
+import type { RulesRegistry, ChainedRegistry, RegistryManifest, RegistryKind } from '../../core/registry/index.js';
 import { validateRegistry, validateUrlFormat, normalizeRegistryUrl, validateManifestShape } from '../../core/registry/validator.js';
 import { runRegistryDiskMigration } from '../../core/registry/migrations/index.js';
 import { getAllEngineIds } from '../../core/engines.js';
@@ -24,13 +24,13 @@ import {
 } from '../../core/installer/rules-index.js';
 import { syncAllModules, type SyncRulesEvent } from '../../core/installer/rules-sync.js';
 import { resolveModuleCatalog, type ModuleCatalog, type CatalogRule } from '../../core/installer/module-catalog.js';
+import { installOneRule, bootstrapModuleRules, type InstallReportLine } from '../../core/installer/rules-bootstrap.js';
 import {
   CODE_MODULE_ID, GAMEDESIGN_MODULE_ID, GAMEDESIGN_TIERS,
-  RULE_CATEGORIES, REFERENCES_DIR_NAME, moduleTierDir, type Tier,
+  RULE_CATEGORIES, type Tier,
 } from '../../core/constants.js';
-import { MODULE_REGISTRY, getModule, listModules, type Module } from '../../core/modules.js';
-import { writeTextFile, fileExists, listFiles, removeFile, readJsonFile, writeJsonFile, getBundledRegistryDir } from '../../utils/fs.js';
-import { createHash } from 'crypto';
+import { MODULE_REGISTRY, getModule, listModules, moduleHasInstalledSkills, type Module } from '../../core/modules.js';
+import { fileExists, readJsonFile, writeJsonFile, getBundledRegistryDir } from '../../utils/fs.js';
 import { logInfo, logWarn, logError } from '../../utils/log.js';
 
 // --- Exit codes (unified for all unikit rules *) ---
@@ -48,10 +48,6 @@ export const EXIT = {
 
 function exitWithCode(code: number): never {
   process.exit(code);
-}
-
-function computeHash(content: string): string {
-  return createHash('sha256').update(content, 'utf-8').digest('hex');
 }
 
 async function loadConfigOrExit(projectDir: string): Promise<UniKitConfig> {
@@ -474,17 +470,6 @@ export async function rulesShowCommand(id: string, options: { references?: boole
 // this format — keep the per-rule prefix characters (`✓` / `↻` / `✗`), the
 // code-module label shape, and the summary wording stable.
 
-type InstallReportStatus = 'installed' | 'already-installed' | 'failed';
-
-interface InstallReportLine {
-  status: InstallReportStatus;
-  module: string;
-  category: RuleCategory | 'unknown';
-  id: string;
-  version?: string;
-  reason?: string;
-}
-
 function printInstallReport(lines: InstallReportLine[]): void {
   for (const line of lines) {
     const base = line.category === 'unknown' ? line.id : `${line.category}/${line.id}`;
@@ -507,221 +492,36 @@ function printInstallReport(lines: InstallReportLine[]): void {
   console.log(chalk.bold(`Rules: ${installed} installed, ${already} already-installed, ${failed} failed`));
 }
 
-/**
- * Install a single rule as part of a variadic batch. Mutates `config` in place
- * and returns a report line — never exits the process. Caller decides the final
- * exit code from the aggregated report.
- *
- * Module-generic: state lookups, catalog search, destination paths, and
- * re-categorisation walk `module.tiers` instead of a hardcoded core/stack
- * pair. Preserves the single-id behaviour from the old code-pinned handler:
- *   - canonical id normalisation on lookup (so legacy `CODE-STYLE` state still
- *     resolves when the user passes `code-style` and vice versa),
- *   - re-categorisation cleanup (rule moved between tiers),
- *   - orphan reference cleanup when re-categorising.
- */
-async function installOneRule(
-  projectDir: string,
-  config: UniKitConfig,
-  registry: RulesRegistry,
-  module: Module,
-  catalogRules: CatalogRule[],
-  engineId: string,
-  rawId: string,
-  options: { force?: boolean; allowAlreadyInstalled?: boolean; preferredTier?: Tier },
-): Promise<InstallReportLine> {
-  // Canonical lowercase-hyphen comparison lets legacy state entries like
-  // `CODE-STYLE` still resolve when the user (or a script) passes the canonical
-  // `code-style`, and vice versa. This is the guard that kept pre-migration
-  // projects usable and must not be lost in the variadic rewrite.
-  const normalizedId = normalizeRuleId(rawId);
-  const tierStates = module.tiers.map(tier => ({
-    tier,
-    list: getModuleTier(config, module.id, tier),
-  }));
-  const existingHit = tierStates
-    .map(({ tier, list }) => ({ tier, entry: list.find(e => normalizeRuleId(e.name) === normalizedId) }))
-    .find(h => h.entry !== undefined) as { tier: Tier; entry: InstalledRuleEntry } | undefined;
-  const existing = existingHit?.entry;
-
-  // Find rule by id in the module catalog (canonical lowercase-hyphen
-  // comparison). When the caller hints a preferred tier (bootstrap knows the
-  // exact tier from the catalog), try that tier first so a rule shipped in two
-  // tiers of the manifest goes where the bootstrap wants it.
-  const ordered = options.preferredTier
-    ? [
-      ...catalogRules.filter(r => r.tier === options.preferredTier),
-      ...catalogRules.filter(r => r.tier !== options.preferredTier),
-    ]
-    : catalogRules;
-  const foundHit = ordered.find(r => normalizeRuleId(r.rule.id) === normalizedId);
-
-  if (!foundHit) {
-    const scope = module.enginePartitioned ? `engine "${engineId}"` : `module "${module.id}"`;
-    return {
-      status: 'failed',
-      module: module.id,
-      category: 'unknown',
-      id: rawId,
-      reason: `not found in registry for ${scope}`,
-    };
-  }
-
-  const category = foundHit.tier;
-  const found = foundHit.rule;
-  // Per-rule B-merge origin from the catalog ROW (not a module-wide value):
-  // for gamedesign each id may resolve from a different chain level (custom
-  // override vs official/bundled backfill); for code it is the module-wide
-  // origin on every row. Stamped onto every state entry written below.
-  const origin = foundHit.origin;
-
-  // Idempotency / already-installed handling.
-  //
-  // Three branches:
-  //   1. `existing && options.force`                → always re-fetch + rewrite
-  //   2. `existing && options.allowAlreadyInstalled` → hash-match skip, drift
-  //                                                   re-fetch (used by
-  //                                                   no-args bootstrap)
-  //   3. `existing && !options.force && !allow...`  → report `already-installed`
-  //                                                   (variadic user call without
-  //                                                   `--force`); old single-id
-  //                                                   handler emitted EXIT 4
-  //                                                   here, we absorb into
-  //                                                   the report instead.
-  if (existing && !options.force && options.allowAlreadyInstalled !== true) {
-    return { status: 'already-installed', module: module.id, category, id: found.id };
-  }
-
-  // Fetch rule content.
-  const fetched = await registry.fetchRule(module.id, engineId, category, found.id);
-  if (!fetched) {
-    return {
-      status: 'failed',
-      module: module.id,
-      category,
-      id: found.id,
-      reason: 'failed to fetch rule content',
-    };
-  }
-
-  const newHash = computeHash(fetched.content);
-  const destPath = path.join(moduleTierDir(projectDir, module.id, category), `${found.id}.md`);
-  const destExists = await fileExists(destPath);
-
-  // Idempotent skip for the no-args bootstrap path: if the file is on disk
-  // and the hashes agree, keep it and report `already-installed`. This mirrors
-  // the legacy `rules core-install` hash-match branch and makes `/unikit`
-  // Step 9.2 safe to re-run on every invocation.
-  if (
-    options.allowAlreadyInstalled === true
-    && !options.force
-    && existing
-    && existing.installed_hash === newHash
-    && destExists
-  ) {
-    return { status: 'already-installed', module: module.id, category, id: found.id };
-  }
-
-  await writeTextFile(destPath, fetched.content);
-
-  // Install references if any. Reference files live alongside the rule under
-  // `.unikit/memory/<module>/<tier>/references/` and are matched by filename
-  // prefix on cleanup (see re-categorisation block below).
-  if (found.references && found.references.length > 0) {
-    const refs = await registry.fetchReferences(module.id, engineId, category, found.id, found.references);
-    const destRefsDir = path.join(moduleTierDir(projectDir, module.id, category), REFERENCES_DIR_NAME);
-    for (const ref of refs) {
-      await writeTextFile(path.join(destRefsDir, ref.filename), ref.content);
-    }
-  }
-
-  const listOf = (tier: Tier): InstalledRuleEntry[] => {
-    const state = tierStates.find(s => s.tier === tier);
-    return state ? state.list : getModuleTier(config, module.id, tier);
-  };
-
-  if (existing && existingHit) {
-    // Design note — re-categorisation cleanup (rule moved between tiers in
-    // the registry) + legacy name migration escape hatch for core rules.
-    //
-    // Without cleanup the old file would survive on disk, and the next
-    // `rules sync` Phase 1 would register it as a `source: local` entry in
-    // the stale tier — producing a phantom duplicate of the rule.
-    //
-    // If `existing.name` is legacy (e.g. `CODE-STYLE`) and `found.id` is
-    // canonical (`code-style`), the block below swaps the `.unikit.json`
-    // state entry from legacy to canonical (splice from old list, push the
-    // new entry under `found.id`). That is the full extent of the migration
-    // performed here — on a case-sensitive filesystem the orphan
-    // `CODE-STYLE.md` survives on disk and the next `rules sync` Phase 1
-    // re-registers it as `source: local`, producing a persistent duplicate.
-    // `rules sync --replace --prune` does NOT help for core rules: the
-    // obsolete-remove block in `syncRulesState` is scoped to
-    // `category === 'stack'`. Core rules require MANUAL cleanup — edit
-    // `.unikit.json` and remove the legacy entry, then delete the orphan
-    // file on disk. This is the documented escape hatch for core.
-    const oldCategory = existingHit.tier;
-    if (oldCategory !== category) {
-      logInfo('rules:install', `re-categorized ${existing.name}: ${oldCategory} → ${category}`);
-      const oldPath = path.join(moduleTierDir(projectDir, module.id, oldCategory), `${existing.name}.md`);
-      if (await fileExists(oldPath)) {
-        await removeFile(oldPath);
-      }
-      // Clean up orphan reference files from the old tier. References are
-      // matched by filename prefix (aspid-mvvm-*.md style), mirroring how
-      // fetchReferences writes them next to the rule file.
-      const oldRefsDir = path.join(moduleTierDir(projectDir, module.id, oldCategory), REFERENCES_DIR_NAME);
-      if (await fileExists(oldRefsDir)) {
-        const refs = await listFiles(oldRefsDir);
-        const prefix = existing.name.toLowerCase();
-        for (const ref of refs) {
-          const refLower = ref.toLowerCase();
-          if (refLower.startsWith(`${prefix}-`) || refLower === `${prefix}.md`) {
-            await removeFile(path.join(oldRefsDir, ref));
-          }
-        }
-      }
-    }
-
-    // Update-in-place path — reuse the existing state entry when the rule
-    // stayed in the same tier AND the stored name already matches the
-    // canonical id. The no-args bootstrap relies on this branch for its
-    // drift-recovery flow (rule in state but stale hash on disk).
-    const sameCategory = oldCategory === category;
-    const sameName = existing.name === found.id;
-    if (sameCategory && sameName) {
-      existing.source = 'registry';
-      existing.version = found.version;
-      existing.installed_hash = newHash;
-      existing.origin = origin;
-    } else {
-      // Legacy-name migration OR cross-tier move. Splice the old entry
-      // out and push a fresh canonical entry under the correct tier list.
-      const oldList = listOf(oldCategory);
-      const idx = oldList.indexOf(existing);
-      if (idx >= 0) oldList.splice(idx, 1);
-      listOf(category).push({
-        name: found.id,
-        source: 'registry',
-        origin,
-        version: found.version,
-        installed_hash: newHash,
-      });
-    }
-  } else {
-    listOf(category).push({
-      name: found.id,
-      source: 'registry',
-      origin,
-      version: found.version,
-      installed_hash: newHash,
-    });
-  }
-
-  return { status: 'installed', module: module.id, category, id: found.id, version: found.version };
+function printRulesInstallHelp(): void {
+  console.log('Usage: unikit-ai rules install [defaults | <id>...]');
+  console.log('');
+  console.log('  defaults        Bootstrap rules for every module whose skills are installed.');
+  console.log('                  code: the registry always-tagged (core) set; gamedesign: all');
+  console.log('                  core + library rules. This is the bootstrap used by /unikit');
+  console.log('                  Step 9.2. ("defaults" is a reserved token; a rule literally');
+  console.log('                  named "defaults" cannot be installed by id.)');
+  console.log('  <id>...         Install one or more specific rules by id (code module by');
+  console.log('                  default; pass --module to target another module).');
+  console.log('');
+  console.log('Options:');
+  console.log('  --force         Re-fetch and overwrite rules already installed.');
+  console.log('  --module <id>   Scope to a knowledge module.');
+  console.log('');
+  console.log('Examples:');
+  console.log('  unikit-ai rules install defaults');
+  console.log('  unikit-ai rules install code-style r3');
+  console.log('  unikit-ai rules install defaults --module gamedesign');
 }
 
 export async function rulesInstallCommand(ids: string[], options: { force?: boolean; module?: string } = {}): Promise<void> {
+  // Bare `rules install` (no ids) prints help and exits 0. This MUST run before
+  // loadConfigOrExit / assertProjectMigrated so it works outside a project too —
+  // bootstrap now lives behind the explicit `defaults` keyword, not no-args.
+  if (ids.length === 0) {
+    printRulesInstallHelp();
+    return;
+  }
+
   const projectDir = process.cwd();
   const config = await loadConfigOrExit(projectDir);
   const engineId = config.engine;
@@ -732,37 +532,49 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   await assertProjectMigrated(projectDir, config);
 
   const registry = buildRegistry(config);
-  const noArgsBootstrap = ids.length === 0;
 
-  // Target modules: an explicit `--module` wins; otherwise the no-args
-  // bootstrap walks every registered module by its bootstrap policy, while a
+  // `defaults` is a reserved keyword: it triggers the module-aware bootstrap and
+  // cannot be combined with explicit ids.
+  const isDefaults = ids[0] === 'defaults';
+  if (isDefaults && ids.length > 1) {
+    console.error(chalk.red('`rules install defaults` does not take rule ids.'));
+    console.error(chalk.dim('Use `rules install <id>...` for specific rules, or `rules install defaults` to bootstrap.'));
+    exitWithCode(EXIT.INVALID_ARGS);
+  }
+
+  // Target modules: an explicit `--module` wins everywhere. Otherwise `defaults`
+  // bootstraps every module whose SKILLS are installed (the invariant: a
+  // module's rules follow its installed skills, not its registration), while a
   // variadic id list keeps the back-compat `code` scope.
   const targetModules: Module[] = options.module !== undefined
     ? [resolveModuleOptionOrExit(options.module)]
-    : noArgsBootstrap
-      ? listModules()
+    : isDefaults
+      ? listModules().filter(m => moduleHasInstalledSkills(config, m))
       : [resolveModuleOptionOrExit(undefined)];
 
-  // Resolve each target module's catalog once per invocation — the single
-  // biggest reason the legacy per-id `rulesInstallCommand` was painful to call
-  // from `/unikit` Step 9.2 is that it hit the registry chain N times for N
-  // always-tagged rules. The aggregated report below closes that loop.
+  // Resolve each target module's catalog once per invocation. The catalogs are
+  // resolved (and gated) here, by the CLI wrapper, so the pre-install exit gates
+  // can run BEFORE the exit-free bootstrapModuleRules installs anything.
   const catalogs = new Map<string, ModuleCatalog>();
   for (const module of targetModules) {
     catalogs.set(module.id, await resolveModuleCatalog(registry, module, engineId));
   }
 
-  if ([...catalogs.values()].every(c => !c.reachable)) {
+  // Pre-install gate 1 — reachability (exit 2). Only fires when there ARE
+  // catalogs in scope and every one is unreachable (the chain is down). With no
+  // target modules (e.g. `defaults` where no installed skill resolves to a
+  // module) there is nothing to reach — fall through to the empty gate below.
+  if (catalogs.size > 0 && [...catalogs.values()].every(c => !c.reachable)) {
     console.error(chalk.red('Registry chain unreachable.'));
     exitWithCode(EXIT.NETWORK_ERROR);
   }
 
-  // Explicit engine-existence predicate (engine-partitioned targets only). The
-  // accessors collapse "engine missing" and "tier empty" to `[]`, so the
-  // exit-5 contract is re-established here before reading rules. A module
-  // merely ABSENT from the registry is NOT an error — its catalog is empty
-  // and the bootstrap skips it gracefully (schema:1 and code-only custom
-  // registries stay valid sources).
+  // Pre-install gate 2 — engine existence (exit 5, engine-partitioned targets).
+  // The accessors collapse "engine missing" and "tier empty" to `[]`, so the
+  // exit-5 contract is re-established here before any install. A module merely
+  // ABSENT from the registry is NOT an error — its catalog is empty and the
+  // bootstrap skips it gracefully (schema:1 and code-only custom registries
+  // stay valid sources).
   for (const catalog of catalogs.values()) {
     if (catalog.reachable && !catalog.engineAvailable) {
       console.error(chalk.red(`Engine "${engineId}" not found in registry.`));
@@ -771,76 +583,39 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
     }
   }
 
-  // Design note — case-sensitive FS + core bootstrap.
-  //
-  // The legacy `core-install` command keyed its in-memory state map by the
-  // raw `entry.name` from `.unikit.json` (NOT canonical) on purpose: users
-  // migrating from a legacy UPPER_CASE entry will see a duplicate in
-  // `.unikit.json.rules.installed.modules.code.core` after the bootstrap
-  // (legacy `CODE-STYLE` + new `code-style`). The escape hatch for core is
-  // MANUAL cleanup only — edit `.unikit.json` and remove the legacy entry,
-  // then delete the corresponding `.unikit/memory/code/core/CODE-STYLE.md`
-  // file. `rules sync --replace --prune` does NOT help for core rules: the
-  // obsolete-remove block in `syncRulesState` is scoped to the stack tier,
-  // so a legacy `CODE-STYLE.md` core file is re-registered as `source: local`
-  // on the next Phase 1 pass and the duplicate persists. The variadic
-  // `installOneRule` preserves the same semantics.
-  //
-  // Bootstrap policy (per module descriptor):
-  //   - `always-core` (code) — install every rule the registry marks
-  //     `always === true` for this engine, across both tiers. The flag is
-  //     injected by the schema:1→2 normalization (`always = tier === 'core'`)
-  //     and emitted directly by schema:2 sources, so on the official registry
-  //     this set equals the former core whitelist while custom registries can
-  //     opt stack rules into the bootstrap.
-  //   - `all-rules` (gamedesign) — install the module's ENTIRE catalog
-  //     (core + library) regardless of the `always` flag; the library is a
-  //     compact domain-expertise set that ships whole.
-  interface WorkItem { module: Module; id: string; preferredTier?: Tier }
-  let work: WorkItem[];
+  let report: InstallReportLine[];
+  if (isDefaults) {
+    // Module-aware bootstrap via the exit-free primitive. Catalogs were resolved
+    // + gated above; bootstrapModuleRules only builds work items by each
+    // module's policy (always-core / all-rules) and installs them.
+    const result = await bootstrapModuleRules(
+      projectDir, config, registry, engineId, [...catalogs.values()], { force: options.force === true },
+    );
+    report = result.report;
 
-  if (noArgsBootstrap) {
-    work = [];
-    for (const module of targetModules) {
-      const catalog = catalogs.get(module.id);
-      if (!catalog || !catalog.reachable) continue;
-      const selected = module.bootstrap === 'all-rules'
-        ? catalog.rules
-        : catalog.rules.filter(r => r.rule.always === true);
-      work.push(...selected.map(r => ({ module, id: r.rule.id, preferredTier: r.tier })));
-    }
-    // The empty-bootstrap gate sums over ALL target modules — an empty
-    // gamedesign catalog next to a populated code catalog must not fail.
-    if (work.length === 0) {
-      console.error(chalk.red(`No always-tagged (core) rules found in registry for engine "${engineId}".`));
+    // Post-call gate 3 — empty bootstrap (exit 5). An empty report means no
+    // module in scope contributed a work item (no always-tagged code rules, no
+    // gamedesign rules, or no module had installed skills). "Gate before
+    // install" holds: an empty work set installs nothing. The legacy
+    // code-engine-missing path still exits 5 earlier via the engine gate.
+    if (report.length === 0) {
+      console.error(chalk.red('No bootstrap rules found for any module whose skills are installed.'));
       exitWithCode(EXIT.VALIDATION_FAILED);
     }
   } else {
+    // Variadic: install each user-specified id on the single target module
+    // (code by default), fetching the module manifest once. No allowAlready /
+    // preferredTier — matches the legacy per-id behaviour exactly.
     const module = targetModules[0];
-    work = ids.map(id => ({ module, id }));
-  }
-
-  const report: InstallReportLine[] = [];
-  for (const item of work) {
-    const catalog = catalogs.get(item.module.id);
-    const line = await installOneRule(
-      projectDir,
-      config,
-      registry,
-      item.module,
-      catalog?.rules ?? [],
-      engineId,
-      item.id,
-      {
-        force: options.force === true,
-        // No-args bootstrap is idempotent by design (hash-match skip, drift
-        // recovery). Explicit variadic calls without `--force` absorb
-        // "already installed" into the report instead of emitting EXIT 4.
-        allowAlreadyInstalled: noArgsBootstrap,
-        preferredTier: noArgsBootstrap ? item.preferredTier : undefined,
-      },
-    );
-    report.push(line);
+    report = [];
+    for (const id of ids) {
+      const catalog = catalogs.get(module.id);
+      const line = await installOneRule(
+        projectDir, config, registry, module, catalog?.rules ?? [], engineId, id,
+        { force: options.force === true },
+      );
+      report.push(line);
+    }
   }
 
   const anyStateChange = report.some(l => l.status === 'installed');
@@ -871,6 +646,9 @@ export async function rulesInstallCommand(ids: string[], options: { force?: bool
   printInstallReport(report);
   console.log(chalk.dim('✓ RULES_INDEX.md regenerated'));
 
+  // Post-call gate 4 — all-failed (exit 1). Distinct from the empty gate: here
+  // work items existed (manifest present) but every fetch failed. Without this,
+  // an all-failed bootstrap on a flaky registry would silently exit 0.
   const anySuccessful = report.some(l => l.status === 'installed' || l.status === 'already-installed');
   if (!anySuccessful) {
     exitWithCode(EXIT.NOT_FOUND);
