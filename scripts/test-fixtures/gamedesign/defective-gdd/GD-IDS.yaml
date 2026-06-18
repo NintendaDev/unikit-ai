@@ -1,20 +1,106 @@
-# Machine truth for the defective-gdd fixture. Intentionally inconsistent with
-# systems/combat.md — see README.md for the planted defects.
+# Machine truth for the defective-gdd fixture. Canonical GD-IDS schema
+# (pillars | systems | entities | formulas | terms | decisions). Intentionally
+# inconsistent with the documents — see README.md for the planted defects.
+
+version: 1
+last_updated: "2026-06-13"
+
+# ─── PILLARS ──────────────────────────────────────────────────────────────────
 pillars:
   - id: PIL-1
-    name: Momentum is king
+    name: "Momentum is king"
+    status: active
     source: GAME.md
     added: 2026-06-13
+    revised: ""
   - id: PIL-2
-    name: Feels skillful
+    name: "Feels skillful"
+    status: active
     source: GAME.md
     added: 2026-06-13
+    revised: ""
 
+# ─── SYSTEMS ──────────────────────────────────────────────────────────────────
 systems:
   - id: SYS-combat
-    name: Combat
-    version: 2            # defect #1: combat.md header says Version 1
-    status: detailed
-    depends: []           # defect #2: combat.md section F depends on SYS-inventory (absent)
+    name: "Combat"
+    status: active
+    tier: MVP
+    doc_status: detailed
+    version: 2                 # defect (version coherence): combat.md header says Version 1
+    implements: [PIL-1]
+    depends_on: []             # defect (dangling): combat.md F depends on SYS-inventory (absent)
+    source: systems/combat.md
+    added: 2026-06-13
+    revised: ""
+  - id: SYS-boost
+    name: "Boost"
+    status: active
+    tier: MVP
+    doc_status: detailed       # defect (status coherence): GD-INDEX row says skeleton, header says detailed
+    version: 1
+    implements: [PIL-1]
+    depends_on: []             # defect (Depends 3-way): boost.md F declares "depends on SYS-combat"
+    source: systems/boost.md
+    added: 2026-06-13
+    revised: ""
+  - id: SYS-loot
+    name: "Loot"
+    status: active
+    tier: VS
+    doc_status: detailed       # defect (index↔disk): a detailed system with no systems/loot.md on disk
+    version: 1
+    implements: [PIL-2]
+    depends_on: []
+    source: systems/loot.md
+    added: 2026-06-13
+    revised: ""
+  - id: SYS-hud
+    name: "HUD"
+    status: deprecated         # NEG carve-out (display precedence): GD-INDEX Status column shows `deprecated`
+    tier: VS
+    doc_status: reviewed       # underlying doc_status; header + GD-IDS agree — NOT a coherence conflict
+    version: 1
+    implements: [PIL-2]
+    depends_on: []
+    source: systems/hud.md
+    added: 2026-06-13
+    revised: 2026-06-13
 
-facts: []                # defect #4: combat.md cites FORM-combat-dps, not registered here
+# ─── ENTITIES ─────────────────────────────────────────────────────────────────
+entities:
+  - id: ENT-drone
+    name: "Patrol drone"
+    status: active
+    source: systems/combat.md
+    attributes:
+      health: 40               # defect (facts): combat.md states the drone has 30 HP
+    added: 2026-06-13
+    revised: ""
+
+# ─── FORMULAS ─────────────────────────────────────────────────────────────────
+formulas:
+  - id: FORM-boost-curve
+    name: "Boost acceleration curve"
+    status: active
+    source: systems/boost.md
+    variables: [speed, charge]
+    output_range: [0, 200]
+    expression: "speed + charge * 5"
+    added: 2026-06-13
+    revised: ""
+  # NB: FORM-combat-dps is intentionally NOT registered — it is cited by BOTH
+  # systems/combat.md and systems/boost.md (defect: unregistered cross-doc fact).
+
+# ─── TERMS ────────────────────────────────────────────────────────────────────
+terms:
+  - id: stamina
+    canonical: "Stamina"
+    translation: "Выносливость"
+    forbidden_aliases: ["energy"]   # defect (term drift): combat.md calls the resource "energy"
+    status: active
+    source: GAME.md
+    added: 2026-06-13
+
+# ─── DECISIONS ────────────────────────────────────────────────────────────────
+decisions: []

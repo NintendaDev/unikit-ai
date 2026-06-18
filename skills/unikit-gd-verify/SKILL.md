@@ -4,7 +4,9 @@ description: >-
   Mechanical consistency check for game design — "is the design consistent with
   itself?" — plus changed-scope impact analysis. Offline, deterministic, and
   binary: greps the facts registry against the documents (numbers, terms, IDs,
-  dangling references, index↔disk, Depends symmetry) and, from a git diff,
+  duplicate IDs, dangling references, unregistered cross-doc facts, index↔disk,
+  Depends 3-way, status/version coherence, AC presence, placeholder leaks) and,
+  from a git diff,
   computes which dependent systems a change affects. Scope is inferred — no flags:
   a named system checks that system; an unverified diff triggers a changed-scope
   pass; otherwise it checks everything. Writes a report only on conflicts or a
@@ -92,15 +94,36 @@ Run every check deterministically; each mismatch is a **CONFLICT** with a citati
 
 | Check | Method | Conflict when |
 |-------|--------|---------------|
-| **Facts** | grep each `GD-IDS` entity/formula value across the docs | a document states a number/name that disagrees with the registry |
-| **Terminology drift** | grep each term's `aliases-forbidden` | a forbidden alias is used instead of the canonical term |
-| **ID validity** | scan `SYS-/ENT-/FORM-/AC-/PIL-/DD-` IDs | an ID is malformed, or the same ID is reused for two things |
-| **Dangling references** | resolve every referenced ID against `GD-IDS` | a referenced ID does not exist (or points at a `deprecated` one) |
+| **Facts** | grep each `GD-IDS` entity/formula value across the docs — match the value on word boundaries, not as a bare substring | a document states a number/name that disagrees with the registry |
+| **Terminology drift** | grep each term's `forbidden_aliases` **values** (the listed aliases, not the field name) across the docs | a forbidden alias is used in place of the canonical term |
+| **ID validity** | scan every `SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-` id for shape | an id is malformed — wrong case, bad separator, or an unknown prefix |
+| **Duplicate IDs** | group every declared id by value | the same id is declared for two different things |
+| **Dangling references** | resolve every referenced id against `GD-IDS` | a referenced id does not exist, or a live (non-deprecated) section points at a `deprecated` entry |
+| **Unregistered cross-doc fact** | grep `FORM-`/`ENT-` ids that surface in **two or more** documents | a fact crosses a document boundary yet has no `GD-IDS` entry |
 | **Index ↔ disk** | compare `GD-INDEX` rows to `systems/*.md` | a row has no file, or a file has no row |
-| **Depends symmetry** | for each `A depends on B`, check B's row | the reciprocal edge is missing or contradicts |
+| **Depends 3-way** | for each `A → B` edge, check it agrees across A's section F, A's `GD-INDEX` Depends, and A's `GD-IDS` `depends_on`, and that B carries the reciprocal | the three sources disagree, or the reciprocal edge is missing or contradictory |
+| **Status coherence** | a system's `doc_status` agrees across its **three** places — the header `> Status:`, the `GD-INDEX` row, and `GD-IDS` `doc_status` (enum `not-started · skeleton · detailed · reviewed · revised`) | the three disagree for a system — system docs only; see the carve-outs below |
+| **Version coherence** | the header `Version`, the `GD-INDEX` `Ver`, and `GD-IDS` `version` agree; a `not-started` system carries **no** version, a `skeleton`-or-later system carries one | the three disagree, or a `skeleton`+ system is missing a version / a `not-started` system has one |
+| **AC presence** | for a `detailed`-or-later system, section H is non-empty and every `AC-<sys>-N` id is unique | a `detailed`+ system has an empty H, or repeats an `AC-<sys>-N` — gaps in the numbering are **not** a conflict (numbering is stable after an AC is removed) |
+| **Placeholder leak** | grep `[To be designed]` inside `detailed`-or-later documents | a `detailed`+ document still carries a skeleton placeholder |
 
 The registry is authoritative: when a document disagrees with `GD-IDS`, the
 registry wins until the user resolves it the other way (`gd-principles`).
+
+**Scope & carve-outs (Status / Version / AC / Placeholder).** These four checks
+read the **system** spine only — the header ↔ `GD-INDEX` ↔ `GD-IDS` triple of a
+`systems/*.md` document:
+
+- **Lifecycle-enum scope.** `GAME.md` (`drafted | approved`) and `CONCEPT.md`
+  (`exploring | drafted | approved`) keep their **own** lifecycle enums — a
+  `Status: approved` there is correct and is **never** a status conflict.
+- **Display precedence.** A system with `status: deprecated` legitimately shows
+  `deprecated` in the `GD-INDEX` Status column over its underlying `doc_status`;
+  the read-only `implemented` value (a code-set display overlay) behaves the same.
+  Both are display overlays — excluded from the three-way comparison.
+- **Dependent-lag.** A verify-flagged dependent may transiently carry a header
+  `Status` behind its `GD-INDEX`/`GD-IDS` `doc_status` (`gd-principles` →
+  Lifecycle & Status); that lag is expected, not a conflict.
 
 ## Phase 3 — Changed-Scope Impact (when a diff is unverified)
 
@@ -154,6 +177,14 @@ Options:
 A registry change requires explicit approval and never silently overrides an
 existing value; a deprecated ID is never deleted. Log each resolution in the report.
 
+Not every conflict is a value mismatch. A **coherence** conflict (status / version
+/ Depends 3-way) has no single value to pick: the resolution brings the three
+surfaces into agreement — `GD-IDS` is the machine truth, so the header and
+`GD-INDEX` are corrected to match it unless the user resolves the registry the
+other way. A **presence** conflict (empty H, duplicate id, placeholder leak,
+unregistered cross-doc fact) is resolved by editing the offending document
+(`/unikit-gd-improve`), not the registry.
+
 ## Phase 5 — Report (only when needed)
 
 **Write a report file only on `CONFLICTS FOUND` or a changed-scope pass.** A clean
@@ -185,7 +216,7 @@ and the GD-INDEX Status must reference something. Recurring conflicts are an
 ```
 Scope: <SYS-slug | changed | all>
 Result: <PASS | CONFLICTS FOUND (<n>)>
-Checks: facts · terms · IDs · dangling · index↔disk · Depends — <pass/fail each>
+Checks: facts · terms · IDs · dup-IDs · dangling · unregistered-fact · index↔disk · Depends-3way · status · version · AC-presence · placeholder — <pass/fail each>
 Affected (changed-scope): <k systems — Needs Review: …, Likely Stale: …>
 Report: <path | none (clean PASS)>
 ```

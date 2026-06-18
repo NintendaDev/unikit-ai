@@ -20,7 +20,7 @@ through `unikit-gd-verify`.
 ## Systems
 
 `Status`: not-started · skeleton · detailed · reviewed · revised · deprecated · `implemented` (set by the code side only; read-only here). See `.unikit/system/gd-principles.md` → Lifecycle & Status.
-`Depends`: SYS-ids this one needs (must match each system's section F).
+`Depends`: SYS-ids this one needs (must match each system's section F **and** its `GD-IDS.yaml` `depends_on` — `unikit-gd-verify` checks all three).
 
 | ID | System | Category | Tier | Status | Ver | Depends | Doc |
 |----|--------|----------|------|--------|-----|---------|-----|

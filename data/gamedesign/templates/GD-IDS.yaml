@@ -13,8 +13,7 @@
 #     verify conflicts.
 #   - IDs are stable English lowercase slugs (PIL-n, SYS-slug, ENT-slug,
 #     FORM-slug, AC-sys-n, DD-n). Never reuse or renumber an ID.
-#   - `source` is the document that OWNS the fact; every other document that uses
-#     it appends itself to `referenced_by`.
+#   - `source` is the document that OWNS the fact.
 #   - Store CURRENT VALUES ONLY. History lives in GDD changelog blocks (section K)
 #     and git. On a value change: update it, set `revised` to today, and record
 #     the decision under `decisions`.
@@ -61,7 +60,6 @@ entities: []
 #     name: "Goblin"
 #     status: active
 #     source: systems/SYS-combat.md
-#     referenced_by: [systems/SYS-loot.md]
 #     attributes:
 #       health: 40
 #       damage: 8
@@ -76,7 +74,6 @@ formulas: []
 #     name: "Damage"
 #     status: active
 #     source: systems/SYS-combat.md
-#     referenced_by: [systems/SYS-progression.md]
 #     variables: [attack, defense, crit_chance, crit_multiplier]
 #     output_range: [0, 999]
 #     expression: "max(0, attack - defense) * (1 + crit_chance * crit_multiplier)"

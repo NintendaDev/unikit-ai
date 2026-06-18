@@ -817,23 +817,30 @@ else
     fi
 fi
 
-# Status spine (Tier 1) — the system doc_status enum spans three surfaces that
+# Status spine (Tier 1) — the system doc_status enum spans four surfaces that
 # carry DIFFERENT sets (GD-IDS doc_status = 5; SYSTEM header legend = 4, no
 # `not-started`; GD-INDEX = a display-union with `deprecated` + read-only
-# `implemented`). So this guard asserts the shared MERGE invariant, not enum
-# equality: `reviewed` and `revised` on all three legends, and no `approved`-as-
+# `implemented`; the gd-verify `Status coherence` check legend = the design-
+# writable enum). So this guard asserts the shared MERGE invariant, not enum
+# equality: `reviewed` and `revised` on all four legends, and no `approved`-as-
 # status on any (it merged into `reviewed`). Each grep targets the one status
 # legend line per surface — never the whole file — so GAME.md/CONCEPT.md (their
-# own `approved` lifecycle enums) and the GD-IDS `revised:` date field stay out.
+# own `approved` lifecycle enums, including the gd-verify carve-out NB prose) and
+# the GD-IDS `revised:` date field stay out.
 GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
 GD_INDEX_TPL="$GD_DATA/templates/GD-INDEX.md"
 GD_SYSTEM_TPL="$GD_DATA/templates/SYSTEM.md"
+GD_VERIFY_SKILL="$ROOT_DIR/skills/unikit-gd-verify/SKILL.md"
 SPINE_IDS_LINE=$(grep -F 'doc_status:' "$GD_IDS_TPL" 2>/dev/null | head -1 || true)
 SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head -1 || true)
 SPINE_INDEX_LINE=$(grep -F '`Status`:' "$GD_INDEX_TPL" 2>/dev/null | head -1 || true)
+# 4th surface: the gd-verify `Status coherence` check carries the design-writable
+# enum on its single legend line; the GAME.md/CONCEPT.md `approved` carve-out lives
+# in separate NB prose, so head -1 anchors the table row, not the explanation.
+SPINE_VERIFY_LINE=$(grep -F 'Status coherence' "$GD_VERIFY_SKILL" 2>/dev/null | head -1 || true)
 SPINE_OK=1
 SPINE_WHY=""
-for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "GD-INDEX.md:$SPINE_INDEX_LINE"; do
+for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "GD-INDEX.md:$SPINE_INDEX_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
     name="${pair%%:*}"
     line="${pair#*:}"
     if [[ -z "$line" ]]; then
@@ -844,7 +851,7 @@ for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "GD-IND
     if echo "$line" | grep -q "approved";   then SPINE_OK=0; SPINE_WHY+=" $name(approved-as-status)"; fi
 done
 if [[ "$SPINE_OK" -eq 1 ]]; then
-    pass "status spine — reviewed+revised on all 3 surfaces, no approved-as-status (GD-IDS/SYSTEM/GD-INDEX)"
+    pass "status spine — reviewed+revised on all 4 surfaces, no approved-as-status (GD-IDS/SYSTEM/GD-INDEX/gd-verify)"
 else
     fail "status spine enum drift:$SPINE_WHY"
 fi
@@ -882,19 +889,36 @@ else
     fail "rules-registry/gamedesign/core — missing (run download-rules.sh)"
 fi
 
-# Defective GDD fixture — test data for the agent-driven /unikit-gd-review and
-# /unikit-gd-verify smoke (Phase H #19). No bash assertion can run an LLM skill,
-# so only validate the fixture is present and well-formed; its README.md carries
-# the planted-defect ground truth a reviewer checks skill output against.
+# Defective GDD fixture — test data for the agent-driven /unikit-gd-verify and
+# /unikit-gd-review smoke (Phase H #19). No bash assertion can run an LLM skill,
+# so only validate the fixture is present and well-formed (canonical schema, two
+# system docs); its README.md carries the planted-defect → verify-check ground
+# truth a reviewer checks skill output against.
 GD_DEFECTIVE="$ROOT_DIR/scripts/test-fixtures/gamedesign/defective-gdd"
 GD_DEFECTIVE_OK=1
-for f in README.md GAME.md GD-IDS.yaml systems/combat.md; do
+# systems/boost.md is the FIXED literal path the new ≥2-doc defects (unregistered
+# cross-doc fact, Depends 3-way) hang off — README §map and this guard both pin it.
+for f in README.md GAME.md GD-IDS.yaml GD-INDEX.md systems/combat.md systems/boost.md; do
     [[ -s "$GD_DEFECTIVE/$f" ]] || GD_DEFECTIVE_OK=0
 done
 if [[ "$GD_DEFECTIVE_OK" -eq 1 ]]; then
-    pass "defective-gdd fixture present (GAME.md, GD-IDS.yaml, systems/combat.md, README ground truth)"
+    pass "defective-gdd fixture present (GAME.md, GD-INDEX.md, GD-IDS.yaml, systems/combat.md, systems/boost.md, README ground truth)"
 else
     fail "defective-gdd fixture incomplete under scripts/test-fixtures/gamedesign/defective-gdd"
+fi
+# Soft schema check: the fixture GD-IDS.yaml uses the canonical schema keys the new
+# verify checks grep (doc_status / depends_on / forbidden_aliases). A re-clone that
+# reverts to the old ad-hoc shape (version/status/depends/facts) fails loudly here.
+GD_DEFECTIVE_IDS="$GD_DEFECTIVE/GD-IDS.yaml"
+GD_DEFECTIVE_KEYS_OK=1
+GD_DEFECTIVE_KEYS_WHY=""
+for key in 'doc_status:' 'depends_on:' 'forbidden_aliases:'; do
+    grep -q "$key" "$GD_DEFECTIVE_IDS" 2>/dev/null || { GD_DEFECTIVE_KEYS_OK=0; GD_DEFECTIVE_KEYS_WHY+=" $key"; }
+done
+if [[ "$GD_DEFECTIVE_KEYS_OK" -eq 1 ]]; then
+    pass "defective-gdd GD-IDS.yaml — canonical schema keys present (doc_status/depends_on/forbidden_aliases)"
+else
+    fail "defective-gdd GD-IDS.yaml — missing canonical schema key(s):$GD_DEFECTIVE_KEYS_WHY"
 fi
 
 # Market-research delegation upgrade — explore-owned delegation contract + strict

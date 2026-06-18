@@ -76,7 +76,9 @@ these feed the acceptance criteria in H.]
 ## F. Dependencies
 
 [Every system this one depends on, and every system that depends on it. The edge
-must be symmetric — the other system's F (and `GD-INDEX.md` Depends) must agree.]
+must be symmetric — this section F, the `GD-INDEX.md` Depends column, and the
+system's `GD-IDS.yaml` `depends_on` must all agree; `unikit-gd-verify` checks all
+three.]
 
 | System | Direction | Nature of dependency |
 |--------|-----------|----------------------|
