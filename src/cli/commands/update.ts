@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import path from 'path';
+import inquirer from 'inquirer';
 import { getCurrentVersion, loadConfig, saveConfig } from '../../core/config.js';
 import {
   buildManagedSkillsState, getAvailableSkills, updateSkills,
@@ -25,6 +26,8 @@ import { applyAllInjections } from '../../core/injections.js';
 
 interface UpdateCommandOptions {
   force?: boolean;
+  installNew?: boolean;
+  skipNew?: boolean;
 }
 
 function formatReason(reason: string): string {
@@ -41,6 +44,8 @@ function formatReason(reason: string): string {
       return 'removed from package';
     case 'new-skill-not-installed':
       return 'new in package';
+    case 'new-skill-installed':
+      return 'new skill installed';
     case 'force-clean-reinstall':
       return 'force reinstall';
     case 'install-failed':
@@ -67,6 +72,8 @@ function groupEntriesByStatus(entries: SkillUpdateEntry[]): Record<'changed' | '
 export async function updateCommand(options: UpdateCommandOptions = {}): Promise<void> {
   const projectDir = process.cwd();
   const force = Boolean(options.force);
+  const installNew = Boolean(options.installNew);
+  const skipNew = Boolean(options.skipNew);
 
   console.log(chalk.bold.blue('\n🎮 UniKit — Update\n'));
 
@@ -117,13 +124,47 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Collect replaced skills from extensions
     const replacedSkills = collectReplacedSkills(config.extensions ?? []);
 
+    // Snapshot the skills newly added to the package BEFORE the update loop
+    // mutates agent.installedSkills below. A skill is "new" when the package
+    // ships it but it is installed for NO agent yet (union across all agents).
+    const packageSkills = await getAvailableSkills();
+    const installedUnion = new Set(config.agents.flatMap(a => a.installedSkills));
+    const newSkills = packageSkills.filter(s => !installedUnion.has(s));
+
+    // Resolve the opt-in install set for new skills. Lifted to function scope so
+    // the rules-bootstrap step (after createRegistry below) can target the
+    // modules these new skills belong to. Conflict policy: --skip-new wins over
+    // --install-new (never install silently when the user asked to skip). With
+    // neither flag, prompt only on a TTY; non-TTY stays a no-op (CI-safe
+    // back-compat). Empty newSkills short-circuits to a no-op without rendering
+    // an empty checkbox prompt.
+    const installNewSkills = new Set<string>();
+    if (!skipNew && newSkills.length > 0) {
+      if (installNew) {
+        for (const skill of newSkills) installNewSkills.add(skill);
+      } else if (process.stdout.isTTY) {
+        const { chosen } = await inquirer.prompt([
+          {
+            type: 'checkbox',
+            name: 'chosen',
+            message: 'New skills are available in this package version. Select any to install:',
+            // Default UNCHECKED: a skill absent here may be one you deliberately
+            // de-selected at init (indistinguishable from a freshly added one),
+            // so pressing Enter installs nothing -- opt in explicitly.
+            choices: newSkills.map(skill => ({ name: skill, value: skill, checked: false })),
+          },
+        ]);
+        for (const skill of chosen as string[]) installNewSkills.add(skill);
+      }
+    }
+
     // Update skills per agent
     console.log(chalk.dim('Updating skills...\n'));
 
     const entriesByAgent = new Map<string, SkillUpdateEntry[]>();
 
     for (const agent of config.agents) {
-      const result = await updateSkills(agent, projectDir, { force, engineId, engineMcpKey: config.engineMcpKey, replacedSkills });
+      const result = await updateSkills(agent, projectDir, { force, engineId, engineMcpKey: config.engineMcpKey, replacedSkills, installNewSkills });
       agent.installedSkills = result.installedSkills;
       entriesByAgent.set(agent.id, result.entries);
     }

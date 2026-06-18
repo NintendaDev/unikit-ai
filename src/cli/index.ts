@@ -41,6 +41,8 @@ program
   .command('update')
   .description('Update installed skills, agents, and rules to latest version')
   .option('--force', 'Force clean reinstall of currently installed skills and force-refresh every installed rule from registry')
+  .option('--install-new', 'Install skills newly added to the package non-interactively (skips the prompt). Overridden by --skip-new.')
+  .option('--skip-new', 'Force-skip skills newly added to the package; overrides --install-new and suppresses the interactive prompt')
   .action(updateCommand);
 
 program
