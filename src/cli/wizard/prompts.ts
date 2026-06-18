@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import { getAgentChoices } from '../../core/agents.js';
 import { getEngineChoices, getAllEngineIds } from '../../core/engines.js';
 import { discoverMcpServers } from '../../core/mcp.js';
+import { getAvailableSkills } from '../../core/installer/skills.js';
+import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
 import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
 import { OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
 
@@ -13,6 +15,7 @@ export interface AgentWizardSelection {
 export interface WizardAnswers {
   agents: AgentWizardSelection[];
   engine: string;
+  selectedSkills: string[];
   mcpServers: string[];
   engineMcpKey: string | null;
   rulesRegistry: string;
@@ -130,6 +133,7 @@ export async function runWizard(
   defaultAgentIds: string[] = [],
   existingRulesRegistry: string | null = null,
   existingEngine: string | null = null,
+  existingInstalledSkills: string[] | null = null,
 ): Promise<WizardAnswers> {
   console.log(chalk.dim('\n\u{1F4A1} Run /unikit after setup to analyze your project and generate project-relevant skills.\n'));
 
@@ -213,12 +217,57 @@ export async function runWizard(
 
   console.log('');
 
-  // Step 3: Rules registry (optional custom source)
+  // Step 3: Select skills (grouped checkbox)
+  // All interactivity lives here in the wizard layer; installer/skills.ts stays
+  // prompt-free and receives an already-resolved skill set. Group membership and
+  // default selection are pure functions (skill-groups.ts) so the risky default/
+  // prune logic stays guard-testable. `existingInstalledSkills === null` means a
+  // fresh install (everything checked); an array means re-init (mirror what was
+  // installed). An empty array is NOT "fresh" -- it means the user previously
+  // had nothing selected, so nothing is pre-checked.
+  const availableSkills = await getAvailableSkills();
+  const defaultChecked = new Set(resolveSkillDefaults(availableSkills, existingInstalledSkills));
+
+  type SkillChoice = { name: string; value: string; checked: boolean };
+  const skillChoices: Array<SkillChoice | InstanceType<typeof inquirer.Separator>> = [];
+  for (const { group, skills } of groupSkills(availableSkills)) {
+    skillChoices.push(new inquirer.Separator(`-- ${group.title} --`));
+    for (const skill of skills) {
+      skillChoices.push({ name: skill, value: skill, checked: defaultChecked.has(skill) });
+    }
+  }
+
+  // Defensive: a skill shipped without a group assignment must never be
+  // silently hidden from the picker. The guard test keeps this set empty, but
+  // if it ever fires we surface the stragglers under an "Other" section rather
+  // than dropping them.
+  const ungroupedSkills = findUngrouped(availableSkills);
+  if (ungroupedSkills.length > 0) {
+    console.log(chalk.yellow(`Note: ungrouped skills listed under "Other": ${ungroupedSkills.join(', ')}`));
+    skillChoices.push(new inquirer.Separator('-- Other --'));
+    for (const skill of ungroupedSkills) {
+      skillChoices.push({ name: skill, value: skill, checked: defaultChecked.has(skill) });
+    }
+  }
+
+  const { selectedSkills } = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'selectedSkills',
+      message: 'Skills to install:',
+      choices: skillChoices,
+      validate: (value: string[]) => value.length > 0 || 'Select at least one skill.',
+    },
+  ]);
+
+  console.log('');
+
+  // Step 4: Rules registry (optional custom source)
   const rulesRegistry = await promptRulesRegistry(engine, existingRulesRegistry);
 
   console.log('');
 
-  // Step 4: MCP servers (global, not per-agent)
+  // Step 5: MCP servers (global, not per-agent)
   const discoveredServers = await discoverMcpServers(engine);
   const mcpServers: string[] = [];
   let engineMcpKey: string | null = null;
@@ -305,6 +354,7 @@ export async function runWizard(
   return {
     agents: agentSelections,
     engine,
+    selectedSkills: selectedSkills as string[],
     mcpServers,
     engineMcpKey,
     rulesRegistry,

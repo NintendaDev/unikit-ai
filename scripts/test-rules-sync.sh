@@ -585,8 +585,8 @@ assert_cmd_exit 0 "rules sync on migrated project exits 0" "$TMPDIR/s22.log" -- 
 echo -e "\n${BOLD}Scenario 23: sync preserves a gamedesign override${NC}"
 
 S23_DIR="$TMPDIR/s23-gd-override-sync"
-use_fake_registry "$S23_DIR" unity gamedesign-override
-env -C "$S23_DIR" node "$CLI" rules install > "$TMPDIR/s23-install.log" 2>&1 || true
+use_fake_registry "$S23_DIR" unity gamedesign-override '[{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}]'
+env -C "$S23_DIR" node "$CLI" rules install defaults > "$TMPDIR/s23-install.log" 2>&1 || true
 
 assert_cmd_exit 0 "rules sync on override project exits 0" "$TMPDIR/s23.log" -- \
     env -C "$S23_DIR" node "$CLI" rules sync

@@ -1,9 +1,12 @@
 #!/bin/bash
-# Smoke tests: validates `unikit-ai rules install` — both the no-args
-# core bootstrap and the variadic `<id>...` signature, plus --force.
+# Smoke tests: validates `unikit-ai rules install` — bare (prints help), the
+# `defaults` module-aware bootstrap, and the variadic `<id>...` signature,
+# plus --force.
 #
 # Scope:
-#   - bootstrap (no args): fresh install, idempotent re-run, drift recovery
+#   - bare (no args): prints help, exits 0, installs nothing
+#   - bootstrap (`defaults`): fresh install, idempotent re-run, drift recovery,
+#     installed-skills gating (code-only -> no gamedesign), defaults+id -> exit 3
 #   - single: happy path, already-installed, unknown id (exit 1)
 #   - variadic: multi success, mixed success, all-failed, partial already,
 #     case-insensitive legacy id, --force overwrite path
@@ -14,8 +17,8 @@
 # (unity + godot) installed under scripts/test-fixtures/ so assertions are
 # fully deterministic without touching the bundled production snapshot.
 #
-# EXCEPTION — the no-args bootstrap (Scenarios 1, 2, 16): it walks every
-# registered module by its bootstrap policy. The `gamedesign` module
+# EXCEPTION — the `defaults` bootstrap (Scenarios 1, 2, 16): it walks every
+# module whose skills are installed, by its bootstrap policy. The `gamedesign` module
 # (policy `all-rules`) has no tier in the code-only minimal-valid fixture, so
 # its canonical catalog backfills from the bundled snapshot ("code from
 # registry, GD from bundled" — RESEARCH Session 2026-06-13). Those scenarios
@@ -46,7 +49,7 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 echo -e "${BOLD}=== rules install Smoke Tests ===${NC}"
 
-# The no-args bootstrap walks every registered module by its bootstrap policy:
+# The `defaults` bootstrap walks every module whose skills are installed, by policy:
 # `code` → always-tagged rules from the configured registry; `gamedesign` →
 # its ENTIRE canonical catalog (policy `all-rules`), which backfills from the
 # bundled snapshot when the custom registry ships no gamedesign tier. Derive
@@ -66,6 +69,16 @@ shopt -u nullglob
 GD_BOOTSTRAP_COUNT=$(( ${#_gd_core_files[@]} + ${#_gd_lib_files[@]} ))
 BOOTSTRAP_TOTAL=$((1 + GD_BOOTSTRAP_COUNT))
 
+# `rules install defaults` bootstraps a module only when its SKILLS are
+# installed (invariant: bootstrap = f(installed skills)). The fake-registry
+# fixtures default to empty installedSkills, so the bootstrap scenarios pass an
+# agents override that installs a `code` skill (unikit) AND a `gamedesign` skill
+# (unikit-gd-spec) — making both modules bootstrap targets, exactly the coverage
+# the old no-args bootstrap had. SKILLS_CODE_ONLY covers the "no gamedesign
+# skills -> no gamedesign rules" invariant case.
+SKILLS_CODE_GD='[{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}]'
+SKILLS_CODE_ONLY='[{"id":"claude","installedSkills":["unikit","unikit-plan"],"installedSubagents":[]}]'
+
 # ─────────────────────────────────────────────
 # Scenario 1 — Bootstrap: fresh install (no args, empty state)
 # ─────────────────────────────────────────────
@@ -77,10 +90,10 @@ echo -e "\n${BOLD}Scenario 1: bootstrap fresh install${NC}"
 
 S1_DIR="$TMPDIR/s1-bootstrap-fresh"
 mkdir -p "$S1_DIR"
-use_fake_registry "$S1_DIR" unity minimal-valid
+use_fake_registry "$S1_DIR" unity minimal-valid "$SKILLS_CODE_GD"
 
-assert_cmd_exit 0 "rules install (no args) exits 0" "$TMPDIR/s1.log" -- \
-    env -C "$S1_DIR" node "$CLI" rules install
+assert_cmd_exit 0 "rules install defaults exits 0" "$TMPDIR/s1.log" -- \
+    env -C "$S1_DIR" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s1.log" "installed core/code-style v1.0.0" \
     "fresh install line for code-style"
@@ -104,8 +117,8 @@ assert_exists "$S1_DIR/.unikit/memory/gamedesign/RULES_INDEX.md" \
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Scenario 2: bootstrap idempotent re-run${NC}"
 
-assert_cmd_exit 0 "second rules install run exits 0" "$TMPDIR/s2.log" -- \
-    env -C "$S1_DIR" node "$CLI" rules install
+assert_cmd_exit 0 "second rules install defaults run exits 0" "$TMPDIR/s2.log" -- \
+    env -C "$S1_DIR" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s2.log" "already installed core/code-style" \
     "re-run reports already-installed"
@@ -135,7 +148,7 @@ node -e "
 " "$S3_DIR/.unikit.json"
 
 assert_cmd_exit 0 "bootstrap with drift exits 0" "$TMPDIR/s3.log" -- \
-    env -C "$S3_DIR" node "$CLI" rules install
+    env -C "$S3_DIR" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s3.log" "installed core/code-style v1.0.0" \
     "drift triggers re-install (not already-installed)"
@@ -419,7 +432,7 @@ cat > "$S16_DIR/.unikit.json" <<EOF
   "engine": "unity",
   "engineMcpKey": null,
   "mcp": { "servers": [] },
-  "agents": [],
+  "agents": [{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}],
   "rulesRegistry": "$(normalize_path_for_json "$S16_FIXTURE")",
   "rules": {
     "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
@@ -428,7 +441,7 @@ cat > "$S16_DIR/.unikit.json" <<EOF
 EOF
 
 assert_cmd_exit 0 "bootstrap with empty code core still exits 0 via gamedesign" "$TMPDIR/s16.log" -- \
-    env -C "$S16_DIR" node "$CLI" rules install
+    env -C "$S16_DIR" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s16.log" "installed gamedesign/core/balance" \
     "gamedesign catalog backfilled despite the empty code core tier"
@@ -473,9 +486,10 @@ S18_DIR="$TMPDIR/s18-unmigrated"
 use_unmigrated_registry "$S18_DIR" unity minimal-valid
 S18_SHA="$(sha_of "$S18_DIR/.unikit.json")"
 
-# No-arg bootstrap path.
-assert_cmd_exit 8 "rules install (no-arg bootstrap) on un-migrated project exits 8" "$TMPDIR/s18a.log" -- \
-    env -C "$S18_DIR" node "$CLI" rules install
+# Defaults bootstrap path (bare `rules install` now prints help BEFORE the
+# migration gate, so the exit-8 refusal is exercised via `defaults`).
+assert_cmd_exit 8 "rules install defaults on un-migrated project exits 8" "$TMPDIR/s18a.log" -- \
+    env -C "$S18_DIR" node "$CLI" rules install defaults
 assert_stdout_contains "$TMPDIR/s18a.log" "out of date" "row18a explains the project is out of date"
 
 # Variadic path.
@@ -508,10 +522,10 @@ assert_cmd_exit 0 "rules install code-style on migrated project exits 0" "$TMPDI
 echo -e "\n${BOLD}Scenario 20: B-merge per-id override + bundled backfill${NC}"
 
 S20_DIR="$TMPDIR/s20-bmerge"
-use_fake_registry "$S20_DIR" unity gamedesign-override
+use_fake_registry "$S20_DIR" unity gamedesign-override "$SKILLS_CODE_GD"
 
 assert_cmd_exit 0 "bootstrap on override fixture exits 0" "$TMPDIR/s20.log" -- \
-    env -C "$S20_DIR" node "$CLI" rules install
+    env -C "$S20_DIR" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s20.log" "installed gamedesign/core/balance v9.9.9" \
     "override id installs the custom version (9.9.9), not the bundled 1.0.0"
@@ -535,6 +549,137 @@ if grep -qE "economy[[:space:]].*registry:bundled" "$TMPDIR/s20-status.log"; the
 else
     fail "backfilled 'economy' not tagged registry:bundled"
 fi
+
+# ─────────────────────────────────────────────
+# Scenario 21 — bare `rules install` prints help (exit 0, installs nothing)
+# ─────────────────────────────────────────────
+# The no-args form no longer bootstraps: it prints help and exits 0 BEFORE
+# loading config, so it works outside a project too. Bootstrap lives behind the
+# explicit `defaults` keyword.
+echo -e "\n${BOLD}Scenario 21: bare 'rules install' prints help (exit 0, installs nothing)${NC}"
+
+S21_DIR="$TMPDIR/s21-bare-help"
+mkdir -p "$S21_DIR"
+use_fake_registry "$S21_DIR" unity minimal-valid "$SKILLS_CODE_GD"
+
+assert_cmd_exit 0 "bare rules install exits 0" "$TMPDIR/s21.log" -- \
+    env -C "$S21_DIR" node "$CLI" rules install
+assert_stdout_contains "$TMPDIR/s21.log" "Usage: unikit-ai rules install" \
+    "bare install prints usage/help"
+assert_stdout_contains "$TMPDIR/s21.log" "defaults" \
+    "help mentions the defaults keyword"
+if ls "$S21_DIR/.unikit/memory/code/core/"*.md >/dev/null 2>&1; then
+    fail "bare install must not install any rule"
+else
+    pass "bare install installed nothing"
+fi
+
+# ─────────────────────────────────────────────
+# Scenario 22 — defaults with code-only skills installs NO gamedesign rules
+# ─────────────────────────────────────────────
+# The invariant: bootstrap = f(installed skills). A project with only `code`
+# skills (no `unikit-gd-*`) must bootstrap code rules but NOT gamedesign rules,
+# even though the bundled snapshot carries a gamedesign catalog.
+echo -e "\n${BOLD}Scenario 22: defaults code-only skills -> no gamedesign rules${NC}"
+
+S22_DIR="$TMPDIR/s22-code-only"
+mkdir -p "$S22_DIR"
+use_fake_registry "$S22_DIR" unity minimal-valid "$SKILLS_CODE_ONLY"
+
+assert_cmd_exit 0 "defaults (code-only skills) exits 0" "$TMPDIR/s22.log" -- \
+    env -C "$S22_DIR" node "$CLI" rules install defaults
+assert_stdout_contains "$TMPDIR/s22.log" "installed core/code-style v1.0.0" \
+    "code rules bootstrapped (code skills installed)"
+if grep -q "gamedesign/" "$TMPDIR/s22.log"; then
+    fail "gamedesign rules must NOT be bootstrapped without gamedesign skills"
+else
+    pass "no gamedesign rules bootstrapped (no gamedesign skills installed)"
+fi
+assert_not_exists "$S22_DIR/.unikit/memory/gamedesign" \
+    "no gamedesign memory directory created"
+
+# ─────────────────────────────────────────────
+# Scenario 23 — `defaults` combined with an id → exit 3
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 23: defaults + id -> exit 3${NC}"
+
+S23_DIR="$TMPDIR/s23-defaults-id"
+mkdir -p "$S23_DIR"
+use_fake_registry "$S23_DIR" unity minimal-valid "$SKILLS_CODE_GD"
+
+assert_cmd_exit 3 "rules install defaults code-style exits 3" "$TMPDIR/s23.log" -- \
+    env -C "$S23_DIR" node "$CLI" rules install defaults code-style
+assert_stdout_contains "$TMPDIR/s23.log" "does not take rule ids" \
+    "exit-3 message explains defaults cannot combine with ids"
+
+# ─────────────────────────────────────────────
+# Scenario 24 — defaults with no installed skills → empty bootstrap (exit 5)
+# ─────────────────────────────────────────────
+# No installed skill resolves to any module, so the summed bootstrap work is
+# empty and the post-call empty gate fires (exit 5).
+echo -e "\n${BOLD}Scenario 24: defaults with no installed skills -> empty bootstrap (exit 5)${NC}"
+
+S24_DIR="$TMPDIR/s24-empty-bootstrap"
+mkdir -p "$S24_DIR"
+use_fake_registry "$S24_DIR" unity minimal-valid   # default agents: empty installedSkills
+
+assert_cmd_exit 5 "defaults with no installed skills exits 5" "$TMPDIR/s24.log" -- \
+    env -C "$S24_DIR" node "$CLI" rules install defaults
+assert_stdout_contains "$TMPDIR/s24.log" "No bootstrap rules found" \
+    "empty bootstrap explains no module has installed skills"
+
+# ─────────────────────────────────────────────
+# Scenario 25 — defaults where every work item fails → exit 1
+# ─────────────────────────────────────────────
+# A schema:2 fixture lists one always-tagged code rule in the manifest but ships
+# NO matching .md file, so fetchRule returns null and the single bootstrap work
+# item fails. With code skills installed (and no gamedesign skills, so no
+# bundled gamedesign backfill contributes a success), every work item fails and
+# the POST-call `anySuccessful -> EXIT.NOT_FOUND` gate fires (exit 1) — the same
+# gate the variadic all-failed path uses (Scenario 9), confirming it survived
+# the bootstrapModuleRules factoring.
+echo -e "\n${BOLD}Scenario 25: defaults all work items fail -> exit 1${NC}"
+
+S25_FIXTURE="$TMPDIR/s25-fixture"
+mkdir -p "$S25_FIXTURE/code/unity/core"
+cat > "$S25_FIXTURE/manifest.json" << 'EOF'
+{
+  "schema": 2,
+  "generated": "2026-06-13T00:00:00.000Z",
+  "modules": {
+    "code": {
+      "engines": {
+        "unity": {
+          "core": [ { "id": "ghost-rule", "description": "Manifest entry with no .md file -> fetch fails", "version": "1.0.0", "always": true } ],
+          "stack": []
+        }
+      }
+    }
+  }
+}
+EOF
+# Deliberately NO ghost-rule.md on disk -> fetchRule returns null.
+
+S25_DIR="$TMPDIR/s25-all-failed"
+mkdir -p "$S25_DIR/.unikit/memory/code/core" "$S25_DIR/.unikit/memory/code/stack"
+cat > "$S25_DIR/.unikit.json" <<EOF
+{
+  "version": "1.1.0",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": $SKILLS_CODE_ONLY,
+  "rulesRegistry": "$(normalize_path_for_json "$S25_FIXTURE")",
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+
+assert_cmd_exit 1 "defaults all-failed exits 1" "$TMPDIR/s25.log" -- \
+    env -C "$S25_DIR" node "$CLI" rules install defaults
+assert_stdout_contains "$TMPDIR/s25.log" "Rules: 0 installed, 0 already-installed, 1 failed" \
+    "all-failed bootstrap report counts the failure"
 
 # ─────────────────────────────────────────────
 # Summary

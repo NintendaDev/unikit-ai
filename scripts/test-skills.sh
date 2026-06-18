@@ -645,14 +645,16 @@ if [[ -f "$CLI_CONTRACT" ]]; then
         pass "cli-contract.md — no 'declined' references (post-refactor contract)"
     fi
 
-    # After the CLI redesign the variadic `rules install` (with no args)
-    # IS the core-bootstrap entry point used by /unikit Step 9.2. The contract
-    # MUST document the variadic signature AND MUST NOT mention the obsolete
-    # `rules core-install` or `rules registry-init` commands.
-    if grep -q 'unikit-ai rules install \[ids\.\.\.\]' "$CLI_CONTRACT"; then
-        pass "cli-contract.md — documents variadic 'rules install [ids...]' signature"
+    # After the CLI redesign `rules install` documents three forms: bare prints
+    # help, `defaults` bootstraps every module whose skills are installed (the
+    # /unikit Step 9.2 entry point), and the variadic `<ids...>` installs
+    # specific rules. The contract MUST document the `[defaults | ids...]`
+    # signature AND MUST NOT mention the obsolete `rules core-install` or
+    # `rules registry-init` commands.
+    if grep -q 'unikit-ai rules install \[defaults | ids\.\.\.\]' "$CLI_CONTRACT"; then
+        pass "cli-contract.md — documents 'rules install [defaults | ids...]' signature"
     else
-        fail "cli-contract.md — missing variadic 'rules install [ids...]' signature"
+        fail "cli-contract.md — missing 'rules install [defaults | ids...]' signature"
     fi
 
     if grep -q 'unikit-ai rules core-install' "$CLI_CONTRACT"; then
@@ -1566,6 +1568,16 @@ if [[ -n "$NON_ASCII_HITS" ]]; then
     echo "$NON_ASCII_HITS" | head -20 | sed 's/^/    /'
 else
     pass "src/ contains only Latin letters"
+fi
+
+# ─────────────────────────────────────────────
+# Part 15: Skill grouping guard
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 15: Skill grouping guard${NC}"
+if bash "$SCRIPT_DIR/test-skill-groups.sh"; then
+    pass "Skill grouping guard passed"
+else
+    fail "Skill grouping guard failed"
 fi
 
 # ─────────────────────────────────────────────

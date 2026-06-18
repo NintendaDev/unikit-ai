@@ -1326,5 +1326,76 @@ fi
 
 echo "  ✓ gd-principles.md: update refreshes from data/ (tamper marker removed)"
 
+# ─────────────────────────────────────────────
+# Test 31: `update --install-new` installs newly added package skills
+# non-interactively AND bootstraps the rules of a module whose first skill just
+# arrived (closes the gap: opting into game-design skills delivers gd rules).
+# Counterpart to Test 15 (no flag / no TTY -> skipped, back-compat).
+# ─────────────────────────────────────────────
+INSTALLNEW_DIR="$TMPDIR/update-install-new"
+mkdir -p "$INSTALLNEW_DIR"
+cat > "$INSTALLNEW_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [
+    { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
+  ],
+  "rules": { "installed": { "version": "1.1.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$INSTALLNEW_DIR"
+
+INSTALLNEW_OUT="$TMPDIR/update-install-new.log"
+(cd "$INSTALLNEW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update --install-new > "$INSTALLNEW_OUT" 2>&1)
+
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-spec/SKILL.md" \
+    "update --install-new installed a new game-design skill (unikit-gd-spec)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-plan/SKILL.md" \
+    "update --install-new installed a new code skill (unikit-plan)"
+assert_contains "$INSTALLNEW_OUT" "new skill installed" "new-skill-installed reason text appears"
+assert_contains "$INSTALLNEW_OUT" "Bootstrapped" "bootstrap headline line printed for newly installed module(s)"
+assert_exists "$INSTALLNEW_DIR/.unikit/memory/gamedesign/core/balance.md" \
+    "gamedesign rules bootstrapped after its first skill was installed (gap closed)"
+
+echo "  ✓ update --install-new: new skills installed + module rules bootstrapped"
+
+# ─────────────────────────────────────────────
+# Test 32: `--install-new --skip-new` together -> --skip-new wins (conservative:
+# never install new skills when the user explicitly asked to skip). No new
+# skills installed, no module-rule bootstrap.
+# ─────────────────────────────────────────────
+BOTHFLAGS_DIR="$TMPDIR/update-both-flags"
+mkdir -p "$BOTHFLAGS_DIR"
+cat > "$BOTHFLAGS_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [
+    { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
+  ],
+  "rules": { "installed": { "version": "1.1.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$BOTHFLAGS_DIR"
+
+BOTHFLAGS_OUT="$TMPDIR/update-both-flags.log"
+(cd "$BOTHFLAGS_DIR" && node "$ROOT_DIR/dist/cli/index.js" update --install-new --skip-new > "$BOTHFLAGS_OUT" 2>&1)
+
+assert_not_exists "$BOTHFLAGS_DIR/.claude/skills/unikit-gd-spec" \
+    "--skip-new wins over --install-new: no new game-design skill installed"
+assert_not_exists "$BOTHFLAGS_DIR/.unikit/memory/gamedesign" \
+    "--skip-new wins: no gamedesign rules bootstrapped"
+assert_contains "$BOTHFLAGS_OUT" "new in package" \
+    "new skills reported as skipped (new in package), not installed"
+
+echo "  ✓ update --install-new --skip-new: --skip-new wins (no new skills, no bootstrap)"
+
 echo ""
 echo "update smoke tests passed"

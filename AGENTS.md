@@ -81,7 +81,7 @@ For per-skill details, read the corresponding `skills/unikit-<name>/SKILL.md`.
           v                           (Bootstrap reads dev-principles.md
        /unikit Step 9                  once; executes with commit checkpoints)
        rules bootstrap                        |
-       (`unikit-ai rules install`)            v
+       (`unikit-ai rules install defaults`)   v
                                        /unikit-fix on bugs ->
                                        .unikit/code/patches/ -> /unikit-evolve
 

@@ -39,6 +39,13 @@ export interface UpdateSkillsOptions {
   engineId?: string;
   engineMcpKey?: string | null;
   replacedSkills?: Set<string>;
+  /**
+   * Skills newly added to the package that the caller opted to install this
+   * run (interactive prompt / `--install-new`). Skills in this set are
+   * installed and reported as 'changed'/'new-skill-installed'; new skills NOT
+   * in the set stay 'skipped'/'new-skill-not-installed' (CI-safe default).
+   */
+  installNewSkills?: Set<string>;
 }
 
 export interface InstallSkillsOptions {
@@ -178,7 +185,7 @@ export async function getAvailableSkills(): Promise<string[]> {
 
 // --- Skill removal ---
 
-async function removeSkillsByName(
+export async function removeSkillsByName(
   projectDir: string,
   agent: AgentInstallation,
   skillNames: string[],
@@ -213,7 +220,7 @@ export async function updateSkills(
   projectDir: string,
   options: UpdateSkillsOptions = {},
 ): Promise<UpdateSkillsResult> {
-  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, replacedSkills } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, replacedSkills, installNewSkills } = options;
   const availableSkills = await getAvailableSkills();
   const availableSet = new Set(availableSkills);
 
@@ -231,10 +238,31 @@ export async function updateSkills(
     }
   }
 
-  // Detect new skills
+  // Detect new skills (available in the package but not installed for this
+  // agent). Skills the caller opted into (installNewSkills) are installed now
+  // and reported as 'changed'/'new-skill-installed'; the rest stay 'skipped'/
+  // 'new-skill-not-installed' — the CI-safe back-compat default.
   const newlyAvailable = availableSkills.filter(s => !previousSet.has(s));
+  const newToInstall = newlyAvailable.filter(s => installNewSkills?.has(s));
+  const installedNew = newToInstall.length > 0
+    ? await installSkills({
+      projectDir,
+      skillsDir: agent.skillsDir,
+      skills: newToInstall,
+      agentId: agent.id,
+      engineId,
+      engineMcpKey,
+    })
+    : [];
+  const installedNewSet = new Set(installedNew);
   for (const skill of newlyAvailable) {
-    entries.push({ skill, status: 'skipped', reason: 'new-skill-not-installed' });
+    if (!installNewSkills?.has(skill)) {
+      entries.push({ skill, status: 'skipped', reason: 'new-skill-not-installed' });
+    } else if (installedNewSet.has(skill)) {
+      entries.push({ skill, status: 'changed', reason: 'new-skill-installed' });
+    } else {
+      entries.push({ skill, status: 'skipped', reason: 'install-failed' });
+    }
   }
 
   // Skip replaced skills (handled by extensions)
@@ -333,7 +361,9 @@ export async function updateSkills(
   const retainedSkills = previousSkills.filter(s => availableSet.has(s));
 
   return {
-    installedSkills: retainedSkills,
+    // Newly installed skills are not in previousSkills, so union them in — the
+    // caller persists installedSkills into config + rebuilds managed state.
+    installedSkills: [...retainedSkills, ...installedNew],
     entries,
   };
 }

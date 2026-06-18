@@ -30,7 +30,7 @@ Set up AI agent context for a game project by:
 2. Bootstrapping `.unikit/config.yaml` (user-editable source of truth for language, git, and workflow)
 3. Generating `.unikit/DESCRIPTION.md` — project specification
 4. Generating `AGENTS.md` — structural map for AI agents
-5. Bootstrapping the knowledge base under `.unikit/memory/` via the rules registry — the `code` module (`core/` + `stack/`) always, plus the `gamedesign` design library when that module is registered
+5. Bootstrapping the knowledge base under `.unikit/memory/` via the rules registry — the `code` module (`core/` + `stack/`) always, plus the `gamedesign` design library when its skills are installed
 6. Delegating architecture generation to `/unikit-architecture`
 7. Printing the setup summary as the final, user-facing confirmation that all artifacts are in place
 
@@ -454,10 +454,10 @@ Read this index to determine which rule files are relevant for the current task,
 
 #### 9.2: Core bootstrap
 
-Install the baseline rule set via the registry chain (primary → official → bundled). This is a quiet, idempotent step — on a re-run it will either skip everything (hash match) or pull fresh content when the registry has been updated. The no-args form of `rules install` owns the bootstrap contract: it walks every registered module by its bootstrap policy — the `code` module installs the always-tagged (core) rules, the `gamedesign` module installs its entire catalog (core + library); modules absent from the registry are skipped gracefully. Each module's manifest is fetched once, and `RULES_INDEX.md` is regenerated on every invocation.
+Install the baseline rule set via the registry chain (primary → official → bundled). This is a quiet, idempotent step — on a re-run it will either skip everything (hash match) or pull fresh content when the registry has been updated. `rules install defaults` owns the bootstrap contract: it walks every module whose skills are installed, by each module's bootstrap policy — the `code` module installs the always-tagged (core) rules, the `gamedesign` module installs its entire catalog (core + library) when its skills are present; modules absent from the registry are skipped gracefully. Each module's manifest is fetched once, and `RULES_INDEX.md` is regenerated on every invocation. (Bare `rules install` with no arguments prints help instead — the bootstrap lives behind the explicit `defaults` keyword.)
 
 ```bash
-unikit-ai rules install
+unikit-ai rules install defaults
 ```
 
 Only surface the output if the command fails (non-zero exit). On success it is safe to continue without displaying the aggregated report (the summary line `Rules: N installed, M already-installed, K failed` is emitted but not required in the skill's own output).
