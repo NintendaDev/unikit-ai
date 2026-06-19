@@ -111,8 +111,11 @@ Gather the facts the system must stay consistent with (read-only):
   (`.unikit/gamedesign/reviews/`).
 - **Import source** — if `GD-IDS`/GAME mention an import, or a
   `researches/<date>_import-*/SOURCE.md` covers this system, read it: section
-  content is **extracted** from it, not regenerated; mark which sections were
-  extracted vs generated.
+  content is **extracted** from it, not regenerated. Mark provenance per
+  `gd-principles` → Provenance: place `<!-- provenance: extracted from SOURCE.md -->`
+  under each section lifted from the source and `<!-- provenance: generated -->`
+  under each section inferred to complete the skeleton; untagged sections are
+  normal authored content.
 
 ## Phase 2 — Resolve Mode from Document State (no flags)
 
@@ -184,7 +187,10 @@ Section-specific logic (the rest is the generic cycle):
   terms in `GD-IDS.yaml` `terms` (canonical English + translation +
   forbidden aliases).
 - **D / Formulas** — each gets a `FORM-<slug>`, the expression, a variable table,
-  the expected output range, and a worked numeric example.
+  the expected output range, and a worked numeric example. Name the degenerate
+  **values** — inputs at zero / max / negative that break the curve — and state how
+  the formula clamps them. (Degenerate **strategies** — exploitable or dominant play
+  lines — belong to E, not here.)
 - **Registry check after C and D** — compare every number and name against the
   known facts from Phase 1. On a mismatch, surface it **immediately** and let the
   user resolve it: obey the registry / change the registry through a

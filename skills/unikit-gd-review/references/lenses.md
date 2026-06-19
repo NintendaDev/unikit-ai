@@ -24,6 +24,22 @@ pillar / rule** (`gd-principles` — no citation → downgrade to Suggestion).
 | **feasibility** | Reads `DESCRIPTION.md`/`ARCHITECTURE.md` (the **single** sanctioned code-context read) to flag implementability risks against the actual stack/architecture. | Critical (unimplementable on this stack) |
 | **fantasy-delivery** | Does section B's promised feeling actually arise from the mechanics in C/D/E? Does the system serve ≥1 SDT need (autonomy/competence/relatedness)? Attack the gap between the promised fantasy and what the rules produce. | Major (mechanics don't deliver the stated fantasy); Critical (system serves no need and no pillar) |
 
+## Provenance lens (imported systems only)
+
+Runs **only** when the system was built by import — its sections carry provenance
+markers (see `gd-principles` → Provenance). It separates inferred content from
+author-sourced content and holds the two to different bars:
+
+- Walk every section tagged `<!-- provenance: generated -->`. A generated claim has
+  no author authority: check it against the imported source and the registry
+  (`GD-IDS.yaml`). A generated number, rule, or fact the source never stated — or
+  that contradicts a registered fact — is **≥ Major** (it was invented to fill the
+  skeleton, not designed).
+- Sections tagged `<!-- provenance: extracted from SOURCE.md -->` are trusted as
+  author-sourced — **do not** nitpick them on provenance grounds (the other lenses
+  still apply on their own merits).
+- Untagged sections are normal authored content; this lens skips them.
+
 ## Domain lenses (add by the system's behaviour/domain)
 
 Load the matching **core** domain rule (`.unikit/memory/gamedesign/`) and apply

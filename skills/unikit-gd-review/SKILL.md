@@ -3,7 +3,7 @@ name: unikit-gd-review
 description: >-
   Quality review of game design documents — "is this design good?" — through a
   fan-out of adversarial lenses (completeness, clarity, pillar alignment,
-  systems-math, fantasy-delivery, feasibility, scope, plus domain lenses), each prompted to find
+  systems-math, fantasy-delivery, provenance, feasibility, scope, plus domain lenses), each prompted to find
   problems, not validate. Produces a severity-graded verdict and a report. Scope
   is inferred from the prompt — no flags: a named system reviews that document;
   "all" / "all systems" runs a cross-system review with end-to-end checks. Use
@@ -113,7 +113,10 @@ line, then proceed.
 Select the lenses from `references/lenses.md`: the **core** lenses always
 (including **fantasy-delivery** — does section B's promised feeling actually arise
 from C/D/E, and is an SDT need served?), plus the **domain** lenses matching the
-system's behaviour/domain.
+system's behaviour/domain. When the system was built by import (its sections carry
+provenance markers — see `gd-principles` → Provenance), also run the **provenance**
+lens over each `<!-- provenance: generated -->` section: inferred content is held to
+a stricter bar (≥ Major against source/registry) than author-sourced text.
 
 Run them as **2–4 parallel inline `Agent()`** calls, each given one lens and the
 adversarial framing *"find what is wrong — do NOT validate"*. Each agent is

@@ -203,6 +203,37 @@ user is the arbiter of every conflict.
   conflicts.
 - Every registry fact carries its `source` — the system that owns it.
 
+## Provenance (imports)
+
+When a system GDD is built by importing an existing document (the
+`unikit-gd-detail` import path), each section records where its content came from,
+so a later review can hold inferred material to a higher bar than author-sourced
+material. The markers are HTML comments placed directly under the section heading
+they describe:
+
+- `<!-- provenance: extracted from SOURCE.md -->` — the section's content was
+  lifted from the imported source document (verbatim or lightly edited). It is
+  trusted as author-sourced; review does not second-guess it on provenance grounds.
+- `<!-- provenance: generated -->` — the section had no counterpart in the source
+  and was inferred to complete the skeleton. It carries no author authority; the
+  provenance lens (`unikit-gd-review`) holds every generated claim against the
+  source and the registry at **≥ Major**.
+- **Untagged is normal authored content** — a section with no provenance marker is
+  ordinary collaborative authoring (the non-import default). Absence of a marker is
+  never itself a finding.
+
+Rules:
+
+- `unikit-gd-detail` writes the markers on import (one per section that needs one);
+  the regular collaborative authoring path leaves sections untagged.
+- `unikit-gd-improve` **never strips a provenance marker** — an edit may change a
+  generated section's content, but the marker survives so its origin stays
+  auditable across versions. Promoting `generated` → `extracted` is a deliberate,
+  recorded act, never a silent side effect of editing.
+- Markers are **inert to the code side** — they are HTML comments, never parsed by
+  the plan brief or any code-module skill; they live entirely inside the design
+  layer.
+
 ## Language
 
 - Design artifacts follow the configured artifact language; conversation follows the
