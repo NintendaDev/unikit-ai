@@ -1037,6 +1037,92 @@ else
     fail "Phase 0 keying parity drift:$GD_KEYING_WHY"
 fi
 
+# T7/T8 content guards (provenance contract + implemented wire-back). All greps are
+# FILE-SCOPED (like the T5/T6 absence-grep above), never repo-wide. The writer/reader
+# actually FIRING is checked by the manual smoke (bash cannot run an LLM skill); these
+# assert the contract text is present on each surface. New path vars: the GAME.md and
+# GD-IDS templates, the *code-module* unikit-verify / unikit-plan skills ($GD_VERIFY_SKILL
+# above is the *design* gd-verify — a different file), and the canonical unikit-verify
+# ownership contract.
+GD_GAME_TPL="$GD_DATA/templates/GAME.md"
+GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
+UNIKIT_VERIFY_SKILL="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+UNIKIT_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+UNIKIT_VERIFY_CONTRACT="$ROOT_DIR/skills/unikit-verify/references/CONTEXT-GATES-AND-OWNERSHIP.md"
+
+# (T7-1) Provenance contract section in gd-principles (GP2).
+if grep -q '^## Provenance' "$GD_PRINCIPLES"; then
+    pass "gd-principles — ## Provenance (imports) section present (T7 GP2)"
+else
+    fail "gd-principles — missing ## Provenance (imports) section (T7 GP2)"
+fi
+
+# (T7-2) Provenance lens in lenses.md (L2).
+if grep -qF 'Provenance lens' "$GD_LENSES"; then
+    pass "lenses.md — Provenance lens present (T7 L2)"
+else
+    fail "lenses.md — missing Provenance lens (T7 L2)"
+fi
+
+# (T7-3) GAME.md template carries a ## Changelog section (closes the T2 hole).
+if grep -q '^## Changelog' "$GD_GAME_TPL"; then
+    pass "GAME.md template — ## Changelog section present (T7)"
+else
+    fail "GAME.md template — missing ## Changelog section (T7)"
+fi
+
+# (T7-4) GAME.md Delta-Discipline carve-out in gd-principles (#16) — file-scoped on
+#        the unique marker phrase inside ## Delta Discipline.
+if grep -qF 'GAME.md exception (not a system)' "$GD_PRINCIPLES"; then
+    pass "gd-principles — GAME.md Delta-Discipline carve-out present (#16)"
+else
+    fail "gd-principles — missing GAME.md Delta-Discipline carve-out (#16)"
+fi
+
+# (T8-5) implemented_version field in the GD-IDS template (#9).
+if grep -qF 'implemented_version' "$GD_IDS_TPL"; then
+    pass "GD-IDS template — implemented_version field present (T8)"
+else
+    fail "GD-IDS template — missing implemented_version field (T8)"
+fi
+
+# (T8-6) Both the writer (unikit-verify) and the reader (unikit-plan) name
+#        implemented_version.
+GD_IMPL_WHY=""
+grep -qF 'implemented_version' "$UNIKIT_VERIFY_SKILL" || GD_IMPL_WHY+=" unikit-verify(writer)"
+grep -qF 'implemented_version' "$UNIKIT_PLAN_SKILL"   || GD_IMPL_WHY+=" unikit-plan(reader)"
+if [[ -z "$GD_IMPL_WHY" ]]; then
+    pass "unikit-verify + unikit-plan — implemented_version wired (T8 writer/reader)"
+else
+    fail "implemented_version missing in:$GD_IMPL_WHY (T8)"
+fi
+
+# (T8-7) unikit-verify documents the GD-INDEX Status writeback (the value
+#        `implemented`), not only implemented_version — guards the second surface of
+#        the T8 writer scope (GD-IDS + GD-INDEX).
+if grep -qF 'GD-INDEX Status=implemented' "$UNIKIT_VERIFY_SKILL"; then
+    pass "unikit-verify — documents GD-INDEX Status=implemented writeback (T8 second surface)"
+else
+    fail "unikit-verify — missing GD-INDEX Status writeback (T8 second surface)"
+fi
+
+# (T8-8) Sanctioned code→design exception in the gd-principles One-Way Boundary (#8).
+if grep -qF 'Sanctioned exceptions (two, narrow)' "$GD_PRINCIPLES"; then
+    pass "gd-principles — One-Way Boundary code→design exception present (T8 #8)"
+else
+    fail "gd-principles — missing One-Way Boundary code→design exception (T8 #8)"
+fi
+
+# (T8-9) MANDATORY: the canonical ownership contract carries the sanctioned write.
+#        This file overrides the SKILL body (unikit-verify Step 0.0), yet it is the
+#        surface most likely to silently regress the carve-out — and until now it was
+#        never grepped by this runner.
+if grep -qF 'Single sanctioned design write' "$UNIKIT_VERIFY_CONTRACT"; then
+    pass "CONTEXT-GATES-AND-OWNERSHIP — sanctioned design-write exception present (T8 canonical)"
+else
+    fail "CONTEXT-GATES-AND-OWNERSHIP — missing sanctioned design-write exception (T8 canonical)"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
