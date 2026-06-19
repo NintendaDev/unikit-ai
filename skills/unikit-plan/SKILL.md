@@ -232,9 +232,9 @@ Check whether `.unikit/gamedesign/GD-INDEX.md` exists.
 - **Absent** → set `design_linked = false` and skip every design step. The plan is
   purely code-side, exactly as before — projects without a design module are unaffected.
 
-**One-way boundary:** planning *reads* design (`GD-INDEX.md`, `systems/*.md`); it never
-writes or edits any `.unikit/gamedesign/` artifact. Design changes flow only through the
-`/unikit-gd-*` skills.
+**One-way boundary:** planning *reads* design (`GD-INDEX.md`, `systems/*.md`,
+`GD-IDS.yaml`); it never writes or edits any `.unikit/gamedesign/` artifact. Design
+changes flow only through the `/unikit-gd-*` skills.
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
@@ -653,8 +653,9 @@ resolved system's `Status` is not `detailed` or `reviewed`:
   spec. Suggest finishing `/unikit-gd-detail <system>` first.
 - `revised` — the design moved ahead of the code after a `/unikit-gd-improve` edit; treat
   this as a delta plan (4.5.3) and call out that old behavior may need removal.
-- `implemented` — code already exists for this version; confirm intent (a re-plan usually
-  implies an unrecorded delta).
+- `implemented` — code already exists for this version (the version is recorded in
+  `GD-IDS.yaml` `implemented_version`, read as the baseline in 4.5.3); confirm intent (a
+  re-plan usually implies an unrecorded delta).
 - `deprecated` — the system was dropped in a remap; 4.5.1 filters it out of candidate
   matching. If the user explicitly targets it, `WARN [design]` and confirm intent before
   planning — a deprecated system normally should not receive new code.
@@ -665,10 +666,14 @@ Prompts like "plan the new version of Combat" or "bring combat up to the design"
 `SYS-id` or version number — resolve them here:
 
 1. **System** — resolved in 4.5.1.
-2. **What is already implemented** — search prior `## Design` blocks for this `SYS-id`
-   across `.unikit/code/plans/*/PLAN-BRIEF.md` (and `.unikit/code/PLAN.md`). The highest
-   version found in a completed plan is the implemented baseline. No prior plan → ask:
-   "no implementation found — plan the full system?".
+2. **What is already implemented** — read the resolved system's `implemented_version`
+   from `.unikit/gamedesign/GD-IDS.yaml` (set by code-side `unikit-verify` on
+   all-AC-met). A **non-empty** `implemented_version` is the authoritative implemented
+   baseline. When the field is **absent or empty (`""`)** — e.g. a system implemented
+   before this field existed — fall back (migration grace) to scanning prior `## Design`
+   blocks for this `SYS-id` across `.unikit/code/plans/*/PLAN-BRIEF.md` (and
+   `.unikit/code/PLAN.md`); the highest version in a completed plan is the inferred
+   baseline. Neither source → ask: "no implementation found — plan the full system?".
 3. **Delta** — collect the system GDD's changelog blocks (section K) over the interval
    `(implemented, current]`. Multiple edits → multiple blocks.
 4. **Tasks** — new/changed `AC` → implementation tasks; **removed `AC` → tasks to rip out

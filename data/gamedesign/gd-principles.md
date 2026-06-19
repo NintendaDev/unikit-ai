@@ -79,11 +79,19 @@ Code reads design; design knows nothing about code.
   sources, or build artifacts.
 - The code side consumes design exclusively through the `## Design` section of its
   plan brief — SYS-id, version snapshot, verbatim AC quotes. There is no reverse
-  flow: no design documents reconstructed from code, no code-to-design sync.
+  flow: no design documents reconstructed from code, and no code-to-design sync
+  **except the single `implemented` writeback below**.
 - Importing an existing GDD is a document operation — extract from the provided
   document; never reverse-engineer design from an implementation.
-- Single sanctioned exception: the **feasibility lens** inside `unikit-gd-review`
-  may read `DESCRIPTION.md` / `ARCHITECTURE.md` to flag implementability risks.
+- **Sanctioned exceptions (two, narrow):**
+  - the **feasibility lens** inside `unikit-gd-review` may read `DESCRIPTION.md` /
+    `ARCHITECTURE.md` to flag implementability risks (a design-reads-code-context
+    read, never `.unikit/code/` or source);
+  - the **`implemented` writeback** — the lone sanctioned **code→design write**:
+    code-side `unikit-verify`, on all-AC-met for a cited `SYS-id`@version, writes
+    `implemented_version` into `GD-IDS.yaml` **and** `implemented` into that system's
+    GD-INDEX Status cell. It is read-only/terminal to every design skill — design
+    never sets it and never reads code to learn it.
 
 ## Lifecycle & Status
 
@@ -125,9 +133,11 @@ value lives in **three places that must always agree** — the document header
   Status column shows `deprecated` regardless of the row's underlying
   `doc_status`.
 - `implemented` is **code-set only** — the lone sanctioned code→design write,
-  applied by the code pipeline (wired in a later tier) and **read-only** to every
-  design skill. It appears in the GD-INDEX Status legend as a display value;
-  design skills never set it and never read code to learn it.
+  applied by the code pipeline (`unikit-verify` on all-AC-met — see One-Way
+  Boundary) and **read-only** to every design skill. It appears in the GD-INDEX
+  Status legend as a display value; design skills never set it and never read code
+  to learn it. The version it pins lives in the `GD-IDS.yaml` `implemented_version`
+  field (also code-set), not in `doc_status`.
 
 **Who writes the three places.** The authoring skills — `unikit-gd-spec`,
 `unikit-gd-detail`, `unikit-gd-review`, `unikit-gd-improve` — write the status

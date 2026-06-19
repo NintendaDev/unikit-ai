@@ -120,7 +120,11 @@ read the **system** spine only — the header ↔ `GD-INDEX` ↔ `GD-IDS` triple
 - **Display precedence.** A system with `status: deprecated` legitimately shows
   `deprecated` in the `GD-INDEX` Status column over its underlying `doc_status`;
   the read-only `implemented` value (a code-set display overlay) behaves the same.
-  Both are display overlays — excluded from the three-way comparison.
+  Both are display overlays — excluded from the three-way comparison. The companion
+  **`GD-IDS` `implemented_version`** field (also code-set, by `unikit-verify` on
+  all-AC-met) is a code-owned field — **not** a `doc_status` and **not** a `version`
+  — so it never participates in Status or Version coherence and is never flagged as
+  drift.
 - **Dependent-lag.** A verify-flagged dependent may transiently carry a header
   `Status` behind its `GD-INDEX`/`GD-IDS` `doc_status` (`gd-principles` →
   Lifecycle & Status); that lag is expected, not a conflict.
