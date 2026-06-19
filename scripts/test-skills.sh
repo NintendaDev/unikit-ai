@@ -980,6 +980,63 @@ else
     fail "gd-principles→delegation orphan reference(s) found: $GD_DELEG_ORPHANS"
 fi
 
+# T5/T6 content guards — the FIRST content asserts on skill REFERENCE files. The
+# templates/* + fixture greps above do not cover section-packs.md / lenses.md /
+# the gd-review|gd-verify SKILL bodies, so re-key/lens drift would pass silently.
+# These are cheap grep invariants on the keying + lens edits; the lenses actually
+# FIRING is checked by the manual smoke (bash cannot run an LLM skill).
+GD_SECTION_PACKS="$ROOT_DIR/skills/unikit-gd-detail/references/section-packs.md"
+GD_LENSES="$ROOT_DIR/skills/unikit-gd-review/references/lenses.md"
+GD_REVIEW_SKILL="$ROOT_DIR/skills/unikit-gd-review/SKILL.md"
+GD_DETAIL_SKILL="$ROOT_DIR/skills/unikit-gd-detail/SKILL.md"
+GD_IMPROVE_SKILL="$ROOT_DIR/skills/unikit-gd-improve/SKILL.md"
+# ($GD_VERIFY_SKILL is defined above in the status-spine block.)
+
+# (1) Both new section-packs exist (T5: SP2 ai-behavior, SP3 persistence).
+GD_PACKS_WHY=""
+if ! grep -qF '## Pack: ai-behavior' "$GD_SECTION_PACKS"; then GD_PACKS_WHY+=" ai-behavior"; fi
+if ! grep -qF '## Pack: persistence' "$GD_SECTION_PACKS"; then GD_PACKS_WHY+=" persistence"; fi
+if [[ -z "$GD_PACKS_WHY" ]]; then
+    pass "section-packs.md — ai-behavior + persistence packs present (T5)"
+else
+    fail "section-packs.md — missing pack block(s):$GD_PACKS_WHY"
+fi
+
+# (2) fantasy-delivery core lens landed in lenses.md (T6: L1).
+if grep -qF 'fantasy-delivery' "$GD_LENSES"; then
+    pass "lenses.md — fantasy-delivery core lens present (T6)"
+else
+    fail "lenses.md — missing fantasy-delivery core lens"
+fi
+
+# (3) The dead /unikit-evolve cross-skill ref is gone from gd-review + gd-verify
+#     (R3, both sides). FILE-SCOPED on purpose: the literal '/unikit-evolve' lives
+#     in ~11 files under skills/ (the unikit-evolve skill itself + others), so a
+#     repo-wide `grep -r "$ROOT_DIR/skills"` would always be red. Expect 0 matches
+#     in EACH of the two skill bodies.
+GD_EVOLVE_WHY=""
+if grep -qF '/unikit-evolve' "$GD_REVIEW_SKILL"; then GD_EVOLVE_WHY+=" gd-review"; fi
+if grep -qF '/unikit-evolve' "$GD_VERIFY_SKILL"; then GD_EVOLVE_WHY+=" gd-verify"; fi
+if [[ -z "$GD_EVOLVE_WHY" ]]; then
+    pass "gd-review + gd-verify — no dead /unikit-evolve reference (R3)"
+else
+    fail "stale /unikit-evolve reference still in:$GD_EVOLVE_WHY (R3 — route to /unikit-memory --module gamedesign)"
+fi
+
+# (4) Keying-vocabulary parity detail↔improve: both Phase 0 tables carry the two
+#     new domains (T5 goal — identical keying vocabulary across the two skills).
+GD_KEYING_WHY=""
+for f in "$GD_DETAIL_SKILL" "$GD_IMPROVE_SKILL"; do
+    bn=$(basename "$(dirname "$f")")
+    if ! grep -qF 'ai-behavior' "$f"; then GD_KEYING_WHY+=" $bn(ai-behavior)"; fi
+    if ! grep -qF 'persistence' "$f"; then GD_KEYING_WHY+=" $bn(persistence)"; fi
+done
+if [[ -z "$GD_KEYING_WHY" ]]; then
+    pass "gd-detail + gd-improve Phase 0 — ai-behavior + persistence domains present (T5 keying parity)"
+else
+    fail "Phase 0 keying parity drift:$GD_KEYING_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
