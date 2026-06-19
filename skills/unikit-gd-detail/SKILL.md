@@ -66,18 +66,24 @@ Silently load — do not narrate:
    `/unikit-gd-spec` (remap), or pick an existing `not-started` system. Do not
    author an off-map system.
 4. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load the **core** domain
-   rules for this system's category, on demand by `Load When`, plus any studio
-   `library` rule on the same topic:
+   rules for this system's **behavioural domain**, on demand by `Load When`, plus
+   any studio `library` rule on the same topic. Read the domain from the system's
+   name and Overview (the behaviour it drives), **not** from the coarse GD-INDEX
+   `Category`; when the behaviour is ambiguous or the category is coarse (Gameplay
+   / Meta), confirm the domain and pack(s) with one `AskUserQuestion` rather than
+   guessing. Domains are opt-in and combinable — a system may match more than one:
 
-   | System category | Core rules to load | Section-pack |
-   |-----------------|--------------------|--------------|
+   | Domain | Core rules to load | Section-pack |
+   |--------|--------------------|--------------|
    | combat / mechanics | `balance`, `frameworks` | combat |
+   | ai-behavior | `balance`, `frameworks` | ai-behavior |
    | economy / loot | `economy`, `balance` | economy |
    | progression / unlock | `progression`, `balance` | progression |
    | level / content | `level-design` | levels |
    | narrative / dialogue | `narrative` | narrative |
    | ui / onboarding | `ux-onboarding` | ux |
    | liveops / events | `liveops`, `economy` | liveops |
+   | persistence | `progression` | persistence |
    | monetization | `monetization-ethics`, `economy` | monetization |
    | meta / other | `frameworks`, `core-loops` | — |
 
@@ -159,7 +165,7 @@ SYSTEM GDD structure (header + sections — author in this order):
 | J | Accessibility | GAG checklist items (basic minimum) / accommodations / justified deviations. |
 | K | Open Questions & Changelog | open questions (owner/when); changelog blocks (added by `unikit-gd-improve`/`unikit-gd-verify`). |
 
-When the system's category has a **section-pack** (Phase 0 table), append the
+When the system's domain has a **section-pack** (Phase 0 table), append the
 pack's sub-sections **after K** — see `references/section-packs.md`.
 
 ## Phase 4 — Section-Cycle (A → K)

@@ -19,17 +19,18 @@ pillar / rule** (`gd-principles` — no citation → downgrade to Suggestion).
 | **completeness** | Is any section empty, `[To be designed]`, or missing? Does every core rule and edge case have an AC? | Major (empty section / untestable AC) |
 | **clarity / implementability** | Could a programmer build this without guessing? Find every ambiguous rule and undefined term. | Major (ambiguous rule); Critical (hole in core rules) |
 | **pillar alignment** | Does the system serve ≥1 pillar? Does anything contradict a pillar (lower-numbered wins)? | Critical (contradicts a pillar) |
-| **systems-math** | Are the formulas sound, ranges sane, no dominant strategy? Attack the numbers (cost curves, intransitivity). | Critical (dominant strategy); Major (untuned range) |
+| **systems-math** | Try to BREAK the numbers: find a dominant strategy, an infinite/positive-feedback loop, a degenerate min-max line, a cost curve that inverts, a value at zero/max/negative that breaks a formula, or an intransitivity that collapses to one best choice. "Ranges look fine" is not a result — name the exploit or state the line you tried and why it fails. | Critical (dominant strategy / infinite loop); Major (untuned range / unhandled extreme) |
 | **scope** | Is the S/M/L/XL realistic against the ambition and the team constraint? | Major (scope/ambition mismatch) |
 | **feasibility** | Reads `DESCRIPTION.md`/`ARCHITECTURE.md` (the **single** sanctioned code-context read) to flag implementability risks against the actual stack/architecture. | Critical (unimplementable on this stack) |
+| **fantasy-delivery** | Does section B's promised feeling actually arise from the mechanics in C/D/E? Does the system serve ≥1 SDT need (autonomy/competence/relatedness)? Attack the gap between the promised fantasy and what the rules produce. | Major (mechanics don't deliver the stated fantasy); Critical (system serves no need and no pillar) |
 
-## Domain lenses (add by the system's category)
+## Domain lenses (add by the system's behaviour/domain)
 
 Load the matching **core** domain rule (`.unikit/memory/gamedesign/`) and apply
 its checks adversarially:
 
-| System category | Domain lens | Load | Attacks |
-|-----------------|-------------|------|---------|
+| Domain | Domain lens | Load | Attacks |
+|--------|-------------|------|---------|
 | economy / loot | economy | `economy` | a faucet with no sink; uncapped inflation; broken value chains |
 | ui / onboarding | ux-clarity | `ux-onboarding` | FTUE drop-off; buried information hierarchy; missing feedback |
 | any system | accessibility | `accessibility` | section J below the GAG basic minimum; unjustified deviations |
@@ -45,8 +46,6 @@ A finding from a domain lens that grades severity uses the **shared rubric in
 Beyond running the core lenses on each document, a cross-review adds the checks no
 single-document review can make:
 
-- **Depends bidirectionality** — every `A depends on B` has the matching edge on B;
-  asymmetric edges are Major.
 - **Formula compatibility** — formulas shared across systems agree on units, ranges,
   and variable meaning.
 - **Cross-AC consistency** — acceptance criteria in different systems do not

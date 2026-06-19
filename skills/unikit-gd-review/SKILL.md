@@ -3,7 +3,7 @@ name: unikit-gd-review
 description: >-
   Quality review of game design documents — "is this design good?" — through a
   fan-out of adversarial lenses (completeness, clarity, pillar alignment,
-  systems-math, feasibility, scope, plus domain lenses), each prompted to find
+  systems-math, fantasy-delivery, feasibility, scope, plus domain lenses), each prompted to find
   problems, not validate. Produces a severity-graded verdict and a report. Scope
   is inferred from the prompt — no flags: a named system reviews that document;
   "all" / "all systems" runs a cross-system review with end-to-end checks. Use
@@ -76,15 +76,18 @@ Silently load — do not narrate:
 3. **`{{skills_dir}}/{{self_name}}/references/lenses.md`** — the lens catalog and
    the adversarial prompts (absorbed from the former `review-lenses` rule).
 4. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load the **core** domain rules
-   for the target's category (by `Load When`) so each domain lens has its theory:
+   for the target's behaviour/domain (by `Load When`) so each domain lens has its theory:
    `economy`, `balance`, `progression`, `ux-onboarding`, `accessibility`,
    `monetization-ethics`, `liveops`, `frameworks`.
 5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
 
 **One-way boundary:** never read `.unikit/code/`, project source, or build
 artifacts. **Single sanctioned exception:** the **feasibility lens** may read
-`.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` to flag implementability
-risks — nothing else.
+**only** `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` (two files, exact
+paths) to flag implementability risks. It must NOT read `.unikit/code/`, `Assets/`,
+or any source/build artifact — doing so violates the one-way boundary. A
+feasibility finding cites the line it relied on in DESCRIPTION/ARCHITECTURE as its
+evidence.
 
 ## Phase 1 — Resolve Scope & Mode (no flags)
 
@@ -107,8 +110,10 @@ line, then proceed.
 
 ## Phase 2 — Run the Lenses (adversarial fan-out)
 
-Select the lenses from `references/lenses.md`: the **core** lenses always, plus the
-**domain** lenses matching the system's category.
+Select the lenses from `references/lenses.md`: the **core** lenses always
+(including **fantasy-delivery** — does section B's promised feeling actually arise
+from C/D/E, and is an SDT need served?), plus the **domain** lenses matching the
+system's behaviour/domain.
 
 Run them as **2–4 parallel inline `Agent()`** calls, each given one lens and the
 adversarial framing *"find what is wrong — do NOT validate"*. Each agent is
@@ -129,9 +134,11 @@ citation to **Suggestion** (`gd-principles`).
 ## Phase 3 — Cross-Scope Checks (cross review only)
 
 When the scope is "all", add the cross-system lenses from `references/lenses.md`:
-Depends bidirectionality, formula compatibility, cross-AC consistency, pillar
-drift, total scope vs tiers, and **3–5 end-to-end "one moment through N systems"**
-scenarios. These are the checks no single-document review can make.
+formula compatibility, cross-AC consistency, pillar drift, total scope vs tiers,
+and **3–5 end-to-end "one moment through N systems"** scenarios. These are the
+checks no single-document review can make. **Depends symmetry is not a review
+lens** — `unikit-gd-verify` owns the Depends 3-way check (GD-INDEX ↔ section F ↔
+GD-IDS `depends_on`).
 
 ## Phase 4 — Verdict & Report
 
@@ -140,6 +147,10 @@ Compute the verdict from the findings:
 - **Single:** `APPROVED` (no Critical/Major) · `NEEDS REVISION` (Major, no
   Critical) · `MAJOR REVISION` (≥1 Critical).
 - **Cross:** `PASS` · `CONCERNS` · `FAIL` (≥1 Critical anywhere).
+
+Give each finding a **stable id** `RF-<YYYY-MM-DD>-<n>` (numbered in severity
+order, Critical first). The id lets a later `unikit-gd-improve` edit cite the
+finding it resolves in its changelog.
 
 Write **`.unikit/gamedesign/reviews/<date>_review-<scope>.md`** (`mkdir -p` the
 `reviews/` dir; `<scope>` is the SYS-slug or `all`). The report is the only memory
@@ -151,9 +162,9 @@ that survives a fresh-session review:
 > Scope signal: <single SYS-slug | cross: N systems>  ·  Mode: <review|critique>
 
 ## Findings
-| Severity | Document / Section | Lens | Diagnosis (problem + evidence) |
-|----------|--------------------|------|--------------------------------|
-| Critical | SYS-combat / D | systems-math | FORM-damage output contradicts PIL-2's design test |
+| RF | Severity | Document / Section | Lens | Diagnosis (problem + evidence) |
+|----|----------|--------------------|------|--------------------------------|
+| RF-<date>-1 | Critical | SYS-combat / D | systems-math | FORM-damage output contradicts PIL-2's design test |
 
 ## Required before implementation
 <all Critical + Major, as an actionable checklist>
@@ -209,8 +220,9 @@ Options:
 3. Nothing — I'll continue later
 ```
 
-If repeated conflicts recur across reviews, suggest capturing them via
-`/unikit-evolve` into `skill-context` (the design-side analogue of patches).
+If the same finding recurs across reviews of different systems, surface it as a
+candidate **studio `library` rule** (`/unikit-memory --module gamedesign`) so the
+lesson is captured as durable domain knowledge, not re-discovered each review.
 No summary document beyond the report file.
 
 ## Ownership Boundaries

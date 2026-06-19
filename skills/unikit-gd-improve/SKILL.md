@@ -65,18 +65,22 @@ Silently load — do not narrate:
 2. **`.unikit/gamedesign/GD-INDEX.md`** and **`.unikit/gamedesign/GD-IDS.yaml`** —
    the system map and the facts registry (current values are constraints).
 3. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load the **core** domain rules
-   for the target system's category on demand by `Load When` (plus any studio
-   `library` rule on the same topic), so options are grounded in theory:
+   for the target system's **behavioural domain** (the same domain vocabulary as
+   `unikit-gd-detail` Phase 0 — read from the system's name/behaviour, not the
+   coarse GD-INDEX `Category`) on demand by `Load When` (plus any studio `library`
+   rule on the same topic), so options are grounded in theory:
 
-   | Target category | Core rules to load |
-   |-----------------|--------------------|
+   | Target domain | Core rules to load |
+   |---------------|--------------------|
    | combat / mechanics | `balance`, `frameworks` |
+   | ai-behavior | `balance`, `frameworks` |
    | economy / loot | `economy`, `balance` |
    | progression / unlock | `progression`, `balance` |
    | level / content | `level-design` |
    | narrative / dialogue | `narrative` |
    | ui / onboarding | `ux-onboarding` |
    | liveops / events | `liveops`, `economy` |
+   | persistence | `progression` |
    | monetization | `monetization-ethics`, `economy` |
    | meta / GAME.md | `frameworks`, `core-loops` |
 

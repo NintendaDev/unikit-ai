@@ -9,8 +9,8 @@ Write), loading the extra rule named in the pack header.
 **Rules for every pack**
 
 - Append the pack **after K**, under a heading `## Pack: <domain>`.
-- Apply only the pack(s) that match the system's category (one system may take
-  more than one — e.g. a gacha shop is `economy` + `monetization`).
+- Apply only the pack(s) that match the system's **behaviour/domain** (one system
+  may take more than one — e.g. a gacha shop is `economy` + `monetization`).
 - Numbers live in tables; intent lives in prose. Every cross-system number that
   appears here must also be registered in `GD-IDS.yaml`.
 - Findings that grade severity (e.g. a dark-pattern audit) use the **shared
@@ -26,7 +26,7 @@ Write), loading the extra rule named in the pack header.
 | Sub-section | Holds |
 |-------------|-------|
 | Currencies | Each currency: name, purpose, hard/soft, cap, conversion rules. |
-| Sources & Sinks | Every faucet (where value enters) and drain (where it leaves), with rate. A currency with no sink inflates. |
+| Sources & Sinks | Every faucet (where value enters) and drain (where it leaves), with rate. A currency with no sink inflates — `unikit-gd-review`'s economy lens owns checking that every currency has ≥1 sink. |
 | Inflation Guardrails | What keeps the economy stable: sink scaling, decay, caps; the failure mode each guards against. |
 | Value Chains | How raw resources flow into player power (Cook value chains). |
 
@@ -42,6 +42,21 @@ Write), loading the extra rule named in the pack header.
 | TTK / TTC Anchors | Target time-to-kill and time-to-clear per archetype, with the feel rationale. |
 | Counter Matrix | What beats what (intransitive relationships); confirm no dominant strategy. |
 | Threat Budget | Per-encounter difficulty budget and how enemy mixes spend it. |
+
+---
+
+## Pack: ai-behavior
+
+**Apply when:** the system drives non-player decision-making (enemy AI, NPC
+behavior, director/spawn logic, companions).
+**Load:** `balance`, `frameworks`.
+
+| Sub-section | Holds |
+|-------------|-------|
+| Perception & Knowledge | What the agent can sense, range/cone, reaction latency, what it is allowed to "cheat" on (and why). |
+| Decision Priority | Ordered behavior selection (FSM/BT/utility): the priority list and the tie-break rule — unambiguous enough to implement. |
+| Difficulty Scaling | Which knobs scale with difficulty (numbers, not "smarter"); what must NOT scale (readability, fairness). |
+| Tells & Readability | The telegraph for each threatening action and its lead time — the fairness contract with the player. |
 
 ---
 
@@ -107,6 +122,21 @@ Write), loading the extra rule named in the pack header.
 | Calendar | Cadence of events/seasons and how they overlap. |
 | Injection Budget | How much currency/content each event injects, and the economy guardrail it respects. |
 | Engagement vs Fatigue | The retention mechanic and the burnout it risks; the limit that prevents it. |
+
+---
+
+## Pack: persistence
+
+**Apply when:** the system owns state that must survive a session (saves,
+profiles, inventories, progression, settings).
+**Load:** `progression` (when it persists player power), else none.
+
+| Sub-section | Holds |
+|-------------|-------|
+| Persisted State | Exactly what is saved vs recomputed; the authoritative source for each field. |
+| Save Triggers & Granularity | When state is written (autosave points, manual, on-quit); what a mid-action crash loses. |
+| Migration & Versioning | How an old save loads after a design change — the forward-compat rule for added/removed/renamed fields. |
+| Failure & Integrity | Corruption / partial-write behavior; what the player sees; never silently lose progress. |
 
 ---
 

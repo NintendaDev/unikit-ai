@@ -208,8 +208,10 @@ written, it is `.unikit/gamedesign/reviews/<date>_verify-<scope>.md` (`mkdir -p`
 ```
 
 Why keep the file: it is the only cross-session memory, it is the rework checklist,
-and the GD-INDEX Status must reference something. Recurring conflicts are an
-`/unikit-evolve` signal (→ `skill-context`).
+and the GD-INDEX Status must reference something. When the same conflict recurs
+across systems, record it as a `gamedesign` `library` rule via
+`/unikit-memory --module gamedesign` — durable domain knowledge, not re-discovered
+each pass.
 
 ## Final: Compact Report
 
