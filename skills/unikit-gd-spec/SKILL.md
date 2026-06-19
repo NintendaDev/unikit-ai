@@ -168,7 +168,24 @@ Author these sections (this is the GAME.md structure — do not invent others):
 | **Reference Games** | What we take, what we change, which pillar it validates. |
 | **Open Questions** | Things needing prototyping/research; resolved items migrate into a SYSTEM GDD or GD-IDS. |
 
-GAME.md header: `> Status: drafted` · `> Version: 1` · `> Last Updated: <date>`.
+GAME.md header — write it in the template's **bold, one-token-per-line** form so the
+authored header is byte-consistent with the scaffold:
+
+```
+> **Status**: drafted
+> **Version**: 1
+> **Last Updated**: <date>
+> **Based on**: concepts/<slug>.md (v<N>)
+```
+
+- **`> **Based on**`** records provenance. Seeded from a concept card → write
+  `concepts/<slug>.md (v<N>)`; authored free-form (no concept) → write `—`. Import
+  Mode fills the same line with the source path (see below).
+- **Carry forward from the concept card** (when one seeded this GAME.md): seed
+  **Open Questions** from the concept's biggest-risk / open-question field, and
+  carry a `market_signal: red-ocean` into Open Questions **verbatim** as a
+  `[market] …` line. The spec **consumes** the card — it does not grade markets or
+  re-run market research (that is `unikit-gd-explore`'s job).
 
 **Registry:** as pillars are approved, record each in `GD-IDS.yaml` `pillars`
 (`PIL-n`, name, `source: GAME.md`, `added: <date>`) — with the same approval as
@@ -214,6 +231,16 @@ remove) before writing. Then write:
 
 Each system is `not-started` until `unikit-gd-detail` authors its GDD.
 
+**Handoff to `unikit-gd-detail` (detail-ready gate).** A system is *detail-ready* —
+eligible to be picked up by `unikit-gd-detail` — only once the map already satisfies
+the Phase B conditions for it: a **priority tier** assigned (step 5), **≥1
+`implements: PIL-n`** (the coverage gate, step 7), a **symmetric `depends_on`** edge
+on both rows (step 4), and a **reserved Doc path** `systems/SYS-<slug>.md` in its
+GD-INDEX row and GD-IDS entry. A system caught in a **dependency cycle** is not
+detail-ready until the cycle is broken (step 4); until then it stays a
+Risk / Circular-Dependency entry, not a detail target. This gate only **names** what
+Phase B already enforces — it adds no new rule.
+
 ---
 
 ## Import Mode — Bring an Existing GDD into the Workspace
@@ -231,11 +258,19 @@ from code (one-way boundary).
    references the document already states. For elements the source lacks
    (commonly anti-pillars, pillar **design tests**, the Quantic Foundry / SDT
    profile, explicit non-goals), follow the section-cycle to **ask** the user
-   rather than inventing them. Mark any section absent from the source.
+   rather than inventing them, and tell the user which elements the source lacked.
+   GAME.md records its provenance through the header `> **Based on**:` line
+   (step 5), **not** per-section provenance markers — the `<!-- provenance: … -->`
+   markers (`gd-principles` → Provenance) are a SYSTEM-GDD device; GAME.md is a
+   free-form one-pager and is deliberately outside their scope (cf. the SYSTEM.md
+   skeleton).
 4. **Decompose** (Create Mode Phase B): take the systems the document names as
    **explicit**, then **infer the implicit** ones the document omits and mark
    them inferred. Build `GD-INDEX.md` + `GD-IDS.yaml`.
-5. Add a `## Based on` note in GAME.md pointing at the imported `SOURCE.md`.
+5. **Provenance:** fill the GAME.md header `> **Based on**:` line with
+   `researches/<date>_import-<slug>/SOURCE.md` — the single provenance record,
+   identical in shape to the concept-seeded case (Create Mode Phase A). Do **not**
+   add a separate `## Based on` section.
 
 Holes the source leaves in per-system detail (sections E/G/H/I/J are commonly
 missing from real-world GDDs) are filled later by `unikit-gd-detail`, which marks

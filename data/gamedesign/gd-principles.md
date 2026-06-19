@@ -176,6 +176,16 @@ The mandatory tail of every design edit:
    silently win.
 4. Recommend `unikit-gd-verify` (changed scope) after the edit.
 
+**GAME.md exception (not a system).** An edit to `GAME.md` bumps the version
+**only** in the GAME.md header `> **Version**:` line — GAME.md has no `GD-INDEX.md`
+Ver column and no `GD-IDS.yaml` `systems` row, so the "and in its GD-INDEX row" /
+`version` parts of step 1 do not apply. It appends a **light** block to GAME.md's
+own `## Changelog` (version, date, essence, one line per changed section) — **no**
+AC-delta line and **no** `Affected (gd-verify):` line, since those are SYSTEM GDD
+fields. Its status stays `drafted | approved`; it is **never** set to `revised`,
+and there is no 3-place coherence and no pending-loop. `unikit-gd-improve`
+implements this carve-out — this is its canonical statement.
+
 A significant decision also gets a **DD record** in GD-IDS `decisions`: the options
 considered, the rationale, and the affected systems (decision-log practice —
 Nygard).

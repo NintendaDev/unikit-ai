@@ -3,6 +3,7 @@
 > **Status**: drafted | approved
 > **Version**: 1
 > **Last Updated**: [YYYY-MM-DD]
+> **Based on**: [concepts/<slug>.md (v<N>) | researches/<date>_import-*/SOURCE.md | —]
 
 The whole-game truth, kept to one page (Librande one-page principle: if it does
 not fit, the vision is not yet sharp). Owns pillars, anti-pillars, the core
@@ -97,3 +98,13 @@ necessarily a flaw.
 resolved items into the relevant SYSTEM GDD or GD-IDS.]
 
 - [Question — and what would answer it.]
+
+## Changelog
+
+Newest first; appended by `unikit-gd-improve` on every approved edit. GAME.md is a
+one-pager, not a system: each entry is **light** — version, date, essence, and one
+line per changed section. No AC-delta line and no `Affected (gd-verify):` line
+(those are SYSTEM GDD fields, and GAME.md has no `GD-IDS.yaml systems` row).
+
+#### v1 — [YYYY-MM-DD] — initial draft
+- <Section>: created from template

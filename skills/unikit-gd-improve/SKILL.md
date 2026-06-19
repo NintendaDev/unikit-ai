@@ -175,7 +175,15 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
    coherent places**: the `SYSTEM.md` header (the `> Status:` token in the combined
    header line, not a separate bold line), the `GD-INDEX.md` row, and the
    `GD-IDS.yaml` `doc_status` (see gd-principles → Lifecycle & Status).
-2. **Changelog block** appended to section **K** (format owned by `gd-principles`):
+
+   **GAME.md carve-out** (target is `GAME.md`, not a system — canonical contract in
+   gd-principles → Delta Discipline): bump the version **only** in the GAME.md header
+   `> **Version**:` line. GAME.md has no `GD-INDEX.md` Ver column and no `GD-IDS.yaml`
+   `systems` row, so there is nothing else to bump; its status stays
+   `drafted | approved` and is **never** set to `revised`, and there is **no** 3-place
+   coherence to keep.
+2. **Changelog block** appended to section **K** (for a system) or to GAME.md's
+   **`## Changelog`** section (for `GAME.md`) — format owned by `gd-principles`:
 
    ```markdown
    #### v<N> — <YYYY-MM-DD> — <essence of the change> (DD-<n>)
@@ -187,10 +195,18 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
    side consumes exactly this line to build delta plans. The `Affected
    (gd-verify):` line is added later by `unikit-gd-verify`, never here — it is a
    **human-readable record** of the impact pass, not what drives re-verification.
+   When the edit **closes a `unikit-gd-review` finding**, cite its stable id in the
+   essence: `… (DD-3; RF-2026-06-14-2)` — the `RF-<YYYY-MM-DD>-<n>` format is owned
+   by `unikit-gd-review`.
    The pending-loop is driven by `Status: revised` itself: this skill marks **only
    the edited system** `revised` (step 1), and `unikit-gd-verify` marks affected
    **dependents** `revised` (verdict-gated). Each stays in the loop until
    `unikit-gd-review` clears it back to `reviewed`.
+
+   **For `GAME.md`** the changelog block is **light** (gd-principles → Delta
+   Discipline): version, date, essence, and one line per changed section — **no**
+   AC-delta line and **no** `Affected (gd-verify):` line (GAME.md is a one-pager, not
+   a system), and there is no `revised` pending-loop to drive.
 3. **Registry check:** new numbers/names vs GD-IDS facts — conflicts surface, they
    never silently win. A significant decision also gets a **`DD-<n>`** record in
    `GD-IDS.yaml` `decisions` (options, rationale, affected systems).
@@ -223,13 +239,19 @@ AC delta: +<n> / changed <n> / removed <n>
 Registry: <facts touched>   DD: <DD-n if any>
 ```
 
+For a **`GAME.md`** target the report reflects the carve-out: `Status: <drafted |
+approved> (unchanged)`, `Changelog: appended to GAME.md ## Changelog` (not section
+K), and `AC delta: —` (GAME.md is not a system).
+
 No summary document, no report file.
 
 ## Ownership Boundaries
 
 - **Owns:** content edits to approved `systems/SYS-<slug>.md` and `GAME.md`
-  sections; the version bump, changelog block, `revised` status, and the AC delta
-  for that edit.
+  sections; the version bump and changelog block for that edit. For a **system**
+  edit this also includes the `revised` status (3-place) and the AC-delta line; a
+  **`GAME.md`** edit carries neither — GAME.md keeps its `drafted | approved` status
+  and has no AC delta (gd-principles → Delta Discipline).
 - **Not this skill:** creating a document or filling placeholders →
   `unikit-gd-detail`; `GAME.md` structure / the system map / a new master →
   `unikit-gd-spec`; quality verdicts → `unikit-gd-review`; consistency &
