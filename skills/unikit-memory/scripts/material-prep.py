@@ -293,6 +293,36 @@ def _has_markdown_heading(text: str) -> bool:
     return re.search(r"(?m)^#{1,3} \S", text) is not None
 
 
+def _xml_prolog_has_doctype(data: bytes) -> bool:
+    """True if the XML prolog declares a DOCTYPE.
+
+    Scans only the prolog (a DOCTYPE legally precedes the root element), skipping
+    the optional XML declaration / processing instructions and comments — so it
+    neither scans the whole payload nor false-rejects a literal `<!DOCTYPE` that
+    appears later inside CDATA or text.
+    """
+    index = 3 if data[:3] == b"\xef\xbb\xbf" else 0  # skip a UTF-8 BOM
+    size = len(data)
+    while index < size:
+        if data[index:index + 1].isspace():
+            index += 1
+        elif data.startswith(b"<?", index):  # XML declaration / processing instruction
+            end = data.find(b"?>", index)
+            if end == -1:
+                return False
+            index = end + 2
+        elif data.startswith(b"<!--", index):  # comment
+            end = data.find(b"-->", index)
+            if end == -1:
+                return False
+            index = end + 3
+        elif data[index:index + 9].upper() == b"<!DOCTYPE":
+            return True
+        else:
+            return False  # reached the root element (or non-prolog content)
+    return False
+
+
 def _parse_xml_secure(data: bytes):
     """Parse XML with external-entity / billion-laughs protection.
 
@@ -309,7 +339,7 @@ def _parse_xml_secure(data: bytes):
     except ImportError:
         pass
 
-    if re.search(rb"<!DOCTYPE", data, re.IGNORECASE):
+    if _xml_prolog_has_doctype(data):
         raise RuntimeError("XML declares a DOCTYPE/DTD — refused (entity-expansion / XXE guard)")
     return ET.fromstring(data)
 
@@ -403,15 +433,18 @@ def extract_fb2(path: Path) -> ExtractedDocument:
     lines: list[str] = []
     if book_title:
         lines.extend([f"# {book_title}", ""])
-    for body in bodies:
-        body_title = ""
-        for child in body:
-            if _local_name(child.tag) == "title":
-                body_title = _element_text(child)
-                break
-        if body_title and body_title != book_title:
-            lines.extend([f"## {body_title}", ""])
-        _fb2_render(body, 2, lines)
+    try:
+        for body in bodies:
+            body_title = ""
+            for child in body:
+                if _local_name(child.tag) == "title":
+                    body_title = _element_text(child)
+                    break
+            if body_title and body_title != book_title:
+                lines.extend([f"## {body_title}", ""])
+            _fb2_render(body, 2, lines)
+    except RecursionError as exc:
+        raise RuntimeError(f"FB2 nesting too deep to render in {path}: {exc}")
 
     text = normalize_text("\n".join(lines))
     if not _has_markdown_heading(text):
@@ -948,7 +981,9 @@ def write_chunks(docs: list[ExtractedDocument], out_dir: Path, chunk_chars: int)
             slug = slugify(Path(doc.title).stem or f"source-{chunk_index}")
             filename = f"{chunk_index:04d}-{slug}.md"
             chunk_path = chunks_dir / filename
-            relative = str(chunk_path.relative_to(out_dir))
+            # Forward slashes so source-index.md (## TOC + Chunks table) stays portable
+            # regardless of the OS the helper runs on.
+            relative = chunk_path.relative_to(out_dir).as_posix()
             local_chunk_files[local_index] = relative
 
             header = [
