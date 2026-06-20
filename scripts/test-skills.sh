@@ -1123,6 +1123,119 @@ else
     fail "CONTEXT-GATES-AND-OWNERSHIP — missing sanctioned design-write exception (T8 canonical)"
 fi
 
+# unikit-memory distillation-behavior content guards (PLAN.md T1–T10). The router
+# distilled the aif-distillation protocol into unikit-memory as BEHAVIOR; bash cannot
+# run an LLM skill, so these are grep invariants on the contract text + a probe-gated
+# compile smoke for the ported helper. Load-bearing asserts (nothing else catches the
+# regression): (a) Source Map present in BOTH module contracts — the only defense
+# against T6↔T7 drift (guard #2 checks structural completeness, NOT section parity);
+# (b) the ported material-prep.py is delivered (also asserted installed in
+# test-install.sh — unikit-memory is the first skill shipping a scripts/ subdir);
+# (c) zero aif-distillation/ai-factory literal survived the rebrand; (d) the helper
+# actually parses (npm test is bash and never runs the script).
+UM_SKILL="$ROOT_DIR/skills/unikit-memory/SKILL.md"
+UM_PIPELINE="$ROOT_DIR/skills/unikit-memory/references/research-pipeline.md"
+UM_MOD_CODE="$ROOT_DIR/skills/unikit-memory/references/module-code.md"
+UM_MOD_GD="$ROOT_DIR/skills/unikit-memory/references/module-gamedesign.md"
+UM_LARGE="$ROOT_DIR/skills/unikit-memory/references/large-sources.md"
+UM_PREP="$ROOT_DIR/skills/unikit-memory/scripts/material-prep.py"
+
+# (UM-1) research-pipeline carries the pipeline-behavior edits: Source Inventory (#1),
+#        distill-don't-copy (#8), example coverage (#2), merge guard (#9).
+UM_PIPE_WHY=""
+grep -qF 'Source Inventory' "$UM_PIPELINE"      || UM_PIPE_WHY+=" source-inventory(#1)"
+grep -qF "Distill, don't copy" "$UM_PIPELINE"   || UM_PIPE_WHY+=" distill-dont-copy(#8)"
+grep -qF 'Example coverage' "$UM_PIPELINE"       || UM_PIPE_WHY+=" example-coverage(#2)"
+grep -qF 'Merge guard' "$UM_PIPELINE"            || UM_PIPE_WHY+=" merge-guard(#9)"
+if [[ -z "$UM_PIPE_WHY" ]]; then
+    pass "research-pipeline.md — Source Inventory + distill + example coverage + merge guard (T1/T2)"
+else
+    fail "research-pipeline.md — missing:$UM_PIPE_WHY"
+fi
+
+# (UM-2) SKILL.md router carries the Quality Gate (#3), gap-list default (#5), and the
+#        --into flag in the argument-hint (#7 lever).
+UM_SKILL_WHY=""
+grep -qF '## Quality Gate' "$UM_SKILL"               || UM_SKILL_WHY+=" quality-gate(#3)"
+grep -qF 'gap list' "$UM_SKILL"                      || UM_SKILL_WHY+=" gap-list(#5)"
+grep -qE '^argument-hint:.*--into' "$UM_SKILL"       || UM_SKILL_WHY+=" --into(hint)"
+if [[ -z "$UM_SKILL_WHY" ]]; then
+    pass "unikit-memory SKILL.md — Quality Gate + gap list + --into in argument-hint (T3/T4)"
+else
+    fail "unikit-memory SKILL.md — missing:$UM_SKILL_WHY"
+fi
+
+# (UM-3) LOAD-BEARING (a): the ## Source Map provenance format lives in BOTH module
+#        contracts. One assert — the sole guard against T6↔T7 symmetry drift, since
+#        guard #2 (test-module-contract.sh) checks structural completeness, not the
+#        parity of internal format sections.
+UM_SRCMAP_WHY=""
+grep -qF '## Source Map' "$UM_MOD_CODE" || UM_SRCMAP_WHY+=" module-code"
+grep -qF '## Source Map' "$UM_MOD_GD"   || UM_SRCMAP_WHY+=" module-gamedesign"
+if [[ -z "$UM_SRCMAP_WHY" ]]; then
+    pass "module-code + module-gamedesign — ## Source Map format in BOTH (#6 symmetry, T6↔T7)"
+else
+    fail "## Source Map missing in:$UM_SRCMAP_WHY (#6 — guard #2 does NOT check section parity)"
+fi
+
+# (UM-4) module-code carries example coverage (#2) + stable filenames / anti-frag (#7).
+UM_MODC_WHY=""
+grep -qF 'Example coverage' "$UM_MOD_CODE"  || UM_MODC_WHY+=" example-coverage(#2)"
+grep -qF 'Stable filenames' "$UM_MOD_CODE"  || UM_MODC_WHY+=" stable-filenames(#7)"
+if [[ -z "$UM_MODC_WHY" ]]; then
+    pass "module-code.md — example coverage + stable filenames (T6 #2/#7)"
+else
+    fail "module-code.md — missing:$UM_MODC_WHY"
+fi
+
+# (UM-5) large-sources.md exists, references the helper via the install-template path
+#        (NOT the aif-distillation source tree), and points back at the pipeline.
+if [[ ! -s "$UM_LARGE" ]]; then
+    fail "large-sources.md — missing or empty (T8)"
+elif ! grep -qF '{{skills_dir}}/{{self_name}}/scripts/material-prep.py' "$UM_LARGE"; then
+    fail "large-sources.md — helper not referenced via install-template path (T8)"
+elif grep -qF '.claude/skills/aif-distillation' "$UM_LARGE"; then
+    fail "large-sources.md — still points at the aif-distillation source path (T8)"
+else
+    pass "large-sources.md — present + install-template helper path, no source-tree path (T8)"
+fi
+
+# (UM-6) LOAD-BEARING (b): the ported helper is present in source. Its delivery into an
+#        installed project is asserted separately in test-install.sh.
+if [[ -s "$UM_PREP" ]]; then
+    pass "material-prep.py — present in skills/unikit-memory/scripts/ (T9)"
+else
+    fail "material-prep.py — missing from skills/unikit-memory/scripts/ (T9)"
+fi
+
+# (UM-7) LOAD-BEARING (c): the rebrand is complete — no aif-distillation/ai-factory
+#        literal survived (marker constants, docstring, User-Agent, argparse desc,
+#        SENSITIVE_DIR_NAMES, temp prefixes).
+if grep -qiE 'aif-distillation|ai-factory' "$UM_PREP"; then
+    fail "material-prep.py — stale aif-distillation/ai-factory literal remains (T9 rebrand)"
+    grep -niE 'aif-distillation|ai-factory' "$UM_PREP"
+else
+    pass "material-prep.py — fully rebranded, no aif-distillation/ai-factory literal (T9)"
+fi
+
+# (UM-8) LOAD-BEARING (d): probe-gated parse smoke. T9 rewrote the argparse surface and
+#        marker constants; npm test is bash and never executes the script, so a
+#        non-parsing port would otherwise ship green. Run behind the same Python 3 probe
+#        the script/large-sources.md use; warn (not fail) when no Python 3 is present.
+UM_PY=""
+for c in "python3" "python" "py -3" "py"; do
+    if $c --version 2>/dev/null | grep -q "Python 3"; then UM_PY="$c"; break; fi
+done
+if [[ -n "$UM_PY" ]]; then
+    if $UM_PY "$UM_PREP" --help >/dev/null 2>&1; then
+        pass "material-prep.py — parses + --help OK ($UM_PY) (T10 compile smoke)"
+    else
+        fail "material-prep.py — parse/--help FAILED ($UM_PY) (T10 compile smoke)"
+    fi
+else
+    warn "material-prep.py — no Python 3 interpreter found; compile smoke skipped (probe-gated)"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

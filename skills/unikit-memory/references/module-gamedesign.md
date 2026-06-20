@@ -170,6 +170,16 @@ Use the same header/format contract as the `code` module's rules:
 ## Anti-patterns
 
 {Common design mistakes to avoid — if applicable}
+
+## Source Map
+
+{Optional — include ONLY when the rule was synthesized from external sources (papers,
+books, framework references, URLs, files). Persists the B.1 Source Inventory as
+provenance. OMIT the section entirely for a sourceless manual rule. Format:
+| Source | Used for |
+|--------|----------|
+| {citation / url / path} | {sections / principles / numbers it informed} |
+}
 ```
 
 Rule files hold **domain knowledge only**. They never carry an `## Authoring` /
@@ -208,7 +218,25 @@ Both lines must read as **prose** a future LLM can match against a design task.
   See `.unikit/system/LANGUAGE_RULES.md` → "Knowledge base rule files".
 - Numbers in tables, intent in prose; name the source framework when one exists
   (MDA, Quantic Foundry, GAG, …)
+- **Example coverage (content-driven).** Decide per rule whether a worked example earns
+  its place by content. For game-design rules an "example" is a **numeric table, a
+  worked formula derivation, or a before/after tuning case — NOT a code snippet** (the
+  File Format Template has no code slot, and code-centric examples belong to the `code`
+  module). When a rule raises several quantitative decisions (cost curves, pity timers,
+  economy sinks), show each with a concrete number table or worked example, or waive it
+  with a stated reason. The Quality Gate re-checks coverage before the Final Step.
 - Keep rules actionable — "Anchor X to Y", "Never ship Z without W"
+
+**Source Map (provenance) — conditional section.** Include a `## Source Map` section in
+a rule **only when it was synthesized from external sources** (papers, books, framework
+references, URLs, files). It persists the Source Inventory built in
+`research-pipeline.md` B.1 (the #1 → #6 link): each inventory row becomes a Source Map
+row mapping a source to the principles / numbers it informed. **Omit the section
+entirely for a sourceless manual rule** — an empty Source Map is a defect. Distillation
+is synthesis, so the map explains provenance, not direct quotation. This is a **format**
+section, not process — it never carries section-letter bindings, authoring steps, or
+severity grading (those stay in `gd-principles`). Citations, source paths, and URLs stay
+verbatim regardless of `language.rules`.
 
 ## Reference File Format
 
@@ -223,7 +251,11 @@ have no frontmatter — they are supplementary documents, not standalone rules.
 Follow the `code` module's reference-extraction guidance: extract when content
 is a large lookup catalog read piecemeal; keep conceptual guidance in the main
 rule; propose the split and confirm with `AskUserQuestion` before creating
-files; the main rule lists approved references in its `> **References**:` line.
+files; the main rule lists approved references in its `> **References**:` line. This
+includes **stable filenames / anti-fragmentation** — reuse an existing reference's
+filename when extending its topic instead of forking a near-duplicate, and run the
+`research-pipeline.md` B.3.5 merge guard (check existing files, update in place) before
+creating a new one.
 
 ## RULES_INDEX.md Format
 

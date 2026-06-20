@@ -7,12 +7,13 @@ description: >-
   This is the knowledge base, distinct from project rules in .unikit/RULES.md. Use when the user
   wants to document or research how the project uses a framework ("document how we use
   Addressables", "add knowledge for DOTween", "best practices for R3"), add a core or stack entry
-  to the knowledge base, or pastes framework docs URLs/files to turn into vetted entries. Also:
-  "--migrate-rules" (or passing RULES.md) promotes mature project rules into the knowledge base;
-  "validate" re-syncs RULES_INDEX.md; "--module <id>" targets a module. For a quick project rule,
+  to the knowledge base, or pastes framework docs URLs, files, folders, or PDFs to turn into vetted
+  entries. Also: "--migrate-rules" (or passing RULES.md) promotes mature project rules into the
+  knowledge base; "validate" re-syncs RULES_INDEX.md; "--module <id>" targets a module, "--into
+  <file.md>" a rule file. For a quick project rule,
   override, or "remember this / always-never X" correction use /unikit-rules (RULES.md); for
   architecture decisions use ARCHITECTURE.md.
-argument-hint: "[description | URL(s) | file path | --module <id> | --migrate-rules | --skip-registry | validate]"
+argument-hint: "[description | URL(s) | file/folder/PDF path | --module <id> | --into <file.md> | --migrate-rules | --skip-registry | validate]"
 allowed-tools:
   - Read
   - Write
@@ -131,6 +132,21 @@ guess silently when the target is ambiguous.
      the question — do not dump unrelated content into `code` just because it is the
      only module.
 
+**`--into <file.md>` path override (if present).** Scan `$ARGUMENTS` for
+`--into <path>`. When present, the target rule file is pinned to that path and its
+**module and tier are derived from the path** — `.unikit/memory/<module>/<tier>/<file>.md`.
+Use it to resolve the module deterministically:
+
+- `--module` **not** given → set `moduleId` to the `<module>` segment of the `--into`
+  path (validate it against `modules.yml`).
+- `--module` given and it **matches** the `--into` `<module>` segment → consistent; keep it.
+- `--module` given but it **disagrees** with the `--into` `<module>` segment → the
+  explicit `--module` wins; surface the conflict and confirm via `AskUserQuestion`
+  before proceeding (never silently pick one), so Step 0.5 stays deterministic.
+
+Do **not** strip `--into` here — Step 1 Phase A strips the flag and its value after the
+target is recorded. Remember the derived `<tier>` and target filename for Step 2.
+
 After resolution, the following are fixed for the rest of the run:
 
 - `moduleId` — the resolved module id.
@@ -155,12 +171,16 @@ Two-phase classification determines both input type and user intent.
 **Phase A — Input type:**
 
 ```
-First, check for --skip-registry anywhere in $ARGUMENTS:
-├── Present → Remember skipRegistry=true, strip the flag from $ARGUMENTS before
-│             continuing classification. The remaining text is classified normally.
-└── Absent  → skipRegistry=false
-
-(The --module flag, if any, was already stripped in Step 0.5.)
+First, strip the already-parsed flags from $ARGUMENTS before classifying input type:
+├── --skip-registry present → Remember skipRegistry=true, strip the flag (absent → false).
+│   The remaining text is classified normally.
+├── --into <file.md> present → its value was already read in Step 0.5 (module/tier
+│   derivation) and recorded as the Step 2 target. Strip the flag AND its value HERE,
+│   BEFORE the input-type cascade below. Critical ordering: if `--into x.md` is left in,
+│   the `.md` value matches "Ends with … (.md, …) → File input" and Phase B routes the
+│   request to RESEARCH ("File/Folder path → RESEARCH (always)"), defeating the whole
+│   point of --into (pin an existing file).
+└── (The --module flag, if any, was already stripped in Step 0.5.)
 
 Then classify the (possibly stripped) $ARGUMENTS:
 ├── Equals "validate" (case-insensitive) → VALIDATE INDEX (jump to Branch D)
@@ -175,10 +195,22 @@ Then classify the (possibly stripped) $ARGUMENTS:
 │   → MIGRATE RULES (jump to Branch C)
 ├── Contains BOTH http(s):// tokens AND file extension / path tokens → Mixed input (URL + File)
 ├── Starts with http:// or https:// → URL input (can be multiple, space-separated)
-├── Ends with known file extension (.md, .txt, .json, .yaml) or path/folder exists → File input
+├── Ends with a known file extension (.md, .txt, .json, .yaml, .pdf), or names an
+│   existing file OR folder → File input (a folder, a PDF, or an oversized text file is
+│   a LARGE source — see the note below; B.1 routes it through large-sources.md, not a
+│   naive Read)
 ├── Has text content → Description input
 └── No arguments → Interactive mode: ask user what to document, then re-classify
 ```
+
+**Large sources (folder / PDF / oversized file).** When the File-input branch matches a
+**folder**, a **PDF**, or a text file too large to read in one pass, the RESEARCH
+pipeline does **not** `Read` it naively. The actual gathering is delegated to the
+large-source workflow at `{{skills_dir}}/{{self_name}}/references/large-sources.md`
+(TOC-first → topic-map → chunk → cleanup), which uses the **probe-gated** Python 3 helper
+`{{skills_dir}}/{{self_name}}/scripts/material-prep.py` when a Python 3 interpreter is
+available and falls back to a manual extraction strategy otherwise. Step 1 only
+*classifies* the input here; B.1 ("File input") performs the delegation.
 
 The `--skip-registry` flag is an escape hatch for callers that have already performed a registry lookup at a higher level and do not want this skill to repeat it. When the flag is present, Step 1.5 is bypassed entirely and the skill proceeds directly to content classification (Step 2) and generation.
 
@@ -327,6 +359,10 @@ Bypass the lookup completely when any of the following is true:
 Use the **active module's contract** (`references/module-<moduleId>.md` →
 "Content Classification") to:
 
+> **`--into` override:** when `--into <file.md>` was supplied (Step 0.5 / Step 1), the
+> module, tier, and target file are already fixed from the path — skip the tier and
+> filename derivation in steps 1–2 and only run the file-exists check in step 3.
+
 1. **Pick the target tier** for the content among the module's tiers, or determine
    the content belongs to **none** of the module's tiers.
    - If the content fits none of the tiers, redirect the user to the correct
@@ -374,13 +410,18 @@ File exists?
     └── Tier may need research (per the module contract, e.g. `code`/stack)     → A.4 (Ask About Research)
 ```
 
-### A.2: Cross-Check & Append (file exists)
+### A.2: Cross-Check, Gap List & Append (file exists)
 
 Before appending, compare the new content against existing rules:
 
 1. **Read the target file.**
 2. **Read related files** — scan `RULES_INDEX.md` for files with overlapping keywords, then read those too (across all tiers of the module). Also read `.unikit/RULES.md` for project-specific overrides.
 3. **Compare each new rule against existing formulations.** A contradiction is when the new content prescribes something different from an existing rule — e.g., "use `await` directly" vs existing "always wrap in `UniTask.Create`", or "bind as Transient" vs existing "bind as Singleton".
+4. **Build the gap list (the default for every update).** Classify the new material against what the file already says, and show the result to the user as the summary of what the update will do:
+   - **Add** — genuinely new rules not yet present in the file.
+   - **Change** — rules that refine or supersede an existing formulation (these are the contradictions resolved below).
+   - **Unchanged** — material the file already covers; skip it, do not restate.
+   This gap-list discipline is the **canonical cross-check/update behaviour** that `research-pipeline.md` B.4 defers to ("Same logic as A.2"). It runs on every existing-file update regardless of input; a pinned `--into <file.md>` does not change it — `--into` only fixes *which* file is the target.
 
 **If contradictions found:**
 
@@ -399,7 +440,7 @@ Before appending, compare the new content against existing rules:
 
 **After resolution (or if no contradictions):**
 
-- Append the new rule(s) to the existing file, merging into appropriate sections. Do not overwrite useful existing content.
+- Apply the gap list: append the **Add** items and apply the **Change** items, merging into the appropriate sections. Skip **Unchanged** material. Do not overwrite useful existing content.
 - → Go to **Final Step: Confirm**
 
 ### A.3: Create New File (framework-agnostic tier, no existing file)
@@ -504,7 +545,51 @@ Always read the contract for the resolved module and follow its formats exactly.
 This router intentionally does not restate them, so a new module can define its own
 conventions without touching this file.
 
+## Quality Gate (run before the Final Step)
+
+A cheap, automatic self-check that runs **after a branch finishes writing** and
+**before** the Final Step report. It is gated by intent: run it only for **ADD RULE**
+(Branch A, including the existing-file update path) and **RESEARCH** (Branch B). **Skip
+it entirely** for **MIGRATE RULES** (Branch C), **VALIDATE INDEX** (Branch D — it
+already exited and never reaches here), and the Step 1.5 install-from-registry
+short-circuit — none of those produce freshly synthesized content to grade (Migrate
+rephrases existing entries, Validate only reconciles the index, an install pulls a
+vetted upstream file). This is a checklist, not a new approval prompt: run it silently
+and only surface a ⚠️ line if a check fails.
+
+**Always check (every gated write — cheap structural checks):**
+
+- The rule file carries a `> **Scope**:` and a `> **Load when**:` line, both written as
+  **prose** (not a bare dump of identifiers), per the module contract.
+- No placeholder leak — no `{Framework Name}`, `{Section 1}`, `TODO`, or other template
+  scaffolding survived into the written file.
+- `RULES_INDEX.md` has a row for the file (new files only).
+
+**Additionally — only when the branch actually synthesized content**, i.e. **Branch B
+(Research)** or **Branch A → A.4 with research**. Do **not** run these on the as-is
+paths (A.2 cross-check-append, A.3 create-as-is, A.4 save-as-is) — those write the
+user's exact words with no synthesis, so there is no coverage or distillation to grade:
+
+- **Example coverage (#2)** — the major code-facing topics the rule raises are each
+  illustrated by an example (or explicitly waived with a stated reason), per the
+  example inventory from `research-pipeline.md` B.3. Many topics raised + only one or
+  two examples shown = fail. "Example" means whatever the active module contract
+  defines (code snippets for `code`; numeric tables / worked formulas for `gamedesign`).
+- **Distilled, not copied (#8)** — no long verbatim source passages; guidance is
+  rewritten as actionable rules; any code snippets are original.
+- **Source Map (#6)** — when the rule was built from sources, the Source Inventory was
+  persisted into the rule file per the module contract's Source Map / provenance format.
+
+If any check fails, fix the written file before the Final Step report (or, when a
+coverage gap is intentional, record the reason in the rule). Then continue to the
+Final Step.
+
 ## Final Step: Confirm
+
+**First, run the Quality Gate above** (ADD RULE / RESEARCH only — skip for Migrate,
+Validate, and the install short-circuit), then produce the report below.
+
+
 
 **Reconcile `.unikit.json` state with disk (after Branch A / B / C only):**
 

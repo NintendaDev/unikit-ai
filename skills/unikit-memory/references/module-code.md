@@ -189,6 +189,16 @@ Do NOT guess — always verify against the reference files.}
 ## Anti-patterns
 
 {Common mistakes to avoid — if applicable}
+
+## Source Map
+
+{Optional — include ONLY when the rule was synthesized from external sources (URLs,
+files, folders, PDFs, Context7). Persists the B.1 Source Inventory as provenance. OMIT
+the section entirely for a sourceless manual Add Rule. Format:
+| Source | Used for |
+|--------|----------|
+| {url-or-path} | {sections / rules / examples it informed} |
+}
 ```
 
 **Writing `Scope` and `Load when`:**
@@ -239,8 +249,25 @@ regardless of the configured language.
   of `language.rules`. See `.unikit/system/LANGUAGE_RULES.md` → "Knowledge base
   rule files" for the full specification. Never prompt the user for this setting
   and never write to it — it is manually edited only.
-- Include code examples wherever they clarify usage
+- **Example coverage (content-driven, both tiers).** Decide per rule whether a code
+  example earns its place by **content**, not by tier — a `core` rule (code style,
+  testing, performance) is as code-facing as a `stack` rule, so examples are not
+  stack-only. When a rule raises several code-facing topics, each should be illustrated
+  by a small **original** snippet (or explicitly waived with a reason like "covered by
+  checklist; no reusable pattern"). A rule that raises many topics but shows only one or
+  two snippets is under-covered — the Quality Gate re-checks this before the Final Step.
+  Author snippets that teach the lesson without copying source code.
 - Keep rules actionable — "Use X", "Never Y", "Prefer Z over W"
+
+**Source Map (provenance) — conditional section.** Include a `## Source Map` section in
+a rule **only when it was synthesized from external sources** (URLs, files, folders,
+PDFs, Context7). It persists the Source Inventory built in `research-pipeline.md` B.1
+(the #1 → #6 link): each inventory row becomes a Source Map row mapping a source to the
+sections / rules / examples it informed. **Omit the section entirely for a sourceless
+manual Add Rule** (Branch A.3 / A.4 save-as-is writes the user's own words — there is no
+external provenance, and an empty Source Map is a defect). Distillation is synthesis, so
+the map explains provenance, not direct quotation. Source paths and URLs stay verbatim
+regardless of `language.rules`.
 
 ## Reference File Format
 
@@ -280,6 +307,12 @@ Examples:
 **Writing guidelines:**
 - No `Scope` / `Load when` / `References` frontmatter — those belong only to main
   rule files.
+- **Stable filenames / anti-fragmentation:** reuse an existing reference's filename
+  when extending its topic — never spawn `zenject-pools-2.md` or a near-duplicate
+  beside `zenject-pools.md`. Before creating a new reference, scan the tier's
+  `references/` folder and the main rule for a file that already covers the topic and
+  update it instead (this is the merge guard `research-pipeline.md` B.3.5 runs). Keep
+  names descriptive and durable so future updates land in the same place.
 - Lead with the most useful lookup table first (task → answer, or type → class).
 - Cross-link to related reference files when applicable (e.g., between `quickref`
   and `full` tiers, or between module references that overlap).
