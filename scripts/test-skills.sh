@@ -1236,6 +1236,149 @@ else
     warn "material-prep.py — no Python 3 interpreter found; compile smoke skipped (probe-gated)"
 fi
 
+# (UM-9) FB2/EPUB extraction smoke + MOBI rejection + heading-less fallback (T9). bash
+#        cannot exercise the extractors, so this drives the real CLI through a Python 3
+#        helper that builds FB2/EPUB/.txt/.py/.mobi fixtures in a temp dir (EPUB zipped on
+#        the fly — no binaries in git), runs material-prep.py, and asserts: chunks made,
+#        source-index.md carries a ## TOC (heading→chunk) + a Headings: breadcrumb, the
+#        FB2/EPUB headings reach the TOC, a Python `#` comment is NOT misparsed as a
+#        heading, a single .mobi fails concretely, a folder .mobi is warned-by-name+skipped,
+#        and a heading-less folder still chunks with NO ## TOC. Same Python 3 probe as
+#        UM-8; warn (not fail) when no interpreter is present. The temp dir is removed.
+if [[ -n "$UM_PY" ]]; then
+    if UM_T9_OUT="$($UM_PY - "$UM_PREP" 2>&1 <<'PY'
+import sys, os, subprocess, tempfile, zipfile, shutil
+PREP = sys.argv[1]
+PY = sys.executable
+fails = []
+
+def run(args):
+    return subprocess.run([PY, PREP] + args, capture_output=True, text=True, encoding="utf-8")
+
+work = tempfile.mkdtemp(prefix="um-t9-")
+try:
+    books = os.path.join(work, "books")
+    os.makedirs(books)
+    fb2 = ('<?xml version="1.0" encoding="utf-8"?>'
+           '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">'
+           '<description><title-info><book-title>FB2 Demo</book-title></title-info></description>'
+           '<body><section><title><p>Intro</p></title><p>Intro body about design.</p>'
+           '<section><title><p>Deep</p></title><p>Nested body.</p></section></section></body></FictionBook>')
+    open(os.path.join(books, "demo.fb2"), "w", encoding="utf-8").write(fb2)
+    with zipfile.ZipFile(os.path.join(books, "demo.epub"), "w") as z:
+        z.writestr("mimetype", "application/epub+zip")
+        z.writestr("META-INF/container.xml",
+                   '<?xml version="1.0"?><container version="1.0" '
+                   'xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles>'
+                   '<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'
+                   '</rootfiles></container>')
+        z.writestr("OEBPS/content.opf",
+                   '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" '
+                   'unique-identifier="b"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
+                   '<dc:title>EPUB Demo</dc:title></metadata><manifest>'
+                   '<item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/></manifest>'
+                   '<spine><itemref idref="c1"/></spine></package>')
+        z.writestr("OEBPS/c1.xhtml",
+                   '<html><body><h1>Chapter One</h1><p>Body paragraph.</p>'
+                   '<h2>Sub</h2><p>More.</p></body></html>')
+    open(os.path.join(books, "notes.txt"), "w", encoding="utf-8").write("Plain text, no headings.\n\nSecond paragraph.\n")
+    open(os.path.join(books, "code.py"), "w", encoding="utf-8").write("# comment not heading\nx=1\n\n# another comment\ny=2\n")
+
+    out = os.path.join(work, "out")
+    r = run(["--out", out, books])
+    if r.returncode != 0:
+        fails.append("folder extraction exited %d: %s" % (r.returncode, r.stderr[-300:]))
+    idx = os.path.join(out, "source-index.md")
+    index_text = open(idx, encoding="utf-8").read() if os.path.exists(idx) else ""
+    chunks_dir = os.path.join(out, "chunks")
+    chunk_files = os.listdir(chunks_dir) if os.path.isdir(chunks_dir) else []
+    if not chunk_files:
+        fails.append("no chunk files produced")
+    if "## TOC" not in index_text:
+        fails.append("source-index.md missing ## TOC")
+    has_breadcrumb = any("Headings:" in open(os.path.join(chunks_dir, f), encoding="utf-8").read() for f in chunk_files)
+    if not has_breadcrumb:
+        fails.append("no chunk carries a Headings: breadcrumb")
+    if "Intro" not in index_text or "Chapter One" not in index_text:
+        fails.append("TOC missing FB2/EPUB headings (Intro / Chapter One)")
+    if "comment not heading" in index_text:
+        fails.append("python # comment leaked into ## TOC (misparsed as heading)")
+
+    mobi = os.path.join(work, "book.mobi")
+    open(mobi, "wb").write(b"\x00MOBI")
+    rm = run(["--out", os.path.join(work, "out2"), mobi])
+    if rm.returncode == 0:
+        fails.append("single .mobi did not fail (expected non-zero exit)")
+    if "MOBI" not in (rm.stderr + rm.stdout):
+        fails.append("single .mobi message not concrete (no MOBI mention)")
+
+    mixed = os.path.join(work, "mixed")
+    os.makedirs(mixed)
+    open(os.path.join(mixed, "keep.md"), "w", encoding="utf-8").write("# Keep\n\ntext\n")
+    open(os.path.join(mixed, "skip.mobi"), "wb").write(b"\x00")
+    rf = run(["--out", os.path.join(work, "out3"), mixed])
+    if rf.returncode != 0:
+        fails.append("mixed folder with .mobi failed (should warn+skip+continue)")
+    if "skip.mobi" not in rf.stderr:
+        fails.append("folder .mobi not warned by name on stderr")
+
+    headless = os.path.join(work, "headless")
+    os.makedirs(headless)
+    open(os.path.join(headless, "a.txt"), "w", encoding="utf-8").write("no headings here\n\nmore text\n")
+    open(os.path.join(headless, "b.py"), "w", encoding="utf-8").write("# not heading\nz=1\n")
+    out4 = os.path.join(work, "out4")
+    rfb = run(["--out", out4, headless])
+    if rfb.returncode != 0:
+        fails.append("heading-less folder failed to chunk")
+    idx4 = os.path.join(out4, "source-index.md")
+    t4 = open(idx4, encoding="utf-8").read() if os.path.exists(idx4) else ""
+    if "## TOC" in t4:
+        fails.append("heading-less source produced a ## TOC (should be omitted)")
+finally:
+    shutil.rmtree(work, ignore_errors=True)
+
+if fails:
+    print("T9 FAIL:")
+    for f in fails:
+        print("  -", f)
+    sys.exit(1)
+print("T9 OK: FB2/EPUB extraction + ## TOC + breadcrumb + MOBI reject + heading-less fallback")
+sys.exit(0)
+PY
+)"; then
+        pass "material-prep.py — FB2/EPUB extraction + ## TOC + breadcrumb + MOBI reject + fallback ($UM_PY) (T9)"
+    else
+        fail "material-prep.py — FB2/EPUB extraction smoke FAILED ($UM_PY) (T9)"
+        echo "$UM_T9_OUT"
+    fi
+else
+    warn "material-prep.py — no Python 3 interpreter found; FB2/EPUB extraction smoke skipped (probe-gated)"
+fi
+
+# (UM-10) Static book-format content guards (T10). These run unconditionally (no Python 3
+#         needed), so the book-format surface is pinned even on a machine that skips the
+#         UM-9 runtime smoke: the helper carries the format constants + extractors + the
+#         ## TOC writer + the loud pdftotext warning; large-sources.md documents the book
+#         formats + MOBI rejection + the pypdf recommendation; SKILL.md Phase A lists the
+#         new extensions.
+UM_T10_WHY=""
+grep -qF 'BOOK_EXTENSIONS' "$UM_PREP"              || UM_T10_WHY+=" prep:BOOK_EXTENSIONS"
+grep -qF 'REJECTED_BOOK_EXTENSIONS' "$UM_PREP"     || UM_T10_WHY+=" prep:REJECTED_BOOK_EXTENSIONS"
+grep -qF 'def extract_fb2' "$UM_PREP"              || UM_T10_WHY+=" prep:extract_fb2"
+grep -qF 'def extract_epub' "$UM_PREP"             || UM_T10_WHY+=" prep:extract_epub"
+grep -qF '## TOC' "$UM_PREP"                       || UM_T10_WHY+=" prep:toc-writer"
+grep -qF 'WARN: Python PDF extractors' "$UM_PREP"  || UM_T10_WHY+=" prep:pdftotext-warning"
+grep -qF 'Supported book formats' "$UM_LARGE"      || UM_T10_WHY+=" large:book-formats"
+grep -qF 'MOBI' "$UM_LARGE"                        || UM_T10_WHY+=" large:mobi"
+grep -qF 'pypdf' "$UM_LARGE"                       || UM_T10_WHY+=" large:pypdf"
+grep -qF '.fb2' "$UM_SKILL"                        || UM_T10_WHY+=" skill:.fb2"
+grep -qF '.epub' "$UM_SKILL"                       || UM_T10_WHY+=" skill:.epub"
+if [[ -z "$UM_T10_WHY" ]]; then
+    pass "book-format static guards — material-prep.py + large-sources.md + SKILL.md (T10)"
+else
+    fail "book-format static guards — missing:$UM_T10_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

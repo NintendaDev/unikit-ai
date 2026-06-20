@@ -66,10 +66,15 @@ The script:
 - accepts local files, local folders, and URLs
 - converts GitHub `blob` URLs to raw downloads when possible
 - extracts text from PDFs with Python libraries when present (pypdf → PyPDF2 →
-  pdfminer.six), then falls back to the `pdftotext` CLI
+  pdfminer.six), then falls back to the `pdftotext` CLI (now louder — see
+  "PDF extraction" below)
+- extracts **FB2** and **EPUB** books with the standard library only (no new
+  dependencies) and explicitly **rejects** MOBI/AZW (see "Supported book formats")
 - walks directories while skipping common generated/vendor folders, hidden paths, and
   credential-like paths by default
-- writes a `manifest.json`, a `source-index.md`, and chunk files
+- writes a `manifest.json`, a `source-index.md`, and chunk files; for sources that carry
+  real headings (FB2, EPUB, markdown) the index also gains a `## TOC` (heading → chunk
+  file) and each chunk file gets a `Headings:` breadcrumb
 - writes output to a fresh temporary directory by default
 
 **Supported flags (only these survived the port — do not pass any others):**
@@ -86,6 +91,49 @@ credential-like, and generated/vendor paths) with no opt-out, and provenance red
 is not a knowledge-base concern. Passing an unknown flag makes the script exit non-zero.
 
 Read `source-index.md` first, then read only the chunks each rule section needs.
+
+## Supported book formats
+
+The helper extracts these book formats with the **standard library only** — no new hard
+dependencies:
+
+- **FB2** (`.fb2`, plus the zipped `.fb2.zip` container) — parsed with `xml.etree`. The
+  `<section>`/`<title>` hierarchy becomes markdown headings (`#`/`##`/`###`).
+- **EPUB** (`.epub`) — read as a ZIP; reading order comes from the OPF spine and each
+  spine document's `<h1>`–`<h3>` become markdown headings.
+
+Because both formats guarantee headings, the extracted output drives a real `## TOC` in
+`source-index.md` (heading → chunk file, grouped per document) plus a `Headings:`
+breadcrumb at the top of each chunk file — so "map first, sample intentionally" runs
+against an actual table of contents instead of blind offsets.
+
+**MOBI / AZW / AZW3 are recognized but rejected.** They are binary, proprietary Kindle
+containers the helper does not read. A single `.mobi` source fails with a clear message
+(non-zero exit); inside a folder each rejected book is reported by name on stderr and
+skipped (a coverage gap for that file). When you hit this, ask the user for an **EPUB
+export** of the same book and re-run.
+
+Archives (EPUB, `.fb2.zip`) are read **in memory** with size/member caps (zip-bomb guard)
+and never extracted to disk; XML is parsed without external entities (XXE / billion-laughs
+guard).
+
+## PDF extraction
+
+- For PDFs — **especially non-English (Cyrillic) ones** — install a Python PDF library
+  first: `pip install pypdf`. Without one the helper falls back to the `pdftotext` CLI,
+  which can silently drop non-Latin glyphs. That fallback now prints a loud `WARN` on
+  stderr so the degradation is visible instead of silent.
+- **Inspect chunk _files_ with the `Read` tool (UTF-8), not `cat`/`type`.** On a Windows
+  console `cat`/`type` re-encodes non-ASCII text and makes healthy Cyrillic extraction
+  *look* corrupted — open the chunk file directly instead.
+
+## Chunk size and Cyrillic
+
+The default `--chunk-chars 18000` is character-based. Cyrillic text averages more tokens
+per character than English, so a Cyrillic chunk carries more tokens than the same-size
+English one. The default is left as-is on purpose (no script-level language detection —
+that would be premature optimization); lower `--chunk-chars` by hand if a Cyrillic source
+pushes chunks past a comfortable context budget.
 
 ## Manual Strategy (no Python 3, or helper unusable)
 

@@ -195,22 +195,25 @@ Then classify the (possibly stripped) $ARGUMENTS:
 │   → MIGRATE RULES (jump to Branch C)
 ├── Contains BOTH http(s):// tokens AND file extension / path tokens → Mixed input (URL + File)
 ├── Starts with http:// or https:// → URL input (can be multiple, space-separated)
-├── Ends with a known file extension (.md, .txt, .json, .yaml, .pdf), or names an
-│   existing file OR folder → File input (a folder, a PDF, or an oversized text file is
-│   a LARGE source — see the note below; B.1 routes it through large-sources.md, not a
-│   naive Read)
+├── Ends with a known file extension (.md, .txt, .json, .yaml, .pdf, .fb2, .epub), or
+│   names an existing file OR folder → File input (a folder, a PDF, an EPUB/FB2 book, or
+│   an oversized text file is a LARGE source — see the note below; B.1 routes it through
+│   large-sources.md, not a naive Read)
 ├── Has text content → Description input
 └── No arguments → Interactive mode: ask user what to document, then re-classify
 ```
 
-**Large sources (folder / PDF / oversized file).** When the File-input branch matches a
-**folder**, a **PDF**, or a text file too large to read in one pass, the RESEARCH
-pipeline does **not** `Read` it naively. The actual gathering is delegated to the
-large-source workflow at `{{skills_dir}}/{{self_name}}/references/large-sources.md`
+**Large sources (folder / PDF / EPUB+FB2 book / oversized file).** When the File-input
+branch matches a **folder**, a **PDF**, an **EPUB or FB2 book** (`.epub`, `.fb2`,
+`.fb2.zip`), or a text file too large to read in one pass, the RESEARCH pipeline does
+**not** `Read` it naively. The actual gathering is delegated to the large-source workflow
+at `{{skills_dir}}/{{self_name}}/references/large-sources.md`
 (TOC-first → topic-map → chunk → cleanup), which uses the **probe-gated** Python 3 helper
 `{{skills_dir}}/{{self_name}}/scripts/material-prep.py` when a Python 3 interpreter is
-available and falls back to a manual extraction strategy otherwise. Step 1 only
-*classifies* the input here; B.1 ("File input") performs the delegation.
+available and falls back to a manual extraction strategy otherwise. Book formats are
+extracted with the standard library (no new dependencies); **MOBI/AZW is recognized but
+rejected** — ask the user for an EPUB export. Step 1 only *classifies* the input here;
+B.1 ("File input") performs the delegation.
 
 The `--skip-registry` flag is an escape hatch for callers that have already performed a registry lookup at a higher level and do not want this skill to repeat it. When the flag is present, Step 1.5 is bypassed entirely and the skill proceeds directly to content classification (Step 2) and generation.
 
