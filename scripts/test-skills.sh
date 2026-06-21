@@ -1223,30 +1223,32 @@ else
     pass "large-sources.md — present + install-template helper path, no source-tree path (T8)"
 fi
 
-# (UM-6) LOAD-BEARING (b): the ported helper + its split sibling modules are present in
-#        source. WS1 split material-prep.py into a thin entrypoint that flat-imports
-#        mp_config/mp_safety/mp_chunk/mp_books/mp_extract/mp_output (no package, no
-#        __init__.py). Delivery into an installed project is asserted in test-install.sh.
+# (UM-6) LOAD-BEARING (b): the ported helper is present in source as a SINGLE self-contained
+#        material-prep.py — no sibling modules, no package. (The WS1 split into
+#        mp_config/mp_safety/mp_chunk/mp_books/mp_extract/mp_output was reverted to one file;
+#        all tunables/literals now live in its CONSTANTS section.) This block asserts both the
+#        single file is present AND that no mp_*.py orphan survived the revert. Delivery into an
+#        installed project is asserted in test-install.sh.
 UM_SCRIPTS_DIR="$ROOT_DIR/skills/unikit-memory/scripts"
 UM_MP_WHY=""
-[[ -s "$UM_PREP" ]] || UM_MP_WHY+=" material-prep.py"
+[[ -s "$UM_PREP" ]] || UM_MP_WHY+=" material-prep.py(missing)"
 for m in mp_config mp_safety mp_chunk mp_books mp_extract mp_output; do
-    [[ -s "$UM_SCRIPTS_DIR/$m.py" ]] || UM_MP_WHY+=" $m.py"
+    [[ -e "$UM_SCRIPTS_DIR/$m.py" ]] && UM_MP_WHY+=" $m.py(orphan)"
 done
 if [[ -z "$UM_MP_WHY" ]]; then
-    pass "material-prep.py + mp_*.py split modules — all present in skills/unikit-memory/scripts/ (T1/T9)"
+    pass "material-prep.py — single self-contained helper present, no mp_*.py orphans (T1)"
 else
-    fail "material-prep helper modules — missing:$UM_MP_WHY"
+    fail "material-prep helper layout — issues:$UM_MP_WHY"
 fi
 
-# (UM-7) LOAD-BEARING (c): the rebrand is complete across the entrypoint AND every split
-#        mp_*.py — no aif-distillation/ai-factory literal survived (marker constants,
-#        docstrings, User-Agent, argparse desc, SENSITIVE_DIR_NAMES, temp prefixes).
-if grep -RqiE 'aif-distillation|ai-factory' "$UM_PREP" "$UM_SCRIPTS_DIR"/mp_*.py; then
-    fail "material-prep helper — stale aif-distillation/ai-factory literal remains (T1/T9 rebrand)"
-    grep -RniE 'aif-distillation|ai-factory' "$UM_PREP" "$UM_SCRIPTS_DIR"/mp_*.py
+# (UM-7) LOAD-BEARING (c): the rebrand is complete in the single-file helper — no
+#        aif-distillation/ai-factory literal survived (marker constants, docstrings,
+#        User-Agent, argparse desc, SENSITIVE_DIR_NAMES, temp prefixes).
+if grep -qiE 'aif-distillation|ai-factory' "$UM_PREP"; then
+    fail "material-prep.py — stale aif-distillation/ai-factory literal remains (T1 rebrand)"
+    grep -niE 'aif-distillation|ai-factory' "$UM_PREP"
 else
-    pass "material-prep.py + mp_*.py — fully rebranded, no aif-distillation/ai-factory literal (T1/T9)"
+    pass "material-prep.py — fully rebranded, no aif-distillation/ai-factory literal (T1)"
 fi
 
 # (UM-8) LOAD-BEARING (d): probe-gated parse smoke. T9 rewrote the argparse surface and
@@ -1388,22 +1390,18 @@ fi
 
 # (UM-10) Static book-format content guards (T10). These run unconditionally (no Python 3
 #         needed), so the book-format surface is pinned even on a machine that skips the
-#         UM-9 runtime smoke. After the WS1 split the symbols moved out of material-prep.py
-#         into the sibling modules: format constants → mp_config.py, FB2/EPUB extractors →
-#         mp_books.py, the ## TOC writer → mp_output.py, the loud pdftotext warning →
-#         mp_extract.py. large-sources.md documents the book formats + MOBI rejection + the
-#         pypdf recommendation; SKILL.md Phase A lists the new extensions.
-UM_MP_CONFIG="$UM_SCRIPTS_DIR/mp_config.py"
-UM_MP_BOOKS="$UM_SCRIPTS_DIR/mp_books.py"
-UM_MP_OUTPUT="$UM_SCRIPTS_DIR/mp_output.py"
-UM_MP_EXTRACT="$UM_SCRIPTS_DIR/mp_extract.py"
+#         UM-9 runtime smoke. After the single-file revert all symbols live back in
+#         material-prep.py: format constants (BOOK_EXTENSIONS/REJECTED_BOOK_EXTENSIONS), the
+#         FB2/EPUB extractors, the ## TOC writer, and the loud pdftotext warning. large-sources.md
+#         documents the book formats + MOBI rejection + the pypdf recommendation; SKILL.md
+#         Phase A lists the new extensions.
 UM_T10_WHY=""
-grep -qF 'BOOK_EXTENSIONS' "$UM_MP_CONFIG"              || UM_T10_WHY+=" config:BOOK_EXTENSIONS"
-grep -qF 'REJECTED_BOOK_EXTENSIONS' "$UM_MP_CONFIG"     || UM_T10_WHY+=" config:REJECTED_BOOK_EXTENSIONS"
-grep -qF 'def extract_fb2' "$UM_MP_BOOKS"              || UM_T10_WHY+=" books:extract_fb2"
-grep -qF 'def extract_epub' "$UM_MP_BOOKS"             || UM_T10_WHY+=" books:extract_epub"
-grep -qF '## TOC' "$UM_MP_OUTPUT"                       || UM_T10_WHY+=" output:toc-writer"
-grep -qF 'WARN: Python PDF extractors' "$UM_MP_EXTRACT" || UM_T10_WHY+=" extract:pdftotext-warning"
+grep -qF 'BOOK_EXTENSIONS' "$UM_PREP"              || UM_T10_WHY+=" prep:BOOK_EXTENSIONS"
+grep -qF 'REJECTED_BOOK_EXTENSIONS' "$UM_PREP"     || UM_T10_WHY+=" prep:REJECTED_BOOK_EXTENSIONS"
+grep -qF 'def extract_fb2' "$UM_PREP"              || UM_T10_WHY+=" prep:extract_fb2"
+grep -qF 'def extract_epub' "$UM_PREP"             || UM_T10_WHY+=" prep:extract_epub"
+grep -qF '## TOC' "$UM_PREP"                       || UM_T10_WHY+=" prep:toc-writer"
+grep -qF 'WARN: Python PDF extractors' "$UM_PREP"  || UM_T10_WHY+=" prep:pdftotext-warning"
 grep -qF 'Supported book formats' "$UM_LARGE"      || UM_T10_WHY+=" large:book-formats"
 grep -qF 'MOBI' "$UM_LARGE"                        || UM_T10_WHY+=" large:mobi"
 grep -qF 'pypdf' "$UM_LARGE"                       || UM_T10_WHY+=" large:pypdf"
