@@ -1154,15 +1154,36 @@ else
 fi
 
 # (UM-2) SKILL.md router carries the Quality Gate (#3), gap-list default (#5), and the
-#        --into flag in the argument-hint (#7 lever).
+#        retroactive --optimise/Branch E wiring (the inline branch + the flag in the
+#        argument-hint). The legacy --into argument-hint assert was removed when WS4
+#        deleted the flag — do NOT reintroduce a `--into` grep here.
 UM_SKILL_WHY=""
 grep -qF '## Quality Gate' "$UM_SKILL"               || UM_SKILL_WHY+=" quality-gate(#3)"
 grep -qF 'gap list' "$UM_SKILL"                      || UM_SKILL_WHY+=" gap-list(#5)"
-grep -qE '^argument-hint:.*--into' "$UM_SKILL"       || UM_SKILL_WHY+=" --into(hint)"
+grep -qF '## Branch E: Optimise' "$UM_SKILL"         || UM_SKILL_WHY+=" branch-e(optimise)"
+grep -qE '^argument-hint:.*--optimise' "$UM_SKILL"   || UM_SKILL_WHY+=" --optimise(hint)"
 if [[ -z "$UM_SKILL_WHY" ]]; then
-    pass "unikit-memory SKILL.md — Quality Gate + gap list + --into in argument-hint (T3/T4)"
+    pass "unikit-memory SKILL.md — Quality Gate + gap list + Branch E/--optimise wiring (T3/T4/WS3)"
 else
     fail "unikit-memory SKILL.md — missing:$UM_SKILL_WHY"
+fi
+
+# (UM-2b) WS2/WS3 content surface: references for ALL tiers (core/references) + the unified
+#         Candidate Analyzer with Tier 1 / Tier 2 confidence buckets in module-code.md and the
+#         on-add B.3.5 (research-pipeline.md), plus the minimal Analyzer deferral mirrored in
+#         module-gamedesign.md. bash cannot run the skill, so these are grep invariants on the
+#         contract text.
+UM_OPT_WHY=""
+grep -qF 'core/references' "$UM_MOD_CODE"        || UM_OPT_WHY+=" modc:core-references"
+grep -qF 'Candidate Analyzer' "$UM_MOD_CODE"     || UM_OPT_WHY+=" modc:analyzer"
+grep -qF 'Tier 1' "$UM_MOD_CODE"                 || UM_OPT_WHY+=" modc:tier1"
+grep -qF 'Tier 2' "$UM_MOD_CODE"                 || UM_OPT_WHY+=" modc:tier2"
+grep -qF 'Tier 1' "$UM_PIPELINE"                 || UM_OPT_WHY+=" pipe:tier1"
+grep -qF 'Candidate Analyzer' "$UM_MOD_GD"       || UM_OPT_WHY+=" modgd:analyzer"
+if [[ -z "$UM_OPT_WHY" ]]; then
+    pass "module-code + research-pipeline + module-gamedesign — core/references + Candidate Analyzer Tier1/Tier2 (WS2/WS3)"
+else
+    fail "core-references / Candidate Analyzer Tier1/Tier2 — missing:$UM_OPT_WHY"
 fi
 
 # (UM-3) LOAD-BEARING (a): the ## Source Map provenance format lives in BOTH module
@@ -1200,22 +1221,30 @@ else
     pass "large-sources.md — present + install-template helper path, no source-tree path (T8)"
 fi
 
-# (UM-6) LOAD-BEARING (b): the ported helper is present in source. Its delivery into an
-#        installed project is asserted separately in test-install.sh.
-if [[ -s "$UM_PREP" ]]; then
-    pass "material-prep.py — present in skills/unikit-memory/scripts/ (T9)"
+# (UM-6) LOAD-BEARING (b): the ported helper + its split sibling modules are present in
+#        source. WS1 split material-prep.py into a thin entrypoint that flat-imports
+#        mp_config/mp_safety/mp_chunk/mp_books/mp_extract/mp_output (no package, no
+#        __init__.py). Delivery into an installed project is asserted in test-install.sh.
+UM_SCRIPTS_DIR="$ROOT_DIR/skills/unikit-memory/scripts"
+UM_MP_WHY=""
+[[ -s "$UM_PREP" ]] || UM_MP_WHY+=" material-prep.py"
+for m in mp_config mp_safety mp_chunk mp_books mp_extract mp_output; do
+    [[ -s "$UM_SCRIPTS_DIR/$m.py" ]] || UM_MP_WHY+=" $m.py"
+done
+if [[ -z "$UM_MP_WHY" ]]; then
+    pass "material-prep.py + mp_*.py split modules — all present in skills/unikit-memory/scripts/ (T1/T9)"
 else
-    fail "material-prep.py — missing from skills/unikit-memory/scripts/ (T9)"
+    fail "material-prep helper modules — missing:$UM_MP_WHY"
 fi
 
-# (UM-7) LOAD-BEARING (c): the rebrand is complete — no aif-distillation/ai-factory
-#        literal survived (marker constants, docstring, User-Agent, argparse desc,
-#        SENSITIVE_DIR_NAMES, temp prefixes).
-if grep -qiE 'aif-distillation|ai-factory' "$UM_PREP"; then
-    fail "material-prep.py — stale aif-distillation/ai-factory literal remains (T9 rebrand)"
-    grep -niE 'aif-distillation|ai-factory' "$UM_PREP"
+# (UM-7) LOAD-BEARING (c): the rebrand is complete across the entrypoint AND every split
+#        mp_*.py — no aif-distillation/ai-factory literal survived (marker constants,
+#        docstrings, User-Agent, argparse desc, SENSITIVE_DIR_NAMES, temp prefixes).
+if grep -RqiE 'aif-distillation|ai-factory' "$UM_PREP" "$UM_SCRIPTS_DIR"/mp_*.py; then
+    fail "material-prep helper — stale aif-distillation/ai-factory literal remains (T1/T9 rebrand)"
+    grep -RniE 'aif-distillation|ai-factory' "$UM_PREP" "$UM_SCRIPTS_DIR"/mp_*.py
 else
-    pass "material-prep.py — fully rebranded, no aif-distillation/ai-factory literal (T9)"
+    pass "material-prep.py + mp_*.py — fully rebranded, no aif-distillation/ai-factory literal (T1/T9)"
 fi
 
 # (UM-8) LOAD-BEARING (d): probe-gated parse smoke. T9 rewrote the argparse surface and
@@ -1357,17 +1386,22 @@ fi
 
 # (UM-10) Static book-format content guards (T10). These run unconditionally (no Python 3
 #         needed), so the book-format surface is pinned even on a machine that skips the
-#         UM-9 runtime smoke: the helper carries the format constants + extractors + the
-#         ## TOC writer + the loud pdftotext warning; large-sources.md documents the book
-#         formats + MOBI rejection + the pypdf recommendation; SKILL.md Phase A lists the
-#         new extensions.
+#         UM-9 runtime smoke. After the WS1 split the symbols moved out of material-prep.py
+#         into the sibling modules: format constants → mp_config.py, FB2/EPUB extractors →
+#         mp_books.py, the ## TOC writer → mp_output.py, the loud pdftotext warning →
+#         mp_extract.py. large-sources.md documents the book formats + MOBI rejection + the
+#         pypdf recommendation; SKILL.md Phase A lists the new extensions.
+UM_MP_CONFIG="$UM_SCRIPTS_DIR/mp_config.py"
+UM_MP_BOOKS="$UM_SCRIPTS_DIR/mp_books.py"
+UM_MP_OUTPUT="$UM_SCRIPTS_DIR/mp_output.py"
+UM_MP_EXTRACT="$UM_SCRIPTS_DIR/mp_extract.py"
 UM_T10_WHY=""
-grep -qF 'BOOK_EXTENSIONS' "$UM_PREP"              || UM_T10_WHY+=" prep:BOOK_EXTENSIONS"
-grep -qF 'REJECTED_BOOK_EXTENSIONS' "$UM_PREP"     || UM_T10_WHY+=" prep:REJECTED_BOOK_EXTENSIONS"
-grep -qF 'def extract_fb2' "$UM_PREP"              || UM_T10_WHY+=" prep:extract_fb2"
-grep -qF 'def extract_epub' "$UM_PREP"             || UM_T10_WHY+=" prep:extract_epub"
-grep -qF '## TOC' "$UM_PREP"                       || UM_T10_WHY+=" prep:toc-writer"
-grep -qF 'WARN: Python PDF extractors' "$UM_PREP"  || UM_T10_WHY+=" prep:pdftotext-warning"
+grep -qF 'BOOK_EXTENSIONS' "$UM_MP_CONFIG"              || UM_T10_WHY+=" config:BOOK_EXTENSIONS"
+grep -qF 'REJECTED_BOOK_EXTENSIONS' "$UM_MP_CONFIG"     || UM_T10_WHY+=" config:REJECTED_BOOK_EXTENSIONS"
+grep -qF 'def extract_fb2' "$UM_MP_BOOKS"              || UM_T10_WHY+=" books:extract_fb2"
+grep -qF 'def extract_epub' "$UM_MP_BOOKS"             || UM_T10_WHY+=" books:extract_epub"
+grep -qF '## TOC' "$UM_MP_OUTPUT"                       || UM_T10_WHY+=" output:toc-writer"
+grep -qF 'WARN: Python PDF extractors' "$UM_MP_EXTRACT" || UM_T10_WHY+=" extract:pdftotext-warning"
 grep -qF 'Supported book formats' "$UM_LARGE"      || UM_T10_WHY+=" large:book-formats"
 grep -qF 'MOBI' "$UM_LARGE"                        || UM_T10_WHY+=" large:mobi"
 grep -qF 'pypdf' "$UM_LARGE"                       || UM_T10_WHY+=" large:pypdf"

@@ -181,10 +181,15 @@ contract's self-test before writing.
 
 ## B.3.5: Identify Reference Candidates
 
-Follow the module contract's "Reference Candidate Extraction" guidance to decide
-whether parts of the synthesized content should be split into separate reference
-files (large subsystems, lookup catalogs, exhaustive indexes). Reference files live
-under the tier's `references/` subfolder as defined by the contract.
+Run the module contract's **Candidate Analyzer** ("Reference Candidate Extraction"
+in `references/module-<id>.md`) over the synthesized content: score each block on
+the three signals (**size** ≳ 40 lines / ≳ 1500 chars, **optionality**, **lookup
+shape**) and sort the candidates into **Tier 1** (clear wins — large AND
+optional/lookup) and **Tier 2** (borderline — one signal, or size near the
+threshold). This is the same engine the retroactive `--optimise` pass uses, so
+on-add and optimise present candidates identically. Reference files live under the
+rule's **own tier** `references/` subfolder as defined by the contract — for `code`
+that now includes `core/references/`, not just `stack/references/`.
 
 **Merge guard — check existing files before creating new ones (#9).** Before you
 propose any *new* reference file, list what already exists for this rule: the target
@@ -198,17 +203,25 @@ keep-vs-create decision into B.5 so the write step touches the right file. The
 proposal below stays interactive regardless — the merge guard only changes *which*
 files the proposal lists.
 
-**If 0 candidates found** — skip to B.4.
+**Always report the analyzer result — including zero.** Reference extraction is a
+visible decision, never a silent skip.
 
-**If 1+ candidates found** — propose the split strategy and the exact file list (per
-the contract's format) before writing anything, then use `AskUserQuestion`:
+**If 0 candidates found** — say so explicitly with the reason ("0 candidates —
+every section is conceptual, small, or read top-to-bottom"), then skip to B.4. Do
+not stay silent about it.
+
+**If 1+ candidates found** — present them **grouped into Tier 1 and Tier 2** (each
+proposed reference file with what it contains, which of the three signals fired, and
+the split strategy, per the contract's format) before writing anything, then use
+`AskUserQuestion`:
 
 Options:
-1. Yes — create all proposed reference files
-2. Adjust — user specifies changes (rename, merge, split, drop a file, change strategy) → revise proposal and ask again
-3. No — keep all data inline in the main rule file
+1. Extract **Tier 1 only** — the clear wins
+2. Extract **Tier 1 + Tier 2** — also the borderline blocks
+3. Adjust — rename, merge, split, drop a file, change strategy, or move a block between tiers → revise proposal and ask again
+4. No — keep all data inline in the main rule file
 
-- **Yes / approved Adjust** → mark the approved files for creation; proceed to B.4.
+- **Tier 1 only / Tier 1 + Tier 2 / approved Adjust** → mark the approved files for creation; proceed to B.4.
 - **No** → skip reference extraction; proceed to B.4 with all content staying inline.
 
 ## B.4: Cross-Check & Gap List (if target file exists)

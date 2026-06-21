@@ -1,19 +1,19 @@
 ---
 name: unikit-memory
 description: >-
-  Curate the project's knowledge base in .unikit/memory/ — the long-term reference library of
-  documented coding standards (code style, design, testing, performance) and framework usage
+  Curate the project's knowledge base in .unikit/memory/ — the reference library of
+  coding standards (code style, design, testing, performance) and framework usage
   patterns (Zenject, DOTween, R3, UniTask, Addressables, Odin, etc.), researched and indexed.
   This is the knowledge base, distinct from project rules in .unikit/RULES.md. Use when the user
   wants to document or research how the project uses a framework ("document how we use
-  Addressables", "add knowledge for DOTween", "best practices for R3"), add a core or stack entry
+  Addressables", "best practices for R3"), add a core or stack entry
   to the knowledge base, or pastes framework docs URLs, files, folders, or PDFs to turn into vetted
   entries. Also: "--migrate-rules" (or passing RULES.md) promotes mature project rules into the
-  knowledge base; "validate" re-syncs RULES_INDEX.md; "--module <id>" targets a module, "--into
-  <file.md>" a rule file. For a quick project rule,
+  knowledge base; "validate" re-syncs RULES_INDEX.md; "--optimise" extracts large/optional
+  rule sections into references; "--module <id>" targets a module. For a quick project rule,
   override, or "remember this / always-never X" correction use /unikit-rules (RULES.md); for
   architecture decisions use ARCHITECTURE.md.
-argument-hint: "[description | URL(s) | file/folder/PDF path | --module <id> | --into <file.md> | --migrate-rules | --skip-registry | validate]"
+argument-hint: "[description | URL(s) | file/folder/PDF path | --module <id> | --migrate-rules | --optimise | --skip-registry | validate]"
 allowed-tools:
   - Read
   - Write
@@ -132,21 +132,6 @@ guess silently when the target is ambiguous.
      the question — do not dump unrelated content into `code` just because it is the
      only module.
 
-**`--into <file.md>` path override (if present).** Scan `$ARGUMENTS` for
-`--into <path>`. When present, the target rule file is pinned to that path and its
-**module and tier are derived from the path** — `.unikit/memory/<module>/<tier>/<file>.md`.
-Use it to resolve the module deterministically:
-
-- `--module` **not** given → set `moduleId` to the `<module>` segment of the `--into`
-  path (validate it against `modules.yml`).
-- `--module` given and it **matches** the `--into` `<module>` segment → consistent; keep it.
-- `--module` given but it **disagrees** with the `--into` `<module>` segment → the
-  explicit `--module` wins; surface the conflict and confirm via `AskUserQuestion`
-  before proceeding (never silently pick one), so Step 0.5 stays deterministic.
-
-Do **not** strip `--into` here — Step 1 Phase A strips the flag and its value after the
-target is recorded. Remember the derived `<tier>` and target filename for Step 2.
-
 After resolution, the following are fixed for the rest of the run:
 
 - `moduleId` — the resolved module id.
@@ -174,15 +159,13 @@ Two-phase classification determines both input type and user intent.
 First, strip the already-parsed flags from $ARGUMENTS before classifying input type:
 ├── --skip-registry present → Remember skipRegistry=true, strip the flag (absent → false).
 │   The remaining text is classified normally.
-├── --into <file.md> present → its value was already read in Step 0.5 (module/tier
-│   derivation) and recorded as the Step 2 target. Strip the flag AND its value HERE,
-│   BEFORE the input-type cascade below. Critical ordering: if `--into x.md` is left in,
-│   the `.md` value matches "Ends with … (.md, …) → File input" and Phase B routes the
-│   request to RESEARCH ("File/Folder path → RESEARCH (always)"), defeating the whole
-│   point of --into (pin an existing file).
 └── (The --module flag, if any, was already stripped in Step 0.5.)
 
 Then classify the (possibly stripped) $ARGUMENTS:
+├── Contains "--optimise" or "--optimize" (alias) → OPTIMISE (jump to Branch E). Strip
+│   the flag; any remaining text is the optional rule scope (specific rule names/ids).
+│   An empty remainder means "ask which rules" — Branch E handles it. OPTIMISE rewrites
+│   no content: it only relocates existing sections into reference files.
 ├── Equals "validate" (case-insensitive) → VALIDATE INDEX (jump to Branch D)
 ├── Contains "--migrate-rules" →
 │   ├── $ARGUMENTS is exactly "--migrate-rules" (no other text) → MIGRATE RULES (jump to Branch C)
@@ -221,6 +204,7 @@ The `--skip-registry` flag is an escape hatch for callers that have already perf
 
 ```
 Intent?
+├── OPTIMISE        → Branch E (always — retroactive reference extraction, no new content)
 ├── MIGRATE RULES   → Branch C (always — explicit migration request)
 ├── Mixed (URL + File) → RESEARCH (always — both inputs processed together)
 ├── URL(s)           → RESEARCH (always — URLs signal delegation)
@@ -351,7 +335,7 @@ Match result?
 Bypass the lookup completely when any of the following is true:
 
 - **`--skip-registry` flag** was present in $ARGUMENTS (a higher-level caller already queried the catalog and does not want redundant prompts)
-- **Intent is VALIDATE INDEX** (Branch D) or **MIGRATE RULES** (Branch C) — neither installs new rules, so registry lookup is irrelevant
+- **Intent is VALIDATE INDEX** (Branch D), **MIGRATE RULES** (Branch C), or **OPTIMISE** (Branch E) — none of them installs a new rule, so registry lookup is irrelevant
 - **Input is a file path** — the user explicitly wants to process a specific file, not search the catalog
 - **`cli-contract.md` doesn't exist** — the UniKit CLI is not available in this project, so `rules *` commands cannot be used
 
@@ -361,10 +345,6 @@ Bypass the lookup completely when any of the following is true:
 
 Use the **active module's contract** (`references/module-<moduleId>.md` →
 "Content Classification") to:
-
-> **`--into` override:** when `--into <file.md>` was supplied (Step 0.5 / Step 1), the
-> module, tier, and target file are already fixed from the path — skip the tier and
-> filename derivation in steps 1–2 and only run the file-exists check in step 3.
 
 1. **Pick the target tier** for the content among the module's tiers, or determine
    the content belongs to **none** of the module's tiers.
@@ -386,6 +366,7 @@ Based on intent (Step 1) and classification (Step 2), follow the appropriate bra
 ```
 Intent?
 ├── VALIDATE INDEX → Branch D (inline below; skip Steps 2-3 entirely)
+├── OPTIMISE       → Branch E (inline below; skip Step 2 — it operates on existing rules)
 ├── MIGRATE RULES  → read references/migrate-rules.md and follow it (skip Step 2)
 ├── ADD RULE       → Branch A (inline below)
 └── RESEARCH       → read references/research-pipeline.md and follow it
@@ -394,8 +375,8 @@ Intent?
 Branches B (Research) and C (Migrate) are intent-gated and live in dedicated
 reference files loaded relative to this skill
 (`{{skills_dir}}/{{self_name}}/references/`): open the matching file only when its
-intent is selected, then return here for the **Final Step: Confirm**. Branch A and
-Branch D stay inline below since they are short and on the common path.
+intent is selected, then return here for the **Final Step: Confirm**. Branch A,
+Branch D, and Branch E stay inline below since they are short and on the common path.
 
 ---
 
@@ -424,7 +405,7 @@ Before appending, compare the new content against existing rules:
    - **Add** — genuinely new rules not yet present in the file.
    - **Change** — rules that refine or supersede an existing formulation (these are the contradictions resolved below).
    - **Unchanged** — material the file already covers; skip it, do not restate.
-   This gap-list discipline is the **canonical cross-check/update behaviour** that `research-pipeline.md` B.4 defers to ("Same logic as A.2"). It runs on every existing-file update regardless of input; a pinned `--into <file.md>` does not change it — `--into` only fixes *which* file is the target.
+   This gap-list discipline is the **canonical cross-check/update behaviour** that `research-pipeline.md` B.4 defers to ("Same logic as A.2"). It runs on every existing-file update regardless of input.
 
 **If contradictions found:**
 
@@ -536,6 +517,91 @@ Stop. Do not proceed to any other step.
 
 ---
 
+## Branch E: Optimise (retroactive reference extraction)
+
+Retroactively shrink **existing** rules by moving their large/optional sections into
+reference files — the same outcome the on-add reference step (B.3.5) produces,
+applied after the fact. Branch E **synthesizes no new content**: it relocates text
+that already lives in a rule, so a rule that grew too long (e.g. a distilled book
+that landed entirely inline) becomes a lean conceptual rule plus on-demand
+references. The active `<module>` and its `<tier>`s were already resolved in Step
+0.5; the module contract's **Candidate Analyzer** is the engine.
+
+This branch is **non-destructive**: content **moves**, it is never deleted, every
+proposal is confirmed before writing, and it leans on git as the safety net. It does
+not touch the registry, `src/`, or the helper script.
+
+### E.1: Determine scope
+
+Parse the rule scope from the remaining `$ARGUMENTS` (after the `--optimise` flag was
+stripped in Phase A):
+
+- **Named rules present** (e.g. `--optimise dotween zenject`) → that is the scope.
+  Resolve each name to a file under `.unikit/memory/<module>/<tier>/` (match against
+  `RULES_INDEX.md`; ask if a name is ambiguous).
+- **No names** → `AskUserQuestion`:
+
+  Options:
+  1. Specific rules — I'll name them → ask which, then resolve as above
+  2. All rules in this module → scope = every rule file across the module's tiers
+
+Whatever the scope, **process the rules in batches of 2-3 at a time** — analyze,
+present, confirm, and write one batch before moving to the next. This keeps each
+confirmation focused and the diff reviewable.
+
+### E.2: Analyze each rule
+
+For each rule in the current batch:
+
+1. Read the rule file.
+2. Run the module contract's **Candidate Analyzer** ("Reference Candidate
+   Extraction") over its sections: score each block on **size** (≳ 40 lines / ≳ 1500
+   chars), **optionality**, and **lookup shape**, and sort candidates into **Tier 1**
+   (clear wins) and **Tier 2** (borderline).
+3. Run the **merge guard** (`research-pipeline.md` B.3.5): before proposing any new
+   reference file, scan the tier's existing `references/` for a file that already
+   covers the topic and target it instead of forking a near-duplicate.
+
+### E.3: Present and confirm
+
+Present the candidates per rule, grouped into **Tier 1** and **Tier 2** (each with
+which signals fired and the target
+`.unikit/memory/<module>/<tier>/references/{file}.md`), then `AskUserQuestion`
+exactly as B.3.5 does:
+
+Options:
+1. Extract **Tier 1 only**
+2. Extract **Tier 1 + Tier 2**
+3. Adjust — rename / merge / split / drop, or move a block between tiers → revise and ask again
+4. None — leave this rule unchanged
+
+**Always report the result, including "0 candidates"** for a rule that is already
+lean — Branch E must say so rather than silently skip it.
+
+### E.4: Move the content (never delete)
+
+For each approved candidate:
+
+1. **Write the reference file** following the contract's **Reference File Format**
+   (create new, or update the existing matching file per the merge guard).
+2. **Cut** the moved section from the main rule — the content is relocated, not
+   duplicated. Leave the conceptual rules intact.
+3. Add the file to the main rule's `> **References**:` header line and add/extend a
+   `## {Content} Lookup Workflow` section telling the LLM when to open it. The main
+   rule keeps only pointers, not the moved data.
+
+Reference files are not indexed in `RULES_INDEX.md` (only main rules are); the main
+rule's row is unchanged unless its Scope/Load when changed (they should not).
+
+### E.5: Finish
+
+After the last batch, go to the **Final Step: Confirm** — it runs `unikit-ai rules
+sync` (reconciling the moved files into `.unikit.json` state and regenerating
+`RULES_INDEX.md`) and prints the report. The Quality Gate runs in **structural-only**
+mode for Branch E (no synthesis to grade — see the Quality Gate section).
+
+---
+
 ## File Formats
 
 All file-format specifications — the **File Format Template** (rule files, with
@@ -552,13 +618,14 @@ conventions without touching this file.
 
 A cheap, automatic self-check that runs **after a branch finishes writing** and
 **before** the Final Step report. It is gated by intent: run it only for **ADD RULE**
-(Branch A, including the existing-file update path) and **RESEARCH** (Branch B). **Skip
-it entirely** for **MIGRATE RULES** (Branch C), **VALIDATE INDEX** (Branch D — it
-already exited and never reaches here), and the Step 1.5 install-from-registry
-short-circuit — none of those produce freshly synthesized content to grade (Migrate
-rephrases existing entries, Validate only reconciles the index, an install pulls a
-vetted upstream file). This is a checklist, not a new approval prompt: run it silently
-and only surface a ⚠️ line if a check fails.
+(Branch A, including the existing-file update path), **RESEARCH** (Branch B), and
+**OPTIMISE** (Branch E — **structural checks only**, since it synthesizes no new
+content; see below). **Skip it entirely** for **MIGRATE RULES** (Branch C), **VALIDATE
+INDEX** (Branch D — it already exited and never reaches here), and the Step 1.5
+install-from-registry short-circuit — none of those produce freshly synthesized
+content to grade (Migrate rephrases existing entries, Validate only reconciles the
+index, an install pulls a vetted upstream file). This is a checklist, not a new
+approval prompt: run it silently and only surface a ⚠️ line if a check fails.
 
 **Always check (every gated write — cheap structural checks):**
 
@@ -568,10 +635,18 @@ and only surface a ⚠️ line if a check fails.
   scaffolding survived into the written file.
 - `RULES_INDEX.md` has a row for the file (new files only).
 
+**For Branch E (Optimise)** these structural checks apply to the *relocation*: the
+optimised main rule still carries its `> **Scope**:` / `> **Load when**:` lines, no
+placeholder scaffolding leaked into the moved content or the new `## {Content} Lookup
+Workflow`, and each created reference is wired into the main rule's `> **References**:`
+line. Reference files are not indexed, so the `RULES_INDEX.md` row check covers main
+rules only. Branch E runs **none** of the synthesis checks below.
+
 **Additionally — only when the branch actually synthesized content**, i.e. **Branch B
 (Research)** or **Branch A → A.4 with research**. Do **not** run these on the as-is
-paths (A.2 cross-check-append, A.3 create-as-is, A.4 save-as-is) — those write the
-user's exact words with no synthesis, so there is no coverage or distillation to grade:
+paths (A.2 cross-check-append, A.3 create-as-is, A.4 save-as-is) or **Branch E
+(Optimise)** — those write the user's exact words (or merely relocate existing text)
+with no synthesis, so there is no coverage or distillation to grade:
 
 - **Example coverage (#2)** — the major code-facing topics the rule raises are each
   illustrated by an example (or explicitly waived with a stated reason), per the
@@ -589,14 +664,15 @@ Final Step.
 
 ## Final Step: Confirm
 
-**First, run the Quality Gate above** (ADD RULE / RESEARCH only — skip for Migrate,
-Validate, and the install short-circuit), then produce the report below.
+**First, run the Quality Gate above** (ADD RULE / RESEARCH / OPTIMISE — structural-only
+for Optimise; skip for Migrate, Validate, and the install short-circuit), then produce
+the report below.
 
 
 
-**Reconcile `.unikit.json` state with disk (after Branch A / B / C only):**
+**Reconcile `.unikit.json` state with disk (after Branch A / B / C / E only):**
 
-If the just-completed branch was **Branch A** (Add Rule), **Branch B** (Research), or **Branch C** (Migrate Rules) — i.e. anything that wrote a new or updated rule file into `.unikit/memory/<module>/` — run the CLI sync command so the generated file is registered in `.unikit.json.rules.installed` and `RULES_INDEX.md` is regenerated from authoritative state + disk:
+If the just-completed branch was **Branch A** (Add Rule), **Branch B** (Research), **Branch C** (Migrate Rules), or **Branch E** (Optimise) — i.e. anything that wrote a new or updated rule/reference file into `.unikit/memory/<module>/` — run the CLI sync command so the generated file is registered in `.unikit.json.rules.installed` and `RULES_INDEX.md` is regenerated from authoritative state + disk:
 
 ```bash
 unikit-ai rules sync
@@ -612,16 +688,16 @@ Treat a non-zero exit code as non-fatal for the skill: log the CLI output to the
 
 **Report to the user (in their configured language):**
 - Which module was targeted and which file was created or updated
-- Summary of what was added
-- Which branch was used (Add Rule / Research)
+- Summary of what was added or moved (Optimise: which sections were relocated into which reference files)
+- Which branch was used (Add Rule / Research / Optimise)
 - Whether Context7 enrichment was applied (Research branch only)
 - Whether `.unikit.json` state was reconciled via `rules sync` (and whether the index was regenerated)
 - Whether RULES_INDEX.md was updated
 - If any content was redirected elsewhere (architecture, RULES.md)
 
-**Offer rules-registry promotion (after Branch A / B / C only):**
+**Offer rules-registry promotion (after Branch A / B / C / E only):**
 
-If the just-completed branch was **Branch A** (Add Rule), **Branch B** (Research), or **Branch C** (Migrate Rules) — i.e. anything that actually wrote into `.unikit/memory/<module>/` — check whether the project's registry is local:
+If the just-completed branch was **Branch A** (Add Rule), **Branch B** (Research), **Branch C** (Migrate Rules), or **Branch E** (Optimise) — i.e. anything that actually wrote into `.unikit/memory/<module>/` — check whether the project's registry is local:
 
 ```bash
 unikit-ai rules registry show --json

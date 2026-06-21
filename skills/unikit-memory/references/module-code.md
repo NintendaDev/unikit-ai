@@ -20,7 +20,7 @@ right one by id.
 | `enginePartitioned` | `true` (registry side: `<registry>/code/<engine>/<tier>`) |
 | `skillPrefix` | `unikit` |
 | Memory layout | `.unikit/memory/code/<tier>` → `.unikit/memory/code/core/`, `.unikit/memory/code/stack/` |
-| Reference subfolder | `.unikit/memory/code/stack/references/` (supplementary lookup docs for stack rules) |
+| Reference subfolder | `.unikit/memory/code/<tier>/references/` — both `.unikit/memory/code/core/references/` and `.unikit/memory/code/stack/references/` (supplementary lookup / large-optional docs for rules in **either** tier) |
 | Index file | `.unikit/memory/code/RULES_INDEX.md` |
 
 These values mirror the `code` entry in `.unikit/system/modules.yml`. When the
@@ -167,7 +167,7 @@ Use existing rules as a template (stack: `reactive-async.md`, `odin.md`; core:
 
 > **Scope**: {What this file covers — specific APIs, patterns, conventions}
 > **Load when**: {Comma-separated keywords and contexts that trigger loading this file}
-> **References**: {Optional — omit if no reference files. List each with a parenthetical label: `.unikit/memory/code/stack/references/{rule-id}-binders-quickref.md` (quick lookup), `.unikit/memory/code/stack/references/{rule-id}-binders-full.md` (exhaustive index).}
+> **References**: {Optional — omit if no reference files. Reference files live beside the rule in **its own tier's** subfolder — `.unikit/memory/code/<tier>/references/` (a core rule → `core/references/`, a stack rule → `stack/references/`). List each with a parenthetical label: `.unikit/memory/code/<tier>/references/{rule-id}-binders-quickref.md` (quick lookup), `.unikit/memory/code/<tier>/references/{rule-id}-binders-full.md` (exhaustive index).}
 
 ---
 
@@ -271,8 +271,10 @@ regardless of `language.rules`.
 
 ## Reference File Format
 
-Reference files live in `.unikit/memory/code/stack/references/` and hold
-lookup/catalog data extracted from a main stack rule. They have no frontmatter —
+Reference files live in the rule's **own tier** subfolder —
+`.unikit/memory/code/<tier>/references/` (`core/references/` for a core rule,
+`stack/references/` for a stack rule) — and hold lookup/catalog data or other
+large, optional content extracted from a main rule. They have no frontmatter —
 they are supplementary documents, not standalone rules.
 
 **Naming convention:** `{rule-id}-{descriptor}.md`
@@ -321,22 +323,51 @@ Examples:
 - Code identifiers, class names, and paths always stay in English regardless of
   `language.rules`.
 
-## Reference Candidate Extraction
+## Reference Candidate Extraction (the Candidate Analyzer)
 
-After synthesis, scan the structured content for sections that are **large,
-rarely needed all at once, or used as a lookup rather than read in full**. Such
-sections are candidates for extraction into separate reference files under
-`.unikit/memory/code/stack/references/`.
+After synthesis (on-add) — **or** when retroactively optimising an existing rule
+(`--optimise`, Branch E) — scan the rule's content for sections that should move
+into a separate reference file under the rule's **own tier** subfolder
+(`.unikit/memory/code/<tier>/references/`). This is the **single Candidate
+Analyzer**: the same engine feeds the on-add reference step
+(`research-pipeline.md` B.3.5) and the retroactive `--optimise` pass, so a book
+distilled into a `core` rule and an API catalog inside a `stack` rule are judged
+the same way. It applies to **both tiers** — a large, optional, distilled `core`
+section is as extractable as a `stack` lookup table; `core` is no longer
+inline-only.
 
-**Extract to a reference file when the content is:**
+**Three signals per content block** — the analyzer scores each candidate block on:
 
-| Extract → reference | Keep → main file |
-|---------------------|-----------------|
+| Signal | Fires when… |
+|--------|-------------|
+| **Size** | the block is large — orientation **≳ 40 lines or ≳ 1500 characters**. This is a documented *orientation*, not a hard cut: a 35-line block that is plainly optional still counts; a dense 30-line lookup table can too. |
+| **Optionality** | the content is needed only in specific situations, not on every read of the rule — a subsystem rarely used alongside the rest, an edge-case catalog, an appendix, a deep-dive reached for occasionally. |
+| **Lookup shape** | the content is "looked up", not "read in full" — a table of 20+ rows, a type→class map, an exhaustive index of variants. |
+
+**Confidence buckets — the "Tiers".** These are **confidence levels of the
+candidate**, NOT the `quickref`/`full` reference split and NOT the `core`/`stack`
+memory tiers:
+
+- **Tier 1 — extract (high confidence).** Strong signal: **large AND (optional OR
+  lookup-shaped)**. Moving it out is a clear win — it distracts from the
+  conceptual rules and is consulted piecemeal. Examples: a 20+ row lookup table, a
+  large independently-used subsystem, an exhaustive variant index, a big distilled
+  appendix.
+- **Tier 2 — borderline (judgment call).** A single signal, or size hovering near
+  the orientation threshold: a medium block that is somewhat optional, a lookup
+  table just under 20 rows, a distilled deep-dive around 40 lines. Reasonable
+  people could keep it inline or move it — so the user decides.
+
+Content that is small, conceptual, and read top-to-bottom on every use is **not a
+candidate** — it stays in the main rule.
+
+| Extract → reference (a candidate) | Keep → main file (never a candidate) |
+|-----------------------------------|--------------------------------------|
 | Large subsystem rarely used alongside other parts | Architecture and lifecycle rules |
 | Lookup table with 20+ rows | Code templates and examples |
 | Exhaustive index of all variants | Naming and file-structure conventions |
-| Data the LLM "looks up", not "reads in full" | Configuration and registration patterns |
-| Content large enough to distract from conceptual rules | Workflow and decision instructions |
+| Large optional / appendix / deep-dive block (incl. distilled book material) | Configuration and registration patterns |
+| Data the LLM "looks up", not "reads in full" | Workflow and decision instructions |
 
 **Choose a split strategy based on content type. Common strategies:**
 
@@ -360,13 +391,26 @@ sections are candidates for extraction into separate reference files under
 The choice of strategy is driven by the content: choose what makes sense for this
 specific framework, don't force a pattern that doesn't fit.
 
-When 1+ candidates are found, propose the split strategy and exact file list
-before writing anything, listing each proposed
-`.unikit/memory/code/stack/references/{filename}.md` with what it contains and
-why, then confirm with `AskUserQuestion` before creating them. The main rule file
-lists approved references in a `> **References**:` header line and includes a
-"{Content} Lookup Workflow" section explaining when to open each file. Do **not**
-duplicate catalog data in the main file — only pointers and instructions.
+**Presenting candidates (identical for on-add B.3.5 and `--optimise`).** Group the
+found blocks into **Tier 1** and **Tier 2** and present both buckets before writing
+anything — each proposed `.unikit/memory/code/<tier>/references/{filename}.md` with
+what it contains, which of the three signals fired, and the split strategy. Then
+confirm via `AskUserQuestion`, offering the scope choice:
+
+1. Extract **Tier 1 only** (the clear wins)
+2. Extract **Tier 1 + Tier 2** (also the borderline blocks)
+3. Adjust — rename / merge / split / drop a file, or move a block between buckets → revise and ask again
+4. None — keep everything inline
+
+Always report the analyzer result **explicitly, including when nothing qualifies**
+("0 candidates — every section is conceptual, small, or read-in-full"), so the
+absence of extraction is a visible decision rather than a silent skip. The main
+rule file lists approved references in a `> **References**:` header line and
+includes a "{Content} Lookup Workflow" section explaining when to open each file.
+Do **not** duplicate the moved content in the main file — only pointers and
+instructions. When the analyzer runs under `--optimise` (Branch E), the approved
+content **moves** — it is cut from the main rule, not copied — and the proposal is
+confirmed before any write.
 
 ## RULES_INDEX.md Format
 

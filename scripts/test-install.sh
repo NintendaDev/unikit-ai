@@ -391,13 +391,17 @@ assert_contains "$CLAUDE_DIR/.claude/skills/unikit-verify/references/ENGINE_RULE
 
 echo "  ✓ ENGINE_RULES.md: installed for unity engine (unikit + unikit-verify)"
 
-# unikit-memory ships a scripts/ subdir (the ported material-prep.py) — the first skill
-# to do so. The non-flat transformer copies the whole skill dir, but nothing else
-# asserts the scripts/ subdir actually lands in an installed project; guard the delivery
-# here (PLAN.md T10 load-bearing (b), install half).
+# unikit-memory ships a scripts/ subdir (the ported material-prep.py + its split sibling
+# modules mp_*.py) — the first skill to do so. The non-flat transformer copies the whole
+# skill dir, but nothing else asserts the scripts/ subdir actually lands in an installed
+# project; guard the delivery here (PLAN.md T10 load-bearing (b), install half).
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-memory/scripts/material-prep.py" \
   "material-prep.py should be delivered into the installed unikit-memory skill (scripts/ subdir)"
-echo "  ✓ unikit-memory: scripts/material-prep.py delivered on install"
+for _mp in mp_config mp_safety mp_chunk mp_books mp_extract mp_output; do
+  assert_exists "$CLAUDE_DIR/.claude/skills/unikit-memory/scripts/$_mp.py" \
+    "$_mp.py (material-prep split module) should be delivered into the installed unikit-memory skill"
+done
+echo "  ✓ unikit-memory: scripts/material-prep.py + mp_*.py split modules delivered on install"
 
 # ─────────────────────────────────────────────────────
 # Test 8: ENGINE_RULES.md installation for Godot

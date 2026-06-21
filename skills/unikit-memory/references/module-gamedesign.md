@@ -248,14 +248,17 @@ have no frontmatter — they are supplementary documents, not standalone rules.
 **Naming convention:** `{rule-id}-{descriptor}.md` (e.g.
 `accessibility-gag-checklist.md`, `player-motivation-quantic-table.md`).
 
-Follow the `code` module's reference-extraction guidance: extract when content
-is a large lookup catalog read piecemeal; keep conceptual guidance in the main
-rule; propose the split and confirm with `AskUserQuestion` before creating
-files; the main rule lists approved references in its `> **References**:` line. This
-includes **stable filenames / anti-fragmentation** — reuse an existing reference's
-filename when extending its topic instead of forking a near-duplicate, and run the
-`research-pipeline.md` B.3.5 merge guard (check existing files, update in place) before
-creating a new one.
+Follow the `code` module's **Candidate Analyzer** unchanged (`module-code.md` →
+"Reference Candidate Extraction"): the same size / optionality / lookup signals and
+**Tier 1 / Tier 2** confidence buckets decide what moves out — a large, optional,
+piecemeal lookup catalog (e.g. a motivation taxonomy table or an accessibility
+checklist) is a candidate; conceptual guidance stays in the main rule. Present the
+candidates grouped by Tier 1 / Tier 2 and confirm with `AskUserQuestion` before
+creating files; the main rule lists approved references in its `> **References**:`
+line. This includes **stable filenames / anti-fragmentation** — reuse an existing
+reference's filename when extending its topic instead of forking a near-duplicate,
+and run the `research-pipeline.md` B.3.5 merge guard (check existing files, update
+in place) before creating a new one.
 
 ## RULES_INDEX.md Format
 
