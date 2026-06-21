@@ -161,9 +161,9 @@ UniKit AI has a built-in learning loop that makes skills smarter over time:
 1. **Code and architecture rules** - problems in code, architectural patterns, recurring mistakes → written to `RULES.md` and correct the framework's general memory
 2. **Skill workflow issues** - when a skill worked incorrectly, gave bad recommendations → written to `skill-context/` as overrides for the specific skill
 
-From `RULES.md`, rules can be migrated to the dynamic memory `memory/` via `/unikit-memory --migrate-rules`. Use `/unikit-memory validate` to check rule health and detect stale or contradicting rules.
+From `RULES.md`, rules can be migrated to the dynamic memory `memory/` via `/unikit-memory migrate-rules`. Use `/unikit-memory validate` to check rule health and detect stale or contradicting rules.
 
-**Full chain:** `/unikit-fix` (creates patch) → `/unikit-evolve` (classifies and applies) → `/unikit-memory --migrate-rules` (migrates mature rules from `RULES.md` into permanent dynamic memory - `core/` or `stack/`)
+**Full chain:** `/unikit-fix` (creates patch) → `/unikit-evolve` (classifies and applies) → `/unikit-memory migrate-rules` (migrates mature rules from `RULES.md` into permanent dynamic memory - `core/` or `stack/`)
 
 ## Artifact Ownership and Context Gates
 
@@ -311,7 +311,7 @@ Reads patches incrementally using an evolve cursor (`.unikit/evolutions/patch-cu
 
 Cross-checks against existing rules and knowledge base to avoid duplicates. Presents candidates grouped by type for user approval. Saves evolution log to `.unikit/evolutions/YYYY-MM-DD-HH.mm.md`. 
 
-Mature rules from `RULES.md` can be migrated into permanent dynamic memory (`core/` or `stack/`) via `/unikit-memory --migrate-rules`. 
+Mature rules from `RULES.md` can be migrated into permanent dynamic memory (`core/` or `stack/`) via `/unikit-memory migrate-rules`. 
 
 Closes the learning loop: **fix -> patch -> evolve -> better skills -> fewer bugs**.
 

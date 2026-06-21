@@ -8,12 +8,12 @@ description: >-
   wants to document or research how the project uses a framework ("document how we use
   Addressables", "best practices for R3"), add a core or stack entry
   to the knowledge base, or pastes framework docs URLs, files, folders, or PDFs to turn into vetted
-  entries. Also: "--migrate-rules" (or passing RULES.md) promotes mature project rules into the
-  knowledge base; "validate" re-syncs RULES_INDEX.md; "--optimise" extracts large/optional
+  entries. Also: "migrate-rules" (or passing RULES.md) promotes mature project rules into the
+  knowledge base; "validate" re-syncs RULES_INDEX.md; "optimise" extracts large/optional
   rule sections into references; "--module <id>" targets a module. For a quick project rule,
   override, or "remember this / always-never X" correction use /unikit-rules (RULES.md); for
   architecture decisions use ARCHITECTURE.md.
-argument-hint: "[description | URL(s) | file/folder/PDF path | --module <id> | --migrate-rules | --optimise | --skip-registry | validate]"
+argument-hint: "[description | URL(s) | file/folder | PDF/Fb2/Epub paths | migrate-rules | optimise | validate | --module <id> | --skip-registry ]"
 allowed-tools:
   - Read
   - Write
@@ -162,15 +162,19 @@ First, strip the already-parsed flags from $ARGUMENTS before classifying input t
 └── (The --module flag, if any, was already stripped in Step 0.5.)
 
 Then classify the (possibly stripped) $ARGUMENTS:
-├── Contains "--optimise" or "--optimize" (alias) → OPTIMISE (jump to Branch E). Strip
-│   the flag; any remaining text is the optional rule scope (specific rule names/ids).
-│   An empty remainder means "ask which rules" — Branch E handles it. OPTIMISE rewrites
-│   no content: it only relocates existing sections into reference files.
+├── First token is "optimise" or "optimize" (bare keyword, case-insensitive) → OPTIMISE
+│   (jump to Branch E). Consume the keyword; any remaining text is the optional rule scope
+│   (specific rule names/ids). An empty remainder means "ask which rules" — Branch E handles
+│   it. OPTIMISE rewrites no content: it only relocates existing sections into reference files.
+│   NOTE: "optimise" is a bare positional keyword matched on the FIRST token (not exact
+│   equality, because it carries an optional scope) — there is NO "--optimise" flag form. A
+│   description that genuinely begins with the word "optimise" is therefore read as this
+│   intent; ask the user to rephrase if that was not the intent.
 ├── Equals "validate" (case-insensitive) → VALIDATE INDEX (jump to Branch D)
-├── Contains "--migrate-rules" →
-│   ├── $ARGUMENTS is exactly "--migrate-rules" (no other text) → MIGRATE RULES (jump to Branch C)
-│   └── $ARGUMENTS has additional text besides "--migrate-rules" →
-│       Report to user: "--migrate-rules must be used alone without additional arguments."
+├── First token is "migrate-rules" (bare keyword) or "--migrate-rules" (legacy alias) →
+│   ├── $ARGUMENTS is exactly "migrate-rules" or "--migrate-rules" (no other text) → MIGRATE RULES (jump to Branch C)
+│   └── $ARGUMENTS has additional text besides the keyword →
+│       Report to user: "migrate-rules must be used alone without additional arguments."
 │       STOP. Do not proceed.
 ├── Matches RULES.md path (case-insensitive):
 │   "RULES.md", "rules.md", ".unikit/RULES.md",
@@ -533,10 +537,10 @@ not touch the registry, `src/`, or the helper script.
 
 ### E.1: Determine scope
 
-Parse the rule scope from the remaining `$ARGUMENTS` (after the `--optimise` flag was
-stripped in Phase A):
+Parse the rule scope from the remaining `$ARGUMENTS` (after the `optimise` keyword was
+consumed in Phase A):
 
-- **Named rules present** (e.g. `--optimise dotween zenject`) → that is the scope.
+- **Named rules present** (e.g. `optimise dotween zenject`) → that is the scope.
   Resolve each name to a file under `.unikit/memory/<module>/<tier>/` (match against
   `RULES_INDEX.md`; ask if a name is ambiguous).
 - **No names** → `AskUserQuestion`:

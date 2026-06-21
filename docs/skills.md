@@ -195,11 +195,11 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 /unikit-memory add stack rule for DOTween           # Add rule from description
 /unikit-memory https://docs.example.com/guide       # Research from URL
 /unikit-memory Assets/Plugins/MyLib/README.md        # Research from file
-/unikit-memory --migrate-rules                       # Migrate RULES.md to memory
+/unikit-memory migrate-rules                         # Migrate RULES.md to memory
 /unikit-memory validate                              # Sync RULES_INDEX.md with actual files
 /unikit-memory --skip-registry add rule for DOTween  # Skip registry lookup, generate directly
 ```
-- Four branches: Add Rule (direct), Research (URL/file + Context7 enrichment), Migrate (`--migrate-rules`), Validate (`validate` - syncs index with actual files)
+- Four branches: Add Rule (direct), Research (URL/file + Context7 enrichment), Migrate (`migrate-rules`), Validate (`validate` - syncs index with actual files)
 - **Registry-first lookup** - before generating a rule, checks the remote registry catalog for an existing match; offers to install the vetted version instead of generating a local copy
 - `--skip-registry` - bypass the registry lookup (used by higher-level callers that already queried the catalog)
 - Add or update rules in `.unikit/memory/` (core and stack)

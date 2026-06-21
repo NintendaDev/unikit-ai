@@ -186,7 +186,7 @@ in `references/module-<id>.md`) over the synthesized content: score each block o
 the three signals (**size** ≳ 40 lines / ≳ 1500 chars, **optionality**, **lookup
 shape**) and sort the candidates into **Tier 1** (clear wins — large AND
 optional/lookup) and **Tier 2** (borderline — one signal, or size near the
-threshold). This is the same engine the retroactive `--optimise` pass uses, so
+threshold). This is the same engine the retroactive `optimise` pass uses, so
 on-add and optimise present candidates identically. Reference files live under the
 rule's **own tier** `references/` subfolder as defined by the contract — for `code`
 that now includes `core/references/`, not just `stack/references/`.

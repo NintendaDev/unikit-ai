@@ -1154,16 +1154,18 @@ else
 fi
 
 # (UM-2) SKILL.md router carries the Quality Gate (#3), gap-list default (#5), and the
-#        retroactive --optimise/Branch E wiring (the inline branch + the flag in the
-#        argument-hint). The legacy --into argument-hint assert was removed when WS4
-#        deleted the flag — do NOT reintroduce a `--into` grep here.
+#        retroactive optimise/Branch E wiring (the inline branch + the bare `optimise`
+#        keyword in the argument-hint). The hint grep anchors on " optimise" (space-led)
+#        so a regression to the dropped `--optimise` flag form fails the guard. The legacy
+#        --into argument-hint assert was removed when WS4 deleted the flag — do NOT
+#        reintroduce a `--into` grep here.
 UM_SKILL_WHY=""
 grep -qF '## Quality Gate' "$UM_SKILL"               || UM_SKILL_WHY+=" quality-gate(#3)"
 grep -qF 'gap list' "$UM_SKILL"                      || UM_SKILL_WHY+=" gap-list(#5)"
 grep -qF '## Branch E: Optimise' "$UM_SKILL"         || UM_SKILL_WHY+=" branch-e(optimise)"
-grep -qE '^argument-hint:.*--optimise' "$UM_SKILL"   || UM_SKILL_WHY+=" --optimise(hint)"
+grep -qE '^argument-hint:.* optimise' "$UM_SKILL"    || UM_SKILL_WHY+=" optimise(hint)"
 if [[ -z "$UM_SKILL_WHY" ]]; then
-    pass "unikit-memory SKILL.md — Quality Gate + gap list + Branch E/--optimise wiring (T3/T4/WS3)"
+    pass "unikit-memory SKILL.md — Quality Gate + gap list + Branch E/optimise wiring (T3/T4/WS3)"
 else
     fail "unikit-memory SKILL.md — missing:$UM_SKILL_WHY"
 fi

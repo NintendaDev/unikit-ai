@@ -326,11 +326,11 @@ Examples:
 ## Reference Candidate Extraction (the Candidate Analyzer)
 
 After synthesis (on-add) — **or** when retroactively optimising an existing rule
-(`--optimise`, Branch E) — scan the rule's content for sections that should move
+(`optimise`, Branch E) — scan the rule's content for sections that should move
 into a separate reference file under the rule's **own tier** subfolder
 (`.unikit/memory/code/<tier>/references/`). This is the **single Candidate
 Analyzer**: the same engine feeds the on-add reference step
-(`research-pipeline.md` B.3.5) and the retroactive `--optimise` pass, so a book
+(`research-pipeline.md` B.3.5) and the retroactive `optimise` pass, so a book
 distilled into a `core` rule and an API catalog inside a `stack` rule are judged
 the same way. It applies to **both tiers** — a large, optional, distilled `core`
 section is as extractable as a `stack` lookup table; `core` is no longer
@@ -391,7 +391,7 @@ candidate** — it stays in the main rule.
 The choice of strategy is driven by the content: choose what makes sense for this
 specific framework, don't force a pattern that doesn't fit.
 
-**Presenting candidates (identical for on-add B.3.5 and `--optimise`).** Group the
+**Presenting candidates (identical for on-add B.3.5 and `optimise`).** Group the
 found blocks into **Tier 1** and **Tier 2** and present both buckets before writing
 anything — each proposed `.unikit/memory/code/<tier>/references/{filename}.md` with
 what it contains, which of the three signals fired, and the split strategy. Then
@@ -408,7 +408,7 @@ absence of extraction is a visible decision rather than a silent skip. The main
 rule file lists approved references in a `> **References**:` header line and
 includes a "{Content} Lookup Workflow" section explaining when to open each file.
 Do **not** duplicate the moved content in the main file — only pointers and
-instructions. When the analyzer runs under `--optimise` (Branch E), the approved
+instructions. When the analyzer runs under `optimise` (Branch E), the approved
 content **moves** — it is cut from the main rule, not copied — and the proposal is
 confirmed before any write.
 

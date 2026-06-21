@@ -7,7 +7,7 @@ description: >-
   Use when user says "evolve", "evolve rules", "learn from mistakes", "update rules",
   "analyze patches", or wants to feed accumulated patch experience into coding rules.
   Also trigger after a series of /unikit-fix runs when patches have accumulated in .unikit/code/patches/.
-  To migrate mature RULES.md entries to core/stack rule files, use `/unikit-memory --migrate-rules` instead.
+  To migrate mature RULES.md entries to core/stack rule files, use `/unikit-memory migrate-rules` instead.
 allowed-tools:
   - Read
   - Write
@@ -48,7 +48,7 @@ user picks → coding rules to RULES.md, workflow rules to skill-context
 - **RULES.md** — coding conventions: HOW to write code (patterns, naming, null-checks, async, serialization). These reach `unikit-devcontext` via RULES.md → `/unikit-memory` → memory/.
 - **skill-context** — workflow overrides: HOW a skill should behave (delegation strategy, commit frequency, compilation checks, parallelism). These go to `.unikit/skill-context/<skill>/SKILL.md` and are read by the target skill directly.
 
-Rule migration from RULES.md to core/stack rule files is handled by `/unikit-memory --migrate-rules`.
+Rule migration from RULES.md to core/stack rule files is handled by `/unikit-memory migrate-rules`.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -275,7 +275,7 @@ After completing evolution, suggest `/clear` or `/compact` — context is heavy 
 7. **No generic advice** — "write clean code" is not a rule; only specific, actionable instructions
 8. **One prevention point = one rule** — don't merge multiple independent rules into a single vague summary
 9. **Preserve concrete formats** — if a patch specifies exact format/syntax/template, the rule must include it verbatim
-10. **Ownership boundary** — this command owns `.unikit/evolutions/*.md` and `.unikit/evolutions/patch-cursor.json`; may append coding rules to `.unikit/RULES.md` (via `/unikit-rules`); may write workflow rules to `.unikit/skill-context/<skill>/SKILL.md`; treats everything else as read-only. Rule migration from RULES.md to memory/ is handled by `/unikit-memory --migrate-rules`
+10. **Ownership boundary** — this command owns `.unikit/evolutions/*.md` and `.unikit/evolutions/patch-cursor.json`; may append coding rules to `.unikit/RULES.md` (via `/unikit-rules`); may write workflow rules to `.unikit/skill-context/<skill>/SKILL.md`; treats everything else as read-only. Rule migration from RULES.md to memory/ is handled by `/unikit-memory migrate-rules`
 
 ## Example
 

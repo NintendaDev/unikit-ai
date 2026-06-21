@@ -1,7 +1,8 @@
 # Migrate Rules from RULES.md (Branch C)
 
 The `unikit-memory` router loads this file when the resolved intent is **MIGRATE
-RULES** (`--migrate-rules`, or a RULES.md path was passed). It transfers mature
+RULES** (`migrate-rules`, the `--migrate-rules` legacy alias, or a RULES.md path was
+passed). It transfers mature
 entries from `.unikit/RULES.md` (the quick-capture staging area owned by
 `unikit-rules`) into permanent rule files under `.unikit/memory/<module>/`. RULES.md
 holds project-specific overrides — over time, entries that clearly belong to a
