@@ -6,7 +6,7 @@ The four severity levels — 🔴 **Critical** / 🟡 **Warning** / 🟠 **Mediu
 
 ## Subagent-Delegation carve-out (IMPORTANT)
 
-`+check` is **exempt** from the `## Subagent Delegation — BLOCKING PRE-REQUISITE` rule (the `<!-- unikit:agents codex -->` block in `SKILL.md`). That rule says the assistant MUST ask the user before falling back to an alternative when agent execution is unavailable. For `+check` this does NOT apply: `+check` is an optional validation pass, so an unavailable or blocked validator agent → **render the review as drafted** (keep all findings, emit one `WARN [+check]` line — see Failure modes), **NEVER** ask the user.
+`+check` is **exempt** from the `## Subagent Delegation — BLOCKING PRE-REQUISITE` rule (the `unikit:agents codex` guard block in `SKILL.md`). That rule says the assistant MUST ask the user before falling back to an alternative when agent execution is unavailable. For `+check` this does NOT apply: `+check` is an optional validation pass, so an unavailable or blocked validator agent → **render the review as drafted** (keep all findings, emit one `WARN [+check]` line — see Failure modes), **NEVER** ask the user.
 
 ## When to run
 

@@ -1847,6 +1847,31 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7g2: agent-filter markers forbidden outside SKILL.md
+# ─────────────────────────────────────────────
+# Reference/template `.md` files do NOT pass through applyAgentFilter — installs
+# only run invocation rewriting + {{}} substitution over them. An agent-filter
+# marker there is therefore either a silently-unprocessed guarded block (content
+# leaks to every agent) or an inline landmine that would throw if the filter is
+# ever enabled for references. SKILL.md is the ONLY surface with agent-filter.
+# Match the fragment form `<!-- unikit:agents` / `<!-- unikit:end` exactly as
+# agent-filter detects it (START_FRAGMENT / END_FRAGMENT in agent-filter.ts) —
+# NOT the bare `unikit:agents` token, which would also match prose and the
+# non-literal `unikit:agents codex guard block` wording in the CHECK-MODE.md
+# files.
+echo -e "\n${BOLD}Part 7g2: agent-filter markers only in SKILL.md${NC}"
+
+MARKER_LEAK_FILES=$(grep -rlE '<!-- unikit:agents|<!-- unikit:end' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null \
+    | grep -v '/SKILL.md$' || true)
+
+if [[ -z "$MARKER_LEAK_FILES" ]]; then
+    pass "no agent-filter markers outside SKILL.md"
+else
+    fail "agent-filter markers found outside SKILL.md (only SKILL.md may carry guarded blocks)"
+    echo "$MARKER_LEAK_FILES" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke
 # ─────────────────────────────────────────────
 # Catch the "forgot to wire a new command into src/cli/index.ts" regression

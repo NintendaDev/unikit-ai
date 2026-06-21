@@ -90,6 +90,22 @@ else
 fi
 
 # ─────────────────────────────────────────────────────
+# Test 1a-noref: default agents (claude) leave reference invocations verbatim
+# ─────────────────────────────────────────────────────
+# transformReference is undefined for DefaultTransformer, so references/*.md are
+# copied verbatim for claude/cursor/gemini/opencode. unikit-plan's
+# references/TASK-FORMAT.md must keep `/unikit-implement` — NOT $unikit-
+# (codex) or /skills unikit- (qwen). A stray DefaultTransformer.transformReference
+# would rewrite this and fail the assertion below.
+CLAUDE_TASKFORMAT="$CLAUDE_DIR/.claude/skills/unikit-plan/references/TASK-FORMAT.md"
+assert_exists "$CLAUDE_TASKFORMAT" "unikit-plan reference must be installed for claude"
+assert_contains "$CLAUDE_TASKFORMAT" '/unikit-implement' \
+  "claude references must keep /unikit-* verbatim (DefaultTransformer is no-op)"
+assert_not_contains "$CLAUDE_TASKFORMAT" '\$unikit-implement' \
+  "claude references must NOT be codex-rewritten"
+echo "  ✓ claude reference no-op: /unikit-implement kept verbatim in references/"
+
+# ─────────────────────────────────────────────────────
 # Test 1b: dev-principles.md installed with substituted vars (system file)
 # ─────────────────────────────────────────────────────
 PRINCIPLES_PATH="$CLAUDE_DIR/.unikit/system/dev-principles.md"
@@ -201,7 +217,8 @@ seed_rule "$CODEX_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$CODEX_DIR"
 
 # No /unikit- invocations should remain in SKILL.md files (rewritten to $unikit-)
-# Only check SKILL.md files - reference files are copied verbatim by design.
+# SKILL.md is checked here; reference .md files are rewritten too (T3) and
+# checked separately below — they are no longer copied verbatim.
 # Exclude frontmatter name: field, package name unikit-ai, and .unikit/ paths
 SLASH_INVOCATIONS=$(find "$CODEX_DIR/.codex/skills/" -name 'SKILL.md' -exec \
   grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
@@ -238,6 +255,41 @@ fi
 assert_contains "$CODEX_DIR/.codex/skills/unikit/SKILL.md" \
   "Subagent Delegation" "codex install: guarded 'Subagent Delegation' block must be kept for codex"
 
+# Reference .md files must ALSO have their invocations rewritten (T3): the
+# installer runs transformReference over references/*.md, not just SKILL.md.
+# Fixture coverage: unikit-plan ships references/TASK-FORMAT.md with a
+# `/unikit-implement` invocation; unikit ships references/LANGUAGE_RULES_TEMPLATE.md
+# with `/unikit-memory`. Non-.md references (e.g. config-template.yaml) stay
+# verbatim by design — excluded here via `-name '*.md'`.
+CODEX_REF_SLASH=$(find "$CODEX_DIR/.codex/skills/" -path '*/references/*' -name '*.md' -exec \
+  grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
+  | while read -r f; do
+      grep -E '(^|[[:space:]`"(>])/unikit-' "$f" \
+        | grep -v '^name:' \
+        | grep -v 'unikit-ai' \
+        | grep -v '\.unikit/'
+    done | wc -l | tr -d ' ' || true)
+
+CODEX_REF_DOLLAR=$(find "$CODEX_DIR/.codex/skills/" -path '*/references/*' -name '*.md' -exec \
+  grep -c '\$unikit-' {} \; 2>/dev/null \
+  | awk '{s+=$1} END{print s+0}' || true)
+
+if [[ "$CODEX_REF_SLASH" -eq 0 && "$CODEX_REF_DOLLAR" -gt 0 ]]; then
+  echo "  ✓ codex reference rewrite: /unikit-* → \$unikit-* in references/ ($CODEX_REF_DOLLAR rewrites)"
+else
+  echo "Assertion failed: codex reference rewrite"
+  echo "  Remaining /unikit- in references: $CODEX_REF_SLASH (expected 0)"
+  echo "  Found \$unikit- in references: $CODEX_REF_DOLLAR (expected > 0)"
+  if [[ "$CODEX_REF_SLASH" -gt 0 ]]; then
+    echo "  --- remaining /unikit- in references ---"
+    find "$CODEX_DIR/.codex/skills/" -path '*/references/*' -name '*.md' -exec \
+      grep -HE '(^|[[:space:]`"(>])/unikit-' {} \; \
+      | grep -v ':name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
+    echo "  ---"
+  fi
+  exit 1
+fi
+
 # ─────────────────────────────────────────────────────
 # Test 3b: Qwen invocation rewrite
 # ─────────────────────────────────────────────────────
@@ -272,7 +324,8 @@ seed_rule "$QWEN_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$QWEN_DIR"
 
 # No raw /unikit- invocations should remain in SKILL.md files (rewritten to "/skills unikit-")
-# Only check SKILL.md files - reference files are copied verbatim by design.
+# SKILL.md is checked here; reference .md files are rewritten too (T3) and
+# checked separately below — they are no longer copied verbatim.
 # Exclude frontmatter name: field, package name unikit-ai, and .unikit/ paths
 QWEN_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -name 'SKILL.md' -exec \
   grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
@@ -298,6 +351,37 @@ else
     echo "  --- remaining /unikit- ---"
     grep -rE '(^|[[:space:]`"(>])/unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' \
       | grep -v '^[^:]*:name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
+    echo "  ---"
+  fi
+  exit 1
+fi
+
+# Reference .md files must ALSO have their invocations rewritten (T3) for qwen
+# (/unikit-* → /skills unikit-*). Same fixture coverage as codex Test 3.
+QWEN_REF_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
+  grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
+  | while read -r f; do
+      grep -E '(^|[[:space:]`"(>])/unikit-' "$f" \
+        | grep -v '^name:' \
+        | grep -v 'unikit-ai' \
+        | grep -v '\.unikit/'
+    done | wc -l | tr -d ' ' || true)
+
+QWEN_REF_SKILLS=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
+  grep -c '/skills unikit-' {} \; 2>/dev/null \
+  | awk '{s+=$1} END{print s+0}' || true)
+
+if [[ "$QWEN_REF_RAW_SLASH" -eq 0 && "$QWEN_REF_SKILLS" -gt 0 ]]; then
+  echo "  ✓ qwen reference rewrite: /unikit-* → /skills unikit-* in references/ ($QWEN_REF_SKILLS rewrites)"
+else
+  echo "Assertion failed: qwen reference rewrite"
+  echo "  Remaining /unikit- in references: $QWEN_REF_RAW_SLASH (expected 0)"
+  echo "  Found /skills unikit- in references: $QWEN_REF_SKILLS (expected > 0)"
+  if [[ "$QWEN_REF_RAW_SLASH" -gt 0 ]]; then
+    echo "  --- remaining /unikit- in references ---"
+    find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
+      grep -HE '(^|[[:space:]`"(>])/unikit-' {} \; \
+      | grep -v ':name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
     echo "  ---"
   fi
   exit 1
