@@ -63,8 +63,8 @@ Silently load — do not narrate:
    serve. If it does not exist, stop and recommend `/unikit-gd-spec` first.
 3. **`.unikit/gamedesign/GD-INDEX.md`** — find the row for the target system. If
    there is **no row**, the system is not on the map: offer to add it via
-   `/unikit-gd-spec` (remap), or pick an existing `not-started` system. Do not
-   author an off-map system.
+   `/unikit-gd-spec` (**add-system** — graft this one system onto the map, not a
+   remap), or pick an existing `not-started` system. Do not author an off-map system.
 4. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load the **core** domain
    rules for this system's **behavioural domain**, on demand by `Load When`, plus
    any studio `library` rule on the same topic. Read the domain from the system's
@@ -116,6 +116,17 @@ Gather the facts the system must stay consistent with (read-only):
   under each section lifted from the source and `<!-- provenance: generated -->`
   under each section inferred to complete the skeleton; untagged sections are
   normal authored content.
+- **Explore research (internal design lens)** — if this system was grafted from an
+  `unikit-gd-explore` brief, discover the research **deterministically** (survives a
+  `/clear`): read the system's `GD-IDS` `research:` pointer (authoritative), falling
+  back to the `researches/INDEX.md` entry whose `Target:` is this `SYS-<slug>`. Read
+  that research's `RESEARCH_BRIEF.md` → **`## New Feature Plan`** block and use its
+  A–K **section seeds** as the *starting drafts* for the section-cycle (Phase 4) —
+  the per-section approval still applies; a seed is a draft, not an approved write.
+  These explore-seeded drafts are **untagged normal authored content** — do **not**
+  mark them `extracted` / `generated` (those markers are for **imports** only; this
+  is the generalization of import-reading stated canonically in `gd-principles` →
+  Provenance, which this skill applies rather than restates).
 
 ## Phase 2 — Resolve Mode from Document State (no flags)
 

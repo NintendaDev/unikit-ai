@@ -99,9 +99,16 @@ prompt** (`gd-principles` "never guess" rule). Resolve in this order:
 3. The prompt asks to **rebuild / re-derive the system map** ("remap", "rebuild
    the map", "пересобери карту", "re-decompose systems") **and `GAME.md` exists**
    → **Remap** mode.
-4. **`GAME.md` does not exist** (check `.unikit/gamedesign/GAME.md`) and no import
+4. The prompt asks to **add one system** ("add a/new system", "let's add a crafting
+   system", "add this to the GDD", "добавь систему", or it names a system **absent
+   from `GD-INDEX`**) **and `GAME.md` exists** → **Add-System** mode. This is
+   distinct from Remap: Remap re-derives the **whole** map, Add-System grafts **one**
+   named system onto the existing map and **never touches `GAME.md` or the other
+   rows**. (It is the route the internal design lens hands a new mechanic to — see
+   Add-System Mode.)
+5. **`GAME.md` does not exist** (check `.unikit/gamedesign/GAME.md`) and no import
    path → **Create** mode.
-5. **`GAME.md` exists** and the intent is none of the above → **ambiguous**. Ask:
+6. **`GAME.md` exists** and the intent is none of the above → **ambiguous**. Ask:
 
    ```
    AskUserQuestion: GAME.md already exists. What do you want to do?
@@ -300,6 +307,78 @@ or the map drifted). This touches **structure**, not GAME.md content.
 
 ---
 
+## Add-System Mode — Graft One System onto the Map
+
+`GAME.md` exists and the user (or the internal design lens via a hand-off brief) wants
+**one new system** added to the map — without re-deriving the whole map (Remap) and
+without touching `GAME.md`. This is a **slice of Phase B applied to a single system**:
+the same gates, scoped to one row.
+
+**1. Seed the system.** Two entry paths:
+
+- **From an explore brief** (the internal design lens routed here): locate the
+  research and its `## New Feature Plan` block — discover it by the brief's
+  **`research:` folder** named in the prompt, else by matching the target slug against
+  `researches/INDEX.md` `Target:`. Read the block's **Map fields** (proposed slug,
+  Category, Tier, `implements: PIL-n`, `depends_on`). Confirm them with the user — the
+  brief is a draft, not a decree.
+- **Free-form** ("add a crafting system"): work out the same fields collaboratively
+  (Question → Options → Decision), grounded in the existing pillars/loops.
+
+**2. Run the single-system Phase B gates** (the same rules as Create Mode Phase B,
+scoped to this one system):
+
+- **Slug + collision check** — `SYS-<slug>`; reject a slug already in `GD-INDEX` /
+  `GD-IDS` (never reuse or renumber an ID). Pick a fresh, English, lowercase slug.
+- **Category** — Core / Gameplay / Progression / Economy / UI / Narrative / Meta.
+- **Coverage gate** — **≥1 `implements: PIL-n`**. A system serving no pillar is
+  mis-scoped or signals a missing pillar — surface it; a pillar/loop change is **not**
+  this skill's job (it escalates to GAME.md content via `/unikit-gd-improve` or a
+  remap). Add-System never edits pillars.
+- **Symmetric Depends** — every `depends_on` edge is mirrored on **both** rows (this
+  one and the neighbour's). Surface and resolve any cycle (break with an interface).
+- **Priority tier** — MVP / Vertical Slice / Alpha / Full Vision.
+- **Reserved Doc** — `systems/SYS-<slug>.md` (the file is created later by
+  `unikit-gd-detail`, not here).
+
+**3. Write the map (with approval) — two surfaces, `GAME.md` untouched:**
+
+- **`GD-INDEX.md`** — append **one** row: `ID | System | Category | Tier | Status |
+  Ver | Depends | Doc`, with Status `not-started`, Ver `—`, Doc `systems/SYS-<slug>.md`.
+  Update the neighbour's Depends cell for the symmetric edge. Refresh the Design Order
+  / Risks sections if the new edges change them.
+- **`GD-IDS.yaml`** `systems` — append one entry (`id: SYS-<slug>`, name,
+  `status: active`, tier, `doc_status: not-started`, **no `version`**, `implements`,
+  `depends_on`, `source: systems/SYS-<slug>.md`, `added: <date>`).
+- **When seeded from a brief, write the authoritative research pointer.** Add
+  `research: researches/<folder-name>/` to the new `GD-IDS` `systems` entry — a
+  **non-id path** pointer (the research folder, matching `researches/INDEX.md`'s
+  `Path` / `Target`), so `unikit-gd-detail` finds the `## New Feature Plan` block after
+  a `/clear`. `unikit-gd-spec` **owns** this pointer (`unikit-gd-explore` never writes
+  it); it is non-semantic metadata, excluded from `unikit-gd-verify` coherence and id
+  resolution (its value is a path, not an id).
+
+The system stays `not-started` until `unikit-gd-detail` authors its GDD — lifecycle is
+unchanged (`gd-principles` → Lifecycle & Status).
+
+**4. Active seam → detail now?** Offer to continue straight into detailing in the
+same session (a system grafted from a brief is detail-ready by construction — it
+already satisfies the Phase B detail-ready gate):
+
+```
+AskUserQuestion: SYS-<slug> is on the map (not-started). Detail it now?
+
+Options:
+1. Yes — detail it now → /unikit-gd-detail SYS-<slug> (recommended)
+2. No — I'll detail it later
+```
+
+On **Yes**, continue into the `/unikit-gd-detail SYS-<slug>` flow (it picks up the
+`research:` pointer and pre-fills its section-cycle from the `## New Feature Plan`
+seeds). On **No**, stop after the map write.
+
+---
+
 ## Pitch Mode — PITCH.md
 
 Produce `.unikit/gamedesign/PITCH.md` from `GAME.md` (read it first; if it does
@@ -321,7 +400,7 @@ After artifacts are written, show a compact report (no summary document, no repo
 file):
 
 ```
-Mode: <create | import | remap | pitch>
+Mode: <create | import | remap | add-system | pitch>
 Workspace: .unikit/gamedesign/
 Written:
 - GAME.md (vN, <drafted|approved>)
@@ -345,8 +424,11 @@ Options:
 
 ## Ownership Boundaries
 
-- **Owns:** `GAME.md` structure (which systems exist, remap), `GD-INDEX.md`,
-  `GD-IDS.yaml` pillars+systems, optional `PITCH.md`, and import `SOURCE.md`.
+- **Owns:** `GAME.md` structure (which systems exist, remap), the **primary / bulk
+  map** (Create + Import Phase B) **and grafting one system onto it** (Add-System),
+  `GD-INDEX.md`, `GD-IDS.yaml` pillars+systems, optional `PITCH.md`, and import
+  `SOURCE.md`. Owns the `GD-IDS` `research:` pointer (written in Add-System when seeded
+  from an explore brief) — `unikit-gd-explore` never writes it.
 - **Not this skill:** per-system GDDs (`systems/<slug>.md`) → `unikit-gd-detail`;
   content edits to approved GAME.md sections → `unikit-gd-improve`; ideation /
   concepts → `unikit-gd-brainstorm`; research briefs → `unikit-gd-explore`.
@@ -360,5 +442,6 @@ Options:
 /unikit-gd-spec ./path/to/GDD.md         → import an existing GDD (extract, keep SOURCE.md)
 /unikit-gd-spec https://…                → import from a URL
 /unikit-gd-spec remap the systems        → re-derive the map (GAME.md must exist)
+/unikit-gd-spec add a crafting system    → add-system: graft one system onto the map → seam to detail
 /unikit-gd-spec pitch this game          → produce PITCH.md
 ```

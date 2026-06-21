@@ -125,6 +125,14 @@ read the **system** spine only — the header ↔ `GD-INDEX` ↔ `GD-IDS` triple
   all-AC-met) is a code-owned field — **not** a `doc_status` and **not** a `version`
   — so it never participates in Status or Version coherence and is never flagged as
   drift.
+- **Non-id metadata (`research:`).** The `GD-IDS` `research:` field — written by
+  `unikit-gd-spec` (add-system) as a **path pointer** to the explore research that
+  seeded the system — is non-semantic metadata, **not** a registry id and **not** a
+  `doc_status` / `version`. It is excluded from status/version coherence, and the
+  id-resolving checks pass it over **by construction**: **Dangling references** only
+  resolves id tokens (`SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-`), and **Unregistered
+  cross-doc fact** only greps `FORM-`/`ENT-` ids — a folder path matches neither — so
+  no special-case logic is needed.
 - **Dependent-lag.** A verify-flagged dependent may transiently carry a header
   `Status` behind its `GD-INDEX`/`GD-IDS` `doc_status` (`gd-principles` →
   Lifecycle & Status); that lag is expected, not a conflict.

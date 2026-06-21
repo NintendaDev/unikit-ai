@@ -47,6 +47,7 @@ systems: []
 #     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised
 #     version: 1
 #     implemented_version: ""   # code-side unikit-verify sets this on all-AC-met (cited @version); not a doc_status, excluded from status coherence
+#     research: ""              # gd-spec (add-system) sets this to the explore research folder (e.g. researches/2026-06-21_crafting/) when the system was seeded from an internal-design-lens brief; a NON-id path pointer — non-semantic metadata, excluded from status/version coherence, dangling, unregistered-cross-doc, and id resolution
 #     implements: [PIL-1]
 #     depends_on: [SYS-stamina]
 #     source: systems/SYS-combat.md

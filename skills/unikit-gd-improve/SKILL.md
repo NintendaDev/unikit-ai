@@ -112,6 +112,17 @@ improve — recommend `/unikit-gd-detail <system>` (new system) or
 Read the target document and the neighbor context the change depends on (the
 Depends rows' headers and sections **D**/**F**, like `unikit-gd-detail` Phase 1).
 
+**Explore research (internal design lens).** If the change originated from an
+`unikit-gd-explore` brief, discover it **deterministically** (survives a `/clear`),
+the same lookup `unikit-gd-detail` uses: read the system's `GD-IDS` `research:`
+pointer (authoritative), falling back to the `researches/INDEX.md` entry whose
+`Target:` is this `SYS-<slug>`. Read that brief's **`## Improvement Plan`** block and
+pre-fill the change set from it — the ready-to-apply delta lines (`<Section>: <old> →
+<new>`), the **expected scale** (a prediction Phase 2 confirms, never blindly
+accepts), the touched GD-IDS facts, the rejected alternatives, and any
+`RF-<date>-n` it closes (cite it in the changelog essence, Phase 4). The user still
+approves every edit — the brief is a draft, not an approved change.
+
 ## Phase 2 — Classify the Scale (from the description)
 
 Infer the change scale from the user's description — the same classifier as CCGS
@@ -157,8 +168,9 @@ Improve does not change structure. Redirect and STOP:
 ```
 This is a structural change (new system / map composition / new master spec),
 which is outside /unikit-gd-improve. Use:
-- a new system or its placeholders → /unikit-gd-detail <system>
-- the system map or a new GAME.md  → /unikit-gd-spec
+- a brand-new system          → /unikit-gd-spec (add-system) → then /unikit-gd-detail
+- an existing system's placeholders → /unikit-gd-detail <system>
+- the system map or a new GAME.md    → /unikit-gd-spec
 ```
 
 **Escalation:** if a detail edit hits a pillar or loop constraint, the real change
@@ -267,5 +279,5 @@ No summary document, no report file.
 /unikit-gd-improve combat "small fix to the parry rule"     → Tweak: targeted edit
 /unikit-gd-improve SYS-combat "rework the status system"    → Rework: section-cycle old-vs-new
 /unikit-gd-improve GAME.md "sharpen pillar 2"               → GAME.md content edit
-/unikit-gd-improve "add a crafting system"                  → Structural: redirect to gd-detail/spec
+/unikit-gd-improve "add a crafting system"                  → Structural: redirect to gd-spec (add-system) → gd-detail
 ```
