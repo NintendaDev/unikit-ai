@@ -9,7 +9,9 @@ description: >-
   /unikit-gd-spec or /unikit-gd-detail. Use for things like "is there a market for X",
   "is this genre saturated", "break down the combat of Hades", "how could we improve our
   combat system", "research roguelike economies", "explore new mechanics", "ideas to
-  balance Y". Research only — to write a change into the GDD use /unikit-gd-improve; to
+  balance Y", "доработать баланс боя", "проработать новую механику". Research only —
+  it routes the result to the right owner skill but never writes the GDD itself; to
+  write a change into the GDD use /unikit-gd-improve; to
   invent a whole new game use /unikit-gd-brainstorm; for code/technical research use
   /unikit-explore.
 argument-hint: "init | <topic | game reference | URL | design or market question>"
@@ -86,6 +88,14 @@ Before responding — before any analysis — silently load (do not narrate):
    carries market intent** — the "Market lens — when it engages" section below
    classifies this. A design-only prompt does **not** load it; this keeps reference
    dissection lean.
+7. **`{{skills_dir}}/{{self_name}}/references/internal-design-lens.md`** — the
+   own-design research engine (the deep-read protocol, the domain→rules table, the
+   options form, the open-questions registry + closure pass, the two brief blocks,
+   and the research tags). Load it **only when the prompt carries internal-design
+   intent** — improving an existing system or working out a new mechanic for *this*
+   game — as the "Internal design lens — when it engages" section below classifies.
+   When the lens engages, also deep-read the target per that engine (GAME.md +
+   GD-INDEX + GD-IDS + the target `SYS-<slug>.md` A–K + the Depends-neighbours' D/F).
 
 **One-way boundary:** this skill never reads `.unikit/code/`, project source, or
 build artifacts. Web research **is allowed** here (market and reference scans —
@@ -185,6 +195,57 @@ Options:
 "Always run both lenses" is rejected — it breaks the conditional load. This
 tie-breaker is **skipped entirely** in subagent mode (next section).
 
+## Internal design lens — when it engages
+
+The third lens points **inward** — at *this* game's own design — rather than at a
+reference game (MDA dissection) or the market. It engages when the prompt asks to
+improve a system already in the GDD or to work out a new mechanic for the game. Like
+the market lens it is **inferred from the prompt, never a flag**. The engine — the
+deep-read protocol, the domain→rules table, the options form, the open-questions
+registry + closure pass, the two brief blocks — lives in
+`references/internal-design-lens.md`; this section is the **switch**.
+
+| Signal class | Triggers (examples) |
+|--------------|---------------------|
+| **Improve an existing system** | "improve our combat", "доработать баланс боя", "tune our economy design", "rethink the status system", "make X deeper" |
+| **New mechanic for this game** | "research a crafting mechanic for us", "проработать новую механику", "what new system could serve PIL-2", "explore a mechanic to add" |
+| **Close a design question** | "work through the open question on X", "resolve the trade-off in SYS-y" |
+
+The tell is the **possessive frame** — *our / this game / SYS-id / a pillar* — which
+separates this lens from dissecting someone else's game.
+
+**Decision rule:**
+
+- **Internal-design signals present and `GAME.md` exists** → internal lens **ON**:
+  load `internal-design-lens.md`, deep-read the target, run the lens flow.
+- **Combinable.** The lens runs **alongside** MDA dissection (dissect a reference to
+  inform *our* design) and the market lens (is the improvement worth it commercially)
+  — load whichever the prompt also triggers.
+- **No `GAME.md` yet** → this is **not** internal design but pre-spec research →
+  point at `/unikit-gd-brainstorm` (a whole new game) or `/unikit-gd-spec` (start the
+  master spec); do not load this engine.
+- **No internal signal** (a reference name / "break down X" / a market question with
+  no "our/this game" framing) → internal lens **OFF**.
+
+**Read-only — say it on entry.** When the lens engages, state once that this is
+research: *"I'll work this through and hand you a brief — I won't edit the GDD; the
+change goes through the routed skill."* Repeat the boundary at handoff.
+
+**3-way handoff routing (explore reads the target's state — the user does not pick).**
+Read the target's `doc_status` from `GD-IDS.yaml` / `GD-INDEX.md`, then recommend the
+**one** command that fits. Each route is a single recommended command; the routed
+skill carries its own next hop.
+
+| Target state (`doc_status`) | Recommended route |
+|-----------------------------|-------------------|
+| no doc / `not-started` | `/unikit-gd-spec` (add-system) — it offers the active seam onward to `/unikit-gd-detail` |
+| `skeleton` (placeholders) | `/unikit-gd-detail` (fill the placeholders) |
+| `detailed` / `reviewed` / `revised` | `/unikit-gd-improve` (record the delta) |
+
+The brief carries the block the route consumes (see "Saving Research Results" →
+mode-aware blocks). For several targets, hand off an **ordered list** of calls,
+dependency-sorted (`internal-design-lens.md` → "Multi-target order").
+
 ## Serving a brainstorm request (subagent mode)
 
 `unikit-gd-brainstorm` delegates market validation to this skill by spawning it as a
@@ -203,10 +264,12 @@ match, **load `references/delegation-contract.md`** — it fixes the brief's fie
 the machine fields, and the four-verdict gate the brief's `recommendation` feeds — then
 run **deterministically**:
 
-- **Bypass every interactive `AskUserQuestion`** — the lens tie-breaker above **and**
-  the save-offer under "Saving Research Results". A subagent is non-interactive; a
-  prompt would hang it. The market lens is already mandated by the commercial frame
-  in the prompt, so there is nothing left to disambiguate.
+- **Bypass every interactive `AskUserQuestion`** — the lens tie-breaker above, the
+  save-offer under "Saving Research Results", **and** the internal-design lens's
+  interactive questions (its domain-confirmation prompt and the whole open-questions
+  **closure pass**). A subagent is non-interactive; any prompt would hang it — and a
+  brainstorm delegation is always a market scan, never an internal-design read, so
+  there is nothing left to disambiguate.
 - **Run the market lens** and produce the **brainstorm-delegation brief**
   (`market-scan.md`): per concept `market_signal` + `validation_confidence` +
   evidence.
@@ -241,6 +304,8 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
    Updated: <YYYY-MM-DD HH:MM>
    Status: completed | in-progress | needs-follow-up
    Research: <folder-name>
+   Target: SYS-<slug>            # internal-design lens only — the system this research targets
+   Kind: feature | improvement   # internal-design lens only — feature = new mechanic, improvement = existing system
 
    ## Table of Contents
    ## Topic            — 1–2 sentences
@@ -252,7 +317,11 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
    ## References       — games, articles, URLs (note any web/Agent sources used)
    ```
 
-   The Table of Contents is **mandatory** and reflects the real sections.
+   The Table of Contents is **mandatory** and reflects the real sections. The
+   **`Target:` / `Kind:`** lines are written **only** by the internal design lens
+   (`internal-design-lens.md` → "Research tags") — they let `unikit-gd-detail` /
+   `unikit-gd-improve` discover this research deterministically after a `/clear`.
+   A reference-dissection or market research omits both.
 
 2. **`RESEARCH_BRIEF.md`** — a compact brief built **for `unikit-gd-spec` /
    `unikit-gd-detail` to consume** (the acceptance bar: it must be usable as their
@@ -270,12 +339,32 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
 
    Fill sections with `N/A` rather than inventing content the research did not cover.
 
+   **Internal design lens — append the mode-aware block.** When this research came
+   from the internal design lens, append to `RESEARCH_BRIEF.md` the **one** block that
+   matches the resolved handoff route (full field lists in `internal-design-lens.md`
+   → "Mode-aware brief"). The headings are **stable English anchors** so the routed
+   skill greps them deterministically:
+
+   - **`## Improvement Plan`** — when the route is `/unikit-gd-improve` (target is
+     `detailed` / `reviewed` / `revised`): Target, expected scale, ready-to-apply
+     delta lines, touched GD-IDS facts, rejected alternatives, the `RF-<date>-n` it
+     closes (if any), deferred open questions.
+   - **`## New Feature Plan`** — when the route is `/unikit-gd-spec` (add-system) →
+     `/unikit-gd-detail` (target has no doc / `not-started`): the map fields (slug,
+     Category, Tier, `implements: PIL-n`, `depends_on`) plus the A–K section seeds
+     `unikit-gd-detail` pre-fills its section-cycle from.
+
+   For several targets, append one block per target (dependency-sorted).
+
 **Next Steps routing** — turn insights into concrete follow-ups:
 
 | Insight | Follow-up |
 |---------|-----------|
 | A direction worth ideating | `/unikit-gd-brainstorm` |
 | Ready to formalize into the master spec / a system | `/unikit-gd-spec` / `/unikit-gd-detail` |
+| **Internal lens** — improve a `detailed`/`reviewed`/`revised` system | `/unikit-gd-improve` (consumes `## Improvement Plan`) |
+| **Internal lens** — a new mechanic (no doc / `not-started`) | `/unikit-gd-spec` (add-system) → `/unikit-gd-detail` (consumes `## New Feature Plan`) |
+| **Internal lens** — fill a `skeleton` system | `/unikit-gd-detail` |
 | A balance/economy/UX convention worth keeping | `/unikit-memory --module gamedesign` |
 | A consistency concern in the current design | `/unikit-gd-verify` |
 
@@ -291,6 +380,8 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
    - **Status**: completed | in-progress | needs-follow-up
    - **Summary**: <1–2 sentences from ## Topic>
    - **Path**: `<folder-name>/`
+   - **Target**: SYS-<slug>   (internal-design lens only — the fallback discovery key
+     for `unikit-gd-detail` / `unikit-gd-improve`; omit for reference/market research)
    ```
 
    On a new research `Updated` equals `Date`; on revision only `Updated` changes.
@@ -306,8 +397,10 @@ maintenance command, no exploration:
 3. **Keep** entries whose directory still exists (unchanged); **Remove** entries
    whose directory is gone; **Add** directories with no entry — read their
    `RESEARCH_RESULT.md` for title/status/topic (date from the `Date:` line or the
-   folder prefix; `Updated` falls back to `Date`). Skip and warn on a missing
-   `RESEARCH_RESULT.md`.
+   folder prefix; `Updated` falls back to `Date`), and **when the header carries a
+   `Target:` line, carry it into the entry's `**Target**` field** (internal-design
+   lens researches — see "Research tags"; omit the field when the header has none).
+   Skip and warn on a missing `RESEARCH_RESULT.md`.
 4. Rewrite the index (header + entries, newest-date first; same-date alphabetical).
 5. Report: `Kept N · Added N (names) · Removed N (names)`.
 
@@ -327,6 +420,11 @@ crystallize, you might summarize the findings — but the thinking is often the 
 - **Owns (spec):** `references/delegation-contract.md` — the brainstorm→explore
   contract. This skill is its provider; brainstorm reads it as the interface. Keep its
   canonical marker and brief field-list in sync with `references/market-scan.md`.
+- **Internal design lens (read-only).** The lens (`references/internal-design-lens.md`)
+  deep-reads `GAME.md` / `GD-INDEX.md` / `GD-IDS.yaml` / system docs and hands off a
+  brief — it **never** writes the GDD, and it **never** writes the `research:` pointer
+  into `GD-IDS.yaml`; that pointer is owned by `unikit-gd-spec` (add-system). Explore
+  only **tags** its own research (`Target:` / `Kind:`).
 - **Read-only:** `GAME.md`, `GD-INDEX.md`, `GD-IDS.yaml`, systems, concepts — route
   any design change to its owner skill, never edit them here.
 - **Not this skill:** generating new concepts → `unikit-gd-brainstorm`; authoring
@@ -341,6 +439,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
 /unikit-gd-explore break down the combat of Hades   → reference dissection (MDA backwards)
 /unikit-gd-explore roguelike meta-progression       → genre / mechanics scan
 /unikit-gd-explore is this roguelike niche saturated?  → market lens (viability / white-space)
+/unikit-gd-explore improve our combat balance        → internal design lens (read-only) → routes to improve / detail / spec
 /unikit-gd-explore https://…                         → dissect a linked design source
 /unikit-gd-explore init                              → rebuild researches/INDEX.md
 ```
