@@ -9,7 +9,7 @@ description: >-
   polish, or improve a feature plan from .unikit/code/plans/, even if they say
   "check the plan", "review the feature", "improve the roadmap",
   "what's wrong with the plan", or "update plan from research".
-argument-hint: "[--list] [@plan-folder] [feature-name or improvement prompt]"
+argument-hint: "[--list] [@plan-folder] [+check] [feature-name or improvement prompt]"
 allowed-tools:
   - Read
   - Write
@@ -96,10 +96,11 @@ Parse `$ARGUMENTS` for special tokens first:
 ```
 - --list    → list available plans only (read-only, then STOP)
 - @<path>   → explicit plan folder override (highest priority)
+- +check    → run the fresh-context findings validator (see Step 3.5); strip the token, remember check = true
 - remaining text → feature name or improvement prompt
 ```
 
-When both `--list` and `@<path>` are present, `--list` wins and no refinement is executed.
+When both `--list` and `@<path>` are present, `--list` wins and no refinement is executed. Strip `+check` from `$ARGUMENTS` before extracting the feature name / improvement prompt so it is never mistaken for prompt text; `+check` together with `--list` is silently ignored (no refinement to validate).
 
 #### Priority 1: `@<path>` — explicit path override
 
@@ -428,6 +429,16 @@ If Step 1.5 produced `research_improvements` (from updated or newly linked resea
 - Flag research open questions that the plan resolved without justification
 - Each finding goes into `research_improvements` list with source attribution (which research it came from)
 
+### Step 3.5: Validate Findings (`+check` only)
+
+Run this step **only** when `check = true` (the `+check` flag was parsed in Step 0) and Step 3 produced at least one finding in a validated group. Otherwise skip it entirely — no validator lines appear anywhere in the output and the Step 4 / Step 5.8 Summary keeps its default shape.
+
+Follow the full procedure in **`references/CHECK-MODE.md`**: it dispatches one fresh-context `Agent(subagent_type: Explore, model: sonnet)` validator over the four codebase-traceable groups (`missing`, `improvements`, `architectural`, `removals`), applies each `keep`/`modify`/`drop` verdict, recomputes the 🔄 Dependency Fixes group on the filtered list (phase b), and tracks the `hidden` / `adjusted` counters. The **Research-Based Findings** (`research_improvements`) and the 🔄 Dependency Fixes group are **not** validated.
+
+**Fallback (do NOT inline-analyze):** if the validator agent is unavailable/blocked or the dispatch fails, the procedure keeps **all** findings as-is and emits the single line `WARN [+check]: validator failed (<reason>), all items kept as-is` — it never re-does the validator's work with Glob/Grep/Read. This `+check` path is **exempt** from the `## Subagent Delegation — BLOCKING PRE-REQUISITE` rule: an unavailable validator is silently skipped, the user is never asked.
+
+The filtered findings (and recomputed dependencies) are what Step 4 renders.
+
 ### Step 4: Present Improvements
 
 Show the user what you found. When `research_improvements` is non-empty, the report has two sections: research-based findings first, then codebase analysis findings. When empty, only the standard section appears.
@@ -496,6 +507,8 @@ Source: [research folder name(s)]
 - Dependencies to fix: N
 - Architectural notes: N
 - Tasks to remove: N
+- Hidden by +check: N      (only when +check ran successfully — see Step 3.5)
+- Adjusted by +check: M    (only when +check ran successfully — see Step 3.5)
 
 Apply improvements?
 1. Yes, apply all
@@ -586,6 +599,10 @@ Research updates: (only if research_improvements was non-empty)
 - Researches re-synced: N (list names, updated Attached timestamps)
 - New researches attached: N (list names)
 - Constraints/interfaces updated from research: N
+
++check validation: (only when +check ran successfully — see Step 3.5)
+- Hidden by +check: N
+- Adjusted by +check: M
 
 💾 Changes applied to TASKS.md:
 - Tasks added: N (list brief names)

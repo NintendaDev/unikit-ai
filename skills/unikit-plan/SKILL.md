@@ -733,7 +733,7 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 5. **`## Checklist`** — phases with tasks. Every task MUST include description, `WHY:` line, `Files:` line.
    The WHY line answers: "what breaks or is missing if we skip this task?"
 
-6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks.
+6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks. For each `### Commit N: after tasks X-Y` heading, also emit a decorative `<!-- Commit checkpoint: tasks X-Y -->` HTML comment at the matching boundary inside the `## Checklist` (right after the last task of that range). The marker range mirrors the Commit Plan heading (single source of truth) and is **decorative only** — `/unikit-implement` does not parse it. See `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
 7. **`## Dependency Graph`** — phase dependencies in ASCII.
 

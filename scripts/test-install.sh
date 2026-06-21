@@ -117,6 +117,16 @@ assert_not_contains "$GD_PRINCIPLES_PATH" '\{\{engine_name\}\}' \
   "gd-principles.md has no engine vars (flat copy, unlike dev-principles.md)"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-gr: gate-result-contract.md installed as a system asset (flat copy, no vars)
+# Engine-agnostic, modeled on installCliContract. unikit-verify + unikit-review read it
+# on Bootstrap to emit/recompute the unikit-gate-result block. Must land in .unikit/system/.
+# ─────────────────────────────────────────────────────
+GATE_CONTRACT_PATH="$CLAUDE_DIR/.unikit/system/gate-result-contract.md"
+assert_exists "$GATE_CONTRACT_PATH" "gate-result-contract.md created in .unikit/system/"
+assert_contains "$GATE_CONTRACT_PATH" 'unikit-gate-result' \
+  "gate-result-contract.md carries the unikit-gate-result fence name"
+
+# ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path
 # Even when a subagent is explicitly listed in installedSubagents,
 # agents with supportsSubagents:false must not materialize the file on disk.

@@ -10,7 +10,7 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installDevPrinciples, installGdPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installGdPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -314,6 +314,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Update CLI contract
     await installCliContract(projectDir);
+
+    // Refresh machine-readable gate-result contract (read by verify + review)
+    await installGateResultContract(projectDir);
 
     // Update engine development principles (shared system file, plain rewrite)
     await installDevPrinciples(projectDir, engineId, config.engineMcpKey);

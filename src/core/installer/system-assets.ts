@@ -19,7 +19,7 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GAMEDESIGN_MODULE_ID, MODULES_YML_FILE, systemDir,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID, MODULES_YML_FILE, systemDir,
 } from '../constants.js';
 import { listModules } from '../modules.js';
 import { buildSubagentTemplateVars } from './shared.js';
@@ -79,6 +79,31 @@ export async function installCliContract(projectDir: string): Promise<void> {
 
   await writeTextFile(destPath, content);
   logInfo('installCliContract', 'installed .unikit/system/cli-contract.md');
+}
+
+// --- Gate-result contract installation ---
+
+/**
+ * Install the machine-readable quality-gate result contract into
+ * `.unikit/system/gate-result-contract.md`. Modeled on {@link installCliContract}:
+ * a flat copy from `data/gate-result-contract.md` with NO substitution
+ * (engine-agnostic). NOT hash-tracked — every init/update rewrites it;
+ * `unikit-verify` and `unikit-review` read it on Bootstrap to emit/recompute
+ * the `unikit-gate-result` fenced block.
+ */
+export async function installGateResultContract(projectDir: string): Promise<void> {
+  const srcPath = path.join(getDataDir(), GATE_RESULT_CONTRACT_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, GATE_RESULT_CONTRACT_FILE);
+
+  const content = await readTextFile(srcPath);
+  if (!content) {
+    logWarn('installGateResultContract', 'gate-result-contract.md not found in data/, skipping');
+    return;
+  }
+
+  await writeTextFile(destPath, content);
+  logInfo('installGateResultContract', 'installed .unikit/system/gate-result-contract.md');
 }
 
 // --- Dev Principles installation ---

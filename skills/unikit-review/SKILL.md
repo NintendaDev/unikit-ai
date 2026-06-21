@@ -1,7 +1,7 @@
 ---
 name: unikit-review
 description: Reviews {{engine_name}} {{engine_code_language}} code against project coding rules, design principles, and framework-specific conventions. Supports four modes — staged changes, PR, commit history, and individual files. Use when reviewing {{engine_name}} code, checking code quality, reviewing staged changes, PRs, commit ranges, or when the user asks to review scripts or check for coding violations. Also triggers on "review code", "check code", "code review", "review PR", "review staged", "review commits", or any review request for {{engine_name}} {{engine_code_language}} scripts.
-argument-hint: "[script.cs ... | @folder ... | PR number | branch/commit/tag | empty]"
+argument-hint: "[+check] [script.cs ... | @folder ... | PR number | branch/commit/tag | empty]"
 context: fork
 allowed-tools:
   - Read
@@ -11,6 +11,7 @@ allowed-tools:
   - Bash(wc *)
   - Bash(git *)
   - Bash(gh *)
+  - Agent
   - AskUserQuestion
 ---
 
@@ -26,11 +27,25 @@ If the file is missing or unreadable, fall back to English.
 Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
+<!-- unikit:agents codex -->
+## Subagent Delegation — BLOCKING PRE-REQUISITE
+
+When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
+subagent if agent execution is supported by the current environment and not prohibited by higher-priority
+instructions.
+
+Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
+alternative.
+<!-- unikit:end -->
+
+> **`+check` carve-out:** the optional `+check` findings validator (Step 4.5) is **exempt** from the rule above. If its validator agent is unavailable or blocked, render the review as drafted and emit a single `WARN [+check]` line — never ask the user. See `references/CHECK-MODE.md`.
+
 ## Step 1: Load rules
 
 Read (they always apply):
 - `.unikit/ARCHITECTURE.md` — module boundaries, dependency rules
 - `.unikit/ROADMAP.md` (if present) — milestone alignment
+- `.unikit/system/gate-result-contract.md` — schema for the machine-readable `unikit-gate-result` block emitted in Step 5. If missing or unreadable, do not block: the Step 5 gate-result section is self-sufficient on the schema and degrades gracefully (see there).
 
 Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
 - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
@@ -40,6 +55,8 @@ Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
 Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-level overrides that win over this SKILL.md when conflicting.
 
 ## Step 2: Route argument and get code
+
+**Parse `+check` first.** If `$ARGUMENTS` contains the `+check` token, strip it out (remember `check = true`) before running the routing chain below, so it is never mistaken for a file path or git ref. `+check` enables the fresh-context findings validator in Step 4.5; without it, that step is skipped entirely.
 
 ### Routing chain
 
@@ -134,6 +151,20 @@ Always run these checks in addition to project rules. If a finding from the chec
 - [ ] Edge cases tested
 - [ ] Mocking appropriateness
 
+## Step 4.5: Validate Findings (`+check` only)
+
+Run this step **only** when `check = true` (the `+check` flag was parsed in Step 2). Draft the full review internally first (all sections of Step 5, including the gate-result inputs), then — **before** rendering anything to the user — run the procedure in **`references/CHECK-MODE.md`**. It dispatches one fresh-context `Agent(subagent_type: Explore, model: sonnet)` validator over the **Findings table** rows (one item per row; "Questions", "Positive notes", and per-commit findings are excluded), applies each `keep`/`modify`/`drop` verdict and any severity move across the four levels (🔴 Critical / 🟡 Warning / 🟠 Medium / 🟢 Suggestion), tracks the `hidden` / `adjusted` / `reclassified` counters, and **recomputes** the `unikit-gate-result` block (Step 5 "Machine-readable gate result") from the post-filter table.
+
+When `+check` ran successfully, append one line after all review sections and before the `unikit-gate-result` fence:
+
+```
+Filtered: N hidden, M adjusted, K reclassified by +check
+```
+
+**Fallback (do NOT inline-analyze):** if the validator agent is unavailable/blocked or the dispatch fails, keep **all** findings as drafted, do NOT recompute the gate-result block (assemble it from the unfiltered table), and emit the single line `WARN [+check]: validator failed (<reason>), all items kept as-is` above the fence — never re-do the validator's work with Glob/Grep/Read. This `+check` path is exempt from the Subagent-Delegation prerequisite (see the carve-out note above) — an unavailable validator is silently skipped, the user is never asked.
+
+If `+check` is not set, skip this step entirely — no validator-related lines appear and the gate-result block is computed once from the full draft.
+
 ## Step 5: Output
 
 All modes use the same report structure. Mode-specific sections are marked below.
@@ -186,6 +217,47 @@ All modes use the same report structure. Mode-specific sections are marked below
 - **Top issues:** 3 most impactful to fix first
 - **Positive notes:** Good patterns observed
 ```
+
+### 5.1 Machine-Readable Gate Result
+
+> **Mirror of `unikit-verify` Step 4.4** (the canonical template). This section copies that one field-for-field — the only differences are `"gate": "review"` and the projection source (the Findings table below, instead of verify's task-audit + context gates). The graceful-degradation wording and the last-fence rule are kept textually identical to verify's so a single guard locks both; if verify's wording changes, this must change in lockstep.
+
+After the human-readable review above, append exactly one fenced `unikit-gate-result` JSON block. Use the schema loaded from `.unikit/system/gate-result-contract.md` in Step 1.
+
+**Last fence wins:** the `unikit-gate-result` block MUST be the LAST fenced block in this skill's output — orchestrators parse only the last one. Any earlier fence (the example below, quoted prior output) is illustrative and is not the gate result.
+
+**Projection (review):** derive the fields from the Findings table:
+
+- `"gate"`: always `"review"`.
+- `"status"`:
+  - `fail` — the table has at least one **blocking** finding (🔴 Critical or 🟡 Warning).
+  - `warn` — no blocking findings, but the table has 🟠 Medium / 🟢 Suggestion rows.
+  - `pass` — the table is empty (no findings).
+- `"blocking"`: `true` only when `status` is `fail`.
+- `"blockers"`: include **only** the 🔴 Critical and 🟡 Warning rows, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`review-finding-<row#>`). `severity` is `error` for these blocking rows (`warning` only when policy escalates). 🟠 Medium / 🟢 Suggestion rows stay in the human table, never in `blockers`.
+- `"affected_files"`: the files the review actually evaluated or cited (not unrelated repo files); empty array when none apply.
+- `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (code must change), `/unikit-rules` (a rules-gate finding needs a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
+
+When `+check` ran (Step 4.5), this projection runs over the **post-filter** table and `suggested_next.reason` notes the `+check` counters; on `+check` whole-dispatch failure the block is assembled from the unfiltered table and is **not** recomputed.
+
+```unikit-gate-result
+{
+  "schema_version": 1,
+  "gate": "review",
+  "status": "pass",
+  "blocking": false,
+  "blockers": [],
+  "affected_files": [],
+  "suggested_next": {
+    "command": "/unikit-commit",
+    "reason": "Review found no blocking issues."
+  }
+}
+```
+
+The fenced block contains JSON only — no comments, trailing commas, or prose inside it.
+
+**Graceful degradation:** if `.unikit/system/gate-result-contract.md` is missing or unreadable, do not hard-fail — emit the block from the inline schema in this section; if even that is not possible, skip the block and append the single line `WARN [gate-result]: contract asset unavailable`.
 
 ## Guidelines
 

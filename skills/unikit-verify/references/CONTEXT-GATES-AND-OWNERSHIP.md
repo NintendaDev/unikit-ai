@@ -19,7 +19,7 @@ Canonical contract for unikit workflow commands. This file defines:
 | `unikit-explore`     | `.unikit/code/researches/` only (`RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`)                                  | All context and codebase files for analysis                                                              | None                                                                                                                                                                      |
 | `unikit-commit`      | Git commit object/message only                                                               | Context artifacts are read-only gates                                                                    | No context artifact writes by default                                                                                                                                      |
 | `unikit-review`      | Review output/comments only                                                                  | Context artifacts are read-only gates                                                                    | No context artifact writes by default unless user explicitly asks                                                                                                          |
-| `unikit-verify`      | Verification report output                                                                   | Context artifacts are read-only gates                                                                    | May move to fix flow after user confirmation; no default context artifact writes. **Single sanctioned design write:** on all-AC-met for a cited GDD `SYS-id`@version, stamps `implemented_version` in `.unikit/gamedesign/GD-IDS.yaml` and `implemented` in that system's `GD-INDEX.md` Status cell — the lone code→design write (see `gd-principles` → One-Way Boundary)                                                                                           |
+| `unikit-verify`      | Verification report output + the machine-readable `unikit-gate-result` block (gate: `verify`) | Context artifacts are read-only gates                                                                    | May move to fix flow after user confirmation; no default context artifact writes. **Single sanctioned design write:** on all-AC-met for a cited GDD `SYS-id`@version, stamps `implemented_version` in `.unikit/gamedesign/GD-IDS.yaml` and `implemented` in that system's `GD-INDEX.md` Status cell — the lone code→design write (see `gd-principles` → One-Way Boundary)                                                                                           |
 
 ### Manually managed artifacts (owner: user)
 
@@ -49,6 +49,8 @@ These commands evaluate context consistency against:
 Gate outputs must use:
 - `WARN` for non-blocking mismatches or missing optional files
 - `ERROR` for blocking violations
+
+Additionally, `unikit-verify` and `unikit-review` each emit a machine-readable `unikit-gate-result` fenced JSON block as the **last** fence of their output (schema: `.unikit/system/gate-result-contract.md`). `unikit-verify` owns the `verify` gate (projecting its task-audit + context gates); `unikit-review` owns the `review` gate (projecting its Findings table). `unikit-commit` emits no gate-result block.
 
 ### Architecture Gate
 - **Pass:** Changes follow documented module/layer boundaries and asmdef dependency rules.

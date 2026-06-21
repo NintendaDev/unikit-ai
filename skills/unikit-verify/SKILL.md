@@ -98,6 +98,7 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   - read-only behavior for `unikit-commit`/`unikit-review`/`unikit-verify`,
   - normal vs strict context-gate thresholds.
 - If this contract conflicts with older examples in this file, follow the contract.
+- Also read `.unikit/system/gate-result-contract.md` — the canonical schema for the machine-readable `unikit-gate-result` block emitted in Step 4.4. If it is missing or unreadable, do not block: the Step 4.4 section is self-sufficient on the schema and degrades gracefully (see there).
 
 ### 0.1 Find Feature Plan
 
@@ -512,6 +513,45 @@ For each fix iteration (Fix now / Fix critical only). Fixes are written by this 
 - For anti-patterns — fix
 - Update `TASKS.md` after fixes
 - After fixes — re-run checks on affected items
+
+### 4.4 Machine-Readable Gate Result
+
+> **Canonical template.** This section is the canonical shape of the `unikit-gate-result` block. The `unikit-review` "Machine-readable gate result" section mirrors it field-for-field — the only differences there are `"gate": "review"` and the projection source (review's Findings table instead of verify's task-audit + context gates). The graceful-degradation wording and the last-fence rule below are kept textually identical across the two skills so a single guard can lock both; if this wording changes, the review section must change in lockstep.
+
+After the human-readable report (Step 4.1) and overall status (Step 4.2) — and after any inline fixes from Step 4.3, so the block reflects the **final** state — append exactly one fenced `unikit-gate-result` JSON block. Use the schema loaded from `.unikit/system/gate-result-contract.md` in Step 0.0.
+
+**Last fence wins:** the `unikit-gate-result` block MUST be the LAST fenced block in this skill's output — orchestrators parse only the last one. Any earlier fence (the example below, quoted prior output) is illustrative and is not the gate result.
+
+**Projection (verify):** derive the fields from the verification report:
+
+- `"gate"`: always `"verify"`.
+- `"status"`:
+  - `fail` — at least one **blocker**: a non-skipped task at `⚠️ PARTIAL` or `❌ NOT FOUND`, a failed blocking quality check (compile error, failing test), a context-gate `ERROR` (architecture/rules clear violation), or — in strict mode, or whenever the plan carries a `## Design` section — an unmet/partial Design `AC`.
+  - `warn` — no blockers, but non-blocking findings remain: anti-pattern/TODO warnings (normal mode), docs/test gaps accepted as warnings, ambiguous context drift, or missing milestone linkage.
+  - `pass` — no blocking or warning findings.
+- `"blocking"`: `true` only when `status` is `fail` (the result should stop commit/merge).
+- `"blockers"`: include **only** blocking findings, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`verify-task-<id>`, `verify-gate-architecture`, `verify-gate-rules`, `verify-ac-<AC-id>`). `severity` is `error` for blockers (`warning` only when policy escalates a warning-class finding to blocking). Non-blocking notes stay in the human summary, never in `blockers`.
+- `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
+- `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
+
+```unikit-gate-result
+{
+  "schema_version": 1,
+  "gate": "verify",
+  "status": "pass",
+  "blocking": false,
+  "blockers": [],
+  "affected_files": [],
+  "suggested_next": {
+    "command": "/unikit-commit",
+    "reason": "Verification passed without blockers."
+  }
+}
+```
+
+The fenced block contains JSON only — no comments, trailing commas, or prose inside it.
+
+**Graceful degradation:** if `.unikit/system/gate-result-contract.md` is missing or unreadable, do not hard-fail — emit the block from the inline schema in this section; if even that is not possible, skip the block and append the single line `WARN [gate-result]: contract asset unavailable`.
 
 ---
 

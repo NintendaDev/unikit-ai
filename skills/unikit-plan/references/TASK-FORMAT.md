@@ -27,6 +27,8 @@ Rationale: [1 short sentence]
 
 Tasks are ordered by dependencies. Each phase includes effort estimate and dependency list.
 
+> **Commit-checkpoint markers (decorative).** For plans with a `## Commit Plan` (5+ tasks), insert one `<!-- Commit checkpoint: tasks X-Y -->` HTML comment at each commit boundary — right after the last task of that commit's range. The `X-Y` range MUST mirror the matching `### Commit N: after tasks X-Y` heading in the `## Commit Plan` below (single source of truth — derive the marker from the Commit Plan, never the other way round). These markers are **decorative only**: they document where a commit naturally falls. `/unikit-implement` does **not** parse them and they never alter its behavior.
+
 ### Phase 1: {Phase Name}
 **Effort:** S / M / L / XL (S = hours, M = 1-2 days, L = 3-5 days, XL = 1+ week)
 **Dependencies:** None (first phase) | Phase N, Phase M
@@ -38,6 +40,7 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 - [ ] Task 1.2 — brief description
   WHY: reason
   Files: `path/to/file1.cs`, `path/to/file2.cs`
+<!-- Commit checkpoint: tasks 1.1-1.6 -->
 
 ### Phase 2: {Phase Name}
 **Effort:** M
@@ -47,6 +50,7 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 - [ ] Task 2.1 — brief description
   WHY: reason
   Files: `path/to/file.cs`
+<!-- Commit checkpoint: tasks 2.1-2.4 -->
 
 ...
 
@@ -61,6 +65,8 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 ## Commit Plan
 
 (Only for plans with 5+ tasks total)
+
+Each `### Commit N: after tasks X-Y` heading is the single source of truth for the decorative `<!-- Commit checkpoint: tasks X-Y -->` markers placed in the `## Checklist` above — keep the ranges in sync (Checklist marker derives from the heading here).
 
 ### Commit 1: after tasks 1.1-1.6
 feat(<module>): <description>

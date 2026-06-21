@@ -1327,6 +1327,28 @@ fi
 echo "  ✓ gd-principles.md: update refreshes from data/ (tamper marker removed)"
 
 # ─────────────────────────────────────────────
+# Test 30b: gate-result-contract.md is delivered on update — the ONLY mechanical guard
+# for the update.ts wiring of installGateResultContract (Task 1.2). DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer
+# (knip/lint can't catch a missing update.ts call — the function stays called from init.ts;
+# test-install.sh exercises only init). Tamper-refresh confirms it is flat-rewritten too.
+# ─────────────────────────────────────────────
+GATE_CONTRACT="$DEVPRIN_DIR/.unikit/system/gate-result-contract.md"
+assert_exists "$GATE_CONTRACT" "gate-result-contract.md must be installed on update (system asset, update.ts wiring)"
+
+echo "GR_TAMPERED_BY_TEST" >> "$GATE_CONTRACT"
+
+DEVPRIN_OUT4="$TMPDIR/update-gate-result-4.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT4" 2>&1)
+
+if grep -q "GR_TAMPERED_BY_TEST" "$GATE_CONTRACT"; then
+    echo "Assertion failed: update did NOT refresh gate-result-contract.md from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ gate-result-contract.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).

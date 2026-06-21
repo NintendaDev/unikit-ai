@@ -91,6 +91,15 @@ export const DEV_PRINCIPLES_FILE = 'dev-principles.md';
  * `gamedesign/core/`.
  */
 export const GD_PRINCIPLES_FILE = 'gd-principles.md';
+/**
+ * Machine-readable quality-gate result contract system-asset basename.
+ * Installed flat into `.unikit/system/gate-result-contract.md` from
+ * `data/gate-result-contract.md`. Engine-agnostic (no `{{engine_*}}`
+ * substitution) and NOT hash-tracked — rewritten on every init/update.
+ * `unikit-verify` and `unikit-review` read it on Bootstrap to emit/recompute
+ * the `unikit-gate-result` fenced block.
+ */
+export const GATE_RESULT_CONTRACT_FILE = 'gate-result-contract.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

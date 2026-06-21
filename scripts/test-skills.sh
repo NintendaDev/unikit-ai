@@ -1413,6 +1413,101 @@ else
     fail "book-format static guards — missing:$UM_T10_WHY"
 fi
 
+# +check / gate-result / decorative-checkpoint content guards (PLAN.md: gate-result system
+# asset + +check validator on improve/review + unikit-gate-result on verify/review +
+# decorative checkpoint markers in unikit-plan). bash cannot run an LLM skill, so these are
+# grep invariants on the skill/reference contract text. Reuse UNIKIT_VERIFY_SKILL /
+# UNIKIT_PLAN_SKILL defined in the T7/T8 block above. Case-sensitive -qF/-qE (MSYS grep
+# caveat: -iF crashes).
+UNIKIT_IMPROVE_SKILL="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+UNIKIT_REVIEW_SKILL="$ROOT_DIR/skills/unikit-review/SKILL.md"
+
+# (CK-1) +check in BOTH improve + review argument-hints. Anchor on `\+check` (precedent:
+#        the `optimise` hint grep UM-2) so a regression to a bare `check` fails.
+CK_HINT_WHY=""
+grep -qE '^argument-hint:.*\+check' "$UNIKIT_IMPROVE_SKILL" || CK_HINT_WHY+=" improve"
+grep -qE '^argument-hint:.*\+check' "$UNIKIT_REVIEW_SKILL"  || CK_HINT_WHY+=" review"
+if [[ -z "$CK_HINT_WHY" ]]; then
+    pass "unikit-improve + unikit-review — +check in argument-hint"
+else
+    fail "+check missing from argument-hint:$CK_HINT_WHY"
+fi
+
+# (CK-2) the NEW references/{CHECK-MODE,VALIDATOR}.md exist (non-empty) for both skills.
+CK_REF_WHY=""
+for f in \
+  "skills/unikit-improve/references/CHECK-MODE.md" \
+  "skills/unikit-improve/references/VALIDATOR.md" \
+  "skills/unikit-review/references/CHECK-MODE.md" \
+  "skills/unikit-review/references/VALIDATOR.md"; do
+    [[ -s "$ROOT_DIR/$f" ]] || CK_REF_WHY+=" $f"
+done
+if [[ -z "$CK_REF_WHY" ]]; then
+    pass "unikit-improve + unikit-review — references/{CHECK-MODE,VALIDATOR}.md present"
+else
+    fail "+check reference files missing:$CK_REF_WHY"
+fi
+
+# (CK-3) the whole-dispatch skip-fallback WARN wording is pinned in BOTH CHECK-MODE.md
+#        files (locked decision: skip, never inline-analyze).
+CK_IMPROVE_CM="$ROOT_DIR/skills/unikit-improve/references/CHECK-MODE.md"
+CK_REVIEW_CM="$ROOT_DIR/skills/unikit-review/references/CHECK-MODE.md"
+CK_FB_WHY=""
+grep -qF 'WARN [+check]: validator failed' "$CK_IMPROVE_CM" || CK_FB_WHY+=" improve"
+grep -qF 'WARN [+check]: validator failed' "$CK_REVIEW_CM"  || CK_FB_WHY+=" review"
+if [[ -z "$CK_FB_WHY" ]]; then
+    pass "CHECK-MODE.md (improve+review) — skip-fallback WARN wording pinned"
+else
+    fail "WARN [+check]: validator failed wording missing:$CK_FB_WHY"
+fi
+
+# (CK-4) the unikit-gate-result fence + the gate-result-contract.md Bootstrap read present
+#        in BOTH unikit-verify + unikit-review.
+CK_GATE_WHY=""
+grep -qF '```unikit-gate-result'   "$UNIKIT_VERIFY_SKILL" || CK_GATE_WHY+=" verify:fence"
+grep -qF '```unikit-gate-result'   "$UNIKIT_REVIEW_SKILL" || CK_GATE_WHY+=" review:fence"
+grep -qF 'gate-result-contract.md' "$UNIKIT_VERIFY_SKILL" || CK_GATE_WHY+=" verify:contract-read"
+grep -qF 'gate-result-contract.md' "$UNIKIT_REVIEW_SKILL" || CK_GATE_WHY+=" review:contract-read"
+if [[ -z "$CK_GATE_WHY" ]]; then
+    pass "unikit-verify + unikit-review — unikit-gate-result fence + contract Bootstrap read"
+else
+    fail "gate-result fence/contract-read missing:$CK_GATE_WHY"
+fi
+
+# (CK-5) SHARED graceful-degradation wording — ONE -qF string applied to BOTH verify +
+#        review. Locks the Task 3.1 canonical-template <-> Task 2.4(b) mirror contract:
+#        drift in either file's degradation wording fails this guard. ASCII-only substring
+#        (avoids the em-dash in the full sentence) so MSYS grep matches reliably.
+CK_SHARED='emit the block from the inline schema in this section'
+CK_DEGRADE_WHY=""
+grep -qF "$CK_SHARED" "$UNIKIT_VERIFY_SKILL" || CK_DEGRADE_WHY+=" verify"
+grep -qF "$CK_SHARED" "$UNIKIT_REVIEW_SKILL" || CK_DEGRADE_WHY+=" review"
+if [[ -z "$CK_DEGRADE_WHY" ]]; then
+    pass "unikit-verify + unikit-review — shared gate-result graceful-degradation wording identical"
+else
+    fail "shared gate-result degradation wording missing/drifted:$CK_DEGRADE_WHY"
+fi
+
+# (CK-6) unikit-review +check-enabling frontmatter intact — TWO asserts. Without either,
+#        review's +check validator is DEAD ON ARRIVAL, and the suite has no other
+#        allowed-tools CONTENT guard (Part 7b checks list FORMAT only, not tool names).
+CK_RV_FM_WHY=""
+grep -qE '^  - Agent$' "$UNIKIT_REVIEW_SKILL"                  || CK_RV_FM_WHY+=" allowed-tools:Agent"
+grep -qF '<!-- unikit:agents codex -->' "$UNIKIT_REVIEW_SKILL" || CK_RV_FM_WHY+=" subagent-delegation-marker"
+if [[ -z "$CK_RV_FM_WHY" ]]; then
+    pass "unikit-review — Agent in allowed-tools + Subagent Delegation marker (Task 2.4d)"
+else
+    fail "unikit-review +check frontmatter DEAD ON ARRIVAL — missing:$CK_RV_FM_WHY"
+fi
+
+# (CK-7) decorative commit-checkpoint marker in the unikit-plan TASK-FORMAT.md Checklist.
+CK_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+if grep -qF '<!-- Commit checkpoint' "$CK_TASKFMT"; then
+    pass "unikit-plan TASK-FORMAT.md — decorative <!-- Commit checkpoint marker present (Task 4.1)"
+else
+    fail "unikit-plan TASK-FORMAT.md — missing decorative <!-- Commit checkpoint marker (Task 4.1)"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installDevPrinciples, installGdPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installGdPrinciples, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
@@ -160,6 +160,9 @@ export async function initCommand(): Promise<void> {
 
     // Install CLI contract for skill consumption
     await installCliContract(projectDir);
+
+    // Install machine-readable gate-result contract (read by verify + review)
+    await installGateResultContract(projectDir);
 
     // Install engine development principles (shared system file)
     await installDevPrinciples(projectDir, engineId, answers.engineMcpKey);
