@@ -1,14 +1,13 @@
 ---
 name: unikit-architecture
 description: >-
-  Generate architecture guidelines for a game project. Scans project structure to discover
-  the real tech stack using engine-specific rules from references/ENGINE_RULES.md, then
-  generates .unikit/ARCHITECTURE.md with folder structure, dependency rules, and communication
-  patterns. Use when setting up project architecture, asking "which architecture", "describe
-  architecture", "generate architecture doc", or after initial project setup. Also use when
-  the user mentions project architecture, module structure, module boundaries, project
-  organization, dependency rules, or engine-specific modularity concepts (assembly definitions,
-  native modules, build scripts, plugin systems, etc.).
+  Generate the architecture guidelines for a game project. Scans the project structure
+  and tech stack, then produces .unikit/ARCHITECTURE.md describing the folder layout,
+  dependency rules, and how modules communicate. Name a specific pattern or let it
+  auto-detect. Use when the user wants to define or document the project architecture,
+  e.g. "generate architecture", "describe the architecture", "which architecture should
+  I use", "set up project architecture", or mentions module structure, module boundaries,
+  project organization, or dependency rules.
 argument-hint: "[architecture pattern name or empty for auto-detect]"
 allowed-tools:
   - Read

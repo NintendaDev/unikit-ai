@@ -1,17 +1,17 @@
 ---
 name: unikit-gd-verify
 description: >-
-  Mechanical consistency check for game design — "is the design consistent with
-  itself?" — plus changed-scope impact analysis. Offline, deterministic, and
-  binary: greps the facts registry against the documents (numbers, terms, IDs,
-  duplicate IDs, dangling references, unregistered cross-doc facts, index↔disk,
-  Depends 3-way, status/version coherence, AC presence, placeholder leaks) and,
-  from a git diff,
-  computes which dependent systems a change affects. Scope is inferred — no flags:
-  a named system checks that system; an unverified diff triggers a changed-scope
-  pass; otherwise it checks everything. Writes a report only on conflicts or a
-  changed scope. Use when the user says "verify the design", "is this consistent",
-  "what did this change affect", or "check the GDDs against the registry".
+  Mechanical consistency check for game design — answers "is the design consistent with
+  itself?" — plus changed-scope impact analysis. Offline, deterministic, and binary: greps
+  the facts registry against the documents (numbers, terms, IDs, duplicate IDs, dangling
+  references, unregistered cross-doc facts, index↔disk, Depends 3-way, status/version
+  coherence, AC presence, placeholder leaks), and from a git diff computes which dependent
+  systems a change affects. Scope is inferred: a named system checks that system; an
+  unverified diff triggers a changed-scope pass; otherwise it checks everything. Use when
+  the user wants a consistency or impact check, e.g. "verify the design", "is the design
+  consistent", "check the GDDs against the registry", "what did this change affect", "find
+  broken references in the design". This is the mechanical pass — for a subjective "is this
+  design good" quality critique use /unikit-gd-review.
 argument-hint: "[system name | SYS-slug | question]  (scope inferred; no flags)"
 allowed-tools:
   - Read

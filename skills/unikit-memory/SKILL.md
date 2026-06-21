@@ -1,18 +1,18 @@
 ---
 name: unikit-memory
 description: >-
-  Curate the project's knowledge base in .unikit/memory/ — the reference library of
-  coding standards (code style, design, testing, performance) and framework usage
-  patterns (Zenject, DOTween, R3, UniTask, Addressables, Odin, etc.), researched and indexed.
-  This is the knowledge base, distinct from project rules in .unikit/RULES.md. Use when the user
-  wants to document or research how the project uses a framework ("document how we use
-  Addressables", "best practices for R3"), add a core or stack entry
-  to the knowledge base, or pastes framework docs URLs, files, folders, or PDFs to turn into vetted
-  entries. Also: "migrate-rules" (or passing RULES.md) promotes mature project rules into the
-  knowledge base; "validate" re-syncs RULES_INDEX.md; "optimise" extracts large/optional
-  rule sections into references; "--module <id>" targets a module. For a quick project rule,
-  override, or "remember this / always-never X" correction use /unikit-rules (RULES.md); for
-  architecture decisions use ARCHITECTURE.md.
+  Curate the project's knowledge base and memory in .unikit/memory/ — the indexed
+  reference library of coding standards and framework usage patterns. ALWAYS use this
+  skill whenever the user adds knowledge from a source: a URL, a file, a folder path, a
+  PDF, an article, or a book — any path/link/document is a strong signal for the knowledge
+  base, not a quick rule. Also use it to research or document how the project uses a
+  framework, or to add a researched core/stack knowledge entry. Sub-commands by phrasing:
+  "migrate the rules" or "promote rules" runs migrate-rules; "optimize the knowledge base"
+  or "optimize the rules" runs optimise (extract large sections into references);
+  "validate" re-syncs RULES_INDEX.md; "--module <id>" targets a module. For a quick
+  one-line convention or correction typed as a prompt ("always do X", "never use Y",
+  "remember this") with no source, use /unikit-rules; for architecture decisions use
+  ARCHITECTURE.md.
 argument-hint: "[description | URL(s) | file/folder | PDF/Fb2/Epub paths | migrate-rules | optimise | validate | --module <id> | --skip-registry ]"
 allowed-tools:
   - Read

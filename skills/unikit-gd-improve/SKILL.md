@@ -1,15 +1,15 @@
 ---
 name: unikit-gd-improve
 description: >-
-  Revise an existing, approved game design document — a per-system GDD or GAME.md
-  content — after it was written. Classifies the change scale from your
-  description; no flags: a number change is Tuning, a small rule is a Tweak,
-  restructuring a system is a Rework (section-cycle, old-vs-new per section), and
-  a new system or map change is Structural (redirects to /unikit-gd-detail or
-  /unikit-gd-spec). Every edit bumps the version, appends a changelog entry, and
-  re-checks the facts registry — the one sanctioned way to record a design delta.
-  Use when the user says "raise the damage by 10%", "rework the status system",
-  "change this rule", "tune the economy", or "update the combat GDD".
+  Revise an already-approved game design document — a per-system GDD or GAME.md — after it
+  was written. This is the one sanctioned way to record a design change: every edit
+  classifies the change scale (a number change is Tuning, a small rule is a Tweak,
+  restructuring a system is a Rework), bumps the version, appends a changelog entry, and
+  re-checks the facts registry. Use when the user wants to actually change something in the
+  design, e.g. "raise the damage by 10%", "tune the economy", "rework the status system",
+  "change this rule", "update the combat GDD", "nerf X", "rebalance Y". A new system or map
+  change is Structural and redirects to /unikit-gd-detail or /unikit-gd-spec. To explore
+  options without committing a change use /unikit-gd-explore.
 argument-hint: "<system name | SYS-slug | GAME.md> \"<what to change>\"  (scale inferred; no flags)"
 allowed-tools:
   - Read

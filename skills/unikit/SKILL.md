@@ -1,12 +1,15 @@
 ---
 name: unikit
 description: >-
-  Set up AI agent context for a game engine project.
-  Scans engine-specific package manifests, plugins, modules, and project settings
-  to discover the real tech stack. Bootstraps the resolved description and
-  architecture artifacts and AGENTS.md, plus the user-editable .unikit/config.yaml.
-  Use when starting a new game project, setting up AI context, initializing unikit,
-  or asking "set up project", "configure AI context", "initialize unikit", "scan my project".
+  Initialize the UniKit framework in a project. Scans the current project to detect
+  the engine and real tech stack, then generates the base framework documents that
+  give AI agents context about the project — the resolved project description, the
+  architecture doc, AGENTS.md, and the user-editable .unikit/config.yaml. This is the one-time, whole-project setup
+  run before any other unikit skill. Use whenever the user wants to initialize, set up,
+  or onboard the framework, e.g. "initialize unikit", "init the framework", "set up
+  unikit", "set up the project", "configure AI context", "scan my project and set it
+  up", "bootstrap the project". This handles the initial full bootstrap — to edit one
+  document later, use that document's dedicated skill.
 argument-hint: "[project description] (optional)"
 allowed-tools:
   - Read

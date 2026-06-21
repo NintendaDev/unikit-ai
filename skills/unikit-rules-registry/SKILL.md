@@ -1,15 +1,16 @@
 ---
 name: unikit-rules-registry
 description: >-
-  Orchestrate the external rules registry (create / update / sync), module-aware over the
-  modular knowledge base. Scaffold a new local registry, promote mature rules from .unikit/memory/
-  into the registry with automatic semver bumps, or pull registry updates back into memory.
-  Use when user says "create rules registry", "init rules registry",
-  "promote rule to registry", "push memory to registry", "update rules registry", "sync rules registry",
-  "publish local rules", "создать реестр правил", "обновить реестр правил", "синхронизировать правила".
-  Pass "--module <id>" to scope the operation to one knowledge-base module (default: all registered modules).
-  This skill ONLY orchestrates CLI — it NEVER edits .unikit.json or .unikit/memory/ sources.
-  All state mutations go through `unikit-ai rules *`.
+  Orchestrate the remote rules registry — the shared registry (often connected as a local
+  folder or git repo) that the project's rules are published to and pulled from. Three modes,
+  picked from the user's wording: create scaffolds a new local rules registry ("create a local
+  rules registry", "init a rules registry"); update migrates/promotes local knowledge-base
+  rules from .unikit/memory/ into the remote registry with automatic semver bumps ("migrate
+  local rules to the remote registry", "promote my rules to the registry", "push local rules",
+  "publish local rules", "update the rules registry"); sync pulls registry updates back into
+  memory ("sync the rules registry", "pull registry updates"). Pass "--module <id>" to scope
+  to one knowledge-base module. This skill ONLY orchestrates the CLI (`unikit-ai rules *`) —
+  it never edits .unikit.json or .unikit/memory/ sources directly.
 argument-hint: "[create | update | sync] [--module <id>]"
 allowed-tools:
   - Read

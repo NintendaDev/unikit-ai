@@ -1,6 +1,17 @@
 ---
 name: unikit-rules
-description: Add a short project-specific rule, convention, or override to .unikit/RULES.md — the quick-capture inbox for this project's rules (later promotable into the knowledge base via /unikit-memory migrate-rules). Cross-checks new rules against the knowledge base (RULES_INDEX.md) to avoid duplicating existing core/stack entries. Use for fast, one-line conventions and corrections: "add rule", "remember this convention", "always do X in code", "never use Y", "from now on do Z", or when the user corrects agent behavior and wants it remembered as a project rule. For researching or documenting how the project uses a framework, or building the curated knowledge base, use /unikit-memory instead; for architecture decisions use ARCHITECTURE.md.
+description: >-
+  Add a short, project-specific rule, convention, or override to .unikit/RULES.md — the
+  quick-capture inbox for this project's rules; each invocation appends a rule,
+  automatically loaded by /unikit-implement before execution (later promotable into the
+  knowledge base via /unikit-memory migrate-rules). Works only with a rule typed as a
+  prompt — it does NOT read files, folders, URLs, or PDFs. Cross-checks against the
+  knowledge base (RULES_INDEX.md) to avoid duplicating core/stack entries. Use for fast,
+  one-line conventions and corrections: "add a rule", "remember this", "convention",
+  "always do X", "never use Y", "from now on do Z", or when the user corrects agent
+  behavior and wants it remembered. If the user points to a source (file, folder, URL,
+  PDF, article, book) or wants to research/document framework usage, use /unikit-memory;
+  for architecture decisions use ARCHITECTURE.md.
 argument-hint: "[rule text or topic]"
 allowed-tools:
   - Read

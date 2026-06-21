@@ -4,6 +4,7 @@ description: >-
   Fix a specific bug or problem in a {{engine_name}} project. Supports two modes — immediate fix
   or plan-first. Without arguments executes existing .unikit/code/FIX_PLAN.md. Checks {{engine_name}}
   compilation, suggests test coverage, and creates self-improvement patches. Use when user says "fix bug", "debug this", "something is broken",
+  "fix the tests", "fix the errors in the tests", "read the errors in the {{engine_name}} console logs and fix the problems",
   or pastes an error message or {{engine_name}} console log.
   Also trigger when user shares a NullReferenceException, MissingReferenceException,
   compilation error, or any {{engine_name}}-specific error.

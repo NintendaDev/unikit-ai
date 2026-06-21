@@ -1,16 +1,17 @@
 ---
 name: unikit-gd-brainstorm
 description: >-
-  Ideate a new game concept with the user — from a blank page or a one-line hint
-  to a finished CONCEPT card. A structured divergence/convergence dialogue:
-  creative discovery, How-Might-We framing, five concepts by five methods,
-  platform-aware market validation across Steam / mobile / web (a delegated scan via
-  /unikit-gd-explore, with cross-market clone-checking), two-pass evidence-based Pugh
-  scoring (hook, scope, content-velocity), loop stack, pillars, player + buyer
-  motivation, and a pre-mortem with a find-the-fun test. Auto-resumes an in-progress concept from the index — no
-  flags; writes incrementally so an interrupted session is never lost. Use when
-  the user says "brainstorm a game", "I have no idea yet", "help me come up with a
-  concept", "explore game ideas", or gives a rough hint to develop into a concept.
+  Ideate a brand-new game concept with the user, from a blank page or a one-line hint to
+  a finished CONCEPT card. Use it whenever the user wants to come up with a new game —
+  whether the project has no design document yet, or already has one and they're exploring
+  a fresh idea. Through a structured divergence/convergence dialogue it explores ideas,
+  frames the hook, generates and scores concepts (market validation delegated to
+  /unikit-gd-explore), and settles pillars, loops, motivation, and a pre-mortem. Trigger
+  whenever the user wants to make or invent a game, doesn't know where to start, or gives
+  a genre/theme hint, e.g. "let's come up with a game", "I don't know what game to make",
+  "I want to make a roguelike", "a game about zombies", "a farming game", "help me come up
+  with a concept". For researching or dissecting existing games use /unikit-gd-explore; to
+  write an already-chosen concept as the master GDD use /unikit-gd-spec.
 argument-hint: "[hint or theme]  (auto-resumes an in-progress concept; no flags)"
 allowed-tools:
   - Read

@@ -1,13 +1,15 @@
 ---
 name: unikit-evolve
 description: >-
-  Discover rules from accumulated patches and add them to project rules or skill-context.
-  Analyzes past mistakes, extracts prevention points, classifies them as coding rules (→ RULES.md)
-  or workflow rules (→ skill-context), and proposes them to the user.
-  Use when user says "evolve", "evolve rules", "learn from mistakes", "update rules",
-  "analyze patches", or wants to feed accumulated patch experience into coding rules.
-  Also trigger after a series of /unikit-fix runs when patches have accumulated in .unikit/code/patches/.
-  To migrate mature RULES.md entries to core/stack rule files, use `/unikit-memory migrate-rules` instead.
+  Learn project rules from accumulated fix patches in .unikit/code/patches/. Analyzes past
+  mistakes, extracts prevention points, classifies each as a coding rule (→ RULES.md) or a
+  per-skill workflow rule (→ skill-context), and proposes them for approval. Use when the
+  user wants to turn past fixes into rules — "evolve", "evolve the rules", "learn from past
+  mistakes", "learn from the fixes", "analyze the patches", "what rules should we add from
+  recent fixes". Best run after several /unikit-fix sessions have left patches behind. This
+  derives rules from accumulated patch history — to add a single rule by hand use
+  /unikit-rules, and to promote mature RULES.md entries into the knowledge base use
+  /unikit-memory migrate-rules.
 allowed-tools:
   - Read
   - Write

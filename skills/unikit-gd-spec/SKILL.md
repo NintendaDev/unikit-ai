@@ -1,15 +1,15 @@
 ---
 name: unikit-gd-spec
 description: >-
-  Create the master game design document (GAME.md) and the system map
-  (GD-INDEX.md + GD-IDS.yaml) for a game, or import an existing GDD into the
-  workspace. The one skill that owns GAME.md structure and the system
-  decomposition. Mode is inferred from the argument and prompt — no flags:
-  a file path or URL imports an existing GDD; "pitch" produces PITCH.md;
-  "remap"/"rebuild the map" re-decomposes systems on an existing GAME.md;
-  otherwise it creates the master spec from a concept or dialogue. Use when the
-  user says "create the GDD", "master design doc", "map the systems", "import
-  this design document", or "pitch this game".
+  Create and own the master game design document (GAME.md) and the system map
+  (GD-INDEX.md + GD-IDS.yaml) — the top-level, big-picture layer of the GDD. Use it to
+  write the master spec from a concept or dialogue, import an existing GDD (a file path or
+  URL), pitch the game ("pitch" → PITCH.md), re-decompose the systems ("remap"), and —
+  importantly — to add a new system to the design map ("let's add a new system", "add a
+  crafting system to the game design", "add this to the GDD"). This is the structural,
+  map-level layer: adding or restructuring whole systems. To write or fill in the detailed
+  parameters of one existing system, use /unikit-gd-detail; to invent a brand-new game
+  concept use /unikit-gd-brainstorm.
 argument-hint: "[path-to-existing-GDD | URL | free-form description]  (mode inferred; no flags)"
 allowed-tools:
   - Read

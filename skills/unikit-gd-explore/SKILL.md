@@ -1,18 +1,17 @@
 ---
 name: unikit-gd-explore
 description: >-
-  A research partner for game design — dissect a reference game, scan a genre or
-  market for viability, or compare mechanics before committing to a design.
-  Mirrors /unikit-explore in the design domain: a thinking partner that reads the
-  existing design (GAME.md, the system map), researches the web, and dissects
-  references mechanics → dynamics → aesthetics (MDA backwards), producing
-  trade-off tables and a brief usable by /unikit-gd-spec or /unikit-gd-detail. A
-  market lens engages on commercial intent (inferred from the prompt, no flag).
-  Use when the user says "research roguelike economies", "break down the combat of
-  Hades", "compare progression systems", "explore this genre", "is there a market
-  for X", "who would buy this", "is this genre saturated", or wants to study
-  existing designs before creating new ones. Use "init" to rebuild the researches
-  index.
+  A research and ideation partner for game design — study and think through design before
+  committing it to a document. Four jobs: assess a genre or market for viability, dissect
+  a reference game (mechanics → dynamics → aesthetics), explore options to improve or
+  extend mechanics already in the project's GDD, and research new mechanics or balance the
+  current design doesn't have yet. Produces trade-off tables and a brief for
+  /unikit-gd-spec or /unikit-gd-detail. Use for things like "is there a market for X",
+  "is this genre saturated", "break down the combat of Hades", "how could we improve our
+  combat system", "research roguelike economies", "explore new mechanics", "ideas to
+  balance Y". Research only — to write a change into the GDD use /unikit-gd-improve; to
+  invent a whole new game use /unikit-gd-brainstorm; for code/technical research use
+  /unikit-explore.
 argument-hint: "init | <topic | game reference | URL | design or market question>"
 allowed-tools:
   - Read

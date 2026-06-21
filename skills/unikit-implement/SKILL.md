@@ -1,13 +1,15 @@
 ---
 name: unikit-implement
 description: >-
-  Execute implementation tasks from a feature plan in .unikit/code/plans/.
-  Reads TASKS.md and PLAN-BRIEF.md, then implements uncompleted tasks sequentially
-  executing tasks inline (Read/Edit/Write/Bash) with rules loaded once at start. Supports selective execution by phase
-  or task numbers. Use when the user says "implement", "start coding", "execute plan",
-  "continue implementation", "do the next task", "implement phase 3", or wants to work
-  through a planned feature. Also use when the user references tasks from .unikit/code/plans/
-  or asks to "continue where we left off".
+  Execute the tasks from an already-created feature plan in .unikit/code/plans/ — read
+  the plan (TASKS.md + PLAN-BRIEF.md), work through the uncompleted tasks in order, write
+  the code, mark progress, and resume across sessions. Supports
+  selective runs by phase or by task numbers, and continuing from where the last session
+  stopped. Use whenever a plan exists and the user wants to build it, e.g. "implement",
+  "implement the plan", "start coding", "execute the plan", "run the plan", "do the next
+  task", "implement phase 3", "implement tasks 2.1 and 2.3", "continue implementation",
+  "continue where we left off", "keep going on the feature". To create the plan first,
+  use the planning skill — this one carries an existing plan out.
 argument-hint: "[--list] [@<folder>] [Phase N | Phases N-M | Tasks N.M N.K | status | empty for all pending]"
 allowed-tools:
   - Read

@@ -1,12 +1,15 @@
 ---
 name: unikit-verify
 description: >-
-  Verify completed implementation against the feature plan from .unikit/code/plans/.
-  Checks that all tasks were fully implemented, nothing was forgotten, code compiles,
-  tests pass, and {{engine_name}}-specific conventions are followed (per ENGINE_RULES.md).
-  Use after "/unikit-implement" completes, or when user says "verify", "check work",
-  "did we miss anything". Also trigger when reviewing a feature branch before merge
-  or PR creation.
+  Verify a completed implementation against the feature plan in .unikit/code/plans/.
+  Confirms every planned task was fully implemented and nothing was forgotten, the code
+  compiles, the tests pass, and {{engine_name}}-specific conventions are followed (per
+  ENGINE_RULES.md). Run this after /unikit-implement finishes, or whenever the user wants
+  to confirm the work is complete and correct against the plan, e.g. "verify", "verify
+  the implementation", "check the work", "did we miss anything", "did we implement
+  everything", "is the plan fully done", "make sure nothing was forgotten", "does it
+  build and pass tests". This checks plan completeness and build/test health — for
+  code-quality, bug, and security review use the review skill instead.
 argument-hint: "[--strict] [NNN-feature-name]"
 allowed-tools:
   - Read

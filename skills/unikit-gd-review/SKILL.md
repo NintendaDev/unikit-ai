@@ -1,14 +1,16 @@
 ---
 name: unikit-gd-review
 description: >-
-  Quality review of game design documents — "is this design good?" — through a
-  fan-out of adversarial lenses (completeness, clarity, pillar alignment,
-  systems-math, fantasy-delivery, provenance, feasibility, scope, plus domain lenses), each prompted to find
-  problems, not validate. Produces a severity-graded verdict and a report. Scope
-  is inferred from the prompt — no flags: a named system reviews that document;
-  "all" / "all systems" runs a cross-system review with end-to-end checks. Use
-  when the user says "review the combat GDD", "is this design good", "critique
-  this system", "review all the GDDs", or "what's wrong with this design".
+  Qualitative quality review of game design documents — answers "is this design good?" — by
+  fanning out adversarial lenses (completeness, clarity, pillar alignment, systems-math,
+  fantasy-delivery, feasibility, scope, and domain lenses), each prompted to find problems
+  rather than validate. Produces a severity-graded verdict and a report. Scope is inferred:
+  a named system reviews that document; "all"/"all systems" runs a cross-system review. Use
+  when the user wants a critique or quality judgment of the design, e.g. "review the combat
+  GDD", "is this design good", "critique this system", "what's wrong with this design",
+  "review all the GDDs", "is this system fun/balanced". This is the subjective quality pass
+  — for a mechanical consistency check (numbers, terms, IDs, references matching the
+  registry) use /unikit-gd-verify.
 argument-hint: "[system name | SYS-slug | path | \"all\"]  (scope inferred; no flags)"
 allowed-tools:
   - Read

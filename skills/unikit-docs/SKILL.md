@@ -1,16 +1,14 @@
 ---
 name: unikit-docs
 description: >-
-  Generate and maintain project documentation for game engine projects.
-  Creates a lean README as a landing page with detailed docs/ directory split by topic.
-  Auto-detects engine tech stack (DI frameworks, async libraries, event systems, UI frameworks),
-  folder structure, and module boundaries to generate only relevant documentation pages.
-  Reads language setting from .unikit/config.yaml — all generated documentation and
-  user-facing messages are written in the configured language (default: English).
-  Supports docs-config.json for path and document customization. Use when user says
-  "create docs", "write documentation", "update docs", "generate readme", "document project",
-  or wants to document their project structure, modules, or game systems — even if they
-  don't explicitly say "docs".
+  Generate and maintain Markdown documentation for a game project's codebase. Scans the
+  project structure, tech stack, and module boundaries, then produces a lean README
+  landing page plus detailed topic pages, writing only the documentation that's relevant.
+  Use whenever the user wants to create, update, or validate project documentation, e.g.
+  "generate documentation", "create docs", "write documentation", "update the project
+  docs", "generate readme", "validate the project documentation", "document this project",
+  or wants their code, modules, or game systems documented — even if they don't literally
+  say "docs".
 argument-hint: "[--web]"
 allowed-tools:
   - Read

@@ -1,15 +1,15 @@
 ---
 name: unikit-gd-detail
 description: >-
-  Author a per-system game design document (the 11-section A–K SYSTEM GDD) for a
-  system from the game map, or fill the empty placeholders of a partially-written
-  one. Walks the section-cycle collaboratively — Context → Options → Decision →
-  Draft+Approval → Write — section by section, then registers facts and acceptance
-  criteria. Mode is inferred from the document state — no flags: no document →
-  create a skeleton and author it; placeholders remain → continue filling from the
-  first gap; a complete document → redirect to /unikit-gd-improve. Use when the
-  user says "detail the combat system", "write the GDD for SYS-x", "design this
-  system", or "fill in the rest of this system doc".
+  Author the detailed, per-system game design document (the A–K SYSTEM GDD) for one system
+  from the map, or fill the empty placeholders of a partially-written one. This is the
+  depth layer: it works out and writes the actual parameters, rules, and acceptance
+  criteria of a single existing system, walking a collaborative section-cycle (Context →
+  Options → Decision → Draft + Approval → Write). Use when the user wants to flesh out or
+  detail one system, e.g. "detail the combat system", "write the GDD for the inventory
+  system", "design this system in detail", "fill in the rest of this system doc", "spec
+  out the parameters of X". To add a whole new system or restructure the system map use
+  /unikit-gd-spec; to revise an already-approved system doc use /unikit-gd-improve.
 argument-hint: "<system name | SYS-slug>  (mode inferred from the doc state; no flags)"
 allowed-tools:
   - Read

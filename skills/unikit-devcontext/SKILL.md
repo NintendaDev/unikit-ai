@@ -1,11 +1,16 @@
 ---
 name: unikit-devcontext
 description: >-
-  Senior {{engine_name}}/{{engine_code_language}} developer assistant for the current {{engine_name}} project.
-  Use when writing, reviewing, or refactoring {{engine_code_language}} code, designing game architecture,
-  optimizing performance, implementing game logic, or discussing patterns like DI, ECS,
-  MVC, state machines, and event systems. Activate when the user works with game engine scripts
-  or mentions {{engine_name}}-related concepts.
+  Senior {{engine_name}}/{{engine_code_language}} developer that performs direct, ad-hoc
+  code tasks without a formal plan — and the code-execution engine other unikit skills and
+  agents delegate to. Use it whenever the user asks to do something in code right now, e.g.
+  "add this method to this class", "refactor this function", "write a script that does X",
+  "change this code", "optimize this class". Phrases like "without a plan", "no plan",
+  "just do it", or "directly" are strong signals to use this skill rather than planning.
+  Covers writing, refactoring, optimizing, and discussing {{engine_code_language}} code and
+  patterns (DI, ECS, MVC, state machines, event systems). For a larger multi-step feature,
+  plan it with /unikit-plan and build it with /unikit-implement — this skill is for direct,
+  unplanned code work.
 argument-hint: "[task or file path]"
 ---
 

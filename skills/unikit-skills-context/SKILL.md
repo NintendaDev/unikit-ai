@@ -1,13 +1,15 @@
 ---
 name: unikit-skills-context
 description: >-
-  Add project-specific workflow rules to skill-context files for built-in unikit skills.
-  Skill-context rules override how a specific skill behaves in this project.
-  Use when user says "add skill rule", "customize skill", "skill should do X differently",
-  or wants to add project-specific workflow overrides for a built-in unikit skill.
-  Use "validate" to check for stale skill-context rules against updated base skills.
-  Also trigger when user wants to adjust how /unikit-review, /unikit-fix, /unikit-implement
-  or any other unikit skill works specifically in this project.
+  Customize how a built-in unikit skill behaves in this specific project by writing
+  workflow overrides into its skill-context file. These are per-skill workflow rules
+  (e.g. "/unikit-review should also flag TODO comments", "/unikit-implement should run
+  tests after each task"), not coding conventions. Use when the user wants to change,
+  customize, or override how a particular unikit skill works in this project — "customize
+  the review skill", "make /unikit-fix always add logging here", "the implement skill
+  should do X differently", "add a skill rule for /unikit-commit". Use "validate" to find
+  stale overrides against updated base skills. For a general coding convention (not tied
+  to one skill) use /unikit-rules; to derive rules from past mistakes use /unikit-evolve.
 argument-hint: '<skill-name> [rule text] | validate [skill-name]'
 allowed-tools:
   - Read

@@ -1,14 +1,17 @@
 ---
 name: unikit-explore
 description: >-
-  Enter explore mode - a thinking partner for exploring ideas, investigating problems,
-  and clarifying requirements in {{engine_name}} projects. Use when the user wants to think through
-  something before implementing, investigate architecture, compare approaches, analyze
-  systems, research patterns, or understand existing code. Activate when user says
-  "explore", "investigate", "research", "let's think about", "compare options",
-  "analyze system", "how does X work", or wants to deeply understand something before coding.
-  Also use when discussing {{engine_name}} architecture decisions, Zenject bindings, game system design,
-  or any topic requiring deep analysis without immediate implementation.
+  Enter explore mode for technical work — a thinking partner for {{engine_name}} code,
+  architecture, and implementation decisions before you write any code. Use it to
+  investigate a technical solution, design the architecture of a feature, choose between
+  frameworks or libraries, compare implementation approaches, analyze how existing code
+  or a system works, research code patterns, or deeply investigate and root-cause a
+  complex bug without fixing it yet. Trigger on things like "let's explore this technical
+  solution", "how should we architect this feature", "which framework should we use",
+  "how do I implement this in code", "compare these technical approaches", "how does this
+  system work", "let's dig into why this bug happens", "investigate this error deeply".
+  This is research/analysis only — to directly find and fix a bug use /unikit-fix; for
+  game-design or GDD research use /unikit-gd-explore.
 argument-hint: "init | [topic, system name, or question]"
 allowed-tools:
   - Read

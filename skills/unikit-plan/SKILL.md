@@ -1,13 +1,15 @@
 ---
 name: unikit-plan
 description: >-
-  Create a detailed feature plan for a {{engine_name}} project.
-  Generates TASKS.md (dependency-ordered checklist with WHY context, effort estimates and file paths)
-  and PLAN-BRIEF.md (technical context: constraints, interfaces, patterns — always created, based on current codebase state).
-  Three modes: fast (no branch), full (optionally creates git branch),
-  and add (modify existing plan). Use when starting a new feature, planning implementation,
-  or when user says "plan feature", "create roadmap", "new feature plan".
-  Also use when user says "add tasks to plan", "extend the plan", "add phase to plan".
+  Create an implementation plan for a feature — a dependency-ordered, actionable task
+  list for the project. Has three modes: fast (a quick single-pass plan), full (a richer
+  plan that can also create a git branch), and add (extend an existing plan with more
+  tasks). Pick the mode from the user's wording: "full plan" runs full; "quick plan" or
+  "fast plan" runs fast; a plain "create a plan" with no qualifier defaults to fast; "add
+  to the plan" or "extend the plan" runs add. Use whenever the user wants to plan a
+  feature or task, e.g. "create a plan", "create a full plan", "create a quick plan",
+  "plan this feature", "just plan this", "add this to the plan", "extend the plan", "add
+  a phase to the plan".
 argument-hint: "[fast | full | add | --list] [--base <branch>] <feature description in free form>"
 allowed-tools:
   - Read

@@ -1,14 +1,11 @@
 ---
 name: unikit-improve
 description: >-
-  Refine and enhance an existing feature plan for the current {{engine_name}} project.
-  Re-analyzes TASKS.md and PLAN-BRIEF.md, checks for gaps, missing tasks,
-  wrong dependencies, architectural issues, and improves plan quality.
-  Also detects updated or new researches from /unikit-explore and incorporates
-  their findings into the plan. Use this skill whenever the user wants to review,
-  polish, or improve a feature plan from .unikit/code/plans/, even if they say
-  "check the plan", "review the feature", "improve the roadmap",
-  "what's wrong with the plan", or "update plan from research".
+  Refine an existing implementation plan with a second iteration. Re-analyzes the
+  codebase for gaps, missing tasks, and wrong dependencies. Use after /unikit-plan or to
+  improve a /unikit-fix plan, or when the user says "improve the plan", "what's wrong
+  with the plan", or "update the plan from research". Optional +check flag validates
+  refinements via a fresh-context subagent.
 argument-hint: "[--list] [@plan-folder] [+check] [feature-name or improvement prompt]"
 allowed-tools:
   - Read
