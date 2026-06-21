@@ -1123,6 +1123,88 @@ else
     fail "CONTEXT-GATES-AND-OWNERSHIP — missing sanctioned design-write exception (T8 canonical)"
 fi
 
+# Internal-design-lens content guards (gd-explore internal lens + downstream wiring —
+# the feature-internal-design-lens plan, Tasks 1-9). All greps are FILE-SCOPED and
+# case-sensitive `-qF` (MSYS grep aborts on `-iF`). bash cannot run an LLM skill; these
+# assert the contract text is present on each surface. New path vars (absent until now):
+# the gd-spec / gd-explore SKILLs and the new lens engine reference. Reuses
+# GD_DETAIL_SKILL / GD_IMPROVE_SKILL (defined above), GD_VERIFY_SKILL (L835, the *design*
+# gd-verify) and GD_IDS_TPL (L1048).
+GD_SPEC_SKILL="$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
+GD_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+GD_INTERNAL_LENS="$ROOT_DIR/skills/unikit-gd-explore/references/internal-design-lens.md"
+
+# (IL-1) The new engine reference exists, carries both mode-aware brief blocks, and
+#        mirrors the shared domain keying vocabulary (parity, NOT byte-identity — this
+#        table loads rules to ground options, detail/improve to author sections).
+IL_LENS_WHY=""
+[[ -s "$GD_INTERNAL_LENS" ]]                        || IL_LENS_WHY+=" missing-file"
+grep -qF '## Improvement Plan' "$GD_INTERNAL_LENS"  || IL_LENS_WHY+=" improvement-plan-block"
+grep -qF '## New Feature Plan' "$GD_INTERNAL_LENS"  || IL_LENS_WHY+=" new-feature-plan-block"
+grep -qF 'ai-behavior' "$GD_INTERNAL_LENS"          || IL_LENS_WHY+=" ai-behavior(keying-parity)"
+grep -qF 'persistence' "$GD_INTERNAL_LENS"          || IL_LENS_WHY+=" persistence(keying-parity)"
+if [[ -z "$IL_LENS_WHY" ]]; then
+    pass "internal-design-lens.md — present + both brief blocks + domain keying parity (IL T1)"
+else
+    fail "internal-design-lens.md — missing:$IL_LENS_WHY"
+fi
+
+# (IL-2) gd-explore SKILL carries the lens switch: the section, its decision rule, the
+#        3-way doc_status routing, the read-only warning, and the Target/Kind tags.
+IL_EXPLORE_WHY=""
+grep -qF '## Internal design lens' "$GD_EXPLORE_SKILL"          || IL_EXPLORE_WHY+=" lens-section"
+grep -qF 'Internal-design signals present' "$GD_EXPLORE_SKILL"  || IL_EXPLORE_WHY+=" decision-rule"
+grep -qF '3-way handoff routing' "$GD_EXPLORE_SKILL"            || IL_EXPLORE_WHY+=" 3-way-routing"
+grep -qF "I won't edit the GDD" "$GD_EXPLORE_SKILL"             || IL_EXPLORE_WHY+=" read-only-warning"
+grep -qF 'Kind: feature | improvement' "$GD_EXPLORE_SKILL"      || IL_EXPLORE_WHY+=" kind-tag"
+grep -qF 'Target: SYS-<slug>' "$GD_EXPLORE_SKILL"               || IL_EXPLORE_WHY+=" target-tag"
+if [[ -z "$IL_EXPLORE_WHY" ]]; then
+    pass "gd-explore SKILL — lens section + decision rule + 3-way routing + read-only + Target/Kind (IL T2)"
+else
+    fail "gd-explore SKILL — missing:$IL_EXPLORE_WHY"
+fi
+
+# (IL-3) gd-spec Add-System mode + the active seam onward to detail.
+IL_SPEC_WHY=""
+grep -qF '## Add-System Mode' "$GD_SPEC_SKILL"  || IL_SPEC_WHY+=" add-system-mode"
+grep -qF 'Active seam' "$GD_SPEC_SKILL"         || IL_SPEC_WHY+=" active-seam"
+if [[ -z "$IL_SPEC_WHY" ]]; then
+    pass "gd-spec SKILL — Add-System mode + active seam to detail (IL T3)"
+else
+    fail "gd-spec SKILL — missing:$IL_SPEC_WHY"
+fi
+
+# (IL-4) Research-discovery wired into BOTH downstream consumers (the `research:`
+#        pointer + the `Target:` INDEX fallback — the backtick token `Target:` is unique
+#        to the discovery bullet; the Final-report `Target:` line has no backticks, and a
+#        single token cannot be split by a line-wrap), and gd-detail instructs leaving
+#        explore-seeded drafts UNTAGGED (the Task-4 carve-out: not extracted/generated —
+#        those markers are imports-only).
+IL_DISC_WHY=""
+for f in "$GD_DETAIL_SKILL" "$GD_IMPROVE_SKILL"; do
+    bn=$(basename "$(dirname "$f")")
+    grep -qF 'research:' "$f"     || IL_DISC_WHY+=" $bn(research-pointer)"
+    grep -qF '`Target:`' "$f"     || IL_DISC_WHY+=" $bn(target-fallback)"
+done
+grep -qF 'explore-seeded drafts' "$GD_DETAIL_SKILL" || IL_DISC_WHY+=" gd-detail(untagged-carveout)"
+if [[ -z "$IL_DISC_WHY" ]]; then
+    pass "gd-detail + gd-improve — research-discovery (research:/Target) + untagged carve-out (IL T4)"
+else
+    fail "research-discovery wiring missing:$IL_DISC_WHY"
+fi
+
+# (IL-5) The `research:` field is canonical: present in the GD-IDS template, and carved
+#        out of gd-verify coherence/id-resolution (Task 9). The carve-out hangs on the
+#        value's FORM (a path, not an id), so no special-case check logic is added.
+IL_FIELD_WHY=""
+grep -qF 'research:' "$GD_IDS_TPL"             || IL_FIELD_WHY+=" gd-ids-template"
+grep -qF 'Non-id metadata' "$GD_VERIFY_SKILL"  || IL_FIELD_WHY+=" gd-verify-carveout"
+if [[ -z "$IL_FIELD_WHY" ]]; then
+    pass "research: field — GD-IDS template + gd-verify carve-out present (IL T9)"
+else
+    fail "research: field canonicalization missing:$IL_FIELD_WHY"
+fi
+
 # unikit-memory distillation-behavior content guards (PLAN.md T1–T10). The router
 # distilled the aif-distillation protocol into unikit-memory as BEHAVIOR; bash cannot
 # run an LLM skill, so these are grep invariants on the contract text + a probe-gated
