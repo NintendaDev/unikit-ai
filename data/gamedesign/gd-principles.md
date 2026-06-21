@@ -240,12 +240,23 @@ they describe:
   source and the registry at **≥ Major**.
 - **Untagged is normal authored content** — a section with no provenance marker is
   ordinary collaborative authoring (the non-import default). Absence of a marker is
-  never itself a finding.
+  never itself a finding. **Drafts seeded from a `unikit-gd-explore` internal-design
+  lens brief are untagged normal authored content too** — the lens is collaborative
+  authoring carried out in research, not an import, so `unikit-gd-detail` leaves its
+  explore-seeded section drafts (and `unikit-gd-improve` its explore-seeded deltas)
+  **unmarked**: the `extracted` / `generated` markers belong to the import path alone.
 
 Rules:
 
 - `unikit-gd-detail` writes the markers on import (one per section that needs one);
   the regular collaborative authoring path leaves sections untagged.
+- **Explore research is an allowed authoring source.** `unikit-gd-explore` research
+  may seed `unikit-gd-detail` section drafts and `unikit-gd-improve` deltas (a
+  generalization of the import-reading path) — discovered by the `GD-IDS` `research:`
+  pointer (authoritative) → `researches/INDEX.md` `Target:` (fallback). That `research:`
+  pointer is owned by `unikit-gd-spec` (written in add-system); it is a **non-id path**,
+  inert to `unikit-gd-verify` coherence, and the system **lifecycle is unchanged** —
+  the seeded system is `not-started` until `unikit-gd-detail` authors it.
 - `unikit-gd-improve` **never strips a provenance marker** — an edit may change a
   generated section's content, but the marker survives so its origin stays
   auditable across versions. Promoting `generated` → `extracted` is a deliberate,
