@@ -210,11 +210,11 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
           {
             type: 'checkbox',
             name: 'chosen',
-            message: 'New skills are available in this package version. Select any to install:',
-            // Default UNCHECKED: a skill absent here may be one you deliberately
-            // de-selected at init (indistinguishable from a freshly added one),
-            // so pressing Enter installs nothing -- opt in explicitly.
-            choices: newSkills.map(skill => ({ name: skill, value: skill, checked: false })),
+            message: 'New skills are available in this package version. Deselect any you do not want, then confirm:',
+            // Default CHECKED: new skills are opt-out. The common case after an
+            // update is "give me the new stuff", so pressing Enter installs all
+            // of them; uncheck the ones you deliberately want to skip.
+            choices: newSkills.map(skill => ({ name: skill, value: skill, checked: true })),
           },
         ]);
         for (const skill of chosen as string[]) installNewSkills.add(skill);
