@@ -8,15 +8,16 @@
 import path from 'path';
 import {
   copyDirectory, getSkillsDir, ensureDir, listDirectories,
-  writeTextFile, removeDirectory, fileExists,
+  writeTextFile, removeDirectory, fileExists, readTextFile, listFilesRecursive,
 } from '../../utils/fs.js';
 import type { AgentInstallation, ManagedSkillState } from '../config.js';
 import { getAgentConfig } from '../agents.js';
 import { getTransformer, extractFrontmatterName, replaceFrontmatterName } from '../transformer.js';
+import type { AgentTransformer } from '../transformer.js';
 import { buildTemplateVars, buildEngineVars, processTemplate, processSkillTemplates } from '../template.js';
 import type { TemplateVars } from '../template.js';
 import { SKILL_FILE, REFERENCES_DIR_NAME, DEFAULT_ENGINE_ID } from '../constants.js';
-import { loadSourceForAgent, warnActionFailed } from './shared.js';
+import { loadSourceForAgent, warnActionFailed, isMarkdownFile } from './shared.js';
 import { resolveSkillPaths, hashInstalledSkill, computeSourceHashWithTemplate } from './hashing.js';
 
 // --- Types ---
@@ -100,6 +101,36 @@ export async function buildManagedSkillsState(
 
 // --- Skill installation ---
 
+/**
+ * Rewrite `/unikit-*` invocations inside a skill's reference `.md` files using
+ * the agent transformer's {@link AgentTransformer.transformReference}. No-op for
+ * default agents (method undefined) and for non-`.md` files. The root SKILL.md
+ * (when present in `dir`) is skipped — it is already rewritten by `transform`.
+ * The agent-filter is deliberately NOT applied to references: no guarded blocks
+ * live there (enforced by a source guard in scripts/test-skills.sh), and running
+ * it over inline marker prose would throw.
+ */
+async function rewriteReferenceInvocations(
+  transformer: AgentTransformer,
+  dir: string,
+): Promise<void> {
+  const fn = transformer.transformReference?.bind(transformer);
+  if (!fn) return;
+
+  const skillMdPath = path.join(dir, SKILL_FILE);
+  const files = await listFilesRecursive(dir);
+  for (const file of files) {
+    if (!isMarkdownFile(file)) continue;
+    if (file === skillMdPath) continue;
+    const raw = await readTextFile(file);
+    if (raw === null) continue;
+    const rewritten = fn(raw);
+    if (rewritten !== raw) {
+      await writeTextFile(file, rewritten);
+    }
+  }
+}
+
 export async function installSkillWithTransformer(
   sourceSkillDir: string,
   skillName: string,
@@ -134,6 +165,11 @@ export async function installSkillWithTransformer(
     if (await fileExists(sourceRefsDir)) {
       const targetRefsDir = path.join(projectDir, agentConfig.configDir, result.targetDir, REFERENCES_DIR_NAME);
       await copyDirectory(sourceRefsDir, targetRefsDir);
+      // Parity with the non-flat branch: flat references previously skipped
+      // {{}} substitution (latent gap) and invocation rewriting. No agent is
+      // flat today, so this is forward insurance.
+      await rewriteReferenceInvocations(transformer, targetRefsDir);
+      await processSkillTemplates(targetRefsDir, agentConfig, engineId, engineMcpKey, skillName);
     }
   } else {
     const targetSkillDir = path.join(projectDir, skillsDir, result.targetDir);
@@ -144,6 +180,10 @@ export async function installSkillWithTransformer(
     // copyDirectory must be replaced so guarded blocks and their markers do
     // not leak into the installed file.
     await writeTextFile(path.join(targetSkillDir, SKILL_FILE), result.content);
+    // Reference `.md` files are copied verbatim by copyDirectory; rewrite their
+    // `/unikit-*` invocations for agents that remap them (codex/qwen). The root
+    // SKILL.md is excluded (already rewritten above). No-op for default agents.
+    await rewriteReferenceInvocations(transformer, targetSkillDir);
     await processSkillTemplates(targetSkillDir, agentConfig, engineId, engineMcpKey, skillName);
   }
 }

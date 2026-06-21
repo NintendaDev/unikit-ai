@@ -11,6 +11,15 @@ export interface TransformResult {
 
 export interface AgentTransformer {
   transform(skillName: string, content: string): TransformResult;
+  /**
+   * Rewrite skill invocations (`/unikit-*`) inside a reference `.md` file body.
+   * Optional: only agents that remap invocations (codex/qwen) implement it;
+   * default agents (claude/cursor/gemini/opencode) leave it undefined so
+   * references keep `/unikit-*` verbatim. Unlike {@link transform} this never
+   * runs the agent-filter — reference files carry no guarded blocks (enforced
+   * by a source guard in scripts/test-skills.sh).
+   */
+  transformReference?(content: string): string;
   postInstall?(projectDir: string): Promise<void>;
   getWelcomeMessage(): string[];
   getInvocationHint?(): string;

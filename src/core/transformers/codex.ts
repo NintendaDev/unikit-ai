@@ -15,6 +15,10 @@ export class CodexTransformer implements AgentTransformer {
     };
   }
 
+  transformReference(content: string): string {
+    return toCodexInvocation(content);
+  }
+
   getWelcomeMessage(): string[] {
     return [
       '1. Open Codex CLI in this directory',

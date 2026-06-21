@@ -15,6 +15,10 @@ export class QwenTransformer implements AgentTransformer {
     };
   }
 
+  transformReference(content: string): string {
+    return toQwenInvocation(content);
+  }
+
   getWelcomeMessage(): string[] {
     return [
       '1. Open Qwen Code in this directory',
