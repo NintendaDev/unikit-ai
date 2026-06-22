@@ -2,7 +2,7 @@
 
 The catalog of review lenses for `unikit-gd-review` — absorbed from the former
 `review-lenses` memory rule. The **severity rubric** and the **critique stance**
-(Braintrust, critique-vs-review, plussing) live in `gd-principles`; this file holds
+(Braintrust, critique-vs-review, plussing) live in `gd-critique`; this file holds
 only the lenses and their adversarial prompts.
 
 **Adversarial framing (the whole point).** Every lens runs as a skeptic: *"Your
@@ -10,7 +10,7 @@ job is NOT to validate this design — find what is wrong with it."* A lens that
 returns "looks good" without having tried to break the document has not run.
 Default to finding a problem; only conclude clean after a genuine attempt to
 falsify. Each finding cites the **document section AND the contradicted fact /
-pillar / rule** (`gd-principles` — no citation → downgrade to Suggestion).
+pillar / rule** (`gd-critique` — no citation → downgrade to Suggestion).
 
 ## Core lenses (run on every review)
 
@@ -27,7 +27,7 @@ pillar / rule** (`gd-principles` — no citation → downgrade to Suggestion).
 ## Provenance lens (imported systems only)
 
 Runs **only** when the system was built by import — its sections carry provenance
-markers (see `gd-principles` → Provenance). It separates inferred content from
+markers (see `gd-provenance` → Provenance). It separates inferred content from
 author-sourced content and holds the two to different bars:
 
 - Walk every section tagged `<!-- provenance: generated -->`. A generated claim has
@@ -55,7 +55,7 @@ its checks adversarially:
 | combat / progression | systems-math | `balance`, `progression` | dominant strategy; degenerate curve; broken TTK/TTC |
 
 A finding from a domain lens that grades severity uses the **shared rubric in
-`gd-principles`** — lenses never invent their own scale.
+`gd-critique`** — lenses never invent their own scale.
 
 ## Cross-scope lenses (only when the scope is "all" / "all systems")
 
@@ -94,7 +94,7 @@ they apply to systems; the flow lenses are the dynamics-axis complement.
 
 ## Output discipline
 
-- **Diagnose, don't prescribe** (`gd-principles`): name the problem and its
+- **Diagnose, don't prescribe** (`gd-critique`): name the problem and its
   evidence, not your fix. Prescriptions ("what if…", plussing) are offered **only
   when the user asks**.
 - **Name what works** ("I like…") — honest calibration, not flattery.

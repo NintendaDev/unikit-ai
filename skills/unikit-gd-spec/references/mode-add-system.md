@@ -59,7 +59,7 @@ untouched:**
   resolution (its value is a path, not an id).
 
 The system stays `not-started` until `unikit-gd-system` authors its GDD — lifecycle is
-unchanged (`gd-principles` → Lifecycle & Status).
+unchanged (`gd-lifecycle` → Lifecycle & Status).
 
 **4. Active seam → detail now?** Offer to continue straight into detailing in the
 same session (a system grafted from a brief is detail-ready by construction — it

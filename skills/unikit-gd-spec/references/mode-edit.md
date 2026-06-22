@@ -10,7 +10,7 @@
 `GAME.md` exists and the user wants to **change an authored section** — a pillar, the
 core fantasy, a loop, an anti-pillar, the win/lose or monetization intent, the
 premise. This zone is **owned here** (no separate editor skill); apply the **GAME.md
-carve-out of the delta discipline** (`gd-principles` → Delta Discipline), which is
+carve-out of the delta discipline** (`gd-authoring` → Delta Discipline), which is
 deliberately lighter than a SYSTEM GDD edit.
 
 1. Read `GAME.md` (and `GD-IDS.yaml` if a pillar/term is involved).

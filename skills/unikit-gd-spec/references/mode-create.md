@@ -27,7 +27,7 @@ The primary flow: no `GAME.md` yet. Build it, then decompose into a map.
 
 `GAME.md` is one page (Librande one-page principle: if the vision does not fit on
 a page, it is not yet sharp). Author it section by section using the
-**collaborative protocol and section-cycle contract from `gd-principles`** —
+**collaborative protocol (`gd-principles`) and section-cycle contract (`gd-authoring`)** —
 skeleton first (one approval), then per section: Context → Questions → Options
 (2–4, pros/cons, theory from the loaded `frameworks`/`player-motivation` rules,
 one **(Recommended)** with the WHY) → Decision (Explain → Capture via
@@ -109,7 +109,7 @@ registry (truth) and the GAME.md map (rendered):
   `status: active`, `tier`, **`category`**, `doc_status: not-started`, `implements`,
   `depends_on`, `source: systems/SYS-<slug>.md`, `added: <date>`. A `not-started`
   system carries **no `version`** — it gets `version: 1` only when `unikit-gd-system`
-  creates the skeleton (`gd-principles` → Lifecycle & Status).
+  creates the skeleton (`gd-lifecycle` → Lifecycle & Status).
 - **`GAME.md` authored sections** — `## Design Order` (dependency sort × priority)
   and `## Risks & Circular Dependencies` (high-risk / cycle systems) live in the
   one-pager now (no standalone index). Author them alongside the roster.

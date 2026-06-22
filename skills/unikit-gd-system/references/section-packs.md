@@ -14,7 +14,7 @@ Write), loading the extra rule named in the pack header.
 - Numbers live in tables; intent lives in prose. Every cross-system number that
   appears here must also be registered in `GD-IDS.yaml`.
 - Findings that grade severity (e.g. a dark-pattern audit) use the **shared
-  severity rubric in `gd-principles`** — packs never define their own.
+  severity rubric in `gd-critique`** — packs never define their own.
 
 ---
 
@@ -148,7 +148,7 @@ profiles, inventories, progression, settings).
 | Sub-section | Holds |
 |-------------|-------|
 | Offers & Odds | Each offer/pack; for chance-based items, the disclosed odds and any pity rule. |
-| Dark-Pattern Audit | Audit against known dark patterns (darkpattern.games categories); grade findings by the `gd-principles` severity rubric. |
+| Dark-Pattern Audit | Audit against known dark patterns (darkpattern.games categories); grade findings by the `gd-critique` severity rubric. |
 | Age & Region Matrix | Age-gating and regional/legal constraints (e.g. odds disclosure, children's-code limits). |
 
 ---

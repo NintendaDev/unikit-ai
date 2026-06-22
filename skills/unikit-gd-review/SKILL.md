@@ -74,11 +74,15 @@ or blocked does the assistant run the lenses sequentially in the main session.
 
 Silently load — do not narrate:
 
-1. **`.unikit/system/gd-principles.md`** — the working contract. The **severity
-   rubric** (Critical / Major / Minor / Suggestion), the **critique stance**
-   (Braintrust: diagnose don't prescribe; critique vs review; plussing), and the
-   language rules live there. This skill **applies** them. If missing, warn
-   (`unikit-ai update`) and fall back to the rubric summarized in `references/lenses.md`.
+1. **`.unikit/system/gamedesign/gd-principles.md`** (the core) — the language rules
+   (plus the zone model and one-way boundary). Plus, from the same `gamedesign/`
+   folder, the shards this skill needs: **`gd-critique.md`** (the **severity rubric**
+   — Critical / Major / Minor / Suggestion — and the **critique stance** — Braintrust:
+   diagnose don't prescribe; critique vs review; plussing), **`gd-flow-axis.md`** (the
+   Flow Axis contract behind the pacing / guidance / funnel lenses), and
+   **`gd-provenance.md`** (the import provenance markers the provenance lens checks).
+   This skill **applies** them. If missing, warn (`unikit-ai update`) and fall back to
+   the rubric summarized in `references/lenses.md`.
 2. **`.unikit/gamedesign/GD-IDS.yaml`** and **`GAME.md`** (incl. its `## System Map
    [gen]` render) — pillars, the roster, and the facts every finding is checked
    against. **Schema guard (clean break — no automatic migration):** `GD-IDS.yaml`
@@ -130,7 +134,7 @@ Select the lenses from `references/lenses.md`: the **core** lenses always
 (including **fantasy-delivery** — does section B's promised feeling actually arise
 from C/D/E, and is an SDT need served?), plus the **domain** lenses matching the
 system's behaviour/domain. When the system was built by import (its sections carry
-provenance markers — see `gd-principles` → Provenance), also run the **provenance**
+provenance markers — see `gd-provenance` → Provenance), also run the **provenance**
 lens over each `<!-- provenance: generated -->` section: inferred content is held to
 a stricter bar (≥ Major against source/registry) than author-sourced text.
 
@@ -153,7 +157,7 @@ Agent(subagent_type: general-purpose, model: sonnet, prompt:
 ```
 
 Collect and de-duplicate the findings. Drop any finding with no section+evidence
-citation to **Suggestion** (`gd-principles`).
+citation to **Suggestion** (`gd-critique`).
 
 **Flow lenses (active).** When the target is a `FLOW.md`, run the flow review lenses
 (pacing, guidance, funnel — does the wiring-mode deliver its intended arc, is each
@@ -214,7 +218,7 @@ trail behind the Status change).
 On approval, the verdict updates the system's `doc_status` to `reviewed` in the
 **two coherent places** — the `SYSTEM.md` header (the `> Status:` token in the
 combined header line, never a separate bold line) and `GD-IDS.yaml` `doc_status`
-(see gd-principles → Lifecycle & Status). The `## System Map [gen]` re-renders that
+(see gd-lifecycle → Lifecycle & Status). The `## System Map [gen]` re-renders that
 status read-only (freshness — not a write target here). Never silently:
 
 ```

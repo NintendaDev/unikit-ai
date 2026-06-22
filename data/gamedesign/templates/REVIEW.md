@@ -7,7 +7,7 @@ A quality verdict, not a consistency check (that is `unikit-gd-verify`). The
 reviewer's job is to FIND PROBLEMS, not to validate. Every finding cites a
 section AND the evidence (the contradicted pillar, fact, or rule) — a finding
 with no citation is an opinion, downgraded to a Suggestion. Severity follows the
-rubric in `.unikit/system/gd-principles.md`. The room has no authority: this
+rubric in `.unikit/system/gamedesign/gd-critique.md`. The room has no authority: this
 verdict informs the user's Status decision (recorded in `GD-IDS`, rendered in
 `GAME.md`'s `## System Map [gen]`); it never auto-applies.
 

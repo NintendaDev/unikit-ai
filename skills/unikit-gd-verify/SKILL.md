@@ -61,12 +61,15 @@ field values stay English. Do not announce the language setting.
 
 Silently load — do not narrate:
 
-1. **`.unikit/system/gd-principles.md`** — the working contract: the **facts
+1. **`.unikit/system/gamedesign/gd-principles.md`** (the core) — the **facts
    registry / ID conventions** (registry wins until the user resolves otherwise;
-   never delete an ID — deprecate it), the **severity rubric** (a conflict is
-   Critical/Major evidence), and the language rules. This skill **applies** them.
-   If missing, warn (`unikit-ai update`) and continue with the conventions
-   summarized here.
+   never delete an ID — deprecate it) and the language rules. Plus, from the same
+   `gamedesign/` folder, the shards this skill needs: **`gd-lifecycle.md`** (the
+   status/version coherence spine), **`gd-flow-axis.md`** (the flow coherence
+   contract — `mode:` ↔ structure, `GOAL → SYS`/`AC`, Win/Lose ↔ terminal GOAL), and
+   **`gd-critique.md`** (the **severity rubric** — a conflict is Critical/Major
+   evidence). This skill **applies** them. If missing, warn (`unikit-ai update`) and
+   continue with the conventions summarized here.
 2. **`.unikit/gamedesign/GD-IDS.yaml`** — the single source of truth: pillars,
    systems, flows, entities, formulas, terms, decisions. Current values only.
    **Schema guard (clean break — no automatic migration):** it MUST be `version: 2`.
@@ -122,7 +125,7 @@ The registry is authoritative: when a document disagrees with `GD-IDS`, the
 registry wins until the user resolves it the other way (`gd-principles`).
 
 **Map freshness — self-heal, not a conflict.** The `## System Map [gen]` block in
-`GAME.md` is a deterministic **render** of `GD-IDS` `systems` (`gd-principles` →
+`GAME.md` is a deterministic **render** of `GD-IDS` `systems` (`gd-lifecycle` →
 Lifecycle & Status), so a disagreement is a *freshness* issue, never a coherence
 conflict to resolve. On any of —
 
@@ -164,7 +167,7 @@ agreement is handled by *Map freshness* above):
   cross-doc fact** only greps `FORM-`/`ENT-` ids — a folder path matches neither — so no
   special-case logic is needed.
 - **Dependent-lag.** A verify-flagged dependent may transiently carry a header
-  `Status` behind its `GD-IDS` `doc_status` (`gd-principles` → Lifecycle & Status);
+  `Status` behind its `GD-IDS` `doc_status` (`gd-lifecycle` → Lifecycle & Status);
   that lag is expected, not a conflict. This applies on the **flow** axis too: a
   cross-axis-flagged dependent **flow** (Phase 3) may carry a `FLOW.md` header `Status`
   behind its `GD-IDS` `flows[].doc_status`.
@@ -228,14 +231,14 @@ Compute the blast radius of a recent edit:
 4. **Record the impact** (with approval):
    - **Append the `Affected (gd-verify):` line** to the latest changelog block in the
      changed system's section **K** — the line the system's zone owner
-     (`unikit-gd-system`) leaves for verify to fill (`gd-principles` → Delta
+     (`unikit-gd-system`) leaves for verify to fill (`gd-authoring` → Delta
      Discipline).
    - For each affected **dependent**, bump it to `doc_status: revised` **only when
      its verdict is `Needs Review` or `Likely Stale`** (a `Still Valid` dependent is
      left untouched). Write the bump in the dependent's `GD-IDS.yaml` `doc_status`
      (the single machine-truth place); the dependent's `SYSTEM.md` header is left to
      catch up on its next authoring touch (full header coherence for flagged
-     dependents is a later tier — see gd-principles → Lifecycle & Status), and the
+     dependents is a later tier — see gd-lifecycle → Lifecycle & Status), and the
      `## System Map [gen]` re-renders (Map freshness).
    - A `revised` dependent returns to `reviewed` only through `unikit-gd-review`,
      never here.
@@ -243,7 +246,7 @@ Compute the blast radius of a recent edit:
      re-bumps nothing already at `revised`.
 
 **Cross-axis impact (system → flow, one-way).** A system edit can stale a **flow** that
-exercises it (through `GOAL → SYS` / `GOAL → AC`) — `gd-principles` → Flow Axis. Extend
+exercises it (through `GOAL → SYS` / `GOAL → AC`) — `gd-flow-axis` → Flow Axis. Extend
 the pass across the axis (skip when `flows: []`):
 
 - **Changed set** also includes every flow already at `doc_status: revised` (a pending

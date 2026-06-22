@@ -61,15 +61,17 @@ field values stay English. Do not announce the language setting.
 
 Silently load — do not narrate:
 
-1. **`.unikit/system/gd-principles.md`** — the working contract. The
-   **section-cycle authoring contract**, the **delta discipline** (the mandatory
-   Version +1 → changelog → registry-check → recommend-verify tail), the **Flow
-   Axis** contract (the `AC · GOAL · event` grammar, flow lifecycle, wiring mode,
-   cross-axis staleness, Win/Lose ↔ terminal GOAL), the collaborative protocol, the
-   facts registry / ID conventions, the language rules, and the severity rubric live
-   there. This skill **applies** that contract; it does not restate the mechanics. If
-   missing, warn (`unikit-ai update`) and fall back to the protocol as summarized in
-   this file.
+1. **`.unikit/system/gamedesign/gd-principles.md`** (the core) — the collaborative
+   protocol, the facts registry / ID conventions, and the language rules. Plus, from
+   the same `gamedesign/` folder, the shards this skill needs: **`gd-authoring.md`**
+   (the **section-cycle authoring contract** + the **delta discipline** — the
+   mandatory Version +1 → changelog → registry-check → recommend-verify tail),
+   **`gd-lifecycle.md`** (the lifecycle & status spine), **`gd-flow-axis.md`** (the
+   **Flow Axis** contract — the `AC · GOAL · event` grammar, flow lifecycle, wiring
+   mode, cross-axis staleness, Win/Lose ↔ terminal GOAL), and **`gd-provenance.md`**
+   (the explore-seed / import provenance markers). This skill **applies** that
+   contract; it does not restate the mechanics. If missing, warn (`unikit-ai update`)
+   and fall back to the protocol as summarized in this file.
 2. **`.unikit/gamedesign/GAME.md`** — pillars, loops, target aesthetics, win/lose
    intent, and non-goals the flow must serve; its `## System Map [gen]` is the system
    roster the flow's `GOAL`s depend on. If it does not exist, **stop** — there is no
@@ -147,7 +149,7 @@ Gather the facts the flow must stay consistent with (read-only):
   **`## Flow Improvement Plan`** — its ready-to-apply delta lines, expected scale,
   touched `GOAL`s/systems, and any `RF-<date>-n` it closes pre-fill the change set
   (the user still approves every edit). These explore-seeded drafts are **untagged
-  normal authored content** (`gd-principles` → Provenance) — the import-only
+  normal authored content** (`gd-provenance` → Provenance) — the import-only
   `extracted` / `generated` markers do not apply to flows.
 
 ## Phase 2 — Resolve Mode from Document State + Intent (no flags)
@@ -172,7 +174,7 @@ listing candidates. Never guess the target.
 
 ### Wiring mode (`linear | conditional | emergent`) — select on Create
 
-The mode dictates the document's structure (`gd-principles` → Flow Axis), so it is
+The mode dictates the document's structure (`gd-flow-axis` → Flow Axis), so it is
 chosen **before** the skeleton:
 
 - **Infer** a candidate from `GAME.md` genre / pillars / loop stack: a fixed tutorial
@@ -218,7 +220,7 @@ FLOW GDD structure (header + sections — author in this order):
 ### Phase 4 — Section-Cycle (A → F)
 
 Author each section in order through the **section-cycle contract from
-`gd-principles`**: Context (2–3 lines) → Questions → Options (2–4 with pros/cons and
+`gd-authoring`**: Context (2–3 lines) → Questions → Options (2–4 with pros/cons and
 theory from the loaded domain rules, one **(Recommended)** with the WHY) → Decision
 (Explain → Capture, `AskUserQuestion`) → **Draft + Approval in the SAME reply**
 (separating them is a protocol violation) → Write (Edit anchored on the unique
@@ -291,7 +293,7 @@ After the sections are authored:
    fact carries its `source` (`gd-principles` → Facts Registry).
 2. **Update state:** set the flow's status → `detailed` in the **two places that must
    agree** — the `FLOW.md` header `> Status:` token and the `GD-IDS.yaml` `doc_status`
-   — so the spine stays coherent (`gd-principles` → Lifecycle & Status). Set
+   — so the spine stays coherent (`gd-lifecycle` → Lifecycle & Status). Set
    `version: 1` (header + `GD-IDS`). Append the initial changelog block to section F
    (`#### v1 — <date> — initial design` with the `GOAL: + GOAL-<slug>-1 … N (new)`
    line and `Affected (gd-verify): —`).
@@ -321,7 +323,7 @@ The doc exists and the user wants to **change approved content**. This is the
 **single sanctioned way** to record a design change to a flow: a manual `.md` edit
 without a version bump and a changelog entry is an **unrecorded delta** — the
 planning side sees the same version and assumes the code is current
-(`gd-principles` → Delta Discipline). The flow has a code contract and cross-axis
+(`gd-authoring` → Delta Discipline). The flow has a code contract and cross-axis
 staleness, so its delta discipline is **full** (not the GAME.md light carve-out).
 
 ### Classify the scale (from the description)
@@ -359,7 +361,7 @@ When the scale is unclear between two levels (e.g. a "tweak" that actually adds 
    Options (2–4, pros/cons, theory, one **(Recommended)**) → Decision → present
    **old vs new** + Approval **in the same reply** → Write (Edit anchored on the
    heading). Persist each approved section immediately.
-3. **Registry check** (`gd-principles`): every new `GOAL → SYS`/`AC`, dependency, and
+3. **Registry check** (`gd-authoring`): every new `GOAL → SYS`/`AC`, dependency, and
    event vs `GD-IDS` facts; conflicts surface immediately — obey the registry / route
    a new system through `unikit-gd-spec` add-system / park it in section F. Never
    silently override.
@@ -378,15 +380,15 @@ which is outside /unikit-gd-flow. Use:
 - the system map or a GAME.md edit   → /unikit-gd-spec
 ```
 
-### Delta tail (MANDATORY — `gd-principles`)
+### Delta tail (MANDATORY — `gd-authoring`)
 
 Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional:
 
 1. **Version +1** in the `FLOW.md` header **and** in the flow's `version` in
    `GD-IDS.yaml`. Set the flow's status → `revised` in the **two places that must
    agree**: the `FLOW.md` header `> Status:` token and the `GD-IDS.yaml` `doc_status`
-   (`gd-principles` → Lifecycle & Status).
-2. **Changelog block** appended to section **F** — format owned by `gd-principles`:
+   (`gd-lifecycle` → Lifecycle & Status).
+2. **Changelog block** appended to section **F** — format owned by `gd-authoring`:
 
    ```markdown
    #### v<N> — <YYYY-MM-DD> — <essence of the change> (DD-<n>)

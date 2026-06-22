@@ -10,7 +10,7 @@ not fit, the vision is not yet sharp). Owns the premise, pillars, anti-pillars, 
 core fantasy, the aesthetic ranking, the loop stack, win/lose intent, the
 monetization stance, and non-goals. Per-system detail lives in SYSTEM GDDs;
 machine-readable facts live in `GD-IDS.yaml`. Edits go through `unikit-gd-spec`
-(version bump + light changelog — the GAME.md carve-out in `gd-principles` → Delta
+(version bump + light changelog — the GAME.md carve-out in `gd-authoring` → Delta
 Discipline). The generated maps at the bottom (`## System Map [gen]` /
 `## Flow Map [gen]` / `## Funnel [gen]`) are rendered read-only from `GD-IDS.yaml` —
 they are an appendix, not part of the one-pager.
@@ -236,7 +236,7 @@ only as an escape hatch for very large rosters (150+ systems).
 Generated read-only from `GD-IDS.yaml` `flows` by `unikit-gd-flow` — **do not
 hand-edit**. Full map: one row per flow, grouped by wiring-mode. `Realized` is
 DERIVED — `yes` once every system in `Depends` is `implemented` (never written; see
-`gd-principles` → Flow Axis). `Ver` is `—` until `skeleton`.
+`gd-flow-axis` → Flow Axis). `Ver` is `—` until `skeleton`.
 
 ### Linear / Conditional
 

@@ -17,7 +17,7 @@ knowledge has no engine axis and no cross-framework integration concern.
 > one-way design→code boundary, the (zone-agnostic) delta discipline, the ID and
 > language conventions, the Braintrust critique stance, and the shared severity
 > rubric — is **not** a memory rule. It lives in the `gd-principles` **system
-> asset** (`.unikit/system/gd-principles.md`), loaded once at Bootstrap by every
+> asset** (`.unikit/system/gamedesign/gd-principles.md`), loaded once at Bootstrap by every
 > `unikit-gd-*` skill the same way the code pipeline loads `dev-principles.md`.
 > This module holds domain *knowledge*, never *process*.
 
@@ -81,7 +81,7 @@ sanctioned slot for everything a studio authors itself.
   authoring discipline, one-way design→code boundary, (zone-agnostic) delta
   discipline, ID conventions (`PIL-*`, `SYS-*`, …), language rules, Braintrust
   critique stance, and the **severity rubric** → the `gd-principles` **system
-  asset** (`.unikit/system/gd-principles.md`), NOT a memory rule. Never write a
+  asset** (`.unikit/system/gamedesign/gd-principles.md`), NOT a memory rule. Never write a
   memory rule that re-specifies process, grades findings by severity, or
   references GDD section letters (A–K).
 - **The project's own design content** (pillars, systems, facts, formulas,

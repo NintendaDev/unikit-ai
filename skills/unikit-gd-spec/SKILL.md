@@ -63,14 +63,16 @@ field values stay English. Do not announce or mention the language setting.
 
 Before any authoring, silently load — do NOT narrate the loading:
 
-1. **`.unikit/system/gd-principles.md`** — the cross-skill working contract:
-   the zone-ownership model and routing rule, the collaborative protocol
+1. **`.unikit/system/gamedesign/gd-principles.md`** — the cross-skill core: the
+   zone-ownership model and routing rule, the collaborative protocol
    (Question → Options → Decision → Draft → Approval, Explain → Capture), the
-   section-cycle authoring contract, the one-way design→code boundary, the delta
-   discipline (incl. the **GAME.md carve-out** this skill implements), the
-   facts-registry / ID conventions, the language rules, the critique stance, and the
-   severity rubric. **This skill never re-specifies those mechanics — it applies them.**
-   If the file is missing, warn the user that `gd-principles` is not installed
+   one-way design→code boundary, the facts-registry / ID conventions, the language
+   rules, and the anti-patterns. Plus, from the same `gamedesign/` folder, the
+   shards this skill needs: **`gd-authoring.md`** (the section-cycle authoring
+   contract + the delta discipline, incl. the **GAME.md carve-out** this skill
+   implements) and **`gd-lifecycle.md`** (the lifecycle & status spine).
+   **This skill never re-specifies those mechanics — it applies them.**
+   If the core file is missing, warn the user that `gd-principles` is not installed
    (`unikit-ai update`) and continue with the protocol summarized above as a fallback.
 2. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — the domain knowledge index.
    Load the core rules relevant to master-spec work **on demand** by their
@@ -189,7 +191,7 @@ the block as the **last step**:
 3. One row per system: `ID | System | Tier | Status | Ver | Depends | Doc`.
    - `Status` mirrors `doc_status`, **overridden** by `deprecated` (from the
      `status` field) and by the code-set `implemented` (display-only — design never
-     authors it; `gd-principles` → Lifecycle & Status).
+     authors it; `gd-lifecycle` → Lifecycle & Status).
    - `Ver` is `—` until `skeleton`.
    - `Doc` is `systems/SYS-<slug>.md`.
 4. Replace **only** the content between `<!-- gen:system-map -->` and
@@ -200,7 +202,7 @@ the block as the **last step**:
 The `## Flow Map [gen]` and `## Funnel [gen]` blocks are rendered by `unikit-gd-flow`
 (the Flow axis) — out of scope here until that skill ships; leave their template
 scaffold untouched. `unikit-gd-verify` independently re-renders a stale `[gen]` block
-when its freshness check trips (`gd-principles` → Lifecycle & Status) — the render is
+when its freshness check trips (`gd-lifecycle` → Lifecycle & Status) — the render is
 deterministic, so both writers always agree.
 
 ---

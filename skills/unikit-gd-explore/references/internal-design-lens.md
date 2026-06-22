@@ -17,7 +17,7 @@ system doc.
 
 ## Governing stance
 
-- **Diagnose, don't prescribe** (`gd-principles` → Critique Stance). Name the tension
+- **Diagnose, don't prescribe** (`gd-critique` → Critique Stance). Name the tension
   and its evidence ("FORM-damage flattens past attack 40, which undercuts PIL-2's
   'patience over aggression' test"), then offer options — never a single decreed fix.
 - **Grounded in this game.** Anchor every option to a pillar (`PIL-n`), a target
@@ -140,7 +140,7 @@ For a mechanic with **no system on the map yet**. Two parts:
   content the lens worked out — Overview, Player Fantasy, Core Rules, draft Formulas,
   Edge Cases, candidate Tuning Knobs, draft Acceptance Criteria. These seeds are
   **untagged normal authored content** — `unikit-gd-system` does **not** mark them
-  `extracted` / `generated` (those markers are for imports only; `gd-principles` →
+  `extracted` / `generated` (those markers are for imports only; `gd-provenance` →
   Provenance).
 
 ### `## Flow Improvement Plan` — for `/unikit-gd-flow`
@@ -177,7 +177,7 @@ first). Two parts:
   content the lens worked out — Overview, the objective-flow `GOAL`s (or the affordance
   set for `emergent`), Pacing (beats or envelope), Dependencies, Events. These seeds
   are **untagged normal authored content** — the import-only `extracted` / `generated`
-  markers do not apply (`gd-principles` → Provenance).
+  markers do not apply (`gd-provenance` → Provenance).
 
 Fill any field with `N/A` rather than inventing content the lens did not cover.
 

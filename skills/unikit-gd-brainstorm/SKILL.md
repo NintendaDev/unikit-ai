@@ -61,7 +61,7 @@ language setting.
 
 Before responding, silently load — do not narrate:
 
-1. **`.unikit/system/gd-principles.md`** — the working contract: the collaborative
+1. **`.unikit/system/gamedesign/gd-principles.md`** (the core) — the collaborative
    protocol (Question → Options → Decision → Draft → Approval, Explain → Capture),
    the "never guess" rule, anti-anchoring, the language rules. This skill
    **applies** it. If missing, warn (`unikit-ai update`) and continue with the

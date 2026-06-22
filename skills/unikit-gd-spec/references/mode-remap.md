@@ -21,7 +21,7 @@ one-pager's vision.
    GDD keeps its `doc_status` and `version`; only its map metadata (category,
    depends, tier) may change, with approval. Deprecate (never delete) systems that
    no longer fit — set `status: deprecated` in `GD-IDS.yaml` (the `## System Map [gen]`
-   then renders `deprecated` via display precedence — see gd-principles → Lifecycle &
+   then renders `deprecated` via display precedence — see gd-lifecycle → Lifecycle &
    Status); dangling references become verify conflicts.
 5. Refresh `## Design Order` / `## Risks & Circular Dependencies` in GAME.md and
    re-render `## System Map [gen]` (Regen-on-Write in `SKILL.md`).

@@ -69,9 +69,12 @@ Before responding — before any analysis — silently load (do not narrate):
 
 > **Exception:** `init` mode skips this step; it only rebuilds the researches index.
 
-1. **`.unikit/system/gd-principles.md`** — the working contract: the collaborative
-   protocol, the one-way design→code boundary, the critique stance (diagnose, don't
-   prescribe), the language rules. This skill **applies** it. If missing, warn
+1. **`.unikit/system/gamedesign/gd-principles.md`** (the core) — the collaborative
+   protocol, the one-way design→code boundary, and the language rules. Plus, from the
+   same `gamedesign/` folder, the shards the internal-design lens leans on:
+   **`gd-critique.md`** (the critique stance — diagnose, don't prescribe) and
+   **`gd-provenance.md`** (provenance markers are for imports only; explore-seeded
+   drafts stay untagged). This skill **applies** it. If missing, warn
    (`unikit-ai update`) and continue with the protocol summarized above.
 2. **`.unikit/gamedesign/GD-IDS.yaml`** and **`GAME.md`** (incl. its `## System Map
    [gen]` render) (if they exist) — the current design, so research is grounded in

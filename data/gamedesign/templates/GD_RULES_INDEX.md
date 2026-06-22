@@ -11,7 +11,7 @@ When** column; nothing here is mandatory-gated.
 The cross-skill *working contract* (collaboration protocol, section-cycle
 authoring discipline, one-way boundary, delta discipline, severity rubric) is NOT
 a rule in this index — it is the `gd-principles` system asset
-(`.unikit/system/gd-principles.md`), loaded once at Bootstrap. This index holds
+(`.unikit/system/gamedesign/gd-principles.md`), loaded once at Bootstrap. This index holds
 domain *knowledge*, not process.
 
 ### Override Priority (highest wins)

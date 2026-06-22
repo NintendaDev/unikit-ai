@@ -6,7 +6,7 @@
 > **Implements**: [PIL-n, PIL-m] · **Layer**: [Foundation | Core | Feature | Presentation] · **Scope**: [S | M | L | XL]
 
 A per-system design document. Eleven sections A–K, authored one at a time
-through the section-cycle contract (see `.unikit/system/gd-principles.md`):
+through the section-cycle contract (see `.unikit/system/gamedesign/gd-authoring.md`):
 Context → Options → Decision → Draft+Approval (same reply) → Write. Sections D
 and H trigger a `GD-IDS.yaml` registry check. Domain section-packs (economy, UX,
 accessibility, narrative, level…) append after K when the system touches that

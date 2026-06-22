@@ -55,13 +55,15 @@ field values stay English. Do not announce the language setting.
 
 Silently load — do not narrate:
 
-1. **`.unikit/system/gd-principles.md`** — the working contract. The
-   **section-cycle authoring contract**, the **delta discipline** (the mandatory
-   Version +1 → changelog → registry-check → recommend-verify tail), the
-   collaborative protocol, the facts registry / ID conventions, the language rules,
-   and the severity rubric live there. This skill **applies** that contract; it does
-   not restate the mechanics. If missing, warn (`unikit-ai update`) and fall back to
-   the protocol as summarized in this file.
+1. **`.unikit/system/gamedesign/gd-principles.md`** (the core) — the collaborative
+   protocol, the facts registry / ID conventions, and the language rules. Plus, from
+   the same `gamedesign/` folder, the shards this skill needs: **`gd-authoring.md`**
+   (the **section-cycle authoring contract** + the **delta discipline** — the
+   mandatory Version +1 → changelog → registry-check → recommend-verify tail),
+   **`gd-lifecycle.md`** (the lifecycle & status spine), and **`gd-provenance.md`**
+   (the import provenance markers). This skill **applies** that contract; it does not
+   restate the mechanics. If missing, warn (`unikit-ai update`) and fall back to the
+   protocol as summarized in this file.
 2. **`.unikit/gamedesign/GAME.md`** — pillars, loops, non-goals the system must
    serve (its roster is in `## System Map [gen]`). If it does not exist, **stop** —
    there is no master spec yet. Read `.unikit/gamedesign/concepts/INDEX.md` (if it
@@ -130,7 +132,7 @@ Gather the facts the system must stay consistent with (read-only):
 - **Import source** — if `GD-IDS`/GAME mention an import, or a
   `researches/<date>_import-*/SOURCE.md` covers this system, read it: section
   content is **extracted** from it, not regenerated. Mark provenance per
-  `gd-principles` → Provenance: place `<!-- provenance: extracted from SOURCE.md -->`
+  `gd-provenance` → Provenance: place `<!-- provenance: extracted from SOURCE.md -->`
   under each section lifted from the source and `<!-- provenance: generated -->`
   under each section inferred to complete the skeleton; untagged sections are
   normal authored content.
@@ -147,7 +149,7 @@ Gather the facts the system must stay consistent with (read-only):
   approves every edit). These explore-seeded drafts are **untagged normal authored
   content** — do **not** mark them `extracted` / `generated` (those markers are for
   **imports** only; this is the generalization of import-reading stated canonically
-  in `gd-principles` → Provenance, which this skill applies rather than restates).
+  in `gd-provenance` → Provenance, which this skill applies rather than restates).
 
 ## Phase 2 — Resolve Mode from Document State + Intent (no flags)
 
@@ -207,7 +209,7 @@ pack's sub-sections **after K** — see `references/section-packs.md`.
 ### Phase 4 — Section-Cycle (A → K)
 
 Author each section in order through the **section-cycle contract from
-`gd-principles`**: Context (2–3 lines) → Questions → Options (2–4 with pros/cons
+`gd-authoring`**: Context (2–3 lines) → Questions → Options (2–4 with pros/cons
 and theory from the loaded domain rules, one **(Recommended)** with the WHY) →
 Decision (Explain → Capture, `AskUserQuestion`) → **Draft + Approval in the SAME
 reply** (separating them is a protocol violation) → Write (Edit anchored on the
@@ -255,7 +257,7 @@ After the sections are authored:
 3. **Update state:** set the system's status → `detailed` in the **two places that
    must agree** — the `SYSTEM.md` header (edit the `> Status:` token inside the
    combined header line, not a separate bold line) and the `GD-IDS.yaml` `doc_status`
-   — so the spine stays coherent (`gd-principles` → Lifecycle & Status). Set
+   — so the spine stays coherent (`gd-lifecycle` → Lifecycle & Status). Set
    `version: 1` in `GD-IDS.yaml` (and the header). Append the initial changelog block
    to section K (`#### v1 — <date> — initial design` with the `AC: + AC-<slug>-1 … N
    (new)` line). Record a `DD-<n>` in `GD-IDS.yaml` `decisions` for any significant
@@ -263,7 +265,7 @@ After the sections are authored:
 
 The `GAME.md` `## System Map [gen]` renders this system's status/version read-only
 from `GD-IDS`; it is **not** this skill's surface — it re-renders on the next
-`unikit-gd-verify` freshness check or `unikit-gd-spec` touch (`gd-principles` →
+`unikit-gd-verify` freshness check or `unikit-gd-spec` touch (`gd-lifecycle` →
 Lifecycle & Status). Recommending verify (Phase 6) closes that loop.
 
 ---
@@ -274,7 +276,7 @@ The doc exists and the user wants to **change approved content**. This is the
 **single sanctioned way** to record a design change to a system: a manual `.md`
 edit without a version bump and a changelog entry is an **unrecorded delta** — the
 planning side sees the same version and assumes the code is current
-(`gd-principles` → Delta Discipline).
+(`gd-authoring` → Delta Discipline).
 
 ### Classify the scale (from the description)
 
@@ -304,11 +306,11 @@ new state → Rework), ask rather than assume.
 1. Derive the affected sections from the description (e.g. "statuses" → C Core
    Rules, D Formulas, E Edge Cases) and **confirm the set** before editing.
 2. For each affected section, in order, run the **section-cycle contract from
-   `gd-principles`**, with the section's **current content as the starting draft**:
+   `gd-authoring`**, with the section's **current content as the starting draft**:
    Context → Questions → Options (2–4, pros/cons, theory, one **(Recommended)**) →
    Decision → present **old vs new** + Approval **in the same reply** → Write
    (Edit anchored on the heading). Persist each approved section immediately.
-3. **Registry check after C and D** (`gd-principles`): every new number/name vs
+3. **Registry check after C and D** (`gd-authoring`): every new number/name vs
    GD-IDS facts; conflicts surface immediately — obey the registry / change it via
    a `unikit-gd-verify` resolution / park it in section K. Never silently override.
 4. Re-derive any affected **acceptance criteria (H)**: new ACs get the next stable
@@ -329,7 +331,7 @@ which is outside /unikit-gd-system. Use:
 is in `GAME.md` content (`/unikit-gd-spec`) or the map (`/unikit-gd-spec` remap).
 Name the escalation; do not force-fit it into the current document.
 
-### Delta tail (MANDATORY — `gd-principles`)
+### Delta tail (MANDATORY — `gd-authoring`)
 
 Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional:
 
@@ -337,8 +339,8 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
    `GD-IDS.yaml`. Set the system's status → `revised` in the **two places that must
    agree**: the `SYSTEM.md` header (the `> Status:` token in the combined header
    line, not a separate bold line) and the `GD-IDS.yaml` `doc_status`
-   (`gd-principles` → Lifecycle & Status).
-2. **Changelog block** appended to section **K** — format owned by `gd-principles`:
+   (`gd-lifecycle` → Lifecycle & Status).
+2. **Changelog block** appended to section **K** — format owned by `gd-authoring`:
 
    ```markdown
    #### v<N> — <YYYY-MM-DD> — <essence of the change> (DD-<n>)

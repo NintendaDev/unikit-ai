@@ -8,7 +8,7 @@
 A per-flow design document — the **dynamics** axis (what the player does over
 time), alongside the SYSTEM GDDs (the rules) and `GAME.md` (the whole). Authored
 one objective at a time through the section-cycle contract (see
-`.unikit/system/gd-principles.md` → Flow Axis). Each row is a `GOAL-<slug>-<n>`,
+`.unikit/system/gamedesign/gd-flow-axis.md` → Flow Axis). Each row is a `GOAL-<slug>-<n>`,
 the flow counterpart of a system's `AC-<sys>-<n>`. The wiring `Mode` (declared in
 the header and in `GD-IDS.yaml`) dictates the shape of section B; `unikit-gd-verify`
 checks `Mode` ↔ structure. Machine-readable facts (goals, mode, depends, events)

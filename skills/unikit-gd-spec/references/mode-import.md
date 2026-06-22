@@ -24,7 +24,7 @@ from code (one-way boundary).
    follow the section-cycle to **ask** the user rather than inventing them, and tell
    the user which elements the source lacked. GAME.md records its provenance through
    the header `> **Based on**:` line (step 5), **not** per-section provenance markers
-   — the `<!-- provenance: … -->` markers (`gd-principles` → Provenance) are a
+   — the `<!-- provenance: … -->` markers (`gd-provenance` → Provenance) are a
    SYSTEM-GDD device; GAME.md is a free-form one-pager and is deliberately outside
    their scope (cf. the SYSTEM.md skeleton).
 4. **Decompose** (Create Mode Phase B — `mode-create.md` § Phase B): take the systems the
