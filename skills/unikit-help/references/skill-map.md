@@ -1,0 +1,284 @@
+<!--
+  UniKit skill map — the navigator's internal catalog.
+
+  This is the single index `unikit-help` routes from. It is HAND-MAINTAINED but
+  GUARDED: scripts/test-help-skill.sh fails if a skill exists under skills/ that has
+  no `### <skill-name>` heading here (so the map can never silently fall behind the
+  framework). When you add or remove a unikit skill, add or remove its heading here.
+
+  Format contract (the guard depends on it): every skill is documented under a
+  level-3 heading of the exact form `### <skill-name>` (no slash, no backticks).
+-->
+
+# UniKit Skill Map
+
+Every `unikit-*` skill, what it owns, and what runs before/after it. Skills are
+invoked as slash commands (e.g. `/unikit-plan`); on Codex the prefix is `$`
+(`$unikit-plan`), on Qwen it is `/skills unikit-plan`.
+
+Legend: **Required** = part of the minimum path · **Optional** = quality/extra ·
+**Setup** = one-time · arrows show the usual neighbours.
+
+---
+
+## Setup
+
+### unikit
+- **Purpose:** One-time whole-project bootstrap. Scans the engine + real tech stack and
+  generates the base context: `.unikit/config.yaml`, `.unikit/DESCRIPTION.md`, `AGENTS.md`,
+  the memory knowledge base, and (delegated) `.unikit/ARCHITECTURE.md`.
+- **When:** First thing in any project — "initialize/set up unikit", "bootstrap the project".
+- **In:** optional project description (a sentence, or a path to a design doc). Needs the
+  installer to have run first (engine chosen).
+- **Out:** the `.unikit/` context files + `AGENTS.md` + `.unikit/memory/code/{core,stack}/`.
+- **Required (Setup).** Before: the `unikit-ai init` installer. After: `/unikit-plan`,
+  or `/unikit-gd-brainstorm` / `/unikit-gd-spec` for the design track.
+
+### unikit-architecture
+- **Purpose:** Generate / update `.unikit/ARCHITECTURE.md` — folder layout, dependency rules,
+  module communication, chosen architecture pattern.
+- **When:** "describe the architecture", "which architecture should I use", or to refresh it.
+- **In:** an optional pattern name (else auto-detect). Reads DESCRIPTION.md + the project scan.
+- **Out:** `.unikit/ARCHITECTURE.md`.
+- **Required-context, auto-run by `/unikit`.** Standalone editor afterward. Before: `/unikit`.
+  After: read by almost every skill's bootstrap.
+
+---
+
+## Code pipeline (spec-driven)
+
+### unikit-roadmap
+- **Purpose:** Strategic milestone roadmap (`.unikit/ROADMAP.md`) — break a big project into
+  5-15 milestones; mark progress.
+- **When:** "what should I build next", "milestones", "roadmap", "check what's done".
+- **In:** a vision/requirements text or reference docs; `check` to auto-scan progress.
+- **Out:** `.unikit/ROADMAP.md`.
+- **Optional (strategy layer).** Before: `/unikit`. After: `/unikit-plan <milestone>`.
+
+### unikit-explore
+- **Purpose:** Read-only thinking partner for *technical* work — research a solution, design a
+  feature's architecture, compare frameworks, or deep-dive a bug's root cause. Never writes code.
+- **When:** "let's explore", "how should we architect this", "compare X vs Y", "why does this
+  bug happen". Use before planning when you don't yet have technical direction.
+- **In:** a topic / question / system name. `init` rebuilds the researches index.
+- **Out:** `.unikit/code/researches/<date>_<name>/` (`RESEARCH_RESULT.md` + `RESEARCH_BRIEF.md`),
+  and `researches/INDEX.md`.
+- **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the brief),
+  `/unikit-fix` (if a bug was found).
+
+### unikit-plan
+- **Purpose:** Turn a feature into a dependency-ordered task plan + technical brief.
+- **When:** "plan this feature", "create tasks". The first **required** step of building.
+- **In:** a feature description, or a research brief, or a roadmap milestone. Modes: `fast`
+  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `add` (extend).
+  If a game-design workspace exists, it pulls a `## Design` brief citing the system's `AC-<id>`s.
+- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/{TASKS.md,PLAN-BRIEF.md}`.
+- **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
+
+### unikit-improve
+- **Purpose:** Refine an existing plan — find missing tasks, wrong dependencies, made-up APIs,
+  rule mismatches. Run it 1-3x; each pass digs into untouched parts.
+- **When:** right after `/unikit-plan`, before implementing.
+- **In:** the latest (or a named) plan. Optional `+check` validates findings in a fresh context.
+- **Out:** edits the plan in place + an improvement report.
+- **Optional but strongly recommended.** Before: `/unikit-plan`. After: `/unikit-implement`.
+
+### unikit-implement
+- **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks),
+  commit at checkpoints. Resumable across sessions.
+- **When:** "implement", "execute the plan", "continue", "do Phase 2".
+- **In:** the latest plan, or `@<folder>`, or a phase/task selector. Bootstraps rules once, then
+  codes inline.
+- **Out:** project source code; updates `TASKS.md` checkboxes.
+- **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
+  `/unikit-verify` / `/unikit-commit`.
+
+### unikit-review
+- **Purpose:** Qualitative code review against the project's rules — bugs, security, performance,
+  style. Read-only; emits findings + a machine-readable gate result.
+- **When:** "review my code", "review this PR", "is this code okay". After implementing.
+- **In:** nothing (staged changes), a file/folder, a PR number, or a branch/commit. Optional
+  `+check`.
+- **Out:** a findings report (no file changes).
+- **Optional.** Before: `/unikit-implement`. After: `/unikit-fix` (apply the findings).
+
+### unikit-verify
+- **Purpose:** Verify the implementation *against the plan* — every task done, build clean, tests
+  pass, no leftover TODOs, conventions honoured. Emits a gate result.
+- **When:** "verify", "did we miss anything", "does it build and pass tests". After implementing.
+- **In:** nothing (latest plan), or a feature name; `--strict` raises the bar.
+- **Out:** a verification report. The **one** sanctioned code→design write: on all-AC-met it
+  stamps `implemented_version` into the GDD's `GD-IDS.yaml` (a single surface; GAME.md's
+  `## System Map [gen]` renders the `implemented` state read-only).
+- **Optional (pre-merge gate).** Before: `/unikit-implement`. After: `/unikit-fix`, `/unikit-commit`.
+
+### unikit-fix
+- **Purpose:** Fix a specific bug — find the root cause, fix it, suggest a test, and always write
+  a learning *patch*. Also applies `/unikit-review` and `/unikit-verify` findings.
+- **When:** "fix this bug", an error / stack trace / console log, "apply the review findings".
+- **In:** a bug description, or findings already in the conversation, or an existing `FIX_PLAN.md`.
+  Modes: Fix-now or Plan-first.
+- **Out:** a code fix + a patch in `.unikit/code/patches/`.
+- **Optional (triggered by bugs).** Before: `/unikit-explore` (deep bugs), `/unikit-review`,
+  `/unikit-verify`. After: `/unikit-verify`, `/unikit-commit`, and (after several patches)
+  `/unikit-evolve`.
+
+### unikit-commit
+- **Purpose:** Generate conventional-commit messages from staged changes (with engine-specific
+  safety checks), commit, and optionally push. Splits unrelated changes.
+- **When:** "commit", "save changes". Always commit through this, not manual git.
+- **In:** an optional scope hint.
+- **Out:** a git commit (+ optional push).
+- **Optional (terminal step).** Before: any of implement/fix/verify/review.
+
+### unikit-evolve
+- **Purpose:** Learn from accumulated fix-patches — extract prevention points and turn them into
+  coding rules (`RULES.md`) or skill-workflow overrides (`skill-context/`).
+- **When:** after several `/unikit-fix` sessions (it suggests itself at ~3 unprocessed patches);
+  "learn from my fixes".
+- **In:** `.unikit/code/patches/` (incremental via a cursor).
+- **Out:** proposed rules → `.unikit/RULES.md` and/or `.unikit/skill-context/<skill>/SKILL.md`.
+- **Optional (feedback loop).** Before: `/unikit-fix`. After: `/unikit-rules`, `/unikit-memory`.
+
+### unikit-devcontext
+- **Purpose:** The code-writing engine / senior-developer persona for direct, ad-hoc edits with
+  **no plan** (e.g. a one-off refactor). The skill the pipeline delegates to as `develop-agent`.
+- **When:** "just add this method", "refactor this", "do it directly, no plan".
+- **In:** a task or file path; bootstraps the full knowledge base.
+- **Out:** project code.
+- **Optional / internal.** Used directly for quick edits, or spawned by implement/fix/verify
+  for parallel or deep-dive work.
+
+---
+
+## Game design
+
+### unikit-gd-brainstorm
+- **Purpose:** Ideate a brand-new game concept from a blank page or a one-line hint — pillars,
+  loops, motivation, pre-mortem — into a CONCEPT card. Includes delegated market validation.
+- **When:** "I don't know what game to make", "let's come up with a game", "a roguelike idea".
+- **In:** an optional theme/hint. Auto-resumes an in-progress concept.
+- **Out:** `.unikit/gamedesign/concepts/<date>_<slug>/CONCEPT.md` (+ rejected-idea backlog).
+- **Optional (entry of the design track).** After: `/unikit-gd-spec <slug>`.
+
+### unikit-gd-explore
+- **Purpose:** Read-only design research partner — dissect a reference game, scan a market, or
+  (internal-design lens) work out how to improve a system or invent a new mechanic for *this* game.
+  Never authors the GDD; it researches, then routes you onward.
+- **When:** "is there a market for X", "break down the combat of <game>", "find a new mechanic",
+  "how could we improve our economy".
+- **In:** a topic / game reference / URL / design question. `init` rebuilds the researches index.
+- **Out:** `.unikit/gamedesign/researches/<date>_<slug>/` (research + brief). Then it recommends:
+  no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`; skeleton →
+  `/unikit-gd-system`; detailed/reviewed/revised → `/unikit-gd-system`.
+- **Optional (research, cross-cutting).** Before: `/unikit-gd-spec`. After: spec / system.
+
+### unikit-gd-spec
+- **Purpose:** Create and own the master GDD (`GAME.md` — the authored one-pager **and** its
+  generated `## System Map [gen]`) and the `GD-IDS.yaml` registry. Also **edits GAME.md content**
+  (a pillar, the monetization stance…), imports an existing GDD, remaps, adds a single new system,
+  or writes a pitch.
+- **When:** "create the game design", "turn my concept into a GDD", "import this GDD", "add a
+  crafting system to the GDD", "change a pillar", "rework the monetization stance".
+- **In:** a concept slug, a description, a path/URL to an existing GDD, or a GAME.md edit. Mode is inferred.
+- **Out:** `.unikit/gamedesign/GAME.md` (incl. `## System Map [gen]`), `GD-IDS.yaml` (+ optional `PITCH.md`).
+- **Required for the design track (the GDD root).** Before: `/unikit-gd-brainstorm`. After:
+  `/unikit-gd-system`.
+
+### unikit-gd-system
+- **Purpose:** Own one system's GDD (sections A-K: overview, fantasy, design, formulas, edge
+  cases, dependencies, tuning, acceptance criteria, telemetry, accessibility, open questions) —
+  **create** the skeleton, **fill** placeholders, **and revise** approved content (Tuning a
+  number / Tweak a small rule / Rework a restructure, each a versioned delta + changelog).
+- **When:** "detail the combat system", "write the GDD for inventory", "spec out the parameters",
+  "raise the damage 10%", "rework the status system", "nerf X", "tune the economy".
+- **In:** a system name or `SYS-slug` (+ optionally what to change). Mode (create/fill/edit) and
+  edit scale are inferred. Off-map → it routes to spec add-system; a `GAME.md`/pillar change → spec.
+- **Out:** `.unikit/gamedesign/systems/SYS-<slug>.md` + registers facts/IDs in `GD-IDS.yaml`; on a
+  revise, version bump + changelog and status → `revised`.
+- **Required per system.** Before: `/unikit-gd-spec`. After: `/unikit-gd-review`, `/unikit-gd-verify`.
+
+### unikit-gd-review
+- **Purpose:** Qualitative design review ("is this design good/fun/balanced?") via adversarial
+  lenses → severity-graded verdict + report. The design-side mirror of `/unikit-review`.
+- **When:** "review the combat GDD", "is this design good", "critique this system", "review all GDDs".
+- **In:** a system / path / `all` (scope inferred). Optional `+check`.
+- **Out:** `.unikit/gamedesign/reviews/<date>_review-*.md`; on approval sets `doc_status: reviewed`.
+- **Optional.** Before: `/unikit-gd-system`. After: `/unikit-gd-system` (fix findings).
+
+### unikit-gd-verify
+- **Purpose:** Mechanical consistency check ("is the design consistent with itself?") + changed-scope
+  impact — broken references, ID validity, terminology drift, dependency/status/version coherence,
+  acceptance-criteria presence. Deterministic, offline.
+- **When:** "verify the design", "is the design consistent", "what did this change affect".
+- **In:** a system / `SYS-slug` / question, or the unverified design diff. Conflicts can't be declined.
+- **Out:** a conflicts/impact report (only when something is found); flags affected dependents `revised`.
+- **Optional (recommended after every design edit).** Before: `/unikit-gd-system`. After:
+  `/unikit-gd-system` (fix conflicts).
+
+---
+
+## Knowledge base, rules & registry
+
+### unikit-rules
+- **Purpose:** Quick-capture a short project convention/override into `.unikit/RULES.md` (the
+  highest-priority rule file, auto-loaded by `/unikit-implement`).
+- **When:** "always do X", "never use Y", "remember this", correcting the agent for next time.
+- **In:** a rule typed as a prompt (no files/URLs).
+- **Out:** appends to `.unikit/RULES.md`.
+- **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).
+
+### unikit-memory
+- **Purpose:** Curate the indexed knowledge base under `.unikit/memory/<module>/<tier>/`. Adds rules
+  from a description **or distils sources** (URL, file, folder, PDF, EPUB/FB2 book) into rules;
+  migrates `RULES.md` entries; `optimise` extracts big sections into reference files. Module-aware
+  (`--module code` | `--module gamedesign`).
+- **When:** "add a stack rule for <framework>", "make rules from this book/article/docs",
+  "migrate the rules", "optimise the knowledge base".
+- **In:** a description / source(s) / `migrate-rules` / `optimise` / `validate`; `--skip-registry`.
+- **Out:** rule + reference files under `.unikit/memory/`, and a regenerated `RULES_INDEX.md`.
+- **Optional.** Pairs with `/unikit-rules` (capture) and `/unikit-rules-registry` (publish).
+
+### unikit-rules-registry
+- **Purpose:** Orchestrate the external rules registry lifecycle (so rules move between projects):
+  `create` a local registry from your memory, `update` it (with semver bumps), or `sync` updates
+  back into your project. Module-aware. Wraps the `unikit-ai rules ...` CLI.
+- **When:** "make a registry for my rules", "publish my rules", "pull registry updates".
+- **In:** `create | update | sync` (+ `--module`). create/update need a **local-folder** registry.
+- **Out:** writes the registry file tree + manifest; reconciles project state via the CLI.
+- **Optional.** Counterpart to the `unikit-ai rules` CLI.
+
+### unikit-skills-context
+- **Purpose:** Customize how a built-in skill behaves *in this project* by writing per-skill workflow
+  overrides into `.unikit/skill-context/<skill>/SKILL.md` (never edit the base skill — updates wipe it).
+- **When:** "make /unikit-fix always add logging", "customize the review skill", "validate stale overrides".
+- **In:** `<skill-name> [rule text]` or `validate [skill-name]`.
+- **Out:** `.unikit/skill-context/<skill>/SKILL.md`.
+- **Optional.** Manual counterpart to `/unikit-evolve`'s workflow-rule output.
+
+---
+
+## Docs & utilities
+
+### unikit-docs
+- **Purpose:** Generate/maintain project documentation — a lean README + topic pages in `docs/`;
+  optional HTML with `--web`.
+- **When:** "generate docs", "update the README", "document the project".
+- **In:** `--web` flag; reads the codebase + context.
+- **Out:** `README.md`, `docs/*.md` (+ `docs-html/` with `--web`).
+- **Optional.** Often delegated by `/unikit-implement` when the plan asks for docs.
+
+### unikit-todo
+- **Purpose:** A lightweight deferred-task list `.unikit/TODO.md` — park reminders without acting now.
+- **When:** "remind me to...", "note for later", "todo list", "mark this done".
+- **In:** a task / `complete <desc>` / `list` / `purge`.
+- **Out:** `.unikit/TODO.md`.
+- **Optional.** Implement/fix auto-close matching items.
+
+### unikit-help
+- **Purpose:** This navigator. Diagnoses what the user is trying to do and points to the right skill
+  or pipeline. Read-only — it never does the work, it routes.
+- **When:** "what do I do next", "where do I start", "which skill should I use", "I'm lost in unikit".
+- **In:** a question, or nothing (then it asks one short diagnostic).
+- **Out:** guidance (no file changes).
+- **Optional (meta).** Routes to every skill above.

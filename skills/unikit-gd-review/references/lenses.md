@@ -74,6 +74,22 @@ single-document review can make:
   (e.g. *take damage → status applied → UI feedback → death → respawn economy hit*)
   and find where the systems disagree.
 
+## Flow lenses (stub — Flow axis, Phase 2)
+
+Review is **axis-aware**: alongside systems it will judge **flows** (`FLOW.md` +
+the `## Flow Map [gen]` / `## Funnel [gen]` renders) once `unikit-gd-flow` ships.
+The flow lenses below are a **skeleton** — their adversarial prompts are filled in
+Phase 2; today they do **not** run (a `FLOW.md` is not yet a review target).
+
+| Lens | The question it will attack (Phase 2) |
+|------|----------------------------------------|
+| **pacing** | Does the wiring-mode's structure deliver the intended tension arc — does the pacing envelope (emergent) or the objective-flow table (linear/conditional) actually rise and release, or flatline? |
+| **guidance** | Can the player tell what to do next at each `GOAL` step — is every Trigger → Expected action legible (beacon/feedback present), or does the flow rely on the player guessing? |
+| **funnel** | Does the `## Funnel [gen]` measure the moments that matter — is each retention/conversion-critical `GOAL` instrumented by an event, with no blind step? |
+
+A flow finding will cite the `FLOW-<slug>` / `GOAL-<flow>-<n>` and the system
+`AC`/pillar it serves, on the same shared rubric. Until Phase 2, omit these lenses.
+
 ## Output discipline
 
 - **Diagnose, don't prescribe** (`gd-principles`): name the problem and its

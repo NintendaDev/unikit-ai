@@ -1,8 +1,10 @@
-# Machine truth for the defective-gdd fixture. Canonical GD-IDS schema
-# (pillars | systems | entities | formulas | terms | decisions). Intentionally
-# inconsistent with the documents — see README.md for the planted defects.
+# Machine truth for the defective-gdd fixture. Canonical GD-IDS v2 schema
+# (pillars | systems | flows | events | entities | formulas | terms | decisions).
+# Intentionally inconsistent with the documents — see README.md for the planted
+# defects. The roster renders read-only into GAME.md ## System Map [gen]; there is
+# no standalone markdown index in v2.
 
-version: 1
+version: 2
 last_updated: "2026-06-13"
 
 # ─── PILLARS ──────────────────────────────────────────────────────────────────
@@ -26,8 +28,9 @@ systems:
     name: "Combat"
     status: active
     tier: MVP
+    category: Gameplay
     doc_status: detailed
-    version: 2                 # defect (version coherence): combat.md header says Version 1
+    version: 2                 # defect (version coherence, 2-place): combat.md header says Version 1
     implements: [PIL-1]
     depends_on: []             # defect (dangling): combat.md F depends on SYS-inventory (absent)
     source: systems/combat.md
@@ -37,10 +40,11 @@ systems:
     name: "Boost"
     status: active
     tier: MVP
-    doc_status: detailed       # defect (status coherence): GD-INDEX row says skeleton, header says detailed
+    category: Gameplay
+    doc_status: detailed       # defect (status coherence, 2-place): boost.md header says reviewed, GD-IDS says detailed
     version: 1
     implements: [PIL-1]
-    depends_on: []             # defect (Depends 3-way): boost.md F declares "depends on SYS-combat"
+    depends_on: []             # defect (Depends 3-way): boost.md F declares "depends on SYS-combat", but here + ## System Map are empty
     source: systems/boost.md
     added: 2026-06-13
     revised: ""
@@ -48,7 +52,8 @@ systems:
     name: "Loot"
     status: active
     tier: VS
-    doc_status: detailed       # defect (index↔disk): a detailed system with no systems/loot.md on disk
+    category: Economy
+    doc_status: detailed       # defect (roster↔disk): a detailed system with no systems/loot.md on disk
     version: 1
     implements: [PIL-2]
     depends_on: []
@@ -57,8 +62,9 @@ systems:
     revised: ""
   - id: SYS-hud
     name: "HUD"
-    status: deprecated         # NEG carve-out (display precedence): GD-INDEX Status column shows `deprecated`
+    status: deprecated         # NEG carve-out (display precedence): ## System Map [gen] Status shows `deprecated`
     tier: VS
+    category: UI
     doc_status: reviewed       # underlying doc_status; header + GD-IDS agree — NOT a coherence conflict
     version: 1
     implements: [PIL-2]
@@ -66,6 +72,13 @@ systems:
     source: systems/hud.md
     added: 2026-06-13
     revised: 2026-06-13
+
+# ─── FLOWS ────────────────────────────────────────────────────────────────────
+# No player-action flows authored in this fixture (the Flow axis arrives in Phase 2).
+flows: []
+
+# ─── EVENTS ───────────────────────────────────────────────────────────────────
+events: []
 
 # ─── ENTITIES ─────────────────────────────────────────────────────────────────
 entities:

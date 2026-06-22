@@ -530,7 +530,7 @@ No summary document, no report file.
   concepts `INDEX.md`.
 - **Not this skill:** `GAME.md` + the system map → `unikit-gd-spec`; analyzing an
   existing game/market → `unikit-gd-explore`; per-system GDDs →
-  `unikit-gd-detail`.
+  `unikit-gd-system`.
 - **Never:** write a concept without approval; offer `promoted`/`abandoned`
   concepts for resume; read the code workspace or project source.
 

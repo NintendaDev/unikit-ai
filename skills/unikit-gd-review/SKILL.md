@@ -41,11 +41,17 @@ mirror of `unikit-review`. It is distinct from `unikit-gd-verify`, which answers
 the cheaper, binary **"is the design consistent with itself?"** — a review finding
 *can* be declined; a verify conflict cannot.
 
+Review is **axis-aware**: it judges **systems** today, and **flows** as the Flow
+axis lands (the flow lenses — pacing / guidance / funnel — are stubbed in
+`references/lenses.md`, filled when `unikit-gd-flow` ships).
+
 A review is most honest in a **fresh session** — the reviewer should not be the
 author of the document. This skill never authors or edits design **content**; its
 only writes are the review report and — with the user's approval, to record a
-verdict — the system's `doc_status` in its three coherent places (the `SYSTEM.md`
-header `> Status:` line, the `GD-INDEX.md` row, and `GD-IDS.yaml`).
+verdict — the system's `doc_status` in its **two** coherent places (the `SYSTEM.md`
+header `> Status:` line and the `GD-IDS.yaml` `doc_status`). The `## System Map
+[gen]` in `GAME.md` re-renders that status read-only (a freshness concern owned by
+`unikit-gd-verify` / `unikit-gd-spec`, never a third write surface).
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -73,8 +79,13 @@ Silently load — do not narrate:
    (Braintrust: diagnose don't prescribe; critique vs review; plussing), and the
    language rules live there. This skill **applies** them. If missing, warn
    (`unikit-ai update`) and fall back to the rubric summarized in `references/lenses.md`.
-2. **`.unikit/gamedesign/GAME.md`**, **`GD-INDEX.md`**, **`GD-IDS.yaml`** — pillars,
-   the map, and the facts every finding is checked against.
+2. **`.unikit/gamedesign/GD-IDS.yaml`** and **`GAME.md`** (incl. its `## System Map
+   [gen]` render) — pillars, the roster, and the facts every finding is checked
+   against. **Schema guard (clean break — no automatic migration):** `GD-IDS.yaml`
+   MUST be `version: 2`; on a pre-v2 `version: 1` registry, **STOP** and tell the
+   user the workspace predates the v2 clean break (the standalone markdown
+   system-index was dropped; the roster renders into `GAME.md` now) — upgrade via
+   `/unikit-gd-spec` before reviewing.
 3. **`{{skills_dir}}/{{self_name}}/references/lenses.md`** — the lens catalog and
    the adversarial prompts (absorbed from the former `review-lenses` rule).
 4. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load the **core** domain rules
@@ -136,14 +147,20 @@ Agent(subagent_type: general-purpose, model: sonnet, prompt:
 Collect and de-duplicate the findings. Drop any finding with no section+evidence
 citation to **Suggestion** (`gd-principles`).
 
+**Flow lenses (stub — Flow axis).** The flow review lenses (pacing, guidance,
+funnel — does the `## Flow Map` deliver its intended arc?) are stubbed in
+`references/lenses.md` and activate when `unikit-gd-flow` ships (Phase 2). A
+`FLOW.md` is not yet a review target; today the lenses run over systems and
+`GAME.md`.
+
 ## Phase 3 — Cross-Scope Checks (cross review only)
 
 When the scope is "all", add the cross-system lenses from `references/lenses.md`:
 formula compatibility, cross-AC consistency, pillar drift, total scope vs tiers,
 and **3–5 end-to-end "one moment through N systems"** scenarios. These are the
 checks no single-document review can make. **Depends symmetry is not a review
-lens** — `unikit-gd-verify` owns the Depends 3-way check (GD-INDEX ↔ section F ↔
-GD-IDS `depends_on`).
+lens** — `unikit-gd-verify` owns the Depends 3-way check (section F ↔ GD-IDS
+`depends_on` ↔ the `## System Map` Depends cell).
 
 ## Phase 4 — Verdict & Report
 
@@ -154,7 +171,7 @@ Compute the verdict from the findings:
 - **Cross:** `PASS` · `CONCERNS` · `FAIL` (≥1 Critical anywhere).
 
 Give each finding a **stable id** `RF-<YYYY-MM-DD>-<n>` (numbered in severity
-order, Critical first). The id lets a later `unikit-gd-improve` edit cite the
+order, Critical first). The id lets a later `unikit-gd-system` edit cite the
 finding it resolves in its changelog.
 
 Write **`.unikit/gamedesign/reviews/<date>_review-<scope>.md`** (`mkdir -p` the
@@ -186,25 +203,27 @@ trail behind the Status change).
 
 ## Phase 5 — Status (soft gate)
 
-On approval, the verdict updates the system's `doc_status` to `reviewed` in **all
-three coherent places** — the `SYSTEM.md` header (the `> Status:` token in the
-combined header line, never a separate bold line), the `GD-INDEX.md` row, and
-`GD-IDS.yaml` (see gd-principles → Lifecycle & Status). Never silently:
+On approval, the verdict updates the system's `doc_status` to `reviewed` in the
+**two coherent places** — the `SYSTEM.md` header (the `> Status:` token in the
+combined header line, never a separate bold line) and `GD-IDS.yaml` `doc_status`
+(see gd-principles → Lifecycle & Status). The `## System Map [gen]` re-renders that
+status read-only (freshness — not a write target here). Never silently:
 
 ```
 AskUserQuestion: Verdict is <verdict>. Set SYS-<slug> Status → reviewed?
 Options:
-1. Set Status: reviewed (recommended on APPROVED/PASS — writes all three places)
+1. Set Status: reviewed (recommended on APPROVED/PASS — writes both places)
 2. Leave as-is — I'll address findings first
 ```
 
 - A clean re-review of a `revised` system clears it **back to `reviewed`** — the
   `revised` → `reviewed` exit after re-verification.
-- Report the write in the compact summary: which of the three surfaces changed.
+- Report the write in the compact summary: which of the two surfaces changed.
 
 The gate is soft: `unikit-plan` warns when a system's Status is not
 `detailed`/`reviewed` or is `revised`. A review never auto-applies fixes — route
-revisions to `unikit-gd-improve`.
+revisions to the owning zone (`unikit-gd-system` for a system, `unikit-gd-spec` for
+`GAME.md`).
 
 ## Final: Compact Report & Next Steps
 
@@ -213,14 +232,14 @@ Scope: <SYS-slug | all (N systems)>   Mode: <review|critique>
 Verdict: <verdict>
 Findings: <C> Critical · <M> Major · <m> Minor · <s> Suggestion
 Report: .unikit/gamedesign/reviews/<date>_review-<scope>.md
-Status: <set to `reviewed` across header + GD-INDEX + GD-IDS | unchanged>
+Status: <set to `reviewed` across header + GD-IDS (## System Map re-renders) | unchanged>
 ```
 
 ```
 AskUserQuestion: Review complete. What's next?
 
 Options:
-1. Address the findings — /unikit-gd-improve <system> "<finding>" (recommended if not APPROVED)
+1. Address the findings — /unikit-gd-system <system> "<finding>" (recommended if not APPROVED)
 2. Verify consistency — /unikit-gd-verify <system>
 3. Nothing — I'll continue later
 ```
@@ -233,15 +252,14 @@ No summary document beyond the report file.
 ## Ownership Boundaries
 
 - **Owns:** `.unikit/gamedesign/reviews/` report files; and — with approval, to
-  record a verdict — the system's `doc_status` in its three coherent places: the
-  `GD-INDEX.md` Status cell, the `GD-IDS.yaml` `doc_status`, and the `SYSTEM.md`
-  header `> Status:` line.
+  record a verdict — the system's `doc_status` in its two coherent places: the
+  `GD-IDS.yaml` `doc_status` and the `SYSTEM.md` header `> Status:` line.
 - **Read-only:** the **content** of every design document (sections A–K, `GAME.md`,
   the fact values in `GD-IDS.yaml`); plus `DESCRIPTION.md`/`ARCHITECTURE.md` for the
   feasibility lens only. The only design-surface writes are the three status fields
   above.
 - **Not this skill:** consistency/impact checks → `unikit-gd-verify`; applying
-  fixes → `unikit-gd-improve`; authoring → `unikit-gd-detail`/`unikit-gd-spec`.
+  fixes and authoring → `unikit-gd-system` (systems) / `unikit-gd-spec` (`GAME.md`).
 - **Never:** edit design **content** (any section A–K, `GAME.md`, or a `GD-IDS.yaml`
   fact value); prescribe a fix the user did not ask for; inflate severity past the
   evidence; change a Status without approval; read the code workspace beyond the

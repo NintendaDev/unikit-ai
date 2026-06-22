@@ -819,28 +819,30 @@ else
     fi
 fi
 
-# Status spine (Tier 1) — the system doc_status enum spans three surfaces that
-# carry DIFFERENT sets (GD-IDS doc_status = 5; SYSTEM header legend = 4, no
-# `not-started`; the gd-verify `Status coherence` check legend = the design-
-# writable enum). GD-INDEX.md was removed in v2 — the generated GAME.md
-# `## System Map [gen]` renders status read-only and is NOT a coherence surface.
-# So this guard asserts the shared MERGE invariant, not enum equality: `reviewed`
-# and `revised` on all three legends, and no `approved`-as-status on any (it merged
-# into `reviewed`). Each grep targets the one status legend line per surface —
-# never the whole file — so GAME.md/CONCEPT.md (their own `approved` lifecycle
-# enums, including the gd-verify carve-out NB prose) and the GD-IDS `revised:` date
-# field stay out.
+# Status spine (Tier 1) — a system's doc_status lives on TWO authored surfaces that
+# must agree: the GD-IDS `doc_status` (machine truth, 5-value enum) and the SYSTEM.md
+# header `> **Status**:` legend (4-value, no `not-started`). The `unikit-gd-verify`
+# `Status coherence` CHECK legend (reworked to two-place in P1-T6) describes the same
+# design-writable enum. GD-INDEX.md was dropped in v2: the generated GAME.md
+# `## System Map [gen]` now RENDERS status read-only — a freshness surface, never a
+# coherence one (asserted separately below). So this guard asserts the shared MERGE
+# invariant, not enum equality: `reviewed` and `revised` on each legend, and no
+# `approved`-as-status on any (it merged into `reviewed`). Each grep targets the one
+# status legend line per surface — never the whole file — so GAME.md/CONCEPT.md (their
+# own `approved` lifecycle enums) and the GD-IDS `revised:` date field stay out.
 GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
 GD_SYSTEM_TPL="$GD_DATA/templates/SYSTEM.md"
+GD_GAME_TPL="$GD_DATA/templates/GAME.md"
 GD_VERIFY_SKILL="$ROOT_DIR/skills/unikit-gd-verify/SKILL.md"
 SPINE_IDS_LINE=$(grep -F 'doc_status:' "$GD_IDS_TPL" 2>/dev/null | head -1 || true)
 SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head -1 || true)
-# 3rd surface: the gd-verify `Status coherence` check carries the design-writable
-# enum on its single legend line; the GAME.md/CONCEPT.md `approved` carve-out lives
-# in separate NB prose, so head -1 anchors the table row, not the explanation.
+# the verify CHECK legend carries the design-writable enum on its single table row; the
+# GAME.md/CONCEPT.md `approved` carve-out lives in separate prose, so head -1 anchors
+# the row, not the explanation.
 SPINE_VERIFY_LINE=$(grep -F 'Status coherence' "$GD_VERIFY_SKILL" 2>/dev/null | head -1 || true)
 SPINE_OK=1
 SPINE_WHY=""
+# the 2 authored surfaces (GD-IDS + SYSTEM) + the verify check legend
 for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
     name="${pair%%:*}"
     line="${pair#*:}"
@@ -852,9 +854,21 @@ for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "gd-ver
     if echo "$line" | grep -q "approved";   then SPINE_OK=0; SPINE_WHY+=" $name(approved-as-status)"; fi
 done
 if [[ "$SPINE_OK" -eq 1 ]]; then
-    pass "status spine — reviewed+revised on all 3 surfaces, no approved-as-status (GD-IDS/SYSTEM/gd-verify)"
+    pass "status spine — reviewed+revised on the 2 authored surfaces (GD-IDS/SYSTEM) + verify legend, no approved-as-status"
 else
     fail "status spine enum drift:$SPINE_WHY"
+fi
+# v2 render surface — GAME.md `## System Map [gen]` renders doc_status read-only (the
+# freshness surface unikit-gd-verify re-renders; never a coherence one). Assert the
+# template ships the generated block with a Status column.
+GD_RENDER_WHY=""
+grep -qF '## System Map [gen]' "$GD_GAME_TPL" || GD_RENDER_WHY+=" no-system-map-block"
+grep -qF 'gen:system-map' "$GD_GAME_TPL"      || GD_RENDER_WHY+=" no-gen-marker"
+grep -qE '\| *Status *\|' "$GD_GAME_TPL"       || GD_RENDER_WHY+=" no-status-column"
+if [[ -z "$GD_RENDER_WHY" ]]; then
+    pass "GAME.md template — ## System Map [gen] renders a read-only Status column (v2 render surface)"
+else
+    fail "GAME.md template — System Map render surface incomplete:$GD_RENDER_WHY"
 fi
 # The state machine is defined once in gd-principles (#2); skills reference it by
 # name ("Lifecycle & Status"). Guard a re-clone that drops the section.
@@ -892,18 +906,20 @@ fi
 
 # Defective GDD fixture — test data for the agent-driven /unikit-gd-verify and
 # /unikit-gd-review smoke (Phase H #19). No bash assertion can run an LLM skill,
-# so only validate the fixture is present and well-formed (canonical schema, two
+# so only validate the fixture is present and well-formed (canonical v2 schema, three
 # system docs); its README.md carries the planted-defect → verify-check ground
-# truth a reviewer checks skill output against.
+# truth a reviewer checks skill output against. v2 dropped GD-INDEX.md — the roster
+# lives in GD-IDS + GAME.md `## System Map [gen]`.
 GD_DEFECTIVE="$ROOT_DIR/scripts/test-fixtures/gamedesign/defective-gdd"
 GD_DEFECTIVE_OK=1
-# systems/boost.md is the FIXED literal path the new ≥2-doc defects (unregistered
-# cross-doc fact, Depends 3-way) hang off — README §map and this guard both pin it.
-for f in README.md GAME.md GD-IDS.yaml GD-INDEX.md systems/combat.md systems/boost.md; do
+# systems/{boost,hud}.md are FIXED literal paths the multi-doc defects hang off
+# (unregistered cross-doc fact, Depends 3-way, status coherence) — README §map and
+# this guard both pin them; systems/loot.md is intentionally ABSENT (roster↔disk defect).
+for f in README.md GAME.md GD-IDS.yaml systems/combat.md systems/boost.md systems/hud.md; do
     [[ -s "$GD_DEFECTIVE/$f" ]] || GD_DEFECTIVE_OK=0
 done
 if [[ "$GD_DEFECTIVE_OK" -eq 1 ]]; then
-    pass "defective-gdd fixture present (GAME.md, GD-INDEX.md, GD-IDS.yaml, systems/combat.md, systems/boost.md, README ground truth)"
+    pass "defective-gdd fixture present (GAME.md, GD-IDS.yaml, systems/{combat,boost,hud}.md, README ground truth)"
 else
     fail "defective-gdd fixture incomplete under scripts/test-fixtures/gamedesign/defective-gdd"
 fi
@@ -984,12 +1000,12 @@ fi
 # the gd-review|gd-verify SKILL bodies, so re-key/lens drift would pass silently.
 # These are cheap grep invariants on the keying + lens edits; the lenses actually
 # FIRING is checked by the manual smoke (bash cannot run an LLM skill).
-GD_SECTION_PACKS="$ROOT_DIR/skills/unikit-gd-detail/references/section-packs.md"
+GD_SECTION_PACKS="$ROOT_DIR/skills/unikit-gd-system/references/section-packs.md"
 GD_LENSES="$ROOT_DIR/skills/unikit-gd-review/references/lenses.md"
 GD_REVIEW_SKILL="$ROOT_DIR/skills/unikit-gd-review/SKILL.md"
-GD_DETAIL_SKILL="$ROOT_DIR/skills/unikit-gd-detail/SKILL.md"
-GD_IMPROVE_SKILL="$ROOT_DIR/skills/unikit-gd-improve/SKILL.md"
-# ($GD_VERIFY_SKILL is defined above in the status-spine block.)
+GD_SYSTEM_SKILL="$ROOT_DIR/skills/unikit-gd-system/SKILL.md"
+# (gd-improve was removed in P1 — create+revise unified in gd-system; gd-detail renamed
+# to gd-system. $GD_VERIFY_SKILL is defined above in the status-spine block.)
 
 # (1) Both new section-packs exist (T5: SP2 ai-behavior, SP3 persistence).
 GD_PACKS_WHY=""
@@ -1022,18 +1038,19 @@ else
     fail "stale /unikit-evolve reference still in:$GD_EVOLVE_WHY (R3 — route to /unikit-memory --module gamedesign)"
 fi
 
-# (4) Keying-vocabulary parity detail↔improve: both Phase 0 tables carry the two
-#     new domains (T5 goal — identical keying vocabulary across the two skills).
+# (4) Keying vocabulary: the unified gd-system Phase 0 table carries the two new
+#     domains (T5 goal — create+revise share one keying table now that gd-improve is
+#     folded in).
 GD_KEYING_WHY=""
-for f in "$GD_DETAIL_SKILL" "$GD_IMPROVE_SKILL"; do
+for f in "$GD_SYSTEM_SKILL"; do
     bn=$(basename "$(dirname "$f")")
     if ! grep -qF 'ai-behavior' "$f"; then GD_KEYING_WHY+=" $bn(ai-behavior)"; fi
     if ! grep -qF 'persistence' "$f"; then GD_KEYING_WHY+=" $bn(persistence)"; fi
 done
 if [[ -z "$GD_KEYING_WHY" ]]; then
-    pass "gd-detail + gd-improve Phase 0 — ai-behavior + persistence domains present (T5 keying parity)"
+    pass "gd-system Phase 0 — ai-behavior + persistence domains present (T5 keying — unified zone)"
 else
-    fail "Phase 0 keying parity drift:$GD_KEYING_WHY"
+    fail "Phase 0 keying drift:$GD_KEYING_WHY"
 fi
 
 # T7/T8 content guards (provenance contract + implemented wire-back). All greps are
@@ -1110,13 +1127,14 @@ else
     fail "implemented_version missing in:$GD_IMPL_WHY (T8)"
 fi
 
-# (T8-7) unikit-verify documents the GD-INDEX Status writeback (the value
-#        `implemented`), not only implemented_version — guards the second surface of
-#        the T8 writer scope (GD-IDS + GD-INDEX).
+# (T8-7) v2 SINGLE-surface writeback: the implemented marker is `implemented_version`
+#        in GD-IDS ONLY; GAME.md `## System Map [gen]` renders `implemented` read-only.
+#        The old GD-INDEX Status second surface is gone — assert unikit-verify no longer
+#        documents it (the systemic no-GD-INDEX guard below also covers this file).
 if grep -qF 'GD-INDEX Status=implemented' "$UNIKIT_VERIFY_SKILL"; then
-    pass "unikit-verify — documents GD-INDEX Status=implemented writeback (T8 second surface)"
+    fail "unikit-verify — still documents a GD-INDEX Status writeback (T8 must be single-surface in v2)"
 else
-    fail "unikit-verify — missing GD-INDEX Status writeback (T8 second surface)"
+    pass "unikit-verify — implemented writeback is single-surface, no GD-INDEX second surface (T8 v2)"
 fi
 
 # (T8-8) Sanctioned code→design exception in the gd-principles One-Way Boundary (#8).
@@ -1141,15 +1159,15 @@ fi
 # case-sensitive `-qF` (MSYS grep aborts on `-iF`). bash cannot run an LLM skill; these
 # assert the contract text is present on each surface. New path vars (absent until now):
 # the gd-spec / gd-explore SKILLs and the new lens engine reference. Reuses
-# GD_DETAIL_SKILL / GD_IMPROVE_SKILL (defined above), GD_VERIFY_SKILL (L835, the *design*
-# gd-verify) and GD_IDS_TPL (L1048).
+# GD_SYSTEM_SKILL (defined above; the renamed gd-detail that also absorbed gd-improve),
+# GD_VERIFY_SKILL (the *design* gd-verify) and GD_IDS_TPL.
 GD_SPEC_SKILL="$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
 GD_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
 GD_INTERNAL_LENS="$ROOT_DIR/skills/unikit-gd-explore/references/internal-design-lens.md"
 
 # (IL-1) The new engine reference exists, carries both mode-aware brief blocks, and
 #        mirrors the shared domain keying vocabulary (parity, NOT byte-identity — this
-#        table loads rules to ground options, detail/improve to author sections).
+#        table loads rules to ground options, gd-system to author sections).
 IL_LENS_WHY=""
 [[ -s "$GD_INTERNAL_LENS" ]]                        || IL_LENS_WHY+=" missing-file"
 grep -qF '## Improvement Plan' "$GD_INTERNAL_LENS"  || IL_LENS_WHY+=" improvement-plan-block"
@@ -1177,12 +1195,12 @@ else
     fail "gd-explore SKILL — missing:$IL_EXPLORE_WHY"
 fi
 
-# (IL-3) gd-spec Add-System mode + the active seam onward to detail.
+# (IL-3) gd-spec Add-System mode + the active seam onward to the system zone.
 IL_SPEC_WHY=""
 grep -qF '## Add-System Mode' "$GD_SPEC_SKILL"  || IL_SPEC_WHY+=" add-system-mode"
 grep -qF 'Active seam' "$GD_SPEC_SKILL"         || IL_SPEC_WHY+=" active-seam"
 if [[ -z "$IL_SPEC_WHY" ]]; then
-    pass "gd-spec SKILL — Add-System mode + active seam to detail (IL T3)"
+    pass "gd-spec SKILL — Add-System mode + active seam to gd-system (IL T3)"
 else
     fail "gd-spec SKILL — missing:$IL_SPEC_WHY"
 fi
@@ -1190,18 +1208,19 @@ fi
 # (IL-4) Research-discovery wired into BOTH downstream consumers (the `research:`
 #        pointer + the `Target:` INDEX fallback — the backtick token `Target:` is unique
 #        to the discovery bullet; the Final-report `Target:` line has no backticks, and a
-#        single token cannot be split by a line-wrap), and gd-detail instructs leaving
+#        single token cannot be split by a line-wrap), and gd-system instructs leaving
 #        explore-seeded drafts UNTAGGED (the Task-4 carve-out: not extracted/generated —
-#        those markers are imports-only).
+#        those markers are imports-only). One consumer now (gd-system owns both the
+#        New-Feature create path and the Improvement revise path).
 IL_DISC_WHY=""
-for f in "$GD_DETAIL_SKILL" "$GD_IMPROVE_SKILL"; do
+for f in "$GD_SYSTEM_SKILL"; do
     bn=$(basename "$(dirname "$f")")
     grep -qF 'research:' "$f"     || IL_DISC_WHY+=" $bn(research-pointer)"
     grep -qF '`Target:`' "$f"     || IL_DISC_WHY+=" $bn(target-fallback)"
 done
-grep -qF 'explore-seeded drafts' "$GD_DETAIL_SKILL" || IL_DISC_WHY+=" gd-detail(untagged-carveout)"
+grep -qF 'explore-seeded drafts' "$GD_SYSTEM_SKILL" || IL_DISC_WHY+=" gd-system(untagged-carveout)"
 if [[ -z "$IL_DISC_WHY" ]]; then
-    pass "gd-detail + gd-improve — research-discovery (research:/Target) + untagged carve-out (IL T4)"
+    pass "gd-system — research-discovery (research:/Target) + untagged carve-out (IL T4)"
 else
     fail "research-discovery wiring missing:$IL_DISC_WHY"
 fi
@@ -1216,6 +1235,49 @@ if [[ -z "$IL_FIELD_WHY" ]]; then
     pass "research: field — GD-IDS template + gd-verify carve-out present (IL T9)"
 else
     fail "research: field canonicalization missing:$IL_FIELD_WHY"
+fi
+
+# (P1 clean break) unikit-gd-improve is GONE — its create+revise lifecycle folded into
+# unikit-gd-system (systems) and GAME.md content edits into unikit-gd-spec. Assert the
+# skill dir is absent AND no live `gd-improve` reference survives in the design skills
+# (unikit-gd-*, SKILL bodies + references) or the code-side / cross-cutting files that
+# routed to it (unikit-explore routing, unikit-plan status note, the gamedesign module
+# contract). FILE-SCOPED -qF (MSYS grep aborts on -iF). NOT in scope: .claude/CLAUDE.md
+# / README / docs (their deep narrative is a later phase) and scripts/ test guards.
+NOIMP_WHY=""
+[[ -d "$ROOT_DIR/skills/unikit-gd-improve" ]] && NOIMP_WHY+=" skill-dir-present"
+NOIMP_FILES=$(find "$ROOT_DIR/skills" -path '*/unikit-gd-*/*.md' 2>/dev/null)
+NOIMP_FILES="$NOIMP_FILES $ROOT_DIR/skills/unikit-explore/SKILL.md $ROOT_DIR/skills/unikit-plan/SKILL.md $ROOT_DIR/skills/unikit-memory/references/module-gamedesign.md"
+for f in $NOIMP_FILES; do
+    [[ -f "$f" ]] || continue
+    grep -qF 'gd-improve' "$f" && NOIMP_WHY+=" ${f#$ROOT_DIR/}"
+done
+if [[ -z "$NOIMP_WHY" ]]; then
+    pass "no unikit-gd-improve — skill removed + zero gd-improve refs in design/code skills (P1 clean break)"
+else
+    fail "unikit-gd-improve leftover:$NOIMP_WHY"
+fi
+
+# (P1 clean break) Systemic no-GD-INDEX guard (parity with the no-improve guard; this
+# is the ONLY mechanical net under the hand-cleaned design+code skills — leftover
+# GD-INDEX refs there are otherwise uncaught). v2 dropped the standalone markdown
+# system-index: the roster renders into GAME.md `## System Map [gen]`. Assert ZERO
+# literal `GD-INDEX` in the design skills (unikit-gd-*), the code-side skills that
+# read/write design (unikit-{plan,verify,explore}, incl. references), and the design
+# data (data/gamedesign/ templates + gd-principles + GD-IDS.yaml). FILE-SCOPED -qF.
+# NOT in scope: .claude/CLAUDE.md / README / docs/skills.md (deep narrative deferred).
+NOIDX_WHY=""
+NOIDX_FILES=$(find "$ROOT_DIR/skills" -path '*/unikit-gd-*/*.md' 2>/dev/null)
+NOIDX_FILES="$NOIDX_FILES $(find "$ROOT_DIR/skills/unikit-plan" "$ROOT_DIR/skills/unikit-verify" "$ROOT_DIR/skills/unikit-explore" -name '*.md' 2>/dev/null)"
+NOIDX_FILES="$NOIDX_FILES $(find "$ROOT_DIR/data/gamedesign" -name '*.md' 2>/dev/null) $ROOT_DIR/data/gamedesign/templates/GD-IDS.yaml"
+for f in $NOIDX_FILES; do
+    [[ -f "$f" ]] || continue
+    grep -qF 'GD-INDEX' "$f" && NOIDX_WHY+=" ${f#$ROOT_DIR/}"
+done
+if [[ -z "$NOIDX_WHY" ]]; then
+    pass "systemic no-GD-INDEX — zero GD-INDEX in gd-* + plan/verify/explore + data/gamedesign (P1 v2)"
+else
+    fail "stale GD-INDEX reference(s):$NOIDX_WHY"
 fi
 
 # unikit-memory distillation-behavior content guards (PLAN.md T1–T10). The router

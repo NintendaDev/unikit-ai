@@ -46,7 +46,7 @@ export const SKILL_GROUPS: readonly SkillGroup[] = [
   {
     id: 'core',
     title: 'Core',
-    skills: ['unikit'],
+    skills: ['unikit', 'unikit-help'],
   },
   {
     id: 'memory-rules',

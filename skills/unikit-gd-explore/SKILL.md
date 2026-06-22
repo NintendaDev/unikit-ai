@@ -6,12 +6,12 @@ description: >-
   a reference game (mechanics → dynamics → aesthetics), explore options to improve or
   extend mechanics already in the project's GDD, and research new mechanics or balance the
   current design doesn't have yet. Produces trade-off tables and a brief for
-  /unikit-gd-spec or /unikit-gd-detail. Use for things like "is there a market for X",
+  /unikit-gd-spec or /unikit-gd-system. Use for things like "is there a market for X",
   "is this genre saturated", "break down the combat of Hades", "how could we improve our
   combat system", "research roguelike economies", "explore new mechanics", "ideas to
   balance Y", "доработать баланс боя", "проработать новую механику". Research only —
   it routes the result to the right owner skill but never writes the GDD itself; to
-  write a change into the GDD use /unikit-gd-improve; to
+  write a change into the GDD use /unikit-gd-system or /unikit-gd-spec; to
   invent a whole new game use /unikit-gd-brainstorm; for code/technical research use
   /unikit-explore.
 argument-hint: "init | <topic | game reference | URL | design or market question>"
@@ -51,7 +51,7 @@ the conversation; surface trade-offs; save a research record when it crystallize
 **Explore studies what exists; it never authors the design.** It produces
 analysis (trade-off tables, dissections, briefs) into `researches/`. It does not
 write `GAME.md`, system GDDs, or concepts — that is `unikit-gd-spec` /
-`unikit-gd-detail` / `unikit-gd-brainstorm`. If the user wants to *create*, point
+`unikit-gd-system` / `unikit-gd-brainstorm`. If the user wants to *create*, point
 them at the owner skill and stop researching.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
@@ -73,9 +73,14 @@ Before responding — before any analysis — silently load (do not narrate):
    protocol, the one-way design→code boundary, the critique stance (diagnose, don't
    prescribe), the language rules. This skill **applies** it. If missing, warn
    (`unikit-ai update`) and continue with the protocol summarized above.
-2. **`.unikit/gamedesign/GAME.md`**, **`GD-INDEX.md`**, **`GD-IDS.yaml`** (if they
-   exist) — the current design, so research is grounded in this game's pillars and
-   systems rather than generic theory. Absent → this is pre-spec research; proceed.
+2. **`.unikit/gamedesign/GD-IDS.yaml`** and **`GAME.md`** (incl. its `## System Map
+   [gen]` render) (if they exist) — the current design, so research is grounded in
+   this game's pillars and systems rather than generic theory. Absent → this is
+   pre-spec research; proceed. **Schema guard:** if `GD-IDS.yaml` is a pre-v2
+   `version: 1` registry, do **not** read it for grounding — emit a loud `WARN
+   [design] GD-IDS.yaml is version 1 (pre-v2 layout); design grounding skipped` and
+   proceed as pre-spec research (the v2 clean break has no automatic migration;
+   upgrade via `/unikit-gd-spec`).
 3. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load core domain rules on
    demand by `Load When` for the topic (e.g. `frameworks` for an MDA dissection,
    `economy` for an economy study, `player-motivation` for an audience scan).
@@ -95,7 +100,8 @@ Before responding — before any analysis — silently load (do not narrate):
    intent** — improving an existing system or working out a new mechanic for *this*
    game — as the "Internal design lens — when it engages" section below classifies.
    When the lens engages, also deep-read the target per that engine (GAME.md +
-   GD-INDEX + GD-IDS + the target `SYS-<slug>.md` A–K + the Depends-neighbours' D/F).
+   its `## System Map [gen]` + GD-IDS + the target `SYS-<slug>.md` A–K + the
+   Depends-neighbours' D/F).
 
 **One-way boundary:** this skill never reads `.unikit/code/`, project source, or
 build artifacts. Web research **is allowed** here (market and reference scans —
@@ -232,15 +238,15 @@ research: *"I'll work this through and hand you a brief — I won't edit the GDD
 change goes through the routed skill."* Repeat the boundary at handoff.
 
 **3-way handoff routing (explore reads the target's state — the user does not pick).**
-Read the target's `doc_status` from `GD-IDS.yaml` / `GD-INDEX.md`, then recommend the
-**one** command that fits. Each route is a single recommended command; the routed
-skill carries its own next hop.
+Read the target's `doc_status` from `GD-IDS.yaml` (the `## System Map [gen]` render
+mirrors it), then recommend the **one** command that fits. Each route is a single
+recommended command; the routed skill carries its own next hop.
 
 | Target state (`doc_status`) | Recommended route |
 |-----------------------------|-------------------|
-| no doc / `not-started` | `/unikit-gd-spec` (add-system) — it offers the active seam onward to `/unikit-gd-detail` |
-| `skeleton` (placeholders) | `/unikit-gd-detail` (fill the placeholders) |
-| `detailed` / `reviewed` / `revised` | `/unikit-gd-improve` (record the delta) |
+| no doc / `not-started` | `/unikit-gd-spec` (add-system) — it offers the active seam onward to `/unikit-gd-system` |
+| `skeleton` (placeholders) | `/unikit-gd-system` (fill the placeholders) |
+| `detailed` / `reviewed` / `revised` | `/unikit-gd-system` (record the delta) |
 
 The brief carries the block the route consumes (see "Saving Research Results" →
 mode-aware blocks). For several targets, hand off an **ordered list** of calls,
@@ -319,12 +325,12 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
 
    The Table of Contents is **mandatory** and reflects the real sections. The
    **`Target:` / `Kind:`** lines are written **only** by the internal design lens
-   (`internal-design-lens.md` → "Research tags") — they let `unikit-gd-detail` /
-   `unikit-gd-improve` discover this research deterministically after a `/clear`.
+   (`internal-design-lens.md` → "Research tags") — they let `unikit-gd-system`
+   discover this research deterministically after a `/clear`.
    A reference-dissection or market research omits both.
 
 2. **`RESEARCH_BRIEF.md`** — a compact brief built **for `unikit-gd-spec` /
-   `unikit-gd-detail` to consume** (the acceptance bar: it must be usable as their
+   `unikit-gd-system` to consume** (the acceptance bar: it must be usable as their
    input). Sections:
 
    ```markdown
@@ -345,14 +351,14 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
    → "Mode-aware brief"). The headings are **stable English anchors** so the routed
    skill greps them deterministically:
 
-   - **`## Improvement Plan`** — when the route is `/unikit-gd-improve` (target is
+   - **`## Improvement Plan`** — when the route is `/unikit-gd-system` (target is
      `detailed` / `reviewed` / `revised`): Target, expected scale, ready-to-apply
      delta lines, touched GD-IDS facts, rejected alternatives, the `RF-<date>-n` it
      closes (if any), deferred open questions.
    - **`## New Feature Plan`** — when the route is `/unikit-gd-spec` (add-system) →
-     `/unikit-gd-detail` (target has no doc / `not-started`): the map fields (slug,
+     `/unikit-gd-system` (target has no doc / `not-started`): the map fields (slug,
      Category, Tier, `implements: PIL-n`, `depends_on`) plus the A–K section seeds
-     `unikit-gd-detail` pre-fills its section-cycle from.
+     `unikit-gd-system` pre-fills its section-cycle from.
 
    For several targets, append one block per target (dependency-sorted).
 
@@ -361,10 +367,10 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
 | Insight | Follow-up |
 |---------|-----------|
 | A direction worth ideating | `/unikit-gd-brainstorm` |
-| Ready to formalize into the master spec / a system | `/unikit-gd-spec` / `/unikit-gd-detail` |
-| **Internal lens** — improve a `detailed`/`reviewed`/`revised` system | `/unikit-gd-improve` (consumes `## Improvement Plan`) |
-| **Internal lens** — a new mechanic (no doc / `not-started`) | `/unikit-gd-spec` (add-system) → `/unikit-gd-detail` (consumes `## New Feature Plan`) |
-| **Internal lens** — fill a `skeleton` system | `/unikit-gd-detail` |
+| Ready to formalize into the master spec / a system | `/unikit-gd-spec` / `/unikit-gd-system` |
+| **Internal lens** — improve a `detailed`/`reviewed`/`revised` system | `/unikit-gd-system` (consumes `## Improvement Plan`) |
+| **Internal lens** — a new mechanic (no doc / `not-started`) | `/unikit-gd-spec` (add-system) → `/unikit-gd-system` (consumes `## New Feature Plan`) |
+| **Internal lens** — fill a `skeleton` system | `/unikit-gd-system` |
 | A balance/economy/UX convention worth keeping | `/unikit-memory --module gamedesign` |
 | A consistency concern in the current design | `/unikit-gd-verify` |
 
@@ -381,7 +387,7 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
    - **Summary**: <1–2 sentences from ## Topic>
    - **Path**: `<folder-name>/`
    - **Target**: SYS-<slug>   (internal-design lens only — the fallback discovery key
-     for `unikit-gd-detail` / `unikit-gd-improve`; omit for reference/market research)
+     for `unikit-gd-system`; omit for reference/market research)
    ```
 
    On a new research `Updated` equals `Date`; on revision only `Updated` changes.
@@ -421,14 +427,14 @@ crystallize, you might summarize the findings — but the thinking is often the 
   contract. This skill is its provider; brainstorm reads it as the interface. Keep its
   canonical marker and brief field-list in sync with `references/market-scan.md`.
 - **Internal design lens (read-only).** The lens (`references/internal-design-lens.md`)
-  deep-reads `GAME.md` / `GD-INDEX.md` / `GD-IDS.yaml` / system docs and hands off a
-  brief — it **never** writes the GDD, and it **never** writes the `research:` pointer
-  into `GD-IDS.yaml`; that pointer is owned by `unikit-gd-spec` (add-system). Explore
-  only **tags** its own research (`Target:` / `Kind:`).
-- **Read-only:** `GAME.md`, `GD-INDEX.md`, `GD-IDS.yaml`, systems, concepts — route
-  any design change to its owner skill, never edit them here.
+  deep-reads `GAME.md` / `GD-IDS.yaml` (+ its `## System Map [gen]` render) / system
+  docs and hands off a brief — it **never** writes the GDD, and it **never** writes the
+  `research:` pointer into `GD-IDS.yaml`; that pointer is owned by `unikit-gd-spec`
+  (add-system). Explore only **tags** its own research (`Target:` / `Kind:`).
+- **Read-only:** `GAME.md`, `GD-IDS.yaml`, systems, concepts — route any design change
+  to its owner skill, never edit them here.
 - **Not this skill:** generating new concepts → `unikit-gd-brainstorm`; authoring
-  the spec/systems → `unikit-gd-spec` / `unikit-gd-detail`.
+  the spec/systems → `unikit-gd-spec` / `unikit-gd-system`.
 - **Never:** author or edit a design document; read the code workspace or project
   source; auto-save a research.
 
@@ -439,7 +445,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
 /unikit-gd-explore break down the combat of Hades   → reference dissection (MDA backwards)
 /unikit-gd-explore roguelike meta-progression       → genre / mechanics scan
 /unikit-gd-explore is this roguelike niche saturated?  → market lens (viability / white-space)
-/unikit-gd-explore improve our combat balance        → internal design lens (read-only) → routes to improve / detail / spec
+/unikit-gd-explore improve our combat balance        → internal design lens (read-only) → routes to system / spec
 /unikit-gd-explore https://…                         → dissect a linked design source
 /unikit-gd-explore init                              → rebuild researches/INDEX.md
 ```

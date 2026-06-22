@@ -14,7 +14,7 @@ knowledge has no engine axis and no cross-framework integration concern.
 
 > **This module does NOT store process.** The game-design *working contract* —
 > the collaboration protocol, the section-cycle authoring discipline, the
-> one-way design→code boundary, the `gd-improve` delta discipline, the ID and
+> one-way design→code boundary, the (zone-agnostic) delta discipline, the ID and
 > language conventions, the Braintrust critique stance, and the shared severity
 > rubric — is **not** a memory rule. It lives in the `gd-principles` **system
 > asset** (`.unikit/system/gd-principles.md`), loaded once at Bootstrap by every
@@ -78,7 +78,7 @@ sanctioned slot for everything a studio authors itself.
 ## What Does NOT Belong in This Module
 
 - **Process / working contract** — the collaboration protocol, section-cycle
-  authoring discipline, one-way design→code boundary, `gd-improve` delta
+  authoring discipline, one-way design→code boundary, (zone-agnostic) delta
   discipline, ID conventions (`PIL-*`, `SYS-*`, …), language rules, Braintrust
   critique stance, and the **severity rubric** → the `gd-principles` **system
   asset** (`.unikit/system/gd-principles.md`), NOT a memory rule. Never write a

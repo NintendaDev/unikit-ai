@@ -9,8 +9,8 @@
 
 A minimal speed-and-stamina readout. Marked `deprecated` in `GD-IDS.yaml` in
 favor of a diegetic readout; its underlying `doc_status` stays `reviewed`. The
-GD-INDEX Status column shows `deprecated` (display precedence) — this is correct,
-not a coherence conflict.
+`## System Map [gen]` Status shows `deprecated` (display precedence) — this is
+correct, not a coherence conflict.
 
 ## B. Player Fantasy
 

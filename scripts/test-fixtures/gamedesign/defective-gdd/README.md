@@ -7,17 +7,22 @@ is the **ground truth** a reviewer checks the skill output against.
 `test-skills.sh` Part 6 only asserts the fixture exists and is well-formed.
 
 The fixture is a tiny, deliberately broken **Neon Drift** design workspace built
-on the canonical schema:
+on the canonical GD-IDS **v2** schema (no standalone markdown index — the roster
+renders read-only into `GAME.md` `## System Map [gen]`):
 
 ```
-GAME.md          master design (pillars PIL-1, PIL-2)
-GD-INDEX.md      the map — one row per system (SYS-combat, SYS-boost, SYS-loot, SYS-hud)
-GD-IDS.yaml      machine truth — pillars / systems / entities / formulas / terms / decisions
+GAME.md          master design (pillars PIL-1, PIL-2) + the [gen] maps
+GD-IDS.yaml      machine truth (version: 2) — pillars / systems / flows / events / entities / formulas / terms / decisions
 systems/combat.md
 systems/boost.md
 systems/hud.md
-# systems/loot.md is intentionally ABSENT (see Index↔disk below)
+# systems/loot.md is intentionally ABSENT (see Roster↔disk below)
 ```
+
+The roster lives in two surfaces: `GD-IDS.yaml` `systems` (the truth) and the
+`## System Map [gen]` render in `GAME.md` (read-only). `GD-IDS.yaml` wins on any
+disagreement; a stale render is a *freshness* issue verify self-heals, not a
+conflict to resolve.
 
 ## Mechanical defects — every row of the `/unikit-gd-verify` Phase 2 table has a seeded example
 
@@ -29,23 +34,29 @@ systems/hud.md
 | **Duplicate IDs** | `systems/boost.md` §D | `FORM-boost-curve` is declared **twice** for two different formulas (acceleration + decay) |
 | **Dangling references** | `systems/combat.md` §F | depends on `SYS-inventory`, which exists in neither `GD-IDS.yaml` nor any system doc |
 | **Unregistered cross-doc fact** | `combat.md` + `boost.md` | `FORM-combat-dps` is cited in **both** documents but has no `GD-IDS.yaml` entry |
-| **Index ↔ disk** | `SYS-loot` | `GD-INDEX.md` + `GD-IDS.yaml` carry a `detailed` `SYS-loot` row pointing at `systems/loot.md`, but that file does not exist |
-| **Depends 3-way** | `SYS-boost` vs `SYS-combat` | `boost.md` §F declares "depends on SYS-combat", yet the `GD-INDEX` Depends column and `GD-IDS` `depends_on` for `SYS-boost` are both empty |
-| **Status coherence** | `SYS-boost` | header `> Status: detailed`, `GD-INDEX` row says `skeleton`, `GD-IDS` `doc_status: detailed` — the three disagree |
-| **Version coherence** | `SYS-combat` | header `> Version: 1`, but `GD-INDEX` `Ver` is `2` and `GD-IDS` `version: 2` |
+| **Roster ↔ disk** | `SYS-loot` | `GD-IDS.yaml` carries a `detailed` `SYS-loot` entry whose `source` is `systems/loot.md`, but that file does not exist |
+| **Map freshness (3-surface)** | `GAME.md` `## System Map [gen]` | the render carries a **phantom `SYS-ghost` row** with no `GD-IDS.yaml` entry — a stale render. Verify **self-heals** (re-renders the block from `GD-IDS`, announced) — it does **not** file a resolvable conflict |
+| **Depends 3-way** | `SYS-boost` vs `SYS-combat` | `boost.md` §F declares "depends on SYS-combat", yet the `## System Map` Depends cell and `GD-IDS` `depends_on` for `SYS-boost` are both empty |
+| **Status coherence** (2-place) | `SYS-boost` | header `> Status: reviewed`, but `GD-IDS` `doc_status: detailed` — the two places that must agree disagree |
+| **Version coherence** (2-place) | `SYS-combat` | header `> Version: 1`, but `GD-IDS` `version: 2` |
 | **AC presence** | `systems/combat.md` §H | a `detailed` system with an **empty** section H (no Given-When-Then criteria) |
-| **Placeholder leak** | `systems/boost.md` §E | a `detailed` document still carries a `[To be designed]` skeleton placeholder |
+| **Placeholder leak** | `systems/boost.md` §E | a `reviewed` document still carries a `[To be designed]` skeleton placeholder |
+
+The `## System Map [gen]` render is otherwise faithful to `GD-IDS` (combat shows
+`Ver 2`, boost `detailed`, hud `deprecated`, all Depends `—`), so the Status,
+Version, and Depends-3way conflicts above are header/§F-vs-`GD-IDS` disagreements,
+never map disagreements — the map is a freshness surface only, never a coherence one.
 
 ## Negative carve-outs — `/unikit-gd-verify` must NOT flag these
 
 | Carve-out | Where | Why it is correct (not a conflict) |
 |-----------|-------|------------------------------------|
-| **Display precedence** | `SYS-hud` | `GD-IDS` marks it `status: deprecated`, so the `GD-INDEX` Status column shows `deprecated` over the underlying `doc_status: reviewed`; the header (`reviewed`) and `GD-IDS` `doc_status` (`reviewed`) agree. The `deprecated` display overlay is excluded from the three-way Status comparison. |
+| **Display precedence** | `SYS-hud` | `GD-IDS` marks it `status: deprecated`, so the `## System Map [gen]` Status shows `deprecated` over the underlying `doc_status: reviewed`; the header (`reviewed`) and `GD-IDS` `doc_status` (`reviewed`) agree. The `deprecated` display overlay is excluded from the two-place Status comparison. |
 | **Lifecycle-enum scope** | `GAME.md` | `GAME.md` keeps `> Status: approved` — its **own** lifecycle enum (`drafted \| approved`). Status/Version coherence is scoped to **system** docs only, so `approved` here is not a status conflict. |
 
 A smoke run that flags either carve-out as a conflict is a regression — the two
 carve-outs are the reason `/unikit-gd-verify` scopes the coherence checks to the
-system spine and treats `deprecated`/`implemented` as display overlays.
+two-place system spine and treats `deprecated`/`implemented` as display overlays.
 
 ## Qualitative defects — flagged by `/unikit-gd-review`
 

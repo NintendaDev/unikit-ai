@@ -221,6 +221,7 @@ Uses its own config directory and skill format, never touches standard agent fil
 | Guide | Description |
 |-------|-------------|
 | [Getting Started](docs/getting-started.md) | What is UniKit AI, supported agents, CLI commands |
+| [Help Navigator](docs/unikit-help.md) | `/unikit-help` — not sure what to do next or which skill to use? Start here |
 | [Agents](docs/agents.md) | Supported AI agents and their known limitations |
 | [Best Practices](docs/best-practices.md) | Practical tips for working with the agent effectively |
 

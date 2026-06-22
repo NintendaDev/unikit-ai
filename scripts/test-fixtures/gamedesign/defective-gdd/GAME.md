@@ -1,8 +1,17 @@
 # Neon Drift — Master Design
 
-> Status: approved
-> Version: 1
-> Last Updated: 2026-06-13
+> **Status**: approved
+> **Version**: 1
+> **Last Updated**: 2026-06-13
+> **Based on**: —
+
+NEG carve-out (lifecycle-enum scope): GAME.md keeps its **own** lifecycle enum
+(`drafted | approved`), so `> Status: approved` here is correct — `unikit-gd-verify`
+scopes Status/Version coherence to **system** docs only and must NOT flag it.
+
+## Premise / Theme
+
+The city is collapsing under you — stopping is dying. Speed is the only safety.
 
 ## Core Fantasy
 
@@ -20,6 +29,11 @@ A lone courier outruns a collapsing city on a hoverboard.
 Moment-to-moment: dodge → boost → chain. Boosting drains **stamina**; landing a
 clean chain refunds it.
 
+## Monetization Stance
+
+Premium, one-time purchase. No ads, no loot boxes — selling pressure would fight
+PIL-1 (momentum, not friction).
+
 ## Reference Games
 
 Jet Set Radio, Mirror's Edge.
@@ -27,3 +41,69 @@ Jet Set Radio, Mirror's Edge.
 ## Non-Goals
 
 No combat against bosses; no open world.
+
+## Design Order
+
+1. SYS-combat — MVP — Gameplay — the contact-damage core.
+2. SYS-boost — MVP — Gameplay — feeds ram damage; depends on SYS-combat.
+
+## Risks & Circular Dependencies
+
+| System | Risk type | Note / resolution |
+|--------|-----------|-------------------|
+| SYS-combat | Design | `FORM-combat-dps` is unbounded (review defect #5) — prototype the cap early. |
+
+## Changelog
+
+#### v1 — 2026-06-13 — initial draft
+- All sections: created from template
+
+---
+
+*Everything below is a generated appendix — read-only, not part of the one-pager.*
+
+## System Map [gen]
+
+<!-- gen:system-map -->
+Generated read-only from `GD-IDS.yaml` `systems` — do **not** hand-edit. (Fixture
+note: this render is deliberately STALE — it carries a phantom `SYS-ghost` row that
+has **no** `GD-IDS.yaml` entry, the **Map-freshness** defect; `unikit-gd-verify`
+self-heals by re-rendering, it does not file a conflict.)
+
+### Gameplay
+
+| ID | System | Tier | Status | Ver | Depends | Doc |
+|----|--------|------|--------|-----|---------|-----|
+| SYS-combat | Combat | MVP | detailed | 2 | — | systems/combat.md |
+| SYS-boost | Boost | MVP | detailed | 1 | — | systems/boost.md |
+
+### Economy
+
+| ID | System | Tier | Status | Ver | Depends | Doc |
+|----|--------|------|--------|-----|---------|-----|
+| SYS-loot | Loot | VS | detailed | 1 | — | systems/loot.md |
+
+### UI
+
+| ID | System | Tier | Status | Ver | Depends | Doc |
+|----|--------|------|--------|-----|---------|-----|
+| SYS-hud | HUD | VS | deprecated | 1 | — | systems/hud.md |
+
+### Meta
+
+| ID | System | Tier | Status | Ver | Depends | Doc |
+|----|--------|------|--------|-----|---------|-----|
+| SYS-ghost | Ghost | Full | skeleton | 1 | — | systems/ghost.md |
+<!-- /gen:system-map -->
+
+## Flow Map [gen]
+
+<!-- gen:flow-map -->
+Generated read-only from `GD-IDS.yaml` `flows` — none authored in this fixture.
+<!-- /gen:flow-map -->
+
+## Funnel [gen]
+
+<!-- gen:funnel -->
+Generated read-only from `GD-IDS.yaml` `events` — none authored in this fixture.
+<!-- /gen:funnel -->

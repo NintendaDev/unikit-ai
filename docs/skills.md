@@ -2,6 +2,23 @@
 
 # Skills Reference
 
+## Help & Navigation
+
+### `/unikit-help` - framework navigator
+
+Not sure what to do next, or which skill to use? Start here.
+```
+/unikit-help                          # short diagnostic (one question)
+/unikit-help how do I start coding     # routed straight to the right flow
+/unikit-help which skill fixes a bug
+```
+- Read-only navigator: diagnoses your intent and points you at the right skill/pipeline — it never does the work itself
+- No arguments → asks one short diagnostic question instead of dumping a manual
+- Covers the whole framework: setup, the code pipeline, testing, the game-design module, rules/memory, and "which skill for X"
+- Knowledge base lives in `skills/unikit-help/references/`; see [unikit-help](unikit-help.md) for details
+
+---
+
 ## Setup Skills
 
 ### `/unikit` - project setup

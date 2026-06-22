@@ -82,7 +82,7 @@ but tag them mentally so that **Next Steps** contains concrete follow-up actions
 | Strategic direction / milestone | `/unikit-roadmap` |
 | Assumption invalidated | Relevant owner skill |
 | Bug / broken behavior found | `/unikit-fix` |
-| Game-design idea / GDD gap | `/unikit-gd-brainstorm`, `/unikit-gd-explore`, or `/unikit-gd-improve` |
+| Game-design idea / GDD gap | `/unikit-gd-brainstorm`, `/unikit-gd-explore`, `/unikit-gd-spec`, or `/unikit-gd-system` |
 
 When writing the `## Next Steps` section of a research, use this table to generate specific
 follow-up suggestions instead of generic "update other files". Example:
@@ -224,7 +224,7 @@ context bootstrap.
 - `.unikit/ROADMAP.md` — strategic milestones (if any). If ROADMAP.md contains a `## References` section with linked documents, and the exploration topic relates to a specific milestone — read the reference documents associated with that milestone (listed in the `Milestones` column of the References table). This provides the original requirements/design context behind the milestone without asking the user for additional input.
 - `.unikit/code/researches/` — prior researches (check for related topics)
 - `.unikit/code/plans/` — active feature plans (if any)
-- `.unikit/gamedesign/GD-INDEX.md` — the game-design map (only if a design workspace exists). Read it when the exploration touches gameplay, systems, or feature behavior, so code-side thinking is grounded in the current design (system status, versions, dependencies). Follow rows to `.unikit/gamedesign/systems/*.md` for detail. **One-way boundary: explore may *read* design for grounding; it never writes or edits design — that flows through the `/unikit-gd-*` skills.**
+- `.unikit/gamedesign/GD-IDS.yaml` — the machine-readable game-design registry (only if a design workspace exists). **Schema guard:** it MUST be `version: 2` — on a pre-v2 `version: 1` registry, skip design grounding and emit a loud `WARN [design] GD-IDS.yaml is version 1 (pre-v2 layout); design grounding skipped` rather than silently misreading the old layout. Read it (when valid) for explorations touching gameplay, systems, or feature behavior, so code-side thinking is grounded in the current design (system `doc_status`, `version`, `depends_on`); the human-readable view is GAME.md's `## System Map [gen]`. Follow each entry's `source` path to `.unikit/gamedesign/systems/*.md` for detail. **One-way boundary: explore may *read* design for grounding; it never writes or edits design — that flows through the `/unikit-gd-*` skills.**
 
 ### Why this matters
 

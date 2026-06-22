@@ -1,6 +1,6 @@
 # SYS-boost — Boost
 
-> **Status**: detailed
+> **Status**: reviewed
 > **Version**: 1
 > **Last Updated**: 2026-06-13
 > **Implements**: PIL-1 · **Layer**: Core · **Scope**: M
@@ -52,7 +52,7 @@ must be `FORM-`.)
 
 ## F. Dependencies
 
-This system depends on **SYS-combat** — but the GD-INDEX Depends column and the
+This system depends on **SYS-combat** — but the `## System Map` Depends cell and the
 GD-IDS `depends_on` for SYS-boost are both empty (a Depends 3-way disagreement).
 
 | System | Direction | Nature of dependency |

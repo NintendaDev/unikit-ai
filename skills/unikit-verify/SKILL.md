@@ -429,14 +429,15 @@ Report findings under a `### Design Acceptance` section (see Step 4.1). The AC c
 
 **Gate — only when 3.8 found _every_ cited `AC-<id>` met** for the plan's `SYS-id`@version (no unmet, no partial). On any unmet/partial AC, **do nothing here** — skip silently.
 
-This is the single sanctioned code→design write (`gd-principles` → One-Way Boundary; canonical in `references/CONTEXT-GATES-AND-OWNERSHIP.md`, which overrides this body). It is explicitly carved out of the read-only rules — Step 3.6, Step 3.8, and the global **Important Rules #1 and #5**. On all-AC-met, stamp the implemented marker on **two** design surfaces:
+This is the single sanctioned code→design write (`gd-principles` → One-Way Boundary; canonical in `references/CONTEXT-GATES-AND-OWNERSHIP.md`, which overrides this body). It is explicitly carved out of the read-only rules — Step 3.6, Step 3.8, and the global **Important Rules #1 and #5**. On all-AC-met, stamp the implemented marker on the **single** design surface:
 
 1. **`.unikit/gamedesign/GD-IDS.yaml`** — find the `systems` entry whose `id:` equals the cited `SYS-id` and **add-or-set** `implemented_version: <cited @version>` (add the key if the entry lacks it — authoring skills inline their entries and may not carry the template's commented field). Leave `doc_status` and every other field untouched.
-2. **`.unikit/gamedesign/GD-INDEX.md`** — find that system's row (by `SYS-id` in the ID column) and set its **Status cell** to `implemented` (a display overlay; do **not** touch the underlying `doc_status`).
 
-**Locate-read only.** Opening `GD-IDS.yaml` + `GD-INDEX.md` here is **solely to locate the write target**; it is not a general live-design read and does not relax 3.8's snapshot-only discipline (the AC check still runs against the plan's `## Design` snapshot, never the live docs). These two files are the **only** `.unikit/gamedesign/` files this skill may open, and only on all-AC-met.
+The `implemented` state is **read-only everywhere else**: GAME.md's `## System Map [gen]` renders it from this `implemented_version` field (display precedence over `doc_status`), so there is **no second surface** to write — design re-renders the map, code never touches it.
 
-**Surface the write (no silent writes).** Confirm it in the `### Design Acceptance` report line (Step 4.1): on all-AC-met append `— stamped implemented_version: vN on <SYS-id> + GD-INDEX Status=implemented`. Never write silently.
+**Locate-read only.** Opening `GD-IDS.yaml` here is **solely to locate the write target**; it is not a general live-design read and does not relax 3.8's snapshot-only discipline (the AC check still runs against the plan's `## Design` snapshot, never the live docs). `GD-IDS.yaml` is the **only** `.unikit/gamedesign/` file this skill may open, and only on all-AC-met.
+
+**Surface the write (no silent writes).** Confirm it in the `### Design Acceptance` report line (Step 4.1): on all-AC-met append `— stamped implemented_version: vN on <SYS-id>`. Never write silently.
 
 ---
 
@@ -476,7 +477,7 @@ This is the single sanctioned code→design write (`gd-principles` → One-Way B
 
 ### Design Acceptance
 - Design AC: ✅ all cited AC met / ⚠️ N unmet (see issues) / ⏭️ no ## Design section
-- Writeback: ✅ stamped implemented_version: vN on <SYS-id> + GD-INDEX Status=implemented (all-AC-met) / — none (unmet/partial or no ## Design)
+- Writeback: ✅ stamped implemented_version: vN on <SYS-id> (all-AC-met) / — none (unmet/partial or no ## Design)
 
 ### No Issues
 - Engine-specific checks passed (per ENGINE_RULES.md)
@@ -631,7 +632,7 @@ Strict mode is recommended before merging to the base branch or creating a PR.
 2. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
 3. **Precise references** — always provide file:line for each finding
 4. **No false positives** — if unsure, mark as "⚠️ Verify manually"
-5. **Do not modify .unikit/ files** — only report drift and suggest updates. **Single exception:** Step 3.9's all-AC-met writeback to `.unikit/gamedesign/GD-IDS.yaml` (`implemented_version`) + `GD-INDEX.md` (Status `implemented`) — the lone sanctioned code→design write
+5. **Do not modify .unikit/ files** — only report drift and suggest updates. **Single exception:** Step 3.9's all-AC-met writeback to `.unikit/gamedesign/GD-IDS.yaml` (`implemented_version`) — the lone sanctioned code→design write (a single surface; GAME.md's `## System Map [gen]` renders the `implemented` state read-only from it)
 6. **Do not touch engine read-only paths** — see ENGINE_RULES.md for the list of read-only directories; ignore them during checks
 7. **Agent-based delegation** — use `Agent(subagent_type: Explore, model: sonnet, ...)` for read-only investigation. Fixes are applied INLINE by this skill using rules loaded in Step 0.2 Bootstrap. Use `develop-agent` for fixes ONLY when they span many independent files or require extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)`. If Agent tool is unavailable, fall back to inline work for both exploration (Glob/Grep/Read) and fixes (direct Read/Edit/Write/Bash with loaded rules).
 

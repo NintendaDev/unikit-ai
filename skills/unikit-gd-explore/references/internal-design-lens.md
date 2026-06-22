@@ -10,8 +10,8 @@ lens — when it engages". This file is **method, not process**, the same split
 
 The lens stays inside Explore's stance: **research only, read-only, it never writes
 the GDD.** It produces a research record and a hand-off brief; the design change
-itself is authored by the routed owner skill (`unikit-gd-spec` / `unikit-gd-detail`
-/ `unikit-gd-improve`). Announce the read-only boundary when entering the lens and
+itself is authored by the routed owner skill (`unikit-gd-spec` / `unikit-gd-system`).
+Announce the read-only boundary when entering the lens and
 again at handoff — the user should never expect this skill to edit `GAME.md` or a
 system doc.
 
@@ -35,8 +35,9 @@ only as good as the design it has actually read:
 
 1. **`GAME.md`** — pillars (`PIL-n`) and their design tests, target aesthetics, the
    loop stack, non-goals. Every option is measured against these.
-2. **`GD-INDEX.md`** — the target system's row (category, tier, Depends, Status, Doc)
-   and its neighbourhood on the map.
+2. **`GAME.md` `## System Map [gen]`** — the read-only roster render: the target's
+   row (category, tier, Depends, Status) and its neighbourhood on the map (the
+   machine truth is `GD-IDS`, read next).
 3. **`GD-IDS.yaml`** — locked facts the target must stay consistent with: the pillars
    it `implements`, entities, formulas, terms, decisions, plus the target's own
    `doc_status` / `version` / `implemented_version`.
@@ -54,12 +55,12 @@ artifacts to learn how a system was implemented. The lens reasons about the *des
 ## Domain → rules to ground options
 
 Read the behavioural **domain** from the target's name and Overview (the behaviour it
-drives), **not** from the coarse `GD-INDEX` `Category`; on an ambiguous or coarse
+drives), **not** from the coarse `GD-IDS` `category`; on an ambiguous or coarse
 category, confirm the domain with one `AskUserQuestion`. Load the matching core rules
 (plus any studio `library` rule on the topic) so options carry theory. Domains are
-opt-in and combinable — this is the **same keying vocabulary** `unikit-gd-detail` and
-`unikit-gd-improve` use in their Phase 0 tables (kept in sync, not byte-identical —
-this table loads rules to *ground options*, theirs to *author sections*):
+opt-in and combinable — this is the **same keying vocabulary** `unikit-gd-system` uses
+in its Phase 0 table (kept in sync, not byte-identical — this table loads rules to
+*ground options*, its to *author sections*):
 
 | Domain | Core rules to ground options |
 |--------|------------------------------|
@@ -103,15 +104,15 @@ The lens extends the **existing** `RESEARCH_BRIEF.md` (it does **not** invent a 
 file, and it does **not** put these blocks in `RESEARCH_RESULT.md` — that file is the
 full record). Emit the block that matches the resolved route; for a multi-target run,
 emit one block per target. The block headings are **stable English anchors** so
-`unikit-gd-detail` / `unikit-gd-improve` find them deterministically after a `/clear`,
-regardless of the artifact's content language.
+`unikit-gd-system` finds them deterministically after a `/clear`, regardless of the
+artifact's content language.
 
-### `## Improvement Plan` — for `/unikit-gd-improve`
+### `## Improvement Plan` — for `/unikit-gd-system`
 
 For a system whose doc is already `detailed` / `reviewed` / `revised`. Fields:
 
 - **Target**: `SYS-<slug>` · **Expected scale**: Tuning | Tweak | Rework (the
-  `unikit-gd-improve` classifier — let it confirm, this is the prediction).
+  `unikit-gd-system` classifier — let it confirm, this is the prediction).
 - **Change**: ready-to-apply delta lines — `<Section>: <old> → <new>` per value/rule.
 - **Touched GD-IDS facts**: entities/formulas/terms the delta moves (or `N/A`).
 - **Rejected alternatives**: the options not taken, one line each, with the WHY-not.
@@ -119,16 +120,16 @@ For a system whose doc is already `detailed` / `reviewed` / `revised`. Fields:
   (see "RF bridge"), else `N/A`.
 - **Open questions**: anything the closure pass deferred.
 
-### `## New Feature Plan` — for `/unikit-gd-spec` (add-system) → `/unikit-gd-detail`
+### `## New Feature Plan` — for `/unikit-gd-spec` (add-system) → `/unikit-gd-system`
 
 For a mechanic with **no system on the map yet**. Two parts:
 
 - **Map fields** (for `unikit-gd-spec` add-system): proposed slug, Category, Tier,
   `implements: [PIL-n]` (≥1 — the coverage gate), `depends_on` (symmetric edges).
-- **Section seeds** (for `unikit-gd-detail` to pre-fill the section-cycle): the A–K
+- **Section seeds** (for `unikit-gd-system` to pre-fill the section-cycle): the A–K
   content the lens worked out — Overview, Player Fantasy, Core Rules, draft Formulas,
   Edge Cases, candidate Tuning Knobs, draft Acceptance Criteria. These seeds are
-  **untagged normal authored content** — `unikit-gd-detail` does **not** mark them
+  **untagged normal authored content** — `unikit-gd-system` does **not** mark them
   `extracted` / `generated` (those markers are for imports only; `gd-principles` →
   Provenance).
 
@@ -147,7 +148,7 @@ sequence.
 When the lens addresses an open `unikit-gd-review` finding, carry its stable
 `RF-<YYYY-MM-DD>-<n>` id into the Improvement Plan's **Closes finding** field. The
 `RF-<date>-n` format is owned by `unikit-gd-review`; the lens only references it so
-`unikit-gd-improve` can cite the closed finding in its changelog essence
+`unikit-gd-system` can cite the closed finding in its changelog essence
 (`… (DD-3; RF-2026-06-14-2)`).
 
 ## Research tags & the discovery contract
@@ -166,7 +167,7 @@ what the *routed* skills do):
   writes the **authoritative pointer** `research: researches/<folder-name>/` into the
   system's `GD-IDS.yaml` entry. The value is a **non-id path**, not a registry id, so
   `unikit-gd-verify` never tries to resolve it.
-- `unikit-gd-detail` / `unikit-gd-improve` discover the research by
+- `unikit-gd-system` discovers the research by
   **`GD-IDS` `research:` (authoritative) → `researches/INDEX.md` `Target:` (fallback)`**
   — the project's standard "registry pointer, disk fallback" idiom — then pre-fill
   their drafts/deltas from the matching brief block.

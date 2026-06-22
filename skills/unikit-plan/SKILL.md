@@ -225,18 +225,24 @@ If `.unikit/code/patches/` exists:
 
 #### Design context (game-design module — optional)
 
-Check whether `.unikit/gamedesign/GD-INDEX.md` exists.
+Check whether `.unikit/gamedesign/GD-IDS.yaml` exists.
 
-- **Exists** → this project carries a game-design workspace. Set `design_linked = true`
-  and note it for **Step 4.5**, which reads the relevant system design and produces the
-  plan's `## Design` snapshot. Do NOT read the design docs here — Step 4.5 owns that,
-  after the feature scope is clear.
+- **Exists** → this project carries a game-design workspace. **Schema guard (clean
+  break — no automatic migration):** the registry MUST be `version: 2`. On a pre-v2
+  `version: 1` registry, do NOT read it — emit a loud `ERROR [design] GD-IDS.yaml is
+  version 1 (pre-v2 layout); design grounding unavailable until the workspace is
+  upgraded via /unikit-gd-spec` and set `design_linked = false` (the plan continues
+  purely code-side, never silently misreading the old layout). With a valid
+  `version: 2`, set `design_linked = true` and note it for **Step 4.5**, which reads
+  the relevant system design and produces the plan's `## Design` snapshot. Do NOT read
+  the design docs here — Step 4.5 owns that, after the feature scope is clear.
 - **Absent** → set `design_linked = false` and skip every design step. The plan is
   purely code-side, exactly as before — projects without a design module are unaffected.
 
-**One-way boundary:** planning *reads* design (`GD-INDEX.md`, `systems/*.md`,
-`GD-IDS.yaml`); it never writes or edits any `.unikit/gamedesign/` artifact. Design
-changes flow only through the `/unikit-gd-*` skills.
+**One-way boundary:** planning *reads* design (`GD-IDS.yaml`, `systems/*.md`, and the
+read-only `## System Map [gen]` in `GAME.md`); it never writes or edits any
+`.unikit/gamedesign/` artifact. Design changes flow only through the `/unikit-gd-*`
+skills.
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
@@ -624,7 +630,7 @@ Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules, patch
 
 ### Step 4.5: Resolve Design Context (game-design module)
 
-**Runs only when `design_linked = true`** (a `.unikit/gamedesign/GD-INDEX.md` exists). It
+**Runs only when `design_linked = true`** (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml` exists). It
 grounds the plan in the game's design and is the source of the plan's `## Design` section.
 When `design_linked = false`, skip this step entirely.
 
@@ -633,18 +639,25 @@ to `.unikit/gamedesign/`.
 
 #### 4.5.1 — Resolve the target system
 
-1. Read `.unikit/gamedesign/GD-INDEX.md` (the system map: one row per system with `ID`,
-   `System`, `Category`, `Tier`, `Status`, `Ver`, `Depends`, `Doc`).
-2. Match the feature description against the `System` names (and `Category`). Exclude rows
-   whose `Status` is `deprecated` from candidate matching — emit
+1. Read `.unikit/gamedesign/GD-IDS.yaml` `systems` (the machine-readable roster — the
+   same data GAME.md's `## System Map [gen]` renders read-only; read the registry, not
+   the render). Each entry carries `id`, `name`, `category`, `tier`, `status`
+   (`active | deprecated`), `doc_status`, `version`, `implemented_version`, `depends_on`,
+   and `source`.
+2. Match the feature description against each system's `name` (and `category` —
+   `unikit-gd-spec` records it for exactly this match). Exclude entries whose `status` is
+   `deprecated` from candidate matching — emit
    `WARN [design] SYS-<id> deprecated; excluded from candidates` and do not plan against
    one. One confident match → use it. Several plausible matches, or none → resolve with
    `AskUserQuestion` (list the candidate systems); **never guess** the system. If the user
    confirms the feature has no design system (pure code/tech work) → set
    `design_linked = false` and continue to Step 5 with no `## Design` section.
-3. For the resolved row, read its system GDD from the `Doc` path
-   (`.unikit/gamedesign/systems/*.md`). Capture: the system `SYS-id`, current `Ver`,
-   `Status`, and the **Acceptance Criteria** (verbatim, keyed by `AC-<id>`).
+3. For the resolved entry, read its system GDD from the `source` path
+   (`.unikit/gamedesign/systems/*.md`). Capture: the system `SYS-id`, current `version`,
+   the **effective status** (`doc_status`, overridden by `deprecated` from `status` and by
+   `implemented` when `implemented_version` is non-empty — the same precedence the
+   `## System Map [gen]` shows), and the **Acceptance Criteria** (verbatim, keyed by
+   `AC-<id>`).
 
 #### 4.5.2 — Status gate (warn, never block)
 
@@ -652,8 +665,8 @@ Plan generation continues regardless of status, but surface a `WARN [design]` li
 resolved system's `Status` is not `detailed` or `reviewed`:
 
 - `not-started` / `skeleton` — the design is incomplete; the plan may rest on a partial
-  spec. Suggest finishing `/unikit-gd-detail <system>` first.
-- `revised` — the design moved ahead of the code after a `/unikit-gd-improve` edit; treat
+  spec. Suggest finishing `/unikit-gd-system <system>` first.
+- `revised` — the design moved ahead of the code after a `/unikit-gd-system` edit; treat
   this as a delta plan (4.5.3) and call out that old behavior may need removal.
 - `implemented` — code already exists for this version (the version is recorded in
   `GD-IDS.yaml` `implemented_version`, read as the baseline in 4.5.3); confirm intent (a
@@ -829,7 +842,7 @@ Bad examples:
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
 11. **Always create PLAN-BRIEF.md** — even when a research's `RESEARCH_BRIEF.md` exists, the plan always generates its own `PLAN-BRIEF.md` (full mode) or `## Technical Context` (fast mode) based on the current codebase state. The research brief is used as input, not as a replacement — code may have changed since the research was conducted. The plan's brief is the authoritative source for `/unikit-implement`
 12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
-13. **Design is read-only and cited, not copied** — when a game-design workspace exists (`.unikit/gamedesign/GD-INDEX.md`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`/`reviewed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
+13. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`/`reviewed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
 
 ## Code Analysis & Delegation Rules
 
