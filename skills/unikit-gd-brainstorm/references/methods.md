@@ -185,6 +185,30 @@ The loop stack, the SDT audit, and the game-feel check are emitted as tables; th
 columns and worked examples are the single source of truth in `references/tables.md`
 § Phase 5 — not duplicated here.
 
+## Phase 7.5 — Scenario / Flow seeds
+
+The concept now has loops (Phase 5) and pillars (Phase 6); this phase turns them into
+the **dynamics seeds** the Flow axis picks up downstream (`/unikit-gd-explore` flow
+lens → `/unikit-gd-flow`). It does **not** author flows — it produces seeds, the same
+way Phase 6 seeds the pillars the spec later formalizes. Output three things, each
+anchored to a pillar:
+
+- **3–5 scenario prompts** — the concrete player situations the game must deliver
+  ("the first ten minutes", "a tense escape", "the end-game power fantasy"), read off
+  the Loop Stack (Phase 5) as *moments the player lives through*.
+- **A candidate wiring mode per scenario** — `linear` (a fixed authored sequence) /
+  `conditional` (branches on world/player state) / `emergent` (the player sets the
+  goal). A *candidate* only — `/unikit-gd-flow` confirms it; infer from genre + pillars
+  (a sandbox pillar pushes `emergent`, a guided-narrative pillar pushes `linear`).
+- **Flow seeds** — per scenario, 1–3 `GOAL`-shaped objectives (what the player tries to
+  do + the success that confirms it) and the **systems they would exercise**
+  (`GOAL → SYS`, even when the system is only a Phase-6 idea). Drafts, not registered
+  ids — `/unikit-gd-flow` assigns the real `GOAL-<flow>-<n>`.
+
+The seeds ride into the concept's Open Questions / Next Steps so the Flow axis picks
+them up; brainstorm never writes a `FLOW.md` or `GD-IDS`. Like Phase 3.5, the output is
+a short structured list, not a canonical `tables.md` shape.
+
 ## Phase 8 — Pre-mortem (Klein, HBR 2007)
 
 Run the protocol **verbatim** — the framing is what makes it work:

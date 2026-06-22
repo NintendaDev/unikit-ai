@@ -216,6 +216,8 @@ registry + closure pass, the two brief blocks — lives in
 | **Improve an existing system** | "improve our combat", "доработать баланс боя", "tune our economy design", "rethink the status system", "make X deeper" |
 | **New mechanic for this game** | "research a crafting mechanic for us", "проработать новую механику", "what new system could serve PIL-2", "explore a mechanic to add" |
 | **Close a design question** | "work through the open question on X", "resolve the trade-off in SYS-y" |
+| **Improve an existing flow** | "improve the onboarding", "fix the first-session pacing", "rework this flow's guidance", "доработать прогрессию" |
+| **New player-facing flow** | "design the first-session flow", "map a new player sequence for us", "what flow would serve PIL-2" |
 
 The tell is the **possessive frame** — *our / this game / SYS-id / a pillar* — which
 separates this lens from dissecting someone else's game.
@@ -251,6 +253,22 @@ recommended command; the routed skill carries its own next hop.
 The brief carries the block the route consumes (see "Saving Research Results" →
 mode-aware blocks). For several targets, hand off an **ordered list** of calls,
 dependency-sorted (`internal-design-lens.md` → "Multi-target order").
+
+**Flow targets collapse to one route (no add-flow).** A flow **registers itself**, so
+its `doc_status` does **not** fork the route the way a system's does — every flow state
+(no doc / `not-started` / `skeleton` / `detailed` / `reviewed` / `revised`) routes to
+the **same** owner, `/unikit-gd-flow` (it creates, registers, fills, and revises). This
+is **not** a 3-way mirror of the system table — there is no `/unikit-gd-spec` add-flow
+step:
+
+| Target state (`doc_status`) | Recommended route |
+|-----------------------------|-------------------|
+| any flow state (no doc … `revised`) | `/unikit-gd-flow` |
+
+The brief block is `## Flow Feature Plan` (no doc / `not-started` / `skeleton` — needs
+seeds) or `## Flow Improvement Plan` (`detailed` / `reviewed` / `revised` — a delta). A
+`GOAL` that needs a **missing system** still routes that *system* through
+`/unikit-gd-spec` add-system, but the flow itself always goes to `/unikit-gd-flow`.
 
 ## Serving a brainstorm request (subagent mode)
 
@@ -310,8 +328,8 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
    Updated: <YYYY-MM-DD HH:MM>
    Status: completed | in-progress | needs-follow-up
    Research: <folder-name>
-   Target: SYS-<slug>            # internal-design lens only — the system this research targets
-   Kind: feature | improvement   # internal-design lens only — feature = new mechanic, improvement = existing system
+   Target: SYS-<slug> | FLOW-<slug>   # internal-design lens only — the system or flow this research targets
+   Kind: feature | improvement   # internal-design lens only — feature = new system/flow, improvement = existing one
 
    ## Table of Contents
    ## Topic            — 1–2 sentences
@@ -359,6 +377,15 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
      `/unikit-gd-system` (target has no doc / `not-started`): the map fields (slug,
      Category, Tier, `implements: PIL-n`, `depends_on`) plus the A–K section seeds
      `unikit-gd-system` pre-fills its section-cycle from.
+   - **`## Flow Improvement Plan`** — when the route is `/unikit-gd-flow` for a
+     `detailed` / `reviewed` / `revised` **flow**: Target `FLOW-<slug>`, expected scale,
+     delta lines (GOAL / beat / cue / event), touched GD-IDS facts, rejected
+     alternatives, the `RF-<date>-n` it closes (if any), deferred open questions.
+   - **`## Flow Feature Plan`** — when the route is `/unikit-gd-flow` for a **new flow**
+     (no doc / `not-started` / `skeleton`): the flow fields (slug, candidate `mode`,
+     `implements: PIL-n`, `depends_on: SYS-ids`) plus the A–F section seeds
+     `unikit-gd-flow` pre-fills its section-cycle from. (No add-flow step — the flow
+     zone registers itself.)
 
    For several targets, append one block per target (dependency-sorted).
 
@@ -371,6 +398,8 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
 | **Internal lens** — improve a `detailed`/`reviewed`/`revised` system | `/unikit-gd-system` (consumes `## Improvement Plan`) |
 | **Internal lens** — a new mechanic (no doc / `not-started`) | `/unikit-gd-spec` (add-system) → `/unikit-gd-system` (consumes `## New Feature Plan`) |
 | **Internal lens** — fill a `skeleton` system | `/unikit-gd-system` |
+| **Internal lens** — improve a `detailed`/`reviewed`/`revised` flow | `/unikit-gd-flow` (consumes `## Flow Improvement Plan`) |
+| **Internal lens** — a new / `skeleton` flow | `/unikit-gd-flow` (consumes `## Flow Feature Plan`) |
 | A balance/economy/UX convention worth keeping | `/unikit-memory --module gamedesign` |
 | A consistency concern in the current design | `/unikit-gd-verify` |
 
@@ -427,14 +456,16 @@ crystallize, you might summarize the findings — but the thinking is often the 
   contract. This skill is its provider; brainstorm reads it as the interface. Keep its
   canonical marker and brief field-list in sync with `references/market-scan.md`.
 - **Internal design lens (read-only).** The lens (`references/internal-design-lens.md`)
-  deep-reads `GAME.md` / `GD-IDS.yaml` (+ its `## System Map [gen]` render) / system
-  docs and hands off a brief — it **never** writes the GDD, and it **never** writes the
-  `research:` pointer into `GD-IDS.yaml`; that pointer is owned by `unikit-gd-spec`
-  (add-system). Explore only **tags** its own research (`Target:` / `Kind:`).
+  deep-reads `GAME.md` / `GD-IDS.yaml` (+ its `## System Map [gen]` / `## Flow Map [gen]`
+  renders) / system docs / flow docs and hands off a brief — it **never** writes the
+  GDD, and it **never** writes the `research:` pointer into `GD-IDS.yaml`; that pointer
+  is owned by the registering zone (`unikit-gd-spec` add-system for a **system**,
+  `unikit-gd-flow` for a **flow** — there is no add-flow). Explore only **tags** its own
+  research (`Target:` / `Kind:`).
 - **Read-only:** `GAME.md`, `GD-IDS.yaml`, systems, concepts — route any design change
   to its owner skill, never edit them here.
 - **Not this skill:** generating new concepts → `unikit-gd-brainstorm`; authoring
-  the spec/systems → `unikit-gd-spec` / `unikit-gd-system`.
+  the spec/systems/flows → `unikit-gd-spec` / `unikit-gd-system` / `unikit-gd-flow`.
 - **Never:** author or edit a design document; read the code workspace or project
   source; auto-save a research.
 

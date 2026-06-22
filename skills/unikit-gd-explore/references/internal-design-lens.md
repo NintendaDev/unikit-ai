@@ -49,6 +49,16 @@ only as good as the design it has actually read:
 6. **Recent `reviews/`** — open `unikit-gd-verify` conflicts and `unikit-gd-review`
    findings for the target. An open `RF-<date>-n` finding is an input (see "RF bridge").
 
+**Flow targets (the dynamics axis).** When the target is a `FLOW-<slug>` (improve a
+flow) or a player-facing sequence with no flow yet (new flow), the deep-read mirrors
+the system read but on the dynamics axis: read `GAME.md`'s **loop stack**, **target
+aesthetics**, and **`## Win / Lose Conditions`** (a terminal `GOAL` realizes each);
+the `FLOW.md` (sections A–F) when it exists; `GD-IDS` `flows` (the target's `mode`,
+`goals`, `depends_on`) and `events`; the `## Flow Map [gen]` / `## Funnel [gen]`
+read-only renders; and the **exercised systems'** sections **B (Player Fantasy)**,
+**C (Core Rules)**, and **H (Acceptance Criteria)** so each `GOAL` lands on a real
+rule/AC and the promised feeling is grounded.
+
 **One-way boundary holds:** never read `.unikit/code/`, project source, or build
 artifacts to learn how a system was implemented. The lens reasons about the *design*.
 
@@ -133,6 +143,42 @@ For a mechanic with **no system on the map yet**. Two parts:
   `extracted` / `generated` (those markers are for imports only; `gd-principles` →
   Provenance).
 
+### `## Flow Improvement Plan` — for `/unikit-gd-flow`
+
+For a flow whose doc is already `detailed` / `reviewed` / `revised`. The flow axes are
+**pacing** (does the tension arc rise and release?), **guidance** (is each `GOAL` step
+legible — trigger → expected action → feedback?), **wiring-mode** fit, and **funnel**
+coverage. Fields:
+
+- **Target**: `FLOW-<slug>` · **Expected scale**: Tuning | Tweak | Rework (the
+  `unikit-gd-flow` classifier — let it confirm, this is the prediction).
+- **Change**: ready-to-apply delta lines — `<Section>: <old> → <new>` per
+  GOAL / beat / cue / event (or a `mode` change).
+- **Touched GD-IDS facts**: the `goals` / `events` / `depends_on` the delta moves
+  (or `N/A`).
+- **Rejected alternatives**: the options not taken, one line each, with the WHY-not.
+- **Closes finding**: `RF-<date>-n` when the change resolves an open review finding
+  (see "RF bridge"), else `N/A`.
+- **Open questions**: anything the closure pass deferred.
+
+### `## Flow Feature Plan` — for `/unikit-gd-flow` (create + register)
+
+For a player-facing sequence with **no flow on the map yet**. A flow **registers
+itself**, so this routes **straight to `/unikit-gd-flow`** — there is **no add-flow in
+`unikit-gd-spec`** (unlike the system New Feature Plan, which goes through add-system
+first). Two parts:
+
+- **Flow fields** (for `unikit-gd-flow` to register the `flows[]` row): proposed slug,
+  candidate `mode` (linear | conditional | emergent, with the WHY from genre/pillars),
+  `implements: [PIL-n]` (≥1 — the pillar the flow serves), `depends_on: [SYS-ids]` (the
+  systems its `GOAL`s exercise — route any **missing** system through `/unikit-gd-spec`
+  add-system, never invent the roster row).
+- **Section seeds** (for `unikit-gd-flow` to pre-fill the section-cycle): the A–F
+  content the lens worked out — Overview, the objective-flow `GOAL`s (or the affordance
+  set for `emergent`), Pacing (beats or envelope), Dependencies, Events. These seeds
+  are **untagged normal authored content** — the import-only `extracted` / `generated`
+  markers do not apply (`gd-principles` → Provenance).
+
 Fill any field with `N/A` rather than inventing content the lens did not cover.
 
 ## Multi-target order
@@ -156,18 +202,24 @@ When the lens addresses an open `unikit-gd-review` finding, carry its stable
 So a downstream skill finds this research deterministically across a `/clear`, tag it
 on save (the SKILL "Saving Research Results" step writes these):
 
-- **`RESEARCH_RESULT.md` header** — add `Target: SYS-<slug>` and
-  `Kind: feature | improvement` (English tokens, like every stored id/value).
-- **`researches/INDEX.md` entry** — add a `**Target**: SYS-<slug>` field to the row.
+- **`RESEARCH_RESULT.md` header** — add `Target: SYS-<slug>` **or** `Target: FLOW-<slug>`
+  and `Kind: feature | improvement` (English tokens, like every stored id/value).
+- **`researches/INDEX.md` entry** — add a `**Target**: SYS-<slug> | FLOW-<slug>` field
+  to the row.
 
 The hand-off ownership (do **not** write these here — the lens is read-only; this is
 what the *routed* skills do):
 
-- `unikit-gd-spec` (add-system), when it seeds a new system from a New Feature Plan,
+- `unikit-gd-spec` (add-system), when it seeds a new **system** from a New Feature Plan,
   writes the **authoritative pointer** `research: researches/<folder-name>/` into the
   system's `GD-IDS.yaml` entry. The value is a **non-id path**, not a registry id, so
   `unikit-gd-verify` never tries to resolve it.
-- `unikit-gd-system` discovers the research by
+- `unikit-gd-flow`, when it registers a new **flow** from a Flow Feature Plan, writes
+  the same `research:` pointer into the `flows[]` entry — the flow zone owns its own row
+  (there is **no add-flow in `unikit-gd-spec`**), so the flow pointer is written by
+  `unikit-gd-flow`, not `unikit-gd-spec`. Same non-id-path semantics.
+- `unikit-gd-system` / `unikit-gd-flow` discover the research by
   **`GD-IDS` `research:` (authoritative) → `researches/INDEX.md` `Target:` (fallback)`**
-  — the project's standard "registry pointer, disk fallback" idiom — then pre-fill
-  their drafts/deltas from the matching brief block.
+  — the project's standard "registry pointer, disk fallback" idiom — then pre-fill their
+  drafts/deltas from the matching brief block (`## Improvement Plan` / `## New Feature
+  Plan` for systems, `## Flow Improvement Plan` / `## Flow Feature Plan` for flows).

@@ -73,7 +73,7 @@ Before responding, silently load — do not narrate:
 3. **`{{skills_dir}}/{{self_name}}/references/methods.md`** — the method
    cheat-sheets (divergence/convergence techniques, HMW, pre-mortem, find-the-fun).
    **Do not load up front — read on demand, per phase:** when you enter a phase that
-   points to it (Phases 1, 3, 4, 5, 8, 8.5), read that section then. The phase
+   points to it (Phases 1, 3, 4, 5, 7.5, 8, 8.5), read that section then. The phase
    summaries below carry the workflow; `methods.md` carries the deep "how", so a
    resume or a phase that needs no method theory never pays for it.
 4. **`{{skills_dir}}/{{self_name}}/references/tables.md`** — the canonical shapes of every
@@ -122,9 +122,9 @@ and the last phase reached. Semantically match the user's hint against the rows:
 `IDEAS.md` is read so the session does not re-pitch a killed idea. Repeated
 brainstorms always create new slug directories.
 
-On resume, jump to the saved phase — including the **fractional phases 3.5 and 8.5**
-(a session interrupted mid-scan or mid-validation resumes there, not back at 3 or 8);
-on a fresh start, begin at Phase 1.
+On resume, jump to the saved phase — including the **fractional phases 3.5, 7.5, and
+8.5** (a session interrupted mid-scan, mid-flow-seeds, or mid-validation resumes there,
+not back at 3, 7, or 8); on a fresh start, begin at Phase 1.
 
 ## Phases 1–9
 
@@ -430,6 +430,21 @@ Bartle read. Then separate **player from buyer**: the **buying trigger** and the
 explicit **anti-persona** — "who this is NOT for". Capture the whole read as one table
 (player psychology → buyer triggers → anti-persona) — columns and a worked example in
 `references/tables.md` § Phase 7.
+
+### Phase 7.5 — Scenario / Flow seeds
+
+*Turn the loops (Phase 5) and pillars (Phase 6) into the **dynamics seeds** the Flow
+axis picks up downstream — this does not author flows, it seeds them (as Phase 6 seeds
+the pillars the spec later formalizes).*
+
+Draft **3–5 scenario prompts** (the concrete player situations the game must deliver,
+each anchored to a pillar), a **candidate wiring mode** per scenario (`linear` /
+`conditional` / `emergent` — a candidate only; `/unikit-gd-flow` confirms it), and
+**flow seeds** (1–3 draft `GOAL`-shaped objectives + the systems each would exercise,
+`GOAL → SYS`). Drafts, not registered ids — full method in `references/methods.md`
+§ Phase 7.5. The seeds ride into Phase 9's Open Questions / Next Steps for the Flow
+axis (`/unikit-gd-explore` flow lens → `/unikit-gd-flow`); brainstorm never writes a
+`FLOW.md` or `GD-IDS`.
 
 ### Phase 8 — Pre-mortem & Scope → **incremental write**
 
