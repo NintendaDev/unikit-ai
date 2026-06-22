@@ -1,18 +1,18 @@
 # Game Design Facts Registry (GD-IDS)
 #
 # PURPOSE: the single source of truth for every number, name, and decision that
-# crosses a system boundary. Design skills check this registry before writing new
-# content so cross-document drift is caught at authoring time. When a document and
-# this registry disagree, the registry wins until the user resolves the conflict
-# the other way through `unikit-gd-verify`.
+# crosses a system boundary, AND the machine interface the code side reads. Design
+# skills check this registry before writing new content so cross-document drift is
+# caught at authoring time. When a document and this registry disagree, the registry
+# wins until the user resolves the conflict the other way through `unikit-gd-verify`.
 #
 # RULES:
 #   - Register a fact when it appears in (or is referenced by) more than one
 #     document. Internal-only facts (a formula used in one GDD) stay in that GDD.
 #   - Never delete an entry — set `status: deprecated`. Dangling references are
 #     verify conflicts.
-#   - IDs are stable English lowercase slugs (PIL-n, SYS-slug, ENT-slug,
-#     FORM-slug, AC-sys-n, DD-n). Never reuse or renumber an ID.
+#   - IDs are stable English lowercase slugs (PIL-n, SYS-slug, FLOW-slug, ENT-slug,
+#     FORM-slug, AC-sys-n, GOAL-flow-n, DD-n). Never reuse or renumber an ID.
 #   - `source` is the document that OWNS the fact.
 #   - Store CURRENT VALUES ONLY. History lives in GDD changelog blocks (section K)
 #     and git. On a value change: update it, set `revised` to today, and record
@@ -20,10 +20,19 @@
 #   - Writes require the same approval as document writes (see gd-principles).
 #
 # FORMAT: YAML. Consistent indentation is critical for grep reliability.
-#   Sections: pillars | systems | entities | formulas | terms | decisions
+#   Sections: pillars | systems | flows | events | entities | formulas | terms | decisions
 
-version: 1
+version: 2
 last_updated: ""
+#
+# SCHEMA GUARD (clean break — there is NO automatic migration). Every consumer
+# REQUIRES `version: 2`: the gd-* design skills on Bootstrap, and the code side
+# (`unikit-plan` / `unikit-verify` / `unikit-explore`). A registry still on
+# `version: 1` is the pre-v2 layout — consumers must FAIL LOUDLY with an upgrade
+# message instead of silently misreading it. v2 removes the separate markdown
+# system-index that v1 kept beside this registry; the system, flow, and funnel maps
+# now render read-only into GAME.md (## System Map [gen] / ## Flow Map [gen] /
+# ## Funnel [gen]) directly from this file.
 
 # ─── PILLARS ──────────────────────────────────────────────────────────────────
 # The game's non-negotiable principles. Owned by GAME.md.
@@ -37,13 +46,15 @@ pillars: []
 #     revised: ""
 
 # ─── SYSTEMS ──────────────────────────────────────────────────────────────────
-# Every designed system. Mirrors GD-INDEX rows; owned by each system's GDD.
+# Every designed system. Owned by each system's GDD; rendered read-only into
+# GAME.md ## System Map [gen].
 systems: []
 # Example:
 #   - id: SYS-combat
 #     name: "Combat"
 #     status: active            # active | deprecated
 #     tier: MVP                 # MVP | VS | Alpha | Full
+#     category: Gameplay        # Core | Gameplay | Progression | Economy | UI | Narrative | Meta — unikit-plan matches the plan brief on this
 #     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised
 #     version: 1
 #     implemented_version: ""   # code-side unikit-verify sets this on all-AC-met (cited @version); not a doc_status, excluded from status coherence
@@ -53,6 +64,45 @@ systems: []
 #     source: systems/SYS-combat.md
 #     added: 2026-06-13
 #     revised: ""
+
+# ─── FLOWS ────────────────────────────────────────────────────────────────────
+# Player-action scenarios (the dynamics axis). Owned by each flow's FLOW.md;
+# rendered read-only into GAME.md ## Flow Map [gen]. A flow's "realized" state is
+# DERIVED from the implemented_version of the systems it depends on — never written
+# here (there is no implemented field on flows; flow delivery is confirmed by
+# playtest, not by the verify gate).
+flows: []
+# Example:
+#   - id: FLOW-first-session
+#     name: "First session"
+#     status: active            # active | deprecated
+#     mode: linear              # linear | conditional | emergent — dictates FLOW.md structure; gd-verify checks mode ↔ structure (as packs ↔ ## Pack)
+#     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised (same spine as systems)
+#     version: 1
+#     research: ""              # same NON-id path pointer as systems (set by gd-spec when seeded from an explore brief); excluded from coherence/dangling/id resolution
+#     depends_on: [SYS-combat, SYS-stamina]   # systems this flow exercises (GOAL → SYS); realized once each is implemented
+#     goals:                    # GOAL-<flow>-<n> rows — the scenario steps
+#       - id: GOAL-first-session-1
+#         summary: "Defeat the first enemy"
+#         targets: [SYS-combat]            # GOAL → SYS (skeleton) → GOAL → AC-combat-3 (refined)
+#     source: flows/FLOW-first-session.md
+#     added: 2026-06-22
+#     revised: ""
+
+# ─── EVENTS ───────────────────────────────────────────────────────────────────
+# Analytics measurement points (the third altitude of the AC · GOAL · event
+# grammar). Aggregated read-only into GAME.md ## Funnel [gen]. An event lives where
+# its question lives: a flow/funnel step → here (owned by a flow); a system's own
+# internal metric → that system's GDD (section I); a global/meta metric → GAME.md.
+# Event names are stable English tokens (telemetry identifiers) — never translated.
+events: []
+# Example:
+#   - id: first_enemy_defeated
+#     name: "First enemy defeated"
+#     status: active            # active | deprecated
+#     source: flows/FLOW-first-session.md
+#     flow: FLOW-first-session  # the flow whose GOAL emits this funnel step
+#     added: 2026-06-22
 
 # ─── ENTITIES ─────────────────────────────────────────────────────────────────
 # Named game-world objects with cross-doc stats: enemies, NPCs, items, factions.

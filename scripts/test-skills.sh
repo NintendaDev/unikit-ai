@@ -787,7 +787,7 @@ GD_DATA="$ROOT_DIR/data/gamedesign"
 
 # The 8 GDD authoring templates (Phase C / #9) must exist and be non-empty.
 # GD-IDS ships as .yaml (machine truth); the rest are .md.
-for tpl in CONCEPT GAME GD-IDS GD-INDEX GD_RULES_INDEX PITCH REVIEW SYSTEM; do
+for tpl in CONCEPT FLOW GAME GD-IDS GD_RULES_INDEX PITCH REVIEW SYSTEM; do
     ext=md
     [[ "$tpl" == "GD-IDS" ]] && ext=yaml
     if [[ -s "$GD_DATA/templates/$tpl.$ext" ]]; then
@@ -805,7 +805,7 @@ GD_PRINCIPLES="$GD_DATA/gd-principles.md"
 if [[ ! -f "$GD_PRINCIPLES" ]]; then
     fail "data/gamedesign/gd-principles.md — missing"
 else
-    for section in "Collaborative Protocol" "Section-Cycle Contract" "One-Way Boundary" "Severity Rubric"; do
+    for section in "Zone Ownership" "Routing" "Collaborative Protocol" "Section-Cycle Contract" "One-Way Boundary" "Flow Axis" "Delta Discipline" "Severity Rubric"; do
         if grep -q "## $section" "$GD_PRINCIPLES"; then
             pass "gd-principles.md — has '$section' section"
         else
@@ -819,30 +819,29 @@ else
     fi
 fi
 
-# Status spine (Tier 1) — the system doc_status enum spans four surfaces that
+# Status spine (Tier 1) — the system doc_status enum spans three surfaces that
 # carry DIFFERENT sets (GD-IDS doc_status = 5; SYSTEM header legend = 4, no
-# `not-started`; GD-INDEX = a display-union with `deprecated` + read-only
-# `implemented`; the gd-verify `Status coherence` check legend = the design-
-# writable enum). So this guard asserts the shared MERGE invariant, not enum
-# equality: `reviewed` and `revised` on all four legends, and no `approved`-as-
-# status on any (it merged into `reviewed`). Each grep targets the one status
-# legend line per surface — never the whole file — so GAME.md/CONCEPT.md (their
-# own `approved` lifecycle enums, including the gd-verify carve-out NB prose) and
-# the GD-IDS `revised:` date field stay out.
+# `not-started`; the gd-verify `Status coherence` check legend = the design-
+# writable enum). GD-INDEX.md was removed in v2 — the generated GAME.md
+# `## System Map [gen]` renders status read-only and is NOT a coherence surface.
+# So this guard asserts the shared MERGE invariant, not enum equality: `reviewed`
+# and `revised` on all three legends, and no `approved`-as-status on any (it merged
+# into `reviewed`). Each grep targets the one status legend line per surface —
+# never the whole file — so GAME.md/CONCEPT.md (their own `approved` lifecycle
+# enums, including the gd-verify carve-out NB prose) and the GD-IDS `revised:` date
+# field stay out.
 GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
-GD_INDEX_TPL="$GD_DATA/templates/GD-INDEX.md"
 GD_SYSTEM_TPL="$GD_DATA/templates/SYSTEM.md"
 GD_VERIFY_SKILL="$ROOT_DIR/skills/unikit-gd-verify/SKILL.md"
 SPINE_IDS_LINE=$(grep -F 'doc_status:' "$GD_IDS_TPL" 2>/dev/null | head -1 || true)
 SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head -1 || true)
-SPINE_INDEX_LINE=$(grep -F '`Status`:' "$GD_INDEX_TPL" 2>/dev/null | head -1 || true)
-# 4th surface: the gd-verify `Status coherence` check carries the design-writable
+# 3rd surface: the gd-verify `Status coherence` check carries the design-writable
 # enum on its single legend line; the GAME.md/CONCEPT.md `approved` carve-out lives
 # in separate NB prose, so head -1 anchors the table row, not the explanation.
 SPINE_VERIFY_LINE=$(grep -F 'Status coherence' "$GD_VERIFY_SKILL" 2>/dev/null | head -1 || true)
 SPINE_OK=1
 SPINE_WHY=""
-for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "GD-INDEX.md:$SPINE_INDEX_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
+for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
     name="${pair%%:*}"
     line="${pair#*:}"
     if [[ -z "$line" ]]; then
@@ -853,7 +852,7 @@ for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "GD-IND
     if echo "$line" | grep -q "approved";   then SPINE_OK=0; SPINE_WHY+=" $name(approved-as-status)"; fi
 done
 if [[ "$SPINE_OK" -eq 1 ]]; then
-    pass "status spine — reviewed+revised on all 4 surfaces, no approved-as-status (GD-IDS/SYSTEM/GD-INDEX/gd-verify)"
+    pass "status spine — reviewed+revised on all 3 surfaces, no approved-as-status (GD-IDS/SYSTEM/gd-verify)"
 else
     fail "status spine enum drift:$SPINE_WHY"
 fi
@@ -1084,6 +1083,20 @@ if grep -qF 'implemented_version' "$GD_IDS_TPL"; then
     pass "GD-IDS template — implemented_version field present (T8)"
 else
     fail "GD-IDS template — missing implemented_version field (T8)"
+fi
+
+# (P0-T3) GD-IDS template is schema v2 and carries the systems `category` field
+#         (unikit-plan matches the plan brief on category) plus the new flows/events
+#         sections of the Flow axis.
+GD_IDS_V2_WHY=""
+grep -qE '^version: 2$' "$GD_IDS_TPL"   || GD_IDS_V2_WHY+=" version:2"
+grep -qF 'category:' "$GD_IDS_TPL"      || GD_IDS_V2_WHY+=" category"
+grep -qE '^flows: \[\]' "$GD_IDS_TPL"   || GD_IDS_V2_WHY+=" flows"
+grep -qE '^events: \[\]' "$GD_IDS_TPL"  || GD_IDS_V2_WHY+=" events"
+if [[ -z "$GD_IDS_V2_WHY" ]]; then
+    pass "GD-IDS template — schema v2 + category + flows/events sections (P0-T3)"
+else
+    fail "GD-IDS template — missing:$GD_IDS_V2_WHY (P0-T3)"
 fi
 
 # (T8-6) Both the writer (unikit-verify) and the reader (unikit-plan) name
@@ -2213,6 +2226,16 @@ if bash "$SCRIPT_DIR/test-skill-groups.sh"; then
     pass "Skill grouping guard passed"
 else
     fail "Skill grouping guard failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 16: unikit-help navigator guard
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 16: unikit-help navigator guard${NC}"
+if bash "$SCRIPT_DIR/test-help-skill.sh"; then
+    pass "unikit-help navigator guard passed"
+else
+    fail "unikit-help navigator guard failed"
 fi
 
 # ─────────────────────────────────────────────

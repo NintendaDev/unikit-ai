@@ -10,7 +10,7 @@ through the section-cycle contract (see `.unikit/system/gd-principles.md`):
 Context → Options → Decision → Draft+Approval (same reply) → Write. Sections D
 and H trigger a `GD-IDS.yaml` registry check. Domain section-packs (economy, UX,
 accessibility, narrative, level…) append after K when the system touches that
-domain — see `unikit-gd-detail`'s `references/section-packs.md`. Numbers live in
+domain — see `unikit-gd-system`'s `references/section-packs.md`. Numbers live in
 tables, intent lives in prose.
 
 ## A. Overview
@@ -76,9 +76,9 @@ these feed the acceptance criteria in H.]
 ## F. Dependencies
 
 [Every system this one depends on, and every system that depends on it. The edge
-must be symmetric — this section F, the `GD-INDEX.md` Depends column, and the
-system's `GD-IDS.yaml` `depends_on` must all agree; `unikit-gd-verify` checks all
-three.]
+must be symmetric — this section F, the system's `GD-IDS.yaml` `depends_on`, and
+the `Depends` column of `## System Map [gen]` in `GAME.md` must all agree;
+`unikit-gd-verify` checks all three.]
 
 | System | Direction | Nature of dependency |
 |--------|-----------|----------------------|
@@ -132,11 +132,12 @@ Name impairment categories addressed and the concrete option/setting.]
 
 ### Changelog
 
-[Appended by `unikit-gd-improve` on every approved edit. Newest first. The
-**AC delta line** is what the planning side consumes to build delta plans; the
-**Affected** line is appended by `unikit-gd-verify` as a human-readable record. The
-pending-loop is driven by each system's own `Status: revised` (the editor marks the
-edited system; `unikit-gd-verify` marks affected dependents), not by this line.]
+[Appended by the system's zone owner (`unikit-gd-system`) on every approved edit.
+Newest first. The **AC delta line** is what the planning side consumes to build
+delta plans; the **Affected** line is appended by `unikit-gd-verify` as a
+human-readable record. The pending-loop is driven by each system's own `Status:
+revised` (the zone owner marks the edited system; `unikit-gd-verify` marks affected
+dependents), not by this line.]
 
 ```markdown
 #### v1 — [YYYY-MM-DD] — initial design

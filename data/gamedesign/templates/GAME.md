@@ -6,10 +6,38 @@
 > **Based on**: [concepts/<slug>.md (v<N>) | researches/<date>_import-*/SOURCE.md | —]
 
 The whole-game truth, kept to one page (Librande one-page principle: if it does
-not fit, the vision is not yet sharp). Owns pillars, anti-pillars, the core
-fantasy, the aesthetic ranking, the loop stack, and non-goals. Per-system detail
-lives in SYSTEM GDDs; machine-readable facts live in `GD-IDS.yaml`. Edits go
-through `unikit-gd-improve` (version bump + changelog).
+not fit, the vision is not yet sharp). Owns the premise, pillars, anti-pillars, the
+core fantasy, the aesthetic ranking, the loop stack, win/lose intent, the
+monetization stance, and non-goals. Per-system detail lives in SYSTEM GDDs;
+machine-readable facts live in `GD-IDS.yaml`. Edits go through `unikit-gd-spec`
+(version bump + light changelog — the GAME.md carve-out in `gd-principles` → Delta
+Discipline). The generated maps at the bottom (`## System Map [gen]` /
+`## Flow Map [gen]` / `## Funnel [gen]`) are rendered read-only from `GD-IDS.yaml` —
+they are an appendix, not part of the one-pager.
+
+## Premise / Theme
+
+[The theme stated as a **problem or tension**, not a setting label — the human
+question the game puts the player inside (e.g. "scarcity forces betrayal", not
+"post-apocalyptic"). One or two sentences. Setting, story, and systems serve this;
+anything that does not is decoration.]
+
+## Setting + World-Trauma
+
+*Optional — narrative-driven games only; omit for abstract / sandbox / puzzle
+titles.*
+
+[The world and its **central wound** — the unresolved trauma or tension that gives
+the setting dramatic charge and that the player's actions press on. Serves the
+Premise/Theme above.]
+
+## Protagonist + Core-Power
+
+*Optional — games with a defined protagonist; omit for faceless / multiplayer /
+abstract titles.*
+
+[Who the player is and their **core power** — the defining capability the fantasy
+is built around, and how it expresses the pillars.]
 
 ## Core Fantasy
 
@@ -85,6 +113,26 @@ necessarily a flaw.
 | Competence | [PIL-n] | [Mastery / clear feedback] |
 | Relatedness | [PIL-n] | [Connection / belonging] |
 
+## Win / Lose Conditions
+
+*Conditional section — include it only if the game can be **won or lost**. A
+sandbox / endless title omits it; when in doubt, ask the user.* These are the
+author's high-level intent — they exist before any flow. A terminal `GOAL`
+realizes each, and `unikit-gd-verify` links every win/lose condition to its
+realizing flow objective (no orphan conditions, no orphan terminal goals).
+
+- **Win**: [The condition(s) under which the player wins — high-level intent.]
+- **Lose**: [The failure condition(s), if any.]
+
+## Monetization Stance
+
+[The game's posture toward monetization — the model (premium / F2P / hybrid), what
+is sold and what is **never** sold (the ethical line), and how it serves rather
+than fights the pillars. Detailed shop/economy systems live in their SYSTEM GDDs;
+conversion / LTV / retention metrics are aggregated in `## Funnel [gen]`. Loads the
+`monetization-ethics` domain rule. Keep to the stance; the systems carry the
+mechanics.]
+
 ## Reference Games
 
 | Reference | What we take | What we change | Validates |
@@ -99,12 +147,120 @@ resolved items into the relevant SYSTEM GDD or GD-IDS.]
 
 - [Question — and what would answer it.]
 
+## Design Order
+
+Dependency sort × priority. Independent systems in the same layer can be designed
+in parallel; a system's GDD should reach `reviewed` before systems that depend on
+it are detailed. (Authored here by `unikit-gd-spec` alongside the roster; the
+live status of each system is in `## System Map [gen]` below.)
+
+1. [SYS-slug] — [MVP] — [Foundation] — [why first]
+2. [SYS-slug] — [MVP] — [Core] — depends on: [SYS-ids]
+
+## Risks & Circular Dependencies
+
+High-risk systems to prototype early regardless of tier; any dependency cycles and
+how they are broken (interface, or design both at once).
+
+| System | Risk type | Note / resolution |
+|--------|-----------|-------------------|
+| [SYS-slug] | [Technical / Design / Scope] | [What could go wrong, mitigation] |
+
 ## Changelog
 
-Newest first; appended by `unikit-gd-improve` on every approved edit. GAME.md is a
+Newest first; appended by `unikit-gd-spec` on every approved edit. GAME.md is a
 one-pager, not a system: each entry is **light** — version, date, essence, and one
 line per changed section. No AC-delta line and no `Affected (gd-verify):` line
 (those are SYSTEM GDD fields, and GAME.md has no `GD-IDS.yaml systems` row).
 
 #### v1 — [YYYY-MM-DD] — initial draft
 - <Section>: created from template
+
+---
+
+*Everything below is a generated appendix — read-only, not part of the one-pager.*
+
+## Roster Legend
+
+Static authoring reference for the grouping axes of the maps below (the enum values
+`unikit-gd-spec` assigns when it adds a system).
+
+**Categories**
+
+| Category | What it covers |
+|----------|----------------|
+| Core | Foundations everything depends on (controller, input, camera, state) |
+| Gameplay | The systems that make the game fun (combat, AI, movement, interaction) |
+| Progression | How the player grows (XP, unlocks, skill trees, achievements) |
+| Economy | Resource creation/consumption (currency, loot, crafting, shops) |
+| UI | Player-facing information (HUD, menus, inventory, map) |
+| Narrative | Story and dialogue delivery (quests, dialogue, lore) |
+| Meta | Outside the core loop (analytics, onboarding, accessibility) |
+
+**Priority Tiers**
+
+| Tier | Definition | Design urgency |
+|------|------------|----------------|
+| MVP | Required for the core loop to be testable ("is this fun?") | Design FIRST |
+| Vertical Slice | One complete, polished area | Design SECOND |
+| Alpha | All systems present in rough form | Design THIRD |
+| Full Vision | Polish, edge cases, nice-to-haves | As needed |
+
+## System Map [gen]
+
+<!-- gen:system-map -->
+Generated read-only from `GD-IDS.yaml` `systems` by `unikit-gd-spec` — **do not
+hand-edit**. Re-rendered on every roster/registry change (`unikit-gd-verify` checks
+freshness). Full map: one row per system, grouped by category (empty categories
+omitted), sorted by tier then design order within a group. `Status` mirrors the
+system's `doc_status` (plus `deprecated` from the `status` field and the code-set
+`implemented`); `Ver` is `—` until `skeleton`. Collapse to a single grouped table
+only as an escape hatch for very large rosters (150+ systems).
+
+### Core
+
+| ID | System | Tier | Status | Ver | Depends | Doc |
+|----|--------|------|--------|-----|---------|-----|
+| SYS-[slug] | [Name] | [MVP] | not-started | — | [SYS-ids or —] | [systems/SYS-[slug].md] |
+
+### Gameplay
+
+| ID | System | Tier | Status | Ver | Depends | Doc |
+|----|--------|------|--------|-----|---------|-----|
+| SYS-[slug] | [Name] | [MVP] | not-started | — | [SYS-ids or —] | [systems/SYS-[slug].md] |
+<!-- /gen:system-map -->
+
+## Flow Map [gen]
+
+<!-- gen:flow-map -->
+Generated read-only from `GD-IDS.yaml` `flows` by `unikit-gd-spec` — **do not
+hand-edit**. Full map: one row per flow, grouped by wiring-mode. `Realized` is
+DERIVED — `yes` once every system in `Depends` is `implemented` (never written; see
+`gd-principles` → Flow Axis). `Ver` is `—` until `skeleton`.
+
+### Linear / Conditional
+
+| ID | Flow | Mode | Status | Ver | Depends (SYS) | Realized | Doc |
+|----|------|------|--------|-----|---------------|----------|-----|
+| FLOW-[slug] | [Name] | linear | not-started | — | [SYS-ids] | no | [flows/FLOW-[slug].md] |
+
+### Emergent
+
+| ID | Flow | Mode | Status | Ver | Depends (SYS) | Realized | Doc |
+|----|------|------|--------|-----|---------------|----------|-----|
+| FLOW-[slug] | [Name] | emergent | not-started | — | [SYS-ids] | no | [flows/FLOW-[slug].md] |
+<!-- /gen:flow-map -->
+
+## Funnel [gen]
+
+<!-- gen:funnel -->
+Generated read-only from `GD-IDS.yaml` `events` by `unikit-gd-spec` — **do not
+hand-edit**. The ordered measurement points (the third altitude of the
+`AC · GOAL · event` grammar); each row is one analytics event, sourced from a
+flow's `GOAL`. Global/meta metrics (retention, LTV, conversion) are authored in
+`## Monetization Stance`, not here.
+
+| Order | Event | Flow | Measures |
+|-------|-------|------|----------|
+| 1 | [event_name] | FLOW-[slug] | [what behaviour it captures] |
+<!-- /gen:funnel -->
