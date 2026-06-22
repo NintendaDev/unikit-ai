@@ -1123,10 +1123,13 @@ else
 fi
 
 # (T8-6) Both the writer (unikit-verify) and the reader (unikit-plan) name
-#        implemented_version.
+#        implemented_version. The reader half moved into the extracted
+#        references/design-context.md (the mode-extraction refactor pulled Step 4.5
+#        out of unikit-plan/SKILL.md); the writer half stays in unikit-verify/SKILL.md.
+UNIKIT_PLAN_DESIGN_CONTEXT="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
 GD_IMPL_WHY=""
-grep -qF 'implemented_version' "$UNIKIT_VERIFY_SKILL" || GD_IMPL_WHY+=" unikit-verify(writer)"
-grep -qF 'implemented_version' "$UNIKIT_PLAN_SKILL"   || GD_IMPL_WHY+=" unikit-plan(reader)"
+grep -qF 'implemented_version' "$UNIKIT_VERIFY_SKILL"        || GD_IMPL_WHY+=" unikit-verify(writer)"
+grep -qF 'implemented_version' "$UNIKIT_PLAN_DESIGN_CONTEXT" || GD_IMPL_WHY+=" unikit-plan(reader→design-context.md)"
 if [[ -z "$GD_IMPL_WHY" ]]; then
     pass "unikit-verify + unikit-plan — implemented_version wired (T8 writer/reader)"
 else
@@ -1202,13 +1205,16 @@ else
 fi
 
 # (IL-3) gd-spec Add-System mode + the active seam onward to the system zone.
+# The Add-System body moved to references/mode-add-system.md (mode-extraction refactor);
+# retarget both literals there. The mode dispatch stays in gd-spec/SKILL.md.
+GD_SPEC_ADD_SYSTEM="$ROOT_DIR/skills/unikit-gd-spec/references/mode-add-system.md"
 IL_SPEC_WHY=""
-grep -qF '## Add-System Mode' "$GD_SPEC_SKILL"  || IL_SPEC_WHY+=" add-system-mode"
-grep -qF 'Active seam' "$GD_SPEC_SKILL"         || IL_SPEC_WHY+=" active-seam"
+grep -qF '## Add-System Mode' "$GD_SPEC_ADD_SYSTEM"  || IL_SPEC_WHY+=" add-system-mode"
+grep -qF 'Active seam' "$GD_SPEC_ADD_SYSTEM"         || IL_SPEC_WHY+=" active-seam"
 if [[ -z "$IL_SPEC_WHY" ]]; then
-    pass "gd-spec SKILL — Add-System mode + active seam to gd-system (IL T3)"
+    pass "gd-spec — Add-System mode + active seam to gd-system (IL T3, → mode-add-system.md)"
 else
-    fail "gd-spec SKILL — missing:$IL_SPEC_WHY"
+    fail "gd-spec — missing:$IL_SPEC_WHY (→ mode-add-system.md)"
 fi
 
 # (IL-4) Research-discovery wired into BOTH downstream consumers (the `research:`
@@ -1400,13 +1406,17 @@ else
 fi
 
 # (FL-6) The code side reads BOTH axes: unikit-plan emits the optional ## Flow Context
-# brief (flow-targeting), unikit-explore grounds on the flows registry. Read-only — the
-# derived Realized state is never written back (one-way boundary stays systems-only).
+# brief (flow-targeting), unikit-explore grounds on the flow axis. The explore-side
+# flow-grounding contract moved behind the shared design-read contract + a first-class
+# flow input (the inline "`flows` for grounding" literal was replaced); retarget the
+# explore half to the new "First-class flow input" marker. The plan half (## Flow
+# Context, outside the extracted Step 4.5) is unchanged. Read-only — the derived
+# Realized state is never written back (one-way boundary stays systems-only).
 FL_CODE_WHY=""
 grep -qF '## Flow Context' "$UNIKIT_PLAN_SKILL"            || FL_CODE_WHY+=" plan-flow-context"
-grep -qF '`flows` for grounding' "$UNIKIT_EXPLORE_SKILL"   || FL_CODE_WHY+=" explore-flow-grounding"
+grep -qF 'First-class flow input' "$UNIKIT_EXPLORE_SKILL"  || FL_CODE_WHY+=" explore-flow-grounding(first-class)"
 if [[ -z "$FL_CODE_WHY" ]]; then
-    pass "FL-6 code flow-read present (unikit-plan ## Flow Context + unikit-explore flows grounding)"
+    pass "FL-6 code flow-read present (unikit-plan ## Flow Context + unikit-explore first-class flow input)"
 else
     fail "FL-6 code flow-read missing:$FL_CODE_WHY"
 fi
@@ -1441,6 +1451,131 @@ if [[ -z "$FL_FIX_WHY" ]]; then
     pass "FL-8 defective-gdd fixture — flows/FLOW-first-run.md + GD-IDS flows/goals/events + README flow-defect ground truth"
 else
     fail "FL-8 defective-gdd flow fixture incomplete:$FL_FIX_WHY"
+fi
+
+# ============================================================================
+# Context-optimization guards (mode-extraction + flow-first + P4/P5 + design-read).
+# The flow-first/mode-extraction refactor pulled mode bodies and Step 4.5 out of
+# unikit-plan / unikit-gd-spec into references/, introduced the shared design-read
+# system asset, the GD_RULES_INDEX Rule-Loading Discipline + per-skill anchors, and
+# the precise no-GDD gate hints. bash cannot run an LLM skill — these are grep
+# invariants on the contract text + presence checks on the extracted references.
+# ============================================================================
+
+GD_DESIGN_READ="$GD_DATA/design-read.md"
+PLAN_REFS="$ROOT_DIR/skills/unikit-plan/references"
+GD_SPEC_REFS="$ROOT_DIR/skills/unikit-gd-spec/references"
+GD_RULES_INDEX_TPL="$GD_DATA/templates/GD_RULES_INDEX.md"
+
+# (DR-1) design-read.md source-guard — mirror of the gd-principles block: the shared
+# READ contract installed flat (no engine vars) at
+# .unikit/system/gamedesign/design-read.md. Assert the READ markers (flow-first rule +
+# one-way boundary + read surfaces), that the plan-only ## Flow Context OUTPUT brief is
+# ABSENT (read-only scope), and that it is substitution-free.
+if [[ ! -f "$GD_DESIGN_READ" ]]; then
+    fail "data/gamedesign/design-read.md — missing"
+else
+    DR_WHY=""
+    grep -qF 'intent decides the door' "$GD_DESIGN_READ" || DR_WHY+=" flow-first-rule"
+    grep -qF '## One-Way Boundary' "$GD_DESIGN_READ"     || DR_WHY+=" one-way-boundary"
+    grep -qF 'Read the **registry**' "$GD_DESIGN_READ"   || DR_WHY+=" read-surfaces"
+    if [[ -z "$DR_WHY" ]]; then
+        pass "design-read.md — READ markers present (flow-first rule + one-way boundary + read surfaces)"
+    else
+        fail "design-read.md — missing READ markers:$DR_WHY"
+    fi
+    if grep -qF '## Flow Context' "$GD_DESIGN_READ"; then
+        fail "design-read.md — ## Flow Context OUTPUT brief must NOT be here (plan-only, read-only scope)"
+    else
+        pass "design-read.md — no ## Flow Context output brief (read-only scope held)"
+    fi
+    if grep -qE '\{\{settings_file\}\}|\{\{skills_dir\}\}|\{\{engine_' "$GD_DESIGN_READ"; then
+        fail "design-read.md — contains agent/engine vars (must be substitution-free like gd-principles)"
+    else
+        pass "design-read.md — no agent/engine vars (system-file safe)"
+    fi
+fi
+
+# (MX-1) Mode-extraction: unikit-plan mode bodies live in references/mode-*.md and the
+# inline mode sections are gone from SKILL.md (the Step 0 / Step 1.5 dispatch loads them).
+MX_PLAN_WHY=""
+for m in list add full fast; do
+    [[ -s "$PLAN_REFS/mode-$m.md" ]] || MX_PLAN_WHY+=" mode-$m.md-missing"
+done
+! grep -qF '## List Mode' "$UNIKIT_PLAN_SKILL"        || MX_PLAN_WHY+=" list-still-inline"
+! grep -qF '## Add Mode — Modify' "$UNIKIT_PLAN_SKILL" || MX_PLAN_WHY+=" add-still-inline"
+if [[ -z "$MX_PLAN_WHY" ]]; then
+    pass "unikit-plan — mode bodies extracted to references/mode-*.md (bodies not inline)"
+else
+    fail "unikit-plan — mode-extraction incomplete:$MX_PLAN_WHY"
+fi
+
+# (MX-2) Mode-extraction: unikit-gd-spec six mode bodies live in references/mode-*.md and
+# the inline mode sections are gone from SKILL.md (Step 2 dispatch loads them). The shared
+# Regen-on-Write contract stays in SKILL.md.
+MX_SPEC_WHY=""
+for m in create import edit remap add-system pitch; do
+    [[ -s "$GD_SPEC_REFS/mode-$m.md" ]] || MX_SPEC_WHY+=" mode-$m.md-missing"
+done
+! grep -qF '## Create Mode' "$GD_SPEC_SKILL"  || MX_SPEC_WHY+=" create-still-inline"
+! grep -qF '## Pitch Mode' "$GD_SPEC_SKILL"   || MX_SPEC_WHY+=" pitch-still-inline"
+grep -qF 'Regen-on-Write' "$GD_SPEC_SKILL"    || MX_SPEC_WHY+=" regen-not-shared"
+if [[ -z "$MX_SPEC_WHY" ]]; then
+    pass "unikit-gd-spec — six mode bodies extracted to references/mode-*.md (bodies not inline; Regen-on-Write shared)"
+else
+    fail "unikit-gd-spec — mode-extraction incomplete:$MX_SPEC_WHY"
+fi
+
+# (DC-1) Plan design-context.md: the extracted Step 4.5 body that loads the shared
+# design-read contract, applies Flow-First Resolution, and carries the implemented_version
+# reader (the T8-reader half, asserted at T8-6 above).
+DC_WHY=""
+[[ -s "$UNIKIT_PLAN_DESIGN_CONTEXT" ]]                          || DC_WHY+=" no-file"
+grep -qF 'design-read.md' "$UNIKIT_PLAN_DESIGN_CONTEXT"         || DC_WHY+=" no-design-read-load"
+grep -qF 'Flow-First Resolution' "$UNIKIT_PLAN_DESIGN_CONTEXT"  || DC_WHY+=" no-flow-first"
+if [[ -z "$DC_WHY" ]]; then
+    pass "unikit-plan/references/design-context.md — loads design-read + applies Flow-First Resolution (P3)"
+else
+    fail "unikit-plan design-context.md incomplete:$DC_WHY"
+fi
+
+# (FF-1) Flow-first input markers: explore loads design-read + has the first-class flow
+# input; the plan dispatch names the design-context body.
+FF_WHY=""
+grep -qF 'design-read.md' "$UNIKIT_EXPLORE_SKILL"         || FF_WHY+=" explore-design-read"
+grep -qF 'First-class flow input' "$UNIKIT_EXPLORE_SKILL" || FF_WHY+=" explore-first-class"
+grep -qF 'design-context.md' "$UNIKIT_PLAN_SKILL"         || FF_WHY+=" plan-design-context-dispatch"
+if [[ -z "$FF_WHY" ]]; then
+    pass "flow-first input present (explore design-read + first-class flow input; plan design-context dispatch)"
+else
+    fail "flow-first input incomplete:$FF_WHY"
+fi
+
+# (P5-1) Rule-Loading Discipline: canon in the GD_RULES_INDEX template + anchored in the
+# six rule-loading gd-skills; gd-verify is exempt (mechanical, loads no rules).
+P5_WHY=""
+grep -qF '## Rule-Loading Discipline' "$GD_RULES_INDEX_TPL" || P5_WHY+=" index-canon"
+for s in brainstorm explore spec system flow review; do
+    grep -qF 'Rule-Loading Discipline' "$ROOT_DIR/skills/unikit-gd-$s/SKILL.md" || P5_WHY+=" anchor:$s"
+done
+! grep -qF 'Rule-Loading Discipline' "$GD_VERIFY_SKILL" || P5_WHY+=" verify-not-exempt"
+if [[ -z "$P5_WHY" ]]; then
+    pass "P5 Rule-Loading Discipline — index canon + 6 skill anchors + gd-verify exempt"
+else
+    fail "P5 Rule-Loading Discipline incomplete:$P5_WHY"
+fi
+
+# (P4-1) No-GDD gate hints: gd-system + gd-flow read concepts/INDEX.md when GAME.md is
+# absent and route concept→spec / no-concept→brainstorm.
+P4_WHY=""
+for s in system flow; do
+    grep -qF 'concepts/INDEX.md' "$ROOT_DIR/skills/unikit-gd-$s/SKILL.md"             || P4_WHY+=" $s-no-concepts-read"
+    grep -qF '/unikit-gd-brainstorm` first' "$ROOT_DIR/skills/unikit-gd-$s/SKILL.md" || P4_WHY+=" $s-no-brainstorm-route"
+done
+if [[ -z "$P4_WHY" ]]; then
+    pass "P4 no-GDD gate hints — gd-system + gd-flow read concepts/INDEX.md + route to brainstorm/spec"
+else
+    fail "P4 no-GDD gate hints incomplete:$P4_WHY"
 fi
 
 # unikit-memory distillation-behavior content guards (PLAN.md T1–T10). The router

@@ -1349,6 +1349,28 @@ fi
 echo "  ✓ gate-result-contract.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30c: design-read.md is delivered on update — the mechanical guard for the
+# update.ts wiring of installDesignRead. It lands under .unikit/system/gamedesign/ (the
+# shared-contract subdir), a flat copy (no engine vars), not hash-tracked. DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer.
+# Tamper-refresh confirms it is flat-rewritten too (mirror of Test 30b).
+# ─────────────────────────────────────────────
+DESIGN_READ="$DEVPRIN_DIR/.unikit/system/gamedesign/design-read.md"
+assert_exists "$DESIGN_READ" "design-read.md must be installed on update (system asset, update.ts wiring)"
+
+echo "DR_TAMPERED_BY_TEST" >> "$DESIGN_READ"
+
+DEVPRIN_OUT5="$TMPDIR/update-design-read-5.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT5" 2>&1)
+
+if grep -q "DR_TAMPERED_BY_TEST" "$DESIGN_READ"; then
+    echo "Assertion failed: update did NOT refresh design-read.md from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ design-read.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).

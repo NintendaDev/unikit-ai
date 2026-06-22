@@ -75,9 +75,11 @@ export const REFERENCES_DIR_NAME = 'references';
  * later the `gd-principles` shards in plan (b)). It matches the module id by
  * construction, so it sources the literal from {@link GAMEDESIGN_MODULE_ID}
  * rather than re-hardcoding it. Distinct concept from the memory/data
- * `gamedesign` dirs — this is the system-asset home.
+ * `gamedesign` dirs — this is the system-asset home. Module-local (only
+ * {@link systemGamedesignDir} consumes it) so it does not duplicate the
+ * `GAMEDESIGN_MODULE_ID` export.
  */
-export const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
+const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
 
 // --- File names ---
 

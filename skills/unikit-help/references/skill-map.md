@@ -60,7 +60,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   feature's architecture, compare frameworks, or deep-dive a bug's root cause. Never writes code.
 - **When:** "let's explore", "how should we architect this", "compare X vs Y", "why does this
   bug happen". Use before planning when you don't yet have technical direction.
-- **In:** a topic / question / system name. `init` rebuilds the researches index.
+- **In:** a topic / question / system name — or, when a design workspace exists, a **flow**
+  / player sequence (a *first-class flow input* grounded on the dynamics axis via the shared
+  `design-read` contract). `init` rebuilds the researches index.
 - **Out:** `.unikit/code/researches/<date>_<name>/` (`RESEARCH_RESULT.md` + `RESEARCH_BRIEF.md`),
   and `researches/INDEX.md`.
 - **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the brief),
@@ -70,8 +72,12 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Purpose:** Turn a feature into a dependency-ordered task plan + technical brief.
 - **When:** "plan this feature", "create tasks". The first **required** step of building.
 - **In:** a feature description, or a research brief, or a roadmap milestone. Modes: `fast`
-  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `add` (extend).
-  If a game-design workspace exists, it pulls a `## Design` brief citing the system's `AC-<id>`s.
+  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `add` (extend)
+  — each mode body loads on demand from `references/mode-*.md`.
+  If a game-design workspace exists, planning resolves **flow-first** (*intent decides the
+  door* — a flow-named request grounds on the flow, a system-named one on the system,
+  ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the
+  system's `AC-<id>`s.
 - **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/{TASKS.md,PLAN-BRIEF.md}`.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 
@@ -180,7 +186,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   or writes a pitch.
 - **When:** "create the game design", "turn my concept into a GDD", "import this GDD", "add a
   crafting system to the GDD", "change a pillar", "rework the monetization stance".
-- **In:** a concept slug, a description, a path/URL to an existing GDD, or a GAME.md edit. Mode is inferred.
+- **In:** a concept slug, a description, a path/URL to an existing GDD, or a GAME.md edit. Mode is
+  inferred (create / import / edit / remap / add-system / pitch); each mode body loads on demand
+  from `references/mode-*.md`.
 - **Out:** `.unikit/gamedesign/GAME.md` (incl. `## System Map [gen]`), `GD-IDS.yaml` (+ optional `PITCH.md`).
 - **Required for the design track (the GDD root).** Before: `/unikit-gd-brainstorm`. After:
   `/unikit-gd-system`.

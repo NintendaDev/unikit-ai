@@ -128,13 +128,16 @@ add-flow step. The lens pre-fills it from a `## Flow Feature Plan` (new flow) or
 
 **Design → code, never code → design** (with one tiny sanctioned exception).
 
-- `/unikit-plan` reads the GDD when a system is linked: it copies a `## Design` snapshot into the
-  plan brief, citing the system's acceptance criteria (`AC-<id>`s) and a version. The code is
-  built to satisfy those AC.
-- `/unikit-plan` also reads the **flow** axis: when a system in scope is exercised by a flow, it
-  adds an optional `## Flow Context` brief (the `GOAL`-steps + the flow's wiring mode, which shapes
-  the code structure) parallel to `## Design`. A flow's `Realized` state is **derived** from its
-  systems' `implemented_version` — code never writes back into flows.
+- `/unikit-plan` and `/unikit-explore` read the GDD through the shared **`design-read`** contract
+  (`.unikit/system/gamedesign/design-read.md`): its read surfaces, the **flow-first resolution**
+  (*intent decides the door* — a flow-named request resolves a flow first, a system-named one a
+  system, ambiguous → ask), and the one-way boundary.
+- `/unikit-plan` copies a `## Design` snapshot into the plan brief, citing the system's acceptance
+  criteria (`AC-<id>`s) and a version. The code is built to satisfy those AC.
+- `/unikit-plan` also grounds in the **flow** axis: under the flow door (or when a system in scope
+  is exercised by a flow), it adds an optional `## Flow Context` brief (the `GOAL`-steps + the
+  flow's wiring mode, which shapes the code structure) parallel to `## Design`. A flow's `Realized`
+  state is **derived** from its systems' `implemented_version` — code never writes back into flows.
 - `/unikit-verify` checks the implementation against the AC snapshotted **in the plan** (not the
   live GDD), preserving the boundary.
 - **The one exception:** when every cited AC is met, `/unikit-verify` stamps `implemented_version`

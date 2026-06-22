@@ -143,6 +143,25 @@ assert_contains "$GATE_CONTRACT_PATH" 'unikit-gate-result' \
   "gate-result-contract.md carries the unikit-gate-result fence name"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-dr: design-read.md installed as a system asset under .unikit/system/gamedesign/
+# (flat copy, no engine vars — installDesignRead mirrors installGdPrinciples). The extracted
+# mode references + plan design-context.md travel with their skills (non-flat copyDirectory).
+# ─────────────────────────────────────────────────────
+DESIGN_READ_PATH="$CLAUDE_DIR/.unikit/system/gamedesign/design-read.md"
+assert_exists "$DESIGN_READ_PATH" "design-read.md created in .unikit/system/gamedesign/"
+assert_contains "$DESIGN_READ_PATH" 'intent decides the door' \
+  "design-read.md carries the flow-first resolution rule"
+assert_not_contains "$DESIGN_READ_PATH" '\{\{engine_name\}\}' \
+  "design-read.md has no engine vars (flat copy, like gd-principles.md)"
+# unikit-plan is in this fixture's installedSkills; its extracted mode references +
+# design-context.md travel with it (non-flat copyDirectory). unikit-gd-spec is NOT in
+# this fixture, so its mode references are not asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/mode-fast.md" \
+  "unikit-plan mode reference (mode-fast.md) installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/design-context.md" \
+  "unikit-plan design-context.md reference installed"
+
+# ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path
 # Even when a subagent is explicitly listed in installedSubagents,
 # agents with supportsSubagents:false must not materialize the file on disk.
