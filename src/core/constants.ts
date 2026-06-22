@@ -93,26 +93,19 @@ export const RULES_MANIFEST_FILE = 'rules-manifest.json';
 export const CLI_CONTRACT_FILE = 'cli-contract.md';
 export const DEV_PRINCIPLES_FILE = 'dev-principles.md';
 /**
- * Game-design principles system-asset basename. Installed flat into
- * `.unikit/system/gd-principles.md` from `data/<gamedesign>/gd-principles.md`.
- * Engine-agnostic (no `{{engine_*}}` substitution, unlike `dev-principles.md`)
- * and NOT hash-tracked — rewritten on every init/update. The `unikit-gd-*`
- * skills read it on Bootstrap. It is a system asset, NOT a memory rule: the
- * game-design collaboration/authoring contract lives here, not in
- * `gamedesign/core/`.
+ * Game-design principles **core** system-asset basename. Installed into
+ * `.unikit/system/gamedesign/gd-principles.md` from
+ * `data/<gamedesign>/gd-principles.md`, alongside its shards (`gd-authoring`,
+ * `gd-lifecycle`, `gd-flow-axis`, `gd-provenance`, `gd-critique`) and the shared
+ * `design-read` contract — all copied by {@link systemGamedesignDir} as flat
+ * files. Engine-agnostic (no `{{engine_*}}` substitution, unlike
+ * `dev-principles.md`) and NOT hash-tracked — rewritten on every init/update. The
+ * `unikit-gd-*` skills read the core (plus the shards they need) on Bootstrap. It
+ * is a system asset, NOT a memory rule: the game-design collaboration/authoring
+ * contract lives here, not in `gamedesign/core/`. Also reused as the basename of
+ * the orphan-delete target for the pre-split flat `.unikit/system/gd-principles.md`.
  */
 export const GD_PRINCIPLES_FILE = 'gd-principles.md';
-/**
- * Shared design/flow READ-contract system-asset basename. Installed flat into
- * `.unikit/system/gamedesign/design-read.md` from
- * `data/<gamedesign>/design-read.md`. Engine-agnostic (no `{{engine_*}}`
- * substitution) and NOT hash-tracked — rewritten on every init/update. The
- * code-side skills (`unikit-plan` via `references/design-context.md`, and
- * `unikit-explore`) load it on demand to read design (read surfaces, flow-first
- * resolution, one-way boundary). Lives under the `gamedesign` system subdir
- * (see {@link SYSTEM_GAMEDESIGN_DIR_NAME}), NOT flat next to `gd-principles.md`.
- */
-export const GD_DESIGN_READ_FILE = 'design-read.md';
 /**
  * Machine-readable quality-gate result contract system-asset basename.
  * Installed flat into `.unikit/system/gate-result-contract.md` from

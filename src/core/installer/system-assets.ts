@@ -9,7 +9,7 @@
 import path from 'path';
 import {
   getDataDir, getEngineTemplatesDir,
-  fileExists, readTextFile, writeTextFile,
+  fileExists, readTextFile, writeTextFile, listFiles, removeFile,
 } from '../../utils/fs.js';
 import type { AgentInstallation } from '../config.js';
 import { getAgentConfig } from '../agents.js';
@@ -19,7 +19,7 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GD_DESIGN_READ_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID,
   MODULES_YML_FILE, systemDir, systemGamedesignDir,
 } from '../constants.js';
 import { listModules } from '../modules.js';
@@ -130,56 +130,49 @@ export async function installDevPrinciples(
   logInfo('installDevPrinciples', 'installed .unikit/system/dev-principles.md');
 }
 
-// --- Game-design principles installation ---
+// --- Game-design system assets installation (core + shards + shared read-contract) ---
 
 /**
- * Install the game-design principles system asset into
- * `.unikit/system/gd-principles.md`. Modeled on {@link installCliContract}:
- * a flat copy with NO engine-var substitution (gd-principles is
- * engine-agnostic, unlike {@link installDevPrinciples}). Source lives under
- * `data/<gamedesign>/gd-principles.md`. NOT hash-tracked — every init/update
- * rewrites it; the `unikit-gd-*` skills read it on Bootstrap.
+ * Install the game-design system assets into `.unikit/system/gamedesign/`.
+ * Copies every top-level `*.md` under `data/<gamedesign>/` — the `gd-principles`
+ * **core** + its shards (`gd-authoring`, `gd-lifecycle`, `gd-flow-axis`,
+ * `gd-provenance`, `gd-critique`) + the shared `design-read` contract — as flat
+ * copies with NO engine-var substitution (engine-agnostic, unlike
+ * {@link installDevPrinciples}). Each `unikit-gd-*` skill reads the core plus the
+ * shards it needs on Bootstrap; the code-side skills load `design-read.md` on
+ * demand. The `templates/` subdir is excluded by design: this is a
+ * non-recursive top-level file listing ({@link listFiles}), NOT
+ * {@link copyDirectory}, which would copy the 8 GDD templates into the system dir.
+ *
+ * NOT hash-tracked — every init/update rewrites the folder. Replaces the former
+ * `installGdPrinciples` (flat core) + `installDesignRead` pair, and
+ * **orphan-deletes** the pre-split flat `.unikit/system/gd-principles.md`: the
+ * core moved under the `gamedesign/` subdir, and system assets have no migration
+ * chain, so the stale flat copy is removed here on every init/update.
  */
-export async function installGdPrinciples(projectDir: string): Promise<void> {
-  const srcPath = path.join(getDataDir(), GAMEDESIGN_MODULE_ID, GD_PRINCIPLES_FILE);
-  const destDir = systemDir(projectDir);
-  const destPath = path.join(destDir, GD_PRINCIPLES_FILE);
-
-  const content = await readTextFile(srcPath);
-  if (!content) {
-    logWarn('installGdPrinciples', 'gd-principles.md not found in data/gamedesign/, skipping');
-    return;
-  }
-
-  await writeTextFile(destPath, content);
-  logInfo('installGdPrinciples', 'installed .unikit/system/gd-principles.md');
-}
-
-// --- Game-design shared READ-contract installation ---
-
-/**
- * Install the shared design/flow READ-contract system asset into
- * `.unikit/system/gamedesign/design-read.md`. Modeled on
- * {@link installGdPrinciples}: a flat copy with NO engine-var substitution
- * (engine-agnostic). Source lives under `data/<gamedesign>/design-read.md`. NOT
- * hash-tracked — every init/update rewrites it. Code-side skills (`unikit-plan`
- * via `references/design-context.md`, and `unikit-explore`) load it on demand to
- * read design. Lands under the `gamedesign` system subdir (the shared-contract
- * home), NOT flat next to `gd-principles.md` — see {@link systemGamedesignDir}.
- */
-export async function installDesignRead(projectDir: string): Promise<void> {
-  const srcPath = path.join(getDataDir(), GAMEDESIGN_MODULE_ID, GD_DESIGN_READ_FILE);
+export async function installGamedesignSystemAssets(projectDir: string): Promise<void> {
+  const srcDir = path.join(getDataDir(), GAMEDESIGN_MODULE_ID);
   const destDir = systemGamedesignDir(projectDir);
-  const destPath = path.join(destDir, GD_DESIGN_READ_FILE);
 
-  const content = await readTextFile(srcPath);
-  if (!content) {
-    logWarn('installDesignRead', 'design-read.md not found in data/gamedesign/, skipping');
+  const names = (await listFiles(srcDir)).filter(name => name.endsWith('.md'));
+  if (names.length === 0) {
+    logWarn('installGamedesignSystemAssets', 'no *.md found in data/gamedesign/, skipping');
     return;
   }
 
-  await writeTextFile(destPath, content);
-  logInfo('installDesignRead', 'installed .unikit/system/gamedesign/design-read.md');
+  for (const name of names) {
+    const content = await readTextFile(path.join(srcDir, name));
+    if (!content) continue;
+    await writeTextFile(path.join(destDir, name), content);
+  }
+  logInfo('installGamedesignSystemAssets', `installed ${names.length} file(s) into .unikit/system/${GAMEDESIGN_MODULE_ID}/`);
+
+  // Orphan-delete the pre-split flat core (moved under the gamedesign/ subdir).
+  const orphan = path.join(systemDir(projectDir), GD_PRINCIPLES_FILE);
+  if (await fileExists(orphan)) {
+    await removeFile(orphan);
+    logInfo('installGamedesignSystemAssets', `removed orphan flat .unikit/system/${GD_PRINCIPLES_FILE}`);
+  }
 }
 
 // --- Module registry snapshot installation ---
