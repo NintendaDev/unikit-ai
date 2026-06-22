@@ -77,7 +77,9 @@ Before any authoring, silently load — do NOT narrate the loading:
    `Load When` column — most often `frameworks` (MDA, SDT/PENS, Flow),
    `player-motivation` (Quantic Foundry), `core-loops`, and `monetization-ethics`
    (for the Monetization Stance). Re-read at skill start; never rely on a prior
-   conversation's cache.
+   conversation's cache. Obey the index's **Rule-Loading Discipline**: load by
+   `Load When`, load a reference only from its parent rule's `> **References**:`, and
+   **never glob the memory tree** (`.unikit/memory/gamedesign/**`) to discover rules.
 3. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
 4. **`.unikit/DESCRIPTION.md`** and **`.unikit/ROADMAP.md`** (optional) — project
    constraints and milestones; routing context only.

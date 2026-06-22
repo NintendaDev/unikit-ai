@@ -63,8 +63,12 @@ Silently load — do not narrate:
    not restate the mechanics. If missing, warn (`unikit-ai update`) and fall back to
    the protocol as summarized in this file.
 2. **`.unikit/gamedesign/GAME.md`** — pillars, loops, non-goals the system must
-   serve (its roster is in `## System Map [gen]`). If it does not exist, stop and
-   recommend `/unikit-gd-spec` first.
+   serve (its roster is in `## System Map [gen]`). If it does not exist, **stop** —
+   there is no master spec yet. Read `.unikit/gamedesign/concepts/INDEX.md` (if it
+   exists) to route precisely: a `drafted`/`approved` concept present → recommend
+   `/unikit-gd-spec` (build the master spec from it); no concept — or no
+   `concepts/INDEX.md` (or no `concepts/` dir) at all → recommend
+   `/unikit-gd-brainstorm` first, then `/unikit-gd-spec`.
 3. **`.unikit/gamedesign/GD-IDS.yaml`** — find the target system's entry under
    `systems`. If there is **no entry**, the system is not on the map: offer to add
    it via `/unikit-gd-spec` (**add-system** — graft this one system onto the map, not
@@ -93,7 +97,9 @@ Silently load — do not narrate:
    | meta / other | `frameworks`, `core-loops` | — |
 
    Every system also touches **accessibility** (section J) — load `accessibility`
-   when authoring J.
+   when authoring J. Obey the index's **Rule-Loading Discipline**: load by `Load When`,
+   load a reference only from its parent rule's `> **References**:`, and **never glob the
+   memory tree** (`.unikit/memory/gamedesign/**`) to discover rules.
 5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
 6. **`{{skills_dir}}/{{self_name}}/references/section-packs.md`** — the catalog of
    domain section-packs appended after section K. Load the pack named in the table

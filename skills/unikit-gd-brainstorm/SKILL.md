@@ -69,7 +69,10 @@ Before responding, silently load — do not narrate:
 2. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load on demand by `Load When`
    the rules ideation leans on: **`frameworks`** (MDA, SDT/PENS, Flow),
    **`player-motivation`** (Quantic Foundry, Bartle), **`core-loops`**. Re-read at
-   skill start; never rely on a prior conversation's cache.
+   skill start; never rely on a prior conversation's cache. Obey the index's
+   **Rule-Loading Discipline**: load by `Load When`, load a reference only from its
+   parent rule's `> **References**:`, and **never glob the memory tree**
+   (`.unikit/memory/gamedesign/**`) to discover rules.
 3. **`{{skills_dir}}/{{self_name}}/references/methods.md`** — the method
    cheat-sheets (divergence/convergence techniques, HMW, pre-mortem, find-the-fun).
    **Do not load up front — read on demand, per phase:** when you enter a phase that

@@ -72,8 +72,12 @@ Silently load — do not narrate:
    this file.
 2. **`.unikit/gamedesign/GAME.md`** — pillars, loops, target aesthetics, win/lose
    intent, and non-goals the flow must serve; its `## System Map [gen]` is the system
-   roster the flow's `GOAL`s depend on. If it does not exist, stop and recommend
-   `/unikit-gd-spec` first.
+   roster the flow's `GOAL`s depend on. If it does not exist, **stop** — there is no
+   master spec yet. Read `.unikit/gamedesign/concepts/INDEX.md` (if it exists) to route
+   precisely: a `drafted`/`approved` concept present → recommend `/unikit-gd-spec`
+   (build the master spec from it); no concept — or no `concepts/INDEX.md` (or no
+   `concepts/` dir) at all → recommend `/unikit-gd-brainstorm` first, then
+   `/unikit-gd-spec`.
 3. **`.unikit/gamedesign/GD-IDS.yaml`** — find the target flow's entry under `flows`.
    If there is **no entry**, this is a new flow: a flow registers itself, so author it
    here (Create — Phase 3 writes the `flows:` row). The `GOAL`s a new flow needs may
@@ -100,6 +104,10 @@ Silently load — do not narrate:
    | level / mission | `level-design` |
    | liveops / event | `liveops`, `player-motivation` |
    | meta / retention | `player-motivation`, `liveops` |
+
+   Obey the index's **Rule-Loading Discipline**: load by `Load When`, load a reference
+   only from its parent rule's `> **References**:`, and **never glob the memory tree**
+   (`.unikit/memory/gamedesign/**`) to discover rules.
 
 5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
 6. **Schema guard (clean break — no automatic migration).** `GD-IDS.yaml` MUST be

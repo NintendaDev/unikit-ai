@@ -41,6 +41,21 @@ The **Origin** column tells you where each installed rule resolved from (per-rul
 
 Library is the studio's own custom-rule slot — empty by default. Load a library rule when the task involves the design topic in its **Load When** column.
 
+## Rule-Loading Discipline
+
+These three rules govern **how** you load from this index. They exist because a skill must
+never improvise rule discovery:
+
+1. **Load by `Load When`.** Load a rule only when the current task matches its **Load
+   When** column. Nothing here is mandatory-gated; an unmatched rule is not loaded.
+2. **A reference loads only from its parent.** A rule's detail / reference file is loaded
+   **only** when that rule's own `> **References**:` line names it — never on its own. A
+   reference has no meaning without the parent rule that frames it; loading one standalone
+   is a context bug.
+3. **No glob, no scan.** Never glob or scan `.unikit/memory/gamedesign/**` (or any memory
+   tree) to *discover* rules or references. This index is the **only** entry point — a rule
+   that is not listed here is not loaded.
+
 ## Core (`.unikit/memory/gamedesign/core/`)
 
 | File | Description | Origin | Load When |

@@ -83,7 +83,10 @@ Before responding — before any analysis — silently load (do not narrate):
    upgrade via `/unikit-gd-spec`).
 3. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load core domain rules on
    demand by `Load When` for the topic (e.g. `frameworks` for an MDA dissection,
-   `economy` for an economy study, `player-motivation` for an audience scan).
+   `economy` for an economy study, `player-motivation` for an audience scan). Obey the
+   index's **Rule-Loading Discipline**: load by `Load When`, load a reference only from
+   its parent rule's `> **References**:`, and **never glob the memory tree**
+   (`.unikit/memory/gamedesign/**`) to discover rules.
 4. **`.unikit/DESCRIPTION.md`** / **`.unikit/ROADMAP.md`** (optional) — project
    constraints and milestones; routing context only.
 5. **`.unikit/gamedesign/researches/INDEX.md`** (optional) — prior researches;

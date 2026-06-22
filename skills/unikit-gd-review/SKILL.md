@@ -91,7 +91,10 @@ Silently load — do not narrate:
 4. **`.unikit/memory/gamedesign/RULES_INDEX.md`** — load the **core** domain rules
    for the target's behaviour/domain (by `Load When`) so each domain lens has its theory:
    `economy`, `balance`, `progression`, `ux-onboarding`, `accessibility`,
-   `monetization-ethics`, `liveops`, `frameworks`.
+   `monetization-ethics`, `liveops`, `frameworks`. Obey the index's
+   **Rule-Loading Discipline**: load by `Load When`, load a reference only from its
+   parent rule's `> **References**:`, and **never glob the memory tree**
+   (`.unikit/memory/gamedesign/**`) to discover rules.
 5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
 
 **One-way boundary:** never read `.unikit/code/`, project source, or build
