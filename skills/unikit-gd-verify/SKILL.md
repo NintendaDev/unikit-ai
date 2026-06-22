@@ -5,8 +5,9 @@ description: >-
   itself?" — plus changed-scope impact analysis. Offline, deterministic, and binary: greps
   the facts registry against the documents (numbers, terms, IDs, duplicate IDs, dangling
   references, unregistered cross-doc facts, roster↔disk, map freshness, Depends 3-way,
-  status/version coherence, AC presence, placeholder leaks), and from a git diff computes
-  which dependent systems a change affects. Scope is inferred: a named system checks that
+  status/version coherence, AC presence, placeholder leaks, and the flow checks:
+  mode↔structure, GOAL & funnel coherence), and from a git diff computes which dependent
+  systems and flows a change affects. Scope is inferred: a named system checks that
   system; an unverified diff triggers a changed-scope pass; otherwise it checks everything.
   Use when the user wants a consistency or impact check, e.g. "verify the design", "is the
   design consistent", "check the GDDs against the registry", "what did this change affect",
@@ -73,10 +74,12 @@ Silently load — do not narrate:
    is on the pre-v2 layout (the standalone markdown system-index was dropped; the
    roster now renders into `GAME.md` `## System Map [gen]`) — there is no automatic
    migration; tell the user to upgrade via `/unikit-gd-spec` before verifying.
-3. **`.unikit/gamedesign/GAME.md`** — incl. its generated `## System Map [gen]`
-   render of the roster (the human-readable map; the truth is `GD-IDS`).
-4. **`.unikit/gamedesign/systems/*.md`** — the documents checked against the
-   registry.
+3. **`.unikit/gamedesign/GAME.md`** — incl. its generated `## System Map [gen]`,
+   `## Flow Map [gen]`, and `## Funnel [gen]` renders (the human-readable maps; the
+   truth is `GD-IDS`), and its `## Win / Lose Conditions` (for the Win/Lose ↔ terminal
+   GOAL check).
+4. **`.unikit/gamedesign/systems/*.md`** and **`.unikit/gamedesign/flows/*.md`** — the
+   system and flow documents checked against the registry.
 
 **One-way boundary:** never read `.unikit/code/`, project source, or build
 artifacts. **Web research is forbidden here** (`gd-principles`) — verification must
@@ -86,11 +89,12 @@ stay deterministic. The only `git` use is reading the design-workspace diff.
 
 Scope is a function of context:
 
-1. The argument names a system → check **that system** and its registry facts.
+1. The argument names a system **or flow** → check **that document** and its registry
+   facts (a `FLOW-<slug>` runs the flow checks below).
 2. There is an **unverified diff** under `.unikit/gamedesign/` (`git diff` /
    `git status` shows changed design docs), or the prompt asks "what did this
    change affect" → **changed-scope** pass (Phase 3).
-3. Otherwise → **full** check of every system and the whole registry.
+3. Otherwise → **full** check of every system, **every flow**, and the whole registry.
 
 Announce the resolved scope in one line.
 
@@ -102,7 +106,7 @@ Run every check deterministically; each mismatch is a **CONFLICT** with a citati
 |-------|--------|---------------|
 | **Facts** | grep each `GD-IDS` entity/formula value across the docs — match the value on word boundaries, not as a bare substring | a document states a number/name that disagrees with the registry |
 | **Terminology drift** | grep each term's `forbidden_aliases` **values** (the listed aliases, not the field name) across the docs | a forbidden alias is used in place of the canonical term |
-| **ID validity** | scan every `SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-` id for shape | an id is malformed — wrong case, bad separator, or an unknown prefix |
+| **ID validity** | scan every `SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-`/`FLOW-`/`GOAL-` id for shape (analytics `events` are `snake_case` tokens, not prefixed ids) | an id is malformed — wrong case, bad separator, or an unknown prefix |
 | **Duplicate IDs** | group every declared id by value | the same id is declared for two different things |
 | **Dangling references** | resolve every referenced id against `GD-IDS` | a referenced id does not exist, or a live (non-deprecated) section points at a `deprecated` entry |
 | **Unregistered cross-doc fact** | grep `FORM-`/`ENT-` ids that surface in **two or more** documents | a fact crosses a document boundary yet has no `GD-IDS` entry |
@@ -150,17 +154,53 @@ agreement is handled by *Map freshness* above):
   field (also code-set, by `unikit-verify` on all-AC-met) is a code-owned field —
   **not** a `doc_status` and **not** a `version` — so it never participates in Status
   or Version coherence and is never flagged as drift.
-- **Non-id metadata (`research:`).** The `GD-IDS` `research:` field — written by
-  `unikit-gd-spec` (add-system) as a **path pointer** to the explore research that
-  seeded the system — is non-semantic metadata, **not** a registry id and **not** a
-  `doc_status` / `version`. It is excluded from status/version coherence, and the
-  id-resolving checks pass it over **by construction**: **Dangling references** only
-  resolves id tokens (`SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-`), and **Unregistered
-  cross-doc fact** only greps `FORM-`/`ENT-` ids — a folder path matches neither — so
-  no special-case logic is needed.
+- **Non-id metadata (`research:`).** The `GD-IDS` `research:` field — a **path pointer**
+  to the explore research that seeded an artifact (written by `unikit-gd-spec`
+  add-system on a **system** row, by `unikit-gd-flow` on a **flow** `flows[]` row) — is
+  non-semantic metadata, **not** a registry id and **not** a `doc_status` / `version`.
+  It is excluded from status/version coherence on both axes, and the id-resolving checks
+  pass it over **by construction**: **Dangling references** only resolves id tokens
+  (`SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-`/`FLOW-`/`GOAL-`), and **Unregistered
+  cross-doc fact** only greps `FORM-`/`ENT-` ids — a folder path matches neither — so no
+  special-case logic is needed.
 - **Dependent-lag.** A verify-flagged dependent may transiently carry a header
   `Status` behind its `GD-IDS` `doc_status` (`gd-principles` → Lifecycle & Status);
-  that lag is expected, not a conflict.
+  that lag is expected, not a conflict. This applies on the **flow** axis too: a
+  cross-axis-flagged dependent **flow** (Phase 3) may carry a `FLOW.md` header `Status`
+  behind its `GD-IDS` `flows[].doc_status`.
+
+### Flow checks (axis-aware — when `GD-IDS` `flows` is non-empty)
+
+When the registry carries flows, run the dynamics-axis checks below — the mirror of the
+system checks, plus the flow-specific ones (mode ↔ structure, Win/Lose ↔ terminal GOAL,
+funnel continuity). An empty `flows: []` (or no `flows` key) → **skip this block
+silently** (not a conflict). The registry-wins rule applies exactly as above.
+
+| Check | Method | Conflict when |
+|-------|--------|---------------|
+| **GOAL id validity + duplicates** | scan every `FLOW-`/`GOAL-` id for shape; group `GOAL-<flow>-<n>` by value within its flow | a `FLOW-`/`GOAL-` id is malformed, or a `GOAL-<flow>-<n>` is declared twice in one flow — gaps after a removal are **not** a conflict (numbering is stable, like `AC-<sys>-n`) |
+| **Dangling `GOAL → SYS` / `GOAL → AC`** | resolve every `GOAL`'s `targets` (and the `FLOW.md` §D edges) against `GD-IDS` | a `GOAL` points at a **missing or deprecated system** (Critical) or a **non-existent `AC-<sys>-n`** (Critical); a dangling `ENT-`/`FORM-`/term token is Major. A needed-but-missing system routes to `/unikit-gd-spec` add-system — verify never writes the roster |
+| **Flow status/version 2-place** | a flow's `doc_status` / `version` agree across the **two places** — the `FLOW.md` header `> Status:` / `> Version:` and `GD-IDS` `flows[].doc_status` / `version` (same enum + version rules as systems) | the two disagree (the `research:` pointer is excluded — see the carve-out; flow dependent-lag is expected — see Phase 3) |
+| **Flow Depends 3-way** | for each flow→`SYS` edge, check it agrees across the `FLOW.md` §D table, the `GD-IDS` `flows[].depends_on`, and the `## Flow Map` Depends (SYS) cell | the three sources disagree. (A flow→system edge is **one-way** — a flow *exercises* a system; there is **no** reciprocal edge on the system, unlike system↔system Depends) |
+| **mode ↔ structure** | the `GD-IDS` `flows[].mode` matches the `FLOW.md` §B form — `linear`/`conditional` → an objective-flow table; `emergent` → an affordance/goal-template + a pacing envelope (§C) | the declared `mode` and the document's structure disagree (the same check shape as a system's `packs:` ↔ `## Pack:` headings) |
+| **Win/Lose ↔ terminal GOAL** | grep each `GAME.md` `## Win / Lose Conditions` line for a cited `GOAL-<flow>-<n>`, and each terminal `GOAL` for a citing win/lose line | a win/lose condition cites **no** realizing terminal `GOAL` (orphan condition — Critical), or a terminal `GOAL` realizes **no** win/lose line (orphan terminal goal — Major). The deterministic signal is the citation in the GAME.md Win/Lose line; a missing citation routes to `/unikit-gd-spec` (GAME.md content). With no Win/Lose section **and** no terminal GOAL, the check is N/A |
+| **Funnel continuity** | every retention/conversion-critical `GOAL` has an `events` entry; every `GD-IDS` `events` `flow:` back-pointer resolves to a real flow | a critical `GOAL` emits **no** event (a blind funnel step — Major), or an `events` entry names a `flow:` that does not exist (dangling — Major) |
+| **Flow / Funnel map freshness (3-surface)** | compare the `## Flow Map [gen]` rows to `GD-IDS` `flows` (membership, Status, Ver, Depends, **Realized**) and the `## Funnel [gen]` rows to `GD-IDS` `events` | the render disagrees — **not a conflict to resolve**: re-render the block (self-heal, announced); see the `Realized` note below |
+
+**Flow map freshness — self-heal, and `Realized` is cross-axis derived.** Like the
+System Map, a stale `## Flow Map [gen]` / `## Funnel [gen]` is a *freshness* issue, not
+a coherence conflict: re-render the block from `GD-IDS` (`flows` for the Flow Map,
+`events` for the Funnel) and announce it (`re-rendered ## Flow Map [gen] (freshness)`).
+**The `Realized` column is NOT a plain `flows:` render** — it is a **cross-axis derived**
+value (`yes` once **every** system in the flow's `depends_on` has a non-empty
+`implemented_version`). The re-render MUST recompute `Realized` from those systems'
+`implemented_version` (the same derived logic `unikit-gd-flow` uses on regen-on-write) —
+rendering only the `flows:` rows without recomputing `Realized` would let it drift.
+`Realized` is **never written back** onto a flow (there is no `implemented` field on
+flows; flow delivery is confirmed by playtest). A `flows/*.md` file with **no `GD-IDS`
+`flows[]` entry** is **not** self-healed — verify **routes** the user to
+`/unikit-gd-flow` to register it (the flow zone writes its own row), then the map
+re-renders.
 
 ## Phase 3 — Changed-Scope Impact (when a diff is unverified)
 
@@ -177,11 +217,12 @@ Compute the blast radius of a recent edit:
    a changed one.
 3. Classify each affected system into an **Affected** table:
 
-   | System | Relation | Verdict |
-   |--------|----------|---------|
+   | System / Flow | Relation | Verdict |
+   |---------------|----------|---------|
    | SYS-enemy-ai | depends on SYS-combat (changed) | **Needs Review** |
    | SYS-economy | soft dep, no touched interface | **Still Valid** |
    | SYS-loot | uses a removed AC | **Likely Stale** |
+   | FLOW-first-session | exercises SYS-combat (changed) via GOAL→AC | **Needs Review** |
 
    Verdicts: **Still Valid** / **Needs Review** / **Likely Stale**.
 4. **Record the impact** (with approval):
@@ -200,6 +241,29 @@ Compute the blast radius of a recent edit:
      never here.
    - **Idempotent:** re-running on the same diff yields the same Affected table and
      re-bumps nothing already at `revised`.
+
+**Cross-axis impact (system → flow, one-way).** A system edit can stale a **flow** that
+exercises it (through `GOAL → SYS` / `GOAL → AC`) — `gd-principles` → Flow Axis. Extend
+the pass across the axis (skip when `flows: []`):
+
+- **Changed set** also includes every flow already at `doc_status: revised` (a pending
+  cross-axis flag not yet cleared back to `reviewed`).
+- **Reverse-edge walk:** for each changed **system**, find every flow whose
+  `flows[].depends_on` includes it, or whose `goals[].targets` reference it
+  (`GOAL → SYS` / `GOAL → AC`). Those flows join the **Affected** table as **flow rows**
+  (Relation: `exercises SYS-x (changed)`), with the same Still Valid / Needs Review /
+  Likely Stale verdicts (a flow using a **removed** `AC` is Likely Stale). The reverse
+  does **not** hold — editing a flow never stales a system.
+- **Record impact (dependent flow):** list affected flows in the changed system's
+  `Affected (gd-verify):` line (section K). For each `Needs Review` / `Likely Stale`
+  dependent flow, bump it to `doc_status: revised` in the **`GD-IDS` `flows[].doc_status`
+  only** (the dependent-lag rule, on the flow axis) — verify does **not** write the
+  `FLOW.md` header `> Status:` (it catches up on the next `unikit-gd-flow` touch), and
+  the `## Flow Map [gen]` re-renders (freshness). Append a one-line human-readable note
+  to the flow's **section F** (Open Questions & Changelog) — the flow analogue of the
+  `Affected (gd-verify):` line a system carries in section K — so the next author sees
+  why the flow is `revised`. A `revised` flow returns to `reviewed` only through
+  `unikit-gd-review`.
 
 ## Phase 4 — Resolve Conflicts
 
@@ -240,8 +304,8 @@ written, it is `.unikit/gamedesign/reviews/<date>_verify-<scope>.md` (`mkdir -p`
 |----------|--------------------|-------|---------------------|------------|
 
 ## Affected (changed-scope only)
-| System | Relation | Verdict |
-|--------|----------|---------|
+| System / Flow | Relation | Verdict |
+|---------------|----------|---------|
 
 ## Status changes
 <rows bumped to `revised`, with approval>
@@ -258,7 +322,8 @@ re-discovered each pass.
 Scope: <SYS-slug | changed | all>
 Result: <PASS | CONFLICTS FOUND (<n>)>
 Checks: facts · terms · IDs · dup-IDs · dangling · unregistered-fact · roster↔disk · map-freshness · Depends-3way · status · version · AC-presence · placeholder — <pass/fail each>
-Affected (changed-scope): <k systems — Needs Review: …, Likely Stale: …>
+Flow checks (when flows exist): GOAL-ids · dangling-GOAL · flow-status/version · flow-Depends-3way · mode↔structure · win/lose↔terminal-GOAL · funnel-continuity · flow/funnel-freshness — <pass/fail each>
+Affected (changed-scope): <k systems + flows — Needs Review: …, Likely Stale: …>
 Freshness: <re-rendered ## System Map [gen] | up to date>
 Report: <path | none (clean PASS)>
 ```
@@ -276,16 +341,19 @@ No summary document beyond the conditional report file.
 
 ## Ownership Boundaries
 
-- **Owns:** the `Affected (gd-verify):` changelog line; verify report files; the
-  `GD-IDS.yaml` `doc_status: revised` bump for a flagged dependent (with approval);
-  and the **freshness re-render** of the `GAME.md` `## System Map [gen]` block (a
-  deterministic re-render of `GD-IDS`, never an authored change).
-- **Read-only:** every design document and (except the `Affected` line, approved
-  conflict resolutions, a flagged dependent's `doc_status: revised` bump, and the
-  `## System Map [gen]` freshness re-render) `GD-IDS.yaml`, `GAME.md`.
-- **Not this skill:** quality judgment → `unikit-gd-review`; applying design fixes
-  and authoring → `unikit-gd-system` (systems) / `unikit-gd-spec` (`GAME.md` + the
-  roster).
+- **Owns:** the `Affected (gd-verify):` changelog line (system section K) and the flow
+  cross-axis note (flow section F); verify report files; the `GD-IDS.yaml`
+  `doc_status: revised` bump for a flagged dependent system **or flow** (with approval);
+  and the **freshness re-render** of the `GAME.md` `## System Map [gen]`, `## Flow Map
+  [gen]`, and `## Funnel [gen]` blocks (deterministic re-renders of `GD-IDS`, never an
+  authored change — the Flow Map `Realized` column recomputed from the depended-on
+  systems' `implemented_version`).
+- **Read-only:** every design document and (except the `Affected` line / flow section-F
+  note, approved conflict resolutions, a flagged dependent's `doc_status: revised` bump,
+  and the `[gen]`-map freshness re-renders) `GD-IDS.yaml`, `GAME.md`.
+- **Not this skill:** quality judgment → `unikit-gd-review`; applying design fixes and
+  authoring → `unikit-gd-system` (systems) / `unikit-gd-flow` (flows) / `unikit-gd-spec`
+  (`GAME.md` + the roster).
 - **Never:** use web research; guess where a grep settles it; change a `GD-IDS`
   value silently or without approval; delete or renumber an ID; write the roster
   (route to `unikit-gd-spec`); read the code workspace or project source.

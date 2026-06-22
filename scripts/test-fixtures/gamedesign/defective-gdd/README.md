@@ -11,12 +11,13 @@ on the canonical GD-IDS **v2** schema (no standalone markdown index — the rost
 renders read-only into `GAME.md` `## System Map [gen]`):
 
 ```
-GAME.md          master design (pillars PIL-1, PIL-2) + the [gen] maps
+GAME.md          master design + the [gen] maps (## System Map / ## Flow Map / ## Funnel) + ## Win / Lose Conditions
 GD-IDS.yaml      machine truth (version: 2) — pillars / systems / flows / events / entities / formulas / terms / decisions
 systems/combat.md
 systems/boost.md
 systems/hud.md
 # systems/loot.md is intentionally ABSENT (see Roster↔disk below)
+flows/FLOW-first-run.md   one flow with seeded flow-axis defects (see Flow-axis defects below)
 ```
 
 The roster lives in two surfaces: `GD-IDS.yaml` `systems` (the truth) and the
@@ -46,6 +47,24 @@ The `## System Map [gen]` render is otherwise faithful to `GD-IDS` (combat shows
 `Ver 2`, boost `detailed`, hud `deprecated`, all Depends `—`), so the Status,
 Version, and Depends-3way conflicts above are header/§F-vs-`GD-IDS` disagreements,
 never map disagreements — the map is a freshness surface only, never a coherence one.
+
+## Flow-axis mechanical defects — one seeded example per flow check
+
+The fixture carries one flow, `flows/FLOW-first-run.md` (with its `GD-IDS.yaml`
+`flows[]` + `events[]` entries), seeding an example for every flow check
+`/unikit-gd-verify` gained with the Flow axis:
+
+| Flow check | Where | Evidence (what verify must catch) |
+|------------|-------|-----------------------------------|
+| **GOAL id validity + duplicates** | `GD-IDS` `FLOW-first-run.goals` | `GOAL-first-run-4` is declared **twice** for two different objectives |
+| **Dangling `GOAL → SYS`** | `FLOW-first-run` `GOAL-first-run-2` | targets `SYS-inventory`, which exists in neither `GD-IDS` nor any doc (Critical) |
+| **Flow status coherence** (2-place) | `FLOW-first-run` | header `> Status: reviewed`, but `GD-IDS` `flows[].doc_status: detailed` |
+| **Flow version coherence** (2-place) | `FLOW-first-run` | header `> Version: 1`, but `GD-IDS` `flows[].version: 2` |
+| **Flow Depends 3-way** | `FLOW-first-run` §D | §D lists SYS-combat **and** SYS-boost, but `GD-IDS` `depends_on` and the `## Flow Map` Depends cell carry SYS-combat only |
+| **mode ↔ structure** | `FLOW-first-run` | header + `GD-IDS` declare `mode: emergent`, but §B uses the **linear** objective-flow table form |
+| **Win/Lose ↔ terminal GOAL** | `GAME.md` + `FLOW-first-run` | the `## Win / Lose Conditions` Win line cites **no** `GOAL`, while `GOAL-first-run-3` (terminal — "reach the extraction point") realizes it — orphan on both sides |
+| **Funnel continuity** | `FLOW-first-run` `GOAL-first-run-1` | the retention-critical first-chain `GOAL` emits **no** event (a blind funnel step) |
+| **Flow map freshness (3-surface)** | `GAME.md` `## Flow Map [gen]` | a **phantom `FLOW-ghost` row** with no `GD-IDS` entry — verify **self-heals** (re-renders, recomputing the derived `Realized` column from the depended-on systems' `implemented_version`), not a resolvable conflict |
 
 ## Negative carve-outs — `/unikit-gd-verify` must NOT flag these
 

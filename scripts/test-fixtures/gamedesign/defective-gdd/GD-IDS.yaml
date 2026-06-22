@@ -74,11 +74,46 @@ systems:
     revised: 2026-06-13
 
 # ─── FLOWS ────────────────────────────────────────────────────────────────────
-# No player-action flows authored in this fixture (the Flow axis arrives in Phase 2).
-flows: []
+# One player-action flow with a seeded example for every flow check (see README.md).
+# Rendered read-only into GAME.md ## Flow Map [gen].
+flows:
+  - id: FLOW-first-run
+    name: "First run"
+    status: active
+    mode: emergent             # defect (mode↔structure): FLOW-first-run.md §B uses the LINEAR objective-flow table, not an emergent affordance template
+    doc_status: detailed       # defect (flow status coherence, 2-place): FLOW-first-run.md header says reviewed
+    version: 2                 # defect (flow version coherence, 2-place): FLOW-first-run.md header says Version 1
+    depends_on: [SYS-combat]   # defect (flow Depends 3-way): FLOW.md §D adds SYS-boost; ## Flow Map shows SYS-combat only
+    goals:
+      - id: GOAL-first-run-1
+        summary: "Land a clean chain"          # retention-critical, but emits NO event (defect: blind funnel step)
+        targets: [SYS-combat]
+      - id: GOAL-first-run-2
+        summary: "Grab the buff from inventory"
+        targets: [SYS-inventory]               # defect (dangling GOAL→SYS): SYS-inventory is in neither GD-IDS nor any doc
+      - id: GOAL-first-run-3
+        summary: "Reach the extraction point"  # terminal goal — realizes the GAME.md Win condition, but that Win line cites no GOAL (defect: orphan win-condition / orphan terminal goal)
+        targets: [SYS-combat]
+      - id: GOAL-first-run-4
+        summary: "Boost off the ramp"
+        targets: [SYS-boost]
+      - id: GOAL-first-run-4                    # defect (duplicate GOAL id): GOAL-first-run-4 declared twice for two different objectives
+        summary: "Drift the corner"
+        targets: [SYS-boost]
+    source: flows/FLOW-first-run.md
+    added: 2026-06-22
+    revised: ""
 
 # ─── EVENTS ───────────────────────────────────────────────────────────────────
-events: []
+# One funnel event. GOAL-first-run-1 (retention-critical) is intentionally NOT
+# instrumented (defect: blind funnel step).
+events:
+  - id: extraction_reached
+    name: "Extraction point reached"
+    status: active
+    source: flows/FLOW-first-run.md
+    flow: FLOW-first-run
+    added: 2026-06-22
 
 # ─── ENTITIES ─────────────────────────────────────────────────────────────────
 entities:

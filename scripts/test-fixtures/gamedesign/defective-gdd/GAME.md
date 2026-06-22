@@ -29,6 +29,15 @@ A lone courier outruns a collapsing city on a hoverboard.
 Moment-to-moment: dodge → boost → chain. Boosting drains **stamina**; landing a
 clean chain refunds it.
 
+## Win / Lose Conditions
+
+<!-- defect (Win/Lose ↔ terminal GOAL): the Win line below cites NO realizing
+`GOAL`, while FLOW-first-run's terminal GOAL-first-run-3 ("reach the extraction
+point") realizes it — an orphan on both sides. -->
+
+- **Win**: reach the extraction point before the collapse catches the courier.
+- **Lose**: the collapse overtakes the courier.
+
 ## Monetization Stance
 
 Premium, one-time purchase. No ads, no loot boxes — selling pressure would fight
@@ -99,11 +108,26 @@ self-heals by re-rendering, it does not file a conflict.)
 ## Flow Map [gen]
 
 <!-- gen:flow-map -->
-Generated read-only from `GD-IDS.yaml` `flows` — none authored in this fixture.
+Generated read-only from `GD-IDS.yaml` `flows` — do **not** hand-edit. (Fixture note:
+this render carries a phantom `FLOW-ghost` row with **no** `GD-IDS.yaml` entry — the
+flow **Map-freshness** defect; `unikit-gd-verify` self-heals by re-rendering, it does
+not file a conflict. `Realized` is DERIVED — `no` here because `SYS-combat` has no
+`implemented_version`.)
+
+### Emergent
+
+| ID | Flow | Mode | Status | Ver | Depends (SYS) | Realized | Doc |
+|----|------|------|--------|-----|---------------|----------|-----|
+| FLOW-first-run | First run | emergent | detailed | 2 | SYS-combat | no | flows/FLOW-first-run.md |
+| FLOW-ghost | Ghost run | emergent | skeleton | 1 | — | no | flows/FLOW-ghost.md |
 <!-- /gen:flow-map -->
 
 ## Funnel [gen]
 
 <!-- gen:funnel -->
-Generated read-only from `GD-IDS.yaml` `events` — none authored in this fixture.
+Generated read-only from `GD-IDS.yaml` `events` — do **not** hand-edit.
+
+| Order | Event | Flow | Measures |
+|-------|-------|------|----------|
+| 1 | extraction_reached | FLOW-first-run | how many players finish the first run |
 <!-- /gen:funnel -->
