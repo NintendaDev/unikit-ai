@@ -19,7 +19,8 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID, MODULES_YML_FILE, systemDir,
+  GD_PRINCIPLES_FILE, GD_DESIGN_READ_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID,
+  MODULES_YML_FILE, systemDir, systemGamedesignDir,
 } from '../constants.js';
 import { listModules } from '../modules.js';
 import { buildSubagentTemplateVars } from './shared.js';
@@ -152,6 +153,33 @@ export async function installGdPrinciples(projectDir: string): Promise<void> {
 
   await writeTextFile(destPath, content);
   logInfo('installGdPrinciples', 'installed .unikit/system/gd-principles.md');
+}
+
+// --- Game-design shared READ-contract installation ---
+
+/**
+ * Install the shared design/flow READ-contract system asset into
+ * `.unikit/system/gamedesign/design-read.md`. Modeled on
+ * {@link installGdPrinciples}: a flat copy with NO engine-var substitution
+ * (engine-agnostic). Source lives under `data/<gamedesign>/design-read.md`. NOT
+ * hash-tracked — every init/update rewrites it. Code-side skills (`unikit-plan`
+ * via `references/design-context.md`, and `unikit-explore`) load it on demand to
+ * read design. Lands under the `gamedesign` system subdir (the shared-contract
+ * home), NOT flat next to `gd-principles.md` — see {@link systemGamedesignDir}.
+ */
+export async function installDesignRead(projectDir: string): Promise<void> {
+  const srcPath = path.join(getDataDir(), GAMEDESIGN_MODULE_ID, GD_DESIGN_READ_FILE);
+  const destDir = systemGamedesignDir(projectDir);
+  const destPath = path.join(destDir, GD_DESIGN_READ_FILE);
+
+  const content = await readTextFile(srcPath);
+  if (!content) {
+    logWarn('installDesignRead', 'design-read.md not found in data/gamedesign/, skipping');
+    return;
+  }
+
+  await writeTextFile(destPath, content);
+  logInfo('installDesignRead', 'installed .unikit/system/gamedesign/design-read.md');
 }
 
 // --- Module registry snapshot installation ---

@@ -69,6 +69,15 @@ export const UNIKIT_DIR = '.unikit';
 export const MEMORY_DIR_NAME = 'memory';
 export const SYSTEM_DIR_NAME = 'system';
 export const REFERENCES_DIR_NAME = 'references';
+/**
+ * Name of the game-design subdir under `.unikit/system/` — the home for shared
+ * game-design contracts read by code-side skills (currently `design-read.md`;
+ * later the `gd-principles` shards in plan (b)). It matches the module id by
+ * construction, so it sources the literal from {@link GAMEDESIGN_MODULE_ID}
+ * rather than re-hardcoding it. Distinct concept from the memory/data
+ * `gamedesign` dirs — this is the system-asset home.
+ */
+export const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
 
 // --- File names ---
 
@@ -91,6 +100,17 @@ export const DEV_PRINCIPLES_FILE = 'dev-principles.md';
  * `gamedesign/core/`.
  */
 export const GD_PRINCIPLES_FILE = 'gd-principles.md';
+/**
+ * Shared design/flow READ-contract system-asset basename. Installed flat into
+ * `.unikit/system/gamedesign/design-read.md` from
+ * `data/<gamedesign>/design-read.md`. Engine-agnostic (no `{{engine_*}}`
+ * substitution) and NOT hash-tracked — rewritten on every init/update. The
+ * code-side skills (`unikit-plan` via `references/design-context.md`, and
+ * `unikit-explore`) load it on demand to read design (read surfaces, flow-first
+ * resolution, one-way boundary). Lives under the `gamedesign` system subdir
+ * (see {@link SYSTEM_GAMEDESIGN_DIR_NAME}), NOT flat next to `gd-principles.md`.
+ */
+export const GD_DESIGN_READ_FILE = 'design-read.md';
 /**
  * Machine-readable quality-gate result contract system-asset basename.
  * Installed flat into `.unikit/system/gate-result-contract.md` from
@@ -142,6 +162,16 @@ export function moduleTierDir(projectDir: string, module: string, tier: string):
 /** `<projectDir>/.unikit/system` — root of cli-contract / dev-principles. */
 export function systemDir(projectDir: string): string {
   return path.join(projectDir, UNIKIT_DIR, SYSTEM_DIR_NAME);
+}
+
+/**
+ * `<projectDir>/.unikit/system/gamedesign` — home for shared game-design
+ * contracts read by code-side skills (currently `design-read.md`). A sibling
+ * concept to the flat system assets in {@link systemDir}; plan (b) will later
+ * fill it with the `gd-principles` shards.
+ */
+export function systemGamedesignDir(projectDir: string): string {
+  return path.join(systemDir(projectDir), SYSTEM_GAMEDESIGN_DIR_NAME);
 }
 
 /**
