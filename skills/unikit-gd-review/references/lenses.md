@@ -74,21 +74,23 @@ single-document review can make:
   (e.g. *take damage → status applied → UI feedback → death → respawn economy hit*)
   and find where the systems disagree.
 
-## Flow lenses (stub — Flow axis, Phase 2)
+## Flow lenses (run on every flow review)
 
-Review is **axis-aware**: alongside systems it will judge **flows** (`FLOW.md` +
-the `## Flow Map [gen]` / `## Funnel [gen]` renders) once `unikit-gd-flow` ships.
-The flow lenses below are a **skeleton** — their adversarial prompts are filled in
-Phase 2; today they do **not** run (a `FLOW.md` is not yet a review target).
+Review is **axis-aware**: alongside systems it judges **flows** (`FLOW.md` + the
+`## Flow Map [gen]` / `## Funnel [gen]` renders). A `FLOW.md` **is** a review target;
+these lenses run whenever the scope is a flow (or "all"). Each runs as a skeptic — find
+what breaks the dynamics, do not validate.
 
-| Lens | The question it will attack (Phase 2) |
-|------|----------------------------------------|
-| **pacing** | Does the wiring-mode's structure deliver the intended tension arc — does the pacing envelope (emergent) or the objective-flow table (linear/conditional) actually rise and release, or flatline? |
-| **guidance** | Can the player tell what to do next at each `GOAL` step — is every Trigger → Expected action legible (beacon/feedback present), or does the flow rely on the player guessing? |
-| **funnel** | Does the `## Funnel [gen]` measure the moments that matter — is each retention/conversion-critical `GOAL` instrumented by an event, with no blind step? |
+| Lens | The question it attacks | Typical severity on a hit |
+|------|-------------------------|---------------------------|
+| **pacing** | Attack the tension arc. For `linear`/`conditional`, walk the objective-flow table beat by beat: does tension actually rise to a climax and release, or flatline (every beat the same, no shape)? For `emergent`, does the pacing envelope have a real floor and ceiling, or can the player sit at one tension level indefinitely? Name the flat or sagging stretch — "the arc looks fine" is not a result. | Major (flatline / sagging mid-section); Critical (no arc at all — the flow has no shape) |
+| **guidance** | At each `GOAL` step, can the player tell what to do next? Find every step where the Trigger → Expected action is **not** legible: no success/feedback signal, no beacon where one is needed, or a hand-off that relies on the player guessing. Cross-reference the exercised system's section B (feedback) and the `AC` the `GOAL` targets — a `GOAL → AC` whose AC defines no observable signal is a guidance hole. | Major (a step with no feedback/beacon); Critical (the core path is unguessable) |
+| **funnel** | Does the `## Funnel [gen]` measure the moments that matter? Find every retention/conversion-critical `GOAL` with **no** `event` (a blind funnel step), and any event whose name/schema is incoherent with its neighbours. A flow that drops the player at an unmeasured step cannot be diagnosed in liveops. | Major (a critical GOAL with no event); Minor (event naming/schema drift) |
 
-A flow finding will cite the `FLOW-<slug>` / `GOAL-<flow>-<n>` and the system
-`AC`/pillar it serves, on the same shared rubric. Until Phase 2, omit these lenses.
+A flow finding cites the `FLOW-<slug>` / `GOAL-<flow>-<n>` and the system `AC` / pillar
+it serves, on the same shared `RF-<date>-n` rubric as a system finding. The
+**fantasy-delivery**, **systems-math**, and **provenance** core lenses are unchanged —
+they apply to systems; the flow lenses are the dynamics-axis complement.
 
 ## Output discipline
 

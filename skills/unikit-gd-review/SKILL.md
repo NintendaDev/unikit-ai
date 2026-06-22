@@ -41,9 +41,9 @@ mirror of `unikit-review`. It is distinct from `unikit-gd-verify`, which answers
 the cheaper, binary **"is the design consistent with itself?"** — a review finding
 *can* be declined; a verify conflict cannot.
 
-Review is **axis-aware**: it judges **systems** today, and **flows** as the Flow
-axis lands (the flow lenses — pacing / guidance / funnel — are stubbed in
-`references/lenses.md`, filled when `unikit-gd-flow` ships).
+Review is **axis-aware**: it judges **systems** (the A–K GDD) and **flows** (`FLOW.md`
++ the `## Flow Map [gen]` / `## Funnel [gen]` renders). The flow lenses — pacing /
+guidance / funnel — live in `references/lenses.md` alongside the system lenses.
 
 A review is most honest in a **fresh session** — the reviewer should not be the
 author of the document. This skill never authors or edits design **content**; its
@@ -131,6 +131,11 @@ provenance markers — see `gd-principles` → Provenance), also run the **prove
 lens over each `<!-- provenance: generated -->` section: inferred content is held to
 a stricter bar (≥ Major against source/registry) than author-sourced text.
 
+When the review **target is a `FLOW.md`** (or the scope is "all"), select the **flow
+lenses** (pacing / guidance / funnel) from `references/lenses.md` alongside the system
+lenses — a flow finding cites the `FLOW-<slug>` / `GOAL-<flow>-<n>` and the system
+`AC` / pillar it serves, on the same `RF-<date>-n` rubric.
+
 Run them as **2–4 parallel inline `Agent()`** calls, each given one lens and the
 adversarial framing *"find what is wrong — do NOT validate"*. Each agent is
 **read-only** and returns findings only; it never writes. Fall back to running the
@@ -147,11 +152,11 @@ Agent(subagent_type: general-purpose, model: sonnet, prompt:
 Collect and de-duplicate the findings. Drop any finding with no section+evidence
 citation to **Suggestion** (`gd-principles`).
 
-**Flow lenses (stub — Flow axis).** The flow review lenses (pacing, guidance,
-funnel — does the `## Flow Map` deliver its intended arc?) are stubbed in
-`references/lenses.md` and activate when `unikit-gd-flow` ships (Phase 2). A
-`FLOW.md` is not yet a review target; today the lenses run over systems and
-`GAME.md`.
+**Flow lenses (active).** When the target is a `FLOW.md`, run the flow review lenses
+(pacing, guidance, funnel — does the wiring-mode deliver its intended arc, is each
+`GOAL` step guided, does the `## Funnel [gen]` measure the moments that matter?) from
+`references/lenses.md`, with the same adversarial framing. A `FLOW.md` **is** a review
+target; the lenses run over systems, flows, and `GAME.md`.
 
 ## Phase 3 — Cross-Scope Checks (cross review only)
 
