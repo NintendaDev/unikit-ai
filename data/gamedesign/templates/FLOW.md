@@ -4,7 +4,6 @@
 > **Mode**: linear | conditional | emergent
 > **Version**: 1
 > **Last Updated**: [YYYY-MM-DD]
-> **Exercises**: [SYS-ids whose rules this flow's goals touch]
 
 A per-flow design document — the **dynamics** axis (what the player does over
 time), alongside the SYSTEM GDDs (the rules) and `GAME.md` (the whole). Authored

@@ -28,16 +28,19 @@ owns a thing** (an authoring zone, with the full create+update cycle inside it);
 
 | Zone skill | Owns (create + update) |
 |---|---|
-| `unikit-gd-spec` | the **spec / map** zone — `GAME.md` (the authored one-pager **and** the regenerated `[gen]` maps), the system roster (add-system), the `## System Map` / `## Flow Map` / `## Funnel` blocks |
+| `unikit-gd-spec` | the **spec / map** zone — `GAME.md` (the authored one-pager **and** the regenerated `## System Map [gen]`), the system roster (add-system), the `## System Map` block |
 | `unikit-gd-system` | the **system** zone — `SYSTEM.md` for one system (create skeleton + author sections + edit approved content) |
-| `unikit-gd-flow` | the **flow** zone — `FLOW.md` for one flow (create + update), the `GOAL` rows, the wiring-mode selection |
+| `unikit-gd-flow` | the **flow** zone — `FLOW.md` for one flow (create + update), the `GOAL` rows, the wiring-mode selection, its own `GD-IDS` `flows:` / `events:` entries, and the regenerated `## Flow Map` / `## Funnel` blocks |
 
 - One owner per artifact. The full lifecycle of an artifact (create, fill, edit,
   delta-discipline) lives inside its zone; there is no separate "editor" skill.
-- `unikit-gd-spec` is the **single writer of the roster** — only it adds a system
-  (add-system) or registers a flow. Downstream discovery (a flow needing a missing
-  system, a system finding a missing dependency) **routes back** to `unikit-gd-spec`;
-  it never writes the roster row itself.
+- `unikit-gd-spec` is the **single writer of the system roster** — only it adds a
+  system (add-system). A **flow registers itself**: `unikit-gd-flow` writes its own
+  `GD-IDS` `flows:` / `events:` entries and re-renders both `## Flow Map` and
+  `## Funnel` — there is no add-flow in `unikit-gd-spec`. Downstream discovery that
+  crosses into the *system* roster (a flow whose `GOAL → SYS` names a missing system,
+  a system finding a missing dependency) still **routes back** to `unikit-gd-spec`; a
+  system roster row is never written outside it.
 
 **Cross-cutting verbs (act over every zone, own no artifact):**
 
@@ -211,10 +214,11 @@ fixed by a re-render, not a status disagreement).
   `implemented_version` field (also code-set), not in `doc_status`.
 
 **Who writes the two places.** The authoring skills — `unikit-gd-spec`,
-`unikit-gd-system`, `unikit-gd-review` — write the status into **both places**
-(the `SYSTEM.md` header `> Status:` line and the `GD-IDS` `doc_status` field) on
-every status change, so the spine stays coherent; the `## System Map [gen]` then
-re-renders from `GD-IDS`.
+`unikit-gd-system`, `unikit-gd-flow`, `unikit-gd-review` — write the status into
+**both places** (the document header `> Status:` line in `SYSTEM.md` / `FLOW.md` and
+the `GD-IDS` `doc_status` field) on every status change, so the spine stays
+coherent; the `## System Map [gen]` / `## Flow Map [gen]` then re-render from
+`GD-IDS`.
 
 **Dependent-lag exception (intentional).** `unikit-gd-verify` is deliberately
 **not** a full two-place writer. When it flags a *dependent* system as stale it
@@ -246,6 +250,15 @@ A `GOAL` references the systems it exercises — `GOAL → SYS` early (at skelet
 when only the system map exists) and the specific `GOAL → AC` once those systems
 are detailed. Flow IDs: **`FLOW-<slug>`** (the document) and **`GOAL-<flow>-<n>`**
 (a row).
+
+**Win / Lose ↔ terminal GOAL.** The `## Win / Lose Conditions` in `GAME.md` are the
+author's high-level intent and exist before any flow. Each is realized by a
+**terminal `GOAL`** — a flow objective that ends the run. `unikit-gd-verify` links
+every win/lose condition to its realizing terminal `GOAL`, with **no orphan
+conditions and no orphan terminal goals** on either side. The deterministic machine
+signal is the **`GOAL-<flow>-<n>` citation in the GAME.md Win/Lose lines** (a
+`terminal: true` marker on the `GD-IDS` `goals` entry is a fallback only). This
+contract lives here, not only in the `GAME.md` template.
 
 **Flow lifecycle.** A flow carries its own `doc_status`, with the same enum and
 spine as a system: `not-started` (in the roster, no document yet) →
@@ -390,12 +403,14 @@ Rules:
 - `unikit-gd-system` writes the markers on import (one per section that needs one);
   the regular collaborative authoring path leaves sections untagged.
 - **Explore research is an allowed authoring source.** `unikit-gd-explore` research
-  may seed `unikit-gd-system` section drafts and deltas (a generalization of the
-  import-reading path) — discovered by the `GD-IDS` `research:` pointer
-  (authoritative) → `researches/INDEX.md` `Target:` (fallback). That `research:`
-  pointer is owned by `unikit-gd-spec` (written in add-system); it is a **non-id path**,
-  inert to `unikit-gd-verify` coherence, and the system **lifecycle is unchanged** —
-  the seeded system is `not-started` until `unikit-gd-system` authors it.
+  may seed `unikit-gd-system` and `unikit-gd-flow` section drafts and deltas (a
+  generalization of the import-reading path) — discovered by the `GD-IDS` `research:`
+  pointer (authoritative) → `researches/INDEX.md` `Target:` (fallback). The system
+  `research:` pointer is owned by `unikit-gd-spec` (written in add-system); the flow
+  `research:` pointer (under `flows[]`) is owned by `unikit-gd-flow` (there is no
+  add-flow in spec — the flow zone registers itself). Either is a **non-id path**,
+  inert to `unikit-gd-verify` coherence, and the seeded artifact's **lifecycle is
+  unchanged** — it stays `not-started` until its zone owner authors it.
 - An edit **never strips a provenance marker** — it may change a generated
   section's content, but the marker survives so its origin stays auditable across
   versions. Promoting `generated` → `extracted` is a deliberate, recorded act,

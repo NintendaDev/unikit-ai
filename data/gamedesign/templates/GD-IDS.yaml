@@ -79,7 +79,7 @@ flows: []
 #     mode: linear              # linear | conditional | emergent — dictates FLOW.md structure; gd-verify checks mode ↔ structure (as packs ↔ ## Pack)
 #     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised (same spine as systems)
 #     version: 1
-#     research: ""              # same NON-id path pointer as systems (set by gd-spec when seeded from an explore brief); excluded from coherence/dangling/id resolution
+#     research: ""              # same NON-id path pointer as systems, but set by gd-flow when the flow is seeded from an explore brief (the flow zone owns its own row — there is no add-flow in gd-spec); excluded from coherence/dangling/id resolution
 #     depends_on: [SYS-combat, SYS-stamina]   # systems this flow exercises (GOAL → SYS); realized once each is implemented
 #     goals:                    # GOAL-<flow>-<n> rows — the scenario steps
 #       - id: GOAL-first-session-1

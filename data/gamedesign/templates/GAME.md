@@ -129,9 +129,9 @@ realizing flow objective (no orphan conditions, no orphan terminal goals).
 [The game's posture toward monetization — the model (premium / F2P / hybrid), what
 is sold and what is **never** sold (the ethical line), and how it serves rather
 than fights the pillars. Detailed shop/economy systems live in their SYSTEM GDDs;
-conversion / LTV / retention metrics are aggregated in `## Funnel [gen]`. Loads the
-`monetization-ethics` domain rule. Keep to the stance; the systems carry the
-mechanics.]
+high-level conversion / LTV / retention intent is authored here, while per-flow
+funnel instrumentation lives in `## Funnel [gen]`. Loads the `monetization-ethics`
+domain rule. Keep to the stance; the systems carry the mechanics.]
 
 ## Reference Games
 
@@ -233,7 +233,7 @@ only as an escape hatch for very large rosters (150+ systems).
 ## Flow Map [gen]
 
 <!-- gen:flow-map -->
-Generated read-only from `GD-IDS.yaml` `flows` by `unikit-gd-spec` — **do not
+Generated read-only from `GD-IDS.yaml` `flows` by `unikit-gd-flow` — **do not
 hand-edit**. Full map: one row per flow, grouped by wiring-mode. `Realized` is
 DERIVED — `yes` once every system in `Depends` is `implemented` (never written; see
 `gd-principles` → Flow Axis). `Ver` is `—` until `skeleton`.
@@ -254,7 +254,7 @@ DERIVED — `yes` once every system in `Depends` is `implemented` (never written
 ## Funnel [gen]
 
 <!-- gen:funnel -->
-Generated read-only from `GD-IDS.yaml` `events` by `unikit-gd-spec` — **do not
+Generated read-only from `GD-IDS.yaml` `events` by `unikit-gd-flow` — **do not
 hand-edit**. The ordered measurement points (the third altitude of the
 `AC · GOAL · event` grammar); each row is one analytics event, sourced from a
 flow's `GOAL`. Global/meta metrics (retention, LTV, conversion) are authored in

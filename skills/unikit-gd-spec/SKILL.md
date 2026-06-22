@@ -198,7 +198,7 @@ two narrative sections and Win/Lose are conditional, see notes):
 | **Loop Stack** | Nested loops (≈30 s moment → short → session → long-term). The 30-second loop must be fun in isolation. |
 | **Player Needs (SDT)** | Confirm pillars cover Autonomy / Competence / Relatedness; an uncovered need is a gap to flag. |
 | **Win / Lose Conditions** *(cond.)* | Include **only if the game can be won or lost** (a sandbox/endless title omits it; when in doubt, ask). The author's high-level intent — a terminal `GOAL` realizes each (`gd-verify` links every condition to its realizing flow objective). |
-| **Monetization Stance** | The posture toward monetization — model (premium / F2P / hybrid), what is sold and what is **never** sold (the ethical line), how it serves rather than fights the pillars. Loads the `monetization-ethics` rule. Keep to the stance; the systems carry the mechanics; funnel metrics aggregate in `## Funnel [gen]`. |
+| **Monetization Stance** | The posture toward monetization — model (premium / F2P / hybrid), what is sold and what is **never** sold (the ethical line), how it serves rather than fights the pillars. Loads the `monetization-ethics` rule. Keep to the stance; the systems carry the mechanics; high-level conversion / LTV / retention intent is authored here, per-flow funnel instrumentation lives in `## Funnel [gen]`. |
 | **Reference Games** | What we take, what we change, which pillar it validates. |
 | **Open Questions** | Things needing prototyping/research; resolved items migrate into a SYSTEM GDD or GD-IDS. |
 
