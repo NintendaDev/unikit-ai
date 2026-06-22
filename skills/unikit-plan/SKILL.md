@@ -122,9 +122,9 @@ alternative.
 
 Initialize flags: `research_pre_linked = false`, `research_linked = false`, `design_linked = false`.
 
-**If mode is `--list`** → skip to **List Mode** section below.
+**If mode is `--list`** → load `{{skills_dir}}/{{self_name}}/references/mode-list.md` and follow it (it STOPs; Steps 0.1–7 do not run).
 
-**If mode is `add`** → run **Step 0.5 (Bootstrap Context)**, then skip to **Add Mode** section below.
+**If mode is `add`** → run **Step 0.5 (Bootstrap Context)**, then load `{{skills_dir}}/{{self_name}}/references/mode-add.md` and follow it (it STOPs; never creates a branch).
 
 ### Step 0.1: Resolve Git State
 
@@ -199,8 +199,8 @@ AskUserQuestion:
 ```
 
 Based on choice:
-- Full → proceed to Full Mode steps
-- Fast → proceed to Fast Mode steps
+- Full → full mode (the Full-mode additional steps load in Step 1.5)
+- Fast → fast mode (the Fast-mode additional step loads in Step 1.5)
 
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
@@ -268,215 +268,17 @@ ls .unikit/code/plans/
 # → next: 2026-03-10_<new-feature>
 ```
 
----
+### Step 1.5: Load the Mode Body
 
-## List Mode — Show Available Plans
+The shared preamble (Steps 0–1) is done. Load the selected mode's reference body
+on demand — do **not** keep all four mode bodies in context at once:
 
-When `--list` is present in arguments, show all available plans and STOP.
+- **Full mode** → load `{{skills_dir}}/{{self_name}}/references/mode-full.md`, run its
+  additional steps (git branch, recon, preferences), then continue to the Shared Steps below.
+- **Fast mode** → load `{{skills_dir}}/{{self_name}}/references/mode-fast.md`, run its
+  preferences step, then continue to the Shared Steps below.
 
-### List Step 1: Collect Plans
-
-Scan for plans in all locations:
-1. **Fast plan** — check if `.unikit/code/PLAN.md` exists
-2. **Full plans** — list all folders in `.unikit/code/plans/` (if directory exists)
-3. **Fix plan** — check if `.unikit/code/FIX_PLAN.md` exists
-
-### List Step 2: Gather Info
-
-For each found plan:
-- **Name** — folder name (for full plans), "PLAN.md" (fast), "FIX_PLAN.md" (fix)
-- **Progress** — count completed (`- [x]`) and total (`- [ ]` + `- [x]`) task checkboxes
-- **Branch match** — compare plan name with current git branch (`git branch --show-current`). If on `<configured branch prefix><name>` and a plan folder ends with `_<name>` → mark as `← current branch`
-
-### List Step 3: Display
-
-```
-Available plans:
-
-  Plan                                    Progress       Branch
-  ──────────────────────────────────────────────────────────────
-  .unikit/code/plans/2026-03-10_night-trading  🔄 3/12       ← current branch
-  .unikit/code/plans/2026-03-08_mini-games     ✅ 12/12      feature/mini-games
-  .unikit/code/PLAN.md                         ⏳ 0/5        —
-  .unikit/code/FIX_PLAN.md                     ⏳ 1/3        —
-
-To start implementation: /unikit-implement
-To modify a plan: /unikit-plan add <changes>
-```
-
-If no plans found:
-```
-No plans found.
-
-Create one:
-  /unikit-plan fast <description>
-  /unikit-plan full <description>
-```
-
-**After displaying → STOP.** Do not continue to planning.
-
----
-
-## Add Mode — Modify Existing Plan
-
-Modifies an existing plan in-place. Never creates a new branch.
-
-### Add Step 1: Find & Load Plan
-
-Use unified plan detection:
-1. Check both locations: `.unikit/code/PLAN.md` (fast plan) and `.unikit/code/plans/` (full plans — match by git branch `<configured branch prefix>*` → folder ending with `_<feature-name>`, or latest folder sorted lexicographically descending)
-2. Both exist → ask user which to modify
-3. Only one exists → use it
-4. No plan found → tell user to create one first, **STOP**
-
-Load the plan: `TASKS.md` + `PLAN-BRIEF.md` for folder plans, or `PLAN.md` for fast plans.
-
-Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules) are already loaded by Bootstrap (Step 0.5).
-
-### Add Step 2: Analyze & Apply
-
-Parse the user's description and determine changes: new tasks/phases, modifications, settings, updates to PLAN-BRIEF.md (full mode) or `## Technical Context` (fast mode).
-
-If changes require codebase understanding → launch Explore tasks (same as Step 4 Phase A). Skip if purely structural.
-
-Apply changes with Edit tool, preserving unaffected content:
-- New tasks/phases follow existing format (numbering, WHY, Files, effort)
-- Update Total Estimated Effort, Commit Plan, Dependency Graph as needed
-- Update PLAN-BRIEF.md / Technical Context if changes affect constraints, interfaces, or patterns
-
-### Add Step 3: Confirm
-
-Show: plan path, what changed, updated effort. Ask if anything needs adjustment. **STOP after confirmation.**
-
----
-
-## Full Mode — Additional Steps
-
-These steps run **only in full mode**, before the shared planning workflow.
-
-### Step A: Decide on Git Branch
-
-**If `git.enabled = false` or `git.create_branches = false`:**
-- Skip this step entirely
-- Mark `branch_created = false`, continue to next step
-
-**If `--base <branch>` was provided** — skip the question, always create the branch (the flag implies intent).
-
-**Otherwise**, ask the user whether to create a feature branch or stay on the current one:
-
-```
-AskUserQuestion: Create a feature branch?
-
-Options:
-1. Yes — create <git.branch_prefix><feature-name> (recommended for new work)
-2. No — stay on the current branch
-```
-
-Based on choice:
-- Yes → create feature branch, mark `branch_created = true`:
-
-  **Otherwise, create the branch:**
-
-  ```bash
-  git checkout <base_branch>
-  git pull origin <base_branch>   # If pull fails (no remote, no network) — warn and continue from local state
-  git checkout -b <git.branch_prefix><feature-name>
-  ```
-
-  Where `<base_branch>` is resolved from: `--base` flag > `git.base_branch` from config > fallback `main`.
-  Where `<git.branch_prefix>` defaults to `feature/` if not set in `.unikit/config.yaml`.
-
-  The branch name uses the feature name **without** the date prefix.
-  Example: folder `2026-03-10_item-appraisal-system` → branch `<git.branch_prefix>item-appraisal-system`.
-  If the branch already exists, ask: switch to existing or create with a different name?
-- No → stay on current branch, mark `branch_created = false`, continue to next step
-
-### Step B: Quick Reconnaissance
-
-Launch 1-3 Explore tasks in parallel to quickly scan the codebase before deep planning. This gives a high-level picture without consuming main context.
-
-```
-Agent(subagent_type: Explore, prompt:
-  "In the current project, find files and modules related to [feature domain keywords].
-   Report: key directories, relevant files, existing patterns, integration points.
-   Thoroughness: quick. Be concise — return a structured summary, not file contents.")
-```
-
-**Fallback:** If Agent tool is unavailable, use Glob/Grep/Read directly to scan for relevant files and modules.
-
-**Rules:**
-- 1-3 tasks max, "quick" thoroughness — this is reconnaissance, not deep analysis
-- Deep exploration happens later in the shared Step 4 (Explore the Codebase)
-- Recon results are used to write **targeted** Phase A prompts — require structured output: list of discovered file paths, class/interface names, and module directories. This data feeds directly into Phase A to avoid redundant broad scanning
-
-### Step C: Ask About Preferences
-
-```
-AskUserQuestion: Before planning:
-
-1. Include tests in the plan?
-   a. Yes, add a testing phase
-   b. No, skip tests
-
-2. Documentation policy after implementation?
-   a. Yes — show documentation checkpoint after completion (invokes /unikit-docs)
-   b. No — skip documentation
-
-3. Roadmap milestone linkage (only if `.unikit/ROADMAP.md` exists):
-   a. Link this plan to a milestone
-   b. Skip — no linkage
-
-4. Additional requirements or constraints?
-```
-
-Based on choice:
-- Tests: Yes → add a testing phase after each implementation phase in the plan
-- Tests: No → no test tasks in the plan
-- Docs: Yes → add `Docs: yes` to Settings, `/unikit-implement` will show documentation checkpoint
-- Docs: No → add `Docs: no` to Settings
-- Roadmap: Link → proceed to milestone selection (see below)
-- Roadmap: Skip → add `Milestone: "none"` to Roadmap Linkage
-
-Store the preferences — they affect the `## Settings` section in `TASKS.md`, whether a testing phase is added, and whether `/unikit-implement` shows a documentation checkpoint.
-
-**If `.unikit/ROADMAP.md` exists and the user chose milestone linkage:**
-- Read `.unikit/ROADMAP.md` and list candidate milestones (prefer unchecked items)
-- Ask the user to pick one milestone (or type a custom one)
-- Store the selected milestone name and a 1-sentence rationale for inclusion in the plan file
-
----
-
-## Fast Mode — Additional Step
-
-This step runs **only in fast mode**, before the shared planning workflow.
-
-### Step A: Ask About Preferences
-
-```
-AskUserQuestion: Before planning:
-
-1. Include tests in the plan?
-   a. Yes
-   b. No
-
-2. Any specific requirements or constraints?
-
-3. Roadmap milestone linkage (only if `.unikit/ROADMAP.md` exists):
-   a. Link this plan to a milestone
-   b. Skip — no linkage
-```
-
-Based on choice:
-- Tests: Yes → add a testing phase in the plan
-- Tests: No → no test tasks
-- Roadmap: Link → proceed to milestone selection (see below)
-- Roadmap: Skip → add `Milestone: "none"` to Roadmap Linkage
-
-Fast mode always uses `Docs: no` in Settings (documentation checkpoint is a full mode feature).
-
-Store the preferences for the `## Settings` and `## Roadmap Linkage` sections in `PLAN.md`.
-
-**If `.unikit/ROADMAP.md` exists and the user chose milestone linkage:** follow the same milestone selection procedure as in Full Mode Step C (read ROADMAP.md, list candidates, ask user to pick, store milestone name).
+(`--list` and `add` modes already dispatched in Step 0 to their own bodies — `mode-list.md` / `mode-add.md` — and STOP; they never reach here.)
 
 ---
 
@@ -631,127 +433,17 @@ Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules, patch
 
 ### Step 4.5: Resolve Design Context (game-design module)
 
-**Runs only when `design_linked = true`** (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml` exists). It
-grounds the plan in the game's design and is the source of the plan's `## Design` section.
-When `design_linked = false`, skip this step entirely.
+**Runs only when `design_linked = true`** (the gate is resolved inline in Step 0.5). When it is
+true, load `{{skills_dir}}/{{self_name}}/references/design-context.md` and follow it on demand —
+do **not** keep the design-context body in context for pure-code plans. That body reads the shared
+`design-read` contract (`.unikit/system/gamedesign/design-read.md`), applies **Flow-First
+Resolution** (*intent decides the door* — resolve a system or a flow first, ambiguous → ask), and
+produces the plan's `## Design` (+ optional `## Flow Context`) snapshot, then returns here for
+Step 5. When `design_linked = false`, skip this step entirely (the design-context body is never
+loaded).
 
-This step embodies the **one-way boundary**: it only *reads* design artifacts. Never write
-to `.unikit/gamedesign/`.
-
-#### 4.5.1 — Resolve the target system
-
-1. Read `.unikit/gamedesign/GD-IDS.yaml` `systems` (the machine-readable roster — the
-   same data GAME.md's `## System Map [gen]` renders read-only; read the registry, not
-   the render). Each entry carries `id`, `name`, `category`, `tier`, `status`
-   (`active | deprecated`), `doc_status`, `version`, `implemented_version`, `depends_on`,
-   and `source`.
-2. Match the feature description against each system's `name` (and `category` —
-   `unikit-gd-spec` records it for exactly this match). Exclude entries whose `status` is
-   `deprecated` from candidate matching — emit
-   `WARN [design] SYS-<id> deprecated; excluded from candidates` and do not plan against
-   one. One confident match → use it. Several plausible matches, or none → resolve with
-   `AskUserQuestion` (list the candidate systems); **never guess** the system. If the user
-   confirms the feature has no design system (pure code/tech work) → set
-   `design_linked = false` and continue to Step 5 with no `## Design` section.
-3. For the resolved entry, read its system GDD from the `source` path
-   (`.unikit/gamedesign/systems/*.md`). Capture: the system `SYS-id`, current `version`,
-   the **effective status** (`doc_status`, overridden by `deprecated` from `status` and by
-   `implemented` when `implemented_version` is non-empty — the same precedence the
-   `## System Map [gen]` shows), and the **Acceptance Criteria** (verbatim, keyed by
-   `AC-<id>`).
-
-#### 4.5.2 — Status gate (warn, never block)
-
-Plan generation continues regardless of status, but surface a `WARN [design]` line when the
-resolved system's `Status` is not `detailed` or `reviewed`:
-
-- `not-started` / `skeleton` — the design is incomplete; the plan may rest on a partial
-  spec. Suggest finishing `/unikit-gd-system <system>` first.
-- `revised` — the design moved ahead of the code after a `/unikit-gd-system` edit; treat
-  this as a delta plan (4.5.3) and call out that old behavior may need removal.
-- `implemented` — code already exists for this version (the version is recorded in
-  `GD-IDS.yaml` `implemented_version`, read as the baseline in 4.5.3); confirm intent (a
-  re-plan usually implies an unrecorded delta).
-- `deprecated` — the system was dropped in a remap; 4.5.1 filters it out of candidate
-  matching. If the user explicitly targets it, `WARN [design]` and confirm intent before
-  planning — a deprecated system normally should not receive new code.
-
-#### 4.5.3 — Delta plan (design moved ahead of code)
-
-Prompts like "plan the new version of Combat" or "bring combat up to the design" need no
-`SYS-id` or version number — resolve them here:
-
-1. **System** — resolved in 4.5.1.
-2. **What is already implemented** — read the resolved system's `implemented_version`
-   from `.unikit/gamedesign/GD-IDS.yaml` (set by code-side `unikit-verify` on
-   all-AC-met). A **non-empty** `implemented_version` is the authoritative implemented
-   baseline. When the field is **absent or empty (`""`)** — e.g. a system implemented
-   before this field existed — fall back (migration grace) to scanning prior `## Design`
-   blocks for this `SYS-id` across `.unikit/code/plans/*/PLAN-BRIEF.md` (and
-   `.unikit/code/PLAN.md`); the highest version in a completed plan is the inferred
-   baseline. Neither source → ask: "no implementation found — plan the full system?".
-3. **Delta** — collect the system GDD's changelog blocks (section K) over the interval
-   `(implemented, current]`. Multiple edits → multiple blocks.
-4. **Tasks** — new/changed `AC` → implementation tasks; **removed `AC` → tasks to rip out
-   the old behavior**; changed formulas / tuning knobs → config tasks. If the delta is
-   large or unclear, suggest `/unikit-explore` before planning.
-
-#### 4.5.4 — Produce the `## Design` snapshot
-
-Prepare a `## Design` block for the plan (written in Step 5 — in `PLAN-BRIEF.md` for full
-mode, in the `## Technical Context` area for fast mode). It is a **snapshot at planning
-time**: cite AC text by reference to the live doc (do not fork it), and record the version.
-Checklist tasks reference the `AC-<id>`s.
-
-```markdown
-## Design
-- **System**: SYS-combat — `.unikit/gamedesign/systems/combat.md`
-- **Version**: 4 (prior plan 2026-06-10_combat-core implemented v3)
-- **Delta v3→v4** (from changelog): stacks up to 5 (section C); FORM-status-tick → config; knob max_stacks → config
-- **Acceptance Criteria (current, cited):**
-  - AC-combat-3 (changed): Given …, When …, Then …
-  - AC-combat-7, AC-combat-8 (new): …
-  - AC-combat-5 — **removed in v4** → task to remove the old behavior
-```
-
-For a first-time plan (no prior implementation), drop the `Delta` line and list the
-system's full current AC set.
-
-#### 4.5.5 — Resolve flow context (optional — the dynamics axis)
-
-After the system is resolved (4.5.1), check whether any **flow** exercises it. The
-dynamics axis grounds the plan in *what the player does* with this system over time,
-not just its rules — the flow's wiring-mode is often the single most actionable fact
-for the implementer. This is a read-only design read (One-Way Boundary); never write
-to `.unikit/gamedesign/`.
-
-1. Read `.unikit/gamedesign/GD-IDS.yaml` `flows`. An empty `flows: []` (or a registry
-   with no `flows` key yet) → **no flow context; skip silently** — never an error. For
-   the resolved `SYS-id`, find every flow whose `depends_on` includes it **or** whose
-   `goals[].targets` reference it (`GOAL → SYS`, or `GOAL → AC-<sys>-n`).
-2. For each matching flow, read its `FLOW.md` (`source` path) and capture the **flow
-   brief**: the `FLOW-id` + `mode`, the `GOAL` steps that touch this system (id +
-   summary + the `SYS`/`AC` each targets), and the **status of the systems the flow
-   depends on** (so the plan knows which dependencies are already `implemented`).
-3. **Wiring-mode dictates code structure** — surface it explicitly:
-   - `linear` → a fixed step sequence with a success check per `GOAL`;
-   - `conditional` → a branch dispatch on world/player state;
-   - `emergent` → a goal-set of independent affordances, no fixed order.
-4. **`Realized` is derived, read-only** — a flow is realized once **every** system in
-   its `depends_on` has a non-empty `implemented_version`. Report it; **never write it
-   back** (flows have no `implemented` field — flow delivery is confirmed by playtest,
-   not the plan/verify gate).
-
-Prepare an optional `## Flow Context` block (written in Step 5 alongside `## Design`),
-omitted entirely when no flow exercises the system:
-
-```markdown
-## Flow Context
-- **Flow**: FLOW-first-session — `.unikit/gamedesign/flows/FLOW-first-session.md` (mode: linear)
-- **Exercises this system at**: GOAL-first-session-2 → AC-combat-3 ("defeat the first enemy")
-- **Code shape (from mode)**: linear → a fixed step sequence with a success check per GOAL
-- **Dependency status**: SYS-combat detailed v4 · SYS-stamina implemented v2 — flow Realized: no
-```
+This step embodies the **one-way boundary**: it only *reads* design artifacts — never write to
+`.unikit/gamedesign/`.
 
 ### Step 5: Create the Plan
 
@@ -774,11 +466,11 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
    `PLAN-BRIEF.md`; in fast mode it goes into `PLAN.md`. Omit this section entirely for
    pure-code plans (`design_linked = false`).
 
-   **`## Flow Context`** (game-design module — only when a flow exercises the resolved
-   system, from Step 4.5.5) — insert the flow brief directly after `## Design`: the
-   `FLOW-id` + wiring-mode, the `GOAL` steps touching this system, the code shape implied
-   by the mode, and the derived (read-only) `Realized` state. Same file placement as
-   `## Design`. Omit when no flow matches.
+   **`## Flow Context`** (game-design module — only when a flow is in scope: the flow door,
+   or a flow that exercises the resolved system; from Step 4.5 / `design-context.md`) — insert
+   the flow brief directly after `## Design`: the `FLOW-id` + wiring-mode, the `GOAL` steps
+   touching the relevant system(s), the code shape implied by the mode, and the derived
+   (read-only) `Realized` state. Same file placement as `## Design`. Omit when no flow is in scope.
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether to generate tests after each phase
