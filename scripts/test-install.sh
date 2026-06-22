@@ -120,17 +120,34 @@ assert_contains "$PRINCIPLES_PATH" 'C# code adhering to Unity' \
   "engine_name + engine_code_language substituted in Core Principle 1"
 
 # ─────────────────────────────────────────────────────
-# Test 1b-gd: gd-principles.md installed as a system asset (flat copy, no vars)
-# Unlike dev-principles.md, gd-principles is engine-agnostic: installGdPrinciples
-# copies it verbatim (no engine-var substitution). It must land in .unikit/system/
-# and carry the shared severity rubric.
+# Test 1b-gd: gd-principles core + 5 shards installed as system assets under
+# .unikit/system/gamedesign/ (flat copies, no engine vars). After the shard split
+# installGamedesignSystemAssets copies every top-level data/gamedesign/*.md verbatim;
+# the slim core keeps the always-loaded sections (e.g. Zone Ownership / Anti-patterns)
+# while the moved sections (e.g. the Severity Rubric) live in their shards. The
+# pre-split FLAT path (.unikit/system/gd-principles.md) must NOT survive on init.
 # ─────────────────────────────────────────────────────
-GD_PRINCIPLES_PATH="$CLAUDE_DIR/.unikit/system/gd-principles.md"
-assert_exists "$GD_PRINCIPLES_PATH" "gd-principles.md created in .unikit/system/"
-assert_contains "$GD_PRINCIPLES_PATH" 'Severity Rubric' \
-  "gd-principles.md carries the shared severity rubric"
+GD_SYS_DIR="$CLAUDE_DIR/.unikit/system/gamedesign"
+GD_PRINCIPLES_PATH="$GD_SYS_DIR/gd-principles.md"
+assert_exists "$GD_PRINCIPLES_PATH" "gd-principles.md (core) created in .unikit/system/gamedesign/"
+assert_contains "$GD_PRINCIPLES_PATH" 'Zone Ownership' \
+  "gd-principles.md (core) carries the always-loaded Zone Ownership section"
+assert_contains "$GD_PRINCIPLES_PATH" 'Anti-patterns' \
+  "gd-principles.md (core) carries the Anti-patterns section"
 assert_not_contains "$GD_PRINCIPLES_PATH" '\{\{engine_name\}\}' \
-  "gd-principles.md has no engine vars (flat copy, unlike dev-principles.md)"
+  "gd-principles.md (core) has no engine vars (flat copy, unlike dev-principles.md)"
+# The pre-split flat path is orphan-deleted by installGamedesignSystemAssets.
+assert_not_exists "$CLAUDE_DIR/.unikit/system/gd-principles.md" \
+  "pre-split flat .unikit/system/gd-principles.md NOT present on init (core lives under gamedesign/ now)"
+# Per-shard delivery (mirror of 1b-dr) — each shard lands under gamedesign/, flat, no vars.
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-provenance gd-critique; do
+  assert_exists "$GD_SYS_DIR/$shard.md" "$shard.md shard created in .unikit/system/gamedesign/"
+  assert_not_contains "$GD_SYS_DIR/$shard.md" '\{\{engine_name\}\}' \
+    "$shard.md shard has no engine vars (flat copy)"
+done
+# The Severity Rubric moved out of the slim core into the gd-critique shard.
+assert_contains "$GD_SYS_DIR/gd-critique.md" 'Severity Rubric' \
+  "gd-critique.md shard carries the shared severity rubric (moved out of the core)"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-gr: gate-result-contract.md installed as a system asset (flat copy, no vars)
@@ -144,8 +161,9 @@ assert_contains "$GATE_CONTRACT_PATH" 'unikit-gate-result' \
 
 # ─────────────────────────────────────────────────────
 # Test 1b-dr: design-read.md installed as a system asset under .unikit/system/gamedesign/
-# (flat copy, no engine vars — installDesignRead mirrors installGdPrinciples). The extracted
-# mode references + plan design-context.md travel with their skills (non-flat copyDirectory).
+# (flat copy, no engine vars — installGamedesignSystemAssets copies it alongside the
+# gd-principles core + shards). The extracted mode references + plan design-context.md
+# travel with their skills (non-flat copyDirectory).
 # ─────────────────────────────────────────────────────
 DESIGN_READ_PATH="$CLAUDE_DIR/.unikit/system/gamedesign/design-read.md"
 assert_exists "$DESIGN_READ_PATH" "design-read.md created in .unikit/system/gamedesign/"

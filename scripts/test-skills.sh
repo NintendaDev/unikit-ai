@@ -797,26 +797,96 @@ for tpl in CONCEPT FLOW GAME GD-IDS GD_RULES_INDEX PITCH REVIEW SYSTEM; do
     fi
 done
 
-# gd-principles.md — the cross-skill working contract installed as a system
-# asset (.unikit/system/gd-principles.md). It is PROCESS, not domain: it must
-# carry the protocol + severity-rubric sections and, like dev-principles.md,
-# stay free of agent/engine template vars (it is copied without substitution).
+# gd-principles.md (core) + 5 shards — the cross-skill working contract installed as
+# system assets under .unikit/system/gamedesign/. It is PROCESS, not domain. After the
+# shard split (feature/gd-principles-shard-split) the slim core keeps the always-loaded
+# sections (zone model, routing, collaboration, one-way boundary, facts registry,
+# language, anti-patterns); the rest live in 5 sibling shards each skill loads on demand.
+# Every shard, like the core (and dev-principles.md), is flat-copied WITHOUT
+# substitution, so none may carry agent/engine template vars.
 GD_PRINCIPLES="$GD_DATA/gd-principles.md"
-if [[ ! -f "$GD_PRINCIPLES" ]]; then
-    fail "data/gamedesign/gd-principles.md — missing"
+GD_AUTHORING="$GD_DATA/gd-authoring.md"
+GD_LIFECYCLE="$GD_DATA/gd-lifecycle.md"
+GD_FLOW_AXIS="$GD_DATA/gd-flow-axis.md"
+GD_PROVENANCE="$GD_DATA/gd-provenance.md"
+GD_CRITIQUE="$GD_DATA/gd-critique.md"
+GD_SHARDS=("$GD_PRINCIPLES" "$GD_AUTHORING" "$GD_LIFECYCLE" "$GD_FLOW_AXIS" "$GD_PROVENANCE" "$GD_CRITIQUE")
+
+# (split-1) Core slim + all 5 shards present.
+GD_SHARD_MISSING=""
+for shard in "${GD_SHARDS[@]}"; do
+    [[ -f "$shard" ]] || GD_SHARD_MISSING+=" $(basename "$shard")"
+done
+if [[ -z "$GD_SHARD_MISSING" ]]; then
+    pass "gd-principles — core + 5 shards present (gd-authoring/gd-lifecycle/gd-flow-axis/gd-provenance/gd-critique)"
 else
-    for section in "Zone Ownership" "Routing" "Collaborative Protocol" "Section-Cycle Contract" "One-Way Boundary" "Flow Axis" "Delta Discipline" "Severity Rubric"; do
-        if grep -q "## $section" "$GD_PRINCIPLES"; then
-            pass "gd-principles.md — has '$section' section"
-        else
-            fail "gd-principles.md — missing '$section' section"
-        fi
-    done
-    if grep -qE '\{\{settings_file\}\}|\{\{skills_dir\}\}|\{\{engine_' "$GD_PRINCIPLES"; then
-        fail "gd-principles.md — contains agent/engine vars (must be substitution-free like dev-principles.md)"
-    else
-        pass "gd-principles.md — no agent/engine vars (system-file safe)"
-    fi
+    fail "gd-principles — missing core/shard file(s):$GD_SHARD_MISSING"
+fi
+
+# (split-2) Section ownership — each moved section lives in EXACTLY its shard; the slim
+# core keeps only the always-loaded sections (decomposed from the pre-split 8-section
+# core check). 'Lifecycle & Status' → gd-lifecycle is asserted in its own block below.
+gd_section_in() {  # <label> <file> <heading>
+    if grep -qF "## $3" "$2"; then pass "$1 — has '## $3'"; else fail "$1 — missing '## $3'"; fi
+}
+for section in "Zone Ownership" "Routing" "Collaborative Protocol" "One-Way Boundary" "Facts Registry & ID Conventions" "Language" "Anti-patterns"; do
+    gd_section_in "gd-principles(core)" "$GD_PRINCIPLES" "$section"
+done
+gd_section_in "gd-authoring"  "$GD_AUTHORING"  "Section-Cycle Contract"
+gd_section_in "gd-authoring"  "$GD_AUTHORING"  "Delta Discipline"
+gd_section_in "gd-flow-axis"  "$GD_FLOW_AXIS"  "Flow Axis"
+gd_section_in "gd-provenance" "$GD_PROVENANCE" "Provenance"
+gd_section_in "gd-critique"   "$GD_CRITIQUE"   "Critique Stance"
+gd_section_in "gd-critique"   "$GD_CRITIQUE"   "Severity Rubric"
+
+# (split-3) The slim core must NOT still carry a section that moved into a shard
+# (a botched split that duplicated content into both files).
+GD_CORE_LEAK=""
+for moved in "Section-Cycle Contract" "Delta Discipline" "Lifecycle & Status" "Flow Axis" "Provenance" "Critique Stance" "Severity Rubric"; do
+    grep -qF "## $moved" "$GD_PRINCIPLES" && GD_CORE_LEAK+=" '$moved'"
+done
+if [[ -z "$GD_CORE_LEAK" ]]; then
+    pass "gd-principles(core) — slim: no moved shard section leaked back into the core"
+else
+    fail "gd-principles(core) — moved section(s) still present in the slim core:$GD_CORE_LEAK"
+fi
+
+# (split-4) Substitution-free — every delivered shard (and the core) stays free of
+# agent/engine template vars (mirror of the dev-principles guard, applied per shard).
+GD_SUBST_BAD=""
+for shard in "${GD_SHARDS[@]}"; do
+    grep -qE '\{\{settings_file\}\}|\{\{skills_dir\}\}|\{\{engine_' "$shard" && GD_SUBST_BAD+=" $(basename "$shard")"
+done
+if [[ -z "$GD_SUBST_BAD" ]]; then
+    pass "gd-principles core + 5 shards — no agent/engine vars (system-file safe)"
+else
+    fail "gd-principles core/shard contains agent/engine vars (must be substitution-free):$GD_SUBST_BAD"
+fi
+
+# (split-5) Skill→shard binding (the load matrix) — each gd-skill's files reference the
+# shards it loads on Bootstrap. File-scoped grep over the skill dir (SKILL.md + references).
+gd_check_skill_shards() {  # <skill> <shard-stem>...
+    local skill="$1"; shift
+    local dir="$ROOT_DIR/skills/$skill"
+    local missing=""
+    for shard in "$@"; do grep -rqF "$shard" "$dir" 2>/dev/null || missing+=" $shard"; done
+    if [[ -z "$missing" ]]; then pass "skill→shard binding — $skill → $*"; else fail "skill→shard binding — $skill missing:$missing"; fi
+}
+gd_check_skill_shards "unikit-gd-spec"    "gd-authoring" "gd-lifecycle"
+gd_check_skill_shards "unikit-gd-system"  "gd-authoring" "gd-lifecycle" "gd-provenance"
+gd_check_skill_shards "unikit-gd-flow"    "gd-authoring" "gd-lifecycle" "gd-flow-axis" "gd-provenance"
+gd_check_skill_shards "unikit-gd-verify"  "gd-lifecycle" "gd-flow-axis" "gd-critique"
+gd_check_skill_shards "unikit-gd-explore" "gd-critique" "gd-provenance"
+gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-provenance" "gd-critique"
+# brainstorm loads core ONLY — assert it references none of the 5 shards.
+GD_BRAINSTORM_LEAK=""
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-provenance gd-critique; do
+    grep -rqF "$shard" "$ROOT_DIR/skills/unikit-gd-brainstorm" 2>/dev/null && GD_BRAINSTORM_LEAK+=" $shard"
+done
+if [[ -z "$GD_BRAINSTORM_LEAK" ]]; then
+    pass "skill→shard binding — unikit-gd-brainstorm references no shard (core only)"
+else
+    fail "skill→shard binding — unikit-gd-brainstorm references shard(s):$GD_BRAINSTORM_LEAK (should load core only)"
 fi
 
 # Status spine (Tier 1) — a system's doc_status lives on TWO authored surfaces that
@@ -876,12 +946,12 @@ if [[ -z "$GD_RENDER_WHY" ]]; then
 else
     fail "GAME.md template — System Map render surface incomplete:$GD_RENDER_WHY"
 fi
-# The state machine is defined once in gd-principles (#2); skills reference it by
-# name ("Lifecycle & Status"). Guard a re-clone that drops the section.
-if grep -q '^## Lifecycle & Status' "$GD_PRINCIPLES"; then
-    pass "gd-principles.md — has 'Lifecycle & Status' section"
+# The status state machine moved to the gd-lifecycle shard (#2); skills reference it
+# by name ("Lifecycle & Status"). Guard a re-clone/split that drops the section.
+if grep -q '^## Lifecycle & Status' "$GD_LIFECYCLE"; then
+    pass "gd-lifecycle.md — has 'Lifecycle & Status' section"
 else
-    fail "gd-principles.md — missing 'Lifecycle & Status' section"
+    fail "gd-lifecycle.md — missing 'Lifecycle & Status' section"
 fi
 
 # Regression (#R3) — gamedesign CORE rules carry domain knowledge ONLY. Phase R
@@ -1072,11 +1142,11 @@ UNIKIT_VERIFY_SKILL="$ROOT_DIR/skills/unikit-verify/SKILL.md"
 UNIKIT_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
 UNIKIT_VERIFY_CONTRACT="$ROOT_DIR/skills/unikit-verify/references/CONTEXT-GATES-AND-OWNERSHIP.md"
 
-# (T7-1) Provenance contract section in gd-principles (GP2).
-if grep -q '^## Provenance' "$GD_PRINCIPLES"; then
-    pass "gd-principles — ## Provenance (imports) section present (T7 GP2)"
+# (T7-1) Provenance contract section in the gd-provenance shard (GP2).
+if grep -q '^## Provenance' "$GD_PROVENANCE"; then
+    pass "gd-provenance — ## Provenance (imports) section present (T7 GP2)"
 else
-    fail "gd-principles — missing ## Provenance (imports) section (T7 GP2)"
+    fail "gd-provenance — missing ## Provenance (imports) section (T7 GP2)"
 fi
 
 # (T7-2) Provenance lens in lenses.md (L2).
@@ -1093,12 +1163,12 @@ else
     fail "GAME.md template — missing ## Changelog section (T7)"
 fi
 
-# (T7-4) GAME.md Delta-Discipline carve-out in gd-principles (#16) — file-scoped on
-#        the unique marker phrase inside ## Delta Discipline.
-if grep -qF 'GAME.md exception (not a system)' "$GD_PRINCIPLES"; then
-    pass "gd-principles — GAME.md Delta-Discipline carve-out present (#16)"
+# (T7-4) GAME.md Delta-Discipline carve-out in the gd-authoring shard (#16) —
+#        file-scoped on the unique marker phrase inside ## Delta Discipline.
+if grep -qF 'GAME.md exception (not a system)' "$GD_AUTHORING"; then
+    pass "gd-authoring — GAME.md Delta-Discipline carve-out present (#16)"
 else
-    fail "gd-principles — missing GAME.md Delta-Discipline carve-out (#16)"
+    fail "gd-authoring — missing GAME.md Delta-Discipline carve-out (#16)"
 fi
 
 # (T8-5) implemented_version field in the GD-IDS template (#9).
@@ -1383,26 +1453,27 @@ else
     fail "FL-4 gd-review flow lenses incomplete/gated:$FL_REVIEW_WHY"
 fi
 
-# (FL-5) gd-principles carries the Flow-axis process contracts (the AC · GOAL · event
-# grammar, the Flow Axis + Cross-axis staleness sections, FLOW/GOAL codes, the wiring
-# mode rule, C5 Win/Lose↔terminal GOAL), and the F1 ownership alignment holds:
-# unikit-gd-flow registers the flow (there is no add-flow in unikit-gd-spec), so ZERO
-# "registers a flow" is attributed to gd-spec — in either gd-principles or the gd-spec body.
+# (FL-5) the gd-flow-axis shard carries the Flow-axis process contracts (the
+# AC · GOAL · event grammar, the Flow Axis + Cross-axis staleness sections, FLOW/GOAL
+# codes, the wiring mode rule, C5 Win/Lose↔terminal GOAL). The F1 ownership alignment
+# stays on the CORE (Zone Ownership): unikit-gd-flow registers the flow (there is no
+# add-flow in unikit-gd-spec), so ZERO "registers a flow" is attributed to gd-spec —
+# in either the slim core or the gd-spec body.
 FL_PRINC_WHY=""
-grep -qF 'AC · GOAL · event' "$GD_PRINCIPLES"            || FL_PRINC_WHY+=" grammar"
-grep -qF '## Flow Axis' "$GD_PRINCIPLES"                 || FL_PRINC_WHY+=" flow-axis-section"
-grep -qF 'Cross-axis staleness' "$GD_PRINCIPLES"         || FL_PRINC_WHY+=" cross-axis-staleness"
-grep -qF 'FLOW-<slug>' "$GD_PRINCIPLES"                  || FL_PRINC_WHY+=" flow-code"
-grep -qF 'GOAL-<flow>-<n>' "$GD_PRINCIPLES"              || FL_PRINC_WHY+=" goal-code"
-grep -qF 'Wiring mode' "$GD_PRINCIPLES"                  || FL_PRINC_WHY+=" wiring-mode"
-grep -qF 'Win / Lose ↔ terminal GOAL' "$GD_PRINCIPLES"   || FL_PRINC_WHY+=" c5-win-lose"
+grep -qF 'AC · GOAL · event' "$GD_FLOW_AXIS"             || FL_PRINC_WHY+=" grammar"
+grep -qF '## Flow Axis' "$GD_FLOW_AXIS"                  || FL_PRINC_WHY+=" flow-axis-section"
+grep -qF 'Cross-axis staleness' "$GD_FLOW_AXIS"          || FL_PRINC_WHY+=" cross-axis-staleness"
+grep -qF 'FLOW-<slug>' "$GD_FLOW_AXIS"                   || FL_PRINC_WHY+=" flow-code"
+grep -qF 'GOAL-<flow>-<n>' "$GD_FLOW_AXIS"               || FL_PRINC_WHY+=" goal-code"
+grep -qF 'Wiring mode' "$GD_FLOW_AXIS"                   || FL_PRINC_WHY+=" wiring-mode"
+grep -qF 'Win / Lose ↔ terminal GOAL' "$GD_FLOW_AXIS"    || FL_PRINC_WHY+=" c5-win-lose"
 grep -qF 'there is no add-flow in' "$GD_PRINCIPLES"      || FL_PRINC_WHY+=" no-add-flow-contract"
-grep -qF 'registers a flow' "$GD_PRINCIPLES"             && FL_PRINC_WHY+=" F1-principles-registers-flow"
+grep -qF 'registers a flow' "$GD_PRINCIPLES"             && FL_PRINC_WHY+=" F1-core-registers-flow"
 grep -qF 'registers a flow' "$GD_SPEC_SKILL"             && FL_PRINC_WHY+=" F1-gd-spec-registers-flow"
 if [[ -z "$FL_PRINC_WHY" ]]; then
-    pass "FL-5 gd-principles flow contracts (grammar/codes/Flow Axis/cross-axis/wiring/C5) + F1 (zero 'registers a flow' at gd-spec)"
+    pass "FL-5 gd-flow-axis flow contracts (grammar/codes/Flow Axis/cross-axis/wiring/C5) + F1 (no add-flow in core; zero 'registers a flow' at gd-spec)"
 else
-    fail "FL-5 gd-principles flow contract drift:$FL_PRINC_WHY"
+    fail "FL-5 flow contract drift:$FL_PRINC_WHY"
 fi
 
 # (FL-6) The code side reads BOTH axes: unikit-plan emits the optional ## Flow Context
