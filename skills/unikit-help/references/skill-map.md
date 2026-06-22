@@ -198,6 +198,23 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   revise, version bump + changelog and status → `revised`.
 - **Required per system.** Before: `/unikit-gd-spec`. After: `/unikit-gd-review`, `/unikit-gd-verify`.
 
+### unikit-gd-flow
+- **Purpose:** Own one flow's design document (`flows/FLOW-<slug>.md`) — the **dynamics** axis of
+  the GDD (what the player *does* over time), alongside the system docs (the rules). Create the
+  skeleton, fill it (objectives, pacing, dependencies, funnel events), **and revise** it as a
+  versioned delta. Picks the wiring mode (linear | conditional | emergent) and re-renders the
+  `## Flow Map [gen]` / `## Funnel [gen]` blocks in `GAME.md`. A flow registers itself — there is
+  no add-flow in `/unikit-gd-spec`.
+- **When:** "design the first-session flow", "map the onboarding sequence", "write the FLOW for the
+  boss encounter", "retune the pacing", "add a branch", "rework the onboarding".
+- **In:** a flow name or `FLOW-slug` (+ optionally what to change). Mode and edit scale are inferred;
+  a `GOAL` that needs a missing system, or a `GAME.md` win/lose edit, routes to `/unikit-gd-spec`.
+- **Out:** `.unikit/gamedesign/flows/FLOW-<slug>.md` + its `flows:` / `events:` entries in
+  `GD-IDS.yaml`; re-renders `## Flow Map [gen]` / `## Funnel [gen]`; on a revise, version bump +
+  changelog and status → `revised`.
+- **Required per flow (the dynamics axis).** Before: `/unikit-gd-spec` (+ `/unikit-gd-system` for the
+  systems it exercises). After: `/unikit-gd-review`, `/unikit-gd-verify`.
+
 ### unikit-gd-review
 - **Purpose:** Qualitative design review ("is this design good/fun/balanced?") via adversarial
   lenses → severity-graded verdict + report. The design-side mirror of `/unikit-review`.

@@ -27,12 +27,13 @@ Then narrow with **at most one** follow-up:
   - feature → `/unikit-explore` (if direction unclear) → `/unikit-plan` → `/unikit-implement`
   - test    → `/unikit-verify` (vs plan) and/or the test phase in `/unikit-implement`
   - bug     → `/unikit-fix` (deep/unknown bug → `/unikit-explore` first)
-- **3 Game design** → "Decide what game · write the GDD · detail/revise a system · new mechanic · edit GAME.md?"
-  - what game            → `/unikit-gd-brainstorm`
-  - write GDD            → `/unikit-gd-spec`
-  - detail/revise system → `/unikit-gd-system`
-  - new mechanic         → `/unikit-gd-explore` (routes onward)
-  - edit GAME.md content → `/unikit-gd-spec`
+- **3 Game design** → "Decide what game · write the GDD · detail/revise a system · design/revise a flow · new mechanic · edit GAME.md?"
+  - what game             → `/unikit-gd-brainstorm`
+  - write GDD             → `/unikit-gd-spec`
+  - detail/revise system  → `/unikit-gd-system`
+  - design/revise a flow  → `/unikit-gd-flow`   (onboarding, session arc, pacing, funnel)
+  - new mechanic          → `/unikit-gd-explore` (routes onward)
+  - edit GAME.md content  → `/unikit-gd-spec`
 - **4 Which skill** → read `skill-map.md`, answer the comparison directly.
 
 Keep it to one question + one follow-up. Never fan out into a questionnaire.
@@ -58,6 +59,8 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "detail / spec out a system" | per-system GDD | `/unikit-gd-system <system>` | is the system on the map? |
 | "find / invent a new mechanic" | design research | `/unikit-gd-explore <intent>` (routes onward) | genre, target emotion, constraints, refs |
 | "improve / tune / rework a system" | design delta | `/unikit-gd-system <system> "<change>"` | tuning vs rework? |
+| "design the flow / onboarding / pacing / player journey / funnel" | per-flow GDD (dynamics) | `/unikit-gd-flow <flow>` | create vs revise (inferred) |
+| "retune the pacing / add a branch / rework the onboarding" | flow delta | `/unikit-gd-flow <flow> "<change>"` | tuning vs rework? |
 | "is this design good / fun / balanced" | design review | `/unikit-gd-review <scope>` | single system or all? |
 | "is the design consistent / what did this affect" | design check | `/unikit-gd-verify <scope>` | — |
 | "add a rule" / "always do X" | capture convention | `/unikit-rules <rule>` | — |

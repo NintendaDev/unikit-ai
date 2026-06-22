@@ -832,18 +832,24 @@ fi
 # own `approved` lifecycle enums) and the GD-IDS `revised:` date field stay out.
 GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
 GD_SYSTEM_TPL="$GD_DATA/templates/SYSTEM.md"
+GD_FLOW_TPL="$GD_DATA/templates/FLOW.md"
 GD_GAME_TPL="$GD_DATA/templates/GAME.md"
 GD_VERIFY_SKILL="$ROOT_DIR/skills/unikit-gd-verify/SKILL.md"
 SPINE_IDS_LINE=$(grep -F 'doc_status:' "$GD_IDS_TPL" 2>/dev/null | head -1 || true)
 SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head -1 || true)
+# Flow axis (PR#6): a flow's doc_status lives on the SAME 2-place spine — the FLOW.md
+# header `> **Status**:` legend ↔ the GD-IDS `flows[].doc_status` (the shared enum the
+# SPINE_IDS_LINE above already covers). Add the FLOW.md surface so the merge invariant
+# (reviewed+revised present, no approved-as-status) holds across the flow zone too.
+SPINE_FLOW_LINE=$(grep -F '> **Status**:' "$GD_FLOW_TPL" 2>/dev/null | head -1 || true)
 # the verify CHECK legend carries the design-writable enum on its single table row; the
 # GAME.md/CONCEPT.md `approved` carve-out lives in separate prose, so head -1 anchors
 # the row, not the explanation.
 SPINE_VERIFY_LINE=$(grep -F 'Status coherence' "$GD_VERIFY_SKILL" 2>/dev/null | head -1 || true)
 SPINE_OK=1
 SPINE_WHY=""
-# the 2 authored surfaces (GD-IDS + SYSTEM) + the verify check legend
-for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
+# the 3 authored surfaces (GD-IDS + SYSTEM + FLOW) + the verify check legend
+for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "FLOW.md:$SPINE_FLOW_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
     name="${pair%%:*}"
     line="${pair#*:}"
     if [[ -z "$line" ]]; then
@@ -854,7 +860,7 @@ for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "gd-ver
     if echo "$line" | grep -q "approved";   then SPINE_OK=0; SPINE_WHY+=" $name(approved-as-status)"; fi
 done
 if [[ "$SPINE_OK" -eq 1 ]]; then
-    pass "status spine — reviewed+revised on the 2 authored surfaces (GD-IDS/SYSTEM) + verify legend, no approved-as-status"
+    pass "status spine — reviewed+revised on the 3 authored surfaces (GD-IDS/SYSTEM/FLOW) + verify legend, no approved-as-status"
 else
     fail "status spine enum drift:$SPINE_WHY"
 fi
@@ -1278,6 +1284,163 @@ if [[ -z "$NOIDX_WHY" ]]; then
     pass "systemic no-GD-INDEX — zero GD-INDEX in gd-* + plan/verify/explore + data/gamedesign (P1 v2)"
 else
     fail "stale GD-INDEX reference(s):$NOIDX_WHY"
+fi
+
+# ── Flow-axis content guards (FL-1…FL-8) ─────────────────────────────────────
+# PR#6 (feature/gd-flow-axis Phase 2/3) added the FLOW axis: the unikit-gd-flow zone
+# skill, the flow checks in unikit-gd-verify, the flow lenses in unikit-gd-review, the
+# Flow-axis process contracts in gd-principles, the code-side flow-read
+# (unikit-plan / unikit-explore), the upstream brief surface (gd-brainstorm / gd-explore
+# / internal-design-lens), and the defective-gdd flow fixture. bash cannot run an LLM
+# skill, so these are grep invariants on the contract text. New path vars
+# GD_FLOW_SKILL / GD_BRAINSTORM_SKILL / UNIKIT_EXPLORE_SKILL (GD_FLOW_TPL is defined in
+# the status-spine block above) + reuse of GD_GAME_TPL / GD_PRINCIPLES / GD_VERIFY_SKILL
+# / GD_REVIEW_SKILL / GD_LENSES / GD_EXPLORE_SKILL / GD_INTERNAL_LENS / GD_SPEC_SKILL /
+# UNIKIT_PLAN_SKILL (all defined earlier in Part 6). All greps FILE-SCOPED -qF; the
+# negative checks use `grep -qF … && WHY+=…` (same set-e-safe idiom as the no-improve
+# guard). MSYS grep aborts on -iF, so every anchor is case-sensitive.
+GD_FLOW_SKILL="$ROOT_DIR/skills/unikit-gd-flow/SKILL.md"
+GD_BRAINSTORM_SKILL="$ROOT_DIR/skills/unikit-gd-brainstorm/SKILL.md"
+UNIKIT_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+GD_DEFECTIVE_DIR="$ROOT_DIR/scripts/test-fixtures/gamedesign/defective-gdd"
+
+# (FL-1) The flow-zone skill exists, and the FLOW.md template carries the mode-aware
+# structure both authoring forms need (objective-flow table for linear/conditional,
+# affordance template + pacing envelope for emergent), the funnel Events section, and
+# the GOAL-delta changelog line.
+FL_SKILL_WHY=""
+[[ -s "$GD_FLOW_SKILL" ]]                              || FL_SKILL_WHY+=" missing-skill"
+grep -qF 'flow zone' "$GD_FLOW_SKILL"                  || FL_SKILL_WHY+=" no-flow-zone-anchor"
+grep -qF 'Objective-flow table' "$GD_FLOW_TPL"         || FL_SKILL_WHY+=" tpl-objective-table"
+grep -qF 'Affordance / goal-template' "$GD_FLOW_TPL"   || FL_SKILL_WHY+=" tpl-affordance"
+grep -qF 'pacing envelope' "$GD_FLOW_TPL"              || FL_SKILL_WHY+=" tpl-pacing-envelope"
+grep -qF '## E. Events (Funnel)' "$GD_FLOW_TPL"        || FL_SKILL_WHY+=" tpl-events"
+grep -qF 'GOAL: + GOAL-' "$GD_FLOW_TPL"                || FL_SKILL_WHY+=" tpl-goal-delta"
+if [[ -z "$FL_SKILL_WHY" ]]; then
+    pass "FL-1 gd-flow skill present + FLOW.md template mode-aware content (table/affordance/envelope, Events, GOAL-delta)"
+else
+    fail "FL-1 gd-flow skill / FLOW.md template incomplete:$FL_SKILL_WHY"
+fi
+
+# (FL-2) GAME.md ships both [gen] render surfaces, and the F1 attribution is aligned:
+# the Flow Map + Funnel are rendered by unikit-gd-flow while the System Map stays
+# unikit-gd-spec. F2: ZERO "aggregated in `## Funnel`" in the GAME.md template OR the
+# gd-spec body — the contradictory L132 line was removed in P2-T1 (per-flow funnel lives
+# in ## Funnel; global/meta goals live in ## Monetization Stance, not aggregated here).
+FL_MAP_WHY=""
+grep -qF '## Flow Map [gen]' "$GD_GAME_TPL"                 || FL_MAP_WHY+=" no-flow-map-block"
+grep -qF '## Funnel [gen]' "$GD_GAME_TPL"                   || FL_MAP_WHY+=" no-funnel-block"
+grep -qF '`flows` by `unikit-gd-flow`' "$GD_GAME_TPL"       || FL_MAP_WHY+=" flow-map-not-gd-flow"
+grep -qF '`events` by `unikit-gd-flow`' "$GD_GAME_TPL"      || FL_MAP_WHY+=" funnel-not-gd-flow"
+grep -qF '`systems` by `unikit-gd-spec`' "$GD_GAME_TPL"     || FL_MAP_WHY+=" system-map-not-gd-spec"
+grep -qF 'aggregated in `## Funnel`' "$GD_GAME_TPL"         && FL_MAP_WHY+=" F2-game-tpl-funnel-aggregation"
+grep -qF 'aggregated in `## Funnel`' "$GD_SPEC_SKILL"       && FL_MAP_WHY+=" F2-gd-spec-funnel-aggregation"
+if [[ -z "$FL_MAP_WHY" ]]; then
+    pass "FL-2 GAME.md ## Flow Map/## Funnel by unikit-gd-flow + ## System Map by unikit-gd-spec (F1); zero funnel-aggregation in monetization (F2)"
+else
+    fail "FL-2 GAME.md flow render-surface / attribution drift:$FL_MAP_WHY"
+fi
+
+# (FL-3) unikit-gd-verify carries the flow-check family — the mirror of the system
+# checks plus the flow-specific ones (mode↔structure, Win/Lose↔terminal GOAL, funnel
+# continuity, cross-axis impact). Arrows are matched byte-for-byte (-qF, not -iF).
+FL_VERIFY_WHY=""
+grep -qF 'Flow checks (axis-aware' "$GD_VERIFY_SKILL"       || FL_VERIFY_WHY+=" flow-checks-section"
+grep -qF 'GOAL id validity' "$GD_VERIFY_SKILL"              || FL_VERIFY_WHY+=" goal-id-validity"
+grep -qF 'Dangling `GOAL' "$GD_VERIFY_SKILL"                || FL_VERIFY_WHY+=" dangling-goal"
+grep -qF 'mode ↔ structure' "$GD_VERIFY_SKILL"              || FL_VERIFY_WHY+=" mode-structure"
+grep -qF 'Win/Lose ↔ terminal GOAL' "$GD_VERIFY_SKILL"      || FL_VERIFY_WHY+=" win-lose-terminal"
+grep -qF 'Funnel continuity' "$GD_VERIFY_SKILL"             || FL_VERIFY_WHY+=" funnel-continuity"
+grep -qF 'Flow Depends 3-way' "$GD_VERIFY_SKILL"            || FL_VERIFY_WHY+=" flow-depends-3way"
+grep -qF 'Flow / Funnel map freshness' "$GD_VERIFY_SKILL"   || FL_VERIFY_WHY+=" flow-map-freshness"
+grep -qF 'Cross-axis impact' "$GD_VERIFY_SKILL"             || FL_VERIFY_WHY+=" cross-axis-impact"
+if [[ -z "$FL_VERIFY_WHY" ]]; then
+    pass "FL-3 unikit-gd-verify flow checks present (3-surface, dangling GOAL, mode↔structure, win/lose, funnel, GOAL-id, depends-3way, cross-axis)"
+else
+    fail "FL-3 unikit-gd-verify flow checks missing:$FL_VERIFY_WHY"
+fi
+
+# (FL-4) unikit-gd-review flow lenses are present AND activated — the three flow lenses
+# carry real adversarial prompts in lenses.md, the SKILL body marks them active, and
+# ZERO "stub — Flow axis" gating survives in EITHER file (P2-T4 removed the Phase-2
+# stubs in both — a residual stub in lenses.md would leave them gated under a green test).
+FL_REVIEW_WHY=""
+grep -qF '**pacing**' "$GD_LENSES"                  || FL_REVIEW_WHY+=" lenses-pacing"
+grep -qF '**guidance**' "$GD_LENSES"                || FL_REVIEW_WHY+=" lenses-guidance"
+grep -qF '**funnel**' "$GD_LENSES"                  || FL_REVIEW_WHY+=" lenses-funnel"
+grep -qF 'Flow lenses (active)' "$GD_REVIEW_SKILL"  || FL_REVIEW_WHY+=" skill-flow-active"
+grep -qF 'stub — Flow axis' "$GD_LENSES"            && FL_REVIEW_WHY+=" residual-stub-lenses"
+grep -qF 'stub — Flow axis' "$GD_REVIEW_SKILL"      && FL_REVIEW_WHY+=" residual-stub-skill"
+if [[ -z "$FL_REVIEW_WHY" ]]; then
+    pass "FL-4 gd-review flow lenses present (pacing/guidance/funnel) + activated (zero 'stub — Flow axis' in SKILL+lenses)"
+else
+    fail "FL-4 gd-review flow lenses incomplete/gated:$FL_REVIEW_WHY"
+fi
+
+# (FL-5) gd-principles carries the Flow-axis process contracts (the AC · GOAL · event
+# grammar, the Flow Axis + Cross-axis staleness sections, FLOW/GOAL codes, the wiring
+# mode rule, C5 Win/Lose↔terminal GOAL), and the F1 ownership alignment holds:
+# unikit-gd-flow registers the flow (there is no add-flow in unikit-gd-spec), so ZERO
+# "registers a flow" is attributed to gd-spec — in either gd-principles or the gd-spec body.
+FL_PRINC_WHY=""
+grep -qF 'AC · GOAL · event' "$GD_PRINCIPLES"            || FL_PRINC_WHY+=" grammar"
+grep -qF '## Flow Axis' "$GD_PRINCIPLES"                 || FL_PRINC_WHY+=" flow-axis-section"
+grep -qF 'Cross-axis staleness' "$GD_PRINCIPLES"         || FL_PRINC_WHY+=" cross-axis-staleness"
+grep -qF 'FLOW-<slug>' "$GD_PRINCIPLES"                  || FL_PRINC_WHY+=" flow-code"
+grep -qF 'GOAL-<flow>-<n>' "$GD_PRINCIPLES"              || FL_PRINC_WHY+=" goal-code"
+grep -qF 'Wiring mode' "$GD_PRINCIPLES"                  || FL_PRINC_WHY+=" wiring-mode"
+grep -qF 'Win / Lose ↔ terminal GOAL' "$GD_PRINCIPLES"   || FL_PRINC_WHY+=" c5-win-lose"
+grep -qF 'there is no add-flow in' "$GD_PRINCIPLES"      || FL_PRINC_WHY+=" no-add-flow-contract"
+grep -qF 'registers a flow' "$GD_PRINCIPLES"             && FL_PRINC_WHY+=" F1-principles-registers-flow"
+grep -qF 'registers a flow' "$GD_SPEC_SKILL"             && FL_PRINC_WHY+=" F1-gd-spec-registers-flow"
+if [[ -z "$FL_PRINC_WHY" ]]; then
+    pass "FL-5 gd-principles flow contracts (grammar/codes/Flow Axis/cross-axis/wiring/C5) + F1 (zero 'registers a flow' at gd-spec)"
+else
+    fail "FL-5 gd-principles flow contract drift:$FL_PRINC_WHY"
+fi
+
+# (FL-6) The code side reads BOTH axes: unikit-plan emits the optional ## Flow Context
+# brief (flow-targeting), unikit-explore grounds on the flows registry. Read-only — the
+# derived Realized state is never written back (one-way boundary stays systems-only).
+FL_CODE_WHY=""
+grep -qF '## Flow Context' "$UNIKIT_PLAN_SKILL"            || FL_CODE_WHY+=" plan-flow-context"
+grep -qF '`flows` for grounding' "$UNIKIT_EXPLORE_SKILL"   || FL_CODE_WHY+=" explore-flow-grounding"
+if [[ -z "$FL_CODE_WHY" ]]; then
+    pass "FL-6 code flow-read present (unikit-plan ## Flow Context + unikit-explore flows grounding)"
+else
+    fail "FL-6 code flow-read missing:$FL_CODE_WHY"
+fi
+
+# (FL-7) Upstream Maximal surface: the internal-design lens carries both flow brief
+# blocks, gd-explore tags flow research (Target … FLOW-<slug>), and gd-brainstorm has
+# the scenario/flow-seeds phase that feeds the dynamics axis downstream.
+FL_UP_WHY=""
+grep -qF '## Flow Improvement Plan' "$GD_INTERNAL_LENS"   || FL_UP_WHY+=" lens-improvement-block"
+grep -qF '## Flow Feature Plan' "$GD_INTERNAL_LENS"       || FL_UP_WHY+=" lens-feature-block"
+grep -qF 'FLOW-<slug>' "$GD_EXPLORE_SKILL"                || FL_UP_WHY+=" explore-flow-target-tag"
+grep -qF 'Scenario / Flow seeds' "$GD_BRAINSTORM_SKILL"   || FL_UP_WHY+=" brainstorm-flow-phase"
+if [[ -z "$FL_UP_WHY" ]]; then
+    pass "FL-7 upstream flow surface (internal-design-lens flow blocks, gd-explore FLOW target tag, gd-brainstorm flow phase)"
+else
+    fail "FL-7 upstream flow surface incomplete:$FL_UP_WHY"
+fi
+
+# (FL-8) The defective-gdd fixture grew the flow axis (P2-T5): a flows/FLOW-first-run.md
+# on disk + non-empty GD-IDS flows/goals/events with one seeded defect per flow check
+# (the README §"Flow-axis mechanical defects" documents each). bash cannot run the LLM
+# smoke — assert the flow surface is present + well-formed; the agent-driven
+# /unikit-gd-verify + /unikit-gd-review smoke reads the README ground truth.
+FL_FIX_WHY=""
+[[ -s "$GD_DEFECTIVE_DIR/flows/FLOW-first-run.md" ]]                  || FL_FIX_WHY+=" no-flow-doc"
+grep -qF 'FLOW-first-run' "$GD_DEFECTIVE_DIR/GD-IDS.yaml"             || FL_FIX_WHY+=" no-flows-entry"
+grep -qF 'goals:' "$GD_DEFECTIVE_DIR/GD-IDS.yaml"                     || FL_FIX_WHY+=" no-goals"
+grep -qF 'GOAL-first-run-' "$GD_DEFECTIVE_DIR/GD-IDS.yaml"            || FL_FIX_WHY+=" no-goal-rows"
+grep -qF 'flow: FLOW-first-run' "$GD_DEFECTIVE_DIR/GD-IDS.yaml"       || FL_FIX_WHY+=" no-event-flow-pointer"
+grep -qF 'Flow-axis mechanical defects' "$GD_DEFECTIVE_DIR/README.md" || FL_FIX_WHY+=" no-readme-flow-defects"
+if [[ -z "$FL_FIX_WHY" ]]; then
+    pass "FL-8 defective-gdd fixture — flows/FLOW-first-run.md + GD-IDS flows/goals/events + README flow-defect ground truth"
+else
+    fail "FL-8 defective-gdd flow fixture incomplete:$FL_FIX_WHY"
 fi
 
 # unikit-memory distillation-behavior content guards (PLAN.md T1–T10). The router

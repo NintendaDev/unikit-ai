@@ -137,6 +137,7 @@ canonical intent list and the full routing table live in
 | Decide what game to build | `/unikit-gd-brainstorm` | pipelines.md |
 | Create the game design (GDD) | `/unikit-gd-spec` | pipelines.md |
 | Detail / fill / revise a system's mechanics | `/unikit-gd-system` | skill-map.md |
+| Design / pace / revise a flow (onboarding, session arc, funnel) | `/unikit-gd-flow` | skill-map.md |
 | Find or invent a new mechanic | `/unikit-gd-explore` (then it routes onward) | pipelines.md |
 | Improve / tune / rework a design system | `/unikit-gd-system` | skill-map.md |
 | Edit the master GDD (`GAME.md`) content | `/unikit-gd-spec` | skill-map.md |

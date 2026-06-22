@@ -78,19 +78,28 @@ ideate:   /unikit-gd-brainstorm    (optional) blank page → a CONCEPT card (pil
             │
 spec:     /unikit-gd-spec          REQUIRED  master GDD (GAME.md + ## System Map [gen]) + GD-IDS.yaml registry
             │                                 (also: edit GAME.md content, import a GDD, add one system)
-system:   /unikit-gd-system        REQUIRED per system  the A-K per-system doc (create/fill + revise as a
-            │                                 versioned delta: tune / tweak / rework)
+system:   /unikit-gd-system        REQUIRED per system  the A-K per-system doc — the *rules* (create/fill +
+            │                                 revise as a versioned delta: tune / tweak / rework)
+flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynamics* (objectives, pacing, funnel);
+            │                                 picks the wiring mode + re-renders ## Flow Map [gen] / ## Funnel [gen]
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → severity verdict
             │
-verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" + impact
-              └─ loops back: a revised system is re-reviewed, re-verified
+verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" + cross-axis impact
+              └─ loops back: a revised system or flow is re-reviewed, re-verified
 ```
+
+The GDD has **two authoring axes**: **systems** (`/unikit-gd-system`, the rules) and **flows**
+(`/unikit-gd-flow`, the dynamics — what the player does over time). A flow's `GOAL`s *exercise*
+systems (`GOAL → SYS → AC`) and emit funnel `event`s; `/unikit-gd-flow` registers the flow itself
+(its `flows:` / `events:` entries) and re-renders the `## Flow Map [gen]` / `## Funnel [gen]` blocks
+— there is no add-flow in `/unikit-gd-spec`.
 
 **Research is cross-cutting**, not a fixed stage. `/unikit-gd-explore` can:
 - feed brainstorm (delegated market validation),
 - research a reference game (mechanics → dynamics → aesthetics),
 - or run the **internal-design lens** — read-only research aimed inward at *this* game, to
-  improve an existing system or invent a new mechanic. It then **routes you** (see below).
+  improve an existing system, invent a new mechanic, or work out a **flow** (pacing /
+  progression / a new player journey). It then **routes you** (see below).
 
 ### The internal-design-lens 3-way routing
 After `/unikit-gd-explore` researches a change/addition for your game, it reads the target's
@@ -101,6 +110,11 @@ status and hands you the right next command (you don't pick):
 | no doc / not-started | `/unikit-gd-spec` (add the system to the map) → `/unikit-gd-system` |
 | skeleton (placeholders) | `/unikit-gd-system` (fill it in) |
 | detailed / reviewed / revised | `/unikit-gd-system` (record the change as a delta) |
+
+For a **flow** target the routing collapses to a single door — `/unikit-gd-flow` owns the flow's
+whole lifecycle (create / fill / revise) and a flow registers itself, so there is no spec
+add-flow step. The lens pre-fills it from a `## Flow Feature Plan` (new flow) or
+`## Flow Improvement Plan` (revision) brief.
 
 ### gd-review vs gd-verify (commonly confused)
 - **`/unikit-gd-review`** = subjective quality ("is this design *good*?") — adversarial lenses,
@@ -117,6 +131,10 @@ status and hands you the right next command (you don't pick):
 - `/unikit-plan` reads the GDD when a system is linked: it copies a `## Design` snapshot into the
   plan brief, citing the system's acceptance criteria (`AC-<id>`s) and a version. The code is
   built to satisfy those AC.
+- `/unikit-plan` also reads the **flow** axis: when a system in scope is exercised by a flow, it
+  adds an optional `## Flow Context` brief (the `GOAL`-steps + the flow's wiring mode, which shapes
+  the code structure) parallel to `## Design`. A flow's `Realized` state is **derived** from its
+  systems' `implemented_version` — code never writes back into flows.
 - `/unikit-verify` checks the implementation against the AC snapshotted **in the plan** (not the
   live GDD), preserving the boundary.
 - **The one exception:** when every cited AC is met, `/unikit-verify` stamps `implemented_version`
