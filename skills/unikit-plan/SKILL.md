@@ -234,15 +234,16 @@ Check whether `.unikit/gamedesign/GD-IDS.yaml` exists.
   upgraded via /unikit-gd-spec` and set `design_linked = false` (the plan continues
   purely code-side, never silently misreading the old layout). With a valid
   `version: 2`, set `design_linked = true` and note it for **Step 4.5**, which reads
-  the relevant system design and produces the plan's `## Design` snapshot. Do NOT read
-  the design docs here — Step 4.5 owns that, after the feature scope is clear.
+  the relevant system design (and any flow that exercises it) and produces the plan's
+  `## Design` + optional `## Flow Context` snapshots. Do NOT read the design docs here
+  — Step 4.5 owns that, after the feature scope is clear.
 - **Absent** → set `design_linked = false` and skip every design step. The plan is
   purely code-side, exactly as before — projects without a design module are unaffected.
 
-**One-way boundary:** planning *reads* design (`GD-IDS.yaml`, `systems/*.md`, and the
-read-only `## System Map [gen]` in `GAME.md`); it never writes or edits any
-`.unikit/gamedesign/` artifact. Design changes flow only through the `/unikit-gd-*`
-skills.
+**One-way boundary:** planning *reads* design (`GD-IDS.yaml`, `systems/*.md`,
+`flows/*.md`, and the read-only `## System Map [gen]` / `## Flow Map [gen]` in
+`GAME.md`); it never writes or edits any `.unikit/gamedesign/` artifact. Design
+changes flow only through the `/unikit-gd-*` skills.
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
@@ -716,6 +717,42 @@ Checklist tasks reference the `AC-<id>`s.
 For a first-time plan (no prior implementation), drop the `Delta` line and list the
 system's full current AC set.
 
+#### 4.5.5 — Resolve flow context (optional — the dynamics axis)
+
+After the system is resolved (4.5.1), check whether any **flow** exercises it. The
+dynamics axis grounds the plan in *what the player does* with this system over time,
+not just its rules — the flow's wiring-mode is often the single most actionable fact
+for the implementer. This is a read-only design read (One-Way Boundary); never write
+to `.unikit/gamedesign/`.
+
+1. Read `.unikit/gamedesign/GD-IDS.yaml` `flows`. An empty `flows: []` (or a registry
+   with no `flows` key yet) → **no flow context; skip silently** — never an error. For
+   the resolved `SYS-id`, find every flow whose `depends_on` includes it **or** whose
+   `goals[].targets` reference it (`GOAL → SYS`, or `GOAL → AC-<sys>-n`).
+2. For each matching flow, read its `FLOW.md` (`source` path) and capture the **flow
+   brief**: the `FLOW-id` + `mode`, the `GOAL` steps that touch this system (id +
+   summary + the `SYS`/`AC` each targets), and the **status of the systems the flow
+   depends on** (so the plan knows which dependencies are already `implemented`).
+3. **Wiring-mode dictates code structure** — surface it explicitly:
+   - `linear` → a fixed step sequence with a success check per `GOAL`;
+   - `conditional` → a branch dispatch on world/player state;
+   - `emergent` → a goal-set of independent affordances, no fixed order.
+4. **`Realized` is derived, read-only** — a flow is realized once **every** system in
+   its `depends_on` has a non-empty `implemented_version`. Report it; **never write it
+   back** (flows have no `implemented` field — flow delivery is confirmed by playtest,
+   not the plan/verify gate).
+
+Prepare an optional `## Flow Context` block (written in Step 5 alongside `## Design`),
+omitted entirely when no flow exercises the system:
+
+```markdown
+## Flow Context
+- **Flow**: FLOW-first-session — `.unikit/gamedesign/flows/FLOW-first-session.md` (mode: linear)
+- **Exercises this system at**: GOAL-first-session-2 → AC-combat-3 ("defeat the first enemy")
+- **Code shape (from mode)**: linear → a fixed step sequence with a success check per GOAL
+- **Dependency status**: SYS-combat detailed v4 · SYS-stamina implemented v2 — flow Realized: no
+```
+
 ### Step 5: Create the Plan
 
 Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
@@ -736,6 +773,12 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
    version, optional delta, and cited Acceptance Criteria. In full mode it lives in
    `PLAN-BRIEF.md`; in fast mode it goes into `PLAN.md`. Omit this section entirely for
    pure-code plans (`design_linked = false`).
+
+   **`## Flow Context`** (game-design module — only when a flow exercises the resolved
+   system, from Step 4.5.5) — insert the flow brief directly after `## Design`: the
+   `FLOW-id` + wiring-mode, the `GOAL` steps touching this system, the code shape implied
+   by the mode, and the derived (read-only) `Realized` state. Same file placement as
+   `## Design`. Omit when no flow matches.
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether to generate tests after each phase
