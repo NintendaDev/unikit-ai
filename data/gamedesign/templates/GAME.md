@@ -12,8 +12,8 @@ monetization stance, and non-goals. Per-system detail lives in SYSTEM GDDs;
 machine-readable facts live in `GD-IDS.yaml`. Edits go through `unikit-gd-spec`
 (version bump + light changelog — the GAME.md carve-out in `gd-authoring` → Delta
 Discipline). The generated maps at the bottom (`## System Map [gen]` /
-`## Flow Map [gen]` / `## Funnel [gen]`) are rendered read-only from `GD-IDS.yaml` —
-they are an appendix, not part of the one-pager.
+`## Flow Map [gen]` / `## Funnel [gen]` / `## Content Map [gen]`) are rendered
+read-only from `GD-IDS.yaml` — they are an appendix, not part of the one-pager.
 
 ## Premise / Theme
 
@@ -264,3 +264,27 @@ flow's `GOAL`. Global/meta metrics (retention, LTV, conversion) are authored in
 |-------|-------|------|----------|
 | 1 | [event_name] | FLOW-[slug] | [what behaviour it captures] |
 <!-- /gen:funnel -->
+
+## Content Map [gen]
+
+<!-- gen:content-map -->
+Generated read-only from `GD-IDS.yaml` `content_types` by `unikit-gd-content`
+(with `content` unit counts) — **do not hand-edit**. Re-rendered on every content-registry
+change (`unikit-gd-verify` checks freshness). One row per content type, grouped by
+`scale`. `Status` mirrors the type's `doc_status` (plus `deprecated` from the
+`status` field); `Ver` is `—` until `skeleton`. `Units` is the registered `count`
+for a `bulk` type (its instances live in the editor, not here) or the number of
+`curated` rows.
+
+### Bulk
+
+| ID | Content Type | Scale | Status | Ver | Belongs (SYS) | Units | Doc |
+|----|--------------|-------|--------|-----|---------------|-------|-----|
+| CT-[slug] | [Name] | bulk | not-started | — | [SYS-slug] | [count] | [content-types/CT-[slug].md] |
+
+### Curated
+
+| ID | Content Type | Scale | Status | Ver | Belongs (SYS) | Units | Doc |
+|----|--------------|-------|--------|-----|---------------|-------|-----|
+| CT-[slug] | [Name] | curated | not-started | — | [SYS-slug] | [n] | [content-types/CT-[slug].md] |
+<!-- /gen:content-map -->
