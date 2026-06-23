@@ -1797,6 +1797,50 @@ else
     fail "flow-first input incomplete:$FF_WHY"
 fi
 
+# ── Content-read guards (Stage 3: CR-1…CR-3) ─────────────────────────────────
+# Stage 3 delivered the Content axis to the code side READ-ONLY (the mirror of the
+# flow-read, FL-6 + FF-1): the shared design-read content surface + 3-axis door, the
+# unikit-plan ## Content Context brief (design-context.md §4.5.6 + the SKILL.md assembly
+# step), and unikit-explore first-class content grounding. No new writeback — content has
+# no implemented_version (One-Way Boundary stays systems-only). All FILE-SCOPED -qF.
+
+# (CR-1) design-read.md carries the content read-surface + the 3-axis content door in the
+# Flow-First Resolution ladder (the shared contract both code consumers apply).
+CR_DR_WHY=""
+grep -qF 'content_types' "$GD_DESIGN_READ"            || CR_DR_WHY+=" no-content-surface"
+grep -qF 'content-types/*.md' "$GD_DESIGN_READ"       || CR_DR_WHY+=" no-content-doc-surface"
+grep -qF '## Content Map [gen]' "$GD_DESIGN_READ"     || CR_DR_WHY+=" no-content-map-render"
+grep -qF 'system | flow | content' "$GD_DESIGN_READ"  || CR_DR_WHY+=" no-3axis-door"
+if [[ -z "$CR_DR_WHY" ]]; then
+    pass "CR-1 design-read.md content surface (content_types/content-types docs/Content Map) + 3-axis door (system | flow | content)"
+else
+    fail "CR-1 design-read.md content surface/door incomplete:$CR_DR_WHY"
+fi
+
+# (CR-2) unikit-plan emits the ## Content Context brief: the §4.5.6 mechanics live in
+# design-context.md AND the assembly step in SKILL.md references the block (without the
+# SKILL.md half the brief is described but never assembled into PLAN-BRIEF).
+CR_PLAN_WHY=""
+grep -qF '4.5.6' "$UNIKIT_PLAN_DESIGN_CONTEXT"               || CR_PLAN_WHY+=" no-4.5.6"
+grep -qF '## Content Context' "$UNIKIT_PLAN_DESIGN_CONTEXT"  || CR_PLAN_WHY+=" no-content-context-context"
+grep -qF '## Content Context' "$UNIKIT_PLAN_SKILL"           || CR_PLAN_WHY+=" no-content-context-skill"
+if [[ -z "$CR_PLAN_WHY" ]]; then
+    pass "CR-2 unikit-plan ## Content Context (design-context.md §4.5.6 mechanics + SKILL.md assembly step)"
+else
+    fail "CR-2 unikit-plan content brief incomplete:$CR_PLAN_WHY"
+fi
+
+# (CR-3) unikit-explore grounds first-class on the content axis (reads content_types via
+# the design-read content door; One-Way Boundary — read-only).
+CR_EXP_WHY=""
+grep -qF 'content_types' "$UNIKIT_EXPLORE_SKILL"              || CR_EXP_WHY+=" no-content-grounding"
+grep -qF 'First-class content input' "$UNIKIT_EXPLORE_SKILL"  || CR_EXP_WHY+=" no-first-class-content"
+if [[ -z "$CR_EXP_WHY" ]]; then
+    pass "CR-3 unikit-explore content grounding (content_types read + first-class content input)"
+else
+    fail "CR-3 unikit-explore content grounding incomplete:$CR_EXP_WHY"
+fi
+
 # (P5-1) Rule-Loading Discipline: canon in the GD_RULES_INDEX template + anchored in the
 # six rule-loading gd-skills; gd-verify is exempt (mechanical, loads no rules).
 P5_WHY=""

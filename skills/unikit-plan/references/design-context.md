@@ -3,9 +3,9 @@
 > Loaded on demand by `unikit-plan` Step 4.5 dispatch **only when
 > `design_linked = true`** (the gate is resolved inline in Step 0.5 of `SKILL.md`;
 > this body is not entered otherwise). It produces the plan's `## Design` (+
-> optional `## Flow Context`) snapshot, then control returns to Step 5 in
-> `SKILL.md`. One-way boundary: this body only *reads* design — it never writes
-> `.unikit/gamedesign/`.
+> optional `## Flow Context` / `## Content Context`) snapshot, then control returns
+> to Step 5 in `SKILL.md`. One-way boundary: this body only *reads* design — it
+> never writes `.unikit/gamedesign/`.
 
 ## Step 4.5: Resolve Design Context (game-design module)
 
@@ -32,10 +32,15 @@ rule to pick which axis to resolve first (do not re-author the ladder — it liv
   flow", a player sequence) → resolve a **flow first** (see *Flow door* below), then read the systems
   it exercises via 4.5.1–4.5.4 (cross-axis) for `## Design`.
 - **System door** — the request names/implies a system (a mechanic, a `SYS-<slug>` id, a `category`) →
-  resolve a **system first** (4.5.1), then read the flows that exercise it via 4.5.5 (cross-axis) for
-  `## Flow Context`.
-- **Ambiguous** (reads as either axis, or names both) → `AskUserQuestion` listing the candidate axes;
-  **never guess** (per design-read). This mirrors the `/unikit-gd-explore` routing stance.
+  resolve a **system first** (4.5.1), then read the flows that exercise it via 4.5.5 and the content
+  types that feed it via 4.5.6 (cross-axis) for `## Flow Context` / `## Content Context`.
+- **Content door** — the request names/implies a content type (a `CT-<slug>` id, "the item-catalog
+  schema", "plan the catalog of items") → resolve the **content type first-class** via 4.5.6, then
+  read its `belongs_to` system via 4.5.1–4.5.4 (cross-axis) for `## Design`. Outside a CT-shaped
+  request, content is reached as the cross-axis read of the System / Flow door — not an independent
+  option.
+- **Ambiguous** (reads as more than one axis, or names several) → `AskUserQuestion` listing the
+  candidate axes; **never guess** (per design-read). This mirrors the `/unikit-gd-explore` routing stance.
 
 **Flow door — resolve the flow first.** When intent points at a flow:
 
@@ -166,6 +171,45 @@ omitted entirely when no flow exercises the system:
 - **Exercises this system at**: GOAL-first-session-2 → AC-combat-3 ("defeat the first enemy")
 - **Code shape (from mode)**: linear → a fixed step sequence with a success check per GOAL
 - **Dependency status**: SYS-combat detailed v4 · SYS-stamina implemented v2 — flow Realized: no
+```
+
+#### 4.5.6 — Resolve content context (the catalog axis)
+
+The **System / Flow door** runs this after the primary artifact is resolved as the cross-axis
+read; the **Content door** runs it first (the content type is the primary artifact — 4.5.0b). The
+catalog axis grounds the plan in *what content the system consumes and by what schema* — the
+`CT.fields` schema is the literal data contract the implementer codes against. This is a read-only
+design read (One-Way Boundary); never write to `.unikit/gamedesign/`.
+
+1. Read `.unikit/gamedesign/GD-IDS.yaml` `content_types`. An empty `content_types: []` (or a
+   registry with no `content_types` key yet) → **no content context; skip silently** — never an
+   error. Resolve by **two paths** (per the content door of the Flow-First Resolution ladder):
+   - **(a) Content door** — the request named a content type first-class (a `CT-<slug>` id, "the
+     item-catalog schema") → the brief is built from **that** `CT` (plus its `belongs_to` system as
+     cross-axis context).
+   - **(b) System / Flow door (cross-axis)** — for the resolved `SYS-id`, find every content type
+     whose `belongs_to` names it **or** whose `CT.fields` carry a `ref<SYS>` to it.
+2. For each resolved content type, read its `CONTENT-TYPE.md` (`source` path) and capture the
+   **content brief**: the `CT-id` + `scale`, the `CT.fields` schema (the typed contract the code
+   reads — field names, types, `required`/`default`/`range`), the `belongs_to` system, and the
+   `ref<>` dependencies (`ref<RES>` / `ref<ENT>` / `ref<SYS>` / …).
+3. **`scale` dictates code structure** — surface it explicitly:
+   - `bulk` → a data table / loader driven by the `spec` descriptor (the instances live in data,
+     not code); the code reads the `CT.fields` shape and ingests the catalog;
+   - `curated` → a set of named instances built from the `fields` rows in the registry.
+4. **No writeback** — content types have no `implemented_version`; content delivery is a playtest
+   call, never a plan/verify gate (the same read-only stance as a flow's `Realized`). Report the
+   schema; never write to `.unikit/gamedesign/`.
+
+Prepare an optional `## Content Context` block (written in Step 5 alongside `## Design` /
+`## Flow Context`), omitted entirely when no content type is bound:
+
+```markdown
+## Content Context
+- **Content type**: CT-item — `.unikit/gamedesign/content-types/CT-item.md` (scale: bulk)
+- **Feeds**: SYS-inventory (belongs_to) · referenced by GOAL-first-session-3 (cross-axis)
+- **Schema (CT.fields, the code contract)**: base_value:int[1,100000] req · category:enum{jewelry,electronics,tools} · condition:float[0,1]=1.0 · reward:ref<RES>
+- **Code shape (from scale)**: bulk → a data-driven loader over `data/items.csv` following CT-item.fields
 ```
 
 **After producing the snapshot(s) → return to Step 5 in `SKILL.md`.**

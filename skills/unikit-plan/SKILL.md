@@ -234,9 +234,10 @@ Check whether `.unikit/gamedesign/GD-IDS.yaml` exists.
   upgraded via /unikit-gd-spec` and set `design_linked = false` (the plan continues
   purely code-side, never silently misreading the old layout). With a valid
   `version: 2`, set `design_linked = true` and note it for **Step 4.5**, which reads
-  the relevant system design (and any flow that exercises it) and produces the plan's
-  `## Design` + optional `## Flow Context` snapshots. Do NOT read the design docs here
-  — Step 4.5 owns that, after the feature scope is clear.
+  the relevant system design (and any flow that exercises it, and any content type that feeds
+  it) and produces the plan's `## Design` + optional `## Flow Context` / `## Content Context`
+  snapshots. Do NOT read the design docs here — Step 4.5 owns that, after the feature scope is
+  clear.
 - **Absent** → set `design_linked = false` and skip every design step. The plan is
   purely code-side, exactly as before — projects without a design module are unaffected.
 
@@ -437,9 +438,9 @@ Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules, patch
 true, load `{{skills_dir}}/{{self_name}}/references/design-context.md` and follow it on demand —
 do **not** keep the design-context body in context for pure-code plans. That body reads the shared
 `design-read` contract (`.unikit/system/gamedesign/design-read.md`), applies **Flow-First
-Resolution** (*intent decides the door* — resolve a system or a flow first, ambiguous → ask), and
-produces the plan's `## Design` (+ optional `## Flow Context`) snapshot, then returns here for
-Step 5. When `design_linked = false`, skip this step entirely (the design-context body is never
+Resolution** (*intent decides the door* — resolve a system, a flow, or a content type first,
+ambiguous → ask), and produces the plan's `## Design` (+ optional `## Flow Context` /
+`## Content Context`) snapshot, then returns here for Step 5. When `design_linked = false`, skip this step entirely (the design-context body is never
 loaded).
 
 This step embodies the **one-way boundary**: it only *reads* design artifacts — never write to
@@ -471,6 +472,15 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
    the flow brief directly after `## Design`: the `FLOW-id` + wiring-mode, the `GOAL` steps
    touching the relevant system(s), the code shape implied by the mode, and the derived
    (read-only) `Realized` state. Same file placement as `## Design`. Omit when no flow is in scope.
+
+   **`## Content Context`** (game-design module — only when a content type is in scope: the
+   content door, or a content type that feeds the resolved system; from Step 4.5 /
+   `design-context.md` §4.5.6) — insert the content brief directly after `## Flow Context`: the
+   `CT-id` + `scale`, the `CT.fields` schema (the data contract the code reads), the `belongs_to`
+   system, and the code shape implied by `scale` (`bulk` → a data-driven loader; `curated` → named
+   instances). Same file placement as `## Design`. Omit when no content type is in scope. There is
+   **no** writeback — content has no `implemented_version` (read-only, the same stance as a flow's
+   `Realized`).
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether to generate tests after each phase
