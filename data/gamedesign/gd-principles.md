@@ -17,8 +17,8 @@ loaded on Bootstrap only by the skills that use it:
 
 | Shard | Owns | Loaded by |
 |---|---|---|
-| `gd-authoring.md` | Section-Cycle Contract + Delta Discipline (incl. the GAME.md carve-out) | spec, system, flow |
-| `gd-lifecycle.md` | Lifecycle & Status | spec, system, flow, verify |
+| `gd-authoring.md` | Section-Cycle Contract + Delta Discipline (incl. the GAME.md carve-out) | spec, system, flow, content |
+| `gd-lifecycle.md` | Lifecycle & Status | spec, system, flow, verify, content |
 | `gd-flow-axis.md` | Flow Axis | flow, verify, review |
 | `gd-provenance.md` | Provenance (imports) | system, flow, review, explore |
 | `gd-critique.md` | Critique Stance + Severity Rubric | review, verify, explore |
@@ -41,6 +41,7 @@ owns a thing** (an authoring zone, with the full create+update cycle inside it);
 | `unikit-gd-spec` | the **spec / map** zone — `GAME.md` (the authored one-pager **and** the regenerated `## System Map [gen]`), the system roster (add-system), the `## System Map` block |
 | `unikit-gd-system` | the **system** zone — `SYSTEM.md` for one system (create skeleton + author sections + edit approved content) |
 | `unikit-gd-flow` | the **flow** zone — `FLOW.md` for one flow (create + update), the `GOAL` rows, the wiring-mode selection, its own `GD-IDS` `flows:` / `events:` entries, and the regenerated `## Flow Map` / `## Funnel` blocks |
+| `unikit-gd-content` | the **content** zone — `CONTENT-TYPE.md` for one content type (create + update), the `CT.fields` schema, the `CU` rows (`content`), its own `GD-IDS` `content_types:` / `content:` entries, and the regenerated `## Content Map` block |
 
 - One owner per artifact. The full lifecycle of an artifact (create, fill, edit,
   delta-discipline) lives inside its zone; there is no separate "editor" skill.
@@ -51,6 +52,13 @@ owns a thing** (an authoring zone, with the full create+update cycle inside it);
   crosses into the *system* roster (a flow whose `GOAL → SYS` names a missing system,
   a system finding a missing dependency) still **routes back** to `unikit-gd-spec`; a
   system roster row is never written outside it.
+- **Content registers itself** (the same pattern as a flow): `unikit-gd-content`
+  writes its own `GD-IDS` `content_types:` / `content:` entries — and the
+  `resources:` / `tracks:` / `knobs:` facts it owns via a registry-check — then
+  re-renders `## Content Map` — there is no add-content in `unikit-gd-spec`. A
+  content type's `belongs_to` (`CT → SYS`, one-way) that names a system missing from
+  the roster **routes back** to `unikit-gd-spec` (add-system); a system roster row is
+  never written outside it.
 
 **Cross-cutting verbs (act over every zone, own no artifact):**
 
@@ -62,15 +70,15 @@ owns a thing** (an authoring zone, with the full create+update cycle inside it);
 - `unikit-gd-brainstorm` — ideation (concept).
 - `unikit-gd-explore` — design research (read-only; thinks, briefs, and routes).
 
-**Zones ⟂ domains.** Zones are **few** (the authoring skills: spec / system / flow)
-and orthogonal to **domains**, which are **many** (`core` memory rules + the
+**Zones ⟂ domains.** Zones are **few** (the authoring skills: spec / system / flow /
+content) and orthogonal to **domains**, which are **many** (`core` memory rules + the
 `section-packs`: monetization, liveops, level design, narrative, accessibility, …).
 A domain is knowledge that loads into whatever zone touches it — never a skill. So:
 
 - A new **domain** → a new `core` rule (+ section-pack), loaded across the zones
   that touch it. **Not** a new skill.
 - A new **artifact type** → a new authoring zone-skill. This is rare (the spec /
-  system / flow trio is expected to be stable).
+  system / flow / content quartet is expected to be stable).
 
 ## Routing
 
@@ -83,9 +91,10 @@ A request finds its zone by three orthogonal questions:
   - "build it / add it" → `unikit-gd-spec` (which maps it and routes into the
     authoring zones).
   - "fix / tune / rework X" → the zone-skill that **owns** X (a system → `unikit-gd-system`,
-    a flow → `unikit-gd-flow`, `GAME.md` → `unikit-gd-spec`).
+    a flow → `unikit-gd-flow`, a content type → `unikit-gd-content`, `GAME.md` →
+    `unikit-gd-spec`).
 - **Artifact decides the zone.** `GAME.md` → spec; `SYSTEM.md` → system; `FLOW.md`
-  → flow. The artifact you are editing names its owner.
+  → flow; `CONTENT-TYPE.md` → content. The artifact you are editing names its owner.
 - **Domain rides as rules/packs.** A domain (e.g. `monetization-ethics`) loads
   into whatever zone touches it; it is spread across zones (Stance → spec · shop
   system → system · funnel events → flow), with the shared `core` rule as the
@@ -129,6 +138,13 @@ Code reads design; design knows nothing about code.
   planning, the read-only flow brief — see Flow Axis). There is no reverse flow:
   no design documents reconstructed from code, and no code-to-design sync
   **except the single `implemented` writeback below**.
+- **Content crosses as a contract, not as data.** When the code side reads the
+  content axis it consumes the **schema + descriptor** — a `CT`'s typed `CT.fields`
+  and its `scale` (`bulk` → a `count` + `spec` descriptor; `curated` → `fields`),
+  never the bulk instance values, which live in the editor, not `GD-IDS`. A schema
+  change is a `CT` version bump (and a data migration); the many instances a `bulk`
+  `CT` describes never cross the boundary. `GD-IDS` carries the contract, not the
+  catalog.
 - Importing an existing GDD is a document operation — extract from the provided
   document; never reverse-engineer design from an implementation.
 - **Sanctioned exceptions (two, narrow):**
@@ -158,6 +174,11 @@ user is the arbiter of every conflict.
 | `FORM-<slug>` | Formula | GDD section D + GD-IDS `formulas` |
 | `AC-<sys>-<n>` | Acceptance criterion (system) | GDD section H |
 | `GOAL-<flow>-<n>` | Flow objective (scenario step) | FLOW.md table + GD-IDS `flows` |
+| `CT-<slug>` | Content type (the document/schema) | GD-IDS `content_types` (rendered in GAME.md `## Content Map [gen]`) |
+| `CU-<ct>-<n>` | Content unit (one registry row of a `CT`) | GD-IDS `content` |
+| `RES-<slug>` | Resource (currency / consumable fact) | GD-IDS `resources` |
+| `TRACK-<slug>` | Progression track (season / battle-pass fact) | GD-IDS `tracks` |
+| `KNOB-<slug>` | Global tuning knob (cross-system balance fact) | GD-IDS `knobs` |
 | `DD-<n>` | Design decision | GD-IDS `decisions` |
 
 - IDs are English lowercase slugs, stable across versions.

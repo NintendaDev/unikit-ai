@@ -56,12 +56,35 @@ fixed by a re-render, not a status disagreement).
   never read code to learn it. The version it pins lives in the `GD-IDS.yaml`
   `implemented_version` field (also code-set), not in `doc_status`.
 
+**Content axis (`CT` lifecycle + `belongs_to`).** A **content type** (`CT-<slug>`)
+carries `doc_status` on the **same 5-value spine** as systems and flows
+(`not-started` → `skeleton` → `detailed` → `reviewed` → `revised`), in the same
+**two places that must always agree** — the `CONTENT-TYPE.md` header `> Status:` line
+and the `content_types[].doc_status` field in `GD-IDS.yaml`. On disagreement
+`GD-IDS.yaml` wins; the conflict surfaces through `unikit-gd-verify`, and the
+`## Content Map [gen]` block in `GAME.md` renders the status read-only (a stale
+render is a *freshness* conflict, fixed by a re-render, not a status disagreement).
+Only a **schema edit** drives a `CT` to `revised`; catalog churn never does (the
+schema-vs-values split — see `gd-authoring` → Content delta).
+
+- **`belongs_to` (`CT → SYS`, one-way).** A content type names the **consuming
+  system** it feeds (`belongs_to: SYS-<slug>`). The edge is one-way: a system never
+  lists its content types. A `belongs_to` that names a system **missing or
+  deprecated** in the roster is a verify conflict that **routes back** to
+  `unikit-gd-spec` add-system — the content zone never writes a roster row itself
+  (Zone Ownership in the core).
+- **Display precedence.** While a `CT`'s `status: deprecated` (the `active |
+  deprecated` field, not `doc_status`), the `## Content Map [gen]` Status shows
+  `deprecated` regardless of the row's underlying `doc_status` — the same precedence
+  rule that governs a deprecated system. The document file and the `GD-IDS` entry are
+  **kept** (never deleted — dangling references are verify conflicts).
+
 **Who writes the two places.** The authoring skills — `unikit-gd-spec`,
-`unikit-gd-system`, `unikit-gd-flow`, `unikit-gd-review` — write the status into
-**both places** (the document header `> Status:` line in `SYSTEM.md` / `FLOW.md` and
-the `GD-IDS` `doc_status` field) on every status change, so the spine stays
-coherent; the `## System Map [gen]` / `## Flow Map [gen]` then re-render from
-`GD-IDS`.
+`unikit-gd-system`, `unikit-gd-flow`, `unikit-gd-content`, `unikit-gd-review` — write
+the status into **both places** (the document header `> Status:` line in `SYSTEM.md`
+/ `FLOW.md` / `CONTENT-TYPE.md` and the `GD-IDS` `doc_status` field) on every status
+change, so the spine stays coherent; the `## System Map [gen]` / `## Flow Map [gen]`
+/ `## Content Map [gen]` then re-render from `GD-IDS`.
 
 **Dependent-lag exception (intentional).** `unikit-gd-verify` is deliberately
 **not** a full two-place writer. When it flags a *dependent* system as stale it

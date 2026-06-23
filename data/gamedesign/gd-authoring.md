@@ -85,6 +85,30 @@ and there is no two-place coherence and no pending-loop. `unikit-gd-spec`
 implements this carve-out — `GAME.md` is its zone — this is the canonical
 statement.
 
+**Content delta — schema vs values (`unikit-gd-content`).** The content zone draws a
+hard line the other zones do not: `GD-IDS` holds a content type's **schema +
+descriptor** (the contract), never its catalog of values (the data). The two move at
+different speeds, so they carry different discipline:
+
+- **Schema / descriptor edit = full delta discipline.** Changing a `CT`'s
+  `CT.fields` (add / remove / retype a field, change `required`/`default`/`range`),
+  its `scale` (`bulk` ⇄ `curated`), or its `belongs_to` is a **contract change** —
+  the code side reads exactly this. Apply the full tail: Version +1 in the
+  `CONTENT-TYPE.md` header **and** in the `content_types` `version` in `GD-IDS`; a
+  changelog block whose delta line is the **fields-delta** (`+ field added; field
+  retyped; **field removed**`) — the content counterpart of the AC / GOAL delta line
+  that the code side consumes; a registry check. A schema change implies a **data
+  migration** of the existing units (the values the editor holds). The edited `CT` is
+  marked `revised` (its own spine), and `unikit-gd-verify` is recommended.
+- **Catalog churn = light, no version bump.** Adding, removing, or editing the
+  individual content **units** — a `curated` row's field values, a `bulk` `CT`'s
+  `count` — is **data, not contract**: it does **not** bump the `CT` version, needs
+  no changelog block, and never sets `revised`. The registry stays calm while the
+  editor churns. For a `bulk` `CT` the instance values never enter `GD-IDS` at all —
+  only the `count` + `spec` descriptor does, so a count change is a light edit, not a
+  schema delta. "500 new instances" never crosses the contract boundary; "the item
+  schema gained a `rarity` field" does.
+
 A significant decision also gets a **DD record** in GD-IDS `decisions`: the options
 considered, the rationale, and the affected systems (decision-log practice —
 Nygard).
