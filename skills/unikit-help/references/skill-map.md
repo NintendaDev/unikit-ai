@@ -223,6 +223,25 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Required per flow (the dynamics axis).** Before: `/unikit-gd-spec` (+ `/unikit-gd-system` for the
   systems it exercises). After: `/unikit-gd-review`, `/unikit-gd-verify`.
 
+### unikit-gd-content
+- **Purpose:** Own one content type's design document (`content-types/CT-<slug>.md`) — the
+  **content / catalog** axis of the GDD (the data the game is made of: cards, items, levels,
+  enemies, quests). Create the skeleton, fill it (the typed `CT.fields` schema, scale,
+  relationships, validation), **and revise the schema** as a versioned delta. Picks the scale
+  (bulk | curated), self-registers `content_types:` / `content:` (+ `resources`/`tracks`/`knobs`
+  facts) and re-renders the `## Content Map [gen]` block in `GAME.md`. A content type registers
+  itself — there is no add-content in `/unikit-gd-spec`.
+- **When:** "design the item content type", "define the card schema", "add a CT for enemies",
+  "add a rarity field", "switch to curated". (Adding/removing units or a bulk count is catalog
+  churn — data, not a schema edit.)
+- **In:** a content type name or `CT-slug` (+ optionally what to change). Scale and edit scale are
+  inferred; a missing `belongs_to` / `ref<SYS>` system routes to `/unikit-gd-spec` add-system.
+- **Out:** `.unikit/gamedesign/content-types/CT-<slug>.md` + its `content_types:` / `content:`
+  entries in `GD-IDS.yaml`; re-renders `## Content Map [gen]`; on a schema revise, version bump +
+  changelog and status → `revised`.
+- **Required per content type (the catalog axis).** Before: `/unikit-gd-spec` (+ `/unikit-gd-system`
+  for the consuming system). After: `/unikit-gd-review`, `/unikit-gd-verify`.
+
 ### unikit-gd-review
 - **Purpose:** Qualitative design review ("is this design good/fun/balanced?") via adversarial
   lenses → severity-graded verdict + report. The design-side mirror of `/unikit-review`.

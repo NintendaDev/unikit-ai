@@ -49,7 +49,10 @@ Author the **whole-game truth** and the **map of every system**. This skill owns
 
 Optionally it produces **`PITCH.md`**. Per-system detail (`systems/<slug>.md`) is
 **not** this skill's job — that is `unikit-gd-system`; player-action flows
-(`flows/<slug>.md`) are `unikit-gd-flow`'s.
+(`flows/<slug>.md`) are `unikit-gd-flow`'s; content types
+(`content-types/CT-<slug>.md`) are `unikit-gd-content`'s. This skill remains the
+**single writer of the system roster**: a flow's `GOAL → SYS` or a content type's
+`belongs_to` that needs a missing system routes back here for add-system.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -199,11 +202,13 @@ the block as the **last step**:
    map (one row per system); collapse to a single grouped table only as an escape
    hatch for very large rosters (150+).
 
-The `## Flow Map [gen]` and `## Funnel [gen]` blocks are rendered by `unikit-gd-flow`
-(the Flow axis) — out of scope here until that skill ships; leave their template
-scaffold untouched. `unikit-gd-verify` independently re-renders a stale `[gen]` block
-when its freshness check trips (`gd-lifecycle` → Lifecycle & Status) — the render is
-deterministic, so both writers always agree.
+The `## Flow Map [gen]` / `## Funnel [gen]` blocks (rendered by `unikit-gd-flow`, the
+Flow axis) and the `## Content Map [gen]` block (rendered by `unikit-gd-content`, the
+Content axis) are **out of this skill's scope** — leave their template scaffold
+untouched; this skill renders only `## System Map [gen]`. `unikit-gd-verify`
+independently re-renders a stale `[gen]` block when its freshness check trips
+(`gd-lifecycle` → Lifecycle & Status) — the render is deterministic, so all writers
+always agree.
 
 ---
 
@@ -245,8 +250,10 @@ Options:
   `unikit-gd-explore` never writes it.
 - **Not this skill:** per-system GDDs (`systems/<slug>.md`) → `unikit-gd-system`;
   player-action flows (`flows/<slug>.md`) and the `## Flow Map [gen]` / `## Funnel
-  [gen]` renders → `unikit-gd-flow`; ideation / concepts → `unikit-gd-brainstorm`;
-  research briefs → `unikit-gd-explore`.
+  [gen]` renders → `unikit-gd-flow`; content types (`content-types/CT-<slug>.md`) and
+  the `## Content Map [gen]` render → `unikit-gd-content` (a content type registers
+  itself — there is no add-content here); ideation / concepts →
+  `unikit-gd-brainstorm`; research briefs → `unikit-gd-explore`.
 - **Never:** write without explicit approval; change a `GD-IDS.yaml` value
   silently; delete or renumber an ID; read the code workspace or project source.
 

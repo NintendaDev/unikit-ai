@@ -82,17 +82,23 @@ system:   /unikit-gd-system        REQUIRED per system  the A-K per-system doc �
             │                                 revise as a versioned delta: tune / tweak / rework)
 flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynamics* (objectives, pacing, funnel);
             │                                 picks the wiring mode + re-renders ## Flow Map [gen] / ## Funnel [gen]
+content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *catalog* (typed CT.fields schema,
+            │                                 scale bulk|curated) + re-renders ## Content Map [gen]; the editor owns the values
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → severity verdict
             │
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" + cross-axis impact
               └─ loops back: a revised system or flow is re-reviewed, re-verified
 ```
 
-The GDD has **two authoring axes**: **systems** (`/unikit-gd-system`, the rules) and **flows**
-(`/unikit-gd-flow`, the dynamics — what the player does over time). A flow's `GOAL`s *exercise*
+The GDD has **three authoring axes**: **systems** (`/unikit-gd-system`, the rules), **flows**
+(`/unikit-gd-flow`, the dynamics — what the player does over time), and **content**
+(`/unikit-gd-content`, the catalog — the data the game is made of). A flow's `GOAL`s *exercise*
 systems (`GOAL → SYS → AC`) and emit funnel `event`s; `/unikit-gd-flow` registers the flow itself
 (its `flows:` / `events:` entries) and re-renders the `## Flow Map [gen]` / `## Funnel [gen]` blocks
-— there is no add-flow in `/unikit-gd-spec`.
+— there is no add-flow in `/unikit-gd-spec`. Likewise a **content type** `belongs_to` a consuming
+system and registers itself (its `content_types:` / `content:` entries + `## Content Map [gen]`) —
+there is no add-content in `/unikit-gd-spec`; a missing `belongs_to` system routes to spec
+add-system.
 
 **Research is cross-cutting**, not a fixed stage. `/unikit-gd-explore` can:
 - feed brainstorm (delegated market validation),
