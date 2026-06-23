@@ -876,6 +876,7 @@ gd_check_skill_shards() {  # <skill> <shard-stem>...
 gd_check_skill_shards "unikit-gd-spec"    "gd-authoring" "gd-lifecycle"
 gd_check_skill_shards "unikit-gd-system"  "gd-authoring" "gd-lifecycle" "gd-provenance"
 gd_check_skill_shards "unikit-gd-flow"    "gd-authoring" "gd-lifecycle" "gd-flow-axis" "gd-provenance"
+gd_check_skill_shards "unikit-gd-content" "gd-authoring" "gd-lifecycle"
 gd_check_skill_shards "unikit-gd-verify"  "gd-lifecycle" "gd-flow-axis" "gd-critique"
 gd_check_skill_shards "unikit-gd-explore" "gd-critique" "gd-provenance"
 gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-provenance" "gd-critique"
@@ -1472,6 +1473,31 @@ if [[ -z "$CT_MAP_WHY" ]]; then
     pass "Content Stage 0 — GAME.md ## Content Map [gen] by unikit-gd-content + ## System Map by unikit-gd-spec (attribution aligned)"
 else
     fail "Content Stage 0 — GAME.md content render-surface / attribution drift:$CT_MAP_WHY"
+fi
+
+# (Content Stage 1) The unikit-gd-content zone skill carries its contract: the CT-/CU- codes,
+# the scale selection (bulk|curated), self-registration of content_types/content + the
+# ## Content Map [gen] re-render, the RES/TRACK/KNOB fact registration, belongs_to + the
+# re-entry seam to gd-spec add-system, and the ref<> universality lever. (The skeleton-level
+# Language Awareness + shard binding are covered by Part 11 + the split-5 binding above.)
+GD_CONTENT_SKILL="$ROOT_DIR/skills/unikit-gd-content/SKILL.md"
+CT_SKILL_WHY=""
+[[ -f "$GD_CONTENT_SKILL" ]] || CT_SKILL_WHY+=" no-skill-file"
+grep -qF 'CT-<slug>' "$GD_CONTENT_SKILL"            || CT_SKILL_WHY+=" no-CT-code"
+grep -qF 'CU-<ct>-<n>' "$GD_CONTENT_SKILL"          || CT_SKILL_WHY+=" no-CU-code"
+grep -qF 'bulk | curated' "$GD_CONTENT_SKILL"       || CT_SKILL_WHY+=" no-scale"
+grep -qF 'content_types' "$GD_CONTENT_SKILL"        || CT_SKILL_WHY+=" no-self-register"
+grep -qF '## Content Map [gen]' "$GD_CONTENT_SKILL" || CT_SKILL_WHY+=" no-content-map-render"
+grep -qF 'belongs_to' "$GD_CONTENT_SKILL"           || CT_SKILL_WHY+=" no-belongs_to"
+grep -qF 'RES-' "$GD_CONTENT_SKILL"                 || CT_SKILL_WHY+=" no-RES"
+grep -qF 'TRACK-' "$GD_CONTENT_SKILL"               || CT_SKILL_WHY+=" no-TRACK"
+grep -qF 'KNOB-' "$GD_CONTENT_SKILL"                || CT_SKILL_WHY+=" no-KNOB"
+grep -qF 'ref<' "$GD_CONTENT_SKILL"                 || CT_SKILL_WHY+=" no-ref"
+grep -qF 'add-system' "$GD_CONTENT_SKILL"           || CT_SKILL_WHY+=" no-reentry-seam"
+if [[ -z "$CT_SKILL_WHY" ]]; then
+    pass "Content Stage 1 — unikit-gd-content carries CT/CU codes, scale, self-register+map render, RES/TRACK/KNOB, belongs_to+seam, ref<>"
+else
+    fail "Content Stage 1 — unikit-gd-content skill contract incomplete:$CT_SKILL_WHY"
 fi
 
 # (FL-3) unikit-gd-verify carries the flow-check family — the mirror of the system
