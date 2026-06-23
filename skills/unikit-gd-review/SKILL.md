@@ -41,9 +41,11 @@ mirror of `unikit-review`. It is distinct from `unikit-gd-verify`, which answers
 the cheaper, binary **"is the design consistent with itself?"** — a review finding
 *can* be declined; a verify conflict cannot.
 
-Review is **axis-aware**: it judges **systems** (the A–K GDD) and **flows** (`FLOW.md`
-+ the `## Flow Map [gen]` / `## Funnel [gen]` renders). The flow lenses — pacing /
-guidance / funnel — live in `references/lenses.md` alongside the system lenses.
+Review is **axis-aware**: it judges **systems** (the A–K GDD), **flows** (`FLOW.md`
++ the `## Flow Map [gen]` / `## Funnel [gen]` renders), and **content types**
+(`CONTENT-TYPE.md` + the `## Content Map [gen]` render). The flow lenses — pacing /
+guidance / funnel — and the content lenses — schema-coherence / catalog-scale /
+content-fantasy-delivery — live in `references/lenses.md` alongside the system lenses.
 
 A review is most honest in a **fresh session** — the reviewer should not be the
 author of the document. This skill never authors or edits design **content**; its
@@ -79,10 +81,12 @@ Silently load — do not narrate:
    folder, the shards this skill needs: **`gd-critique.md`** (the **severity rubric**
    — Critical / Major / Minor / Suggestion — and the **critique stance** — Braintrust:
    diagnose don't prescribe; critique vs review; plussing), **`gd-flow-axis.md`** (the
-   Flow Axis contract behind the pacing / guidance / funnel lenses), and
-   **`gd-provenance.md`** (the import provenance markers the provenance lens checks).
-   This skill **applies** them. If missing, warn (`unikit-ai update`) and fall back to
-   the rubric summarized in `references/lenses.md`.
+   Flow Axis contract behind the pacing / guidance / funnel lenses),
+   **`gd-content-axis.md`** (the Content Axis contract behind the schema-coherence /
+   catalog-scale / content-fantasy-delivery lenses), and **`gd-provenance.md`** (the
+   import provenance markers the provenance lens checks). This skill **applies** them.
+   If missing, warn (`unikit-ai update`) and fall back to the rubric summarized in
+   `references/lenses.md`.
 2. **`.unikit/gamedesign/GD-IDS.yaml`** and **`GAME.md`** (incl. its `## System Map
    [gen]` render) — pillars, the roster, and the facts every finding is checked
    against. **Schema guard (clean break — no automatic migration):** `GD-IDS.yaml`
@@ -143,6 +147,12 @@ lenses** (pacing / guidance / funnel) from `references/lenses.md` alongside the 
 lenses — a flow finding cites the `FLOW-<slug>` / `GOAL-<flow>-<n>` and the system
 `AC` / pillar it serves, on the same `RF-<date>-n` rubric.
 
+When the review **target is a `CONTENT-TYPE.md`** (or the scope is "all"), select the
+**content lenses** (schema-coherence / catalog-scale / content-fantasy-delivery) from
+`references/lenses.md` alongside the system lenses — a content finding cites the
+`CT-<slug>` / `CU-<ct>-<n>` and the `belongs_to` system / pillar it serves, on the same
+`RF-<date>-n` rubric.
+
 Run them as **2–4 parallel inline `Agent()`** calls, each given one lens and the
 adversarial framing *"find what is wrong — do NOT validate"*. Each agent is
 **read-only** and returns findings only; it never writes. Fall back to running the
@@ -164,6 +174,15 @@ citation to **Suggestion** (`gd-critique`).
 `GOAL` step guided, does the `## Funnel [gen]` measure the moments that matter?) from
 `references/lenses.md`, with the same adversarial framing. A `FLOW.md` **is** a review
 target; the lenses run over systems, flows, and `GAME.md`.
+
+**Content lenses (active).** When the target is a `CONTENT-TYPE.md`, run the content
+review lenses (schema-coherence, catalog-scale, content-fantasy-delivery — does
+`CT.fields` cover what the consuming system needs and are its types / `ref<>` right, is
+`bulk` vs `curated` the right call, does the catalog deliver the feeling section B
+promises?) from `references/lenses.md`, with the same adversarial framing. A
+`CONTENT-TYPE.md` **is** a review target; the lenses run over systems, flows, content
+types, and `GAME.md`. Genre-dependent emphasis (`critical_sections` / `review_emphasis`
+/ a profile completeness lens) is **stub — genre, Stage 4** — not selected here.
 
 ## Phase 3 — Cross-Scope Checks (cross review only)
 

@@ -177,6 +177,7 @@ content_types: []
 #     belongs_to: SYS-inventory # CT → SYS (one-way): the consuming system; a missing system routes to gd-spec add-system
 #     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised (same spine as systems/flows)
 #     version: 1
+#     research: ""              # same NON-id path pointer as systems/flows, set by gd-content when the CT was seeded from an explore brief (## Content Feature/Improvement Plan); the content zone owns its own row (there is no add-content in gd-spec); excluded from status/version coherence, dangling, unregistered-cross-doc, and id resolution
 #     fields:                   # the typed CT.fields schema — the contract the code side reads. For a `bulk` type this is the SPEC each instance follows (instances are NOT listed); for `curated` it is the schema each content row subsets.
 #       - { name: base_value, type: int, range: [1, 100000], required: true }
 #       - { name: category, type: enum, values: [jewelry, electronics, tools] }

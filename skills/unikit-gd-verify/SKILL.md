@@ -66,10 +66,13 @@ Silently load — do not narrate:
    never delete an ID — deprecate it) and the language rules. Plus, from the same
    `gamedesign/` folder, the shards this skill needs: **`gd-lifecycle.md`** (the
    status/version coherence spine), **`gd-flow-axis.md`** (the flow coherence
-   contract — `mode:` ↔ structure, `GOAL → SYS`/`AC`, Win/Lose ↔ terminal GOAL), and
-   **`gd-critique.md`** (the **severity rubric** — a conflict is Critical/Major
-   evidence). This skill **applies** them. If missing, warn (`unikit-ai update`) and
-   continue with the conventions summarized here.
+   contract — `mode:` ↔ structure, `GOAL → SYS`/`AC`, Win/Lose ↔ terminal GOAL),
+   **`gd-content-axis.md`** (the content coherence contract — CU ⊆ CT, `ref<>`
+   resolution, `scale` ↔ structure, `belongs_to` 3-way, content-map freshness,
+   RES/TRACK/KNOB, cross-axis SYS→CT staleness), and **`gd-critique.md`** (the
+   **severity rubric** — a conflict is Critical/Major evidence). This skill
+   **applies** them. If missing, warn (`unikit-ai update`) and continue with the
+   conventions summarized here.
 2. **`.unikit/gamedesign/GD-IDS.yaml`** — the single source of truth: pillars,
    systems, flows, entities, formulas, terms, decisions. Current values only.
    **Schema guard (clean break — no automatic migration):** it MUST be `version: 2`.
@@ -92,12 +95,14 @@ stay deterministic. The only `git` use is reading the design-workspace diff.
 
 Scope is a function of context:
 
-1. The argument names a system **or flow** → check **that document** and its registry
-   facts (a `FLOW-<slug>` runs the flow checks below).
+1. The argument names a system, flow **or content type** → check **that document** and
+   its registry facts (a `FLOW-<slug>` runs the flow checks, a `CT-<slug>` the content
+   checks below).
 2. There is an **unverified diff** under `.unikit/gamedesign/` (`git diff` /
    `git status` shows changed design docs), or the prompt asks "what did this
    change affect" → **changed-scope** pass (Phase 3).
-3. Otherwise → **full** check of every system, **every flow**, and the whole registry.
+3. Otherwise → **full** check of every system, **every flow**, **every content type**,
+   and the whole registry.
 
 Announce the resolved scope in one line.
 
@@ -159,11 +164,12 @@ agreement is handled by *Map freshness* above):
   or Version coherence and is never flagged as drift.
 - **Non-id metadata (`research:`).** The `GD-IDS` `research:` field — a **path pointer**
   to the explore research that seeded an artifact (written by `unikit-gd-spec`
-  add-system on a **system** row, by `unikit-gd-flow` on a **flow** `flows[]` row) — is
-  non-semantic metadata, **not** a registry id and **not** a `doc_status` / `version`.
-  It is excluded from status/version coherence on both axes, and the id-resolving checks
-  pass it over **by construction**: **Dangling references** only resolves id tokens
-  (`SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-`/`FLOW-`/`GOAL-`), and **Unregistered
+  add-system on a **system** row, by `unikit-gd-flow` on a **flow** `flows[]` row, and by
+  `unikit-gd-content` on a **content type** `content_types[]` row) — is non-semantic
+  metadata, **not** a registry id and **not** a `doc_status` / `version`. It is excluded
+  from status/version coherence on all three axes, and the id-resolving checks pass it
+  over **by construction**: **Dangling references** only resolves id tokens
+  (`SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-`/`FLOW-`/`GOAL-`/`CT-`/`CU-`), and **Unregistered
   cross-doc fact** only greps `FORM-`/`ENT-` ids — a folder path matches neither — so no
   special-case logic is needed.
 - **Dependent-lag.** A verify-flagged dependent may transiently carry a header
@@ -204,6 +210,35 @@ flows; flow delivery is confirmed by playtest). A `flows/*.md` file with **no `G
 `flows[]` entry** is **not** self-healed — verify **routes** the user to
 `/unikit-gd-flow` to register it (the flow zone writes its own row), then the map
 re-renders.
+
+### Content checks (axis-aware — when `GD-IDS` `content_types` is non-empty)
+
+When the registry carries content types, run the catalog-axis checks below — the
+mirror of the system checks, plus the content-specific ones (CU ⊆ CT, `ref<>`
+resolution, `scale` ↔ structure, `belongs_to` 3-way, content-map freshness,
+RES/TRACK/KNOB coherence). An empty `content_types: []` (or no `content_types` key)
+→ **skip this block silently** (not a conflict). The registry-wins rule applies
+exactly as above.
+
+| Check | Method | Conflict when |
+|-------|--------|---------------|
+| **CT/CU id validity + duplicates** | scan every `CT-`/`CU-`/`RES-`/`TRACK-`/`KNOB-` id for shape; group `CU-<ct>-<n>` by value within its content type | a `CT-`/`CU-`/`RES-`/`TRACK-`/`KNOB-` id is malformed, or a `CU-<ct>-<n>` is declared twice in one type — gaps after a removal are **not** a conflict (numbering is stable, like `AC-<sys>-n`) |
+| **CU.fields ⊆ CT.fields** | for each `content[]` unit, resolve its `type` to a `CT` and check it against that CT's `scale` | a `kind: instance` (curated) unit carries a field **absent** from its `CT.fields`, or a value whose type mismatches the field's declared type; a `kind: set` (bulk) unit is **missing** `count`/`spec`, or carries inline `fields` (bulk values never enter the registry) |
+| **`ref<>` resolution** | resolve every `ref<ENT/CU/FORM/SYS/RES>` value (in a `CT.fields` field or a curated unit) against `GD-IDS` | a `ref<>` points at a **missing or deprecated** target — **Critical** for a `ref<SYS>` / `ref<CT>` target, **Major** for `ref<ENT>` / `ref<FORM>` / `ref<RES>` / `ref<CU>`. A needed-but-missing system routes to `/unikit-gd-spec` add-system |
+| **scale ↔ structure** | the `GD-IDS` `content_types[].scale` matches the `CONTENT-TYPE.md` §C form — `bulk` → a `count` + `spec` descriptor; `curated` → `fields` rows | the declared `scale` and the document's structure disagree (the same check shape as a flow's `mode:` ↔ structure or a system's `packs:` ↔ `## Pack:` headings) |
+| **belongs_to 3-way** | for each `CT → SYS` edge, check it agrees across the `GD-IDS` `content_types[].belongs_to`, the `CONTENT-TYPE.md` §D, and a live (non-deprecated) `SYS` row in the roster | the three disagree, or `belongs_to` names a **missing or deprecated** system — the latter routes to `/unikit-gd-spec` add-system (the content zone never writes the roster). The edge is **one-way** — a system never lists its content types |
+| **Content status/version 2-place** | a `CT`'s `doc_status` / `version` agree across the **two places** — the `CONTENT-TYPE.md` header `> Status:` / `> Version:` and `GD-IDS` `content_types[].doc_status` / `version` (same enum + version rules as systems) | the two disagree (the `research:` pointer is excluded — see the carve-out; content dependent-lag is expected — see Phase 3) |
+| **Content map freshness (3-surface)** | compare the `## Content Map [gen]` rows to `GD-IDS` `content_types` (membership, Status, Ver, Scale, Belongs) | the render disagrees — **not a conflict to resolve**: re-render the block (self-heal, announced); see the note below |
+| **RES/TRACK/KNOB coherence** | resolve every `ref<RES>` against `resources[]`; grep `RES-`/`TRACK-`/`KNOB-` ids that surface in a document but carry no `GD-IDS` entry | a `ref<RES>` is dangling (Major), or a `RES-`/`TRACK-`/`KNOB-` fact crosses a document boundary with no registry entry (unregistered fact). Empty `resources`/`tracks`/`knobs` → skip silently |
+
+**Content map freshness — self-heal, not a conflict.** Like the System and Flow Maps,
+a stale `## Content Map [gen]` is a *freshness* issue, not a coherence conflict:
+re-render the block from `GD-IDS` `content_types` (the same deterministic render
+`unikit-gd-content` writes — display-precedence on `deprecated`) and announce it
+(`re-rendered ## Content Map [gen] (freshness)`). A `content-types/*.md` file with
+**no `GD-IDS` `content_types[]` entry** is **not** self-healed — verify **routes** the
+user to `/unikit-gd-content` to register it (the content zone writes its own row),
+then the map re-renders.
 
 ## Phase 3 — Changed-Scope Impact (when a diff is unverified)
 
@@ -268,6 +303,30 @@ the pass across the axis (skip when `flows: []`):
   why the flow is `revised`. A `revised` flow returns to `reviewed` only through
   `unikit-gd-review`.
 
+**Cross-axis impact (system → content type, one-way).** A system edit can stale a
+**content type** that feeds it (through `belongs_to` / a `ref<SYS>` field) —
+`gd-content-axis` → Content Axis. Extend the pass across the axis (skip when
+`content_types: []`):
+
+- **Changed set** also includes every content type already at `doc_status: revised`
+  (a pending cross-axis flag not yet cleared back to `reviewed`).
+- **Reverse-edge walk:** for each changed **system**, find every content type whose
+  `content_types[].belongs_to` names it, or whose `CT.fields` carry a `ref<SYS>` to it.
+  Those types join the **Affected** table as **content rows** (Relation: `feeds SYS-x
+  (changed)`), with the same Still Valid / Needs Review / Likely Stale verdicts (a type
+  whose consuming system removed a relied-on contract is Likely Stale). The reverse does
+  **not** hold — editing a content type never stales a system.
+- **Record impact (dependent CT):** list affected types in the changed system's
+  `Affected (gd-verify):` line (section K). For each `Needs Review` / `Likely Stale`
+  dependent type, bump it to `doc_status: revised` in the **`GD-IDS`
+  `content_types[].doc_status` only** (the dependent-lag rule, on the content axis) —
+  verify does **not** write the `CONTENT-TYPE.md` header `> Status:` (it catches up on
+  the next `unikit-gd-content` touch), and the `## Content Map [gen]` re-renders
+  (freshness). Append a one-line human-readable note to the type's **section F** (Open
+  Questions & Changelog) — the content analogue of the `Affected (gd-verify):` line — so
+  the next author sees why the type is `revised`. A `revised` content type returns to
+  `reviewed` only through `unikit-gd-review`.
+
 ## Phase 4 — Resolve Conflicts
 
 Every CONFLICT must be resolved — it cannot be "declined". For each, ask and log
@@ -326,7 +385,8 @@ Scope: <SYS-slug | changed | all>
 Result: <PASS | CONFLICTS FOUND (<n>)>
 Checks: facts · terms · IDs · dup-IDs · dangling · unregistered-fact · roster↔disk · map-freshness · Depends-3way · status · version · AC-presence · placeholder — <pass/fail each>
 Flow checks (when flows exist): GOAL-ids · dangling-GOAL · flow-status/version · flow-Depends-3way · mode↔structure · win/lose↔terminal-GOAL · funnel-continuity · flow/funnel-freshness — <pass/fail each>
-Affected (changed-scope): <k systems + flows — Needs Review: …, Likely Stale: …>
+Content checks (when content_types exist): CT/CU-ids · CU⊆CT · ref<>-resolve · scale↔structure · belongs_to-3way · content-status/version · content-map-freshness · RES/TRACK/KNOB · cross-axis SYS→CT — <pass/fail each>
+Affected (changed-scope): <k systems + flows + content types — Needs Review: …, Likely Stale: …>
 Freshness: <re-rendered ## System Map [gen] | up to date>
 Report: <path | none (clean PASS)>
 ```
@@ -344,19 +404,21 @@ No summary document beyond the conditional report file.
 
 ## Ownership Boundaries
 
-- **Owns:** the `Affected (gd-verify):` changelog line (system section K) and the flow
-  cross-axis note (flow section F); verify report files; the `GD-IDS.yaml`
-  `doc_status: revised` bump for a flagged dependent system **or flow** (with approval);
-  and the **freshness re-render** of the `GAME.md` `## System Map [gen]`, `## Flow Map
-  [gen]`, and `## Funnel [gen]` blocks (deterministic re-renders of `GD-IDS`, never an
-  authored change — the Flow Map `Realized` column recomputed from the depended-on
-  systems' `implemented_version`).
-- **Read-only:** every design document and (except the `Affected` line / flow section-F
-  note, approved conflict resolutions, a flagged dependent's `doc_status: revised` bump,
-  and the `[gen]`-map freshness re-renders) `GD-IDS.yaml`, `GAME.md`.
+- **Owns:** the `Affected (gd-verify):` changelog line (system section K) and the flow /
+  content cross-axis note (flow / content type section F); verify report files; the
+  `GD-IDS.yaml` `doc_status: revised` bump for a flagged dependent system, **flow, or
+  content type** (with approval); and the **freshness re-render** of the `GAME.md`
+  `## System Map [gen]`, `## Flow Map [gen]`, `## Funnel [gen]`, and `## Content Map
+  [gen]` blocks (deterministic re-renders of `GD-IDS`, never an authored change — the
+  Flow Map `Realized` column recomputed from the depended-on systems'
+  `implemented_version`).
+- **Read-only:** every design document and (except the `Affected` line / flow & content
+  section-F notes, approved conflict resolutions, a flagged dependent's
+  `doc_status: revised` bump, and the `[gen]`-map freshness re-renders) `GD-IDS.yaml`,
+  `GAME.md`.
 - **Not this skill:** quality judgment → `unikit-gd-review`; applying design fixes and
-  authoring → `unikit-gd-system` (systems) / `unikit-gd-flow` (flows) / `unikit-gd-spec`
-  (`GAME.md` + the roster).
+  authoring → `unikit-gd-system` (systems) / `unikit-gd-flow` (flows) / `unikit-gd-content`
+  (content types) / `unikit-gd-spec` (`GAME.md` + the roster).
 - **Never:** use web research; guess where a grep settles it; change a `GD-IDS`
   value silently or without approval; delete or renumber an ID; write the roster
   (route to `unikit-gd-spec`); read the code workspace or project source.

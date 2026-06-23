@@ -75,11 +75,14 @@ Silently load — do not narrate:
    protocol, the facts registry / ID conventions, and the language rules. Plus, from
    the same `gamedesign/` folder, the shards this skill needs: **`gd-authoring.md`**
    (the **section-cycle authoring contract** + the **delta discipline** — including
-   the **content delta: schema vs values** rule that governs this zone) and
+   the **content delta: schema vs values** rule that governs this zone),
    **`gd-lifecycle.md`** (the lifecycle & status spine + the **content axis** block:
-   the `CT` `doc_status` spine, `belongs_to`, and display precedence). This skill
-   **applies** that contract; it does not restate the mechanics. If missing, warn
-   (`unikit-ai update`) and fall back to the protocol as summarized in this file.
+   the `CT` `doc_status` spine, `belongs_to`, and display precedence), and
+   **`gd-content-axis.md`** (the content-axis contract this zone authors against: the
+   CT/CU schema model, `ref<>` resolution, `scale` ↔ structure, RES/TRACK/KNOB, and
+   the code-reads-content boundary). This skill **applies** that contract; it does
+   not restate the mechanics. If missing, warn (`unikit-ai update`) and fall back to
+   the protocol as summarized in this file.
 2. **`.unikit/gamedesign/GAME.md`** — pillars, loops, target aesthetics, and
    non-goals the content must serve; its `## System Map [gen]` is the system roster a
    content type's `belongs_to` (and any `ref<SYS>`) depend on. If it does not exist,

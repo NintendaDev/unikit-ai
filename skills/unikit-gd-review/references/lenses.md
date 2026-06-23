@@ -92,6 +92,26 @@ it serves, on the same shared `RF-<date>-n` rubric as a system finding. The
 **fantasy-delivery**, **systems-math**, and **provenance** core lenses are unchanged —
 they apply to systems; the flow lenses are the dynamics-axis complement.
 
+## Content lenses (run on every content review)
+
+Review is **axis-aware**: alongside systems and flows it judges **content types**
+(`CONTENT-TYPE.md` + the `## Content Map [gen]` render). A `CONTENT-TYPE.md` **is** a
+review target; these lenses run whenever the scope is a content type (or "all"). Each
+runs as a skeptic — find what breaks the catalog, do not validate.
+
+| Lens | The question it attacks | Typical severity on a hit |
+|------|-------------------------|---------------------------|
+| **schema-coherence** | Attack `CT.fields` as a contract. Does it cover everything the consuming (`belongs_to`) system needs to read — or will the code hit a missing field? Are the types right (an `enum` that should be `int`, a `float` range that admits nonsense), and does every `ref<>` point at a real, typed thing (`ref<SYS>` / `ref<RES>` / …)? A field the system reads but the schema omits, or a `ref<>` to a missing target, is a broken contract — name it; "the schema looks complete" is not a result. | Critical (a field the consuming system needs is absent, or a `ref<>` is unresolvable); Major (a wrong type / loose range) |
+| **catalog-scale** | Attack the `bulk` vs `curated` choice. Is `bulk` claimed for content that actually needs hand-authored, individually-balanced units (so the registry hides real design debt), or `curated` for content that will balloon to hundreds of rows (so `GD-IDS` becomes a data dump)? Walk the expected catalog size and authoring cost — the wrong scale is a maintenance trap that surfaces only at content volume. | Major (the scale will not hold at the real catalog size); Minor (borderline, defensible either way) |
+| **content-fantasy-delivery** | The fantasy-delivery core lens aimed at the catalog: does the *content itself* deliver the feeling section B promises and serve an SDT need — or is it a flat list of stat-blocks no system turns into an experience? A schema can be perfectly coherent and still produce boring content. Cross-reference the `belongs_to` system's section B and the pillars. | Major (the catalog delivers no felt experience / serves no pillar); Minor (thin but functional) |
+
+A content finding cites the `CT-<slug>` / `CU-<ct>-<n>` and the `belongs_to` system /
+pillar it serves, on the same shared `RF-<date>-n` rubric as a system finding. The
+**fantasy-delivery**, **systems-math**, and **provenance** core lenses are unchanged —
+they apply to systems; the content lenses are the catalog-axis complement.
+Genre-dependent emphasis (`critical_sections` / `review_emphasis` / a profile
+completeness lens) is **stub — genre, Stage 4**.
+
 ## Output discipline
 
 - **Diagnose, don't prescribe** (`gd-critique`): name the problem and its

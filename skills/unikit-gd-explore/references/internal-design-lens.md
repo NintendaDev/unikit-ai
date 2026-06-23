@@ -59,6 +59,18 @@ read-only renders; and the **exercised systems'** sections **B (Player Fantasy)*
 **C (Core Rules)**, and **H (Acceptance Criteria)** so each `GOAL` lands on a real
 rule/AC and the promised feeling is grounded.
 
+**Content targets (the catalog axis).** When the target is a `CT-<slug>` (improve a
+content type / its schema) or a catalog with no content type yet (new content area), the
+deep-read works on **two altitudes** — the *schema* and the *catalog space*: read
+`GAME.md`'s pillars and target aesthetics; the `CONTENT-TYPE.md` (sections A–F) when it
+exists; `GD-IDS` `content_types` (the target's `scale`, `belongs_to`, `CT.fields`) plus
+the `content` units it carries and any `resources` it references; the
+`## Content Map [gen]` read-only render; and the **`belongs_to` system's** sections **B
+(Player Fantasy)** and **C (Core Rules)** so the schema covers what that system needs to
+read and the catalog delivers the promised feeling. The two altitudes: altitude 1 is the
+**schema** (`CT.fields` / `scale` / `belongs_to`); altitude 2 is the **catalog space**
+(what the units are, how many, how they are generated).
+
 **One-way boundary holds:** never read `.unikit/code/`, project source, or build
 artifacts to learn how a system was implemented. The lens reasons about the *design*.
 
@@ -179,6 +191,42 @@ first). Two parts:
   are **untagged normal authored content** — the import-only `extracted` / `generated`
   markers do not apply (`gd-provenance` → Provenance).
 
+### `## Content Improvement Plan` — for `/unikit-gd-content`
+
+For a content type whose doc is already `detailed` / `reviewed` / `revised`. Work the
+**two altitudes** — the *schema* (`CT.fields` / `scale` / `belongs_to`) and the *catalog
+space* (the units, their volume, generation). Fields:
+
+- **Target**: `CT-<slug>` · **Expected scale**: Tuning | Tweak | Rework (the
+  `unikit-gd-content` classifier — let it confirm, this is the prediction).
+- **Change**: ready-to-apply delta lines — `<Section>: <old> → <new>` per field / type /
+  `ref<>` / `scale` (the **schema** delta — catalog churn is data, not a brief).
+- **Touched GD-IDS facts**: the `CT.fields` / `scale` / `belongs_to` / referenced
+  `resources` the delta moves (or `N/A`).
+- **Rejected alternatives**: the options not taken, one line each, with the WHY-not.
+- **Closes finding**: `RF-<date>-n` when the change resolves an open review finding
+  (see "RF bridge"), else `N/A`.
+- **Open questions**: anything the closure pass deferred.
+
+### `## Content Feature Plan` — for `/unikit-gd-content` (create + register)
+
+For a content area with **no content type on the map yet**. A content type **registers
+itself**, so this routes **straight to `/unikit-gd-content`** — there is **no add-content
+in `unikit-gd-spec`** (like the Flow Feature Plan, unlike the system New Feature Plan).
+Two parts:
+
+- **Type fields** (for `unikit-gd-content` to register the `content_types[]` row):
+  proposed slug, candidate `scale` (bulk | curated, with the WHY from the catalog space),
+  `belongs_to: SYS-<slug>` (the consuming system — route any **missing** system through
+  `/unikit-gd-spec` add-system, never invent the roster row), and the candidate
+  `CT.fields` schema (typed, with any `ref<>` links).
+- **Section seeds** (for `unikit-gd-content` to pre-fill the section-cycle): the A–F
+  content the lens worked out — Overview, the `CT.fields` schema, Scale & Generation (the
+  `count` + `spec` for `bulk`, or the curated catalog shape), Relationships (`belongs_to`
+  + `ref<>`), Validation. These seeds are **untagged normal authored content** — the
+  import-only `extracted` / `generated` markers do not apply (`gd-provenance` →
+  Provenance).
+
 Fill any field with `N/A` rather than inventing content the lens did not cover.
 
 ## Multi-target order
@@ -202,10 +250,11 @@ When the lens addresses an open `unikit-gd-review` finding, carry its stable
 So a downstream skill finds this research deterministically across a `/clear`, tag it
 on save (the SKILL "Saving Research Results" step writes these):
 
-- **`RESEARCH_RESULT.md` header** — add `Target: SYS-<slug>` **or** `Target: FLOW-<slug>`
-  and `Kind: feature | improvement` (English tokens, like every stored id/value).
-- **`researches/INDEX.md` entry** — add a `**Target**: SYS-<slug> | FLOW-<slug>` field
-  to the row.
+- **`RESEARCH_RESULT.md` header** — add `Target: SYS-<slug>`, `Target: FLOW-<slug>`, **or**
+  `Target: CONTENT-<slug>` and `Kind: feature | improvement` (English tokens, like every
+  stored id/value).
+- **`researches/INDEX.md` entry** — add a `**Target**: SYS-<slug> | FLOW-<slug> |
+  CONTENT-<slug>` field to the row.
 
 The hand-off ownership (do **not** write these here — the lens is read-only; this is
 what the *routed* skills do):
@@ -218,8 +267,13 @@ what the *routed* skills do):
   the same `research:` pointer into the `flows[]` entry — the flow zone owns its own row
   (there is **no add-flow in `unikit-gd-spec`**), so the flow pointer is written by
   `unikit-gd-flow`, not `unikit-gd-spec`. Same non-id-path semantics.
-- `unikit-gd-system` / `unikit-gd-flow` discover the research by
+- `unikit-gd-content`, when it registers a new **content type** from a Content Feature
+  Plan, writes the same `research:` pointer into the `content_types[]` entry — the content
+  zone owns its own row (there is **no add-content in `unikit-gd-spec`**), so the content
+  pointer is written by `unikit-gd-content`. Same non-id-path semantics.
+- `unikit-gd-system` / `unikit-gd-flow` / `unikit-gd-content` discover the research by
   **`GD-IDS` `research:` (authoritative) → `researches/INDEX.md` `Target:` (fallback)`**
   — the project's standard "registry pointer, disk fallback" idiom — then pre-fill their
   drafts/deltas from the matching brief block (`## Improvement Plan` / `## New Feature
-  Plan` for systems, `## Flow Improvement Plan` / `## Flow Feature Plan` for flows).
+  Plan` for systems, `## Flow Improvement Plan` / `## Flow Feature Plan` for flows,
+  `## Content Improvement Plan` / `## Content Feature Plan` for content types).

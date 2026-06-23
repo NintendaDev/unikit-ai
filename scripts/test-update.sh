@@ -1307,7 +1307,7 @@ fi
 echo "  ✓ dev-principles.md: update refreshes from data/ (tamper marker removed)"
 
 # ─────────────────────────────────────────────
-# Test 30: gd-principles core + 5 shards are system assets — installed on update and
+# Test 30: gd-principles core + 6 shards are system assets — installed on update and
 # flat-rewritten every time (not hash-tracked), same contract as dev-principles. After
 # the shard split they land under .unikit/system/gamedesign/. Reuses the DEVPRIN_DIR
 # project that already ran `update` above. Also guards the orphan-delete of the
@@ -1316,14 +1316,14 @@ echo "  ✓ dev-principles.md: update refreshes from data/ (tamper marker remove
 GD_SYS_DIR="$DEVPRIN_DIR/.unikit/system/gamedesign"
 GD_PRINCIPLES="$GD_SYS_DIR/gd-principles.md"
 assert_exists "$GD_PRINCIPLES" "gd-principles.md (core) must be installed on update (system asset, under gamedesign/)"
-for shard in gd-authoring gd-lifecycle gd-flow-axis gd-provenance gd-critique; do
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
     assert_exists "$GD_SYS_DIR/$shard.md" "$shard.md shard must be installed on update (under gamedesign/)"
 done
 
 # Per-shard tamper-refresh (mirror of Test 30c): tamper the core + every shard, run ONE
 # update, and confirm every flat-rewrite cleared its marker.
 echo "GD_TAMPERED_BY_TEST" >> "$GD_PRINCIPLES"
-for shard in gd-authoring gd-lifecycle gd-flow-axis gd-provenance gd-critique; do
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
     echo "GD_TAMPERED_BY_TEST" >> "$GD_SYS_DIR/$shard.md"
 done
 # Plant a stale pre-split flat core to prove update orphan-deletes it.
@@ -1335,14 +1335,14 @@ DEVPRIN_OUT3="$TMPDIR/update-gd-principles-3.log"
 
 GD_TAMPER_LEFT=""
 grep -q "GD_TAMPERED_BY_TEST" "$GD_PRINCIPLES" && GD_TAMPER_LEFT+=" gd-principles.md"
-for shard in gd-authoring gd-lifecycle gd-flow-axis gd-provenance gd-critique; do
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
     grep -q "GD_TAMPERED_BY_TEST" "$GD_SYS_DIR/$shard.md" && GD_TAMPER_LEFT+=" $shard.md"
 done
 if [[ -n "$GD_TAMPER_LEFT" ]]; then
     echo "Assertion failed: update did NOT refresh gd-principles core/shard(s) from data/ (tamper marker present in:$GD_TAMPER_LEFT)"
     exit 1
 fi
-echo "  ✓ gd-principles core + 5 shards: update refreshes from data/ (tamper markers removed)"
+echo "  ✓ gd-principles core + 6 shards: update refreshes from data/ (tamper markers removed)"
 
 # Orphan-delete: the pre-split flat path must be gone after update.
 assert_not_exists "$GD_FLAT_ORPHAN" \

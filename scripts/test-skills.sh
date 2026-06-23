@@ -798,28 +798,29 @@ for tpl in CONCEPT CONTENT-TYPE FLOW GAME GD-IDS GD_RULES_INDEX PITCH REVIEW SYS
     fi
 done
 
-# gd-principles.md (core) + 5 shards — the cross-skill working contract installed as
+# gd-principles.md (core) + 6 shards — the cross-skill working contract installed as
 # system assets under .unikit/system/gamedesign/. It is PROCESS, not domain. After the
 # shard split (feature/gd-principles-shard-split) the slim core keeps the always-loaded
 # sections (zone model, routing, collaboration, one-way boundary, facts registry,
-# language, anti-patterns); the rest live in 5 sibling shards each skill loads on demand.
+# language, anti-patterns); the rest live in 6 sibling shards each skill loads on demand.
 # Every shard, like the core (and dev-principles.md), is flat-copied WITHOUT
 # substitution, so none may carry agent/engine template vars.
 GD_PRINCIPLES="$GD_DATA/gd-principles.md"
 GD_AUTHORING="$GD_DATA/gd-authoring.md"
 GD_LIFECYCLE="$GD_DATA/gd-lifecycle.md"
 GD_FLOW_AXIS="$GD_DATA/gd-flow-axis.md"
+GD_CONTENT_AXIS="$GD_DATA/gd-content-axis.md"
 GD_PROVENANCE="$GD_DATA/gd-provenance.md"
 GD_CRITIQUE="$GD_DATA/gd-critique.md"
-GD_SHARDS=("$GD_PRINCIPLES" "$GD_AUTHORING" "$GD_LIFECYCLE" "$GD_FLOW_AXIS" "$GD_PROVENANCE" "$GD_CRITIQUE")
+GD_SHARDS=("$GD_PRINCIPLES" "$GD_AUTHORING" "$GD_LIFECYCLE" "$GD_FLOW_AXIS" "$GD_CONTENT_AXIS" "$GD_PROVENANCE" "$GD_CRITIQUE")
 
-# (split-1) Core slim + all 5 shards present.
+# (split-1) Core slim + all 6 shards present.
 GD_SHARD_MISSING=""
 for shard in "${GD_SHARDS[@]}"; do
     [[ -f "$shard" ]] || GD_SHARD_MISSING+=" $(basename "$shard")"
 done
 if [[ -z "$GD_SHARD_MISSING" ]]; then
-    pass "gd-principles — core + 5 shards present (gd-authoring/gd-lifecycle/gd-flow-axis/gd-provenance/gd-critique)"
+    pass "gd-principles — core + 6 shards present (gd-authoring/gd-lifecycle/gd-flow-axis/gd-content-axis/gd-provenance/gd-critique)"
 else
     fail "gd-principles — missing core/shard file(s):$GD_SHARD_MISSING"
 fi
@@ -836,6 +837,7 @@ done
 gd_section_in "gd-authoring"  "$GD_AUTHORING"  "Section-Cycle Contract"
 gd_section_in "gd-authoring"  "$GD_AUTHORING"  "Delta Discipline"
 gd_section_in "gd-flow-axis"  "$GD_FLOW_AXIS"  "Flow Axis"
+gd_section_in "gd-content-axis" "$GD_CONTENT_AXIS" "Content Axis"
 gd_section_in "gd-provenance" "$GD_PROVENANCE" "Provenance"
 gd_section_in "gd-critique"   "$GD_CRITIQUE"   "Critique Stance"
 gd_section_in "gd-critique"   "$GD_CRITIQUE"   "Severity Rubric"
@@ -843,7 +845,7 @@ gd_section_in "gd-critique"   "$GD_CRITIQUE"   "Severity Rubric"
 # (split-3) The slim core must NOT still carry a section that moved into a shard
 # (a botched split that duplicated content into both files).
 GD_CORE_LEAK=""
-for moved in "Section-Cycle Contract" "Delta Discipline" "Lifecycle & Status" "Flow Axis" "Provenance" "Critique Stance" "Severity Rubric"; do
+for moved in "Section-Cycle Contract" "Delta Discipline" "Lifecycle & Status" "Flow Axis" "Content Axis" "Provenance" "Critique Stance" "Severity Rubric"; do
     grep -qF "## $moved" "$GD_PRINCIPLES" && GD_CORE_LEAK+=" '$moved'"
 done
 if [[ -z "$GD_CORE_LEAK" ]]; then
@@ -859,7 +861,7 @@ for shard in "${GD_SHARDS[@]}"; do
     grep -qE '\{\{settings_file\}\}|\{\{skills_dir\}\}|\{\{engine_' "$shard" && GD_SUBST_BAD+=" $(basename "$shard")"
 done
 if [[ -z "$GD_SUBST_BAD" ]]; then
-    pass "gd-principles core + 5 shards — no agent/engine vars (system-file safe)"
+    pass "gd-principles core + 6 shards — no agent/engine vars (system-file safe)"
 else
     fail "gd-principles core/shard contains agent/engine vars (must be substitution-free):$GD_SUBST_BAD"
 fi
@@ -876,13 +878,13 @@ gd_check_skill_shards() {  # <skill> <shard-stem>...
 gd_check_skill_shards "unikit-gd-spec"    "gd-authoring" "gd-lifecycle"
 gd_check_skill_shards "unikit-gd-system"  "gd-authoring" "gd-lifecycle" "gd-provenance"
 gd_check_skill_shards "unikit-gd-flow"    "gd-authoring" "gd-lifecycle" "gd-flow-axis" "gd-provenance"
-gd_check_skill_shards "unikit-gd-content" "gd-authoring" "gd-lifecycle"
-gd_check_skill_shards "unikit-gd-verify"  "gd-lifecycle" "gd-flow-axis" "gd-critique"
+gd_check_skill_shards "unikit-gd-content" "gd-authoring" "gd-lifecycle" "gd-content-axis"
+gd_check_skill_shards "unikit-gd-verify"  "gd-lifecycle" "gd-flow-axis" "gd-content-axis" "gd-critique"
 gd_check_skill_shards "unikit-gd-explore" "gd-critique" "gd-provenance"
-gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-provenance" "gd-critique"
-# brainstorm loads core ONLY — assert it references none of the 5 shards.
+gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-content-axis" "gd-provenance" "gd-critique"
+# brainstorm loads core ONLY — assert it references none of the 6 shards.
 GD_BRAINSTORM_LEAK=""
-for shard in gd-authoring gd-lifecycle gd-flow-axis gd-provenance gd-critique; do
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
     grep -rqF "$shard" "$ROOT_DIR/skills/unikit-gd-brainstorm" 2>/dev/null && GD_BRAINSTORM_LEAK+=" $shard"
 done
 if [[ -z "$GD_BRAINSTORM_LEAK" ]]; then
@@ -1605,6 +1607,96 @@ if [[ -z "$FL_FIX_WHY" ]]; then
     pass "FL-8 defective-gdd fixture — flows/FLOW-first-run.md + GD-IDS flows/goals/events + README flow-defect ground truth"
 else
     fail "FL-8 defective-gdd flow fixture incomplete:$FL_FIX_WHY"
+fi
+
+# ── Content-axis Stage 2 guards (CS2-1…CS2-5) ────────────────────────────────
+# Stage 2 made the cross-cutting verbs axis-aware on Content (the mirror of the Flow
+# axis, FL-3…FL-7): the gd-content-axis shard, the content checks in unikit-gd-verify,
+# the content lenses in unikit-gd-review, and the content briefs/routing in
+# unikit-gd-explore. bash cannot run an LLM skill — these are grep invariants on the
+# contract text. All FILE-SCOPED -qF; the negative checks use the set-e-safe
+# `grep -qF … && WHY+=…` idiom. MSYS grep aborts on -iF, so anchors are case-sensitive.
+# (Skill→shard binding for the new shard is covered by the split-5 gd_check_skill_shards
+# calls above; the deep/live defective-gdd CT/RES smoke is deferred to Stage 5.)
+
+# (CS2-1) the gd-content-axis shard carries the content-axis process contracts the
+# cross-cutting verbs load — the canonically-new sections (CT/CU model, scale↔structure,
+# cross-axis staleness, RES/TRACK/KNOB, code-reads-content), plus the CT/CU codes.
+CS2_SHARD_WHY=""
+grep -qF '## Content Axis' "$GD_CONTENT_AXIS"           || CS2_SHARD_WHY+=" content-axis-section"
+grep -qF 'The CT / CU model' "$GD_CONTENT_AXIS"         || CS2_SHARD_WHY+=" ct-cu-model"
+grep -qF 'ref<PREFIX>' "$GD_CONTENT_AXIS"               || CS2_SHARD_WHY+=" ref-prefix"
+grep -qF '↔ structure' "$GD_CONTENT_AXIS"               || CS2_SHARD_WHY+=" scale-structure"
+grep -qF 'Cross-axis staleness' "$GD_CONTENT_AXIS"      || CS2_SHARD_WHY+=" cross-axis-staleness"
+grep -qF 'Code reads content' "$GD_CONTENT_AXIS"        || CS2_SHARD_WHY+=" code-reads-content"
+grep -qF 'CT-<slug>' "$GD_CONTENT_AXIS"                 || CS2_SHARD_WHY+=" ct-code"
+grep -qF 'CU-<ct>-<n>' "$GD_CONTENT_AXIS"               || CS2_SHARD_WHY+=" cu-code"
+if [[ -z "$CS2_SHARD_WHY" ]]; then
+    pass "CS2-1 gd-content-axis shard content contracts (Content Axis/CT-CU model/ref<>/scale↔structure/cross-axis/code-reads-content + CT/CU codes)"
+else
+    fail "CS2-1 gd-content-axis shard contract drift:$CS2_SHARD_WHY"
+fi
+
+# (CS2-2) unikit-gd-verify carries the content-check family — the 9 checks of T4 (the
+# mirror of the system/flow checks plus the content-specific ones), non-empty gated on
+# content_types, with the research: carve-out extended to all three axes.
+CS2_VERIFY_WHY=""
+grep -qF 'Content checks (axis-aware' "$GD_VERIFY_SKILL"        || CS2_VERIFY_WHY+=" content-checks-section"
+grep -qF 'CT/CU id validity' "$GD_VERIFY_SKILL"                 || CS2_VERIFY_WHY+=" ct-cu-id-validity"
+grep -qF 'CU.fields ⊆ CT.fields' "$GD_VERIFY_SKILL"             || CS2_VERIFY_WHY+=" cu-subset-ct"
+grep -qF 'ref<ENT/CU/FORM/SYS/RES>' "$GD_VERIFY_SKILL"          || CS2_VERIFY_WHY+=" ref-resolution"
+grep -qF 'scale ↔ structure' "$GD_VERIFY_SKILL"                 || CS2_VERIFY_WHY+=" scale-structure"
+grep -qF 'belongs_to 3-way' "$GD_VERIFY_SKILL"                  || CS2_VERIFY_WHY+=" belongs_to-3way"
+grep -qF 'Content status/version 2-place' "$GD_VERIFY_SKILL"    || CS2_VERIFY_WHY+=" content-status-version"
+grep -qF 'Content map freshness (3-surface)' "$GD_VERIFY_SKILL" || CS2_VERIFY_WHY+=" content-map-freshness"
+grep -qF 'RES/TRACK/KNOB coherence' "$GD_VERIFY_SKILL"          || CS2_VERIFY_WHY+=" res-track-knob"
+grep -qF 'Cross-axis impact (system → content type' "$GD_VERIFY_SKILL" || CS2_VERIFY_WHY+=" cross-axis-sys-ct"
+grep -qF 'skip this block silently' "$GD_VERIFY_SKILL"          || CS2_VERIFY_WHY+=" non-empty-gating"
+grep -qF 'on all three axes' "$GD_VERIFY_SKILL"                 || CS2_VERIFY_WHY+=" research-carveout-3axes"
+if [[ -z "$CS2_VERIFY_WHY" ]]; then
+    pass "CS2-2 unikit-gd-verify content checks present (9: id/CU⊆CT/ref<>/scale/belongs_to/status/map-freshness/RES-TRACK-KNOB/cross-axis) + non-empty gating + research carve-out"
+else
+    fail "CS2-2 unikit-gd-verify content checks missing:$CS2_VERIFY_WHY"
+fi
+
+# (CS2-3) unikit-gd-review content lenses present AND activated — the three content
+# lenses carry real prompts in lenses.md, the SKILL body marks them active, and ZERO
+# "stub — Content axis" survives in EITHER file (mirror of FL-4). The genre carve-out is
+# a DIFFERENT marker ("stub — genre, Stage 4"); content lenses must be active now.
+CS2_REVIEW_WHY=""
+grep -qF '**schema-coherence**' "$GD_LENSES"            || CS2_REVIEW_WHY+=" lenses-schema-coherence"
+grep -qF '**catalog-scale**' "$GD_LENSES"               || CS2_REVIEW_WHY+=" lenses-catalog-scale"
+grep -qF '**content-fantasy-delivery**' "$GD_LENSES"    || CS2_REVIEW_WHY+=" lenses-content-fantasy"
+grep -qF 'Content lenses (active)' "$GD_REVIEW_SKILL"   || CS2_REVIEW_WHY+=" skill-content-active"
+grep -qF 'stub — Content axis' "$GD_LENSES"             && CS2_REVIEW_WHY+=" residual-stub-lenses"
+grep -qF 'stub — Content axis' "$GD_REVIEW_SKILL"       && CS2_REVIEW_WHY+=" residual-stub-skill"
+if [[ -z "$CS2_REVIEW_WHY" ]]; then
+    pass "CS2-3 gd-review content lenses present (schema-coherence/catalog-scale/content-fantasy-delivery) + activated (zero 'stub — Content axis' in SKILL+lenses)"
+else
+    fail "CS2-3 gd-review content lenses incomplete/gated:$CS2_REVIEW_WHY"
+fi
+
+# (CS2-4) unikit-gd-explore content surface: the internal-design lens carries both content
+# brief blocks (closing the seed loop unikit-gd-content already reads), and gd-explore tags
+# content research (Target … CONTENT-<slug>) + routes content to /unikit-gd-content.
+CS2_EXPLORE_WHY=""
+grep -qF '## Content Improvement Plan' "$GD_INTERNAL_LENS"  || CS2_EXPLORE_WHY+=" lens-improvement-block"
+grep -qF '## Content Feature Plan' "$GD_INTERNAL_LENS"      || CS2_EXPLORE_WHY+=" lens-feature-block"
+grep -qF 'CONTENT-<slug>' "$GD_INTERNAL_LENS"               || CS2_EXPLORE_WHY+=" lens-content-target-tag"
+grep -qF 'CONTENT-<slug>' "$GD_EXPLORE_SKILL"               || CS2_EXPLORE_WHY+=" explore-content-target-tag"
+grep -qF 'no add-content' "$GD_EXPLORE_SKILL"               || CS2_EXPLORE_WHY+=" explore-content-route"
+if [[ -z "$CS2_EXPLORE_WHY" ]]; then
+    pass "CS2-4 upstream content surface (internal-design-lens content blocks + CONTENT target tag, gd-explore CONTENT target + content route)"
+else
+    fail "CS2-4 upstream content surface incomplete:$CS2_EXPLORE_WHY"
+fi
+
+# (CS2-5) the GD-IDS.yaml template carries the commented research: pointer on content_types
+# (T3) — the seed pointer unikit-gd-content writes, the non-id path the T4 carve-out excludes.
+if grep -qF 'when the CT was seeded from an explore brief' "$GD_IDS_TPL"; then
+    pass "CS2-5 GD-IDS template — content_types research: pointer present (seed loop + verify carve-out closed)"
+else
+    fail "CS2-5 GD-IDS template — content_types research: pointer missing"
 fi
 
 # ============================================================================

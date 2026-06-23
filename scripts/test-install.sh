@@ -120,7 +120,7 @@ assert_contains "$PRINCIPLES_PATH" 'C# code adhering to Unity' \
   "engine_name + engine_code_language substituted in Core Principle 1"
 
 # ─────────────────────────────────────────────────────
-# Test 1b-gd: gd-principles core + 5 shards installed as system assets under
+# Test 1b-gd: gd-principles core + 6 shards installed as system assets under
 # .unikit/system/gamedesign/ (flat copies, no engine vars). After the shard split
 # installGamedesignSystemAssets copies every top-level data/gamedesign/*.md verbatim;
 # the slim core keeps the always-loaded sections (e.g. Zone Ownership / Anti-patterns)
@@ -140,7 +140,7 @@ assert_not_contains "$GD_PRINCIPLES_PATH" '\{\{engine_name\}\}' \
 assert_not_exists "$CLAUDE_DIR/.unikit/system/gd-principles.md" \
   "pre-split flat .unikit/system/gd-principles.md NOT present on init (core lives under gamedesign/ now)"
 # Per-shard delivery (mirror of 1b-dr) — each shard lands under gamedesign/, flat, no vars.
-for shard in gd-authoring gd-lifecycle gd-flow-axis gd-provenance gd-critique; do
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
   assert_exists "$GD_SYS_DIR/$shard.md" "$shard.md shard created in .unikit/system/gamedesign/"
   assert_not_contains "$GD_SYS_DIR/$shard.md" '\{\{engine_name\}\}' \
     "$shard.md shard has no engine vars (flat copy)"

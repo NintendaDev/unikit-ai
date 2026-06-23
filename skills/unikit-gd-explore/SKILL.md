@@ -224,6 +224,8 @@ registry + closure pass, the two brief blocks — lives in
 | **Close a design question** | "work through the open question on X", "resolve the trade-off in SYS-y" |
 | **Improve an existing flow** | "improve the onboarding", "fix the first-session pacing", "rework this flow's guidance", "доработать прогрессию" |
 | **New player-facing flow** | "design the first-session flow", "map a new player sequence for us", "what flow would serve PIL-2" |
+| **Improve existing content** | "improve our item catalog", "rework the loot schema", "доработать каталог предметов", "rethink the CT-item fields" |
+| **New content area** | "design the item types for us", "what content schema would serve SYS-inventory", "plan a new catalog of enemies", "проработать каталог контента" |
 
 The tell is the **possessive frame** — *our / this game / SYS-id / a pillar* — which
 separates this lens from dissecting someone else's game.
@@ -275,6 +277,22 @@ The brief block is `## Flow Feature Plan` (no doc / `not-started` / `skeleton` �
 seeds) or `## Flow Improvement Plan` (`detailed` / `reviewed` / `revised` — a delta). A
 `GOAL` that needs a **missing system** still routes that *system* through
 `/unikit-gd-spec` add-system, but the flow itself always goes to `/unikit-gd-flow`.
+
+**Content targets collapse to one route (no add-content).** A content type **registers
+itself**, so — like a flow — its `doc_status` does **not** fork the route: every content
+state (no doc / `not-started` / `skeleton` / `detailed` / `reviewed` / `revised`) routes
+to the **same** owner, `/unikit-gd-content` (it creates, registers, fills, and revises
+the schema). There is no `/unikit-gd-spec` add-content step:
+
+| Target state (`doc_status`) | Recommended route |
+|-----------------------------|-------------------|
+| any content-type state (no doc … `revised`) | `/unikit-gd-content` |
+
+The brief block is `## Content Feature Plan` (no doc / `not-started` / `skeleton` — needs
+seeds) or `## Content Improvement Plan` (`detailed` / `reviewed` / `revised` — a schema
+delta). A `belongs_to` that needs a **missing system** still routes that *system* through
+`/unikit-gd-spec` add-system, but the content type itself always goes to
+`/unikit-gd-content`.
 
 ## Serving a brainstorm request (subagent mode)
 
@@ -334,8 +352,8 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
    Updated: <YYYY-MM-DD HH:MM>
    Status: completed | in-progress | needs-follow-up
    Research: <folder-name>
-   Target: SYS-<slug> | FLOW-<slug>   # internal-design lens only — the system or flow this research targets
-   Kind: feature | improvement   # internal-design lens only — feature = new system/flow, improvement = existing one
+   Target: SYS-<slug> | FLOW-<slug> | CONTENT-<slug>   # internal-design lens only — the system, flow, or content type this research targets
+   Kind: feature | improvement   # internal-design lens only — feature = new system/flow/content type, improvement = existing one
 
    ## Table of Contents
    ## Topic            — 1–2 sentences
@@ -349,8 +367,9 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
 
    The Table of Contents is **mandatory** and reflects the real sections. The
    **`Target:` / `Kind:`** lines are written **only** by the internal design lens
-   (`internal-design-lens.md` → "Research tags") — they let `unikit-gd-system`
-   discover this research deterministically after a `/clear`.
+   (`internal-design-lens.md` → "Research tags") — they let `unikit-gd-system` /
+   `unikit-gd-flow` / `unikit-gd-content` discover this research deterministically
+   after a `/clear`.
    A reference-dissection or market research omits both.
 
 2. **`RESEARCH_BRIEF.md`** — a compact brief built **for `unikit-gd-spec` /
@@ -392,6 +411,15 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
      `implements: PIL-n`, `depends_on: SYS-ids`) plus the A–F section seeds
      `unikit-gd-flow` pre-fills its section-cycle from. (No add-flow step — the flow
      zone registers itself.)
+   - **`## Content Improvement Plan`** — when the route is `/unikit-gd-content` for a
+     `detailed` / `reviewed` / `revised` **content type**: Target `CT-<slug>`, expected
+     scale, schema delta lines (field / type / `ref<>` / `scale`), touched GD-IDS facts,
+     rejected alternatives, the `RF-<date>-n` it closes (if any), deferred open questions.
+   - **`## Content Feature Plan`** — when the route is `/unikit-gd-content` for a **new
+     content type** (no doc / `not-started` / `skeleton`): the type fields (slug,
+     candidate `scale`, `belongs_to: SYS-<slug>`, candidate `CT.fields`) plus the A–F
+     section seeds `unikit-gd-content` pre-fills its section-cycle from. (No add-content
+     step — the content zone registers itself.)
 
    For several targets, append one block per target (dependency-sorted).
 
@@ -406,6 +434,8 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
 | **Internal lens** — fill a `skeleton` system | `/unikit-gd-system` |
 | **Internal lens** — improve a `detailed`/`reviewed`/`revised` flow | `/unikit-gd-flow` (consumes `## Flow Improvement Plan`) |
 | **Internal lens** — a new / `skeleton` flow | `/unikit-gd-flow` (consumes `## Flow Feature Plan`) |
+| **Internal lens** — improve a `detailed`/`reviewed`/`revised` content type | `/unikit-gd-content` (consumes `## Content Improvement Plan`) |
+| **Internal lens** — a new / `skeleton` content type | `/unikit-gd-content` (consumes `## Content Feature Plan`) |
 | A balance/economy/UX convention worth keeping | `/unikit-memory --module gamedesign` |
 | A consistency concern in the current design | `/unikit-gd-verify` |
 
@@ -462,16 +492,18 @@ crystallize, you might summarize the findings — but the thinking is often the 
   contract. This skill is its provider; brainstorm reads it as the interface. Keep its
   canonical marker and brief field-list in sync with `references/market-scan.md`.
 - **Internal design lens (read-only).** The lens (`references/internal-design-lens.md`)
-  deep-reads `GAME.md` / `GD-IDS.yaml` (+ its `## System Map [gen]` / `## Flow Map [gen]`
-  renders) / system docs / flow docs and hands off a brief — it **never** writes the
-  GDD, and it **never** writes the `research:` pointer into `GD-IDS.yaml`; that pointer
-  is owned by the registering zone (`unikit-gd-spec` add-system for a **system**,
-  `unikit-gd-flow` for a **flow** — there is no add-flow). Explore only **tags** its own
-  research (`Target:` / `Kind:`).
-- **Read-only:** `GAME.md`, `GD-IDS.yaml`, systems, concepts — route any design change
-  to its owner skill, never edit them here.
+  deep-reads `GAME.md` / `GD-IDS.yaml` (+ its `## System Map [gen]` / `## Flow Map [gen]` /
+  `## Content Map [gen]` renders) / system docs / flow docs / content-type docs and hands
+  off a brief — it **never** writes the GDD, and it **never** writes the `research:`
+  pointer into `GD-IDS.yaml`; that pointer is owned by the registering zone
+  (`unikit-gd-spec` add-system for a **system**, `unikit-gd-flow` for a **flow**,
+  `unikit-gd-content` for a **content type** — there is no add-flow / add-content).
+  Explore only **tags** its own research (`Target:` / `Kind:`).
+- **Read-only:** `GAME.md`, `GD-IDS.yaml`, systems, flows, content types, concepts —
+  route any design change to its owner skill, never edit them here.
 - **Not this skill:** generating new concepts → `unikit-gd-brainstorm`; authoring
-  the spec/systems/flows → `unikit-gd-spec` / `unikit-gd-system` / `unikit-gd-flow`.
+  the spec/systems/flows/content → `unikit-gd-spec` / `unikit-gd-system` /
+  `unikit-gd-flow` / `unikit-gd-content`.
 - **Never:** author or edit a design document; read the code workspace or project
   source; auto-save a research.
 
