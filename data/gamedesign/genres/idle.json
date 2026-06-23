@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "idle",
+  "name": "Idle / incremental",
+  "aliases": ["idle", "incremental", "clicker", "idle-game"],
+  "summary": "Idle/incremental, где математика=GDD: cost-curve (base×growth^owned), множители/майлстоуны, prestige-reset и offline-earnings с капом (Cookie Clicker, AdVenture Capitalist).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["economy", "progression", "balance", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "generators", "category": "Economy", "tier": "MVP", "why": "генераторы cost/output/growth — ядро математики" },
+    { "slug": "multipliers", "category": "Progression", "tier": "VS", "why": "множители и milestone-анлоки" },
+    { "slug": "prestige", "category": "Meta", "tier": "Alpha", "why": "prestige-reset + prestige-валюта" },
+    { "slug": "offline-earnings", "category": "Economy", "tier": "VS", "why": "offline-accrual с капом" }
+  ],
+  "seed_content_types": [
+    { "slug": "generator", "belongs_to": "SYS-generators", "scale": "curated", "why": "каталог генераторов со схемой cost/output/growth" }
+  ],
+  "seed_entities": [
+    { "slug": "milestone", "why": "майлстоун-анлок множителя" },
+    { "slug": "number-notation", "why": "нотация больших чисел (K/M/B/aa…)" }
+  ],
+  "seed_resources": [
+    { "slug": "currency", "kind": "soft", "why": "основная мягкая валюта генераторов" },
+    { "slug": "prestige-currency", "kind": "hard", "why": "валюта prestige-слоя" }
+  ],
+  "critical_sections": ["economy.CostCurve", "progression.PrestigeReset", "economy.OfflineEarnings"],
+  "review_emphasis": ["cost-curve (base×growth^owned) и множители держат прогрессию", "prestige-reset даёт честный second-wind", "offline-earnings с капом сбалансированы"],
+  "platform_default": "mobile"
+}

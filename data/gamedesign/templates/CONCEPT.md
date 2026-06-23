@@ -4,6 +4,14 @@
 > **Version**: 1
 > **Created**: [YYYY-MM-DD]
 
+<!-- Descriptive genre hint (set by unikit-gd-brainstorm). A HUMAN name for the
+     game's genre ("симулятор ломбарда", "match-3 головоломка") — an INTENT, NOT a
+     catalog id. It may deliberately not match any genre-profile name; unikit-gd-spec
+     resolves it best-fit to a bundled profile and writes the resolved profile id as
+     `genre_profile:` in GAME.md (a separate field). A bare non-id slug outside
+     GD-IDS — inert for unikit-gd-verify. Leave empty/soft when no clear genre. -->
+> **genre**: ""
+
 <!-- Market evidence (machine fields, set at Phase 3.5 when a commercial frame
      exists; OUTSIDE the nine-field table — the table stays nine fields, no more).
      These underscore fields are lifted VERBATIM from the explore delegation brief

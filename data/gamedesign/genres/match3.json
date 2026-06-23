@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "match3",
+  "name": "Match-3",
+  "aliases": ["match3", "match-3", "swap-puzzle"],
+  "summary": "Свайп-головоломки «три-в-ряд» с уровнями-экземплярами как контентом, лимитом ходов, целями-энумами и мягкой экономикой бустеров (Candy Crush, Homescapes).",
+  "confidence": "high",
+  "default_flow_mode": "linear",
+  "default_packs": ["level-design", "economy", "progression", "ux-onboarding", "liveops", "monetization-ethics"],
+  "seed_systems": [
+    { "slug": "board", "category": "Gameplay", "tier": "MVP", "why": "грид матчей — ядро лупа" },
+    { "slug": "boosters", "category": "Gameplay", "tier": "VS", "why": "бустеры/спец-элементы — глубина и sink экономики" },
+    { "slug": "meta-map", "category": "Progression", "tier": "Alpha", "why": "saga-map и ворота прогрессии" },
+    { "slug": "lives", "category": "Economy", "tier": "VS", "why": "жизни/энергия с регеном — pacing сессии" }
+  ],
+  "seed_content_types": [
+    { "slug": "level", "belongs_to": "SYS-board", "scale": "bulk", "why": "уровни И ЕСТЬ контент (goal + moves + idea)" }
+  ],
+  "seed_entities": [
+    { "slug": "blocker", "why": "архетипы препятствий (лёд, цепь, ящик)" },
+    { "slug": "special-candy", "why": "спец-элементы от матчей 4/5/T/L" }
+  ],
+  "seed_resources": [
+    { "slug": "coins", "kind": "soft", "why": "мягкая валюта на бустеры и ходы" },
+    { "slug": "lives", "kind": "event", "why": "жизни с регеном-таймером — гейт сессии" }
+  ],
+  "critical_sections": ["level-design.LevelMetrics", "economy.SourcesAndSinks", "ux-onboarding.FTUEFunnel"],
+  "review_emphasis": ["монотонность кривой сложности по наборам уровней (bot pass-rate)", "у каждого booster есть sink", "заданы goal-enum, move-limit и star-порог"],
+  "platform_default": "mobile"
+}

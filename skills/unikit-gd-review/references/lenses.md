@@ -109,8 +109,24 @@ A content finding cites the `CT-<slug>` / `CU-<ct>-<n>` and the `belongs_to` sys
 pillar it serves, on the same shared `RF-<date>-n` rubric as a system finding. The
 **fantasy-delivery**, **systems-math**, and **provenance** core lenses are unchanged —
 they apply to systems; the content lenses are the catalog-axis complement.
-Genre-dependent emphasis (`critical_sections` / `review_emphasis` / a profile
-completeness lens) is **stub — genre, Stage 4**.
+
+## Genre lens (run when `GAME.md` carries a `genre_profile:`)
+
+Review reads exactly ONE profile — the genre profile `GAME.md` resolved
+(`genre_profile:` id, installed at `.unikit/system/gamedesign/genres/<id>.json`). It is
+the **only** profile read on the design side; `unikit-gd-verify` never reads it (verify
+is genre-blind — `critical_sections` lives only here).
+
+| Lens | The question it attacks | Typical severity on a hit |
+|------|-------------------------|---------------------------|
+| **profile-completeness** | Read the profile's `critical_sections` — the sections a complete GDD of this genre must carry (e.g. `economy.SourcesAndSinks`, `level-design.LevelMetrics`, `ux-onboarding.FTUEFunnel`). For each, is it **present and filled** across the reviewed docs (the relevant SYSTEM / FLOW / CONTENT-TYPE / `GAME.md`)? A `critical_section` that is absent or still a placeholder is a genre-completeness gap — name it; "looks complete for the genre" is not a result. | Major (a genre-critical section is missing/empty) — **declinable / advisory**, never a blocker |
+
+The profile's `review_emphasis` is an **advisory re-weight**: a soft priority bump for
+the lenses it names (e.g. "у каждого booster есть sink" raises the systems-math lens on
+that point). It changes emphasis, not the rubric. When `GAME.md` has no `genre_profile:`
+(universal baseline) → **skip this lens entirely**. The genre layer is otherwise
+dissolved into `GD-IDS` (seeds became registered facts at spec), so the rest of review
+stays genre-agnostic.
 
 ## Output discipline
 

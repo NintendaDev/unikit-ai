@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "ccg",
+  "name": "Collectible Card Game",
+  "aliases": ["tcg", "collectible-card-game", "trading-card-game", "card-game"],
+  "summary": "Коллекционные карточные игры: анатомия карты (costed против curve), ресурс + цвета/фракции, rarity + коллекция/монетизация, метагейм + balance/ban-lists и правила колоды (Hearthstone, MTG Arena).",
+  "confidence": "high",
+  "default_flow_mode": "conditional",
+  "default_packs": ["balance", "economy", "progression", "monetization-ethics", "liveops"],
+  "seed_systems": [
+    { "slug": "card-anatomy", "category": "Gameplay", "tier": "MVP", "why": "костовка карты против curve — субстрат баланса (P0)" },
+    { "slug": "resource", "category": "Gameplay", "tier": "MVP", "why": "mana + цвет/фракция-pie — экономика хода" },
+    { "slug": "deck-rules", "category": "Gameplay", "tier": "VS", "why": "правила колоды (size/copies/rotation) — конструктор" },
+    { "slug": "metagame", "category": "Meta", "tier": "Alpha", "why": "balance + ban-lists + rotation — здоровье меты" },
+    { "slug": "acquisition", "category": "Economy", "tier": "VS", "why": "rarity + коллекция/монетизация + draft — модель доступа" }
+  ],
+  "seed_content_types": [
+    { "slug": "card", "belongs_to": "SYS-card-anatomy", "scale": "bulk", "why": "карты — объёмный контент: cost/atk/health/keywords/rarity/set" }
+  ],
+  "seed_entities": [
+    { "slug": "keyword", "why": "ключевая абилка (taunt/charge/flying) — словарь карт" },
+    { "slug": "set", "why": "сет карт + rotation — единица релиза и меты" }
+  ],
+  "seed_resources": [
+    { "slug": "mana", "kind": "event", "why": "мана хода — экономика разыгрывания карт" },
+    { "slug": "dust", "kind": "soft", "why": "крафт-валюта — мягкий путь к нужным картам" }
+  ],
+  "critical_sections": ["balance.ManaCurve", "economy.AcquisitionMonetization", "balance.MetaHealth"],
+  "review_emphasis": ["mana-curve verify: костовка карт против curve, нет доминирующей карты (P0)", "resource + цвет/фракция-pie дают честные ограничения колоды", "rarity/коллекция/монетизация этичны; ban-lists/rotation держат мету здоровой"],
+  "platform_default": "cross-platform"
+}

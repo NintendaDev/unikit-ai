@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "crafting",
+  "name": "Crafting",
+  "aliases": ["crafting", "crafting-system", "recipe-system"],
+  "summary": "Кросс-секционный слой крафта (не самостоятельная игра): граф рецептов с гейтингом по ресурсам, тиры ресурсов и станции/инструменты, открытие рецептов и чёткая роль крафта в лупе.",
+  "confidence": "medium",
+  "default_flow_mode": "emergent",
+  "default_packs": ["progression", "economy", "balance", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "recipe-graph", "category": "Progression", "tier": "MVP", "why": "граф рецептов с гейтингом по ресурсам — ядро слоя" },
+    { "slug": "resource-tiers", "category": "Economy", "tier": "MVP", "why": "тиры ресурсов + станции/инструменты как ворота доступа" },
+    { "slug": "recipe-discovery", "category": "Progression", "tier": "VS", "why": "открытие рецептов: явный анлок vs эксперимент" }
+  ],
+  "seed_content_types": [
+    { "slug": "recipe", "belongs_to": "SYS-recipe-graph", "scale": "curated", "why": "рецепты: ingredients+qty / output / prereqs — типизированный граф" }
+  ],
+  "seed_entities": [
+    { "slug": "ingredient", "why": "ингредиент с тиром и источником — вход рецепта" },
+    { "slug": "crafting-station", "why": "станция/инструмент как требование доступа к рецепту" },
+    { "slug": "tier-gate", "why": "тир-ворота: гейтинг рецептов по уровню ресурса/станции" },
+    { "slug": "recipe-unlock", "why": "запись об открытии рецепта (анлок или discovery)" }
+  ],
+  "seed_resources": [
+    { "slug": "ingredient-stock", "kind": "soft", "why": "запас ингредиентов — расходуется графом рецептов" }
+  ],
+  "critical_sections": ["progression.RecipeGraph", "economy.ResourceTiers", "progression.RecipeDiscovery"],
+  "review_emphasis": ["граф рецептов ацикличен — нет циклических зависимостей", "тиры ресурсов и станции дают осмысленный гейтинг, а не гринд", "роль крафта в лупе явная: чем он отличается от покупки/дропа"]
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "rhythm",
+  "name": "Rhythm",
+  "aliases": ["rhythm-game", "music-game"],
+  "summary": "Ритм-игры на чтении чарта: авторинг beatmap (note-timeline по BPM-сетке), timing-windows, scoring+combo, A/V-синхрон с калибровкой задержки и кривая сложности (Beat Saber, osu!).",
+  "confidence": "high",
+  "default_flow_mode": "linear",
+  "default_packs": ["level-design", "core-loops", "progression", "ux-onboarding", "accessibility"],
+  "seed_systems": [
+    { "slug": "beatmap", "category": "Content", "tier": "MVP", "why": "note-timeline + offset по BPM-сетке — чарт это контент" },
+    { "slug": "timing", "category": "Gameplay", "tier": "MVP", "why": "graded windows (ms) — субстрат точности (P0)" },
+    { "slug": "scoring", "category": "Gameplay", "tier": "VS", "why": "score + multiplier + combo — слой мастерства" },
+    { "slug": "calibration", "category": "UX", "tier": "VS", "why": "A/V sync + пер-девайс latency — честность ввода" },
+    { "slug": "difficulty", "category": "Progression", "tier": "Alpha", "why": "difficulty tiers — кривая обучения чарту" }
+  ],
+  "seed_content_types": [
+    { "slug": "beatmap", "belongs_to": "SYS-beatmap", "scale": "bulk", "why": "битмапы И ЕСТЬ контент — note-timeline + offset, объёмная библиотека" }
+  ],
+  "seed_entities": [
+    { "slug": "note", "why": "типы нот (taps/holds/chords/streams) — словарь чарта" }
+  ],
+  "seed_resources": [
+    { "slug": "combo", "kind": "event", "why": "комбо/множитель — расходный накопитель за точность" }
+  ],
+  "critical_sections": ["level-design.BeatmapAuthoring", "core-loops.TimingWindows", "accessibility.LatencyCalibration"],
+  "review_emphasis": ["timing-windows (ms) заданы и калибруемы — точность честна на любом девайсе (P0)", "авторинг beatmap привязан к BPM-сетке без рассинхрона A/V", "кривая сложности по difficulty tiers обучает новым типам нот"],
+  "platform_default": "cross-platform"
+}

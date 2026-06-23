@@ -11,7 +11,7 @@ import {
   getDataDir, getEngineTemplatesDir,
   fileExists, readTextFile, writeTextFile, listFiles, removeFile,
 } from '../../utils/fs.js';
-import type { AgentInstallation } from '../config.js';
+import { getInstalledGenres, type AgentInstallation, type UniKitConfig } from '../config.js';
 import { getAgentConfig } from '../agents.js';
 import { getEngineConfig } from '../engines.js';
 import { getTransformer } from '../transformer.js';
@@ -20,7 +20,8 @@ import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
   GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID,
-  MODULES_YML_FILE, systemDir, systemGamedesignDir,
+  GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE,
+  systemDir, systemGamedesignDir, systemGamedesignGenresDir,
 } from '../constants.js';
 import { listModules } from '../modules.js';
 import { buildSubagentTemplateVars } from './shared.js';
@@ -172,6 +173,48 @@ export async function installGamedesignSystemAssets(projectDir: string): Promise
   if (await fileExists(orphan)) {
     await removeFile(orphan);
     logInfo('installGamedesignSystemAssets', `removed orphan flat .unikit/system/${GD_PRINCIPLES_FILE}`);
+  }
+}
+
+// --- Genre profile installation (selective, state-driven) ---
+
+/**
+ * Selectively deliver the read-only genre profiles named in
+ * `config.genres.installed` into `.unikit/system/gamedesign/genres/`. Unlike
+ * {@link installGamedesignSystemAssets} (which folder-copies ALL shards every
+ * time), this copies only the profiles the project has installed — a profile
+ * is read-only and never edited, so delivery is an unconditional flat rewrite
+ * (no engine-var substitution, no version gate). Profiles on disk that are no
+ * longer in state are orphan-deleted (mirroring the shard orphan-delete).
+ *
+ * Called next to {@link installGamedesignSystemAssets} on init (a no-op — fresh
+ * state is empty) and update (refreshes installed profiles). The CLI
+ * `genres install` writes state then calls this to deliver immediately.
+ */
+export async function installGenreProfiles(projectDir: string, config: UniKitConfig): Promise<void> {
+  const installed = getInstalledGenres(config);
+  const srcDir = path.join(getDataDir(), GAMEDESIGN_MODULE_ID, GAMEDESIGN_GENRES_DIR_NAME);
+  const destDir = systemGamedesignGenresDir(projectDir);
+
+  const wanted = new Set<string>();
+  for (const entry of installed) {
+    const content = await readTextFile(path.join(srcDir, `${entry.id}.json`));
+    if (!content) {
+      logWarn('installGenreProfiles', `bundled genre profile not found: ${entry.id}`);
+      continue;
+    }
+    await writeTextFile(path.join(destDir, `${entry.id}.json`), content);
+    wanted.add(entry.id);
+    logInfo('installGenreProfiles', `installed genre profile ${entry.id}`);
+  }
+
+  // Orphan-delete profiles on disk no longer in state.
+  for (const name of (await listFiles(destDir)).filter(n => n.endsWith('.json'))) {
+    const id = name.slice(0, -'.json'.length);
+    if (!wanted.has(id)) {
+      await removeFile(path.join(destDir, name));
+      logInfo('installGenreProfiles', `removed orphan genre profile ${name}`);
+    }
   }
 }
 

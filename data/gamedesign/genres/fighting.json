@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "fighting",
+  "name": "Fighting",
+  "aliases": ["fighting-game", "versus-fighting"],
+  "summary": "Файтинги на frame-data и свойствах приёмов как балансе, rollback netcode, архетипах, геометрии hitbox/hurtbox и системных механиках (Street Fighter, Tekken).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["balance", "multiplayer", "core-loops", "progression"],
+  "seed_systems": [
+    { "slug": "frame-data", "category": "Gameplay", "tier": "MVP", "why": "startup/active/recovery + on-block/on-hit — весь баланс-субстрат" },
+    { "slug": "hitbox-geometry", "category": "Gameplay", "tier": "MVP", "why": "hitbox/hurtbox по кадрам — честность размена" },
+    { "slug": "system-mechanics", "category": "Gameplay", "tier": "VS", "why": "meter/cancel/throw+tech — общие механики" },
+    { "slug": "archetypes", "category": "Gameplay", "tier": "VS", "why": "архетипы персонажей — структура матчапов" },
+    { "slug": "netcode", "category": "Technical", "tier": "VS", "why": "rollback netcode — играбельность онлайна (P1)" }
+  ],
+  "seed_content_types": [
+    { "slug": "move", "belongs_to": "SYS-frame-data", "scale": "curated", "why": "приёмы (per-character frame-data): startup/active/recovery/dmg/hitstun/blockstun/on-block/on-hit/cancel-flags/hit-level/armor" }
+  ],
+  "seed_entities": [
+    { "slug": "archetype", "why": "архетип бойца (rushdown/zoner/grappler) — роль в матчапе" },
+    { "slug": "hurtbox", "why": "hurtbox по кадрам — уязвимые зоны приёма" }
+  ],
+  "seed_resources": [
+    { "slug": "meter", "kind": "event", "why": "шкала супер/драйв — ресурс размена и комбо" }
+  ],
+  "critical_sections": ["balance.FrameData", "balance.HitboxHurtbox", "core-loops.SystemMechanics"],
+  "review_emphasis": ["frame-data и свойства приёмов (on-block/on-hit/cancel) задают честные размены без бесшовных луп-комбо", "hitbox/hurtbox по кадрам совпадают с анимацией — нет фантомных попаданий", "архетипы покрывают матрицу матчапов; rollback netcode держит онлайн (P1)"],
+  "platform_default": "console"
+}

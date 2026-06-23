@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "jrpg",
+  "name": "JRPG",
+  "aliases": ["jrpg", "japanese-rpg", "turn-based-rpg"],
+  "summary": "Японские ролевые игры с пошаговой боёвкой (turn-order), синергией бой↔гринд, паутиной стихий/слабостей и партией с активным/резервным составом (Final Fantasy, Persona 5).",
+  "confidence": "high",
+  "default_flow_mode": "conditional",
+  "default_packs": ["core-loops", "progression", "balance", "narrative", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "battle-system", "category": "Gameplay", "tier": "MVP", "why": "пошаговая боёвка с turn-order и ambush — ядро лупа" },
+    { "slug": "affinity", "category": "Gameplay", "tier": "VS", "why": "паутина стихий/слабостей — глубина тактики боя" },
+    { "slug": "party", "category": "Progression", "tier": "VS", "why": "партия: активный/резервный состав и роли" },
+    { "slug": "progression-curve", "category": "Progression", "tier": "Alpha", "why": "XP-кривая и гринд, замыкающие синергию с боем" }
+  ],
+  "seed_content_types": [
+    { "slug": "encounter", "belongs_to": "SYS-battle-system", "scale": "curated", "why": "энкаунтеры с encounter-table, составом врагов и условиями ambush" }
+  ],
+  "seed_entities": [
+    { "slug": "combatant", "why": "боец с HP/SP/agility — атом turn-order" },
+    { "slug": "persona", "why": "persona/job — носитель способностей и ролей" },
+    { "slug": "affinity-table", "why": "таблица стихийных affinity (слабость/сопротивление/поглощение)" },
+    { "slug": "turn-order", "why": "очередь хода + ambush — каркас боя" },
+    { "slug": "xp-curve", "why": "кривая опыта, регулирующая темп гринда" },
+    { "slug": "encounter-table", "why": "таблица энкаунтеров для зон и спавна" }
+  ],
+  "seed_resources": [
+    { "slug": "gil", "kind": "soft", "why": "мягкая валюта на снаряжение и расходники" },
+    { "slug": "xp", "kind": "event", "why": "опыт — драйвер прогрессии и синергии с боем" }
+  ],
+  "critical_sections": ["core-loops.BattleSystem", "core-loops.BattleGrindSynergy", "balance.AffinityWeb", "progression.PartyComposition"],
+  "review_emphasis": ["turn-order и ambush не ломают баланс инициативы", "паутина affinity не сводится к одной доминирующей стихии", "синергия бой↔гринд не превращается в обязательный фарм"],
+  "platform_default": "console"
+}

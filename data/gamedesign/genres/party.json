@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "party",
+  "name": "Party Game",
+  "aliases": ["party-game", "mini-game-collection"],
+  "summary": "Пати-игры: ростер мини-игр со своими правилами, масштабирование по числу игроков (1=мастерство/2=соперничество/3-4=альянсы, bot-fill) и простой шаринг устройства (Mario Party, Jackbox).",
+  "confidence": "medium",
+  "default_flow_mode": "emergent",
+  "default_packs": ["accessibility", "core-loops", "player-motivation", "ux-onboarding", "social"],
+  "seed_systems": [
+    { "slug": "minigame-roster", "category": "Gameplay", "tier": "MVP", "why": "ростер мини-игр + правила каждой — ядро контента" },
+    { "slug": "player-scaling", "category": "Gameplay", "tier": "VS", "why": "масштаб по числу игроков: 1/2/3-4 + bot-fill" },
+    { "slug": "input-sharing", "category": "UX", "tier": "MVP", "why": "простота ввода и шаринг устройства между игроками" },
+    { "slug": "scoring", "category": "Gameplay", "tier": "VS", "why": "счёт per-game + мета-счёт серии раундов" }
+  ],
+  "seed_content_types": [
+    { "slug": "minigame", "belongs_to": "SYS-minigame-roster", "scale": "curated", "why": "горстка типизированных мини-игр с min/max игроков и правилами" }
+  ],
+  "seed_entities": [
+    { "slug": "minigame", "why": "мини-игра с min/max числом игроков" },
+    { "slug": "player-slot", "why": "слот игрока (человек или бот)" },
+    { "slug": "input-device", "why": "привязка устройства ввода + шаринг" },
+    { "slug": "scoring", "why": "счёт per-game и мета-счёт" },
+    { "slug": "round", "why": "раунд/серия раундов" },
+    { "slug": "spectator", "why": "наблюдатель между раундами" },
+    { "slug": "handicap", "why": "гандикап для баланса навыков" }
+  ],
+  "seed_resources": [
+    { "slug": "points", "kind": "soft", "why": "очки счёта раунда и меты" }
+  ],
+  "critical_sections": ["accessibility.InputSimplicity", "core-loops.MinigameRoster", "player-motivation.PlayerCountScaling"],
+  "review_emphasis": ["каждая мини-игра масштабируется по числу игроков (1=мастерство, 2=соперничество, 3-4=альянсы) с bot-fill", "ввод прост и допускает шаринг устройства; нет скрытых барьеров доступности", "счёт честен между мини-играми — нет доминирующей или мёртвой игры в ростере"],
+  "platform_default": "console"
+}

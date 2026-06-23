@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "strategy",
+  "name": "Strategy (general)",
+  "aliases": ["strategy", "strategy-game", "general-strategy"],
+  "summary": "Общая стратегия: пространство интересных решений с trade-off, цикл обратной связи под балансом, экономика faucet→drain и информация/пейсинг как ось напряжения (Advance Wars, Slay the Spire).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["core-loops", "balance", "economy", "progression", "player-motivation"],
+  "seed_systems": [
+    { "slug": "decision-space", "category": "Gameplay", "tier": "MVP", "why": "узлы решений с trade-off payoffs — ядро интересного выбора (Meier)" },
+    { "slug": "economy", "category": "Economy", "tier": "MVP", "why": "faucet→drain→converter — ресурсный движок решений" },
+    { "slug": "balance", "category": "Gameplay", "tier": "VS", "why": "feedback-loop под контролем — анти-runaway и name-the-exploit (Johnson)" },
+    { "slug": "victory", "category": "Progression", "tier": "Alpha", "why": "win/lose условия задают вектор всех решений" }
+  ],
+  "seed_content_types": [
+    { "slug": "faction", "belongs_to": "SYS-decision-space", "scale": "curated", "why": "асимметричные фракции — каталог стартовых наборов решений" }
+  ],
+  "seed_entities": [
+    { "slug": "decision-node", "why": "узел выбора с payoffs и trade-off" },
+    { "slug": "feedback-edge", "why": "ребро петли обратной связи (positive/negative)" },
+    { "slug": "converter", "why": "faucet/drain/converter — преобразователь ресурса в ресурс" }
+  ],
+  "seed_resources": [
+    { "slug": "stock", "kind": "soft", "why": "запас ресурса (stock) — топливо решений faucet→drain" }
+  ],
+  "critical_sections": ["balance.FeedbackLoops", "economy.SourcesAndSinks", "core-loops.DecisionTradeoffs"],
+  "review_emphasis": ["name the exploit — анти-ICS, нет доминирующей стратегии", "feedback-loop под контролем (нет runaway leader)", "экономика faucet→drain замкнута"],
+  "platform_default": "pc"
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "casual",
+  "name": "Casual",
+  "aliases": ["casual", "casual-mobile"],
+  "summary": "Казуальные мобильные игры с meta-прогрессией (saga-map + коллекция), мягкой+твёрдой экономикой и session-pacing через энергию/жизни (Gardenscapes, Royal Match).",
+  "confidence": "high",
+  "default_flow_mode": "linear",
+  "default_packs": ["progression", "economy", "ux-onboarding", "liveops", "monetization-ethics"],
+  "seed_systems": [
+    { "slug": "meta-map", "category": "Progression", "tier": "MVP", "why": "saga-map + ворота прогрессии — мета-каркас" },
+    { "slug": "collection", "category": "Meta", "tier": "VS", "why": "коллекция как долгосрочная цель meta" },
+    { "slug": "energy", "category": "Economy", "tier": "MVP", "why": "энергия/жизни + реген — pacing сессии (pinch-levels)" },
+    { "slug": "iap-store", "category": "Economy", "tier": "Alpha", "why": "IAP-mix soft+hard валют" }
+  ],
+  "seed_content_types": [
+    { "slug": "level", "belongs_to": "SYS-meta-map", "scale": "bulk", "why": "уровни=контент с pinch-curve сложности" }
+  ],
+  "seed_entities": [
+    { "slug": "gate", "why": "ворота прогрессии на saga-map" }
+  ],
+  "seed_resources": [
+    { "slug": "coins", "kind": "soft", "why": "мягкая валюта на бустеры" },
+    { "slug": "gems", "kind": "hard", "why": "твёрдая валюта IAP-mix" },
+    { "slug": "energy", "kind": "event", "why": "энергия/жизни с регеном — гейт сессии" }
+  ],
+  "critical_sections": ["progression.MetaMap", "economy.SourcesAndSinks", "ux-onboarding.SessionPacing"],
+  "review_emphasis": ["мета (saga-map + collection) удерживает между сессиями", "soft+hard экономика и IAP-mix замкнуты", "session-pacing через energy/lives и pinch-levels настроен"],
+  "platform_default": "mobile"
+}

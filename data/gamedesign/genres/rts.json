@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "rts",
+  "name": "RTS",
+  "aliases": ["rts", "real-time-strategy"],
+  "summary": "Стратегии в реальном времени: ростер юнитов с counter-матрицей (RPS, без идеальных контр), real-time экономика, build-order/tech и карта с чокпойнтами/экспандами (StarCraft II).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["core-loops", "balance", "economy", "ai-behavior", "level-design"],
+  "seed_systems": [
+    { "slug": "combat", "category": "Gameplay", "tier": "MVP", "why": "ростер юнитов + counter (RPS) matrix, не идеальные контры — ядро" },
+    { "slug": "economy", "category": "Economy", "tier": "MVP", "why": "real-time экономика: сбор ресурсов и темп раскачки" },
+    { "slug": "tech", "category": "Progression", "tier": "VS", "why": "build-order/tech-дерево — ветвление стратегий" },
+    { "slug": "map", "category": "Gameplay", "tier": "VS", "why": "карта: чокпойнты/экспанды задают пространство контроля" }
+  ],
+  "seed_content_types": [
+    { "slug": "unit", "belongs_to": "SYS-combat", "scale": "curated", "why": "каталог юнитов: HP/armor-tags/dmg/cost/supply + damage-vs-type table" }
+  ],
+  "seed_entities": [
+    { "slug": "unit", "why": "юнит: HP, armor-tags, damage, cost, supply + damage-vs-type таблица" },
+    { "slug": "building", "why": "постройка: производство юнитов и tech-гейты" },
+    { "slug": "resource-node", "why": "узел ресурса с rate/depletion — темп экономики" },
+    { "slug": "ability", "why": "способность юнита — микро-слой решений" },
+    { "slug": "map-tile", "why": "тайл карты: чокпойнт/экспанд/высота" }
+  ],
+  "seed_resources": [
+    { "slug": "minerals", "kind": "soft", "why": "базовый ресурс real-time экономики" },
+    { "slug": "supply", "kind": "event", "why": "supply cap — гейт размера армии" }
+  ],
+  "critical_sections": ["balance.CounterMatrix", "economy.EconomyTempo", "level-design.MapControl"],
+  "review_emphasis": ["counter-matrix RPS без идеальных контр (нет hard-доминанта)", "build-order/tech даёт несколько жизнеспособных стратегий", "supply cap и темп экономики сбалансированы"],
+  "platform_default": "pc"
+}

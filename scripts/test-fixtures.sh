@@ -149,6 +149,55 @@ write_unikit_config() {
 JSON
 }
 
+# Build a `genres.installed` JSON array. Each argument is a profile id and
+# becomes `{ "id": "<id>", "version": 1 }`:
+#   json_genre_entries "tycoon" "match3"  →  [{"id":"tycoon","version":1},{"id":"match3","version":1}]
+json_genre_entries() {
+    local parts=()
+    local id
+    for id in "$@"; do
+        parts+=("{\"id\":\"$id\",\"version\":1}")
+    done
+    local IFS=','
+    echo "[${parts[*]}]"
+}
+
+# Write a synthetic, registry-free `.unikit.json` carrying a `genres.installed`
+# list. Distinct from `write_unikit_config`: genres are ORTHOGONAL to knowledge
+# modules — `config.genres.installed` is a flat id list, NOT
+# `rules.installed.modules.gamedesign`. The intentional `_genres` suffix (not
+# `_gamedesign`) marks that orthogonality.
+#
+# Contract:
+#   write_unikit_config_genres <project_dir> <engine> [genres_installed_json]
+#
+#   <genres_installed_json>  JSON array (use json_genre_entries); default `[]`.
+write_unikit_config_genres() {
+    local project_dir="$1"
+    local engine="$2"
+    local genres_json="${3:-[]}"
+
+    mkdir -p "$project_dir"
+    cat > "$project_dir/.unikit.json" <<JSON
+{
+  "version": "1.1.0",
+  "engine": "$engine",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
+  "rules": {
+    "installed": {
+      "version": "1.1.0",
+      "modules": {}
+    }
+  },
+  "genres": {
+    "installed": $genres_json
+  }
+}
+JSON
+}
+
 # ─────────────────────────────────────────────
 # Style A assertions (exit on failure)
 # Used by test-install.sh / test-update.sh which rely on `set -e`

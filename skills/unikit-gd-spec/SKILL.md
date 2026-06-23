@@ -180,6 +180,43 @@ that reference too when a body points to it. The shared **Regen-on-Write** contr
 
 ---
 
+## Genre Profile — Create Seed
+
+In **Create** mode (and only Create — a fresh `GAME.md` from a concept/dialogue),
+this skill **resolves and seeds a genre profile**. The user never types a `genres`
+command — the spec drives the CLI (the skill-runs-CLI precedent: `/unikit` Step 9.2
+`rules install`). Full mechanics live in `references/mode-create.md` → **Resolve the
+genre profile (seed)**; in brief:
+
+1. **Resolve (best-fit).** Read the descriptive `genre:` hint from the seed
+   `CONCEPT.md` (a human intent, not a catalog id). Open the catalog with
+   `unikit-ai genres list` (its output is authoritative — there is NO genre→id map
+   in this skill), and **semantically best-fit** the hint to a profile by
+   `name` / `aliases` / `summary` (e.g. «симулятор ломбарда» → `tycoon`). The hint
+   may deliberately not equal any id.
+2. **Install + record.** Run `unikit-ai genres install <id>` (idempotent — driven by
+   this skill, not the user), then write the resolved id into the GAME.md header
+   `> **genre_profile**: <id>` (distinct from the descriptive `genre:` intent in
+   CONCEPT). Read the installed profile JSON
+   (`.unikit/system/gamedesign/genres/<id>.json`).
+3. **Seed interview.** Seeds (`seed_systems` / `seed_content_types` /
+   `seed_entities` / `seed_resources`) are **proposals**, never auto-written — run a
+   subtractive multi-select + add questions, with per-CT `scale`. `confidence` is the
+   pre-fill knob (high → pre-check more, low → ask more). Kept seeds apply through the
+   existing owner paths: systems → Phase B / spec Add-System; content → **route to
+   `/unikit-gd-content` add-CT**; RES/TRACK/KNOB → their zone-owner.
+4. **Universal baseline.** No `genre:` hint, no concept, or **no profile fits
+   closely** → author WITHOUT a profile (treat as `confidence: low` — ask more,
+   assume less), leave `genre_profile:` empty, install nothing.
+
+**The profile is read-only.** Every divergence (a dropped seed, an added field, a
+custom CT) lands in **GD-IDS** — the project's custom configuration is GD-IDS (import
+from the profile + augment at spec), NEVER an edit to the profile JSON. The genre
+layer dissolves into the registry, so **verify stays genre-blind** and only
+`unikit-gd-review` reads the profile (its completeness lens).
+
+---
+
 ## Regen-on-Write — `## System Map [gen]`
 
 `GAME.md`'s `## System Map [gen]` block is a **mechanical re-render** of `GD-IDS.yaml`
@@ -247,7 +284,10 @@ Options:
   roster (Create + Import Phase B, Add-System, Remap) and `GD-IDS.yaml`
   pillars + systems; optional `PITCH.md`; import `SOURCE.md`. Owns the `GD-IDS`
   `research:` pointer (written in Add-System when seeded from an explore brief) —
-  `unikit-gd-explore` never writes it.
+  `unikit-gd-explore` never writes it. Owns the **genre-profile resolve** (Create
+  seed): best-fit the CONCEPT `genre:` hint to a profile, drive `unikit-ai genres
+  install <id>`, and write the resolved `> **genre_profile**:` id into GAME.md (the
+  user never types a `genres` command; the profile is read-only — divergence → GD-IDS).
 - **Not this skill:** per-system GDDs (`systems/<slug>.md`) → `unikit-gd-system`;
   player-action flows (`flows/<slug>.md`) and the `## Flow Map [gen]` / `## Funnel
   [gen]` renders → `unikit-gd-flow`; content types (`content-types/CT-<slug>.md`) and

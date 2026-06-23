@@ -181,8 +181,17 @@ review lenses (schema-coherence, catalog-scale, content-fantasy-delivery — doe
 `bulk` vs `curated` the right call, does the catalog deliver the feeling section B
 promises?) from `references/lenses.md`, with the same adversarial framing. A
 `CONTENT-TYPE.md` **is** a review target; the lenses run over systems, flows, content
-types, and `GAME.md`. Genre-dependent emphasis (`critical_sections` / `review_emphasis`
-/ a profile completeness lens) is **stub — genre, Stage 4** — not selected here.
+types, and `GAME.md`.
+
+**Genre lens (active, declinable).** When `GAME.md` carries a `genre_profile:` id, run
+the genre **profile-completeness** lens (`references/lenses.md`): read that installed
+profile's `critical_sections` (`.unikit/system/gamedesign/genres/<id>.json`) and ask
+whether each is present and filled across the reviewed docs — a missing genre-critical
+section is a **Major** (declinable / advisory — never a blocker). The profile's
+`review_emphasis` is an advisory **re-weight** of the lens priorities, not a new rubric.
+This is the **only** profile read on the design side — `unikit-gd-verify` stays
+genre-blind (it never reads `critical_sections`). No `genre_profile:` (universal
+baseline) → skip the lens.
 
 ## Phase 3 — Cross-Scope Checks (cross review only)
 

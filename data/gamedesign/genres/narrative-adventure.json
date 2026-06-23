@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "narrative-adventure",
+  "name": "Narrative Adventure",
+  "aliases": ["interactive-fiction", "if", "cyoa", "choice-based", "choose-your-own-adventure"],
+  "summary": "Нарративные приключения с ветвлением: story-graph из узлов, выбор→последствие через флаги мирового состояния, развязки-гейты (80 Days, Disco Elysium).",
+  "confidence": "high",
+  "default_flow_mode": "conditional",
+  "default_packs": ["narrative", "player-motivation", "core-loops", "ux-onboarding", "accessibility"],
+  "seed_systems": [
+    { "slug": "story-graph", "category": "Narrative", "tier": "MVP", "why": "макро-паттерн ветвления: граф story-узлов и переходов" },
+    { "slug": "choice-consequence", "category": "Narrative", "tier": "MVP", "why": "выбор → последствие: content-selection vs option-unlock" },
+    { "slug": "world-state", "category": "Technical", "tier": "VS", "why": "var-схема мирового состояния — флаги и переменные ветвления" },
+    { "slug": "pacing", "category": "Narrative", "tier": "Alpha", "why": "темп и точки конвергенции ветвей" }
+  ],
+  "seed_content_types": [
+    { "slug": "scene", "belongs_to": "SYS-story-graph", "scale": "bulk", "why": "сцены/узлы И ЕСТЬ контент — текст + prereqs + effects" },
+    { "slug": "branch", "belongs_to": "SYS-choice-consequence", "scale": "bulk", "why": "ветви выбора как массив переходов с весами" }
+  ],
+  "seed_entities": [
+    { "slug": "story-node", "why": "узел графа повествования" },
+    { "slug": "choice", "why": "выбор с весами/условиями" },
+    { "slug": "consequence-flag", "why": "флаг-последствие, меняющий мировое состояние" },
+    { "slug": "world-state-var", "why": "переменная мирового состояния для ветвления" },
+    { "slug": "disposition", "why": "отношение/настрой как ось ветвления" },
+    { "slug": "storylet", "why": "storylet = {content, prereqs, effects}" },
+    { "slug": "gating", "why": "гейтинг доступности узлов по условиям" }
+  ],
+  "seed_resources": [
+    { "slug": "story-flags", "kind": "event", "why": "флаги-события мирового состояния — гейтинг ветвей" }
+  ],
+  "critical_sections": ["narrative.StoryGraph", "narrative.ChoiceConsequence", "narrative.WorldStateSchema", "narrative.PacingConvergence"],
+  "review_emphasis": ["каждый выбор имеет различимое последствие (content-selection vs option-unlock), нет ложных развилок", "var-схема мирового состояния замкнута: каждый флаг читается и пишется", "ветви конвергируют — нет комбинаторного взрыва и сиротских узлов"],
+  "platform_default": "cross-platform"
+}

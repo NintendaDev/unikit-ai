@@ -99,6 +99,34 @@ export const RULES_COMMANDS: CommandEntry[] = [
   },
 ];
 
+// --- Genres commands ---
+//
+// A bundled, read-only genre-profile catalog (no registry, no network, no engine
+// partition). Exit codes are a SUBSET of the unified rules codes: 0 success · 1
+// not found · 3 invalid args. There is no exit 2 (no network) and no exit-8
+// migration gate (genres write under `.unikit/system/`, not the memory layout).
+
+export const GENRES_COMMANDS: CommandEntry[] = [
+  {
+    command: 'unikit-ai genres list',
+    description: 'List the bundled, read-only genre profiles (the §4.1–4.6 genre-matrix catalog). Reads the bundled profiles directly and loads `.unikit.json` ONLY to mark which are installed — a missing config is NOT an error. Always exit 0.',
+    flags: ['--json'],
+    outputFormat: 'JSON: { genres: [{ id, name, confidence: "high"|"medium"|"low", default_flow_mode: "linear"|"conditional"|"emergent", platform_default: string | null, installed: boolean }] }. Every human column (ID/Name/Confidence/Flow/Installed) is present as a JSON field.',
+  },
+  {
+    command: 'unikit-ai genres show <id>',
+    description: 'Print a single genre profile. The argument accepts the canonical id OR any alias (resolved exactly, case-insensitively). An empty argument exits 3 (invalid args); an unresolvable id/alias exits 1 (not found). Human and JSON render from the same profile object.',
+    flags: ['--json'],
+    outputFormat: 'JSON: the full profile object { schema_version, version, id, name, aliases, summary, confidence, default_flow_mode, default_packs, seed_systems, seed_content_types, seed_entities, seed_resources, critical_sections, review_emphasis, platform_default? }.',
+  },
+  {
+    command: 'unikit-ai genres install [ids...]',
+    description: 'Install one or more genre profiles into `.unikit/system/gamedesign/genres/<id>.json` and record them in `.unikit.json` (`genres.installed`, keyed by canonical id). Each argument accepts an id OR alias. No arguments exits 3 (invalid args); a missing `.unikit.json` exits 1. Idempotent: an already-installed profile prints `↻ already installed <id>` and is skipped (re-copied under --force). Prints a per-profile report (`✓ installed <id> v<ver>` / `↻ already installed <id>` / `✗ unknown genre: <id>`) and a summary `Genres: N installed, M already-installed, K failed`. This command is normally driven by `unikit-gd-spec` (best-fit resolve of a descriptive genre hint), not typed by the user. Exit 1 only when every requested id was unknown.',
+    flags: ['--force'],
+    outputFormat: 'Human-readable per-profile report + summary line. Exit 0 when ≥1 profile installed/already-installed; exit 1 when no `.unikit.json` or every requested id was unknown; exit 3 when no ids were given.',
+  },
+];
+
 // --- General CLI commands ---
 
 export const GENERAL_COMMANDS: CommandEntry[] = [
@@ -144,6 +172,24 @@ export function generateCliContractMarkdown(): string {
   lines.push('## Rules Commands');
   lines.push('');
   for (const cmd of RULES_COMMANDS) {
+    lines.push(`### \`${cmd.command}\``);
+    lines.push('');
+    lines.push(cmd.description);
+    if (cmd.flags && cmd.flags.length > 0) {
+      lines.push(`Flags: ${cmd.flags.map(f => `\`${f}\``).join(', ')}`);
+    }
+    if (cmd.outputFormat) {
+      lines.push(`Output: ${cmd.outputFormat}`);
+    }
+    lines.push('');
+  }
+
+  // Genres commands
+  lines.push('## Genres Commands');
+  lines.push('');
+  lines.push('Genre profiles are a bundled, read-only catalog. Genres reuse the exit-code table above but only ever return codes **0** (success), **1** (not found / no `.unikit.json`), and **3** (invalid args) — there is no network (exit 2) and no migration gate (exit 8).');
+  lines.push('');
+  for (const cmd of GENRES_COMMANDS) {
     lines.push(`### \`${cmd.command}\``);
     lines.push('');
     lines.push(cmd.description);

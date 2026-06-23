@@ -85,6 +85,28 @@ Report a registry's physical schema and whether the CLI can migrate/write it. Di
 Flags: `--json`
 Output: Human table + verdict line, or --json: { target, kind: "local" | "remote", schema: number | null, isLatestSchema, readable, writable }
 
+## Genres Commands
+
+Genre profiles are a bundled, read-only catalog. Genres reuse the exit-code table above but only ever return codes **0** (success), **1** (not found / no `.unikit.json`), and **3** (invalid args) — there is no network (exit 2) and no migration gate (exit 8).
+
+### `unikit-ai genres list`
+
+List the bundled, read-only genre profiles (the §4.1–4.6 genre-matrix catalog). Reads the bundled profiles directly and loads `.unikit.json` ONLY to mark which are installed — a missing config is NOT an error. Always exit 0.
+Flags: `--json`
+Output: JSON: { genres: [{ id, name, confidence: "high"|"medium"|"low", default_flow_mode: "linear"|"conditional"|"emergent", platform_default: string | null, installed: boolean }] }. Every human column (ID/Name/Confidence/Flow/Installed) is present as a JSON field.
+
+### `unikit-ai genres show <id>`
+
+Print a single genre profile. The argument accepts the canonical id OR any alias (resolved exactly, case-insensitively). An empty argument exits 3 (invalid args); an unresolvable id/alias exits 1 (not found). Human and JSON render from the same profile object.
+Flags: `--json`
+Output: JSON: the full profile object { schema_version, version, id, name, aliases, summary, confidence, default_flow_mode, default_packs, seed_systems, seed_content_types, seed_entities, seed_resources, critical_sections, review_emphasis, platform_default? }.
+
+### `unikit-ai genres install [ids...]`
+
+Install one or more genre profiles into `.unikit/system/gamedesign/genres/<id>.json` and record them in `.unikit.json` (`genres.installed`, keyed by canonical id). Each argument accepts an id OR alias. No arguments exits 3 (invalid args); a missing `.unikit.json` exits 1. Idempotent: an already-installed profile prints `↻ already installed <id>` and is skipped (re-copied under --force). Prints a per-profile report (`✓ installed <id> v<ver>` / `↻ already installed <id>` / `✗ unknown genre: <id>`) and a summary `Genres: N installed, M already-installed, K failed`. This command is normally driven by `unikit-gd-spec` (best-fit resolve of a descriptive genre hint), not typed by the user. Exit 1 only when every requested id was unknown.
+Flags: `--force`
+Output: Human-readable per-profile report + summary line. Exit 0 when ≥1 profile installed/already-installed; exit 1 when no `.unikit.json` or every requested id was unknown; exit 3 when no ids were given.
+
 ## General Commands
 
 ### `unikit-ai init`

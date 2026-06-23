@@ -1699,6 +1699,81 @@ else
     fail "CS2-5 GD-IDS template — content_types research: pointer missing"
 fi
 
+# ── Content-axis Stage 4 genre guards (G1…G5) ────────────────────────────────
+# Stage 4 added the bundled genre-profile catalog + CLI (exercised in test-genres*.sh
+# / test-skills.sh Part 13b) and wired 3 skills (brainstorm hint / spec resolve+seed /
+# review lens). bash cannot run an LLM skill — these are grep invariants on the contract
+# text. All file-scoped -qF (MSYS grep aborts on -iF). Reuses GD_SPEC_SKILL/GD_REVIEW_SKILL/
+# GD_LENSES/GD_VERIFY_SKILL/GD_GAME_TPL defined above; adds GD_BRAINSTORM_SKILL/GD_CONCEPT_TPL.
+GD_BRAINSTORM_SKILL="$ROOT_DIR/skills/unikit-gd-brainstorm/SKILL.md"
+GD_CONCEPT_TPL="$GD_DATA/templates/CONCEPT.md"
+
+# (G1) brainstorm writes a descriptive genre: hint, CLI-free. POSITIVE presence — NOT an
+# absence-grep on "genres install": the CLI-free body legitimately NAMES those commands in
+# the negative ("never runs ... genres list / genres install"), which an absence-grep would
+# trip. Assert the CLI-free claim + the descriptive-hint instruction instead.
+G1_WHY=""
+grep -qF 'CLI-free' "$GD_BRAINSTORM_SKILL"                 || G1_WHY+=" no-CLI-free-claim"
+grep -qF 'descriptive `genre:` hint' "$GD_BRAINSTORM_SKILL" || G1_WHY+=" no-descriptive-genre-hint"
+if [[ -z "$G1_WHY" ]]; then
+    pass "G1 brainstorm writes descriptive genre: hint (CLI-free, positive-presence guard)"
+else
+    fail "G1 brainstorm genre-hint drift:$G1_WHY"
+fi
+
+# (G2) gd-spec carries the resolve surface: genres list → best-fit → genres install +
+# seed interview + universal baseline + genre_profile: write to GAME.md.
+G2_WHY=""
+grep -qF 'genres list' "$GD_SPEC_SKILL"        || G2_WHY+=" no-genres-list"
+grep -qF 'genres install' "$GD_SPEC_SKILL"     || G2_WHY+=" no-genres-install"
+grep -qF 'best-fit' "$GD_SPEC_SKILL"           || G2_WHY+=" no-best-fit"
+grep -qF 'genre_profile' "$GD_SPEC_SKILL"      || G2_WHY+=" no-genre_profile"
+grep -qF 'Seed interview' "$GD_SPEC_SKILL"     || G2_WHY+=" no-seed-interview"
+grep -qF 'Universal baseline' "$GD_SPEC_SKILL" || G2_WHY+=" no-universal-baseline"
+if [[ -z "$G2_WHY" ]]; then
+    pass "G2 gd-spec genre resolve (genres list→best-fit→install + seed interview + baseline + genre_profile)"
+else
+    fail "G2 gd-spec genre resolve drift:$G2_WHY"
+fi
+
+# (G3) gd-review genre lens ACTIVATED: zero "stub — genre, Stage 4" in BOTH SKILL.md and
+# lenses.md (mirror of CS2-3's content carve-out), profile-completeness + critical_sections/
+# review_emphasis present.
+G3_WHY=""
+grep -qF 'stub — genre, Stage 4' "$GD_REVIEW_SKILL" && G3_WHY+=" residual-stub-skill"
+grep -qF 'stub — genre, Stage 4' "$GD_LENSES"       && G3_WHY+=" residual-stub-lenses"
+grep -qF 'profile-completeness' "$GD_REVIEW_SKILL"  || G3_WHY+=" no-lens-skill"
+grep -qF 'profile-completeness' "$GD_LENSES"        || G3_WHY+=" no-lens-lenses"
+grep -qF 'critical_sections' "$GD_LENSES"           || G3_WHY+=" no-critical_sections"
+grep -qF 'review_emphasis' "$GD_LENSES"             || G3_WHY+=" no-review_emphasis"
+if [[ -z "$G3_WHY" ]]; then
+    pass "G3 gd-review genre lens activated (zero 'stub — genre, Stage 4' in SKILL+lenses, profile-completeness + critical_sections/review_emphasis)"
+else
+    fail "G3 gd-review genre lens drift:$G3_WHY"
+fi
+
+# (G4) verify stays GENRE-BLIND: it never reads the profile (critical_sections) NOR the
+# GAME genre field (genre_profile) — both absent from unikit-gd-verify/SKILL.md.
+G4_WHY=""
+grep -qF 'critical_sections' "$GD_VERIFY_SKILL" && G4_WHY+=" critical_sections-present"
+grep -qF 'genre_profile' "$GD_VERIFY_SKILL"     && G4_WHY+=" genre_profile-present"
+if [[ -z "$G4_WHY" ]]; then
+    pass "G4 unikit-gd-verify genre-blind (no critical_sections, no genre_profile read)"
+else
+    fail "G4 unikit-gd-verify NOT genre-blind:$G4_WHY"
+fi
+
+# (G5) template fields with DISTINCT semantics: genre: (descriptive hint) in CONCEPT.md,
+# genre_profile: (resolved id) in GAME.md. Both bare non-id slugs outside GD-IDS.
+G5_WHY=""
+grep -qF '**genre**:' "$GD_CONCEPT_TPL"        || G5_WHY+=" no-genre-in-CONCEPT"
+grep -qF '**genre_profile**:' "$GD_GAME_TPL"   || G5_WHY+=" no-genre_profile-in-GAME"
+if [[ -z "$G5_WHY" ]]; then
+    pass "G5 template genre fields (genre: in CONCEPT, genre_profile: in GAME)"
+else
+    fail "G5 template genre fields missing:$G5_WHY"
+fi
+
 # ============================================================================
 # Context-optimization guards (mode-extraction + flow-first + P4/P5 + design-read).
 # The flow-first/mode-extraction refactor pulled mode bodies and Step 4.5 out of
@@ -2811,6 +2886,16 @@ if bash "$SCRIPT_DIR/test-rules.sh"; then
     pass "Rules registry tests passed"
 else
     fail "Rules registry tests failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 13b: Genre profile tests (catalog + CLI + schema)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13b: Genre profile tests${NC}"
+if bash "$SCRIPT_DIR/test-genres.sh"; then
+    pass "Genre profile tests passed"
+else
+    fail "Genre profile tests failed"
 fi
 
 # ─────────────────────────────────────────────

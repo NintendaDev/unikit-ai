@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "sandbox",
+  "name": "Sandbox",
+  "aliases": ["sandbox", "open-world-sandbox", "voxel-sandbox"],
+  "summary": "Открытые песочницы с генерацией мира и правилами взаимодействия блоков/тайлов: эмерджентная «химия» через матрицу взаимодействий, loops-not-arcs и цели, которые ставит сам игрок (Minecraft, Terraria).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["core-loops", "procgen", "player-motivation", "progression", "balance"],
+  "seed_systems": [
+    { "slug": "world-gen", "category": "Content", "tier": "MVP", "why": "генерация мира из seed+noise по биомам — холст песочницы" },
+    { "slug": "block-interaction", "category": "Gameplay", "tier": "MVP", "why": "правила блоков/тайлов: tools/drop/light — ядро манипуляции" },
+    { "slug": "interaction-chemistry", "category": "Gameplay", "tier": "VS", "why": "матрица взаимодействий A+B/tool→result — источник эмерджентности" },
+    { "slug": "crafting", "category": "Progression", "tier": "VS", "why": "рецепты как мягкий гейт доступа к материалам" },
+    { "slug": "player-goals", "category": "Meta", "tier": "Alpha", "why": "loops-not-arcs: игрок ставит собственные цели, нет навязанной дуги" }
+  ],
+  "seed_content_types": [
+    { "slug": "block", "belongs_to": "SYS-block-interaction", "scale": "bulk", "why": "типы блоков (tools/drop/light) живут в редакторе — их сотни" },
+    { "slug": "structure", "belongs_to": "SYS-world-gen", "scale": "curated", "why": "процедурные структуры мира — типизированный набор шаблонов" }
+  ],
+  "seed_entities": [
+    { "slug": "block-type", "why": "тип блока: набор инструментов, дроп, уровень света" },
+    { "slug": "interaction-rule", "why": "правило A+B/tool→result — клетка матрицы взаимодействий" },
+    { "slug": "world-seed", "why": "seed + noise-функции, задающие детерминированный мир" },
+    { "slug": "mob", "why": "сущность/моб мира, участник эмерджентных взаимодействий" }
+  ],
+  "seed_resources": [
+    { "slug": "material", "kind": "soft", "why": "добытый материал — вход крафта и взаимодействий" }
+  ],
+  "critical_sections": ["procgen.WorldGen", "core-loops.LoopsNotArcs", "balance.InteractionMatrix"],
+  "review_emphasis": ["матрица взаимодействий полна и непротиворечива — нет тупиковых пар", "генерация мира даёт разнообразие без поломанных биомов", "loops-not-arcs: игроку есть что делать без навязанной концовки"],
+  "platform_default": "cross-platform"
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "vn",
+  "name": "Visual Novel",
+  "aliases": ["visual-novel"],
+  "summary": "Визуальные новеллы: преимущественно кинетический сценарий по маршрутам с флагами, манифест ассетов (CG/фоны/спрайты+эмоции/музыка) и скрипт-формат диалогов (Steins;Gate, Doki Doki Literature Club).",
+  "confidence": "high",
+  "default_flow_mode": "linear",
+  "default_packs": ["narrative", "player-motivation", "core-loops", "ux-onboarding", "accessibility"],
+  "seed_systems": [
+    { "slug": "route-map", "category": "Narrative", "tier": "MVP", "why": "карта маршрутов/ветвей; кинетический → заявить линейность" },
+    { "slug": "flag-state", "category": "Technical", "tier": "VS", "why": "флаги/переменные состояния маршрутов и концовок" },
+    { "slug": "asset-manifest", "category": "Content", "tier": "MVP", "why": "манифест ассетов: CG/BG/спрайт+эмоция/поза/музыка/SFX/голос" },
+    { "slug": "script-format", "category": "Technical", "tier": "VS", "why": "формат скрипта: реплики, ремарки, переходы" }
+  ],
+  "seed_content_types": [
+    { "slug": "scene", "belongs_to": "SYS-route-map", "scale": "bulk", "why": "сцены/главы сценария И ЕСТЬ контент" },
+    { "slug": "character", "belongs_to": "SYS-asset-manifest", "scale": "curated", "why": "горстка типизированных персонажей со спрайтами/эмоциями" }
+  ],
+  "seed_entities": [
+    { "slug": "route", "why": "сюжетный маршрут" },
+    { "slug": "branch-node", "why": "точка ветвления маршрута" },
+    { "slug": "flag-var", "why": "флаг/переменная состояния" },
+    { "slug": "event-cg", "why": "Event CG с условием анлока" },
+    { "slug": "sprite", "why": "спрайт персонажа с эмоцией/позой" },
+    { "slug": "background", "why": "фон сцены" },
+    { "slug": "dialogue-line", "why": "реплика диалога" },
+    { "slug": "chapter", "why": "глава как единица структуры" },
+    { "slug": "ending", "why": "концовка маршрута" }
+  ],
+  "seed_resources": [
+    { "slug": "story-flags", "kind": "event", "why": "флаги-события маршрутов — анлоки CG и концовок" }
+  ],
+  "critical_sections": ["narrative.RouteBranchMap", "narrative.FlagVarState", "narrative.AssetManifest", "narrative.ScriptFormat"],
+  "review_emphasis": ["кинетическая линейность заявлена явно; ветвящиеся маршруты не маскируются под линейные", "манифест ассетов полон: каждая сцена ссылается на существующие CG/BG/спрайт+эмоцию/музыку", "каждая концовка достижима и гейтится валидной комбинацией флагов"],
+  "platform_default": "pc"
+}

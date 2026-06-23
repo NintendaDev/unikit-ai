@@ -15,6 +15,9 @@ import {
   rulesRegistryResetCommand, rulesRegistryInitCommand,
   rulesRegistryMigrateCommand, rulesRegistryStatusCommand,
 } from './commands/rules.js';
+import {
+  genresListCommand, genresShowCommand, genresInstallCommand,
+} from './commands/genres.js';
 import { getCurrentVersion, loadConfig } from '../core/config.js';
 import { loadAllExtensions } from '../core/extensions.js';
 import { setVerbose } from '../utils/log.js';
@@ -174,6 +177,34 @@ registryCmd
   .description('Report a registry\'s physical schema and whether the CLI can migrate/write it (distinct from `rules status`, which lists installed project rules). Defaults to the configured registry.')
   .option('--json', 'Output as JSON')
   .action((target: string | undefined, options: { json?: boolean }) => rulesRegistryStatusCommand(target, options));
+
+// --- Genres commands ---
+//
+// A bundled, read-only genre-profile catalog (no registry, no network). The
+// profiles seed GDD authoring; `unikit-gd-spec` drives `genres install` (the
+// user does not type it). Exit codes are a subset of `rules`: 0/1/3.
+
+const genres = program
+  .command('genres')
+  .description('Manage bundled read-only genre profiles (seed GDD authoring)');
+
+genres
+  .command('list')
+  .description('List the bundled genre profiles (with an installed marker)')
+  .option('--json', 'Output as JSON')
+  .action(genresListCommand);
+
+genres
+  .command('show <id>')
+  .description('Print a single genre profile (accepts an id or alias)')
+  .option('--json', 'Output as JSON')
+  .action(genresShowCommand);
+
+genres
+  .command('install [ids...]')
+  .description('Install one or more genre profiles into .unikit/system/gamedesign/genres/ (by id or alias; idempotent)')
+  .option('--force', 'Re-copy profiles that are already installed')
+  .action((ids: string[], options: { force?: boolean }) => genresInstallCommand(ids, options));
 
 async function loadExtensionCommands(): Promise<void> {
   try {

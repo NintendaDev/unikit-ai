@@ -55,6 +55,19 @@ export interface RulesInstallation {
   modules: Record<string, Record<Tier, InstalledRuleEntry[]>>;
 }
 
+/**
+ * One installed genre profile in `.unikit.json`. `version` is a recorded
+ * provenance fact (which bundled revision was delivered) — the installer
+ * refreshes installed profiles unconditionally (flat rewrite), so `version`
+ * does NOT gate refresh. Genres are orthogonal to knowledge modules:
+ * `genres.installed` is a flat list keyed by profile id, NOT
+ * `rules.installed.modules.*`.
+ */
+export interface GenreInstallEntry {
+  id: string;
+  version: number;
+}
+
 export interface UniKitConfig {
   version: string;
   engine: string;
@@ -65,6 +78,14 @@ export interface UniKitConfig {
   extensions?: ExtensionRecord[];
   rules: {
     installed: RulesInstallation;
+  };
+  /**
+   * Selectively installed read-only genre profiles. Optional (additive, like
+   * {@link UniKitConfig.extensions}): absent on configs written before the
+   * genres feature; `loadConfig` always normalizes it to `{ installed: [] }`.
+   */
+  genres?: {
+    installed: GenreInstallEntry[];
   };
 }
 
@@ -235,6 +256,19 @@ export function getModuleTier(
   return moduleMap[tier];
 }
 
+/**
+ * Return the LIVE `GenreInstallEntry[]` for `config.genres.installed`, lazily
+ * creating the `genres` container when absent. Mirrors {@link getModuleTier}:
+ * call sites mutate the returned array in place (`push` / `splice`), so this
+ * must hand back the array stored on the config, never a copy.
+ */
+export function getInstalledGenres(config: UniKitConfig): GenreInstallEntry[] {
+  if (!config.genres) {
+    config.genres = { installed: [] };
+  }
+  return config.genres.installed;
+}
+
 function normalizeExtensions(raw: unknown): ExtensionRecord[] {
   if (!Array.isArray(raw)) return [];
 
@@ -244,6 +278,30 @@ function normalizeExtensions(raw: unknown): ExtensionRecord[] {
 
     return typeof e.name === 'string' && typeof e.source === 'string' && typeof e.version === 'string';
   });
+}
+
+/**
+ * Normalize the `genres` install-state. A missing/malformed field yields
+ * `{ installed: [] }` (never `undefined`), mirroring
+ * {@link normalizeRulesInstallation}'s "always a container" contract so
+ * accessors and the installer never branch on absence. A version that isn't a
+ * number defaults to `1`.
+ */
+function normalizeGenres(raw: unknown): { installed: GenreInstallEntry[] } {
+  if (!raw || typeof raw !== 'object') return { installed: [] };
+
+  const rawInstalled = (raw as Record<string, unknown>).installed;
+  if (!Array.isArray(rawInstalled)) return { installed: [] };
+
+  const installed: GenreInstallEntry[] = [];
+  for (const item of rawInstalled) {
+    if (item && typeof item === 'object' && typeof (item as Record<string, unknown>).id === 'string') {
+      const entry = item as Record<string, unknown>;
+      const version = typeof entry.version === 'number' ? entry.version : 1;
+      installed.push({ id: entry.id as string, version });
+    }
+  }
+  return { installed };
 }
 
 export async function loadConfig(projectDir: string): Promise<UniKitConfig | null> {
@@ -283,6 +341,7 @@ export async function loadConfig(projectDir: string): Promise<UniKitConfig | nul
       // saveConfig will persist the config without it so the migration is seamless.
       installed: normalizeRulesInstallation(rawRules?.installed),
     },
+    genres: normalizeGenres(raw.genres),
   };
 }
 

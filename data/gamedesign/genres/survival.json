@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "survival",
+  "name": "Survival",
+  "aliases": ["survival", "survival-craft"],
+  "summary": "Выживание через перекрывающиеся потребности-метрики в never-finished лупе: эскалация угроз и цикл день/ночь, закрытая ресурсная экономика, дерево крафта и строительство базы (Don't Starve, Rust, Oxygen Not Included).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["core-loops", "economy", "balance", "progression", "player-motivation"],
+  "seed_systems": [
+    { "slug": "needs", "category": "Gameplay", "tier": "MVP", "why": "перекрывающиеся метры с drain/threshold и кросс-модификаторами — ядро давления" },
+    { "slug": "day-night", "category": "Gameplay", "tier": "VS", "why": "цикл день/ночь + эскалация угроз по тирам — pacing давления" },
+    { "slug": "resource-economy", "category": "Economy", "tier": "MVP", "why": "закрытый цикл ресурсов: узлы добычи → расход без утечек" },
+    { "slug": "crafting", "category": "Progression", "tier": "VS", "why": "дерево крафта — гейт прогрессии через рецепты и тиры" },
+    { "slug": "base-building", "category": "Gameplay", "tier": "Alpha", "why": "строительство базы: укрытие и оборона против давления" }
+  ],
+  "seed_content_types": [
+    { "slug": "recipe", "belongs_to": "SYS-crafting", "scale": "curated", "why": "рецепты: ingredients+qty / output / prereqs — типизированный граф" },
+    { "slug": "creature", "belongs_to": "SYS-day-night", "scale": "curated", "why": "существа/угрозы: типизированный каталог поведения и дропа" }
+  ],
+  "seed_entities": [
+    { "slug": "meter", "why": "потребность с drain/threshold и кросс-модификаторами на другие метры" },
+    { "slug": "environmental-pressure", "why": "средовое давление (холод, голод, темнота), толкающее луп" },
+    { "slug": "resource-node", "why": "узел добычи — вход закрытого ресурсного цикла" },
+    { "slug": "buildable", "why": "строимый объект базы: укрытие/станция/оборона" }
+  ],
+  "seed_resources": [
+    { "slug": "raw-material", "kind": "soft", "why": "сырьё из узлов добычи — расходуется в крафте и постройках" },
+    { "slug": "food", "kind": "soft", "why": "еда, закрывающая метр голода — расход в never-finished лупе" }
+  ],
+  "critical_sections": ["balance.NeedMeters", "core-loops.NeverFinishedLoop", "economy.ClosedResourceLoop", "progression.CraftingTree"],
+  "review_emphasis": ["перекрывающиеся метры дают never-finished давление, а не тупик", "ресурсный цикл замкнут — нет утечек и бесконечных источников", "эскалация угроз синхронна с день/ночь и кривой крафта"],
+  "platform_default": "pc"
+}

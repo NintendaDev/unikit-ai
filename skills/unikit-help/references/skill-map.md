@@ -164,7 +164,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   loops, motivation, pre-mortem — into a CONCEPT card. Includes delegated market validation.
 - **When:** "I don't know what game to make", "let's come up with a game", "a roguelike idea".
 - **In:** an optional theme/hint. Auto-resumes an in-progress concept.
-- **Out:** `.unikit/gamedesign/concepts/<date>_<slug>/CONCEPT.md` (+ rejected-idea backlog).
+- **Out:** `.unikit/gamedesign/concepts/<date>_<slug>/CONCEPT.md` (+ rejected-idea backlog). Also
+  writes a **descriptive `genre:` hint** into the card (a human genre name; CLI-free — `/unikit-gd-spec`
+  resolves it to a bundled genre profile downstream).
 - **Optional (entry of the design track).** After: `/unikit-gd-spec <slug>`.
 
 ### unikit-gd-explore
@@ -190,6 +192,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   inferred (create / import / edit / remap / add-system / pitch); each mode body loads on demand
   from `references/mode-*.md`.
 - **Out:** `.unikit/gamedesign/GAME.md` (incl. `## System Map [gen]`), `GD-IDS.yaml` (+ optional `PITCH.md`).
+- **Genre seed (Create mode):** best-fits the concept's `genre:` hint to a bundled **genre profile**
+  (`unikit-ai genres list` → `genres install <id>`, skill-driven), writes `genre_profile:` into GAME.md,
+  and runs a seed interview (or a universal baseline when no profile fits). The profile is read-only —
+  divergence lands in `GD-IDS.yaml`; `/unikit-gd-review` reads it for the genre-completeness lens.
 - **Required for the design track (the GDD root).** Before: `/unikit-gd-brainstorm`. After:
   `/unikit-gd-system`.
 

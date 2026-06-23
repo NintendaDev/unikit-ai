@@ -77,7 +77,8 @@ formulas stay in English.
 ideate:   /unikit-gd-brainstorm    (optional) blank page → a CONCEPT card (pillars, loops, pre-mortem)
             │
 spec:     /unikit-gd-spec          REQUIRED  master GDD (GAME.md + ## System Map [gen]) + GD-IDS.yaml registry
-            │                                 (also: edit GAME.md content, import a GDD, add one system)
+            │                                 (also: edit GAME.md content, import a GDD, add one system;
+            │                                  Create seeds a genre profile — see "Genre profiles" below)
 system:   /unikit-gd-system        REQUIRED per system  the A-K per-system doc — the *rules* (create/fill +
             │                                 revise as a versioned delta: tune / tweak / rework)
 flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynamics* (objectives, pacing, funnel);
@@ -99,6 +100,14 @@ systems (`GOAL → SYS → AC`) and emit funnel `event`s; `/unikit-gd-flow` regi
 system and registers itself (its `content_types:` / `content:` entries + `## Content Map [gen]`) —
 there is no add-content in `/unikit-gd-spec`; a missing `belongs_to` system routes to spec
 add-system.
+
+**Genre profiles (seed layer).** A bundled, read-only catalog (`unikit-ai genres list/show/install`;
+the §4.1–4.6 genre matrix) seeds authoring. `/unikit-gd-brainstorm` writes a descriptive `genre:` hint
+into the concept (CLI-free); `/unikit-gd-spec` (Create) best-fits it to a profile, installs it
+(skill-driven — the user never types `genres`), writes `genre_profile:` into GAME.md, and runs a seed
+interview (or a universal baseline when no profile fits). `/unikit-gd-review` reads the profile for a
+declinable genre-completeness lens; `/unikit-gd-verify` stays **genre-blind**. The profile is read-only —
+every divergence lands in `GD-IDS.yaml`.
 
 **Research is cross-cutting**, not a fixed stage. `/unikit-gd-explore` can:
 - feed brainstorm (delegated market validation),

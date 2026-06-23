@@ -10,7 +10,7 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installGamedesignSystemAssets, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -328,6 +328,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // shared design-read contract (engine-agnostic flat rewrites under gamedesign/);
     // also orphan-deletes the pre-split flat .unikit/system/gd-principles.md
     await installGamedesignSystemAssets(projectDir);
+
+    // Refresh selectively installed genre profiles (flat rewrite of state set)
+    await installGenreProfiles(projectDir, config);
 
     // Rebuild managed state per agent (exclude replaced skills)
     const availableSkills = await getAvailableSkills();

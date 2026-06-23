@@ -494,8 +494,20 @@ sections, do not split the approval). When Phase 3.5 ran, the card must carry th
 `validation_confidence`, `clone_density`, `trend_fit`, `monetization_fit`,
 `recommendation`) in the header block **and** the distilled argument in `## Notes` (no
 `researches/` file was written — the card *is* the citation). Set the card header
-(`> Status: drafted · Version: 1 · Created: <date>`). Set the INDEX row status to
-`complete`. Then recommend the follow-up (do not auto-invoke).
+(`> Status: drafted · Version: 1 · Created: <date>`).
+
+Also set the **descriptive `genre:` hint** in the header — a human genre name
+inferred from the concept (the elevator-pitch *[genre]* slot, e.g. «симулятор
+ломбарда», «match-3 головоломка»). It is an **intent, not a catalog id**: write
+what the game *is*, even if no genre-profile is named that. `unikit-gd-spec`
+resolves this hint best-fit to a bundled profile and installs it downstream.
+**Brainstorm stays CLI-free here** — it never runs `unikit-ai genres list` /
+`genres install` and never recommends or installs a profile; the genre catalog is
+consumed at spec, not here (this avoids the chicken-and-egg of an empty profile
+before install). Leave `genre:` empty/soft when no clear genre — `unikit-gd-spec`'s
+universal baseline covers it.
+
+Set the INDEX row status to `complete`. Then recommend the follow-up (do not auto-invoke).
 
 ## Writing the Artifacts
 
@@ -512,6 +524,9 @@ mkdir -p .unikit/gamedesign/concepts/<date>_<slug>
   more"). These underscore fields are *evidence* — distinct from the hyphenated
   `market-signal` Pugh *criterion*.
   Header: `> Status: <exploring|drafted|approved> · Version: 1 · Created: <date>`.
+  Also a `> genre: "<descriptive hint>"` header field — the human genre name
+  (intent, not a catalog id; Phase 9). CLI-free: brainstorm writes the hint only;
+  `unikit-gd-spec` resolves it to a profile and installs it.
 - **`IDEAS.md`** — the rejected-idea backlog: each entry is *idea · essence ·
   reason (scope / not-fun / off-theme / duplicate) · revival condition*.
 - **`concepts/INDEX.md`** — prepend (newest first) a row:

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "roguelike",
+  "name": "Roguelike / Roguelite",
+  "aliases": ["roguelike", "roguelite", "roguelike-lite"],
+  "summary": "Забеги с перманентной смертью, процедурной генерацией и meta-прогрессией: seed/RNG-детерминизм, run- vs meta-scoped разделение, пул предметов/реликвий с тегами-синергиями (Hades, Slay the Spire, FTL).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["core-loops", "progression", "balance", "procgen", "player-motivation"],
+  "seed_systems": [
+    { "slug": "run-structure", "category": "Gameplay", "tier": "MVP", "why": "структура забега: seed/idx, этапы, перманентная смерть — ядро лупа" },
+    { "slug": "rng-determinism", "category": "Technical", "tier": "MVP", "why": "seed + декоррелированные RNG-потоки для воспроизводимости" },
+    { "slug": "procgen-floor", "category": "Content", "tier": "VS", "why": "процедурные этажи/биомы/комнаты из тегированных шаблонов" },
+    { "slug": "item-pool", "category": "Gameplay", "tier": "VS", "why": "пул предметов/реликвий + теги-синергии — глубина билда" },
+    { "slug": "meta-progression", "category": "Progression", "tier": "Alpha", "why": "meta-валюта и анлоки между забегами — крючок удержания" }
+  ],
+  "seed_content_types": [
+    { "slug": "room", "belongs_to": "SYS-procgen-floor", "scale": "bulk", "why": "шаблоны комнат с тегами связности живут в редакторе — их много" },
+    { "slug": "relic", "belongs_to": "SYS-item-pool", "scale": "curated", "why": "реликвии/предметы: rarity-weight + теги-синергии — типизированный каталог" }
+  ],
+  "seed_entities": [
+    { "slug": "run", "why": "забег: seed + индекс прогресса, run-scoped состояние" },
+    { "slug": "rng-stream", "why": "именованный декоррелированный поток для детерминизма по seed" },
+    { "slug": "floor-map", "why": "граф этажа из комнат-шаблонов со связностью" },
+    { "slug": "unlock", "why": "meta-анлок, открываемый за meta-валюту между забегами" }
+  ],
+  "seed_resources": [
+    { "slug": "meta-currency", "kind": "hard", "why": "валюта meta-прогрессии, копится между забегами на анлоки" },
+    { "slug": "run-resource", "kind": "soft", "why": "run-scoped ресурс (золото/энергия), сбрасывается со смертью" }
+  ],
+  "critical_sections": ["procgen.SeedAndStreams", "core-loops.RunStructure", "progression.MetaVsRunScope", "balance.SynergyPool"],
+  "review_emphasis": ["seed-детерминизм: декоррелированные потоки, забег воспроизводим", "явное разделение run-scoped и meta-scoped состояния", "пул синергий не вырождается в один доминирующий билд"],
+  "platform_default": "pc"
+}

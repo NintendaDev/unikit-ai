@@ -81,6 +81,15 @@ export const REFERENCES_DIR_NAME = 'references';
  */
 const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
 
+/**
+ * Name of the `genres` subdir under both `data/gamedesign/` (the bundled
+ * read-only profile catalog) and `.unikit/system/gamedesign/` (the selectively
+ * installed profiles). Single literal so the data-side accessor
+ * ({@link import('./genres.js')}) and the install-side path
+ * ({@link systemGamedesignGenresDir}) never drift.
+ */
+export const GAMEDESIGN_GENRES_DIR_NAME = 'genres';
+
 // --- File names ---
 
 export const SKILL_FILE = 'SKILL.md';
@@ -167,6 +176,16 @@ export function systemDir(projectDir: string): string {
  */
 export function systemGamedesignDir(projectDir: string): string {
   return path.join(systemDir(projectDir), SYSTEM_GAMEDESIGN_DIR_NAME);
+}
+
+/**
+ * `<projectDir>/.unikit/system/gamedesign/genres` — home for the SELECTIVELY
+ * installed read-only genre profiles (`<id>.json`). Unlike the gd-principles
+ * shards (which {@link systemGamedesignDir} delivers wholesale every
+ * init/update), profiles land here one-by-one per `config.genres.installed`.
+ */
+export function systemGamedesignGenresDir(projectDir: string): string {
+  return path.join(systemGamedesignDir(projectDir), GAMEDESIGN_GENRES_DIR_NAME);
 }
 
 /**

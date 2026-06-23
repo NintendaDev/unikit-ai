@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "location-based",
+  "name": "Location-Based",
+  "aliases": ["geolocation", "ar-location", "geospatial"],
+  "summary": "Геолокационные игры: геопространственные спауны/POI, безопасность и сессии, социальные митапы/рейды и live-ops по геолокации и времени (Pokémon GO, Ingress).",
+  "confidence": "low",
+  "default_flow_mode": "emergent",
+  "default_packs": ["location-based", "liveops", "core-loops", "player-motivation", "social", "accessibility"],
+  "seed_systems": [
+    { "slug": "geospatial-spawn", "category": "Gameplay", "tier": "MVP", "why": "спаун/POI по координатам — ядро геопространственного лупа" },
+    { "slug": "safety-sessions", "category": "UX", "tier": "MVP", "why": "безопасность и структура сессий в реальном мире" },
+    { "slug": "social-meetups", "category": "Social", "tier": "VS", "why": "митапы/рейды — совместная игра по локации" },
+    { "slug": "geo-liveops", "category": "Meta", "tier": "Alpha", "why": "live-ops события по геолокации и времени" }
+  ],
+  "seed_content_types": [
+    { "slug": "region-event", "belongs_to": "SYS-geo-liveops", "scale": "bulk", "why": "региональные live-ops события по геолокации/времени — много экземпляров" }
+  ],
+  "seed_entities": [
+    { "slug": "poi-portal", "why": "POI/портал с координатами lat-lon" },
+    { "slug": "spawn-rule", "why": "правило спауна: локация/время/погода" },
+    { "slug": "region-event", "why": "региональное событие" },
+    { "slug": "safety-constraint", "why": "ограничение безопасности (скорость/зоны)" },
+    { "slug": "group-raid", "why": "групповой рейд/митап" }
+  ],
+  "seed_resources": [
+    { "slug": "spawn-points", "kind": "event", "why": "спаун-поинты по локации/времени — событийный ресурс мира" }
+  ],
+  "critical_sections": ["location-based.GeospatialSpawn", "location-based.SafetySessions", "location-based.SocialMeetups", "liveops.GeoTimeEvents"],
+  "review_emphasis": ["спауны/POI распределены геопространственно честно и не привязаны к редким локациям", "безопасность и длина сессий учитывают игру в движении/реальном мире", "live-ops события сегментированы по геолокации и времени; митапы/рейды не исключают одиночных игроков"],
+  "platform_default": "mobile"
+}

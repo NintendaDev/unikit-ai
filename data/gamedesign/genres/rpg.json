@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "rpg",
+  "name": "RPG (CRPG)",
+  "aliases": ["crpg", "western-rpg", "role-playing"],
+  "summary": "Ролевые игры с правилами персонажа (DC/преимущество), реактивными квестами на бюджетных переменных и гейтингом через диалоги/навыки/репутацию (Baldur's Gate 3, Fallout: New Vegas).",
+  "confidence": "high",
+  "default_flow_mode": "conditional",
+  "default_packs": ["narrative", "progression", "balance", "player-motivation", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "character-ruleset", "category": "Gameplay", "tier": "MVP", "why": "правила персонажа: DC, advantage, броски навыков — ядро механики" },
+    { "slug": "quest-engine", "category": "Narrative", "tier": "MVP", "why": "квест как машина состояний с бюджетными переменными реактивности" },
+    { "slug": "dialogue", "category": "Narrative", "tier": "VS", "why": "узлы диалога + флаги, гейтинг по навыкам/репутации" },
+    { "slug": "faction-state", "category": "Social", "tier": "Alpha", "why": "состояние фракций и репутация — глобальная реактивность мира" }
+  ],
+  "seed_content_types": [
+    { "slug": "quest", "belongs_to": "SYS-quest-engine", "scale": "curated", "why": "квесты со state-machine, целями и ветками реактивности" },
+    { "slug": "dialogue", "belongs_to": "SYS-dialogue", "scale": "curated", "why": "деревья диалогов с узлами, флагами и skill-check гейтами" },
+    { "slug": "item", "belongs_to": "SYS-character-ruleset", "scale": "curated", "why": "экипировка с бросками и модификаторами правил персонажа" }
+  ],
+  "seed_entities": [
+    { "slug": "ability", "why": "способность/класс/навык/заклинание — строительные блоки персонажа" },
+    { "slug": "skill-check", "why": "проверка навыка с DC — точка реактивности правил" },
+    { "slug": "dialogue-node", "why": "узел диалога + флаги для гейтинга и ветвления" },
+    { "slug": "quest-state", "why": "состояние квеста в state-machine реактивности" },
+    { "slug": "faction", "why": "фракция как носитель глобального состояния мира" },
+    { "slug": "reputation-tier", "why": "порог репутации, открывающий/закрывающий гейты" }
+  ],
+  "seed_resources": [
+    { "slug": "reputation", "kind": "event", "why": "репутация по фракциям — гейтит диалоги и квесты" },
+    { "slug": "gold", "kind": "soft", "why": "валюта на экипировку и квестовые транзакции" }
+  ],
+  "critical_sections": ["narrative.QuestReactivity", "narrative.DialogueGating", "balance.CharacterRuleset", "social.FactionState"],
+  "review_emphasis": ["бюджет переменных реактивности квестов не разрастается бесконтрольно", "skill-check DC и гейты диалогов согласованы с правилами персонажа", "состояние фракций и репутации не оставляет тупиковых веток"],
+  "platform_default": "pc"
+}

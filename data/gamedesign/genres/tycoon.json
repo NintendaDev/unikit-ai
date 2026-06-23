@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "tycoon",
+  "name": "Tycoon / Management",
+  "aliases": ["tycoon", "management", "management-sim", "business-sim", "economic-sim"],
+  "summary": "Симуляторы управления бизнесом: cash-flow faucet→drain, двойной луп (клиенты + персонал), постройки с upkeep, исследования и сценарии сложности (RollerCoaster Tycoon, Two Point Hospital, Football Manager).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["economy", "progression", "balance", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "cash-flow", "category": "Economy", "tier": "MVP", "why": "faucet→drain с Cook-tiers и golden-path — ядро" },
+    { "slug": "buildings", "category": "Gameplay", "tier": "MVP", "why": "постройки/активы: cost/upkeep/capacity/output" },
+    { "slug": "staff", "category": "Gameplay", "tier": "VS", "why": "персонал: salary/morale/breaks — половина дабл-лупа" },
+    { "slug": "customers", "category": "Gameplay", "tier": "VS", "why": "клиенты + need-vector → rating — вторая половина лупа" },
+    { "slug": "research", "category": "Progression", "tier": "Alpha", "why": "lock-and-key анлоки через research node" }
+  ],
+  "seed_content_types": [
+    { "slug": "building", "belongs_to": "SYS-buildings", "scale": "curated", "why": "каталог построек со схемой cost/upkeep/capacity/output" },
+    { "slug": "scenario", "belongs_to": "SYS-cash-flow", "scale": "curated", "why": "сценарии/уровни сложности с целями и стартовыми условиями" }
+  ],
+  "seed_entities": [
+    { "slug": "need", "why": "вектор потребностей клиента/персонала → rating" }
+  ],
+  "seed_resources": [
+    { "slug": "cash", "kind": "soft", "why": "оборотные деньги — ledger faucet/drain" }
+  ],
+  "critical_sections": ["economy.CashFlowFaucetDrain", "economy.DualLoop", "progression.UnlockGraph"],
+  "review_emphasis": ["cash-flow faucet→drain сбалансирован (Cook-tiers, golden-path)", "dual loop customers+staff замкнут", "у каждой статьи upkeep есть источник дохода"],
+  "platform_default": "pc"
+}

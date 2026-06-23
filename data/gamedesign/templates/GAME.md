@@ -5,6 +5,14 @@
 > **Last Updated**: [YYYY-MM-DD]
 > **Based on**: [concepts/<slug>.md (v<N>) | researches/<date>_import-*/SOURCE.md | —]
 
+<!-- Resolved genre profile (set by unikit-gd-spec). The canonical id of the bundled
+     genre profile spec best-fit the CONCEPT `genre:` hint to and installed (e.g.
+     `tycoon`) — a RESOLVE result, distinct from the descriptive `genre:` intent in
+     CONCEPT.md. Read by unikit-gd-review (genre-completeness lens via the profile's
+     `critical_sections`). Empty when no genre / no profile fit closely (universal
+     baseline). A bare non-id slug outside GD-IDS — inert for unikit-gd-verify. -->
+> **genre_profile**: ""
+
 The whole-game truth, kept to one page (Librande one-page principle: if it does
 not fit, the vision is not yet sharp). Owns the premise, pillars, anti-pillars, the
 core fantasy, the aesthetic ranking, the loop stack, win/lose intent, the

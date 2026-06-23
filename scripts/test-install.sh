@@ -150,6 +150,27 @@ assert_contains "$GD_SYS_DIR/gd-critique.md" 'Severity Rubric' \
   "gd-critique.md shard carries the shared severity rubric (moved out of the core)"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-gen: genre profiles are SELECTIVE, not folder-copied. A bare init has
+# an empty config.genres.installed, so installGenreProfiles delivers NOTHING —
+# .unikit/system/gamedesign/genres/ is absent or empty. This is the negative
+# invariant that distinguishes genres (selective, per-state) from the shards
+# (which fold-copy ALL of data/gamedesign/*.md). Real delivery is exercised
+# CLI-driven in test-genres-install.sh.
+# ─────────────────────────────────────────────────────
+GD_GENRES_DIR="$GD_SYS_DIR/genres"
+if [[ -d "$GD_GENRES_DIR" ]]; then
+  GENRE_FILE_COUNT=$(find "$GD_GENRES_DIR" -name '*.json' | wc -l | tr -d ' ')
+  if [[ "$GENRE_FILE_COUNT" == "0" ]]; then
+    echo "  ✓ bare init delivers no genre profiles (selective — dir present but empty)"
+  else
+    echo "Assertion failed: bare init delivered $GENRE_FILE_COUNT genre profile(s) — should be 0 (selective, not bulk)"
+    exit 1
+  fi
+else
+  echo "  ✓ bare init delivers no genre profiles (selective — genres dir absent)"
+fi
+
+# ─────────────────────────────────────────────────────
 # Test 1b-gr: gate-result-contract.md installed as a system asset (flat copy, no vars)
 # Engine-agnostic, modeled on installCliContract. unikit-verify + unikit-review read it
 # on Bootstrap to emit/recompute the unikit-gate-result block. Must land in .unikit/system/.

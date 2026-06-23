@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "tower-defense",
+  "name": "Tower defense",
+  "aliases": ["tower-defense", "td"],
+  "summary": "Tower defense с counter-матрицей башня↔враг, композицией волн и масштабированием HP, картой/путём (длина→HP) и поволновой экономикой (Bloons TD, Kingdom Rush).",
+  "confidence": "high",
+  "default_flow_mode": "conditional",
+  "default_packs": ["balance", "level-design", "progression", "economy"],
+  "seed_systems": [
+    { "slug": "towers", "category": "Gameplay", "tier": "MVP", "why": "башни dmg/rate/range/type/cost/tree — половина counter-матрицы" },
+    { "slug": "enemies", "category": "Gameplay", "tier": "MVP", "why": "враги HP/armor/flying/no-cash — вторая половина матрицы" },
+    { "slug": "waves", "category": "Progression", "tier": "VS", "why": "композиция волн + HP scaling" },
+    { "slug": "path-map", "category": "Gameplay", "tier": "VS", "why": "путь/карта: chokepoints, длина→HP" },
+    { "slug": "wave-economy", "category": "Economy", "tier": "Alpha", "why": "bounty + interest — поволновая экономика" }
+  ],
+  "seed_content_types": [
+    { "slug": "tower", "belongs_to": "SYS-towers", "scale": "curated", "why": "каталог башен dmg/rate/range/type/cost/tree" },
+    { "slug": "wave", "belongs_to": "SYS-waves", "scale": "curated", "why": "композиция волн с HP scaling" }
+  ],
+  "seed_entities": [
+    { "slug": "chokepoint", "why": "узкое место на пути" }
+  ],
+  "seed_resources": [
+    { "slug": "gold", "kind": "soft", "why": "bounty + interest на постройку/апгрейд башен" }
+  ],
+  "critical_sections": ["balance.CounterMatrix", "balance.WaveComposition", "level-design.PathMap"],
+  "review_emphasis": ["counter-матрица tower↔enemy без доминирующей стратегии", "wave composition и HP scaling дают честную кривую", "длина пути (path→HP) согласована с per-wave экономикой"],
+  "platform_default": "mobile"
+}

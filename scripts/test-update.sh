@@ -1395,6 +1395,38 @@ fi
 echo "  ✓ design-read.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30d: genre profiles refresh on update — the ONLY mechanical guard for the
+# update.ts wiring of installGenreProfiles. Genres are SELECTIVE (a bare project
+# delivers none), so we first seed config.genres.installed=[tycoon] and run update
+# (delivery), then tamper the delivered file and run update again (refresh). The
+# file existing + the tamper marker gone proves update.ts calls installGenreProfiles
+# AND refreshes installed profiles — the static grep in test-genres.sh cannot prove
+# the live update.ts call. DEVPRIN_DIR reused.
+# ─────────────────────────────────────────────
+DEVPRIN_CONFIG="$DEVPRIN_DIR/.unikit.json"
+CONFIG="$DEVPRIN_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.genres = { installed: [{ id: 'tycoon', version: 1 }] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+DEVPRIN_OUT6="$TMPDIR/update-genres-6.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT6" 2>&1)
+GENRE_PROFILE="$DEVPRIN_DIR/.unikit/system/gamedesign/genres/tycoon.json"
+assert_exists "$GENRE_PROFILE" "installed genre profile tycoon.json must be delivered on update (update.ts wiring)"
+
+echo "GEN_TAMPERED_BY_TEST" >> "$GENRE_PROFILE"
+
+DEVPRIN_OUT7="$TMPDIR/update-genres-7.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT7" 2>&1)
+
+if grep -q "GEN_TAMPERED_BY_TEST" "$GENRE_PROFILE"; then
+    echo "Assertion failed: update did NOT refresh installed genre profile from data/ (tamper marker still present)"
+    exit 1
+fi
+echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).

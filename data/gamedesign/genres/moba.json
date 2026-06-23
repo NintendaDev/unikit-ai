@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "moba",
+  "name": "MOBA",
+  "aliases": ["multiplayer-online-battle-arena", "arts"],
+  "summary": "MOBA: kit героя как продукт, карта с объективами (3-lane/jungle/towers/neutrals), экономика gold/XP→shop, роли и MMR (League of Legends, Dota 2).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["balance", "economy", "multiplayer", "progression", "core-loops"],
+  "seed_systems": [
+    { "slug": "hero-kit", "category": "Gameplay", "tier": "MVP", "why": "passive + 3-4 + ult: cd/mana/scaling/skillshot — kit это продукт" },
+    { "slug": "map", "category": "Content", "tier": "MVP", "why": "lanes/jungle/towers/neutrals — арена объективов" },
+    { "slug": "economy", "category": "Economy", "tier": "MVP", "why": "gold/XP → shop + bounty — слой решений" },
+    { "slug": "minion-waves", "category": "Gameplay", "tier": "VS", "why": "волны миньонов — ласт-хит и контроль линии" },
+    { "slug": "mmr", "category": "Social", "tier": "Alpha", "why": "MMR — честность подбора (P1)" }
+  ],
+  "seed_content_types": [
+    { "slug": "hero", "belongs_to": "SYS-hero-kit", "scale": "curated", "why": "герои со схемой kit (passive+3-4+ult: cd/mana/scaling/skillshot)" },
+    { "slug": "item", "belongs_to": "SYS-economy", "scale": "curated", "why": "предметы магазина со схемой стат и стоимости" }
+  ],
+  "seed_entities": [
+    { "slug": "tower", "why": "башни с каскадом падения — структура карты" },
+    { "slug": "jungle-camp", "why": "лагеря леса и нейтралы — альтернативный доход" }
+  ],
+  "seed_resources": [
+    { "slug": "gold", "kind": "soft", "why": "золото на предметы — ось решений" },
+    { "slug": "xp", "kind": "event", "why": "опыт на уровни абилок — кривая силы" }
+  ],
+  "critical_sections": ["balance.HeroKitBalance", "economy.GoldXPLoop", "level-design.MapObjectives"],
+  "review_emphasis": ["kit каждого героя сбалансирован (cd/mana/scaling/skillshot) — нет доминирующего пика", "экономика gold/XP→shop и bounty замкнута, нет снежного кома без отыгрыша", "карта (lanes/jungle/towers/neutrals) даёт читаемые объективы; MMR честен (P1)"],
+  "platform_default": "pc"
+}

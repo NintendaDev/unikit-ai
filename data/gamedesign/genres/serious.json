@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "serious",
+  "name": "Serious / Educational Game",
+  "aliases": ["educational", "edutainment", "serious-game", "learning-game"],
+  "summary": "Образовательные/серьёзные игры: маппинг учебных целей на действия, петля измерения (stealth-оценка, knowledge-tracing) и баланс вовлечения с педагогикой (DragonBox, Kerbal Space Program EDU).",
+  "confidence": "low",
+  "default_flow_mode": "conditional",
+  "default_packs": ["pedagogy", "progression", "player-motivation", "core-loops", "ux-onboarding", "accessibility"],
+  "seed_systems": [
+    { "slug": "learning-objectives", "category": "Progression", "tier": "MVP", "why": "маппинг учебных целей на игровые действия — ядро смысла" },
+    { "slug": "assessment-loop", "category": "Progression", "tier": "VS", "why": "петля оценки/измерения: stealth-assessment, knowledge-tracing" },
+    { "slug": "engagement-balance", "category": "Gameplay", "tier": "Alpha", "why": "баланс вовлечения и педагогики — чтобы учило И увлекало" },
+    { "slug": "feedback", "category": "UX", "tier": "VS", "why": "обратная связь, привязанная к целям обучения" }
+  ],
+  "seed_content_types": [
+    { "slug": "learning-objective", "belongs_to": "SYS-learning-objectives", "scale": "curated", "why": "горстка типизированных целей обучения со сценариями" }
+  ],
+  "seed_entities": [
+    { "slug": "learning-objective", "why": "учебная цель + сценарий проверки" },
+    { "slug": "assessment-item", "why": "элемент оценки / рубрика" },
+    { "slug": "knowledge-tracing", "why": "трассировка знания по каждому навыку" },
+    { "slug": "feedback-event", "why": "событие обратной связи к цели" },
+    { "slug": "scaffolding", "why": "строительные леса/подсказки по мере прогресса" },
+    { "slug": "learner-progress", "why": "прогресс ученика по навыкам" },
+    { "slug": "report", "why": "отчёт об освоении для ученика/преподавателя" }
+  ],
+  "seed_resources": [
+    { "slug": "mastery", "kind": "soft", "why": "очки освоения навыков — трек прогресса обучения" }
+  ],
+  "critical_sections": ["pedagogy.LearningObjectiveMapping", "pedagogy.AssessmentLoop", "player-motivation.EngagementVsPedagogy"],
+  "review_emphasis": ["каждая учебная цель отображена на конкретное действие и измеряется (stealth-assessment / knowledge-tracing)", "обратная связь возвращается к целям обучения, а не только к игровому счёту", "вовлечение не подавляет педагогику и наоборот — баланс заявлен явно"],
+  "platform_default": "cross-platform"
+}

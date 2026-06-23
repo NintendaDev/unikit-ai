@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "sports",
+  "name": "Sports",
+  "aliases": ["sports-game", "sports-sim"],
+  "summary": "Спортивные симуляторы: точность анимации/физики (ML-procedural), gameplay-AI с tendencies, верный ruleset, прогрессия + live-service (Ultimate Team) и лицензирование (EA Sports FC, NBA 2K).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["balance", "economy", "liveops", "progression", "core-loops", "monetization-ethics"],
+  "seed_systems": [
+    { "slug": "player-attributes", "category": "Gameplay", "tier": "MVP", "why": "~35 атрибутов → OVR — субстрат симуляции" },
+    { "slug": "animation-physics", "category": "Technical", "tier": "MVP", "why": "ML-procedural анимация/momentum — ощущение спорта" },
+    { "slug": "gameplay-ai", "category": "Gameplay", "tier": "VS", "why": "AI tactics + playbooks + tendencies — верибельность матча" },
+    { "slug": "ruleset", "category": "Gameplay", "tier": "VS", "why": "верный ruleset + ball physics — каноничность правил" },
+    { "slug": "card-economy", "category": "Economy", "tier": "Alpha", "why": "Ultimate Team: rarity↔rating↔price — live-service (P1)" }
+  ],
+  "seed_content_types": [
+    { "slug": "player", "belongs_to": "SYS-player-attributes", "scale": "bulk", "why": "ростер игроков (~35 attrs → OVR) — объёмный лицензионный контент" },
+    { "slug": "card", "belongs_to": "SYS-card-economy", "scale": "bulk", "why": "карточки Ultimate Team со схемой rarity↔rating↔price" }
+  ],
+  "seed_entities": [
+    { "slug": "team", "why": "команда — состав + тактики/playbooks" }
+  ],
+  "seed_resources": [
+    { "slug": "coins", "kind": "soft", "why": "мягкая валюта Ultimate Team — рынок карт" }
+  ],
+  "critical_sections": ["balance.PlayerAttributesOVR", "economy.CardEconomy", "core-loops.GameplayAI"],
+  "review_emphasis": ["~35 атрибутов → OVR честно отражают силу игрока без доминирующего стата", "gameplay-AI (tendencies + playbooks) играет верибельно по ruleset", "card-economy (rarity↔rating↔price) сбалансирована и этична как live-service (P1)"],
+  "platform_default": "console"
+}

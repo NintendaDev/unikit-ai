@@ -23,6 +23,57 @@ The primary flow: no `GAME.md` yet. Build it, then decompose into a map.
    ```
 3. Else use the free-form description, or ask for one if empty.
 
+### Resolve the genre profile (seed)
+
+Run this **once**, right after the seed is found and **before Phase A** — the genre
+seeds inform both GAME.md authoring (default packs, flow-mode candidate) and Phase B
+(seed systems / content / resources). This skill **owns** the resolve; the user never
+types a `genres` command (the skill-runs-CLI precedent: `/unikit` Step 9.2).
+
+1. **Read the hint.** From the seed `CONCEPT.md` header, read the descriptive
+   `genre:` hint — a human name, possibly not a catalog id (e.g. «симулятор
+   ломбарда»). No concept, or an empty hint → **Universal baseline** below.
+2. **Open the catalog.** Run `unikit-ai genres list` (its output is the authoritative
+   catalog — there is **no** genre→id map in this skill). For the few plausible
+   candidates read the match signal with `unikit-ai genres show <id> --json` (the
+   `summary` field).
+3. **Best-fit (semantic).** Choose the profile that best fits the game's genre /
+   pillars / loops by `name` / `aliases` / `summary` — **not** by string equality.
+   The hint deliberately may not match an id (e.g. «симулятор ломбарда» → `tycoon`
+   §4.4). If **no profile fits closely** (asks-more / assume-less) → **Universal
+   baseline**; do not force a weak match.
+4. **Install + record.** Run `unikit-ai genres install <id>` (idempotent — this skill
+   drives it). Read the installed profile at
+   `.unikit/system/gamedesign/genres/<id>.json`. Phase A writes the resolved id into
+   the GAME.md header `> **genre_profile**: <id>` (a RESOLVE result, distinct from the
+   descriptive `genre:` intent in CONCEPT).
+
+**Seed interview (from the installed profile).** Seeds are **proposals**, never
+auto-written (collaborative protocol). `confidence` is the pre-fill knob — `high`
+pre-checks the seeds more strongly, `low` asks more. Run a SUBTRACTIVE pass + additions:
+
+- **Systems** (`seed_systems`) → multi-select which to keep; ask what the genre
+  misses for THIS game. Kept systems enter via **Phase B** (the system map) or later
+  **spec Add-System** — not authored here.
+- **Content types** (`seed_content_types`) → multi-select; per kept CT confirm its
+  `scale` (`bulk` | `curated`) and generator. These **route to `/unikit-gd-content`
+  add-CT** (spec does not author content).
+- **Entities** (`seed_entities`) and **Resources** (`seed_resources`, with `kind`)
+  → multi-select; RES/TRACK/KNOB facts go to their **zone-owner** (the content / flow
+  / system that owns them via registry-check).
+- **Packs** (`default_packs`) → advisory: which domain rules / section packs this
+  genre leans on; surface them as authoring proceeds.
+
+**The profile is read-only.** Anything the project diverges on — a dropped seed, an
+added field, a custom CT — lands in **GD-IDS** (import from the profile + augment at
+spec), NEVER an edit to the profile JSON. The genre layer dissolves into the registry;
+`unikit-gd-verify` stays genre-blind.
+
+**Universal baseline (no genre / no profile / no close fit).** Author WITHOUT a
+profile: treat the game as `confidence: low` — ask more, assume less, seed nothing
+automatically. Install no profile; leave `genre_profile:` empty in the GAME.md header.
+Proceed straight to Phase A.
+
 ### Phase A — Author GAME.md (section-cycle)
 
 `GAME.md` is one page (Librande one-page principle: if the vision does not fit on
@@ -61,11 +112,16 @@ authored header is byte-consistent with the scaffold:
 > **Version**: 1
 > **Last Updated**: <date>
 > **Based on**: concepts/<slug>.md (v<N>)
+> **genre_profile**: <resolved-id>
 ```
 
 - **`> **Based on**`** records provenance. Seeded from a concept card → write
   `concepts/<slug>.md (v<N>)`; authored free-form (no concept) → write `—`. Import
   Mode fills the same line with the source path (see below).
+- **`> **genre_profile**`** records the resolved genre profile id from **Resolve the
+  genre profile (seed)** above (e.g. `tycoon`). Leave the value empty when the
+  universal baseline was used (no genre / no close fit). It is a non-id slug outside
+  GD-IDS — inert for `unikit-gd-verify`, read only by `unikit-gd-review`.
 - **Carry forward from the concept card** (when one seeded this GAME.md): seed
   **Open Questions** from the concept's biggest-risk / open-question field, and
   carry a `market_signal: red-ocean` into Open Questions **verbatim** as a

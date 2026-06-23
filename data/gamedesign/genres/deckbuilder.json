@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "deckbuilder",
+  "name": "Deckbuilder",
+  "aliases": ["deck-builder", "roguelike-deckbuilder"],
+  "summary": "Рогалик-декбилдеры: card-pool + synergy/archetype (сломанные комбо = фича), run-structure (процедурная карта/акты/permadeath), draft/reward (card-removal = награда), relic, ascension и пер-ран экономика+intent (Slay the Spire).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["balance", "procgen", "progression", "core-loops", "economy"],
+  "seed_systems": [
+    { "slug": "card-pool", "category": "Gameplay", "tier": "MVP", "why": "card-pool + synergy/archetype — сломанные комбо это фича" },
+    { "slug": "run-structure", "category": "Progression", "tier": "MVP", "why": "процедурная карта/акты/permadeath — каркас рана (P0/P1)" },
+    { "slug": "reward", "category": "Economy", "tier": "VS", "why": "weighted reward pools + card-removal — драфт это награда" },
+    { "slug": "relics", "category": "Gameplay", "tier": "VS", "why": "relic — пассивные мутаторы синергий" },
+    { "slug": "ascension", "category": "Progression", "tier": "Alpha", "why": "ascension — мета-сложность повторных ранов" }
+  ],
+  "seed_content_types": [
+    { "slug": "card", "belongs_to": "SYS-card-pool", "scale": "curated", "why": "карты со схемой energy/effect/upgraded — типизированный пул синергий" },
+    { "slug": "room", "belongs_to": "SYS-run-structure", "scale": "bulk", "why": "типы комнат/нод рана — объёмный процедурный контент" }
+  ],
+  "seed_entities": [
+    { "slug": "relic", "why": "реликвия — пассивный мутатор, гнёт стратегию рана" },
+    { "slug": "enemy", "why": "враг + intent — читаемая угроза хода" }
+  ],
+  "seed_resources": [
+    { "slug": "energy", "kind": "event", "why": "энергия хода — экономика разыгрывания карт" },
+    { "slug": "gold", "kind": "soft", "why": "пер-ран золото — магазин и удаление карт" }
+  ],
+  "critical_sections": ["balance.SynergyArchetypes", "procgen.RunStructure", "economy.RewardPools"],
+  "review_emphasis": ["card-pool + synergy дают сломанные-но-честные комбо — это фича, не баг", "run-structure (процедурная карта/акты/permadeath) разнообразна без тупиковых сидов (P0/P1)", "weighted reward pools и card-removal делают драфт значимой наградой за ран"],
+  "platform_default": "pc"
+}

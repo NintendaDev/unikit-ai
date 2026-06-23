@@ -5,11 +5,11 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installGamedesignSystemAssets, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
-  type AgentInstallation,
+  type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
 import { configureMcp, getMcpInstructions, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
 import { getAgentConfig } from '../../core/agents.js';
@@ -142,7 +142,8 @@ export async function initCommand(): Promise<void> {
     }
 
     // Save config — rules.installed starts empty; /unikit Step 9 fills it.
-    await saveConfig(projectDir, {
+    // genres.installed also starts empty; /unikit-gd-spec installs profiles later.
+    const config: UniKitConfig = {
       version: getCurrentVersion(),
       engine: engineId,
       engineMcpKey: answers.engineMcpKey,
@@ -154,7 +155,11 @@ export async function initCommand(): Promise<void> {
       rules: {
         installed: emptyRulesInstallation(),
       },
-    });
+      genres: {
+        installed: [],
+      },
+    };
+    await saveConfig(projectDir, config);
 
     console.log(chalk.green('✓ Configuration saved to .unikit.json'));
 
@@ -173,6 +178,9 @@ export async function initCommand(): Promise<void> {
     // Install game-design system assets — gd-principles core + shards +
     // shared design-read contract (engine-agnostic flat copies under gamedesign/)
     await installGamedesignSystemAssets(projectDir);
+
+    // Deliver selectively installed genre profiles (no-op at init — state is empty)
+    await installGenreProfiles(projectDir, config);
 
     // Summary
     console.log(chalk.bold.green('\n✅ Setup complete!\n'));
