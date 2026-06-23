@@ -785,9 +785,10 @@ fi
 # ─────────────────────────────────────────────────────
 GD_DATA="$ROOT_DIR/data/gamedesign"
 
-# The 8 GDD authoring templates (Phase C / #9) must exist and be non-empty.
-# GD-IDS ships as .yaml (machine truth); the rest are .md.
-for tpl in CONCEPT FLOW GAME GD-IDS GD_RULES_INDEX PITCH REVIEW SYSTEM; do
+# The 9 GDD authoring templates (Phase C / #9) must exist and be non-empty.
+# GD-IDS ships as .yaml (machine truth); the rest are .md. CONTENT-TYPE joined in the
+# Content axis (the 4th authoring zone).
+for tpl in CONCEPT CONTENT-TYPE FLOW GAME GD-IDS GD_RULES_INDEX PITCH REVIEW SYSTEM; do
     ext=md
     [[ "$tpl" == "GD-IDS" ]] && ext=yaml
     if [[ -s "$GD_DATA/templates/$tpl.$ext" ]]; then
@@ -889,6 +890,24 @@ else
     fail "skill→shard binding — unikit-gd-brainstorm references shard(s):$GD_BRAINSTORM_LEAK (should load core only)"
 fi
 
+# (Content Stage 0) Per-shard content-contract ownership — each content contract lands in
+# its owning shard and nowhere else (the shard-split discipline, applied to the Content
+# axis): core (gd-principles) = the content zone + the CT-/CU- id prefixes; gd-authoring =
+# the content delta discipline (schema vs values); gd-lifecycle = the content_status spine
+# + belongs_to. The leak check mirrors split-3 (the content delta must not bleed into core).
+GD_CT_OWN_WHY=""
+grep -qF 'unikit-gd-content' "$GD_PRINCIPLES" || GD_CT_OWN_WHY+=" core(no-content-zone)"
+grep -qF 'CT-<slug>' "$GD_PRINCIPLES"         || GD_CT_OWN_WHY+=" core(no-CT-prefix)"
+grep -qF 'CU-<ct>-<n>' "$GD_PRINCIPLES"        || GD_CT_OWN_WHY+=" core(no-CU-prefix)"
+grep -qF 'Content delta' "$GD_AUTHORING"      || GD_CT_OWN_WHY+=" gd-authoring(no-content-delta)"
+grep -qF 'belongs_to' "$GD_LIFECYCLE"         || GD_CT_OWN_WHY+=" gd-lifecycle(no-belongs_to)"
+grep -qF 'Content delta' "$GD_PRINCIPLES"     && GD_CT_OWN_WHY+=" core-leak(content-delta)"
+if [[ -z "$GD_CT_OWN_WHY" ]]; then
+    pass "Content Stage 0 — per-shard content ownership (core: zone+CT/CU · gd-authoring: delta · gd-lifecycle: belongs_to)"
+else
+    fail "Content Stage 0 — content-contract shard ownership drift:$GD_CT_OWN_WHY"
+fi
+
 # Status spine (Tier 1) — a system's doc_status lives on TWO authored surfaces that
 # must agree: the GD-IDS `doc_status` (machine truth, 5-value enum) and the SYSTEM.md
 # header `> **Status**:` legend (4-value, no `not-started`). The `unikit-gd-verify`
@@ -903,6 +922,7 @@ fi
 GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
 GD_SYSTEM_TPL="$GD_DATA/templates/SYSTEM.md"
 GD_FLOW_TPL="$GD_DATA/templates/FLOW.md"
+GD_CONTENT_TPL="$GD_DATA/templates/CONTENT-TYPE.md"
 GD_GAME_TPL="$GD_DATA/templates/GAME.md"
 GD_VERIFY_SKILL="$ROOT_DIR/skills/unikit-gd-verify/SKILL.md"
 SPINE_IDS_LINE=$(grep -F 'doc_status:' "$GD_IDS_TPL" 2>/dev/null | head -1 || true)
@@ -912,14 +932,19 @@ SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head 
 # SPINE_IDS_LINE above already covers). Add the FLOW.md surface so the merge invariant
 # (reviewed+revised present, no approved-as-status) holds across the flow zone too.
 SPINE_FLOW_LINE=$(grep -F '> **Status**:' "$GD_FLOW_TPL" 2>/dev/null | head -1 || true)
+# Content axis (Stage 0): a content type's doc_status lives on the SAME 2-place spine —
+# the CONTENT-TYPE.md header `> **Status**:` legend ↔ the GD-IDS `content_types[].doc_status`
+# (the shared enum SPINE_IDS_LINE covers). Add the CONTENT-TYPE.md surface so the merge
+# invariant (reviewed+revised present, no approved-as-status) holds across the content zone.
+SPINE_CONTENT_LINE=$(grep -F '> **Status**:' "$GD_CONTENT_TPL" 2>/dev/null | head -1 || true)
 # the verify CHECK legend carries the design-writable enum on its single table row; the
 # GAME.md/CONCEPT.md `approved` carve-out lives in separate prose, so head -1 anchors
 # the row, not the explanation.
 SPINE_VERIFY_LINE=$(grep -F 'Status coherence' "$GD_VERIFY_SKILL" 2>/dev/null | head -1 || true)
 SPINE_OK=1
 SPINE_WHY=""
-# the 3 authored surfaces (GD-IDS + SYSTEM + FLOW) + the verify check legend
-for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "FLOW.md:$SPINE_FLOW_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
+# the 4 authored surfaces (GD-IDS + SYSTEM + FLOW + CONTENT-TYPE) + the verify check legend
+for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "FLOW.md:$SPINE_FLOW_LINE" "CONTENT-TYPE.md:$SPINE_CONTENT_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
     name="${pair%%:*}"
     line="${pair#*:}"
     if [[ -z "$line" ]]; then
@@ -930,7 +955,7 @@ for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "FLOW.m
     if echo "$line" | grep -q "approved";   then SPINE_OK=0; SPINE_WHY+=" $name(approved-as-status)"; fi
 done
 if [[ "$SPINE_OK" -eq 1 ]]; then
-    pass "status spine — reviewed+revised on the 3 authored surfaces (GD-IDS/SYSTEM/FLOW) + verify legend, no approved-as-status"
+    pass "status spine — reviewed+revised on the 4 authored surfaces (GD-IDS/SYSTEM/FLOW/CONTENT-TYPE) + verify legend, no approved-as-status"
 else
     fail "status spine enum drift:$SPINE_WHY"
 fi
@@ -945,6 +970,18 @@ if [[ -z "$GD_RENDER_WHY" ]]; then
     pass "GAME.md template — ## System Map [gen] renders a read-only Status column (v2 render surface)"
 else
     fail "GAME.md template — System Map render surface incomplete:$GD_RENDER_WHY"
+fi
+# (Content Stage 0) GAME.md `## Content Map [gen]` renders content_types read-only — the
+# 4th [gen] surface, owned by unikit-gd-content. Assert the template ships the block with
+# its gen marker and an expected column (Scale, the content axis's grouping field).
+GD_CONTENT_RENDER_WHY=""
+grep -qF '## Content Map [gen]' "$GD_GAME_TPL" || GD_CONTENT_RENDER_WHY+=" no-content-map-block"
+grep -qF 'gen:content-map' "$GD_GAME_TPL"      || GD_CONTENT_RENDER_WHY+=" no-gen-marker"
+grep -qE '\| *Scale *\|' "$GD_GAME_TPL"        || GD_CONTENT_RENDER_WHY+=" no-scale-column"
+if [[ -z "$GD_CONTENT_RENDER_WHY" ]]; then
+    pass "GAME.md template — ## Content Map [gen] renders a read-only Scale column (Content axis render surface)"
+else
+    fail "GAME.md template — Content Map render surface incomplete:$GD_CONTENT_RENDER_WHY"
 fi
 # The status state machine moved to the gd-lifecycle shard (#2); skills reference it
 # by name ("Lifecycle & Status"). Guard a re-clone/split that drops the section.
@@ -1182,14 +1219,21 @@ fi
 #         (unikit-plan matches the plan brief on category) plus the new flows/events
 #         sections of the Flow axis.
 GD_IDS_V2_WHY=""
-grep -qE '^version: 2$' "$GD_IDS_TPL"   || GD_IDS_V2_WHY+=" version:2"
-grep -qF 'category:' "$GD_IDS_TPL"      || GD_IDS_V2_WHY+=" category"
-grep -qE '^flows: \[\]' "$GD_IDS_TPL"   || GD_IDS_V2_WHY+=" flows"
-grep -qE '^events: \[\]' "$GD_IDS_TPL"  || GD_IDS_V2_WHY+=" events"
+grep -qE '^version: 2$' "$GD_IDS_TPL"        || GD_IDS_V2_WHY+=" version:2"
+grep -qF 'category:' "$GD_IDS_TPL"           || GD_IDS_V2_WHY+=" category"
+grep -qE '^flows: \[\]' "$GD_IDS_TPL"        || GD_IDS_V2_WHY+=" flows"
+grep -qE '^events: \[\]' "$GD_IDS_TPL"       || GD_IDS_V2_WHY+=" events"
+# Content axis (Stage 0) — the 5 additive sections ship empty (non-empty-gate, the
+# flows/events precedent). version stays 2 (additive, no schema bump).
+grep -qE '^content_types: \[\]' "$GD_IDS_TPL" || GD_IDS_V2_WHY+=" content_types"
+grep -qE '^content: \[\]' "$GD_IDS_TPL"       || GD_IDS_V2_WHY+=" content"
+grep -qE '^resources: \[\]' "$GD_IDS_TPL"     || GD_IDS_V2_WHY+=" resources"
+grep -qE '^tracks: \[\]' "$GD_IDS_TPL"        || GD_IDS_V2_WHY+=" tracks"
+grep -qE '^knobs: \[\]' "$GD_IDS_TPL"         || GD_IDS_V2_WHY+=" knobs"
 if [[ -z "$GD_IDS_V2_WHY" ]]; then
-    pass "GD-IDS template — schema v2 + category + flows/events sections (P0-T3)"
+    pass "GD-IDS template — schema v2 + category + flows/events + content_types/content/resources/tracks/knobs sections (P0-T3 + Content Stage 0)"
 else
-    fail "GD-IDS template — missing:$GD_IDS_V2_WHY (P0-T3)"
+    fail "GD-IDS template — missing:$GD_IDS_V2_WHY (P0-T3 + Content Stage 0)"
 fi
 
 # (T8-6) Both the writer (unikit-verify) and the reader (unikit-plan) name
@@ -1415,6 +1459,19 @@ if [[ -z "$FL_MAP_WHY" ]]; then
     pass "FL-2 GAME.md ## Flow Map/## Funnel by unikit-gd-flow + ## System Map by unikit-gd-spec (F1); zero funnel-aggregation in monetization (F2)"
 else
     fail "FL-2 GAME.md flow render-surface / attribution drift:$FL_MAP_WHY"
+fi
+
+# (Content Stage 0, mirror of FL-2) GAME.md ships the ## Content Map [gen] render surface
+# attributed to unikit-gd-content, while the System Map stays unikit-gd-spec — the content
+# zone owns its own [gen] render, not gd-spec (no add-content in gd-spec).
+CT_MAP_WHY=""
+grep -qF '## Content Map [gen]' "$GD_GAME_TPL"                    || CT_MAP_WHY+=" no-content-map-block"
+grep -qF '`content_types` by `unikit-gd-content`' "$GD_GAME_TPL"  || CT_MAP_WHY+=" content-map-not-gd-content"
+grep -qF '`systems` by `unikit-gd-spec`' "$GD_GAME_TPL"           || CT_MAP_WHY+=" system-map-not-gd-spec"
+if [[ -z "$CT_MAP_WHY" ]]; then
+    pass "Content Stage 0 — GAME.md ## Content Map [gen] by unikit-gd-content + ## System Map by unikit-gd-spec (attribution aligned)"
+else
+    fail "Content Stage 0 — GAME.md content render-surface / attribution drift:$CT_MAP_WHY"
 fi
 
 # (FL-3) unikit-gd-verify carries the flow-check family — the mirror of the system
