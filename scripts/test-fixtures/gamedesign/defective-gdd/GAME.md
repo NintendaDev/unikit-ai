@@ -131,3 +131,21 @@ Generated read-only from `GD-IDS.yaml` `events` — do **not** hand-edit.
 |-------|-------|------|----------|
 | 1 | extraction_reached | FLOW-first-run | how many players finish the first run |
 <!-- /gen:funnel -->
+
+## Content Map [gen]
+
+<!-- gen:content-map -->
+Generated read-only from `GD-IDS.yaml` `content_types` — do **not** hand-edit.
+(Fixture note: this render carries a phantom `CT-ghost` row with **no** `GD-IDS.yaml`
+entry — the content **Map-freshness** defect; `unikit-gd-verify` self-heals by
+re-rendering, it does not file a conflict. The render is otherwise faithful to
+`GD-IDS` — `CT-spawn` shows `Ver 2`, matching the registry; the header-vs-`GD-IDS`
+version drift lives in `content-types/CT-spawn.md`, never in this map.)
+
+| ID | Content type | Scale | Belongs to | Status | Ver | Doc |
+|----|--------------|-------|------------|--------|-----|-----|
+| CT-item | Loot item | bulk | SYS-loot | detailed | 1 | content-types/CT-item.md |
+| CT-card | Boost card | curated | SYS-hud | reviewed | 1 | content-types/CT-card.md |
+| CT-spawn | Enemy spawn wave | bulk | SYS-combat | reviewed | 2 | content-types/CT-spawn.md |
+| CT-ghost | Ghost catalog | bulk | SYS-combat | skeleton | 1 | content-types/CT-ghost.md |
+<!-- /gen:content-map -->

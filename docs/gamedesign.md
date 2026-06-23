@@ -1,0 +1,227 @@
+[← Skills Reference](skills.md) · [Back to README](../README.md)
+
+# Game-Design Module
+
+UniKit ships a second knowledge module, **`gamedesign`**, dedicated to authoring a
+**Game Design Document (GDD)**. It installs eight `unikit-gd-*` skills, a
+domain-knowledge rule library, and a set of system-asset contracts. Design artifacts
+live in their own workspace (`.unikit/gamedesign/`) and are authored in the project's
+configured language; **ids / keywords / canonical terms / formulas stay English**.
+
+The boundary to the code module is deliberately **one-way**: code reads design, design
+never reads code (with one sanctioned exception — code-side `/unikit-verify` stamps a
+system's `implemented_version` back into the registry).
+
+## The four authoring axes
+
+A GDD is authored along three machine-readable axes plus the one-page whole:
+
+| Axis | Skill | Owns | Answers |
+|------|-------|------|---------|
+| **whole** | `/unikit-gd-spec` | `GAME.md` (the one-pager) + `GD-IDS.yaml` registry roster | the premise, pillars, loops, win/lose |
+| **systems** | `/unikit-gd-system` | `systems/SYS-<slug>.md` | "what are the rules" |
+| **flows** | `/unikit-gd-flow` | `flows/FLOW-<slug>.md` | "what the player does over time" (dynamics) |
+| **content** | `/unikit-gd-content` | `content-types/CT-<slug>.md` | "what content exists and by what schema" (the catalog) |
+
+Ideation (`/unikit-gd-brainstorm`), research (`/unikit-gd-explore`), quality review
+(`/unikit-gd-review`), and mechanical verification (`/unikit-gd-verify`) round out the
+module. The machine truth for every axis is `GD-IDS.yaml`; the human-readable maps at
+the bottom of `GAME.md` (`## System Map [gen]` / `## Flow Map [gen]` / `## Funnel [gen]`
+/ `## Content Map [gen]`) are **rendered read-only** from it — never hand-edited.
+
+---
+
+## The Content axis (the catalog)
+
+The content axis is the data the game is made of — items, cards, levels, spawn waves,
+quests. It is owned end-to-end by **`/unikit-gd-content`** (create the schema, fill it,
+revise it). The contract lives in the `gd-content-axis` system-asset shard.
+
+### Content types and content units (CT / CU)
+
+- A **content type** (`CT-<slug>`) is a **schema + descriptor**, never the catalog of
+  values.
+- A **content unit** (`CU-<ct>-<n>`) is a thin, genre-agnostic envelope around that
+  schema. All per-genre variability lives in the schema, so the CU envelope never grows
+  as genres change.
+
+### `CT.fields` — the typed schema
+
+`CT.fields` is the contract the code side reads — one typed field per row:
+
+```
+int · float · string · bool · enum · list<T> · asset-ref · loc-ref · ref<PREFIX>
+```
+
+### `ref<>` — a link is a field, not metadata
+
+`ref<ENT>` / `ref<CU>` / `ref<FORM>` / `ref<SYS>` / `ref<RES>` make a content↔X link a
+**typed field of the schema**, so the CU envelope never sprouts a per-genre relationship
+slot. A reward (`ref<RES>`), a referenced entity (`ref<ENT>`), an augmented system
+(`ref<SYS>`) — each is a field. `unikit-gd-verify` resolves every `ref<>` value; a
+dangling `ref<SYS>` / `ref<CT>` is **Critical**, the rest **Major**.
+
+### Scale: `bulk` vs `curated`
+
+Each content type declares a `scale:` in `GD-IDS`, and the scale dictates the
+`CONTENT-TYPE.md` section-C structure and what enters the registry:
+
+| Scale | Registry shape | Where the values live | Use for |
+|-------|----------------|-----------------------|---------|
+| **bulk** | a `count` + `spec` descriptor (one `content` row, `kind: set`) | the editor / data files — the values never cross the registry boundary | hundreds of similar units (loot items, beatmaps, spawn waves) |
+| **curated** | `fields` rows in the registry (one `content` row, `kind: instance`, each `fields` ⊆ `CT.fields`) | the registry itself | a small hand-tuned set (heroes, boss cards) |
+
+`unikit-gd-verify` checks `scale:` ↔ the document's section-C structure, exactly as it
+checks a flow's `mode:` ↔ structure. A scale change is a **schema edit** (version bump +
+data migration); **catalog churn** — adding/removing units, a `bulk` `count` change — is
+data, **not** a schema edit (no version bump).
+
+### `belongs_to` — CT → SYS (one-way)
+
+A content type names the consuming system it feeds. The edge is **one-way** (a system
+never lists its content types). A `belongs_to` naming a missing or deprecated system is a
+verify conflict that **routes back to `/unikit-gd-spec` add-system** — the content zone
+never writes a roster row itself.
+
+### RES / TRACK / KNOB — cross-boundary facts
+
+Resources (`RES-<slug>`), progression tracks (`TRACK-<slug>`), and global tuning knobs
+(`KNOB-<slug>`) are cross-boundary **facts**, not documents. Each is registered by its
+**owning zone via a registry-check** and lives under its own `GD-IDS` section, subject to
+the unregistered-fact check like any other fact.
+
+### The `## Content Map [gen]`
+
+`/unikit-gd-content` re-renders the `## Content Map [gen]` block in `GAME.md` from
+`GD-IDS.yaml` `content_types` whenever it writes (there is **no add-content in
+`/unikit-gd-spec`** — a content type registers itself). Like the system and flow maps, it
+is a **freshness surface only**: a stale render self-heals on the next verify, never a
+coherence conflict.
+
+### Code reads content (read-only)
+
+Content is a *read* target for the code side, never a writeback. `/unikit-plan` emits an
+optional **`## Content Context`** brief (the `CT.fields` schema, the `scale`, the
+`belongs_to` system, the `ref<>` dependencies) parallel to `## Design` and
+`## Flow Context`; `/unikit-explore` grounds first-class on `content_types`. The `scale`
+dictates the code structure: `bulk` → a data table / loader per `spec`; `curated` → named
+instances from the `fields` rows. A content type carries **no `implemented_version`** —
+its delivery is a playtest call, exactly as a flow's readiness is.
+
+---
+
+## Genre profiles (the seed layer)
+
+A **bundled, read-only genre-profile catalog** seeds GDD authoring so a new project does
+not start from a blank page. Profiles ship in the npm package as JSON
+(`data/gamedesign/genres/<id>.json`) — there is **no registry and no network**.
+
+### The catalog
+
+The catalog is the industry **genre matrix** (§4.1–4.6 of the design research), each row
+authored strictly from the matrix — **no invented genres**. ~43 profiles span casual /
+mobile, RPG, strategy, roguelike / sim / sandbox, action / competitive, and
+narrative / social / niche families. Each profile is **confidence-graded**
+(`high | medium | low`): the P0 "content = game" genres (match-3, puzzle, hidden-object,
+tower-defense, roguelike, rhythm, CCG, deckbuilder) and mainstream genres are `high`;
+cross-cut and partially-covered genres are `medium`; niche (educational, location-based)
+are `low`. Platform profiles (mobile / console / VR …) are a separate, **deferred** layer
+— VR/AR is excluded from the genre catalog for that reason.
+
+A profile carries: a one-line `summary` (the match signal), `default_flow_mode`,
+`default_packs`, *suggested* `seed_systems` / `seed_content_types` / `seed_entities` /
+`seed_resources`, and the review-only `critical_sections` / `review_emphasis`.
+
+### CLI: `genres list / show / install`
+
+```
+unikit-ai genres list                 # the catalog (with an installed marker); --json
+unikit-ai genres show <id|alias>      # one profile (--json = the full profile object)
+unikit-ai genres install <id|alias…>  # copy profile(s) into the project + record state
+```
+
+`genres install` delivers selectively — only the ids in `.unikit.json` `genres.installed`
+land in `.unikit/system/gamedesign/genres/`, refreshed on `unikit-ai update`. Exit codes
+are a subset of the rules CLI: **0** success · **1** not found / no `.unikit.json` · **3**
+invalid args. There is no network (no exit 2) and no migration gate (no exit 8).
+
+### How profiles seed authoring
+
+The flow is **skill-driven — the user never types a `genres` command**:
+
+1. **`/unikit-gd-brainstorm`** writes a **descriptive `genre:` hint** into the concept
+   card — a human genre name ("симулятор ломбарда", "match-3 puzzle"), an *intent*, not a
+   catalog id. It is CLI-free; it never installs a profile.
+2. **`/unikit-gd-spec`** (Create mode) reads that hint, opens the catalog
+   (`genres list`), **best-fits** the hint to a profile by `name` / `aliases` / `summary`
+   (the hint may not equal any id — "симулятор ломбарда" → `tycoon`), runs
+   `genres install <id>`, and writes the resolved id into the GAME.md header
+   `genre_profile:`.
+3. It then runs a **seed interview** — a subtractive multi-select over the profile's
+   seeds plus additions, with `confidence` as the pre-fill knob (`high` pre-checks more,
+   `low` asks more). Seeds are **proposals**, never auto-written. Kept seeds apply through
+   the existing owner paths: systems → spec / add-system; content → `/unikit-gd-content`
+   add-CT; RES/TRACK/KNOB → their zone-owner.
+
+### Universal baseline
+
+When there is no genre, no concept, or **no profile fits closely**, spec authors with a
+**universal baseline** (treat as `confidence: low` — ask more, assume less), installs no
+profile, and leaves `genre_profile:` empty.
+
+### Read-only — divergence lands in `GD-IDS`
+
+A profile is **never edited**. Every divergence — a dropped seed, an added field, a custom
+content type — lands in **`GD-IDS.yaml`** (the project's custom configuration = the
+registry, imported from the profile and augmented at spec). The genre layer dissolves into
+the registry as it is used.
+
+### Genre-blind verify, completeness lens in review
+
+- **`/unikit-gd-verify` is genre-blind** — it never reads a profile's `critical_sections`.
+  Both genre fields (`genre:` in CONCEPT, `genre_profile:` in GAME) are bare non-id slugs
+  outside `GD-IDS`, inert to its id-resolving checks.
+- **`/unikit-gd-review`** reads the resolved profile for one **declinable
+  profile-completeness lens**: are the genre's `critical_sections` present and filled
+  across the reviewed docs? A miss is a **Major** (advisory, never a blocker). The
+  profile's `review_emphasis` is an advisory re-weight of the lens priorities.
+
+---
+
+## Adding a genre profile
+
+Adding a genre profile is **zero code** — the accessor reads the whole folder. Author one
+JSON file at `data/gamedesign/genres/<id>.json` following the schema (every field required
+except `platform_default`):
+
+```jsonc
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "match3",
+  "name": "Match-3",
+  "aliases": ["match3", "match-3", "swap-puzzle"],
+  "summary": "...one-line match signal (for which games)...",
+  "confidence": "high",                      // high | medium | low
+  "default_flow_mode": "linear",             // linear | conditional | emergent
+  "default_packs": ["level-design", "economy", "progression"],
+  "seed_systems": [{ "slug": "board", "category": "Gameplay", "tier": "MVP", "why": "..." }],
+  "seed_content_types": [{ "slug": "level", "belongs_to": "SYS-board", "scale": "bulk", "why": "..." }],
+  "seed_entities": [{ "slug": "blocker", "why": "..." }],
+  "seed_resources": [{ "slug": "coins", "kind": "soft", "why": "..." }],  // soft | hard | event
+  "critical_sections": ["level-design.LevelMetrics", "economy.SourcesAndSinks"],
+  "review_emphasis": ["...advisory review re-weight phrase..."],
+  "platform_default": "mobile"               // optional
+}
+```
+
+Source the seeds from the genre matrix (each row's *critical blocks* → `critical_sections`
+/ `review_emphasis`; *specific entities* → the `seed_*` arrays; *what to add* → the content
+types + packs + priority/confidence). The bundled package ships `data/` automatically, so a
+new profile needs no build step — only `npm test` (the structural schema guard validates
+required fields + enum values, NOT cross-refs, so forward-refs to not-yet-built packs are
+fine).
+
+---
+
+[← Skills Reference](skills.md) · [Back to README](../README.md)

@@ -252,6 +252,37 @@ This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the f
 
 ---
 
+## Game Design Skills
+
+The `gamedesign` module adds eight `unikit-gd-*` skills for authoring a Game Design
+Document along three machine-readable axes — **systems** (the rules), **flows** (the
+dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. See
+**[Game-Design Module](gamedesign.md)** for the full treatment.
+
+### `/unikit-gd-content` - the content (catalog) axis
+
+```
+/unikit-gd-content add an item content type     # create / fill / revise a CT-<slug>
+```
+- Owns one content type's `CONTENT-TYPE.md` for its full lifecycle (schema + descriptor)
+- `CT.fields` is a typed schema; `ref<>` makes a content↔X link a field; `scale` is `bulk` (a `count`+`spec` descriptor) or `curated` (`fields` rows in the registry)
+- Registers itself (`content_types:` / `content:` + RES/TRACK/KNOB) and re-renders `## Content Map [gen]`
+- `belongs_to` names the consuming system (one-way); a missing system routes to `/unikit-gd-spec` add-system
+
+### `genres` (CLI) - bundled genre-profile catalog
+
+```
+unikit-ai genres list                 # the §4.1-4.6 genre catalog (with an installed marker)
+unikit-ai genres show <id|alias>      # one profile (--json = the full object)
+unikit-ai genres install <id|alias…>  # selectively install profile(s)
+```
+- A **bundled, read-only** catalog (no registry, no network) that seeds GDD authoring: default flow-mode, packs, and *suggested* systems / content types / entities / resources
+- **Skill-driven**, not user-typed: `/unikit-gd-brainstorm` writes a descriptive `genre:` hint; `/unikit-gd-spec` best-fits it to a profile, installs it, and runs a seed interview
+- `/unikit-gd-review` reads the profile for a genre-completeness lens; `/unikit-gd-verify` stays **genre-blind**. The profile is read-only — divergence lands in `GD-IDS.yaml`
+- Exit codes are a subset of the rules CLI: `0`/`1`/`3`
+
+---
+
 ## Knowledge Base Skills
 
 ### `/unikit-docs [--web]` - documentation generation

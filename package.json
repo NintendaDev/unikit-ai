@@ -72,6 +72,7 @@
     "ignore": [
       "examples/**",
       "scripts/generate-cli-contract.ts",
+      "scripts/genres-validate.mjs",
       "scripts/test-agent-filter.mjs",
       "scripts/validate-agent-markers.mjs",
       "src/core/cli-contract.ts"

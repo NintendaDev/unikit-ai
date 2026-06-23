@@ -1,8 +1,9 @@
 # Machine truth for the defective-gdd fixture. Canonical GD-IDS v2 schema
-# (pillars | systems | flows | events | entities | formulas | terms | decisions).
+# (pillars | systems | flows | events | entities | formulas | terms | decisions |
+# content_types | content | resources | tracks | knobs).
 # Intentionally inconsistent with the documents — see README.md for the planted
-# defects. The roster renders read-only into GAME.md ## System Map [gen]; there is
-# no standalone markdown index in v2.
+# defects (system + flow + CONTENT axis). The roster renders read-only into GAME.md
+# ## System Map [gen]; there is no standalone markdown index in v2.
 
 version: 2
 last_updated: "2026-06-13"
@@ -152,3 +153,146 @@ terms:
 
 # ─── DECISIONS ────────────────────────────────────────────────────────────────
 decisions: []
+
+# ─── CONTENT TYPES ────────────────────────────────────────────────────────────
+# The content axis (the catalog). Each CT is a schema + descriptor. Rendered
+# read-only into GAME.md ## Content Map [gen]. One seeded example per content check
+# (see README.md → Content-axis defects).
+content_types:
+  - id: CT-item
+    name: "Loot item"
+    status: active
+    scale: bulk
+    belongs_to: SYS-loot          # valid (SYS-loot is active) — NOT a belongs_to defect
+    doc_status: detailed          # matches CT-item.md header → no coherence defect here
+    version: 1
+    research: ""
+    fields:
+      - { name: value, type: int, range: [1, 9999], required: true }
+      - { name: rarity_tier, type: enum, values: [common, rare, epic] }
+      - { name: icon, type: asset-ref }
+      - { name: drop_resource, type: ref<RES> }   # schema field → RES-scrap (registered); no value to resolve for a bulk type
+    source: content-types/CT-item.md
+    added: 2026-06-23
+    revised: ""
+  - id: CT-card
+    name: "Boost card"
+    status: active
+    scale: curated
+    belongs_to: SYS-hud           # defect (#5 belongs_to): SYS-hud is status: deprecated
+    doc_status: reviewed          # matches CT-card.md header → no coherence defect here
+    version: 1
+    research: ""
+    fields:
+      - { name: title, type: string, required: true }
+      - { name: power, type: int, range: [1, 10] }
+      - { name: link, type: ref<SYS> }            # CU-card-1.link resolves to a MISSING system (#3)
+    source: content-types/CT-card.md
+    added: 2026-06-23
+    revised: ""
+  - id: CT-spawn
+    name: "Enemy spawn wave"
+    status: active
+    scale: bulk
+    belongs_to: SYS-combat        # valid + the cross-axis edge (#9): a SYS-combat edit must stale this CT
+    doc_status: reviewed
+    version: 2                     # defect (#6 content version 2-place): CT-spawn.md header says Version 1
+    research: ""
+    fields:
+      - { name: enemy, type: ref<ENT> }           # schema field → ENT-drone (registered)
+      - { name: spawn_rate, type: float, range: [0.1, 5.0] }
+      - { name: wave_size, type: int, range: [1, 50] }
+    source: content-types/CT-spawn.md
+    added: 2026-06-23
+    revised: ""
+
+# ─── CONTENT ──────────────────────────────────────────────────────────────────
+# Content UNITS (CU). `kind: set` is a bulk descriptor (count + spec); `kind:
+# instance` is one curated unit carrying `fields` ⊆ its CT.fields.
+content:
+  - id: CU-item-1
+    type: CT-item
+    name: "Common loot table"
+    kind: set
+    status: active
+    count: 320
+    spec: "data/loot_common.csv following CT-item.fields"
+    source: content-types/CT-item.md
+    added: 2026-06-23
+    revised: ""
+  - id: CU-item-2                  # defect (#1 duplicate CU id): CU-item-2 declared twice for two different units
+    type: CT-item
+    name: "Rare loot table"
+    kind: set
+    status: active
+    count: 64
+    spec: "data/loot_rare.csv following CT-item.fields"
+    source: content-types/CT-item.md
+    added: 2026-06-23
+    revised: ""
+  - id: CU-item-2                  # defect (#1): the duplicate
+    type: CT-item
+    name: "Epic loot table"
+    kind: set
+    status: active
+    count: 12
+    spec: "data/loot_epic.csv following CT-item.fields"
+    source: content-types/CT-item.md
+    added: 2026-06-23
+    revised: ""
+  - id: CU-card-1
+    type: CT-card
+    name: "Overdrive"
+    kind: instance
+    status: active
+    fields:
+      title: "Overdrive"
+      power: 8
+      link: SYS-inventory          # defect (#3 ref<> resolution): ref<SYS> → SYS-inventory (missing) — Critical
+      rarity: epic                 # defect (#2 CU.fields ⊆ CT.fields): `rarity` is NOT a CT-card field
+    source: content-types/CT-card.md
+    added: 2026-06-23
+    revised: ""
+  - id: CU-spawn-1
+    type: CT-spawn
+    name: "Standard wave set"
+    kind: set
+    status: active
+    count: 40
+    spec: "data/spawns.json following CT-spawn.fields"
+    source: content-types/CT-spawn.md
+    added: 2026-06-23
+    revised: ""
+
+# ─── RESOURCES ────────────────────────────────────────────────────────────────
+resources:
+  - id: RES-scrap
+    name: "Scrap"
+    status: active
+    kind: material
+    source: systems/loot.md
+    added: 2026-06-23
+    revised: ""
+
+# ─── TRACKS ───────────────────────────────────────────────────────────────────
+# NB: TRACK-elite is intentionally NOT registered — it is cited by CT-spawn.md §D
+# (defect #8: unregistered TRACK fact crossing a document boundary).
+tracks:
+  - id: TRACK-rank
+    name: "Courier rank"
+    status: active
+    tiers: 20
+    source: GAME.md
+    added: 2026-06-23
+    revised: ""
+
+# ─── KNOBS ────────────────────────────────────────────────────────────────────
+knobs:
+  - id: KNOB-collapse-speed
+    name: "Collapse speed multiplier"
+    status: active
+    current: 1.0
+    range: [0.5, 2.0]
+    source: GAME.md
+    added: 2026-06-23
+    revised: ""

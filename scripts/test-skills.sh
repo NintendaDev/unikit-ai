@@ -1774,6 +1774,30 @@ else
     fail "G5 template genre fields missing:$G5_WHY"
 fi
 
+# (CF-1) Content-axis Stage 5 fixture — the defective-gdd grew the content axis (T13):
+# content-types/CT-*.md on disk + non-empty GD-IDS content_types/content/resources/
+# tracks/knobs with one seeded defect per content check + the README content-defect
+# ground truth (9 checks) + the genre-blind ground-truth note (T14b). bash cannot run
+# the LLM smoke — assert the surface is present + well-formed (mirror of FL-8); the
+# agent-driven /unikit-gd-verify + /unikit-gd-review smoke reads the README ground truth.
+# Reuses GD_DEFECTIVE_DIR.
+CF_FIX_WHY=""
+[[ -s "$GD_DEFECTIVE_DIR/content-types/CT-item.md" ]]  || CF_FIX_WHY+=" no-CT-item"
+[[ -s "$GD_DEFECTIVE_DIR/content-types/CT-card.md" ]]  || CF_FIX_WHY+=" no-CT-card"
+[[ -s "$GD_DEFECTIVE_DIR/content-types/CT-spawn.md" ]] || CF_FIX_WHY+=" no-CT-spawn"
+# content-types/CT-ghost.md must be ABSENT — the phantom Content-Map-freshness row.
+[[ -e "$GD_DEFECTIVE_DIR/content-types/CT-ghost.md" ]] && CF_FIX_WHY+=" CT-ghost-should-be-absent"
+for key in 'content_types:' 'CT-item' 'content:' 'CU-item-' 'resources:' 'RES-scrap' 'tracks:' 'TRACK-rank' 'knobs:' 'KNOB-'; do
+    grep -qF "$key" "$GD_DEFECTIVE_DIR/GD-IDS.yaml" || CF_FIX_WHY+=" no-key-$key"
+done
+grep -qF 'Content-axis mechanical defects' "$GD_DEFECTIVE_DIR/README.md" || CF_FIX_WHY+=" no-readme-content-defects"
+grep -qF 'genre-blind' "$GD_DEFECTIVE_DIR/README.md"                     || CF_FIX_WHY+=" no-genre-blind-note"
+if [[ -z "$CF_FIX_WHY" ]]; then
+    pass "CF-1 defective-gdd content fixture — content-types/CT-* + GD-IDS content keys + README content-defect + genre-blind ground truth"
+else
+    fail "CF-1 defective-gdd content fixture incomplete:$CF_FIX_WHY"
+fi
+
 # ============================================================================
 # Context-optimization guards (mode-extraction + flow-first + P4/P5 + design-read).
 # The flow-first/mode-extraction refactor pulled mode bodies and Step 4.5 out of

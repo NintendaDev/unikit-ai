@@ -194,6 +194,19 @@ Rules are fetched from the **[official remote registry](https://github.com/Ninte
 
 → [Dynamic Memory](docs/dynamic-memory.md) · [Rules Registry](docs/rules-registry.md)
 
+### Game design (GDD authoring)
+
+Beyond code, UniKit ships a `gamedesign` module for authoring a Game Design Document
+along three machine-readable axes — **systems** (the rules), **flows** (the dynamics),
+and **content** (the catalog: typed `CT.fields` schemas, `bulk`/`curated` scale,
+RES/TRACK/KNOB facts) — plus the one-page `GAME.md`. A **bundled genre-profile catalog**
+(`unikit-ai genres list/show/install`) seeds authoring from the industry genre matrix:
+`/unikit-gd-brainstorm` infers the genre, `/unikit-gd-spec` best-fits it to a read-only
+profile and seeds the GDD. Code reads design one-way; the registry (`GD-IDS.yaml`) is the
+sole code↔design interface.
+
+→ [Game-Design Module](docs/gamedesign.md)
+
 ## Self-Learning
 
 Every bug fix and code review creates a patch - a record of what went wrong and how it was fixed. When patches accumulate, `/unikit-evolve` analyzes them and distills patterns into project rules and skill-context overrides.
@@ -233,6 +246,7 @@ Uses its own config directory and skill format, never touches standard agent fil
 | [Skills Reference](docs/skills.md) | All 19 skills - explore, plan, implement, verify, evolve, and more |
 | [Subagents](docs/subagents.md) | Coordinators, workers, sidecars, delegation aliases |
 | [Plan Files](docs/plan-files.md) | Plan files, self-improvement patches, artifact ownership |
+| [Game-Design Module](docs/gamedesign.md) | GDD authoring — the system / flow / content axes, the `## Content Map [gen]`, and the bundled genre-profile catalog (`genres` CLI) |
 
 ### Deep Dive
 
