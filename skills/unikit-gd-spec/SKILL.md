@@ -10,7 +10,8 @@ description: >-
   add a new system to the design map ("let's add a new system", "add a crafting system to the
   game design", "add this to the GDD"). This is the structural, map-level layer plus GAME.md
   content edits. To write or fill in the detailed parameters of one existing system, use
-  /unikit-gd-system; to invent a brand-new game concept use /unikit-gd-brainstorm.
+  /unikit-gd-system; to apply one edit spanning several zones at once use /unikit-gd-apply;
+  to invent a brand-new game concept use /unikit-gd-brainstorm.
 argument-hint: "[path-to-existing-GDD | URL | free-form description]  (mode inferred; no flags)"
 allowed-tools:
   - Read

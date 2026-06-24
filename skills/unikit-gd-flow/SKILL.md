@@ -11,8 +11,8 @@ description: >-
   restructuring a Rework; each bumps the version and appends a changelog. Selects the wiring
   mode (linear | conditional | emergent) and re-renders the ## Flow Map [gen] / ## Funnel
   [gen] blocks in GAME.md. To add or detail a system use /unikit-gd-system; to edit GAME.md
-  content (pillars, win/lose intent) use /unikit-gd-spec; for a new game concept use
-  /unikit-gd-brainstorm.
+  content use /unikit-gd-spec; to apply a multi-zone edit use /unikit-gd-apply; for a new
+  game concept use /unikit-gd-brainstorm.
 argument-hint: "<flow name | FLOW-slug> [\"<what to change>\"]  (mode inferred from doc state + intent; no flags)"
 allowed-tools:
   - Read

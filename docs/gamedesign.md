@@ -3,7 +3,7 @@
 # Game-Design Module
 
 UniKit ships a second knowledge module, **`gamedesign`**, dedicated to authoring a
-**Game Design Document (GDD)**. It installs eight `unikit-gd-*` skills, a
+**Game Design Document (GDD)**. It installs nine `unikit-gd-*` skills, a
 domain-knowledge rule library, and a set of system-asset contracts. Design artifacts
 live in their own workspace (`.unikit/gamedesign/`) and are authored in the project's
 configured language; **ids / keywords / canonical terms / formulas stay English**.
@@ -23,9 +23,10 @@ A GDD is authored along three machine-readable axes plus the one-page whole:
 | **flows** | `/unikit-gd-flow` | `flows/FLOW-<slug>.md` | "what the player does over time" (dynamics) |
 | **content** | `/unikit-gd-content` | `content-types/CT-<slug>.md` | "what content exists and by what schema" (the catalog) |
 
-Ideation (`/unikit-gd-brainstorm`), research (`/unikit-gd-explore`), quality review
-(`/unikit-gd-review`), and mechanical verification (`/unikit-gd-verify`) round out the
-module. The machine truth for every axis is `GD-IDS.yaml`; the human-readable maps at
+Ideation (`/unikit-gd-brainstorm`), research (`/unikit-gd-explore`), multi-zone dispatch
+(`/unikit-gd-apply` — carries out an explicit edit spanning several axes by routing each
+delta to its owner, then verifying), quality review (`/unikit-gd-review`), and mechanical
+verification (`/unikit-gd-verify`) round out the module. The machine truth for every axis is `GD-IDS.yaml`; the human-readable maps at
 the bottom of `GAME.md` (`## System Map [gen]` / `## Flow Map [gen]` / `## Funnel [gen]`
 / `## Content Map [gen]`) are **rendered read-only** from it — never hand-edited.
 

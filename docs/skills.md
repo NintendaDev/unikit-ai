@@ -254,7 +254,7 @@ This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the f
 
 ## Game Design Skills
 
-The `gamedesign` module adds eight `unikit-gd-*` skills for authoring a Game Design
+The `gamedesign` module adds nine `unikit-gd-*` skills for authoring a Game Design
 Document along three machine-readable axes — **systems** (the rules), **flows** (the
 dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. See
 **[Game-Design Module](gamedesign.md)** for the full treatment.
@@ -268,6 +268,16 @@ dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. See
 - `CT.fields` is a typed schema; `ref<>` makes a content↔X link a field; `scale` is `bulk` (a `count`+`spec` descriptor) or `curated` (`fields` rows in the registry)
 - Registers itself (`content_types:` / `content:` + RES/TRACK/KNOB) and re-renders `## Content Map [gen]`
 - `belongs_to` names the consuming system (one-way); a missing system routes to `/unikit-gd-spec` add-system
+
+### `/unikit-gd-apply` - multi-zone edit dispatcher
+
+```
+/unikit-gd-apply "buff combat 10%, add a loot rarity field, retune onboarding pacing"   # one multi-zone edit
+```
+- Carries out an explicit, **multi-zone** GDD edit you have already decided — it owns nothing and writes nothing
+- Resolves each delta to its `(target, zone)` and dispatches **system-before-sinks** (`/unikit-gd-spec` → `/unikit-gd-system` → `/unikit-gd-content` → `/unikit-gd-flow`), then closes with one `/unikit-gd-verify`
+- A **single-zone** edit goes straight to the owner; an open question to research goes to `/unikit-gd-explore` first
+- A new system a delta needs is created via `/unikit-gd-spec` add-system in the first tier (create + dependent revise in one pass)
 
 ### `genres` (CLI) - bundled genre-profile catalog
 

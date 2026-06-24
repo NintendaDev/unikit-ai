@@ -9,9 +9,10 @@ description: >-
   a CT for enemies"), AND revise the schema after approval under the delta discipline ("add a
   rarity field", "switch to curated") — a schema change bumps the version + changelog, while
   catalog churn is data, not a schema edit. Selects the scale (bulk | curated), self-registers
-  content_types/content (+ resources/tracks/knobs facts) and re-renders ## Content Map [gen] in
-  GAME.md. To add/detail a system use /unikit-gd-system; to add a flow use /unikit-gd-flow; to
-  edit GAME.md content use /unikit-gd-spec; for a new concept use /unikit-gd-brainstorm.
+  content_types/content and re-renders the ## Content Map [gen].
+  To add/detail a system use /unikit-gd-system; to add a flow use /unikit-gd-flow; to edit
+  GAME.md content use /unikit-gd-spec; to apply a multi-zone edit use /unikit-gd-apply; for a
+  new concept use /unikit-gd-brainstorm.
 argument-hint: "<content type name | CT-slug> [\"<what to change>\"]  (scale inferred from doc state + intent; no flags)"
 allowed-tools:
   - Read

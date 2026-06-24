@@ -1,19 +1,19 @@
 ---
 name: unikit-gd-explore
 description: >-
-  A research and ideation partner for game design — study and think through design before
+  A research and ideation partner for game design — think through design before
   committing it to a document. Four jobs: assess a genre or market for viability, dissect
   a reference game (mechanics → dynamics → aesthetics), explore options to improve or
-  extend mechanics already in the project's GDD, and research new mechanics or balance the
-  current design doesn't have yet. Produces trade-off tables and a brief for
+  extend mechanics in the GDD, and research new mechanics or balance the
+  design doesn't have yet. Produces trade-off tables and a brief for
   /unikit-gd-spec or /unikit-gd-system. Use for things like "is there a market for X",
   "is this genre saturated", "break down the combat of Hades", "how could we improve our
   combat system", "research roguelike economies", "explore new mechanics", "ideas to
   balance Y", "доработать баланс боя", "проработать новую механику". Research only —
-  it routes the result to the right owner skill but never writes the GDD itself; to
+  it routes to the right owner but never writes the GDD itself; to
   write a change into the GDD use /unikit-gd-system or /unikit-gd-spec; to
-  invent a whole new game use /unikit-gd-brainstorm; for code/technical research use
-  /unikit-explore.
+  invent a whole new game use /unikit-gd-brainstorm; to apply changes you already know use
+  /unikit-gd-apply; for code research use /unikit-explore.
 argument-hint: "init | <topic | game reference | URL | design or market question>"
 allowed-tools:
   - Read

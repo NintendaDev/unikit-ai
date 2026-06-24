@@ -882,6 +882,7 @@ gd_check_skill_shards "unikit-gd-content" "gd-authoring" "gd-lifecycle" "gd-cont
 gd_check_skill_shards "unikit-gd-verify"  "gd-lifecycle" "gd-flow-axis" "gd-content-axis" "gd-critique"
 gd_check_skill_shards "unikit-gd-explore" "gd-critique" "gd-provenance"
 gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-content-axis" "gd-provenance" "gd-critique"
+gd_check_skill_shards "unikit-gd-apply"   "gd-authoring" "gd-lifecycle"
 # brainstorm loads core ONLY — assert it references none of the 6 shards.
 GD_BRAINSTORM_LEAK=""
 for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
@@ -1796,6 +1797,68 @@ if [[ -z "$CF_FIX_WHY" ]]; then
     pass "CF-1 defective-gdd content fixture — content-types/CT-* + GD-IDS content keys + README content-defect + genre-blind ground truth"
 else
     fail "CF-1 defective-gdd content fixture incomplete:$CF_FIX_WHY"
+fi
+
+# ── unikit-gd-apply dispatcher guards (GA-1…GA-5) ────────────────────────────
+# unikit-gd-apply is the multi-zone DISPATCHER: it owns nothing and writes nothing —
+# it resolves each delta to its zone owner, fixes the system-before-sinks dispatch
+# order, and closes with one verify. bash cannot run the LLM dispatch, so assert the
+# contract surface on the SKILL.md: it references all four zone owners + the explore
+# route + the bare verify handoff, fixes the order, and (the load-bearing invariant)
+# carries NO Write/Edit in allowed-tools. Mostly -qF file-scoped; the allowed-tools
+# scan extracts the YAML list so the prose mention of `Write`/`Edit` cannot false-match.
+GD_APPLY_SKILL="$ROOT_DIR/skills/unikit-gd-apply/SKILL.md"
+if [[ ! -f "$GD_APPLY_SKILL" ]]; then
+    fail "unikit-gd-apply/SKILL.md — missing (dispatcher guards GA-1…GA-5 cannot run)"
+else
+    # (GA-1) references all 4 zone owners (the dispatch targets).
+    GA1_WHY=""
+    for owner in unikit-gd-spec unikit-gd-system unikit-gd-content unikit-gd-flow; do
+        grep -qF "/$owner" "$GD_APPLY_SKILL" || GA1_WHY+=" no-$owner"
+    done
+    if [[ -z "$GA1_WHY" ]]; then
+        pass "GA-1 gd-apply references all 4 zone owners (spec/system/content/flow)"
+    else
+        fail "GA-1 gd-apply missing zone-owner reference(s):$GA1_WHY"
+    fi
+
+    # (GA-2) dispatch order — systems before the content/flow sinks (the carrying invariant).
+    GA2_WHY=""
+    grep -qF 'system dispatch lands BEFORE any content or flow' "$GD_APPLY_SKILL" || GA2_WHY+=" no-before-invariant"
+    grep -qF 'system-before-sinks' "$GD_APPLY_SKILL"                              || GA2_WHY+=" no-order-token"
+    if [[ -z "$GA2_WHY" ]]; then
+        pass "GA-2 gd-apply fixes the dispatch order (systems → content/flow sinks)"
+    else
+        fail "GA-2 gd-apply dispatch-order invariant missing:$GA2_WHY"
+    fi
+
+    # (GA-3) closes with one bare unikit-gd-verify handoff (no union arg).
+    if grep -qF 'Skill(skill: "unikit-gd-verify")' "$GD_APPLY_SKILL"; then
+        pass "GA-3 gd-apply closes with one bare Skill(unikit-gd-verify) pass"
+    else
+        fail "GA-3 gd-apply missing the final bare unikit-gd-verify handoff"
+    fi
+
+    # (GA-4) explore route for open questions (GATE 1 — research, not dispatch).
+    if grep -qF '/unikit-gd-explore' "$GD_APPLY_SKILL"; then
+        pass "GA-4 gd-apply routes open questions to /unikit-gd-explore"
+    else
+        fail "GA-4 gd-apply missing the /unikit-gd-explore route"
+    fi
+
+    # (GA-5) load-bearing invariant — NO Write/Edit in allowed-tools (a dispatcher cannot
+    # write), Skill present. Scope to the YAML list so the prose mention of `Write`/`Edit`
+    # in the Ownership section does not false-match.
+    GD_APPLY_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$GD_APPLY_SKILL")
+    GA5_WHY=""
+    grep -qE '^[[:space:]]*-[[:space:]]*Skill$' <<< "$GD_APPLY_TOOLS" || GA5_WHY+=" no-Skill-tool"
+    grep -qE '^[[:space:]]*-[[:space:]]*Write$' <<< "$GD_APPLY_TOOLS" && GA5_WHY+=" has-Write"
+    grep -qE '^[[:space:]]*-[[:space:]]*Edit$'  <<< "$GD_APPLY_TOOLS" && GA5_WHY+=" has-Edit"
+    if [[ -z "$GA5_WHY" ]]; then
+        pass "GA-5 gd-apply allowed-tools has Skill, no Write/Edit (dispatcher writes nothing)"
+    else
+        fail "GA-5 gd-apply allowed-tools invariant violated:$GA5_WHY"
+    fi
 fi
 
 # ============================================================================

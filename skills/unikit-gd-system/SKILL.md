@@ -10,7 +10,8 @@ description: >-
   the status system", "nerf X", "change this rule") — a number change is Tuning, a small rule
   a Tweak, restructuring a Rework; each bumps the version and appends a changelog. To add a
   whole new system or restructure the system map use /unikit-gd-spec; to edit GAME.md content
-  use /unikit-gd-spec; to invent a brand-new game concept use /unikit-gd-brainstorm.
+  use /unikit-gd-spec; to apply one edit spanning several zones at once use
+  /unikit-gd-apply; to invent a brand-new game concept use /unikit-gd-brainstorm.
 argument-hint: "<system name | SYS-slug> [\"<what to change>\"]  (mode inferred from doc state + intent; no flags)"
 allowed-tools:
   - Read

@@ -248,6 +248,21 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Required per content type (the catalog axis).** Before: `/unikit-gd-spec` (+ `/unikit-gd-system`
   for the consuming system). After: `/unikit-gd-review`, `/unikit-gd-verify`.
 
+### unikit-gd-apply
+- **Purpose:** Dispatch an explicit, **multi-zone** GDD edit (spec + systems + content types +
+  flows) in one ordered pass. Writes nothing itself — it resolves each delta to its
+  `(target, zone)`, dispatches them **system-before-sinks** (`/unikit-gd-spec` →
+  `/unikit-gd-system` → `/unikit-gd-content` → `/unikit-gd-flow`), and closes with one
+  `/unikit-gd-verify`.
+- **When:** "apply these GDD changes", "update the combat system and its loot and the boss flow",
+  "raise the damage, add a rarity field and retune onboarding". A **single-zone** edit goes to
+  the owner directly; an open question to research goes to `/unikit-gd-explore` first.
+- **In:** the multi-zone changes to apply (no flags). Each delta routes to its zone owner; a new
+  system a delta needs is created via `/unikit-gd-spec` add-system in the first tier.
+- **Out:** nothing of its own — the owner skills do the writing (docs, `GD-IDS.yaml`, `[gen]`
+  re-renders); then one `/unikit-gd-verify` pass.
+- **Optional (multi-zone edits only).** Before: a decided set of edits. After: `/unikit-gd-verify`.
+
 ### unikit-gd-review
 - **Purpose:** Qualitative design review ("is this design good/fun/balanced?") via adversarial
   lenses → severity-graded verdict + report. The design-side mirror of `/unikit-review`.

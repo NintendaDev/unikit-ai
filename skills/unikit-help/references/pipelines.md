@@ -101,6 +101,14 @@ system and registers itself (its `content_types:` / `content:` entries + `## Con
 there is no add-content in `/unikit-gd-spec`; a missing `belongs_to` system routes to spec
 add-system.
 
+**A multi-zone edit** the user has already decided — one touching more than one zone at once
+(a system *and* its content *and* a flow) — can be dispatched in a single pass by
+`/unikit-gd-apply`. It writes nothing itself: it resolves each delta to its `(target, zone)`,
+orders them **system-before-sinks** (`/unikit-gd-spec` → `/unikit-gd-system` →
+`/unikit-gd-content` → `/unikit-gd-flow`, so a downstream owner reads a fresh upstream),
+delegates each to the owning skill, and closes with one `/unikit-gd-verify`. A **single-zone**
+edit goes straight to the owner; an open question to research goes to `/unikit-gd-explore` first.
+
 **Genre profiles (seed layer).** A bundled, read-only catalog (`unikit-ai genres list/show/install`;
 the §4.1–4.6 genre matrix) seeds authoring. `/unikit-gd-brainstorm` writes a descriptive `genre:` hint
 into the concept (CLI-free); `/unikit-gd-spec` (Create) best-fits it to a profile, installs it
@@ -176,6 +184,7 @@ Pick the row that matches what the user already has:
 | **An existing GDD file/URL** | `/unikit-gd-spec <path-or-url>` (import) | `/unikit-gd-system` |
 | **A GDD, wants to detail a system** | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | **A GDD, wants a new mechanic** | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
+| **A GDD, several decided edits across zones** | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | **A feature idea, needs direction** | `/unikit-explore <topic>` | `/unikit-plan` |
 | **A clear feature** | `/unikit-plan [fast\|full] <feature>` | `/unikit-improve` → `/unikit-implement` |
 | **A research brief already** | `/unikit-plan` (it finds the latest research) | `/unikit-implement` |
