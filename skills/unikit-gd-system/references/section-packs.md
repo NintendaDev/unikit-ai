@@ -2,13 +2,17 @@
 
 Conditional blocks appended **after section K** of a SYSTEM GDD when the system
 touches a specific domain. A pack adds the domain-specific tables a generic A–K
-document cannot carry. Author each pack's sub-sections through the same
-section-cycle contract as A–K (Context → Options → Decision → Draft+Approval →
-Write), loading the extra rule named in the pack header.
+document cannot carry. A pack is an **independent, value-framed opt-in** offered in
+the **Phase 4 decision round** (orthogonal to depth — never a mandatory pass after
+the A–K sections). Author each opted-in pack's sub-sections through the same
+**Decision-First flow** as the A–K sections (fork-scan → decision interview →
+generation → group review — `gd-authoring`), loading the extra rule named in the
+pack header.
 
 **Rules for every pack**
 
-- Append the pack **after K**, under a heading `## Pack: <domain>`.
+- Append the pack **after K**, under a heading `## Pack: <domain>` (only when the
+  user opts into it in the decision round).
 - Apply only the pack(s) that match the system's **behaviour/domain** (one system
   may take more than one — e.g. a gacha shop is `economy` + `monetization`).
 - Numbers live in tables; intent lives in prose. Every cross-system number that

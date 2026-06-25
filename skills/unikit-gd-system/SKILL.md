@@ -107,8 +107,9 @@ Silently load — do not narrate:
    memory tree** (`.unikit/memory/gamedesign/**`) to discover rules.
 5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
 6. **`{{skills_dir}}/{{self_name}}/references/section-packs.md`** — the catalog of
-   domain section-packs appended after section K. Load the pack named in the table
-   above (when one applies).
+   domain section-packs, offered as a **value-framed, independent opt-in in the
+   decision round** (Phase 4), not a mandatory pass after section K. Load the pack
+   named in the table above (when one applies).
 7. **Schema guard (clean break — no automatic migration).** `GD-IDS.yaml` MUST be
    `version: 2`. If it is still `version: 1`, **STOP** and report: the design
    workspace is on the pre-v2 layout — v2 dropped the standalone markdown
@@ -144,8 +145,9 @@ Gather the facts the system must stay consistent with (read-only):
   `/clear`): read the system's `GD-IDS` `research:` pointer (authoritative), falling
   back to the `researches/INDEX.md` entry whose `Target:` is this `SYS-<slug>`. Read
   that research's `RESEARCH_BRIEF.md` → **`## New Feature Plan`** block and use its
-  A–K **section seeds** as the *starting drafts* for the section-cycle — the
-  per-section approval still applies; a seed is a draft, not an approved write. For
+  **section seeds** as the *starting drafts* — a **seeded** section is **drafted
+  silently** in Generation (Phase 4) and confirmed in the group review (Phase 5); a
+  seed is a draft, not an approved write. For
   a **revision** (Edit), the matching block is **`## Improvement Plan`** — its
   ready-to-apply delta lines (`<Section>: <old> → <new>`), expected scale, touched
   facts, and any `RF-<date>-n` it closes pre-fill the change set (the user still
@@ -154,7 +156,7 @@ Gather the facts the system must stay consistent with (read-only):
   **imports** only; this is the generalization of import-reading stated canonically
   in `gd-provenance` → Provenance, which this skill applies rather than restates).
 
-## Phase 2 — Resolve Mode from Document State + Intent (no flags)
+## Phase 2 — Resolve Mode + Depth (no flags)
 
 Check `.unikit/gamedesign/systems/SYS-<slug>.md` and read the intent in the prompt:
 
@@ -165,32 +167,44 @@ Check `.unikit/gamedesign/systems/SYS-<slug>.md` and read the intent in the prom
    system", "nerf X", "change this rule") → **Edit**: classify the scale and apply
    the delta (Revision below). Approved text is changed **only** through this path.
 3. **Exists with `[To be designed]` placeholders** and the intent is to continue /
-   fill (or no change is described) → **Fill**: resume from the **first** placeholder.
-   Approved text is **never overwritten** — only placeholders are filled. Skip Phase 3.
+   fill (or no change is described) → **Fill**: resume from the remaining placeholders.
+   Approved text is **never overwritten** — only placeholders are filled. Skip the
+   skeleton sub-step (Phase 3.1); still fork-scan and run Phases 4–5 over the
+   placeholders.
 4. **Exists, complete, no change described** → detailing is done; nothing to author.
    Offer review / verify (Phase 6) and stop.
 
 If the system name is ambiguous (matches several entries, or none) →
 `AskUserQuestion` listing candidates. Never guess the target.
 
+**Depth gate (Create / Fill only).** Once the mode is Create or Fill, present **one**
+depth picker — the named tiers `core/standard/full`, each with what it adds, not bare
+letters:
+
+```
+AskUserQuestion: How deep should this pass go?
+Options:
+1. core (recommended) — the floor that makes the doc `detailed`: Overview, Player
+   Fantasy, Detailed Design, Formulas, Acceptance Criteria.
+2. standard — core + Edge Cases, Dependencies, Tuning Knobs, Telemetry, Accessibility.
+3. full — every section + the relevant domain pack(s).
+```
+
+The picked tier is the **ephemeral scope of this pass — NOT stored** (`gd-authoring` /
+`gd-lifecycle`); the lasting fact is the inferred status at Phase 6. Recommended
+**packs** for the system's domain (Phase 0 table) are surfaced here as an independent,
+value-framed opt-in, confirmed in the Phase 4 decision round. **Edit** mode skips the
+depth gate entirely (it lies flat on the Revision flow).
+
 ---
 
-## Authoring (Create / Fill)
+## Authoring (Create / Fill) — Decision-First
 
-### Phase 3 — Skeleton (Create mode only)
-
-Write the file from the SYSTEM template with **every** section header A–K present
-and a `[To be designed]` placeholder under each. Fill the header from the
-GD-IDS entry. Get **one approval** for the skeleton; a refusal sets `doc_status`
-`skeleton` and stops (BLOCKED).
-
-SYSTEM GDD structure (header + sections — author in this order):
-
-```
-# <System Name> — SYS-<slug>
-> Status: skeleton · Version: 1 · Last Updated: <date>
-> Implements: PIL-n[, PIL-m] · Layer: <Foundation|Core|Feature|Presentation> · Scope: <S|M|L|XL>
-```
+The system zone applies the **Decision-First Section-Cycle Contract** in
+`gd-authoring`: the six-phase mechanic lives in the shard; below are the
+system-specific **section map**, **core-set**, and per-section logic. **Address
+sections by name in the dialogue, never by a bare letter** (A–K means nothing to the
+user).
 
 | § | Section | What it holds |
 |---|---------|---------------|
@@ -206,70 +220,102 @@ SYSTEM GDD structure (header + sections — author in this order):
 | J | Accessibility | GAG checklist items (basic minimum) / accommodations / justified deviations. |
 | K | Open Questions & Changelog | open questions (owner/when); changelog blocks (added by this skill on a revision and by `unikit-gd-verify`). |
 
-When the system's domain has a **section-pack** (Phase 0 table), append the
-pack's sub-sections **after K** — see `references/section-packs.md`.
+**Core-set (the floor for `detailed`, from `gd-lifecycle`):** A Overview · B Player
+Fantasy · C Detailed Design · D Formulas · H Acceptance Criteria. The **depth** picked
+in Phase 2 sets which sections this pass attempts (`core` = just the floor; `standard`
+/ `full` layer on E/F/G/I/J + packs). **Fill** re-picks depth and runs Decision-First
+only over the newly-attempted sections — earlier approved sections are untouched and
+partiality stays honest.
 
-### Phase 4 — Section-Cycle (A → K)
+### Phase 3 — Skeleton + Fork-Scan
 
-Author each section in order through the **section-cycle contract from
-`gd-authoring`**: Context (2–3 lines) → Questions → Options (2–4 with pros/cons
-and theory from the loaded domain rules, one **(Recommended)** with the WHY) →
-Decision (Explain → Capture, `AskUserQuestion`) → **Draft + Approval in the SAME
-reply** (separating them is a protocol violation) → Write (Edit anchored on the
-unique section heading). Persist each approved section immediately — the file is
-the only memory that survives the session.
+1. **Skeleton (Create mode only).** Write the file from the SYSTEM template with
+   **every** A–K header present and a `[To be designed]` placeholder under each, the
+   header filled from the GD-IDS entry. Get **one approval** for the skeleton; a
+   refusal sets `doc_status: skeleton` and stops (BLOCKED).
 
-Section-specific logic (the rest is the generic cycle):
+   ```
+   # <System Name> — SYS-<slug>
+   > Status: skeleton · Version: 1 · Last Updated: <date>
+   > Implements: PIL-n[, PIL-m] · Layer: <Foundation|Core|Feature|Presentation> · Scope: <S|M|L|XL>
+   ```
+
+   When the system's domain has a **section-pack** (Phase 0 table), its sub-sections
+   are appended after K (opted in during Phase 4 — see `references/section-packs.md`).
+2. **Fork-scan (silent).** Walk the in-scope sections (per the picked depth) and
+   classify each **without asking** — **seeded** (the Phase 1 context: a SOURCE /
+   recon / explore brief, the pillars, the loaded domain rules, or a neighbour already
+   answers it → it will be drafted silently) vs **real fork** (a genuine design choice
+   with no seeded answer). Catch pillar- and registry-conflicts **here**, before any
+   prose is written. Emit `INFO [gd-system] depth=<tier>`.
+
+### Phase 4 — Decision Interview + Generation
+
+**Decision interview.** Ask **only the real forks**, batched (1–2 `AskUserQuestion`
+rounds) — never one gate per section. Options are **grounded** in the loaded
+`balance` / `frameworks` theory, the pillars, and neighbours, **never a blank page**:
+"which damage curve?" offers grounded **forms** (linear / diminishing / threshold) +
+an open **"my own — I'll describe it"**. A truly-blank section with no grounded option
+becomes an explicit **flagged open question** (section K), not a silent blank. A
+**pillar or loop conflict** that surfaces here is escalated to `/unikit-gd-spec`
+**before writing** — the real change is in GAME.md content or the map; name it, do not
+force-fit. **Packs** are offered in this round, framed by the **value** they add
+(Phase 0 table), an independent opt-in orthogonal to depth.
+
+**Generation.** Draft each in-scope section — **seeded** sections **silently** (emit
+`INFO [gd-system] seeded §<name> — drafted silently`), decided sections from their
+decision. The section-specific logic (the rest follows the Decision-First flow):
 
 - **C / Core Rules** — numbered, implementable without guessing. Record new game
-  terms in `GD-IDS.yaml` `terms` (canonical English + translation +
-  forbidden aliases).
-- **D / Formulas** — each gets a `FORM-<slug>`, the expression, a variable table,
-  the expected output range, and a worked numeric example. Name the degenerate
-  **values** — inputs at zero / max / negative that break the curve — and state how
-  the formula clamps them. (Degenerate **strategies** — exploitable or dominant play
-  lines — belong to E, not here.)
-- **Registry check after C and D** — compare every number and name against the
-  known facts from Phase 1. On a mismatch, surface it **immediately** and let the
-  user resolve it: obey the registry / change the registry through a
-  `unikit-gd-verify` resolution / park it in section K. Never silently override a
-  registry value.
-- **E / Edge Cases** — ask "what at zero / at maximum / on simultaneity?"; test
-  every degenerate strategy against the tuning knobs in G.
-- **H / Acceptance Criteria** — derive **semi-automatically** from C, D, and E:
-  one Given-When-Then per core rule and per edge case, numbered `AC-<slug>-N`.
-  Numbering is **stable** — never reshuffled. These are the verbatim contract the
-  code side quotes.
-- **Section-packs** — when a pack applies, author its sub-sections after K with
-  the same cycle, loading the pack's extra rule as noted in
-  `references/section-packs.md`.
+  terms in `GD-IDS.yaml` `terms` (canonical English + translation + forbidden aliases).
+- **D / Formulas** — each gets a `FORM-<slug>`, the expression, a variable table, the
+  expected output range, and a worked numeric example. Name the degenerate **values** —
+  inputs at zero / max / negative that break the curve — and state how the formula
+  clamps them. (Degenerate **strategies** belong to E.)
+- **Registry check after C and D** — compare every number and name against the known
+  facts from Phase 1. On a mismatch, surface it **immediately**: obey the registry /
+  change it through a `unikit-gd-verify` resolution / park it in section K. Never
+  silently override a registry value.
+- **E / Edge Cases** — ask "what at zero / at maximum / on simultaneity?"; test every
+  degenerate strategy against the tuning knobs in G.
+- **H / Acceptance Criteria — auto-derived** from C, D, and E, **never asked**: one
+  Given-When-Then per core rule and per edge case, numbered `AC-<slug>-N`, stable —
+  never reshuffled. The verbatim contract the code side quotes.
+- **J Accessibility / I Telemetry at a low depth — auto-default from the rules + a
+  "clarify" note**, a sensible default with a flag (never an empty marker —
+  accessibility is **not** dropped; load `accessibility` when authoring J). At `full`
+  depth they are authored through the normal flow.
+- **Deferred** — a section the user chose to skip at this depth is written with a
+  `<!-- deferred -->` marker (distinct from the skeleton `[To be designed]`). A
+  **core** section (A/B/C/D/H) **may** be deferred, but then the status honestly stays
+  below `detailed` (the Phase 6 soft floor guard) — emit `WARN [gd-system] core
+  section §<name> deferred — status held below detailed`.
+- **Section-packs** — when a pack was opted in, author its sub-sections after K with
+  the same flow, loading the pack's extra rule as noted in `references/section-packs.md`.
 
-In **Fill mode**, run the cycle only for the placeholder sections, in order from
-the first remaining `[To be designed]`; leave approved sections untouched.
+### Phase 5 — Group Review
 
-### Phase 5 — Registry & State
+Present the generated sections **by tier-group** (core first, then standard, then
+full). Before each section show a **card** — Context · why this section exists · what
+it captures · its source — drawn from the SYSTEM template's `[]`-hints (the hint **is**
+the card, surfaced to the user on `ru`; no duplication). Each group closes with **one
+structural group gate** over the whole group:
 
-After the sections are authored:
+```
+AskUserQuestion: <group> review — <n>/<m> sections done.
+Options: Accept & continue · Fix this · Defer this · Accept all the rest
+```
 
-1. **Scan the GDD** for registry candidates — entities, formulas, and constants
-   referenced in **two or more places** (within this doc or cross-system). Internal
-   single-use values stay in the GDD.
-2. Present a **NEW / KNOWN** summary and get approval to write `GD-IDS.yaml`
-   (`entities`, `formulas`, plus the `systems` entry's `doc_status`/`version`).
-   Existing values are never changed silently; every fact carries its `source`.
-3. **Update state:** set the system's status → `detailed` in the **two places that
-   must agree** — the `SYSTEM.md` header (edit the `> Status:` token inside the
-   combined header line, not a separate bold line) and the `GD-IDS.yaml` `doc_status`
-   — so the spine stays coherent (`gd-lifecycle` → Lifecycle & Status). Set
-   `version: 1` in `GD-IDS.yaml` (and the header). Append the initial changelog block
-   to section K (`#### v1 — <date> — initial design` with the `AC: + AC-<slug>-1 … N
-   (new)` line). Record a `DD-<n>` in `GD-IDS.yaml` `decisions` for any significant
-   decision.
+*Fix* loops the section back through a decision; *Defer* writes its `<!-- deferred -->`
+marker; *Accept all the rest* ends the review. **Write incrementally** — persist each
+accepted section immediately (Edit anchored on its unique heading); the file is the
+only memory that survives the session.
 
-The `GAME.md` `## System Map [gen]` renders this system's status/version read-only
-from `GD-IDS`; it is **not** this skill's surface — it re-renders on the next
-`unikit-gd-verify` freshness check or `unikit-gd-spec` touch (`gd-lifecycle` →
-Lifecycle & Status). Recommending verify (Phase 6) closes that loop.
+In **Fill mode** there is no skeleton step: re-pick depth (Phase 2), fork-scan the
+remaining `[To be designed]` sections, and run Phases 4–5 over those only; approved
+sections are never overwritten.
+
+→ **Phase 6** writes the registry and the inferred status.
 
 ---
 
@@ -370,12 +416,45 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
 
 ---
 
-## Phase 6 — Handoff
+## Phase 6 — Final: Registry & State + Handoff
+
+### Registry & State (Create / Fill)
+
+After the sections are authored and accepted:
+
+1. **Scan the GDD** for registry candidates — entities, formulas, and constants
+   referenced in **two or more places** (within this doc or cross-system). Internal
+   single-use values stay in the GDD.
+2. Present a **NEW / KNOWN** summary and get approval to write `GD-IDS.yaml`
+   (`entities`, `formulas`, plus the `systems` entry's `doc_status` / `version`).
+   Existing values are never changed silently; every fact carries its `source`.
+3. **Status (inferred — `gd-lifecycle`).** Set the system's status in the **two places
+   that must agree** — the `SYSTEM.md` header `> Status:` token (inside the combined
+   header line, not a separate bold line) and the `GD-IDS.yaml` `doc_status`:
+   - `detailed` once the whole **core-set (A/B/C/D/H)** is authored.
+   - **held at `skeleton`** while any **core** section carries `<!-- deferred -->` (the
+     soft floor guard; the WARN in Phase 4) — the status does **not** rise to
+     `detailed`.
+   - when the core is complete but ≥1 **non-core** section is deferred, the status is
+     `detailed` and the `## System Map [gen]` renders it `detailed · partial (n/m)`
+     (inferred from the markers, never a stored field).
+
+   Set `version: 1` in `GD-IDS.yaml` (and the header), append the initial changelog
+   block to section K (`#### v1 — <date> — initial design` with the
+   `AC: + AC-<slug>-1 … N (new)` line), and record a `DD-<n>` for any significant
+   decision.
+
+The `## System Map [gen]` renders this system's status/version (incl. the `· partial`
+suffix) **read-only** from `GD-IDS`; it is **not** this skill's surface — it
+re-renders on the next `unikit-gd-verify` freshness check or `unikit-gd-spec` touch
+(`gd-lifecycle` → Lifecycle & Status). Recommending verify (below) closes that loop.
+
+### Handoff
 
 Recommend the next steps (do not auto-invoke):
 
 ```
-AskUserQuestion: SYS-<slug> is <detailed | revised to vN>. What's next?
+AskUserQuestion: SYS-<slug> is <detailed | detailed · partial (n/m) | revised to vN>. What's next?
 
 Options:
 1. Verify consistency & impact — /unikit-gd-verify SYS-<slug> (recommended)
@@ -392,9 +471,9 @@ dependent systems, and refreshes the `## System Map [gen]`.
 
 ```
 System: SYS-<slug> — <name>
-Mode: <create | fill | edit (tuning|tweak|rework)>
-Doc: .unikit/gamedesign/systems/SYS-<slug>.md (Status: <skeleton|detailed|revised>, vN)
-Sections authored/edited: <A–K [+ <pack>] | the edited list>
+Mode: <create | fill | edit (tuning|tweak|rework)>   ·   Depth: <core | standard | full>  (create/fill)
+Doc: .unikit/gamedesign/systems/SYS-<slug>.md (Status: <skeleton | detailed | detailed · partial (n/m) | revised>, vN)
+Sections authored/edited: <the named list>   [deferred: <names carrying <!-- deferred --> > | none]
 Registry: +<E> entities, +<F> formulas, +<T> terms  (GD-IDS.yaml)
 Acceptance criteria: AC-<slug>-1 … AC-<slug>-N   [AC delta on an edit: +<n> / changed <n> / removed <n>]
 ```

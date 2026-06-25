@@ -157,27 +157,31 @@ Gather the facts the content type must stay consistent with (read-only):
   (authoritative), falling back to the `researches/INDEX.md` entry whose `Target:` is
   this `CT-<slug>`. Read that research's `RESEARCH_BRIEF.md` →
   **`## Content Feature Plan`** block and use its schema / scale / catalog **seeds**
-  as the *starting drafts* for the section-cycle — the per-section approval still
-  applies; a seed is a draft, not an approved write. For a **revision** (Edit), the
-  matching block is **`## Content Improvement Plan`**. These explore-seeded drafts are
-  **untagged normal authored content**.
+  as the *starting drafts* — a **seeded** section is **drafted silently** in Generation
+  (Phase 4) and confirmed in the group review (Phase 5); a seed is a draft, not an
+  approved write. For a **revision** (Edit), the matching block is
+  **`## Content Improvement Plan`**. These explore-seeded drafts are **untagged normal
+  authored content**.
 
-## Phase 2 — Resolve Scale from Document State + Intent (no flags)
+## Phase 2 — Resolve Scale + Depth (no flags)
 
 Check `.unikit/gamedesign/content-types/CT-<slug>.md` and read the intent in the
 prompt:
 
-1. **Does not exist** → **Create**: select the scale (below), build the skeleton
-   (Phase 3), then author from section A.
+1. **Does not exist** → **Create**: build the skeleton (Phase 3), then run the
+   Decision-First flow — the **scale** is the first decision in Phase 4 (it shapes
+   section C and how the units register).
 2. **Exists** and the prompt describes a **change to the approved schema** (a field, a
    type, the scale, `belongs_to`, a `ref<>`: "add a rarity field", "retype condition",
    "switch to curated") → **Edit**: classify the scale of change and apply the delta
    (Revision below). Approved schema is changed **only** through this path.
 3. **Exists with `[To be designed]` placeholders** and the intent is to continue /
-   fill (or no change is described) → **Fill**: resume from the **first** placeholder.
-   Approved text is **never overwritten** — only placeholders are filled. Skip Phase 3.
+   fill (or no change is described) → **Fill**: resume from the remaining placeholders.
+   Approved text is **never overwritten** — only placeholders are filled. Skip the
+   skeleton sub-step (Phase 3.1); still fork-scan and run Phases 4–5 over the
+   placeholders.
 4. **Exists, complete, no change described** → authoring is done; nothing to write.
-   Offer review / verify (Phase 6) and stop.
+   Offer review / verify (Handoff) and stop.
 
 If the type name is ambiguous (matches several entries, or none) → `AskUserQuestion`
 listing candidates. Never guess the target.
@@ -189,42 +193,31 @@ listing candidates. Never guess the target.
 > Revision delta tail. For a `bulk` type the instance values never enter `GD-IDS` at
 > all — they live in the editor.
 
-### Scale (`bulk | curated`) — select on Create
+**Depth gate (Create / Fill only).** Once the mode is Create or Fill, present **one**
+depth picker — the named tiers `core/standard/full`, each with what it adds, not bare
+letters:
 
-The scale dictates the document's structure (section C) and how units are registered
-(`gd-lifecycle` → Content axis), so it is chosen **before** the skeleton:
+```
+AskUserQuestion: How deep should this pass go?
+Options:
+1. core (recommended) — the floor that makes the type `detailed`: Overview, Schema
+   (CT.fields), Scale & Generation.
+2. standard — core + Relationships & Dependencies, Validation & Edge Cases.
+3. full — every section, fully specified.
+```
 
-- **Infer** a candidate from the type's nature: many similar units whose values churn
-  and live in a data file / editor (items, cards, levels by the hundreds) → `bulk`; a
-  small hand-tuned set whose values are authored and balanced individually (a handful
-  of bosses, a few minigames) → `curated`.
-- **Explain → Capture:** state the candidate and the trade-offs (bulk = the registry
-  stays a contract, the editor owns churn, but per-unit balancing is out of the GDD;
-  curated = every unit is in the registry and reviewable, but it does not scale to
-  hundreds), then confirm with one `AskUserQuestion` — never assume on ambiguity.
-- **Record `scale:`** in the `GD-IDS.yaml` `content_types[]` entry and in the
-  `CONTENT-TYPE.md` header `> Scale:` token. `unikit-gd-verify` checks `scale:` ↔ the
-  document's structure (the count + spec descriptor for `bulk`, the catalog rows for
-  `curated`) — exactly as it checks a flow's `mode:` ↔ structure. A scale change is a
-  schema delta (Revision).
+The picked tier is the **ephemeral scope of this pass — NOT stored**
+(`gd-authoring` / `gd-lifecycle`); the lasting fact is the inferred status at Phase 6.
+**Edit** mode skips the depth gate entirely (it lies flat on the Revision flow).
 
 ---
 
-## Authoring (Create / Fill)
+## Authoring (Create / Fill) — Decision-First
 
-### Phase 3 — Skeleton (Create mode only)
-
-Write the file from the CONTENT-TYPE template with **every** section header A–F
-present and a `[To be designed]` placeholder under each; choose section C's form from
-the scale. Get **one approval** for the skeleton; a refusal sets `doc_status`
-`skeleton` and stops (BLOCKED).
-
-CONTENT-TYPE GDD structure (header + sections — author in this order):
-
-```
-# <Content Type Name> — CT-<slug>
-> Status: skeleton · Scale: <bulk|curated> · Belongs to: SYS-<slug> · Version: 1 · Last Updated: <date>
-```
+The content zone applies the **Decision-First Section-Cycle Contract** in
+`gd-authoring`: the six-phase mechanic lives in the shard; below are the
+content-specific **section map**, **core-set**, and per-section logic. **Address
+sections by name in the dialogue, never by a bare letter.**
 
 | § | Section | What it holds |
 |---|---------|---------------|
@@ -235,17 +228,66 @@ CONTENT-TYPE GDD structure (header + sections — author in this order):
 | E | Validation & Edge Cases | What makes a unit valid beyond field types (cross-field rules), degenerate-value handling — feeds the genre-blind verify checks. |
 | F | Open Questions & Changelog | open questions (owner/when); changelog blocks (added by this skill on a **schema** revision; the `Affected (gd-verify):` line is appended by `unikit-gd-verify`). |
 
-### Phase 4 — Section-Cycle (A → F)
+**Core-set (the floor for `detailed`, from `gd-lifecycle`):** A Overview · B Schema
+(CT.fields) · C Scale & Generation (Scale is in core — it dictates code structure). The
+**depth** picked in Phase 2 sets which sections this pass attempts (`core` = just the
+floor; `standard` / `full` layer on D Relationships / E Validation). **Fill** re-picks
+depth and runs Decision-First only over the newly-attempted sections — earlier approved
+sections are untouched and partiality stays honest.
 
-Author each section in order through the **section-cycle contract from
-`gd-authoring`**: Context (2–3 lines) → Questions → Options (2–4 with pros/cons and
-theory from the loaded domain rules, one **(Recommended)** with the WHY) → Decision
-(Explain → Capture, `AskUserQuestion`) → **Draft + Approval in the SAME reply**
-(separating them is a protocol violation) → Write (Edit anchored on the unique
-section heading). Persist each approved section immediately — the file is the only
-memory that survives the session.
+### Phase 3 — Skeleton + Fork-Scan
 
-Section-specific logic (the rest is the generic cycle):
+1. **Skeleton (Create mode only).** Write the file from the CONTENT-TYPE template with
+   **every** A–F header present and a `[To be designed]` placeholder under each. Get
+   **one approval** for the skeleton; a refusal sets `doc_status: skeleton` and stops
+   (BLOCKED). The header `> Scale:` token is filled by the scale decision (the first
+   Phase 4 decision); until then it reads `> Scale: <deciding>`.
+
+   ```
+   # <Content Type Name> — CT-<slug>
+   > Status: skeleton · Scale: <bulk|curated> · Belongs to: SYS-<slug> · Version: 1 · Last Updated: <date>
+   ```
+2. **Fork-scan (silent).** Walk the in-scope sections (per the picked depth) and
+   classify each **without asking** — **seeded** (the Phase 1 context: a SOURCE /
+   recon / explore brief, the pillars, the loaded domain rules, or the consuming system
+   already answers it → it will be drafted silently) vs **real fork** (a genuine design
+   choice). The **scale** is the primary fork (asked first in Phase 4). Catch
+   registry-conflicts **here**, before any prose. Emit `INFO [gd-content] depth=<tier>`.
+
+### Phase 4 — Decision Interview + Generation
+
+**Decision interview.** The **scale** (`bulk | curated`) is the **first decision** — it
+dictates section C's structure and how units register (`gd-lifecycle` → Content axis),
+so it is settled before section C is generated:
+
+- **Infer** a candidate from the type's nature: many similar units whose values churn
+  and live in a data file / editor (items, cards, levels by the hundreds) → `bulk`; a
+  small hand-tuned set whose values are authored and balanced individually (a handful
+  of bosses, a few minigames) → `curated`.
+- **Explain → Capture:** state the candidate and the trade-offs (bulk = the registry
+  stays a contract, the editor owns churn, but per-unit balancing is out of the GDD;
+  curated = every unit is in the registry and reviewable, but it does not scale to
+  hundreds), then confirm with one `AskUserQuestion` — never assume on ambiguity.
+- **Record `scale:`** in the `GD-IDS.yaml` `content_types[]` entry and the
+  `CONTENT-TYPE.md` header `> Scale:` token. `unikit-gd-verify` checks `scale:` ↔ the
+  document's structure (the count + spec descriptor for `bulk`, the catalog rows for
+  `curated`) — exactly as it checks a flow's `mode:` ↔ structure. A scale change is a
+  schema delta (Revision).
+
+Then ask **only the remaining real forks**, batched (1–2 `AskUserQuestion` rounds) —
+never one gate per section. Options are **grounded** in the loaded domain theory and
+the consuming system, **never a blank page** (a grounded **form** + an open "my own —
+I'll describe it"); a truly-blank section becomes a **flagged open question** (section
+F). A registry conflict (a missing `belongs_to`/`ref<SYS>` system) is escalated through
+the re-entry seam **before writing**. Emit `INFO [gd-content] depth=<tier> scale=<scale>`.
+
+**Generation.** Draft each in-scope section — **seeded** sections **silently** (emit
+`INFO [gd-content] seeded §<name> — drafted silently`), decided sections from their
+decision. A section the user chose to **defer** is written with a `<!-- deferred -->`
+marker (distinct from `[To be designed]`); a **core** section (A/B/C) may be deferred,
+but then the status honestly stays below `detailed` (the Phase 6 soft floor guard —
+emit `WARN [gd-content] core section §<name> deferred — status held below detailed`).
+The section-specific logic (the rest follows the Decision-First flow):
 
 - **B / Schema (CT.fields) — the contract.** Author the typed field schema, one row
   per field. The field-type vocabulary (English tokens — never translated):
@@ -292,12 +334,33 @@ content zone does not write. Use:
 
 This is the active seam — offer it in the same session and continue once resolved.
 
-In **Fill mode**, run the cycle only for the placeholder sections, in order from the
-first remaining `[To be designed]`; leave approved sections untouched.
+### Phase 5 — Group Review
 
-### Phase 5 — Registry & State (write `content_types:` / `content:`, then re-render the map)
+Present the generated sections **by tier-group** (core first, then standard, then
+full). Before each section show a **card** — Context · why this section exists · what
+it captures · its source — drawn from the CONTENT-TYPE template's `[]`-hints (the hint
+**is** the card, surfaced on `ru`; no duplication). Each group closes with **one
+structural group gate**:
 
-After the sections are authored:
+```
+AskUserQuestion: <group> review — <n>/<m> sections done.
+Options: Accept & continue · Fix this · Defer this · Accept all the rest
+```
+
+*Fix* loops the section back through a decision; *Defer* writes its `<!-- deferred -->`
+marker; *Accept all the rest* ends the review. **Write incrementally** — persist each
+accepted section immediately (Edit anchored on its unique heading).
+
+In **Fill mode** there is no skeleton step: re-pick depth (Phase 2), fork-scan the
+remaining `[To be designed]` sections, and run Phases 4–5 over those only; approved
+sections are never overwritten.
+
+→ **Phase 6** writes `content_types:` / `content:`, sets the inferred status, and
+re-renders the map.
+
+### Phase 6 — Registry & State (write `content_types:` / `content:`, then re-render the map)
+
+After the sections are authored and accepted:
 
 1. **Write the `GD-IDS.yaml` `content_types[]` entry** (the type's machine truth — the
    content type registers itself): `id: CT-<slug>`, `name`, `status: active`, `scale`,
@@ -325,12 +388,15 @@ After the sections are authored:
    Before adding one, **registry-check**: if the fact already exists, reference it;
    never duplicate or renumber. Get approval for each new fact; each carries its
    `source`.
-3. **Update state:** set the type's status → `detailed` in the **two places that must
-   agree** — the `CONTENT-TYPE.md` header `> Status:` token and the `GD-IDS.yaml`
-   `doc_status` — so the spine stays coherent (`gd-lifecycle` → Content axis). Set
-   `version: 1` (header + `GD-IDS`). Append the initial changelog block to section F
-   (`#### v1 — <date> — initial schema` with the `Fields: + <field> … (new)` line and
-   `Affected (gd-verify): —`).
+3. **Status (inferred — `gd-lifecycle`).** Set the type's status in the **two places
+   that must agree** — the `CONTENT-TYPE.md` header `> Status:` token and the
+   `GD-IDS.yaml` `doc_status`: `detailed` once the whole **core-set (A/B/C)** is
+   authored; **held at `skeleton`** while a **core** section carries `<!-- deferred -->`
+   (the soft floor guard; the WARN in Phase 4); `detailed · partial (n/m)` (rendered,
+   inferred from the markers) when the core is complete but ≥1 **non-core** section is
+   deferred. Set `version: 1` (header + `GD-IDS`). Append the initial changelog block to
+   section F (`#### v1 — <date> — initial schema` with the `Fields: + <field> … (new)`
+   line and `Affected (gd-verify): —`).
 4. **Regen-on-write — re-render the map (B1).** As the last step, re-render `GAME.md`'s
    `## Content Map [gen]` block from `GD-IDS` (the `RULES_INDEX` render model):
    replace **only** the content between `<!-- gen:content-map -->` /
@@ -339,9 +405,11 @@ After the sections are authored:
    (those are `unikit-gd-spec` / `unikit-gd-flow` renders).
    - **Content Map** — one row per `content_types[]` entry, grouped by `scale` (Bulk,
      Curated): `ID | Content Type | Scale | Status | Ver | Belongs (SYS) | Units | Doc`.
-     `Status` mirrors `doc_status` (plus `deprecated` from the `status` field); `Ver` is
-     `—` until `skeleton`; `Units` is the registered `count` for a `bulk` type or the
-     number of `curated` rows.
+     `Status` mirrors `doc_status` (plus `deprecated` from the `status` field), with the
+     **`· partial (n/m)` suffix** appended when the `CONTENT-TYPE.md` carries ≥1
+     `<!-- deferred -->` (the canonical render format from `gd-lifecycle` — the same
+     suffix verify and the System/Flow maps use); `Ver` is `—` until `skeleton`; `Units`
+     is the registered `count` for a `bulk` type or the number of `curated` rows.
 
 ---
 
@@ -437,19 +505,20 @@ non-optional (catalog churn skips it entirely):
 3. **Registry check:** new fields / `ref<>` / facts vs `GD-IDS` — conflicts surface,
    they never silently win. A significant decision also gets a **`DD-<n>`** record in
    `GD-IDS.yaml` `decisions` (options, rationale, affected systems/types).
-4. **Re-render the map** (the regen-on-write step from Phase 5 — `## Content Map [gen]`,
-   `[gen]` block only), then **recommend `unikit-gd-verify`** (changed scope) — it
-   re-checks the schema vs the registry, appends the `Affected` line, and re-renders
-   any stale `[gen]` block (freshness).
+4. **Re-render the map** (the regen-on-write step from Phase 6 — `## Content Map [gen]`,
+   `[gen]` block only, with the `· partial (n/m)` suffix when a `<!-- deferred -->` is
+   present), then **recommend `unikit-gd-verify`** (changed scope) — it re-checks the
+   schema vs the registry, appends the `Affected` line, and re-renders any stale `[gen]`
+   block (freshness).
 
 ---
 
-## Phase 6 — Handoff
+## Handoff & Next Steps
 
 Recommend the next steps (do not auto-invoke):
 
 ```
-AskUserQuestion: CT-<slug> is <detailed | revised to vN>. What's next?
+AskUserQuestion: CT-<slug> is <detailed | detailed · partial (n/m) | revised to vN>. What's next?
 
 Options:
 1. Verify consistency & impact — /unikit-gd-verify CT-<slug> (recommended)
@@ -467,9 +536,9 @@ refreshes the `## Content Map [gen]`.
 
 ```
 Content type: CT-<slug> — <name>
-Scale: <bulk | curated>   Belongs to: SYS-<slug>
+Scale: <bulk | curated>   Belongs to: SYS-<slug>   ·   Depth: <core | standard | full>  (create/fill)
 Action: <create | fill | edit (tuning|tweak|rework) | catalog churn>
-Doc: .unikit/gamedesign/content-types/CT-<slug>.md (Status: <skeleton|detailed|revised>, vN)
+Doc: .unikit/gamedesign/content-types/CT-<slug>.md (Status: <skeleton | detailed | detailed · partial (n/m) | revised>, vN)
 Registry: <F> fields; <U> units (<count> bulk | <n> curated); +<R> resources/tracks/knobs  (GD-IDS.yaml)
 Map: ## Content Map [gen] re-rendered
 ```

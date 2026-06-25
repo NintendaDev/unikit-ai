@@ -143,70 +143,64 @@ Gather the facts the flow must stay consistent with (read-only):
   `/clear`): read the flow's `GD-IDS` `flows[].research:` pointer (authoritative),
   falling back to the `researches/INDEX.md` entry whose `Target:` is this
   `FLOW-<slug>`. Read that research's `RESEARCH_BRIEF.md` → **`## Flow Feature Plan`**
-  block and use its objective/pacing/dependency **seeds** as the *starting drafts*
-  for the section-cycle — the per-section approval still applies; a seed is a draft,
-  not an approved write. For a **revision** (Edit), the matching block is
+  block and use its objective/pacing/dependency **seeds** as the *starting drafts* —
+  a **seeded** section is **drafted silently** in Generation (Phase 4) and confirmed
+  in the group review (Phase 5); a seed is a draft, not an approved write. For a
+  **revision** (Edit), the matching block is
   **`## Flow Improvement Plan`** — its ready-to-apply delta lines, expected scale,
   touched `GOAL`s/systems, and any `RF-<date>-n` it closes pre-fill the change set
   (the user still approves every edit). These explore-seeded drafts are **untagged
   normal authored content** (`gd-provenance` → Provenance) — the import-only
   `extracted` / `generated` markers do not apply to flows.
 
-## Phase 2 — Resolve Mode from Document State + Intent (no flags)
+## Phase 2 — Resolve Mode + Depth (no flags)
 
 Check `.unikit/gamedesign/flows/FLOW-<slug>.md` and read the intent in the prompt:
 
-1. **Does not exist** → **Create**: select the wiring mode (below), build the
-   skeleton (Phase 3), then author from section A.
+1. **Does not exist** → **Create**: build the skeleton (Phase 3), then run the
+   Decision-First flow — the **wiring mode** is the first decision in Phase 4 (it
+   shapes sections B and C).
 2. **Exists** and the prompt describes a **change to approved content** (a goal,
    pacing beat, dependency, event, or the wiring mode: "retune the pacing", "add a
    branch", "change a GOAL", "rework the onboarding") → **Edit**: classify the scale
    and apply the delta (Revision below). Approved text is changed **only** through
    this path.
 3. **Exists with `[To be designed]` placeholders** and the intent is to continue /
-   fill (or no change is described) → **Fill**: resume from the **first** placeholder.
-   Approved text is **never overwritten** — only placeholders are filled. Skip Phase 3.
+   fill (or no change is described) → **Fill**: resume from the remaining placeholders.
+   Approved text is **never overwritten** — only placeholders are filled. Skip the
+   skeleton sub-step (Phase 3.1); still fork-scan and run Phases 4–5 over the
+   placeholders.
 4. **Exists, complete, no change described** → authoring is done; nothing to write.
-   Offer review / verify (Phase 6) and stop.
+   Offer review / verify (Handoff) and stop.
 
 If the flow name is ambiguous (matches several entries, or none) → `AskUserQuestion`
 listing candidates. Never guess the target.
 
-### Wiring mode (`linear | conditional | emergent`) — select on Create
+**Depth gate (Create / Fill only).** Once the mode is Create or Fill, present **one**
+depth picker — the named tiers `core/standard/full`, each with what it adds, not bare
+letters:
 
-The mode dictates the document's structure (`gd-flow-axis` → Flow Axis), so it is
-chosen **before** the skeleton:
+```
+AskUserQuestion: How deep should this pass go?
+Options:
+1. core (recommended) — the floor that makes the flow `detailed`: Overview, Objective
+   Flow (the GOAL line-up).
+2. standard — core + Pacing, Dependencies, Events (the funnel).
+3. full — every section, fully tuned.
+```
 
-- **Infer** a candidate from `GAME.md` genre / pillars / loop stack: a fixed tutorial
-  or scripted sequence → `linear`; a flow that branches on world/player state →
-  `conditional`; a sandbox / open objective the player sets themselves → `emergent`.
-- **Explain → Capture:** state the candidate and the trade-offs (linear = authored
-  control, low replay; conditional = reactive, more branches to balance; emergent =
-  high agency, hardest to pace), then confirm with one `AskUserQuestion` — never
-  assume on ambiguity.
-- **Record `mode:`** in the `GD-IDS.yaml` `flows[]` entry and in the `FLOW.md` header
-  `> Mode:` token. `unikit-gd-verify` checks `mode:` ↔ the document's structure (the
-  objective-flow table for linear/conditional, the affordance template + pacing
-  envelope for emergent) — exactly as it checks a system's `packs:` ↔ `## Pack:`. A
-  mode change is an ordinary delta step (Revision).
+The picked tier is the **ephemeral scope of this pass — NOT stored**
+(`gd-authoring` / `gd-lifecycle`); the lasting fact is the inferred status at Phase 6.
+**Edit** mode skips the depth gate entirely (it lies flat on the Revision flow).
 
 ---
 
-## Authoring (Create / Fill)
+## Authoring (Create / Fill) — Decision-First
 
-### Phase 3 — Skeleton (Create mode only)
-
-Write the file from the FLOW template with **every** section header A–F present and
-a `[To be designed]` placeholder under each; choose section B's form from the wiring
-mode. Get **one approval** for the skeleton; a refusal sets `doc_status` `skeleton`
-and stops (BLOCKED).
-
-FLOW GDD structure (header + sections — author in this order):
-
-```
-# <Flow Name> — FLOW-<slug>
-> Status: skeleton · Mode: <linear|conditional|emergent> · Version: 1 · Last Updated: <date>
-```
+The flow zone applies the **Decision-First Section-Cycle Contract** in `gd-authoring`:
+the six-phase mechanic lives in the shard; below are the flow-specific **section
+map**, **core-set**, and per-section logic. **Address sections by name in the
+dialogue, never by a bare letter.**
 
 | § | Section | What it holds |
 |---|---------|---------------|
@@ -217,17 +211,65 @@ FLOW GDD structure (header + sections — author in this order):
 | E | Events (Funnel) | The analytics events the flow emits — the third altitude of `AC · GOAL · event`. Each is registered in `GD-IDS` `events` and aggregated read-only into `## Funnel [gen]`. Event names are English `snake_case`. |
 | F | Open Questions & Changelog | open questions (owner/when); changelog blocks (added by this skill on a revision; the `Affected (gd-verify):` line is appended by `unikit-gd-verify`). |
 
-### Phase 4 — Section-Cycle (A → F)
+**Core-set (the floor for `detailed`, from `gd-lifecycle`):** A Overview · B Objective
+Flow. The **depth** picked in Phase 2 sets which sections this pass attempts (`core` =
+just the floor; `standard` / `full` layer on C Pacing / D Dependencies / E Events).
+**Fill** re-picks depth and runs Decision-First only over the newly-attempted
+sections — earlier approved sections are untouched and partiality stays honest.
 
-Author each section in order through the **section-cycle contract from
-`gd-authoring`**: Context (2–3 lines) → Questions → Options (2–4 with pros/cons and
-theory from the loaded domain rules, one **(Recommended)** with the WHY) → Decision
-(Explain → Capture, `AskUserQuestion`) → **Draft + Approval in the SAME reply**
-(separating them is a protocol violation) → Write (Edit anchored on the unique
-section heading). Persist each approved section immediately — the file is the only
-memory that survives the session.
+### Phase 3 — Skeleton + Fork-Scan
 
-Section-specific logic (the rest is the generic cycle):
+1. **Skeleton (Create mode only).** Write the file from the FLOW template with
+   **every** A–F header present and a `[To be designed]` placeholder under each. Get
+   **one approval** for the skeleton; a refusal sets `doc_status: skeleton` and stops
+   (BLOCKED). The header `> Mode:` token is filled by the wiring-mode decision (the
+   first Phase 4 decision); until then it reads `> Mode: <deciding>`.
+
+   ```
+   # <Flow Name> — FLOW-<slug>
+   > Status: skeleton · Mode: <linear|conditional|emergent> · Version: 1 · Last Updated: <date>
+   ```
+2. **Fork-scan (silent).** Walk the in-scope sections (per the picked depth) and
+   classify each **without asking** — **seeded** (the Phase 1 context: a SOURCE /
+   recon / explore brief, the pillars, the loaded domain rules, or an exercised system
+   already answers it → it will be drafted silently) vs **real fork** (a genuine design
+   choice). The **wiring mode** is the primary fork (asked first in Phase 4). Catch
+   pillar- and registry-conflicts **here**, before any prose. Emit
+   `INFO [gd-flow] depth=<tier>`.
+
+### Phase 4 — Decision Interview + Generation
+
+**Decision interview.** The **wiring mode** (`linear | conditional | emergent`) is the
+**first decision** — it dictates the document's structure (`gd-flow-axis` → Flow Axis),
+so it is settled before section B/C are generated:
+
+- **Infer** a candidate from `GAME.md` genre / pillars / loop stack: a fixed tutorial
+  or scripted sequence → `linear`; a flow that branches on world/player state →
+  `conditional`; a sandbox / open objective the player sets themselves → `emergent`.
+- **Explain → Capture:** state the candidate and the trade-offs (linear = authored
+  control, low replay; conditional = reactive, more branches to balance; emergent =
+  high agency, hardest to pace), then confirm with one `AskUserQuestion` — never
+  assume on ambiguity.
+- **Record `mode:`** in the `GD-IDS.yaml` `flows[]` entry and the `FLOW.md` header
+  `> Mode:` token. `unikit-gd-verify` checks `mode:` ↔ the document's structure (the
+  objective-flow table for linear/conditional, the affordance template + pacing
+  envelope for emergent) — exactly as it checks a system's `packs:` ↔ `## Pack:`. A
+  mode change is an ordinary delta step (Revision).
+
+Then ask **only the remaining real forks**, batched (1–2 `AskUserQuestion` rounds) —
+never one gate per section. Options are **grounded** in the loaded `core-loops` /
+`player-motivation` theory and the pillars, **never a blank page** (a grounded **form**
++ an open "my own — I'll describe it"); a truly-blank section becomes a **flagged open
+question** (section F). A **pillar or loop conflict** is escalated to `/unikit-gd-spec`
+**before writing**. Emit `INFO [gd-flow] depth=<tier> mode=<mode>`.
+
+**Generation.** Draft each in-scope section — **seeded** sections **silently** (emit
+`INFO [gd-flow] seeded §<name> — drafted silently`), decided sections from their
+decision. A section the user chose to **defer** is written with a `<!-- deferred -->`
+marker (distinct from `[To be designed]`); a **core** section (A/B) may be deferred,
+but then the status honestly stays below `detailed` (the Phase 6 soft floor guard —
+emit `WARN [gd-flow] core section §<name> deferred — status held below detailed`). The
+section-specific logic (the rest follows the Decision-First flow):
 
 - **B / Objective Flow** — one `GOAL-<flow>-<n>` per row; numbering is **stable**,
   never reshuffled. **Two heights (discovery → detail):** at skeleton, point each
@@ -275,12 +317,33 @@ does not write. Use:
 
 This is the active seam — offer it in the same session and continue once resolved.
 
-In **Fill mode**, run the cycle only for the placeholder sections, in order from the
-first remaining `[To be designed]`; leave approved sections untouched.
+### Phase 5 — Group Review
 
-### Phase 5 — Registry & State (write `flows:` / `events:`, then re-render the maps)
+Present the generated sections **by tier-group** (core first, then standard, then
+full). Before each section show a **card** — Context · why this section exists · what
+it captures · its source — drawn from the FLOW template's `[]`-hints (the hint **is**
+the card, surfaced on `ru`; no duplication). Each group closes with **one structural
+group gate**:
 
-After the sections are authored:
+```
+AskUserQuestion: <group> review — <n>/<m> sections done.
+Options: Accept & continue · Fix this · Defer this · Accept all the rest
+```
+
+*Fix* loops the section back through a decision; *Defer* writes its `<!-- deferred -->`
+marker; *Accept all the rest* ends the review. **Write incrementally** — persist each
+accepted section immediately (Edit anchored on its unique heading).
+
+In **Fill mode** there is no skeleton step: re-pick depth (Phase 2), fork-scan the
+remaining `[To be designed]` sections, and run Phases 4–5 over those only; approved
+sections are never overwritten.
+
+→ **Phase 6** writes `flows:` / `events:`, sets the inferred status, and re-renders
+the maps.
+
+### Phase 6 — Registry & State (write `flows:` / `events:`, then re-render the maps)
+
+After the sections are authored and accepted:
 
 1. **Write the `GD-IDS.yaml` `flows[]` entry** (the flow's machine truth — the flow
    registers itself): `id: FLOW-<slug>`, `name`, `status: active`, `mode`,
@@ -291,9 +354,12 @@ After the sections are authored:
    each funnel event under `events[]` (`id`, `name`, `status`, `source`, `flow:`).
    Get approval before the write; existing values are never changed silently; every
    fact carries its `source` (`gd-principles` → Facts Registry).
-2. **Update state:** set the flow's status → `detailed` in the **two places that must
-   agree** — the `FLOW.md` header `> Status:` token and the `GD-IDS.yaml` `doc_status`
-   — so the spine stays coherent (`gd-lifecycle` → Lifecycle & Status). Set
+2. **Status (inferred — `gd-lifecycle`).** Set the flow's status in the **two places
+   that must agree** — the `FLOW.md` header `> Status:` token and the `GD-IDS.yaml`
+   `doc_status`: `detailed` once the whole **core-set (A/B)** is authored; **held at
+   `skeleton`** while a **core** section carries `<!-- deferred -->` (the soft floor
+   guard; the WARN in Phase 4); `detailed · partial (n/m)` (rendered, inferred from the
+   markers) when the core is complete but ≥1 **non-core** section is deferred. Set
    `version: 1` (header + `GD-IDS`). Append the initial changelog block to section F
    (`#### v1 — <date> — initial design` with the `GOAL: + GOAL-<slug>-1 … N (new)`
    line and `Affected (gd-verify): —`).
@@ -307,7 +373,9 @@ After the sections are authored:
    - **Flow Map** — one row per `flows[]` entry, grouped by wiring-mode
      (Linear/Conditional, Emergent): `ID | Flow | Mode | Status | Ver | Depends (SYS) |
      Realized | Doc`. `Status` mirrors `doc_status` (plus `deprecated` from the
-     `status` field); `Ver` is `—` until `skeleton`.
+     `status` field), with the **`· partial (n/m)` suffix** appended when the `FLOW.md`
+     carries ≥1 `<!-- deferred -->` (the canonical render format from `gd-lifecycle` —
+     the same suffix verify and the System Map use); `Ver` is `—` until `skeleton`.
    - **`Realized` is DERIVED, never written:** `yes` once **every** system in the
      flow's `depends_on` carries a non-empty `implemented_version` in `GD-IDS`
      (the code-set field), else `no`. It is computed from the systems' state on each
@@ -410,19 +478,20 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
    conflicts surface, they never silently win. A significant decision also gets a
    **`DD-<n>`** record in `GD-IDS.yaml` `decisions` (options, rationale, affected
    systems/flows).
-4. **Re-render the maps** (the regen-on-write step from Phase 5 — `## Flow Map [gen]`
-   + `## Funnel [gen]`, `[gen]` blocks only), then **recommend `unikit-gd-verify`**
+4. **Re-render the maps** (the regen-on-write step from Phase 6 — `## Flow Map [gen]`
+   + `## Funnel [gen]`, `[gen]` blocks only, with the `· partial (n/m)` suffix when a
+   `<!-- deferred -->` is present), then **recommend `unikit-gd-verify`**
    (changed scope) — it computes cross-axis impact on dependent flows, appends the
    `Affected` line, and re-renders any stale `[gen]` block (freshness).
 
 ---
 
-## Phase 6 — Handoff
+## Handoff & Next Steps
 
 Recommend the next steps (do not auto-invoke):
 
 ```
-AskUserQuestion: FLOW-<slug> is <detailed | revised to vN>. What's next?
+AskUserQuestion: FLOW-<slug> is <detailed | detailed · partial (n/m) | revised to vN>. What's next?
 
 Options:
 1. Verify consistency & impact — /unikit-gd-verify FLOW-<slug> (recommended)
@@ -440,9 +509,9 @@ dependent flows on cross-axis staleness, and refreshes the `## Flow Map [gen]` /
 
 ```
 Flow: FLOW-<slug> — <name>
-Mode: <linear | conditional | emergent>
+Mode: <linear | conditional | emergent>   ·   Depth: <core | standard | full>  (create/fill)
 Action: <create | fill | edit (tuning|tweak|rework)>
-Doc: .unikit/gamedesign/flows/FLOW-<slug>.md (Status: <skeleton|detailed|revised>, vN)
+Doc: .unikit/gamedesign/flows/FLOW-<slug>.md (Status: <skeleton | detailed | detailed · partial (n/m) | revised>, vN)
 Registry: +<G> goals, +<E> events, depends_on [<SYS-ids>]  (GD-IDS.yaml)
 Goals: GOAL-<slug>-1 … GOAL-<slug>-N   [GOAL delta on an edit: +<n> / changed <n> / removed <n>]
 Maps: ## Flow Map [gen] + ## Funnel [gen] re-rendered
