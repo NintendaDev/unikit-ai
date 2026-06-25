@@ -3,7 +3,8 @@
 A shard of the `gd-principles` working contract, installed by `unikit-ai init` /
 `unikit-ai update` into `.unikit/system/gamedesign/gd-lifecycle.md` as a flat copy
 (engine-agnostic, no variable substitution, not hash-tracked). Loaded on Bootstrap
-by `unikit-gd-spec`, `unikit-gd-system`, `unikit-gd-flow`, and `unikit-gd-verify`.
+by `unikit-gd-spec`, `unikit-gd-system`, `unikit-gd-flow`, `unikit-gd-content`,
+`unikit-gd-verify`, and the `unikit-gd-apply` dispatcher.
 See the core `gd-principles.md` for zone ownership and routing.
 
 ## Lifecycle & Status
@@ -23,7 +24,7 @@ fixed by a re-render, not a status disagreement).
 |---|---|---|---|
 | `not-started` | mapped in the roster, no document yet | `unikit-gd-spec` | `skeleton` |
 | `skeleton` | A–K headers + `[To be designed]` placeholders | `unikit-gd-system` | `detailed` |
-| `detailed` | every section authored, facts registered | `unikit-gd-system` | `reviewed` / `revised` |
+| `detailed` | every core section authored (deferred standard/full ⇒ detailed · partial) | `unikit-gd-system` | `reviewed` / `revised` |
 | `reviewed` | passed `unikit-gd-review` with no Critical/Major | `unikit-gd-review` (on approval) | `revised` |
 | `revised` | edited after `detailed`/`reviewed`; **pending re-verify** | `unikit-gd-system` (edit) · `unikit-gd-verify` (flags a stale dependent) | `reviewed` (after re-review) |
 
@@ -40,6 +41,50 @@ fixed by a re-render, not a status disagreement).
 - `doc_status: revised` (this lifecycle state) is distinct from the GD-IDS
   `revised:` **date field** (when a fact's value last changed). Status writers
   touch `doc_status` only; they never repurpose the `revised:` date as a status.
+
+**Depth tiers, the core floor, and the inferred `detailed · partial` status.**
+Authoring runs at an **ephemeral depth** — a `core/standard/full` picker chosen per
+pass and **never stored** (see `gd-authoring` → Section-Cycle Contract). Depth is
+orthogonal to this lifecycle; the lasting fact is the **status**, and partiality is
+**inferred**, never a stored field. The enum above is unchanged. This is the
+**canonical home** — every `## *Map [gen]` renderer reads the core-set and the
+partial render format from here.
+
+- **`core` is the floor.** A document reaches `detailed` when its whole **core-set**
+  is authored; deferred `standard`/`full` sections are fine. The **per-zone core-set**
+  (canonical):
+  - **system** — A Overview · B Player Fantasy · C Detailed Design · D Formulas ·
+    H Acceptance Criteria (`A/B/C/D/H`).
+  - **flow** — A Overview · B Objective Flow / GOAL (`A/B`).
+  - **content** — A Overview · B Schema (`CT.fields`) · C Scale (`A/B/C`; Scale is in
+    core because it dictates code structure).
+- **Soft floor guard.** A **core** section may be deferred, but then the status
+  honestly **does not rise to `detailed`** — it stays `skeleton`. Emit
+  `WARN [gd] core section §<name> deferred — status held below detailed`. A
+  `detailed`/`reviewed`/`revised` document therefore has **zero deferred core
+  sections** by construction.
+- **`detailed · partial` is inferred.** When the core is complete but ≥1 **non-core**
+  (`standard`/`full`) section is intentionally deferred, the status reads
+  `detailed · partial`. Partiality is **derived from the presence of
+  `<!-- deferred -->` markers** in the document, **never stored** — there is **no new
+  field and no two-place coherence for partiality** (drift is impossible). The enum
+  `doc_status` stays byte-identical `{not-started, skeleton, detailed, reviewed,
+  revised}`; `· partial` is a **render-time annotation**, not a status value.
+- **Render format (canonical).** Every `## *Map [gen]` renderer (`unikit-gd-verify`,
+  `unikit-gd-spec` System Map, `unikit-gd-flow` Flow Map, `unikit-gd-content` Content
+  Map) appends the suffix **`· partial (n/m)`** to the Status column of a document
+  carrying ≥1 `<!-- deferred -->`, where **n = the count of deferred non-core sections**
+  (those carrying `<!-- deferred -->`) and **m = the total number of deferrable
+  (i.e. non-core) sections** of that zone. Counting against *core* is wrong: the floor
+  guard keeps every deferred-core document below `detailed`, so a `detailed · partial`
+  document has zero deferred core sections by construction and a core-denominated
+  counter would always read `(0/m)`. Partial reflects what was skipped in the
+  **superstructure above the floor**.
+- **Marker semantics.** `<!-- deferred -->` is an **intentional** omission (a section
+  the author chose to skip at this depth) — it is **not** a placeholder leak.
+  `[To be designed]` is an **unfilled skeleton** placeholder and remains a leak in any
+  `detailed`+ document. The two tokens are distinct and never interchangeable. This
+  rule applies identically to a `CT-<slug>` document (the same 5-value spine, below).
 
 **Two values that design never writes as `doc_status`:**
 

@@ -3,39 +3,107 @@
 A shard of the `gd-principles` working contract, installed by `unikit-ai init` /
 `unikit-ai update` into `.unikit/system/gamedesign/gd-authoring.md` as a flat copy
 (engine-agnostic, no variable substitution, not hash-tracked). Loaded on Bootstrap
-by the authoring zones (`unikit-gd-spec`, `unikit-gd-system`, `unikit-gd-flow`).
+by the authoring zones (`unikit-gd-spec`, `unikit-gd-system`, `unikit-gd-flow`,
+`unikit-gd-content`) and the `unikit-gd-apply` dispatcher (for the delta discipline).
 See the core `gd-principles.md` for zone ownership and routing.
 
 ## Section-Cycle Contract (GDD Authoring)
 
-`unikit-gd-system` writes through this single contract — it both fills skeletons
-and edits approved content within its zone; the mechanics live here and are not
-re-specified per skill. Section letters refer to the SYSTEM GDD template:
-A Overview, B Player Fantasy, C Detailed Design, D Formulas, E Edge Cases,
-F Dependencies, G Tuning Knobs, H Acceptance Criteria, I Telemetry,
-J Accessibility, K Open Questions & Changelog.
+The authoring zones write through this single **Decision-First** contract — it both
+fills skeletons and edits approved content within a zone; the mechanics live here and
+are **not re-specified per skill**. Each zone supplies its own **section map** (the
+template's lettered sections + a human name for each) and reads its **core-set** (the
+floor sections, defined once in `gd-lifecycle`): system `A/B/C/D/H`, flow `A/B`,
+content `A/B/C`. Section letters are the template's internal index only — **address
+sections by name in the dialogue, never by a bare letter** (A–K means nothing to the
+user).
 
-1. **Skeleton first.** Create the document from its template with every section
-   header and `[To be designed]` placeholders; one approval for the skeleton.
-   Approved text is never overwritten silently: placeholders are filled, and edits
-   to approved content are made, by the artifact's zone owner (`unikit-gd-system`
-   for a `SYSTEM.md`) under the delta discipline below.
-2. **Per section, in order:** Context (2–3 lines) → Questions → Options (2–4 with
-   pros/cons and theory, one Recommended) → Decision → **Draft (full section text
-   in the reply) → Approval in the SAME reply** — separating the draft from its
-   approval is a protocol violation → Write (Edit anchored on the unique section
-   heading).
-3. **Write incrementally.** Persist each approved section immediately. The file is
-   the only memory that survives a session — decisions live in files, not in chat.
-4. **Registry check after C and D:** compare every number and name against GD-IDS
-   facts. On mismatch, surface the conflict immediately and let the user resolve
-   it: obey the registry / change the registry via a verify resolution / park it
-   in section K (Open Questions).
-5. **Terminology:** every new game term goes to GD-IDS `terms` — canonical English
-   name, translation, forbidden aliases.
-6. **Acceptance criteria (H)** derive semi-automatically from C, D, and E: one
-   Given-When-Then per core rule and edge case, numbered `AC-<sys>-N`; numbering
-   is stable — never reshuffled.
+**Ceremony scales to choice.** A section the seeds already answer is drafted
+silently; only a genuine design fork earns a question. Depth picks *how many*
+sections this pass attempts; Decision-First picks *how much ceremony* each one earns.
+The old "full Context → Options → Decision → Draft → Approval cycle for every section,
+in order" is replaced by the six phases below — the same number of facts captured,
+far fewer gates.
+
+### The six phases
+
+0. **Bootstrap.** Load this contract, the core `gd-principles`, `gd-lifecycle`, and
+   the zone's section map + core-set.
+
+1. **Depth.** One gate — a **picker** of the named tiers `core/standard/full`, each
+   offered with what it adds (core = the floor that makes the doc `detailed`;
+   standard / full layer on optional depth). The picked tier is the **ephemeral scope
+   of this pass — it is NOT stored** (depth is orthogonal to the lifecycle; the
+   lasting fact is the inferred status at Phase 6). Recommended **packs** for the
+   zone's domain are surfaced here as an independent, value-framed opt-in (see Packs
+   below). Emit `INFO [gd] depth=<core|standard|full>`.
+
+2. **Fork scan (silent).** Walk the in-scope sections and classify each **without
+   asking**: **seeded** — a SOURCE / recon / explore brief, the pillars, the domain
+   rules, or a neighbouring system already answer it → it will be drafted silently;
+   **real fork** — a genuine design choice with no seeded answer. Pillar- and
+   registry-conflicts are caught here, **early** — before any prose is written.
+
+3. **Decision interview.** Ask **only the real forks**, batched (1–2 structural
+   `AskUserQuestion` rounds) — never one gate per section. Options are always
+   **grounded** — in `balance` / `frameworks` theory, the pillars, or neighbours —
+   **never a blank page**: "which formula?" is a choice of a grounded **form**
+   (linear / diminishing / threshold) plus an open **"my own — I'll describe it"**
+   escape (open elicitation). A section with no grounded options is raised as an
+   explicit, **flagged open question**, not a silent blank. A **pillar conflict** that
+   surfaces here is escalated to `unikit-gd-spec` **before writing** — early, not
+   mid-section. Zone-specific decisions ride this round: flow's **Mode**
+   (`linear|conditional|emergent`), content's **Scale** (`bulk|curated`). Greenfield
+   decisions are dependent (`D`←`C`, `H`←`C/D`) → interview per **tier-group**
+   (core → standard → full).
+
+4. **Generation.** Draft each in-scope section: seeded → silently (emit
+   `INFO [gd] seeded §<name> — drafted silently`); decided → from the decision. The
+   acceptance-criteria section (`H` for systems) **auto-derives** from C/D/E — one
+   Given-When-Then per core rule and edge case, numbered `AC-<sys>-N`, stable, never
+   reshuffled, **never asked**. At a low depth, **Accessibility / Telemetry
+   auto-default from the rules + a "clarify" note** (a sensible default with a flag,
+   never an empty marker — accessibility is not dropped). A section the user chose to
+   **defer** is written with a **`<!-- deferred -->` marker** — the one new artefact of
+   this contract, kept distinct from the skeleton `[To be designed]` placeholder
+   (`<!-- deferred -->` is an *intentional* omission; `[To be designed]` is an
+   *unfilled* skeleton). Run the **registry check** as numbers and names are written —
+   every new number, term, and id vs `GD-IDS` facts; a conflict surfaces and is
+   resolved (obey the registry / change it via a verify resolution / park it in Open
+   Questions), it never silently wins. New game terms go to `GD-IDS` `terms`
+   (canonical EN name, translation, forbidden aliases).
+
+5. **Group review.** Present the generated sections **by tier-group**. Before each
+   section show a **card** — Context · why this section exists · what it captures · its
+   source — drawn from the template's `[]`-hints (no duplication; the hint *is* the
+   card, surfaced to the user instead of left in the file). Each group closes with
+   **one structural group gate**, an `AskUserQuestion` over the group:
+   `[ Accept & continue · Fix this · Defer this · Accept all the rest ]`, with a
+   **progress indicator** ("core 3/5"). *Fix* loops the section back through a
+   decision; *Defer* writes its `<!-- deferred -->` marker; *Accept all the rest* ends
+   the review. **Write incrementally** — persist each accepted section immediately
+   (Edit anchored on its unique heading); the file is the only memory that survives the
+   session, decisions live in files, not in chat.
+
+6. **Final.** Registry writes, then the **inferred status** (see `gd-lifecycle`):
+   `detailed` once the whole **core-set** is authored; **held below `detailed`** while
+   any **core** section carries `<!-- deferred -->` (the soft floor guard — emit
+   `WARN [gd] core section §<name> deferred — status held below detailed`);
+   `detailed · partial` when the core is complete but ≥1 **non-core** section is
+   deferred (partiality is **inferred from the markers, never stored**). Append the
+   changelog (Delta Discipline below), re-render the zone's `[gen]` map(s) — with the
+   `· partial (n/m)` suffix when applicable — and hand off.
+
+**Approved text is never overwritten silently.** Placeholders are filled and approved
+content is edited only by the artifact's zone owner under the **Delta Discipline**
+below — **Create** runs the full six phases; **Fill** re-picks depth and runs
+Decision-First only over the newly-attempted sections (partiality stays honest);
+**Edit / Rework** lie flat on this flow; **Tuning / Tweak** edits stay a single gate
+(untouched).
+
+**Packs** are an **independent opt-in, orthogonal to depth.** They are surfaced in the
+decision round framed by the **value** they add (not "after sections A–K"); their
+sub-sections are authored through these same six phases, never a separate linear pass.
 
 ## Delta Discipline
 
