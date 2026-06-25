@@ -5,13 +5,19 @@
 > **Last Updated**: [YYYY-MM-DD]
 > **Implements**: [PIL-n, PIL-m] · **Layer**: [Foundation | Core | Feature | Presentation] · **Scope**: [S | M | L | XL]
 
-A per-system design document. Eleven sections A–K, authored one at a time
-through the section-cycle contract (see `.unikit/system/gamedesign/gd-authoring.md`):
-Context → Options → Decision → Draft+Approval (same reply) → Write. Sections D
-and H trigger a `GD-IDS.yaml` registry check. Domain section-packs (economy, UX,
-accessibility, narrative, level…) append after K when the system touches that
-domain — see `unikit-gd-system`'s `references/section-packs.md`. Numbers live in
-tables, intent lives in prose.
+A per-system design document. Eleven sections A–K, authored through the
+**Decision-First** section-cycle contract (see
+`.unikit/system/gamedesign/gd-authoring.md`): pick a depth (`core/standard/full`),
+decide the real forks, generate, then review by group. Each section's **`[…]` hint
+below is its card** — the *why / what / source* the group review surfaces to you; on
+authoring the hint is replaced by content, by a `[To be designed]` skeleton
+placeholder (an **unfilled** section — a leak in a `detailed`+ doc), or by a
+`<!-- deferred -->` marker (a section **intentionally** skipped at this depth — never a
+leak; it makes the status read `detailed · partial`). **Core sections** (the floor for
+`detailed`): A, B, C, D, H. Sections D and H trigger a `GD-IDS.yaml` registry check.
+Domain section-packs (economy, UX, accessibility, narrative, level…) are a value-framed
+opt-in appended after K when the system touches that domain — see `unikit-gd-system`'s
+`references/section-packs.md`. Numbers live in tables, intent lives in prose.
 
 ## A. Overview
 

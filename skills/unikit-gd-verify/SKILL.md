@@ -124,7 +124,8 @@ Run every check deterministically; each mismatch is a **CONFLICT** with a citati
 | **Status coherence** | a system's `doc_status` agrees across the **two places that must agree** — the header `> Status:` and `GD-IDS` `doc_status` (enum `not-started · skeleton · detailed · reviewed · revised`) | the two disagree for a system — system docs only; see the carve-outs below |
 | **Version coherence** | the header `Version` and `GD-IDS` `version` agree; a `not-started` system carries **no** version, a `skeleton`-or-later system carries one | the two disagree, or a `skeleton`+ system is missing a version / a `not-started` system has one |
 | **AC presence** | for a `detailed`-or-later system, section H is non-empty and every `AC-<sys>-N` id is unique | a `detailed`+ system has an empty H, or repeats an `AC-<sys>-N` — gaps in the numbering are **not** a conflict (numbering is stable after an AC is removed) |
-| **Placeholder leak** | grep `[To be designed]` inside `detailed`-or-later documents | a `detailed`+ document still carries a skeleton placeholder |
+| **Placeholder leak** | grep `[To be designed]` inside `detailed`-or-later documents (a `<!-- deferred -->` marker is **intentional** — never a leak) | a `detailed`+ document still carries a skeleton `[To be designed]` placeholder |
+| **Core-floor coherence** | for a `detailed`/`reviewed`/`revised` document, check that **no core section carries `<!-- deferred -->`** — the core-set per zone (`gd-lifecycle`: system `A/B/C/D/H` · flow `A/B` · content `A/B/C`) | a `detailed`+ document defers a **core** section — the status was raised past the floor (the soft guard in `gd-authoring` was bypassed); route to the owning zone to author the core section or lower the status. A deferred **non-core** section is **not** a conflict (it is the inferred `detailed · partial` — see the render below) |
 
 The registry is authoritative: when a document disagrees with `GD-IDS`, the
 registry wins until the user resolves it the other way (`gd-principles`).
@@ -145,6 +146,24 @@ display-precedence on `deprecated`/`implemented`) and **announce** it
 self-heal is a `systems/*.md` file with **no `GD-IDS` entry** (the Roster ↔ disk
 check): the roster is `unikit-gd-spec`'s to write, so verify **routes** the user to
 `/unikit-gd-spec` to register the system, then the map re-renders.
+
+**Deferred markers, the `· partial (n/m)` render, and the self-check (all three maps).**
+A `<!-- deferred -->` marker is an **intentional** omission (`gd-lifecycle` — a section
+the author chose to skip at this depth), **never** a placeholder leak. Its only
+mechanical consequence at verify time is the **render**: when a `detailed`+ document
+carries ≥1 `<!-- deferred -->`, the freshness re-render appends **`· partial (n/m)`** to
+that document's row Status in the relevant `## *Map [gen]`, where **n = the count of
+deferred non-core sections** (those carrying the marker) and **m = the document's total
+deferrable (non-core) sections** (`gd-lifecycle` → the canonical render format + per-zone
+core-set). This applies identically to the **System, Flow, and Content** maps; like all
+freshness it is a **self-heal re-render, not a coherence conflict**, and the status value
+itself stays the read-only enum (`· partial` is a render annotation, not a `doc_status`,
+and is **not** part of the two-place status/version coherence). **Self-check (marker ⟺
+render):** every document with ≥1 `<!-- deferred -->` must render `· partial (n/m)` in its
+map row, **and** every `· partial` suffix in a map must correspond to a document that
+actually carries the marker — a mismatch in either direction is a **freshness**
+discrepancy, fixed by the re-render. Annotate the announce line with the count, e.g.
+`re-rendered ## System Map [gen] (freshness; partial 2/5 on SYS-combat)`.
 
 **Scope & carve-outs (Status / Version / AC / Placeholder).** These four checks
 read the **system** spine only — the header ↔ `GD-IDS` pair of a `systems/*.md`
@@ -383,11 +402,11 @@ re-discovered each pass.
 ```
 Scope: <SYS-slug | changed | all>
 Result: <PASS | CONFLICTS FOUND (<n>)>
-Checks: facts · terms · IDs · dup-IDs · dangling · unregistered-fact · roster↔disk · map-freshness · Depends-3way · status · version · AC-presence · placeholder — <pass/fail each>
+Checks: facts · terms · IDs · dup-IDs · dangling · unregistered-fact · roster↔disk · map-freshness · Depends-3way · status · version · AC-presence · placeholder · core-floor — <pass/fail each>
 Flow checks (when flows exist): GOAL-ids · dangling-GOAL · flow-status/version · flow-Depends-3way · mode↔structure · win/lose↔terminal-GOAL · funnel-continuity · flow/funnel-freshness — <pass/fail each>
 Content checks (when content_types exist): CT/CU-ids · CU⊆CT · ref<>-resolve · scale↔structure · belongs_to-3way · content-status/version · content-map-freshness · RES/TRACK/KNOB · cross-axis SYS→CT — <pass/fail each>
 Affected (changed-scope): <k systems + flows + content types — Needs Review: …, Likely Stale: …>
-Freshness: <re-rendered ## System Map [gen] | up to date>
+Freshness: <re-rendered ## System Map [gen] (· partial n/m where a section is deferred) | up to date>
 Report: <path | none (clean PASS)>
 ```
 

@@ -16,7 +16,7 @@ pillar / rule** (`gd-critique` — no citation → downgrade to Suggestion).
 
 | Lens | The question it attacks | Typical severity on a hit |
 |------|-------------------------|---------------------------|
-| **completeness** | Is any section empty, `[To be designed]`, or missing? Does every core rule and edge case have an AC? | Major (empty section / untestable AC) |
+| **completeness** | Is any section empty, a `[To be designed]` skeleton placeholder, or missing? Does every core rule and edge case have an AC? A `<!-- deferred -->` marker is an **intentional** omission (`gd-lifecycle`), **not** a gap — a `detailed · partial` document is a deliberate state, never a completeness finding; a deferred **core** section is `unikit-gd-verify`'s core-floor check, not this lens. | Major (empty section / untestable AC / `[To be designed]` leak) |
 | **clarity / implementability** | Could a programmer build this without guessing? Find every ambiguous rule and undefined term. | Major (ambiguous rule); Critical (hole in core rules) |
 | **pillar alignment** | Does the system serve ≥1 pillar? Does anything contradict a pillar (lower-numbered wins)? | Critical (contradicts a pillar) |
 | **systems-math** | Try to BREAK the numbers: find a dominant strategy, an infinite/positive-feedback loop, a degenerate min-max line, a cost curve that inverts, a value at zero/max/negative that breaks a formula, or an intransitivity that collapses to one best choice. "Ranges look fine" is not a result — name the exploit or state the line you tried and why it fails. | Critical (dominant strategy / infinite loop); Major (untuned range / unhandled extreme) |

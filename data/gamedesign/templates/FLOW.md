@@ -7,12 +7,19 @@
 
 A per-flow design document — the **dynamics** axis (what the player does over
 time), alongside the SYSTEM GDDs (the rules) and `GAME.md` (the whole). Authored
-one objective at a time through the section-cycle contract (see
-`.unikit/system/gamedesign/gd-flow-axis.md` → Flow Axis). Each row is a `GOAL-<slug>-<n>`,
-the flow counterpart of a system's `AC-<sys>-<n>`. The wiring `Mode` (declared in
-the header and in `GD-IDS.yaml`) dictates the shape of section B; `unikit-gd-verify`
-checks `Mode` ↔ structure. Machine-readable facts (goals, mode, depends, events)
-live in `GD-IDS.yaml` `flows` / `events`.
+through the **Decision-First** section-cycle contract (see
+`.unikit/system/gamedesign/gd-authoring.md`; the Flow Axis grammar is in
+`gd-flow-axis.md`): pick a depth (`core/standard/full`), decide the real forks (the
+wiring `Mode` first), generate, then review by group. Each section's **`[…]` hint below
+is its card** — the *why / what / source* the group review surfaces; on authoring the
+hint becomes content, a `[To be designed]` skeleton placeholder (unfilled — a leak in a
+`detailed`+ doc), or a `<!-- deferred -->` marker (a section **intentionally** skipped at
+this depth — never a leak; the status reads `detailed · partial`). **Core sections** (the
+floor for `detailed`): A, B. Each row is a `GOAL-<slug>-<n>`, the flow counterpart of a
+system's `AC-<sys>-<n>`. The wiring `Mode` (declared in the header and in `GD-IDS.yaml`)
+dictates the shape of section B; `unikit-gd-verify` checks `Mode` ↔ structure.
+Machine-readable facts (goals, mode, depends, events) live in `GD-IDS.yaml` `flows` /
+`events`.
 
 ## A. Overview
 

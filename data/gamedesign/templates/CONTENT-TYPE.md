@@ -11,7 +11,15 @@ of), alongside the SYSTEM GDDs (the rules), the FLOW GDDs (the dynamics), and
 `GAME.md` (the whole). A content type is a **schema + descriptor**, never the catalog
 of values: `GD-IDS.yaml` carries the contract (the typed `CT.fields` + the `scale`
 descriptor), while the bulk values live in the editor. Authored through the
-section-cycle contract (see `.unikit/system/gamedesign/gd-authoring.md`). The `Scale`
+**Decision-First** section-cycle contract (see
+`.unikit/system/gamedesign/gd-authoring.md`): pick a depth (`core/standard/full`),
+decide the real forks (the `Scale` first), generate, then review by group. Each
+section's **`[…]` hint below is its card** — the *why / what / source* the group review
+surfaces; on authoring the hint becomes content, a `[To be designed]` skeleton
+placeholder (unfilled — a leak in a `detailed`+ doc), or a `<!-- deferred -->` marker
+(a section **intentionally** skipped at this depth — never a leak; the status reads
+`detailed · partial`). **Core sections** (the floor for `detailed`): A, B, C (Scale is
+core — it dictates code structure). The `Scale`
 (declared in the header and in `GD-IDS.yaml`) dictates the shape of section C;
 `unikit-gd-verify` checks `Scale` ↔ structure. Machine-readable facts (the schema,
 the units, `belongs_to`) live in `GD-IDS.yaml` `content_types` / `content`.

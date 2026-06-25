@@ -232,7 +232,11 @@ the block as the **last step**:
 3. One row per system: `ID | System | Tier | Status | Ver | Depends | Doc`.
    - `Status` mirrors `doc_status`, **overridden** by `deprecated` (from the
      `status` field) and by the code-set `implemented` (display-only — design never
-     authors it; `gd-lifecycle` → Lifecycle & Status).
+     authors it; `gd-lifecycle` → Lifecycle & Status). Append the **`· partial (n/m)`
+     suffix** when the system's `SYSTEM.md` carries ≥1 `<!-- deferred -->` (the
+     canonical render format from `gd-lifecycle` — the **same** suffix
+     `unikit-gd-verify` emits, so spec's regen-on-write never drops `· partial` before
+     the next verify).
    - `Ver` is `—` until `skeleton`.
    - `Doc` is `systems/SYS-<slug>.md`.
 4. Replace **only** the content between `<!-- gen:system-map -->` and
