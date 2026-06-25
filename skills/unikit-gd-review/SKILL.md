@@ -277,14 +277,10 @@ Report: .unikit/gamedesign/reviews/<date>_review-<scope>.md
 Status: <set to `reviewed` across header + GD-IDS (## System Map re-renders) | unchanged>
 ```
 
-```
-AskUserQuestion: Review complete. What's next?
+**Next steps** (do not auto-invoke):
 
-Options:
-1. Address the findings — /unikit-gd-system <system> "<finding>" (recommended if not APPROVED)
-2. Verify consistency — /unikit-gd-verify <system>
-3. Nothing — I'll continue later
-```
+- 🔧 Address the findings — /unikit-gd-system <system> "<finding>"
+- ✅ Verify consistency — /unikit-gd-verify <system>
 
 If the same finding recurs across reviews of different systems, surface it as a
 candidate **studio `library` rule** (`/unikit-memory --module gamedesign`) so the

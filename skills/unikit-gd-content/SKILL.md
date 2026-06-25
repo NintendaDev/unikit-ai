@@ -517,15 +517,9 @@ non-optional (catalog churn skips it entirely):
 
 Recommend the next steps (do not auto-invoke):
 
-```
-AskUserQuestion: CT-<slug> is <detailed | detailed · partial (n/m) | revised to vN>. What's next?
-
-Options:
-1. Verify consistency & impact — /unikit-gd-verify CT-<slug> (recommended)
-2. Review it — /unikit-gd-review content-types/CT-<slug>.md (fresh session)
-3. Add the consuming/another system — /unikit-gd-spec (add-system)
-4. Nothing — I'll continue later
-```
+- ✅ Verify consistency & impact — /unikit-gd-verify CT-<slug>
+- 🔍 Qualitative review (fresh session) — /unikit-gd-review content-types/CT-<slug>.md
+- 🗺️ Add the consuming/another system — /unikit-gd-spec (add-system)
 
 A review is most independent in a **fresh session** (the reviewer should not have
 authored the doc). `unikit-gd-verify` checks the content type against the registry,

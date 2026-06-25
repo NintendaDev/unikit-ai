@@ -226,11 +226,9 @@ Then fold in the **Step 0 seed**:
 Print the recommended next step and **stop**. Do **not** invoke any skill — this skill has
 no `Skill` tool by construction:
 
-```
-Run:  /unikit-gd-spec .unikit/gamedesign/RECON.md
-      ↳ import mode (interactive): extracts a GAME.md from RECON.md and ASKS you to fill the
-        Intent Gap — pillars, fantasy, win/lose intent, the "why" code could not carry.
-```
+- 🗺️ Import into the master spec — /unikit-gd-spec .unikit/gamedesign/RECON.md
+  ↳ import mode (interactive): extracts a GAME.md from RECON.md and ASKS you to fill the
+    Intent Gap — pillars, fantasy, win/lose intent, the "why" code could not carry.
 
 ## `RECON.md` format — an import-seed for `GAME.md`
 

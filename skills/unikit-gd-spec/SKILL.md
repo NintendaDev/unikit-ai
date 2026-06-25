@@ -272,14 +272,8 @@ System map: <N> systems — <M> MVP, … ; design order: SYS-…, SYS-…
 
 Then recommend the next step (do not auto-invoke):
 
-```
-AskUserQuestion: Master spec ready. What's next?
-
-Options:
-1. Detail the first MVP system — /unikit-gd-system <SYS-slug> (recommended)
-2. Review the master spec — /unikit-gd-review (fresh session recommended)
-3. Nothing — I'll continue later
-```
+- 🧩 Detail the first MVP system — /unikit-gd-system <SYS-slug>
+- 🔍 Review the master spec (fresh session) — /unikit-gd-review
 
 ## Ownership Boundaries
 

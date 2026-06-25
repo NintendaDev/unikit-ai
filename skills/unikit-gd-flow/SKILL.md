@@ -490,15 +490,9 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
 
 Recommend the next steps (do not auto-invoke):
 
-```
-AskUserQuestion: FLOW-<slug> is <detailed | detailed · partial (n/m) | revised to vN>. What's next?
-
-Options:
-1. Verify consistency & impact — /unikit-gd-verify FLOW-<slug> (recommended)
-2. Review it — /unikit-gd-review flows/FLOW-<slug>.md (fresh session)
-3. Detail an exercised system — /unikit-gd-system <SYS-slug>
-4. Nothing — I'll continue later
-```
+- ✅ Verify consistency & impact — /unikit-gd-verify FLOW-<slug>
+- 🔍 Qualitative review (fresh session) — /unikit-gd-review flows/FLOW-<slug>.md
+- 🧩 Detail an exercised system — /unikit-gd-system <SYS-slug>
 
 A review is most independent in a **fresh session** (the reviewer should not have
 authored the doc). `unikit-gd-verify` checks the flow against the registry, flags

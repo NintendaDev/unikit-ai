@@ -410,14 +410,10 @@ Freshness: <re-rendered ## System Map [gen] (· partial n/m where a section is d
 Report: <path | none (clean PASS)>
 ```
 
-```
-AskUserQuestion: Verification done. What's next?
+**Next steps** (do not auto-invoke):
 
-Options:
-1. Fix the conflicts — /unikit-gd-system <system> "<conflict>" (recommended if CONFLICTS)
-2. Review quality — /unikit-gd-review <system> (fresh session)
-3. Nothing — I'll continue later
-```
+- 🔧 Fix the conflicts — /unikit-gd-system <system> "<conflict>"
+- 🔍 Review quality (fresh session) — /unikit-gd-review <system>
 
 No summary document beyond the conditional report file.
 

@@ -130,6 +130,10 @@ List the chapters written (and the `--web` outcome). Note that `docs/design/` is
 generated view — re-run after any authoring change to refresh it. **Do not** offer to edit
 the GDD here (route authoring to the owner skills).
 
+**Next steps** (do not auto-invoke):
+
+- 🌐 Render the HTML site — /unikit-gd-docs --web
+
 ## Ownership Boundaries
 
 - **Owns:** `docs/design/**` — the rendered design chapters (and their `.html` under

@@ -453,15 +453,9 @@ re-renders on the next `unikit-gd-verify` freshness check or `unikit-gd-spec` to
 
 Recommend the next steps (do not auto-invoke):
 
-```
-AskUserQuestion: SYS-<slug> is <detailed | detailed · partial (n/m) | revised to vN>. What's next?
-
-Options:
-1. Verify consistency & impact — /unikit-gd-verify SYS-<slug> (recommended)
-2. Review it — /unikit-gd-review systems/SYS-<slug>.md (fresh session)
-3. Detail the next system — /unikit-gd-system <SYS-slug>
-4. Nothing — I'll continue later
-```
+- ✅ Verify consistency & impact — /unikit-gd-verify SYS-<slug>
+- 🔍 Qualitative review (fresh session) — /unikit-gd-review systems/SYS-<slug>.md
+- 🧩 Detail the next system — /unikit-gd-system <SYS-slug>
 
 A review is most independent in a **fresh session** (the reviewer should not have
 authored the doc). `unikit-gd-verify` checks the doc against the registry, flags

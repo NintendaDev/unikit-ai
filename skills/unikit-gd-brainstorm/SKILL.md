@@ -545,15 +545,12 @@ Find-the-fun: <the prototype that proves the core>
 Rejected → IDEAS.md: <n>
 ```
 
-```
-AskUserQuestion: Concept "<title>" is captured. What's next?
+**Next steps** (do not auto-invoke):
 
-Options:
-1. Build the master spec — /unikit-gd-spec <slug> (recommended)
-2. Research a reference or the market — /unikit-gd-explore <topic>
-3. Prototype-first — validate the find-the-fun before specing
-4. Nothing — I'll continue later
-```
+- 🗺️ Build the master spec — /unikit-gd-spec <slug>
+- 🔬 Research a reference or the market — /unikit-gd-explore <topic>
+
+Prototype-first is also valid — validate the find-the-fun before specing.
 
 No summary document, no report file.
 
