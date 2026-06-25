@@ -83,9 +83,11 @@ Silently load — do not narrate:
    rules for this system's **behavioural domain**, on demand by `Load When`, plus
    any studio `library` rule on the same topic. Read the domain from the system's
    name and Overview (the behaviour it drives), **not** from the coarse GD-IDS
-   `category`; when the behaviour is ambiguous or the category is coarse (Gameplay
-   / Meta), confirm the domain and pack(s) with one `AskUserQuestion` rather than
-   guessing. Domains are opt-in and combinable — a system may match more than one:
+   `category`. When the behaviour is **unambiguous**, attach the matching domain
+   automatically (its section-pack rides along — auto-attached with a veto, see item 6
+   and Phase 4); when it is **ambiguous** or the category is coarse (Gameplay / Meta),
+   settle it with one plain `AskUserQuestion` — framed as an outcome, no codes — rather
+   than guessing. A system may match more than one domain; they combine:
 
    | Domain | Core rules to load | Section-pack |
    |--------|--------------------|--------------|
@@ -107,9 +109,12 @@ Silently load — do not narrate:
    memory tree** (`.unikit/memory/gamedesign/**`) to discover rules.
 5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
 6. **`{{skills_dir}}/{{self_name}}/references/section-packs.md`** — the catalog of
-   domain section-packs, offered as a **value-framed, independent opt-in in the
-   decision round** (Phase 4), not a mandatory pass after section K. Load the pack
-   named in the table above (when one applies).
+   domain section-packs. On an **unambiguous** domain the matching pack is
+   **auto-attached** — announced to the user in one outcome-language phrase (what it
+   adds for the player / the design, never the word "pack" or a code) that they can
+   veto; on an **ambiguous** domain a single plain Yes/No decides it. Never a mandatory
+   pass after section K, never surfaced as registry jargon. Load the pack named in the
+   table above (when one applies).
 7. **Schema guard (clean break — no automatic migration).** `GD-IDS.yaml` MUST be
    `version: 2`. If it is still `version: 1`, **STOP** and report: the design
    workspace is on the pre-v2 layout — v2 dropped the standalone markdown
@@ -184,17 +189,18 @@ letters:
 ```
 AskUserQuestion: How deep should this pass go?
 Options:
-1. core (recommended) — the floor that makes the doc `detailed`: Overview, Player
-   Fantasy, Detailed Design, Formulas, Acceptance Criteria.
+1. core (recommended) — the floor that gets the doc to a solid, usable base: Overview,
+   Player Fantasy, Detailed Design, Formulas, Acceptance Criteria.
 2. standard — core + Edge Cases, Dependencies, Tuning Knobs, Telemetry, Accessibility.
 3. full — every section + the relevant domain pack(s).
 ```
 
 The picked tier is the **ephemeral scope of this pass — NOT stored** (`gd-authoring` /
-`gd-lifecycle`); the lasting fact is the inferred status at Phase 6. Recommended
-**packs** for the system's domain (Phase 0 table) are surfaced here as an independent,
-value-framed opt-in, confirmed in the Phase 4 decision round. **Edit** mode skips the
-depth gate entirely (it lies flat on the Revision flow).
+`gd-lifecycle`); the lasting fact is the inferred status at Phase 6. The matching
+**section-pack** for the system's domain (Phase 0 table) is **auto-attached when the
+domain is unambiguous** — announced in one outcome-language phrase you can veto; an
+ambiguous domain gets a single plain Yes/No in the Phase 4 decision round. **Edit** mode
+skips the depth gate entirely (it lies flat on the Revision flow).
 
 ---
 
@@ -241,7 +247,7 @@ partiality stays honest.
    ```
 
    When the system's domain has a **section-pack** (Phase 0 table), its sub-sections
-   are appended after K (opted in during Phase 4 — see `references/section-packs.md`).
+   are appended after K (attached in Phase 4 — see `references/section-packs.md`).
 2. **Fork-scan (silent).** Walk the in-scope sections (per the picked depth) and
    classify each **without asking** — **seeded** (the Phase 1 context: a SOURCE /
    recon / explore brief, the pillars, the loaded domain rules, or a neighbour already
@@ -259,8 +265,10 @@ an open **"my own — I'll describe it"**. A truly-blank section with no grounde
 becomes an explicit **flagged open question** (section K), not a silent blank. A
 **pillar or loop conflict** that surfaces here is escalated to `/unikit-gd-spec`
 **before writing** — the real change is in GAME.md content or the map; name it, do not
-force-fit. **Packs** are offered in this round, framed by the **value** they add
-(Phase 0 table), an independent opt-in orthogonal to depth.
+force-fit. **Section-packs** ride this round: an **unambiguous** domain **auto-attaches**
+its pack — announced in one outcome-language phrase (the value it adds for the player /
+the design, never the word "pack" or a code) and **vetoable**; an **ambiguous** domain is
+settled by a single plain Yes/No. Packs are orthogonal to depth and combine.
 
 **Generation.** Draft each in-scope section — **seeded** sections **silently** (emit
 `INFO [gd-system] seeded §<name> — drafted silently`), decided sections from their
@@ -290,8 +298,9 @@ decision. The section-specific logic (the rest follows the Decision-First flow):
   **core** section (A/B/C/D/H) **may** be deferred, but then the status honestly stays
   below `detailed` (the Phase 6 soft floor guard) — emit `WARN [gd-system] core
   section §<name> deferred — status held below detailed`.
-- **Section-packs** — when a pack was opted in, author its sub-sections after K with
-  the same flow, loading the pack's extra rule as noted in `references/section-packs.md`.
+- **Section-packs** — when a pack was attached (auto-attached or confirmed), author its
+  sub-sections after K with the same flow, loading the pack's extra rule as noted in
+  `references/section-packs.md`.
 
 ### Phase 5 — Group Review
 
@@ -463,10 +472,14 @@ dependent systems, and refreshes the `## System Map [gen]`.
 
 ## Final: Compact Report
 
+The terminal plaque (TIER A — `gd-principles` → Language): lead with the **name**; the
+`SYS-` / `AC-` ids ride along as parenthetical copy-paste tags; render the lifecycle
+status as a **plain phrase**, never the raw enum.
+
 ```
-System: SYS-<slug> — <name>
+System: <name>  (SYS-<slug>)
 Mode: <create | fill | edit (tuning|tweak|rework)>   ·   Depth: <core | standard | full>  (create/fill)
-Doc: .unikit/gamedesign/systems/SYS-<slug>.md (Status: <skeleton | detailed | detailed · partial (n/m) | revised>, vN)
+Doc: .unikit/gamedesign/systems/SYS-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet | updated, awaiting re-review>, vN
 Sections authored/edited: <the named list>   [deferred: <names carrying <!-- deferred --> > | none]
 Registry: +<E> entities, +<F> formulas, +<T> terms  (GD-IDS.yaml)
 Acceptance criteria: AC-<slug>-1 … AC-<slug>-N   [AC delta on an edit: +<n> / changed <n> / removed <n>]

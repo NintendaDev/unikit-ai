@@ -16,7 +16,10 @@ template's lettered sections + a human name for each) and reads its **core-set**
 floor sections, defined once in `gd-lifecycle`): system `A/B/C/D/H`, flow `A/B`,
 content `A/B/C`. Section letters are the template's internal index only — **address
 sections by name in the dialogue, never by a bare letter** (A–K means nothing to the
-user).
+user). This is one instance of the **designer-facing membrane** (`gd-principles` →
+Language): the section letters, like the `SYS-`/`AC-` codes and the lifecycle-status
+enum, are registry language — load-bearing on disk, never spoken. Speak names and
+outcomes; keep the codes in the file.
 
 **Ceremony scales to choice.** A section the seeds already answer is drafted
 silently; only a genuine design fork earns a question. Depth picks *how many*
@@ -101,9 +104,12 @@ Decision-First only over the newly-attempted sections (partiality stays honest);
 **Edit / Rework** lie flat on this flow; **Tuning / Tweak** edits stay a single gate
 (untouched).
 
-**Packs** are an **independent opt-in, orthogonal to depth.** They are surfaced in the
-decision round framed by the **value** they add (not "after sections A–K"); their
-sub-sections are authored through these same six phases, never a separate linear pass.
+**Packs** are **orthogonal to depth.** A pack matching an **unambiguous** domain is
+**auto-attached** — announced in one outcome-language phrase (the value it adds, never
+the word "pack" or a code) that the user can **veto**; an **ambiguous** domain is settled
+by a single plain Yes/No in the decision round. Either way the pack is framed by the
+**value** it adds (not "after sections A–K"); its sub-sections are authored through these
+same six phases, never a separate linear pass.
 
 ## Delta Discipline
 

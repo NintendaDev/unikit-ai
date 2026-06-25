@@ -200,8 +200,8 @@ letters:
 ```
 AskUserQuestion: How deep should this pass go?
 Options:
-1. core (recommended) — the floor that makes the type `detailed`: Overview, Schema
-   (CT.fields), Scale & Generation.
+1. core (recommended) — the floor that gets the type to a solid, usable base: Overview,
+   Schema (CT.fields), Scale & Generation.
 2. standard — core + Relationships & Dependencies, Validation & Edge Cases.
 3. full — every section, fully specified.
 ```
@@ -528,11 +528,14 @@ refreshes the `## Content Map [gen]`.
 
 ## Final: Compact Report
 
+The terminal plaque (TIER A — `gd-principles` → Language: name leads, ids are
+parenthetical copy-paste tags, status is a plain phrase):
+
 ```
-Content type: CT-<slug> — <name>
-Scale: <bulk | curated>   Belongs to: SYS-<slug>   ·   Depth: <core | standard | full>  (create/fill)
+Content type: <name>  (CT-<slug>)
+Scale: <bulk | curated>   Belongs to: <system name> (SYS-<slug>)   ·   Depth: <core | standard | full>  (create/fill)
 Action: <create | fill | edit (tuning|tweak|rework) | catalog churn>
-Doc: .unikit/gamedesign/content-types/CT-<slug>.md (Status: <skeleton | detailed | detailed · partial (n/m) | revised>, vN)
+Doc: .unikit/gamedesign/content-types/CT-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet | updated, awaiting re-review>, vN
 Registry: <F> fields; <U> units (<count> bulk | <n> curated); +<R> resources/tracks/knobs  (GD-IDS.yaml)
 Map: ## Content Map [gen] re-rendered
 ```

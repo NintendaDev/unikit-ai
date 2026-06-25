@@ -144,9 +144,9 @@ prompt** (`gd-principles` "never guess" rule). Resolve in this order:
    AskUserQuestion: GAME.md already exists. What do you want to do?
 
    Options:
-   1. Edit GAME.md content — change a pillar / fantasy / loop / stance (GAME.md carve-out)
-   2. Rebuild the system map (remap) — re-derive the roster from GAME.md
-   3. Add one system to the map (add-system)
+   1. Edit GAME.md content — change a pillar / fantasy / loop / stance
+   2. Rebuild the system map — re-derive the roster from GAME.md
+   3. Add one system to the map
    4. Create a pitch (PITCH.md)
    5. Import a different GDD — give me the path/URL
    ```
@@ -256,18 +256,19 @@ always agree.
 
 ## Final: Compact Report & Next Steps
 
-After artifacts are written, show a compact report (no summary document, no report
-file):
+After artifacts are written, show a compact report (TIER A — `gd-principles` →
+Language: names lead, ids are parenthetical copy-paste tags, status is a plain phrase;
+no summary document, no report file):
 
 ```
 Mode: <create | import | edit | remap | add-system | pitch>
 Workspace: .unikit/gamedesign/
 Written:
-- GAME.md (vN, <drafted|approved>) — incl. ## System Map [gen] re-rendered
+- GAME.md (vN — <still a draft | approved>) — incl. ## System Map [gen] re-rendered
 - GD-IDS.yaml (<P> pillars, <N> systems)
 - [SOURCE.md / PITCH.md when applicable]
 
-System map: <N> systems — <M> MVP, … ; design order: SYS-…, SYS-…
+System map: <N> systems — <M> MVP, … ; design order: <name> (SYS-<slug>), <name> (SYS-<slug>), …
 ```
 
 Then recommend the next step (do not auto-invoke):

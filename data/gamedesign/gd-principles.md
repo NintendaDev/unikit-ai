@@ -225,6 +225,71 @@ user is the arbiter of every conflict.
 - **Numbers live in tables, intent lives in prose.** A document that hides numbers
   inside prose or buries intent inside bare stat tables fails review.
 
+**The membrane — registry language vs designer language.** The system holds two
+vocabularies: a **registry language** — the codes (`PIL-*`, `SYS-*`, `AC-*`, `FORM-*`,
+`CT-*`, `GOAL-*`, `FLOW-*`), the lifecycle-status enum (`skeleton | detailed | reviewed
+| revised`), and the section letters A–K — and a **designer language** of names,
+feelings, and outcomes. The codes are **load-bearing on disk**: `unikit-gd-verify`,
+`unikit-plan`, and the engine read them, so they stay verbatim in **files**. They must
+not leak into **speech**. Every `unikit-gd-*` skill speaks through this membrane — the
+artifact keeps its codes, the conversation carries only the designer language. The
+contract lives here in the core (read on Bootstrap by all eleven skills) and **overrides
+any local phrasing**.
+
+**Two tiers of translation.**
+
+- **TIER B — every interactive surface** (questions, the status line, menus, any
+  user-visible `INFO [gd]` / `WARN [gd]`): **no codes, no enum labels.** Lead with the
+  name and a plain phrase. A question never shows an id or a status enum; a menu item
+  reads as an outcome, not a registry token.
+- **TIER A — the terminal plaque only** (the Compact / Final Report at the end of a
+  run): the **name leads**, and an id may ride along as a **secondary tag in
+  parentheses** for copy-paste — `Mini-games (SYS-mini-games) — ready`. The id is for
+  reference; it never leads, and it appears nowhere outside this plaque.
+
+**Lifecycle status → plain phrase** (both tiers translate it; render the gloss in the UI
+language):
+
+| Enum (file / registry) | Spoken — name + phrase |
+|---|---|
+| `skeleton` | "skeleton — the main blocks aren't filled in yet" |
+| `detailed` | "ready" (the core is in place) |
+| `detailed · partial` | "ready — a couple of optional blocks are left" → a **soft next-step**, never a badge |
+| `reviewed` | "reviewed" |
+| `revised` | "updated — awaiting re-review" |
+
+`partial` is **demoted to a soft next-step** ("a couple of optional blocks are left —
+add them?"), never printed as the label `(detailed · partial)`.
+
+**Enum boundary — only the lifecycle enum is registry jargon.** The other enums name a
+real design choice, so they are **designer vocabulary**, kept as meaningful words
+(optionally in the UI language) and **outside the membrane's translate-away scope**: flow
+**mode** (`linear | conditional | emergent`), content **scale** (`bulk | curated`), pass
+**depth** (`core | standard | full`), **edit-kind** (`tuning | tweak | rework`), and the
+**mode/verb** (`create | import | edit | remap | add-system | pitch`). Speak them as the
+words they are; never dress them as a code, never strip them to a bare badge.
+
+**Carve-outs — the membrane does NOT apply to:**
+
+- **(a) Files on disk and `[gen]` maps.** Artifacts keep their codes: `> Status:`
+  headers, GD-IDS facts, and the generated `## System Map` / `## Flow Map` / `## Funnel`
+  / `## Content Map` blocks (owned and re-rendered by verify/spec) are registry surface,
+  not speech.
+- **(b) Echo of user input.** If the user typed a code (`SYS-mini-games`, `PIL-2`), echo
+  it back verbatim — translating the user's own token is noise.
+- **(c) Registry-facing reports.** `unikit-gd-verify` (consistency) and
+  `unikit-gd-review` (findings — the stable `RF-<date>-n` ids and the `SYS-` / `AC-`
+  citations they point at) **speak codes by design**: their job is to address the on-disk
+  registry precisely, and a grounded id citation is the whole value. They are **exempt
+  from TIER A/B**. This is why the membrane reaches **5 of the 11** `unikit-gd-*` skills —
+  verify, review, recon, apply, and docs are out of scope; the five authoring/ideation
+  skills are in.
+
+**Enforcement is discipline, not a gate.** No grep can prove speech stayed clean — the
+guarantee is that this contract sits in the core and is **re-applied at every
+`AskUserQuestion`, status line, and menu**: when a skill builds a user-facing string it
+renders through this membrane; when it writes a file it does not.
+
 ## Anti-patterns
 
 - Writing or editing any artifact without an explicit approval.

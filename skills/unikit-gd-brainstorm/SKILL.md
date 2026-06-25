@@ -112,7 +112,7 @@ and the last phase reached. Semantically match the user's hint against the rows:
 - A live `in-progress` concept matches the hint →
 
   ```
-  AskUserQuestion: Found "<title>" (in-progress, phase <N>). What now?
+  AskUserQuestion: Found "<title>" — you left off at phase <N>. What now?
   Options:
   1. Continue "<title>" from phase <N> (recommended)
   2. Start a fresh concept
@@ -537,10 +537,13 @@ mkdir -p .unikit/gamedesign/concepts/<date>_<slug>
 
 ## Final: Compact Report & Next Steps
 
+The terminal plaque (TIER A — `gd-principles` → Language: names lead, status is a plain
+phrase; the pillar ids live in GAME.md / GD-IDS):
+
 ```
 Concept: <title>  (.unikit/gamedesign/concepts/<date>_<slug>/)
-Status: <drafted|approved>  ·  reached phase 9
-Pillars: PIL-1 … PIL-n   Anti: <n>   MDA: <primary>/<secondary>
+Status: <still a draft | approved>  ·  reached phase 9
+Pillars: <name>, <name>, …   Anti: <n>   MDA: <primary>/<secondary>
 Find-the-fun: <the prototype that proves the core>
 Rejected → IDEAS.md: <n>
 ```

@@ -183,8 +183,8 @@ letters:
 ```
 AskUserQuestion: How deep should this pass go?
 Options:
-1. core (recommended) — the floor that makes the flow `detailed`: Overview, Objective
-   Flow (the GOAL line-up).
+1. core (recommended) — the floor that gets the flow to a solid, usable base: Overview,
+   Objective Flow (the run of objectives the player works through).
 2. standard — core + Pacing, Dependencies, Events (the funnel).
 3. full — every section, fully tuned.
 ```
@@ -501,12 +501,15 @@ dependent flows on cross-axis staleness, and refreshes the `## Flow Map [gen]` /
 
 ## Final: Compact Report
 
+The terminal plaque (TIER A — `gd-principles` → Language: name leads, ids are
+parenthetical copy-paste tags, status is a plain phrase):
+
 ```
-Flow: FLOW-<slug> — <name>
+Flow: <name>  (FLOW-<slug>)
 Mode: <linear | conditional | emergent>   ·   Depth: <core | standard | full>  (create/fill)
 Action: <create | fill | edit (tuning|tweak|rework)>
-Doc: .unikit/gamedesign/flows/FLOW-<slug>.md (Status: <skeleton | detailed | detailed · partial (n/m) | revised>, vN)
-Registry: +<G> goals, +<E> events, depends_on [<SYS-ids>]  (GD-IDS.yaml)
+Doc: .unikit/gamedesign/flows/FLOW-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet | updated, awaiting re-review>, vN
+Registry: +<G> goals, +<E> events, depends_on [<name> (SYS-<slug>), …]  (GD-IDS.yaml)
 Goals: GOAL-<slug>-1 … GOAL-<slug>-N   [GOAL delta on an edit: +<n> / changed <n> / removed <n>]
 Maps: ## Flow Map [gen] + ## Funnel [gen] re-rendered
 ```
