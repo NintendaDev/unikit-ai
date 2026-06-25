@@ -159,6 +159,21 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 
 ## Game design
 
+### unikit-gd-recon
+- **Purpose:** Cold-start **brownfield** reconnaissance — reconstruct CANDIDATE design facts
+  from an existing codebase into one passive `RECON.md`, for a team with a live game but no
+  GDD (nothing to import). A read-only research verb: it reads code, writes one document, and
+  calls no skill.
+- **When:** "we have a game but no GDD", "reconstruct the design from the code", "bootstrap a
+  GDD from this Unity/Godot/Unreal project". STRICTLY cold-start — once a GDD exists use
+  `/unikit-gd-explore` (code lens) for a targeted slice instead.
+- **In:** an optional subsystem / path to focus the scan. The engine is auto-detected.
+- **Out:** `.unikit/gamedesign/RECON.md` — a system roster + dependency graph (P0) and
+  content-type schemas / resources / entities (P1), every fact `provenance: extracted from
+  code`, plus a mandatory `## Intent Gap` for what code cannot know (pillars, fantasy, the
+  "why"). Recommends `/unikit-gd-spec <RECON.md>` import; writes nothing else, calls no skill.
+- **Optional (the brownfield entry of the design track).** After: `/unikit-gd-spec` import.
+
 ### unikit-gd-brainstorm
 - **Purpose:** Ideate a brand-new game concept from a blank page or a one-line hint — pillars,
   loops, motivation, pre-mortem — into a CONCEPT card. Includes delegated market validation.
@@ -280,6 +295,21 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Out:** a conflicts/impact report (only when something is found); flags affected dependents `revised`.
 - **Optional (recommended after every design edit).** Before: `/unikit-gd-system`. After:
   `/unikit-gd-system` (fix conflicts).
+
+### unikit-gd-docs
+- **Purpose:** Render the design workspace into a **human-readable GDD** — read-only Markdown
+  chapters under `docs/design/` (the export end of the design track, the mirror of
+  `unikit-gd-recon`'s code→design import). Facts are resolved inline from `GD-IDS.yaml`; drafts
+  are flagged 🚧.
+- **When:** "render the GDD", "export the game design to docs", "generate readable design docs",
+  "publish the GDD".
+- **In:** nothing, or `--web` (also emit an HTML site from the `unikit-docs` template; MD-only +
+  `WARN` if that template is absent).
+- **Out:** `docs/design/{index,systems,flows,content,economy,glossary}.md` (+ `.html` under
+  `--web`). Read-only on the GDD — it never authors. `unikit-docs` owns `docs/*.md`; this owns
+  `docs/design/**`.
+- **Optional (the export-out of the design track).** Before: `/unikit-gd-verify`. After: share the
+  rendered docs.
 
 ---
 

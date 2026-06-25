@@ -1,16 +1,18 @@
 ---
 name: unikit-gd-review
 description: >-
-  Qualitative quality review of game design documents — answers "is this design good?" — by
-  fanning out adversarial lenses (completeness, clarity, pillar alignment, systems-math,
-  fantasy-delivery, feasibility, scope, and domain lenses), each prompted to find problems
-  rather than validate. Produces a severity-graded verdict and a report. Scope is inferred:
-  a named system reviews that document; "all"/"all systems" runs a cross-system review. Use
-  when the user wants a critique or quality judgment of the design, e.g. "review the combat
-  GDD", "is this design good", "critique this system", "what's wrong with this design",
-  "review all the GDDs", "is this system fun/balanced". This is the subjective quality pass
-  — for a mechanical consistency check (numbers, terms, IDs, references matching the
-  registry) use /unikit-gd-verify.
+  Qualitative quality review of game design documents — answers "is this design good,
+  and does it follow best practices?" — across all three GDD axes: systems, flows, and
+  content types. Fans out adversarial lenses (completeness, clarity, pillar alignment,
+  systems-math, fantasy-delivery, catalog scale, pacing & funnel, feasibility, scope) plus
+  domain lenses that check it against the game-design rules, each prompted to find problems
+  rather than validate; produces a severity-graded verdict and report. Scope is inferred: a
+  named system, flow, or content type reviews that document; "all" runs a cross-document
+  review. Use when the user wants a critique, quality judgment, or rules check of the design,
+  e.g. "review the combat GDD", "does this follow best practices", "check the design
+  against the rules", "is the loot content well-designed", "review the onboarding flow".
+  This is the subjective quality pass — for a mechanical consistency check (numbers, terms,
+  IDs, references matching the registry) use /unikit-gd-verify.
 argument-hint: "[system name | SYS-slug | path | \"all\"]  (scope inferred; no flags)"
 allowed-tools:
   - Read

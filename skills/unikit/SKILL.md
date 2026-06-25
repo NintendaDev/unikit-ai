@@ -868,6 +868,18 @@ Your project already has code. You might also want:
 - /unikit-review — Review existing code for conventions
 ```
 
+**Additionally, if the project has code but no game-design doc yet** — the Step 6 scan
+detected existing scripts **and** `.unikit/gamedesign/GAME.md` does not exist (check with
+Glob/Read) — append the brownfield-reconnaissance offer. This is a **handoff**: recommend
+the command, do **not** run it inline. Gate on **both** conditions (recon is strictly
+cold-start — a project that already has a GDD uses `/unikit-gd-explore`'s code lens
+instead); do not gate on "gd-skills are installed" — the wizard installs all skills:
+
+```
+- /unikit-gd-recon — Reconstruct a GDD skeleton from your existing code (brownfield
+  cold-start) → then /unikit-gd-spec import. Read-only; writes one RECON.md, calls nothing.
+```
+
 ---
 
 ## Rules

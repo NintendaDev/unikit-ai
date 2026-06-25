@@ -54,7 +54,8 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "subagentsDir": ".claude/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-memory",
-                          "unikit-skills-context", "unikit-verify"],
+                          "unikit-skills-context", "unikit-verify",
+                          "unikit-gd-recon", "unikit-gd-docs"],
       "installedSubagents": ["unikit-architecture-sidecar"]
     }
   ],
@@ -199,6 +200,20 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/mode-fast.md" \
   "unikit-plan mode reference (mode-fast.md) installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/design-context.md" \
   "unikit-plan design-context.md reference installed"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-brownfield: the two new brownfield/export skills (unikit-gd-recon,
+# unikit-gd-docs) deliver on init — both are in this fixture's installedSkills.
+# unikit-gd-recon's shared references/code-recon.md travels with it via the non-flat
+# copyDirectory (no shard-cycle wiring needed). No hardcoded skill counter exists in
+# these smokes (skills are auto-discovered by glob), so nothing else to bump.
+# ─────────────────────────────────────────────────────
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-recon/SKILL.md" \
+  "unikit-gd-recon SKILL.md installed (brownfield cold-start recon)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-recon/references/code-recon.md" \
+  "unikit-gd-recon shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
+  "unikit-gd-docs SKILL.md installed (GDD → docs/design render)"
 
 # ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path

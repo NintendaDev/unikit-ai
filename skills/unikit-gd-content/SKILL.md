@@ -1,18 +1,18 @@
 ---
 name: unikit-gd-content
 description: >-
-  Author and own one content type's design document (the CONTENT-TYPE.md schema) at
-  .unikit/gamedesign/content-types/CT-<slug>.md — the content / catalog layer of the GDD (the
-  data the game is made of: cards, items, levels, enemies, quests). Create the skeleton and walk
-  the collaborative section-cycle to write its typed field schema (CT.fields), scale,
-  relationships, and validation ("design the item content type", "define the card schema", "add
-  a CT for enemies"), AND revise the schema after approval under the delta discipline ("add a
-  rarity field", "switch to curated") — a schema change bumps the version + changelog, while
-  catalog churn is data, not a schema edit. Selects the scale (bulk | curated), self-registers
-  content_types/content and re-renders the ## Content Map [gen].
-  To add/detail a system use /unikit-gd-system; to add a flow use /unikit-gd-flow; to edit
-  GAME.md content use /unikit-gd-spec; to apply a multi-zone edit use /unikit-gd-apply; for a
-  new concept use /unikit-gd-brainstorm.
+  Author and own ONE content type's typed schema (the CONTENT-TYPE.md) at
+  .unikit/gamedesign/content-types/CT-<slug>.md — the content / catalog layer of the GDD
+  (cards, items, weapons, enemies, levels, quests, loot). Use whenever the user wants to ADD
+  a new kind of content or UPDATE its schema, e.g. "add a new content type", "design the
+  loot content", "define the card schema", "add an enemies content type", "add a rarity
+  field to items", "switch this catalog to curated". Create the skeleton, fill its typed
+  field schema (CT.fields), scale, relationships, and validation, AND revise the schema under
+  the delta discipline (a schema change bumps the version + changelog). Selects the scale
+  (bulk | curated) and self-registers content_types/content. This owns the content SCHEMA,
+  not the catalog of values — adding individual entries/units is data handled in the editor,
+  not a schema edit. To add or detail a system use /unikit-gd-system; to add a flow use
+  /unikit-gd-flow; to apply a multi-zone edit use /unikit-gd-apply.
 argument-hint: "<content type name | CT-slug> [\"<what to change>\"]  (scale inferred from doc state + intent; no flags)"
 allowed-tools:
   - Read

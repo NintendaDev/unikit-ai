@@ -136,11 +136,13 @@ canonical intent list and the full routing table live in
 | Start a project / nothing exists yet | `/unikit` (one-time setup) | pipelines.md |
 | Decide what game to build | `/unikit-gd-brainstorm` | pipelines.md |
 | Create the game design (GDD) | `/unikit-gd-spec` | pipelines.md |
+| Have a live game / code but no GDD | `/unikit-gd-recon` (reconstruct from code) → `/unikit-gd-spec` import | pipelines.md |
 | Detail / fill / revise a system's mechanics | `/unikit-gd-system` | skill-map.md |
 | Design / pace / revise a flow (onboarding, session arc, funnel) | `/unikit-gd-flow` | skill-map.md |
 | Find or invent a new mechanic | `/unikit-gd-explore` (then it routes onward) | pipelines.md |
 | Improve / tune / rework a design system | `/unikit-gd-system` | skill-map.md |
 | Edit the master GDD (`GAME.md`) content | `/unikit-gd-spec` | skill-map.md |
+| Export / publish the GDD for people to read | `/unikit-gd-docs` (→ `docs/design/`) | pipelines.md |
 | Research a technical solution before coding | `/unikit-explore` | pipelines.md |
 | Plan a feature | `/unikit-plan` | pipelines.md |
 | Start writing code | `/unikit-plan` → `/unikit-implement` | pipelines.md |

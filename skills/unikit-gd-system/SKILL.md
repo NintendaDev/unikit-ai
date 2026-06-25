@@ -1,17 +1,19 @@
 ---
 name: unikit-gd-system
 description: >-
-  Author and own one system's design document (the A–K SYSTEM GDD) at
-  .unikit/gamedesign/systems/SYS-<slug>.md — the depth layer of the GDD. Create the skeleton
-  and walk the collaborative section-cycle to write its parameters, rules, formulas, and
-  acceptance criteria ("detail the combat system", "write the GDD for the inventory system",
-  "fill in the rest of this system doc", "spec out the parameters of X"), AND revise it after
-  approval under the delta discipline ("raise the damage by 10%", "tune the economy", "rework
-  the status system", "nerf X", "change this rule") — a number change is Tuning, a small rule
-  a Tweak, restructuring a Rework; each bumps the version and appends a changelog. To add a
-  whole new system or restructure the system map use /unikit-gd-spec; to edit GAME.md content
-  use /unikit-gd-spec; to apply one edit spanning several zones at once use
-  /unikit-gd-apply; to invent a brand-new game concept use /unikit-gd-brainstorm.
+  Author and own ONE system's design document (the A–K SYSTEM GDD) at
+  .unikit/gamedesign/systems/SYS-<slug>.md — the depth layer of the GDD, single-system
+  scope. Create the skeleton and walk the collaborative section-cycle to write its
+  parameters, rules, formulas, and acceptance criteria ("detail the combat system",
+  "write the GDD for the inventory system", "fill in the rest of this system doc",
+  "spec out the parameters of X"), AND revise it after approval under the delta discipline
+  ("raise the damage by 10%", "tune the economy", "rework the status system", "nerf
+  X", "change this rule") — a number change is Tuning, a small rule a Tweak, restructuring
+  a Rework; each bumps the version and appends a changelog. To add a NEW system or
+  restructure the system map use /unikit-gd-spec; to edit GAME.md content use /unikit-gd-spec;
+  the moment an edit also touches a second system, a content type, a flow, or GAME.md (two
+  or more zones) use /unikit-gd-apply; to invent a brand-new game concept use
+  /unikit-gd-brainstorm.
 argument-hint: "<system name | SYS-slug> [\"<what to change>\"]  (mode inferred from doc state + intent; no flags)"
 allowed-tools:
   - Read

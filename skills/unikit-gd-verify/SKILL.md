@@ -2,17 +2,17 @@
 name: unikit-gd-verify
 description: >-
   Mechanical consistency check for game design — answers "is the design consistent with
-  itself?" — plus changed-scope impact analysis. Offline, deterministic, and binary: greps
-  the facts registry against the documents (numbers, terms, IDs, duplicate IDs, dangling
-  references, unregistered cross-doc facts, roster↔disk, map freshness, Depends 3-way,
-  status/version coherence, AC presence, placeholder leaks, and the flow checks:
-  mode↔structure, GOAL & funnel coherence), and from a git diff computes which dependent
-  systems and flows a change affects. Scope is inferred: a named system checks that
-  system; an unverified diff triggers a changed-scope pass; otherwise it checks everything.
-  Use when the user wants a consistency or impact check, e.g. "verify the design", "is the
-  design consistent", "check the GDDs against the registry", "what did this change affect",
-  "find broken references in the design". This is the mechanical pass — for a subjective "is
-  this design good" quality critique use /unikit-gd-review.
+  itself?" — plus changed-scope impact analysis across all three GDD axes: systems, flows,
+  and content types. Offline and deterministic: greps the facts registry against the
+  documents (numbers, terms, IDs, duplicate & dangling references, roster↔disk, map freshness,
+  Depends 3-way, status/version, AC presence, placeholder leaks, flow mode↔structure & funnel,
+  content CT/CU ids, ref<>, scale↔structure, belongs_to), and from a git diff computes which
+  dependent systems, flows, and content a change affects. Scope is inferred: a named document
+  checks that document; an unverified diff triggers a changed-scope pass; otherwise
+  everything. Use when the user wants a consistency or impact check, e.g. "verify the
+  design", "check the GDDs against the registry", "what did this change affect", "find
+  broken references in the design". This is the mechanical pass — for a subjective "is this
+  design good" quality critique use /unikit-gd-review.
 argument-hint: "[system name | SYS-slug | question]  (scope inferred; no flags)"
 allowed-tools:
   - Read

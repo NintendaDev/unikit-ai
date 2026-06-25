@@ -24,20 +24,33 @@ pillar / rule** (`gd-critique` — no citation → downgrade to Suggestion).
 | **feasibility** | Reads `DESCRIPTION.md`/`ARCHITECTURE.md` (the **single** sanctioned code-context read) to flag implementability risks against the actual stack/architecture. | Critical (unimplementable on this stack) |
 | **fantasy-delivery** | Does section B's promised feeling actually arise from the mechanics in C/D/E? Does the system serve ≥1 SDT need (autonomy/competence/relatedness)? Attack the gap between the promised fantasy and what the rules produce. | Major (mechanics don't deliver the stated fantasy); Critical (system serves no need and no pillar) |
 
-## Provenance lens (imported systems only)
+## Provenance lens (imported & code-reconstructed systems)
 
-Runs **only** when the system was built by import — its sections carry provenance
-markers (see `gd-provenance` → Provenance). It separates inferred content from
-author-sourced content and holds the two to different bars:
+Runs **only** when the system was built by import or reconstructed from code — its
+sections carry provenance markers (see `gd-provenance` → Provenance). It separates
+inferred content from author-sourced content and holds them to different bars.
+
+**First, classify the import.** A system is a **code-reconstructed import** when its
+`SOURCE.md` carries the `unikit-gd-recon` code-provenance banner, or `GAME.md`'s
+`> **Based on**:` header names a `RECON.md`. Otherwise it is a normal authored import.
 
 - Walk every section tagged `<!-- provenance: generated -->`. A generated claim has
   no author authority: check it against the imported source and the registry
   (`GD-IDS.yaml`). A generated number, rule, or fact the source never stated — or
   that contradicts a registered fact — is **≥ Major** (it was invented to fill the
   skeleton, not designed).
-- Sections tagged `<!-- provenance: extracted from SOURCE.md -->` are trusted as
-  author-sourced — **do not** nitpick them on provenance grounds (the other lenses
-  still apply on their own merits).
+- Walk every section tagged `<!-- provenance: extracted from code -->` — and, for a
+  **code-reconstructed import**, every `<!-- provenance: extracted from SOURCE.md -->`
+  section too (the recon banner overrides their normal "trusted" treatment, because
+  the material was inferred from an implementation, not authored). Code carries
+  *structure*, never *intent* — so hold each such claim at **≥ Major** against the
+  registry and the system's own stated purpose: a number, rule, or relationship the
+  code implies but no human has confirmed as *intended* is a finding, not a fact.
+  Cross-check the `## Intent Gap` — anything the recon flagged as unknown that now
+  reads as a confident claim is **≥ Major**.
+- Sections tagged `<!-- provenance: extracted from SOURCE.md -->` **in a normal
+  authored import** are trusted as author-sourced — **do not** nitpick them on
+  provenance grounds (the other lenses still apply on their own merits).
 - Untagged sections are normal authored content; this lens skips them.
 
 ## Domain lenses (add by the system's behaviour/domain)

@@ -1,14 +1,15 @@
 ---
 name: unikit-docs
 description: >-
-  Generate and maintain Markdown documentation for a game project's codebase. Scans the
-  project structure, tech stack, and module boundaries, then produces a lean README
-  landing page plus detailed topic pages, writing only the documentation that's relevant.
-  Use whenever the user wants to create, update, or validate project documentation, e.g.
-  "generate documentation", "create docs", "write documentation", "update the project
-  docs", "generate readme", "validate the project documentation", "document this project",
-  or wants their code, modules, or game systems documented — even if they don't literally
-  say "docs".
+  Generate and maintain the project's TECHNICAL documentation from its codebase — scans
+  the project structure, tech stack, and module boundaries, then writes a lean README landing
+  page plus detailed topic pages (architecture, modules, setup, build, APIs), only the docs
+  that are relevant. Use whenever the user wants to create, update, or validate documentation
+  of the CODE or the project itself, e.g. "generate documentation", "create docs", "write
+  the README", "update the project docs", "document the codebase", "document this
+  project's architecture", "validate the project documentation". This is CODE / project
+  documentation only — it never documents the game design. To render the GAME DESIGN (the GDD:
+  systems, flows, content, economy) for people to read use /unikit-gd-docs.
 argument-hint: "[--web]"
 allowed-tools:
   - Read
@@ -185,6 +186,7 @@ Re-run detection (Step 1.1) and compare with `detected_stack` in config:
 | Document in config but no file in docs/ | Generate it (probably new addition by user) |
 | Document NOT in config but file exists in docs/ | Do NOT delete. Skip updates. Warn: "`docs/save-system.md` exists but is not in config — it won't be updated" |
 | Document in config, file exists | Update normally (State C behavior) |
+| **Any file under `docs/design/**`** | **Out of scope — owned by `/unikit-gd-docs`.** Do NOT warn, suggest, absorb into config, or touch it. Only the **top-level** `docs/*.md` is reconciled here. |
 
 **e) Present reconciliation report**
 
@@ -474,7 +476,10 @@ Summary of the process:
 6. Generate navigation sidebar with `class="active"` on current page
 7. Add `docs-html/` to `.gitignore` if not already there
 
-File mapping: `README.md` → `index.html`, `docs/*.md` → `*.html`.
+File mapping: `README.md` → `index.html`, `docs/*.md` → `*.html`. The `docs/*.md` glob is
+**intentionally top-level / non-recursive** — it does **not** descend into `docs/design/**`,
+which is owned and rendered (Markdown and, under its own `--web`, HTML) by `/unikit-gd-docs`,
+the game-design GDD export. Never relink, convert, or overwrite a `docs/design/` page.
 
 ### Step 7: Update AGENTS.md
 
@@ -509,7 +514,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 4. **Detect real project info** — don't invent features; read actual files.
 5. **Use project language** from `.unikit/config.yaml` (`language.artifacts`) for all prose, headings, navigation, descriptions, and user-facing messages. File names, code identifiers, and framework names stay in English.
 6. **Preserve existing content** — badges, logos, custom sections in README.
-7. **Ownership boundary** — this skill owns `README.md`, `docs/*`, `docs-html/*`, `.unikit/docs-config.json`, and the Documentation section in `AGENTS.md`. It does NOT own `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, or `.unikit/DESCRIPTION.md`.
+7. **Ownership boundary** — this skill owns `README.md`, the **top-level** `docs/*.md` (the non-design pages), `docs-html/*`, `.unikit/docs-config.json`, and the Documentation section in `AGENTS.md`. It does NOT own `docs/design/**` (the game-design GDD render, owned by `/unikit-gd-docs`), `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, or `.unikit/DESCRIPTION.md`.
 8. **Don't duplicate .unikit/ content** — if `ARCHITECTURE.md` or `DESCRIPTION.md` exist in `.unikit/`, use them as source material and enrich, don't copy verbatim.
 9. **NEVER add `Co-Authored-By`** or any AI attribution trailers to commits.
 10. **Agent-based delegation** — use `Agent(subagent_type: Explore, model: sonnet, ...)` for deep code analysis. If Agent tool is unavailable, fall back to inline work (Glob/Grep/Read). Lightweight Glob/Grep for quick checks is always allowed without delegation.

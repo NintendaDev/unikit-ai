@@ -1265,7 +1265,9 @@ else
 fi
 
 # (T8-8) Sanctioned code→design exception in the gd-principles One-Way Boundary (#8).
-if grep -qF 'Sanctioned exceptions (two, narrow)' "$GD_PRINCIPLES"; then
+# NOTE: the count grew "two" → "three" when the brownfield research-verb exception landed
+# (gd-recon/explore code lens); the RD-3 guard below asserts the third bullet's content.
+if grep -qF 'Sanctioned exceptions (three, narrow)' "$GD_PRINCIPLES"; then
     pass "gd-principles — One-Way Boundary code→design exception present (T8 #8)"
 else
     fail "gd-principles — missing One-Way Boundary code→design exception (T8 #8)"
@@ -1859,6 +1861,208 @@ else
     else
         fail "GA-5 gd-apply allowed-tools invariant violated:$GA5_WHY"
     fi
+fi
+
+# ── Brownfield recon / explore code-lens / gd-docs guards (RD-1…RD-8) ─────────
+# The brownfield-adoption upgrade added three READ-ONLY verbs at the module edges:
+# unikit-gd-recon (cold-start, code → RECON.md), the unikit-gd-explore code-grounded
+# lens (post-GDD slice), and unikit-gd-docs (workspace → docs/design/). Code reading is
+# quarantined to the two research verbs; the authoring zones + apply never read code
+# (RD-8). bash cannot run an LLM skill — these are grep invariants on the contract text +
+# allowed-tools checks. All file-scoped -qF (MSYS grep aborts on -iF, and Unicode arrows /
+# em-dashes are avoided in anchors); the no-Skill / Write checks reuse the GA-5 awk
+# allowed-tools extraction. The T8-8 guard above was retargeted "two" → "three".
+GD_RECON_SKILL="$ROOT_DIR/skills/unikit-gd-recon/SKILL.md"
+GD_RECON_ENGINE="$ROOT_DIR/skills/unikit-gd-recon/references/code-recon.md"
+GD_DOCS_SKILL="$ROOT_DIR/skills/unikit-gd-docs/SKILL.md"
+GD_DOCS_TOOL="$ROOT_DIR/skills/unikit-docs/SKILL.md"
+
+# (RD-1) unikit-gd-recon present + cold-start research-verb contract: writes RECON.md as an
+# import-seed (Intent Gap + per-fact code-provenance), recommends gd-spec import, and is
+# mechanically "calls no one" — NO Skill in allowed-tools (mirror GA-5), Write + Bash(mkdir *)
+# present (cold-start workspace).
+if [[ ! -f "$GD_RECON_SKILL" ]]; then
+    fail "unikit-gd-recon/SKILL.md — missing (recon guards RD-1…RD-2 cannot run)"
+else
+    RD1_WHY=""
+    grep -qF 'RECON.md' "$GD_RECON_SKILL"                       || RD1_WHY+=" no-RECON.md"
+    grep -qF '## Intent Gap' "$GD_RECON_SKILL"                  || RD1_WHY+=" no-intent-gap"
+    grep -qF 'provenance: extracted from code' "$GD_RECON_SKILL" || RD1_WHY+=" no-code-provenance"
+    grep -qF 'import-seed' "$GD_RECON_SKILL"                    || RD1_WHY+=" no-import-seed"
+    grep -qF '/unikit-gd-spec' "$GD_RECON_SKILL"                || RD1_WHY+=" no-spec-recommend"
+    grep -qF 'cold-start' "$GD_RECON_SKILL"                     || RD1_WHY+=" no-cold-start"
+    RD_RECON_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$GD_RECON_SKILL")
+    grep -qE '^[[:space:]]*-[[:space:]]*Skill$' <<< "$RD_RECON_TOOLS" && RD1_WHY+=" has-Skill"
+    grep -qE '^[[:space:]]*-[[:space:]]*Write$' <<< "$RD_RECON_TOOLS" || RD1_WHY+=" no-Write"
+    grep -qF 'Bash(mkdir *)' <<< "$RD_RECON_TOOLS"                    || RD1_WHY+=" no-mkdir"
+    if [[ -z "$RD1_WHY" ]]; then
+        pass "RD-1 unikit-gd-recon cold-start import-seed (RECON.md/Intent Gap/code-provenance/spec import; no Skill, Write+mkdir)"
+    else
+        fail "RD-1 unikit-gd-recon contract drift:$RD1_WHY"
+    fi
+fi
+
+# (RD-2) the shared code-recon.md engine: P0 systems + P1 content, flows EXCLUDED, engine-
+# agnostic, the per-fact confidence + source-pointer + provenance record. Owned by recon,
+# read by the explore code lens — auto-delivered under references/ (no shard-cycle edit).
+if [[ ! -f "$GD_RECON_ENGINE" ]]; then
+    fail "unikit-gd-recon/references/code-recon.md — missing (the shared extraction engine)"
+else
+    RD2_WHY=""
+    grep -qF 'design-fact' "$GD_RECON_ENGINE"                   || RD2_WHY+=" no-engine-title"
+    grep -qF 'provenance: extracted from code' "$GD_RECON_ENGINE" || RD2_WHY+=" no-provenance"
+    grep -qF 'CT.fields' "$GD_RECON_ENGINE"                     || RD2_WHY+=" no-ct-fields"
+    grep -qF 'EXCLUDED' "$GD_RECON_ENGINE"                      || RD2_WHY+=" no-flows-excluded"
+    grep -qF 'confidence' "$GD_RECON_ENGINE"                    || RD2_WHY+=" no-confidence"
+    grep -qF 'source pointer' "$GD_RECON_ENGINE"                || RD2_WHY+=" no-source-pointer"
+    grep -qF 'engine-agnostic' "$GD_RECON_ENGINE"               || RD2_WHY+=" no-engine-agnostic"
+    if [[ -z "$RD2_WHY" ]]; then
+        pass "RD-2 code-recon.md engine (P0 systems/P1 content/flows-excluded/engine-agnostic + confidence+source+provenance)"
+    else
+        fail "RD-2 code-recon.md engine drift:$RD2_WHY"
+    fi
+fi
+
+# (RD-2a) engine-list sync — the LOAD-BEARING guard behind RD-2b. The test's ENGINES array
+# (defined ~line 283, also mirrored in the per-engine loops ~line 408 and the JS snippet
+# ~line 747) is a MANUAL copy of the canonical ENGINE_REGISTRY in src/core/engines.ts. If a
+# new engine is added to the installer but not to this test, every engine-driven check —
+# RD-2b included — silently runs on the stale list and never notices. Derive the canonical
+# ids straight from engines.ts and assert the test array matches, so a new engine fails HERE
+# first; the dev then updates ENGINES (which cascades into RD-2b's RECON_ENGINE_TOKENS map +
+# the code-recon.md matrix). engines.ts is the source of truth; this is its single mirror-check.
+CANON_ENGINE_IDS=$(grep -oE "id: '[^']+'" "$ROOT_DIR/src/core/engines.ts" | sed "s/^id: '//; s/'$//" | sort | tr '\n' ' ')
+TEST_ENGINE_IDS=$(printf '%s\n' "${ENGINES[@]}" | sort | tr '\n' ' ')
+if [[ "$CANON_ENGINE_IDS" == "$TEST_ENGINE_IDS" ]]; then
+    pass "RD-2a engine-list sync: test ENGINES matches src/core/engines.ts ENGINE_REGISTRY ($CANON_ENGINE_IDS)"
+else
+    fail "RD-2a engine-list DRIFT — engines.ts=[$CANON_ENGINE_IDS] vs test ENGINES=[$TEST_ENGINE_IDS]; update the ENGINES array (~line 283) + RD-2b RECON_ENGINE_TOKENS + the code-recon.md matrix"
+fi
+
+# (RD-2b) the code-recon.md engine matrix MUST cover EVERY canonical UniKit engine. The
+# recon SKILL.md is deliberately engine-agnostic (no stop-words, Part 7c) and defers the
+# per-engine asset forms to this reference; so when a NEW engine is added to the canonical
+# ENGINES list (and the code module), its asset-form row must be added here too, or recon
+# silently cannot reconstruct that engine's content. Driven by the canonical ENGINES array,
+# so a new engine fails the test twice over: once if no token is mapped, once if the matrix
+# lacks it. Adding an engine ⇒ update BOTH RECON_ENGINE_TOKENS and code-recon.md.
+if [[ -f "$GD_RECON_ENGINE" ]]; then
+    declare -A RECON_ENGINE_TOKENS=(
+        ["unity"]="Unity"
+        ["godot"]="Godot 4 (GDScript)"
+        ["godot-net"]="Godot 4 (.NET)"
+        ["unreal-engine-5"]="Unreal 5"
+    )
+    RD2B_WHY=""
+    for engine_id in "${ENGINES[@]}"; do
+        token="${RECON_ENGINE_TOKENS[$engine_id]:-}"
+        if [[ -z "$token" ]]; then
+            RD2B_WHY+=" no-token-for-$engine_id(map it in RECON_ENGINE_TOKENS + add a row to code-recon.md)"
+        elif ! grep -qF "$token" "$GD_RECON_ENGINE"; then
+            RD2B_WHY+=" matrix-missing-$engine_id(token:'$token')"
+        fi
+    done
+    if [[ -z "$RD2B_WHY" ]]; then
+        pass "RD-2b code-recon.md engine matrix covers every canonical engine (${ENGINES[*]})"
+    else
+        fail "RD-2b code-recon.md engine matrix incomplete:$RD2B_WHY"
+    fi
+fi
+
+# (RD-3) gd-principles THIRD One-Way Boundary exception — the read-only research verbs read
+# code; the brownfield carve-out is named; authoring zones + apply are explicitly excluded.
+RD3_WHY=""
+grep -qF 'brownfield-bootstrap carve-out' "$GD_PRINCIPLES" || RD3_WHY+=" no-brownfield-carveout"
+grep -qF 'read-only research verbs' "$GD_PRINCIPLES"       || RD3_WHY+=" no-research-verbs"
+grep -qF 'extracted from code' "$GD_PRINCIPLES"            || RD3_WHY+=" no-code-provenance"
+grep -qF 'are **never** in' "$GD_PRINCIPLES"               || RD3_WHY+=" no-authoring-exclusion"
+if [[ -z "$RD3_WHY" ]]; then
+    pass "RD-3 gd-principles third exception (research verbs read code; brownfield carve-out; authoring/apply excluded)"
+else
+    fail "RD-3 gd-principles third exception drift:$RD3_WHY"
+fi
+
+# (RD-4) code-extraction provenance contract (Task 2): gd-provenance defines the
+# `extracted from code` marker (distinct from trusted SOURCE.md) + the durable banner /
+# import-membrane anti-laundering rule; the gd-review provenance lens detects a code-
+# reconstructed import and holds its extracted-from-SOURCE sections at ≥ Major.
+RD4_WHY=""
+grep -qF 'extracted from code' "$GD_PROVENANCE"     || RD4_WHY+=" provenance-no-marker"
+grep -qF 'durable code-provenance' "$GD_PROVENANCE" || RD4_WHY+=" provenance-no-banner"
+grep -qF 'import membrane' "$GD_PROVENANCE"         || RD4_WHY+=" provenance-no-membrane"
+grep -qF 'code-reconstructed import' "$GD_LENSES"   || RD4_WHY+=" lens-no-detection"
+grep -qF 'extracted from code' "$GD_LENSES"         || RD4_WHY+=" lens-no-marker"
+if [[ -z "$RD4_WHY" ]]; then
+    pass "RD-4 code-extraction provenance contract (gd-provenance marker+banner+membrane; lens detects code-reconstructed import)"
+else
+    fail "RD-4 code-extraction provenance contract drift:$RD4_WHY"
+fi
+
+# (RD-5) explore code-grounded lens: the 4th lens section is present, it reads the recon-
+# owned code-recon.md (cross-skill), tags facts `extracted from code`, the Bootstrap one-way
+# carries the code-lens exception, and the internal-design lens's absolute "never reads code"
+# is SOFTENED to the design/code carve-out (positive guards on the new text).
+RD5_WHY=""
+grep -qF '## Code-grounded lens' "$GD_EXPLORE_SKILL"                    || RD5_WHY+=" no-code-lens-section"
+grep -qF 'unikit-gd-recon/references/code-recon.md' "$GD_EXPLORE_SKILL" || RD5_WHY+=" no-cross-skill-read"
+grep -qF 'extracted from code' "$GD_EXPLORE_SKILL"                      || RD5_WHY+=" no-code-provenance"
+grep -qF 'code-lens exception' "$GD_EXPLORE_SKILL"                      || RD5_WHY+=" no-bootstrap-carveout"
+grep -qF 'reasons about *design*, not code' "$GD_INTERNAL_LENS"        || RD5_WHY+=" no-lens-carveout"
+if [[ -z "$RD5_WHY" ]]; then
+    pass "RD-5 explore code-grounded lens (4th lens + cross-skill code-recon read + code-provenance + softened one-way)"
+else
+    fail "RD-5 explore code-lens drift:$RD5_WHY"
+fi
+
+# (RD-6) unikit-gd-docs present + render contract: the six Variant-B chapters, the draft
+# banner, the --web template path + graceful WARN, the docs/design output, and the leaf-
+# renderer guarantee — NO Skill in allowed-tools (mirror GA-5).
+if [[ ! -f "$GD_DOCS_SKILL" ]]; then
+    fail "unikit-gd-docs/SKILL.md — missing (docs guards RD-6…RD-7 cannot run)"
+else
+    RD6_WHY=""
+    for ch in index systems flows content economy glossary; do
+        grep -qF "$ch.md" "$GD_DOCS_SKILL" || RD6_WHY+=" no-chapter-$ch"
+    done
+    grep -qF 'docs/design/' "$GD_DOCS_SKILL"       || RD6_WHY+=" no-output-dir"
+    grep -qF 'draft banner' "$GD_DOCS_SKILL"       || RD6_WHY+=" no-draft-banner"
+    grep -qF 'html-template.html' "$GD_DOCS_SKILL" || RD6_WHY+=" no-web-template"
+    grep -qF 'WARN [--web]' "$GD_DOCS_SKILL"       || RD6_WHY+=" no-web-warn"
+    RD_DOCS_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$GD_DOCS_SKILL")
+    grep -qE '^[[:space:]]*-[[:space:]]*Skill$' <<< "$RD_DOCS_TOOLS" && RD6_WHY+=" has-Skill"
+    if [[ -z "$RD6_WHY" ]]; then
+        pass "RD-6 unikit-gd-docs render (6 chapters + draft banner + --web template/WARN + docs/design; no Skill)"
+    else
+        fail "RD-6 unikit-gd-docs contract drift:$RD6_WHY"
+    fi
+fi
+
+# (RD-7) docs/ ownership split — unikit-docs carves out docs/design/** (owned by
+# unikit-gd-docs): the --web glob is non-recursive, the ownership boundary names the split.
+RD7_WHY=""
+grep -qF 'docs/design/**' "$GD_DOCS_TOOL" || RD7_WHY+=" docs-no-design-carveout"
+grep -qF 'unikit-gd-docs' "$GD_DOCS_TOOL" || RD7_WHY+=" docs-no-gd-docs-ref"
+grep -qF 'docs/design/' "$GD_DOCS_SKILL"  || RD7_WHY+=" gddocs-no-owned-subtree"
+if [[ -z "$RD7_WHY" ]]; then
+    pass "RD-7 docs/ ownership split (unikit-docs carves out docs/design/**; gd-docs owns it)"
+else
+    fail "RD-7 docs/ ownership split drift:$RD7_WHY"
+fi
+
+# (RD-8) NEGATIVE — the authoring zones (spec/system/content/flow) and the apply dispatcher
+# do NOT read code: none reference the recon-owned code-recon.md engine, and gd-apply keeps
+# its one-way "never read ... project source" prohibition. Code reading is quarantined to
+# the two research verbs (recon + the explore lens), never the authoring/dispatch side.
+RD8_WHY=""
+for z in spec system content flow; do
+    grep -qF 'code-recon.md' "$ROOT_DIR/skills/unikit-gd-$z/SKILL.md" && RD8_WHY+=" $z-reads-code-recon"
+done
+grep -qF 'code-recon.md' "$GD_APPLY_SKILL" && RD8_WHY+=" apply-reads-code-recon"
+grep -qF 'project source' "$GD_APPLY_SKILL" || RD8_WHY+=" apply-no-one-way"
+if [[ -z "$RD8_WHY" ]]; then
+    pass "RD-8 NEGATIVE — authoring zones + apply do not read code (no code-recon.md ref; apply keeps one-way)"
+else
+    fail "RD-8 code-read capability leaked into authoring/apply:$RD8_WHY"
 fi
 
 # ============================================================================

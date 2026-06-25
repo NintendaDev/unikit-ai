@@ -1,18 +1,17 @@
 ---
 name: unikit-gd-apply
 description: >-
-  Dispatch an explicit, user-dictated set of edits that spans SEVERAL zones of the GDD —
-  the master spec, systems, content types, and flows — in one pass. This skill writes
+  Dispatch an explicit, user-dictated set of edits that spans TWO OR MORE zones of the
+  GDD — the master spec, systems, content types, and flows — in one ordered pass. Writes
   nothing itself: it resolves each delta to its (target, zone), orders them so a system
-  change lands before the content / flow that depends on it, delegates each to the owning
-  skill (/unikit-gd-spec, /unikit-gd-system, /unikit-gd-content, /unikit-gd-flow), and
-  closes with one /unikit-gd-verify pass. Use when you already know the changes and they
-  touch more than one part of the design, e.g. "apply these GDD changes", "update the
-  combat system and its loot and the boss flow", "raise the damage, add a rarity field and
-  retune the first-session pacing", "make all these design edits at once". For a change to
-  a SINGLE zone call its owner directly (/unikit-gd-system, /unikit-gd-content,
-  /unikit-gd-flow, /unikit-gd-spec); to research an open question or work out a mechanic
-  you do not yet know how to design, use /unikit-gd-explore first.
+  change lands before the content or flow that depends on it, delegates each to the owning
+  skill (/unikit-gd-spec, /unikit-gd-system, /unikit-gd-content, /unikit-gd-flow), and closes
+  with one /unikit-gd-verify pass. Use when you already know the changes and they touch more
+  than one part of the design, e.g. "apply these GDD changes", "update the combat system
+  and its loot and the boss flow", "raise the damage, add a rarity field and retune the
+  first-session pacing", "make all these design edits at once". For a change to a SINGLE
+  zone call its owner directly; to research an open question or a mechanic you do not yet know
+  how to design, use /unikit-gd-explore first.
 argument-hint: "\"<the multi-zone changes to apply>\"  (each delta routed to its zone owner; no flags)"
 allowed-tools:
   - Read

@@ -74,6 +74,8 @@ separate module (`gamedesign`) with its own skills (`unikit-gd-*`) and its own w
 formulas stay in English.
 
 ```
+recon:    /unikit-gd-recon        (brownfield) existing code but NO GDD → reconstruct a RECON.md skeleton
+            │                                 (cold-start only; read-only on code; calls nothing) → spec import
 ideate:   /unikit-gd-brainstorm    (optional) blank page → a CONCEPT card (pillars, loops, pre-mortem)
             │
 spec:     /unikit-gd-spec          REQUIRED  master GDD (GAME.md + ## System Map [gen]) + GD-IDS.yaml registry
@@ -88,8 +90,20 @@ content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → severity verdict
             │
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" + cross-axis impact
-              └─ loops back: a revised system or flow is re-reviewed, re-verified
+            │ └─ loops back: a revised system or flow is re-reviewed, re-verified
+docs:     /unikit-gd-docs          (optional) the GDD → human-readable docs/design/*.md (the export-out)
 ```
+
+**Read-only verbs at the I/O edges.** Three skills sit on the boundary of the module and are
+**read-only** at that edge: `/unikit-gd-recon` and the `/unikit-gd-explore` **code lens**
+**INPUT** (code → candidate design facts — recon for the whole project at cold start, the
+explore lens for a targeted slice once a GDD exists), the authoring zones
+(spec / system / flow / content) are the **core**, and `/unikit-gd-docs` **OUTPUTS**
+(design → a human-readable GDD). Reconstructing design from code is normally forbidden (the
+one-way boundary), so it is quantised into these read-only research verbs — every
+reconstructed fact is tagged `provenance: extracted from code` and held to a higher review
+bar, and a mandatory `## Intent Gap` records what the code could not know (pillars, fantasy,
+the "why").
 
 The GDD has **three authoring axes**: **systems** (`/unikit-gd-system`, the rules), **flows**
 (`/unikit-gd-flow`, the dynamics — what the player does over time), and **content**
@@ -182,9 +196,12 @@ Pick the row that matches what the user already has:
 | **No game idea yet** | `/unikit-gd-brainstorm` | `/unikit-gd-spec` |
 | **An idea but no GDD** | `/unikit-gd-spec <description>` (or `<concept-slug>`) | `/unikit-gd-system` |
 | **An existing GDD file/URL** | `/unikit-gd-spec <path-or-url>` (import) | `/unikit-gd-system` |
+| **A live game / existing code but NO GDD** | `/unikit-gd-recon` (reconstruct a RECON.md skeleton from code) | `/unikit-gd-spec <RECON.md>` (import) |
 | **A GDD, wants to detail a system** | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | **A GDD, wants a new mechanic** | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
+| **A GDD, wants to know how a system is built in code** | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
 | **A GDD, several decided edits across zones** | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
+| **A GDD, wants to publish/export it for people** | `/unikit-gd-docs` (→ `docs/design/*.md`; `--web` for HTML) | share the rendered docs |
 | **A feature idea, needs direction** | `/unikit-explore <topic>` | `/unikit-plan` |
 | **A clear feature** | `/unikit-plan [fast\|full] <feature>` | `/unikit-improve` → `/unikit-implement` |
 | **A research brief already** | `/unikit-plan` (it finds the latest research) | `/unikit-implement` |

@@ -131,8 +131,12 @@ consultant — it informs, structures, and recommends; it never decides.
 
 Code reads design; design knows nothing about code.
 
-- Game-design skills never read the code workspace (`.unikit/code/`), project
-  sources, or build artifacts.
+- Game-design **authoring** zones (spec/system/content/flow) and the
+  **`unikit-gd-apply`** dispatcher never read the code workspace (`.unikit/code/`),
+  project sources, or build artifacts. The **read-only research verbs** —
+  `unikit-gd-recon` (cold-start) and the `unikit-gd-explore` code-grounded lens — are
+  the sole exception (see *Sanctioned exceptions* below): they read code to *extract*
+  candidate design facts into a document, never to author.
 - The code side consumes design exclusively through the `## Design` section of its
   plan brief — SYS-id, version snapshot, verbatim AC quotes (and, for flow-aware
   planning, the read-only flow brief — see Flow Axis). There is no reverse flow:
@@ -146,8 +150,14 @@ Code reads design; design knows nothing about code.
   `CT` describes never cross the boundary. `GD-IDS` carries the contract, not the
   catalog.
 - Importing an existing GDD is a document operation — extract from the provided
-  document; never reverse-engineer design from an implementation.
-- **Sanctioned exceptions (two, narrow):**
+  document; never reverse-engineer design from an implementation — **except the
+  brownfield-bootstrap carve-out**: a team with a live game and no GDD has nothing to
+  import, so the read-only research verbs may reconstruct *candidate* facts from code
+  into a passive `RECON.md` (or an explore brief), consumed downstream as an ordinary
+  document (the membrane: code → document → ordinary import). Every reconstructed fact
+  is tagged `provenance: extracted from code` and held to a higher review bar (see
+  `gd-provenance`). Authoring zones never reconstruct from code.
+- **Sanctioned exceptions (three, narrow):**
   - the **feasibility lens** inside `unikit-gd-review` may read `DESCRIPTION.md` /
     `ARCHITECTURE.md` to flag implementability risks (a design-reads-code-context
     read, never `.unikit/code/` or source);
@@ -157,6 +167,16 @@ Code reads design; design knows nothing about code.
     surface — there is no second one. The `## System Map [gen]` block in `GAME.md`
     re-renders the `implemented` state from `GD-IDS` (read-only); design never sets
     it and never reads code to learn it.
+  - the **read-only research verbs** read code to extract candidate design facts (the
+    brownfield-bootstrap carve-out above): `unikit-gd-recon` (cold-start only — no GDD
+    yet) scans the whole project into a passive `RECON.md`, and the `unikit-gd-explore`
+    **code-grounded lens** (post-GDD, targeted) grounds an in-flight slice. Both are
+    read-only on code, call no authoring zone, and emit a *document* (`RECON.md` / an
+    explore brief) — never a GDD edit. The shared extraction engine is
+    `unikit-gd-recon/references/code-recon.md`. Facts carry
+    `provenance: extracted from code` (review ≥ Major). The authoring zones
+    (spec/system/content/flow) and the `unikit-gd-apply` dispatcher are **never** in
+    this exception.
 
 ## Facts Registry & ID Conventions
 

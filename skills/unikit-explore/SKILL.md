@@ -2,16 +2,15 @@
 name: unikit-explore
 description: >-
   Enter explore mode for technical work — a thinking partner for {{engine_name}} code,
-  architecture, and implementation decisions before you write any code. Use it to
-  investigate a technical solution, design the architecture of a feature, choose between
-  frameworks or libraries, compare implementation approaches, analyze how existing code
-  or a system works, research code patterns, or deeply investigate and root-cause a
-  complex bug without fixing it yet. Trigger on things like "let's explore this technical
-  solution", "how should we architect this feature", "which framework should we use",
-  "how do I implement this in code", "compare these technical approaches", "how does this
-  system work", "let's dig into why this bug happens", "investigate this error deeply".
-  This is research/analysis only — to directly find and fix a bug use /unikit-fix; for
-  game-design or GDD research use /unikit-gd-explore.
+  architecture, and implementation decisions before you write any code. Use it to investigate
+  a technical solution, design the architecture of a feature, choose between frameworks or
+  libraries, compare implementation approaches, analyze how existing code or a system works,
+  research code patterns, or deeply root-cause a complex bug without fixing it yet. Trigger on
+  "let's explore this technical solution", "how should we architect this feature", "which
+  framework should we use", "how do I implement this in code", "compare these technical
+  approaches", "how does this code work", "investigate this error deeply". Research and
+  analysis only — it never writes code. This is the CODE / engineering explorer — for
+  GAME-DESIGN, GDD, mechanics, or balance research (no code) use /unikit-gd-explore.
 argument-hint: "init | [topic, system name, or question]"
 allowed-tools:
   - Read

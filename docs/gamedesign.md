@@ -223,6 +223,73 @@ new profile needs no build step — only `npm test` (the structural schema guard
 required fields + enum values, NOT cross-refs, so forward-refs to not-yet-built packs are
 fine).
 
+## Brownfield adoption — code ↔ design at the edges
+
+The module's core rule is a **one-way boundary**: code reads design, design never reads
+code. But a team with a **live game and no GDD** has nothing to import — the only source of
+design facts is the code itself. The module resolves this without breaking the boundary by
+quantising the crossing into **three read-only research verbs** at the module's I/O edges.
+Reconstructing design from an implementation is normally forbidden; these verbs are the
+**third sanctioned exception** (alongside the review feasibility lens and the `implemented`
+writeback), and they only ever *read* code into a *document* — they never author the GDD.
+
+```
+INPUT (code → design)            CORE (authoring zones)           OUTPUT (design → human)
+  unikit-gd-recon        ┐                                      ┌  unikit-gd-docs
+  (cold-start, whole     ├─▶  spec · system · flow · content  ─┤  (workspace → docs/design/)
+   project → RECON.md)   │       (these NEVER read code)        │
+  unikit-gd-explore      ┘                                      └
+   (code lens, a slice)
+```
+
+### `unikit-gd-recon` — cold-start reconstruction
+
+For a project with code but **no GDD yet**. It scans the whole project (engine
+auto-detected — Unity / Godot / Unreal, via generic globs, never assumed) using
+`Agent(subagent_type: Explore)` subagents (inline `Glob`/`Grep`/`Read` fallback) and writes
+one passive `.unikit/gamedesign/RECON.md`: a **system roster + `depends_on` graph** (P0),
+**content-type schemas / resources / entities** (P1), and — crucially — a mandatory
+**`## Intent Gap`** for everything code cannot carry (pillars, the target fantasy, the
+"why", whether numbers are balanced). Flows (the dynamics axis) are **excluded** — they are
+not recoverable from code. Recon **recommends** `/unikit-gd-spec <RECON.md>` (import mode,
+interactive) but **calls no skill** (it has no `Skill` tool). It is strictly cold-start;
+once a GDD exists, use the explore code lens instead. You may pass an **optional seed** with
+the invocation — a free-text game description, design notes, or file / folder / link
+references — which sharpens the scan and is recorded verbatim in a `## Provided Context`
+section (author-supplied intent, never confused with the code-extracted facts), pre-answering
+Intent-Gap items the code is silent on.
+
+> **The honest limit.** Code gives the *skeleton*, never the *soul*. A filled-but-soulless
+> GDD is worse than an empty one, so every reconstructed fact is tagged
+> `provenance: extracted from code` and the Intent Gap is never trimmed to look more
+> complete.
+
+### `unikit-gd-explore` — the code-grounded lens
+
+The post-GDD, **targeted** counterpart: when a GDD already exists and the question is "how
+is *our* X actually built?", the explore lens reads the named code slice (read-only) and
+folds the findings into a research brief, tagged the same `provenance: extracted from code`.
+Recon and this lens share one extraction engine (`unikit-gd-recon/references/code-recon.md`)
+so the heuristics never diverge.
+
+### Provenance — code-sourced is *suspect*, not trusted
+
+`extracted from code` is held by the `unikit-gd-review` provenance lens at **≥ Major** — the
+opposite of the trusted `extracted from SOURCE.md` (author-sourced). Because the import path
+copies a `RECON.md` verbatim into `SOURCE.md`, the reconstruction carries a **durable banner**
+the review lens detects, so it holds even the import's `extracted from SOURCE.md` sections to
+≥ Major. This stops the import membrane from laundering code-inferred facts into trusted
+author-sourced content.
+
+### `unikit-gd-docs` — design → human (the export-out)
+
+The conceptual mirror of recon. A **read-only** renderer that turns the workspace into a
+human-readable GDD under `docs/design/` — Variant-B chapters (`index`, `systems`, `flows`,
+`content`, `economy`, `glossary`), facts resolved inline from `GD-IDS`, drafts flagged 🚧.
+`--web` additionally renders HTML from the `unikit-docs` template (absent → Markdown-only +
+a `WARN`). The two doc generators split the tree cleanly: `unikit-docs` owns the top-level
+`docs/*.md`, `unikit-gd-docs` owns `docs/design/**`.
+
 ---
 
 [← Skills Reference](skills.md) · [Back to README](../README.md)

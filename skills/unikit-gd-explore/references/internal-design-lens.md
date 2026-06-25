@@ -71,8 +71,13 @@ read and the catalog delivers the promised feeling. The two altitudes: altitude 
 **schema** (`CT.fields` / `scale` / `belongs_to`); altitude 2 is the **catalog space**
 (what the units are, how many, how they are generated).
 
-**One-way boundary holds:** never read `.unikit/code/`, project source, or build
-artifacts to learn how a system was implemented. The lens reasons about the *design*.
+**One-way boundary — this lens reasons about *design*, not code:** by itself the
+internal-design lens does not read `.unikit/code/`, project source, or build artifacts —
+it works from the GDD. When the prompt **also** triggers the **code-grounded lens**
+(`SKILL.md` → "Code-grounded lens — when it engages"), that lens — the sanctioned third
+exception to the one-way boundary, shared with `unikit-gd-recon` — reads the named code
+slice read-only and folds `provenance: extracted from code` findings into the same brief.
+The two run together; neither edits the GDD or the code.
 
 ## Domain → rules to ground options
 
