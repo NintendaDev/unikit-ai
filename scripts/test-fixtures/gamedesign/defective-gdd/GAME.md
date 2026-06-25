@@ -76,8 +76,10 @@ No combat against bosses; no open world.
 <!-- gen:system-map -->
 Generated read-only from `GD-IDS.yaml` `systems` — do **not** hand-edit. (Fixture
 note: this render is deliberately STALE — it carries a phantom `SYS-ghost` row that
-has **no** `GD-IDS.yaml` entry, the **Map-freshness** defect; `unikit-gd-verify`
-self-heals by re-rendering, it does not file a conflict.)
+has **no** `GD-IDS.yaml` entry (the **Map-freshness** defect), **and** the SYS-combat
+row omits the `· partial (1/5)` suffix that combat's intentionally-deferred non-core
+§I (`<!-- deferred -->`) implies; `unikit-gd-verify` self-heals both by re-rendering,
+it does not file a conflict.)
 
 ### Gameplay
 

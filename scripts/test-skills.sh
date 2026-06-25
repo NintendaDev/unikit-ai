@@ -2065,6 +2065,132 @@ else
     fail "RD-8 code-read capability leaked into authoring/apply:$RD8_WHY"
 fi
 
+# ── Decision-First authoring guards (DF-1…DF-6) ──────────────────────────────
+# The Decision-First refactor rewrote the gd-authoring Section-Cycle Contract BODY
+# (heading anchor preserved), made `detailed · partial` an INFERRED status in
+# gd-lifecycle (no stored field, no enum change), and reshaped Phase 3+4 of the three
+# zone skills into a depth-picked, fork-scanned, group-reviewed flow carrying the new
+# `<!-- deferred -->` marker. The render suffix `· partial (n/m)` is emitted from ONE
+# canonical rule (gd-lifecycle) by all FOUR renderers (verify + spec/flow/content maps).
+# These are grep invariants on the contract text + the consumer renderers. All -qF
+# file-scoped (MSYS grep aborts on -iF).
+GD_SECTION_PACKS="$ROOT_DIR/skills/unikit-gd-system/references/section-packs.md"
+
+# (DF-1) gd-authoring carries the Decision-First contract under the PRESERVED anchors
+# (`## Section-Cycle Contract` + `## Delta Discipline`): the depth picker, the
+# `<!-- deferred -->` marker, the card source, the structural group gate, the phase names;
+# the reader-list gained content+apply; the old linear "per section, in order" cycle is GONE.
+DF1_WHY=""
+grep -qF '## Section-Cycle Contract' "$GD_AUTHORING" || DF1_WHY+=" no-anchor(Section-Cycle)"
+grep -qF '## Delta Discipline' "$GD_AUTHORING"       || DF1_WHY+=" no-anchor(Delta-Discipline)"
+grep -qF 'Decision-First' "$GD_AUTHORING"            || DF1_WHY+=" no-decision-first"
+grep -qF 'core/standard/full' "$GD_AUTHORING"        || DF1_WHY+=" no-depth-picker"
+grep -qF '<!-- deferred -->' "$GD_AUTHORING"          || DF1_WHY+=" no-deferred-marker"
+grep -qF 'structural group gate' "$GD_AUTHORING"     || DF1_WHY+=" no-group-gate"
+grep -qF 'Fork scan' "$GD_AUTHORING"                 || DF1_WHY+=" no-fork-scan"
+grep -qF 'Decision interview' "$GD_AUTHORING"        || DF1_WHY+=" no-decision-interview"
+grep -qF 'Group review' "$GD_AUTHORING"              || DF1_WHY+=" no-group-review"
+grep -qF 'drawn from the template' "$GD_AUTHORING"   || DF1_WHY+=" no-card-source"
+grep -qF 'unikit-gd-content' "$GD_AUTHORING"         || DF1_WHY+=" reader-list-no-content"
+grep -qF 'unikit-gd-apply' "$GD_AUTHORING"           || DF1_WHY+=" reader-list-no-apply"
+grep -qF 'per section, in order' "$GD_AUTHORING"     && DF1_WHY+=" OLD-linear-cycle-present"
+if [[ -z "$DF1_WHY" ]]; then
+    pass "DF-1 gd-authoring Decision-First contract (depth-picker · <!-- deferred --> · card source · group gate · 6 phases; anchors preserved; reader-list +content/apply; linear cycle gone)"
+else
+    fail "DF-1 gd-authoring Decision-First contract drift:$DF1_WHY"
+fi
+
+# (DF-2) gd-lifecycle is the CANONICAL HOME of the inferred partial status: the
+# `detailed · partial` rule + `· partial (n/m)` render format + per-zone core-set +
+# the enum stays byte-identical + partial is never stored; reader-list +content/apply.
+DF2_WHY=""
+grep -qF 'detailed · partial' "$GD_LIFECYCLE"  || DF2_WHY+=" no-partial-status"
+grep -qF '· partial (n/m)' "$GD_LIFECYCLE"      || DF2_WHY+=" no-partial-format"
+grep -qF 'per-zone core-set' "$GD_LIFECYCLE"   || DF2_WHY+=" no-core-set"
+grep -qF 'A/B/C/D/H' "$GD_LIFECYCLE"           || DF2_WHY+=" no-system-core-listing"
+grep -qF 'canonical home' "$GD_LIFECYCLE"      || DF2_WHY+=" no-canonical-home"
+grep -qF 'never stored' "$GD_LIFECYCLE"        || DF2_WHY+=" partiality-not-marked-inferred"
+grep -qF 'byte-identical' "$GD_LIFECYCLE"      || DF2_WHY+=" enum-not-marked-unchanged"
+grep -qF 'not-started, skeleton, detailed' "$GD_LIFECYCLE" || DF2_WHY+=" enum-membership-missing"
+grep -qF 'unikit-gd-content' "$GD_LIFECYCLE"   || DF2_WHY+=" reader-list-no-content"
+grep -qF 'unikit-gd-apply' "$GD_LIFECYCLE"     || DF2_WHY+=" reader-list-no-apply"
+if [[ -z "$DF2_WHY" ]]; then
+    pass "DF-2 gd-lifecycle canonical partial rule (detailed · partial inferred/never-stored · · partial (n/m) format · per-zone core-set · enum byte-identical; reader-list +content/apply)"
+else
+    fail "DF-2 gd-lifecycle partial rule drift:$DF2_WHY"
+fi
+
+# (DF-3) the three zone skills each carry the Decision-First flow: the depth gate
+# (core/standard/full), section names not bare letters, the silent fork-scan, the
+# seeded-vs-greenfield split (real fork), and the depth INFO marker.
+DF3_WHY=""
+for s in system flow content; do
+    f="$ROOT_DIR/skills/unikit-gd-$s/SKILL.md"
+    grep -qF 'Decision-First' "$f"        || DF3_WHY+=" $s:no-decision-first"
+    grep -qF 'Depth gate' "$f"            || DF3_WHY+=" $s:no-depth-gate"
+    grep -qF 'core/standard/full' "$f"    || DF3_WHY+=" $s:no-picker"
+    grep -qF 'never by a bare letter' "$f" || DF3_WHY+=" $s:no-names-rule"
+    grep -qF 'Fork-scan' "$f"             || DF3_WHY+=" $s:no-fork-scan"
+    grep -qF 'real fork' "$f"             || DF3_WHY+=" $s:no-seeded-vs-greenfield"
+    grep -qF "depth=<tier>" "$f"          || DF3_WHY+=" $s:no-depth-marker"
+done
+if [[ -z "$DF3_WHY" ]]; then
+    pass "DF-3 zone skills Decision-First (system/flow/content: depth gate core/standard/full · names-not-letters · fork-scan · seeded-vs-greenfield · depth marker)"
+else
+    fail "DF-3 zone skills Decision-First drift:$DF3_WHY"
+fi
+
+# (DF-4) unikit-gd-verify: the `<!-- deferred -->` marker is INTENTIONAL (not a leak),
+# the `· partial (n/m)` render, the marker⟺render self-check, the NEW core-floor
+# coherence check; the `[To be designed]` placeholder-leak regression still holds.
+DF4_WHY=""
+grep -qF '<!-- deferred -->' "$GD_VERIFY_SKILL" || DF4_WHY+=" no-deferred"
+grep -qF 'intentional' "$GD_VERIFY_SKILL"       || DF4_WHY+=" deferred-not-intentional"
+grep -qF '· partial (n/m)' "$GD_VERIFY_SKILL"   || DF4_WHY+=" no-partial-render"
+grep -qF 'Self-check (marker' "$GD_VERIFY_SKILL" || DF4_WHY+=" no-self-check"
+grep -qF 'Core-floor coherence' "$GD_VERIFY_SKILL" || DF4_WHY+=" no-core-floor-check"
+grep -qF '[To be designed]' "$GD_VERIFY_SKILL"  || DF4_WHY+=" placeholder-leak-regression-lost"
+if [[ -z "$DF4_WHY" ]]; then
+    pass "DF-4 unikit-gd-verify (<!-- deferred -->=intentional · · partial (n/m) render · marker⟺render self-check · core-floor coherence; [To be designed] leak still guarded)"
+else
+    fail "DF-4 unikit-gd-verify deferred/partial drift:$DF4_WHY"
+fi
+
+# (DF-5) consumer parity — the `· partial (n/m)` suffix is emitted by ALL FOUR renderers
+# from the one canonical gd-lifecycle rule (verify + the spec System Map + the flow Flow
+# Map + the content Content Map); the gd-review completeness lens treats the marker as
+# intentional (no misfire); section-packs.md is reframed Decision-First (linear cycle gone).
+DF5_WHY=""
+for f in "$GD_VERIFY_SKILL" "$GD_SPEC_SKILL" "$GD_FLOW_SKILL" "$GD_CONTENT_SKILL"; do
+    grep -qF 'partial (n/m)' "$f" || DF5_WHY+=" $(basename "$(dirname "$f")"):no-partial-render"
+done
+grep -qF '<!-- deferred -->' "$GD_LENSES" || DF5_WHY+=" review-lens-no-deferred"
+grep -qF 'intentional' "$GD_LENSES"        || DF5_WHY+=" review-lens-not-intentional"
+grep -qF 'Decision-First' "$GD_SECTION_PACKS" || DF5_WHY+=" section-packs-not-decision-first"
+grep -qF 'Draft+Approval' "$GD_SECTION_PACKS"  && DF5_WHY+=" section-packs-OLD-linear-cycle"
+if [[ -z "$DF5_WHY" ]]; then
+    pass "DF-5 consumer parity (· partial (n/m) on all 4 renderers verify/spec/flow/content · review completeness no-misfire · section-packs Decision-First)"
+else
+    fail "DF-5 consumer parity drift:$DF5_WHY"
+fi
+
+# (DF-6) the three templates document the `<!-- deferred -->` marker (distinct from the
+# `[To be designed]` skeleton placeholder) and name the per-zone core sections — the card
+# source the Phase 5 group review draws from.
+DF6_WHY=""
+for t in SYSTEM FLOW CONTENT-TYPE; do
+    f="$GD_DATA/templates/$t.md"
+    grep -qF '<!-- deferred -->' "$f" || DF6_WHY+=" $t:no-deferred-doc"
+    grep -qF '[To be designed]' "$f"  || DF6_WHY+=" $t:no-placeholder-distinction"
+    grep -qF 'Core sections' "$f"     || DF6_WHY+=" $t:no-core-sections"
+    grep -qF 'Decision-First' "$f"    || DF6_WHY+=" $t:no-decision-first"
+done
+if [[ -z "$DF6_WHY" ]]; then
+    pass "DF-6 templates document the deferred marker + core sections (SYSTEM/FLOW/CONTENT-TYPE: <!-- deferred --> vs [To be designed] · Core sections · Decision-First)"
+else
+    fail "DF-6 template marker/card drift:$DF6_WHY"
+fi
+
 # ============================================================================
 # Context-optimization guards (mode-extraction + flow-first + P4/P5 + design-read).
 # The flow-first/mode-extraction refactor pulled mode bodies and Step 4.5 out of

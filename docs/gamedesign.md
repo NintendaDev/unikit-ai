@@ -32,6 +32,60 @@ the bottom of `GAME.md` (`## System Map [gen]` / `## Flow Map [gen]` / `## Funne
 
 ---
 
+## Decision-First authoring (how a zone is filled)
+
+The three zone skills (`/unikit-gd-system`, `/unikit-gd-flow`, `/unikit-gd-content`) share
+one authoring contract — **Decision-First** (the `gd-authoring` shard). The old flow
+walked every section in order through a full Context → Options → Decision → Draft →
+Approval cycle — roughly **14 near-identical gates** to detail one system. Decision-First
+captures the same facts in **~4–6 gates** by scaling the ceremony to the actual choice.
+
+**The six phases.**
+
+0. **Bootstrap** — load the contract + the zone's section map and core-set.
+1. **Depth** — one gate: a picker of the named tiers **`core / standard / full`** (each
+   with what it adds, not bare letters). The pick is the *ephemeral scope of this pass* —
+   it is **never stored**; the lasting fact is the status.
+2. **Fork scan (silent)** — classify each in-scope section without asking: **seeded** (a
+   SOURCE / recon / explore brief, the pillars, the domain rules, or a neighbour already
+   answers it → drafted silently) vs a **real fork** (a genuine design choice). Pillar
+   conflicts surface here, early.
+3. **Decision interview** — ask **only the real forks**, batched. Options are always
+   grounded in theory and the pillars — never a blank page ("which curve? linear /
+   diminishing / threshold, or describe your own"). A flow's **Mode** and a content
+   type's **Scale** are decided here.
+4. **Generation** — draft each section: seeded ones silently; acceptance criteria
+   auto-derived; accessibility / telemetry auto-defaulted at a low depth; a section you
+   choose to skip is marked **`<!-- deferred -->`**.
+5. **Group review** — present sections by tier-group, each behind a **card** (why / what /
+   source, drawn from the template hints) and one **structural gate** — *Accept &
+   continue · Fix · Defer · Accept all the rest* — with a progress indicator.
+6. **Final** — write the registry, set the inferred status, append the changelog,
+   re-render the `[gen]` map.
+
+**Sections have names, not letters.** The dialogue never says "section J"; it says
+"Accessibility". The letters are the template's internal index only.
+
+**Depth is a picker; status is inferred.** Depth (`core/standard/full`) is chosen per pass
+and forgotten. The lasting fact is the `doc_status`, and it stays honest about partiality
+**without storing it**:
+
+- **`core` is the floor.** A doc reaches `detailed` only when its whole core-set is
+  authored — system: Overview / Player Fantasy / Detailed Design / Formulas / Acceptance
+  Criteria; flow: Overview / Objective Flow; content: Overview / Schema / Scale. Defer a
+  *core* section and the status honestly stays below `detailed`.
+- **`detailed · partial (n/m)`** — when the core is complete but some *non-core* sections
+  were deferred, the map renders `detailed · partial (n/m)`, **inferred from the
+  `<!-- deferred -->` markers** in the document. There is no stored "depth" field, so it
+  cannot drift. (`<!-- deferred -->` is an *intentional* omission; the older
+  `[To be designed]` is an *unfilled* skeleton placeholder and remains a leak.)
+
+The `· partial` suffix is rendered identically by every `[gen]`-map writer
+(`/unikit-gd-spec`, `/unikit-gd-flow`, `/unikit-gd-content`) and by `/unikit-gd-verify`'s
+freshness pass — all from the one canonical rule in `gd-lifecycle`.
+
+---
+
 ## The Content axis (the catalog)
 
 The content axis is the data the game is made of — items, cards, levels, spawn waves,

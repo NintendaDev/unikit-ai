@@ -13,7 +13,7 @@ renders read-only into `GAME.md` `## System Map [gen]`):
 ```
 GAME.md          master design + the [gen] maps (## System Map / ## Flow Map / ## Funnel / ## Content Map) + ## Win / Lose Conditions
 GD-IDS.yaml      machine truth (version: 2) — pillars / systems / flows / events / entities / formulas / terms / decisions / content_types / content / resources / tracks / knobs
-systems/combat.md
+systems/combat.md         detailed; carries a non-core `<!-- deferred -->` (§I) — the partial-status case
 systems/boost.md
 systems/hud.md
 # systems/loot.md is intentionally ABSENT (see Roster↔disk below)
@@ -112,10 +112,13 @@ alone (its declinable profile-completeness lens), not verify; a verify run that 
 |-----------|-------|------------------------------------|
 | **Display precedence** | `SYS-hud` | `GD-IDS` marks it `status: deprecated`, so the `## System Map [gen]` Status shows `deprecated` over the underlying `doc_status: reviewed`; the header (`reviewed`) and `GD-IDS` `doc_status` (`reviewed`) agree. The `deprecated` display overlay is excluded from the two-place Status comparison. |
 | **Lifecycle-enum scope** | `GAME.md` | `GAME.md` keeps `> Status: approved` — its **own** lifecycle enum (`drafted \| approved`). Status/Version coherence is scoped to **system** docs only, so `approved` here is not a status conflict. |
+| **Deferred marker (not a leak) + partial render** | `systems/combat.md` §I | the Telemetry section carries `<!-- deferred -->` — **intentionally** skipped at the `core` depth, distinct from `[To be designed]`. Verify must **NOT** flag it as a placeholder leak. The core set A/B/C/D/H is fully authored, so SYS-combat stays `detailed` (the **core-floor** check does **not** fire — only a deferred *core* section would trip it). Instead the `## System Map [gen]` SYS-combat row renders `detailed · partial (1/5)` (1 deferred of the 5 non-core sections E/F/G/I/J), inferred from the marker — a freshness self-heal (the stale render omits it), never a resolvable conflict. |
 
-A smoke run that flags either carve-out as a conflict is a regression — the two
+A smoke run that flags any carve-out as a conflict is a regression — the three
 carve-outs are the reason `/unikit-gd-verify` scopes the coherence checks to the
-two-place system spine and treats `deprecated`/`implemented` as display overlays.
+two-place system spine, treats `deprecated`/`implemented` as display overlays, and
+treats `<!-- deferred -->` as an intentional omission (rendered `· partial`, never a
+placeholder leak — distinct from the `[To be designed]` leak in `systems/boost.md` §E).
 
 ## Qualitative defects — flagged by `/unikit-gd-review`
 

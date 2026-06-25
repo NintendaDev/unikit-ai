@@ -219,6 +219,14 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   cases, dependencies, tuning, acceptance criteria, telemetry, accessibility, open questions) —
   **create** the skeleton, **fill** placeholders, **and revise** approved content (Tuning a
   number / Tweak a small rule / Rework a restructure, each a versioned delta + changelog).
+- **How (Decision-First — the reference flow flows/content mirror):** pick a **depth**
+  (`core/standard/full`, ephemeral, never stored), draft seeded sections silently, ask only
+  the real design forks (1–2 batches), then review by tier-group behind one structural gate —
+  ~4–6 gates, not one per section; sections addressed by name, not letters. A skipped section is
+  marked `<!-- deferred -->`; once the **core-set** (Overview / Player Fantasy / Detailed Design /
+  Formulas / Acceptance Criteria) is authored the doc is `detailed`, and a deferred non-core
+  section renders **`detailed · partial (n/m)`** (inferred from the markers, never stored — not a
+  `[To be designed]` leak).
 - **When:** "detail the combat system", "write the GDD for inventory", "spec out the parameters",
   "raise the damage 10%", "rework the status system", "nerf X", "tune the economy".
 - **In:** a system name or `SYS-slug` (+ optionally what to change). Mode (create/fill/edit) and
@@ -233,7 +241,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   skeleton, fill it (objectives, pacing, dependencies, funnel events), **and revise** it as a
   versioned delta. Picks the wiring mode (linear | conditional | emergent) and re-renders the
   `## Flow Map [gen]` / `## Funnel [gen]` blocks in `GAME.md`. A flow registers itself — there is
-  no add-flow in `/unikit-gd-spec`.
+  no add-flow in `/unikit-gd-spec`. Authored **Decision-First** (the same flow as
+  `/unikit-gd-system`): a depth picker, the **Mode** decided in the decision round, deferred
+  sections marked `<!-- deferred -->`; core-set = Overview / Objective Flow, so a deferred non-core
+  section renders `detailed · partial (n/m)`.
 - **When:** "design the first-session flow", "map the onboarding sequence", "write the FLOW for the
   boss encounter", "retune the pacing", "add a branch", "rework the onboarding".
 - **In:** a flow name or `FLOW-slug` (+ optionally what to change). Mode and edit scale are inferred;
@@ -251,7 +262,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   relationships, validation), **and revise the schema** as a versioned delta. Picks the scale
   (bulk | curated), self-registers `content_types:` / `content:` (+ `resources`/`tracks`/`knobs`
   facts) and re-renders the `## Content Map [gen]` block in `GAME.md`. A content type registers
-  itself — there is no add-content in `/unikit-gd-spec`.
+  itself — there is no add-content in `/unikit-gd-spec`. Authored **Decision-First** (the same
+  flow as `/unikit-gd-system`): a depth picker, the **Scale** decided in the decision round,
+  deferred sections marked `<!-- deferred -->`; core-set = Overview / Schema / Scale, so a deferred
+  non-core section renders `detailed · partial (n/m)`.
 - **When:** "design the item content type", "define the card schema", "add a CT for enemies",
   "add a rarity field", "switch to curated". (Adding/removing units or a bulk count is catalog
   churn — data, not a schema edit.)

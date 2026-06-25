@@ -53,3 +53,15 @@ in neither `GD-IDS.yaml` nor any system document (dangling reference).
 ## H. Acceptance Criteria
 
 (none listed — section H is empty, so the system is not implementation-ready.)
+
+## I. Telemetry
+
+<!-- deferred -->
+
+> Fixture note: this non-core section is **intentionally deferred** (the
+> `<!-- deferred -->` marker above), NOT a `[To be designed]` skeleton leak. The core
+> set A/B/C/D/H is fully authored, so SYS-combat stays `detailed`; the one deferred
+> non-core section makes the `## System Map [gen]` SYS-combat row render
+> `detailed · partial (1/5)` (1 deferred of the 5 non-core sections E/F/G/I/J),
+> inferred from the marker. `/unikit-gd-verify` must NOT flag the marker as a
+> placeholder leak.

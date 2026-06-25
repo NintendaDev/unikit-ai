@@ -115,6 +115,16 @@ system and registers itself (its `content_types:` / `content:` entries + `## Con
 there is no add-content in `/unikit-gd-spec`; a missing `belongs_to` system routes to spec
 add-system.
 
+**Authoring is Decision-First.** The three zone skills share one contract (`gd-authoring`):
+each pass starts by picking a **depth** (`core/standard/full` — an ephemeral scope, never
+stored), silently drafts what the seeds already answer, asks **only the genuine design forks**
+in 1–2 batches, then reviews the drafts by tier-group behind one structural gate (*accept /
+fix / defer / accept-all-rest*) — roughly **4–6 gates instead of one per section**, with
+sections addressed by name (never bare letters A–K). A section you deliberately skip is marked
+`<!-- deferred -->`; once the **core-set** is authored the doc is `detailed`, and any deferred
+non-core section makes it render **`detailed · partial (n/m)`** (inferred from the markers,
+never stored — distinct from a `[To be designed]` skeleton leak).
+
 **A multi-zone edit** the user has already decided — one touching more than one zone at once
 (a system *and* its content *and* a flow) — can be dispatched in a single pass by
 `/unikit-gd-apply`. It writes nothing itself: it resolves each delta to its `(target, zone)`,
