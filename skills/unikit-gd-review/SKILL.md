@@ -162,17 +162,23 @@ When the review **target is a `CONTENT-TYPE.md`** (or the scope is "all"), selec
 `CT-<slug>` / `CU-<ct>-<n>` and the `belongs_to` system / pillar it serves, on the same
 `RF-<date>-n` rubric.
 
-Run them as **2–4 parallel inline `Agent()`** calls, each given one lens and the
-adversarial framing *"find what is wrong — do NOT validate"*. Each agent is
-**read-only** and returns findings only; it never writes. Fall back to running the
-lenses sequentially in this session if the Agent tool is unavailable.
+Run them as **2–4 parallel inline `Agent()`** calls, each given one lens, the
+configured **artifact language**, and the adversarial framing *"find what is wrong —
+do NOT validate"*. Each agent is **read-only** and returns findings only; it never
+writes. Fall back to running the lenses sequentially in this session if the Agent
+tool is unavailable.
 
 ```
 Agent(subagent_type: general-purpose, model: sonnet, prompt:
   "Review <doc path> through the <lens> lens. Your job is to FIND PROBLEMS, not
    validate. For each: severity (Critical/Major/Minor/Suggestion per the rubric),
    the document section, and the contradicted fact/pillar/rule as evidence.
-   Diagnose — do not prescribe a fix. Return a findings list; write nothing.")
+   Diagnose — do not prescribe a fix. Return a findings list; write nothing.
+   Write every finding in <artifact language> — this prompt is your only language
+   source (you do not read Bootstrap or LANGUAGE_RULES), so translate domain concepts
+   to their meaning (pacing→темп, exploit→лазейка, beacon→маяк); never transliterate
+   jargon or code-switch mid-sentence. Keep only the id-tokens
+   (RF-/SYS-/AC-/GOAL-/FORM-/CT-) and the lifecycle enum verbatim in English.")
 ```
 
 Collect and de-duplicate the findings. Drop any finding with no section+evidence

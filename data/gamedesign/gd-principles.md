@@ -284,6 +284,17 @@ words they are; never dress them as a code, never strip them to a bare badge.
   from TIER A/B**. This is why the membrane reaches **5 of the 11** `unikit-gd-*` skills —
   verify, review, recon, apply, and docs are out of scope; the five authoring/ideation
   skills are in.
+  - **The exemption is the tokens, not the prose around them.** What stays English here
+    is strictly the stored identifiers and machine values — the id codes
+    (`RF-/PIL-/SYS-/ENT-/FORM-/AC-/DD-/GOAL-/FLOW-/CT-/CU-…`) and the lifecycle-status
+    enum (`skeleton | detailed | reviewed | revised`). Everything the report writes
+    *around* those tokens is ordinary prose and still obeys the general **"translate the
+    concept, not the label"** rule: the check names, the lens names, the diagnosis text,
+    and the verdict are rendered in the configured language — never transliterated jargon,
+    never a mid-sentence code-switch. Render the meaning, not a Runglish splice — e.g.
+    (RU) `pacing → темп/ритм`, `cue → сигнал/подсказка`, `gate → барьер/порог`; an id
+    like `GOAL-boss-1` still rides along verbatim, but the sentence carrying it is the
+    user's language.
 
 **Enforcement is discipline, not a gate.** No grep can prove speech stayed clean — the
 guarantee is that this contract sits in the core and is **re-applied at every
