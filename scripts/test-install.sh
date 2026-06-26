@@ -55,7 +55,8 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-memory",
                           "unikit-skills-context", "unikit-verify",
-                          "unikit-gd-recon", "unikit-gd-docs"],
+                          "unikit-gd-recon", "unikit-gd-docs",
+                          "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify"],
       "installedSubagents": ["unikit-architecture-sidecar"]
     }
   ],
@@ -214,6 +215,20 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-recon/references/code-recon.
   "unikit-gd-recon shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
   "unikit-gd-docs SKILL.md installed (GDD → docs/design render)"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks
+# into NEW references/ subdirs for the zone/verify skills (gd-flow, gd-content,
+# gd-verify previously had none). The non-flat copyDirectory delivers them with the
+# skill — assert ≥1 extracted reference per new-dir skill (else a silent delivery
+# regression; the SKILL switches point at these files via {{skills_dir}}/.../references/).
+# ─────────────────────────────────────────────────────
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-flow/references/mode-author.md" \
+  "unikit-gd-flow extracted mode reference (mode-author.md) travels under references/ (non-flat copyDirectory)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-content/references/mode-author.md" \
+  "unikit-gd-content extracted mode reference (mode-author.md) travels under references/ (non-flat copyDirectory)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-verify/references/axis-checks.md" \
+  "unikit-gd-verify extracted axis-checks.md travels under references/ (non-flat copyDirectory)"
 
 # ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path

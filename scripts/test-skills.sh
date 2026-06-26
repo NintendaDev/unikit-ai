@@ -929,6 +929,9 @@ GD_FLOW_TPL="$GD_DATA/templates/FLOW.md"
 GD_CONTENT_TPL="$GD_DATA/templates/CONTENT-TYPE.md"
 GD_GAME_TPL="$GD_DATA/templates/GAME.md"
 GD_VERIFY_SKILL="$ROOT_DIR/skills/unikit-gd-verify/SKILL.md"
+# Extracted gd-verify axis-check bodies (flow + content) — guard target for the check
+# tables moved out of SKILL.md (context-cost refactor, 2026-06-26).
+GD_VERIFY_AXIS="$ROOT_DIR/skills/unikit-gd-verify/references/axis-checks.md"
 SPINE_IDS_LINE=$(grep -F 'doc_status:' "$GD_IDS_TPL" 2>/dev/null | head -1 || true)
 SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head -1 || true)
 # Flow axis (PR#6): a flow's doc_status lives on the SAME 2-place spine — the FLOW.md
@@ -1292,6 +1295,11 @@ fi
 # GD_VERIFY_SKILL (the *design* gd-verify) and GD_IDS_TPL.
 GD_SPEC_SKILL="$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
 GD_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+# Extracted gd-explore reference bodies (input modes + save-research) — guard targets
+# for content moved out of SKILL.md (context-cost refactor, 2026-06-26).
+GD_EXPLORE_SAVE_RESEARCH="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+GD_EXPLORE_RESEARCH_BUCKET="$ROOT_DIR/skills/unikit-gd-explore/references/mode-research-bucket.md"
+GD_EXPLORE_RECON_INPUT="$ROOT_DIR/skills/unikit-gd-explore/references/mode-recon-input.md"
 GD_INTERNAL_LENS="$ROOT_DIR/skills/unikit-gd-explore/references/internal-design-lens.md"
 
 # (IL-1) The new engine reference exists, carries both mode-aware brief blocks, and
@@ -1316,8 +1324,8 @@ grep -qF '## Internal design lens' "$GD_EXPLORE_SKILL"          || IL_EXPLORE_WH
 grep -qF 'Internal-design signals present' "$GD_EXPLORE_SKILL"  || IL_EXPLORE_WHY+=" decision-rule"
 grep -qF '3-way handoff routing' "$GD_EXPLORE_SKILL"            || IL_EXPLORE_WHY+=" 3-way-routing"
 grep -qF "I won't edit the GDD" "$GD_EXPLORE_SKILL"             || IL_EXPLORE_WHY+=" read-only-warning"
-grep -qF 'Kind: feature | improvement' "$GD_EXPLORE_SKILL"      || IL_EXPLORE_WHY+=" kind-tag"
-grep -qF 'Target: SYS-<slug>' "$GD_EXPLORE_SKILL"               || IL_EXPLORE_WHY+=" target-tag"
+grep -qF 'Kind: feature | improvement' "$GD_EXPLORE_SAVE_RESEARCH" || IL_EXPLORE_WHY+=" kind-tag"
+grep -qF 'Target: SYS-<slug>' "$GD_EXPLORE_SAVE_RESEARCH"          || IL_EXPLORE_WHY+=" target-tag"
 if [[ -z "$IL_EXPLORE_WHY" ]]; then
     pass "gd-explore SKILL — lens section + decision rule + 3-way routing + read-only + Target/Kind (IL T2)"
 else
@@ -1489,7 +1497,7 @@ GD_CONTENT_SKILL="$ROOT_DIR/skills/unikit-gd-content/SKILL.md"
 CT_SKILL_WHY=""
 [[ -f "$GD_CONTENT_SKILL" ]] || CT_SKILL_WHY+=" no-skill-file"
 grep -qF 'CT-<slug>' "$GD_CONTENT_SKILL"            || CT_SKILL_WHY+=" no-CT-code"
-grep -qF 'CU-<ct>-<n>' "$GD_CONTENT_SKILL"          || CT_SKILL_WHY+=" no-CU-code"
+grep -qF 'CU-<ct>-<n>' "$ROOT_DIR/skills/unikit-gd-content/references/mode-author.md" || CT_SKILL_WHY+=" no-CU-code"
 grep -qF 'bulk | curated' "$GD_CONTENT_SKILL"       || CT_SKILL_WHY+=" no-scale"
 grep -qF 'content_types' "$GD_CONTENT_SKILL"        || CT_SKILL_WHY+=" no-self-register"
 grep -qF '## Content Map [gen]' "$GD_CONTENT_SKILL" || CT_SKILL_WHY+=" no-content-map-render"
@@ -1509,14 +1517,14 @@ fi
 # checks plus the flow-specific ones (mode↔structure, Win/Lose↔terminal GOAL, funnel
 # continuity, cross-axis impact). Arrows are matched byte-for-byte (-qF, not -iF).
 FL_VERIFY_WHY=""
-grep -qF 'Flow checks (axis-aware' "$GD_VERIFY_SKILL"       || FL_VERIFY_WHY+=" flow-checks-section"
-grep -qF 'GOAL id validity' "$GD_VERIFY_SKILL"              || FL_VERIFY_WHY+=" goal-id-validity"
-grep -qF 'Dangling `GOAL' "$GD_VERIFY_SKILL"                || FL_VERIFY_WHY+=" dangling-goal"
-grep -qF 'mode ↔ structure' "$GD_VERIFY_SKILL"              || FL_VERIFY_WHY+=" mode-structure"
-grep -qF 'Win/Lose ↔ terminal GOAL' "$GD_VERIFY_SKILL"      || FL_VERIFY_WHY+=" win-lose-terminal"
-grep -qF 'Funnel continuity' "$GD_VERIFY_SKILL"             || FL_VERIFY_WHY+=" funnel-continuity"
-grep -qF 'Flow Depends 3-way' "$GD_VERIFY_SKILL"            || FL_VERIFY_WHY+=" flow-depends-3way"
-grep -qF 'Flow / Funnel map freshness' "$GD_VERIFY_SKILL"   || FL_VERIFY_WHY+=" flow-map-freshness"
+grep -qF 'Flow checks (axis-aware' "$GD_VERIFY_AXIS"        || FL_VERIFY_WHY+=" flow-checks-section"
+grep -qF 'GOAL id validity' "$GD_VERIFY_AXIS"               || FL_VERIFY_WHY+=" goal-id-validity"
+grep -qF 'Dangling `GOAL' "$GD_VERIFY_AXIS"                 || FL_VERIFY_WHY+=" dangling-goal"
+grep -qF 'mode ↔ structure' "$GD_VERIFY_AXIS"               || FL_VERIFY_WHY+=" mode-structure"
+grep -qF 'Win/Lose ↔ terminal GOAL' "$GD_VERIFY_AXIS"       || FL_VERIFY_WHY+=" win-lose-terminal"
+grep -qF 'Funnel continuity' "$GD_VERIFY_AXIS"              || FL_VERIFY_WHY+=" funnel-continuity"
+grep -qF 'Flow Depends 3-way' "$GD_VERIFY_AXIS"             || FL_VERIFY_WHY+=" flow-depends-3way"
+grep -qF 'Flow / Funnel map freshness' "$GD_VERIFY_AXIS"    || FL_VERIFY_WHY+=" flow-map-freshness"
 grep -qF 'Cross-axis impact' "$GD_VERIFY_SKILL"             || FL_VERIFY_WHY+=" cross-axis-impact"
 if [[ -z "$FL_VERIFY_WHY" ]]; then
     pass "FL-3 unikit-gd-verify flow checks present (3-surface, dangling GOAL, mode↔structure, win/lose, funnel, GOAL-id, depends-3way, cross-axis)"
@@ -1586,7 +1594,7 @@ fi
 FL_UP_WHY=""
 grep -qF '## Flow Improvement Plan' "$GD_INTERNAL_LENS"   || FL_UP_WHY+=" lens-improvement-block"
 grep -qF '## Flow Feature Plan' "$GD_INTERNAL_LENS"       || FL_UP_WHY+=" lens-feature-block"
-grep -qF 'FLOW-<slug>' "$GD_EXPLORE_SKILL"                || FL_UP_WHY+=" explore-flow-target-tag"
+grep -qF 'FLOW-<slug>' "$GD_EXPLORE_SAVE_RESEARCH"        || FL_UP_WHY+=" explore-flow-target-tag"
 grep -qF 'Scenario / Flow seeds' "$GD_BRAINSTORM_SKILL"   || FL_UP_WHY+=" brainstorm-flow-phase"
 if [[ -z "$FL_UP_WHY" ]]; then
     pass "FL-7 upstream flow surface (internal-design-lens flow blocks, gd-explore FLOW target tag, gd-brainstorm flow phase)"
@@ -1644,17 +1652,17 @@ fi
 # mirror of the system/flow checks plus the content-specific ones), non-empty gated on
 # content_types, with the research: carve-out extended to all three axes.
 CS2_VERIFY_WHY=""
-grep -qF 'Content checks (axis-aware' "$GD_VERIFY_SKILL"        || CS2_VERIFY_WHY+=" content-checks-section"
-grep -qF 'CT/CU id validity' "$GD_VERIFY_SKILL"                 || CS2_VERIFY_WHY+=" ct-cu-id-validity"
-grep -qF 'CU.fields ⊆ CT.fields' "$GD_VERIFY_SKILL"             || CS2_VERIFY_WHY+=" cu-subset-ct"
-grep -qF 'ref<ENT/CU/FORM/SYS/RES>' "$GD_VERIFY_SKILL"          || CS2_VERIFY_WHY+=" ref-resolution"
-grep -qF 'scale ↔ structure' "$GD_VERIFY_SKILL"                 || CS2_VERIFY_WHY+=" scale-structure"
-grep -qF 'belongs_to 3-way' "$GD_VERIFY_SKILL"                  || CS2_VERIFY_WHY+=" belongs_to-3way"
-grep -qF 'Content status/version 2-place' "$GD_VERIFY_SKILL"    || CS2_VERIFY_WHY+=" content-status-version"
-grep -qF 'Content map freshness (3-surface)' "$GD_VERIFY_SKILL" || CS2_VERIFY_WHY+=" content-map-freshness"
-grep -qF 'RES/TRACK/KNOB coherence' "$GD_VERIFY_SKILL"          || CS2_VERIFY_WHY+=" res-track-knob"
+grep -qF 'Content checks (axis-aware' "$GD_VERIFY_AXIS"         || CS2_VERIFY_WHY+=" content-checks-section"
+grep -qF 'CT/CU id validity' "$GD_VERIFY_AXIS"                  || CS2_VERIFY_WHY+=" ct-cu-id-validity"
+grep -qF 'CU.fields ⊆ CT.fields' "$GD_VERIFY_AXIS"              || CS2_VERIFY_WHY+=" cu-subset-ct"
+grep -qF 'ref<ENT/CU/FORM/SYS/RES>' "$GD_VERIFY_AXIS"           || CS2_VERIFY_WHY+=" ref-resolution"
+grep -qF 'scale ↔ structure' "$GD_VERIFY_AXIS"                  || CS2_VERIFY_WHY+=" scale-structure"
+grep -qF 'belongs_to 3-way' "$GD_VERIFY_AXIS"                   || CS2_VERIFY_WHY+=" belongs_to-3way"
+grep -qF 'Content status/version 2-place' "$GD_VERIFY_AXIS"     || CS2_VERIFY_WHY+=" content-status-version"
+grep -qF 'Content map freshness (3-surface)' "$GD_VERIFY_AXIS"  || CS2_VERIFY_WHY+=" content-map-freshness"
+grep -qF 'RES/TRACK/KNOB coherence' "$GD_VERIFY_AXIS"           || CS2_VERIFY_WHY+=" res-track-knob"
 grep -qF 'Cross-axis impact (system → content type' "$GD_VERIFY_SKILL" || CS2_VERIFY_WHY+=" cross-axis-sys-ct"
-grep -qF 'skip this block silently' "$GD_VERIFY_SKILL"          || CS2_VERIFY_WHY+=" non-empty-gating"
+grep -qF 'skip this block silently' "$GD_VERIFY_AXIS"           || CS2_VERIFY_WHY+=" non-empty-gating"
 grep -qF 'on all three axes' "$GD_VERIFY_SKILL"                 || CS2_VERIFY_WHY+=" research-carveout-3axes"
 if [[ -z "$CS2_VERIFY_WHY" ]]; then
     pass "CS2-2 unikit-gd-verify content checks present (9: id/CU⊆CT/ref<>/scale/belongs_to/status/map-freshness/RES-TRACK-KNOB/cross-axis) + non-empty gating + research carve-out"
@@ -1686,7 +1694,7 @@ CS2_EXPLORE_WHY=""
 grep -qF '## Content Improvement Plan' "$GD_INTERNAL_LENS"  || CS2_EXPLORE_WHY+=" lens-improvement-block"
 grep -qF '## Content Feature Plan' "$GD_INTERNAL_LENS"      || CS2_EXPLORE_WHY+=" lens-feature-block"
 grep -qF 'CONTENT-<slug>' "$GD_INTERNAL_LENS"               || CS2_EXPLORE_WHY+=" lens-content-target-tag"
-grep -qF 'CONTENT-<slug>' "$GD_EXPLORE_SKILL"               || CS2_EXPLORE_WHY+=" explore-content-target-tag"
+grep -qF 'CONTENT-<slug>' "$GD_EXPLORE_SAVE_RESEARCH"       || CS2_EXPLORE_WHY+=" explore-content-target-tag"
 grep -qF 'no add-content' "$GD_EXPLORE_SKILL"               || CS2_EXPLORE_WHY+=" explore-content-route"
 if [[ -z "$CS2_EXPLORE_WHY" ]]; then
     pass "CS2-4 upstream content surface (internal-design-lens content blocks + CONTENT target tag, gd-explore CONTENT target + content route)"
@@ -2128,13 +2136,16 @@ fi
 DF3_WHY=""
 for s in system flow content; do
     f="$ROOT_DIR/skills/unikit-gd-$s/SKILL.md"
-    grep -qF 'Decision-First' "$f"        || DF3_WHY+=" $s:no-decision-first"
-    grep -qF 'Depth gate' "$f"            || DF3_WHY+=" $s:no-depth-gate"
-    grep -qF 'core/standard/full' "$f"    || DF3_WHY+=" $s:no-picker"
-    grep -qF 'never by a bare letter' "$f" || DF3_WHY+=" $s:no-names-rule"
-    grep -qF 'Fork-scan' "$f"             || DF3_WHY+=" $s:no-fork-scan"
-    grep -qF 'real fork' "$f"             || DF3_WHY+=" $s:no-seeded-vs-greenfield"
-    grep -qF "depth=<tier>" "$f"          || DF3_WHY+=" $s:no-depth-marker"
+    # The Decision-First authoring body moved to references/mode-author.md (context-cost
+    # refactor); Phase-2 depth gate stays in the SKILL switch. DF-3 split-grep accordingly.
+    fa="$ROOT_DIR/skills/unikit-gd-$s/references/mode-author.md"
+    grep -qF 'Decision-First' "$fa"        || DF3_WHY+=" $s:no-decision-first"
+    grep -qF 'Depth gate' "$f"             || DF3_WHY+=" $s:no-depth-gate"
+    grep -qF 'core/standard/full' "$f"     || DF3_WHY+=" $s:no-picker"
+    grep -qF 'never by a bare letter' "$fa" || DF3_WHY+=" $s:no-names-rule"
+    grep -qF 'Fork-scan' "$fa"             || DF3_WHY+=" $s:no-fork-scan"
+    grep -qF 'real fork' "$fa"             || DF3_WHY+=" $s:no-seeded-vs-greenfield"
+    grep -qF "depth=<tier>" "$fa"          || DF3_WHY+=" $s:no-depth-marker"
 done
 if [[ -z "$DF3_WHY" ]]; then
     pass "DF-3 zone skills Decision-First (system/flow/content: depth gate core/standard/full · names-not-letters · fork-scan · seeded-vs-greenfield · depth marker)"
@@ -2931,10 +2942,10 @@ fi
 # /unikit-gd-apply reviews/X.md. The sanctioned cross-skill write is recorded in BOTH the
 # explore Ownership and the review Ownership; the REVIEW.md template carries the opt#3 note.
 HT3_WHY=""
-grep -qF "developing a review's open questions IN PLACE" "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-in-place-mode"
-grep -qF 'Promote the finding in place'   "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-promotion-step"
-grep -qF '🛠️ /unikit-gd-apply reviews/'   "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-one-file-command"
-grep -qF 'never into `researches/`'       "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-zero-researches"
+grep -qF "developing a review's open questions IN PLACE" "$GD_EXPLORE_RESEARCH_BUCKET" || HT3_WHY+=" explore:no-in-place-mode"
+grep -qF 'Promote the finding in place'   "$GD_EXPLORE_RESEARCH_BUCKET" || HT3_WHY+=" explore:no-promotion-step"
+grep -qF '🛠️ /unikit-gd-apply reviews/'   "$GD_EXPLORE_RESEARCH_BUCKET" || HT3_WHY+=" explore:no-one-file-command"
+grep -qF 'never into `researches/`'       "$GD_EXPLORE_RESEARCH_BUCKET" || HT3_WHY+=" explore:no-zero-researches"
 grep -qF 'Research-bucket mode (in-place promotion)' "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-ownership-note"
 grep -qF 'living pipeline artifact'       "$GD_REVIEW_SKILL"  || HT3_WHY+=" review:no-sanctioned-write-note"
 grep -qF 'promotes it in place'           "$GD_REVIEW_TPL"    || HT3_WHY+=" tpl:no-in-place-promote-note"
@@ -2951,10 +2962,10 @@ fi
 # with B). The section + the sanctioned write are recorded in the recon SKILL (format +
 # Ownership); the internal-design-lens reference carries the pre-GDD source carve-out.
 HT4_WHY=""
-grep -qF '## RECON-input mode'        "$GD_EXPLORE_SKILL"  || HT4_WHY+=" explore:no-recon-mode"
-grep -qF 'Pre-GDD carve-out'          "$GD_EXPLORE_SKILL"  || HT4_WHY+=" explore:no-pre-gdd-carveout"
+grep -qF '## RECON-input mode'        "$GD_EXPLORE_RECON_INPUT" || HT4_WHY+=" explore:no-recon-mode"
+grep -qF 'Pre-GDD carve-out'          "$GD_EXPLORE_RECON_INPUT" || HT4_WHY+=" explore:no-pre-gdd-carveout"
 grep -qF '## Explorations'            "$GD_EXPLORE_SKILL"  || HT4_WHY+=" explore:no-explorations-backlink"
-grep -qF '🗺️ /unikit-gd-spec .unikit/gamedesign/RECON.md' "$GD_EXPLORE_SKILL" || HT4_WHY+=" explore:no-spec-import-command"
+grep -qF '🗺️ /unikit-gd-spec .unikit/gamedesign/RECON.md' "$GD_EXPLORE_RECON_INPUT" || HT4_WHY+=" explore:no-spec-import-command"
 grep -qF 'RECON-input mode (research + backlink)' "$GD_EXPLORE_SKILL" || HT4_WHY+=" explore:no-recon-ownership-note"
 grep -qF '## Explorations'            "$GD_RECON_SKILL"    || HT4_WHY+=" recon:no-explorations-section"
 grep -qF 'appended by /unikit-gd-explore' "$GD_RECON_SKILL" || HT4_WHY+=" recon:no-explore-writer-note"
@@ -3004,9 +3015,9 @@ grep -qF "$SL_K1" "$GD_DATA/templates/SYSTEM.md"             || SL2_WHY+=" tpl-s
 grep -qF "$SL_K1" "$GD_DATA/templates/FLOW.md"               || SL2_WHY+=" tpl-flow:no-K1"
 grep -qF "$SL_K1" "$GD_DATA/templates/CONTENT-TYPE.md"       || SL2_WHY+=" tpl-content:no-K1"
 grep -qF "$SL_K1" "$GD_DATA/templates/GAME.md"               || SL2_WHY+=" tpl-game:no-K1"
-grep -qF "$SL_K1" "$GD_SYSTEM_SKILL"                         || SL2_WHY+=" sys-skill:no-K1"
-grep -qF "$SL_K1" "$GD_FLOW_SKILL"                           || SL2_WHY+=" flow-skill:no-K1"
-grep -qF "$SL_K1" "$GD_CONTENT_SKILL"                        || SL2_WHY+=" content-skill:no-K1"
+grep -qF "$SL_K1" "$ROOT_DIR/skills/unikit-gd-system/references/mode-revise.md"   || SL2_WHY+=" sys-skill:no-K1"
+grep -qF "$SL_K1" "$ROOT_DIR/skills/unikit-gd-flow/references/mode-revise.md"     || SL2_WHY+=" flow-skill:no-K1"
+grep -qF "$SL_K1" "$ROOT_DIR/skills/unikit-gd-content/references/mode-revise.md"  || SL2_WHY+=" content-skill:no-K1"
 # the RF-<date>-n changelog anchor replaces the old DD citation in the changelog format
 grep -qF '(RF-<date>-n)' "$GD_AUTHORING"                     || SL2_WHY+=" authoring:no-RF-anchor"
 if [[ -z "$SL2_WHY" ]]; then
