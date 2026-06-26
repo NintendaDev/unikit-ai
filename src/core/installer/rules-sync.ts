@@ -4,10 +4,11 @@ import {
   listFiles, readTextFile, writeTextFile, removeFile, fileExists,
 } from '../../utils/fs.js';
 import { getModuleTier, type RuleOrigin, type UniKitConfig } from '../config.js';
-import type { ChainedRegistry } from '../registry/index.js';
+import type { ChainedRegistry, RegistryRule } from '../registry/index.js';
 import { manifestEngineIds } from '../registry/validator.js';
 import { computeContentHash, isMarkdownFile, stripMdExtension } from './shared.js';
-import { REFERENCES_DIR_NAME, RULES_INDEX_FILE, moduleTierDir, type Tier } from '../constants.js';
+import { mapWithConcurrency } from '../../utils/concurrency.js';
+import { REFERENCES_DIR_NAME, RULES_INDEX_FILE, RULE_FETCH_CONCURRENCY, moduleTierDir, type Tier } from '../constants.js';
 import { listModules, type Module } from '../modules.js';
 import { loadRequiredByMap, generateRulesIndex, type InstalledByTier, type OriginByRule } from './rules-index.js';
 
@@ -193,7 +194,28 @@ async function syncRegistry(
     const stateList = getModuleTier(config, module.id, tier);
     const stateMap = new Map(stateList.map(e => [e.name, e]));
 
-    for (const regRule of registryRules) {
+    // Per-rule worker for the bounded-concurrency pool below.
+    //
+    // SAFETY CONTRACT — structural-race-free by construction:
+    //   * Each call FIELD-UPDATES only its OWN `existing` entry
+    //     (source/version/installed_hash/origin); it never push/splice-es
+    //     `stateList` nor rewrites `stateMap`. Distinct registry ids map to
+    //     distinct `existing` objects, so concurrent workers touch disjoint
+    //     state; the shared `stateMap`/`stateList` are READ-ONLY in here.
+    //   * Events accumulate into a LOCAL array, re-serialised in input order
+    //     after the pool drains — no `SyncRulesEvent` is dropped or reordered
+    //     between rules, so the emitted stream is byte-identical to the old
+    //     sequential `for...of`.
+    //
+    // WARM-RESOLVE INVARIANT — `fetchModuleManifest(module.id)` already ran at
+    // the top of `syncRegistry` and `getModuleRules` above reads that same
+    // resolved chain, so `GitRegistry.physicalSchema` (read by `fetchRule`) is
+    // populated before any fetch fires — the fan-out can't stampede concurrent
+    // manifest GETs to warm it.
+    const processRule = async (
+      regRule: RegistryRule,
+    ): Promise<{ events: SyncRulesEvent[]; changed: boolean }> => {
+      const localEvents: SyncRulesEvent[] = [];
       const existing = stateMap.get(regRule.id);
 
       // HARD GUARD — never install rules the user never installed.
@@ -218,7 +240,7 @@ async function syncRegistry(
       // their intended work on rules that ARE already in state (see the
       // two guards below), they just cannot materialize new rules from
       // the catalog.
-      if (!existing) continue;
+      if (!existing) return { events: localEvents, changed: false };
 
       // Per-rule B-merge origin for THIS id (override→primary,
       // backfill→official/bundled). For module-winner modules it equals the
@@ -231,8 +253,8 @@ async function syncRegistry(
       // the registry. Normal sync only updates existing registry-sourced
       // rules whose version changed.
       if (!replace) {
-        if (existing.source !== 'registry') continue;
-        if (existing.version === regRule.version) continue;
+        if (existing.source !== 'registry') return { events: localEvents, changed: false };
+        if (existing.version === regRule.version) return { events: localEvents, changed: false };
 
         // Override-retention guard (per-id-merge modules only): a deliberate
         // studio override (origin `primary`) does NOT auto-update from the
@@ -242,8 +264,8 @@ async function syncRegistry(
         if (module.coreResolution === 'per-id-merge'
           && existing.origin === 'primary'
           && ruleOrigin !== 'primary') {
-          events.push({ kind: 'phase2:override-retained', tier, name: regRule.id });
-          continue;
+          localEvents.push({ kind: 'phase2:override-retained', tier, name: regRule.id });
+          return { events: localEvents, changed: false };
         }
       }
 
@@ -254,7 +276,7 @@ async function syncRegistry(
       if (replace && existing.version
         && semver.valid(existing.version) && semver.valid(regRule.version)
         && semver.lt(regRule.version, existing.version)) {
-        events.push({
+        localEvents.push({
           kind: 'phase2:downgrade',
           tier,
           name: regRule.id,
@@ -266,7 +288,7 @@ async function syncRegistry(
       // `existing` is guaranteed defined at this point — the hard guard
       // above short-circuits rules that are not in state, so Phase 2
       // only ever UPDATES, never installs from scratch.
-      events.push({
+      localEvents.push({
         kind: 'phase2:updating',
         tier,
         name: regRule.id,
@@ -277,8 +299,8 @@ async function syncRegistry(
 
       const fetched = await registry.fetchRule(module.id, engineId, tier, regRule.id);
       if (!fetched) {
-        events.push({ kind: 'phase2:fetch-failed', tier, name: regRule.id });
-        continue;
+        localEvents.push({ kind: 'phase2:fetch-failed', tier, name: regRule.id });
+        return { events: localEvents, changed: false };
       }
 
       // Local modification handling:
@@ -291,10 +313,10 @@ async function syncRegistry(
       const locallyModified = !!(diskHash && existing.installed_hash && diskHash !== existing.installed_hash);
       if (locallyModified) {
         if (replace) {
-          events.push({ kind: 'phase2:overwrite-local-mod', tier, name: regRule.id });
+          localEvents.push({ kind: 'phase2:overwrite-local-mod', tier, name: regRule.id });
         } else {
-          events.push({ kind: 'phase2:skipped-local-mod', tier, name: regRule.id });
-          continue;
+          localEvents.push({ kind: 'phase2:skipped-local-mod', tier, name: regRule.id });
+          return { events: localEvents, changed: false };
         }
       }
 
@@ -313,8 +335,17 @@ async function syncRegistry(
       existing.version = regRule.version;
       existing.installed_hash = newHash;
       existing.origin = ruleOrigin;
-      phase2Changed = true;
-    }
+      return { events: localEvents, changed: true };
+    };
+
+    // Bounded parallel fetch: ≤ RULE_FETCH_CONCURRENCY rules in flight, their
+    // result objects re-serialised in INPUT order so the appended event stream
+    // matches the old sequential loop exactly. A `writeTextFile` reject
+    // propagates (Promise.all semantics) and aborts the sync — disk-failure
+    // behaviour is unchanged.
+    const results = await mapWithConcurrency(registryRules, RULE_FETCH_CONCURRENCY, processRule);
+    for (const r of results) events.push(...r.events);
+    if (results.some(r => r.changed)) phase2Changed = true;
 
     // --prune: remove obsolete stack rules that vanished from registry.
     //

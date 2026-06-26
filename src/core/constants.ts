@@ -63,6 +63,20 @@ export type Tier = 'core' | 'stack' | 'library';
  */
 export const RULE_CATEGORIES = ['core', 'stack'] as const;
 
+// --- Concurrency tuning ---
+
+/**
+ * Bounded fan-out width for per-rule network fetches in the rules pipeline.
+ * Shared by `syncRegistry` (`rules-sync.ts`) and the `bootstrapModuleRules`
+ * prefetch (`rules-bootstrap.ts`) so both overlap GETs against
+ * `raw.githubusercontent.com` at the same rate. Kept modest (8) so a full
+ * `update --force` sync overlaps its 20-40 round-trips without tripping the
+ * host's unauthenticated rate limit or opening an unbounded socket burst.
+ * Fetch is the only parallelised step — disk writes / config mutation stay
+ * sequential and deterministic in both callers.
+ */
+export const RULE_FETCH_CONCURRENCY = 8;
+
 // --- Project-relative directory segments ---
 
 export const UNIKIT_DIR = '.unikit';
