@@ -353,298 +353,60 @@ the GDD or the code."* Its routing is the internal-design lens's (the slice's
 `doc_status` picks the owner); in **subagent mode** every interactive `AskUserQuestion`
 is bypassed, the same as the internal-design lens.
 
-## Research-bucket mode — developing a review's open questions IN PLACE
+## Input modes — develop a review file or a RECON reconstruction
 
-A `unikit-gd-review` report splits its findings into two buckets: **`## Apply-ready`**
-goes to `unikit-gd-apply`, and the **`## Research`** bucket — the diagnoses that still
-need a decision — is **this skill's** input. It is the "decision factory" in the middle
-of the pipeline `review → explore → apply`: it turns each diagnosis into a decided edit,
-**written back into the same review file** — never into `researches/`. The review file is
-a **living pipeline artifact**: review fills its buckets, explore promotes the research
-bucket in place, apply consumes the apply-ready bucket.
+Two argument shapes put this skill into an **input mode**: it consumes a specific file
+the pipeline hands it, develops it through the internal-design lens
+(`references/internal-design-lens.md`), and ends with **one** handoff command (the
+Handoff Tail contract — `gd-critique`). Both are **read-only on the GDD**; the
+subagent-mode bypass applies (no interactive closure-pass questions when spawned). Load
+the matching body on demand — do **not** keep both in context:
 
-When the argument **resolves to an existing** `reviews/*_review-*.md` file, run this mode:
+| Argument resolves to | Mode | Reference body |
+|----------------------|------|----------------|
+| an existing `reviews/*_review-*.md` file | **Research-bucket mode** — develop a `unikit-gd-review` report's `## Research` bucket **in place** (promote each decided finding into `## Apply-ready`), then recommend `/unikit-gd-apply reviews/<file>.md` | `{{skills_dir}}/{{self_name}}/references/mode-research-bucket.md` |
+| a `RECON.md` file | **RECON-input mode** — develop a `unikit-gd-recon` cold-start reconstruction (the pre-GDD carve-out), save the research as usual + a `## Explorations` backlink, then recommend `/unikit-gd-spec <RECON.md>` import | `{{skills_dir}}/{{self_name}}/references/mode-recon-input.md` |
 
-1. **Read the `## Research` bucket** (ignore `## Apply-ready` — that is apply's input, not
-   this skill's). Each line is `RF-<date>-n · <the open question to work out>`, naming a
-   doc / section / id and the question left open.
-2. **Develop each finding through the internal-design lens** (`internal-design-lens.md`):
-   deep-read the named target, lay out options, run the closure pass, and **decide the
-   edit**. Build the matching **mode-aware brief block** for the target's `doc_status` —
-   `## Improvement Plan` / `## New Feature Plan` for a system, or the
-   `## Flow Improvement Plan` / `## Flow Feature Plan` / `## Content Improvement Plan` /
-   `## Content Feature Plan` variants for a flow / content type.
-3. **Promote the finding in place — `## Research` → `## Apply-ready`.** This is the step
-   that makes apply act on it: `unikit-gd-apply` reads **only** the `## Apply-ready`
-   bucket, so a developed finding left in `## Research` is **silently ignored** (the apply
-   run no-ops on it). For each decided finding, **move its line out of `## Research` and
-   into `## Apply-ready`**, reformatting from the open-question shape into the **exact
-   apply-ready shape** the bucket and `unikit-gd-apply`'s file reader expect:
-
-   ```
-   - RF-<date>-n · <target doc / section> · Fix (entailed): <the decided edit>
-   ```
-
-   Carry the finding's **`RF-<date>-n` unchanged** so the owner cites the original review
-   finding in its changelog (the provenance review-finding → changelog, symmetric with
-   `unikit-gd-apply`). **Append the worked-out brief block** for that target to the review
-   file (below the buckets) so the owner has the reasoning when apply dispatches it — the
-   brief lives **in the review file**, not in a `researches/` folder. A finding you could
-   **not** resolve (it still needs a real decision) stays in `## Research`, unpromoted.
-4. **End with the one file command (Handoff Tail contract).** The review file's
-   `## Apply-ready` bucket now carries the decided edits — the missing link the research
-   bucket existed to supply. **Recommend** (print, never invoke — this skill has no `Skill`
-   tool) the single file command as the **last block** of the reply, icon in front, with
-   **nothing after it**:
-
-   ```
-   🛠️ /unikit-gd-apply reviews/<the same file>.md
-   ```
-
-   Apply reads the now-populated `## Apply-ready` bucket and lands the whole set in one
-   ordered pass (a single-zone set is bounced to its owner by apply's GATE 2). That closes
-   the pipeline `review → explore → apply` with **one** file argument — no prose deltas, no
-   per-finding list, no second file, and no description of what apply does next.
-
-This mode **never edits the GDD and never applies**. Its only write is the **in-place
-promotion inside the review file** (`reviews/*_review-*.md`, owned by `unikit-gd-review`) —
-a sanctioned cross-skill write recorded in Ownership below. The subagent-mode bypass
-applies as elsewhere (no interactive closure-pass questions when spawned).
-
-## RECON-input mode — developing a cold-start reconstruction
-
-`unikit-gd-recon` reconstructs a brownfield project into one passive
-`.unikit/gamedesign/RECON.md` — a candidate design **skeleton** (system roster +
-`depends_on`, content schemas, RES/ENT/FORM) plus a mandatory **`## Intent Gap`** of what
-code cannot know (pillars, fantasy, the "why"). That skeleton is exactly what the
-**internal-design lens** is for: working the open questions into decided design before the
-GDD is authored. When the argument **resolves to a `RECON.md` file**, run this mode.
-
-**Pre-GDD carve-out.** The internal-design lens normally requires `GAME.md` (it reasons
-about *this game's* design). RECON.md **is** that candidate design surface before a GDD
-exists, so the lens engages on it directly — the one pre-GDD case where "no `GAME.md`"
-does **not** bounce to brainstorm/spec.
-
-1. **Deep-read `RECON.md`** as the candidate design (in place of `GAME.md` + system docs):
-   its `## Systems`, `## Content Types`, `## Resources · Entities · Forms`,
-   `## Provided Context`, and especially the **`## Intent Gap`**.
-2. **Treat the `## Intent Gap` as the open-questions registry.** Each gap item — pillars,
-   target fantasy, win/lose intent, "are these numbers balanced or merely current?" — is
-   an open question; run the lens's closure pass over them (deep-read, options, decide),
-   exactly as the internal-design lens does for a GDD's open questions.
-3. **Carry the code provenance.** Facts the lens lifts **from RECON's reconstructed
-   sections** stay `provenance: extracted from code` (held ≥ Major — `gd-provenance`); mark
-   them as such in the research record, symmetric with the code-grounded lens. The
-   designer's own decisions worked out on top stay **untagged**.
-4. **Save the research AS USUAL — then backlink it (the asymmetry with review-file mode).**
-   Unlike a review file (mutated in place, no `researches/`), RECON.md is a **durable
-   seed**: save the research the normal way (`researches/<date>_<slug>/` via "Saving
-   Research Results"), then write a `research:` **backlink** into RECON.md's
-   **`## Explorations`** section — an accumulating registry of pointers, the cold-start
-   mirror of the `GD-IDS` `research:` pointer. Append (create the section if absent), one
-   line per research:
-
-   ```
-   - research: `researches/<date>_<slug>/` — <1-line topic>  (Target: <SYS-slug | Intent-Gap item>)
-   ```
-
-   This is a **sanctioned write into RECON.md** (owned by `unikit-gd-recon`) — recorded in
-   Ownership below; explore writes nothing else to RECON.md.
-5. **End with the import command (Handoff Tail contract).** The reconstruction is now
-   worked-through. **Recommend** (print, never invoke — no `Skill` tool) the import as the
-   **last block**, icon in front, nothing after it:
-
-   ```
-   🗺️ /unikit-gd-spec .unikit/gamedesign/RECON.md
-   ```
-
-   `/unikit-gd-spec` import mode extracts a `GAME.md` and asks the user to fill the Intent
-   Gap — now pre-worked by the linked research. The subagent-mode bypass applies as
-   elsewhere (no interactive closure-pass questions when spawned).
+Both write into a file this skill does **not** own (the `reviews/*_review-*.md` report;
+`RECON.md`) — the sanctioned cross-skill writes recorded in Ownership below.
 
 ## Serving a brainstorm request (subagent mode)
 
 `unikit-gd-brainstorm` delegates market validation to this skill by spawning it as a
-subagent (`Agent(subagent_type: general-purpose, skills: ["unikit-gd-explore"], …)`).
-The full contract — input, output fields, ownership, gate — is **this skill's own**
-`references/delegation-contract.md` (Explore owns the spec, provider-owns-spec);
-`references/market-scan.md` → "Subagent mode" holds the engine behavior. This section
-is the SKILL-level switch.
-
-**Detect delegation by the canonical marker** — the prompt contains, verbatim:
+subagent. This section is the SKILL-level switch. **Detect delegation by the canonical
+marker** — the prompt contains, verbatim, on one line:
 
 > **"Return the brief into this session as text; do not save any files."**
 
-Detection is by this **exact phrase**, not by a loose reading of the prompt. On a
-match, **load `references/delegation-contract.md`** — it fixes the brief's field shape,
-the machine fields, and the four-verdict gate the brief's `recommendation` feeds — then
-run **deterministically**:
-
-- **Bypass every interactive `AskUserQuestion`** — the lens tie-breaker above, the
-  save-offer under "Saving Research Results", **and** the internal-design and
-  code-grounded lenses' interactive questions (the domain-confirmation prompt and the
-  whole open-questions **closure pass**). A subagent is non-interactive; any prompt would
-  hang it — and a brainstorm delegation is always a market scan, never an internal-design
-  or code-grounded read, so there is nothing left to disambiguate.
-- **Run the market lens** and produce the **brainstorm-delegation brief**
-  (`market-scan.md`): per concept `market_signal` + `validation_confidence` +
-  evidence.
-- **Return the brief into the session as text — save no file.** "Do not save" means
-  **skip the save step**, not answer "no" to a prompt (there is no prompt). The
-  calling session owns persistence.
-- **Prefer direct `WebSearch` / `WebFetch`** over a nested `Agent(subagent_type:
-  Explore)` (see "Parallel investigation").
+Detection is by this **exact phrase**, not a loose reading. On a match, **load
+`references/delegation-contract.md`** (this skill's own spec — provider-owns-spec; the
+engine behavior is `references/market-scan.md` → "Subagent mode") and follow it: run
+**deterministically**, **bypass every interactive `AskUserQuestion`** (the lens
+tie-breaker above, the save-offer under "Saving Research Results", and the
+internal-design / code-grounded closure passes — a subagent would hang on any prompt),
+run the **market lens** (per-concept `market_signal` + `validation_confidence` +
+evidence), and **return the brief into the session as text — save no file** (skip the
+save step; the calling session owns persistence). Prefer direct `WebSearch` /
+`WebFetch` over a nested `Agent(subagent_type: Explore)` (see "Parallel investigation").
 
 ## Saving Research Results
 
-When the conversation crystallizes, **offer** to save (never auto-save):
-
-```
-AskUserQuestion: Save this research to .unikit/gamedesign/researches/?
-Research name: <date>_<kebab-slug>
-Options: 1. 💾 Yes — save   2. 🚫 No
-```
-
-On yes:
-
-```bash
-mkdir -p .unikit/gamedesign/researches/<date>_<slug>
-```
-
-1. **`RESEARCH_RESULT.md`** — the complete research: every dissection, comparison
-   table, diagram, and conclusion presented to the user. Header:
-
-   ```markdown
-   # <Research Title>
-   Date: <YYYY-MM-DD HH:MM>
-   Updated: <YYYY-MM-DD HH:MM>
-   Status: completed | in-progress | needs-follow-up
-   Research: <folder-name>
-   Target: SYS-<slug> | FLOW-<slug> | CONTENT-<slug>   # internal-design lens only — the system, flow, or content type this research targets
-   Kind: feature | improvement   # internal-design lens only — feature = new system/flow/content type, improvement = existing one
-
-   ## Table of Contents
-   ## Topic            — 1–2 sentences
-   ## Context          — why this research started
-   ## Findings         — dissections, comparisons, diagrams, trade-off tables
-   ## Conclusions      — what the evidence supports
-   ## Open Questions   — what remains unproven
-   ## Next Steps       — concrete follow-ups (see routing below)
-   ## References       — games, articles, URLs (note any web/Agent sources used)
-   ```
-
-   The Table of Contents is **mandatory** and reflects the real sections. The
-   **`Target:` / `Kind:`** lines are written **only** by the internal design lens
-   (`internal-design-lens.md` → "Research tags") — they let `unikit-gd-system` /
-   `unikit-gd-flow` / `unikit-gd-content` discover this research deterministically
-   after a `/clear`.
-   A reference-dissection or market research omits both.
-
-2. **`RESEARCH_BRIEF.md`** — a compact brief built **for `unikit-gd-spec` /
-   `unikit-gd-system` to consume** (the acceptance bar: it must be usable as their
-   input). Sections:
-
-   ```markdown
-   # Research Brief: <title>
-   - **Question**: <what was researched>
-   - **Key findings**: <bulleted, each with a source>
-   - **Portable mechanics**: <what to borrow> · **Incidental**: <what not to>
-   - **Trade-offs**: <the comparison table's conclusion>
-   - **Implications for our design**: <which pillars / systems this informs>
-   - **Recommended follow-up**: <spec / detail / brainstorm / prototype>
-   ```
-
-   Fill sections with `N/A` rather than inventing content the research did not cover.
-
-   **Internal design lens — append the mode-aware block.** When this research came
-   from the internal design lens, append to `RESEARCH_BRIEF.md` the **one** block that
-   matches the resolved handoff route (full field lists in `internal-design-lens.md`
-   → "Mode-aware brief"). The headings are **stable English anchors** so the routed
-   skill greps them deterministically:
-
-   - **`## Improvement Plan`** — when the route is `/unikit-gd-system` (target is
-     `detailed` / `reviewed` / `revised`): Target, expected scale, ready-to-apply
-     delta lines, touched GD-IDS facts, rejected alternatives, the `RF-<date>-n` it
-     closes (if any), deferred open questions.
-   - **`## New Feature Plan`** — when the route is `/unikit-gd-spec` (add-system) →
-     `/unikit-gd-system` (target has no doc / `not-started`): the map fields (slug,
-     Category, Tier, `implements: PIL-n`, `depends_on`) plus the A–K section seeds
-     `unikit-gd-system` pre-fills its section-cycle from.
-   - **`## Flow Improvement Plan`** — when the route is `/unikit-gd-flow` for a
-     `detailed` / `reviewed` / `revised` **flow**: Target `FLOW-<slug>`, expected scale,
-     delta lines (GOAL / beat / cue / event), touched GD-IDS facts, rejected
-     alternatives, the `RF-<date>-n` it closes (if any), deferred open questions.
-   - **`## Flow Feature Plan`** — when the route is `/unikit-gd-flow` for a **new flow**
-     (no doc / `not-started` / `skeleton`): the flow fields (slug, candidate `mode`,
-     `implements: PIL-n`, `depends_on: SYS-ids`) plus the A–F section seeds
-     `unikit-gd-flow` pre-fills its section-cycle from. (No add-flow step — the flow
-     zone registers itself.)
-   - **`## Content Improvement Plan`** — when the route is `/unikit-gd-content` for a
-     `detailed` / `reviewed` / `revised` **content type**: Target `CT-<slug>`, expected
-     scale, schema delta lines (field / type / `ref<>` / `scale`), touched GD-IDS facts,
-     rejected alternatives, the `RF-<date>-n` it closes (if any), deferred open questions.
-   - **`## Content Feature Plan`** — when the route is `/unikit-gd-content` for a **new
-     content type** (no doc / `not-started` / `skeleton`): the type fields (slug,
-     candidate `scale`, `belongs_to: SYS-<slug>`, candidate `CT.fields`) plus the A–F
-     section seeds `unikit-gd-content` pre-fills its section-cycle from. (No add-content
-     step — the content zone registers itself.)
-
-   For several targets, append one block per target (dependency-sorted).
-
-**Next Steps routing** — turn insights into concrete follow-ups:
-
-| Insight | Follow-up |
-|---------|-----------|
-| A direction worth ideating | 💡 `/unikit-gd-brainstorm` |
-| Ready to formalize into the master spec / a system | 🗺️ `/unikit-gd-spec` / 🧩 `/unikit-gd-system` |
-| **Internal lens** — improve a `detailed`/`reviewed`/`revised` system | 🧩 `/unikit-gd-system` (consumes `## Improvement Plan`) |
-| **Internal lens** — a new mechanic (no doc / `not-started`) | 🗺️ `/unikit-gd-spec` (add-system) → 🧩 `/unikit-gd-system` (consumes `## New Feature Plan`) |
-| **Internal lens** — fill a `skeleton` system | 🧩 `/unikit-gd-system` |
-| **Internal lens** — improve a `detailed`/`reviewed`/`revised` flow | 🌊 `/unikit-gd-flow` (consumes `## Flow Improvement Plan`) |
-| **Internal lens** — a new / `skeleton` flow | 🌊 `/unikit-gd-flow` (consumes `## Flow Feature Plan`) |
-| **Internal lens** — improve a `detailed`/`reviewed`/`revised` content type | 📦 `/unikit-gd-content` (consumes `## Content Improvement Plan`) |
-| **Internal lens** — a new / `skeleton` content type | 📦 `/unikit-gd-content` (consumes `## Content Feature Plan`) |
-| A balance/economy/UX convention worth keeping | 🧠 `/unikit-memory --module gamedesign` |
-| A consistency concern in the current design | ✅ `/unikit-gd-verify` |
-
-3. **Update `researches/INDEX.md`** — **prepend** (newest first) after the header
-   (create with `> Auto-maintained by /unikit-gd-explore. Do not edit manually.`
-   if absent):
-
-   ```markdown
-   ---
-   ### <Research Title>
-   - **Date**: <YYYY-MM-DD HH:MM>
-   - **Updated**: <YYYY-MM-DD HH:MM>
-   - **Status**: completed | in-progress | needs-follow-up
-   - **Summary**: <1–2 sentences from ## Topic>
-   - **Path**: `<folder-name>/`
-   - **Target**: SYS-<slug>   (internal-design lens only — the fallback discovery key
-     for `unikit-gd-system`; omit for reference/market research)
-   ```
-
-   On a new research `Updated` equals `Date`; on revision only `Updated` changes.
+When the conversation crystallizes, **offer** to save (never auto-save) — then **load
+`{{skills_dir}}/{{self_name}}/references/save-research.md` and follow it**. That body
+holds the artifact templates (`RESEARCH_RESULT.md` with its `Target:` / `Kind:`
+discovery tags, `RESEARCH_BRIEF.md`), the **Next Steps routing** table, and the
+`researches/INDEX.md` update format. When the research came from the **internal design
+lens**, the brief gets the **one** mode-aware block matching the resolved route — the
+block field lists live in `references/internal-design-lens.md` → "Mode-aware brief"
+(the single source of truth; do not duplicate them).
 
 ## Init: Rebuilding the Researches Index
 
-When the argument is exactly `init`, synchronize
-`.unikit/gamedesign/researches/INDEX.md` with the directory contents — a
-maintenance command, no exploration:
-
-1. List subdirectories of `.unikit/gamedesign/researches/`.
-2. Parse the existing index for indexed `**Path**`s.
-3. **Keep** entries whose directory still exists (unchanged); **Remove** entries
-   whose directory is gone; **Add** directories with no entry — read their
-   `RESEARCH_RESULT.md` for title/status/topic (date from the `Date:` line or the
-   folder prefix; `Updated` falls back to `Date`), and **when the header carries a
-   `Target:` line, carry it into the entry's `**Target**` field** (internal-design
-   lens researches — see "Research tags"; omit the field when the header has none).
-   Skip and warn on a missing `RESEARCH_RESULT.md`.
-4. Rewrite the index (header + entries, newest-date first; same-date alphabetical).
-5. Report: `Kept N · Added N (names) · Removed N (names)`.
-
-Empty/absent directory → write a header-only index and report "No researches
-found". Then **STOP** — do not enter explore mode.
+When the argument is exactly `init`, **load
+`{{skills_dir}}/{{self_name}}/references/init-index.md` and follow it** — a maintenance
+command (no exploration) that syncs `.unikit/gamedesign/researches/INDEX.md` with the
+directory (keep / remove / add entries, carry any `Target:` tag), reports
+`Kept N · Added N · Removed N`, then **STOPs**.
 
 ## Ending
 
