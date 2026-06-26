@@ -1,18 +1,18 @@
 ---
 name: unikit-gd-review
 description: >-
-  Qualitative quality review of game design documents — answers "is this design good,
-  and does it follow best practices?" — across all three GDD axes: systems, flows, and
-  content types. Fans out adversarial lenses (completeness, clarity, pillar alignment,
-  systems-math, fantasy-delivery, catalog scale, pacing & funnel, feasibility, scope) plus
-  domain lenses that check it against the game-design rules, each prompted to find problems
-  rather than validate; produces a severity-graded verdict and report. Scope is inferred: a
-  named system, flow, or content type reviews that document; "all" runs a cross-document
-  review. Use when the user wants a critique, quality judgment, or rules check of the design,
-  e.g. "review the combat GDD", "does this follow best practices", "check the design
-  against the rules", "is the loot content well-designed", "review the onboarding flow".
-  This is the subjective quality pass — for a mechanical consistency check (numbers, terms,
-  IDs, references matching the registry) use /unikit-gd-verify.
+  Qualitative quality review of game design documents — answers "is this design good, and
+  does it follow best practices?" — across all three GDD axes: systems, flows, and content
+  types. Fans out adversarial lenses (completeness, clarity, pillar alignment, systems-math,
+  fantasy-delivery, feasibility, scope) plus domain lenses that check it against the
+  game-design rules, each prompted to find problems rather than validate; produces a
+  severity-graded verdict and a two-bucket report (apply-ready fixes vs research), handed to
+  /unikit-gd-apply or /unikit-gd-explore in one move. Scope is inferred: a named system, flow,
+  or content type reviews that document; "all" runs a cross-document review. Use when the user
+  wants a critique, quality judgment, or rules check of the design, e.g. "review the combat
+  GDD", "review the onboarding flow". This is the subjective quality pass — for a mechanical
+  consistency check (numbers, terms, IDs, references matching the registry) use
+  /unikit-gd-verify.
 argument-hint: "[system name | SYS-slug | path | \"all\"]  (scope inferred; no flags)"
 allowed-tools:
   - Read
@@ -42,6 +42,13 @@ delivered as a severity-graded verdict with evidence. This is the design-side
 mirror of `unikit-review`. It is distinct from `unikit-gd-verify`, which answers
 the cheaper, binary **"is the design consistent with itself?"** — a review finding
 *can* be declined; a verify conflict cannot.
+
+The review **ends in a handoff, not a hand-list**: the full report prints to the
+screen, every finding is triaged into an **apply-ready** bucket (a named entailed fix
+to apply now) or a **research** bucket (an open question to work out), and the user
+makes one move — `review → [explore] → apply` — instead of routing findings one at a
+time into owner skills. The triage engine (the ENTAILED criterion + the interview) is
+shared with `unikit-gd-verify` and lives in `gd-critique` → Handoff Engine.
 
 Review is **axis-aware**: it judges **systems** (the A–K GDD), **flows** (`FLOW.md`
 + the `## Flow Map [gen]` / `## Funnel [gen]` renders), and **content types**
@@ -204,21 +211,45 @@ checks no single-document review can make. **Depends symmetry is not a review
 lens** — `unikit-gd-verify` owns the Depends 3-way check (section F ↔ GD-IDS
 `depends_on` ↔ the `## System Map` Depends cell).
 
-## Phase 4 — Verdict & Report
+## Phase 4 — Verdict, Full Report (to screen) & Triage
 
-Compute the verdict from the findings:
+**Verdict.** Compute it from the findings:
 
 - **Single:** `APPROVED` (no Critical/Major) · `NEEDS REVISION` (Major, no
   Critical) · `MAJOR REVISION` (≥1 Critical).
 - **Cross:** `PASS` · `CONCERNS` · `FAIL` (≥1 Critical anywhere).
 
-Give each finding a **stable id** `RF-<YYYY-MM-DD>-<n>` (numbered in severity
-order, Critical first). The id lets a later `unikit-gd-system` edit cite the
-finding it resolves in its changelog.
+**Ids.** Give each finding a **stable id** `RF-<YYYY-MM-DD>-<n>` (numbered in
+severity order, Critical first). The id is what a later `unikit-gd-apply` /
+`unikit-gd-system` edit cites in its changelog — it must survive the handoff.
 
-Write **`.unikit/gamedesign/reviews/<date>_review-<scope>.md`** (`mkdir -p` the
-`reviews/` dir; `<scope>` is the SYS-slug or `all`). The report is the only memory
-that survives a fresh-session review:
+**Print the full report to the screen.** Render the *whole* findings table, the
+verdict line, and the "I like" calibration to the screen — not a one-line summary.
+(Printing only a summary and burying the report in a file was the complaint this
+fixes.) The file below is the *durable* copy of the same content; the screen is the
+*primary* surface.
+
+**Triage into two buckets** — the handoff engine (`gd-critique` → Handoff Engine),
+shared with `unikit-gd-verify`. Sort every finding by the silent **ENTAILED**
+criterion:
+
+- **Entailed** (all five points hold) → **apply-ready** automatically; record the
+  one named fix.
+- **Not entailed** → the **interview pool**.
+
+Then run the **interview** (Braintrust — the user decides). Offer one **per-run**
+choice up front — **[Run the interview]** or **[Send everything to research]** —
+then, when interviewing, batch the pool through `AskUserQuestion` (**≤ 4 findings
+per call**). Per finding: **[I decide: <fix>]** → apply-ready · **[To research]** →
+research · **[Decline]** → dropped. The interview **only classifies** and records
+the decision text; it **writes nothing** to the GDD (review stays non-authoring). A
+finding whose fix the user already holds in their head lands in apply-ready directly
+— no detour through `unikit-gd-explore`.
+
+**Write `.unikit/gamedesign/reviews/<date>_review-<scope>.md`** (`mkdir -p` the
+`reviews/` dir; `<scope>` is the SYS-slug or `all`) with the **two explicit
+buckets** — this is the durable handoff interface (`unikit-gd-apply` reads
+apply-ready, `unikit-gd-explore` reads research):
 
 ```markdown
 # Review: <scope> — <YYYY-MM-DD>
@@ -230,18 +261,27 @@ that survives a fresh-session review:
 |----|----------|--------------------|------|--------------------------------|
 | RF-<date>-1 | Critical | SYS-combat / D | systems-math | FORM-damage output contradicts PIL-2's design test |
 
-## Required before implementation
-<all Critical + Major, as an actionable checklist>
+## Apply-ready  ← hand to /unikit-gd-apply
+<entailed + user-decided findings; one line each:
+ `RF-<date>-n · <target doc/section> · Fix (entailed): <the single named edit>`.
+ Empty bucket is valid — write "(none)".>
 
-## Suggestions (non-blocking — plussing)
-<"what if…" items; only if the user asked for prescriptions>
+## Research  ← hand to /unikit-gd-explore
+<the diagnoses that still need a decision; one line each:
+ `RF-<date>-n · <the open question to work out>`.
+ Empty bucket is valid — write "(none)".>
 
 ## I like
 <what genuinely works — honest calibration, not flattery>
 ```
 
-A **clean** single review with zero findings still writes the report (the audit
-trail behind the Status change).
+The two buckets **replace** the old `Required before implementation` / `Suggestions`
+split and are **orthogonal to severity**: severity stays a column in the Findings
+table (the blocking-vs-non-blocking discipline still holds there); the buckets sort
+by *who acts* — the rule applies an entailed fix, the user decides the rest. A
+**clean** review (zero findings) still writes the report (the audit trail behind the
+Status change) with both buckets `(none)`, and **skips the handoff** (Phase 6)
+entirely — verdict + Status only.
 
 ## Phase 5 — Status (soft gate)
 
@@ -263,9 +303,57 @@ Options:
 - Report the write in the compact summary: which of the two surfaces changed.
 
 The gate is soft: `unikit-plan` warns when a system's Status is not
-`detailed`/`reviewed` or is `revised`. A review never auto-applies fixes — route
-revisions to the owning zone (`unikit-gd-system` for a system, `unikit-gd-spec` for
-`GAME.md`).
+`detailed`/`reviewed` or is `revised`. A review never auto-applies fixes — the
+handoff (Phase 6) hands the apply-ready bucket to `unikit-gd-apply` and the research
+bucket to `unikit-gd-explore`, in one move, instead of routing revisions one finding
+at a time into the owning zones.
+
+## Phase 6 — Handoff (only when there are findings)
+
+The review's job ends at the **diagnosis**; this phase hands the two buckets to the
+skills that act on them so the user makes **one** move — `review → [explore] →
+apply` — instead of routing findings one at a time into owner skills.
+
+**Safeguard — never decide alone.** When the **apply-ready** bucket is non-empty,
+first **show the apply-ready edits** on screen and let the user confirm or adjust
+them (the entailed fixes were sorted by the rule, but the user owns the call). Then:
+
+```
+AskUserQuestion: <K> apply-ready fix(es) are ready. Apply them now?
+Options:
+1. Apply now — runs /unikit-gd-apply on the apply-ready bucket, then verify
+2. Not now — I'll read the file first
+```
+
+**Hand off — recommend-only (never a `Skill` call).** Neither `unikit-gd-review` nor
+`unikit-gd-verify` carries `Skill` in `allowed-tools`; each **prints** the
+`/unikit-gd-apply` recommendation for the user to run, and on Codex the auto-invoke
+nudge runs it — the two handoff tails are identical by contract.
+
+<!-- unikit:agents codex -->
+### Auto-invoke the handoff — BLOCKING PRE-REQUISITE
+
+When this phase prints the `/unikit-gd-apply` recommendation, automatically invoke it
+(`$unikit-gd-apply <review-file>`) rather than asking the user to run it by hand — the
+printed command is the recommend-only fallback for agents without auto-invocation.
+This is a single handoff, not a per-finding dispatch: invoke `unikit-gd-apply` once
+with the review file and let it route the apply-ready bucket to the owners.
+<!-- unikit:end -->
+
+- **Apply now → yes:** print the apply command for the review file —
+  ```
+  /unikit-gd-apply .unikit/gamedesign/reviews/<date>_review-<scope>.md
+  ```
+  `unikit-gd-apply` reads the **apply-ready** bucket as its deltas, dispatches them to
+  the owning zones, and closes with one verify pass. Then **recommend**
+  `/unikit-gd-explore <same file>` for the **research** bucket.
+- **Apply now → no:** give **two recommendations** — `/unikit-gd-apply <file>`
+  (apply-ready) and `/unikit-gd-explore <file>` (research) — for the user to run when
+  ready.
+- **apply-ready empty** (the common case for a single subjective review): **skip the
+  apply offer** — recommend only `/unikit-gd-explore <file>` (research).
+- A **single-zone** apply-ready set still goes through `/unikit-gd-apply`: its own
+  GATE 2 bounces a lone zone straight to that owner — this skill never pre-routes.
 
 ## Final: Compact Report & Next Steps
 
@@ -273,14 +361,20 @@ revisions to the owning zone (`unikit-gd-system` for a system, `unikit-gd-spec` 
 Scope: <SYS-slug | all (N systems)>   Mode: <review|critique>
 Verdict: <verdict>
 Findings: <C> Critical · <M> Major · <m> Minor · <s> Suggestion
+Buckets: <A> apply-ready · <R> research
 Report: .unikit/gamedesign/reviews/<date>_review-<scope>.md
 Status: <set to `reviewed` across header + GD-IDS (## System Map re-renders) | unchanged>
+Handoff: <printed /unikit-gd-apply + /unikit-gd-explore | apply-ready empty → explore only | clean → none>
 ```
 
-**Next steps** (do not auto-invoke):
+**Next steps** — the handoff pipeline `review → [explore] → apply` (do not run the
+owner skills one finding at a time):
 
-- 🔧 Address the findings — /unikit-gd-system <system> "<finding>"
-- ✅ Verify consistency — /unikit-gd-verify <system>
+- 🛠️ Apply the entailed fixes — /unikit-gd-apply <review-file>  (the apply-ready
+  bucket; closes with verify)
+- 🔎 Work out the open ones — /unikit-gd-explore <review-file>  (the research bucket
+  → develop → propose apply)
+- ✅ Clean review (no findings) — /unikit-gd-verify <system> for a consistency pass
 
 If the same finding recurs across reviews of different systems, surface it as a
 candidate **studio `library` rule** (`/unikit-memory --module gamedesign`) so the
@@ -289,25 +383,32 @@ No summary document beyond the report file.
 
 ## Ownership Boundaries
 
-- **Owns:** `.unikit/gamedesign/reviews/` report files; and — with approval, to
-  record a verdict — the system's `doc_status` in its two coherent places: the
-  `GD-IDS.yaml` `doc_status` and the `SYSTEM.md` header `> Status:` line.
+- **Owns:** `.unikit/gamedesign/reviews/` report files — including the **triage**
+  (every finding sorted into the apply-ready / research bucket); and — with approval,
+  to record a verdict — the system's `doc_status` in its two coherent places: the
+  `GD-IDS.yaml` `doc_status` and the `SYSTEM.md` header `> Status:` line. The triage
+  interview writes only to the report file — **never** to the GDD.
 - **Read-only:** the **content** of every design document (sections A–K, `GAME.md`,
   the fact values in `GD-IDS.yaml`); plus `DESCRIPTION.md`/`ARCHITECTURE.md` for the
   feasibility lens only. The only design-surface writes are the three status fields
   above.
-- **Not this skill:** consistency/impact checks → `unikit-gd-verify`; applying
-  fixes and authoring → `unikit-gd-system` (systems) / `unikit-gd-spec` (`GAME.md`).
+- **Not this skill:** consistency/impact checks → `unikit-gd-verify`; **applying** the
+  apply-ready bucket → `unikit-gd-apply`; **developing** the research bucket →
+  `unikit-gd-explore`; authoring → `unikit-gd-system` (systems) / `unikit-gd-spec`
+  (`GAME.md`). The handoff to apply/explore is **recommend-only** — this skill prints
+  the command, it never invokes it.
 - **Never:** edit design **content** (any section A–K, `GAME.md`, or a `GD-IDS.yaml`
   fact value); prescribe a fix the user did not ask for; inflate severity past the
-  evidence; change a Status without approval; read the code workspace beyond the
-  feasibility exception.
+  evidence; change a Status without approval; carry `Skill` in `allowed-tools` or
+  apply a fix / invoke `unikit-gd-apply` itself (the handoff is a printed
+  recommendation); read the code workspace beyond the feasibility exception.
 
 ## Quick Reference
 
 ```
-/unikit-gd-review SYS-combat              → single review (verdict + report)
+/unikit-gd-review SYS-combat              → single review → verdict + report (apply-ready + research buckets) → handoff
 /unikit-gd-review combat                  → resolve to the SYS-slug; same flow
-/unikit-gd-review all systems             → cross-review with end-to-end checks
+/unikit-gd-review all systems             → cross-review with end-to-end checks → buckets → handoff
 /unikit-gd-review systems/SYS-combat.md   → review a specific document path
+# handoff (recommend-only print): /unikit-gd-apply <review-file> (apply-ready) · /unikit-gd-explore <review-file> (research)
 ```

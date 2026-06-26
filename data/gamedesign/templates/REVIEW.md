@@ -2,6 +2,7 @@
 
 > **Reviewed**: [SYS-slug vX / GAME.md vX / full design] · **Reviewer**: `unikit-gd-review`
 > **Verdict**: [single: APPROVED | NEEDS REVISION | MAJOR REVISION] · [cross: PASS | CONCERNS | FAIL]
+> **Scope signal**: [single SYS-slug | cross: N systems] · **Mode**: [review | critique]
 
 A quality verdict, not a consistency check (that is `unikit-gd-verify`). The
 reviewer's job is to FIND PROBLEMS, not to validate. Every finding cites a
@@ -10,6 +11,13 @@ with no citation is an opinion, downgraded to a Suggestion. Severity follows the
 rubric in `.unikit/system/gamedesign/gd-critique.md`. The room has no authority: this
 verdict informs the user's Status decision (recorded in `GD-IDS`, rendered in
 `GAME.md`'s `## System Map [gen]`); it never auto-applies.
+
+After the verdict, every finding is triaged into one of two **buckets** — the durable
+handoff interface (`gd-critique` → Handoff Engine). The buckets are **orthogonal to
+severity** (severity stays the Findings column): they sort by *who acts* —
+**Apply-ready** carries a named entailed fix for `unikit-gd-apply`, **Research** is a
+diagnosis still needing a decision, for `unikit-gd-explore`. The two buckets **replace**
+the old Required-Before-Implementation / Non-Blocking split. An empty bucket is valid.
 
 ## Verdict Rationale
 
@@ -20,33 +28,33 @@ REVISION (single) / FAIL (cross). Name the deciding findings.]
 
 [Merged and deduped across all lenses, then severity-classified. Lenses applied:
 completeness · clarity/implementability · pillar alignment · systems-math ·
-domain (economy/UX/accessibility/ethics/liveops) · feasibility · scope.]
+fantasy-delivery · domain (economy/UX/accessibility/ethics/liveops) · feasibility ·
+scope · (flows) pacing/guidance/funnel · (content) schema-coherence/catalog-scale.
+Each finding has a stable id `RF-<date>-n`, numbered in severity order, Critical first.]
 
-| # | Severity | Section | Finding | Evidence (cited fact / pillar / rule) |
-|---|----------|---------|---------|----------------------------------------|
-| 1 | Critical | [C / D / …] | [What is wrong / underspecified / missing] | [PIL-n design test, FORM-x range, GD-IDS fact, domain rule] |
-| 2 | Major | [section] | [Finding] | [Citation] |
-| 3 | Minor | [section] | [Finding] | [Citation] |
+| RF | Severity | Document / Section | Lens | Diagnosis (problem + evidence) |
+|----|----------|--------------------|------|--------------------------------|
+| RF-<date>-1 | Critical | [SYS-combat / D] | [systems-math] | [FORM-damage output contradicts PIL-2's design test] |
+| RF-<date>-2 | Major | [section] | [lens] | [problem + cited fact / pillar / rule] |
+| RF-<date>-3 | Minor | [section] | [lens] | [problem + citation] |
 
 Severity: **Critical** blocks handoff · **Major** risk if unaddressed ·
 **Minor** text quality · **Suggestion** plussing, never blocks.
 
-## Required Before Implementation
+## Apply-ready  ← hand to /unikit-gd-apply
 
-[All Critical + Major findings, as an actionable checklist. This is the blocking
-set — the document is not ready for the code side until these clear.]
+[The entailed + user-decided findings — each carries a named fix the user can apply now
+(the ENTAILED gate: one concrete target · the value already authoritative in the registry ·
+one local edit · no external knowledge). One line each. Empty bucket → write "(none)".]
 
-- [ ] [#1 — Critical — short action]
-- [ ] [#2 — Major — short action]
+- RF-<date>-n · [target doc / section] · Fix (entailed): [the single named edit]
 
-## Non-Blocking (Minor + Suggestions)
+## Research  ← hand to /unikit-gd-explore
 
-[Minor findings and invited "what if…" builds. Explicitly does NOT block handoff.
-Suggestions are offered, not required — plussing (d.school "I like / I wish /
-What if"), included here only because the user asked for direction.]
+[The diagnoses that still need a decision — develop each via the internal-design lens,
+then apply. One line each. Empty bucket → write "(none)".]
 
-- [#3 — Minor — note]
-- [What if… — suggestion, optional]
+- RF-<date>-n · [the open question to work out]
 
 ## I Like
 

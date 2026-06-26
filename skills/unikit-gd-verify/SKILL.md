@@ -4,14 +4,14 @@ description: >-
   Mechanical consistency check for game design — answers "is the design consistent with
   itself?" — plus changed-scope impact analysis across all three GDD axes: systems, flows,
   and content types. Offline and deterministic: greps the facts registry against the
-  documents (numbers, terms, IDs, duplicate & dangling references, roster↔disk, map freshness,
-  Depends 3-way, status/version, AC presence, placeholder leaks, flow mode↔structure & funnel,
-  content CT/CU ids, ref<>, scale↔structure, belongs_to), and from a git diff computes which
-  dependent systems, flows, and content a change affects. Scope is inferred: a named document
-  checks that document; an unverified diff triggers a changed-scope pass; otherwise
-  everything. Use when the user wants a consistency or impact check, e.g. "verify the
-  design", "check the GDDs against the registry", "what did this change affect", "find
-  broken references in the design". This is the mechanical pass — for a subjective "is this
+  documents (numbers, terms, IDs, duplicate & dangling references, roster↔disk, map
+  freshness, Depends 3-way, status/version, AC presence, placeholder leaks, flow & content
+  schema), and from a git diff computes which dependent systems, flows, and content a change
+  affects. Scope is inferred: a named document checks that document; an unverified diff
+  triggers a changed-scope pass; otherwise everything. Use when the user wants a consistency
+  or impact check, e.g. "verify the design", "what did this change affect", "find broken
+  references in the design". Conflicts triage into four tracks; the entailed fixes hand off
+  to /unikit-gd-apply in one pass. This is the mechanical pass — for a subjective "is this
   design good" quality critique use /unikit-gd-review.
 argument-hint: "[system name | SYS-slug | question]  (scope inferred; no flags)"
 allowed-tools:
@@ -44,6 +44,16 @@ impact** of a recent edit. This is the design-side mirror of `unikit-verify` and
 CI-linter to `unikit-gd-review`'s senior reviewer: cheap, binary, run after every
 edit. A **verify conflict cannot be declined** (unlike a review finding) — it is
 resolved.
+
+Conflicts are **precise, but their fix is not always predetermined**, so each is sorted
+into one of **four tracks** — **self-heal** (verify fixes it), **entailed → apply-ready**
+(a named fix handed to `unikit-gd-apply`), **direction interview** (the user picks *which*
+fix, never *whether*), and **authoring → owner / explore**. The apply-ready set hands off
+**in one move** — inline prose (verify writes **no** handoff file, unlike
+`unikit-gd-review`'s durable report), recommend-only. The handoff + interview run **only on
+a standalone `/unikit-gd-verify`**; when verify is `unikit-gd-apply`'s closing Phase 3 (the
+`apply-phase3` sentinel) they are suppressed, so `apply → verify → apply` never loops. The
+triage engine is shared with `unikit-gd-review` (`gd-critique` → Handoff Engine).
 
 Verification is **offline and reproducible**: no web research, no expert judgment,
 no LLM guessing where a grep will do. The same inputs always yield the same result
@@ -92,6 +102,15 @@ artifacts. **Web research is forbidden here** (`gd-principles`) — verification
 stay deterministic. The only `git` use is reading the design-workspace diff.
 
 ## Phase 1 — Resolve Scope (no flags)
+
+**Loop-guard sentinel (first).** If the argument is exactly **`apply-phase3`** — the
+reserved loop-guard sentinel (`gd-critique` → Handoff Engine), passed by
+`unikit-gd-apply` as its closing Phase 3 — this run is the **in-apply gate**, **not** a
+scope. Treat it as a bare invocation for scope purposes (derive changed-scope from the
+`git diff` exactly as below), but set the **in-apply flag**: the standalone handoff offer
+and the direction interview (Phase 4 Track 3 / Phase 6) are **suppressed** this run, so
+`apply → verify → apply` cannot loop. A standalone `/unikit-gd-verify` (no sentinel)
+leaves the flag off — the handoff is active.
 
 Scope is a function of context:
 
@@ -346,29 +365,60 @@ the pass across the axis (skip when `flows: []`):
   the next author sees why the type is `revised`. A `revised` content type returns to
   `reviewed` only through `unikit-gd-review`.
 
-## Phase 4 — Resolve Conflicts
+## Phase 4 — Triage Conflicts (4 tracks)
 
-Every CONFLICT must be resolved — it cannot be "declined". For each, ask and log
-the resolution:
+A verify conflict is **precise** (the grep found a real disagreement) but its **fix is
+not always predetermined**, and it can **never be declined** — only resolved or routed.
+Using the shared **handoff engine** (`gd-critique` → Handoff Engine), sort every conflict
+into one of **four tracks**:
 
-```
-AskUserQuestion: CONFLICT — <doc/section> says <X>, GD-IDS says <Y>. Resolve how?
-Options:
-1. Registry is right — flag the document for correction (recommend /unikit-gd-system)
-2. Document is right — update GD-IDS to <X> (with approval; record the change)
-3. Defer — park it in the system's section K (Open Questions)
-```
+1. **Self-heal** — verify fixes it itself, no question. The `[gen]`-map **freshness**
+   re-renders (Phase 2) and the **coherence** conflicts where `GD-IDS` is the machine
+   truth: a status / version disagreement is healed by correcting the header to match
+   `GD-IDS` (and the `## *Map [gen]` re-renders), unless the user resolves the registry the
+   other way. This track is unchanged from before.
 
-A registry change requires explicit approval and never silently overrides an
-existing value; a deprecated ID is never deleted. Log each resolution in the report.
+2. **Entailed → apply-ready** — the conflict's fix passes the silent **ENTAILED** criterion
+   (one concrete target · the correct value already authoritative in `GD-IDS` · exactly one
+   local fix · no external knowledge) but needs an **owner write** verify cannot make: a
+   **duplicate id** to renumber, a **terminology drift** to swap to the canonical term, a
+   **dangling reference** to repoint. Put it in the **apply-ready** set — the named fix
+   handed to `unikit-gd-apply` (Phase 6) as a prose delta, authored by the owner, not here.
 
-Not every conflict is a value mismatch. A **coherence** conflict (status / version
-/ Depends 3-way) has no single value to pick: the resolution brings the surfaces
-into agreement — `GD-IDS` is the machine truth, so the header is corrected to match
-it (and the `## System Map [gen]` re-renders) unless the user resolves the registry
-the other way. A **presence** conflict (empty H, duplicate id, placeholder leak,
-unregistered cross-doc fact) is resolved by editing the offending document
-(`/unikit-gd-system` for a system, `/unikit-gd-spec` for `GAME.md`), not the registry.
+3. **Direction fork → interview** — the conflict admits **more than one valid direction**:
+   a **value conflict** (the document or the registry could each be right), a **dangling
+   `GOAL → SYS` / `AC`** fixable three ways across three zones, a **roster ↔ disk** mismatch
+   (register vs delete), an **unregistered cross-doc `FORM-`/`ENT-`** (register vs remove).
+   The user picks the **direction** — never *whether* to act (decline-vs-direction,
+   `gd-critique`). The interview is **direction-only** and batched (`AskUserQuestion`, ≤ 4
+   per call); it is **suppressed under the in-apply flag** (Phase 1 sentinel):
+
+   ```
+   AskUserQuestion: CONFLICT — <doc/section> vs GD-IDS: <the disagreement>. Which direction?
+   Options:
+   1. Fix as A — e.g. registry is right → correct the document
+   2. Fix as B — e.g. document is right → update GD-IDS to <X> (with approval; record it)
+   3. This is authoring / needs a decision → route to the owner or /unikit-gd-explore
+   ```
+
+   There is **no "Decline"** — a consistency conflict is a fact, not an opinion. A chosen
+   A/B that is a clean local edit becomes an **apply-ready** prose delta (it joins Track 2);
+   option 3 routes it to Track 4.
+
+4. **Authoring → owner / explore** — the conflict needs **authoring**, not a mechanical
+   fix: an **empty section H** / **missing AC**, a **placeholder leak** in a `detailed`+
+   document, a **core section deferred past the floor**. It is neither entailed nor a
+   direction pick — route it to the owning zone (`unikit-gd-system` / `unikit-gd-flow` /
+   `unikit-gd-content` / `unikit-gd-spec`), or to `/unikit-gd-explore` when it needs a
+   design decision first.
+
+A registry change requires explicit approval and never silently overrides an existing
+value; a deprecated ID is never deleted. Log every conflict + its track + resolution in
+the report (Phase 5). The old coherence-vs-presence split still holds underneath: a
+**coherence** conflict (status / version / Depends 3-way) is Track 1 (self-heal to
+`GD-IDS`); a **presence** conflict (empty H, duplicate id, placeholder leak, unregistered
+cross-doc fact) is Track 2 (entailed → apply-ready) or Track 4 (authoring), resolved by
+editing the document, never the registry.
 
 ## Phase 5 — Report (only when needed)
 
@@ -392,10 +442,58 @@ written, it is `.unikit/gamedesign/reviews/<date>_verify-<scope>.md` (`mkdir -p`
 <rows bumped to `revised`, with approval>
 ```
 
+**This file is the conflict report, not the handoff.** verify's handoff to
+`unikit-gd-apply` is **inline prose from this session** (Phase 6) — verify writes **no**
+handoff/bucket file (the asymmetry with `unikit-gd-review`, which leaves a durable
+two-bucket report; a verify pass is ephemeral and cheap to re-run). The conflict-report
+file here is unchanged — the cross-session rework checklist, written on `CONFLICTS FOUND`
+or a changed-scope pass only.
+
 Why keep the file: it is the only cross-session memory and the rework checklist.
 When the same conflict recurs across systems, record it as a `gamedesign` `library`
 rule via `/unikit-memory --module gamedesign` — durable domain knowledge, not
 re-discovered each pass.
+
+## Phase 6 — Handoff (standalone only; inline prose, recommend-only)
+
+> **LOOP-GUARD.** This phase runs **only on a standalone `/unikit-gd-verify`**. Under the
+> **in-apply flag** (the `apply-phase3` sentinel resolved in Phase 1), **skip this phase
+> entirely** — verify self-heals (Track 1) and reports (Phase 5), but never offers a
+> handoff back to `unikit-gd-apply`. That is the silent gate that stops
+> `apply → verify → apply` from looping.
+
+When Tracks 2 and 3 produced **apply-ready deltas** (the entailed fixes + the
+direction-resolved edits), hand them to `unikit-gd-apply` **in one move** rather than
+routing each conflict into an owner skill by hand. verify's handoff is **inline prose from
+this session** — it writes **no** file (Phase 5): the prose deltas go straight into
+`unikit-gd-apply`'s prose input path.
+
+**Hand off — recommend-only (never a `Skill` call).** Neither `unikit-gd-review` nor
+`unikit-gd-verify` carries `Skill` in `allowed-tools`; each **prints** the
+`/unikit-gd-apply` recommendation for the user to run, and on Codex the auto-invoke nudge
+runs it — the two handoff tails are identical by contract.
+
+<!-- unikit:agents codex -->
+### Auto-invoke the handoff — BLOCKING PRE-REQUISITE
+
+When this phase prints the `/unikit-gd-apply` recommendation, automatically invoke it
+(`$unikit-gd-apply "<the prose deltas>"`) rather than asking the user to run it by hand —
+the printed command is the recommend-only fallback for agents without auto-invocation.
+This is a single handoff: invoke `unikit-gd-apply` once with the prose deltas and let it
+route them to the owners (it closes with its own `apply-phase3` verify — no loop).
+<!-- unikit:end -->
+
+- **apply-ready non-empty:** print the apply command with the deltas as prose —
+  ```
+  /unikit-gd-apply "<the entailed + direction-resolved deltas, each citing its conflict>"
+  ```
+  `unikit-gd-apply` takes the prose deltas (no file — verify writes none), dispatches them
+  to the owning zones, and closes with its own `apply-phase3` verify pass. A single-zone
+  set is bounced to its owner by apply's GATE 2.
+- **apply-ready empty** (only self-heal + authoring / research routes): **no apply
+  handoff** — list the Track-4 routes instead (`/unikit-gd-system` / `/unikit-gd-flow` /
+  `/unikit-gd-content` / `/unikit-gd-spec`, or `/unikit-gd-explore` for the ones needing a
+  design decision).
 
 ## Final: Compact Report
 
@@ -407,12 +505,18 @@ Flow checks (when flows exist): GOAL-ids · dangling-GOAL · flow-status/version
 Content checks (when content_types exist): CT/CU-ids · CU⊆CT · ref<>-resolve · scale↔structure · belongs_to-3way · content-status/version · content-map-freshness · RES/TRACK/KNOB · cross-axis SYS→CT — <pass/fail each>
 Affected (changed-scope): <k systems + flows + content types — Needs Review: …, Likely Stale: …>
 Freshness: <re-rendered ## System Map [gen] (· partial n/m where a section is deferred) | up to date>
+Tracks: <self-heal: N · apply-ready: N · direction-interview: N · authoring/explore: N>
+Handoff: <printed /unikit-gd-apply "<prose deltas>" | apply-ready empty → routes only | in-apply (apply-phase3) → suppressed>
 Report: <path | none (clean PASS)>
 ```
 
 **Next steps** (do not auto-invoke):
 
-- 🔧 Fix the conflicts — /unikit-gd-system <system> "<conflict>"
+- 🛠️ Apply the entailed fixes — /unikit-gd-apply "<apply-ready deltas>"  (one pass;
+  closes with its own verify)
+- 🔧 Author the rest — /unikit-gd-system / /unikit-gd-flow / /unikit-gd-content /
+  /unikit-gd-spec  (the Track-4 authoring conflicts)
+- 🔎 Decide first — /unikit-gd-explore  (conflicts needing a design call)
 - 🔍 Review quality (fresh session) — /unikit-gd-review <system>
 
 No summary document beyond the conditional report file.
@@ -431,18 +535,25 @@ No summary document beyond the conditional report file.
   section-F notes, approved conflict resolutions, a flagged dependent's
   `doc_status: revised` bump, and the `[gen]`-map freshness re-renders) `GD-IDS.yaml`,
   `GAME.md`.
-- **Not this skill:** quality judgment → `unikit-gd-review`; applying design fixes and
-  authoring → `unikit-gd-system` (systems) / `unikit-gd-flow` (flows) / `unikit-gd-content`
-  (content types) / `unikit-gd-spec` (`GAME.md` + the roster).
+- **Not this skill:** quality judgment → `unikit-gd-review`; applying the apply-ready set
+  in one pass → `unikit-gd-apply` (the handoff is **recommend-only** — verify prints the
+  command, never invokes it); authoring → `unikit-gd-system` (systems) / `unikit-gd-flow`
+  (flows) / `unikit-gd-content` (content types) / `unikit-gd-spec` (`GAME.md` + the roster);
+  a conflict needing a design decision → `unikit-gd-explore`.
 - **Never:** use web research; guess where a grep settles it; change a `GD-IDS`
   value silently or without approval; delete or renumber an ID; write the roster
-  (route to `unikit-gd-spec`); read the code workspace or project source.
+  (route to `unikit-gd-spec`); carry `Skill`/`Agent` in `allowed-tools` or invoke
+  `unikit-gd-apply` itself (the handoff is a printed prose recommendation); write a
+  handoff/bucket file (the handoff is inline prose — the conflict report is the only file);
+  offer the handoff or run the direction interview when invoked as apply's Phase 3 (the
+  `apply-phase3` loop-guard); read the code workspace or project source.
 
 ## Quick Reference
 
 ```
-/unikit-gd-verify SYS-combat        → check one system against the registry
+/unikit-gd-verify SYS-combat        → check one system → triage conflicts (4 tracks) → handoff apply-ready to /unikit-gd-apply
 /unikit-gd-verify                   → unverified diff → changed-scope impact; else full check
 /unikit-gd-verify what did that change affect  → changed-scope impact from git diff
 /unikit-gd-verify all               → full registry + roster + map-freshness + Depends pass
+# internal: /unikit-gd-apply passes apply-phase3 as its Phase 3 — verify suppresses the handoff/interview (loop-guard)
 ```

@@ -1,19 +1,18 @@
 ---
 name: unikit-gd-explore
 description: >-
-  Research and ideation partner for GAME DESIGN — think through design ideas before
-  writing them into the GDD; produces a brief, never edits the GDD itself. Use to assess a
-  genre or market for viability, dissect a reference game (mechanics → dynamics →
-  aesthetics), explore how to improve or extend an existing system, flow, or content type,
-  research new mechanics or balance the design lacks, or investigate a specific part of the
-  GDD in code. Trigger on "explore how to improve the flow", "how to improve our
-  content", "ways to improve the combat system", "is there a market for X", "is this
-  genre saturated", "break down the combat of Hades", "research roguelike economies".
-  GAME-DESIGN research only — for CODE, architecture, or technical-solution research use
-  /unikit-explore; to reconstruct a whole design from code use /unikit-gd-recon; to write a
-  change into the GDD use /unikit-gd-system or /unikit-gd-spec; to apply edits you already
-  know use /unikit-gd-apply; to invent a new game use /unikit-gd-brainstorm.
-argument-hint: "init | <topic | game reference | URL | design or market question>"
+  Research and ideation partner for GAME DESIGN — think through design ideas before writing
+  them into the GDD; produces a brief, never edits the GDD itself. Use to assess a genre or
+  market for viability, dissect a reference game (mechanics → dynamics → aesthetics), explore
+  how to improve or extend an existing system, flow, or content type, research new mechanics
+  the design lacks, investigate a part of the GDD in code, or develop the research bucket of
+  a /unikit-gd-review report into decided edits. Trigger on "explore how to improve the
+  flow", "ways to improve the combat system", "is this genre saturated", "break down the
+  combat of Hades", "work out the review's open questions". GAME-DESIGN research only — for
+  CODE or technical research use /unikit-explore; to reconstruct a design from code use
+  /unikit-gd-recon; to write a change into the GDD use /unikit-gd-system or /unikit-gd-spec;
+  to apply edits you know use /unikit-gd-apply; to invent a new game use /unikit-gd-brainstorm.
+argument-hint: "init | <reviews/*_review-*.md> | <topic | game reference | URL | design or market question>"
 allowed-tools:
   - Read
   - Glob
@@ -103,9 +102,11 @@ Before responding — before any analysis — silently load (do not narrate):
    options form, the open-questions registry + closure pass, the two brief blocks,
    and the research tags). Load it **only when the prompt carries internal-design
    intent** — improving an existing system or working out a new mechanic for *this*
-   game — as the "Internal design lens — when it engages" section below classifies.
-   When the lens engages, also deep-read the target per that engine (GAME.md +
-   its `## System Map [gen]` + GD-IDS + the target `SYS-<slug>.md` A–K + the
+   game — as the "Internal design lens — when it engages" section below classifies,
+   **or when the argument is a `reviews/*_review-*.md` file** (research-bucket mode —
+   see "Research-bucket mode" below; each research finding is developed through this
+   same engine). When the lens engages, also deep-read the target per that engine
+   (GAME.md + its `## System Map [gen]` + GD-IDS + the target `SYS-<slug>.md` A–K + the
    Depends-neighbours' D/F).
 8. **`{{skills_dir}}/unikit-gd-recon/references/code-recon.md`** — the shared `code →
    design-fact` engine, **owned by `unikit-gd-recon`** and read here (the same
@@ -346,6 +347,38 @@ the GDD or the code."* Its routing is the internal-design lens's (the slice's
 `doc_status` picks the owner); in **subagent mode** every interactive `AskUserQuestion`
 is bypassed, the same as the internal-design lens.
 
+## Research-bucket mode — developing a review's open questions
+
+A `unikit-gd-review` report splits its findings into two buckets: **`## Apply-ready`**
+goes to `unikit-gd-apply`, and the **`## Research`** bucket — the diagnoses that still
+need a decision — is **this skill's** input. It is the "decision factory" in the middle
+of the pipeline `review → explore → apply`: it turns each diagnosis into a decided edit.
+
+When the argument **resolves to an existing** `reviews/*_review-*.md` file, run this mode:
+
+1. **Read the `## Research` bucket** (ignore `## Apply-ready` — that is apply's input, not
+   this skill's). Each line is `RF-<date>-n · <the open question to work out>`, naming a
+   doc / section / id and the question left open.
+2. **Develop each finding through the internal-design lens** (`internal-design-lens.md`):
+   deep-read the named target, lay out options, run the closure pass, and produce the
+   matching **mode-aware brief block** for the target's `doc_status` — `## Improvement Plan`
+   / `## New Feature Plan` for a system, or the `## Flow Improvement Plan` /
+   `## Flow Feature Plan` / `## Content Improvement Plan` / `## Content Feature Plan`
+   variants for a flow / content type. **Carry the finding's `RF-<date>-n`** into the
+   block's "the `RF-<date>-n` it closes" field, so when the edit is applied the owner cites
+   the original review finding in its changelog (the provenance review-finding → changelog,
+   symmetric with `unikit-gd-apply`).
+3. **Propose `/unikit-gd-apply` at the end.** The developed findings are now **decided
+   edits** — the missing link the research bucket existed to supply. **Recommend** (print,
+   never invoke — this skill has no `Skill` tool) `/unikit-gd-apply "<the decided deltas,
+   each carrying its RF-id>"`, so the whole set lands in one ordered pass (a single-zone set
+   is bounced to its owner by apply's own GATE 2). That closes the pipeline `review →
+   explore → apply`.
+
+This mode stays **read-only**: explore develops and recommends; it never edits the GDD and
+never applies. The subagent-mode bypass applies as elsewhere (no interactive closure-pass
+questions when spawned).
+
 ## Serving a brainstorm request (subagent mode)
 
 `unikit-gd-brainstorm` delegates market validation to this skill by spawning it as a
@@ -553,6 +586,10 @@ crystallize, you might summarize the findings — but the thinking is often the 
   Explore only **tags** its own research (`Target:` / `Kind:`).
 - **Read-only:** `GAME.md`, `GD-IDS.yaml`, systems, flows, content types, concepts —
   route any design change to its owner skill, never edit them here.
+- **Research-bucket mode (read-only).** Developing a `unikit-gd-review` report's
+  `## Research` bucket is a read-only research pass — it turns each open finding into a
+  decided edit and **recommends** `/unikit-gd-apply` (printed, never invoked: there is no
+  `Skill` tool here). The `## Apply-ready` bucket is `unikit-gd-apply`'s, not this skill's.
 - **Code-grounded lens (read-only).** When the code lens engages, this skill reads
   project source and asset definitions — the sanctioned third exception to the one-way
   boundary (`gd-principles`), shared with `unikit-gd-recon`. It reads only the **named
@@ -576,6 +613,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
 /unikit-gd-explore is this roguelike niche saturated?  → market lens (viability / white-space)
 /unikit-gd-explore improve our combat balance        → internal design lens (read-only) → routes to system / spec
 /unikit-gd-explore how is our loot wired in the code → code-grounded lens (read-only, post-GDD slice) → brief
+/unikit-gd-explore reviews/2026-06-25_review-SYS-combat.md → develop the ## Research bucket → propose /unikit-gd-apply
 /unikit-gd-explore https://…                         → dissect a linked design source
 /unikit-gd-explore init                              → rebuild researches/INDEX.md
 ```

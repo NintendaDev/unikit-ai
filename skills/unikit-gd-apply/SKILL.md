@@ -9,10 +9,11 @@ description: >-
   with one /unikit-gd-verify pass. Use when you already know the changes and they touch more
   than one part of the design, e.g. "apply these GDD changes", "update the combat system
   and its loot and the boss flow", "raise the damage, add a rarity field and retune the
-  first-session pacing", "make all these design edits at once". For a change to a SINGLE
+  first-session pacing", "make all these design edits at once". It also takes a
+  /unikit-gd-review report file and applies its apply-ready bucket. For a change to a SINGLE
   zone call its owner directly; to research an open question or a mechanic you do not yet know
   how to design, use /unikit-gd-explore first.
-argument-hint: "\"<the multi-zone changes to apply>\"  (each delta routed to its zone owner; no flags)"
+argument-hint: "\"<changes>\" | <reviews/*_review-*.md>  (apply-ready bucket | prose deltas → zone owners; no flags)"
 allowed-tools:
   - Read
   - Glob
@@ -42,6 +43,13 @@ so the change graph stays causally fresh, hands each delta to the zone that owns
 closes with **one** consistency pass (`unikit-gd-verify`). The actual writing — sections,
 registry facts, version bumps, `[gen]` re-renders — happens **inside the owner skills**,
 under their collaborative protocol and delta discipline; this skill never bypasses it.
+
+**Two input shapes.** The argument is either the **prose deltas** themselves (typed,
+or handed off inline from `unikit-gd-verify`'s session) or a **`unikit-gd-review`
+report file** (`reviews/*_review-*.md`) — in which case this skill reads the file's
+**`## Apply-ready`** bucket as the delta set (the **`## Research`** bucket is
+`unikit-gd-explore`'s job, not this skill's). Either way the deltas flow through the
+same routing, ordering, and closing verify below.
 
 **When NOT to use it.** A change confined to **one** zone goes **straight to that owner**
 — there is nothing to dispatch (Phase 1, GATE 2). A change you **do not yet know how to
@@ -126,6 +134,19 @@ case where no inline invocation mechanism exists at all.
 
 ### Phase 1 — ROUTING (resolve every delta → `(target, zone)`)
 
+**Input-mode resolution (first).** If the argument **resolves to an existing** review
+report — a path matching `reviews/*_review-*.md` (the durable handoff from
+`unikit-gd-review`) — read it and take its **`## Apply-ready`** bucket as the delta
+set: each apply-ready line is one decided edit carrying an `RF-<date>-n` id and a named
+`Fix (entailed)`. The **`## Research`** bucket is **ignored** here — it is
+`unikit-gd-explore`'s input, not this skill's. An **empty** apply-ready bucket is a
+valid input: there is nothing to dispatch — report it and stop, recommending
+`/unikit-gd-explore <file>` for the research bucket. **Anything that is not a resolvable
+`reviews/*_review-*.md` path** — including the **inline prose deltas** that
+`unikit-gd-verify` hands off from its session — is the literal change request, taken as
+prose. (The file reader is the **only** review-specific adapter; the prose path is what
+keeps verify's session handoff working — verify writes no file.)
+
 Split the request into individual deltas. For each, resolve the **target** (a `SYS-`/
 `CT-`/`FLOW-` id or `GAME.md`) and the **zone** that owns it:
 
@@ -190,26 +211,33 @@ falsely (subtlety ① below):
   (Context → Options → approval → write → delta tail → `[gen]` re-render), wait for it to
   return, then dispatch the next. Each owner records its own version bump / changelog and
   re-renders its own `[gen]` map — this skill touches none of that.
+- **Carry the review-finding id.** When a delta came from a review file's apply-ready
+  bucket, pass its `RF-<date>-n` with the delta to the owner so the owner cites the
+  finding in its changelog essence — the same provenance review-finding → changelog a
+  direct `unikit-gd-system` edit records. Typed / verify-prose deltas with no id carry none.
 - **A delta the owner bounces** (e.g. a flow whose `GOAL` crosses into a missing system,
   surfaced mid-dispatch) re-enters Phase 1 as a new system delta slotted into the spec
   tier; re-order and continue.
 
-### Phase 3 — VERIFY (one bare pass, last)
+### Phase 3 — VERIFY (one sentinel pass, last)
 
 After **every** delta has been dispatched and its owner has returned, run **one**
-consistency pass:
+consistency pass, passing the reserved **loop-guard sentinel** `apply-phase3` as the
+single argument:
 
 ```
-Skill(skill: "unikit-gd-verify")        ← bare, NO argument
+Skill(skill: "unikit-gd-verify", args: "apply-phase3")    ← the loop-guard sentinel, NOT a scope
 ```
 
-Invoke `unikit-gd-verify` **with no argument** — it derives its own scope (an unverified
-design diff → changed-scope impact across the just-touched systems, flows, and content
-types; otherwise a full check). Do **not** construct a union list of the touched ids and
-pass it (verify's argument is a single system / question, not a set) — the bare call is
-exactly what surfaces the cross-axis impact of the whole batch in one pass. This is the
-only place gd-apply uses Tier 2's `/unikit-gd-verify` fallback / Tier 3 print, on the same
-rules as a dispatch.
+`apply-phase3` is **not** a scope or an id list — it is the one reserved token that tells
+`unikit-gd-verify` this run is apply's closing Phase 3. verify recognises it,
+**suppresses** its standalone handoff offer/interview (so `apply → verify → apply` cannot
+loop), and derives its own changed-scope from the unverified design diff exactly as a bare
+call would (changed-scope impact across the just-touched systems, flows, and content types;
+otherwise a full check). Do **not** construct a union list of the touched ids and pass it
+instead — `apply-phase3` is the only argument gd-apply ever passes here. This is the only
+place gd-apply uses Tier 2's `/unikit-gd-verify apply-phase3` fallback / Tier 3 print, on
+the same rules as a dispatch.
 
 ## Content-axis subtleties
 
@@ -252,12 +280,18 @@ content deltas:
 - **Never:** write or edit any GDD file or `GD-IDS.yaml` directly; classify a content delta
   as churn vs schema (the owner does); pre-decide an edit scale (Tuning/Tweak/Rework);
   dispatch content or a flow **before** the system it depends on; dispatch in parallel;
-  pass a union of ids to `unikit-gd-verify` (use the bare call); print the `Run:` list when
-  an inline invocation is possible; read the code workspace or project source.
+  pass a union of ids to `unikit-gd-verify` (pass only the `apply-phase3` loop-guard
+  sentinel); act on the `## Research` bucket of a review file (that is `unikit-gd-explore`'s
+  job); print the `Run:` list when an inline invocation is possible; read the code workspace
+  or project source.
 
 ## Quick Reference
 
 ```
+/unikit-gd-apply reviews/2026-06-25_review-SYS-combat.md
+                                                  → read the file's ## Apply-ready bucket → dispatch each entailed
+                                                    fix to its owner (carrying its RF-id) → verify "apply-phase3";
+                                                    the ## Research bucket → recommend /unikit-gd-explore
 /unikit-gd-apply "buff combat damage 10%, add a rarity field to loot, retune onboarding pacing"
                                                   → 3 deltas across 3 zones: dispatch SYS-combat (system) →
                                                     CT-loot schema (content) → FLOW-onboarding (flow) → verify

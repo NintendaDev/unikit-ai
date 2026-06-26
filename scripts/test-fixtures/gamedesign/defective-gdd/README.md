@@ -128,3 +128,33 @@ placeholder leak — distinct from the `[To be designed]` leak in `systems/boost
    (this is also the verify **AC presence** conflict above).
 7. **Unfalsifiable pillar tie-in (Minor)** — `PIL-2` "Feels skillful" has no design
    test backing it.
+
+## Handoff ground truth (`reviews/`)
+
+`reviews/2026-06-25_review-all.md` is a seeded `/unikit-gd-review` output — the durable
+**two-bucket** handoff interface the `review → [explore] → apply` pipeline reads. It is
+the ground truth for the handoff smoke; an LLM-driven run is checked against the rows
+below.
+
+**Classification (the two buckets).** Every finding is sorted by the silent **ENTAILED**
+criterion (`gd-critique` → Handoff Engine):
+
+| RF | Bucket | Why |
+|----|--------|-----|
+| RF-2026-06-25-2 | **apply-ready** | entailed — one concrete target (the boost loop-stack citation), the correct value already authoritative in `GD-IDS` (`SYS-boost implements: PIL-2`), one local edit, no external knowledge. → `/unikit-gd-apply` |
+| RF-2026-06-25-1 | **research** | NOT entailed — needs a math/playtest call to pick the damage-ramp fix. → `/unikit-gd-explore` |
+| RF-2026-06-25-3 | **research** | NOT entailed — needs a design decision (what the stamina sink should be). → `/unikit-gd-explore` |
+| RF-2026-06-25-4 | (declinable) | a **Suggestion** — plussing; the user may **Decline** it in the interview. |
+
+**decline-vs-direction.** A **review** finding can be **declined** (RF-2026-06-25-4 above —
+the interview offers `[I decide / To research / Decline]`); a **verify** conflict cannot —
+the dangling `SYS-inventory` reference (`systems/combat.md` §F, the verify
+Dangling-references conflict) is a **direction fork**: `[register SYS-inventory / remove
+the reference / it is authoring → owner]`, with **no Decline**.
+
+**Loop-guard.** Running `/unikit-gd-apply reviews/2026-06-25_review-all.md` applies the
+**apply-ready** bucket (RF-2026-06-25-2) through the owners and closes with
+`/unikit-gd-verify apply-phase3`. That closing pass must **self-heal + report only** — it
+must **NOT** re-offer the handoff or open the interview (the `apply-phase3` sentinel
+suppresses both), so `apply → verify → apply` never loops. A smoke run where the Phase 3
+verify offers another `/unikit-gd-apply` is a regression.

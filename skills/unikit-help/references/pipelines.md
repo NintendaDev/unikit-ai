@@ -87,9 +87,11 @@ flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynami
             │                                 picks the wiring mode + re-renders ## Flow Map [gen] / ## Funnel [gen]
 content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *catalog* (typed CT.fields schema,
             │                                 scale bulk|curated) + re-renders ## Content Map [gen]; the editor owns the values
-review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → severity verdict
+review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → verdict → two buckets (apply-ready / research)
             │
-verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" + cross-axis impact
+verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" → 4 tracks → apply-ready
+            │
+handoff:  → /unikit-gd-apply (apply-ready, one pass) · /unikit-gd-explore (research)   review/verify → [explore] → apply
             │ └─ loops back: a revised system or flow is re-reviewed, re-verified
 docs:     /unikit-gd-docs          (optional) the GDD → human-readable docs/design/*.md (the export-out)
 ```
@@ -163,11 +165,28 @@ whole lifecycle (create / fill / revise) and a flow registers itself, so there i
 add-flow step. The lens pre-fills it from a `## Flow Feature Plan` (new flow) or
 `## Flow Improvement Plan` (revision) brief.
 
-### gd-review vs gd-verify (commonly confused)
+### gd-review vs gd-verify (commonly confused) — and the handoff tail
 - **`/unikit-gd-review`** = subjective quality ("is this design *good*?") — adversarial lenses,
   severity verdict. The senior-reviewer pass.
 - **`/unikit-gd-verify`** = mechanical consistency ("is the design consistent with *itself*?") —
   broken IDs, terminology drift, dependency/status coherence. The linter pass.
+
+**Both end in the same honest handoff** (`review/verify → [explore] → apply`), not a hand-list
+of one-by-one owner calls. The full result prints to **screen**, then every finding is triaged
+into two **buckets** by a shared engine (`gd-critique` → Handoff Engine): **apply-ready** (a
+named, *entailed* fix to apply now) vs **research** (an open question still needing a decision).
+A short **interview** sorts the rest — a review finding can be **declined**; a verify conflict
+can only be **re-directed** (it is a fact, never declined). Then **apply-ready** →
+`/unikit-gd-apply` (one ordered pass through the zone owners, closing with verify) and
+**research** → `/unikit-gd-explore` (develop each into a decided edit, then apply). The handoff
+is **recommend-only** — both skills *print* the `/unikit-gd-apply` command (no `Skill` call); on
+Codex it auto-invokes. **Persistence is asymmetric:** review leaves a durable two-bucket file
+(`reviews/<date>_review-*.md`); verify hands off **inline prose from the session** (no file — a
+verify pass is cheap to re-run). A **loop-guard** keeps it safe: when `/unikit-gd-apply` closes
+with its Phase 3 verify it passes the reserved `apply-phase3` sentinel, which suppresses the
+offer so `apply → verify → apply` never loops. The **core is unchanged** — zone ownership, the
+one-way boundary, delta discipline, and the "diagnose, don't prescribe" stance all hold; only
+*how* review/verify hand their results onward changed.
 
 ---
 

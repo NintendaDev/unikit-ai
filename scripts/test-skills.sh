@@ -1806,7 +1806,7 @@ fi
 # it resolves each delta to its zone owner, fixes the system-before-sinks dispatch
 # order, and closes with one verify. bash cannot run the LLM dispatch, so assert the
 # contract surface on the SKILL.md: it references all four zone owners + the explore
-# route + the bare verify handoff, fixes the order, and (the load-bearing invariant)
+# route + the apply-phase3 verify handoff, fixes the order, and (the load-bearing invariant)
 # carries NO Write/Edit in allowed-tools. Mostly -qF file-scoped; the allowed-tools
 # scan extracts the YAML list so the prose mention of `Write`/`Edit` cannot false-match.
 GD_APPLY_SKILL="$ROOT_DIR/skills/unikit-gd-apply/SKILL.md"
@@ -1834,11 +1834,13 @@ else
         fail "GA-2 gd-apply dispatch-order invariant missing:$GA2_WHY"
     fi
 
-    # (GA-3) closes with one bare unikit-gd-verify handoff (no union arg).
-    if grep -qF 'Skill(skill: "unikit-gd-verify")' "$GD_APPLY_SKILL"; then
-        pass "GA-3 gd-apply closes with one bare Skill(unikit-gd-verify) pass"
+    # (GA-3) closes with one unikit-gd-verify pass carrying the apply-phase3 loop-guard
+    # sentinel — the single reserved arg (NOT a union of touched ids); verify recognises it
+    # and suppresses its standalone handoff offer, so apply→verify→apply cannot loop.
+    if grep -qF 'Skill(skill: "unikit-gd-verify", args: "apply-phase3")' "$GD_APPLY_SKILL"; then
+        pass "GA-3 gd-apply closes with one Skill(unikit-gd-verify, apply-phase3) loop-guard pass"
     else
-        fail "GA-3 gd-apply missing the final bare unikit-gd-verify handoff"
+        fail "GA-3 gd-apply missing the final unikit-gd-verify apply-phase3 handoff"
     fi
 
     # (GA-4) explore route for open questions (GATE 1 — research, not dispatch).
@@ -2743,6 +2745,137 @@ if grep -qF '<!-- Commit checkpoint' "$CK_TASKFMT"; then
     pass "unikit-plan TASK-FORMAT.md — decorative <!-- Commit checkpoint marker present (Task 4.1)"
 else
     fail "unikit-plan TASK-FORMAT.md — missing decorative <!-- Commit checkpoint marker (Task 4.1)"
+fi
+
+# ─────────────────────────────────────────────
+# HG: review/verify → apply/explore handoff (buckets + interview + shared engine).
+# (Distinct prefix from the apply-dispatcher GA-1…GA-5 block above — different concern.)
+# The review/verify TAIL was reworked into an honest handoff: full report to screen →
+# two buckets (apply-ready vs research) → a user-in-the-loop interview → one apply pass.
+# The triage engine (the ENTAILED criterion + the interview + decline-vs-direction + the
+# loop-guard sentinel) lives in the gd-critique shard, already bound to review/verify/
+# explore by gd_check_skill_shards above (UNCHANGED — the engine travels on the existing
+# binding). bash cannot run an LLM skill; these are file-scoped grep invariants on the
+# contract text. Reuse GD_CRITIQUE / GD_REVIEW_SKILL / GD_VERIFY_SKILL / GD_APPLY_SKILL /
+# GD_EXPLORE_SKILL; new path var GD_REVIEW_TPL.
+GD_REVIEW_TPL="$GD_DATA/templates/REVIEW.md"
+
+# (HG-1) gd-critique handoff engine — the ENTAILED criterion, the interview model (per-run
+# choice + batch, writes nothing to the GDD), the decline-vs-direction asymmetry (review
+# declines a finding / verify only re-directs a conflict), and the ONE loop-guard sentinel
+# literal (single source of truth — apply writes it, verify reads it).
+HG1_WHY=""
+grep -qF 'Handoff Engine'        "$GD_CRITIQUE" || HG1_WHY+=" no-handoff-engine"
+grep -qF 'ENTAILED criterion'    "$GD_CRITIQUE" || HG1_WHY+=" no-entailed-criterion"
+grep -qF 'apply-ready'           "$GD_CRITIQUE" || HG1_WHY+=" no-apply-ready-bucket"
+grep -qF 'decline-vs-direction'  "$GD_CRITIQUE" || HG1_WHY+=" no-decline-vs-direction"
+grep -qF '[Run the interview]'   "$GD_CRITIQUE" || HG1_WHY+=" no-per-run-interview"
+grep -qF '[Decline]'             "$GD_CRITIQUE" || HG1_WHY+=" no-review-decline-option"
+grep -qF '[Fix as A]'            "$GD_CRITIQUE" || HG1_WHY+=" no-verify-direction-option"
+grep -qF 'apply-phase3'          "$GD_CRITIQUE" || HG1_WHY+=" no-loop-guard-sentinel"
+if [[ -z "$HG1_WHY" ]]; then
+    pass "HG-1 gd-critique handoff engine (ENTAILED + interview + decline-vs-direction + apply-phase3 sentinel)"
+else
+    fail "HG-1 gd-critique handoff engine drift:$HG1_WHY"
+fi
+
+# (HG-2) unikit-gd-review tail — the full report to SCREEN, the two explicit buckets
+# (apply-ready with a Fix field + research), the safeguard + the recommend-only
+# /unikit-gd-apply handoff phase. The buckets are orthogonal to severity (severity stays a
+# column) and REPLACE the old Required/Non-Blocking split.
+HG2_WHY=""
+grep -qF 'Print the full report to the screen' "$GD_REVIEW_SKILL" || HG2_WHY+=" no-screen-print"
+grep -qF '## Apply-ready'        "$GD_REVIEW_SKILL" || HG2_WHY+=" no-apply-ready-bucket"
+grep -qF '## Research'           "$GD_REVIEW_SKILL" || HG2_WHY+=" no-research-bucket"
+grep -qF 'Fix (entailed)'        "$GD_REVIEW_SKILL" || HG2_WHY+=" no-fix-field"
+grep -qF 'Safeguard'             "$GD_REVIEW_SKILL" || HG2_WHY+=" no-safeguard"
+grep -qF '## Phase 6'            "$GD_REVIEW_SKILL" || HG2_WHY+=" no-handoff-phase"
+grep -qF '/unikit-gd-apply'      "$GD_REVIEW_SKILL" || HG2_WHY+=" no-apply-handoff"
+grep -qF 'orthogonal to severity' "$GD_REVIEW_SKILL" || HG2_WHY+=" no-severity-orthogonality"
+if [[ -z "$HG2_WHY" ]]; then
+    pass "HG-2 unikit-gd-review tail (screen-print + apply-ready/research buckets + Fix field + safeguard + /unikit-gd-apply handoff)"
+else
+    fail "HG-2 unikit-gd-review tail drift:$HG2_WHY"
+fi
+
+# (HG-3) the two consumers — unikit-gd-apply reads a review file's apply-ready bucket
+# (detecting reviews/*_review-*.md, carrying each RF-id to the owner's changelog, closing
+# with the apply-phase3 sentinel), and unikit-gd-explore develops the research bucket then
+# proposes /unikit-gd-apply.
+HG3_WHY=""
+grep -qF 'reviews/*_review-*.md'       "$GD_APPLY_SKILL"   || HG3_WHY+=" apply:no-review-file-detect"
+grep -qF '## Apply-ready'              "$GD_APPLY_SKILL"   || HG3_WHY+=" apply:no-apply-ready-read"
+grep -qF 'apply-phase3'                "$GD_APPLY_SKILL"   || HG3_WHY+=" apply:no-sentinel"
+grep -qF 'Carry the review-finding id' "$GD_APPLY_SKILL"   || HG3_WHY+=" apply:no-rf-carry"
+grep -qF 'Research-bucket mode'        "$GD_EXPLORE_SKILL" || HG3_WHY+=" explore:no-research-bucket-mode"
+grep -qF '## Research'                 "$GD_EXPLORE_SKILL" || HG3_WHY+=" explore:no-research-read"
+grep -qF '/unikit-gd-apply'            "$GD_EXPLORE_SKILL" || HG3_WHY+=" explore:no-apply-proposal"
+if [[ -z "$HG3_WHY" ]]; then
+    pass "HG-3 consumers — apply reads review-file apply-ready (RF-carry + apply-phase3) · explore develops research bucket → apply"
+else
+    fail "HG-3 handoff consumers drift:$HG3_WHY"
+fi
+
+# (HG-4) unikit-gd-verify — the four tracks (self-heal · entailed→apply-ready · direction
+# interview · authoring→owner/explore), the direction-only interview (no decline), the
+# inline-prose handoff (no file), and the LOOP-GUARD (the apply-phase3 sentinel suppresses
+# the offer/interview when verify runs as apply's Phase 3).
+HG4_WHY=""
+grep -qF '4 tracks'          "$GD_VERIFY_SKILL" || HG4_WHY+=" no-4-tracks"
+grep -qF 'Self-heal'         "$GD_VERIFY_SKILL" || HG4_WHY+=" no-self-heal-track"
+grep -qF 'Direction fork'    "$GD_VERIFY_SKILL" || HG4_WHY+=" no-direction-fork-track"
+grep -qF 'Which direction?'  "$GD_VERIFY_SKILL" || HG4_WHY+=" no-direction-interview"
+grep -qF 'no "Decline"'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-decline-ban"
+grep -qF 'inline prose'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-inline-prose-handoff"
+grep -qF 'apply-phase3'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-sentinel"
+grep -qF 'LOOP-GUARD'        "$GD_VERIFY_SKILL" || HG4_WHY+=" no-loop-guard"
+if [[ -z "$HG4_WHY" ]]; then
+    pass "HG-4 unikit-gd-verify (4 tracks + direction-only interview + inline-prose handoff + apply-phase3 LOOP-GUARD)"
+else
+    fail "HG-4 unikit-gd-verify handoff drift:$HG4_WHY"
+fi
+
+# (HG-5) the SHARED recommend-only handoff line locks the review+verify TAIL with ONE -qF
+# string (drift in either fails — the verify-canonical ↔ review-mirror contract); the
+# REVIEW.md template carries the two buckets + the Fix (entailed) field (canonical
+# reference, aligned with the review SKILL inline format); and NEITHER review nor verify
+# carries `Skill` in allowed-tools (recommend-only — the handoff is a printed command).
+HG5_SHARED='the two handoff tails are identical by contract'
+HG5_WHY=""
+grep -qF "$HG5_SHARED"     "$GD_REVIEW_SKILL" || HG5_WHY+=" review:no-shared-handoff-line"
+grep -qF "$HG5_SHARED"     "$GD_VERIFY_SKILL" || HG5_WHY+=" verify:no-shared-handoff-line"
+grep -qF '## Apply-ready'  "$GD_REVIEW_TPL"   || HG5_WHY+=" tpl:no-apply-ready-bucket"
+grep -qF '## Research'      "$GD_REVIEW_TPL"   || HG5_WHY+=" tpl:no-research-bucket"
+grep -qF 'Fix (entailed)'  "$GD_REVIEW_TPL"   || HG5_WHY+=" tpl:no-fix-field"
+grep -qE '^  - Skill$'     "$GD_REVIEW_SKILL" && HG5_WHY+=" review:Skill-in-allowed-tools"
+grep -qE '^  - Skill$'     "$GD_VERIFY_SKILL" && HG5_WHY+=" verify:Skill-in-allowed-tools"
+if [[ -z "$HG5_WHY" ]]; then
+    pass "HG-5 shared recommend-only handoff line (review+verify, one -qF) + REVIEW.md 2 buckets/Fix field + no Skill in allowed-tools"
+else
+    fail "HG-5 shared handoff/template drift:$HG5_WHY"
+fi
+
+# (HG-6) defective-gdd handoff fixture — a seeded review file under reviews/ (the durable
+# two-bucket interface) with ≥1 apply-ready entailed finding + ≥1 research finding, plus
+# the README "Handoff ground truth" seeds (classification, decline-vs-direction, loop-guard
+# apply-phase3). test-only (under scripts/test-fixtures/, not delivered → no test-install /
+# test-update wiring); the live agent verify/review/apply run is the reviewer's manual step.
+# Reuses GD_DEFECTIVE_DIR (defined above in the flow-fixture block).
+GD_DEFECTIVE_REVIEW="$GD_DEFECTIVE_DIR/reviews/2026-06-25_review-all.md"
+HG6_WHY=""
+[[ -s "$GD_DEFECTIVE_REVIEW" ]]                       || HG6_WHY+=" no-seeded-review-file"
+grep -qF '## Apply-ready'  "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-apply-ready-bucket"
+grep -qF '## Research'      "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-research-bucket"
+grep -qF 'Fix (entailed)'  "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-entailed-fix"
+grep -qF 'RF-2026-06-25-1'  "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-research-finding"
+grep -qF 'RF-2026-06-25-2'  "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-apply-ready-finding"
+grep -qF 'Handoff ground truth'  "$GD_DEFECTIVE_DIR/README.md" || HG6_WHY+=" no-readme-handoff-truth"
+grep -qF 'decline-vs-direction'  "$GD_DEFECTIVE_DIR/README.md" || HG6_WHY+=" no-readme-decline-vs-direction"
+grep -qF 'apply-phase3'          "$GD_DEFECTIVE_DIR/README.md" || HG6_WHY+=" no-readme-loop-guard"
+if [[ -z "$HG6_WHY" ]]; then
+    pass "HG-6 defective-gdd handoff fixture — reviews/ seeded review (apply-ready + research) + README handoff ground truth (classification/decline-vs-direction/loop-guard)"
+else
+    fail "HG-6 defective-gdd handoff fixture incomplete:$HG6_WHY"
 fi
 
 # ─────────────────────────────────────────────
