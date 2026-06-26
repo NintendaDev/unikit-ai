@@ -15,12 +15,13 @@ import path from 'path';
 import { createHash } from 'crypto';
 import { getModuleTier } from '../config.js';
 import type { UniKitConfig, InstalledRuleEntry } from '../config.js';
-import type { RulesRegistry, RuleCategory } from '../registry/index.js';
+import type { RulesRegistry, RuleCategory, FetchedReference } from '../registry/index.js';
 import { normalizeRuleId } from './rules-index.js';
 import type { CatalogRule, ModuleCatalog } from './module-catalog.js';
-import { REFERENCES_DIR_NAME, moduleTierDir, type Tier } from '../constants.js';
+import { REFERENCES_DIR_NAME, RULE_FETCH_CONCURRENCY, moduleTierDir, type Tier } from '../constants.js';
 import type { Module } from '../modules.js';
 import { writeTextFile, fileExists, listFiles, removeFile } from '../../utils/fs.js';
+import { mapWithConcurrency } from '../../utils/concurrency.js';
 import { logInfo } from '../../utils/log.js';
 
 export type InstallReportStatus = 'installed' | 'already-installed' | 'failed';
@@ -36,6 +37,57 @@ export interface InstallReportLine {
 
 function computeHash(content: string): string {
   return createHash('sha256').update(content, 'utf-8').digest('hex');
+}
+
+/**
+ * Resolve which catalog row a `(rawId, preferredTier)` pair maps to — canonical
+ * id normalisation (so a legacy `CODE-STYLE` state entry resolves a `code-style`
+ * catalog row and vice versa) plus preferred-tier ordering (a rule shipped in
+ * two tiers lands in the tier the bootstrap wants). Pure. Shared by
+ * `installOneRule` and the bootstrap `prefetchRule` so both target the SAME
+ * rule id / tier / reference set — otherwise a prefetch could fetch a different
+ * row than the one the commit phase writes.
+ */
+function resolveCatalogHit(
+  catalogRules: CatalogRule[],
+  rawId: string,
+  preferredTier?: Tier,
+): CatalogRule | undefined {
+  const normalizedId = normalizeRuleId(rawId);
+  const ordered = preferredTier
+    ? [
+      ...catalogRules.filter(r => r.tier === preferredTier),
+      ...catalogRules.filter(r => r.tier !== preferredTier),
+    ]
+    : catalogRules;
+  return ordered.find(r => normalizeRuleId(r.rule.id) === normalizedId);
+}
+
+/**
+ * Network-only prefetch of one rule's content + references. PURE: no disk
+ * writes, no `config` mutation — safe to run under a bounded-concurrency pool.
+ * Returns null when the rule is absent from the catalog or the content fetch
+ * fails (network errors collapse to null inside the registry transport); the
+ * caller then leaves the slot empty and lets `installOneRule` fall back to its
+ * own fetch + canonical `failed` report line, so the no-prefetch behaviour is
+ * preserved exactly on failure.
+ */
+async function prefetchRule(
+  registry: RulesRegistry,
+  module: Module,
+  catalogRules: CatalogRule[],
+  engineId: string,
+  rawId: string,
+  preferredTier?: Tier,
+): Promise<{ content: string; references: FetchedReference[] } | null> {
+  const hit = resolveCatalogHit(catalogRules, rawId, preferredTier);
+  if (!hit) return null;
+  const fetched = await registry.fetchRule(module.id, engineId, hit.tier, hit.rule.id);
+  if (!fetched) return null;
+  const references = hit.rule.references && hit.rule.references.length > 0
+    ? await registry.fetchReferences(module.id, engineId, hit.tier, hit.rule.id, hit.rule.references)
+    : [];
+  return { content: fetched.content, references };
 }
 
 /**
@@ -59,7 +111,19 @@ export async function installOneRule(
   catalogRules: CatalogRule[],
   engineId: string,
   rawId: string,
-  options: { force?: boolean; allowAlreadyInstalled?: boolean; preferredTier?: Tier },
+  options: {
+    force?: boolean;
+    allowAlreadyInstalled?: boolean;
+    preferredTier?: Tier;
+    /**
+     * Bootstrap-supplied network payload (content + already-fetched references)
+     * for THIS rule, resolved through the shared `resolveCatalogHit` so it maps
+     * to the same `found`. When present, the live `fetchRule`/`fetchReferences`
+     * calls are skipped — disk write + config mutation below stay sequential.
+     * Absent (the variadic `rules install` path) → fetch live as before.
+     */
+    prefetched?: { content: string; references: FetchedReference[] };
+  },
 ): Promise<InstallReportLine> {
   // Canonical lowercase-hyphen comparison lets legacy state entries like
   // `CODE-STYLE` still resolve when the user (or a script) passes the canonical
@@ -79,13 +143,7 @@ export async function installOneRule(
   // comparison). When the caller hints a preferred tier (bootstrap knows the
   // exact tier from the catalog), try that tier first so a rule shipped in two
   // tiers of the manifest goes where the bootstrap wants it.
-  const ordered = options.preferredTier
-    ? [
-      ...catalogRules.filter(r => r.tier === options.preferredTier),
-      ...catalogRules.filter(r => r.tier !== options.preferredTier),
-    ]
-    : catalogRules;
-  const foundHit = ordered.find(r => normalizeRuleId(r.rule.id) === normalizedId);
+  const foundHit = resolveCatalogHit(catalogRules, rawId, options.preferredTier);
 
   if (!foundHit) {
     const scope = module.enginePartitioned ? `engine "${engineId}"` : `module "${module.id}"`;
@@ -123,8 +181,13 @@ export async function installOneRule(
     return { status: 'already-installed', module: module.id, category, id: found.id };
   }
 
-  // Fetch rule content.
-  const fetched = await registry.fetchRule(module.id, engineId, category, found.id);
+  // Fetch rule content — or reuse a bootstrap prefetch. The prefetch resolved
+  // through the same `resolveCatalogHit`, so its payload matches `found`
+  // (same id + tier). Hash/idempotency below operate on `fetched.content`
+  // identically whether it came from the network here or the prefetch pool.
+  const fetched = options.prefetched
+    ? { id: found.id, category, content: options.prefetched.content }
+    : await registry.fetchRule(module.id, engineId, category, found.id);
   if (!fetched) {
     return {
       status: 'failed',
@@ -159,7 +222,12 @@ export async function installOneRule(
   // `.unikit/memory/<module>/<tier>/references/` and are matched by filename
   // prefix on cleanup (see re-categorisation block below).
   if (found.references && found.references.length > 0) {
-    const refs = await registry.fetchReferences(module.id, engineId, category, found.id, found.references);
+    // Same source split as the rule body: a bootstrap prefetch already pulled
+    // these (`found` === the prefetched hit, so the filename set matches);
+    // otherwise fetch live. Writes stay sequential either way.
+    const refs = options.prefetched
+      ? options.prefetched.references
+      : await registry.fetchReferences(module.id, engineId, category, found.id, found.references);
     const destRefsDir = path.join(moduleTierDir(projectDir, module.id, category), REFERENCES_DIR_NAME);
     for (const ref of refs) {
       await writeTextFile(path.join(destRefsDir, ref.filename), ref.content);
@@ -294,8 +362,28 @@ export async function bootstrapModuleRules(
     }
   }
 
+  // Phase A — bounded PARALLEL network prefetch (content + references) for the
+  // whole work-list. Pure: `prefetchRule` never writes disk or mutates config,
+  // so the fan-out carries no structural race. Results are positional (index i
+  // ↔ work[i]); a null slot (rule absent / fetch failed) makes the commit fall
+  // back to a live fetch + canonical `failed` line.
+  const prefetched = await mapWithConcurrency(
+    work,
+    RULE_FETCH_CONCURRENCY,
+    (item) => {
+      const catalog = catalogs.find(c => c.module.id === item.module.id);
+      return prefetchRule(registry, item.module, catalog?.rules ?? [], engineId, item.id, item.preferredTier);
+    },
+  );
+
+  // Phase B — SEQUENTIAL commit. `installOneRule` push/splice-es the `config`
+  // tier arrays (structural mutation), so this loop stays ordered and
+  // deterministic: walking `work` in index order keeps the `.unikit.json`
+  // entry order stable run-to-run (Part 21 golden-guard). Only the network
+  // fetch was parallelised — the prefetched payload feeds in via `prefetched`.
   const report: InstallReportLine[] = [];
-  for (const item of work) {
+  for (let i = 0; i < work.length; i++) {
+    const item = work[i];
     const catalog = catalogs.find(c => c.module.id === item.module.id);
     const line = await installOneRule(
       projectDir,
@@ -310,6 +398,7 @@ export async function bootstrapModuleRules(
         force: opts.force === true,
         allowAlreadyInstalled: true,
         preferredTier: item.preferredTier,
+        prefetched: prefetched[i] ?? undefined,
       },
     );
     report.push(line);
