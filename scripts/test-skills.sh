@@ -2878,6 +2878,93 @@ else
     fail "HG-6 defective-gdd handoff fixture incomplete:$HG6_WHY"
 fi
 
+# HT: Unit-1 handoff-tail polish (decisions A + B + C — the layer ON TOP of HG-1…HG-6).
+# A — the Handoff Tail contract (runnable command = the LAST block, icon, nothing after)
+#     lives in gd-critique → Handoff Engine and is inherited by review/verify/explore.
+# B — explore's review-file mode mutates the SAME review file IN PLACE (## Research →
+#     ## Apply-ready promotion, brief in-file, zero researches/) → one file command.
+# C — explore accepts RECON.md (pre-GDD carve-out): research saved as usual + a research:
+#     backlink into RECON.md's new ## Explorations section (the asymmetry with B).
+# File-scoped -qF grep invariants on the contract text (bash cannot run an LLM skill).
+# Reuse GD_CRITIQUE / GD_REVIEW_SKILL / GD_VERIFY_SKILL / GD_EXPLORE_SKILL / GD_REVIEW_TPL /
+# GD_RECON_SKILL / GD_INTERNAL_LENS (all defined above).
+
+# (HT-1) gd-critique Handoff Tail contract — the engine A defines: the runnable command is
+# the LAST block (nothing after it), one command on its own line with an icon, and NO
+# downstream-plumbing prose. Inherited by review/verify/explore (HT-2).
+HT1_WHY=""
+grep -qF '### Handoff Tail contract'                  "$GD_CRITIQUE" || HT1_WHY+=" no-tail-contract-heading"
+grep -qF 'The runnable command is the LAST block of the response.' "$GD_CRITIQUE" || HT1_WHY+=" no-command-last-block"
+grep -qF 'One command, on its own line, icon in front' "$GD_CRITIQUE" || HT1_WHY+=" no-one-command-icon"
+grep -qF 'No downstream plumbing.'                    "$GD_CRITIQUE" || HT1_WHY+=" no-downstream-plumbing-ban"
+if [[ -z "$HT1_WHY" ]]; then
+    pass "HT-1 gd-critique Handoff Tail contract (command = last block · one icon-line · no downstream plumbing)"
+else
+    fail "HT-1 gd-critique Handoff Tail contract drift:$HT1_WHY"
+fi
+
+# (HT-2) review + verify Final blocks follow the Tail contract — locked with TWO SHARED
+# -qF strings applied to BOTH skills (drift in either fails: the same contract governs the
+# review tail #1 and the verify tail). verify ALSO keeps its apply-phase3 LOOP-GUARD (the
+# in-apply run prints no command tail). explore INHERITS the contract via its Bootstrap.
+HT2_FOLLOW='Follow the **Handoff Tail contract**'
+HT2_LAST='Then end with the handoff as the LAST block'
+HT2_WHY=""
+grep -qF "$HT2_FOLLOW"        "$GD_REVIEW_SKILL" || HT2_WHY+=" review:no-follow-contract"
+grep -qF "$HT2_FOLLOW"        "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-follow-contract"
+grep -qF "$HT2_LAST"          "$GD_REVIEW_SKILL" || HT2_WHY+=" review:no-last-block"
+grep -qF "$HT2_LAST"          "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-last-block"
+grep -qF 'Nothing prints after the command' "$GD_REVIEW_SKILL" || HT2_WHY+=" review:no-nothing-after"
+grep -qF 'Nothing prints after the command' "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-nothing-after"
+grep -qF 'no command tail'    "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-suppressed-tail"
+grep -qF 'apply-phase3'       "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-loop-guard-sentinel"
+grep -qF 'Handoff Tail contract' "$GD_EXPLORE_SKILL" || HT2_WHY+=" explore:no-contract-inheritance"
+if [[ -z "$HT2_WHY" ]]; then
+    pass "HT-2 review+verify Final follow the Tail contract (2 shared -qF + nothing-after) · verify keeps apply-phase3 suppressed tail · explore inherits"
+else
+    fail "HT-2 review/verify/explore Tail-contract drift:$HT2_WHY"
+fi
+
+# (HT-3) explore review-file mode → IN-PLACE promotion (B). The SAME review file is mutated:
+# a developed ## Research finding is promoted into ## Apply-ready (apply reads only that
+# bucket), the brief lives in-file, ZERO researches/, and the output is ONE file command
+# /unikit-gd-apply reviews/X.md. The sanctioned cross-skill write is recorded in BOTH the
+# explore Ownership and the review Ownership; the REVIEW.md template carries the opt#3 note.
+HT3_WHY=""
+grep -qF "developing a review's open questions IN PLACE" "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-in-place-mode"
+grep -qF 'Promote the finding in place'   "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-promotion-step"
+grep -qF '🛠️ /unikit-gd-apply reviews/'   "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-one-file-command"
+grep -qF 'never into `researches/`'       "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-zero-researches"
+grep -qF 'Research-bucket mode (in-place promotion)' "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-ownership-note"
+grep -qF 'living pipeline artifact'       "$GD_REVIEW_SKILL"  || HT3_WHY+=" review:no-sanctioned-write-note"
+grep -qF 'promotes it in place'           "$GD_REVIEW_TPL"    || HT3_WHY+=" tpl:no-in-place-promote-note"
+grep -qF 'living pipeline artifact'       "$GD_REVIEW_TPL"    || HT3_WHY+=" tpl:no-living-artifact-note"
+if [[ -z "$HT3_WHY" ]]; then
+    pass "HT-3 explore review-file IN-PLACE (## Research→## Apply-ready · zero researches/ · one file command) + both-skill ownership + REVIEW.md opt#3 note"
+else
+    fail "HT-3 explore in-place review-file drift:$HT3_WHY"
+fi
+
+# (HT-4) explore RECON-input mode + ## Explorations backlink (C). The pre-GDD carve-out:
+# the internal lens engages on RECON.md (no GAME.md), research is saved AS USUAL and a
+# research: backlink is appended to RECON.md's new ## Explorations section (the asymmetry
+# with B). The section + the sanctioned write are recorded in the recon SKILL (format +
+# Ownership); the internal-design-lens reference carries the pre-GDD source carve-out.
+HT4_WHY=""
+grep -qF '## RECON-input mode'        "$GD_EXPLORE_SKILL"  || HT4_WHY+=" explore:no-recon-mode"
+grep -qF 'Pre-GDD carve-out'          "$GD_EXPLORE_SKILL"  || HT4_WHY+=" explore:no-pre-gdd-carveout"
+grep -qF '## Explorations'            "$GD_EXPLORE_SKILL"  || HT4_WHY+=" explore:no-explorations-backlink"
+grep -qF '🗺️ /unikit-gd-spec .unikit/gamedesign/RECON.md' "$GD_EXPLORE_SKILL" || HT4_WHY+=" explore:no-spec-import-command"
+grep -qF 'RECON-input mode (research + backlink)' "$GD_EXPLORE_SKILL" || HT4_WHY+=" explore:no-recon-ownership-note"
+grep -qF '## Explorations'            "$GD_RECON_SKILL"    || HT4_WHY+=" recon:no-explorations-section"
+grep -qF 'appended by /unikit-gd-explore' "$GD_RECON_SKILL" || HT4_WHY+=" recon:no-explore-writer-note"
+grep -qF 'Pre-GDD source (RECON-input mode)' "$GD_INTERNAL_LENS" || HT4_WHY+=" lens:no-pre-gdd-source-carveout"
+if [[ -z "$HT4_WHY" ]]; then
+    pass "HT-4 explore RECON-input (pre-GDD carve-out · research-as-usual + ## Explorations backlink · spec import) + recon section/ownership + lens carve-out"
+else
+    fail "HT-4 explore RECON-input drift:$HT4_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

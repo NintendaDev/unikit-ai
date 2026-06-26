@@ -100,6 +100,30 @@ the stance (a critique can be declined; a consistency conflict cannot):
   **[Fix as A]** / **[Fix as B]** / **[This is authoring → owner]**. There is
   **no "Decline"** — the conflict is a fact, not an opinion.
 
+### Handoff Tail contract
+
+The shared shape of the **last thing on screen** when a run ends in a handoff,
+inherited identically by `unikit-gd-review`, `unikit-gd-verify`, and
+`unikit-gd-explore` (all three close on a runnable next step). The terminal's
+bottom line is the most visible and the one the user acts on — any prose printed
+*after* a command buries it.
+
+- **The runnable command is the LAST block of the response.** Nothing follows
+  it — no verdict recap, no "what apply will do", no sign-off line.
+- **One command, on its own line, icon in front** (e.g. `🛠️ /unikit-gd-apply
+  reviews/X.md`). The icon marks it as the actionable tail at a glance.
+- **Everything else goes ABOVE the command** — the verdict, the "what matters to
+  remember" note, the verify follow-up reminder, the brief. The command block is
+  the floor of the message.
+- **No downstream plumbing.** Do not explain the next skill's internal mechanics
+  ("apply distributes findings to their zone owners…", "verify derives changed
+  scope…"). Name the command and what it does for the user in one line at most;
+  the called skill owns its own internals.
+- When a run produces **no** runnable handoff (clean pass, everything declined),
+  there is simply no command tail — the verdict is the last block, and that is
+  correct. The contract governs the case where a command exists, never invents
+  one.
+
 ### Loop-guard sentinel
 
 `unikit-gd-apply` closes its Phase 3 by calling `unikit-gd-verify` with one

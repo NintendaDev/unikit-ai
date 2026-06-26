@@ -51,8 +51,11 @@ one local edit · no external knowledge). One line each. Empty bucket → write 
 
 ## Research  ← hand to /unikit-gd-explore
 
-[The diagnoses that still need a decision — develop each via the internal-design lens,
-then apply. One line each. Empty bucket → write "(none)".]
+[The diagnoses that still need a decision. `/unikit-gd-explore <this file>` develops each
+via the internal-design lens and **promotes it in place** — moving the resolved line up
+into `## Apply-ready` (reformatted as `· Fix (entailed): …`), so `/unikit-gd-apply <this
+file>` then acts on it. The review file is a **living pipeline artifact**, mutated in
+place — no `researches/` folder is created. One line each. Empty bucket → write "(none)".]
 
 - RF-<date>-n · [the open question to work out]
 

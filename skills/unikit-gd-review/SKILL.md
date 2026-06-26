@@ -363,6 +363,12 @@ with the review file and let it route the apply-ready bucket to the owners.
 
 ## Final: Compact Report & Next Steps
 
+Follow the **Handoff Tail contract** (`gd-critique` → Handoff Engine): the runnable
+command is the **last block** on screen. Print the report and any note first, then
+close with **one** icon-prefixed command on its own line — nothing after it.
+
+Print the compact report:
+
 ```
 Scope: <SYS-slug | all (N systems)>   Mode: <review|critique>
 Verdict: <verdict>
@@ -370,22 +376,22 @@ Findings: <C> Critical · <M> Major · <m> Minor · <s> Suggestion
 Buckets: <A> apply-ready · <R> research
 Report: .unikit/gamedesign/reviews/<date>_review-<scope>.md
 Status: <set to `reviewed` across header + GD-IDS (## System Map re-renders) | unchanged>
-Handoff: <printed /unikit-gd-apply + /unikit-gd-explore | apply-ready empty → explore only | clean → none>
 ```
 
-**Next steps** — the handoff pipeline `review → [explore] → apply` (do not run the
-owner skills one finding at a time):
+If the same finding recurs across reviews of different systems, note it **here**
+(above the command) as a candidate **studio `library` rule** (`/unikit-memory
+--module gamedesign`) so the lesson is captured as durable domain knowledge, not
+re-discovered each review. No summary document beyond the report file.
 
-- 🛠️ Apply the entailed fixes — /unikit-gd-apply <review-file>  (the apply-ready
-  bucket; closes with verify)
-- 🔎 Work out the open ones — /unikit-gd-explore <review-file>  (the research bucket
-  → develop → propose apply)
-- ✅ Clean review (no findings) — /unikit-gd-verify <system> for a consistency pass
+**Then end with the handoff as the LAST block** — one command, following the
+pipeline `review → [explore] → apply`. Pick the single tail from the bucket state:
 
-If the same finding recurs across reviews of different systems, surface it as a
-candidate **studio `library` rule** (`/unikit-memory --module gamedesign`) so the
-lesson is captured as durable domain knowledge, not re-discovered each review.
-No summary document beyond the report file.
+- **research non-empty** → `🔎 /unikit-gd-explore <review-file>`
+- **research empty, apply-ready non-empty** → `🛠️ /unikit-gd-apply <review-file>`
+- **clean (no findings)** → `✅ /unikit-gd-verify <system>`
+
+Nothing prints after the command line — no verdict recap, no description of what
+the called skill does next.
 
 ## Ownership Boundaries
 
@@ -393,7 +399,11 @@ No summary document beyond the report file.
   (every finding sorted into the apply-ready / research bucket); and — with approval,
   to record a verdict — the system's `doc_status` in its two coherent places: the
   `GD-IDS.yaml` `doc_status` and the `SYSTEM.md` header `> Status:` line. The triage
-  interview writes only to the report file — **never** to the GDD.
+  interview writes only to the report file — **never** to the GDD. The report is a
+  **living pipeline artifact**: `unikit-gd-explore` is sanctioned to mutate it **in
+  place** — promoting a developed `## Research` finding into `## Apply-ready`
+  (research-bucket mode) — so the pipeline `review → [explore] → apply` runs on the one
+  file. That cross-skill write is explore's only write to this folder.
 - **Read-only:** the **content** of every design document (sections A–K, `GAME.md`,
   the fact values in `GD-IDS.yaml`); plus `DESCRIPTION.md`/`ARCHITECTURE.md` for the
   feasibility lens only. The only design-surface writes are the three status fields

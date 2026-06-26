@@ -497,6 +497,13 @@ route them to the owners (it closes with its own `apply-phase3` verify — no lo
 
 ## Final: Compact Report
 
+Follow the **Handoff Tail contract** (`gd-critique` → Handoff Engine): the runnable
+command is the **last block** on screen — the report and any route note go above it,
+nothing prints after it. Under the `apply-phase3` sentinel the handoff is
+**suppressed**, so there is no command tail (the loop-guard).
+
+Print the compact report:
+
 ```
 Scope: <SYS-slug | changed | all>
 Result: <PASS | CONFLICTS FOUND (<n>)>
@@ -510,16 +517,20 @@ Handoff: <printed /unikit-gd-apply "<prose deltas>" | apply-ready empty → rout
 Report: <path | none (clean PASS)>
 ```
 
-**Next steps** (do not auto-invoke):
+The actionable routes when apply-ready is empty live in the `Tracks` line above —
+read them there. No summary document beyond the conditional report file.
 
-- 🛠️ Apply the entailed fixes — /unikit-gd-apply "<apply-ready deltas>"  (one pass;
-  closes with its own verify)
-- 🔧 Author the rest — /unikit-gd-system / /unikit-gd-flow / /unikit-gd-content /
-  /unikit-gd-spec  (the Track-4 authoring conflicts)
-- 🔎 Decide first — /unikit-gd-explore  (conflicts needing a design call)
-- 🔍 Review quality (fresh session) — /unikit-gd-review <system>
+**Then end with the handoff as the LAST block** — one command, nothing after it:
 
-No summary document beyond the conditional report file.
+- **apply-ready non-empty** → `🛠️ /unikit-gd-apply "<apply-ready deltas>"`
+- **apply-ready empty, a conflict needs a design call** → `🔎 /unikit-gd-explore`
+- **apply-ready empty, authoring only** → the matching owner: `🔧 /unikit-gd-system`
+  / `/unikit-gd-flow` / `/unikit-gd-content` / `/unikit-gd-spec`
+- **clean PASS** → `🔍 /unikit-gd-review <system>` (fresh session)
+- **in-apply (`apply-phase3`)** → suppressed — no command tail.
+
+Nothing prints after the command — no recap, no description of what the called
+skill does next.
 
 ## Ownership Boundaries
 

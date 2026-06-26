@@ -278,17 +278,31 @@ brief machinery (that is found only by a `research:` / `Target:` pointer; a stan
 - **Are these numbers balanced, or merely current?**
 - **Flows (the dynamics axis)** — not reconstructable from code at all.
 - (…anything a subagent flagged as "could not determine"…)
+
+## Explorations  (research backlinks — appended by /unikit-gd-explore; NOT code-extracted)
+<!-- provenance: author-supplied (exploration) -->
+> An accumulating registry of `research:` pointers — the cold-start mirror of the
+> `GD-IDS` `research:` pointer. `/unikit-gd-recon` leaves this empty (or omits it);
+> `/unikit-gd-explore` (RECON-input mode) appends one line per research it works out of
+> the Intent Gap. Recon never writes here.
+- research: `researches/<date>_<slug>/` — <1-line topic>  (Target: <SYS-slug | Intent-Gap item>)
 ```
 
 The `## Intent Gap` is the load-bearing section: it is what stops a confident-looking but
 hollow skeleton from masquerading as a finished GDD. Never trim it to look more complete.
+The `## Explorations` section is **explore's** to append (RECON-input mode) — recon emits
+it empty or omits it; the backlinks are author-supplied research pointers, never
+code-extracted facts.
 
 ## Ownership Boundaries
 
 - **Owns:** the single `.unikit/gamedesign/RECON.md` document — nothing else. No `GD-IDS`,
   no `GAME.md`, no `SYSTEM.md` / `CONTENT-TYPE.md` / `FLOW.md`, no registry fact, no `[gen]`
   render. `Write` is in `allowed-tools` for `RECON.md` alone (a path scope is not
-  expressible, so the guarantee is the body + the absence of any other write).
+  expressible, so the guarantee is the body + the absence of any other write). One other
+  writer is **sanctioned**: `unikit-gd-explore` (RECON-input mode) appends `research:`
+  backlinks to the **`## Explorations`** section — recorded here and in that skill's
+  Ownership. Recon writes the rest of `RECON.md`; it never writes `## Explorations`.
 - **Reads:** project source, configs, and asset definitions (the sanctioned third exception
   to the one-way boundary) + any file or folder the user names in the seed + the gd-principles
   core, `gd-provenance`, and `code-recon.md`. The optional **seed** (a game description,

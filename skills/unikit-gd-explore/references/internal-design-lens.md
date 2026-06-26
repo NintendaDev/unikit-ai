@@ -79,6 +79,18 @@ exception to the one-way boundary, shared with `unikit-gd-recon` — reads the n
 slice read-only and folds `provenance: extracted from code` findings into the same brief.
 The two run together; neither edits the GDD or the code.
 
+**Pre-GDD source (RECON-input mode).** When `unikit-gd-explore` enters the lens on a
+`RECON.md` argument — the pre-GDD carve-out, no GDD yet (`SKILL.md` → "RECON-input mode") —
+there is **no `GAME.md` or system doc** to deep-read: **`RECON.md` is the candidate design
+surface**. Read its `## Systems` / `## Content Types` / `## Resources · Entities · Forms`
+(the reconstructed skeleton, `provenance: extracted from code` — held ≥ Major), its
+`## Provided Context` (author intent), and treat the **`## Intent Gap`** as the
+open-questions registry the closure pass works through. Facts carried from the
+reconstructed sections into the brief stay tagged `extracted from code`; the designer's
+worked-out decisions on top are untagged. The route here is **`/unikit-gd-spec` import**
+(not add-system), and the research is saved the normal way plus a `research:` backlink into
+RECON.md's `## Explorations` (the asymmetry with review-file mode).
+
 ## Domain → rules to ground options
 
 Read the behavioural **domain** from the target's name and Overview (the behaviour it
