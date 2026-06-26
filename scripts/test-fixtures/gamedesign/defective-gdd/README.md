@@ -12,7 +12,7 @@ renders read-only into `GAME.md` `## System Map [gen]`):
 
 ```
 GAME.md          master design + the [gen] maps (## System Map / ## Flow Map / ## Funnel / ## Content Map) + ## Win / Lose Conditions
-GD-IDS.yaml      machine truth (version: 2) — pillars / systems / flows / events / entities / formulas / terms / decisions / content_types / content / resources / tracks / knobs
+GD-IDS.yaml      machine truth (version: 2) — pillars / systems / flows / events / entities / formulas / terms / content_types / content / resources / tracks / knobs
 systems/combat.md         detailed; carries a non-core `<!-- deferred -->` (§I) — the partial-status case
 systems/boost.md
 systems/hud.md

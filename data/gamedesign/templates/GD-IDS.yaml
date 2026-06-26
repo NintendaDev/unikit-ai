@@ -13,15 +13,15 @@
 #     verify conflicts.
 #   - IDs are stable English lowercase slugs (PIL-n, SYS-slug, FLOW-slug, ENT-slug,
 #     FORM-slug, AC-sys-n, GOAL-flow-n, CT-slug, CU-ct-n, RES-slug, TRACK-slug,
-#     KNOB-slug, DD-n). Never reuse or renumber an ID.
+#     KNOB-slug). Never reuse or renumber an ID.
 #   - `source` is the document that OWNS the fact.
 #   - Store CURRENT VALUES ONLY. History lives in GDD changelog blocks (section K)
-#     and git. On a value change: update it, set `revised` to today, and record
-#     the decision under `decisions`.
+#     and git. On a value change: update it and set `revised` to today (the
+#     rationale rides the GDD changelog essence + git — this registry keeps no log).
 #   - Writes require the same approval as document writes (see gd-principles).
 #
 # FORMAT: YAML. Consistent indentation is critical for grep reliability.
-#   Sections: pillars | systems | flows | events | entities | formulas | terms | decisions
+#   Sections: pillars | systems | flows | events | entities | formulas | terms
 #             | content_types | content | resources | tracks | knobs
 
 version: 2
@@ -146,20 +146,6 @@ terms: []
 #     status: active
 #     source: systems/SYS-combat.md
 #     added: 2026-06-13
-
-# ─── DECISIONS ────────────────────────────────────────────────────────────────
-# Design-decision log (Nygard). One record per significant decision: the options
-# considered, the rationale, and the systems it affects. Referenced from changelog
-# blocks as (DD-n).
-decisions: []
-# Example:
-#   - id: DD-1
-#     summary: "Stamina gates dodge instead of cooldown"
-#     options: ["cooldown timer", "stamina cost"]
-#     decision: "stamina cost"
-#     rationale: "Serves PIL-1 (patience over aggression) — resource pressure, not a clock."
-#     affects: [SYS-combat, SYS-stamina]
-#     date: 2026-06-13
 
 # ─── CONTENT TYPES ────────────────────────────────────────────────────────────
 # The content axis (the catalog axis): each CONTENT type is a SCHEMA + DESCRIPTOR,

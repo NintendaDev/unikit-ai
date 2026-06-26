@@ -2965,6 +2965,56 @@ else
     fail "HT-4 explore RECON-input drift:$HT4_WHY"
 fi
 
+# SL: Unit-2+3 slim (decisions D + E — current-state-only axiom: an artifact holds
+# current state + a minimal provenance anchor, history → git).
+# D — the decisions:/DD-n design-decision log is REMOVED everywhere (write-only, no
+#     machine consumer; the rationale already rides the changelog essence + git).
+# E — the GDD changelog is K1 (the LATEST delta only): a new block REPLACES the prior
+#     one in the document; the full v1…v(N-1) ledger lives in git.
+# File-scoped over data/gamedesign/ + skills/unikit-gd-* + the gamedesign fixtures.
+
+# (SL-1, D) decisions/DD fully removed. The ban is on EXACT tokens (+check-confirmed):
+# the YAML key `decisions:` (bare `decisions` is legitimate English prose — gd-authoring
+# "decisions ride this round", lens "worked-out decisions", README) and the `DD-<n>`
+# design-decision id (precise: `DD-` NOT preceded by a letter — excludes `GDD-first` /
+# `DDD-*` — and followed by a digit / `n` / `<`). NOT bare `DD-`/`decisions`.
+SL_SCOPE=("$GD_DATA" "$ROOT_DIR/scripts/test-fixtures/gamedesign")
+for sl_d in "$ROOT_DIR"/skills/unikit-gd-*/; do SL_SCOPE+=("$sl_d"); done
+SL1_WHY=""
+grep -rnF 'decisions:' "${SL_SCOPE[@]}" >/dev/null 2>&1 && SL1_WHY+=" decisions:-key-present"
+grep -rnE '(^|[^A-Za-z])DD-([0-9]|n|<)' "${SL_SCOPE[@]}" >/dev/null 2>&1 && SL1_WHY+=" DD-<n>-id-token-present"
+grep -qF 'KNOB-slug, DD-n'        "$GD_IDS_TPL"    && SL1_WHY+=" tpl-DD-in-id-list"
+grep -qF 'decisions: []'          "$GD_IDS_TPL"    && SL1_WHY+=" tpl-decisions-section"
+grep -qF '`DD-<n>` | Design decision' "$GD_PRINCIPLES" && SL1_WHY+=" principles-DD-row"
+if [[ -z "$SL1_WHY" ]]; then
+    pass "SL-1 (D) decisions/DD removed — zero decisions:/DD-<n> in data/gamedesign + skills/unikit-gd-* + fixtures (exact tokens) · no DECISIONS in GD-IDS tpl · no DD row in gd-principles"
+else
+    fail "SL-1 decisions/DD drift:$SL1_WHY"
+fi
+
+# (SL-2, E) changelog K1 — the latest-delta-only contract carried by gd-authoring (the
+# owner), all four authored templates (SYSTEM §K / FLOW §F / CONTENT-TYPE §F / GAME
+# ## Changelog), and the three zone skills (system / flow / content) that write it. The
+# AC / GOAL / Fields-delta line + the RF-<date>-n anchor stay (the carrying part — the
+# accumulated prose ledger is what moves to git). Anchor: "latest delta only".
+SL_K1='latest delta only'
+SL2_WHY=""
+grep -qF "$SL_K1" "$GD_AUTHORING"                            || SL2_WHY+=" authoring:no-K1"
+grep -qF "$SL_K1" "$GD_DATA/templates/SYSTEM.md"             || SL2_WHY+=" tpl-system:no-K1"
+grep -qF "$SL_K1" "$GD_DATA/templates/FLOW.md"               || SL2_WHY+=" tpl-flow:no-K1"
+grep -qF "$SL_K1" "$GD_DATA/templates/CONTENT-TYPE.md"       || SL2_WHY+=" tpl-content:no-K1"
+grep -qF "$SL_K1" "$GD_DATA/templates/GAME.md"               || SL2_WHY+=" tpl-game:no-K1"
+grep -qF "$SL_K1" "$GD_SYSTEM_SKILL"                         || SL2_WHY+=" sys-skill:no-K1"
+grep -qF "$SL_K1" "$GD_FLOW_SKILL"                           || SL2_WHY+=" flow-skill:no-K1"
+grep -qF "$SL_K1" "$GD_CONTENT_SKILL"                        || SL2_WHY+=" content-skill:no-K1"
+# the RF-<date>-n changelog anchor replaces the old DD citation in the changelog format
+grep -qF '(RF-<date>-n)' "$GD_AUTHORING"                     || SL2_WHY+=" authoring:no-RF-anchor"
+if [[ -z "$SL2_WHY" ]]; then
+    pass "SL-2 (E) changelog K1 (latest delta only) in gd-authoring + 4 templates + 3 zone skills · RF-<date>-n essence anchor"
+else
+    fail "SL-2 changelog-K1 drift:$SL2_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

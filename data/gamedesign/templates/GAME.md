@@ -176,9 +176,11 @@ how they are broken (interface, or design both at once).
 
 ## Changelog
 
-Newest first; appended by `unikit-gd-spec` on every approved edit. GAME.md is a
-one-pager, not a system: each entry is **light** — version, date, essence, and one
-line per changed section. No AC-delta line and no `Affected (gd-verify):` line
+The **latest delta only (K1)** — exactly ONE block, the current version's.
+`unikit-gd-spec` **replaces** this block on every approved edit; it does not accumulate
+a ledger here — the full history lives in git (`gd-authoring` → Delta Discipline).
+GAME.md is a one-pager, not a system: the entry is **light** — version, date, essence,
+and one line per changed section. No AC-delta line and no `Affected (gd-verify):` line
 (those are SYSTEM GDD fields, and GAME.md has no `GD-IDS.yaml systems` row).
 
 #### v1 — [YYYY-MM-DD] — initial draft

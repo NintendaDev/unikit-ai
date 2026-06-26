@@ -114,10 +114,12 @@ every `ref<>` resolves, and a `bulk` type carries `count` + `spec`.
 
 ### Changelog
 
-[Appended by the content type's zone owner (`unikit-gd-content`) on every approved
-**schema** edit. Catalog churn — adding / removing units, a `bulk` `count` change —
-is **data, not a schema edit**: no version bump, no entry (see `gd-authoring` →
-Content delta). Newest first. The **fields-delta line** is the content counterpart of
+[The **latest delta only (K1)** — exactly ONE block, the current version's. The content
+type's zone owner (`unikit-gd-content`) **replaces** this block on every approved
+**schema** edit; it does not accumulate a ledger here — the full history lives in git
+(`gd-authoring` → Delta Discipline). Catalog churn — adding / removing units, a `bulk`
+`count` change — is **data, not a schema edit**: no version bump, no entry (see
+`gd-authoring` → Content delta). The **fields-delta line** is the content counterpart of
 a system's AC delta — the code side consumes exactly this line. A system edit that
 touches this type's `belongs_to` or a `ref<SYS>` can stale it: `unikit-gd-verify`
 marks it `revised` (cross-axis staleness); the reverse never holds.]

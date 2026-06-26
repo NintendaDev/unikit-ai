@@ -394,9 +394,9 @@ After the sections are authored and accepted:
    authored; **held at `skeleton`** while a **core** section carries `<!-- deferred -->`
    (the soft floor guard; the WARN in Phase 4); `detailed · partial (n/m)` (rendered,
    inferred from the markers) when the core is complete but ≥1 **non-core** section is
-   deferred. Set `version: 1` (header + `GD-IDS`). Append the initial changelog block to
+   deferred. Set `version: 1` (header + `GD-IDS`). Write the initial changelog block to
    section F (`#### v1 — <date> — initial schema` with the `Fields: + <field> … (new)`
-   line and `Affected (gd-verify): —`).
+   line and `Affected (gd-verify): —`) — the single current block (K1).
 4. **Regen-on-write — re-render the map (B1).** As the last step, re-render `GAME.md`'s
    `## Content Map [gen]` block from `GD-IDS` (the `RULES_INDEX` render model):
    replace **only** the content between `<!-- gen:content-map -->` /
@@ -488,10 +488,12 @@ non-optional (catalog churn skips it entirely):
    `GD-IDS.yaml`. Set the type's status → `revised` in the **two places that must
    agree**: the `CONTENT-TYPE.md` header `> Status:` token and the `GD-IDS.yaml`
    `doc_status` (`gd-lifecycle` → Content axis).
-2. **Changelog block** appended to section **F** — format owned by `gd-authoring`:
+2. **Changelog block (latest delta only — K1)** — section F carries ONE block; this
+   **replaces** the previous one (format + the replace-not-append rule owned by
+   `gd-authoring`; the full history lives in git):
 
    ```markdown
-   #### v<N> — <YYYY-MM-DD> — <essence of the change> (DD-<n>)
+   #### v<N> — <YYYY-MM-DD> — <essence of the change> (RF-<date>-n)
    - <Section>: <what changed>
    - Fields: + rarity (new); condition retyped float→enum; **durability removed**
    - Migration: <how existing units are migrated>
@@ -501,10 +503,11 @@ non-optional (catalog churn skips it entirely):
    system's AC-delta line — the code side consumes it to know the schema changed. The
    `Affected (gd-verify):` line is appended later by `unikit-gd-verify`, never here.
    When the edit **closes a `unikit-gd-review` finding**, cite its stable id in the
-   essence: `… (DD-3; RF-2026-06-14-2)`.
+   essence: `… (RF-2026-06-14-2)`.
 3. **Registry check:** new fields / `ref<>` / facts vs `GD-IDS` — conflicts surface,
-   they never silently win. A significant decision also gets a **`DD-<n>`** record in
-   `GD-IDS.yaml` `decisions` (options, rationale, affected systems/types).
+   they never silently win. A significant decision needs no separate registry record —
+   its rationale rides the changelog essence (+ the `RF-<date>-n` it closes), the full
+   "why" lives in git.
 4. **Re-render the map** (the regen-on-write step from Phase 6 — `## Content Map [gen]`,
    `[gen]` block only, with the `· partial (n/m)` suffix when a `<!-- deferred -->` is
    present), then **recommend `unikit-gd-verify`** (changed scope) — it re-checks the

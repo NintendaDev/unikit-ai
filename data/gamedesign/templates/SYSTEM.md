@@ -138,10 +138,12 @@ Name impairment categories addressed and the concrete option/setting.]
 
 ### Changelog
 
-[Appended by the system's zone owner (`unikit-gd-system`) on every approved edit.
-Newest first. The **AC delta line** is what the planning side consumes to build
-delta plans; the **Affected** line is appended by `unikit-gd-verify` as a
-human-readable record. The pending-loop is driven by each system's own `Status:
+[The **latest delta only (K1)** — exactly ONE block, the current version's. The
+system's zone owner (`unikit-gd-system`) **replaces** this block on every approved
+edit; it does not accumulate a v1…v(N-1) ledger here — the full history lives in git
+(`gd-authoring` → Delta Discipline). The **AC delta line** is what the planning side
+consumes to build delta plans; the **Affected** line is appended by `unikit-gd-verify`
+as a human-readable record. The pending-loop is driven by each system's own `Status:
 revised` (the zone owner marks the edited system; `unikit-gd-verify` marks affected
 dependents), not by this line.]
 

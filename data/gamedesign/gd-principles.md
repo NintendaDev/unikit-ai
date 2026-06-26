@@ -180,7 +180,7 @@ Code reads design; design knows nothing about code.
 
 ## Facts Registry & ID Conventions
 
-`GD-IDS.yaml` is the single source of truth for numbers, names, and decisions.
+`GD-IDS.yaml` is the single source of truth for numbers, names, and terminology.
 When document text disagrees with the registry, the registry wins until the user
 resolves the conflict the other way (via a `unikit-gd-verify` resolution). The
 user is the arbiter of every conflict.
@@ -199,7 +199,6 @@ user is the arbiter of every conflict.
 | `RES-<slug>` | Resource (currency / consumable fact) | GD-IDS `resources` |
 | `TRACK-<slug>` | Progression track (season / battle-pass fact) | GD-IDS `tracks` |
 | `KNOB-<slug>` | Global tuning knob (cross-system balance fact) | GD-IDS `knobs` |
-| `DD-<n>` | Design decision | GD-IDS `decisions` |
 
 - IDs are English lowercase slugs, stable across versions.
 - Never delete an ID — mark it deprecated. Dangling references are verify
@@ -214,7 +213,7 @@ user is the arbiter of every conflict.
   mid-sentence code-switching — lives there and applies to every skill; this section
   adds only the game-design specifics.
 - **Always English — but only stored identifiers and machine values, never
-  vocabulary:** IDs (`PIL-*`, `SYS-*`, `ENT-*`, `FORM-*`, `AC-*`, `DD-*`), MDA
+  vocabulary:** IDs (`PIL-*`, `SYS-*`, `ENT-*`, `FORM-*`, `AC-*`), MDA
   aesthetic names, formula expressions and variables, telemetry event names, and the
   literal **field values** stored in artifacts (e.g. `market_signal: red-ocean`,
   `validation_confidence: B`). These are parsed or referenced as stable tokens, so
@@ -286,7 +285,7 @@ words they are; never dress them as a code, never strip them to a bare badge.
   skills are in.
   - **The exemption is the tokens, not the prose around them.** What stays English here
     is strictly the stored identifiers and machine values — the id codes
-    (`RF-/PIL-/SYS-/ENT-/FORM-/AC-/DD-/GOAL-/FLOW-/CT-/CU-…`) and the lifecycle-status
+    (`RF-/PIL-/SYS-/ENT-/FORM-/AC-/GOAL-/FLOW-/CT-/CU-…`) and the lifecycle-status
     enum (`skeleton | detailed | reviewed | revised`). Everything the report writes
     *around* those tokens is ordinary prose and still obeys the general **"translate the
     concept, not the label"** rule: the check names, the lens names, the diagnosis text,

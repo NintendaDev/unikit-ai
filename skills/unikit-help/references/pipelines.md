@@ -178,7 +178,8 @@ named, *entailed* fix to apply now) vs **research** (an open question still need
 A short **interview** sorts the rest — a review finding can be **declined**; a verify conflict
 can only be **re-directed** (it is a fact, never declined). Then **apply-ready** →
 `/unikit-gd-apply` (one ordered pass through the zone owners, closing with verify) and
-**research** → `/unikit-gd-explore` (develop each into a decided edit, then apply). The handoff
+**research** → `/unikit-gd-explore` (develops the bucket **in place** in the review file →
+one `/unikit-gd-apply reviews/X.md`). The handoff
 is **recommend-only** — both skills *print* the `/unikit-gd-apply` command (no `Skill` call); on
 Codex it auto-invokes. **Persistence is asymmetric:** review leaves a durable two-bucket file
 (`reviews/<date>_review-*.md`); verify hands off **inline prose from the session** (no file — a

@@ -125,17 +125,26 @@ only as honest as your use of it.
 The mandatory tail of every design edit:
 
 1. **Version +1** in the document header and in the system's `version` in `GD-IDS`.
-2. **Changelog block** appended to section K:
+2. **Changelog block — the latest delta only (K1).** Section K carries exactly **one**
+   block: the current version's delta. A new edit **REPLACES** the previous block — it
+   does **not** accumulate a v1…v(N-1) ledger in the document. The full history lives in
+   **git**, the single home for it (`gd-critique` axiom: an artifact holds current state +
+   a minimal provenance anchor; history → git). The block shape:
 
    ```markdown
-   #### v<N> — <YYYY-MM-DD> — <essence of the change> (DD-<n>)
+   #### v<N> — <YYYY-MM-DD> — <essence of the change> (RF-<date>-n)
    - <Section>: <what changed>
    - AC: + AC-<sys>-7, AC-<sys>-8 (new); AC-<sys>-3 changed; **AC-<sys>-5 removed**
    - Affected (gd-verify): <systems with Still Valid / Needs Review / Likely Stale verdicts>
    ```
 
-   Mandatory elements: version, date, essence, DD reference for significant
-   decisions; one line per affected section; the **AC delta line** (new / changed /
+   The AC / GOAL / Fields-delta line and the `RF-<date>-n` anchor stay — they make the
+   *latest* delta legible to the planning side, which is exactly the carrying part; the
+   accumulated prose log they used to sit in is what moves to git.
+   Mandatory elements: version, date, essence, and — when the change closes a
+   `unikit-gd-review` finding — its `RF-<date>-n` id in the essence (the rationale
+   anchor; the full "why" lives in git, not a registry log); one line per affected
+   section; the **AC delta line** (new / changed /
    removed) — the planning side consumes exactly this line to build delta plans.
    The "Affected" line is appended by `unikit-gd-verify`, never by the editor — it
    is a **human-readable record** of the impact pass, not the mechanism that
@@ -151,10 +160,11 @@ The mandatory tail of every design edit:
 **GAME.md exception (not a system).** An edit to `GAME.md` bumps the version
 **only** in the GAME.md header `> **Version**:` line — GAME.md has no
 `GD-IDS.yaml` `systems` row, so the "and in the system's `version` in `GD-IDS`"
-part of step 1 does not apply. It appends a **light** block to GAME.md's own
-`## Changelog` (version, date, essence, one line per changed section) — **no**
-AC-delta line and **no** `Affected (gd-verify):` line, since those are SYSTEM GDD
-fields. Its status stays `drafted | approved`; it is **never** set to `revised`,
+part of step 1 does not apply. It writes a **light** block to GAME.md's own
+`## Changelog` (version, date, essence, one line per changed section) — the same
+**latest-delta-only (K1)** rule applies: the new block **replaces** the previous one,
+the full history is in git — and **no** AC-delta line and **no** `Affected (gd-verify):`
+line, since those are SYSTEM GDD fields. Its status stays `drafted | approved`; it is **never** set to `revised`,
 and there is no two-place coherence and no pending-loop. `unikit-gd-spec`
 implements this carve-out — `GAME.md` is its zone — this is the canonical
 statement.
@@ -183,8 +193,9 @@ different speeds, so they carry different discipline:
   schema delta. "500 new instances" never crosses the contract boundary; "the item
   schema gained a `rarity` field" does.
 
-A significant decision also gets a **DD record** in GD-IDS `decisions`: the options
-considered, the rationale, and the affected systems (decision-log practice —
-Nygard).
+A significant decision needs no separate registry record: its rationale rides the
+changelog **essence** (with the `RF-<date>-n` it closes, when it closes a review
+finding), and the full reasoning lives in git history — one home for history, not two.
 
-GD-IDS stores **current values only**; history lives in changelog blocks and git.
+GD-IDS stores **current values only**, and the GDD changelog keeps only the **latest
+delta** (K1); the full history lives in git — one home for it.

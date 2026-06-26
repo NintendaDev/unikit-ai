@@ -105,11 +105,12 @@ aggregated read-only into `GAME.md` `## Funnel [gen]`. Event names are English
 
 ### Changelog
 
-[Appended by the flow's zone owner (`unikit-gd-flow`) on every approved edit.
-Newest first. The **GOAL delta line** is the flow counterpart of a system's AC
-delta. A system edit that touches a `GOAL`'s `SYS`/`AC` can stale this flow:
-`unikit-gd-verify` marks it `revised` (cross-axis staleness — see Flow Axis); the
-reverse never holds.]
+[The **latest delta only (K1)** — exactly ONE block, the current version's. The flow's
+zone owner (`unikit-gd-flow`) **replaces** this block on every approved edit; it does
+not accumulate a ledger here — the full history lives in git (`gd-authoring` → Delta
+Discipline). The **GOAL delta line** is the flow counterpart of a system's AC delta. A
+system edit that touches a `GOAL`'s `SYS`/`AC` can stale this flow: `unikit-gd-verify`
+marks it `revised` (cross-axis staleness — see Flow Axis); the reverse never holds.]
 
 ```markdown
 #### v1 — [YYYY-MM-DD] — initial design

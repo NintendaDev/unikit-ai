@@ -84,7 +84,7 @@ Silently load — do not narrate:
    **applies** them. If missing, warn (`unikit-ai update`) and continue with the
    conventions summarized here.
 2. **`.unikit/gamedesign/GD-IDS.yaml`** — the single source of truth: pillars,
-   systems, flows, entities, formulas, terms, decisions. Current values only.
+   systems, flows, entities, formulas, terms. Current values only.
    **Schema guard (clean break — no automatic migration):** it MUST be `version: 2`.
    On a pre-v2 `version: 1` registry, **STOP** and report that the design workspace
    is on the pre-v2 layout (the standalone markdown system-index was dropped; the
@@ -133,7 +133,7 @@ Run every check deterministically; each mismatch is a **CONFLICT** with a citati
 |-------|--------|---------------|
 | **Facts** | grep each `GD-IDS` entity/formula value across the docs — match the value on word boundaries, not as a bare substring | a document states a number/name that disagrees with the registry |
 | **Terminology drift** | grep each term's `forbidden_aliases` **values** (the listed aliases, not the field name) across the docs | a forbidden alias is used in place of the canonical term |
-| **ID validity** | scan every `SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-`/`FLOW-`/`GOAL-` id for shape (analytics `events` are `snake_case` tokens, not prefixed ids) | an id is malformed — wrong case, bad separator, or an unknown prefix |
+| **ID validity** | scan every `SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`FLOW-`/`GOAL-` id for shape (analytics `events` are `snake_case` tokens, not prefixed ids) | an id is malformed — wrong case, bad separator, or an unknown prefix |
 | **Duplicate IDs** | group every declared id by value | the same id is declared for two different things |
 | **Dangling references** | resolve every referenced id against `GD-IDS` | a referenced id does not exist, or a live (non-deprecated) section points at a `deprecated` entry |
 | **Unregistered cross-doc fact** | grep `FORM-`/`ENT-` ids that surface in **two or more** documents | a fact crosses a document boundary yet has no `GD-IDS` entry |
@@ -207,7 +207,7 @@ agreement is handled by *Map freshness* above):
   metadata, **not** a registry id and **not** a `doc_status` / `version`. It is excluded
   from status/version coherence on all three axes, and the id-resolving checks pass it
   over **by construction**: **Dangling references** only resolves id tokens
-  (`SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`DD-`/`FLOW-`/`GOAL-`/`CT-`/`CU-`), and **Unregistered
+  (`SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`FLOW-`/`GOAL-`/`CT-`/`CU-`), and **Unregistered
   cross-doc fact** only greps `FORM-`/`ENT-` ids — a folder path matches neither — so no
   special-case logic is needed.
 - **Dependent-lag.** A verify-flagged dependent may transiently carry a header

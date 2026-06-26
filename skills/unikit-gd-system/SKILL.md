@@ -9,7 +9,7 @@ description: >-
   "spec out the parameters of X"), AND revise it after approval under the delta discipline
   ("raise the damage by 10%", "tune the economy", "rework the status system", "nerf
   X", "change this rule") — a number change is Tuning, a small rule a Tweak, restructuring
-  a Rework; each bumps the version and appends a changelog. To add a NEW system or
+  a Rework; each bumps the version and logs the delta. To add a NEW system or
   restructure the system map use /unikit-gd-spec; to edit GAME.md content use /unikit-gd-spec;
   the moment an edit also touches a second system, a content type, a flow, or GAME.md (two
   or more zones) use /unikit-gd-apply; to invent a brand-new game concept use
@@ -398,10 +398,12 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
    agree**: the `SYSTEM.md` header (the `> Status:` token in the combined header
    line, not a separate bold line) and the `GD-IDS.yaml` `doc_status`
    (`gd-lifecycle` → Lifecycle & Status).
-2. **Changelog block** appended to section **K** — format owned by `gd-authoring`:
+2. **Changelog block (latest delta only — K1)** — section K carries ONE block; this
+   **replaces** the previous one (format + the replace-not-append rule owned by
+   `gd-authoring`; the full history lives in git):
 
    ```markdown
-   #### v<N> — <YYYY-MM-DD> — <essence of the change> (DD-<n>)
+   #### v<N> — <YYYY-MM-DD> — <essence of the change> (RF-<date>-n)
    - <Section>: <what changed>
    - AC: + AC-<sys>-7, AC-<sys>-8 (new); AC-<sys>-3 changed; **AC-<sys>-5 removed**
    ```
@@ -411,14 +413,15 @@ Every Tuning / Tweak / Rework edit ends with the full tail; this is non-optional
    (gd-verify):` line is added later by `unikit-gd-verify`, never here — it is a
    **human-readable record** of the impact pass, not what drives re-verification.
    When the edit **closes a `unikit-gd-review` finding**, cite its stable id in the
-   essence: `… (DD-3; RF-2026-06-14-2)` — the `RF-<YYYY-MM-DD>-<n>` format is owned
+   essence: `… (RF-2026-06-14-2)` — the `RF-<YYYY-MM-DD>-<n>` format is owned
    by `unikit-gd-review`. The pending-loop is driven by `Status: revised` itself:
    this skill marks **only the edited system** `revised` (step 1), and
    `unikit-gd-verify` marks affected **dependents** `revised` (verdict-gated). Each
    stays in the loop until `unikit-gd-review` clears it back to `reviewed`.
 3. **Registry check:** new numbers/names vs GD-IDS facts — conflicts surface, they
-   never silently win. A significant decision also gets a **`DD-<n>`** record in
-   `GD-IDS.yaml` `decisions` (options, rationale, affected systems).
+   never silently win. A significant decision needs no separate registry record — its
+   rationale rides the changelog essence (+ the `RF-<date>-n` it closes), the full
+   "why" lives in git.
 4. **Recommend `unikit-gd-verify`** (changed scope) — it computes the impact on
    dependent systems, appends the `Affected` line, and re-renders the stale
    `## System Map [gen]` (freshness).
@@ -448,10 +451,9 @@ After the sections are authored and accepted:
      `detailed` and the `## System Map [gen]` renders it `detailed · partial (n/m)`
      (inferred from the markers, never a stored field).
 
-   Set `version: 1` in `GD-IDS.yaml` (and the header), append the initial changelog
+   Set `version: 1` in `GD-IDS.yaml` (and the header), write the initial changelog
    block to section K (`#### v1 — <date> — initial design` with the
-   `AC: + AC-<slug>-1 … N (new)` line), and record a `DD-<n>` for any significant
-   decision.
+   `AC: + AC-<slug>-1 … N (new)` line) — the single current block (K1).
 
 The `## System Map [gen]` renders this system's status/version (incl. the `· partial`
 suffix) **read-only** from `GD-IDS`; it is **not** this skill's surface — it

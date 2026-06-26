@@ -190,10 +190,15 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   Never authors the GDD; it researches, then routes you onward.
 - **When:** "is there a market for X", "break down the combat of <game>", "find a new mechanic",
   "how could we improve our economy".
-- **In:** a topic / game reference / URL / design question. `init` rebuilds the researches index.
-- **Out:** `.unikit/gamedesign/researches/<date>_<slug>/` (research + brief). Then it recommends:
-  no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`; skeleton →
-  `/unikit-gd-system`; detailed/reviewed/revised → `/unikit-gd-system`.
+- **In:** a topic / game reference / URL / design question; a `reviews/*_review-*.md` report
+  (develop its research bucket); or a `RECON.md` (work a pre-GDD reconstruction). `init`
+  rebuilds the researches index.
+- **Out:** a research + brief in `.unikit/gamedesign/researches/<date>_<slug>/`, then a routed
+  next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
+  skeleton/detailed/reviewed/revised → `/unikit-gd-system`. **Two file modes differ:** a review
+  file is mutated **in place** (research → apply-ready) → one `/unikit-gd-apply reviews/X.md`
+  (no `researches/`); a `RECON.md` keeps the research + gets a `## Explorations` backlink →
+  `/unikit-gd-spec <RECON.md>` import.
 - **Optional (research, cross-cutting).** Before: `/unikit-gd-spec`. After: spec / system.
 
 ### unikit-gd-spec

@@ -33,7 +33,7 @@ deliberately lighter than a SYSTEM GDD edit.
    in `SKILL.md`) — but Edit never adds or removes a system (that is Add-System / Remap).
 6. Recommend `/unikit-gd-verify` (changed scope) after the edit.
 
-A significant decision also gets a **DD record** in `GD-IDS` `decisions` (options,
-rationale, affected systems).
+A significant decision needs no separate registry record — its rationale rides the
+`## Changelog` essence, and the full "why" lives in git history.
 
 **After writing → run the Final report (in `SKILL.md`).**

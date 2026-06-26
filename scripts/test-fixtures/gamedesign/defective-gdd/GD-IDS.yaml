@@ -1,5 +1,5 @@
 # Machine truth for the defective-gdd fixture. Canonical GD-IDS v2 schema
-# (pillars | systems | flows | events | entities | formulas | terms | decisions |
+# (pillars | systems | flows | events | entities | formulas | terms |
 # content_types | content | resources | tracks | knobs).
 # Intentionally inconsistent with the documents — see README.md for the planted
 # defects (system + flow + CONTENT axis). The roster renders read-only into GAME.md
@@ -150,9 +150,6 @@ terms:
     status: active
     source: GAME.md
     added: 2026-06-13
-
-# ─── DECISIONS ────────────────────────────────────────────────────────────────
-decisions: []
 
 # ─── CONTENT TYPES ────────────────────────────────────────────────────────────
 # The content axis (the catalog). Each CT is a schema + descriptor. Rendered

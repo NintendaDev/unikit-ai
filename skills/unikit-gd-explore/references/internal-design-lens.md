@@ -39,7 +39,7 @@ only as good as the design it has actually read:
    row (category, tier, Depends, Status) and its neighbourhood on the map (the
    machine truth is `GD-IDS`, read next).
 3. **`GD-IDS.yaml`** — locked facts the target must stay consistent with: the pillars
-   it `implements`, entities, formulas, terms, decisions, plus the target's own
+   it `implements`, entities, formulas, terms, plus the target's own
    `doc_status` / `version` / `implemented_version`.
 4. **The target `systems/SYS-<slug>.md`** — all sections A–K, when the doc exists.
    For a brand-new mechanic with no doc, read the would-be neighbours instead.
@@ -260,7 +260,7 @@ When the lens addresses an open `unikit-gd-review` finding, carry its stable
 `RF-<YYYY-MM-DD>-<n>` id into the Improvement Plan's **Closes finding** field. The
 `RF-<date>-n` format is owned by `unikit-gd-review`; the lens only references it so
 `unikit-gd-system` can cite the closed finding in its changelog essence
-(`… (DD-3; RF-2026-06-14-2)`).
+(`… (RF-2026-06-14-2)`).
 
 ## Research tags & the discovery contract
 
