@@ -1,6 +1,6 @@
 # [Content Type Name] — CT-[slug]
 
-> **Status**: skeleton | detailed | reviewed | revised
+> **Status**: skeleton | detailed
 > **Scale**: bulk | curated
 > **Belongs to**: SYS-[slug]
 > **Version**: 1
@@ -122,7 +122,7 @@ type's zone owner (`unikit-gd-content`) **replaces** this block on every approve
 `gd-authoring` → Content delta). The **fields-delta line** is the content counterpart of
 a system's AC delta — the code side consumes exactly this line. A system edit that
 touches this type's `belongs_to` or a `ref<SYS>` can stale it: `unikit-gd-verify`
-marks it `revised` (cross-axis staleness); the reverse never holds.]
+**prints** it as affected (cross-axis staleness, informational); the reverse never holds.]
 
 ```markdown
 #### v1 — [YYYY-MM-DD] — initial schema

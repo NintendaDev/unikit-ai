@@ -226,8 +226,8 @@ user is the arbiter of every conflict.
 
 **The membrane — registry language vs designer language.** The system holds two
 vocabularies: a **registry language** — the codes (`PIL-*`, `SYS-*`, `AC-*`, `FORM-*`,
-`CT-*`, `GOAL-*`, `FLOW-*`), the lifecycle-status enum (`skeleton | detailed | reviewed
-| revised`), and the section letters A–K — and a **designer language** of names,
+`CT-*`, `GOAL-*`, `FLOW-*`), the lifecycle-status enum (`skeleton | detailed`), and
+the section letters A–K — and a **designer language** of names,
 feelings, and outcomes. The codes are **load-bearing on disk**: `unikit-gd-verify`,
 `unikit-plan`, and the engine read them, so they stay verbatim in **files**. They must
 not leak into **speech**. Every `unikit-gd-*` skill speaks through this membrane — the
@@ -254,8 +254,6 @@ language):
 | `skeleton` | "skeleton — the main blocks aren't filled in yet" |
 | `detailed` | "ready" (the core is in place) |
 | `detailed · partial` | "ready — a couple of optional blocks are left" → a **soft next-step**, never a badge |
-| `reviewed` | "reviewed" |
-| `revised` | "updated — awaiting re-review" |
 
 `partial` is **demoted to a soft next-step** ("a couple of optional blocks are left —
 add them?"), never printed as the label `(detailed · partial)`.
@@ -286,7 +284,7 @@ words they are; never dress them as a code, never strip them to a bare badge.
   - **The exemption is the tokens, not the prose around them.** What stays English here
     is strictly the stored identifiers and machine values — the id codes
     (`RF-/PIL-/SYS-/ENT-/FORM-/AC-/GOAL-/FLOW-/CT-/CU-…`) and the lifecycle-status
-    enum (`skeleton | detailed | reviewed | revised`). Everything the report writes
+    enum (`skeleton | detailed`). Everything the report writes
     *around* those tokens is ordinary prose and still obeys the general **"translate the
     concept, not the label"** rule: the check names, the lens names, the diagnosis text,
     and the verdict are rendered in the configured language — never transliterated jargon,

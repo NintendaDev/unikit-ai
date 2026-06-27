@@ -39,10 +39,11 @@ contract lives here, not only in the `GAME.md` template.
 
 **Flow lifecycle.** A flow carries its own `doc_status`, with the same enum and
 spine as a system: `not-started` (in the roster, no document yet) →
-`skeleton → detailed → reviewed → revised`. The two-place spine (the header
-`> Status:` line in `FLOW.md` + the `doc_status` field in `GD-IDS`) and the
-read-only `## Flow Map [gen]` render apply exactly as for systems; the delta
-discipline below governs flow edits, made by `unikit-gd-flow`.
+`skeleton → detailed`. `detailed` is terminal readiness; edits bump `Ver`, the
+status stays `detailed`. The two-place spine (the header `> Status:` line in
+`FLOW.md` + the `doc_status` field in `GD-IDS`) and the read-only
+`## Flow Map [gen]` render apply exactly as for systems; the delta discipline
+below governs flow edits, made by `unikit-gd-flow`.
 
 **Wiring mode (`linear | conditional | emergent`).** Each flow declares a `mode:`
 in `GD-IDS`, and the mode dictates the document's structure:
@@ -59,9 +60,10 @@ headings. A mode change is an ordinary delta step of the same skill.
 
 **Cross-axis staleness (one-way, within design).** Editing a **system** can stale
 a **flow** that references it (through `GOAL → SYS` / `GOAL → AC`): `unikit-gd-verify`
-marks the dependent flow `revised`, the same pending-loop systems use. The reverse
-does **not** hold — editing a flow never stales a system. This is the design-layer
-analogue of the dependent-lag rule in Lifecycle & Status, extended across the axis.
+**prints** the dependent flow as affected (informational) and recommends a re-author
+pass — it never changes the flow's status. The reverse does **not** hold — editing a
+flow never stales a system. Acting on the print (the `Ver+1` + changelog touch) is
+the owner's call via `unikit-gd-flow`.
 
 **Code reads flow (no new write surface).** Flow is a *read* target for the code
 side — an ordinary design-read under the One-Way Boundary, never a new writeback:

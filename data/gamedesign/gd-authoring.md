@@ -148,11 +148,10 @@ The mandatory tail of every design edit:
    removed) — the planning side consumes exactly this line to build delta plans.
    The "Affected" line is appended by `unikit-gd-verify`, never by the editor — it
    is a **human-readable record** of the impact pass, not the mechanism that
-   re-checks dependents. The pending-loop is driven by each system's own `Status:
-   revised`: the editing zone owner (`unikit-gd-system`) marks **only the system it
-   edited** `revised`, and `unikit-gd-verify` marks affected **dependents**
-   `revised` (verdict-gated — see Lifecycle & Status). A `revised` system stays in
-   the loop until `unikit-gd-review` clears it back to `reviewed`.
+   re-checks dependents. An edit keeps the document's status at `detailed` — the
+   `Ver+1` + changelog is what records the change, **not** a status transition.
+   `unikit-gd-verify` is read-only: it **prints** the affected dependents
+   (informational) and recommends a re-author pass, but never changes a status.
 3. **Registry check:** new numbers vs GD-IDS facts — conflicts surface, they never
    silently win.
 4. Recommend `unikit-gd-verify` (changed scope) after the edit.
@@ -164,10 +163,10 @@ part of step 1 does not apply. It writes a **light** block to GAME.md's own
 `## Changelog` (version, date, essence, one line per changed section) — the same
 **latest-delta-only (K1)** rule applies: the new block **replaces** the previous one,
 the full history is in git — and **no** AC-delta line and **no** `Affected (gd-verify):`
-line, since those are SYSTEM GDD fields. Its status stays `drafted | approved`; it is **never** set to `revised`,
-and there is no two-place coherence and no pending-loop. `unikit-gd-spec`
-implements this carve-out — `GAME.md` is its zone — this is the canonical
-statement.
+line, since those are SYSTEM GDD fields. Its status stays `drafted | approved` (its
+own enum, distinct from the `doc_status` spine); there is no two-place coherence.
+`unikit-gd-spec` implements this carve-out — `GAME.md` is its zone — this is the
+canonical statement.
 
 **Content delta — schema vs values (`unikit-gd-content`).** The content zone draws a
 hard line the other zones do not: `GD-IDS` holds a content type's **schema +
@@ -182,12 +181,13 @@ different speeds, so they carry different discipline:
   changelog block whose delta line is the **fields-delta** (`+ field added; field
   retyped; **field removed**`) — the content counterpart of the AC / GOAL delta line
   that the code side consumes; a registry check. A schema change implies a **data
-  migration** of the existing units (the values the editor holds). The edited `CT` is
-  marked `revised` (its own spine), and `unikit-gd-verify` is recommended.
+  migration** of the existing units (the values the editor holds). The edited `CT`
+  keeps status `detailed` — the `Ver+1` + changelog records the schema change — and
+  `unikit-gd-verify` is recommended.
 - **Catalog churn = light, no version bump.** Adding, removing, or editing the
   individual content **units** — a `curated` row's field values, a `bulk` `CT`'s
   `count` — is **data, not contract**: it does **not** bump the `CT` version, needs
-  no changelog block, and never sets `revised`. The registry stays calm while the
+  no changelog block, and never touches `doc_status`. The registry stays calm while the
   editor churns. For a `bulk` `CT` the instance values never enter `GD-IDS` at all —
   only the `count` + `spec` descriptor does, so a count change is a light edit, not a
   schema delta. "500 new instances" never crosses the contract boundary; "the item

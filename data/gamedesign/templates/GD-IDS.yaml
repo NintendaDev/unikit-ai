@@ -16,8 +16,8 @@
 #     KNOB-slug). Never reuse or renumber an ID.
 #   - `source` is the document that OWNS the fact.
 #   - Store CURRENT VALUES ONLY. History lives in GDD changelog blocks (section K)
-#     and git. On a value change: update it and set `revised` to today (the
-#     rationale rides the GDD changelog essence + git — this registry keeps no log).
+#     and git. On a value change: update it in place — the rationale rides the GDD
+#     changelog essence + git (this registry keeps no log of its own).
 #   - Writes require the same approval as document writes (see gd-principles).
 #
 # FORMAT: YAML. Consistent indentation is critical for grep reliability.
@@ -45,7 +45,6 @@ pillars: []
 #     status: active            # active | deprecated
 #     source: GAME.md
 #     added: 2026-06-13
-#     revised: ""
 
 # ─── SYSTEMS ──────────────────────────────────────────────────────────────────
 # Every designed system. Owned by each system's GDD; rendered read-only into
@@ -57,7 +56,7 @@ systems: []
 #     status: active            # active | deprecated
 #     tier: MVP                 # MVP | VS | Alpha | Full
 #     category: Gameplay        # Core | Gameplay | Progression | Economy | UI | Narrative | Meta — unikit-plan matches the plan brief on this
-#     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised
+#     doc_status: detailed      # not-started | skeleton | detailed
 #     version: 1
 #     implemented_version: ""   # code-side unikit-verify sets this on all-AC-met (cited @version); not a doc_status, excluded from status coherence
 #     research: ""              # gd-spec (add-system) sets this to the explore research folder (e.g. researches/2026-06-21_crafting/) when the system was seeded from an internal-design-lens brief; a NON-id path pointer — non-semantic metadata, excluded from status/version coherence, dangling, unregistered-cross-doc, and id resolution
@@ -65,7 +64,6 @@ systems: []
 #     depends_on: [SYS-stamina]
 #     source: systems/SYS-combat.md
 #     added: 2026-06-13
-#     revised: ""
 
 # ─── FLOWS ────────────────────────────────────────────────────────────────────
 # Player-action scenarios (the dynamics axis). Owned by each flow's FLOW.md;
@@ -79,7 +77,7 @@ flows: []
 #     name: "First session"
 #     status: active            # active | deprecated
 #     mode: linear              # linear | conditional | emergent — dictates FLOW.md structure; gd-verify checks mode ↔ structure (as packs ↔ ## Pack)
-#     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised (same spine as systems)
+#     doc_status: detailed      # not-started | skeleton | detailed (same spine as systems)
 #     version: 1
 #     research: ""              # same NON-id path pointer as systems, but set by gd-flow when the flow is seeded from an explore brief (the flow zone owns its own row — there is no add-flow in gd-spec); excluded from coherence/dangling/id resolution
 #     depends_on: [SYS-combat, SYS-stamina]   # systems this flow exercises (GOAL → SYS); realized once each is implemented
@@ -89,7 +87,6 @@ flows: []
 #         targets: [SYS-combat]            # GOAL → SYS (skeleton) → GOAL → AC-combat-3 (refined)
 #     source: flows/FLOW-first-session.md
 #     added: 2026-06-22
-#     revised: ""
 
 # ─── EVENTS ───────────────────────────────────────────────────────────────────
 # Analytics measurement points (the third altitude of the AC · GOAL · event
@@ -118,7 +115,6 @@ entities: []
 #       health: 40
 #       damage: 8
 #     added: 2026-06-13
-#     revised: ""
 
 # ─── FORMULAS ─────────────────────────────────────────────────────────────────
 # Named calculations whose output feeds another system, or that another doc cites.
@@ -132,7 +128,6 @@ formulas: []
 #     output_range: [0, 999]
 #     expression: "max(0, attack - defense) * (1 + crit_chance * crit_multiplier)"
 #     added: 2026-06-13
-#     revised: ""
 
 # ─── TERMS ────────────────────────────────────────────────────────────────────
 # Canonical vocabulary. The canonical name is always English; record the
@@ -161,7 +156,7 @@ content_types: []
 #     status: active            # active | deprecated
 #     scale: bulk               # bulk | curated — bulk registers only a count+spec descriptor; curated registers fields rows
 #     belongs_to: SYS-inventory # CT → SYS (one-way): the consuming system; a missing system routes to gd-spec add-system
-#     doc_status: detailed      # not-started | skeleton | detailed | reviewed | revised (same spine as systems/flows)
+#     doc_status: detailed      # not-started | skeleton | detailed (same spine as systems/flows)
 #     version: 1
 #     research: ""              # same NON-id path pointer as systems/flows, set by gd-content when the CT was seeded from an explore brief (## Content Feature/Improvement Plan); the content zone owns its own row (there is no add-content in gd-spec); excluded from status/version coherence, dangling, unregistered-cross-doc, and id resolution
 #     fields:                   # the typed CT.fields schema — the contract the code side reads. For a `bulk` type this is the SPEC each instance follows (instances are NOT listed); for `curated` it is the schema each content row subsets.
@@ -172,7 +167,6 @@ content_types: []
 #       - { name: reward, type: ref<RES> }                # ref<PREFIX> — a content↔X link is a FIELD, not metadata (ref<ENT>/ref<CU>/ref<FORM>/ref<SYS>)
 #     source: content-types/CT-item.md
 #     added: 2026-06-23
-#     revised: ""
 
 # ─── CONTENT ──────────────────────────────────────────────────────────────────
 # Content UNITS (CU) — the thin, genre-agnostic envelope. `kind: set` is a bulk
@@ -190,7 +184,6 @@ content: []
 #     spec: "data/items.csv following CT-item.fields"   # bulk only: where the data lives + the shape it follows
 #     source: content-types/CT-item.md
 #     added: 2026-06-23
-#     revised: ""
 #   - id: CU-minigame-1
 #     type: CT-minigame
 #     name: "Ring appraisal"
@@ -201,7 +194,6 @@ content: []
 #       reward: RES-coins
 #     source: content-types/CT-minigame.md
 #     added: 2026-06-23
-#     revised: ""
 
 # ─── RESOURCES ────────────────────────────────────────────────────────────────
 # Currencies / consumables / materials — facts that cross a system boundary.
@@ -215,7 +207,6 @@ resources: []
 #     kind: soft                # soft | hard | consumable | material
 #     source: systems/SYS-economy.md   # the document/zone that owns the fact
 #     added: 2026-06-23
-#     revised: ""
 
 # ─── TRACKS ───────────────────────────────────────────────────────────────────
 # Progression tracks (season / battle-pass / mastery ladders) — facts referenced
@@ -228,7 +219,6 @@ tracks: []
 #     tiers: 50                 # number of reward tiers
 #     source: systems/SYS-liveops.md
 #     added: 2026-06-23
-#     revised: ""
 
 # ─── KNOBS ────────────────────────────────────────────────────────────────────
 # Global tuning knobs — cross-system balance facts exposed at the whole-game level
@@ -243,4 +233,3 @@ knobs: []
 #     range: [0.5, 2.0]
 #     source: GAME.md
 #     added: 2026-06-23
-#     revised: ""

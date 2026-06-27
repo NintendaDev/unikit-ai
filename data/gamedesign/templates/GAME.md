@@ -158,7 +158,7 @@ resolved items into the relevant SYSTEM GDD or GD-IDS.]
 ## Design Order
 
 Dependency sort × priority. Independent systems in the same layer can be designed
-in parallel; a system's GDD should reach `reviewed` before systems that depend on
+in parallel; a system's GDD should reach `detailed` before systems that depend on
 it are detailed. (Authored here by `unikit-gd-spec` alongside the roster; the
 live status of each system is in `## System Map [gen]` below.)
 

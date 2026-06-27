@@ -1,6 +1,6 @@
 # [System Name] — SYS-[slug]
 
-> **Status**: skeleton | detailed | reviewed | revised
+> **Status**: skeleton | detailed
 > **Version**: 1
 > **Last Updated**: [YYYY-MM-DD]
 > **Implements**: [PIL-n, PIL-m] · **Layer**: [Foundation | Core | Feature | Presentation] · **Scope**: [S | M | L | XL]
@@ -143,9 +143,9 @@ system's zone owner (`unikit-gd-system`) **replaces** this block on every approv
 edit; it does not accumulate a v1…v(N-1) ledger here — the full history lives in git
 (`gd-authoring` → Delta Discipline). The **AC delta line** is what the planning side
 consumes to build delta plans; the **Affected** line is appended by `unikit-gd-verify`
-as a human-readable record. The pending-loop is driven by each system's own `Status:
-revised` (the zone owner marks the edited system; `unikit-gd-verify` marks affected
-dependents), not by this line.]
+as a human-readable record — not the mechanism. An edit keeps the status at
+`detailed`; `unikit-gd-verify` is read-only and **prints** affected dependents
+(informational), it never changes a status.]
 
 ```markdown
 #### v1 — [YYYY-MM-DD] — initial design

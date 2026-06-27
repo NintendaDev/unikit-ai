@@ -1,6 +1,6 @@
 # [Flow Name] — FLOW-[slug]
 
-> **Status**: skeleton | detailed | reviewed | revised
+> **Status**: skeleton | detailed
 > **Mode**: linear | conditional | emergent
 > **Version**: 1
 > **Last Updated**: [YYYY-MM-DD]
@@ -110,7 +110,7 @@ zone owner (`unikit-gd-flow`) **replaces** this block on every approved edit; it
 not accumulate a ledger here — the full history lives in git (`gd-authoring` → Delta
 Discipline). The **GOAL delta line** is the flow counterpart of a system's AC delta. A
 system edit that touches a `GOAL`'s `SYS`/`AC` can stale this flow: `unikit-gd-verify`
-marks it `revised` (cross-axis staleness — see Flow Axis); the reverse never holds.]
+**prints** it as affected (cross-axis staleness — see Flow Axis, informational); the reverse never holds.]
 
 ```markdown
 #### v1 — [YYYY-MM-DD] — initial design

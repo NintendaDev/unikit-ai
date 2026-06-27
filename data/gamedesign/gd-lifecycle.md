@@ -24,23 +24,22 @@ fixed by a re-render, not a status disagreement).
 |---|---|---|---|
 | `not-started` | mapped in the roster, no document yet | `unikit-gd-spec` | `skeleton` |
 | `skeleton` | A–K headers + `[To be designed]` placeholders | `unikit-gd-system` | `detailed` |
-| `detailed` | every core section authored (deferred standard/full ⇒ detailed · partial) | `unikit-gd-system` | `reviewed` / `revised` |
-| `reviewed` | passed `unikit-gd-review` with no Critical/Major | `unikit-gd-review` (on approval) | `revised` |
-| `revised` | edited after `detailed`/`reviewed`; **pending re-verify** | `unikit-gd-system` (edit) · `unikit-gd-verify` (flags a stale dependent) | `reviewed` (after re-review) |
+| `detailed` | every core section authored (deferred standard/full ⇒ detailed · partial) | `unikit-gd-system` | — (terminal readiness; edits bump `Ver`, status stays `detailed`) |
 
 - `not-started` carries **no version** — no `version` in GD-IDS (the
   `## System Map [gen]` shows `Ver —`). A version of `1` appears only from
   `skeleton` onward.
-- `revised` is the "needs re-verify" state: a system stays `revised` until
-  `unikit-gd-review` re-clears it back to `reviewed`.
-- `approved` is **not** a system `doc_status` — it was merged into `reviewed`.
-  The word "approved" elsewhere in this contract ("approved content", "approved
-  edit", "after approval") means collaborative approval, not a status. `GAME.md`
-  (`drafted | approved`) and `CONCEPT.md` (`exploring | drafted | approved`) keep
-  their **own** lifecycle enums — those are not system `doc_status`.
-- `doc_status: revised` (this lifecycle state) is distinct from the GD-IDS
-  `revised:` **date field** (when a fact's value last changed). Status writers
-  touch `doc_status` only; they never repurpose the `revised:` date as a status.
+- `detailed` is **terminal readiness**. Editing a `detailed` document bumps its
+  `version` (`Ver+1` + changelog) but **never** changes `doc_status` — status
+  records readiness only; "what changed" is carried by the version + changelog and
+  re-checked by an *ephemeral* `unikit-gd-verify` / `unikit-gd-review` run, not by a
+  stored status badge. This is the current-state-only axiom: history lives in git
+  and the changelog, not in a status value.
+- `approved` is **not** a system `doc_status`. The word "approved" elsewhere in
+  this contract ("approved content", "approved edit", "after approval") means
+  collaborative approval, not a status. `GAME.md` (`drafted | approved`) and
+  `CONCEPT.md` (`exploring | drafted | approved`) keep their **own** lifecycle
+  enums — those are not system `doc_status`.
 
 **Depth tiers, the core floor, and the inferred `detailed · partial` status.**
 Authoring runs at an **ephemeral depth** — a `core/standard/full` picker chosen per
@@ -61,15 +60,15 @@ partial render format from here.
 - **Soft floor guard.** A **core** section may be deferred, but then the status
   honestly **does not rise to `detailed`** — it stays `skeleton`. Emit
   `WARN [gd] core section §<name> deferred — status held below detailed`. A
-  `detailed`/`reviewed`/`revised` document therefore has **zero deferred core
-  sections** by construction.
+  `detailed` document therefore has **zero deferred core sections** by
+  construction.
 - **`detailed · partial` is inferred.** When the core is complete but ≥1 **non-core**
   (`standard`/`full`) section is intentionally deferred, the status reads
   `detailed · partial`. Partiality is **derived from the presence of
   `<!-- deferred -->` markers** in the document, **never stored** — there is **no new
   field and no two-place coherence for partiality** (drift is impossible). The enum
-  `doc_status` stays byte-identical `{not-started, skeleton, detailed, reviewed,
-  revised}`; `· partial` is a **render-time annotation**, not a status value.
+  `doc_status` stays `{not-started, skeleton, detailed}`; `· partial` is a
+  **render-time annotation**, not a status value.
 - **Render format (canonical).** Every `## *Map [gen]` renderer (`unikit-gd-verify`,
   `unikit-gd-spec` System Map, `unikit-gd-flow` Flow Map, `unikit-gd-content` Content
   Map) appends the suffix **`· partial (n/m)`** to the Status column of a document
@@ -84,7 +83,7 @@ partial render format from here.
   the author chose to skip at this depth) — it is **not** a placeholder leak.
   `[To be designed]` is an **unfilled skeleton** placeholder and remains a leak in any
   `detailed`+ document. The two tokens are distinct and never interchangeable. This
-  rule applies identically to a `CT-<slug>` document (the same 5-value spine, below).
+  rule applies identically to a `CT-<slug>` document (the same 3-value spine, below).
 
 **Two values that design never writes as `doc_status`:**
 
@@ -102,15 +101,16 @@ partial render format from here.
   `implemented_version` field (also code-set), not in `doc_status`.
 
 **Content axis (`CT` lifecycle + `belongs_to`).** A **content type** (`CT-<slug>`)
-carries `doc_status` on the **same 5-value spine** as systems and flows
-(`not-started` → `skeleton` → `detailed` → `reviewed` → `revised`), in the same
+carries `doc_status` on the **same 3-value spine** as systems and flows
+(`not-started` → `skeleton` → `detailed`), in the same
 **two places that must always agree** — the `CONTENT-TYPE.md` header `> Status:` line
 and the `content_types[].doc_status` field in `GD-IDS.yaml`. On disagreement
 `GD-IDS.yaml` wins; the conflict surfaces through `unikit-gd-verify`, and the
 `## Content Map [gen]` block in `GAME.md` renders the status read-only (a stale
 render is a *freshness* conflict, fixed by a re-render, not a status disagreement).
-Only a **schema edit** drives a `CT` to `revised`; catalog churn never does (the
-schema-vs-values split — see `gd-authoring` → Content delta).
+Only a **schema edit** bumps a `CT`'s version (`Ver+1`, status stays `detailed`);
+catalog churn never does (the schema-vs-values split — see `gd-authoring` →
+Content delta).
 
 - **`belongs_to` (`CT → SYS`, one-way).** A content type names the **consuming
   system** it feeds (`belongs_to: SYS-<slug>`). The edge is one-way: a system never
@@ -125,17 +125,11 @@ schema-vs-values split — see `gd-authoring` → Content delta).
   **kept** (never deleted — dangling references are verify conflicts).
 
 **Who writes the two places.** The authoring skills — `unikit-gd-spec`,
-`unikit-gd-system`, `unikit-gd-flow`, `unikit-gd-content`, `unikit-gd-review` — write
-the status into **both places** (the document header `> Status:` line in `SYSTEM.md`
-/ `FLOW.md` / `CONTENT-TYPE.md` and the `GD-IDS` `doc_status` field) on every status
-change, so the spine stays coherent; the `## System Map [gen]` / `## Flow Map [gen]`
-/ `## Content Map [gen]` then re-render from `GD-IDS`.
-
-**Dependent-lag exception (intentional).** `unikit-gd-verify` is deliberately
-**not** a full two-place writer. When it flags a *dependent* system as stale it
-bumps that dependent to `revised` in the **GD-IDS `doc_status` only**, leaving the
-dependent's document header to catch up on its next authoring touch. So a
-verify-flagged dependent may transiently carry a header `Status` behind its GD-IDS
-value — this is expected, and full header alignment for flagged dependents is a
-later tier. The "both agree" invariant holds for every system **except** a
-dependent caught between a verify flag and its next authoring edit.
+`unikit-gd-system`, `unikit-gd-flow`, `unikit-gd-content` — write the status into
+**both places** (the document header `> Status:` line in `SYSTEM.md` / `FLOW.md` /
+`CONTENT-TYPE.md` and the `GD-IDS` `doc_status` field) on every status change, so the
+spine stays coherent; the `## System Map [gen]` / `## Flow Map [gen]` /
+`## Content Map [gen]` then re-render from `GD-IDS`. `unikit-gd-verify` is
+**read-only** — it never writes a status; when it finds a stale dependent it
+**prints** the affected docs (informational) and leaves the bump to the owner's next
+authoring touch.

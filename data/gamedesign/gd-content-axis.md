@@ -52,20 +52,20 @@ of this edge (display precedence, kept-not-deleted) lives in `gd-lifecycle` →
 Content axis; this is the pointer, not a restatement.
 
 **Content lifecycle.** A content type carries its own `doc_status` on the **same
-enum and two-place spine as systems and flows** (`not-started → skeleton → detailed
-→ reviewed → revised`; the `CONTENT-TYPE.md` header `> Status:` line ↔ the
+enum and two-place spine as systems and flows** (`not-started → skeleton →
+detailed`; the `CONTENT-TYPE.md` header `> Status:` line ↔ the
 `content_types[].doc_status` field in `GD-IDS`, `GD-IDS` winning) — apply it exactly
-as for systems (`gd-lifecycle` → Content axis). Only a **schema edit** drives a `CT`
-to `revised`; catalog churn never does (`gd-authoring` → Content delta).
+as for systems (`gd-lifecycle` → Content axis). `detailed` is terminal readiness;
+only a **schema edit** bumps a `CT`'s version (`Ver+1`, status stays `detailed`),
+and catalog churn never does (`gd-authoring` → Content delta).
 
 **Cross-axis staleness (one-way, within design).** Editing a **system** can stale a
 **content type** that feeds it (through `belongs_to` / a `ref<SYS>` field):
-`unikit-gd-verify` marks the dependent `CT` `revised` in the **GD-IDS `doc_status`
-only** (dependent-lag — the `CONTENT-TYPE.md` header catches up on its next authoring
-touch), the same pending-loop systems and flows use. The reverse does **not** hold —
-editing a content type never stales a system. This mirrors the flow axis's
-cross-axis staleness; it is the design-layer dependent-lag rule extended across the
-axis.
+`unikit-gd-verify` **prints** the dependent `CT` as affected (informational) and
+recommends a re-author pass — it never changes the `CT`'s status. The reverse does
+**not** hold — editing a content type never stales a system. This mirrors the flow
+axis's cross-axis staleness; acting on the print (the `Ver+1` + changelog touch) is
+the owner's call via `unikit-gd-content`.
 
 **RES / TRACK / KNOB are facts.** Resources (`RES-<slug>`), progression tracks
 (`TRACK-<slug>`), and global tuning knobs (`KNOB-<slug>`) are cross-boundary facts,
