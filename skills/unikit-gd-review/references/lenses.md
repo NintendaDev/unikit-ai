@@ -132,7 +132,7 @@ is genre-blind — `critical_sections` lives only here).
 
 | Lens | The question it attacks | Typical severity on a hit |
 |------|-------------------------|---------------------------|
-| **profile-completeness** | Read the profile's `critical_sections` — the sections a complete GDD of this genre must carry (e.g. `economy.SourcesAndSinks`, `level-design.LevelMetrics`, `ux-onboarding.FTUEFunnel`). For each, is it **present and filled** across the reviewed docs (the relevant SYSTEM / FLOW / CONTENT-TYPE / `GAME.md`)? A `critical_section` that is absent or still a placeholder is a genre-completeness gap — name it; "looks complete for the genre" is not a result. | Major (a genre-critical section is missing/empty) — **declinable / advisory**, never a blocker |
+| **profile-completeness** | Read the profile's `critical_sections` — the sections a complete GDD of this genre must carry (e.g. `economy.SourcesAndSinks`, `level-design.LevelMetrics`, `ux-onboarding.FTUEFunnel`). For each, is it **present and filled** across the docs under review (the relevant SYSTEM / FLOW / CONTENT-TYPE / `GAME.md`)? A `critical_section` that is absent or still a placeholder is a genre-completeness gap — name it; "looks complete for the genre" is not a result. | Major (a genre-critical section is missing/empty) — **declinable / advisory**, never a blocker |
 
 The profile's `review_emphasis` is an **advisory re-weight**: a soft priority bump for
 the lenses it names (e.g. "у каждого booster есть sink" raises the systems-math lens on

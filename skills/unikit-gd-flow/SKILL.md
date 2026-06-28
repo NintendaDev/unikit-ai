@@ -259,9 +259,9 @@ Recommend the next steps (do not auto-invoke):
 - 🧩 Detail an exercised system — /unikit-gd-system <SYS-slug>
 
 A review is most independent in a **fresh session** (the reviewer should not have
-authored the doc). `unikit-gd-verify` checks the flow against the registry, flags
-dependent flows on cross-axis staleness, and refreshes the `## Flow Map [gen]` /
-`## Funnel [gen]`.
+authored the doc). `unikit-gd-verify` is read-only — it checks the flow against the
+registry and **prints** dependent flows on cross-axis staleness; the `## Flow Map [gen]`
+/ `## Funnel [gen]` were already re-rendered on this skill's write (B1).
 
 ## Final: Compact Report
 
@@ -272,7 +272,7 @@ parenthetical copy-paste tags, status is a plain phrase):
 Flow: <name>  (FLOW-<slug>)
 Mode: <linear | conditional | emergent>   ·   Depth: <core | standard | full>  (create/fill)
 Action: <create | fill | edit (tuning|tweak|rework)>
-Doc: .unikit/gamedesign/flows/FLOW-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet | updated, awaiting re-review>, vN
+Doc: .unikit/gamedesign/flows/FLOW-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet>, vN
 Registry: +<G> goals, +<E> events, depends_on [<name> (SYS-<slug>), …]  (GD-IDS.yaml)
 Goals: GOAL-<slug>-1 … GOAL-<slug>-N   [GOAL delta on an edit: +<n> / changed <n> / removed <n>]
 Maps: ## Flow Map [gen] + ## Funnel [gen] re-rendered
@@ -284,7 +284,7 @@ No summary document, no report file.
 
 - **Owns:** the **full lifecycle** of `flows/FLOW-<slug>.md` — creating the skeleton,
   filling placeholders, **and revising approved content** (Tuning / Tweak / Rework,
-  with the version bump + changelog + `revised` status); the flow's `GD-IDS.yaml`
+  with the version bump + changelog; the status stays `detailed`); the flow's `GD-IDS.yaml`
   facts (`flows[]` incl. `goals`, `mode`, `depends_on`, `research:`, and the flow's
   `events`) and its `doc_status` / `version`; the wiring-mode selection; and the
   **re-render** of the `## Flow Map [gen]` and `## Funnel [gen]` blocks in `GAME.md`

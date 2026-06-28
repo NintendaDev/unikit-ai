@@ -57,12 +57,12 @@ guidance / funnel — and the content lenses — schema-coherence / catalog-scal
 content-fantasy-delivery — live in `references/lenses.md` alongside the system lenses.
 
 A review is most honest in a **fresh session** — the reviewer should not be the
-author of the document. This skill never authors or edits design **content**; its
-only writes are the review report and — with the user's approval, to record a
-verdict — the system's `doc_status` in its **two** coherent places (the `SYSTEM.md`
-header `> Status:` line and the `GD-IDS.yaml` `doc_status`). The `## System Map
-[gen]` in `GAME.md` re-renders that status read-only (a freshness concern owned by
-`unikit-gd-verify` / `unikit-gd-spec`, never a third write surface).
+author of the document. This skill never authors or edits design **content**, and it
+**never writes a `doc_status`**: status records *readiness* (owned by the authoring
+zones), while a review delivers *quality* — a severity-graded verdict + the report, an
+**ephemeral** judgment, not a stored badge. Its **only** write is the review report file
+(`reviews/*_review-*.md`). "Is this design good?" is answered by running a review (or
+reading the last report / git), never by a status value.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -128,7 +128,7 @@ evidence.
 
 1. The argument names a system or a path → **single** review of that document.
 2. The prompt says "all" / "all systems" / "все" → **cross** review of every
-   `detailed`/`reviewed` system.
+   `detailed` system.
 3. Empty argument and several systems are detailed → **ask**:
 
    ```
@@ -137,9 +137,8 @@ evidence.
    ```
 
 **Mode** is the user's call — **critique** (iterate on a draft) or **review**
-(verdict on a finished document). Default to review on a `detailed`/`reviewed`
-document; offer critique if the user is mid-authoring. Announce scope + mode in one
-line, then proceed.
+(verdict on a finished document). Default to review on a `detailed` document; offer
+critique if the user is mid-authoring. Announce scope + mode in one line, then proceed.
 
 ## Phase 2 — Run the Lenses (adversarial fan-out)
 
@@ -201,7 +200,7 @@ types, and `GAME.md`.
 **Genre lens (active, declinable).** When `GAME.md` carries a `genre_profile:` id, run
 the genre **profile-completeness** lens (`references/lenses.md`): read that installed
 profile's `critical_sections` (`.unikit/system/gamedesign/genres/<id>.json`) and ask
-whether each is present and filled across the reviewed docs — a missing genre-critical
+whether each is present and filled across the docs under review — a missing genre-critical
 section is a **Major** (declinable / advisory — never a blocker). The profile's
 `review_emphasis` is an advisory **re-weight** of the lens priorities, not a new rubric.
 This is the **only** profile read on the design side — `unikit-gd-verify` stays
@@ -285,34 +284,22 @@ The two buckets **replace** the old `Required before implementation` / `Suggesti
 split and are **orthogonal to severity**: severity stays a column in the Findings
 table (the blocking-vs-non-blocking discipline still holds there); the buckets sort
 by *who acts* — the rule applies an entailed fix, the user decides the rest. A
-**clean** review (zero findings) still writes the report (the audit trail behind the
-Status change) with both buckets `(none)`, and **skips the handoff** (Phase 6)
-entirely — verdict + Status only.
+**clean** review (zero findings) still writes the report (the audit trail) with both
+buckets `(none)`, and **skips the handoff** (Phase 6) entirely — verdict only.
 
-## Phase 5 — Status (soft gate)
+## Phase 5 — No status write (the verdict is ephemeral)
 
-On approval, the verdict updates the system's `doc_status` to `reviewed` in the
-**two coherent places** — the `SYSTEM.md` header (the `> Status:` token in the
-combined header line, never a separate bold line) and `GD-IDS.yaml` `doc_status`
-(see gd-lifecycle → Lifecycle & Status). The `## System Map [gen]` re-renders that
-status read-only (freshness — not a write target here). Never silently:
+`unikit-gd-review` **writes no `doc_status`** — it is **not** a status writer (it was the
+former writer of the dropped `reviewed` status; that status no longer exists). The verdict
+is a **quality** judgment, ephemeral by design: it lives in the printed report + the
+durable report file + git, **never** in a stored badge. A `detailed` document stays
+`detailed` through a review — quality is re-checked by **re-running** the review, not read
+off a status. Status records *readiness* and is owned by the authoring zones
+(`unikit-gd-system` / `unikit-gd-flow` / `unikit-gd-content`).
 
-```
-AskUserQuestion: Verdict is <verdict>. Set SYS-<slug> Status → reviewed?
-Options:
-1. Set Status: reviewed (recommended on APPROVED/PASS — writes both places)
-2. Leave as-is — I'll address findings first
-```
-
-- A clean re-review of a `revised` system clears it **back to `reviewed`** — the
-  `revised` → `reviewed` exit after re-verification.
-- Report the write in the compact summary: which of the two surfaces changed.
-
-The gate is soft: `unikit-plan` warns when a system's Status is not
-`detailed`/`reviewed` or is `revised`. A review never auto-applies fixes — the
-handoff (Phase 6) hands the apply-ready bucket to `unikit-gd-apply` and the research
-bucket to `unikit-gd-explore`, in one move, instead of routing revisions one finding
-at a time into the owning zones.
+A review never auto-applies fixes — the handoff (Phase 6) hands the apply-ready bucket to
+`unikit-gd-apply` and the research bucket to `unikit-gd-explore`, in one move, instead of
+routing revisions one finding at a time into the owning zones.
 
 ## Phase 6 — Handoff (only when there are findings)
 
@@ -375,7 +362,6 @@ Verdict: <verdict>
 Findings: <C> Critical · <M> Major · <m> Minor · <s> Suggestion
 Buckets: <A> apply-ready · <R> research
 Report: .unikit/gamedesign/reviews/<date>_review-<scope>.md
-Status: <set to `reviewed` across header + GD-IDS (## System Map re-renders) | unchanged>
 ```
 
 If the same finding recurs across reviews of different systems, note it **here**
@@ -396,28 +382,25 @@ the called skill does next.
 ## Ownership Boundaries
 
 - **Owns:** `.unikit/gamedesign/reviews/` report files — including the **triage**
-  (every finding sorted into the apply-ready / research bucket); and — with approval,
-  to record a verdict — the system's `doc_status` in its two coherent places: the
-  `GD-IDS.yaml` `doc_status` and the `SYSTEM.md` header `> Status:` line. The triage
-  interview writes only to the report file — **never** to the GDD. The report is a
-  **living pipeline artifact**: `unikit-gd-explore` is sanctioned to mutate it **in
-  place** — promoting a developed `## Research` finding into `## Apply-ready`
+  (every finding sorted into the apply-ready / research bucket). review writes **no**
+  `doc_status` and edits **no** GDD content — the report file is its only write. The
+  report is a **living pipeline artifact**: `unikit-gd-explore` is sanctioned to mutate it
+  **in place** — promoting a developed `## Research` finding into `## Apply-ready`
   (research-bucket mode) — so the pipeline `review → [explore] → apply` runs on the one
   file. That cross-skill write is explore's only write to this folder.
-- **Read-only:** the **content** of every design document (sections A–K, `GAME.md`,
-  the fact values in `GD-IDS.yaml`); plus `DESCRIPTION.md`/`ARCHITECTURE.md` for the
-  feasibility lens only. The only design-surface writes are the three status fields
-  above.
+- **Read-only:** every design document (sections A–K, `GAME.md`, all of `GD-IDS.yaml`
+  including `doc_status`); plus `DESCRIPTION.md`/`ARCHITECTURE.md` for the feasibility
+  lens only. review makes **no** design-surface write — only the report file.
 - **Not this skill:** consistency/impact checks → `unikit-gd-verify`; **applying** the
   apply-ready bucket → `unikit-gd-apply`; **developing** the research bucket →
   `unikit-gd-explore`; authoring → `unikit-gd-system` (systems) / `unikit-gd-spec`
   (`GAME.md`). The handoff to apply/explore is **recommend-only** — this skill prints
   the command, it never invokes it.
 - **Never:** edit design **content** (any section A–K, `GAME.md`, or a `GD-IDS.yaml`
-  fact value); prescribe a fix the user did not ask for; inflate severity past the
-  evidence; change a Status without approval; carry `Skill` in `allowed-tools` or
-  apply a fix / invoke `unikit-gd-apply` itself (the handoff is a printed
-  recommendation); read the code workspace beyond the feasibility exception.
+  fact value); write a `doc_status` (review is not a status writer); prescribe a fix the
+  user did not ask for; inflate severity past the evidence; carry `Skill` in
+  `allowed-tools` or apply a fix / invoke `unikit-gd-apply` itself (the handoff is a
+  printed recommendation); read the code workspace beyond the feasibility exception.
 
 ## Quick Reference
 

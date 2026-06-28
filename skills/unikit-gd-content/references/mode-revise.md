@@ -81,9 +81,10 @@ check (new fields / `ref<>` vs `GD-IDS` — conflicts surface, never silently wi
 it verbatim; **catalog churn skips the tail entirely** (data, not a schema edit). The
 **content-zone specifics** on top:
 
-- **Status → `revised`** in the **two places that must agree** — the `CONTENT-TYPE.md`
-  header `> Status:` token and the `GD-IDS.yaml` `doc_status` (`gd-lifecycle` → Content
-  axis).
+- **Status stays `detailed`** — an edit is recorded by the `Ver+1` + changelog (K1), not
+  by a status transition (`detailed` is terminal readiness; `gd-lifecycle` → Content axis).
+  The `CONTENT-TYPE.md` header `> Status:` and `GD-IDS.yaml` `doc_status` are left
+  unchanged.
 - **The zone delta line is the fields-delta** — `- Fields: + rarity (new); condition
   retyped float→enum; **durability removed**` — the content counterpart of a system's
   AC-delta; add a `- Migration: <how existing units are migrated>` line (a schema change
@@ -91,5 +92,6 @@ it verbatim; **catalog churn skips the tail entirely** (data, not a schema edit)
   essence: `… (RF-2026-06-14-2)`.
 - **Final:** re-render the map (regen-on-write — `## Content Map [gen]`, `[gen]` block
   only, with the `· partial (n/m)` suffix when a `<!-- deferred -->` is present), then
-  **recommend `unikit-gd-verify`** (changed scope) — it re-checks schema vs registry,
-  appends the `Affected` line, and re-renders any stale `[gen]` block (freshness).
+  **recommend `unikit-gd-verify`** (changed scope) — read-only, it re-checks schema vs
+  registry and **prints** the result; it no longer appends an `Affected` line or
+  re-renders any `[gen]` block (this skill already re-rendered the map on write, B1).

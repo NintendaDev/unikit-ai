@@ -76,14 +76,15 @@ git-is-history rule are owned there), a registry check (new numbers/names vs `GD
 facts — conflicts surface, never silently win), and `unikit-gd-verify` (changed scope)
 at the end. Apply it verbatim; the **system-zone specifics** on top:
 
-- **Status → `revised`** in the **two places that must agree** — the `SYSTEM.md` header
-  `> Status:` token (inside the combined header line, not a separate bold line) and the
-  `GD-IDS.yaml` `doc_status` (`gd-lifecycle`). This skill marks **only the edited
-  system**; `unikit-gd-verify` marks affected **dependents** `revised` (verdict-gated).
-  Each stays in the loop until `unikit-gd-review` clears it back to `reviewed`.
+- **Status stays `detailed`** — an edit is recorded by the `Ver+1` + changelog (K1), not
+  by a status transition (`detailed` is terminal readiness; `gd-lifecycle`). The header
+  `> Status:` and `GD-IDS.yaml` `doc_status` are left unchanged. `unikit-gd-verify` is
+  read-only — it **prints** affected **dependents** (informational, cross-axis), it does
+  not mark a status.
 - **The zone delta line is the AC-delta** — `- AC: + AC-<sys>-7, AC-<sys>-8 (new);
   AC-<sys>-3 changed; **AC-<sys>-5 removed**` — mandatory; the planning side consumes
   exactly this line to build delta plans. Cite a closed review finding in the essence:
   `… (RF-2026-06-14-2)`.
-- **Final:** `unikit-gd-verify` computes dependent impact, appends the `Affected
-  (gd-verify):` line, and re-renders the stale `## System Map [gen]` (freshness).
+- **Final:** `unikit-gd-verify` (read-only) computes dependent impact and **prints** it —
+  it no longer appends an `Affected (gd-verify):` line or re-renders the map. The
+  `## System Map [gen]` re-renders on the next `unikit-gd-spec` touch (B1).

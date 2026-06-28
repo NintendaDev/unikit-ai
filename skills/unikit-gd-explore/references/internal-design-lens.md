@@ -148,7 +148,7 @@ artifact's content language.
 
 ### `## Improvement Plan` — for `/unikit-gd-system`
 
-For a system whose doc is already `detailed` / `reviewed` / `revised`. Fields:
+For a system whose doc is already `detailed`. Fields:
 
 - **Target**: `SYS-<slug>` · **Expected scale**: Tuning | Tweak | Rework (the
   `unikit-gd-system` classifier — let it confirm, this is the prediction).
@@ -174,7 +174,7 @@ For a mechanic with **no system on the map yet**. Two parts:
 
 ### `## Flow Improvement Plan` — for `/unikit-gd-flow`
 
-For a flow whose doc is already `detailed` / `reviewed` / `revised`. The flow axes are
+For a flow whose doc is already `detailed`. The flow axes are
 **pacing** (does the tension arc rise and release?), **guidance** (is each `GOAL` step
 legible — trigger → expected action → feedback?), **wiring-mode** fit, and **funnel**
 coverage. Fields:
@@ -210,7 +210,7 @@ first). Two parts:
 
 ### `## Content Improvement Plan` — for `/unikit-gd-content`
 
-For a content type whose doc is already `detailed` / `reviewed` / `revised`. Work the
+For a content type whose doc is already `detailed`. Work the
 **two altitudes** — the *schema* (`CT.fields` / `scale` / `belongs_to`) and the *catalog
 space* (the units, their volume, generation). Fields:
 

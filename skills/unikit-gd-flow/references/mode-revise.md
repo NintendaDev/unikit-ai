@@ -77,10 +77,11 @@ flow's `version` in `GD-IDS.yaml`), the **latest delta only (K1)** changelog blo
 a registry check (new `GOAL`s / dependencies / events vs `GD-IDS` — conflicts surface,
 never silently win). Apply it verbatim; the **flow-zone specifics** on top:
 
-- **Status → `revised`** in the **two places that must agree** — the `FLOW.md` header
-  `> Status:` token and the `GD-IDS.yaml` `doc_status` (`gd-lifecycle`). This skill marks
-  **only the edited flow**; `unikit-gd-verify` marks affected **dependents** `revised`
-  (cross-axis, verdict-gated). Each stays in the loop until `unikit-gd-review` clears it.
+- **Status stays `detailed`** — an edit is recorded by the `Ver+1` + changelog (K1), not
+  by a status transition (`detailed` is terminal readiness; `gd-lifecycle`). The `FLOW.md`
+  header `> Status:` and `GD-IDS.yaml` `doc_status` are left unchanged. `unikit-gd-verify`
+  is read-only — it **prints** affected **dependents** (informational, cross-axis), it does
+  not mark a status.
 - **The zone delta line is the GOAL-delta** — `- GOAL: + GOAL-<flow>-3 (new);
   GOAL-<flow>-2 changed; **GOAL-<flow>-1 removed**` — the flow counterpart of a system's
   AC-delta; add an **event delta** line when funnel events change. Cite a closed review
@@ -88,5 +89,6 @@ never silently win). Apply it verbatim; the **flow-zone specifics** on top:
 - **Final:** re-render the maps (regen-on-write — `## Flow Map [gen]` + `## Funnel
   [gen]`, `[gen]` blocks only, with the `· partial (n/m)` suffix when a
   `<!-- deferred -->` is present), then **recommend `unikit-gd-verify`** (changed scope)
-  — it computes cross-axis impact on dependent flows, appends the `Affected` line, and
-  re-renders any stale `[gen]` block (freshness).
+  — read-only, it computes cross-axis impact on dependent flows and **prints** it; it no
+  longer appends an `Affected` line or re-renders any `[gen]` block (this skill already
+  re-rendered the maps on write, B1).

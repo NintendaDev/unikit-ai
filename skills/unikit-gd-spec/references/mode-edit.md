@@ -26,8 +26,8 @@ deliberately lighter than a SYSTEM GDD edit.
    - Append a **light** entry to `## Changelog` (version, date, essence, one line per
      changed section). **No** AC-delta line and **no** `Affected (gd-verify):` line —
      those are SYSTEM GDD fields.
-   - Status stays `drafted | approved`; it is **never** set to `revised`. No two-place
-     coherence, no pending-loop (a GAME.md edit does not flag dependents).
+   - Status stays `drafted | approved` (GAME.md's own enum, distinct from the
+     `doc_status` spine). No two-place coherence (a GAME.md edit does not flag dependents).
 5. **Roster touch?** If the edit changes a pillar that a system's coverage depends on,
    or otherwise shifts roster metadata, re-render `## System Map [gen]` (Regen-on-Write
    in `SKILL.md`) — but Edit never adds or removes a system (that is Add-System / Remap).

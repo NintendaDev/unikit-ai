@@ -287,9 +287,9 @@ Recommend the next steps (do not auto-invoke):
 - 🗺️ Add the consuming/another system — /unikit-gd-spec (add-system)
 
 A review is most independent in a **fresh session** (the reviewer should not have
-authored the doc). `unikit-gd-verify` checks the content type against the registry,
-flags it on cross-axis staleness (a `belongs_to`/`ref<SYS>` system edit), and
-refreshes the `## Content Map [gen]`.
+authored the doc). `unikit-gd-verify` is read-only — it checks the content type against
+the registry and **prints** cross-axis staleness (a `belongs_to`/`ref<SYS>` system edit);
+the `## Content Map [gen]` was already re-rendered on this skill's write (B1).
 
 ## Final: Compact Report
 
@@ -300,7 +300,7 @@ parenthetical copy-paste tags, status is a plain phrase):
 Content type: <name>  (CT-<slug>)
 Scale: <bulk | curated>   Belongs to: <system name> (SYS-<slug>)   ·   Depth: <core | standard | full>  (create/fill)
 Action: <create | fill | edit (tuning|tweak|rework) | catalog churn>
-Doc: .unikit/gamedesign/content-types/CT-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet | updated, awaiting re-review>, vN
+Doc: .unikit/gamedesign/content-types/CT-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet>, vN
 Registry: <F> fields; <U> units (<count> bulk | <n> curated); +<R> resources/tracks/knobs  (GD-IDS.yaml)
 Map: ## Content Map [gen] re-rendered
 ```
@@ -311,7 +311,7 @@ No summary document, no report file.
 
 - **Owns:** the **full lifecycle** of `content-types/CT-<slug>.md` — creating the
   skeleton, filling placeholders, **and revising the approved schema** (Tuning / Tweak
-  / Rework, with the version bump + changelog + `revised` status); the type's
+  / Rework, with the version bump + changelog; the status stays `detailed`); the type's
   `GD-IDS.yaml` facts (`content_types[]` incl. `fields`, `scale`, `belongs_to`,
   `research:`; the `content[]` units; and the `resources` / `tracks` / `knobs` facts it
   registers) and its `doc_status` / `version`; the scale selection; and the

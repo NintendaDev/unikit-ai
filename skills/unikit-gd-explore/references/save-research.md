@@ -91,12 +91,12 @@ mkdir -p .unikit/gamedesign/researches/<date>_<slug>
 |---------|-----------|
 | A direction worth ideating | 💡 `/unikit-gd-brainstorm` |
 | Ready to formalize into the master spec / a system | 🗺️ `/unikit-gd-spec` / 🧩 `/unikit-gd-system` |
-| **Internal lens** — improve a `detailed`/`reviewed`/`revised` system | 🧩 `/unikit-gd-system` (consumes `## Improvement Plan`) |
+| **Internal lens** — improve a `detailed` system | 🧩 `/unikit-gd-system` (consumes `## Improvement Plan`) |
 | **Internal lens** — a new mechanic (no doc / `not-started`) | 🗺️ `/unikit-gd-spec` (add-system) → 🧩 `/unikit-gd-system` (consumes `## New Feature Plan`) |
 | **Internal lens** — fill a `skeleton` system | 🧩 `/unikit-gd-system` |
-| **Internal lens** — improve a `detailed`/`reviewed`/`revised` flow | 🌊 `/unikit-gd-flow` (consumes `## Flow Improvement Plan`) |
+| **Internal lens** — improve a `detailed` flow | 🌊 `/unikit-gd-flow` (consumes `## Flow Improvement Plan`) |
 | **Internal lens** — a new / `skeleton` flow | 🌊 `/unikit-gd-flow` (consumes `## Flow Feature Plan`) |
-| **Internal lens** — improve a `detailed`/`reviewed`/`revised` content type | 📦 `/unikit-gd-content` (consumes `## Content Improvement Plan`) |
+| **Internal lens** — improve a `detailed` content type | 📦 `/unikit-gd-content` (consumes `## Content Improvement Plan`) |
 | **Internal lens** — a new / `skeleton` content type | 📦 `/unikit-gd-content` (consumes `## Content Feature Plan`) |
 | A balance/economy/UX convention worth keeping | 🧠 `/unikit-memory --module gamedesign` |
 | A consistency concern in the current design | ✅ `/unikit-gd-verify` |

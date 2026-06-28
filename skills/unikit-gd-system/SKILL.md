@@ -245,9 +245,10 @@ After the sections are authored and accepted:
    `AC: + AC-<slug>-1 … N (new)` line) — the single current block (K1).
 
 The `## System Map [gen]` renders this system's status/version (incl. the `· partial`
-suffix) **read-only** from `GD-IDS`; it is **not** this skill's surface — it
-re-renders on the next `unikit-gd-verify` freshness check or `unikit-gd-spec` touch
-(`gd-lifecycle` → Lifecycle & Status). Recommending verify (below) closes that loop.
+suffix) **read-only** from `GD-IDS`; it is **not** this skill's surface — it is owned by
+`unikit-gd-spec` (B1) and re-renders on its next touch. `unikit-gd-verify` is read-only —
+it **prints** the System Map freshness, it does not re-render it (`gd-lifecycle` →
+Lifecycle & Status). Recommending verify (below) surfaces the staleness.
 
 ### Handoff
 
@@ -258,8 +259,9 @@ Recommend the next steps (do not auto-invoke):
 - 🧩 Detail the next system — /unikit-gd-system <SYS-slug>
 
 A review is most independent in a **fresh session** (the reviewer should not have
-authored the doc). `unikit-gd-verify` checks the doc against the registry, flags
-dependent systems, and refreshes the `## System Map [gen]`.
+authored the doc). `unikit-gd-verify` is read-only — it checks the doc against the
+registry and **prints** dependent impact + the `## System Map [gen]` freshness (the map
+re-renders on the next `unikit-gd-spec` touch).
 
 ## Final: Compact Report
 
@@ -270,7 +272,7 @@ status as a **plain phrase**, never the raw enum.
 ```
 System: <name>  (SYS-<slug>)
 Mode: <create | fill | edit (tuning|tweak|rework)>   ·   Depth: <core | standard | full>  (create/fill)
-Doc: .unikit/gamedesign/systems/SYS-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet | updated, awaiting re-review>, vN
+Doc: .unikit/gamedesign/systems/SYS-<slug>.md — <ready | ready, a couple of optional blocks left | skeleton, main blocks not filled yet>, vN
 Sections authored/edited: <the named list>   [deferred: <names carrying <!-- deferred --> > | none]
 Registry: +<E> entities, +<F> formulas, +<T> terms  (GD-IDS.yaml)
 Acceptance criteria: AC-<slug>-1 … AC-<slug>-N   [AC delta on an edit: +<n> / changed <n> / removed <n>]
@@ -282,13 +284,13 @@ No summary document, no report file.
 
 - **Owns:** the **full lifecycle** of `systems/SYS-<slug>.md` — creating the
   skeleton, filling placeholders, **and revising approved content** (Tuning / Tweak
-  / Rework, with the version bump + changelog + `revised` status); the system's
+  / Rework, with the version bump + changelog; the status stays `detailed`); the system's
   `GD-IDS.yaml` facts (`entities`, `formulas`, `terms`) and its `doc_status` /
   `version`.
 - **Not this skill:** `GAME.md` content **or** structure / the system map →
   `unikit-gd-spec`; player-action flows → `unikit-gd-flow`; quality verdicts →
-  `unikit-gd-review`; consistency & impact (and the `## System Map [gen]` freshness
-  render) → `unikit-gd-verify`.
+  `unikit-gd-review`; consistency & impact → `unikit-gd-verify` (read-only — it prints,
+  it does not re-render); the `## System Map [gen]` render → `unikit-gd-spec`.
 - **Never:** write, fill, or edit without approval; overwrite approved text outside
   the delta discipline; skip the version bump or changelog on an edit (unrecorded
   delta); change a `GD-IDS.yaml` value silently; delete or renumber an ID; touch

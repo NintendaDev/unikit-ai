@@ -17,7 +17,7 @@ one-pager's vision.
 3. Reconcile against existing rows — **never silently change a registry value or
    delete an ID**. Present a diff (added / changed / removed-→-deprecated systems)
    and get approval.
-4. **Preserve detailed work:** a system that already has a `detailed`/`reviewed`
+4. **Preserve detailed work:** a system that already has a `detailed`
    GDD keeps its `doc_status` and `version`; only its map metadata (category,
    depends, tier) may change, with approval. Deprecate (never delete) systems that
    no longer fit — set `status: deprecated` in `GD-IDS.yaml` (the `## System Map [gen]`

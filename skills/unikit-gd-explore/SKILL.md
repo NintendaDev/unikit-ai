@@ -273,7 +273,7 @@ recommended command; the routed skill carries its own next hop.
 |-----------------------------|-------------------|
 | no doc / `not-started` | `/unikit-gd-spec` (add-system) — it offers the active seam onward to `/unikit-gd-system` |
 | `skeleton` (placeholders) | `/unikit-gd-system` (fill the placeholders) |
-| `detailed` / `reviewed` / `revised` | `/unikit-gd-system` (record the delta) |
+| `detailed` | `/unikit-gd-system` (record the delta) |
 
 The brief carries the block the route consumes (see "Saving Research Results" →
 mode-aware blocks). For several targets, hand off an **ordered list** of calls,
@@ -281,32 +281,32 @@ dependency-sorted (`internal-design-lens.md` → "Multi-target order").
 
 **Flow targets collapse to one route (no add-flow).** A flow **registers itself**, so
 its `doc_status` does **not** fork the route the way a system's does — every flow state
-(no doc / `not-started` / `skeleton` / `detailed` / `reviewed` / `revised`) routes to
+(no doc / `not-started` / `skeleton` / `detailed`) routes to
 the **same** owner, `/unikit-gd-flow` (it creates, registers, fills, and revises). This
 is **not** a 3-way mirror of the system table — there is no `/unikit-gd-spec` add-flow
 step:
 
 | Target state (`doc_status`) | Recommended route |
 |-----------------------------|-------------------|
-| any flow state (no doc … `revised`) | `/unikit-gd-flow` |
+| any flow state (no doc … `detailed`) | `/unikit-gd-flow` |
 
 The brief block is `## Flow Feature Plan` (no doc / `not-started` / `skeleton` — needs
-seeds) or `## Flow Improvement Plan` (`detailed` / `reviewed` / `revised` — a delta). A
+seeds) or `## Flow Improvement Plan` (`detailed` — a delta). A
 `GOAL` that needs a **missing system** still routes that *system* through
 `/unikit-gd-spec` add-system, but the flow itself always goes to `/unikit-gd-flow`.
 
 **Content targets collapse to one route (no add-content).** A content type **registers
 itself**, so — like a flow — its `doc_status` does **not** fork the route: every content
-state (no doc / `not-started` / `skeleton` / `detailed` / `reviewed` / `revised`) routes
+state (no doc / `not-started` / `skeleton` / `detailed`) routes
 to the **same** owner, `/unikit-gd-content` (it creates, registers, fills, and revises
 the schema). There is no `/unikit-gd-spec` add-content step:
 
 | Target state (`doc_status`) | Recommended route |
 |-----------------------------|-------------------|
-| any content-type state (no doc … `revised`) | `/unikit-gd-content` |
+| any content-type state (no doc … `detailed`) | `/unikit-gd-content` |
 
 The brief block is `## Content Feature Plan` (no doc / `not-started` / `skeleton` — needs
-seeds) or `## Content Improvement Plan` (`detailed` / `reviewed` / `revised` — a schema
+seeds) or `## Content Improvement Plan` (`detailed` — a schema
 delta). A `belongs_to` that needs a **missing system** still routes that *system* through
 `/unikit-gd-spec` add-system, but the content type itself always goes to
 `/unikit-gd-content`.

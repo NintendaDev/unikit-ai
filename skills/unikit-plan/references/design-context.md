@@ -83,12 +83,10 @@ as the cross-axis flow read.
 #### 4.5.2 — Status gate (warn, never block)
 
 Plan generation continues regardless of status, but surface a `WARN [design]` line when the
-resolved system's `Status` is not `detailed` or `reviewed`:
+resolved system's `Status` is not `detailed`:
 
 - `not-started` / `skeleton` — the design is incomplete; the plan may rest on a partial
   spec. Suggest finishing `/unikit-gd-system <system>` first.
-- `revised` — the design moved ahead of the code after a `/unikit-gd-system` edit; treat
-  this as a delta plan (4.5.3) and call out that old behavior may need removal.
 - `implemented` — code already exists for this version (the version is recorded in
   `GD-IDS.yaml` `implemented_version`, read as the baseline in 4.5.3); confirm intent (a
   re-plan usually implies an unrecorded delta).
