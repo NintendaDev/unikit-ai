@@ -12,8 +12,9 @@ description: >-
   first-session pacing", "make all these design edits at once". It also takes a
   /unikit-gd-review report file and applies its apply-ready bucket. For a change to a SINGLE
   zone call its owner directly; to research an open question or a mechanic you do not yet know
-  how to design, use /unikit-gd-explore first.
-argument-hint: "\"<changes>\" | <reviews/*_review-*.md>  (apply-ready bucket | prose deltas → zone owners; no flags)"
+  how to design, use /unikit-gd-explore first. A bare /unikit-gd-apply (no argument) reads
+  the last /unikit-gd-verify output in the session and applies its apply-ready deltas.
+argument-hint: "[ \"<changes>\" | <reviews/*_review-*.md> ]  (bare = read last /unikit-gd-verify output in session; apply-ready bucket | prose deltas → zone owners; no flags)"
 allowed-tools:
   - Read
   - Glob
@@ -44,12 +45,16 @@ closes with **one** consistency pass (`unikit-gd-verify`). The actual writing �
 registry facts, version bumps, `[gen]` re-renders — happens **inside the owner skills**,
 under their collaborative protocol and delta discipline; this skill never bypasses it.
 
-**Two input shapes.** The argument is either the **prose deltas** themselves (typed,
-or handed off inline from `unikit-gd-verify`'s session) or a **`unikit-gd-review`
-report file** (`reviews/*_review-*.md`) — in which case this skill reads the file's
+**Three input shapes.** (1) **No argument** — the bare `/unikit-gd-apply` reads the
+**last `unikit-gd-verify` output in this session** (free-text prose, no fence) and lifts
+its apply-ready deltas; this is verify's handoff path (verify ends on a bare
+`/unikit-gd-apply`). (2) **Prose deltas** typed directly as the argument. (3) A
+**`unikit-gd-review` report file** (`reviews/*_review-*.md`) — this skill reads the file's
 **`## Apply-ready`** bucket as the delta set (the **`## Research`** bucket is
-`unikit-gd-explore`'s job, not this skill's). Either way the deltas flow through the
-same routing, ordering, and closing verify below.
+`unikit-gd-explore`'s job, not this skill's). All three flow through the same routing,
+ordering, and closing verify below. If the bare call finds no recent verify deltas in the
+session, it does nothing destructive — it softly recommends running `/unikit-gd-verify`
+first.
 
 **When NOT to use it.** A change confined to **one** zone goes **straight to that owner**
 — there is nothing to dispatch (Phase 1, GATE 2). A change you **do not yet know how to
@@ -134,18 +139,28 @@ case where no inline invocation mechanism exists at all.
 
 ### Phase 1 — ROUTING (resolve every delta → `(target, zone)`)
 
-**Input-mode resolution (first).** If the argument **resolves to an existing** review
-report — a path matching `reviews/*_review-*.md` (the durable handoff from
-`unikit-gd-review`) — read it and take its **`## Apply-ready`** bucket as the delta
-set: each apply-ready line is one decided edit carrying an `RF-<date>-n` id and a named
-`Fix (entailed)`. The **`## Research`** bucket is **ignored** here — it is
-`unikit-gd-explore`'s input, not this skill's. An **empty** apply-ready bucket is a
-valid input: there is nothing to dispatch — report it and stop, recommending
-`/unikit-gd-explore <file>` for the research bucket. **Anything that is not a resolvable
-`reviews/*_review-*.md` path** — including the **inline prose deltas** that
-`unikit-gd-verify` hands off from its session — is the literal change request, taken as
-prose. (The file reader is the **only** review-specific adapter; the prose path is what
-keeps verify's session handoff working — verify writes no file.)
+**Input-mode resolution (first).** Resolve which of the three input shapes this run is:
+
+- **No argument (bare `/unikit-gd-apply`)** → **session mode**. Read the **last
+  `unikit-gd-verify` output in this session** — its printed apply-ready deltas (free-text
+  prose, each citing a `target` + `zone`, no fence) — and lift those deltas as the set,
+  then continue below. If the session carries **no** recent verify output with apply-ready
+  deltas (a fresh session, a `/clear` since the verify run, or a clean verify PASS), do
+  **nothing destructive** — softly recommend `🔍 /unikit-gd-verify` first and stop. (The
+  verify → apply pair is single-session by design; a `/clear` between them is fixed by
+  re-running verify — cheap.)
+- **Argument resolves to an existing `reviews/*_review-*.md` path** (the durable handoff
+  from `unikit-gd-review`) → read it and take its **`## Apply-ready`** bucket as the delta
+  set: each apply-ready line is one decided edit carrying an `RF-<date>-n` id and a named
+  `Fix (entailed)`. The **`## Research`** bucket is **ignored** here — it is
+  `unikit-gd-explore`'s input, not this skill's. An **empty** apply-ready bucket is a valid
+  input: there is nothing to dispatch — report it and stop, recommending
+  `/unikit-gd-explore <file>` for the research bucket.
+- **Any other argument** — including **inline prose deltas** typed directly — is the
+  literal change request, taken as prose.
+
+(The file reader is the **only** review-specific adapter; the no-arg session path + the
+prose path are what keep verify's bare-call handoff working — verify writes no file.)
 
 Split the request into individual deltas. For each, resolve the **target** (a `SYS-`/
 `CT-`/`FLOW-` id or `GAME.md`) and the **zone** that owns it:
@@ -288,6 +303,9 @@ content deltas:
 ## Quick Reference
 
 ```
+/unikit-gd-apply                                  → session mode: read the last /unikit-gd-verify output → lift its
+                                                    apply-ready deltas → dispatch to owners → verify "apply-phase3";
+                                                    no recent verify deltas → softly recommend /unikit-gd-verify first
 /unikit-gd-apply reviews/2026-06-25_review-SYS-combat.md
                                                   → read the file's ## Apply-ready bucket → dispatch each entailed
                                                     fix to its owner (carrying its RF-id) → verify "apply-phase3";

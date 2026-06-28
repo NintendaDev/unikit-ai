@@ -18,13 +18,10 @@ allowed-tools:
   - Read
   - Glob
   - Grep
-  - Write
-  - Edit
   - Bash(ls *)
   - Bash(find *)
   - Bash(wc *)
   - Bash(date *)
-  - Bash(mkdir *)
   - Bash(git diff *)
   - Bash(git status *)
   - AskUserQuestion
@@ -45,15 +42,23 @@ CI-linter to `unikit-gd-review`'s senior reviewer: cheap, binary, run after ever
 edit. A **verify conflict cannot be declined** (unlike a review finding) — it is
 resolved.
 
+**`unikit-gd-verify` is fully read-only — it writes nothing** (no report file, no
+changelog line, no `doc_status` bump, no `[gen]`-map re-render). It **detects and prints**;
+every fix is performed by `unikit-gd-apply` (the entailed deltas) or the owning zones
+(authoring + the `[gen]`-map re-render on their next write — **B1**: the writer of `GD-IDS`
+re-renders the affected maps).
+
 Conflicts are **precise, but their fix is not always predetermined**, so each is sorted
-into one of **four tracks** — **self-heal** (verify fixes it), **entailed → apply-ready**
-(a named fix handed to `unikit-gd-apply`), **direction interview** (the user picks *which*
-fix, never *whether*), and **authoring → owner / explore**. The apply-ready set hands off
-**in one move** — inline prose (verify writes **no** handoff file, unlike
-`unikit-gd-review`'s durable report), recommend-only. The handoff + interview run **only on
-a standalone `/unikit-gd-verify`**; when verify is `unikit-gd-apply`'s closing Phase 3 (the
-`apply-phase3` sentinel) they are suppressed, so `apply → verify → apply` never loops. The
-triage engine is shared with `unikit-gd-review` (`gd-critique` → Handoff Engine).
+into one of **four tracks** — **freshness** (print-only; the owner re-renders the
+`[gen]` map on its next write), **entailed → apply-ready** (a named fix — incl. a
+status/version header correction — handed to `unikit-gd-apply`), **direction interview**
+(the user picks *which* fix, never *whether*), and **authoring → owner / explore**. The
+apply-ready set hands off **in one move** — inline prose (verify writes **no** handoff
+file, unlike `unikit-gd-review`'s durable report), recommend-only. The handoff + interview
+run **only on a standalone `/unikit-gd-verify`**; when verify is `unikit-gd-apply`'s
+closing Phase 3 (the `apply-phase3` sentinel) they are suppressed, so
+`apply → verify → apply` never loops. The triage engine is shared with `unikit-gd-review`
+(`gd-critique` → Handoff Engine).
 
 Verification is **offline and reproducible**: no web research, no expert judgment,
 no LLM guessing where a grep will do. The same inputs always yield the same result
@@ -138,18 +143,18 @@ Run every check deterministically; each mismatch is a **CONFLICT** with a citati
 | **Dangling references** | resolve every referenced id against `GD-IDS` | a referenced id does not exist, or a live (non-deprecated) section points at a `deprecated` entry |
 | **Unregistered cross-doc fact** | grep `FORM-`/`ENT-` ids that surface in **two or more** documents | a fact crosses a document boundary yet has no `GD-IDS` entry |
 | **Roster ↔ disk** | compare `GD-IDS` `systems` ids to the `systems/*.md` files on disk | a `skeleton`-or-later system has no file, or a `systems/*.md` file has no `GD-IDS` entry (→ route to `unikit-gd-spec` to register it — verify never writes the roster) |
-| **Map freshness (3-surface)** | compare the `GAME.md` `## System Map [gen]` rows to `GD-IDS` `systems` — membership, `Status`, `Ver`, `Depends` | the render disagrees with `GD-IDS` — **not a conflict to resolve**: re-render the block (self-heal, announced); see *Map freshness* below |
+| **Map freshness (3-surface)** | compare the `GAME.md` `## System Map [gen]` rows to `GD-IDS` `systems` — membership, `Status`, `Ver`, `Depends` | the render disagrees with `GD-IDS` — **not a conflict to resolve**: **print** a freshness notice; the owning zone re-renders the block on its next write (verify is read-only — B1); see *Map freshness* below |
 | **Depends 3-way** | for each `A → B` edge, check it agrees across A's section F, A's `GD-IDS` `depends_on`, and A's `## System Map` Depends cell, and that B carries the reciprocal | the three sources disagree, or the reciprocal edge is missing or contradictory |
-| **Status coherence** | a system's `doc_status` agrees across the **two places that must agree** — the header `> Status:` and `GD-IDS` `doc_status` (enum `not-started · skeleton · detailed · reviewed · revised`) | the two disagree for a system — system docs only; see the carve-outs below |
+| **Status coherence** | a system's `doc_status` agrees across the **two places that must agree** — the header `> Status:` and `GD-IDS` `doc_status` (enum `not-started · skeleton · detailed`) | the two disagree for a system — system docs only; see the carve-outs below |
 | **Version coherence** | the header `Version` and `GD-IDS` `version` agree; a `not-started` system carries **no** version, a `skeleton`-or-later system carries one | the two disagree, or a `skeleton`+ system is missing a version / a `not-started` system has one |
 | **AC presence** | for a `detailed`-or-later system, section H is non-empty and every `AC-<sys>-N` id is unique | a `detailed`+ system has an empty H, or repeats an `AC-<sys>-N` — gaps in the numbering are **not** a conflict (numbering is stable after an AC is removed) |
 | **Placeholder leak** | grep `[To be designed]` inside `detailed`-or-later documents (a `<!-- deferred -->` marker is **intentional** — never a leak) | a `detailed`+ document still carries a skeleton `[To be designed]` placeholder |
-| **Core-floor coherence** | for a `detailed`/`reviewed`/`revised` document, check that **no core section carries `<!-- deferred -->`** — the core-set per zone (`gd-lifecycle`: system `A/B/C/D/H` · flow `A/B` · content `A/B/C`) | a `detailed`+ document defers a **core** section — the status was raised past the floor (the soft guard in `gd-authoring` was bypassed); route to the owning zone to author the core section or lower the status. A deferred **non-core** section is **not** a conflict (it is the inferred `detailed · partial` — see the render below) |
+| **Core-floor coherence** | for a `detailed` document, check that **no core section carries `<!-- deferred -->`** — the core-set per zone (`gd-lifecycle`: system `A/B/C/D/H` · flow `A/B` · content `A/B/C`) | a `detailed`+ document defers a **core** section — the status was raised past the floor (the soft guard in `gd-authoring` was bypassed); route to the owning zone to author the core section or lower the status. A deferred **non-core** section is **not** a conflict (it is the inferred `detailed · partial` — see the render below) |
 
 The registry is authoritative: when a document disagrees with `GD-IDS`, the
 registry wins until the user resolves it the other way (`gd-principles`).
 
-**Map freshness — self-heal, not a conflict.** The `## System Map [gen]` block in
+**Map freshness — print-only, not a conflict.** The `## System Map [gen]` block in
 `GAME.md` is a deterministic **render** of `GD-IDS` `systems` (`gd-lifecycle` →
 Lifecycle & Status), so a disagreement is a *freshness* issue, never a coherence
 conflict to resolve. On any of —
@@ -158,31 +163,34 @@ conflict to resolve. On any of —
 - a **phantom row** in the map with no matching `GD-IDS` system;
 - a row whose **Status / Ver / Depends** differs from `GD-IDS`,
 
-— **re-render** the `## System Map [gen]` block from `GD-IDS` (the same deterministic
-render `unikit-gd-spec` writes — group by category, sort by tier then design order,
-display-precedence on `deprecated`/`implemented`) and **announce** it
-(`re-rendered ## System Map [gen] (freshness)`). The one case verify does **not**
-self-heal is a `systems/*.md` file with **no `GD-IDS` entry** (the Roster ↔ disk
-check): the roster is `unikit-gd-spec`'s to write, so verify **routes** the user to
-`/unikit-gd-spec` to register the system, then the map re-renders.
+— **print** a freshness notice naming the stale rows (`## System Map [gen] stale —
+<rows>; owner re-renders on next write`). verify is **read-only**: it does **not**
+re-render the map. The owning zone re-renders on its next write — **B1**: the writer of
+`GD-IDS` (`unikit-gd-spec` for the System Map, `unikit-gd-flow` / `unikit-gd-content` for
+theirs) re-renders the affected `[gen]` block with the same deterministic render (group
+by category, sort by tier then design order, display-precedence on
+`deprecated`/`implemented`). A `systems/*.md` file with **no `GD-IDS` entry** (the
+Roster ↔ disk check) is likewise **routed**: the roster is `unikit-gd-spec`'s to write,
+so verify routes the user to `/unikit-gd-spec` to register the system.
 
 **Deferred markers, the `· partial (n/m)` render, and the self-check (all three maps).**
 A `<!-- deferred -->` marker is an **intentional** omission (`gd-lifecycle` — a section
 the author chose to skip at this depth), **never** a placeholder leak. Its only
-mechanical consequence at verify time is the **render**: when a `detailed`+ document
-carries ≥1 `<!-- deferred -->`, the freshness re-render appends **`· partial (n/m)`** to
-that document's row Status in the relevant `## *Map [gen]`, where **n = the count of
-deferred non-core sections** (those carrying the marker) and **m = the document's total
-deferrable (non-core) sections** (`gd-lifecycle` → the canonical render format + per-zone
-core-set). This applies identically to the **System, Flow, and Content** maps; like all
-freshness it is a **self-heal re-render, not a coherence conflict**, and the status value
-itself stays the read-only enum (`· partial` is a render annotation, not a `doc_status`,
-and is **not** part of the two-place status/version coherence). **Self-check (marker ⟺
-render):** every document with ≥1 `<!-- deferred -->` must render `· partial (n/m)` in its
-map row, **and** every `· partial` suffix in a map must correspond to a document that
-actually carries the marker — a mismatch in either direction is a **freshness**
-discrepancy, fixed by the re-render. Annotate the announce line with the count, e.g.
-`re-rendered ## System Map [gen] (freshness; partial 2/5 on SYS-combat)`.
+mechanical consequence at verify time is the **render**: a `detailed`+ document carrying
+≥1 `<!-- deferred -->` should show **`· partial (n/m)`** appended to its row Status in the
+relevant `## *Map [gen]`, where **n = the count of deferred non-core sections** (those
+carrying the marker) and **m = the document's total deferrable (non-core) sections**
+(`gd-lifecycle` → the canonical render format + per-zone core-set). This applies
+identically to the **System, Flow, and Content** maps; like all freshness it is
+**print-only, not a coherence conflict** — verify does **not** re-render (the owner
+appends the suffix on its next re-render), and the status value itself stays the read-only
+enum (`· partial` is a render annotation, not a `doc_status`, and is **not** part of the
+two-place status/version coherence). **Self-check (marker ⟺ render):** every document with
+≥1 `<!-- deferred -->` must render `· partial (n/m)` in its map row, **and** every
+`· partial` suffix in a map must correspond to a document that actually carries the
+marker — a mismatch in either direction is a **freshness** discrepancy, **printed** (the
+owner fixes it on re-render). Annotate the freshness notice with the count, e.g.
+`## System Map [gen] stale (partial 2/5 on SYS-combat); owner re-renders`.
 
 **Scope & carve-outs (Status / Version / AC / Placeholder).** These four checks
 read the **system** spine only — the header ↔ `GD-IDS` pair of a `systems/*.md`
@@ -210,11 +218,6 @@ agreement is handled by *Map freshness* above):
   (`SYS-`/`ENT-`/`FORM-`/`AC-`/`PIL-`/`FLOW-`/`GOAL-`/`CT-`/`CU-`), and **Unregistered
   cross-doc fact** only greps `FORM-`/`ENT-` ids — a folder path matches neither — so no
   special-case logic is needed.
-- **Dependent-lag.** A verify-flagged dependent may transiently carry a header
-  `Status` behind its `GD-IDS` `doc_status` (`gd-lifecycle` → Lifecycle & Status);
-  that lag is expected, not a conflict. This applies on the **flow** axis too: a
-  cross-axis-flagged dependent **flow** (Phase 3) may carry a `FLOW.md` header `Status`
-  behind its `GD-IDS` `flows[].doc_status`.
 
 ### Axis-aware checks — flow + content (load on demand)
 
@@ -223,8 +226,8 @@ types**, each with its own check family — the mirror of the system checks plus
 axis-specific ones. When `GD-IDS` `flows` and/or `content_types` is **non-empty**, load
 the matching family from `{{skills_dir}}/{{self_name}}/references/axis-checks.md` and run
 it; an empty `flows: []` / `content_types: []` (or no key) → **skip that family
-silently** (not a conflict). The registry-wins rule and the self-heal-vs-conflict
-distinction apply exactly as above.
+silently** (not a conflict). The registry-wins rule and the freshness-vs-conflict
+distinction apply exactly as above — freshness is **print-only** (the owner re-renders).
 
 | Registry has | Family (in `references/axis-checks.md`) — coverage |
 |--------------|----------------------------------------------------|
@@ -239,12 +242,10 @@ check).
 
 Compute the blast radius of a recent edit:
 
-1. **Changed set** = the union of two sources:
-   - `git diff HEAD` (and `git status`) restricted to `.unikit/gamedesign/` → the
-     systems whose documents changed on disk, **and**
-   - every system already carrying `doc_status: revised` in `GD-IDS` — a pending
-     edit not yet cleared back to `reviewed`, so a `revised` system is re-checked
-     even when its file shows no fresh git diff.
+1. **Changed set** = `git diff HEAD` (and `git status`) restricted to
+   `.unikit/gamedesign/` → the systems whose documents changed on disk. (There is no
+   stored "pending re-verify" state to re-scan — status records readiness only; a change
+   is carried by the git diff + version, not by a `doc_status`.)
 2. Walk `GD-IDS` `depends_on` edges (rendered in the `## System Map` Depends column)
    to the **transitive closure** of systems that depend (directly or indirectly) on
    a changed one.
@@ -258,69 +259,49 @@ Compute the blast radius of a recent edit:
    | FLOW-first-session | exercises SYS-combat (changed) via GOAL→AC | **Needs Review** |
 
    Verdicts: **Still Valid** / **Needs Review** / **Likely Stale**.
-4. **Record the impact** (with approval):
-   - **Append the `Affected (gd-verify):` line** to the latest changelog block in the
-     changed system's section **K** — the line the system's zone owner
-     (`unikit-gd-system`) leaves for verify to fill (`gd-authoring` → Delta
-     Discipline).
-   - For each affected **dependent**, bump it to `doc_status: revised` **only when
-     its verdict is `Needs Review` or `Likely Stale`** (a `Still Valid` dependent is
-     left untouched). Write the bump in the dependent's `GD-IDS.yaml` `doc_status`
-     (the single machine-truth place); the dependent's `SYSTEM.md` header is left to
-     catch up on its next authoring touch (full header coherence for flagged
-     dependents is a later tier — see gd-lifecycle → Lifecycle & Status), and the
-     `## System Map [gen]` re-renders (Map freshness).
-   - A `revised` dependent returns to `reviewed` only through `unikit-gd-review`,
-     never here.
-   - **Idempotent:** re-running on the same diff yields the same Affected table and
-     re-bumps nothing already at `revised`.
+4. **Print the impact** (verify writes nothing):
+   - **Print the Affected table** to the console — the changed system + every dependent
+     with its verdict. verify does **not** write the `Affected (gd-verify):` line into
+     section K (it is read-only); the owner records that line on its next authoring touch
+     if it acts on the impact (`gd-authoring` → Delta Discipline).
+   - For each affected **dependent** with a `Needs Review` / `Likely Stale` verdict,
+     **recommend** a re-author pass to its owner — verify does **not** bump any
+     `doc_status` (status records readiness only; a re-author bumps `Ver`, not status).
+   - **Idempotent:** re-running on the same diff yields the same Affected table — there is
+     no state to mutate.
 
 **Cross-axis impact (system → flow, one-way).** A system edit can stale a **flow** that
 exercises it (through `GOAL → SYS` / `GOAL → AC`) — `gd-flow-axis` → Flow Axis. Extend
 the pass across the axis (skip when `flows: []`):
 
-- **Changed set** also includes every flow already at `doc_status: revised` (a pending
-  cross-axis flag not yet cleared back to `reviewed`).
 - **Reverse-edge walk:** for each changed **system**, find every flow whose
   `flows[].depends_on` includes it, or whose `goals[].targets` reference it
   (`GOAL → SYS` / `GOAL → AC`). Those flows join the **Affected** table as **flow rows**
   (Relation: `exercises SYS-x (changed)`), with the same Still Valid / Needs Review /
   Likely Stale verdicts (a flow using a **removed** `AC` is Likely Stale). The reverse
   does **not** hold — editing a flow never stales a system.
-- **Record impact (dependent flow):** list affected flows in the changed system's
-  `Affected (gd-verify):` line (section K). For each `Needs Review` / `Likely Stale`
-  dependent flow, bump it to `doc_status: revised` in the **`GD-IDS` `flows[].doc_status`
-  only** (the dependent-lag rule, on the flow axis) — verify does **not** write the
-  `FLOW.md` header `> Status:` (it catches up on the next `unikit-gd-flow` touch), and
-  the `## Flow Map [gen]` re-renders (freshness). Append a one-line human-readable note
-  to the flow's **section F** (Open Questions & Changelog) — the flow analogue of the
-  `Affected (gd-verify):` line a system carries in section K — so the next author sees
-  why the flow is `revised`. A `revised` flow returns to `reviewed` only through
-  `unikit-gd-review`.
+- **Print impact (dependent flow):** list affected flows in the printed Affected table.
+  For each `Needs Review` / `Likely Stale` dependent flow, **recommend** a re-author pass
+  to `unikit-gd-flow` — verify writes **nothing** (no `doc_status` bump, no `FLOW.md`
+  header write, no section-F note, no `## Flow Map [gen]` re-render). Acting on the
+  recommendation (the `Ver+1` + changelog touch) is the owner's call.
 
 **Cross-axis impact (system → content type, one-way).** A system edit can stale a
 **content type** that feeds it (through `belongs_to` / a `ref<SYS>` field) —
 `gd-content-axis` → Content Axis. Extend the pass across the axis (skip when
 `content_types: []`):
 
-- **Changed set** also includes every content type already at `doc_status: revised`
-  (a pending cross-axis flag not yet cleared back to `reviewed`).
 - **Reverse-edge walk:** for each changed **system**, find every content type whose
   `content_types[].belongs_to` names it, or whose `CT.fields` carry a `ref<SYS>` to it.
   Those types join the **Affected** table as **content rows** (Relation: `feeds SYS-x
   (changed)`), with the same Still Valid / Needs Review / Likely Stale verdicts (a type
   whose consuming system removed a relied-on contract is Likely Stale). The reverse does
   **not** hold — editing a content type never stales a system.
-- **Record impact (dependent CT):** list affected types in the changed system's
-  `Affected (gd-verify):` line (section K). For each `Needs Review` / `Likely Stale`
-  dependent type, bump it to `doc_status: revised` in the **`GD-IDS`
-  `content_types[].doc_status` only** (the dependent-lag rule, on the content axis) —
-  verify does **not** write the `CONTENT-TYPE.md` header `> Status:` (it catches up on
-  the next `unikit-gd-content` touch), and the `## Content Map [gen]` re-renders
-  (freshness). Append a one-line human-readable note to the type's **section F** (Open
-  Questions & Changelog) — the content analogue of the `Affected (gd-verify):` line — so
-  the next author sees why the type is `revised`. A `revised` content type returns to
-  `reviewed` only through `unikit-gd-review`.
+- **Print impact (dependent CT):** list affected types in the printed Affected table.
+  For each `Needs Review` / `Likely Stale` dependent type, **recommend** a re-author pass
+  to `unikit-gd-content` — verify writes **nothing** (no `doc_status` bump, no
+  `CONTENT-TYPE.md` header write, no section-F note, no `## Content Map [gen]`
+  re-render). Acting on the recommendation is the owner's call.
 
 ## Phase 4 — Triage Conflicts (4 tracks)
 
@@ -329,15 +310,16 @@ not always predetermined**, and it can **never be declined** — only resolved o
 Using the shared **handoff engine** (`gd-critique` → Handoff Engine), sort every conflict
 into one of **four tracks**:
 
-1. **Self-heal** — verify fixes it itself, no question. The `[gen]`-map **freshness**
-   re-renders (Phase 2) and the **coherence** conflicts where `GD-IDS` is the machine
-   truth: a status / version disagreement is healed by correcting the header to match
-   `GD-IDS` (and the `## *Map [gen]` re-renders), unless the user resolves the registry the
-   other way. This track is unchanged from before.
+1. **Freshness — print-only** — verify is read-only, so it **prints**, never fixes. The
+   `[gen]`-map **freshness** (Phase 2) is announced as a stale-rows notice; the owning zone
+   re-renders on its next write (**B1**). A status / version header ↔ `GD-IDS` disagreement
+   (where `GD-IDS` is the machine truth) is **not** healed here — its correction (set the
+   header to `GD-IDS`) is a clean entailed fix and goes to Track 2.
 
 2. **Entailed → apply-ready** — the conflict's fix passes the silent **ENTAILED** criterion
    (one concrete target · the correct value already authoritative in `GD-IDS` · exactly one
-   local fix · no external knowledge) but needs an **owner write** verify cannot make: a
+   local fix · no external knowledge) but needs an **owner write** verify cannot make
+   (verify writes nothing): a **status / version header** to correct to `GD-IDS`, a
    **duplicate id** to renumber, a **terminology drift** to swap to the canonical term, a
    **dangling reference** to repoint. Put it in the **apply-ready** set — the named fix
    handed to `unikit-gd-apply` (Phase 6) as a prose delta, authored by the owner, not here.
@@ -369,61 +351,60 @@ into one of **four tracks**:
    `unikit-gd-content` / `unikit-gd-spec`), or to `/unikit-gd-explore` when it needs a
    design decision first.
 
-A registry change requires explicit approval and never silently overrides an existing
-value; a deprecated ID is never deleted. Log every conflict + its track + resolution in
-the report (Phase 5). The old coherence-vs-presence split still holds underneath: a
-**coherence** conflict (status / version / Depends 3-way) is Track 1 (self-heal to
-`GD-IDS`); a **presence** conflict (empty H, duplicate id, placeholder leak, unregistered
-cross-doc fact) is Track 2 (entailed → apply-ready) or Track 4 (authoring), resolved by
-editing the document, never the registry.
+verify never writes the registry — it is read-only; the registry-wins rule still governs
+the **direction** of a fix (apply / the owner sets the document to match `GD-IDS`), and a
+deprecated ID is never deleted. Log every conflict + its track + resolution in the printed
+report (Phase 5). The coherence-vs-presence split still holds underneath: a **coherence**
+conflict (status / version / Depends 3-way, where `GD-IDS` is authoritative) is now
+**Track 2** (entailed → apply-ready — the header corrected to `GD-IDS`), and the
+`[gen]`-map **freshness** is **Track 1** (print-only); a **presence** conflict (empty H,
+duplicate id, placeholder leak, unregistered cross-doc fact) is Track 2 (entailed →
+apply-ready) or Track 4 (authoring), resolved by editing the document, never the registry.
 
-## Phase 5 — Report (only when needed)
+## Phase 5 — Report (printed to the console)
 
-**Write a report file only on `CONFLICTS FOUND` or a changed-scope pass.** A clean
-full PASS is a single chat line — no file (decision 2026-06-12). When a file is
-written, it is `.unikit/gamedesign/reviews/<date>_verify-<scope>.md` (`mkdir -p`):
+**verify is read-only — the report is printed to the console, never written to a file.**
+A clean full PASS is a single chat line. On `CONFLICTS FOUND` or a changed-scope pass,
+print the full report block:
 
 ```markdown
 # Verify: <scope> — <YYYY-MM-DD>
 > Result: <PASS | CONFLICTS FOUND>  ·  Scope: <SYS-slug | changed | all>
 
 ## Conflicts
-| Severity | Document / Section | Check | Conflict (evidence) | Resolution |
-|----------|--------------------|-------|---------------------|------------|
+| Severity | Document / Section | Check | Conflict (evidence) | Recommended fix |
+|----------|--------------------|-------|---------------------|-----------------|
 
 ## Affected (changed-scope only)
 | System / Flow | Relation | Verdict |
 |---------------|----------|---------|
 
-## Status changes
-<rows bumped to `revised`, with approval>
+## Freshness
+<[gen]-map rows stale → owner re-renders on next write (B1), or "up to date">
 ```
 
-**This file is the conflict report, not the handoff.** verify's handoff to
-`unikit-gd-apply` is **inline prose from this session** (Phase 6) — verify writes **no**
-handoff/bucket file (the asymmetry with `unikit-gd-review`, which leaves a durable
-two-bucket report; a verify pass is ephemeral and cheap to re-run). The conflict-report
-file here is unchanged — the cross-session rework checklist, written on `CONFLICTS FOUND`
-or a changed-scope pass only.
-
-Why keep the file: it is the only cross-session memory and the rework checklist.
-When the same conflict recurs across systems, record it as a `gamedesign` `library`
-rule via `/unikit-memory --module gamedesign` — durable domain knowledge, not
-re-discovered each pass.
+This is **printed**, not a file — a verify pass is ephemeral and cheap to re-run (the
+single-session verify → apply pair is by design: a `/clear` between them is fixed by
+re-running verify). The asymmetry with `unikit-gd-review` (which leaves a durable
+two-bucket report) is intentional. When the same conflict recurs across systems, record it
+as a `gamedesign` `library` rule via `/unikit-memory --module gamedesign` — durable domain
+knowledge, not re-discovered each pass.
 
 ## Phase 6 — Handoff (standalone only; inline prose, recommend-only)
 
 > **LOOP-GUARD.** This phase runs **only on a standalone `/unikit-gd-verify`**. Under the
 > **in-apply flag** (the `apply-phase3` sentinel resolved in Phase 1), **skip this phase
-> entirely** — verify self-heals (Track 1) and reports (Phase 5), but never offers a
-> handoff back to `unikit-gd-apply`. That is the silent gate that stops
+> entirely** — verify prints freshness (Track 1) and the report (Phase 5), but never offers
+> a handoff back to `unikit-gd-apply`. That is the silent gate that stops
 > `apply → verify → apply` from looping.
 
 When Tracks 2 and 3 produced **apply-ready deltas** (the entailed fixes + the
 direction-resolved edits), hand them to `unikit-gd-apply` **in one move** rather than
 routing each conflict into an owner skill by hand. verify's handoff is **inline prose from
-this session** — it writes **no** file (Phase 5): the prose deltas go straight into
-`unikit-gd-apply`'s prose input path.
+this session** — it writes **no** file (Phase 5): verify **prints the deltas as plain
+prose** (each citing its `target` + `zone`), then ends with a **bare `/unikit-gd-apply`**.
+A bare `/unikit-gd-apply` (no argument, no fence) reads the deltas from the **last verify
+output in the session** — apply's no-arg session mode.
 
 **Hand off — recommend-only (never a `Skill` call).** Neither `unikit-gd-review` nor
 `unikit-gd-verify` carries `Skill` in `allowed-tools`; each **prints** the
@@ -434,20 +415,22 @@ runs it — the two handoff tails are identical by contract.
 ### Auto-invoke the handoff — BLOCKING PRE-REQUISITE
 
 When this phase prints the `/unikit-gd-apply` recommendation, automatically invoke it
-(`$unikit-gd-apply "<the prose deltas>"`) rather than asking the user to run it by hand —
-the printed command is the recommend-only fallback for agents without auto-invocation.
-This is a single handoff: invoke `unikit-gd-apply` once with the prose deltas and let it
-route them to the owners (it closes with its own `apply-phase3` verify — no loop).
+(`$unikit-gd-apply`, bare — it reads the printed deltas from this session) rather than
+asking the user to run it by hand — the printed command is the recommend-only fallback for
+agents without auto-invocation. This is a single handoff: invoke `unikit-gd-apply` once and
+let it route the deltas to the owners (it closes with its own `apply-phase3` verify — no
+loop).
 <!-- unikit:end -->
 
-- **apply-ready non-empty:** print the apply command with the deltas as prose —
+- **apply-ready non-empty:** print the deltas as plain prose (each citing `target` +
+  `zone`), then the bare command on its own line —
   ```
-  /unikit-gd-apply "<the entailed + direction-resolved deltas, each citing its conflict>"
+  /unikit-gd-apply
   ```
-  `unikit-gd-apply` takes the prose deltas (no file — verify writes none), dispatches them
-  to the owning zones, and closes with its own `apply-phase3` verify pass. A single-zone
-  set is bounced to its owner by apply's GATE 2.
-- **apply-ready empty** (only self-heal + authoring / research routes): **no apply
+  `unikit-gd-apply` reads the printed deltas from the session (no file, no argument —
+  verify writes none), dispatches them to the owning zones, and closes with its own
+  `apply-phase3` verify pass. A single-zone set is bounced to its owner by apply's GATE 2.
+- **apply-ready empty** (only freshness + authoring / research routes): **no apply
   handoff** — list the Track-4 routes instead (`/unikit-gd-system` / `/unikit-gd-flow` /
   `/unikit-gd-content` / `/unikit-gd-spec`, or `/unikit-gd-explore` for the ones needing a
   design decision).
@@ -468,10 +451,10 @@ Checks: facts · terms · IDs · dup-IDs · dangling · unregistered-fact · ros
 Flow checks (when flows exist): GOAL-ids · dangling-GOAL · flow-status/version · flow-Depends-3way · mode↔structure · win/lose↔terminal-GOAL · funnel-continuity · flow/funnel-freshness — <pass/fail each>
 Content checks (when content_types exist): CT/CU-ids · CU⊆CT · ref<>-resolve · scale↔structure · belongs_to-3way · content-status/version · content-map-freshness · RES/TRACK/KNOB · cross-axis SYS→CT — <pass/fail each>
 Affected (changed-scope): <k systems + flows + content types — Needs Review: …, Likely Stale: …>
-Freshness: <re-rendered ## System Map [gen] (· partial n/m where a section is deferred) | up to date>
-Tracks: <self-heal: N · apply-ready: N · direction-interview: N · authoring/explore: N>
-Handoff: <printed /unikit-gd-apply "<prose deltas>" | apply-ready empty → routes only | in-apply (apply-phase3) → suppressed>
-Report: <path | none (clean PASS)>
+Freshness: <## System Map [gen] stale — <rows> (· partial n/m where deferred); owner re-renders | up to date>
+Tracks: <apply-ready: N · direction-interview: N · authoring/explore: N>
+Handoff: <printed deltas + bare /unikit-gd-apply | apply-ready empty → routes only | in-apply (apply-phase3) → suppressed>
+Report: <printed to console | none (clean PASS)>
 ```
 
 The actionable routes when apply-ready is empty live in the `Tracks` line above —
@@ -479,7 +462,8 @@ read them there. No summary document beyond the conditional report file.
 
 **Then end with the handoff as the LAST block** — one command, nothing after it:
 
-- **apply-ready non-empty** → `🛠️ /unikit-gd-apply "<apply-ready deltas>"`
+- **apply-ready non-empty** → printed deltas (each citing `target` + `zone`), then
+  `🛠️ /unikit-gd-apply` (bare — apply reads them from the session)
 - **apply-ready empty, a conflict needs a design call** → `🔎 /unikit-gd-explore`
 - **apply-ready empty, authoring only** → the matching owner: `🔧 /unikit-gd-system`
   / `/unikit-gd-flow` / `/unikit-gd-content` / `/unikit-gd-spec`
@@ -491,30 +475,26 @@ skill does next.
 
 ## Ownership Boundaries
 
-- **Owns:** the `Affected (gd-verify):` changelog line (system section K) and the flow /
-  content cross-axis note (flow / content type section F); verify report files; the
-  `GD-IDS.yaml` `doc_status: revised` bump for a flagged dependent system, **flow, or
-  content type** (with approval); and the **freshness re-render** of the `GAME.md`
-  `## System Map [gen]`, `## Flow Map [gen]`, `## Funnel [gen]`, and `## Content Map
-  [gen]` blocks (deterministic re-renders of `GD-IDS`, never an authored change — the
-  Flow Map `Realized` column recomputed from the depended-on systems'
-  `implemented_version`).
-- **Read-only:** every design document and (except the `Affected` line / flow & content
-  section-F notes, approved conflict resolutions, a flagged dependent's
-  `doc_status: revised` bump, and the `[gen]`-map freshness re-renders) `GD-IDS.yaml`,
-  `GAME.md`.
+- **Owns:** nothing on disk — `unikit-gd-verify` is **fully read-only**. It produces a
+  **console** conflict report + Affected table, and **prints** freshness / coherence
+  recommendations; every fix is performed by `unikit-gd-apply` (the apply-ready deltas) or
+  the owning zones (authoring + the `[gen]`-map re-render on their next write — **B1**: the
+  writer of `GD-IDS` re-renders the affected maps).
+- **Read-only:** every design document, `GD-IDS.yaml`, and `GAME.md` (incl. all
+  `[gen]`-map blocks) — verify writes none of them.
 - **Not this skill:** quality judgment → `unikit-gd-review`; applying the apply-ready set
   in one pass → `unikit-gd-apply` (the handoff is **recommend-only** — verify prints the
   command, never invokes it); authoring → `unikit-gd-system` (systems) / `unikit-gd-flow`
   (flows) / `unikit-gd-content` (content types) / `unikit-gd-spec` (`GAME.md` + the roster);
   a conflict needing a design decision → `unikit-gd-explore`.
-- **Never:** use web research; guess where a grep settles it; change a `GD-IDS`
-  value silently or without approval; delete or renumber an ID; write the roster
-  (route to `unikit-gd-spec`); carry `Skill`/`Agent` in `allowed-tools` or invoke
-  `unikit-gd-apply` itself (the handoff is a printed prose recommendation); write a
-  handoff/bucket file (the handoff is inline prose — the conflict report is the only file);
-  offer the handoff or run the direction interview when invoked as apply's Phase 3 (the
-  `apply-phase3` loop-guard); read the code workspace or project source.
+- **Never:** write **any** file (no report file, no `Affected (gd-verify):` line, no
+  `doc_status` bump, no `[gen]`-map re-render — verify carries no `Write`/`Edit`/`mkdir`);
+  use web research; guess where a grep settles it; change a `GD-IDS` value; delete or
+  renumber an ID; write the roster (route to `unikit-gd-spec`); carry `Skill`/`Agent` in
+  `allowed-tools` or invoke `unikit-gd-apply` itself (the handoff is a printed prose
+  recommendation read by apply's no-arg session mode); offer the handoff or run the
+  direction interview when invoked as apply's Phase 3 (the `apply-phase3` loop-guard); read
+  the code workspace or project source.
 
 ## Quick Reference
 
