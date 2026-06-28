@@ -238,7 +238,7 @@ the registry as it is used.
   outside `GD-IDS`, inert to its id-resolving checks.
 - **`/unikit-gd-review`** reads the resolved profile for one **declinable
   profile-completeness lens**: are the genre's `critical_sections` present and filled
-  across the reviewed docs? A miss is a **Major** (advisory, never a blocker). The
+  across the docs under review? A miss is a **Major** (advisory, never a blocker). The
   profile's `review_emphasis` is an advisory re-weight of the lens priorities.
 
 ---

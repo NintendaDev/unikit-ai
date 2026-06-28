@@ -1,6 +1,6 @@
 # Enemy spawn wave — CT-spawn
 
-> **Status**: reviewed
+> **Status**: detailed
 > **Scale**: bulk
 > **Belongs to**: SYS-combat
 > **Version**: 1
@@ -40,8 +40,9 @@ One unit is a single spawn wave (which enemy, how fast, how many). Scale is **bu
 <!-- defect (#8 RES/TRACK/KNOB coherence): this section cites `TRACK-elite`, a
 progression track that has NO entry in GD-IDS `tracks[]` — an unregistered fact
 crossing a document boundary. defect (#9 cross-axis SYS→CT): this CT `belongs_to`
-SYS-combat; when SYS-combat is the changed scope, verify's impact pass must mark
-CT-spawn `revised` in GD-IDS `doc_status` (it is currently `reviewed`). -->
+SYS-combat; when SYS-combat is the changed scope, verify's impact pass must PRINT
+CT-spawn as affected (informational — verify is read-only, it never marks a status;
+CT-spawn stays `detailed`) and recommend a re-author pass to unikit-gd-content. -->
 
 | Link | Via | Nature |
 |------|-----|--------|

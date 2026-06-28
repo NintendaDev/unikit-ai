@@ -78,8 +78,8 @@ Generated read-only from `GD-IDS.yaml` `systems` — do **not** hand-edit. (Fixt
 note: this render is deliberately STALE — it carries a phantom `SYS-ghost` row that
 has **no** `GD-IDS.yaml` entry (the **Map-freshness** defect), **and** the SYS-combat
 row omits the `· partial (1/5)` suffix that combat's intentionally-deferred non-core
-§I (`<!-- deferred -->`) implies; `unikit-gd-verify` self-heals both by re-rendering,
-it does not file a conflict.)
+§I (`<!-- deferred -->`) implies; `unikit-gd-verify` **prints** both as stale (the owner
+re-renders on its next write — verify is read-only), it does not file a conflict.)
 
 ### Gameplay
 
@@ -112,9 +112,9 @@ it does not file a conflict.)
 <!-- gen:flow-map -->
 Generated read-only from `GD-IDS.yaml` `flows` — do **not** hand-edit. (Fixture note:
 this render carries a phantom `FLOW-ghost` row with **no** `GD-IDS.yaml` entry — the
-flow **Map-freshness** defect; `unikit-gd-verify` self-heals by re-rendering, it does
-not file a conflict. `Realized` is DERIVED — `no` here because `SYS-combat` has no
-`implemented_version`.)
+flow **Map-freshness** defect; `unikit-gd-verify` **prints** the stale row (the owner
+re-renders on its next write — verify is read-only), it does not file a conflict.
+`Realized` is DERIVED — `no` here because `SYS-combat` has no `implemented_version`.)
 
 ### Emergent
 
@@ -139,15 +139,16 @@ Generated read-only from `GD-IDS.yaml` `events` — do **not** hand-edit.
 <!-- gen:content-map -->
 Generated read-only from `GD-IDS.yaml` `content_types` — do **not** hand-edit.
 (Fixture note: this render carries a phantom `CT-ghost` row with **no** `GD-IDS.yaml`
-entry — the content **Map-freshness** defect; `unikit-gd-verify` self-heals by
-re-rendering, it does not file a conflict. The render is otherwise faithful to
+entry — the content **Map-freshness** defect; `unikit-gd-verify` **prints** the stale
+row (the owner re-renders on its next write — verify is read-only), it does not file a
+conflict. The render is otherwise faithful to
 `GD-IDS` — `CT-spawn` shows `Ver 2`, matching the registry; the header-vs-`GD-IDS`
 version drift lives in `content-types/CT-spawn.md`, never in this map.)
 
 | ID | Content type | Scale | Belongs to | Status | Ver | Doc |
 |----|--------------|-------|------------|--------|-----|-----|
 | CT-item | Loot item | bulk | SYS-loot | detailed | 1 | content-types/CT-item.md |
-| CT-card | Boost card | curated | SYS-hud | reviewed | 1 | content-types/CT-card.md |
-| CT-spawn | Enemy spawn wave | bulk | SYS-combat | reviewed | 2 | content-types/CT-spawn.md |
+| CT-card | Boost card | curated | SYS-hud | detailed | 1 | content-types/CT-card.md |
+| CT-spawn | Enemy spawn wave | bulk | SYS-combat | detailed | 2 | content-types/CT-spawn.md |
 | CT-ghost | Ghost catalog | bulk | SYS-combat | skeleton | 1 | content-types/CT-ghost.md |
 <!-- /gen:content-map -->

@@ -195,7 +195,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   rebuilds the researches index.
 - **Out:** a research + brief in `.unikit/gamedesign/researches/<date>_<slug>/`, then a routed
   next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
-  skeleton/detailed/reviewed/revised → `/unikit-gd-system`. **Two file modes differ:** a review
+  skeleton/detailed → `/unikit-gd-system`. **Two file modes differ:** a review
   file is mutated **in place** (research → apply-ready) → one `/unikit-gd-apply reviews/X.md`
   (no `researches/`); a `RECON.md` keeps the research + gets a `## Explorations` backlink →
   `/unikit-gd-spec <RECON.md>` import.
@@ -237,7 +237,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **In:** a system name or `SYS-slug` (+ optionally what to change). Mode (create/fill/edit) and
   edit scale are inferred. Off-map → it routes to spec add-system; a `GAME.md`/pillar change → spec.
 - **Out:** `.unikit/gamedesign/systems/SYS-<slug>.md` + registers facts/IDs in `GD-IDS.yaml`; on a
-  revise, version bump + changelog and status → `revised`.
+  revise, version bump + changelog; the status stays `detailed`.
 - **Required per system.** Before: `/unikit-gd-spec`. After: `/unikit-gd-review`, `/unikit-gd-verify`.
 
 ### unikit-gd-flow
@@ -256,7 +256,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   a `GOAL` that needs a missing system, or a `GAME.md` win/lose edit, routes to `/unikit-gd-spec`.
 - **Out:** `.unikit/gamedesign/flows/FLOW-<slug>.md` + its `flows:` / `events:` entries in
   `GD-IDS.yaml`; re-renders `## Flow Map [gen]` / `## Funnel [gen]`; on a revise, version bump +
-  changelog and status → `revised`.
+  changelog; the status stays `detailed`.
 - **Required per flow (the dynamics axis).** Before: `/unikit-gd-spec` (+ `/unikit-gd-system` for the
   systems it exercises). After: `/unikit-gd-review`, `/unikit-gd-verify`.
 
@@ -278,7 +278,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   inferred; a missing `belongs_to` / `ref<SYS>` system routes to `/unikit-gd-spec` add-system.
 - **Out:** `.unikit/gamedesign/content-types/CT-<slug>.md` + its `content_types:` / `content:`
   entries in `GD-IDS.yaml`; re-renders `## Content Map [gen]`; on a schema revise, version bump +
-  changelog and status → `revised`.
+  changelog; the status stays `detailed`.
 - **Required per content type (the catalog axis).** Before: `/unikit-gd-spec` (+ `/unikit-gd-system`
   for the consuming system). After: `/unikit-gd-review`, `/unikit-gd-verify`.
 
@@ -302,7 +302,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   lenses → severity-graded verdict + report. The design-side mirror of `/unikit-review`.
 - **When:** "review the combat GDD", "is this design good", "critique this system", "review all GDDs".
 - **In:** a system / path / `all` (scope inferred). Optional `+check`.
-- **Out:** `.unikit/gamedesign/reviews/<date>_review-*.md`; on approval sets `doc_status: reviewed`.
+- **Out:** `.unikit/gamedesign/reviews/<date>_review-*.md` only; it writes **no** `doc_status` (the verdict is ephemeral — readiness is owned by the authoring zones).
 - **Optional.** Before: `/unikit-gd-system`. After: `/unikit-gd-system` (fix findings).
 
 ### unikit-gd-verify
@@ -311,7 +311,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   acceptance-criteria presence. Deterministic, offline.
 - **When:** "verify the design", "is the design consistent", "what did this change affect".
 - **In:** a system / `SYS-slug` / question, or the unverified design diff. Conflicts can't be declined.
-- **Out:** a conflicts/impact report (only when something is found); flags affected dependents `revised`.
+- **Out:** a **printed** conflicts/impact report (read-only — it writes nothing); it **prints** affected dependents (informational), never bumps a status.
 - **Optional (recommended after every design edit).** Before: `/unikit-gd-system`. After:
   `/unikit-gd-system` (fix conflicts).
 

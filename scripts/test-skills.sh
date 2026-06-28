@@ -913,16 +913,19 @@ else
 fi
 
 # Status spine (Tier 1) — a system's doc_status lives on TWO authored surfaces that
-# must agree: the GD-IDS `doc_status` (machine truth, 5-value enum) and the SYSTEM.md
-# header `> **Status**:` legend (4-value, no `not-started`). The `unikit-gd-verify`
-# `Status coherence` CHECK legend (reworked to two-place in P1-T6) describes the same
-# design-writable enum. GD-INDEX.md was dropped in v2: the generated GAME.md
-# `## System Map [gen]` now RENDERS status read-only — a freshness surface, never a
-# coherence one (asserted separately below). So this guard asserts the shared MERGE
-# invariant, not enum equality: `reviewed` and `revised` on each legend, and no
-# `approved`-as-status on any (it merged into `reviewed`). Each grep targets the one
-# status legend line per surface — never the whole file — so GAME.md/CONCEPT.md (their
-# own `approved` lifecycle enums) and the GD-IDS `revised:` date field stay out.
+# must agree: the GD-IDS `doc_status` (machine truth, 3-value enum) and the SYSTEM.md
+# header `> **Status**:` legend (2-value, no `not-started`). The `unikit-gd-verify`
+# `Status coherence` CHECK legend describes the same design-writable enum. The enum was
+# collapsed 5->3 in this PR: status records READINESS only (`not-started · skeleton ·
+# detailed`, `detailed` terminal); the dropped `reviewed`/`revised` were the quality /
+# pending axes (quality is now an ephemeral review verdict, "changed" is the version +
+# changelog). GD-INDEX.md was dropped in v2: the generated GAME.md `## System Map [gen]`
+# RENDERS status read-only — a freshness surface (verify prints, owner re-renders),
+# never a coherence one (asserted separately below). So this guard asserts the shared
+# MERGE invariant: `detailed` PRESENT and `reviewed`/`revised`/`approved`-as-status
+# ABSENT on each of the 5 legend lines. Each grep targets the one status legend line per
+# surface — never the whole file — so GAME.md/CONCEPT.md (their own `drafted | approved`
+# lifecycle enums) stay out.
 GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
 GD_SYSTEM_TPL="$GD_DATA/templates/SYSTEM.md"
 GD_FLOW_TPL="$GD_DATA/templates/FLOW.md"
@@ -937,12 +940,12 @@ SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head 
 # Flow axis (PR#6): a flow's doc_status lives on the SAME 2-place spine — the FLOW.md
 # header `> **Status**:` legend ↔ the GD-IDS `flows[].doc_status` (the shared enum the
 # SPINE_IDS_LINE above already covers). Add the FLOW.md surface so the merge invariant
-# (reviewed+revised present, no approved-as-status) holds across the flow zone too.
+# (detailed present, no reviewed/revised/approved-as-status) holds across the flow zone too.
 SPINE_FLOW_LINE=$(grep -F '> **Status**:' "$GD_FLOW_TPL" 2>/dev/null | head -1 || true)
 # Content axis (Stage 0): a content type's doc_status lives on the SAME 2-place spine —
 # the CONTENT-TYPE.md header `> **Status**:` legend ↔ the GD-IDS `content_types[].doc_status`
 # (the shared enum SPINE_IDS_LINE covers). Add the CONTENT-TYPE.md surface so the merge
-# invariant (reviewed+revised present, no approved-as-status) holds across the content zone.
+# invariant (detailed present, no reviewed/revised/approved-as-status) holds across the content zone.
 SPINE_CONTENT_LINE=$(grep -F '> **Status**:' "$GD_CONTENT_TPL" 2>/dev/null | head -1 || true)
 # the verify CHECK legend carries the design-writable enum on its single table row; the
 # GAME.md/CONCEPT.md `approved` carve-out lives in separate prose, so head -1 anchors
@@ -957,18 +960,20 @@ for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "FLOW.m
     if [[ -z "$line" ]]; then
         SPINE_OK=0; SPINE_WHY+=" $name(no-status-legend)"; continue
     fi
-    if ! echo "$line" | grep -q "reviewed"; then SPINE_OK=0; SPINE_WHY+=" $name(no-reviewed)"; fi
-    if ! echo "$line" | grep -q "revised";  then SPINE_OK=0; SPINE_WHY+=" $name(no-revised)"; fi
+    if ! echo "$line" | grep -q "detailed"; then SPINE_OK=0; SPINE_WHY+=" $name(no-detailed)"; fi
+    if echo "$line" | grep -q "reviewed"; then SPINE_OK=0; SPINE_WHY+=" $name(reviewed-still-present)"; fi
+    if echo "$line" | grep -q "revised";  then SPINE_OK=0; SPINE_WHY+=" $name(revised-still-present)"; fi
     if echo "$line" | grep -q "approved";   then SPINE_OK=0; SPINE_WHY+=" $name(approved-as-status)"; fi
 done
 if [[ "$SPINE_OK" -eq 1 ]]; then
-    pass "status spine — reviewed+revised on the 4 authored surfaces (GD-IDS/SYSTEM/FLOW/CONTENT-TYPE) + verify legend, no approved-as-status"
+    pass "status spine — detailed (terminal) on the 4 authored surfaces (GD-IDS/SYSTEM/FLOW/CONTENT-TYPE) + verify legend; no reviewed/revised/approved-as-status"
 else
     fail "status spine enum drift:$SPINE_WHY"
 fi
 # v2 render surface — GAME.md `## System Map [gen]` renders doc_status read-only (the
-# freshness surface unikit-gd-verify re-renders; never a coherence one). Assert the
-# template ships the generated block with a Status column.
+# freshness surface unikit-gd-verify PRINTS as stale; the owner re-renders on its next
+# write — never a coherence one). Assert the template ships the generated block with a
+# Status column.
 GD_RENDER_WHY=""
 grep -qF '## System Map [gen]' "$GD_GAME_TPL" || GD_RENDER_WHY+=" no-system-map-block"
 grep -qF 'gen:system-map' "$GD_GAME_TPL"      || GD_RENDER_WHY+=" no-gen-marker"
@@ -2112,7 +2117,8 @@ fi
 
 # (DF-2) gd-lifecycle is the CANONICAL HOME of the inferred partial status: the
 # `detailed · partial` rule + `· partial (n/m)` render format + per-zone core-set +
-# the enum stays byte-identical + partial is never stored; reader-list +content/apply.
+# partial is a render-time annotation (not a status value) + never stored; reader-list
+# +content/apply. (The enum was collapsed 5->3 this PR — `· partial` adds no status.)
 DF2_WHY=""
 grep -qF 'detailed · partial' "$GD_LIFECYCLE"  || DF2_WHY+=" no-partial-status"
 grep -qF '· partial (n/m)' "$GD_LIFECYCLE"      || DF2_WHY+=" no-partial-format"
@@ -2120,12 +2126,12 @@ grep -qF 'per-zone core-set' "$GD_LIFECYCLE"   || DF2_WHY+=" no-core-set"
 grep -qF 'A/B/C/D/H' "$GD_LIFECYCLE"           || DF2_WHY+=" no-system-core-listing"
 grep -qF 'canonical home' "$GD_LIFECYCLE"      || DF2_WHY+=" no-canonical-home"
 grep -qF 'never stored' "$GD_LIFECYCLE"        || DF2_WHY+=" partiality-not-marked-inferred"
-grep -qF 'byte-identical' "$GD_LIFECYCLE"      || DF2_WHY+=" enum-not-marked-unchanged"
+grep -qF 'render-time annotation' "$GD_LIFECYCLE" || DF2_WHY+=" partial-not-marked-render-annotation"
 grep -qF 'not-started, skeleton, detailed' "$GD_LIFECYCLE" || DF2_WHY+=" enum-membership-missing"
 grep -qF 'unikit-gd-content' "$GD_LIFECYCLE"   || DF2_WHY+=" reader-list-no-content"
 grep -qF 'unikit-gd-apply' "$GD_LIFECYCLE"     || DF2_WHY+=" reader-list-no-apply"
 if [[ -z "$DF2_WHY" ]]; then
-    pass "DF-2 gd-lifecycle canonical partial rule (detailed · partial inferred/never-stored · · partial (n/m) format · per-zone core-set · enum byte-identical; reader-list +content/apply)"
+    pass "DF-2 gd-lifecycle canonical partial rule (detailed · partial inferred/never-stored · · partial (n/m) format · per-zone core-set · partial = render annotation, not a status value; reader-list +content/apply)"
 else
     fail "DF-2 gd-lifecycle partial rule drift:$DF2_WHY"
 fi
@@ -2827,13 +2833,16 @@ else
     fail "HG-3 handoff consumers drift:$HG3_WHY"
 fi
 
-# (HG-4) unikit-gd-verify — the four tracks (self-heal · entailed→apply-ready · direction
-# interview · authoring→owner/explore), the direction-only interview (no decline), the
-# inline-prose handoff (no file), and the LOOP-GUARD (the apply-phase3 sentinel suppresses
-# the offer/interview when verify runs as apply's Phase 3).
+# (HG-4) unikit-gd-verify — the four tracks (freshness print-only · entailed→apply-ready ·
+# direction interview · authoring→owner/explore), the read-only declaration (verify writes
+# nothing — the self-heal track was excised this PR; freshness is print-only), the
+# direction-only interview (no decline), the inline-prose handoff (no file), and the
+# LOOP-GUARD (the apply-phase3 sentinel suppresses the offer/interview when verify runs as
+# apply's Phase 3).
 HG4_WHY=""
 grep -qF '4 tracks'          "$GD_VERIFY_SKILL" || HG4_WHY+=" no-4-tracks"
-grep -qF 'Self-heal'         "$GD_VERIFY_SKILL" || HG4_WHY+=" no-self-heal-track"
+grep -qF 'print-only'        "$GD_VERIFY_SKILL" || HG4_WHY+=" no-freshness-print-only-track"
+grep -qF 'writes nothing'    "$GD_VERIFY_SKILL" || HG4_WHY+=" no-read-only-declaration"
 grep -qF 'Direction fork'    "$GD_VERIFY_SKILL" || HG4_WHY+=" no-direction-fork-track"
 grep -qF 'Which direction?'  "$GD_VERIFY_SKILL" || HG4_WHY+=" no-direction-interview"
 grep -qF 'no "Decline"'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-decline-ban"
@@ -2841,9 +2850,27 @@ grep -qF 'inline prose'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-inline-prose-ha
 grep -qF 'apply-phase3'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-sentinel"
 grep -qF 'LOOP-GUARD'        "$GD_VERIFY_SKILL" || HG4_WHY+=" no-loop-guard"
 if [[ -z "$HG4_WHY" ]]; then
-    pass "HG-4 unikit-gd-verify (4 tracks + direction-only interview + inline-prose handoff + apply-phase3 LOOP-GUARD)"
+    pass "HG-4 unikit-gd-verify (4 tracks + freshness print-only/read-only + direction-only interview + inline-prose handoff + apply-phase3 LOOP-GUARD)"
 else
     fail "HG-4 unikit-gd-verify handoff drift:$HG4_WHY"
+fi
+
+# (HG-4b) symmetric to GA-5 — unikit-gd-verify is FULLY READ-ONLY: its allowed-tools carry
+# NO Write / Edit / Bash(mkdir *) (it writes no report file, no Affected line, no doc_status
+# bump, no [gen]-map re-render), while Read/Grep stay (a verify that can't read is dead).
+# Scope to the YAML list so prose mentions of Write/Edit in the Ownership "Never" line do
+# not false-match. (Skill/Agent absence is covered by HG-5.)
+GD_VERIFY_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$GD_VERIFY_SKILL")
+HG4B_WHY=""
+grep -qE '^[[:space:]]*-[[:space:]]*Write$'      <<< "$GD_VERIFY_TOOLS" && HG4B_WHY+=" has-Write"
+grep -qE '^[[:space:]]*-[[:space:]]*Edit$'       <<< "$GD_VERIFY_TOOLS" && HG4B_WHY+=" has-Edit"
+grep -qE '^[[:space:]]*-[[:space:]]*Bash\(mkdir' <<< "$GD_VERIFY_TOOLS" && HG4B_WHY+=" has-mkdir"
+grep -qE '^[[:space:]]*-[[:space:]]*Read$'       <<< "$GD_VERIFY_TOOLS" || HG4B_WHY+=" no-Read"
+grep -qE '^[[:space:]]*-[[:space:]]*Grep$'       <<< "$GD_VERIFY_TOOLS" || HG4B_WHY+=" no-Grep"
+if [[ -z "$HG4B_WHY" ]]; then
+    pass "HG-4b unikit-gd-verify allowed-tools is read-only (Read/Grep present; no Write/Edit/mkdir) — symmetric to GA-5"
+else
+    fail "HG-4b unikit-gd-verify read-only invariant violated:$HG4B_WHY"
 fi
 
 # (HG-5) the SHARED recommend-only handoff line locks the review+verify TAIL with ONE -qF

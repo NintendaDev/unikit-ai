@@ -15,13 +15,11 @@ pillars:
     status: active
     source: GAME.md
     added: 2026-06-13
-    revised: ""
   - id: PIL-2
     name: "Feels skillful"
     status: active
     source: GAME.md
     added: 2026-06-13
-    revised: ""
 
 # ─── SYSTEMS ──────────────────────────────────────────────────────────────────
 systems:
@@ -36,19 +34,17 @@ systems:
     depends_on: []             # defect (dangling): combat.md F depends on SYS-inventory (absent)
     source: systems/combat.md
     added: 2026-06-13
-    revised: ""
   - id: SYS-boost
     name: "Boost"
     status: active
     tier: MVP
     category: Gameplay
-    doc_status: detailed       # defect (status coherence, 2-place): boost.md header says reviewed, GD-IDS says detailed
+    doc_status: detailed       # defect (status coherence, 2-place): boost.md header says skeleton, GD-IDS says detailed
     version: 1
     implements: [PIL-1]
     depends_on: []             # defect (Depends 3-way): boost.md F declares "depends on SYS-combat", but here + ## System Map are empty
     source: systems/boost.md
     added: 2026-06-13
-    revised: ""
   - id: SYS-loot
     name: "Loot"
     status: active
@@ -60,19 +56,17 @@ systems:
     depends_on: []
     source: systems/loot.md
     added: 2026-06-13
-    revised: ""
   - id: SYS-hud
     name: "HUD"
     status: deprecated         # NEG carve-out (display precedence): ## System Map [gen] Status shows `deprecated`
     tier: VS
     category: UI
-    doc_status: reviewed       # underlying doc_status; header + GD-IDS agree — NOT a coherence conflict
+    doc_status: detailed       # underlying doc_status; header + GD-IDS agree (both detailed) — NOT a coherence conflict
     version: 1
     implements: [PIL-2]
     depends_on: []
     source: systems/hud.md
     added: 2026-06-13
-    revised: 2026-06-13
 
 # ─── FLOWS ────────────────────────────────────────────────────────────────────
 # One player-action flow with a seeded example for every flow check (see README.md).
@@ -82,7 +76,7 @@ flows:
     name: "First run"
     status: active
     mode: emergent             # defect (mode↔structure): FLOW-first-run.md §B uses the LINEAR objective-flow table, not an emergent affordance template
-    doc_status: detailed       # defect (flow status coherence, 2-place): FLOW-first-run.md header says reviewed
+    doc_status: detailed       # defect (flow status coherence, 2-place): FLOW-first-run.md header says skeleton
     version: 2                 # defect (flow version coherence, 2-place): FLOW-first-run.md header says Version 1
     depends_on: [SYS-combat]   # defect (flow Depends 3-way): FLOW.md §D adds SYS-boost; ## Flow Map shows SYS-combat only
     goals:
@@ -103,7 +97,6 @@ flows:
         targets: [SYS-boost]
     source: flows/FLOW-first-run.md
     added: 2026-06-22
-    revised: ""
 
 # ─── EVENTS ───────────────────────────────────────────────────────────────────
 # One funnel event. GOAL-first-run-1 (retention-critical) is intentionally NOT
@@ -125,7 +118,6 @@ entities:
     attributes:
       health: 40               # defect (facts): combat.md states the drone has 30 HP
     added: 2026-06-13
-    revised: ""
 
 # ─── FORMULAS ─────────────────────────────────────────────────────────────────
 formulas:
@@ -137,7 +129,6 @@ formulas:
     output_range: [0, 200]
     expression: "speed + charge * 5"
     added: 2026-06-13
-    revised: ""
   # NB: FORM-combat-dps is intentionally NOT registered — it is cited by BOTH
   # systems/combat.md and systems/boost.md (defect: unregistered cross-doc fact).
 
@@ -171,13 +162,12 @@ content_types:
       - { name: drop_resource, type: ref<RES> }   # schema field → RES-scrap (registered); no value to resolve for a bulk type
     source: content-types/CT-item.md
     added: 2026-06-23
-    revised: ""
   - id: CT-card
     name: "Boost card"
     status: active
     scale: curated
     belongs_to: SYS-hud           # defect (#5 belongs_to): SYS-hud is status: deprecated
-    doc_status: reviewed          # matches CT-card.md header → no coherence defect here
+    doc_status: detailed          # matches CT-card.md header → no coherence defect here
     version: 1
     research: ""
     fields:
@@ -186,13 +176,12 @@ content_types:
       - { name: link, type: ref<SYS> }            # CU-card-1.link resolves to a MISSING system (#3)
     source: content-types/CT-card.md
     added: 2026-06-23
-    revised: ""
   - id: CT-spawn
     name: "Enemy spawn wave"
     status: active
     scale: bulk
-    belongs_to: SYS-combat        # valid + the cross-axis edge (#9): a SYS-combat edit must stale this CT
-    doc_status: reviewed
+    belongs_to: SYS-combat        # valid + the cross-axis edge (#9): a SYS-combat edit must stale this CT (verify PRINTS it, read-only)
+    doc_status: detailed
     version: 2                     # defect (#6 content version 2-place): CT-spawn.md header says Version 1
     research: ""
     fields:
@@ -201,7 +190,6 @@ content_types:
       - { name: wave_size, type: int, range: [1, 50] }
     source: content-types/CT-spawn.md
     added: 2026-06-23
-    revised: ""
 
 # ─── CONTENT ──────────────────────────────────────────────────────────────────
 # Content UNITS (CU). `kind: set` is a bulk descriptor (count + spec); `kind:
@@ -216,7 +204,6 @@ content:
     spec: "data/loot_common.csv following CT-item.fields"
     source: content-types/CT-item.md
     added: 2026-06-23
-    revised: ""
   - id: CU-item-2                  # defect (#1 duplicate CU id): CU-item-2 declared twice for two different units
     type: CT-item
     name: "Rare loot table"
@@ -226,7 +213,6 @@ content:
     spec: "data/loot_rare.csv following CT-item.fields"
     source: content-types/CT-item.md
     added: 2026-06-23
-    revised: ""
   - id: CU-item-2                  # defect (#1): the duplicate
     type: CT-item
     name: "Epic loot table"
@@ -236,7 +222,6 @@ content:
     spec: "data/loot_epic.csv following CT-item.fields"
     source: content-types/CT-item.md
     added: 2026-06-23
-    revised: ""
   - id: CU-card-1
     type: CT-card
     name: "Overdrive"
@@ -249,7 +234,6 @@ content:
       rarity: epic                 # defect (#2 CU.fields ⊆ CT.fields): `rarity` is NOT a CT-card field
     source: content-types/CT-card.md
     added: 2026-06-23
-    revised: ""
   - id: CU-spawn-1
     type: CT-spawn
     name: "Standard wave set"
@@ -259,7 +243,6 @@ content:
     spec: "data/spawns.json following CT-spawn.fields"
     source: content-types/CT-spawn.md
     added: 2026-06-23
-    revised: ""
 
 # ─── RESOURCES ────────────────────────────────────────────────────────────────
 resources:
@@ -269,7 +252,6 @@ resources:
     kind: material
     source: systems/loot.md
     added: 2026-06-23
-    revised: ""
 
 # ─── TRACKS ───────────────────────────────────────────────────────────────────
 # NB: TRACK-elite is intentionally NOT registered — it is cited by CT-spawn.md §D
@@ -281,7 +263,6 @@ tracks:
     tiers: 20
     source: GAME.md
     added: 2026-06-23
-    revised: ""
 
 # ─── KNOBS ────────────────────────────────────────────────────────────────────
 knobs:
@@ -292,4 +273,3 @@ knobs:
     range: [0.5, 2.0]
     source: GAME.md
     added: 2026-06-23
-    revised: ""

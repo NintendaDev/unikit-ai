@@ -1,11 +1,11 @@
 # First run — FLOW-first-run
 
-> **Status**: reviewed
+> **Status**: skeleton
 > **Mode**: emergent
 > **Version**: 1
 > **Last Updated**: 2026-06-22
 
-NB (fixture): the header `> Status: reviewed` / `> Version: 1` disagree with
+NB (fixture): the header `> Status: skeleton` / `> Version: 1` disagree with
 `GD-IDS.yaml` `flows[].doc_status: detailed` / `version: 2` — the seeded flow
 status/version 2-place defects.
 

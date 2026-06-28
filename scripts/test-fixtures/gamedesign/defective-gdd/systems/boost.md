@@ -1,6 +1,6 @@
 # SYS-boost — Boost
 
-> **Status**: reviewed
+> **Status**: skeleton
 > **Version**: 1
 > **Last Updated**: 2026-06-13
 > **Implements**: PIL-1 · **Layer**: Core · **Scope**: M

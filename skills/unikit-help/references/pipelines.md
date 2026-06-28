@@ -92,7 +92,7 @@ review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → ver
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" → 4 tracks → apply-ready
             │
 handoff:  → /unikit-gd-apply (apply-ready, one pass) · /unikit-gd-explore (research)   review/verify → [explore] → apply
-            │ └─ loops back: a revised system or flow is re-reviewed, re-verified
+            │ └─ loops back: an edited system or flow is re-verified (status stays detailed; the version + changelog record the change)
 docs:     /unikit-gd-docs          (optional) the GDD → human-readable docs/design/*.md (the export-out)
 ```
 
@@ -158,7 +158,7 @@ status and hands you the right next command (you don't pick):
 |--------------|-------|
 | no doc / not-started | `/unikit-gd-spec` (add the system to the map) → `/unikit-gd-system` |
 | skeleton (placeholders) | `/unikit-gd-system` (fill it in) |
-| detailed / reviewed / revised | `/unikit-gd-system` (record the change as a delta) |
+| detailed | `/unikit-gd-system` (record the change as a delta) |
 
 For a **flow** target the routing collapses to a single door — `/unikit-gd-flow` owns the flow's
 whole lifecycle (create / fill / revise) and a flow registers itself, so there is no spec

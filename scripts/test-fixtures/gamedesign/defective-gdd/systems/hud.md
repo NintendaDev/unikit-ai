@@ -1,6 +1,6 @@
 # SYS-hud — HUD
 
-> **Status**: reviewed
+> **Status**: detailed
 > **Version**: 1
 > **Last Updated**: 2026-06-13
 > **Implements**: PIL-2 · **Layer**: Presentation · **Scope**: S
@@ -8,7 +8,7 @@
 ## A. Overview
 
 A minimal speed-and-stamina readout. Marked `deprecated` in `GD-IDS.yaml` in
-favor of a diegetic readout; its underlying `doc_status` stays `reviewed`. The
+favor of a diegetic readout; its underlying `doc_status` stays `detailed`. The
 `## System Map [gen]` Status shows `deprecated` (display precedence) — this is
 correct, not a coherence conflict.
 

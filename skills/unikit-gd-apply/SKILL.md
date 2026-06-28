@@ -7,13 +7,11 @@ description: >-
   change lands before the content or flow that depends on it, delegates each to the owning
   skill (/unikit-gd-spec, /unikit-gd-system, /unikit-gd-content, /unikit-gd-flow), and closes
   with one /unikit-gd-verify pass. Use when you already know the changes and they touch more
-  than one part of the design, e.g. "apply these GDD changes", "update the combat system
-  and its loot and the boss flow", "raise the damage, add a rarity field and retune the
-  first-session pacing", "make all these design edits at once". It also takes a
-  /unikit-gd-review report file and applies its apply-ready bucket. For a change to a SINGLE
-  zone call its owner directly; to research an open question or a mechanic you do not yet know
-  how to design, use /unikit-gd-explore first. A bare /unikit-gd-apply (no argument) reads
-  the last /unikit-gd-verify output in the session and applies its apply-ready deltas.
+  than one part of the design, e.g. "apply these GDD changes", "update the combat system and
+  its loot and the boss flow". It also takes a /unikit-gd-review report file (applies its
+  apply-ready bucket), and a bare /unikit-gd-apply reads the last /unikit-gd-verify output in
+  the session. For a single-zone change call its owner directly; to research an open question
+  use /unikit-gd-explore first.
 argument-hint: "[ \"<changes>\" | <reviews/*_review-*.md> ]  (bare = read last /unikit-gd-verify output in session; apply-ready bucket | prose deltas → zone owners; no flags)"
 allowed-tools:
   - Read

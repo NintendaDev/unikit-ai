@@ -1,6 +1,6 @@
 # Boost card — CT-card
 
-> **Status**: reviewed
+> **Status**: detailed
 > **Scale**: curated
 > **Belongs to**: SYS-hud
 > **Version**: 1
