@@ -263,12 +263,14 @@ Uncommitted changes detected.
 Options:
 1. Commit now (recommended)
 2. Stash and continue (git stash)
-3. Cancel — I'll handle it myself
+3. Continue as is
+4. Cancel — I'll handle it myself
 ```
 
 Based on choice:
 - Commit now → run /unikit-commit, then continue to plan discovery
 - Stash → `git stash push -m "unikit-implement: stash before execution"`, then continue
+- Continue as is → leave the working tree untouched, continue to plan discovery
 - Cancel → inform "Implementation cancelled." → **STOP**
 
 #### 0.3: Resume / Recovery (after `/clear` or session break)
