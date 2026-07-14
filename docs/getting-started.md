@@ -14,7 +14,7 @@ UniKit AI is an **AI-powered game code development toolkit**. It bootstraps an A
 
 ## Supported Agents
 
-UniKit supports six AI coding agents. Select one or more during `unikit-ai init` - the CLI installs skills with per-agent path rewriting so every selected agent receives the correct format.
+UniKit supports seven AI coding agents. Select one or more during `unikit-ai init` - the CLI installs skills with per-agent path rewriting so every selected agent receives the correct format.
 
 | Agent | Config Directory | Skills Directory | MCP Support | Status |
 |-------|-----------------|-----------------|-------------|--------|
@@ -24,6 +24,7 @@ UniKit supports six AI coding agents. Select one or more during `unikit-ai init`
 | Gemini CLI | `.gemini/` | `.gemini/skills/` | Yes (`.gemini/settings.json`) | Beta |
 | Qwen Code | `.qwen/` | `.qwen/skills/` | Yes (`.qwen/settings.json`) | Beta |
 | OpenCode | `.opencode/` | `.opencode/skills/` | Yes (`opencode.json`) | Beta |
+| Antigravity | `.agent/` | `.agent/skills/` | No (manual) | Beta |
 
 The wizard renders a single flat selection checkbox with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in (skills + subagents + MCP where supported), but the adapters are newer and rough edges are still possible - use them and report issues.
 
@@ -31,7 +32,7 @@ The wizard renders a single flat selection checkbox with a right-aligned `[Stabl
 
 - **Node.js** >= 18
 - A supported game project: **Unity**, **Godot 4**, **Godot 4 .NET**, or **Unreal Engine 5**
-- An AI coding agent (Claude Code, Codex CLI, Cursor, Gemini CLI, Qwen Code, or OpenCode)
+- An AI coding agent (Claude Code, Codex CLI, Cursor, Gemini CLI, Qwen Code, OpenCode, or Antigravity)
 - Recommended: an engine MCP server installed (see [MCP Servers](#mcp-servers) below)
 
 ## Your First Project
@@ -49,7 +50,7 @@ unikit-ai init
 
 The `init` wizard asks only about installation concerns - it does **not** generate project context or install rules. Specifically:
 
-1. **Agents** - multi-select checkbox where each agent is shown with a right-aligned `[Stable]` / `[Beta]` tag (stable agents listed first): `[Stable]` for Claude Code; `[Beta]` for Codex CLI, Cursor, Gemini CLI, Qwen Code, OpenCode. Pick one or more; each selected agent gets its own skills / subagents / MCP files written in the correct per-agent format
+1. **Agents** - multi-select checkbox where each agent is shown with a right-aligned `[Stable]` / `[Beta]` tag (stable agents listed first): `[Stable]` for Claude Code; `[Beta]` for Codex CLI, Cursor, Gemini CLI, Qwen Code, OpenCode, Antigravity. Pick one or more; each selected agent gets its own skills / subagents / MCP files written in the correct per-agent format
 2. **Engine** - Unity / Godot 4 / Godot 4 .NET / Unreal Engine 5. On a repeat `init` the engine is reused from `.unikit.json` and the prompt is skipped
 3. **Skills** - grouped multi-select checkbox (Core, Memory and rules, Code, Game Design, Tools). On a fresh `init` every skill is checked by default; uncheck any you don't want (at least one is required). On a repeat `init` the previously installed set is pre-checked, and de-selecting a skill removes it on save
 4. **Custom rules registry** - confirm Y/N. If yes, enter a URL or local path; invalid registries offer retry / skip (skip falls back to the official registry `NintendaDev/unikit-ai-rules`)

@@ -132,7 +132,7 @@ git:
 
 ## MCP Configuration
 
-UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.gemini/settings.json` (Gemini CLI), `.qwen/settings.json` (Qwen Code), or `opencode.json` (OpenCode).
+UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.gemini/settings.json` (Gemini CLI), `.qwen/settings.json` (Qwen Code), or `opencode.json` (OpenCode). Antigravity is the exception: UniKit does not write MCP config for it - Antigravity uses a global MCP file (`~/.gemini/config/mcp_config.json`) shared by its IDE and CLI, which you edit manually.
 
 ### Known limitation - Gemini CLI and HTTP MCP transport
 
@@ -189,6 +189,7 @@ Rule metadata (`id`, `description`, `version`, `references`) lives in the remote
 | Gemini CLI | `.gemini` | `.gemini/skills` | Yes (`.gemini/settings.json`) |
 | Qwen Code | `.qwen` | `.qwen/skills` | Yes (`.qwen/settings.json`) |
 | OpenCode | `.opencode` | `.opencode/skills` | Yes (`opencode.json`) |
+| Antigravity | `.agent` | `.agent/skills` | No (manual - global `~/.gemini/config/mcp_config.json`) |
 
 ## Project Structure
 

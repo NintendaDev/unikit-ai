@@ -476,6 +476,85 @@ else
 fi
 
 # ─────────────────────────────────────────────────────
+# Test 3c: Antigravity (skills-only — no subagents, no MCP, postInstall rules)
+# ─────────────────────────────────────────────────────
+# Antigravity (IDE + CLI share one .agent/ workspace). Skills install as
+# directories under .agent/skills/ (no workflows-split). supportsSubagents:false
+# and supportsMcp:false → no .agent/agents/ file and no MCP config. postInstall
+# writes .agent/rules/unikit.md guardrails — it fires because ≥1 skill is
+# (re)installed here (installSkills calls it after the skill loop). /unikit-* are
+# NOT rewritten (skills triggered by description), so references stay verbatim.
+
+ANTIGRAVITY_DIR="$TMPDIR/test-antigravity"
+mkdir -p "$ANTIGRAVITY_DIR"
+
+cat > "$ANTIGRAVITY_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [
+    {
+      "id": "antigravity",
+      "skillsDir": ".agent/skills",
+      "subagentsDir": ".agent/agents",
+      "installedSkills": ["unikit", "unikit-plan"],
+      "installedSubagents": ["unikit-architecture-sidecar"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$ANTIGRAVITY_DIR"
+
+seed_rule "$ANTIGRAVITY_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$ANTIGRAVITY_DIR"
+
+# Skills install as .agent/skills/<name>/SKILL.md directories (skills-only)
+assert_exists "$ANTIGRAVITY_DIR/.agent/skills/unikit/SKILL.md" \
+  "antigravity: unikit skill installed as .agent/skills/<name>/SKILL.md"
+# Reference-heavy skills keep their references/ (the reason we did NOT port the
+# workflows-split — a flat branch would collapse same-named reference files).
+assert_exists "$ANTIGRAVITY_DIR/.agent/skills/unikit/references/LANGUAGE_RULES_TEMPLATE.md" \
+  "antigravity: unikit skill references/ delivered (non-flat, no workflows-split)"
+# /unikit-* invocations are left verbatim (skills-only, no slash rewrite), same as
+# DefaultTransformer — unikit-plan ships references/TASK-FORMAT.md with one.
+assert_contains "$ANTIGRAVITY_DIR/.agent/skills/unikit-plan/references/TASK-FORMAT.md" '/unikit-implement' \
+  "antigravity: references keep /unikit-* verbatim (skills-only, no invocation rewrite)"
+
+# postInstall guardrails written (fires because ≥1 skill (re)installed)
+assert_exists "$ANTIGRAVITY_DIR/.agent/rules/unikit.md" \
+  "antigravity: postInstall wrote .agent/rules/unikit.md guardrails"
+assert_contains "$ANTIGRAVITY_DIR/.agent/rules/unikit.md" 'mcp_config.json' \
+  "antigravity: rules file points at the global ~/.gemini/config/mcp_config.json for Unity MCP"
+
+# supportsSubagents:false → listed subagent must NOT materialize
+assert_not_exists "$ANTIGRAVITY_DIR/.agent/agents/unikit-architecture-sidecar.md" \
+  "antigravity: listed subagent NOT installed (supportsSubagents:false)"
+
+# supportsMcp:false + settingsFile:null → no project MCP config written
+assert_not_exists "$ANTIGRAVITY_DIR/.mcp.json" \
+  "antigravity: no project .mcp.json (supportsMcp:false)"
+
+# No {{...}} template tokens leak into skills or the rules file. settingsFile:null
+# renders {{settings_file}} → literal "the MCP settings file" (template.ts:33);
+# {{skills_cli_agent_flag}} → "--agent antigravity". None stay raw.
+ANTIGRAVITY_TOKEN_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+  "$ANTIGRAVITY_DIR/.agent/skills/" "$ANTIGRAVITY_DIR/.agent/rules/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+
+if [[ "$ANTIGRAVITY_TOKEN_HITS" -eq 0 ]]; then
+  echo "  ✓ antigravity: skills-only install (references kept), postInstall rules, no subagents/MCP, no {{...}} leak"
+else
+  echo "Assertion failed: antigravity install leaked $ANTIGRAVITY_TOKEN_HITS template placeholder(s)"
+  grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+    "$ANTIGRAVITY_DIR/.agent/skills/" "$ANTIGRAVITY_DIR/.agent/rules/" --include='*.md' | head -5
+  exit 1
+fi
+
+# ─────────────────────────────────────────────────────
 # Test 4: RULES_INDEX.md end-to-end smoke after `unikit-ai update`
 # ─────────────────────────────────────────────────────
 # Update should drive syncRulesState which regenerates the index. The

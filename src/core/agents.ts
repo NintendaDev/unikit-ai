@@ -84,6 +84,18 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     skillsCliAgent: 'opencode',
     isStable: false,
   },
+  antigravity: {
+    id: 'antigravity',
+    displayName: 'Antigravity',
+    configDir: '.agent',
+    skillsDir: '.agent/skills',
+    subagentsDir: '.agent/agents',
+    settingsFile: null,
+    supportsMcp: false,
+    supportsSubagents: false,
+    skillsCliAgent: 'antigravity',
+    isStable: false,
+  },
 };
 
 export function getAgentConfig(id: string): AgentConfig {

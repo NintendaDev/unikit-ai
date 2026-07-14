@@ -502,6 +502,13 @@ cat > "$MULTI_DIR/.unikit.json" << 'EOF'
       "subagentsDir": ".codex/agents",
       "installedSkills": ["unikit", "unikit-plan"],
       "installedSubagents": []
+    },
+    {
+      "id": "antigravity",
+      "skillsDir": ".agent/skills",
+      "subagentsDir": ".agent/agents",
+      "installedSkills": ["unikit", "unikit-plan"],
+      "installedSubagents": ["unikit-architecture-sidecar"]
     }
   ],
   "rules": {
@@ -517,10 +524,12 @@ MULTI_OUTPUT="$TMPDIR/update-multi.log"
 # Both agents must have per-agent status sections
 assert_contains "$MULTI_OUTPUT" "\[claude\] Skills status:" "claude agent status section must be printed"
 assert_contains "$MULTI_OUTPUT" "\[codex\] Skills status:" "codex agent status section must be printed"
+assert_contains "$MULTI_OUTPUT" "\[antigravity\] Skills status:" "antigravity agent status section must be printed"
 
-# Both agents must have skills installed on disk
+# All three agents must have skills installed on disk
 assert_exists "$MULTI_DIR/.claude/skills/unikit/SKILL.md" "claude must have unikit skill installed"
 assert_exists "$MULTI_DIR/.codex/skills/unikit/SKILL.md" "codex must have unikit skill installed"
+assert_exists "$MULTI_DIR/.agent/skills/unikit/SKILL.md" "antigravity must have unikit skill installed"
 
 # Claude should also have subagent installed
 assert_exists "$MULTI_DIR/.claude/agents/unikit-architecture-sidecar.md" "claude must have subagent installed"
@@ -528,7 +537,10 @@ assert_exists "$MULTI_DIR/.claude/agents/unikit-architecture-sidecar.md" "claude
 # Codex should NOT have subagents (supportsSubagents: false)
 assert_not_exists "$MULTI_DIR/.codex/agents/unikit-architecture-sidecar.md" "codex must not have subagent files"
 
-echo "  ✓ multi-agent update: both agents get skills, per-agent status sections printed"
+# Antigravity should NOT have subagents (supportsSubagents: false), even though one is listed
+assert_not_exists "$MULTI_DIR/.agent/agents/unikit-architecture-sidecar.md" "antigravity must not have subagent files"
+
+echo "  ✓ multi-agent update: all three agents get skills, per-agent status sections printed"
 
 # ─────────────────────────────────────────────
 # Test 13: update with no config - error path

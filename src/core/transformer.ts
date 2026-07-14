@@ -1,6 +1,7 @@
 import { DefaultTransformer } from './transformers/default.js';
 import { CodexTransformer } from './transformers/codex.js';
 import { QwenTransformer } from './transformers/qwen.js';
+import { AntigravityTransformer } from './transformers/antigravity.js';
 
 export interface TransformResult {
   targetDir: string;
@@ -55,6 +56,7 @@ export function rewriteInvocationPrefix(
 const registry: Record<string, () => AgentTransformer> = {
   codex: () => new CodexTransformer(),
   qwen: () => new QwenTransformer(),
+  antigravity: () => new AntigravityTransformer(),
 };
 
 export function getTransformer(agentId: string): AgentTransformer {

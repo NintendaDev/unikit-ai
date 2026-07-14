@@ -128,7 +128,7 @@ case where no inline invocation mechanism exists at all.
   order, waiting for each to return. The slash form is rewritten per agent by the installer
   (Codex `$unikit-gd-*`, Qwen `/skills unikit-gd-*`); `Skill(...)` is **not** rewritten and
   non-Claude agents have no `Skill` tool, so without this tier the dispatch is dead on
-  5 of 6 agents. This must be a **real call**, not a printed recommendation.
+  6 of 7 agents. This must be a **real call**, not a printed recommendation.
 - **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at
   all, print the ordered `Run: /unikit-gd-…` list for the user to execute by hand
   (`unikit/SKILL.md` invariant). This is the last resort, never the default.
