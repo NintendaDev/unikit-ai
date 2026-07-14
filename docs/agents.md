@@ -14,7 +14,6 @@
 | Claude Code | `.claude/` | Yes (`.mcp.json`) | Stable |
 | Codex CLI | `.codex/` | Yes (`.codex/config.toml`) | Beta |
 | Cursor | `.cursor/` | Yes (`.cursor/mcp.json`) | Beta |
-| Gemini CLI | `.gemini/` | Yes (`.gemini/settings.json`) | Beta |
 | Qwen Code | `.qwen/` | Yes (`.qwen/settings.json`) | Beta |
 | OpenCode | `.opencode/` | Yes (`opencode.json`) | Beta |
 | Antigravity | `.agent/` | No (manual) | Beta |
@@ -33,13 +32,9 @@ Codex CLI is the only supported agent that blocks automatic subagent launches at
 
 Subagents work well, but there is no Skill Tool available to them. To run a subagent against a skill, the subagent's instruction includes an explicit step to read the target skill's `SKILL.md` and follow it. Overall this works acceptably.
 
-### Gemini CLI
-
-When launching some skills, the agent may stall at the very start and do nothing until the user types something like "Continue" or "Proceed". The root cause is still unclear - the behaviour reproduces on both Windows and macOS.
-
 ### OpenCode and Qwen Code
 
-Same "Continue" issue as Gemini CLI: the agent may pause at the beginning of a skill and only resume after an explicit user nudge.
+When launching some skills, the agent may pause at the very start and do nothing until the user types something like "Continue" or "Proceed". The root cause is still unclear - the behaviour reproduces on both Windows and macOS.
 
 ### Antigravity
 

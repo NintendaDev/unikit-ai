@@ -1,7 +1,7 @@
 import path from 'path';
 import { createRequire } from 'module';
 import { readJsonFile, writeJsonFile, fileExists } from '../utils/fs.js';
-import { getAgentConfig } from './agents.js';
+import { AGENT_REGISTRY, getAgentConfig } from './agents.js';
 import { CODE_MODULE_ID, RULE_CATEGORIES, type Tier } from './constants.js';
 import { getModule, listModules } from './modules.js';
 
@@ -312,18 +312,29 @@ export async function loadConfig(projectDir: string): Promise<UniKitConfig | nul
   }
 
   const rawAgents = Array.isArray(raw.agents) ? raw.agents : [];
-  const normalizedAgents = rawAgents.map((agent: Record<string, unknown>) => {
-    const agentConfig = getAgentConfig(agent.id as string);
+  const normalizedAgents = rawAgents.flatMap((agent: Record<string, unknown>) => {
+    const id = agent.id as string;
 
-    return {
-      id: agent.id as string,
+    // Tolerate unknown agent ids: a config written for an agent no longer in the
+    // registry (e.g. a dropped install target) is filtered out with a warning
+    // instead of crashing every CLI command through getAgentConfig's throw. The
+    // next saveConfig persists the config without the stale entry (free migration).
+    if (!AGENT_REGISTRY[id]) {
+      console.warn(`WARN: unknown agent '${id}' in .unikit.json — skipping`);
+      return [];
+    }
+
+    const agentConfig = getAgentConfig(id);
+
+    return [{
+      id,
       skillsDir: (agent.skillsDir as string) || agentConfig.skillsDir,
       subagentsDir: (agent.subagentsDir as string) || (agent.agentsDir as string) || agentConfig.subagentsDir,
       installedSkills: Array.isArray(agent.installedSkills) ? agent.installedSkills as string[] : [],
       installedSubagents: Array.isArray(agent.installedSubagents) ? agent.installedSubagents as string[] : Array.isArray(agent.installedAgents) ? agent.installedAgents as string[] : [],
       managedSkills: normalizeManagedSkills(agent.managedSkills),
       managedSubagents: normalizeManagedSkills(agent.managedSubagents),
-    };
+    }];
   });
 
   const rawRules = raw.rules as Record<string, unknown> | undefined;

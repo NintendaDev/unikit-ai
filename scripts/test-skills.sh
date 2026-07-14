@@ -3290,6 +3290,24 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f2: config-tolerance unit tests (unknown agent id in .unikit.json)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f2: config-tolerance unit tests${NC}"
+
+set +e
+CONFIG_TOLERANCE_OUTPUT=$(node "$ROOT_DIR/scripts/test-config-tolerance.mjs" 2>&1)
+CONFIG_TOLERANCE_EXIT=$?
+set -e
+
+if [[ $CONFIG_TOLERANCE_EXIT -eq 0 ]]; then
+    pass "config-tolerance unit tests"
+    echo "$CONFIG_TOLERANCE_OUTPUT" | grep '^PASS ' | sed 's/^/    /'
+else
+    fail "config-tolerance unit tests"
+    echo "$CONFIG_TOLERANCE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"

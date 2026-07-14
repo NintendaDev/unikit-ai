@@ -66,7 +66,6 @@ are on the roadmap.
 | Claude Code | `.claude/` | Yes (`.mcp.json`) | Stable |
 | Codex CLI | `.codex/` | Yes (`.codex/config.toml`) | Beta |
 | Cursor | `.cursor/` | Yes (`.cursor/mcp.json`) | Beta |
-| Gemini CLI | `.gemini/` | Yes (`.gemini/settings.json`) | Beta |
 | Qwen Code | `.qwen/` | Yes (`.qwen/settings.json`) | Beta |
 | OpenCode | `.opencode/` | Yes (`opencode.json`) | Beta |
 | Antigravity | `.agent/` | No (manual) | Beta |

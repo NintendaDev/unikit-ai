@@ -29,7 +29,6 @@
     "claude-code",
     "cursor",
     "codex",
-    "gemini",
     "opencode",
     "qwen",
     "qwen-code",
@@ -75,6 +74,7 @@
       "scripts/generate-cli-contract.ts",
       "scripts/genres-validate.mjs",
       "scripts/test-agent-filter.mjs",
+      "scripts/test-config-tolerance.mjs",
       "scripts/validate-agent-markers.mjs",
       "src/core/cli-contract.ts"
     ]

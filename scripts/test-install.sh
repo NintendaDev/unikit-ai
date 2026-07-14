@@ -95,7 +95,7 @@ fi
 # Test 1a-noref: default agents (claude) leave reference invocations verbatim
 # ─────────────────────────────────────────────────────
 # transformReference is undefined for DefaultTransformer, so references/*.md are
-# copied verbatim for claude/cursor/gemini/opencode. unikit-plan's
+# copied verbatim for claude/cursor/opencode. unikit-plan's
 # references/TASK-FORMAT.md must keep `/unikit-implement` — NOT $unikit-
 # (codex) or /skills unikit- (qwen). A stray DefaultTransformer.transformReference
 # would rewrite this and fail the assertion below.

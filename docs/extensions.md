@@ -405,7 +405,6 @@ The `config` object is merged into each agent's settings file under `mcpServers.
 | Claude Code | `.mcp.json` |
 | Codex CLI | `.codex/config.toml` |
 | Cursor | `.cursor/mcp.json` |
-| Gemini CLI | `.gemini/settings.json` |
 | Qwen Code | `.qwen/settings.json` |
 | OpenCode | `opencode.json` |
 

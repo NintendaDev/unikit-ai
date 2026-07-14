@@ -48,18 +48,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     skillsCliAgent: 'cursor',
     isStable: false,
   },
-  gemini: {
-    id: 'gemini',
-    displayName: 'Gemini CLI',
-    configDir: '.gemini',
-    skillsDir: '.gemini/skills',
-    subagentsDir: '.gemini/agents',
-    settingsFile: '.gemini/settings.json',
-    supportsMcp: true,
-    supportsSubagents: false,
-    skillsCliAgent: 'gemini-cli',
-    isStable: false,
-  },
   qwen: {
     id: 'qwen',
     displayName: 'Qwen Code',
