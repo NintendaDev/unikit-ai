@@ -478,6 +478,10 @@ bash scripts/test-exit-codes.sh           # Matrix guard (reads the other files)
 - **createRegistry origin fold (`test-rules-registry.sh`)**: `OFFICIAL_REGISTRY_URL` as a literal collapses `primary`/`official` into one `HybridRegistry` instance so `getResolvedOrigin()` returns `'official'` instead of misstamping every installed rule with `origin: 'primary'`.
 - **Exit code matrix (`test-exit-codes.sh`)**: walks the per-command tests and asserts every documented exit code (0, 1, 3, 5, 6, 7 - plus exemptions for 2 and 4) has at least one assertion. Cross-checks the `EXIT` enum in `src/cli/commands/rules.ts` against the contract table above.
 
+### `UNIKIT_OFFICIAL_REGISTRY_URL` (dev/test-only)
+
+`createRegistry` (`src/core/registry/index.ts`) reads this env var to override the official registry level's fetch **transport** (git/fs/api dispatch), leaving `OFFICIAL_REGISTRY_URL` itself — and everything keyed on it (resolve/reset/display) — untouched. It exists so per-id `gamedesign` backfill scenarios can point the official level at an empty local directory (no `manifest.json`) and resolve deterministically from bundled, without depending on the live official registry's current content. Several fixed scenarios in `test-rules-install.sh`, `test-rules-status.sh`, `test-rules-show.sh`, and `test-rules-list.sh` set it; `test-rules-registry.sh` Scenario 20 is the regression guard. Not to be confused with `UNIKIT_RULES_REPO_URL`/`UNIKIT_RULES_REPO_BRANCH`, which control the bundled snapshot clone in `scripts/download-rules.sh`, not the app.
+
 ---
 
 ## See Also

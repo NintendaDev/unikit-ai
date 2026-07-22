@@ -15,6 +15,9 @@
 # Overrides (dev-time):
 #   UNIKIT_RULES_REPO_URL     — alternate git remote (default: official GitHub)
 #   UNIKIT_RULES_REPO_BRANCH  — alternate branch (default: main)
+#   UNIKIT_OFFICIAL_REGISTRY_URL — NOT read by this script; it is a separate
+#     seam read by the app's `createRegistry` (src/core/registry/index.ts) to
+#     override the official registry's fetch transport at runtime/test-time.
 
 set -euo pipefail
 
