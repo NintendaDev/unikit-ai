@@ -92,6 +92,14 @@ capture_stdout_exit "$TMPDIR/m1-build.log" env -C "$REG1" node "$REG1/scripts/bu
 assert_exit 0 "$CAPTURED_EXIT" "refreshed builder runs without gamedesign (exit 0)" "$TMPDIR/m1-build.log"
 [[ "$(schema_of "$REG1/manifest.json")" == "2" ]] && pass "post: rebuilt manifest still schema:2" || fail "post: rebuilt manifest not schema:2"
 
+# The migration must also ensure package.json declares `type: module` — the
+# ESM build script above throws "Cannot use import statement outside a
+# module" on Node < 22 without it (the minimal-valid fixture ships no
+# package.json at all).
+check_exists "$REG1/package.json" "post: package.json written"
+PKG_TYPE=$(node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const p=JSON.parse(d);console.log(p.type||'')})" < "$REG1/package.json")
+[[ "$PKG_TYPE" == "module" ]] && pass "post: package.json type:module" || fail "post: package.json type is not module (got: $PKG_TYPE)"
+
 # ─────────────────────────────────────────────
 # Scenario 2: idempotency — 2nd migrate is a sha-stable no-op
 # ─────────────────────────────────────────────

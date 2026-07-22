@@ -1252,6 +1252,35 @@ async function refreshBuildManifestScript(targetDir: string): Promise<void> {
   logInfo(REGISTRY_MIGRATE_TAG, `refreshed ${BUILD_MANIFEST_SCRIPT_REL} to the schema:${LATEST_SCHEMA} builder`);
 }
 
+/**
+ * Ensure the migrated registry's `package.json` declares `type: "module"`.
+ * A schema:1 registry's original `package.json` (if any) predates the ESM
+ * `build-manifest.js` refreshed alongside it — without `type: "module"`,
+ * Node < 22 throws `SyntaxError: Cannot use import statement outside a
+ * module` the moment the maintainer runs it. Non-destructive: existing
+ * fields are preserved, only `type` is corrected.
+ */
+async function ensureRegistryModulePackageJson(targetDir: string): Promise<void> {
+  const pkgPath = path.join(targetDir, 'package.json');
+  const existing = await readJsonFile<Record<string, unknown>>(pkgPath);
+
+  if (!existing) {
+    const bundledPkg = path.join(getBundledRegistryDir(), 'package.json');
+    if (await fileExists(bundledPkg)) {
+      await fs.copy(bundledPkg, pkgPath, { overwrite: true });
+    } else {
+      await writeJsonFile(pkgPath, { private: true, type: 'module' });
+    }
+    logInfo(REGISTRY_MIGRATE_TAG, `ensured package.json type:module at ${pkgPath}`);
+    return;
+  }
+
+  if (existing.type !== 'module') {
+    await writeJsonFile(pkgPath, { ...existing, type: 'module' });
+    logInfo(REGISTRY_MIGRATE_TAG, `ensured package.json type:module at ${pkgPath}`);
+  }
+}
+
 async function resolveMigrateTarget(pathArg: string | undefined, projectDir: string): Promise<string> {
   if (pathArg) {
     return path.resolve(projectDir, pathArg);
@@ -1319,9 +1348,10 @@ export async function rulesRegistryMigrateCommand(pathArg?: string): Promise<voi
     console.log(chalk.dim(`✓ Registry already at schema:${LATEST_SCHEMA} — nothing to migrate (${targetDir})`));
   } else {
     await refreshBuildManifestScript(targetDir);
+    await ensureRegistryModulePackageJson(targetDir);
     console.log(chalk.green(`✓ Registry migrated to schema:${LATEST_SCHEMA} (${targetDir})`));
     console.log(chalk.dim(`  Applied:   ${result.applied.join(', ')}`));
-    console.log(chalk.dim(`  Refreshed: ${BUILD_MANIFEST_SCRIPT_REL}`));
+    console.log(chalk.dim(`  Refreshed: ${BUILD_MANIFEST_SCRIPT_REL}, package.json (type:module)`));
   }
 }
 
