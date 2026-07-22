@@ -15,7 +15,7 @@ Not sure what to do next, or which skill to use? Start here.
 - Read-only navigator: diagnoses your intent and points you at the right skill/pipeline — it never does the work itself
 - No arguments → asks one short diagnostic question instead of dumping a manual
 - Covers the whole framework: setup, the code pipeline, testing, the game-design module, rules/memory, and "which skill for X"
-- Knowledge base lives in `skills/unikit-help/references/`; see [unikit-help](unikit-help.md) for details
+- Knowledge base lives in `skills/unikit-help/references/`
 
 ---
 
@@ -185,7 +185,7 @@ Reviews code against the project's rule hierarchy. Four modes:
 /unikit-review 123                     # PR by number (#42 or URL also work)
 /unikit-review master                  # Commits vs branch/tag
 ```
-- Checks against: `RULES.md` (highest priority) → `memory/core/` → `memory/stack/`
+- Checks against: `RULES.md` (highest priority) → `.unikit/memory/code/core/` → `.unikit/memory/code/stack/`
 - Loads stack rules selectively based on frameworks detected in target code
 - Severity scale: Critical, Warning, Medium, Suggestion
 - Reports include concrete code fixes for Critical/Warning items
@@ -254,12 +254,83 @@ This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the f
 
 ## Game Design Skills
 
-The `gamedesign` module adds nine `unikit-gd-*` skills for authoring a Game Design
+The `gamedesign` module adds eleven `unikit-gd-*` skills for authoring a Game Design
 Document along three machine-readable axes — **systems** (the rules), **flows** (the
-dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. See
-**[Game-Design Module](gamedesign.md)** for the full treatment.
+dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. The quick-reference
+entries below follow the pipeline order (recon/brainstorm → spec → system/flow/content →
+review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
+treatment - the axis model, the Decision-First authoring contract, review vs. verify, the
+genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 
-### `/unikit-gd-content` - the content (catalog) axis
+### `/unikit-gd-recon [optional: description, notes, links, or a subsystem to focus on]` - brownfield reconnaissance
+
+```
+/unikit-gd-recon                                  # scan the whole project cold-start
+/unikit-gd-recon we built a match-3 with a meta-map, focus the economy
+```
+- **Cold-start only** - for a live codebase with **no GDD yet**; reconstructs candidate design facts into one passive `.unikit/gamedesign/RECON.md`
+- Fans out `Agent(subagent_type: Explore)` per subsystem to extract a system roster + `depends_on` graph (P0) and content-type schemas / resources / entities (P1) - flows are excluded, they aren't recoverable from code
+- Every extracted fact is tagged `provenance: extracted from code`; a mandatory `## Intent Gap` section records what code cannot reveal (pillars, fantasy, the "why")
+- Has no `Skill` tool - only **recommends** `/unikit-gd-spec <RECON.md>` (import) as printed text, never calls it. If a GDD already exists it redirects to the `/unikit-gd-explore` code-grounded lens instead
+
+### `/unikit-gd-brainstorm [hint or theme]` - concept ideation
+
+```
+/unikit-gd-brainstorm                             # blank page
+/unikit-gd-brainstorm a cozy farming sim with a mystery hook
+```
+- Structured divergence/convergence dialogue (pillars, loops, pre-mortem) from a blank page or a one-line hint to a finished `CONCEPT.md` card; rejected ideas are parked in `IDEAS.md`
+- Auto-resumes an in-progress concept via `concepts/INDEX.md`
+- Delegates market validation to `/unikit-gd-explore` at Phase 3.5 (a brief returns into the session - no `researches/` file, avoids anchoring on market data too early)
+- Writes a descriptive, CLI-free `genre:` hint into the concept card - see **Genre profiles** in [Game-Design Module](gamedesign.md)
+
+### `/unikit-gd-explore [init | topic | reference | market question | reviews/*.md | RECON.md | "<system> in the code"]` - design research partner
+
+```
+/unikit-gd-explore how do roguelike deckbuilders handle run-modifiers
+/unikit-gd-explore improve the crafting system                    # internal-design lens
+/unikit-gd-explore how is the inventory system actually built in the code   # code-grounded lens
+/unikit-gd-explore init                                           # rebuild researches index
+```
+- Read-only research partner - studies references, market fit, or the existing GDD/code; **never authors** the design itself
+- Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
+- Saves to `.unikit/gamedesign/researches/<date>_<slug>/`; a review file is mutated in place instead of getting a new folder
+- Routes onward without asking based on the target's `doc_status` (no doc → spec add-system; `skeleton` → system; `detailed`+ → system as a delta)
+
+### `/unikit-gd-spec [path-to-existing-GDD | URL | free-form description]` - the master GDD + registry
+
+```
+/unikit-gd-spec A roguelike deckbuilder about a traveling merchant
+/unikit-gd-spec ./old-gdd.docx                    # import an existing GDD
+/unikit-gd-spec add a crafting system              # Add-System mode
+```
+- Owns `GAME.md` (the authored one-pager - pillars, loop stack, win/lose, monetization stance, non-goals) plus its generated `## System Map [gen]` / `## Flow Map [gen]` / `## Funnel [gen]` / `## Content Map [gen]`, and `GD-IDS.yaml` (the facts registry code reads)
+- Mode inferred from the argument: Create, Import (path/URL), Pitch (→ `PITCH.md`), Remap (rebuild the map), Add-System (graft one system onto an existing map)
+- The **only** writer of the system roster - a flow/content type naming a missing system routes back here
+- On Create, best-fits a genre hint to the bundled genre-profile catalog and runs a seed interview (see [Game-Design Module](gamedesign.md#genre-profiles-the-seed-layer))
+
+### `/unikit-gd-system <system name | SYS-slug> ["<what to change>"]` - the systems (rules) axis
+
+```
+/unikit-gd-system add a crafting system            # create
+/unikit-gd-system crafting                         # fill in placeholders
+/unikit-gd-system crafting buff success rate to 70%  # revise (tune/tweak/rework)
+```
+- Owns one system's full A-K doc at `systems/SYS-<slug>.md` for its whole lifecycle - create skeleton, fill via Decision-First (Depth → Fork scan → Decision interview → Generation → Group review → Final), and revise under the version+changelog delta discipline
+- Auto-attaches domain section-packs (combat, economy, progression, narrative, UX, AI-behavior, persistence, ...) inferred from the system's name/overview
+- Requires the system to already be on the `GAME.md` roster - a missing one routes to `/unikit-gd-spec` add-system first
+
+### `/unikit-gd-flow <flow name | FLOW-slug> ["<what to change>"]` - the flows (dynamics) axis
+
+```
+/unikit-gd-flow the first-session onboarding flow   # create
+/unikit-gd-flow onboarding retune the pacing after level 3  # revise
+```
+- Owns one flow's doc at `flows/FLOW-<slug>.md` - what the player does over time: objective flow, pacing, dependencies, funnel events - for its whole lifecycle (create/fill/revise, same delta discipline as systems)
+- Picks the **wiring mode** (`linear` / `conditional` / `emergent`, inferred from genre/pillars) which dictates the doc's section B/C structure
+- Self-registering - writes its own `flows:`/`events:` GD-IDS rows and re-renders `## Flow Map [gen]` / `## Funnel [gen]`; there is no add-flow step in `/unikit-gd-spec`
+
+### `/unikit-gd-content <content type name | CT-slug> ["<what to change>"]` - the content (catalog) axis
 
 ```
 /unikit-gd-content add an item content type     # create / fill / revise a CT-<slug>
@@ -269,15 +340,46 @@ dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. See
 - Registers itself (`content_types:` / `content:` + RES/TRACK/KNOB) and re-renders `## Content Map [gen]`
 - `belongs_to` names the consuming system (one-way); a missing system routes to `/unikit-gd-spec` add-system
 
-### `/unikit-gd-apply` - multi-zone edit dispatcher
+### `/unikit-gd-review [system name | SYS-slug | path | "all"]` - qualitative design review
+
+```
+/unikit-gd-review crafting
+/unikit-gd-review all
+```
+- Answers "is this design **good** - fun, balanced, coherent with the pillars?" via a parallel adversarial lens fan-out (fantasy-delivery, systems-math, provenance, feasibility, and domain lenses)
+- Only write: `.unikit/gamedesign/reviews/<date>_review-<scope>.md` - never edits GDD content or `doc_status`; findings get a stable `RF-<date>-n` id and **can be declined**
+- Sorts findings into two buckets and prints the handoff command - apply-ready → `/unikit-gd-apply`, needs-research → `/unikit-gd-explore`
+
+### `/unikit-gd-verify [system name | SYS-slug | question]` - mechanical consistency check
+
+```
+/unikit-gd-verify
+/unikit-gd-verify crafting
+```
+- Answers "is the design **consistent with itself**?" - grep-first checks against `GD-IDS.yaml`: IDs, terminology, dangling/unregistered facts, roster↔disk + map freshness, Depends 3-way, status/version coherence, AC presence, placeholder leaks
+- Fully read-only - no report file, no changelog, no `doc_status` bump; prints an inline conflict report and hands apply-ready fixes to `/unikit-gd-apply`
+- Unlike review, a conflict is a fact, not a finding - you only choose *how* to fix it, not whether
+
+### `/unikit-gd-apply ["<changes>"] | <reviews/*_review-*.md>` - multi-zone edit dispatcher
 
 ```
 /unikit-gd-apply "buff combat 10%, add a loot rarity field, retune onboarding pacing"   # one multi-zone edit
+/unikit-gd-apply reviews/2026-07-01_review-crafting.md   # apply-ready bucket from a review
 ```
-- Carries out an explicit, **multi-zone** GDD edit you have already decided — it owns nothing and writes nothing
-- Resolves each delta to its `(target, zone)` and dispatches **system-before-sinks** (`/unikit-gd-spec` → `/unikit-gd-system` → `/unikit-gd-content` → `/unikit-gd-flow`), then closes with one `/unikit-gd-verify`
+- Carries out an explicit, **multi-zone** GDD edit you have already decided - it owns nothing and writes nothing (only `Skill` in its tool list)
+- Resolves each delta to its `(target, zone)` and dispatches **system-before-sinks** (`/unikit-gd-spec` → `/unikit-gd-system` → `/unikit-gd-content` → `/unikit-gd-flow`), then closes with one bare `/unikit-gd-verify`
 - A **single-zone** edit goes straight to the owner; an open question to research goes to `/unikit-gd-explore` first
 - A new system a delta needs is created via `/unikit-gd-spec` add-system in the first tier (create + dependent revise in one pass)
+
+### `/unikit-gd-docs [--web]` - GDD to human-readable docs
+
+```
+/unikit-gd-docs          # render docs/design/*.md
+/unikit-gd-docs --web    # also render an HTML site
+```
+- Read-only leaf renderer (no `Skill` tool) - turns the design workspace into `docs/design/{index,systems,flows,content,economy,glossary}.md`, resolving facts inline from `GD-IDS.yaml`; drafts are flagged 🚧
+- `--web` additionally renders HTML from the `unikit-docs` template (falls back to Markdown-only + a `WARN` if the template is absent)
+- The design-doc mirror of `/unikit-docs` - that skill owns top-level `docs/*.md` (the code project's docs), this one owns `docs/design/**`
 
 ### `genres` (CLI) - bundled genre-profile catalog
 

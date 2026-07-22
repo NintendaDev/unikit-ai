@@ -173,6 +173,6 @@ Day-to-day work through slash commands (`/unikit-implement`, `/unikit-fix`, `/un
 
 ## See Also
 
-- [Skills Reference](skills.md) - the 19 skills that workflow skills delegate to or compose over
+- [Skills Reference](skills.md) - the 20 code-pipeline skills that workflow skills delegate to or compose over
 - [Development Workflow](workflow.md) - where coordinators and sidecars fit in the end-to-end flow
 - [Plan Files](plan-files.md) - the `TASKS.md` / `PLAN-BRIEF.md` artifacts coordinators read and workers update
