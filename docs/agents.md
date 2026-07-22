@@ -16,7 +16,7 @@
 | Cursor | `.cursor/` | Yes (`.cursor/mcp.json`) | Beta |
 | Qwen Code | `.qwen/` | Yes (`.qwen/settings.json`) | Beta |
 | OpenCode | `.opencode/` | Yes (`opencode.json`) | Beta |
-| Antigravity | `.agent/` | No (manual) | Beta |
+| Antigravity | `.agents/` | Yes (`.agents/mcp_config.json`) | Beta |
 
 Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in but rough edges are still possible. See [configuration.md](configuration.md) for details.
 
@@ -38,9 +38,9 @@ When launching some skills, the agent may pause at the very start and do nothing
 
 ### Antigravity
 
-Antigravity (the IDE and CLI share one `.agent/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agent/skills/<name>/` directory triggered by its `description`, like Claude Code. There is no `/unikit-*` slash command and no `Skill` tool, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) degrades to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.
+Antigravity (the IDE and CLI share one `.agents/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agents/skills/<name>/` directory triggered by its `description`, like Claude Code. There is no `/unikit-*` slash command and no `Skill` tool, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) degrades to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.
 
-MCP is not configured automatically. Antigravity reads a global MCP config shared by its IDE and CLI (`~/.gemini/config/mcp_config.json`), not a project file - to use the Unity MCP server, add it there yourself. The installer writes a reminder into `.agent/rules/unikit.md`.
+MCP is configured automatically into `.agents/mcp_config.json`, same as other agents; a separate global `~/.gemini/config/mcp_config.json` remains available for user-wide servers, untouched by UniKit.
 
 ## See Also
 

@@ -505,8 +505,8 @@ cat > "$MULTI_DIR/.unikit.json" << 'EOF'
     },
     {
       "id": "antigravity",
-      "skillsDir": ".agent/skills",
-      "subagentsDir": ".agent/agents",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
       "installedSkills": ["unikit", "unikit-plan"],
       "installedSubagents": ["unikit-architecture-sidecar"]
     }
@@ -529,7 +529,7 @@ assert_contains "$MULTI_OUTPUT" "\[antigravity\] Skills status:" "antigravity ag
 # All three agents must have skills installed on disk
 assert_exists "$MULTI_DIR/.claude/skills/unikit/SKILL.md" "claude must have unikit skill installed"
 assert_exists "$MULTI_DIR/.codex/skills/unikit/SKILL.md" "codex must have unikit skill installed"
-assert_exists "$MULTI_DIR/.agent/skills/unikit/SKILL.md" "antigravity must have unikit skill installed"
+assert_exists "$MULTI_DIR/.agents/skills/unikit/SKILL.md" "antigravity must have unikit skill installed"
 
 # Claude should also have subagent installed
 assert_exists "$MULTI_DIR/.claude/agents/unikit-architecture-sidecar.md" "claude must have subagent installed"
@@ -538,7 +538,7 @@ assert_exists "$MULTI_DIR/.claude/agents/unikit-architecture-sidecar.md" "claude
 assert_not_exists "$MULTI_DIR/.codex/agents/unikit-architecture-sidecar.md" "codex must not have subagent files"
 
 # Antigravity should NOT have subagents (supportsSubagents: false), even though one is listed
-assert_not_exists "$MULTI_DIR/.agent/agents/unikit-architecture-sidecar.md" "antigravity must not have subagent files"
+assert_not_exists "$MULTI_DIR/.agents/agents/unikit-architecture-sidecar.md" "antigravity must not have subagent files"
 
 echo "  ✓ multi-agent update: all three agents get skills, per-agent status sections printed"
 

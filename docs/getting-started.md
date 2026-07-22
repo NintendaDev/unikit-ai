@@ -23,7 +23,7 @@ UniKit supports seven AI coding agents. Select one or more during `unikit-ai ini
 | Cursor | `.cursor/` | `.cursor/skills/` | Yes (`.cursor/mcp.json`) | Beta |
 | Qwen Code | `.qwen/` | `.qwen/skills/` | Yes (`.qwen/settings.json`) | Beta |
 | OpenCode | `.opencode/` | `.opencode/skills/` | Yes (`opencode.json`) | Beta |
-| Antigravity | `.agent/` | `.agent/skills/` | No (manual) | Beta |
+| Antigravity | `.agents/` | `.agents/skills/` | Yes (`.agents/mcp_config.json`) | Beta |
 
 The wizard renders a single flat selection checkbox with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in (skills + subagents + MCP where supported), but the adapters are newer and rough edges are still possible - use them and report issues.
 
