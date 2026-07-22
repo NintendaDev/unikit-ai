@@ -68,7 +68,7 @@ are on the roadmap.
 | Cursor | `.cursor/` | Yes (`.cursor/mcp.json`) | Beta |
 | Qwen Code | `.qwen/` | Yes (`.qwen/settings.json`) | Beta |
 | OpenCode | `.opencode/` | Yes (`opencode.json`) | Beta |
-| Antigravity | `.agent/` | No (manual) | Beta |
+| Antigravity | `.agents/` | Yes (`.agents/mcp_config.json`) | Beta |
 
 Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in but rough edges are still possible. See [docs/agents.md](docs/agents.md) for agent-specific caveats and [docs/configuration.md](docs/configuration.md) for configuration details.
 
