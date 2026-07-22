@@ -1,6 +1,7 @@
 import { JsonMcpWriter } from './json-writer.js';
 import { TomlMcpWriter } from './toml-writer.js';
 import { OpenCodeMcpWriter } from './opencode-writer.js';
+import { AntigravityMcpWriter } from './antigravity-writer.js';
 
 export interface McpWriter {
   readExisting(settingsPath: string): Promise<Record<string, unknown>>;
@@ -12,6 +13,7 @@ export interface McpWriter {
 const jsonWriter = new JsonMcpWriter();
 const tomlWriter = new TomlMcpWriter();
 const opencodeWriter = new OpenCodeMcpWriter();
+const antigravityWriter = new AntigravityMcpWriter();
 
 export function getMcpWriter(agentId: string): McpWriter {
   if (agentId === 'codex') {
@@ -19,6 +21,9 @@ export function getMcpWriter(agentId: string): McpWriter {
   }
   if (agentId === 'opencode') {
     return opencodeWriter;
+  }
+  if (agentId === 'antigravity') {
+    return antigravityWriter;
   }
   return jsonWriter;
 }
