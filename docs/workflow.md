@@ -11,6 +11,29 @@ UniKit AI has two phases: **configuration** (one-time project setup) and the **d
 - **Commit discipline** - structured commits at logical checkpoints
 - **No scope creep** - AI does exactly what's in the plan, nothing more
 
+## Two Modules: Code and Game Design
+
+This page describes the **`code`** module's pipeline - the two phases above (configuration, then the explore → plan → improve → implement → review → verify → commit → evolve loop). UniKit also ships a second, independent knowledge module, **`gamedesign`**, with its own pipeline for authoring a Game Design Document (pillars, systems, flows, content). Full pipeline diagram, skills, and rules: [Game-Design Module](gamedesign.md).
+
+The two pipelines are decoupled - run either one without the other - but they share exactly one seam, and it only goes one way:
+
+```
+ gamedesign pipeline                          code pipeline (this document)
+ ┌──────────────────────────┐                 ┌───────────────────────────────────┐
+ │ /unikit-gd-spec          │                 │                                   │
+ │ /unikit-gd-system        │   GD-IDS.yaml   │   /unikit-plan reads a            │
+ │ /unikit-gd-flow          │ ──────────────▶ │   ## Design / ## Flow Context /   │
+ │ /unikit-gd-content       │   (read-only)   │   ## Content Context brief        │
+ └──────────────────────────┘                 └─────────────────┬─────────────────┘
+                                                                 │
+                                                /unikit-implement → /unikit-verify
+                                                                 │
+         ◀────────────────────── implemented_version ───────────┘
+                (the ONLY write that crosses back to design)
+```
+
+If a project has no linked `gamedesign` workspace (no `.unikit/gamedesign/GD-IDS.yaml`), `/unikit-plan` and `/unikit-explore` behave exactly as described below - there's simply nothing to read.
+
 ## Project Configuration
 
 Run once per project. Sets up context files that all workflow skills depend on.
@@ -50,6 +73,8 @@ Run once per project. Sets up context files that all workflow skills depend on.
 The repeatable development loop. Each skill feeds into the next, sharing context through plan files and patches.
 
 Optional discovery step: use `/unikit-explore` before planning to investigate ideas, compare options, and clarify requirements.
+
+If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unikit-plan` pick up the relevant `## Design` / `## Flow Context` / `## Content Context` briefs from `GD-IDS.yaml` automatically - no extra step required (see the diagram above).
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -148,6 +173,8 @@ Optional discovery step: use `/unikit-explore` before planning to investigate id
 | `/unikit-commit` | Conventional commits with Unity checks | No | Git commit |
 | `/unikit-todo` | Lightweight task tracking | No | `.unikit/TODO.md` |
 
+This table covers the `code` module. For the parallel `gamedesign` skill set (`/unikit-gd-spec`, `/unikit-gd-system`, `/unikit-gd-flow`, `/unikit-gd-content`, `/unikit-gd-review`, `/unikit-gd-verify`, `/unikit-gd-apply`, `/unikit-gd-docs`, …), see [Game-Design Module](gamedesign.md).
+
 ## Self-Learning Memory Through Evolve
 
 UniKit AI has a built-in learning loop that makes skills smarter over time:
@@ -165,6 +192,8 @@ From `RULES.md`, rules can be migrated to the dynamic memory `memory/` via `/uni
 
 **Full chain:** `/unikit-fix` (creates patch) → `/unikit-evolve` (classifies and applies) → `/unikit-memory migrate-rules` (migrates mature rules from `RULES.md` into permanent dynamic memory - `core/` or `stack/`)
 
+The `gamedesign` module has no equivalent `/unikit-gd-evolve` or patch loop - recurring `/unikit-gd-review`/`/unikit-gd-verify` conflicts route directly to `/unikit-memory --module gamedesign`, which writes straight into the `library` rule tier.
+
 ## Artifact Ownership and Context Gates
 
 Ownership is command-scoped to avoid conflicting writers:
@@ -179,12 +208,14 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit-explore` | `.unikit/code/researches/` | Exploration artifacts |
 | `/unikit-fix` | `.unikit/code/FIX_PLAN.md`, `.unikit/code/patches/*.md` | Bug-fix learning loop |
 | `/unikit-evolve` | `.unikit/evolutions/*`, `.unikit/skill-context/*` | Evolution logs + skill overrides |
-| `/unikit-memory` | `.unikit/memory/core/`, `stack/`, `RULES_INDEX.md` | Dynamic memory management |
+| `/unikit-memory` | `.unikit/memory/code/{core,stack}/`, `RULES_INDEX.md` | Dynamic memory management (module-aware; see [Dynamic Memory](dynamic-memory.md)) |
 | `/unikit-skills-context` | `.unikit/skill-context/<skill>/SKILL.md` | Skill workflow overrides |
 | `/unikit-implement` | `.unikit/code/plans/*/TASKS.md` (status updates) | Marks tasks complete |
 | `/unikit-todo` | `.unikit/TODO.md` | Lightweight task list |
 | `/unikit-docs` | `README.md`, `docs/*.md`, `AGENTS.md` | Documentation generation |
 | `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report, no writes |
+
+The `gamedesign` module has its own artifact-ownership map (`GAME.md`, `GD-IDS.yaml`, `systems/`, `flows/`, `content-types/`, `reviews/`) - see [Game-Design Module](gamedesign.md).
 
 ## Workflow Skills
 
@@ -220,6 +251,8 @@ All three files are automatically picked up by `/unikit-plan` - the planner read
 
 Maintains `researches/INDEX.md`; use `init` to rebuild the index from disk. When direction is clear, transition to `/unikit-plan`. Uses parallel Explore agents for deep codebase investigation.
 
+When a linked `gamedesign` workspace exists, it also grounds first-class on the design registry - systems, `flows:`, and `content_types:` in `GD-IDS.yaml` - resolving whichever axis the request actually names, so research stays consistent with the GDD (read-only; never edits it).
+
 ### `/unikit-plan [fast|full|add|--list] <description>` - plan the work
 
 ```
@@ -237,6 +270,8 @@ Three planning modes plus list:
 - **Add** - extends an existing plan with new tasks
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
+
+When a linked `gamedesign` workspace exists, the plan also pulls a `## Design` brief from `GD-IDS.yaml` (citing the relevant system's acceptance criteria and version), plus optional `## Flow Context` (the `GOAL`-steps and wiring mode) and `## Content Context` (the `CT.fields` schema, `scale`, `belongs_to`) briefs when the feature touches those axes. The pull is read-only - the plan never edits the GDD.
 
 ### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
 
@@ -355,6 +390,8 @@ Goes through every task in the plan and verifies the code actually implements it
 - DESCRIPTION.md/ARCHITECTURE.md sync
 - Context gates (architecture, rules, roadmap alignment)
 
+When the plan cited a design system's acceptance criteria and all of them are met, stamps `implemented_version` back into `GD-IDS.yaml` - the one sanctioned code -> design write, checked against the AC snapshotted in the plan rather than the live GDD.
+
 Strict mode raises the bar: partial completion is a failure, compilation and tests are required, leftover TODOs are blocking. If gaps are found, suggests `/unikit-fix`.
 
 ### `/unikit-commit [scope]` - conventional commits
@@ -382,3 +419,4 @@ For full details on all skills including development (`/unikit-devcontext`), kno
 - [Subagents](subagents.md) - coordinators, workers, and sidecars the pipeline orchestrates
 - [Dynamic Memory](dynamic-memory.md) - how the dynamic memory powers development
 - [Plan Files](plan-files.md) - how plan artifacts are stored and managed
+- [Game-Design Module](gamedesign.md) - the parallel `gamedesign` pipeline and how it feeds `/unikit-plan` via `GD-IDS.yaml`

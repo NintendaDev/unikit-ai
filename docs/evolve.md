@@ -29,7 +29,7 @@ Unlike generic tools that treat all improvements the same, `/unikit-evolve` clas
 
 Problems in code, architectural patterns, recurring mistakes:
 - Written to `RULES.md` (project-specific rules with highest priority)
-- Can later be migrated to permanent `memory/stack/` via `/unikit-memory`
+- Can later be migrated to permanent `.unikit/memory/code/stack/` via `/unikit-memory`
 - Example: "Always throw when DiResolver.Resolve returns null in NodeCanvas OnInit"
 
 ### 2. Skill Workflow Issues

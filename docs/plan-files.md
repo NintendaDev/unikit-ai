@@ -1,4 +1,4 @@
-[← Subagents](subagents.md) · [Back to README](../README.md) · [Dynamic Memory →](dynamic-memory.md)
+[← Subagents](subagents.md) · [Back to README](../README.md) · [Game-Design Module →](gamedesign.md)
 
 # Plan Files
 

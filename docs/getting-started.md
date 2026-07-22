@@ -7,14 +7,14 @@
 UniKit AI is an **AI-powered game code development toolkit**. It bootstraps an AI coding agent for your game project by:
 
 1. **Detecting the engine** - Unity, Godot 4, Godot 4 .NET, or Unreal Engine 5
-2. **Installing skills and subagents** - 19 workflow skills + 8 background agents (sidecars, coordinators, workers) tailored to the selected engine
-3. **Wiring the knowledge base** - a remote rules registry feeds dynamic memory (core rules always loaded, stack rules loaded by task context)
+2. **Installing skills and subagents** - 31 skills (20 code-pipeline + 11 game-design) + 8 background agents (sidecars, coordinators, workers) tailored to the selected engine, grouped by category so you only install what you need
+3. **Wiring the knowledge base** - a remote rules registry feeds dynamic memory, module-aware (`code` and, if you install the game-design skills, `gamedesign`), with core rules always loaded and stack/library rules loaded by task context
 4. **Configuring MCP servers** - engine MCP (real-time console / tests) + Context7 (up-to-date library docs) for agents that support MCP
-5. **Providing a spec-driven workflow** - explore → plan → improve → implement → review → verify → commit, with self-learning patches feeding back into the rules
+5. **Providing a spec-driven workflow** - explore → plan → improve → implement → review → verify → commit, with self-learning patches feeding back into the rules. A parallel `gamedesign` pipeline (brainstorm → spec → system/flow/content → review/verify) authors the GDD that code plans read from
 
 ## Supported Agents
 
-UniKit supports seven AI coding agents. Select one or more during `unikit-ai init` - the CLI installs skills with per-agent path rewriting so every selected agent receives the correct format.
+UniKit supports six AI coding agents. Select one or more during `unikit-ai init` - the CLI installs skills with per-agent path rewriting so every selected agent receives the correct format.
 
 | Agent | Config Directory | Skills Directory | MCP Support | Status |
 |-------|-----------------|-----------------|-------------|--------|
@@ -127,19 +127,19 @@ See [Extensions](extensions.md) for authoring guidelines.
 
 ## What Gets Installed
 
-### Skills (19)
+### Skills (31)
 
-All skills use the `unikit-` prefix and are installed to the agent's skills directory:
+All skills use the `unikit-` prefix and are installed to the agent's skills directory. The install wizard groups them into the same five categories shown in the Step 3 picker above:
 
 | Category | Skills |
 |----------|--------|
-| **Setup** | `unikit`, `unikit-architecture` |
-| **Workflow** | `unikit-explore`, `unikit-plan`, `unikit-improve`, `unikit-implement`, `unikit-fix`, `unikit-verify`, `unikit-commit`, `unikit-evolve`, `unikit-roadmap`, `unikit-review` |
-| **Development** | `unikit-devcontext` |
-| **Dynamic memory** | `unikit-memory`, `unikit-rules`, `unikit-rules-registry` |
-| **Knowledge base** | `unikit-docs` |
-| **Skill overrides** | `unikit-skills-context` |
-| **Utility** | `unikit-todo` |
+| **Core** | `unikit`, `unikit-help` |
+| **Memory and rules** | `unikit-memory`, `unikit-rules`, `unikit-rules-registry`, `unikit-skills-context` |
+| **Code** | `unikit-architecture`, `unikit-commit`, `unikit-devcontext`, `unikit-evolve`, `unikit-explore`, `unikit-fix`, `unikit-implement`, `unikit-improve`, `unikit-plan`, `unikit-review`, `unikit-roadmap`, `unikit-verify` |
+| **Game Design** | 11 `unikit-gd-*` skills - GDD authoring (brainstorm, spec, system, flow, content), research (explore, recon), quality (review, verify), dispatch (apply), and export (docs). See [Game-Design Module](gamedesign.md) |
+| **Tools** | `unikit-docs`, `unikit-todo` |
+
+20 skills form the code pipeline (Core + Memory and rules + Code + Tools); the 11 Game Design skills are a separate, optional module - see [Skills Reference](skills.md) for the full per-skill breakdown.
 
 ### Subagents (8)
 
@@ -190,7 +190,7 @@ Example for a Unity project with Claude Code (full schema in [Configuration](con
 ```
 your-game-project/
 ├── .claude/                      # Agent config dir (varies by agent)
-│   ├── skills/                   # 19 skills
+│   ├── skills/                   # 31 skills (or fewer, per your Step 3 selection)
 │   └── agents/                   # 8 subagents (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git) - written by /unikit
@@ -199,14 +199,17 @@ your-game-project/
 │   ├── RULES.md                  # Project-specific rules - managed by /unikit-rules
 │   ├── ROADMAP.md                # Strategic roadmap - managed by /unikit-roadmap
 │   ├── TODO.md                   # Task checklist - managed by /unikit-todo
-│   ├── memory/                   # Dynamic memory (populated from the rules registry)
+│   ├── memory/                   # Dynamic memory (populated from the rules registry), per module
 │   │   ├── RULES_INDEX.md        # Auto-generated rule index
-│   │   ├── core/                 # Always-loaded rules
-│   │   └── stack/                # On-demand rules (+ references/)
-│   ├── plans/                    # Feature plans - managed by /unikit-plan
-│   ├── patches/                  # Fix patches - created by /unikit-fix
+│   │   ├── code/                 # core/ (always-loaded) + stack/ (on-demand, + references/)
+│   │   └── gamedesign/           # core/ (domain knowledge) + library/ (studio slot) - only if the gd-* skills are installed
+│   ├── code/                     # Dev-pipeline workspace
+│   │   ├── plans/                # Feature plans - managed by /unikit-plan
+│   │   ├── patches/               # Fix patches - created by /unikit-fix
+│   │   └── researches/           # Discovery output - created by /unikit-explore
+│   ├── gamedesign/                # GDD workspace (GAME.md, GD-IDS.yaml, systems/, flows/, ...) - created on first /unikit-gd-spec use
 │   ├── skill-context/            # Skill overrides - /unikit-evolve, /unikit-skills-context
-│   └── evolutions/               # Evolution logs - /unikit-evolve
+│   └── evolutions/                # Evolution logs - /unikit-evolve
 ├── AGENTS.md                     # Project structure map - generated by /unikit
 ├── .mcp.json                     # MCP config (Claude Code)
 └── .unikit.json                  # UniKit AI installation config
