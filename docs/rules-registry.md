@@ -183,36 +183,53 @@ unikit-ai rules sync --replace --prune      # Mirror
 
 ## CLI Commands
 
-### `unikit-ai rules list [--json] [--engine <id>]`
+### `unikit-ai rules list [--json] [--engine <id>] [--module <module>]`
 
-List available rules from the registry catalog.
+List available rules from the registry catalog. With **no `--module`** the command
+defaults to **all registered modules**, rendered as separate blocks (`code` first,
+then `gamedesign`); `--module <id>` scopes the output to a single module.
 
 ```bash
-unikit-ai rules list                 # Human-readable
-unikit-ai rules list --json          # JSON for AI skills
-unikit-ai rules list --engine godot  # Override engine filter
+unikit-ai rules list                      # All modules as blocks (human)
+unikit-ai rules list --json               # flat-all JSON (each row carries `module`)
+unikit-ai rules list --module code --json # flat-single JSON (back-compat, no per-row `module`)
+unikit-ai rules list --engine godot       # Override engine filter
 ```
 
-### `unikit-ai rules show <id> [--references]`
+- **flat-all** (no `--module`): `{ engine, rules: [{ id, module, category, description, version }] }`
+- **flat-single** (with `--module`): `{ engine, module, rules: [{ id, category, description, version }] }`
 
-Preview a rule from the registry without installing it.
+Empty-catalog handling is per module: a module absent from the registry chain is
+skipped silently; an engine-partitioned module (`code`) whose engine is missing
+from the registry prints a warning and contributes an empty section — both stay
+**exit 0**. `exit 1` is reserved for a missing `.unikit.json`; `exit 2` fires only
+when *every* catalog in scope is unreachable; an unknown `--module` is `exit 3`.
+
+### `unikit-ai rules show <id> [--references] [--module <module>]`
+
+Preview a rule from the registry without installing it. The lookup is
+**module-agnostic** by default — the id is searched across every registered module;
+`--module <id>` restricts the search to one module.
 
 ```bash
-unikit-ai rules show dotween
+unikit-ai rules show dotween                       # searches all modules
+unikit-ai rules show balance --module gamedesign   # scope to one module
 unikit-ai rules show aspid-mvvm --references
 ```
 
-Rule IDs use canonical lowercase-hyphen form. The CLI matches IDs case-insensitively, so `CODE-STYLE` resolves to the same file as `code-style`.
+Rule IDs use canonical lowercase-hyphen form. The CLI matches IDs case-insensitively, so `CODE-STYLE` resolves to the same file as `code-style`. An id that resolves in **more than one** module is ambiguous and exits `3` (pass `--module` to disambiguate); an id found in none exits `1`.
 
-### `unikit-ai rules install [ids...] [--force]`
+### `unikit-ai rules install [defaults | ids...] [--force]`
 
-Install rules from the registry. The command is variadic with two contracts:
+Install rules from the registry. Three contracts:
 
-- **No arguments** - installs the whitelisted core rule set (used internally by `/unikit` Step 9.2). Fetches the manifest once, writes each missing core rule to `.unikit/memory/core/`, regenerates `RULES_INDEX.md`.
-- **With one or more IDs** - installs every listed ID in a single pass, prints an aggregated report with per-rule `✓ installed` / `↻ already installed` / `✗ failed` lines followed by a summary.
+- **No arguments** - prints command help and exits 0; installs nothing.
+- **`defaults`** - bootstraps every module whose **skills are installed** (used internally by `/unikit` Step 9.2). The `code` module installs its always-tagged (core) rules; the `gamedesign` module installs its entire catalog (core + library) when its skills are present. Modules absent from the registry are skipped gracefully; the manifest is fetched once per module and `RULES_INDEX.md` is regenerated. `defaults` cannot be combined with ids (exit 3).
+- **With one or more IDs** - installs every listed ID in a single pass (the `code` module by default, `--module` to scope), prints an aggregated report with per-rule `✓ installed` / `↻ already installed` / `✗ failed` lines followed by a summary.
 
 ```bash
-unikit-ai rules install                            # Core whitelist bootstrap
+unikit-ai rules install                            # Print help (installs nothing)
+unikit-ai rules install defaults                   # Bootstrap rules for every installed module
 unikit-ai rules install urp dotween unitask        # Variadic install
 unikit-ai rules install code-style --force         # Force re-fetch an already-installed rule
 ```
@@ -398,10 +415,10 @@ scripts/
 │   │   ├── v1/                          # unitask v1.0.0 baseline
 │   │   └── v2/                          # unitask v2.0.0 upgraded (bumped hash + sentinel)
 │   └── corrupted-manifest/              # Invalid JSON → exit 5 on `rules registry set`
-├── test-rules-list.sh                   # `rules list` - exit codes, --json shape, --engine override
-├── test-rules-show.sh                   # `rules show` - id normalization, --references expansion
+├── test-rules-list.sh                   # `rules list` - all-modules blocks, flat-all/flat-single JSON, exit codes, --engine override
+├── test-rules-show.sh                   # `rules show` - module-agnostic lookup, id normalization, --references expansion
 ├── test-rules-status.sh                 # `rules status` - populated state, registryKind, --check-updates guard
-├── test-rules-install.sh                # `rules install` - no-args bootstrap, variadic, --force, drift recovery
+├── test-rules-install.sh                # `rules install` - bare help, defaults bootstrap, variadic, --force, drift recovery
 ├── test-rules-sync.sh                   # `rules sync` - 4 modes × 4 states + 4 regression guards
 ├── test-rules-registry.sh               # `rules registry` - show/set/reset, no-auto-sync guards, origin fold
 ├── test-rules-registry-init.sh          # `rules registry init` - scaffold smoke tests
@@ -460,6 +477,10 @@ bash scripts/test-exit-codes.sh           # Matrix guard (reads the other files)
 - **Phase 2 downgrade event (`test-rules-sync.sh`)**: `sync --replace` against a registry with a LOWER version than state emits the `phase2:downgrade` log line so accidental rollbacks never happen silently.
 - **createRegistry origin fold (`test-rules-registry.sh`)**: `OFFICIAL_REGISTRY_URL` as a literal collapses `primary`/`official` into one `HybridRegistry` instance so `getResolvedOrigin()` returns `'official'` instead of misstamping every installed rule with `origin: 'primary'`.
 - **Exit code matrix (`test-exit-codes.sh`)**: walks the per-command tests and asserts every documented exit code (0, 1, 3, 5, 6, 7 - plus exemptions for 2 and 4) has at least one assertion. Cross-checks the `EXIT` enum in `src/cli/commands/rules.ts` against the contract table above.
+
+### `UNIKIT_OFFICIAL_REGISTRY_URL` (dev/test-only)
+
+`createRegistry` (`src/core/registry/index.ts`) reads this env var to override the official registry level's fetch **transport** (git/fs/api dispatch), leaving `OFFICIAL_REGISTRY_URL` itself — and everything keyed on it (resolve/reset/display) — untouched. It exists so per-id `gamedesign` backfill scenarios can point the official level at an empty local directory (no `manifest.json`) and resolve deterministically from bundled, without depending on the live official registry's current content. Several fixed scenarios in `test-rules-install.sh`, `test-rules-status.sh`, `test-rules-show.sh`, and `test-rules-list.sh` set it; `test-rules-registry.sh` Scenario 20 is the regression guard. Not to be confused with `UNIKIT_RULES_REPO_URL`/`UNIKIT_RULES_REPO_BRANCH`, which control the bundled snapshot clone in `scripts/download-rules.sh`, not the app.
 
 ---
 

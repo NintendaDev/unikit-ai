@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "mmorpg",
+  "name": "MMORPG",
+  "aliases": ["mmo", "massively-multiplayer", "online-rpg"],
+  "summary": "Массовые многопользовательские RPG с серверной/мировой архитектурой (shard/instance/persistence), экономикой faucets&sinks (урок UO), эндгейм-лупом, гильдиями и монетизацией (WoW, EVE Online).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["multiplayer", "social", "economy", "progression", "liveops", "monetization-ethics"],
+  "seed_systems": [
+    { "slug": "world-architecture", "category": "Technical", "tier": "MVP", "why": "shard/instance/persistence — фундамент мира и нагрузки" },
+    { "slug": "economy-sim", "category": "Economy", "tier": "MVP", "why": "faucets&sinks по всему миру — урок UO против инфляции" },
+    { "slug": "endgame", "category": "Progression", "tier": "Alpha", "why": "эндгейм-луп (рейды/ilvl) — удержание после кэпа уровня" },
+    { "slug": "guilds", "category": "Social", "tier": "Alpha", "why": "гильдии и ранги — социальный клей и удержание" },
+    { "slug": "monetization", "category": "Meta", "tier": "Beta", "why": "модель монетизации поверх живого мира" }
+  ],
+  "seed_content_types": [
+    { "slug": "zone", "belongs_to": "SYS-world-architecture", "scale": "curated", "why": "зоны/инстансы с lockout и привязкой к архитектуре мира" },
+    { "slug": "recipe", "belongs_to": "SYS-economy-sim", "scale": "bulk", "why": "рецепты крафта — массовый драйвер sink/faucet экономики" }
+  ],
+  "seed_entities": [
+    { "slug": "server-shard", "why": "сервер/shard — единица мировой архитектуры и нагрузки" },
+    { "slug": "instance", "why": "зона/инстанс + lockout — изоляция и pacing контента" },
+    { "slug": "raid", "why": "рейд — ядро эндгейм-лупа" },
+    { "slug": "currency", "why": "валюта с faucet/sink — узел экономической симуляции" },
+    { "slug": "resource-node", "why": "ресурсный узел — faucet материалов мира" },
+    { "slug": "gear-ilvl", "why": "снаряжение с ilvl — мерило прогрессии эндгейма" },
+    { "slug": "guild", "why": "гильдия + ранги — социальная структура" },
+    { "slug": "auction", "why": "аукцион — рынок и крупный sink/faucet" }
+  ],
+  "seed_resources": [
+    { "slug": "gold", "kind": "soft", "why": "мировая мягкая валюта — баланс faucet/sink против инфляции" },
+    { "slug": "crafting-resource", "kind": "soft", "why": "ресурс крафта из nodes — faucet материального цикла" }
+  ],
+  "critical_sections": ["multiplayer.WorldArchitecture", "economy.FaucetsAndSinks", "progression.EndgameLoop", "social.GuildSystem"],
+  "review_emphasis": ["faucets&sinks замкнуты по всему миру, без инфляции в стиле провала UO", "серверная/мировая архитектура (shard/instance/persistence) держит нагрузку и согласованность", "эндгейм-луп и гильдии дают удержание после уровневого кэпа"],
+  "platform_default": "pc"
+}

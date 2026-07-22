@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "action-rpg",
+  "name": "Action-RPG",
+  "aliases": ["arpg", "looter", "diablo-like", "hack-and-slash"],
+  "summary": "Экшен-RPG с лутом как ядром: 5-этапный pipeline дропа, пул аффиксов, reward-pacing (pity/sampling/smart-loot) и билд через дерево навыков (Diablo).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["economy", "progression", "balance", "core-loops", "player-motivation"],
+  "seed_systems": [
+    { "slug": "itemization", "category": "Economy", "tier": "MVP", "why": "лут-таблицы и аффиксы — ядро лупа, 5-этапный pipeline дропа" },
+    { "slug": "reward-pacing", "category": "Economy", "tier": "MVP", "why": "pity/sampling/smart-loot — управление кривой награды" },
+    { "slug": "build", "category": "Progression", "tier": "VS", "why": "дерево навыков и билд, потребляющий лут" },
+    { "slug": "combat", "category": "Gameplay", "tier": "VS", "why": "hack-and-slash бой — генератор сессий и спроса на лут" }
+  ],
+  "seed_content_types": [
+    { "slug": "item", "belongs_to": "SYS-itemization", "scale": "bulk", "why": "предметы по blueprint+аффиксы — массовый генерируемый контент" },
+    { "slug": "loot-table", "belongs_to": "SYS-itemization", "scale": "bulk", "why": "взвешенные лут-таблицы с null-веткой, §D = drop-pipeline" }
+  ],
+  "seed_entities": [
+    { "slug": "loot-table", "why": "взвешенная таблица дропа с null-веткой" },
+    { "slug": "item-blueprint", "why": "чертёж предмета — базовый тип под аффиксы" },
+    { "slug": "affix-pool", "why": "пул аффиксов с весами и брекетами" },
+    { "slug": "rarity", "why": "редкость + брекеты, гейтящие силу предмета" },
+    { "slug": "pity-counter", "why": "счётчик pity, страхующий от засух дропа" },
+    { "slug": "skill-tree-node", "why": "узел дерева навыков — атом билда" }
+  ],
+  "seed_resources": [
+    { "slug": "gold", "kind": "soft", "why": "мягкая валюта на крафт и торговлю предметами" },
+    { "slug": "crafting-mat", "kind": "soft", "why": "материалы крафта — sink лута и аффиксов" }
+  ],
+  "critical_sections": ["economy.LootTables", "economy.AffixPool", "economy.RewardPacing", "progression.BuildSkillTree"],
+  "review_emphasis": ["5-этапный pipeline дропа целостен, включая null-ветку лут-таблиц", "reward-pacing (pity/sampling/smart-loot) не создаёт ни засух, ни инфляции лута", "билд через дерево навыков имеет осмысленный sink для аффиксов и редкостей"],
+  "platform_default": "pc"
+}

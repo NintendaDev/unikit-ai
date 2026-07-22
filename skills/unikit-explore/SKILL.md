@@ -1,14 +1,16 @@
 ---
 name: unikit-explore
 description: >-
-  Enter explore mode - a thinking partner for exploring ideas, investigating problems,
-  and clarifying requirements in {{engine_name}} projects. Use when the user wants to think through
-  something before implementing, investigate architecture, compare approaches, analyze
-  systems, research patterns, or understand existing code. Activate when user says
-  "explore", "investigate", "research", "let's think about", "compare options",
-  "analyze system", "how does X work", or wants to deeply understand something before coding.
-  Also use when discussing {{engine_name}} architecture decisions, Zenject bindings, game system design,
-  or any topic requiring deep analysis without immediate implementation.
+  Enter explore mode for technical work — a thinking partner for {{engine_name}} code,
+  architecture, and implementation decisions before you write any code. Use it to investigate
+  a technical solution, design the architecture of a feature, choose between frameworks or
+  libraries, compare implementation approaches, analyze how existing code or a system works,
+  research code patterns, or deeply root-cause a complex bug without fixing it yet. Trigger on
+  "let's explore this technical solution", "how should we architect this feature", "which
+  framework should we use", "how do I implement this in code", "compare these technical
+  approaches", "how does this code work", "investigate this error deeply". Research and
+  analysis only — it never writes code. This is the CODE / engineering explorer — for
+  GAME-DESIGN, GDD, mechanics, or balance research (no code) use /unikit-gd-explore.
 argument-hint: "init | [topic, system name, or question]"
 allowed-tools:
   - Read
@@ -62,7 +64,7 @@ alternative.
 
 ## Artifact Ownership
 
-- Primary ownership: `.unikit/researches/` directory only
+- Primary ownership: `.unikit/code/researches/` directory only
 - All other context artifacts (`DESCRIPTION.md`, `ARCHITECTURE.md`, `ROADMAP.md`, plans, rules) are **read-only**
 - If a discovery should affect another artifact, capture it in research now and route follow-up to the owner skill later
 
@@ -79,6 +81,7 @@ but tag them mentally so that **Next Steps** contains concrete follow-up actions
 | Strategic direction / milestone | `/unikit-roadmap` |
 | Assumption invalidated | Relevant owner skill |
 | Bug / broken behavior found | `/unikit-fix` |
+| Game-design idea / GDD gap | `/unikit-gd-brainstorm`, `/unikit-gd-explore`, `/unikit-gd-spec`, or `/unikit-gd-system` |
 
 When writing the `## Next Steps` section of a research, use this table to generate specific
 follow-up suggestions instead of generic "update other files". Example:
@@ -175,9 +178,9 @@ Read ALL of these files in parallel before doing anything else:
 
 1. **`.unikit/DESCRIPTION.md`** — project description, tech stack, constraints
 2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules
-3. **Read `.unikit/memory/RULES_INDEX.md`**. Load rules:
+3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
-   - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
+   - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **`.unikit/skill-context/{{self_name}}/SKILL.md`** — project-specific skill overrides (if exists)
 
@@ -218,8 +221,9 @@ context bootstrap.
 ### Optional reads (check if relevant)
 
 - `.unikit/ROADMAP.md` — strategic milestones (if any). If ROADMAP.md contains a `## References` section with linked documents, and the exploration topic relates to a specific milestone — read the reference documents associated with that milestone (listed in the `Milestones` column of the References table). This provides the original requirements/design context behind the milestone without asking the user for additional input.
-- `.unikit/researches/` — prior researches (check for related topics)
-- `.unikit/plans/` — active feature plans (if any)
+- `.unikit/code/researches/` — prior researches (check for related topics)
+- `.unikit/code/plans/` — active feature plans (if any)
+- **Game-design grounding** (only if a design workspace exists) — check `.unikit/gamedesign/GD-IDS.yaml`. **Schema guard:** it MUST be `version: 2` — on a pre-v2 `version: 1` registry, skip design grounding and emit a loud `WARN [design] GD-IDS.yaml is version 1 (pre-v2 layout); design grounding skipped` rather than silently misreading the old layout. When valid, **load the shared READ contract** `.unikit/system/gamedesign/design-read.md` and apply it: its **read surfaces** (read the registry — system `doc_status`/`version`/`depends_on`, flow `mode`/`goals`/`depends_on`, content `scale`/`belongs_to`/`fields` — and follow each entry's `source` path to `.unikit/gamedesign/systems/*.md` / `.unikit/gamedesign/flows/*.md` / `.unikit/gamedesign/content-types/*.md`; the human-readable views are GAME.md's `## System Map [gen]` / `## Flow Map [gen]` / `## Content Map [gen]`), its **Flow-First Resolution** (*intent decides the door*), and its **one-way boundary**. **First-class flow input:** when the exploration topic names or implies a **flow** (a player-facing sequence, onboarding / progression / pacing, a `FLOW-<slug>` id), ground **first-class on that flow** — not merely as a reactive add-on to a system; a system-shaped topic grounds on the system; ambiguous → ask (per design-read). An empty `flows: []` (or no `flows` key yet) → skip the flow read silently, never an error. **First-class content input:** when the topic names or implies a **content type** (a catalog, "the item types", a `CT-<slug>` id), ground **first-class on that content type** via the content door of the design-read ladder — its `CT.fields` schema, `scale`, and `belongs_to`; an empty `content_types: []` (or no `content_types` key) → skip the content read silently, never an error. **One-way boundary: explore may *read* design for grounding; it never writes or edits design — that flows through the `/unikit-gd-*` skills.**
 
 ### Why this matters
 
@@ -228,10 +232,12 @@ Without this context you'll give generic {{engine_name}} advice instead of advic
 ### Input handling
 
 The argument after `/unikit-explore` can be:
-- **`init`** — a special command that rebuilds `RESEARCHES_INDEX.md` (see [Init: Rebuilding the Researches Index](#init-rebuilding-the-researches-index))
+- **`init`** — a special command that rebuilds `researches/INDEX.md` (see [Init: Rebuilding the Researches Index](#init-rebuilding-the-researches-index))
 - A vague idea: "object pooling system"
 - A specific problem: "the save system is getting unwieldy"
 - A system name: to explore its architecture
+- A flow or player sequence: "the first-session flow", "the onboarding", a `FLOW-<slug>` id — a **first-class flow input** that grounds on the dynamics axis (per the design-read Flow-First Resolution)
+- A content type or catalog: "the item types", "the loot catalog", a `CT-<slug>` id — a **first-class content input** that grounds on the catalog axis (per the design-read Flow-First Resolution)
 - A comparison: "UniTask vs coroutines for this"
 - A question: "how does the DI container handle scene transitions?"
 - Nothing: just enter explore mode
@@ -252,7 +258,7 @@ Remember this mode — it determines whether `RESEARCH_SOURCE.md` is generated w
 
 If the user mentions a plan or you detect one is relevant:
 
-1. Read the existing plan from `.unikit/plans/`
+1. Read the existing plan from `.unikit/code/plans/`
 2. Reference it naturally in conversation
 3. Offer to capture insights in a research when decisions are made
 
@@ -264,10 +270,10 @@ When the conversation crystallizes — insights have emerged, decisions were mad
 
 ### Research directory structure
 
-All researches live in `.unikit/researches/`. Each research gets its own folder:
+All researches live in `.unikit/code/researches/`. Each research gets its own folder:
 
 ```
-.unikit/researches/
+.unikit/code/researches/
 ├── 2026-03-09_customers-pool-system/
 │   ├── RESEARCH_RESULT.md           # Full research with all diagrams and descriptions
 │   ├── RESEARCH_BRIEF.md            # Structured brief for implementation agents
@@ -292,7 +298,7 @@ All researches live in `.unikit/researches/`. Each research gets its own folder:
 Ask:
 
 ```
-Save this research to .unikit/researches/?
+Save this research to .unikit/code/researches/?
 
 Research name: <generated-folder-name>
 
@@ -302,7 +308,7 @@ Options:
 ```
 
 Based on choice:
-- Yes → save research to `.unikit/researches/<folder-name>/`, update `RESEARCHES_INDEX.md`
+- Yes → save research to `.unikit/code/researches/<folder-name>/`, update `researches/INDEX.md`
 - No → skip saving → **STOP**
 
 If the user agrees:
@@ -314,7 +320,7 @@ If the user agrees:
 
 2. Create the research directory:
    ```
-   mkdir -p .unikit/researches/<generated-folder-name>
+   mkdir -p .unikit/code/researches/<generated-folder-name>
    ```
 
 3. Write `RESEARCH_RESULT.md` — the complete research with ALL diagrams, detailed descriptions, analysis, comparisons, and everything that was discussed and presented to the user during the exploration:
@@ -391,7 +397,7 @@ The `RESEARCH_RESULT.md` should be a comprehensive document that anyone can read
    a. Read the template from `{{skills_dir}}/{{self_name}}/references/explore-brief-template.md`
    b. Read the filling rules from `{{skills_dir}}/{{self_name}}/references/explore-brief-prompt.md`
    c. Fill the template using the research findings from `RESEARCH_RESULT.md`, following the filling rules
-   d. Write the result to `.unikit/researches/<folder-name>/RESEARCH_BRIEF.md`
+   d. Write the result to `.unikit/code/researches/<folder-name>/RESEARCH_BRIEF.md`
 
    **Language Awareness for RESEARCH_BRIEF.md**: The `RESEARCH_BRIEF.md` follows the same language rules as other artifacts. When the configured language is not English, translate ALL section headings and ALL prose/comment content into the target language. Only code identifiers, code blocks, file paths, and table data (paths, types) stay in English.
 
@@ -435,9 +441,9 @@ If the exploration was **prompt-based** (see [Exploration mode detection](#explo
 
 ### Step 4: Update the Researches Index
 
-After saving a research, update `.unikit/RESEARCHES_INDEX.md` so other skills (like `/unikit-plan`) can discover it.
+After saving a research, update `.unikit/code/researches/INDEX.md` so other skills (like `/unikit-plan`) can discover it.
 
-1. Read `.unikit/RESEARCHES_INDEX.md`
+1. Read `.unikit/code/researches/INDEX.md`
    - If the file doesn't exist, create it with the header:
      ```markdown
      # Researches Index
@@ -484,20 +490,20 @@ After saving a research, update `.unikit/RESEARCHES_INDEX.md` so other skills (l
 - **Keep RESEARCH_RESULT.md complete** — include everything: every diagram, every analysis, every comparison that was presented to the user
 - **Generate RESEARCH_BRIEF.md** — always create the structured brief alongside RESEARCH_RESULT.md
 - **Generate RESEARCH_SOURCE.md** — for prompt-based explorations only (see [RESEARCH_SOURCE.md for prompt-based explorations](#research_sourcemd-for-prompt-based-explorations))
-- **Always update RESEARCHES_INDEX.md** — this is how other skills discover researches
+- **Always update researches/INDEX.md** — this is how other skills discover researches
 - The user may edit the suggested name before you save
 
 ---
 
 ## Init: Rebuilding the Researches Index
 
-When the argument is exactly `init`, synchronize `.unikit/RESEARCHES_INDEX.md` with the actual contents of `.unikit/researches/`. This is a maintenance command — no exploration, no questions, just sync and report.
+When the argument is exactly `init`, synchronize `.unikit/code/researches/INDEX.md` with the actual contents of `.unikit/code/researches/`. This is a maintenance command — no exploration, no questions, just sync and report.
 
 ### Algorithm
 
-1. **Scan researches directory** — list all subdirectories in `.unikit/researches/`. Each subdirectory is a research (e.g., `2026-03-09_customers-pool-design`).
+1. **Scan researches directory** — list all subdirectories in `.unikit/code/researches/`. Each subdirectory is a research (e.g., `2026-03-09_customers-pool-design`).
 
-2. **Read existing index** — if `.unikit/RESEARCHES_INDEX.md` exists, parse it to extract the list of currently indexed research paths (from the `**Path**` field of each entry).
+2. **Read existing index** — if `.unikit/code/researches/INDEX.md` exists, parse it to extract the list of currently indexed research paths (from the `**Path**` field of each entry).
 
 3. **Determine changes**:
    - **Keep**: entries already in the index whose research directory still exists on disk — do NOT modify these entries (preserve their date, status, summary, title exactly as-is)
@@ -510,7 +516,7 @@ When the argument is exactly `init`, synchronize `.unikit/RESEARCHES_INDEX.md` w
    - Get `Updated` from the `Updated:` line in `RESEARCH_RESULT.md`. If missing (legacy research without `Updated`), use the same value as `Date`
    - If `RESEARCH_RESULT.md` doesn't exist, skip this research and warn: "⚠️ Skipped `<dir>` — no RESEARCH_RESULT.md found"
 
-5. **Write the updated index** — rebuild `.unikit/RESEARCHES_INDEX.md`:
+5. **Write the updated index** — rebuild `.unikit/code/researches/INDEX.md`:
    - Header is always:
      ```markdown
      # Researches Index
@@ -522,7 +528,7 @@ When the argument is exactly `init`, synchronize `.unikit/RESEARCHES_INDEX.md` w
 
 6. **Report** — print a summary of what changed:
    ```
-   RESEARCHES_INDEX.md synchronized:
+   researches/INDEX.md synchronized:
    - Kept: N entries
    - Added: N entries (list names)
    - Removed: N entries (list names)
@@ -530,7 +536,7 @@ When the argument is exactly `init`, synchronize `.unikit/RESEARCHES_INDEX.md` w
 
 ### Edge cases
 
-- If `.unikit/researches/` doesn't exist or is empty, create an index with just the header and report "No researches found"
+- If `.unikit/code/researches/` doesn't exist or is empty, create an index with just the header and report "No researches found"
 - If the index doesn't exist yet, treat all found researches as new additions
 - If a research directory has no `RESEARCH_RESULT.md`, skip it and warn: "⚠️ Skipped `<dir>` — no RESEARCH_RESULT.md found"
 
@@ -628,7 +634,7 @@ You: Context matters here. Let me check what you're already using...
 User: /unikit-explore save-load-system
       The serialization is more complex than expected
 
-You: [reads plan from .unikit/plans/]
+You: [reads plan from .unikit/code/plans/]
 
      You're on task 4: "Implement save serialization"
 
@@ -646,7 +652,7 @@ You: [reads plan from .unikit/plans/]
 There's no required ending. Discovery might:
 
 - **Flow into action**: "Ready to plan? Run `/unikit-plan`"
-- **Result in saved research**: "Saved to `.unikit/researches/2026-03-10_inventory-decoupling/`"
+- **Result in saved research**: "Saved to `.unikit/code/researches/2026-03-10_inventory-decoupling/`"
 - **Just provide clarity**: User has what they need, moves on
 - **Continue later**: "We can pick this up anytime"
 

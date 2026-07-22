@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "shooter",
+  "name": "Shooter",
+  "aliases": ["fps", "tps", "first-person-shooter", "third-person-shooter"],
+  "summary": "FPS/TPS на ощущении стрельбы: gunplay-feel, баланс оружия через TTK, map-flow (sightlines/lanes/cover), netcode с hit-reg/lag-comp и spawn-логика (Call of Duty, Gears of War).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["balance", "core-loops", "level-design", "multiplayer", "progression"],
+  "seed_systems": [
+    { "slug": "gunplay", "category": "Gameplay", "tier": "MVP", "why": "ощущение стрельбы — ядро жанра" },
+    { "slug": "combat", "category": "Gameplay", "tier": "MVP", "why": "TTK-баланс оружия — субстрат честности боя" },
+    { "slug": "map-flow", "category": "Content", "tier": "VS", "why": "sightlines/lanes/cover — поток карты" },
+    { "slug": "netcode", "category": "Technical", "tier": "VS", "why": "hit-reg + lag-comp — честность онлайна (P1)" },
+    { "slug": "spawn-logic", "category": "Gameplay", "tier": "Alpha", "why": "spawn-логика — анти-фрустрация и темп" }
+  ],
+  "seed_content_types": [
+    { "slug": "weapon", "belongs_to": "SYS-combat", "scale": "curated", "why": "пер-оружейная схема dmg/rate/TTK/recoil/spread/falloff/mag/ADS" },
+    { "slug": "map", "belongs_to": "SYS-map-flow", "scale": "bulk", "why": "карты — объёмный контент с sightlines/lanes/cover" }
+  ],
+  "seed_entities": [
+    { "slug": "loadout", "why": "набор снаряжения игрока (оружие + перки)" },
+    { "slug": "hitbox", "why": "хитбоксы с приоритетом попаданий (head/body/limb)" }
+  ],
+  "seed_resources": [
+    { "slug": "ammo", "kind": "event", "why": "патроны — расходник, пейсинг перестрелки" }
+  ],
+  "critical_sections": ["balance.TTKTuning", "core-loops.GunplayFeel", "level-design.MapFlow"],
+  "review_emphasis": ["TTK сбалансирован между оружием — нет доминирующего ствола", "map-flow читается: sightlines/lanes/cover дают честные дуэли", "netcode (hit-reg/lag-comp) и spawn-логика не плодят фрустрацию"],
+  "platform_default": "pc"
+}

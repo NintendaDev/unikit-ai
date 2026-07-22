@@ -2,16 +2,25 @@
 # Smoke tests: validates `unikit-ai rules show <id>` against fake registry
 # fixtures.
 #
-# Scope:
-#   - exit code matrix (0 / 1) across present/absent rules and missing config
+# Scope (post multi-module rework — `rules show` is module-agnostic):
+#   - exit code matrix (0 / 1 / 3) across present/absent rules and missing config
+#   - module-agnostic lookup: a bare id is searched across EVERY module, so a
+#     gamedesign rule resolves without --module; --module narrows the search
+#   - cross-module id collision → exit 3 (pass --module to disambiguate)
 #   - human output shows id, category, version, Scope, Load when
 #   - stack rule with references header prints the References: line
 #   - case-insensitive lookup (CODE-STYLE → code-style) via normalizeRuleId
 #   - --references flag expands and dumps referenced doc files
 #
+# exit 2 (every catalog unreachable) is NOT exercised here — same reason as
+# test-rules-list.sh: the bundled snapshot always backfills both modules, so a
+# refused-port primary still resolves (exit 0). The deterministic exit-2 path is
+# `rules registry status` (single source, no chain), covered by Row 4 of
+# scripts/test-rules-registry-status.sh.
+#
 # Note: the CLI intentionally does NOT register a `--engine` option on
-# `rules show` (see src/cli/index.ts:82-86). The original plan listed it;
-# the real surface is `show <id>` + `--references` only.
+# `rules show` (see src/cli/index.ts). The original plan listed it;
+# the real surface is `show <id>` + `--references` + `--module` only.
 #
 # Usage: ./scripts/test-rules-show.sh
 
@@ -109,9 +118,11 @@ assert_stdout_contains "$TMPDIR/s4.log" "code-style (core)" \
     "legacy UPPER_CASE id normalizes to lowercase"
 
 # ─────────────────────────────────────────────
-# Scenario 5: unknown rule id → exit 1 NOT_FOUND
+# Scenario 5: unknown rule id (not found in ANY module) → exit 1 NOT_FOUND
 # ─────────────────────────────────────────────
-echo -e "\n${BOLD}Scenario 5: unknown rule id (exit 1)${NC}"
+# Module-agnostic show searches every module; when an id resolves in none (while
+# at least one catalog is reachable) the result is exit 1, scoped to "any module".
+echo -e "\n${BOLD}Scenario 5: unknown rule id, not found anywhere (exit 1)${NC}"
 
 S5_DIR="$TMPDIR/s5-unknown"
 mkdir -p "$S5_DIR"
@@ -120,8 +131,8 @@ use_fake_registry "$S5_DIR" unity minimal-valid
 assert_cmd_exit 1 "rules show does-not-exist exits 1" "$TMPDIR/s5.log" -- \
     env -C "$S5_DIR" node "$CLI" rules show does-not-exist
 
-assert_stdout_contains "$TMPDIR/s5.log" "not found in registry" \
-    "error mentions missing rule"
+assert_stdout_contains "$TMPDIR/s5.log" "not found in registry for any module" \
+    "error reports the id is missing across all modules"
 
 # ─────────────────────────────────────────────
 # Scenario 6: --references flag expands reference files
@@ -156,6 +167,82 @@ assert_stdout_contains "$TMPDIR/s7.log" "unitask (stack) v2.0.0" \
     "v2 header shows version 2.0.0"
 assert_stdout_contains "$TMPDIR/s7.log" "sentinel: v2" \
     "v2 body content reached show output"
+
+# ─────────────────────────────────────────────
+# Scenario 8: --module gamedesign shows a backfilled canonical rule
+# ─────────────────────────────────────────────
+# `rules show` accepts --module (but not --engine). minimal-valid ships no
+# gamedesign tier, so `balance` resolves via the bundled backfill (#R2a).
+echo -e "\n${BOLD}Scenario 8: --module gamedesign show (backfill)${NC}"
+
+S8_DIR="$TMPDIR/s8-gd-show"
+mkdir -p "$S8_DIR"
+use_fake_registry "$S8_DIR" unity minimal-valid
+
+# Isolate the backfill from the live official registry (schema:2, now also
+# carrying gamedesign) — without this, `balance` resolves via official
+# instead of bundled, and the assertion below is only stable while their
+# versions happen to match.
+S8_DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/dead-official-s8")"
+mkdir -p "$TMPDIR/dead-official-s8"
+
+assert_cmd_exit 0 "rules show --module gamedesign balance exits 0" "$TMPDIR/s8.log" -- \
+    env -C "$S8_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S8_DEAD_OFFICIAL" node "$CLI" rules show --module gamedesign balance
+
+assert_stdout_contains "$TMPDIR/s8.log" "balance (core) v1.0.0" \
+    "gamedesign core rule header shows id/category/version"
+assert_stdout_contains "$TMPDIR/s8.log" "Load when:" \
+    "gamedesign rule header prints Load when label"
+
+# ─────────────────────────────────────────────
+# Scenario 9: module-agnostic lookup finds a gamedesign rule WITHOUT --module
+# ─────────────────────────────────────────────
+# `rules show` now searches every registered module. minimal-valid carries no
+# `balance` in its code tier, so a bare `rules show balance` resolves the
+# gamedesign `balance` (backfilled from the bundled snapshot) — no --module
+# needed. (Contrast Scenario 8, which scoped explicitly with --module.)
+echo -e "\n${BOLD}Scenario 9: module-agnostic lookup (gamedesign, no --module)${NC}"
+
+S9_DIR="$TMPDIR/s9-agnostic"
+mkdir -p "$S9_DIR"
+use_fake_registry "$S9_DIR" unity minimal-valid
+
+assert_cmd_exit 0 "rules show balance (no --module) exits 0" "$TMPDIR/s9.log" -- \
+    env -C "$S9_DIR" node "$CLI" rules show balance
+
+assert_stdout_contains "$TMPDIR/s9.log" "balance (core) v1.0.0" \
+    "bare id resolves the gamedesign balance rule across modules"
+assert_stdout_contains "$TMPDIR/s9.log" "Load when:" \
+    "module-agnostic hit still prints the full rule header"
+
+# ─────────────────────────────────────────────
+# Scenario 10: cross-module id collision → exit 3, --module disambiguates
+# ─────────────────────────────────────────────
+# The `cross-module-collision` fixture ships a CODE rule literally named
+# `balance`, which collides with the bundled gamedesign `balance`. A bare
+# `rules show balance` therefore resolves in TWO modules at once → exit 3.
+# This is the only path that exercises the ambiguous-id guard (Task 6): by
+# default code and gamedesign ids are disjoint, so without this fixture the
+# collision branch would never be hit. Passing --module disambiguates → exit 0.
+echo -e "\n${BOLD}Scenario 10: cross-module id collision (exit 3)${NC}"
+
+S10_DIR="$TMPDIR/s10-collision"
+mkdir -p "$S10_DIR"
+use_fake_registry "$S10_DIR" unity cross-module-collision
+
+assert_cmd_exit 3 "rules show balance (collision) exits 3" "$TMPDIR/s10.log" -- \
+    env -C "$S10_DIR" node "$CLI" rules show balance
+
+assert_stdout_contains "$TMPDIR/s10.log" "found in multiple modules" \
+    "collision error reports the ambiguity"
+assert_stdout_contains "$TMPDIR/s10.log" "pass --module" \
+    "collision error tells the user to disambiguate with --module"
+
+assert_cmd_exit 0 "rules show balance --module code (disambiguated) exits 0" "$TMPDIR/s10b.log" -- \
+    env -C "$S10_DIR" node "$CLI" rules show balance --module code
+
+assert_stdout_contains "$TMPDIR/s10b.log" "balance (core) v9.9.9" \
+    "--module code resolves the fixture's colliding balance rule (v9.9.9)"
 
 # ─────────────────────────────────────────────
 # Summary

@@ -1,12 +1,15 @@
 ---
 name: unikit-verify
 description: >-
-  Verify completed implementation against the feature plan from .unikit/plans/.
-  Checks that all tasks were fully implemented, nothing was forgotten, code compiles,
-  tests pass, and {{engine_name}}-specific conventions are followed (per ENGINE_RULES.md).
-  Use after "/unikit-implement" completes, or when user says "verify", "check work",
-  "did we miss anything". Also trigger when reviewing a feature branch before merge
-  or PR creation.
+  Verify a completed implementation against the feature plan in .unikit/code/plans/.
+  Confirms every planned task was fully implemented and nothing was forgotten, the code
+  compiles, the tests pass, and {{engine_name}}-specific conventions are followed (per
+  ENGINE_RULES.md). Run this after /unikit-implement finishes, or whenever the user wants
+  to confirm the work is complete and correct against the plan, e.g. "verify", "verify
+  the implementation", "check the work", "did we miss anything", "did we implement
+  everything", "is the plan fully done", "make sure nothing was forgotten", "does it
+  build and pass tests". This checks plan completeness and build/test health — for
+  code-quality, bug, and security review use the review skill instead.
 argument-hint: "[--strict] [NNN-feature-name]"
 allowed-tools:
   - Read
@@ -98,6 +101,7 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   - read-only behavior for `unikit-commit`/`unikit-review`/`unikit-verify`,
   - normal vs strict context-gate thresholds.
 - If this contract conflicts with older examples in this file, follow the contract.
+- Also read `.unikit/system/gate-result-contract.md` — the canonical schema for the machine-readable `unikit-gate-result` block emitted in Step 4.4. If it is missing or unreadable, do not block: the Step 4.4 section is self-sufficient on the schema and degrades gracefully (see there).
 
 ### 0.1 Find Feature Plan
 
@@ -105,10 +109,10 @@ Search logic — same as `/unikit-implement` (unified plan detection):
 
 1. If `$ARGUMENTS` specifies a folder name (e.g. `2026-03-10_core-loop` or legacy `NNN-feature-name`) → use it
 2. Otherwise → auto-detect:
-   a. **Fast plan check** — if `.unikit/PLAN.md` exists, use it (flat fast-mode plan)
+   a. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan)
    b. **Git branch match** — if on `feature/*` branch, find folder ending with `_<feature-name>` (new format) or `*-<feature-name>` (legacy)
    c. **Latest by date** (fallback) — sort all folders lexicographically descending, pick first (YYYY-MM-DD gives chronological order; legacy `DDD-*` sorts before `2xxx-*`)
-3. If no plan found (no `.unikit/PLAN.md` and `.unikit/plans/` is empty or doesn't exist):
+3. If no plan found (no `.unikit/code/PLAN.md` and `.unikit/code/plans/` is empty or doesn't exist):
 
 ```
 No plan found. What should I verify?
@@ -124,19 +128,19 @@ Based on choice:
 - Last N commits → ask user for the number of commits via AskUserQuestion. Gather files via `git diff --name-only HEAD~N..HEAD`. Skip Step 1. Execute Steps 2-3 on collected files. Same standalone report header.
 - Cancel → **STOP**
 
-**If both `.unikit/PLAN.md` and a matching folder plan exist**, ask the user which one to verify.
+**If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to verify.
 
 Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Strict Mode section).
 
 ### 0.2 Read Plan & Context
 
-**If using `.unikit/PLAN.md`** (fast-mode plan):
-- Read **`.unikit/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
+**If using `.unikit/code/PLAN.md`** (fast-mode plan):
+- Read **`.unikit/code/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
 
-**If using a folder plan** (`.unikit/plans/<folder>/`):
+**If using a folder plan** (`.unikit/code/plans/<folder>/`):
 - Read **`TASKS.md`** — feature overview (`## Overview`), task checklist with phases and statuses
 - Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, files, DI bindings (if exists in plan folder)
 - If `TASKS.md` has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
@@ -149,8 +153,8 @@ Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can b
 **Read in parallel (rules + principles, for inline fix execution in Step 4.3):**
 1. `.unikit/system/dev-principles.md` — engine development principles
 2. `.unikit/RULES.md` — project overrides (highest priority)
-3. `.unikit/memory/RULES_INDEX.md` — index of core/stack rules
-4. For EACH row in the Core table where Required By = `all` or contains `unikit-verify` — read that file from `.unikit/memory/core/` using the Read tool.
+3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
+4. For EACH row in the Core table where Required By = `all` or contains `unikit-verify` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
 Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific issues.
 
@@ -391,7 +395,7 @@ Check whether the implementation introduced user-facing changes that should be r
 
 **a) Check plan's Docs policy:**
 
-Read the `## Settings` section from `TASKS.md` (or `.unikit/PLAN.md`):
+Read the `## Settings` section from `TASKS.md` (or `.unikit/code/PLAN.md`):
 - If `Docs: yes` — verify that documentation was actually updated during implementation (check `CHANGED_FILES` for `README.md`, `docs/*.md`, or `.unikit/docs-config.json`). If no doc files were modified: `WARN [docs] Docs policy was 'yes' but no documentation files were changed — run /unikit-docs`
 - If `Docs: no` or missing — check whether the implementation introduced new public APIs, new modules, changed configuration, or modified user-facing behavior. If yes: `WARN [docs] Implementation changed public API/behavior but Docs policy was no/unset — consider /unikit-docs`
 
@@ -407,6 +411,33 @@ If `README.md` and/or `docs/` exist:
 Include documentation findings in the verification report under a `### Documentation` section:
 - `✅ Documentation up to date` — docs policy satisfied or no doc-impacting changes
 - `⚠️ Documentation may need update` — with specific findings and suggestion to run `/unikit-docs`
+
+### 3.8 Design Acceptance Criteria (game-design module)
+
+**Only when the plan carries a `## Design` section** (added by `/unikit-plan` Step 4.5 when the project has a game-design workspace). If there is no `## Design` section, skip this check silently.
+
+Verify the implementation against the Acceptance Criteria **snapshotted in the plan** — not against the live `.unikit/gamedesign/` docs. The plan's `## Design` block pins the system `SYS-id`, the version, and the cited `AC-<id>`s; checking against the plan (not the current design) preserves the one-way boundary (verify reads the plan; design changes flow only through `/unikit-gd-*`) and validates against the exact version the plan was written for.
+
+For each cited `AC-<id>` (Given-When-Then):
+- Confirm the implementing code (from `CHANGED_FILES` / the Step 1 audit) satisfies the Then-clause under the Given/When conditions. Be concrete — cite `file:line`.
+- An `AC` marked **removed in vN** → confirm the old behavior was actually ripped out; a lingering old code path is a finding.
+- Unmet or partially-met `AC` → record it as an issue.
+
+Report findings under a `### Design Acceptance` section (see Step 4.1). The AC check itself is **read-only against the live design** — it validates the plan snapshot, never `.unikit/gamedesign/`. The **one** exception is the all-AC-met writeback in Step 3.9 below.
+
+### 3.9 `implemented` Writeback (game-design module — the lone code→design write)
+
+**Gate — only when 3.8 found _every_ cited `AC-<id>` met** for the plan's `SYS-id`@version (no unmet, no partial). On any unmet/partial AC, **do nothing here** — skip silently.
+
+This is the single sanctioned code→design write (`gd-principles` → One-Way Boundary; canonical in `references/CONTEXT-GATES-AND-OWNERSHIP.md`, which overrides this body). It is explicitly carved out of the read-only rules — Step 3.6, Step 3.8, and the global **Important Rules #1 and #5**. On all-AC-met, stamp the implemented marker on the **single** design surface:
+
+1. **`.unikit/gamedesign/GD-IDS.yaml`** — find the `systems` entry whose `id:` equals the cited `SYS-id` and **add-or-set** `implemented_version: <cited @version>` (add the key if the entry lacks it — authoring skills inline their entries and may not carry the template's commented field). Leave `doc_status` and every other field untouched.
+
+The `implemented` state is **read-only everywhere else**: GAME.md's `## System Map [gen]` renders it from this `implemented_version` field (display precedence over `doc_status`), so there is **no second surface** to write — design re-renders the map, code never touches it.
+
+**Locate-read only.** Opening `GD-IDS.yaml` here is **solely to locate the write target**; it is not a general live-design read and does not relax 3.8's snapshot-only discipline (the AC check still runs against the plan's `## Design` snapshot, never the live docs). `GD-IDS.yaml` is the **only** `.unikit/gamedesign/` file this skill may open, and only on all-AC-met.
+
+**Surface the write (no silent writes).** Confirm it in the `### Design Acceptance` report line (Step 4.1): on all-AC-met append `— stamped implemented_version: vN on <SYS-id>`. Never write silently.
 
 ---
 
@@ -443,6 +474,10 @@ Include documentation findings in the verification report under a `### Documenta
 
 ### Documentation
 - Documentation: ✅ up to date / ⚠️ may need update (run /unikit-docs)
+
+### Design Acceptance
+- Design AC: ✅ all cited AC met / ⚠️ N unmet (see issues) / ⏭️ no ## Design section
+- Writeback: ✅ stamped implemented_version: vN on <SYS-id> (all-AC-met) / — none (unmet/partial or no ## Design)
 
 ### No Issues
 - Engine-specific checks passed (per ENGINE_RULES.md)
@@ -482,6 +517,45 @@ For each fix iteration (Fix now / Fix critical only). Fixes are written by this 
 - For anti-patterns — fix
 - Update `TASKS.md` after fixes
 - After fixes — re-run checks on affected items
+
+### 4.4 Machine-Readable Gate Result
+
+> **Canonical template.** This section is the canonical shape of the `unikit-gate-result` block. The `unikit-review` "Machine-readable gate result" section mirrors it field-for-field — the only differences there are `"gate": "review"` and the projection source (review's Findings table instead of verify's task-audit + context gates). The graceful-degradation wording and the last-fence rule below are kept textually identical across the two skills so a single guard can lock both; if this wording changes, the review section must change in lockstep.
+
+After the human-readable report (Step 4.1) and overall status (Step 4.2) — and after any inline fixes from Step 4.3, so the block reflects the **final** state — append exactly one fenced `unikit-gate-result` JSON block. Use the schema loaded from `.unikit/system/gate-result-contract.md` in Step 0.0.
+
+**Last fence wins:** the `unikit-gate-result` block MUST be the LAST fenced block in this skill's output — orchestrators parse only the last one. Any earlier fence (the example below, quoted prior output) is illustrative and is not the gate result.
+
+**Projection (verify):** derive the fields from the verification report:
+
+- `"gate"`: always `"verify"`.
+- `"status"`:
+  - `fail` — at least one **blocker**: a non-skipped task at `⚠️ PARTIAL` or `❌ NOT FOUND`, a failed blocking quality check (compile error, failing test), a context-gate `ERROR` (architecture/rules clear violation), or — in strict mode, or whenever the plan carries a `## Design` section — an unmet/partial Design `AC`.
+  - `warn` — no blockers, but non-blocking findings remain: anti-pattern/TODO warnings (normal mode), docs/test gaps accepted as warnings, ambiguous context drift, or missing milestone linkage.
+  - `pass` — no blocking or warning findings.
+- `"blocking"`: `true` only when `status` is `fail` (the result should stop commit/merge).
+- `"blockers"`: include **only** blocking findings, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`verify-task-<id>`, `verify-gate-architecture`, `verify-gate-rules`, `verify-ac-<AC-id>`). `severity` is `error` for blockers (`warning` only when policy escalates a warning-class finding to blocking). Non-blocking notes stay in the human summary, never in `blockers`.
+- `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
+- `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
+
+```unikit-gate-result
+{
+  "schema_version": 1,
+  "gate": "verify",
+  "status": "pass",
+  "blocking": false,
+  "blockers": [],
+  "affected_files": [],
+  "suggested_next": {
+    "command": "/unikit-commit",
+    "reason": "Verification passed without blockers."
+  }
+}
+```
+
+The fenced block contains JSON only — no comments, trailing commas, or prose inside it.
+
+**Graceful degradation:** if `.unikit/system/gate-result-contract.md` is missing or unreadable, do not hard-fail — emit the block from the inline schema in this section; if even that is not possible, skip the block and append the single line `WARN [gate-result]: contract asset unavailable`.
 
 ---
 
@@ -541,6 +615,7 @@ Normal mode already checks all items below but tolerates partial results and war
 | Tests ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if test assemblies exist for affected modules |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
+| Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |
 
 Items that behave **the same** in both modes (always checked, always fail on violation):
 - Engine-specific checks (per ENGINE_RULES.md strict mode items)
@@ -553,11 +628,11 @@ Strict mode is recommended before merging to the base branch or creating a PR.
 
 ## Important Rules
 
-1. **Read-only by default** — verification only reads and analyzes; fixes only with explicit user consent
+1. **Read-only by default** — verification only reads and analyzes; fixes only with explicit user consent. **Sole automatic write:** the all-AC-met `implemented` writeback to the design layer (Step 3.9)
 2. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
 3. **Precise references** — always provide file:line for each finding
 4. **No false positives** — if unsure, mark as "⚠️ Verify manually"
-5. **Do not modify .unikit/ files** — only report drift and suggest updates
+5. **Do not modify .unikit/ files** — only report drift and suggest updates. **Single exception:** Step 3.9's all-AC-met writeback to `.unikit/gamedesign/GD-IDS.yaml` (`implemented_version`) — the lone sanctioned code→design write (a single surface; GAME.md's `## System Map [gen]` renders the `implemented` state read-only from it)
 6. **Do not touch engine read-only paths** — see ENGINE_RULES.md for the list of read-only directories; ignore them during checks
 7. **Agent-based delegation** — use `Agent(subagent_type: Explore, model: sonnet, ...)` for read-only investigation. Fixes are applied INLINE by this skill using rules loaded in Step 0.2 Bootstrap. Use `develop-agent` for fixes ONLY when they span many independent files or require extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)`. If Agent tool is unavailable, fall back to inline work for both exploration (Glob/Grep/Read) and fixes (direct Read/Edit/Write/Bash with loaded rules).
 

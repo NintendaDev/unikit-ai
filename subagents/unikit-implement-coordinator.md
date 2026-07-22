@@ -58,7 +58,7 @@ At the very start of your first turn, before doing anything else:
 ## Input
 
 The user may provide:
-- `@<path>` — explicit plan folder (e.g. `@.unikit/plans/2026-03-10_core-loop`). Highest priority.
+- `@<path>` — explicit plan folder (e.g. `@.unikit/code/plans/2026-03-10_core-loop`). Highest priority.
 - A description of what to implement — used only if a plan exists that matches.
 - Nothing — auto-detect the latest plan.
 
@@ -66,7 +66,7 @@ The user may provide:
 
 1. Locate the active plan:
    a. If the user provided an explicit `@<path>`, use that folder.
-   b. Scan `.unikit/plans/` for the most recent feature folder (by date prefix or modification time).
+   b. Scan `.unikit/code/plans/` for the most recent feature folder (by date prefix or modification time).
    c. If no plan found — stop and report.
 2. Read `TASKS.md` from the plan folder. Parse all phases and tasks:
    - Phase grouping (Phase 1, Phase 2, ...)
@@ -164,7 +164,7 @@ When only one phase is ready, execute it directly within the coordinator (no wor
 For each task in the phase, sequentially:
 1. Mark `[~]` in TASKS.md
 2. Implement using direct tool calls (Read, Write, Edit, Glob, Grep, Bash)
-3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
+3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
 4. Run verification pass scoped to changed files
 5. If material issues found, fix and re-verify (max 2 rounds)
 6. Mark `[x]` or `[!]` in TASKS.md
@@ -186,11 +186,11 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
 ### Example dispatch (Phase 1 and Phase 4 are independent)
 
 ```
-Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/plans/2026-03-10_core-loop.
+Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 1.1 (description), 1.2 (description), ...
   commit_policy: skip. Return list of modified files."
 
-Agent(unikit-implement-worker): "Execute Phase 4 from plan at .unikit/plans/2026-03-10_core-loop.
+Agent(unikit-implement-worker): "Execute Phase 4 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 4.1 (description), 4.2 (description), ...
   commit_policy: skip. Return list of modified files."
 ```

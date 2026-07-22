@@ -1,6 +1,6 @@
 {
   "name": "unikit-ai",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "CLI tool for installing AI agent skills and knowledge base rules for game development projects",
   "main": "dist/cli/index.js",
@@ -19,7 +19,7 @@
     "download:rules": "bash scripts/download-rules.sh",
     "prepublishOnly": "npm run clean && npm run download:rules && npm run build",
     "link": "npm run build && npm link",
-    "generate:contract": "npm run build && node dist/core/cli-contract-gen.js"
+    "generate:contract": "npm run build && npx tsx scripts/generate-cli-contract.ts"
   },
   "keywords": [
     "unity",
@@ -29,10 +29,10 @@
     "claude-code",
     "cursor",
     "codex",
-    "gemini",
     "opencode",
     "qwen",
     "qwen-code",
+    "antigravity",
     "ai",
     "skills",
     "automation",
@@ -63,13 +63,18 @@
   ],
   "knip": {
     "ignoreExportsUsedInFile": true,
+    "ignoreBinaries": [
+      "tsx"
+    ],
     "exclude": [
       "types"
     ],
     "ignore": [
       "examples/**",
       "scripts/generate-cli-contract.ts",
+      "scripts/genres-validate.mjs",
       "scripts/test-agent-filter.mjs",
+      "scripts/test-config-tolerance.mjs",
       "scripts/validate-agent-markers.mjs",
       "src/core/cli-contract.ts"
     ]

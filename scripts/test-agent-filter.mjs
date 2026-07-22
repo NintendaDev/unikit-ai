@@ -115,7 +115,7 @@ function assertThrows(name, fn, messageFragment) {
 
     assertNotContains('multi-exclude/codex-cut', applyAgentFilter(src, 'codex'), 'content');
     assertNotContains('multi-exclude/cursor-cut', applyAgentFilter(src, 'cursor'), 'content');
-    for (const agent of ['claude', 'gemini']) {
+    for (const agent of ['claude', 'opencode']) {
         assertContains(`multi-exclude/${agent}-kept`, applyAgentFilter(src, agent), 'content');
     }
 }

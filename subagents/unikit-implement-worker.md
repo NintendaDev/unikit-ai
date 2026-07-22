@@ -49,9 +49,9 @@ IMPORTANT: You are a subagent — you cannot spawn child agents. All quality che
 Before writing code:
 1. Read `.unikit/DESCRIPTION.md` — project specification
 2. Read `.unikit/ARCHITECTURE.md` — module boundaries
-3. Read `.unikit/memory/RULES_INDEX.md`. Load rules:
+3. Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
-   - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
+   - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. Read `.unikit/skill-context/unikit-devcontext/SKILL.md` if it exists
 

@@ -192,7 +192,7 @@ RULES.md (new rule: "Always pass CancellationToken to UniTask.Delay")
 When rules in `RULES.md` are proven and stable:
 
 ```
-/unikit-memory --migrate-rules
+/unikit-memory migrate-rules
 ```
 
 Migration is **interactive** - the skill asks which rules to migrate and which to skip:

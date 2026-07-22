@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "generated": "2026-06-14T00:00:00.000Z",
+  "engines": {
+    "unity": {
+      "core": [
+        {
+          "id": "balance",
+          "description": "Collision fixture: a CODE rule deliberately named `balance` so it collides with the bundled gamedesign `balance` rule — exercises `rules show` exit 3 (ambiguous id across modules).",
+          "version": "9.9.9"
+        }
+      ],
+      "stack": []
+    }
+  }
+}

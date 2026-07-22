@@ -10,7 +10,7 @@ version: 1.0.0
 ---
 
 This rule is a fixture. It exists so `unikit-ai rules install code-style` can
-write something under `.unikit/memory/core/` during a test run without touching
+write something under `.unikit/memory/code/core/` during a test run without touching
 the bundled production registry snapshot.
 
 The content hash is deterministic: any edit here will change the `installed_hash`

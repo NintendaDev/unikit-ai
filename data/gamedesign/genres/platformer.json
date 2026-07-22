@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "platformer",
+  "name": "Platformer",
+  "aliases": ["platform-game", "2d-platformer", "jump-and-run"],
+  "summary": "Платформеры на точном движении и прыжке: константы физики, прощающие механики (coyote/buffer/corner-correction) и уровни-экземпляры как контент (Celeste, Super Mario Bros).",
+  "confidence": "high",
+  "default_flow_mode": "conditional",
+  "default_packs": ["level-design", "core-loops", "progression", "ux-onboarding", "accessibility"],
+  "seed_systems": [
+    { "slug": "movement", "category": "Gameplay", "tier": "MVP", "why": "state-machine движения — ядро ощущения" },
+    { "slug": "jump-constants", "category": "Gameplay", "tier": "MVP", "why": "rise/fall-grav/coyote/buffer/corner-px — субстрат прыжка" },
+    { "slug": "level-metrics", "category": "Content", "tier": "VS", "why": "пер-тайл метрики и tile-grid — мерило уровней" },
+    { "slug": "camera-rig", "category": "UX", "tier": "VS", "why": "камера ведёт игрока и читаемость прыжков" },
+    { "slug": "hazards", "category": "Gameplay", "tier": "Alpha", "why": "опасности/архетипы угроз — челлендж уровня" }
+  ],
+  "seed_content_types": [
+    { "slug": "level", "belongs_to": "SYS-level-metrics", "scale": "bulk", "why": "уровни И ЕСТЬ контент — тайл-сетка и расстановка угроз" }
+  ],
+  "seed_entities": [
+    { "slug": "hazard", "why": "архетипы угроз (шипы, пилы, ямы)" },
+    { "slug": "movement-state", "why": "состояния движения (run/jump/fall/wall-slide)" }
+  ],
+  "seed_resources": [
+    { "slug": "lives", "kind": "event", "why": "жизни/попытки — гейт прогрессии по уровням" }
+  ],
+  "critical_sections": ["level-design.LevelMetrics", "core-loops.MovementFeel", "accessibility.InputLeniency"],
+  "review_emphasis": ["leniency-окна (coyote/buffer/corner-correction) заданы как KNOB и настраиваемы (P1)", "tile-grid и пер-тайл метрики согласованы с jump-constants", "кривая сложности по уровням читается и обучает новым угрозам"],
+  "platform_default": "cross-platform"
+}

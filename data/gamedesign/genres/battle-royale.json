@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "battle-royale",
+  "name": "Battle Royale",
+  "aliases": ["br", "battle-royal"],
+  "summary": "Battle royale: loot-distribution с rarity, zone/storm как часы (timing+damage), карта с POI, drop/landing, squad+ping и lobby-size+pacing (PUBG, Apex Legends).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["balance", "economy", "multiplayer", "level-design", "core-loops"],
+  "seed_systems": [
+    { "slug": "loot", "category": "Economy", "tier": "MVP", "why": "loot-distribution + rarity — стартовое неравенство и охота" },
+    { "slug": "zone", "category": "Gameplay", "tier": "MVP", "why": "zone/storm как часы: фазы wait/shrink/DPS — драйвер темпа" },
+    { "slug": "map", "category": "Content", "tier": "MVP", "why": "карта + POI с loot-density — арена" },
+    { "slug": "drop-flow", "category": "Gameplay", "tier": "VS", "why": "drop/landing — первая минута и распределение игроков" },
+    { "slug": "squad", "category": "Social", "tier": "VS", "why": "squad/revive + ping — кооп-ядро" }
+  ],
+  "seed_content_types": [
+    { "slug": "loot-table", "belongs_to": "SYS-loot", "scale": "bulk", "why": "лут-таблицы с 4–5 ступенями rarity" },
+    { "slug": "poi", "belongs_to": "SYS-map", "scale": "bulk", "why": "POI с loot-density — объёмный контент карты" }
+  ],
+  "seed_entities": [
+    { "slug": "inventory", "why": "инвентарь + auto-equip подобранного лута" }
+  ],
+  "seed_resources": [
+    { "slug": "health", "kind": "event", "why": "HP/щиты — zone DPS и расходники-хилки" }
+  ],
+  "critical_sections": ["economy.LootDistribution", "balance.ZoneClock", "level-design.POIDensity"],
+  "review_emphasis": ["loot rarity и POI loot-density не создают одну доминирующую точку высадки", "zone/storm как часы: timing+damage держат темп без анти-кульминации", "squad/revive + ping и lobby-size дают честный pacing матча (P1)"],
+  "platform_default": "cross-platform"
+}

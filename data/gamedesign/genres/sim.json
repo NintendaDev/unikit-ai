@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "sim",
+  "name": "Simulation",
+  "aliases": ["sim", "simulation", "agent-sim", "colony-sim"],
+  "summary": "Агентные симуляции с поведением через стек потребностей и арбитраж (аукцион), эмерджентной матрицей взаимодействия систем, tick-архитектурой со ступенчатой частотой и персистентным состоянием мира (Dwarf Fortress, RimWorld).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["ai-behavior", "persistence", "core-loops", "balance", "progression"],
+  "seed_systems": [
+    { "slug": "agent-behavior", "category": "Gameplay", "tier": "MVP", "why": "агенты с потребностями/настроением/работой; арбитраж через аукцион — ядро" },
+    { "slug": "need-stack", "category": "Gameplay", "tier": "MVP", "why": "стек драйвов/потребностей — вход арбитража поведения" },
+    { "slug": "system-interaction", "category": "Gameplay", "tier": "VS", "why": "эмерджентная матрица взаимодействия систем" },
+    { "slug": "tick-architecture", "category": "Technical", "tier": "VS", "why": "tick + ступенчатая частота обновления (skip-flag по клеткам)" },
+    { "slug": "world-persistence", "category": "Technical", "tier": "Alpha", "why": "сериализация состояния мира — без неё агенты теряют историю" }
+  ],
+  "seed_content_types": [
+    { "slug": "agent-behavior", "belongs_to": "SYS-agent-behavior", "scale": "curated", "why": "поведения/работы: trigger + ставка аукциона — типизированный каталог" }
+  ],
+  "seed_entities": [
+    { "slug": "agent", "why": "агент: needs/mood/wounds, веса работ, жизненный цикл" },
+    { "slug": "need", "why": "потребность из стека — драйв для арбитража поведения" },
+    { "slug": "behavior", "why": "поведение/работа: trigger + ставка в аукционе арбитража" },
+    { "slug": "world-cell", "why": "клетка мира со skip-flag для ступенчатого тика" }
+  ],
+  "seed_resources": [
+    { "slug": "material", "kind": "soft", "why": "материал из таблиц мира — расход агентских работ" }
+  ],
+  "critical_sections": ["ai-behavior.NeedArbitration", "ai-behavior.SystemInteractionMatrix", "persistence.WorldState", "core-loops.TickArchitecture"],
+  "review_emphasis": ["арбитраж потребностей даёт читаемое поведение, а не дёрганье агента", "матрица взаимодействия систем эмерджентна, но без рантайм-каскадов", "tick со ступенчатой частотой укладывается в бюджет, состояние персистентно"],
+  "platform_default": "pc"
+}

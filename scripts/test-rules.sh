@@ -152,7 +152,8 @@ done
 echo -e "\n${BOLD}Part 5: Bundled rules snapshot${NC}"
 
 for engine in unity godot godot-net unreal-engine-5; do
-    CORE_DIR="$ROOT_DIR/rules-registry/$engine/core"
+    # schema:2 bundled layout: engines live under code/<engine>/.
+    CORE_DIR="$ROOT_DIR/rules-registry/code/$engine/core"
 
     if [[ -d "$CORE_DIR" ]]; then
         CORE_COUNT=$(find "$CORE_DIR" -name "*.md" | wc -l)
@@ -329,16 +330,21 @@ else
     fail "unikit-memory SKILL.md missing Bash in allowed-tools"
 fi
 
-if grep -q "rules list --json" "$MEMORY_SKILL" 2>/dev/null; then
-    pass "unikit-memory has registry list step"
+# After the multi-module CLI rework, `rules list` with no `--module` defaults to
+# ALL modules (flat-all). unikit-memory therefore ALWAYS scopes its registry
+# probes with `--module <moduleId>` (flat-single form). Grep the always-`--module`
+# stems — not the old continuous `rules list --json` substring, which no longer
+# exists after `--module <moduleId>` was inserted between the command and `--json`.
+if grep -q "rules list --module" "$MEMORY_SKILL" 2>/dev/null; then
+    pass "unikit-memory has registry list step (always scoped with --module)"
 else
-    fail "unikit-memory missing registry list step"
+    fail "unikit-memory missing always-scoped registry list step (rules list --module ...)"
 fi
 
-if grep -q "rules status --json" "$MEMORY_SKILL" 2>/dev/null; then
-    pass "unikit-memory has registry status step"
+if grep -q "rules status --module" "$MEMORY_SKILL" 2>/dev/null; then
+    pass "unikit-memory has registry status step (always scoped with --module)"
 else
-    fail "unikit-memory missing registry status step"
+    fail "unikit-memory missing always-scoped registry status step (rules status --module ...)"
 fi
 
 if grep -q "Semantic matching\|semantic match" "$MEMORY_SKILL" 2>/dev/null; then
@@ -408,13 +414,43 @@ run_nested_test "Part 15: rules sync smoke tests" "$SCRIPT_DIR/test-rules-sync.s
 run_nested_test "Part 16: rules registry smoke tests" "$SCRIPT_DIR/test-rules-registry.sh"
 
 # ─────────────────────────────────────────────
-# Part 17: rules CLI exit-code matrix guard
+# Part 17: `rules registry migrate` smoke tests
+# ─────────────────────────────────────────────
+run_nested_test "Part 17: rules registry migrate smoke tests" "$SCRIPT_DIR/test-rules-migrate.sh"
+
+# ─────────────────────────────────────────────
+# Part 18: `rules registry status` smoke tests (schema 1/2/99 × local/remote)
+# ─────────────────────────────────────────────
+run_nested_test "Part 18: rules registry status smoke tests" "$SCRIPT_DIR/test-rules-registry-status.sh"
+
+# ─────────────────────────────────────────────
+# Part 19: registry format guard (schema:2 bundled + build-manifest output)
+# ─────────────────────────────────────────────
+run_nested_test "Part 19: registry format smoke tests" "$SCRIPT_DIR/test-registry-format.sh"
+
+# ─────────────────────────────────────────────
+# Part 20: memory migration smoke tests
+# ─────────────────────────────────────────────
+run_nested_test "Part 20: memory migration smoke tests" "$SCRIPT_DIR/test-memory-migration.sh"
+
+# ─────────────────────────────────────────────
+# Part 21: golden-guard #1 — modular memory layout
+# ─────────────────────────────────────────────
+run_nested_test "Part 21: golden-guard #1 (modular memory layout)" "$SCRIPT_DIR/test-golden-guard.sh"
+
+# ─────────────────────────────────────────────
+# Part 22: module-contract guard #2 (per-module completeness + tier-agnostic routers)
+# ─────────────────────────────────────────────
+run_nested_test "Part 22: module-contract guard #2" "$SCRIPT_DIR/test-module-contract.sh"
+
+# ─────────────────────────────────────────────
+# Part 23: rules CLI exit-code matrix guard
 # ─────────────────────────────────────────────
 # Must run last: parses the other test-rules-*.sh files for
 # assert_exit / assert_cmd_exit / `if [[ $CODE -eq N ]]` patterns and
 # confirms every contract-documented exit code is covered by at least
 # one assertion.
-run_nested_test "Part 17: rules CLI exit-code matrix" "$SCRIPT_DIR/test-exit-codes.sh"
+run_nested_test "Part 23: rules CLI exit-code matrix" "$SCRIPT_DIR/test-exit-codes.sh"
 
 # ─────────────────────────────────────────────
 # Summary

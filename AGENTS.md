@@ -4,7 +4,7 @@
 
 ## What is UniKit?
 
-`unikit-ai` is an npm CLI that bootstraps AI-agent context for game-dev projects. It supports **4 engines** (Unity, Godot 4, Godot 4 .NET, Unreal Engine 5) and **6 agents** (Claude Code, Codex CLI, Cursor, Gemini CLI, Qwen Code, OpenCode). It installs skills, subagents, MCP server configs, engine templates, and pulls knowledge-base rules from a remote registry.
+`unikit-ai` is an npm CLI that bootstraps AI-agent context for game-dev projects. It supports **4 engines** (Unity, Godot 4, Godot 4 .NET, Unreal Engine 5) and **6 agents** (Claude Code, Codex CLI, Cursor, Qwen Code, OpenCode, Antigravity). It installs skills, subagents, MCP server configs, engine templates, and pulls knowledge-base rules from a remote registry.
 
 Full prose: see `.ai-factory/DESCRIPTION.md`.
 
@@ -51,7 +51,7 @@ unikit-ai/
 
 ## User project layout (`.unikit/`)
 
-What `unikit-ai init` / `update` produces in the user's project root. Detailed write-paths live in `src/core/installer.ts`.
+What `unikit-ai init` / `update` produces in the user's project root. Detailed write-paths live in the `src/core/installer/` modules.
 
 | Path | Owner command | Purpose |
 |---|---|---|
@@ -81,9 +81,9 @@ For per-skill details, read the corresponding `skills/unikit-<name>/SKILL.md`.
           v                           (Bootstrap reads dev-principles.md
        /unikit Step 9                  once; executes with commit checkpoints)
        rules bootstrap                        |
-       (`unikit-ai rules install`)            v
+       (`unikit-ai rules install defaults`)   v
                                        /unikit-fix on bugs ->
-                                       .unikit/patches/ -> /unikit-evolve
+                                       .unikit/code/patches/ -> /unikit-evolve
 
        Quality lane (read-only context):
        /unikit-commit  /unikit-review  /unikit-verify  /unikit-docs
@@ -94,7 +94,7 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 ## Update mechanism
 
 - **Skills**: SHA-256 hash-based. Source hash compared against `managedSkills` state in `.unikit.json`; only diverged skills reinstall. Engine switch reinstalls everything.
-- **Rules**: sync-based (`syncRulesState` in `src/core/installer.ts`), three phases — disk↔state reconciliation, registry pull, `RULES_INDEX.md` regen. `unikit-ai rules sync` is a thin wrapper.
+- **Rules**: sync-based (`syncRulesState` in `src/core/installer/rules-sync.ts`), three phases — disk↔state reconciliation, registry pull, `RULES_INDEX.md` regen. `unikit-ai rules sync` is a thin wrapper.
 - **System files** (`cli-contract.md`, `dev-principles.md`): flat-rewritten on every `init`/`update` with current engine vars.
 
 Detailed semantics: `CLAUDE.md` § Update Mechanism.

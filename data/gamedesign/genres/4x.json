@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "4x",
+  "name": "4X",
+  "aliases": ["4x", "4x-strategy", "explore-expand-exploit-exterminate"],
+  "summary": "4X-стратегии: карта из гексов, дерево технологий с анти-детерминизмом, рост городов/экономики с тормозом против ICS, легибельная дипломатия и условия победы (Civilization, Old World).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["core-loops", "economy", "progression", "balance", "ai-behavior"],
+  "seed_systems": [
+    { "slug": "map", "category": "Gameplay", "tier": "MVP", "why": "гекс-карта/тайлы — пространство explore/expand" },
+    { "slug": "tech", "category": "Progression", "tier": "MVP", "why": "дерево технологий + анти-детерминизм (deck draw-discard-trash)" },
+    { "slug": "city-economy", "category": "Economy", "tier": "MVP", "why": "города/экономика + тормоз против ICS (infinite city sprawl)" },
+    { "slug": "diplomacy", "category": "Social", "tier": "VS", "why": "дипломатия + легибельный AI: state и treaty" },
+    { "slug": "victory", "category": "Progression", "tier": "Alpha", "why": "условия победы (threshold/countdown/toggle) задают вектор" }
+  ],
+  "seed_content_types": [
+    { "slug": "tech", "belongs_to": "SYS-tech", "scale": "curated", "why": "каталог технологий с предпосылками — проверка ацикличности (P1)" },
+    { "slug": "unit", "belongs_to": "SYS-map", "scale": "curated", "why": "каталог юнитов с cost/maintenance/stats" },
+    { "slug": "faction", "belongs_to": "SYS-diplomacy", "scale": "curated", "why": "асимметричные фракции/лидеры со стартовыми бонусами" }
+  ],
+  "seed_entities": [
+    { "slug": "hex-tile", "why": "гекс/тайл карты с yield и terrain" },
+    { "slug": "city", "why": "город — узел роста экономики с тормозом ICS" },
+    { "slug": "tech-node", "why": "узел технологии + deck piles (draw/discard/trash) против детерминизма" },
+    { "slug": "diplomacy-state", "why": "состояние отношений + treaty между фракциями" },
+    { "slug": "ai-leader", "why": "лидер AI с легибельными мотивами" },
+    { "slug": "victory-condition", "why": "условие победы: threshold/countdown/toggle" }
+  ],
+  "seed_resources": [
+    { "slug": "production", "kind": "soft", "why": "производство — faucet городов в юниты/постройки" },
+    { "slug": "maintenance", "kind": "soft", "why": "содержание (maintenance) — drain против бесконечного расширения" }
+  ],
+  "critical_sections": ["progression.TechTree", "economy.AntiICS", "ai-behavior.LegibleDiplomacy", "core-loops.VictoryConditions"],
+  "review_emphasis": ["анти-ICS: расширение имеет тормоз, sprawl невыгоден", "tech-дерево ациклично и не детерминировано (deck-механика)", "условия победы легибельны и достижимы за несколько путей"],
+  "platform_default": "pc"
+}

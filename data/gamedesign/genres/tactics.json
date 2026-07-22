@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "tactics",
+  "name": "Turn-based tactics",
+  "aliases": ["tactics", "turn-based-tactics", "tbt", "tactical-rpg", "xcom-like"],
+  "summary": "Пошаговая тактика: сетка с cover-математикой (скрытая вероятность против perfect-info), экономика действий (AP), классы юнитов, миссии-энкаунтеры с подами и пермасмерть со squad-XP (XCOM, Into the Breach).",
+  "confidence": "high",
+  "default_flow_mode": "conditional",
+  "default_packs": ["core-loops", "balance", "level-design", "progression", "narrative"],
+  "seed_systems": [
+    { "slug": "combat-grid", "category": "Gameplay", "tier": "MVP", "why": "сетка + cover-математика (скрытая prob или perfect-info) + action-economy (AP) — ядро" },
+    { "slug": "units", "category": "Gameplay", "tier": "MVP", "why": "классы юнитов и способности по AP" },
+    { "slug": "missions", "category": "Progression", "tier": "VS", "why": "миссии/энкаунтеры: поды, бан невыполнимых раскладов" },
+    { "slug": "squad", "category": "Progression", "tier": "Alpha", "why": "пермасмерть + squad-XP — ставки и мета-прогрессия отряда" }
+  ],
+  "seed_content_types": [
+    { "slug": "mission", "belongs_to": "SYS-missions", "scale": "curated", "why": "каталог миссий с целями и составом подов (P1)" },
+    { "slug": "unit", "belongs_to": "SYS-units", "scale": "curated", "why": "каталог классов/врагов: AP, способности, статы (P1)" }
+  ],
+  "seed_entities": [
+    { "slug": "grid-cell", "why": "клетка сетки: cover/hazard/height/LoS" },
+    { "slug": "unit-class", "why": "класс юнита с AP-бюджетом" },
+    { "slug": "ability", "why": "способность: AP-стоимость/range/cooldown" },
+    { "slug": "enemy-pod", "why": "под врагов + правило активации" },
+    { "slug": "telegraph", "why": "телеграфированное намерение врага (читаемая угроза)" },
+    { "slug": "mission-objective", "why": "цель миссии — условие победы энкаунтера" }
+  ],
+  "seed_resources": [
+    { "slug": "action-points", "kind": "event", "why": "AP — экономика действий за ход" },
+    { "slug": "squad-xp", "kind": "soft", "why": "опыт отряда — мета-прогрессия между миссиями" }
+  ],
+  "critical_sections": ["balance.CoverMath", "core-loops.ActionEconomy", "level-design.EncounterDesign"],
+  "review_emphasis": ["cover-математика читаема (скрытая prob честна или perfect-info)", "поды и миссии без невыполнимых раскладов (ban unwinnable)", "AP-экономика и пермасмерть дают осмысленные ставки"],
+  "platform_default": "pc"
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "tactical-shooter",
+  "name": "Tactical Shooter",
+  "aliases": ["tac-shooter", "competitive-shooter"],
+  "summary": "Раундовые тактические шутеры: round-economy (buy/eco/force, loss-bonus), карта-как-объектив, детерминированный recoil, peeker-advantage netcode и абилки против gunplay (CS, Valorant).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["balance", "economy", "multiplayer", "level-design", "core-loops"],
+  "seed_systems": [
+    { "slug": "round-economy", "category": "Economy", "tier": "MVP", "why": "buy/eco/force + loss-bonus — стратегический слой раунда" },
+    { "slug": "gunplay", "category": "Gameplay", "tier": "MVP", "why": "детерминированный recoil/spray — навык как субстрат" },
+    { "slug": "map", "category": "Content", "tier": "MVP", "why": "карта-как-объектив: sites/angles — арена тактики" },
+    { "slug": "round-structure", "category": "Gameplay", "tier": "VS", "why": "структура раунда — ритм матча" },
+    { "slug": "agent-abilities", "category": "Gameplay", "tier": "Alpha", "why": "абилки против gunplay — «threat-not-kill»" }
+  ],
+  "seed_content_types": [
+    { "slug": "weapon", "belongs_to": "SYS-gunplay", "scale": "curated", "why": "пер-оружейная buy-cost + командные деньги + детерминированный spray" },
+    { "slug": "agent", "belongs_to": "SYS-agent-abilities", "scale": "curated", "why": "агенты со схемой абилок «угроза, а не убийство»" }
+  ],
+  "seed_entities": [
+    { "slug": "ability", "why": "абилка агента (smoke/flash/recon) — даёт угрозу, не килл" }
+  ],
+  "seed_resources": [
+    { "slug": "round-money", "kind": "soft", "why": "деньги раунда — buy/eco/force и loss-bonus (P1)" }
+  ],
+  "critical_sections": ["economy.RoundEconomy", "balance.DeterministicRecoil", "level-design.MapAsObjective"],
+  "review_emphasis": ["round-economy замкнута: buy/eco/force и loss-bonus дают возвратность без снежного кома", "spray детерминирован — навык награждается, peeker-advantage учтён в netcode (tick) (P1)", "абилки задают угрозу, а не килл, и не заслоняют gunplay"],
+  "platform_default": "pc"
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "social",
+  "name": "Social Multiplayer",
+  "aliases": ["social-game", "social-multiplayer", "social-network-game"],
+  "summary": "Мультиплеерные социальные игры: группы человеческого масштаба (число Данбара 5/15/50/150), петли взаимности с симметрией затрат и согласием, пул социального капитала и репутация против токсичности (FarmVille, Among Us).",
+  "confidence": "medium",
+  "default_flow_mode": "emergent",
+  "default_packs": ["social", "player-motivation", "core-loops", "liveops", "monetization-ethics"],
+  "seed_systems": [
+    { "slug": "social-graph", "category": "Social", "tier": "MVP", "why": "группы человеческого масштаба: число Данбара 5/15/50/150 сначала" },
+    { "slug": "reciprocation-loop", "category": "Social", "tier": "MVP", "why": "петля взаимности: симметрия затрат + согласие" },
+    { "slug": "social-capital", "category": "Social", "tier": "VS", "why": "пул социального капитала по тирам отношений" },
+    { "slug": "reputation", "category": "Social", "tier": "Alpha", "why": "идентичность/репутация + защита от оттока и токсичности" }
+  ],
+  "seed_content_types": [
+    { "slug": "group-template", "belongs_to": "SYS-social-graph", "scale": "curated", "why": "горстка типов групп/гильдий с size-tier и каналами" }
+  ],
+  "seed_entities": [
+    { "slug": "player-identity", "why": "игрок/идентичность" },
+    { "slug": "friendship-tier", "why": "тир дружбы (масштаб Данбара)" },
+    { "slug": "reciprocation-loop", "why": "петля взаимности с симметрией затрат" },
+    { "slug": "social-capital-pool", "why": "пул соц. капитала per tier" },
+    { "slug": "group", "why": "группа/гильдия: size-tier + каналы" },
+    { "slug": "reputation", "why": "репутация игрока" },
+    { "slug": "consent-gate", "why": "гейт согласия на взаимодействие" },
+    { "slug": "griefing-hooks", "why": "хуки против griefing/токсичности" }
+  ],
+  "seed_resources": [
+    { "slug": "social-capital", "kind": "soft", "why": "социальный капитал — мягкий ресурс взаимности по тирам" }
+  ],
+  "critical_sections": ["social.HumanScaleGroups", "social.ReciprocationLoop", "social.SocialCapital", "social.ReputationModeration"],
+  "review_emphasis": ["группы человеческого масштаба (Данбар 5/15/50/150) заданы прежде монетизации виральности", "петля взаимности симметрична по затратам и требует согласия — нет принудительного спама", "репутация и модерация по умолчанию просоциальны; есть антитоксичные и анти-churn хуки"],
+  "platform_default": "cross-platform"
+}

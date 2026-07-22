@@ -1,0 +1,275 @@
+# Machine truth for the defective-gdd fixture. Canonical GD-IDS v2 schema
+# (pillars | systems | flows | events | entities | formulas | terms |
+# content_types | content | resources | tracks | knobs).
+# Intentionally inconsistent with the documents — see README.md for the planted
+# defects (system + flow + CONTENT axis). The roster renders read-only into GAME.md
+# ## System Map [gen]; there is no standalone markdown index in v2.
+
+version: 2
+last_updated: "2026-06-13"
+
+# ─── PILLARS ──────────────────────────────────────────────────────────────────
+pillars:
+  - id: PIL-1
+    name: "Momentum is king"
+    status: active
+    source: GAME.md
+    added: 2026-06-13
+  - id: PIL-2
+    name: "Feels skillful"
+    status: active
+    source: GAME.md
+    added: 2026-06-13
+
+# ─── SYSTEMS ──────────────────────────────────────────────────────────────────
+systems:
+  - id: SYS-combat
+    name: "Combat"
+    status: active
+    tier: MVP
+    category: Gameplay
+    doc_status: detailed
+    version: 2                 # defect (version coherence, 2-place): combat.md header says Version 1
+    implements: [PIL-1]
+    depends_on: []             # defect (dangling): combat.md F depends on SYS-inventory (absent)
+    source: systems/combat.md
+    added: 2026-06-13
+  - id: SYS-boost
+    name: "Boost"
+    status: active
+    tier: MVP
+    category: Gameplay
+    doc_status: detailed       # defect (status coherence, 2-place): boost.md header says skeleton, GD-IDS says detailed
+    version: 1
+    implements: [PIL-1]
+    depends_on: []             # defect (Depends 3-way): boost.md F declares "depends on SYS-combat", but here + ## System Map are empty
+    source: systems/boost.md
+    added: 2026-06-13
+  - id: SYS-loot
+    name: "Loot"
+    status: active
+    tier: VS
+    category: Economy
+    doc_status: detailed       # defect (roster↔disk): a detailed system with no systems/loot.md on disk
+    version: 1
+    implements: [PIL-2]
+    depends_on: []
+    source: systems/loot.md
+    added: 2026-06-13
+  - id: SYS-hud
+    name: "HUD"
+    status: deprecated         # NEG carve-out (display precedence): ## System Map [gen] Status shows `deprecated`
+    tier: VS
+    category: UI
+    doc_status: detailed       # underlying doc_status; header + GD-IDS agree (both detailed) — NOT a coherence conflict
+    version: 1
+    implements: [PIL-2]
+    depends_on: []
+    source: systems/hud.md
+    added: 2026-06-13
+
+# ─── FLOWS ────────────────────────────────────────────────────────────────────
+# One player-action flow with a seeded example for every flow check (see README.md).
+# Rendered read-only into GAME.md ## Flow Map [gen].
+flows:
+  - id: FLOW-first-run
+    name: "First run"
+    status: active
+    mode: emergent             # defect (mode↔structure): FLOW-first-run.md §B uses the LINEAR objective-flow table, not an emergent affordance template
+    doc_status: detailed       # defect (flow status coherence, 2-place): FLOW-first-run.md header says skeleton
+    version: 2                 # defect (flow version coherence, 2-place): FLOW-first-run.md header says Version 1
+    depends_on: [SYS-combat]   # defect (flow Depends 3-way): FLOW.md §D adds SYS-boost; ## Flow Map shows SYS-combat only
+    goals:
+      - id: GOAL-first-run-1
+        summary: "Land a clean chain"          # retention-critical, but emits NO event (defect: blind funnel step)
+        targets: [SYS-combat]
+      - id: GOAL-first-run-2
+        summary: "Grab the buff from inventory"
+        targets: [SYS-inventory]               # defect (dangling GOAL→SYS): SYS-inventory is in neither GD-IDS nor any doc
+      - id: GOAL-first-run-3
+        summary: "Reach the extraction point"  # terminal goal — realizes the GAME.md Win condition, but that Win line cites no GOAL (defect: orphan win-condition / orphan terminal goal)
+        targets: [SYS-combat]
+      - id: GOAL-first-run-4
+        summary: "Boost off the ramp"
+        targets: [SYS-boost]
+      - id: GOAL-first-run-4                    # defect (duplicate GOAL id): GOAL-first-run-4 declared twice for two different objectives
+        summary: "Drift the corner"
+        targets: [SYS-boost]
+    source: flows/FLOW-first-run.md
+    added: 2026-06-22
+
+# ─── EVENTS ───────────────────────────────────────────────────────────────────
+# One funnel event. GOAL-first-run-1 (retention-critical) is intentionally NOT
+# instrumented (defect: blind funnel step).
+events:
+  - id: extraction_reached
+    name: "Extraction point reached"
+    status: active
+    source: flows/FLOW-first-run.md
+    flow: FLOW-first-run
+    added: 2026-06-22
+
+# ─── ENTITIES ─────────────────────────────────────────────────────────────────
+entities:
+  - id: ENT-drone
+    name: "Patrol drone"
+    status: active
+    source: systems/combat.md
+    attributes:
+      health: 40               # defect (facts): combat.md states the drone has 30 HP
+    added: 2026-06-13
+
+# ─── FORMULAS ─────────────────────────────────────────────────────────────────
+formulas:
+  - id: FORM-boost-curve
+    name: "Boost acceleration curve"
+    status: active
+    source: systems/boost.md
+    variables: [speed, charge]
+    output_range: [0, 200]
+    expression: "speed + charge * 5"
+    added: 2026-06-13
+  # NB: FORM-combat-dps is intentionally NOT registered — it is cited by BOTH
+  # systems/combat.md and systems/boost.md (defect: unregistered cross-doc fact).
+
+# ─── TERMS ────────────────────────────────────────────────────────────────────
+terms:
+  - id: stamina
+    canonical: "Stamina"
+    translation: "Выносливость"
+    forbidden_aliases: ["energy"]   # defect (term drift): combat.md calls the resource "energy"
+    status: active
+    source: GAME.md
+    added: 2026-06-13
+
+# ─── CONTENT TYPES ────────────────────────────────────────────────────────────
+# The content axis (the catalog). Each CT is a schema + descriptor. Rendered
+# read-only into GAME.md ## Content Map [gen]. One seeded example per content check
+# (see README.md → Content-axis defects).
+content_types:
+  - id: CT-item
+    name: "Loot item"
+    status: active
+    scale: bulk
+    belongs_to: SYS-loot          # valid (SYS-loot is active) — NOT a belongs_to defect
+    doc_status: detailed          # matches CT-item.md header → no coherence defect here
+    version: 1
+    research: ""
+    fields:
+      - { name: value, type: int, range: [1, 9999], required: true }
+      - { name: rarity_tier, type: enum, values: [common, rare, epic] }
+      - { name: icon, type: asset-ref }
+      - { name: drop_resource, type: ref<RES> }   # schema field → RES-scrap (registered); no value to resolve for a bulk type
+    source: content-types/CT-item.md
+    added: 2026-06-23
+  - id: CT-card
+    name: "Boost card"
+    status: active
+    scale: curated
+    belongs_to: SYS-hud           # defect (#5 belongs_to): SYS-hud is status: deprecated
+    doc_status: detailed          # matches CT-card.md header → no coherence defect here
+    version: 1
+    research: ""
+    fields:
+      - { name: title, type: string, required: true }
+      - { name: power, type: int, range: [1, 10] }
+      - { name: link, type: ref<SYS> }            # CU-card-1.link resolves to a MISSING system (#3)
+    source: content-types/CT-card.md
+    added: 2026-06-23
+  - id: CT-spawn
+    name: "Enemy spawn wave"
+    status: active
+    scale: bulk
+    belongs_to: SYS-combat        # valid + the cross-axis edge (#9): a SYS-combat edit must stale this CT (verify PRINTS it, read-only)
+    doc_status: detailed
+    version: 2                     # defect (#6 content version 2-place): CT-spawn.md header says Version 1
+    research: ""
+    fields:
+      - { name: enemy, type: ref<ENT> }           # schema field → ENT-drone (registered)
+      - { name: spawn_rate, type: float, range: [0.1, 5.0] }
+      - { name: wave_size, type: int, range: [1, 50] }
+    source: content-types/CT-spawn.md
+    added: 2026-06-23
+
+# ─── CONTENT ──────────────────────────────────────────────────────────────────
+# Content UNITS (CU). `kind: set` is a bulk descriptor (count + spec); `kind:
+# instance` is one curated unit carrying `fields` ⊆ its CT.fields.
+content:
+  - id: CU-item-1
+    type: CT-item
+    name: "Common loot table"
+    kind: set
+    status: active
+    count: 320
+    spec: "data/loot_common.csv following CT-item.fields"
+    source: content-types/CT-item.md
+    added: 2026-06-23
+  - id: CU-item-2                  # defect (#1 duplicate CU id): CU-item-2 declared twice for two different units
+    type: CT-item
+    name: "Rare loot table"
+    kind: set
+    status: active
+    count: 64
+    spec: "data/loot_rare.csv following CT-item.fields"
+    source: content-types/CT-item.md
+    added: 2026-06-23
+  - id: CU-item-2                  # defect (#1): the duplicate
+    type: CT-item
+    name: "Epic loot table"
+    kind: set
+    status: active
+    count: 12
+    spec: "data/loot_epic.csv following CT-item.fields"
+    source: content-types/CT-item.md
+    added: 2026-06-23
+  - id: CU-card-1
+    type: CT-card
+    name: "Overdrive"
+    kind: instance
+    status: active
+    fields:
+      title: "Overdrive"
+      power: 8
+      link: SYS-inventory          # defect (#3 ref<> resolution): ref<SYS> → SYS-inventory (missing) — Critical
+      rarity: epic                 # defect (#2 CU.fields ⊆ CT.fields): `rarity` is NOT a CT-card field
+    source: content-types/CT-card.md
+    added: 2026-06-23
+  - id: CU-spawn-1
+    type: CT-spawn
+    name: "Standard wave set"
+    kind: set
+    status: active
+    count: 40
+    spec: "data/spawns.json following CT-spawn.fields"
+    source: content-types/CT-spawn.md
+    added: 2026-06-23
+
+# ─── RESOURCES ────────────────────────────────────────────────────────────────
+resources:
+  - id: RES-scrap
+    name: "Scrap"
+    status: active
+    kind: material
+    source: systems/loot.md
+    added: 2026-06-23
+
+# ─── TRACKS ───────────────────────────────────────────────────────────────────
+# NB: TRACK-elite is intentionally NOT registered — it is cited by CT-spawn.md §D
+# (defect #8: unregistered TRACK fact crossing a document boundary).
+tracks:
+  - id: TRACK-rank
+    name: "Courier rank"
+    status: active
+    tiers: 20
+    source: GAME.md
+    added: 2026-06-23
+
+# ─── KNOBS ────────────────────────────────────────────────────────────────────
+knobs:
+  - id: KNOB-collapse-speed
+    name: "Collapse speed multiplier"
+    status: active
+    current: 1.0
+    range: [0.5, 2.0]
+    source: GAME.md
+    added: 2026-06-23

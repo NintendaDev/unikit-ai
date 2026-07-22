@@ -1,6 +1,6 @@
 ---
 name: unikit-commit
-description: Create conventional commit messages for {{engine_name}} projects by analyzing staged changes. Handles engine-specific concerns like companion file pairing, binary assets, and plan task references. ALWAYS use this skill when the user asks to commit, save changes, or create a commit — in any language. Trigger phrases include "commit", "create commit", "save changes", "сделай коммит", "закоммить", "коммит", "сохрани изменения". Even if the user simply says "commit this" or asks you to commit after finishing a task — invoke this skill, do NOT commit manually via git.
+description: Create conventional commit messages for {{engine_name}} projects by analyzing staged changes. Handles engine-specific concerns like companion file pairing, binary assets, and plan task references. ALWAYS use this skill when the user asks to commit, save changes, or create a commit. Trigger phrases include "commit", "create commit", "commit this", "save changes", "save my work". Even if the user simply says "commit" or asks you to commit after finishing a task — invoke this skill, do NOT commit manually via git.
 argument-hint: "[scope or context]"
 allowed-tools:
   - Read
@@ -61,7 +61,7 @@ Do not announce, confirm, or mention the language setting.
    - Never modify these files
 
 4. **Plan Task Linkage**
-   - Check if `.unikit/plans/` contains an active plan (look for `TASKS.md`)
+   - Check if `.unikit/code/plans/` contains an active plan (look for `TASKS.md`)
    - If a plan exists and staged changes clearly relate to a planned task, suggest referencing the phase/task number in the commit message body (e.g., "Phase 8, tasks 8.1-8.3")
    - This is optional — suggest it, don't require it
 

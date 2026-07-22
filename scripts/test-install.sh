@@ -53,13 +53,15 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
-                          "unikit-explore", "unikit-implement", "unikit-skills-context",
-                          "unikit-verify"],
+                          "unikit-explore", "unikit-implement", "unikit-memory",
+                          "unikit-skills-context", "unikit-verify",
+                          "unikit-gd-recon", "unikit-gd-docs",
+                          "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify"],
       "installedSubagents": ["unikit-architecture-sidecar"]
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -90,6 +92,22 @@ else
 fi
 
 # ─────────────────────────────────────────────────────
+# Test 1a-noref: default agents (claude) leave reference invocations verbatim
+# ─────────────────────────────────────────────────────
+# transformReference is undefined for DefaultTransformer, so references/*.md are
+# copied verbatim for claude/cursor/opencode. unikit-plan's
+# references/TASK-FORMAT.md must keep `/unikit-implement` — NOT $unikit-
+# (codex) or /skills unikit- (qwen). A stray DefaultTransformer.transformReference
+# would rewrite this and fail the assertion below.
+CLAUDE_TASKFORMAT="$CLAUDE_DIR/.claude/skills/unikit-plan/references/TASK-FORMAT.md"
+assert_exists "$CLAUDE_TASKFORMAT" "unikit-plan reference must be installed for claude"
+assert_contains "$CLAUDE_TASKFORMAT" '/unikit-implement' \
+  "claude references must keep /unikit-* verbatim (DefaultTransformer is no-op)"
+assert_not_contains "$CLAUDE_TASKFORMAT" '\$unikit-implement' \
+  "claude references must NOT be codex-rewritten"
+echo "  ✓ claude reference no-op: /unikit-implement kept verbatim in references/"
+
+# ─────────────────────────────────────────────────────
 # Test 1b: dev-principles.md installed with substituted vars (system file)
 # ─────────────────────────────────────────────────────
 PRINCIPLES_PATH="$CLAUDE_DIR/.unikit/system/dev-principles.md"
@@ -102,6 +120,115 @@ assert_not_contains "$PRINCIPLES_PATH" '\{\{engine_mcp_tool\}\}' "no unsubstitut
 # "well-documented C# code adhering to Unity best practices" post-substitution).
 assert_contains "$PRINCIPLES_PATH" 'C# code adhering to Unity' \
   "engine_name + engine_code_language substituted in Core Principle 1"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-gd: gd-principles core + 6 shards installed as system assets under
+# .unikit/system/gamedesign/ (flat copies, no engine vars). After the shard split
+# installGamedesignSystemAssets copies every top-level data/gamedesign/*.md verbatim;
+# the slim core keeps the always-loaded sections (e.g. Zone Ownership / Anti-patterns)
+# while the moved sections (e.g. the Severity Rubric) live in their shards. The
+# pre-split FLAT path (.unikit/system/gd-principles.md) must NOT survive on init.
+# ─────────────────────────────────────────────────────
+GD_SYS_DIR="$CLAUDE_DIR/.unikit/system/gamedesign"
+GD_PRINCIPLES_PATH="$GD_SYS_DIR/gd-principles.md"
+assert_exists "$GD_PRINCIPLES_PATH" "gd-principles.md (core) created in .unikit/system/gamedesign/"
+assert_contains "$GD_PRINCIPLES_PATH" 'Zone Ownership' \
+  "gd-principles.md (core) carries the always-loaded Zone Ownership section"
+assert_contains "$GD_PRINCIPLES_PATH" 'Anti-patterns' \
+  "gd-principles.md (core) carries the Anti-patterns section"
+assert_not_contains "$GD_PRINCIPLES_PATH" '\{\{engine_name\}\}' \
+  "gd-principles.md (core) has no engine vars (flat copy, unlike dev-principles.md)"
+# The pre-split flat path is orphan-deleted by installGamedesignSystemAssets.
+assert_not_exists "$CLAUDE_DIR/.unikit/system/gd-principles.md" \
+  "pre-split flat .unikit/system/gd-principles.md NOT present on init (core lives under gamedesign/ now)"
+# Per-shard delivery (mirror of 1b-dr) — each shard lands under gamedesign/, flat, no vars.
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
+  assert_exists "$GD_SYS_DIR/$shard.md" "$shard.md shard created in .unikit/system/gamedesign/"
+  assert_not_contains "$GD_SYS_DIR/$shard.md" '\{\{engine_name\}\}' \
+    "$shard.md shard has no engine vars (flat copy)"
+done
+# The Severity Rubric moved out of the slim core into the gd-critique shard.
+assert_contains "$GD_SYS_DIR/gd-critique.md" 'Severity Rubric' \
+  "gd-critique.md shard carries the shared severity rubric (moved out of the core)"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-gen: genre profiles are SELECTIVE, not folder-copied. A bare init has
+# an empty config.genres.installed, so installGenreProfiles delivers NOTHING —
+# .unikit/system/gamedesign/genres/ is absent or empty. This is the negative
+# invariant that distinguishes genres (selective, per-state) from the shards
+# (which fold-copy ALL of data/gamedesign/*.md). Real delivery is exercised
+# CLI-driven in test-genres-install.sh.
+# ─────────────────────────────────────────────────────
+GD_GENRES_DIR="$GD_SYS_DIR/genres"
+if [[ -d "$GD_GENRES_DIR" ]]; then
+  GENRE_FILE_COUNT=$(find "$GD_GENRES_DIR" -name '*.json' | wc -l | tr -d ' ')
+  if [[ "$GENRE_FILE_COUNT" == "0" ]]; then
+    echo "  ✓ bare init delivers no genre profiles (selective — dir present but empty)"
+  else
+    echo "Assertion failed: bare init delivered $GENRE_FILE_COUNT genre profile(s) — should be 0 (selective, not bulk)"
+    exit 1
+  fi
+else
+  echo "  ✓ bare init delivers no genre profiles (selective — genres dir absent)"
+fi
+
+# ─────────────────────────────────────────────────────
+# Test 1b-gr: gate-result-contract.md installed as a system asset (flat copy, no vars)
+# Engine-agnostic, modeled on installCliContract. unikit-verify + unikit-review read it
+# on Bootstrap to emit/recompute the unikit-gate-result block. Must land in .unikit/system/.
+# ─────────────────────────────────────────────────────
+GATE_CONTRACT_PATH="$CLAUDE_DIR/.unikit/system/gate-result-contract.md"
+assert_exists "$GATE_CONTRACT_PATH" "gate-result-contract.md created in .unikit/system/"
+assert_contains "$GATE_CONTRACT_PATH" 'unikit-gate-result' \
+  "gate-result-contract.md carries the unikit-gate-result fence name"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-dr: design-read.md installed as a system asset under .unikit/system/gamedesign/
+# (flat copy, no engine vars — installGamedesignSystemAssets copies it alongside the
+# gd-principles core + shards). The extracted mode references + plan design-context.md
+# travel with their skills (non-flat copyDirectory).
+# ─────────────────────────────────────────────────────
+DESIGN_READ_PATH="$CLAUDE_DIR/.unikit/system/gamedesign/design-read.md"
+assert_exists "$DESIGN_READ_PATH" "design-read.md created in .unikit/system/gamedesign/"
+assert_contains "$DESIGN_READ_PATH" 'intent decides the door' \
+  "design-read.md carries the flow-first resolution rule"
+assert_not_contains "$DESIGN_READ_PATH" '\{\{engine_name\}\}' \
+  "design-read.md has no engine vars (flat copy, like gd-principles.md)"
+# unikit-plan is in this fixture's installedSkills; its extracted mode references +
+# design-context.md travel with it (non-flat copyDirectory). unikit-gd-spec is NOT in
+# this fixture, so its mode references are not asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/mode-fast.md" \
+  "unikit-plan mode reference (mode-fast.md) installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/design-context.md" \
+  "unikit-plan design-context.md reference installed"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-brownfield: the two new brownfield/export skills (unikit-gd-recon,
+# unikit-gd-docs) deliver on init — both are in this fixture's installedSkills.
+# unikit-gd-recon's shared references/code-recon.md travels with it via the non-flat
+# copyDirectory (no shard-cycle wiring needed). No hardcoded skill counter exists in
+# these smokes (skills are auto-discovered by glob), so nothing else to bump.
+# ─────────────────────────────────────────────────────
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-recon/SKILL.md" \
+  "unikit-gd-recon SKILL.md installed (brownfield cold-start recon)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-recon/references/code-recon.md" \
+  "unikit-gd-recon shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
+  "unikit-gd-docs SKILL.md installed (GDD → docs/design render)"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks
+# into NEW references/ subdirs for the zone/verify skills (gd-flow, gd-content,
+# gd-verify previously had none). The non-flat copyDirectory delivers them with the
+# skill — assert ≥1 extracted reference per new-dir skill (else a silent delivery
+# regression; the SKILL switches point at these files via {{skills_dir}}/.../references/).
+# ─────────────────────────────────────────────────────
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-flow/references/mode-author.md" \
+  "unikit-gd-flow extracted mode reference (mode-author.md) travels under references/ (non-flat copyDirectory)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-content/references/mode-author.md" \
+  "unikit-gd-content extracted mode reference (mode-author.md) travels under references/ (non-flat copyDirectory)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-verify/references/axis-checks.md" \
+  "unikit-gd-verify extracted axis-checks.md travels under references/ (non-flat copyDirectory)"
 
 # ─────────────────────────────────────────────────────
 # Test 1c: supportsSubagents:false skip-path
@@ -128,7 +255,7 @@ cat > "$NOSUB_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -168,7 +295,7 @@ cat > "$CODEX_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -178,7 +305,8 @@ seed_rule "$CODEX_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$CODEX_DIR"
 
 # No /unikit- invocations should remain in SKILL.md files (rewritten to $unikit-)
-# Only check SKILL.md files - reference files are copied verbatim by design.
+# SKILL.md is checked here; reference .md files are rewritten too (T3) and
+# checked separately below — they are no longer copied verbatim.
 # Exclude frontmatter name: field, package name unikit-ai, and .unikit/ paths
 SLASH_INVOCATIONS=$(find "$CODEX_DIR/.codex/skills/" -name 'SKILL.md' -exec \
   grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
@@ -215,6 +343,41 @@ fi
 assert_contains "$CODEX_DIR/.codex/skills/unikit/SKILL.md" \
   "Subagent Delegation" "codex install: guarded 'Subagent Delegation' block must be kept for codex"
 
+# Reference .md files must ALSO have their invocations rewritten (T3): the
+# installer runs transformReference over references/*.md, not just SKILL.md.
+# Fixture coverage: unikit-plan ships references/TASK-FORMAT.md with a
+# `/unikit-implement` invocation; unikit ships references/LANGUAGE_RULES_TEMPLATE.md
+# with `/unikit-memory`. Non-.md references (e.g. config-template.yaml) stay
+# verbatim by design — excluded here via `-name '*.md'`.
+CODEX_REF_SLASH=$(find "$CODEX_DIR/.codex/skills/" -path '*/references/*' -name '*.md' -exec \
+  grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
+  | while read -r f; do
+      grep -E '(^|[[:space:]`"(>])/unikit-' "$f" \
+        | grep -v '^name:' \
+        | grep -v 'unikit-ai' \
+        | grep -v '\.unikit/'
+    done | wc -l | tr -d ' ' || true)
+
+CODEX_REF_DOLLAR=$(find "$CODEX_DIR/.codex/skills/" -path '*/references/*' -name '*.md' -exec \
+  grep -c '\$unikit-' {} \; 2>/dev/null \
+  | awk '{s+=$1} END{print s+0}' || true)
+
+if [[ "$CODEX_REF_SLASH" -eq 0 && "$CODEX_REF_DOLLAR" -gt 0 ]]; then
+  echo "  ✓ codex reference rewrite: /unikit-* → \$unikit-* in references/ ($CODEX_REF_DOLLAR rewrites)"
+else
+  echo "Assertion failed: codex reference rewrite"
+  echo "  Remaining /unikit- in references: $CODEX_REF_SLASH (expected 0)"
+  echo "  Found \$unikit- in references: $CODEX_REF_DOLLAR (expected > 0)"
+  if [[ "$CODEX_REF_SLASH" -gt 0 ]]; then
+    echo "  --- remaining /unikit- in references ---"
+    find "$CODEX_DIR/.codex/skills/" -path '*/references/*' -name '*.md' -exec \
+      grep -HE '(^|[[:space:]`"(>])/unikit-' {} \; \
+      | grep -v ':name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
+    echo "  ---"
+  fi
+  exit 1
+fi
+
 # ─────────────────────────────────────────────────────
 # Test 3b: Qwen invocation rewrite
 # ─────────────────────────────────────────────────────
@@ -239,7 +402,7 @@ cat > "$QWEN_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -249,7 +412,8 @@ seed_rule "$QWEN_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$QWEN_DIR"
 
 # No raw /unikit- invocations should remain in SKILL.md files (rewritten to "/skills unikit-")
-# Only check SKILL.md files - reference files are copied verbatim by design.
+# SKILL.md is checked here; reference .md files are rewritten too (T3) and
+# checked separately below — they are no longer copied verbatim.
 # Exclude frontmatter name: field, package name unikit-ai, and .unikit/ paths
 QWEN_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -name 'SKILL.md' -exec \
   grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
@@ -280,6 +444,114 @@ else
   exit 1
 fi
 
+# Reference .md files must ALSO have their invocations rewritten (T3) for qwen
+# (/unikit-* → /skills unikit-*). Same fixture coverage as codex Test 3.
+QWEN_REF_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
+  grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
+  | while read -r f; do
+      grep -E '(^|[[:space:]`"(>])/unikit-' "$f" \
+        | grep -v '^name:' \
+        | grep -v 'unikit-ai' \
+        | grep -v '\.unikit/'
+    done | wc -l | tr -d ' ' || true)
+
+QWEN_REF_SKILLS=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
+  grep -c '/skills unikit-' {} \; 2>/dev/null \
+  | awk '{s+=$1} END{print s+0}' || true)
+
+if [[ "$QWEN_REF_RAW_SLASH" -eq 0 && "$QWEN_REF_SKILLS" -gt 0 ]]; then
+  echo "  ✓ qwen reference rewrite: /unikit-* → /skills unikit-* in references/ ($QWEN_REF_SKILLS rewrites)"
+else
+  echo "Assertion failed: qwen reference rewrite"
+  echo "  Remaining /unikit- in references: $QWEN_REF_RAW_SLASH (expected 0)"
+  echo "  Found /skills unikit- in references: $QWEN_REF_SKILLS (expected > 0)"
+  if [[ "$QWEN_REF_RAW_SLASH" -gt 0 ]]; then
+    echo "  --- remaining /unikit- in references ---"
+    find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
+      grep -HE '(^|[[:space:]`"(>])/unikit-' {} \; \
+      | grep -v ':name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
+    echo "  ---"
+  fi
+  exit 1
+fi
+
+# ─────────────────────────────────────────────────────
+# Test 3c: Antigravity (skills-only — no subagents, local MCP config, postInstall rules)
+# ─────────────────────────────────────────────────────
+# Antigravity (IDE + CLI share one .agents/ workspace). Skills install as
+# directories under .agents/skills/ (no workflows-split). supportsSubagents:false
+# → no .agents/agents/ file. supportsMcp:true + settingsFile:'.agents/mcp_config.json',
+# but configureMcp is only invoked from init.ts (not run_update here), so no MCP
+# file is asserted in this block — the writer's output shape is covered by Test 12d.
+# postInstall writes .agents/rules/unikit.md guardrails — it fires because ≥1 skill
+# is (re)installed here (installSkills calls it after the skill loop). /unikit-* are
+# NOT rewritten (skills triggered by description), so references stay verbatim.
+
+ANTIGRAVITY_DIR="$TMPDIR/test-antigravity"
+mkdir -p "$ANTIGRAVITY_DIR"
+
+cat > "$ANTIGRAVITY_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [
+    {
+      "id": "antigravity",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan"],
+      "installedSubagents": ["unikit-architecture-sidecar"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$ANTIGRAVITY_DIR"
+
+seed_rule "$ANTIGRAVITY_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$ANTIGRAVITY_DIR"
+
+# Skills install as .agents/skills/<name>/SKILL.md directories (skills-only)
+assert_exists "$ANTIGRAVITY_DIR/.agents/skills/unikit/SKILL.md" \
+  "antigravity: unikit skill installed as .agents/skills/<name>/SKILL.md"
+# Reference-heavy skills keep their references/ (the reason we did NOT port the
+# workflows-split — a flat branch would collapse same-named reference files).
+assert_exists "$ANTIGRAVITY_DIR/.agents/skills/unikit/references/LANGUAGE_RULES_TEMPLATE.md" \
+  "antigravity: unikit skill references/ delivered (non-flat, no workflows-split)"
+# /unikit-* invocations are left verbatim (skills-only, no slash rewrite), same as
+# DefaultTransformer — unikit-plan ships references/TASK-FORMAT.md with one.
+assert_contains "$ANTIGRAVITY_DIR/.agents/skills/unikit-plan/references/TASK-FORMAT.md" '/unikit-implement' \
+  "antigravity: references keep /unikit-* verbatim (skills-only, no invocation rewrite)"
+
+# postInstall guardrails written (fires because ≥1 skill (re)installed)
+assert_exists "$ANTIGRAVITY_DIR/.agents/rules/unikit.md" \
+  "antigravity: postInstall wrote .agents/rules/unikit.md guardrails"
+assert_contains "$ANTIGRAVITY_DIR/.agents/rules/unikit.md" '.agents/mcp_config.json' \
+  "antigravity: rules file points at the local, automatically-configured .agents/mcp_config.json"
+
+# supportsSubagents:false → listed subagent must NOT materialize
+assert_not_exists "$ANTIGRAVITY_DIR/.agents/agents/unikit-architecture-sidecar.md" \
+  "antigravity: listed subagent NOT installed (supportsSubagents:false)"
+
+# No {{...}} template tokens leak into skills or the rules file. {{settings_file}}
+# now renders to the literal '.agents/mcp_config.json' (settingsFile is no longer
+# null); {{skills_cli_agent_flag}} → "--agent antigravity". None stay raw.
+ANTIGRAVITY_TOKEN_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+  "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+
+if [[ "$ANTIGRAVITY_TOKEN_HITS" -eq 0 ]]; then
+  echo "  ✓ antigravity: skills-only install (references kept), postInstall rules, no subagents, no {{...}} leak"
+else
+  echo "Assertion failed: antigravity install leaked $ANTIGRAVITY_TOKEN_HITS template placeholder(s)"
+  grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
+    "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' | head -5
+  exit 1
+fi
+
 # ─────────────────────────────────────────────────────
 # Test 4: RULES_INDEX.md end-to-end smoke after `unikit-ai update`
 # ─────────────────────────────────────────────────────
@@ -290,7 +562,7 @@ fi
 # scripts/test-rules-sync.sh — this block only keeps the end-to-end
 # smoke that catches "update flow forgot to call sync".
 
-RULES_INDEX="$CLAUDE_DIR/.unikit/memory/RULES_INDEX.md"
+RULES_INDEX="$CLAUDE_DIR/.unikit/memory/code/RULES_INDEX.md"
 assert_exists "$RULES_INDEX" "RULES_INDEX.md should exist after update"
 assert_contains "$RULES_INDEX" "## Core" "RULES_INDEX should have Core section"
 assert_contains "$RULES_INDEX" "code-style" "RULES_INDEX should contain seeded core rule"
@@ -313,11 +585,11 @@ assert_contains "$RULES_INDEX" "code-style" "RULES_INDEX should contain seeded c
 # the same id exists in the remote catalog.
 
 LOCAL_DIR="$TMPDIR/test-local-pres"
-mkdir -p "$LOCAL_DIR/.unikit/memory/stack"
+mkdir -p "$LOCAL_DIR/.unikit/memory/code/stack"
 
 CUSTOM_CONTENT="# My custom rngneeds rules
 This file was manually edited by the user."
-echo "$CUSTOM_CONTENT" > "$LOCAL_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_RNGNEEDS}.md"
+echo "$CUSTOM_CONTENT" > "$LOCAL_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_RNGNEEDS}.md"
 
 cat > "$LOCAL_DIR/.unikit.json" << 'EOF'
 {
@@ -335,7 +607,7 @@ cat > "$LOCAL_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -346,10 +618,10 @@ run_update "$LOCAL_DIR"
 
 # Custom rngneeds.md content must survive the update (syncRulesState Phase 1
 # tags it as `source: local`; Phase 2 skips it because origin != registry).
-assert_exists "$LOCAL_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_RNGNEEDS}.md" "local rule file should not be deleted"
-assert_file_content "$LOCAL_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_RNGNEEDS}.md" "$CUSTOM_CONTENT" \
+assert_exists "$LOCAL_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_RNGNEEDS}.md" "local rule file should not be deleted"
+assert_file_content "$LOCAL_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_RNGNEEDS}.md" "$CUSTOM_CONTENT" \
   "local rule should preserve user content, not be overwritten by registry"
-assert_exists "$LOCAL_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_UNITASK}.md" "seeded rule should be present"
+assert_exists "$LOCAL_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_UNITASK}.md" "seeded rule should be present"
 
 # Config should no longer carry the legacy `declined` field after save.
 DECLINED_FIELD=$(node -e "
@@ -378,6 +650,14 @@ assert_contains "$CLAUDE_DIR/.claude/skills/unikit-verify/references/ENGINE_RULE
 
 echo "  ✓ ENGINE_RULES.md: installed for unity engine (unikit + unikit-verify)"
 
+# unikit-memory ships a scripts/ subdir (the single self-contained material-prep.py) — the
+# first skill to do so. The non-flat transformer copies the whole skill dir, but nothing
+# else asserts the scripts/ subdir actually lands in an installed project; guard the
+# delivery here (PLAN.md T10 load-bearing (b), install half).
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-memory/scripts/material-prep.py" \
+  "material-prep.py should be delivered into the installed unikit-memory skill (scripts/ subdir)"
+echo "  ✓ unikit-memory: scripts/material-prep.py delivered on install"
+
 # ─────────────────────────────────────────────────────
 # Test 8: ENGINE_RULES.md installation for Godot
 # ─────────────────────────────────────────────────────
@@ -401,7 +681,7 @@ cat > "$GODOT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -426,7 +706,7 @@ echo "  ✓ ENGINE_RULES.md: installed for godot engine (both skills)"
 # ─────────────────────────────────────────────────────
 
 # Godot core rules should be installed from memory/godot/core/
-assert_exists "$GODOT_DIR/.unikit/memory/core/${CORE_RULE_GODOT_CODE_STYLE}.md" "godot core rule should be installed"
+assert_exists "$GODOT_DIR/.unikit/memory/code/core/${CORE_RULE_GODOT_CODE_STYLE}.md" "godot core rule should be installed"
 
 echo "  ✓ engine-specific rules: godot core rules installed"
 
@@ -457,7 +737,7 @@ cat > "$MCP_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -527,7 +807,7 @@ cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -537,8 +817,8 @@ seed_rule "$COMPAT_DIR" unity stack "$STACK_RULE_UNITY_UNITASK"
 run_update "$COMPAT_DIR"
 
 # Seeded rules must survive the update (sync registers them as local).
-assert_exists "$COMPAT_DIR/.unikit/memory/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "backward compat: core rule present after sync"
-assert_exists "$COMPAT_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_UNITASK}.md" "backward compat: stack rule present after sync"
+assert_exists "$COMPAT_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "backward compat: core rule present after sync"
+assert_exists "$COMPAT_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_UNITASK}.md" "backward compat: stack rule present after sync"
 
 # Engine templates should be installed (defaults to unity)
 assert_exists "$COMPAT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" \
@@ -771,6 +1051,139 @@ node -e "
 echo "  ✓ opencode MCP config: HTTP servers (UnityMCP) skipped; stdio servers (context7) still written"
 
 # ─────────────────────────────────────────────────────
+# Test 12d: Antigravity MCP config shape (serverUrl transform, type stripped)
+# ─────────────────────────────────────────────────────
+# Drives configureMcp('antigravity') directly, verifies the AntigravityMcpWriter
+# transform: naive JSON passthrough (mcpServers container, same as Claude/Cursor)
+# except HTTP servers get `type` stripped and `url` renamed to `serverUrl` (the
+# only schema Antigravity's client understands is `{ command, args, env }` stdio
+# or `{ serverUrl }` remote — never `{ type, url }`).
+# Uses engine=unity for the type/url→serverUrl case (UnityMCP), engine=godot for
+# the env-passthrough case (GodotMCP), same split as the OpenCode block above.
+
+ANTIGRAVITY_MCP_DIR="$TMPDIR/test-antigravity-mcp"
+mkdir -p "$ANTIGRAVITY_MCP_DIR/.agents"
+ANTIGRAVITY_MCP_JSON="$ANTIGRAVITY_MCP_DIR/.agents/mcp_config.json"
+
+# Pre-seed with a non-mcpServers top-level key to assert preservation through
+# configureMcp's upsert path (merge, not overwrite — the invariant the OpenCode
+# regression patch 2026-04-19-11.25.md exists to guard against).
+cat > "$ANTIGRAVITY_MCP_JSON" << 'EOF'
+{
+  "theme": "dark",
+  "customField": { "nested": "value" }
+}
+EOF
+
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const servers = await discoverMcpServers('unity');
+  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'antigravity');
+  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'antigravity');
+" "$ANTIGRAVITY_MCP_DIR" > /dev/null 2>&1)
+
+assert_exists "$ANTIGRAVITY_MCP_JSON" ".agents/mcp_config.json should exist after configureMcp"
+
+node -e "
+  const fs = require('fs');
+  const c = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+  const errors = [];
+
+  if (!c.mcpServers) errors.push('missing top-level mcpServers container');
+
+  // Non-mcpServers top-level keys must survive the upsert
+  if (c.theme !== 'dark') errors.push('top-level \"theme\" lost: ' + JSON.stringify(c.theme));
+  if (!c.customField || c.customField.nested !== 'value')
+    errors.push('top-level \"customField\" lost or mutated: ' + JSON.stringify(c.customField));
+
+  const ctx = c.mcpServers && c.mcpServers.context7;
+  if (!ctx) errors.push('context7 server missing');
+  else {
+    if (ctx.command !== 'npx') errors.push('context7.command expected npx, got ' + JSON.stringify(ctx.command));
+    if (JSON.stringify(ctx.args) !== JSON.stringify(['-y', '@upstash/context7-mcp@latest']))
+      errors.push('context7.args wrong shape: ' + JSON.stringify(ctx.args));
+    if ('env' in ctx) errors.push('context7.env must be absent when source has no env');
+  }
+
+  const unity = c.mcpServers && c.mcpServers.UnityMCP;
+  if (!unity) errors.push('UnityMCP server missing');
+  else {
+    if (unity.serverUrl !== 'http://localhost:8085/mcp')
+      errors.push('UnityMCP.serverUrl wrong: ' + JSON.stringify(unity.serverUrl));
+    if ('type' in unity) errors.push('UnityMCP.type must be stripped');
+    if ('url' in unity) errors.push('UnityMCP.url must be renamed to serverUrl, not left in place');
+  }
+
+  if (errors.length > 0) {
+    console.error('antigravity mcp shape assertion failed:');
+    errors.forEach(e => console.error('  - ' + e));
+    process.exit(1);
+  }
+" "$ANTIGRAVITY_MCP_JSON"
+
+# Idempotency: second configureMcp call above should leave exactly one context7 entry.
+ANTIGRAVITY_CTX_COUNT=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  console.log(Object.keys(c.mcpServers || {}).filter(k => k === 'context7').length);
+" "$ANTIGRAVITY_MCP_JSON")
+if [[ "$ANTIGRAVITY_CTX_COUNT" -ne 1 ]]; then
+  echo "Assertion failed: antigravity idempotency — expected 1 context7 entry, got $ANTIGRAVITY_CTX_COUNT"
+  exit 1
+fi
+
+echo "  ✓ antigravity MCP config: mcpServers container, serverUrl transform, type/url stripped, top-level preserved (idempotent)"
+
+# Separate engine=godot run: neither context7 nor godot-mcp-coding-solo carries a
+# `type`/`url` field, so this exercises naive env passthrough (no key renaming,
+# unlike toml-writer.ts's sanitizeEnv/http_headers rename).
+ANTIGRAVITY_MCP_DIR2="$TMPDIR/test-antigravity-mcp-env"
+mkdir -p "$ANTIGRAVITY_MCP_DIR2"
+
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const servers = await discoverMcpServers('godot');
+  await configureMcp(target, servers, ['context7', 'godot-mcp-coding-solo'], 'antigravity');
+" "$ANTIGRAVITY_MCP_DIR2" > /dev/null 2>&1)
+
+ANTIGRAVITY_MCP_JSON2="$ANTIGRAVITY_MCP_DIR2/.agents/mcp_config.json"
+assert_exists "$ANTIGRAVITY_MCP_JSON2" ".agents/mcp_config.json should exist after godot+antigravity configureMcp"
+
+node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const errors = [];
+
+  const godot = c.mcpServers && c.mcpServers.GodotMCP;
+  if (!godot) errors.push('GodotMCP server missing');
+  else {
+    const expectedEnv = { GODOT_PATH: '/path/to/godot', DEBUG: 'true' };
+    if (!godot.env || typeof godot.env !== 'object' || Array.isArray(godot.env)) {
+      errors.push('GodotMCP.env missing or wrong type: ' + JSON.stringify(godot.env));
+    } else {
+      const actualKeys = Object.keys(godot.env).sort();
+      const expectedKeys = Object.keys(expectedEnv).sort();
+      if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+        errors.push('GodotMCP.env keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
+      }
+      for (const k of expectedKeys) {
+        if (godot.env[k] !== expectedEnv[k]) {
+          errors.push('GodotMCP.env.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.env[k]));
+        }
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('antigravity env passthrough assertion failed:');
+    errors.forEach(e => console.error('  - ' + e));
+    process.exit(1);
+  }
+" "$ANTIGRAVITY_MCP_JSON2"
+
+echo "  ✓ antigravity MCP config: env passthrough (no key renaming) for GodotMCP"
+
+# ─────────────────────────────────────────────────────
 # Test 13: Codex MCP rules injection (skill frontmatter)
 # ─────────────────────────────────────────────────────
 # Uses a dedicated project dir (NOT the Test 3 CODEX_DIR, which is pinned
@@ -797,7 +1210,7 @@ cat > "$CODEX_MCP_RULES_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF

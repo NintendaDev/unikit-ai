@@ -2,6 +2,23 @@
 
 # Skills Reference
 
+## Help & Navigation
+
+### `/unikit-help` - framework navigator
+
+Not sure what to do next, or which skill to use? Start here.
+```
+/unikit-help                          # short diagnostic (one question)
+/unikit-help how do I start coding     # routed straight to the right flow
+/unikit-help which skill fixes a bug
+```
+- Read-only navigator: diagnoses your intent and points you at the right skill/pipeline — it never does the work itself
+- No arguments → asks one short diagnostic question instead of dumping a manual
+- Covers the whole framework: setup, the code pipeline, testing, the game-design module, rules/memory, and "which skill for X"
+- Knowledge base lives in `skills/unikit-help/references/`; see [unikit-help](unikit-help.md) for details
+
+---
+
 ## Setup Skills
 
 ### `/unikit` - project setup
@@ -41,8 +58,8 @@ These skills form the core development loop. See [Development Workflow](workflow
 ```
 - Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code
 - Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the knowledge base
-- Saves results to `.unikit/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
-- Maintains `RESEARCHES_INDEX.md`; use `init` to rebuild the index
+- Saves results to `.unikit/code/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
+- Maintains `researches/INDEX.md`; use `init` to rebuild the index
 - When direction is clear, transition to `/unikit-plan`
 
 ### `/unikit-plan [fast|full|add|--list] [--base <branch>] <description>` - plan the work
@@ -57,7 +74,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 ```
 
 Three modes:
-- **Fast** - no git branch, saves plan to `.unikit/PLAN.md` (single flat file)
+- **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - creates git branch, asks about testing/logging, saves plan
 - **Add** - extends an existing plan with new tasks
 
@@ -69,7 +86,7 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 /unikit-improve                                          # Improve latest plan
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
-/unikit-improve @.unikit/plans/2026-03-10_core-loop      # Improve specific plan
+/unikit-improve @.unikit/code/plans/2026-03-10_core-loop      # Improve specific plan
 ```
 - Second-pass analysis: finds missing tasks, fixes dependencies, removes redundant work
 - Performs deeper codebase analysis than initial `/unikit-plan`
@@ -86,7 +103,7 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
 /unikit-implement core-loop          # Find plan by name
-/unikit-implement @.unikit/plans/2026-03-10_core-loop  # Explicit plan path
+/unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
 ```
 - Reads skill-context rules first, then plan TASKS.md
 - Executes tasks one by one with commit checkpoints
@@ -99,10 +116,10 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 ```
 /unikit-fix NullReferenceException in CustomerItemView.OnInit
 ```
-- Two modes: **Fix now** (immediate) or **Plan first** (creates `.unikit/FIX_PLAN.md`)
+- Two modes: **Fix now** (immediate) or **Plan first** (creates `.unikit/code/FIX_PLAN.md`)
 - Investigates codebase to find root cause
 - Applies fix and suggests test coverage
-- Creates a **self-improvement patch** in `.unikit/patches/`
+- Creates a **self-improvement patch** in `.unikit/code/patches/`
 - Every fix makes the AI smarter through `/unikit-evolve`
 
 ### `/unikit-verify [--strict] [feature-name]` - check completeness
@@ -138,7 +155,7 @@ Creates conventional commits with Unity-specific checks:
 ```
 /unikit-evolve
 ```
-- Reads patches from `.unikit/patches/` incrementally using an evolve cursor
+- Reads patches from `.unikit/code/patches/` incrementally using an evolve cursor
 - Extracts prevention points from each patch (multiple per patch)
 - Classifies: code/architecture rules → `RULES.md`; skill workflow issues → `skill-context/`
 - Cross-checks against existing rules and knowledge base to avoid duplicates
@@ -195,11 +212,11 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 /unikit-memory add stack rule for DOTween           # Add rule from description
 /unikit-memory https://docs.example.com/guide       # Research from URL
 /unikit-memory Assets/Plugins/MyLib/README.md        # Research from file
-/unikit-memory --migrate-rules                       # Migrate RULES.md to memory
+/unikit-memory migrate-rules                         # Migrate RULES.md to memory
 /unikit-memory validate                              # Sync RULES_INDEX.md with actual files
 /unikit-memory --skip-registry add rule for DOTween  # Skip registry lookup, generate directly
 ```
-- Four branches: Add Rule (direct), Research (URL/file + Context7 enrichment), Migrate (`--migrate-rules`), Validate (`validate` - syncs index with actual files)
+- Four branches: Add Rule (direct), Research (URL/file + Context7 enrichment), Migrate (`migrate-rules`), Validate (`validate` - syncs index with actual files)
 - **Registry-first lookup** - before generating a rule, checks the remote registry catalog for an existing match; offers to install the vetted version instead of generating a local copy
 - `--skip-registry` - bypass the registry lookup (used by higher-level callers that already queried the catalog)
 - Add or update rules in `.unikit/memory/` (core and stack)
@@ -232,6 +249,47 @@ Three modes (direction matters):
 - **`sync`** - pulls registry-side updates into `.unikit/memory/` via `unikit-ai rules sync` with a choice of intensity: Safe (version-changed only), Replace (also overwrites local modifications), Mirror (replace + prune obsolete stack rules) (registry → memory)
 
 This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the full registry lifecycle. See [Rules Registry](rules-registry.md) for the underlying CLI commands.
+
+---
+
+## Game Design Skills
+
+The `gamedesign` module adds nine `unikit-gd-*` skills for authoring a Game Design
+Document along three machine-readable axes — **systems** (the rules), **flows** (the
+dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. See
+**[Game-Design Module](gamedesign.md)** for the full treatment.
+
+### `/unikit-gd-content` - the content (catalog) axis
+
+```
+/unikit-gd-content add an item content type     # create / fill / revise a CT-<slug>
+```
+- Owns one content type's `CONTENT-TYPE.md` for its full lifecycle (schema + descriptor)
+- `CT.fields` is a typed schema; `ref<>` makes a content↔X link a field; `scale` is `bulk` (a `count`+`spec` descriptor) or `curated` (`fields` rows in the registry)
+- Registers itself (`content_types:` / `content:` + RES/TRACK/KNOB) and re-renders `## Content Map [gen]`
+- `belongs_to` names the consuming system (one-way); a missing system routes to `/unikit-gd-spec` add-system
+
+### `/unikit-gd-apply` - multi-zone edit dispatcher
+
+```
+/unikit-gd-apply "buff combat 10%, add a loot rarity field, retune onboarding pacing"   # one multi-zone edit
+```
+- Carries out an explicit, **multi-zone** GDD edit you have already decided — it owns nothing and writes nothing
+- Resolves each delta to its `(target, zone)` and dispatches **system-before-sinks** (`/unikit-gd-spec` → `/unikit-gd-system` → `/unikit-gd-content` → `/unikit-gd-flow`), then closes with one `/unikit-gd-verify`
+- A **single-zone** edit goes straight to the owner; an open question to research goes to `/unikit-gd-explore` first
+- A new system a delta needs is created via `/unikit-gd-spec` add-system in the first tier (create + dependent revise in one pass)
+
+### `genres` (CLI) - bundled genre-profile catalog
+
+```
+unikit-ai genres list                 # the §4.1-4.6 genre catalog (with an installed marker)
+unikit-ai genres show <id|alias>      # one profile (--json = the full object)
+unikit-ai genres install <id|alias…>  # selectively install profile(s)
+```
+- A **bundled, read-only** catalog (no registry, no network) that seeds GDD authoring: default flow-mode, packs, and *suggested* systems / content types / entities / resources
+- **Skill-driven**, not user-typed: `/unikit-gd-brainstorm` writes a descriptive `genre:` hint; `/unikit-gd-spec` best-fits it to a profile, installs it, and runs a seed interview
+- `/unikit-gd-review` reads the profile for a genre-completeness lens; `/unikit-gd-verify` stays **genre-blind**. The profile is read-only — divergence lands in `GD-IDS.yaml`
+- Exit codes are a subset of the rules CLI: `0`/`1`/`3`
 
 ---
 

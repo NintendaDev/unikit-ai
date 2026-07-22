@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "hypercasual",
+  "name": "Hyper-casual",
+  "aliases": ["hypercasual", "hyper-casual", "snackable"],
+  "summary": "Однокнопочные «снэк»-игры на одной запоминающейся механике с IAA-монетизацией и KPI-гейтами ретеншна (Helix Jump, Flappy Bird).",
+  "confidence": "medium",
+  "default_flow_mode": "linear",
+  "default_packs": ["core-loops", "ux-onboarding", "monetization-ethics", "liveops"],
+  "seed_systems": [
+    { "slug": "core-mechanic", "category": "Gameplay", "tier": "MVP", "why": "одна механика «Most Memorable Moment» — всё ядро" },
+    { "slug": "fail-retry", "category": "Gameplay", "tier": "MVP", "why": "мгновенный fail → retry — петля сессии" },
+    { "slug": "ad-placements", "category": "Economy", "tier": "VS", "why": "IAA ad-cadence: format/trigger/freqCap" }
+  ],
+  "seed_content_types": [
+    { "slug": "ad-placement", "belongs_to": "SYS-ad-placements", "scale": "curated", "why": "каталог IAA-плейсментов с format/trigger/freqCap" }
+  ],
+  "seed_entities": [
+    { "slug": "marketing-creative", "why": "креатив=валидация механики до продакшна" }
+  ],
+  "seed_resources": [],
+  "critical_sections": ["core-loops.MostMemorableMoment", "monetization-ethics.IAACadence", "ux-onboarding.DifficultyRamp"],
+  "review_emphasis": ["одна механика читается за секунды (Most Memorable Moment)", "ad-cadence не ломает сессию (format/trigger/freqCap)", "difficulty-ramp проходит KPI-гейт D1>50%"],
+  "platform_default": "mobile"
+}

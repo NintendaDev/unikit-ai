@@ -1,0 +1,235 @@
+# Game Design Facts Registry (GD-IDS)
+#
+# PURPOSE: the single source of truth for every number, name, and decision that
+# crosses a system boundary, AND the machine interface the code side reads. Design
+# skills check this registry before writing new content so cross-document drift is
+# caught at authoring time. When a document and this registry disagree, the registry
+# wins until the user resolves the conflict the other way through `unikit-gd-verify`.
+#
+# RULES:
+#   - Register a fact when it appears in (or is referenced by) more than one
+#     document. Internal-only facts (a formula used in one GDD) stay in that GDD.
+#   - Never delete an entry — set `status: deprecated`. Dangling references are
+#     verify conflicts.
+#   - IDs are stable English lowercase slugs (PIL-n, SYS-slug, FLOW-slug, ENT-slug,
+#     FORM-slug, AC-sys-n, GOAL-flow-n, CT-slug, CU-ct-n, RES-slug, TRACK-slug,
+#     KNOB-slug). Never reuse or renumber an ID.
+#   - `source` is the document that OWNS the fact.
+#   - Store CURRENT VALUES ONLY. History lives in GDD changelog blocks (section K)
+#     and git. On a value change: update it in place — the rationale rides the GDD
+#     changelog essence + git (this registry keeps no log of its own).
+#   - Writes require the same approval as document writes (see gd-principles).
+#
+# FORMAT: YAML. Consistent indentation is critical for grep reliability.
+#   Sections: pillars | systems | flows | events | entities | formulas | terms
+#             | content_types | content | resources | tracks | knobs
+
+version: 2
+last_updated: ""
+#
+# SCHEMA GUARD (clean break — there is NO automatic migration). Every consumer
+# REQUIRES `version: 2`: the gd-* design skills on Bootstrap, and the code side
+# (`unikit-plan` / `unikit-verify` / `unikit-explore`). A registry still on
+# `version: 1` is the pre-v2 layout — consumers must FAIL LOUDLY with an upgrade
+# message instead of silently misreading it. v2 removes the separate markdown
+# system-index that v1 kept beside this registry; the system, flow, funnel, and
+# content maps now render read-only into GAME.md (## System Map [gen] /
+# ## Flow Map [gen] / ## Funnel [gen] / ## Content Map [gen]) directly from this file.
+
+# ─── PILLARS ──────────────────────────────────────────────────────────────────
+# The game's non-negotiable principles. Owned by GAME.md.
+pillars: []
+# Example:
+#   - id: PIL-1
+#     name: "Combat rewards patience over aggression"
+#     status: active            # active | deprecated
+#     source: GAME.md
+#     added: 2026-06-13
+
+# ─── SYSTEMS ──────────────────────────────────────────────────────────────────
+# Every designed system. Owned by each system's GDD; rendered read-only into
+# GAME.md ## System Map [gen].
+systems: []
+# Example:
+#   - id: SYS-combat
+#     name: "Combat"
+#     status: active            # active | deprecated
+#     tier: MVP                 # MVP | VS | Alpha | Full
+#     category: Gameplay        # Core | Gameplay | Progression | Economy | UI | Narrative | Meta — unikit-plan matches the plan brief on this
+#     doc_status: detailed      # not-started | skeleton | detailed
+#     version: 1
+#     implemented_version: ""   # code-side unikit-verify sets this on all-AC-met (cited @version); not a doc_status, excluded from status coherence
+#     research: ""              # gd-spec (add-system) sets this to the explore research folder (e.g. researches/2026-06-21_crafting/) when the system was seeded from an internal-design-lens brief; a NON-id path pointer — non-semantic metadata, excluded from status/version coherence, dangling, unregistered-cross-doc, and id resolution
+#     implements: [PIL-1]
+#     depends_on: [SYS-stamina]
+#     source: systems/SYS-combat.md
+#     added: 2026-06-13
+
+# ─── FLOWS ────────────────────────────────────────────────────────────────────
+# Player-action scenarios (the dynamics axis). Owned by each flow's FLOW.md;
+# rendered read-only into GAME.md ## Flow Map [gen]. A flow's "realized" state is
+# DERIVED from the implemented_version of the systems it depends on — never written
+# here (there is no implemented field on flows; flow delivery is confirmed by
+# playtest, not by the verify gate).
+flows: []
+# Example:
+#   - id: FLOW-first-session
+#     name: "First session"
+#     status: active            # active | deprecated
+#     mode: linear              # linear | conditional | emergent — dictates FLOW.md structure; gd-verify checks mode ↔ structure (as packs ↔ ## Pack)
+#     doc_status: detailed      # not-started | skeleton | detailed (same spine as systems)
+#     version: 1
+#     research: ""              # same NON-id path pointer as systems, but set by gd-flow when the flow is seeded from an explore brief (the flow zone owns its own row — there is no add-flow in gd-spec); excluded from coherence/dangling/id resolution
+#     depends_on: [SYS-combat, SYS-stamina]   # systems this flow exercises (GOAL → SYS); realized once each is implemented
+#     goals:                    # GOAL-<flow>-<n> rows — the scenario steps
+#       - id: GOAL-first-session-1
+#         summary: "Defeat the first enemy"
+#         targets: [SYS-combat]            # GOAL → SYS (skeleton) → GOAL → AC-combat-3 (refined)
+#     source: flows/FLOW-first-session.md
+#     added: 2026-06-22
+
+# ─── EVENTS ───────────────────────────────────────────────────────────────────
+# Analytics measurement points (the third altitude of the AC · GOAL · event
+# grammar). Aggregated read-only into GAME.md ## Funnel [gen]. An event lives where
+# its question lives: a flow/funnel step → here (owned by a flow); a system's own
+# internal metric → that system's GDD (section I); a global/meta metric → GAME.md.
+# Event names are stable English tokens (telemetry identifiers) — never translated.
+events: []
+# Example:
+#   - id: first_enemy_defeated
+#     name: "First enemy defeated"
+#     status: active            # active | deprecated
+#     source: flows/FLOW-first-session.md
+#     flow: FLOW-first-session  # the flow whose GOAL emits this funnel step
+#     added: 2026-06-22
+
+# ─── ENTITIES ─────────────────────────────────────────────────────────────────
+# Named game-world objects with cross-doc stats: enemies, NPCs, items, factions.
+entities: []
+# Example:
+#   - id: ENT-goblin
+#     name: "Goblin"
+#     status: active
+#     source: systems/SYS-combat.md
+#     attributes:
+#       health: 40
+#       damage: 8
+#     added: 2026-06-13
+
+# ─── FORMULAS ─────────────────────────────────────────────────────────────────
+# Named calculations whose output feeds another system, or that another doc cites.
+formulas: []
+# Example:
+#   - id: FORM-damage
+#     name: "Damage"
+#     status: active
+#     source: systems/SYS-combat.md
+#     variables: [attack, defense, crit_chance, crit_multiplier]
+#     output_range: [0, 999]
+#     expression: "max(0, attack - defense) * (1 + crit_chance * crit_multiplier)"
+#     added: 2026-06-13
+
+# ─── TERMS ────────────────────────────────────────────────────────────────────
+# Canonical vocabulary. The canonical name is always English; record the
+# translation and any forbidden aliases so reviews can catch terminology drift.
+terms: []
+# Example:
+#   - id: stagger
+#     canonical: "Stagger"
+#     translation: "Оглушение"
+#     forbidden_aliases: ["stun", "daze"]
+#     status: active
+#     source: systems/SYS-combat.md
+#     added: 2026-06-13
+
+# ─── CONTENT TYPES ────────────────────────────────────────────────────────────
+# The content axis (the catalog axis): each CONTENT type is a SCHEMA + DESCRIPTOR,
+# never the catalog of values. Owned by each type's CONTENT-TYPE.md; rendered
+# read-only into GAME.md ## Content Map [gen]. A schema change is a version bump +
+# data migration; the instances a `bulk` type describes never enter this file (they
+# live in the editor). `belongs_to` (CT → SYS, one-way) names the consuming system;
+# a missing system routes to gd-spec add-system. Owned by unikit-gd-content.
+content_types: []
+# Example:
+#   - id: CT-item
+#     name: "Pawnable item"
+#     status: active            # active | deprecated
+#     scale: bulk               # bulk | curated — bulk registers only a count+spec descriptor; curated registers fields rows
+#     belongs_to: SYS-inventory # CT → SYS (one-way): the consuming system; a missing system routes to gd-spec add-system
+#     doc_status: detailed      # not-started | skeleton | detailed (same spine as systems/flows)
+#     version: 1
+#     research: ""              # same NON-id path pointer as systems/flows, set by gd-content when the CT was seeded from an explore brief (## Content Feature/Improvement Plan); the content zone owns its own row (there is no add-content in gd-spec); excluded from status/version coherence, dangling, unregistered-cross-doc, and id resolution
+#     fields:                   # the typed CT.fields schema — the contract the code side reads. For a `bulk` type this is the SPEC each instance follows (instances are NOT listed); for `curated` it is the schema each content row subsets.
+#       - { name: base_value, type: int, range: [1, 100000], required: true }
+#       - { name: category, type: enum, values: [jewelry, electronics, tools] }
+#       - { name: condition, type: float, range: [0.0, 1.0], default: 1.0 }
+#       - { name: icon, type: asset-ref }                 # asset-ref / loc-ref — engine handles; the contract just names the kind
+#       - { name: reward, type: ref<RES> }                # ref<PREFIX> — a content↔X link is a FIELD, not metadata (ref<ENT>/ref<CU>/ref<FORM>/ref<SYS>)
+#     source: content-types/CT-item.md
+#     added: 2026-06-23
+
+# ─── CONTENT ──────────────────────────────────────────────────────────────────
+# Content UNITS (CU) — the thin, genre-agnostic envelope. `kind: set` is a bulk
+# descriptor (count + spec; the values stay in the editor); `kind: instance` is one
+# curated unit carrying `fields` ⊆ its CT.fields (checked by gd-verify per field
+# name + type). The CU never grows per genre — all variability lives in CT.fields.
+content: []
+# Example:
+#   - id: CU-item-1            # CU-<ct>-<n> — one registry row of a content type
+#     type: CT-item            # which content type this unit is
+#     name: "Bulk item catalog"
+#     kind: set                # instance | set — `set` is a bulk descriptor, `instance` is one curated unit
+#     status: active           # active | deprecated
+#     count: 480               # bulk (`kind: set`) only: how many instances the editor holds — the values do NOT live here
+#     spec: "data/items.csv following CT-item.fields"   # bulk only: where the data lives + the shape it follows
+#     source: content-types/CT-item.md
+#     added: 2026-06-23
+#   - id: CU-minigame-1
+#     type: CT-minigame
+#     name: "Ring appraisal"
+#     kind: instance           # one curated unit — carries fields ⊆ CT-minigame.fields
+#     status: active
+#     fields:                  # curated (`kind: instance`) only: values for a subset of the CT's fields (each ⊆ CT.fields by name + type)
+#       difficulty: normal
+#       reward: RES-coins
+#     source: content-types/CT-minigame.md
+#     added: 2026-06-23
+
+# ─── RESOURCES ────────────────────────────────────────────────────────────────
+# Currencies / consumables / materials — facts that cross a system boundary.
+# Registered by the owning zone via a registry-check (not a profile edit). The
+# economic role lives in `kind`.
+resources: []
+# Example:
+#   - id: RES-coins
+#     name: "Coins"
+#     status: active            # active | deprecated
+#     kind: soft                # soft | hard | consumable | material
+#     source: systems/SYS-economy.md   # the document/zone that owns the fact
+#     added: 2026-06-23
+
+# ─── TRACKS ───────────────────────────────────────────────────────────────────
+# Progression tracks (season / battle-pass / mastery ladders) — facts referenced
+# across systems and flows. Registered by the owning zone via a registry-check.
+tracks: []
+# Example:
+#   - id: TRACK-season-1
+#     name: "Season 1 pass"
+#     status: active            # active | deprecated
+#     tiers: 50                 # number of reward tiers
+#     source: systems/SYS-liveops.md
+#     added: 2026-06-23
+
+# ─── KNOBS ────────────────────────────────────────────────────────────────────
+# Global tuning knobs — cross-system balance facts exposed at the whole-game level
+# (a per-system tuning value stays in that system's GDD section G; a knob here is
+# the one that more than one system reads). Registered by the owning zone.
+knobs: []
+# Example:
+#   - id: KNOB-global-difficulty
+#     name: "Global difficulty multiplier"
+#     status: active            # active | deprecated
+#     current: 1.0
+#     range: [0.5, 2.0]
+#     source: GAME.md
+#     added: 2026-06-23

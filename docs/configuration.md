@@ -132,11 +132,7 @@ git:
 
 ## MCP Configuration
 
-UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.gemini/settings.json` (Gemini CLI), `.qwen/settings.json` (Qwen Code), or `opencode.json` (OpenCode).
-
-### Known limitation - Gemini CLI and HTTP MCP transport
-
-The UniKit source MCP config for `UnityMCP` uses the Claude Code transport key shape `{ "type": "http", "url": "..." }`. When this config is written into `.gemini/settings.json`, Gemini CLI picks a transport based on which key is present - `command` for stdio, `url` for SSE, or `httpUrl` for streamable HTTP. Because the UniKit config ships `url` (not `httpUrl`), Gemini CLI will try to connect over SSE rather than streamable HTTP. The other four shipped MCP configs (`context7`, both Godot servers, Unreal) are stdio and work as-is on Gemini CLI. If you need streamable HTTP for `UnityMCP` on Gemini specifically, rename the `url` key to `httpUrl` in your local `.gemini/settings.json` after `unikit-ai init`.
+UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), or `.agents/mcp_config.json` (Antigravity).
 
 ### UnityMCP
 
@@ -186,9 +182,9 @@ Rule metadata (`id`, `description`, `version`, `references`) lives in the remote
 | Claude Code | `.claude` | `.claude/skills` | Yes (`.mcp.json`) |
 | Codex CLI | `.codex` | `.codex/skills` | Yes (`.codex/config.toml`) |
 | Cursor | `.cursor` | `.cursor/skills` | Yes (`.cursor/mcp.json`) |
-| Gemini CLI | `.gemini` | `.gemini/skills` | Yes (`.gemini/settings.json`) |
 | Qwen Code | `.qwen` | `.qwen/skills` | Yes (`.qwen/settings.json`) |
 | OpenCode | `.opencode` | `.opencode/skills` | Yes (`opencode.json`) |
+| Antigravity | `.agents` | `.agents/skills` | Yes (`.agents/mcp_config.json`) |
 
 ## Project Structure
 

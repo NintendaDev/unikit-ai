@@ -1,13 +1,15 @@
 ---
 name: unikit-evolve
 description: >-
-  Discover rules from accumulated patches and add them to project rules or skill-context.
-  Analyzes past mistakes, extracts prevention points, classifies them as coding rules (→ RULES.md)
-  or workflow rules (→ skill-context), and proposes them to the user.
-  Use when user says "evolve", "evolve rules", "learn from mistakes", "update rules",
-  "analyze patches", or wants to feed accumulated patch experience into coding rules.
-  Also trigger after a series of /unikit-fix runs when patches have accumulated in .unikit/patches/.
-  To migrate mature RULES.md entries to core/stack rule files, use `/unikit-memory --migrate-rules` instead.
+  Learn project rules from accumulated fix patches in .unikit/code/patches/. Analyzes past
+  mistakes, extracts prevention points, classifies each as a coding rule (→ RULES.md) or a
+  per-skill workflow rule (→ skill-context), and proposes them for approval. Use when the
+  user wants to turn past fixes into rules — "evolve", "evolve the rules", "learn from past
+  mistakes", "learn from the fixes", "analyze the patches", "what rules should we add from
+  recent fixes". Best run after several /unikit-fix sessions have left patches behind. This
+  derives rules from accumulated patch history — to add a single rule by hand use
+  /unikit-rules, and to promote mature RULES.md entries into the knowledge base use
+  /unikit-memory migrate-rules.
 allowed-tools:
   - Read
   - Write
@@ -48,7 +50,7 @@ user picks → coding rules to RULES.md, workflow rules to skill-context
 - **RULES.md** — coding conventions: HOW to write code (patterns, naming, null-checks, async, serialization). These reach `unikit-devcontext` via RULES.md → `/unikit-memory` → memory/.
 - **skill-context** — workflow overrides: HOW a skill should behave (delegation strategy, commit frequency, compilation checks, parallelism). These go to `.unikit/skill-context/<skill>/SKILL.md` and are read by the target skill directly.
 
-Rule migration from RULES.md to core/stack rule files is handled by `/unikit-memory --migrate-rules`.
+Rule migration from RULES.md to core/stack rule files is handled by `/unikit-memory migrate-rules`.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -63,7 +65,7 @@ Do not announce, confirm, or mention the language setting.
 ### Step 1: Read Patches (Incremental)
 
 ```
-Glob: .unikit/patches/*.md
+Glob: .unikit/code/patches/*.md
 ```
 
 **If no patches found** → report "No patches to analyze" and **STOP**.
@@ -110,7 +112,7 @@ Read the following files:
 
 1. **`.unikit/DESCRIPTION.md`** — tech stack, project constraints
 2. **`.unikit/RULES.md`** — current project rules. If doesn't exist, will be created in Step 6
-3. **`.unikit/memory/RULES_INDEX.md`** — index of knowledge base rule files. If doesn't exist or empty, skip knowledge base cross-check in Step 4 (check only RULES.md)
+3. **`.unikit/memory/code/RULES_INDEX.md`** — index of knowledge base rule files. If doesn't exist or empty, skip knowledge base cross-check in Step 4 (check only RULES.md)
 
 ### Step 3: Build Prevention Point Registry
 
@@ -275,7 +277,7 @@ After completing evolution, suggest `/clear` or `/compact` — context is heavy 
 7. **No generic advice** — "write clean code" is not a rule; only specific, actionable instructions
 8. **One prevention point = one rule** — don't merge multiple independent rules into a single vague summary
 9. **Preserve concrete formats** — if a patch specifies exact format/syntax/template, the rule must include it verbatim
-10. **Ownership boundary** — this command owns `.unikit/evolutions/*.md` and `.unikit/evolutions/patch-cursor.json`; may append coding rules to `.unikit/RULES.md` (via `/unikit-rules`); may write workflow rules to `.unikit/skill-context/<skill>/SKILL.md`; treats everything else as read-only. Rule migration from RULES.md to memory/ is handled by `/unikit-memory --migrate-rules`
+10. **Ownership boundary** — this command owns `.unikit/evolutions/*.md` and `.unikit/evolutions/patch-cursor.json`; may append coding rules to `.unikit/RULES.md` (via `/unikit-rules`); may write workflow rules to `.unikit/skill-context/<skill>/SKILL.md`; treats everything else as read-only. Rule migration from RULES.md to memory/ is handled by `/unikit-memory migrate-rules`
 
 ## Example
 

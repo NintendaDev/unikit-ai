@@ -1,6 +1,17 @@
 ---
 name: unikit-rules
-description: Add project-specific rules and conventions to .unikit/RULES.md for a {{engine_name}} project. Cross-checks new rules against the knowledge base in .unikit/memory/ (via RULES_INDEX.md) to detect overlap with existing core or stack rules. Use when user says "add rule", "remember this convention", "always do X in code", "never use Y", or wants to codify a coding standard. Also trigger when user corrects agent behavior and wants it remembered as a project rule.
+description: >-
+  Add a short, project-specific rule, convention, or override to .unikit/RULES.md — the
+  quick-capture inbox for this project's rules; each invocation appends a rule,
+  automatically loaded by /unikit-implement before execution (later promotable into the
+  knowledge base via /unikit-memory migrate-rules). Works only with a rule typed as a
+  prompt — it does NOT read files, folders, URLs, or PDFs. Cross-checks against the
+  knowledge base (RULES_INDEX.md) to avoid duplicating core/stack entries. Use for fast,
+  one-line conventions and corrections: "add a rule", "remember this", "convention",
+  "always do X", "never use Y", "from now on do Z", or when the user corrects agent
+  behavior and wants it remembered. If the user points to a source (file, folder, URL,
+  PDF, article, book) or wants to research/document framework usage, use /unikit-memory;
+  for architecture decisions use ARCHITECTURE.md.
 argument-hint: "[rule text or topic]"
 allowed-tools:
   - Read
@@ -12,7 +23,7 @@ allowed-tools:
 
 # UniKit Rules — Project Conventions
 
-Add short, actionable rules to `.unikit/RULES.md`. Rules are project-specific overrides that take precedence over the base knowledge rules in `.unikit/memory/core/` and `.unikit/memory/stack/`.
+Add short, actionable rules to `.unikit/RULES.md`. Rules are project-specific overrides that take precedence over the base knowledge rules in `.unikit/memory/code/core/` and `.unikit/memory/code/stack/`.
 
 Before adding any rule, cross-check it against RULES_INDEX.md to avoid duplicating what's already covered in the knowledge base. If a rule is already covered — tell the user and skip. If the rule contradicts or extends an existing knowledge base rule — add it as an explicit override to RULES.md with a note about what it overrides.
 
@@ -64,7 +75,7 @@ Examples:
 
 This step prevents duplication and helps maintain a clean separation between project rules and knowledge base rules.
 
-1. **Read `.unikit/memory/RULES_INDEX.md`** — get the list of all rule files with their descriptions and "Load When" hints.
+1. **Read `.unikit/memory/code/RULES_INDEX.md`** — get the list of all rule files with their descriptions and "Load When" hints.
 
 2. **Identify potentially overlapping rule files** — based on the topic of the new rule, find rule files from the index that cover the same area. For example:
    - Rule about naming → check `code-style.md`
@@ -142,7 +153,7 @@ From RULES_INDEX.md, the override priority (highest wins):
 
 1. `.unikit/RULES.md` — project-specific overrides (what this skill writes to)
 2. `.unikit/ARCHITECTURE.md` — project architecture decisions
-3. `.unikit/memory/core/*.md` — universal best practices
-4. `.unikit/memory/stack/*.md` — framework-specific knowledge
+3. `.unikit/memory/code/core/*.md` — universal best practices
+4. `.unikit/memory/code/stack/*.md` — framework-specific knowledge
 
 Rules added by this skill have the highest priority and override everything below them. This is by design — project rules exist precisely to override defaults when the project needs something different.

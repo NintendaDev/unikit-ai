@@ -1,12 +1,15 @@
 ---
 name: unikit
 description: >-
-  Set up AI agent context for a game engine project.
-  Scans engine-specific package manifests, plugins, modules, and project settings
-  to discover the real tech stack. Bootstraps the resolved description and
-  architecture artifacts and AGENTS.md, plus the user-editable .unikit/config.yaml.
-  Use when starting a new game project, setting up AI context, initializing unikit,
-  or asking "set up project", "configure AI context", "initialize unikit", "scan my project".
+  Initialize the UniKit framework in a project. Scans the current project to detect
+  the engine and real tech stack, then generates the base framework documents that
+  give AI agents context about the project — the resolved project description, the
+  architecture doc, AGENTS.md, and the user-editable .unikit/config.yaml. This is the one-time, whole-project setup
+  run before any other unikit skill. Use whenever the user wants to initialize, set up,
+  or onboard the framework, e.g. "initialize unikit", "init the framework", "set up
+  unikit", "set up the project", "configure AI context", "scan my project and set it
+  up", "bootstrap the project". This handles the initial full bootstrap — to edit one
+  document later, use that document's dedicated skill.
 argument-hint: "[project description] (optional)"
 allowed-tools:
   - Read
@@ -30,7 +33,7 @@ Set up AI agent context for a game project by:
 2. Bootstrapping `.unikit/config.yaml` (user-editable source of truth for language, git, and workflow)
 3. Generating `.unikit/DESCRIPTION.md` — project specification
 4. Generating `AGENTS.md` — structural map for AI agents
-5. Bootstrapping the knowledge base (`.unikit/memory/core/` + `.unikit/memory/stack/`) via the rules registry
+5. Bootstrapping the knowledge base under `.unikit/memory/` via the rules registry — the `code` module (`core/` + `stack/`) always, plus the `gamedesign` design library when its skills are installed
 6. Delegating architecture generation to `/unikit-architecture`
 7. Printing the setup summary as the final, user-facing confirmation that all artifacts are in place
 
@@ -78,7 +81,7 @@ Check whether `.unikit/config.yaml` already exists. This step is a pure file rea
 - **If it exists** — Read it. Treat its values as the source of truth for `language.*`, `git.*`, `workflow.*`. Mark Steps 1 / 2 / 3 as "merge mode": prefer existing values, prompt only when a critical field is missing or empty.
 - **If it does not exist** — set "bootstrap mode": Steps 1 / 2 / 3 will collect values from the user / git and write a fresh `config.yaml`.
 
-All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
+All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/code/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
 
 ---
 
@@ -413,15 +416,15 @@ Prepare the rules knowledge base in a few passes. Core rules are installed silen
 Create directories and index file if they don't exist:
 
 - Memory root → `.unikit/memory/`
-- Core memory subdir → `.unikit/memory/core/`
-- Stack memory subdir → `.unikit/memory/stack/`
-- Rules index file → `.unikit/memory/RULES_INDEX.md`
+- Core memory subdir → `.unikit/memory/code/core/`
+- Stack memory subdir → `.unikit/memory/code/stack/`
+- Rules index file → `.unikit/memory/code/RULES_INDEX.md`
 
 ```bash
-mkdir -p .unikit/memory/core .unikit/memory/stack
+mkdir -p .unikit/memory/code/core .unikit/memory/code/stack
 ```
 
-Check whether `.unikit/memory/RULES_INDEX.md` exists. If not, create it from this template:
+Check whether `.unikit/memory/code/RULES_INDEX.md` exists. If not, create it from this template:
 
 ```markdown
 # Rules Index
@@ -432,8 +435,8 @@ Knowledge base rules for the project. Located in `.unikit/memory/`.
 
 1. **`.unikit/RULES.md`** — project-specific overrides (always wins)
 2. **`.unikit/ARCHITECTURE.md`** — project architecture decisions
-3. **`.unikit/memory/core/*.md`** — universal best practices
-4. **`.unikit/memory/stack/*.md`** — framework-specific knowledge
+3. **`.unikit/memory/code/core/*.md`** — universal best practices
+4. **`.unikit/memory/code/stack/*.md`** — framework-specific knowledge
 
 When a project rule in `RULES.md` conflicts with a template rule in `rules/`, the project rule wins.
 
@@ -441,12 +444,12 @@ When a project rule in `RULES.md` conflicts with a template rule in `rules/`, th
 
 Read this index to determine which rule files are relevant for the current task, then load only the needed files.
 
-## Core — universal game development knowledge (`.unikit/memory/core/`)
+## Core — universal game development knowledge (`.unikit/memory/code/core/`)
 
 | File | Description | Load When |
 |------|-------------|-----------|
 
-## Stack — framework-specific knowledge (`.unikit/memory/stack/`)
+## Stack — framework-specific knowledge (`.unikit/memory/code/stack/`)
 
 | File | Description | Load When |
 |------|-------------|-----------|
@@ -454,10 +457,10 @@ Read this index to determine which rule files are relevant for the current task,
 
 #### 9.2: Core bootstrap
 
-Install the whitelisted core rule set via the registry chain (primary → official → bundled). This is a quiet, idempotent step — on a re-run it will either skip everything (hash match) or pull fresh content when the registry has been updated. The no-args form of `rules install` owns the core-bootstrap contract: it fetches the manifest once, installs the whitelisted core ids, and regenerates `RULES_INDEX.md` on every invocation.
+Install the baseline rule set via the registry chain (primary → official → bundled). This is a quiet, idempotent step — on a re-run it will either skip everything (hash match) or pull fresh content when the registry has been updated. `rules install defaults` owns the bootstrap contract: it walks every module whose skills are installed, by each module's bootstrap policy — the `code` module installs the always-tagged (core) rules, the `gamedesign` module installs its entire catalog (core + library) when its skills are present; modules absent from the registry are skipped gracefully. Each module's manifest is fetched once, and `RULES_INDEX.md` is regenerated on every invocation. (Bare `rules install` with no arguments prints help instead — the bootstrap lives behind the explicit `defaults` keyword.)
 
 ```bash
-unikit-ai rules install
+unikit-ai rules install defaults
 ```
 
 Only surface the output if the command fails (non-zero exit). On success it is safe to continue without displaying the aggregated report (the summary line `Rules: N installed, M already-installed, K failed` is emitted but not required in the skill's own output).
@@ -478,7 +481,7 @@ This is strictly a transform applied at the call-site (set-difference comparison
 
 - **UI layer** — Step 9.3 presenting, Step 9.4 `AskUserQuestion`, Step 9.5 `Technology` column: names stay in display-raw form (a multi-word framework like `"Input Manager"`, a plugin folder like `"Databrain"`, an aliased package id like `"URP"`).
 - **Comparison layer** — Step 9.3 set-difference, Step 9.5 registry cross-reference, Step 9.7 `rules install` argv: apply `toCanonicalRuleId` to both sides. Arrays are never mutated in place.
-- **Storage layer** — `.unikit/memory/stack/*.md` filenames and `.unikit.json` `entry.name` are always canonical lowercase-hyphen. The writers (`rules install` CLI and the `/unikit-memory` subagent) enforce that filename form themselves — this skill does not need to rename anything on disk.
+- **Storage layer** — `.unikit/memory/code/stack/*.md` filenames and `.unikit.json` `entry.name` are always canonical lowercase-hyphen. The writers (`rules install` CLI and the `/unikit-memory` subagent) enforce that filename form themselves — this skill does not need to rename anything on disk.
 
 Build the "already installed" set from **two authoritative sources** (not from `RULES_INDEX.md` — that file is derived and can lag behind reality between runs):
 
@@ -490,7 +493,7 @@ Build the "already installed" set from **two authoritative sources** (not from `
 
    Parse the JSON output and collect every entry where `category === "stack"`. Every `name` in that list is considered installed regardless of `source` (`registry` / `local`) — both sources mean a file on disk that we must leave alone.
 
-2. Disk scan — list `.unikit/memory/stack/*.md` (excluding `RULES_INDEX.md`). Treat every `<name>.md` filename as also installed. This catches rules that exist on disk but have not yet been reconciled into state (e.g. a rule generated in a parallel skill run that never triggered `rules sync`).
+2. Disk scan — list `.unikit/memory/code/stack/*.md` (excluding `RULES_INDEX.md`). Treat every `<name>.md` filename as also installed. This catches rules that exist on disk but have not yet been reconciled into state (e.g. a rule generated in a parallel skill run that never triggered `rules sync`).
 
 Union both sets into `already_installed`.
 
@@ -520,10 +523,10 @@ where:
 
 `required` entries stay in display-raw form throughout; canonicalization happens only at comparison / CLI-boundary sites.
 
-Before computing `missing`, query the registry catalog so the same result feeds both the set-difference here and the informational table in Step 9.5. `rules list` returns `{ engine, rules: [{ id, category, description, version }] }` — filter to `category === "stack"`:
+Before computing `missing`, query the registry catalog so the same result feeds both the set-difference here and the informational table in Step 9.5. Always pass `--module code` — a bare `rules list` now defaults to **all modules** (flat-all), and this orchestrator only wants the `code` catalog. `rules list --module code --json` returns the flat-single shape `{ engine, module, rules: [{ id, category, description, version }] }` — filter to `category === "stack"`:
 
 ```bash
-unikit-ai rules list --json
+unikit-ai rules list --module code --json
 ```
 
 For each entry in `required`, **semantically match** it against that stack pool. See Step 9.5 for the matching criteria — the key point is that id-similarity, description match, and common aliases all count; strict canonical equality is the strongest signal but not the only one (`Odin Inspector` → registry `odin`, `ASPID MVVM` → registry `aspid-mvvm`, and so on). Record `{ display, resolved_id, resolved_version }` per entry; `resolved_id` is the registry id when match confidence is high, otherwise `null`.
@@ -534,7 +537,7 @@ Then compute the set-difference against `already_installed`. An entry counts as 
 already_installed_canonical = {
   toCanonicalRuleId(name) for name in
     (rules_status_json.entries where category == "stack")
-    ∪ disk_scan(.unikit/memory/stack/*.md)
+    ∪ disk_scan(.unikit/memory/code/stack/*.md)
 }
 
 def canonical_for(r):
@@ -592,7 +595,7 @@ Based on choice, build the `targets` list:
 
 #### 9.5: Registry lookup — semantic matching
 
-`targets` carries the resolved registry metadata from Step 9.3 (skill already ran `rules list --json` and kept `resolved_id` / `resolved_version` per entry during the `missing` computation). Reuse that cached result — do **not** re-query `rules list`.
+`targets` carries the resolved registry metadata from Step 9.3 (skill already ran `rules list --module code --json` and kept `resolved_id` / `resolved_version` per entry during the `missing` computation). Reuse that cached result — do **not** re-query `rules list`.
 
 **Semantic matching — NOT strict id equality.** The matching procedure Step 9.3 applied is documented here because this step surfaces the result to the user. For each `target`, search the stack pool for the registry rule that represents the same framework. Three signals — any one at high confidence is enough, but combining them strengthens the verdict:
 
@@ -673,23 +676,26 @@ The `generate_set` list contains stack technologies that either had no registry 
 ```
 Agent(
   subagent_type: "general-purpose",
-  prompt: "/unikit-memory --skip-registry Add stack rules for {technology name}",
+  prompt: "/unikit-memory --module code --skip-registry Add stack rules for {technology name}",
   description: "Generate {technology} rules",
   skills: ["unikit-memory"]
 )
 ```
 
-The `--skip-registry` flag tells `/unikit-memory` to bypass its own registry-lookup step (9.5 already covered it) and go straight to generation.
+Two flags are passed, and both are mandatory:
+
+- `--module code` pins the delegation to the `code` knowledge-base module. `/unikit` is deliberately `code`-pinned, so it must name the target module explicitly rather than relying on `unikit-memory`'s module-inference fallback (which only resolves to `code` by accident while `code` is the sole registered module). This keeps the delegation deterministic and self-documenting once additional modules are registered.
+- `--skip-registry` tells `/unikit-memory` to bypass its own registry-lookup step (9.5 already covered it) and go straight to generation.
 
 Launch up to **10 agents in parallel**. If more than 10 technologies remain, batch them: launch 10, wait for completion, launch next batch.
 
 **Wait for all launched agents to finish** before proceeding to Step 9.9.
 
-**Fallback** (if the `Agent` tool is unavailable in the current environment): do NOT execute `/unikit-memory` yourself inline — that violates the invariant above. Instead, print one invocation per item in `generate_set`, each on its own line, **outside any code fence**, prefixed with `Run: `, so the user can copy-paste and run them. The N=1 case takes the same path: one `Run: /unikit-memory ...` line. After printing, proceed to Step 9.9 without waiting — the user runs them asynchronously.
+**Fallback** (if the `Agent` tool is unavailable in the current environment): do NOT execute `/unikit-memory` yourself inline — that violates the invariant above. Instead, print one invocation per item in `generate_set`, each on its own line, **outside any code fence**, prefixed with `Run: ` and using the same `--module code --skip-registry` form as the `Agent` prompt above, so the user can copy-paste and run them. The N=1 case takes the same path: one `Run: /unikit-memory --module code --skip-registry Add stack rules for {technology name}` line. After printing, proceed to Step 9.9 without waiting — the user runs them asynchronously.
 
 #### 9.9: Final reconciliation
 
-Close the loop with a sync pass so that `.unikit/memory/RULES_INDEX.md`, `.unikit.json`, and the contents of `.unikit/memory/` end up in agreement (including rules generated in Step 9.8 which went straight to disk without touching state).
+Close the loop with a sync pass so that `.unikit/memory/code/RULES_INDEX.md`, `.unikit.json`, and the contents of `.unikit/memory/` end up in agreement (including rules generated in Step 9.8 which went straight to disk without touching state).
 
 ```bash
 unikit-ai rules sync
@@ -790,7 +796,8 @@ as the basis for the structure section, but only include directories and files t
 | .unikit/DESCRIPTION.md | Project specification and tech stack |
 | .unikit/ARCHITECTURE.md | Architecture decisions and guidelines |
 | .unikit/RULES.md | Coding conventions and rules |
-| .unikit/memory/RULES_INDEX.md | Index of framework-specific rule files |
+| .unikit/memory/code/RULES_INDEX.md | Index of framework-specific rule files |
+| .unikit/memory/gamedesign/RULES_INDEX.md | Game-design knowledge index (only if the gamedesign module installed rules) |
 ```
 
 **Rules:**
@@ -844,6 +851,12 @@ Next steps:
 - /unikit-implement — Execute an existing plan
 - /unikit-review — Review code quality
 
+Game design (optional):
+- /unikit-gd-brainstorm <idea> — Ideate a concept (pillars, loops, pre-mortem)
+- /unikit-gd-spec — Author the master GDD (GAME.md) + system map
+  The design workspace (.unikit/gamedesign/) is created on first use.
+  /unikit-plan then cites the design's acceptance criteria in its ## Design section.
+
 Ready when you are!
 ```
 
@@ -853,6 +866,18 @@ Ready when you are!
 Your project already has code. You might also want:
 
 - /unikit-review — Review existing code for conventions
+```
+
+**Additionally, if the project has code but no game-design doc yet** — the Step 6 scan
+detected existing scripts **and** `.unikit/gamedesign/GAME.md` does not exist (check with
+Glob/Read) — append the brownfield-reconnaissance offer. This is a **handoff**: recommend
+the command, do **not** run it inline. Gate on **both** conditions (recon is strictly
+cold-start — a project that already has a GDD uses `/unikit-gd-explore`'s code lens
+instead); do not gate on "gd-skills are installed" — the wizard installs all skills:
+
+```
+- /unikit-gd-recon — Reconstruct a GDD skeleton from your existing code (brownfield
+  cold-start) → then /unikit-gd-spec import. Read-only; writes one RECON.md, calls nothing.
 ```
 
 ---

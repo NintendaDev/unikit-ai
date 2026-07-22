@@ -283,7 +283,8 @@ echo -e "\n${BOLD}=== Validate per-engine memory rules ===${NC}\n"
 ENGINES=("unity" "godot" "godot-net" "unreal-engine-5")
 
 for engine in "${ENGINES[@]}"; do
-    ENGINE_REGISTRY="$ROOT_DIR/rules-registry/$engine"
+    # schema:2 bundled layout: engines live under code/<engine>/.
+    ENGINE_REGISTRY="$ROOT_DIR/rules-registry/code/$engine"
 
     # Check engine directory exists inside the cloned registry snapshot
     if [[ ! -d "$ENGINE_REGISTRY" ]]; then
@@ -305,7 +306,7 @@ done
 
 # Unity-specific: check stack rules and references (ids from test-fixtures.sh).
 for rule_id in "${EXPECTED_UNITY_STACK_RULES[@]}"; do
-    rule_path="$ROOT_DIR/rules-registry/unity/stack/${rule_id}.md"
+    rule_path="$ROOT_DIR/rules-registry/code/unity/stack/${rule_id}.md"
     rule_name="unity/stack/${rule_id}"
     if [[ -f "$rule_path" && -s "$rule_path" ]]; then
         pass "$rule_name"
@@ -315,7 +316,7 @@ for rule_id in "${EXPECTED_UNITY_STACK_RULES[@]}"; do
 done
 
 # Unity stack references
-REF_COUNT=$(find "$ROOT_DIR/rules-registry/unity/stack/references/" -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
+REF_COUNT=$(find "$ROOT_DIR/rules-registry/code/unity/stack/references/" -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
 if [[ "$REF_COUNT" -ge 9 ]]; then
     pass "unity/stack/references ($REF_COUNT files)"
 else
@@ -644,14 +645,16 @@ if [[ -f "$CLI_CONTRACT" ]]; then
         pass "cli-contract.md — no 'declined' references (post-refactor contract)"
     fi
 
-    # After the CLI redesign the variadic `rules install` (with no args)
-    # IS the core-bootstrap entry point used by /unikit Step 9.2. The contract
-    # MUST document the variadic signature AND MUST NOT mention the obsolete
-    # `rules core-install` or `rules registry-init` commands.
-    if grep -q 'unikit-ai rules install \[ids\.\.\.\]' "$CLI_CONTRACT"; then
-        pass "cli-contract.md — documents variadic 'rules install [ids...]' signature"
+    # After the CLI redesign `rules install` documents three forms: bare prints
+    # help, `defaults` bootstraps every module whose skills are installed (the
+    # /unikit Step 9.2 entry point), and the variadic `<ids...>` installs
+    # specific rules. The contract MUST document the `[defaults | ids...]`
+    # signature AND MUST NOT mention the obsolete `rules core-install` or
+    # `rules registry-init` commands.
+    if grep -q 'unikit-ai rules install \[defaults | ids\.\.\.\]' "$CLI_CONTRACT"; then
+        pass "cli-contract.md — documents 'rules install [defaults | ids...]' signature"
     else
-        fail "cli-contract.md — missing variadic 'rules install [ids...]' signature"
+        fail "cli-contract.md — missing 'rules install [defaults | ids...]' signature"
     fi
 
     if grep -q 'unikit-ai rules core-install' "$CLI_CONTRACT"; then
@@ -744,7 +747,8 @@ if [[ -f "$MANIFEST" ]]; then
       const engines = ['unity', 'godot', 'godot-net', 'unreal-engine-5'];
       const allCoreIds = new Set();
       for (const e of engines) {
-        const dir = path.join(registryRoot, e, 'core');
+        // schema:2 bundled layout: engines live under code/<engine>/.
+        const dir = path.join(registryRoot, 'code', e, 'core');
         if (!fs.existsSync(dir)) continue;
         for (const f of fs.readdirSync(dir)) {
           if (!f.endsWith('.md')) continue;
@@ -774,6 +778,2279 @@ if [[ -f "$MANIFEST" ]]; then
     else
         fail "requiredBy keys validation failed: $ORPHAN_REPORT"
     fi
+fi
+
+# ─────────────────────────────────────────────────────
+# data/gamedesign — GDD authoring templates + gd-principles system asset
+# ─────────────────────────────────────────────────────
+GD_DATA="$ROOT_DIR/data/gamedesign"
+
+# The 9 GDD authoring templates (Phase C / #9) must exist and be non-empty.
+# GD-IDS ships as .yaml (machine truth); the rest are .md. CONTENT-TYPE joined in the
+# Content axis (the 4th authoring zone).
+for tpl in CONCEPT CONTENT-TYPE FLOW GAME GD-IDS GD_RULES_INDEX PITCH REVIEW SYSTEM; do
+    ext=md
+    [[ "$tpl" == "GD-IDS" ]] && ext=yaml
+    if [[ -s "$GD_DATA/templates/$tpl.$ext" ]]; then
+        pass "data/gamedesign/templates/$tpl.$ext"
+    else
+        fail "data/gamedesign/templates/$tpl.$ext — missing or empty"
+    fi
+done
+
+# gd-principles.md (core) + 6 shards — the cross-skill working contract installed as
+# system assets under .unikit/system/gamedesign/. It is PROCESS, not domain. After the
+# shard split (feature/gd-principles-shard-split) the slim core keeps the always-loaded
+# sections (zone model, routing, collaboration, one-way boundary, facts registry,
+# language, anti-patterns); the rest live in 6 sibling shards each skill loads on demand.
+# Every shard, like the core (and dev-principles.md), is flat-copied WITHOUT
+# substitution, so none may carry agent/engine template vars.
+GD_PRINCIPLES="$GD_DATA/gd-principles.md"
+GD_AUTHORING="$GD_DATA/gd-authoring.md"
+GD_LIFECYCLE="$GD_DATA/gd-lifecycle.md"
+GD_FLOW_AXIS="$GD_DATA/gd-flow-axis.md"
+GD_CONTENT_AXIS="$GD_DATA/gd-content-axis.md"
+GD_PROVENANCE="$GD_DATA/gd-provenance.md"
+GD_CRITIQUE="$GD_DATA/gd-critique.md"
+GD_SHARDS=("$GD_PRINCIPLES" "$GD_AUTHORING" "$GD_LIFECYCLE" "$GD_FLOW_AXIS" "$GD_CONTENT_AXIS" "$GD_PROVENANCE" "$GD_CRITIQUE")
+
+# (split-1) Core slim + all 6 shards present.
+GD_SHARD_MISSING=""
+for shard in "${GD_SHARDS[@]}"; do
+    [[ -f "$shard" ]] || GD_SHARD_MISSING+=" $(basename "$shard")"
+done
+if [[ -z "$GD_SHARD_MISSING" ]]; then
+    pass "gd-principles — core + 6 shards present (gd-authoring/gd-lifecycle/gd-flow-axis/gd-content-axis/gd-provenance/gd-critique)"
+else
+    fail "gd-principles — missing core/shard file(s):$GD_SHARD_MISSING"
+fi
+
+# (split-2) Section ownership — each moved section lives in EXACTLY its shard; the slim
+# core keeps only the always-loaded sections (decomposed from the pre-split 8-section
+# core check). 'Lifecycle & Status' → gd-lifecycle is asserted in its own block below.
+gd_section_in() {  # <label> <file> <heading>
+    if grep -qF "## $3" "$2"; then pass "$1 — has '## $3'"; else fail "$1 — missing '## $3'"; fi
+}
+for section in "Zone Ownership" "Routing" "Collaborative Protocol" "One-Way Boundary" "Facts Registry & ID Conventions" "Language" "Anti-patterns"; do
+    gd_section_in "gd-principles(core)" "$GD_PRINCIPLES" "$section"
+done
+gd_section_in "gd-authoring"  "$GD_AUTHORING"  "Section-Cycle Contract"
+gd_section_in "gd-authoring"  "$GD_AUTHORING"  "Delta Discipline"
+gd_section_in "gd-flow-axis"  "$GD_FLOW_AXIS"  "Flow Axis"
+gd_section_in "gd-content-axis" "$GD_CONTENT_AXIS" "Content Axis"
+gd_section_in "gd-provenance" "$GD_PROVENANCE" "Provenance"
+gd_section_in "gd-critique"   "$GD_CRITIQUE"   "Critique Stance"
+gd_section_in "gd-critique"   "$GD_CRITIQUE"   "Severity Rubric"
+
+# (split-3) The slim core must NOT still carry a section that moved into a shard
+# (a botched split that duplicated content into both files).
+GD_CORE_LEAK=""
+for moved in "Section-Cycle Contract" "Delta Discipline" "Lifecycle & Status" "Flow Axis" "Content Axis" "Provenance" "Critique Stance" "Severity Rubric"; do
+    grep -qF "## $moved" "$GD_PRINCIPLES" && GD_CORE_LEAK+=" '$moved'"
+done
+if [[ -z "$GD_CORE_LEAK" ]]; then
+    pass "gd-principles(core) — slim: no moved shard section leaked back into the core"
+else
+    fail "gd-principles(core) — moved section(s) still present in the slim core:$GD_CORE_LEAK"
+fi
+
+# (split-4) Substitution-free — every delivered shard (and the core) stays free of
+# agent/engine template vars (mirror of the dev-principles guard, applied per shard).
+GD_SUBST_BAD=""
+for shard in "${GD_SHARDS[@]}"; do
+    grep -qE '\{\{settings_file\}\}|\{\{skills_dir\}\}|\{\{engine_' "$shard" && GD_SUBST_BAD+=" $(basename "$shard")"
+done
+if [[ -z "$GD_SUBST_BAD" ]]; then
+    pass "gd-principles core + 6 shards — no agent/engine vars (system-file safe)"
+else
+    fail "gd-principles core/shard contains agent/engine vars (must be substitution-free):$GD_SUBST_BAD"
+fi
+
+# (split-5) Skill→shard binding (the load matrix) — each gd-skill's files reference the
+# shards it loads on Bootstrap. File-scoped grep over the skill dir (SKILL.md + references).
+gd_check_skill_shards() {  # <skill> <shard-stem>...
+    local skill="$1"; shift
+    local dir="$ROOT_DIR/skills/$skill"
+    local missing=""
+    for shard in "$@"; do grep -rqF "$shard" "$dir" 2>/dev/null || missing+=" $shard"; done
+    if [[ -z "$missing" ]]; then pass "skill→shard binding — $skill → $*"; else fail "skill→shard binding — $skill missing:$missing"; fi
+}
+gd_check_skill_shards "unikit-gd-spec"    "gd-authoring" "gd-lifecycle"
+gd_check_skill_shards "unikit-gd-system"  "gd-authoring" "gd-lifecycle" "gd-provenance"
+gd_check_skill_shards "unikit-gd-flow"    "gd-authoring" "gd-lifecycle" "gd-flow-axis" "gd-provenance"
+gd_check_skill_shards "unikit-gd-content" "gd-authoring" "gd-lifecycle" "gd-content-axis"
+gd_check_skill_shards "unikit-gd-verify"  "gd-lifecycle" "gd-flow-axis" "gd-content-axis" "gd-critique"
+gd_check_skill_shards "unikit-gd-explore" "gd-critique" "gd-provenance"
+gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-content-axis" "gd-provenance" "gd-critique"
+gd_check_skill_shards "unikit-gd-apply"   "gd-authoring" "gd-lifecycle"
+# brainstorm loads core ONLY — assert it references none of the 6 shards.
+GD_BRAINSTORM_LEAK=""
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
+    grep -rqF "$shard" "$ROOT_DIR/skills/unikit-gd-brainstorm" 2>/dev/null && GD_BRAINSTORM_LEAK+=" $shard"
+done
+if [[ -z "$GD_BRAINSTORM_LEAK" ]]; then
+    pass "skill→shard binding — unikit-gd-brainstorm references no shard (core only)"
+else
+    fail "skill→shard binding — unikit-gd-brainstorm references shard(s):$GD_BRAINSTORM_LEAK (should load core only)"
+fi
+
+# (Content Stage 0) Per-shard content-contract ownership — each content contract lands in
+# its owning shard and nowhere else (the shard-split discipline, applied to the Content
+# axis): core (gd-principles) = the content zone + the CT-/CU- id prefixes; gd-authoring =
+# the content delta discipline (schema vs values); gd-lifecycle = the content_status spine
+# + belongs_to. The leak check mirrors split-3 (the content delta must not bleed into core).
+GD_CT_OWN_WHY=""
+grep -qF 'unikit-gd-content' "$GD_PRINCIPLES" || GD_CT_OWN_WHY+=" core(no-content-zone)"
+grep -qF 'CT-<slug>' "$GD_PRINCIPLES"         || GD_CT_OWN_WHY+=" core(no-CT-prefix)"
+grep -qF 'CU-<ct>-<n>' "$GD_PRINCIPLES"        || GD_CT_OWN_WHY+=" core(no-CU-prefix)"
+grep -qF 'Content delta' "$GD_AUTHORING"      || GD_CT_OWN_WHY+=" gd-authoring(no-content-delta)"
+grep -qF 'belongs_to' "$GD_LIFECYCLE"         || GD_CT_OWN_WHY+=" gd-lifecycle(no-belongs_to)"
+grep -qF 'Content delta' "$GD_PRINCIPLES"     && GD_CT_OWN_WHY+=" core-leak(content-delta)"
+if [[ -z "$GD_CT_OWN_WHY" ]]; then
+    pass "Content Stage 0 — per-shard content ownership (core: zone+CT/CU · gd-authoring: delta · gd-lifecycle: belongs_to)"
+else
+    fail "Content Stage 0 — content-contract shard ownership drift:$GD_CT_OWN_WHY"
+fi
+
+# Status spine (Tier 1) — a system's doc_status lives on TWO authored surfaces that
+# must agree: the GD-IDS `doc_status` (machine truth, 3-value enum) and the SYSTEM.md
+# header `> **Status**:` legend (2-value, no `not-started`). The `unikit-gd-verify`
+# `Status coherence` CHECK legend describes the same design-writable enum. The enum was
+# collapsed 5->3 in this PR: status records READINESS only (`not-started · skeleton ·
+# detailed`, `detailed` terminal); the dropped `reviewed`/`revised` were the quality /
+# pending axes (quality is now an ephemeral review verdict, "changed" is the version +
+# changelog). GD-INDEX.md was dropped in v2: the generated GAME.md `## System Map [gen]`
+# RENDERS status read-only — a freshness surface (verify prints, owner re-renders),
+# never a coherence one (asserted separately below). So this guard asserts the shared
+# MERGE invariant: `detailed` PRESENT and `reviewed`/`revised`/`approved`-as-status
+# ABSENT on each of the 5 legend lines. Each grep targets the one status legend line per
+# surface — never the whole file — so GAME.md/CONCEPT.md (their own `drafted | approved`
+# lifecycle enums) stay out.
+GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
+GD_SYSTEM_TPL="$GD_DATA/templates/SYSTEM.md"
+GD_FLOW_TPL="$GD_DATA/templates/FLOW.md"
+GD_CONTENT_TPL="$GD_DATA/templates/CONTENT-TYPE.md"
+GD_GAME_TPL="$GD_DATA/templates/GAME.md"
+GD_VERIFY_SKILL="$ROOT_DIR/skills/unikit-gd-verify/SKILL.md"
+# Extracted gd-verify axis-check bodies (flow + content) — guard target for the check
+# tables moved out of SKILL.md (context-cost refactor, 2026-06-26).
+GD_VERIFY_AXIS="$ROOT_DIR/skills/unikit-gd-verify/references/axis-checks.md"
+SPINE_IDS_LINE=$(grep -F 'doc_status:' "$GD_IDS_TPL" 2>/dev/null | head -1 || true)
+SPINE_SYSTEM_LINE=$(grep -F '> **Status**:' "$GD_SYSTEM_TPL" 2>/dev/null | head -1 || true)
+# Flow axis (PR#6): a flow's doc_status lives on the SAME 2-place spine — the FLOW.md
+# header `> **Status**:` legend ↔ the GD-IDS `flows[].doc_status` (the shared enum the
+# SPINE_IDS_LINE above already covers). Add the FLOW.md surface so the merge invariant
+# (detailed present, no reviewed/revised/approved-as-status) holds across the flow zone too.
+SPINE_FLOW_LINE=$(grep -F '> **Status**:' "$GD_FLOW_TPL" 2>/dev/null | head -1 || true)
+# Content axis (Stage 0): a content type's doc_status lives on the SAME 2-place spine —
+# the CONTENT-TYPE.md header `> **Status**:` legend ↔ the GD-IDS `content_types[].doc_status`
+# (the shared enum SPINE_IDS_LINE covers). Add the CONTENT-TYPE.md surface so the merge
+# invariant (detailed present, no reviewed/revised/approved-as-status) holds across the content zone.
+SPINE_CONTENT_LINE=$(grep -F '> **Status**:' "$GD_CONTENT_TPL" 2>/dev/null | head -1 || true)
+# the verify CHECK legend carries the design-writable enum on its single table row; the
+# GAME.md/CONCEPT.md `approved` carve-out lives in separate prose, so head -1 anchors
+# the row, not the explanation.
+SPINE_VERIFY_LINE=$(grep -F 'Status coherence' "$GD_VERIFY_SKILL" 2>/dev/null | head -1 || true)
+SPINE_OK=1
+SPINE_WHY=""
+# the 4 authored surfaces (GD-IDS + SYSTEM + FLOW + CONTENT-TYPE) + the verify check legend
+for pair in "GD-IDS.yaml:$SPINE_IDS_LINE" "SYSTEM.md:$SPINE_SYSTEM_LINE" "FLOW.md:$SPINE_FLOW_LINE" "CONTENT-TYPE.md:$SPINE_CONTENT_LINE" "gd-verify:$SPINE_VERIFY_LINE"; do
+    name="${pair%%:*}"
+    line="${pair#*:}"
+    if [[ -z "$line" ]]; then
+        SPINE_OK=0; SPINE_WHY+=" $name(no-status-legend)"; continue
+    fi
+    if ! echo "$line" | grep -q "detailed"; then SPINE_OK=0; SPINE_WHY+=" $name(no-detailed)"; fi
+    if echo "$line" | grep -q "reviewed"; then SPINE_OK=0; SPINE_WHY+=" $name(reviewed-still-present)"; fi
+    if echo "$line" | grep -q "revised";  then SPINE_OK=0; SPINE_WHY+=" $name(revised-still-present)"; fi
+    if echo "$line" | grep -q "approved";   then SPINE_OK=0; SPINE_WHY+=" $name(approved-as-status)"; fi
+done
+if [[ "$SPINE_OK" -eq 1 ]]; then
+    pass "status spine — detailed (terminal) on the 4 authored surfaces (GD-IDS/SYSTEM/FLOW/CONTENT-TYPE) + verify legend; no reviewed/revised/approved-as-status"
+else
+    fail "status spine enum drift:$SPINE_WHY"
+fi
+# v2 render surface — GAME.md `## System Map [gen]` renders doc_status read-only (the
+# freshness surface unikit-gd-verify PRINTS as stale; the owner re-renders on its next
+# write — never a coherence one). Assert the template ships the generated block with a
+# Status column.
+GD_RENDER_WHY=""
+grep -qF '## System Map [gen]' "$GD_GAME_TPL" || GD_RENDER_WHY+=" no-system-map-block"
+grep -qF 'gen:system-map' "$GD_GAME_TPL"      || GD_RENDER_WHY+=" no-gen-marker"
+grep -qE '\| *Status *\|' "$GD_GAME_TPL"       || GD_RENDER_WHY+=" no-status-column"
+if [[ -z "$GD_RENDER_WHY" ]]; then
+    pass "GAME.md template — ## System Map [gen] renders a read-only Status column (v2 render surface)"
+else
+    fail "GAME.md template — System Map render surface incomplete:$GD_RENDER_WHY"
+fi
+# (Content Stage 0) GAME.md `## Content Map [gen]` renders content_types read-only — the
+# 4th [gen] surface, owned by unikit-gd-content. Assert the template ships the block with
+# its gen marker and an expected column (Scale, the content axis's grouping field).
+GD_CONTENT_RENDER_WHY=""
+grep -qF '## Content Map [gen]' "$GD_GAME_TPL" || GD_CONTENT_RENDER_WHY+=" no-content-map-block"
+grep -qF 'gen:content-map' "$GD_GAME_TPL"      || GD_CONTENT_RENDER_WHY+=" no-gen-marker"
+grep -qE '\| *Scale *\|' "$GD_GAME_TPL"        || GD_CONTENT_RENDER_WHY+=" no-scale-column"
+if [[ -z "$GD_CONTENT_RENDER_WHY" ]]; then
+    pass "GAME.md template — ## Content Map [gen] renders a read-only Scale column (Content axis render surface)"
+else
+    fail "GAME.md template — Content Map render surface incomplete:$GD_CONTENT_RENDER_WHY"
+fi
+# The status state machine moved to the gd-lifecycle shard (#2); skills reference it
+# by name ("Lifecycle & Status"). Guard a re-clone/split that drops the section.
+if grep -q '^## Lifecycle & Status' "$GD_LIFECYCLE"; then
+    pass "gd-lifecycle.md — has 'Lifecycle & Status' section"
+else
+    fail "gd-lifecycle.md — missing 'Lifecycle & Status' section"
+fi
+
+# Regression (#R3) — gamedesign CORE rules carry domain knowledge ONLY. Phase R
+# stripped the process hook from the relocated library→core rules; severity and
+# section-letter semantics live in gd-principles, never in a rule. Guard the
+# bundled snapshot so a re-clone of process-laden rules fails loudly, and assert
+# every core rule still exposes its Scope / Load when header.
+GD_CORE_DIR="$ROOT_DIR/rules-registry/gamedesign/core"
+if [[ -d "$GD_CORE_DIR" ]]; then
+    GD_CORE_PROCESS=$(grep -lE '^## (Authoring|Process|Documenting)|recorded delta' "$GD_CORE_DIR"/*.md 2>/dev/null || true)
+    if [[ -z "$GD_CORE_PROCESS" ]]; then
+        pass "gamedesign core rules — no process sections (domain knowledge only, #R3)"
+    else
+        fail "gamedesign core rules carry process content (belongs in gd-principles): $GD_CORE_PROCESS"
+    fi
+    GD_CORE_HEADERLESS=""
+    for f in "$GD_CORE_DIR"/*.md; do
+        grep -q '^> \*\*Scope\*\*:' "$f" && grep -q '^> \*\*Load when\*\*:' "$f" || GD_CORE_HEADERLESS+=" $(basename "$f")"
+    done
+    if [[ -z "$GD_CORE_HEADERLESS" ]]; then
+        pass "gamedesign core rules — every rule has Scope + Load when header"
+    else
+        fail "gamedesign core rules missing Scope/Load when header:$GD_CORE_HEADERLESS"
+    fi
+else
+    fail "rules-registry/gamedesign/core — missing (run download-rules.sh)"
+fi
+
+# Defective GDD fixture — test data for the agent-driven /unikit-gd-verify and
+# /unikit-gd-review smoke (Phase H #19). No bash assertion can run an LLM skill,
+# so only validate the fixture is present and well-formed (canonical v2 schema, three
+# system docs); its README.md carries the planted-defect → verify-check ground
+# truth a reviewer checks skill output against. v2 dropped GD-INDEX.md — the roster
+# lives in GD-IDS + GAME.md `## System Map [gen]`.
+GD_DEFECTIVE="$ROOT_DIR/scripts/test-fixtures/gamedesign/defective-gdd"
+GD_DEFECTIVE_OK=1
+# systems/{boost,hud}.md are FIXED literal paths the multi-doc defects hang off
+# (unregistered cross-doc fact, Depends 3-way, status coherence) — README §map and
+# this guard both pin them; systems/loot.md is intentionally ABSENT (roster↔disk defect).
+for f in README.md GAME.md GD-IDS.yaml systems/combat.md systems/boost.md systems/hud.md; do
+    [[ -s "$GD_DEFECTIVE/$f" ]] || GD_DEFECTIVE_OK=0
+done
+if [[ "$GD_DEFECTIVE_OK" -eq 1 ]]; then
+    pass "defective-gdd fixture present (GAME.md, GD-IDS.yaml, systems/{combat,boost,hud}.md, README ground truth)"
+else
+    fail "defective-gdd fixture incomplete under scripts/test-fixtures/gamedesign/defective-gdd"
+fi
+# Soft schema check: the fixture GD-IDS.yaml uses the canonical schema keys the new
+# verify checks grep (doc_status / depends_on / forbidden_aliases). A re-clone that
+# reverts to the old ad-hoc shape (version/status/depends/facts) fails loudly here.
+GD_DEFECTIVE_IDS="$GD_DEFECTIVE/GD-IDS.yaml"
+GD_DEFECTIVE_KEYS_OK=1
+GD_DEFECTIVE_KEYS_WHY=""
+for key in 'doc_status:' 'depends_on:' 'forbidden_aliases:'; do
+    grep -q "$key" "$GD_DEFECTIVE_IDS" 2>/dev/null || { GD_DEFECTIVE_KEYS_OK=0; GD_DEFECTIVE_KEYS_WHY+=" $key"; }
+done
+if [[ "$GD_DEFECTIVE_KEYS_OK" -eq 1 ]]; then
+    pass "defective-gdd GD-IDS.yaml — canonical schema keys present (doc_status/depends_on/forbidden_aliases)"
+else
+    fail "defective-gdd GD-IDS.yaml — missing canonical schema key(s):$GD_DEFECTIVE_KEYS_WHY"
+fi
+
+# Market-research delegation upgrade — explore-owned delegation contract + strict
+# market-scan. The brainstorm→explore contract moved OUT of gd-principles into
+# unikit-gd-explore/references/delegation-contract.md (provider-owns-spec); the
+# CONCEPT machine-block grew 2→6 fields. Guard the wiring so a re-introduced
+# dangling gd-principles→delegation pointer, a shrunk machine-block, a dropped
+# verdict enum, or a contract missing its canonical marker fails loudly.
+GD_CONTRACT="$ROOT_DIR/skills/unikit-gd-explore/references/delegation-contract.md"
+GD_CONCEPT_TPL="$GD_DATA/templates/CONCEPT.md"
+GD_CANONICAL_MARKER='Return the brief into this session as text; do not save any files.'
+
+# (1) CONCEPT machine-block carries all 6 machine fields lifted from the brief.
+GD_CONCEPT_FIELDS_OK=1
+for field in market_signal validation_confidence clone_density trend_fit monetization_fit recommendation; do
+    grep -qE "^> \*\*$field\*\*:" "$GD_CONCEPT_TPL" || GD_CONCEPT_FIELDS_OK=0
+done
+if [[ "$GD_CONCEPT_FIELDS_OK" -eq 1 ]]; then
+    pass "CONCEPT.md — 6 machine fields present (market_signal…recommendation)"
+else
+    fail "CONCEPT.md — machine-block missing one of the 6 fields (market_signal/validation_confidence/clone_density/trend_fit/monetization_fit/recommendation)"
+fi
+# A 6-field count would not catch a dropped enum value, so also assert the
+# recommendation verdict keeps its 5th value (the brief does not lift without it).
+if grep -qE '^> \*\*recommendation\*\*:.*proceed-with-differentiation' "$GD_CONCEPT_TPL"; then
+    pass "CONCEPT.md — recommendation keeps the proceed-with-differentiation verdict"
+else
+    fail "CONCEPT.md — recommendation enum dropped proceed-with-differentiation"
+fi
+
+# (2) gd-principles is silent on delegation (case-insensitive — a stray lowercase
+#     mention in the intro must also fail).
+if grep -qi "cross-skill delegation" "$GD_PRINCIPLES"; then
+    fail "gd-principles.md — still mentions 'cross-skill delegation' (contract moved to unikit-gd-explore)"
+else
+    pass "gd-principles.md — no 'cross-skill delegation' (delegation is explore-owned)"
+fi
+
+# (3) The explore-owned contract exists and carries the canonical marker verbatim.
+#     'contains', NOT 'sole home' — the marker is duplicated verbatim by design in
+#     brainstorm's delegate prompt, explore's detector, and market-scan.
+if [[ ! -s "$GD_CONTRACT" ]]; then
+    fail "delegation-contract.md — missing or empty (skills/unikit-gd-explore/references/)"
+elif grep -qF "$GD_CANONICAL_MARKER" "$GD_CONTRACT"; then
+    pass "delegation-contract.md — present + carries the canonical marker"
+else
+    fail "delegation-contract.md — missing the canonical marker verbatim"
+fi
+
+# (4) Permanent orphan assert: nothing in skills/ or data/ couples gd-principles to
+#     the delegation contract anymore — both the section-name form and rephrased
+#     forms. A re-introduced dangling pointer fails here, not only at commit time.
+GD_DELEG_ORPHANS=$(grep -rniE "gd-principles[^.]{0,40}(cross-skill )?delegation|delegation contract.{0,20}gd-principles" "$ROOT_DIR/skills" "$ROOT_DIR/data" 2>/dev/null || true)
+if [[ -z "$GD_DELEG_ORPHANS" ]]; then
+    pass "no gd-principles→delegation orphan references in skills/ + data/"
+else
+    fail "gd-principles→delegation orphan reference(s) found: $GD_DELEG_ORPHANS"
+fi
+
+# T5/T6 content guards — the FIRST content asserts on skill REFERENCE files. The
+# templates/* + fixture greps above do not cover section-packs.md / lenses.md /
+# the gd-review|gd-verify SKILL bodies, so re-key/lens drift would pass silently.
+# These are cheap grep invariants on the keying + lens edits; the lenses actually
+# FIRING is checked by the manual smoke (bash cannot run an LLM skill).
+GD_SECTION_PACKS="$ROOT_DIR/skills/unikit-gd-system/references/section-packs.md"
+GD_LENSES="$ROOT_DIR/skills/unikit-gd-review/references/lenses.md"
+GD_REVIEW_SKILL="$ROOT_DIR/skills/unikit-gd-review/SKILL.md"
+GD_SYSTEM_SKILL="$ROOT_DIR/skills/unikit-gd-system/SKILL.md"
+# (gd-improve was removed in P1 — create+revise unified in gd-system; gd-detail renamed
+# to gd-system. $GD_VERIFY_SKILL is defined above in the status-spine block.)
+
+# (1) Both new section-packs exist (T5: SP2 ai-behavior, SP3 persistence).
+GD_PACKS_WHY=""
+if ! grep -qF '## Pack: ai-behavior' "$GD_SECTION_PACKS"; then GD_PACKS_WHY+=" ai-behavior"; fi
+if ! grep -qF '## Pack: persistence' "$GD_SECTION_PACKS"; then GD_PACKS_WHY+=" persistence"; fi
+if [[ -z "$GD_PACKS_WHY" ]]; then
+    pass "section-packs.md — ai-behavior + persistence packs present (T5)"
+else
+    fail "section-packs.md — missing pack block(s):$GD_PACKS_WHY"
+fi
+
+# (2) fantasy-delivery core lens landed in lenses.md (T6: L1).
+if grep -qF 'fantasy-delivery' "$GD_LENSES"; then
+    pass "lenses.md — fantasy-delivery core lens present (T6)"
+else
+    fail "lenses.md — missing fantasy-delivery core lens"
+fi
+
+# (3) The dead /unikit-evolve cross-skill ref is gone from gd-review + gd-verify
+#     (R3, both sides). FILE-SCOPED on purpose: the literal '/unikit-evolve' lives
+#     in ~11 files under skills/ (the unikit-evolve skill itself + others), so a
+#     repo-wide `grep -r "$ROOT_DIR/skills"` would always be red. Expect 0 matches
+#     in EACH of the two skill bodies.
+GD_EVOLVE_WHY=""
+if grep -qF '/unikit-evolve' "$GD_REVIEW_SKILL"; then GD_EVOLVE_WHY+=" gd-review"; fi
+if grep -qF '/unikit-evolve' "$GD_VERIFY_SKILL"; then GD_EVOLVE_WHY+=" gd-verify"; fi
+if [[ -z "$GD_EVOLVE_WHY" ]]; then
+    pass "gd-review + gd-verify — no dead /unikit-evolve reference (R3)"
+else
+    fail "stale /unikit-evolve reference still in:$GD_EVOLVE_WHY (R3 — route to /unikit-memory --module gamedesign)"
+fi
+
+# (4) Keying vocabulary: the unified gd-system Phase 0 table carries the two new
+#     domains (T5 goal — create+revise share one keying table now that gd-improve is
+#     folded in).
+GD_KEYING_WHY=""
+for f in "$GD_SYSTEM_SKILL"; do
+    bn=$(basename "$(dirname "$f")")
+    if ! grep -qF 'ai-behavior' "$f"; then GD_KEYING_WHY+=" $bn(ai-behavior)"; fi
+    if ! grep -qF 'persistence' "$f"; then GD_KEYING_WHY+=" $bn(persistence)"; fi
+done
+if [[ -z "$GD_KEYING_WHY" ]]; then
+    pass "gd-system Phase 0 — ai-behavior + persistence domains present (T5 keying — unified zone)"
+else
+    fail "Phase 0 keying drift:$GD_KEYING_WHY"
+fi
+
+# T7/T8 content guards (provenance contract + implemented wire-back). All greps are
+# FILE-SCOPED (like the T5/T6 absence-grep above), never repo-wide. The writer/reader
+# actually FIRING is checked by the manual smoke (bash cannot run an LLM skill); these
+# assert the contract text is present on each surface. New path vars: the GAME.md and
+# GD-IDS templates, the *code-module* unikit-verify / unikit-plan skills ($GD_VERIFY_SKILL
+# above is the *design* gd-verify — a different file), and the canonical unikit-verify
+# ownership contract.
+GD_GAME_TPL="$GD_DATA/templates/GAME.md"
+GD_IDS_TPL="$GD_DATA/templates/GD-IDS.yaml"
+UNIKIT_VERIFY_SKILL="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+UNIKIT_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+UNIKIT_VERIFY_CONTRACT="$ROOT_DIR/skills/unikit-verify/references/CONTEXT-GATES-AND-OWNERSHIP.md"
+
+# (T7-1) Provenance contract section in the gd-provenance shard (GP2).
+if grep -q '^## Provenance' "$GD_PROVENANCE"; then
+    pass "gd-provenance — ## Provenance (imports) section present (T7 GP2)"
+else
+    fail "gd-provenance — missing ## Provenance (imports) section (T7 GP2)"
+fi
+
+# (T7-2) Provenance lens in lenses.md (L2).
+if grep -qF 'Provenance lens' "$GD_LENSES"; then
+    pass "lenses.md — Provenance lens present (T7 L2)"
+else
+    fail "lenses.md — missing Provenance lens (T7 L2)"
+fi
+
+# (T7-3) GAME.md template carries a ## Changelog section (closes the T2 hole).
+if grep -q '^## Changelog' "$GD_GAME_TPL"; then
+    pass "GAME.md template — ## Changelog section present (T7)"
+else
+    fail "GAME.md template — missing ## Changelog section (T7)"
+fi
+
+# (T7-4) GAME.md Delta-Discipline carve-out in the gd-authoring shard (#16) —
+#        file-scoped on the unique marker phrase inside ## Delta Discipline.
+if grep -qF 'GAME.md exception (not a system)' "$GD_AUTHORING"; then
+    pass "gd-authoring — GAME.md Delta-Discipline carve-out present (#16)"
+else
+    fail "gd-authoring — missing GAME.md Delta-Discipline carve-out (#16)"
+fi
+
+# (T8-5) implemented_version field in the GD-IDS template (#9).
+if grep -qF 'implemented_version' "$GD_IDS_TPL"; then
+    pass "GD-IDS template — implemented_version field present (T8)"
+else
+    fail "GD-IDS template — missing implemented_version field (T8)"
+fi
+
+# (P0-T3) GD-IDS template is schema v2 and carries the systems `category` field
+#         (unikit-plan matches the plan brief on category) plus the new flows/events
+#         sections of the Flow axis.
+GD_IDS_V2_WHY=""
+grep -qE '^version: 2$' "$GD_IDS_TPL"        || GD_IDS_V2_WHY+=" version:2"
+grep -qF 'category:' "$GD_IDS_TPL"           || GD_IDS_V2_WHY+=" category"
+grep -qE '^flows: \[\]' "$GD_IDS_TPL"        || GD_IDS_V2_WHY+=" flows"
+grep -qE '^events: \[\]' "$GD_IDS_TPL"       || GD_IDS_V2_WHY+=" events"
+# Content axis (Stage 0) — the 5 additive sections ship empty (non-empty-gate, the
+# flows/events precedent). version stays 2 (additive, no schema bump).
+grep -qE '^content_types: \[\]' "$GD_IDS_TPL" || GD_IDS_V2_WHY+=" content_types"
+grep -qE '^content: \[\]' "$GD_IDS_TPL"       || GD_IDS_V2_WHY+=" content"
+grep -qE '^resources: \[\]' "$GD_IDS_TPL"     || GD_IDS_V2_WHY+=" resources"
+grep -qE '^tracks: \[\]' "$GD_IDS_TPL"        || GD_IDS_V2_WHY+=" tracks"
+grep -qE '^knobs: \[\]' "$GD_IDS_TPL"         || GD_IDS_V2_WHY+=" knobs"
+if [[ -z "$GD_IDS_V2_WHY" ]]; then
+    pass "GD-IDS template — schema v2 + category + flows/events + content_types/content/resources/tracks/knobs sections (P0-T3 + Content Stage 0)"
+else
+    fail "GD-IDS template — missing:$GD_IDS_V2_WHY (P0-T3 + Content Stage 0)"
+fi
+
+# (T8-6) Both the writer (unikit-verify) and the reader (unikit-plan) name
+#        implemented_version. The reader half moved into the extracted
+#        references/design-context.md (the mode-extraction refactor pulled Step 4.5
+#        out of unikit-plan/SKILL.md); the writer half stays in unikit-verify/SKILL.md.
+UNIKIT_PLAN_DESIGN_CONTEXT="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
+GD_IMPL_WHY=""
+grep -qF 'implemented_version' "$UNIKIT_VERIFY_SKILL"        || GD_IMPL_WHY+=" unikit-verify(writer)"
+grep -qF 'implemented_version' "$UNIKIT_PLAN_DESIGN_CONTEXT" || GD_IMPL_WHY+=" unikit-plan(reader→design-context.md)"
+if [[ -z "$GD_IMPL_WHY" ]]; then
+    pass "unikit-verify + unikit-plan — implemented_version wired (T8 writer/reader)"
+else
+    fail "implemented_version missing in:$GD_IMPL_WHY (T8)"
+fi
+
+# (T8-7) v2 SINGLE-surface writeback: the implemented marker is `implemented_version`
+#        in GD-IDS ONLY; GAME.md `## System Map [gen]` renders `implemented` read-only.
+#        The old GD-INDEX Status second surface is gone — assert unikit-verify no longer
+#        documents it (the systemic no-GD-INDEX guard below also covers this file).
+if grep -qF 'GD-INDEX Status=implemented' "$UNIKIT_VERIFY_SKILL"; then
+    fail "unikit-verify — still documents a GD-INDEX Status writeback (T8 must be single-surface in v2)"
+else
+    pass "unikit-verify — implemented writeback is single-surface, no GD-INDEX second surface (T8 v2)"
+fi
+
+# (T8-8) Sanctioned code→design exception in the gd-principles One-Way Boundary (#8).
+# NOTE: the count grew "two" → "three" when the brownfield research-verb exception landed
+# (gd-recon/explore code lens); the RD-3 guard below asserts the third bullet's content.
+if grep -qF 'Sanctioned exceptions (three, narrow)' "$GD_PRINCIPLES"; then
+    pass "gd-principles — One-Way Boundary code→design exception present (T8 #8)"
+else
+    fail "gd-principles — missing One-Way Boundary code→design exception (T8 #8)"
+fi
+
+# (T8-9) MANDATORY: the canonical ownership contract carries the sanctioned write.
+#        This file overrides the SKILL body (unikit-verify Step 0.0), yet it is the
+#        surface most likely to silently regress the carve-out — and until now it was
+#        never grepped by this runner.
+if grep -qF 'Single sanctioned design write' "$UNIKIT_VERIFY_CONTRACT"; then
+    pass "CONTEXT-GATES-AND-OWNERSHIP — sanctioned design-write exception present (T8 canonical)"
+else
+    fail "CONTEXT-GATES-AND-OWNERSHIP — missing sanctioned design-write exception (T8 canonical)"
+fi
+
+# Internal-design-lens content guards (gd-explore internal lens + downstream wiring —
+# the feature-internal-design-lens plan, Tasks 1-9). All greps are FILE-SCOPED and
+# case-sensitive `-qF` (MSYS grep aborts on `-iF`). bash cannot run an LLM skill; these
+# assert the contract text is present on each surface. New path vars (absent until now):
+# the gd-spec / gd-explore SKILLs and the new lens engine reference. Reuses
+# GD_SYSTEM_SKILL (defined above; the renamed gd-detail that also absorbed gd-improve),
+# GD_VERIFY_SKILL (the *design* gd-verify) and GD_IDS_TPL.
+GD_SPEC_SKILL="$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
+GD_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+# Extracted gd-explore reference bodies (input modes + save-research) — guard targets
+# for content moved out of SKILL.md (context-cost refactor, 2026-06-26).
+GD_EXPLORE_SAVE_RESEARCH="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+GD_EXPLORE_RESEARCH_BUCKET="$ROOT_DIR/skills/unikit-gd-explore/references/mode-research-bucket.md"
+GD_EXPLORE_RECON_INPUT="$ROOT_DIR/skills/unikit-gd-explore/references/mode-recon-input.md"
+GD_INTERNAL_LENS="$ROOT_DIR/skills/unikit-gd-explore/references/internal-design-lens.md"
+
+# (IL-1) The new engine reference exists, carries both mode-aware brief blocks, and
+#        mirrors the shared domain keying vocabulary (parity, NOT byte-identity — this
+#        table loads rules to ground options, gd-system to author sections).
+IL_LENS_WHY=""
+[[ -s "$GD_INTERNAL_LENS" ]]                        || IL_LENS_WHY+=" missing-file"
+grep -qF '## Improvement Plan' "$GD_INTERNAL_LENS"  || IL_LENS_WHY+=" improvement-plan-block"
+grep -qF '## New Feature Plan' "$GD_INTERNAL_LENS"  || IL_LENS_WHY+=" new-feature-plan-block"
+grep -qF 'ai-behavior' "$GD_INTERNAL_LENS"          || IL_LENS_WHY+=" ai-behavior(keying-parity)"
+grep -qF 'persistence' "$GD_INTERNAL_LENS"          || IL_LENS_WHY+=" persistence(keying-parity)"
+if [[ -z "$IL_LENS_WHY" ]]; then
+    pass "internal-design-lens.md — present + both brief blocks + domain keying parity (IL T1)"
+else
+    fail "internal-design-lens.md — missing:$IL_LENS_WHY"
+fi
+
+# (IL-2) gd-explore SKILL carries the lens switch: the section, its decision rule, the
+#        3-way doc_status routing, the read-only warning, and the Target/Kind tags.
+IL_EXPLORE_WHY=""
+grep -qF '## Internal design lens' "$GD_EXPLORE_SKILL"          || IL_EXPLORE_WHY+=" lens-section"
+grep -qF 'Internal-design signals present' "$GD_EXPLORE_SKILL"  || IL_EXPLORE_WHY+=" decision-rule"
+grep -qF '3-way handoff routing' "$GD_EXPLORE_SKILL"            || IL_EXPLORE_WHY+=" 3-way-routing"
+grep -qF "I won't edit the GDD" "$GD_EXPLORE_SKILL"             || IL_EXPLORE_WHY+=" read-only-warning"
+grep -qF 'Kind: feature | improvement' "$GD_EXPLORE_SAVE_RESEARCH" || IL_EXPLORE_WHY+=" kind-tag"
+grep -qF 'Target: SYS-<slug>' "$GD_EXPLORE_SAVE_RESEARCH"          || IL_EXPLORE_WHY+=" target-tag"
+if [[ -z "$IL_EXPLORE_WHY" ]]; then
+    pass "gd-explore SKILL — lens section + decision rule + 3-way routing + read-only + Target/Kind (IL T2)"
+else
+    fail "gd-explore SKILL — missing:$IL_EXPLORE_WHY"
+fi
+
+# (IL-3) gd-spec Add-System mode + the active seam onward to the system zone.
+# The Add-System body moved to references/mode-add-system.md (mode-extraction refactor);
+# retarget both literals there. The mode dispatch stays in gd-spec/SKILL.md.
+GD_SPEC_ADD_SYSTEM="$ROOT_DIR/skills/unikit-gd-spec/references/mode-add-system.md"
+IL_SPEC_WHY=""
+grep -qF '## Add-System Mode' "$GD_SPEC_ADD_SYSTEM"  || IL_SPEC_WHY+=" add-system-mode"
+grep -qF 'Active seam' "$GD_SPEC_ADD_SYSTEM"         || IL_SPEC_WHY+=" active-seam"
+if [[ -z "$IL_SPEC_WHY" ]]; then
+    pass "gd-spec — Add-System mode + active seam to gd-system (IL T3, → mode-add-system.md)"
+else
+    fail "gd-spec — missing:$IL_SPEC_WHY (→ mode-add-system.md)"
+fi
+
+# (IL-4) Research-discovery wired into BOTH downstream consumers (the `research:`
+#        pointer + the `Target:` INDEX fallback — the backtick token `Target:` is unique
+#        to the discovery bullet; the Final-report `Target:` line has no backticks, and a
+#        single token cannot be split by a line-wrap), and gd-system instructs leaving
+#        explore-seeded drafts UNTAGGED (the Task-4 carve-out: not extracted/generated —
+#        those markers are imports-only). One consumer now (gd-system owns both the
+#        New-Feature create path and the Improvement revise path).
+IL_DISC_WHY=""
+for f in "$GD_SYSTEM_SKILL"; do
+    bn=$(basename "$(dirname "$f")")
+    grep -qF 'research:' "$f"     || IL_DISC_WHY+=" $bn(research-pointer)"
+    grep -qF '`Target:`' "$f"     || IL_DISC_WHY+=" $bn(target-fallback)"
+done
+grep -qF 'explore-seeded drafts' "$GD_SYSTEM_SKILL" || IL_DISC_WHY+=" gd-system(untagged-carveout)"
+if [[ -z "$IL_DISC_WHY" ]]; then
+    pass "gd-system — research-discovery (research:/Target) + untagged carve-out (IL T4)"
+else
+    fail "research-discovery wiring missing:$IL_DISC_WHY"
+fi
+
+# (IL-5) The `research:` field is canonical: present in the GD-IDS template, and carved
+#        out of gd-verify coherence/id-resolution (Task 9). The carve-out hangs on the
+#        value's FORM (a path, not an id), so no special-case check logic is added.
+IL_FIELD_WHY=""
+grep -qF 'research:' "$GD_IDS_TPL"             || IL_FIELD_WHY+=" gd-ids-template"
+grep -qF 'Non-id metadata' "$GD_VERIFY_SKILL"  || IL_FIELD_WHY+=" gd-verify-carveout"
+if [[ -z "$IL_FIELD_WHY" ]]; then
+    pass "research: field — GD-IDS template + gd-verify carve-out present (IL T9)"
+else
+    fail "research: field canonicalization missing:$IL_FIELD_WHY"
+fi
+
+# (P1 clean break) unikit-gd-improve is GONE — its create+revise lifecycle folded into
+# unikit-gd-system (systems) and GAME.md content edits into unikit-gd-spec. Assert the
+# skill dir is absent AND no live `gd-improve` reference survives in the design skills
+# (unikit-gd-*, SKILL bodies + references) or the code-side / cross-cutting files that
+# routed to it (unikit-explore routing, unikit-plan status note, the gamedesign module
+# contract). FILE-SCOPED -qF (MSYS grep aborts on -iF). NOT in scope: .claude/CLAUDE.md
+# / README / docs (their deep narrative is a later phase) and scripts/ test guards.
+NOIMP_WHY=""
+[[ -d "$ROOT_DIR/skills/unikit-gd-improve" ]] && NOIMP_WHY+=" skill-dir-present"
+NOIMP_FILES=$(find "$ROOT_DIR/skills" -path '*/unikit-gd-*/*.md' 2>/dev/null)
+NOIMP_FILES="$NOIMP_FILES $ROOT_DIR/skills/unikit-explore/SKILL.md $ROOT_DIR/skills/unikit-plan/SKILL.md $ROOT_DIR/skills/unikit-memory/references/module-gamedesign.md"
+for f in $NOIMP_FILES; do
+    [[ -f "$f" ]] || continue
+    grep -qF 'gd-improve' "$f" && NOIMP_WHY+=" ${f#$ROOT_DIR/}"
+done
+if [[ -z "$NOIMP_WHY" ]]; then
+    pass "no unikit-gd-improve — skill removed + zero gd-improve refs in design/code skills (P1 clean break)"
+else
+    fail "unikit-gd-improve leftover:$NOIMP_WHY"
+fi
+
+# (P1 clean break) Systemic no-GD-INDEX guard (parity with the no-improve guard; this
+# is the ONLY mechanical net under the hand-cleaned design+code skills — leftover
+# GD-INDEX refs there are otherwise uncaught). v2 dropped the standalone markdown
+# system-index: the roster renders into GAME.md `## System Map [gen]`. Assert ZERO
+# literal `GD-INDEX` in the design skills (unikit-gd-*), the code-side skills that
+# read/write design (unikit-{plan,verify,explore}, incl. references), and the design
+# data (data/gamedesign/ templates + gd-principles + GD-IDS.yaml). FILE-SCOPED -qF.
+# NOT in scope: .claude/CLAUDE.md / README / docs/skills.md (deep narrative deferred).
+NOIDX_WHY=""
+NOIDX_FILES=$(find "$ROOT_DIR/skills" -path '*/unikit-gd-*/*.md' 2>/dev/null)
+NOIDX_FILES="$NOIDX_FILES $(find "$ROOT_DIR/skills/unikit-plan" "$ROOT_DIR/skills/unikit-verify" "$ROOT_DIR/skills/unikit-explore" -name '*.md' 2>/dev/null)"
+NOIDX_FILES="$NOIDX_FILES $(find "$ROOT_DIR/data/gamedesign" -name '*.md' 2>/dev/null) $ROOT_DIR/data/gamedesign/templates/GD-IDS.yaml"
+for f in $NOIDX_FILES; do
+    [[ -f "$f" ]] || continue
+    grep -qF 'GD-INDEX' "$f" && NOIDX_WHY+=" ${f#$ROOT_DIR/}"
+done
+if [[ -z "$NOIDX_WHY" ]]; then
+    pass "systemic no-GD-INDEX — zero GD-INDEX in gd-* + plan/verify/explore + data/gamedesign (P1 v2)"
+else
+    fail "stale GD-INDEX reference(s):$NOIDX_WHY"
+fi
+
+# ── Flow-axis content guards (FL-1…FL-8) ─────────────────────────────────────
+# PR#6 (feature/gd-flow-axis Phase 2/3) added the FLOW axis: the unikit-gd-flow zone
+# skill, the flow checks in unikit-gd-verify, the flow lenses in unikit-gd-review, the
+# Flow-axis process contracts in gd-principles, the code-side flow-read
+# (unikit-plan / unikit-explore), the upstream brief surface (gd-brainstorm / gd-explore
+# / internal-design-lens), and the defective-gdd flow fixture. bash cannot run an LLM
+# skill, so these are grep invariants on the contract text. New path vars
+# GD_FLOW_SKILL / GD_BRAINSTORM_SKILL / UNIKIT_EXPLORE_SKILL (GD_FLOW_TPL is defined in
+# the status-spine block above) + reuse of GD_GAME_TPL / GD_PRINCIPLES / GD_VERIFY_SKILL
+# / GD_REVIEW_SKILL / GD_LENSES / GD_EXPLORE_SKILL / GD_INTERNAL_LENS / GD_SPEC_SKILL /
+# UNIKIT_PLAN_SKILL (all defined earlier in Part 6). All greps FILE-SCOPED -qF; the
+# negative checks use `grep -qF … && WHY+=…` (same set-e-safe idiom as the no-improve
+# guard). MSYS grep aborts on -iF, so every anchor is case-sensitive.
+GD_FLOW_SKILL="$ROOT_DIR/skills/unikit-gd-flow/SKILL.md"
+GD_BRAINSTORM_SKILL="$ROOT_DIR/skills/unikit-gd-brainstorm/SKILL.md"
+UNIKIT_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+GD_DEFECTIVE_DIR="$ROOT_DIR/scripts/test-fixtures/gamedesign/defective-gdd"
+
+# (FL-1) The flow-zone skill exists, and the FLOW.md template carries the mode-aware
+# structure both authoring forms need (objective-flow table for linear/conditional,
+# affordance template + pacing envelope for emergent), the funnel Events section, and
+# the GOAL-delta changelog line.
+FL_SKILL_WHY=""
+[[ -s "$GD_FLOW_SKILL" ]]                              || FL_SKILL_WHY+=" missing-skill"
+grep -qF 'flow zone' "$GD_FLOW_SKILL"                  || FL_SKILL_WHY+=" no-flow-zone-anchor"
+grep -qF 'Objective-flow table' "$GD_FLOW_TPL"         || FL_SKILL_WHY+=" tpl-objective-table"
+grep -qF 'Affordance / goal-template' "$GD_FLOW_TPL"   || FL_SKILL_WHY+=" tpl-affordance"
+grep -qF 'pacing envelope' "$GD_FLOW_TPL"              || FL_SKILL_WHY+=" tpl-pacing-envelope"
+grep -qF '## E. Events (Funnel)' "$GD_FLOW_TPL"        || FL_SKILL_WHY+=" tpl-events"
+grep -qF 'GOAL: + GOAL-' "$GD_FLOW_TPL"                || FL_SKILL_WHY+=" tpl-goal-delta"
+if [[ -z "$FL_SKILL_WHY" ]]; then
+    pass "FL-1 gd-flow skill present + FLOW.md template mode-aware content (table/affordance/envelope, Events, GOAL-delta)"
+else
+    fail "FL-1 gd-flow skill / FLOW.md template incomplete:$FL_SKILL_WHY"
+fi
+
+# (FL-2) GAME.md ships both [gen] render surfaces, and the F1 attribution is aligned:
+# the Flow Map + Funnel are rendered by unikit-gd-flow while the System Map stays
+# unikit-gd-spec. F2: ZERO "aggregated in `## Funnel`" in the GAME.md template OR the
+# gd-spec body — the contradictory L132 line was removed in P2-T1 (per-flow funnel lives
+# in ## Funnel; global/meta goals live in ## Monetization Stance, not aggregated here).
+FL_MAP_WHY=""
+grep -qF '## Flow Map [gen]' "$GD_GAME_TPL"                 || FL_MAP_WHY+=" no-flow-map-block"
+grep -qF '## Funnel [gen]' "$GD_GAME_TPL"                   || FL_MAP_WHY+=" no-funnel-block"
+grep -qF '`flows` by `unikit-gd-flow`' "$GD_GAME_TPL"       || FL_MAP_WHY+=" flow-map-not-gd-flow"
+grep -qF '`events` by `unikit-gd-flow`' "$GD_GAME_TPL"      || FL_MAP_WHY+=" funnel-not-gd-flow"
+grep -qF '`systems` by `unikit-gd-spec`' "$GD_GAME_TPL"     || FL_MAP_WHY+=" system-map-not-gd-spec"
+grep -qF 'aggregated in `## Funnel`' "$GD_GAME_TPL"         && FL_MAP_WHY+=" F2-game-tpl-funnel-aggregation"
+grep -qF 'aggregated in `## Funnel`' "$GD_SPEC_SKILL"       && FL_MAP_WHY+=" F2-gd-spec-funnel-aggregation"
+if [[ -z "$FL_MAP_WHY" ]]; then
+    pass "FL-2 GAME.md ## Flow Map/## Funnel by unikit-gd-flow + ## System Map by unikit-gd-spec (F1); zero funnel-aggregation in monetization (F2)"
+else
+    fail "FL-2 GAME.md flow render-surface / attribution drift:$FL_MAP_WHY"
+fi
+
+# (Content Stage 0, mirror of FL-2) GAME.md ships the ## Content Map [gen] render surface
+# attributed to unikit-gd-content, while the System Map stays unikit-gd-spec — the content
+# zone owns its own [gen] render, not gd-spec (no add-content in gd-spec).
+CT_MAP_WHY=""
+grep -qF '## Content Map [gen]' "$GD_GAME_TPL"                    || CT_MAP_WHY+=" no-content-map-block"
+grep -qF '`content_types` by `unikit-gd-content`' "$GD_GAME_TPL"  || CT_MAP_WHY+=" content-map-not-gd-content"
+grep -qF '`systems` by `unikit-gd-spec`' "$GD_GAME_TPL"           || CT_MAP_WHY+=" system-map-not-gd-spec"
+if [[ -z "$CT_MAP_WHY" ]]; then
+    pass "Content Stage 0 — GAME.md ## Content Map [gen] by unikit-gd-content + ## System Map by unikit-gd-spec (attribution aligned)"
+else
+    fail "Content Stage 0 — GAME.md content render-surface / attribution drift:$CT_MAP_WHY"
+fi
+
+# (Content Stage 1) The unikit-gd-content zone skill carries its contract: the CT-/CU- codes,
+# the scale selection (bulk|curated), self-registration of content_types/content + the
+# ## Content Map [gen] re-render, the RES/TRACK/KNOB fact registration, belongs_to + the
+# re-entry seam to gd-spec add-system, and the ref<> universality lever. (The skeleton-level
+# Language Awareness + shard binding are covered by Part 11 + the split-5 binding above.)
+GD_CONTENT_SKILL="$ROOT_DIR/skills/unikit-gd-content/SKILL.md"
+CT_SKILL_WHY=""
+[[ -f "$GD_CONTENT_SKILL" ]] || CT_SKILL_WHY+=" no-skill-file"
+grep -qF 'CT-<slug>' "$GD_CONTENT_SKILL"            || CT_SKILL_WHY+=" no-CT-code"
+grep -qF 'CU-<ct>-<n>' "$ROOT_DIR/skills/unikit-gd-content/references/mode-author.md" || CT_SKILL_WHY+=" no-CU-code"
+grep -qF 'bulk | curated' "$GD_CONTENT_SKILL"       || CT_SKILL_WHY+=" no-scale"
+grep -qF 'content_types' "$GD_CONTENT_SKILL"        || CT_SKILL_WHY+=" no-self-register"
+grep -qF '## Content Map [gen]' "$GD_CONTENT_SKILL" || CT_SKILL_WHY+=" no-content-map-render"
+grep -qF 'belongs_to' "$GD_CONTENT_SKILL"           || CT_SKILL_WHY+=" no-belongs_to"
+grep -qF 'RES-' "$GD_CONTENT_SKILL"                 || CT_SKILL_WHY+=" no-RES"
+grep -qF 'TRACK-' "$GD_CONTENT_SKILL"               || CT_SKILL_WHY+=" no-TRACK"
+grep -qF 'KNOB-' "$GD_CONTENT_SKILL"                || CT_SKILL_WHY+=" no-KNOB"
+grep -qF 'ref<' "$GD_CONTENT_SKILL"                 || CT_SKILL_WHY+=" no-ref"
+grep -qF 'add-system' "$GD_CONTENT_SKILL"           || CT_SKILL_WHY+=" no-reentry-seam"
+if [[ -z "$CT_SKILL_WHY" ]]; then
+    pass "Content Stage 1 — unikit-gd-content carries CT/CU codes, scale, self-register+map render, RES/TRACK/KNOB, belongs_to+seam, ref<>"
+else
+    fail "Content Stage 1 — unikit-gd-content skill contract incomplete:$CT_SKILL_WHY"
+fi
+
+# (FL-3) unikit-gd-verify carries the flow-check family — the mirror of the system
+# checks plus the flow-specific ones (mode↔structure, Win/Lose↔terminal GOAL, funnel
+# continuity, cross-axis impact). Arrows are matched byte-for-byte (-qF, not -iF).
+FL_VERIFY_WHY=""
+grep -qF 'Flow checks (axis-aware' "$GD_VERIFY_AXIS"        || FL_VERIFY_WHY+=" flow-checks-section"
+grep -qF 'GOAL id validity' "$GD_VERIFY_AXIS"               || FL_VERIFY_WHY+=" goal-id-validity"
+grep -qF 'Dangling `GOAL' "$GD_VERIFY_AXIS"                 || FL_VERIFY_WHY+=" dangling-goal"
+grep -qF 'mode ↔ structure' "$GD_VERIFY_AXIS"               || FL_VERIFY_WHY+=" mode-structure"
+grep -qF 'Win/Lose ↔ terminal GOAL' "$GD_VERIFY_AXIS"       || FL_VERIFY_WHY+=" win-lose-terminal"
+grep -qF 'Funnel continuity' "$GD_VERIFY_AXIS"              || FL_VERIFY_WHY+=" funnel-continuity"
+grep -qF 'Flow Depends 3-way' "$GD_VERIFY_AXIS"             || FL_VERIFY_WHY+=" flow-depends-3way"
+grep -qF 'Flow / Funnel map freshness' "$GD_VERIFY_AXIS"    || FL_VERIFY_WHY+=" flow-map-freshness"
+grep -qF 'Cross-axis impact' "$GD_VERIFY_SKILL"             || FL_VERIFY_WHY+=" cross-axis-impact"
+if [[ -z "$FL_VERIFY_WHY" ]]; then
+    pass "FL-3 unikit-gd-verify flow checks present (3-surface, dangling GOAL, mode↔structure, win/lose, funnel, GOAL-id, depends-3way, cross-axis)"
+else
+    fail "FL-3 unikit-gd-verify flow checks missing:$FL_VERIFY_WHY"
+fi
+
+# (FL-4) unikit-gd-review flow lenses are present AND activated — the three flow lenses
+# carry real adversarial prompts in lenses.md, the SKILL body marks them active, and
+# ZERO "stub — Flow axis" gating survives in EITHER file (P2-T4 removed the Phase-2
+# stubs in both — a residual stub in lenses.md would leave them gated under a green test).
+FL_REVIEW_WHY=""
+grep -qF '**pacing**' "$GD_LENSES"                  || FL_REVIEW_WHY+=" lenses-pacing"
+grep -qF '**guidance**' "$GD_LENSES"                || FL_REVIEW_WHY+=" lenses-guidance"
+grep -qF '**funnel**' "$GD_LENSES"                  || FL_REVIEW_WHY+=" lenses-funnel"
+grep -qF 'Flow lenses (active)' "$GD_REVIEW_SKILL"  || FL_REVIEW_WHY+=" skill-flow-active"
+grep -qF 'stub — Flow axis' "$GD_LENSES"            && FL_REVIEW_WHY+=" residual-stub-lenses"
+grep -qF 'stub — Flow axis' "$GD_REVIEW_SKILL"      && FL_REVIEW_WHY+=" residual-stub-skill"
+if [[ -z "$FL_REVIEW_WHY" ]]; then
+    pass "FL-4 gd-review flow lenses present (pacing/guidance/funnel) + activated (zero 'stub — Flow axis' in SKILL+lenses)"
+else
+    fail "FL-4 gd-review flow lenses incomplete/gated:$FL_REVIEW_WHY"
+fi
+
+# (FL-5) the gd-flow-axis shard carries the Flow-axis process contracts (the
+# AC · GOAL · event grammar, the Flow Axis + Cross-axis staleness sections, FLOW/GOAL
+# codes, the wiring mode rule, C5 Win/Lose↔terminal GOAL). The F1 ownership alignment
+# stays on the CORE (Zone Ownership): unikit-gd-flow registers the flow (there is no
+# add-flow in unikit-gd-spec), so ZERO "registers a flow" is attributed to gd-spec —
+# in either the slim core or the gd-spec body.
+FL_PRINC_WHY=""
+grep -qF 'AC · GOAL · event' "$GD_FLOW_AXIS"             || FL_PRINC_WHY+=" grammar"
+grep -qF '## Flow Axis' "$GD_FLOW_AXIS"                  || FL_PRINC_WHY+=" flow-axis-section"
+grep -qF 'Cross-axis staleness' "$GD_FLOW_AXIS"          || FL_PRINC_WHY+=" cross-axis-staleness"
+grep -qF 'FLOW-<slug>' "$GD_FLOW_AXIS"                   || FL_PRINC_WHY+=" flow-code"
+grep -qF 'GOAL-<flow>-<n>' "$GD_FLOW_AXIS"               || FL_PRINC_WHY+=" goal-code"
+grep -qF 'Wiring mode' "$GD_FLOW_AXIS"                   || FL_PRINC_WHY+=" wiring-mode"
+grep -qF 'Win / Lose ↔ terminal GOAL' "$GD_FLOW_AXIS"    || FL_PRINC_WHY+=" c5-win-lose"
+grep -qF 'there is no add-flow in' "$GD_PRINCIPLES"      || FL_PRINC_WHY+=" no-add-flow-contract"
+grep -qF 'registers a flow' "$GD_PRINCIPLES"             && FL_PRINC_WHY+=" F1-core-registers-flow"
+grep -qF 'registers a flow' "$GD_SPEC_SKILL"             && FL_PRINC_WHY+=" F1-gd-spec-registers-flow"
+if [[ -z "$FL_PRINC_WHY" ]]; then
+    pass "FL-5 gd-flow-axis flow contracts (grammar/codes/Flow Axis/cross-axis/wiring/C5) + F1 (no add-flow in core; zero 'registers a flow' at gd-spec)"
+else
+    fail "FL-5 flow contract drift:$FL_PRINC_WHY"
+fi
+
+# (FL-6) The code side reads BOTH axes: unikit-plan emits the optional ## Flow Context
+# brief (flow-targeting), unikit-explore grounds on the flow axis. The explore-side
+# flow-grounding contract moved behind the shared design-read contract + a first-class
+# flow input (the inline "`flows` for grounding" literal was replaced); retarget the
+# explore half to the new "First-class flow input" marker. The plan half (## Flow
+# Context, outside the extracted Step 4.5) is unchanged. Read-only — the derived
+# Realized state is never written back (one-way boundary stays systems-only).
+FL_CODE_WHY=""
+grep -qF '## Flow Context' "$UNIKIT_PLAN_SKILL"            || FL_CODE_WHY+=" plan-flow-context"
+grep -qF 'First-class flow input' "$UNIKIT_EXPLORE_SKILL"  || FL_CODE_WHY+=" explore-flow-grounding(first-class)"
+if [[ -z "$FL_CODE_WHY" ]]; then
+    pass "FL-6 code flow-read present (unikit-plan ## Flow Context + unikit-explore first-class flow input)"
+else
+    fail "FL-6 code flow-read missing:$FL_CODE_WHY"
+fi
+
+# (FL-7) Upstream Maximal surface: the internal-design lens carries both flow brief
+# blocks, gd-explore tags flow research (Target … FLOW-<slug>), and gd-brainstorm has
+# the scenario/flow-seeds phase that feeds the dynamics axis downstream.
+FL_UP_WHY=""
+grep -qF '## Flow Improvement Plan' "$GD_INTERNAL_LENS"   || FL_UP_WHY+=" lens-improvement-block"
+grep -qF '## Flow Feature Plan' "$GD_INTERNAL_LENS"       || FL_UP_WHY+=" lens-feature-block"
+grep -qF 'FLOW-<slug>' "$GD_EXPLORE_SAVE_RESEARCH"        || FL_UP_WHY+=" explore-flow-target-tag"
+grep -qF 'Scenario / Flow seeds' "$GD_BRAINSTORM_SKILL"   || FL_UP_WHY+=" brainstorm-flow-phase"
+if [[ -z "$FL_UP_WHY" ]]; then
+    pass "FL-7 upstream flow surface (internal-design-lens flow blocks, gd-explore FLOW target tag, gd-brainstorm flow phase)"
+else
+    fail "FL-7 upstream flow surface incomplete:$FL_UP_WHY"
+fi
+
+# (FL-8) The defective-gdd fixture grew the flow axis (P2-T5): a flows/FLOW-first-run.md
+# on disk + non-empty GD-IDS flows/goals/events with one seeded defect per flow check
+# (the README §"Flow-axis mechanical defects" documents each). bash cannot run the LLM
+# smoke — assert the flow surface is present + well-formed; the agent-driven
+# /unikit-gd-verify + /unikit-gd-review smoke reads the README ground truth.
+FL_FIX_WHY=""
+[[ -s "$GD_DEFECTIVE_DIR/flows/FLOW-first-run.md" ]]                  || FL_FIX_WHY+=" no-flow-doc"
+grep -qF 'FLOW-first-run' "$GD_DEFECTIVE_DIR/GD-IDS.yaml"             || FL_FIX_WHY+=" no-flows-entry"
+grep -qF 'goals:' "$GD_DEFECTIVE_DIR/GD-IDS.yaml"                     || FL_FIX_WHY+=" no-goals"
+grep -qF 'GOAL-first-run-' "$GD_DEFECTIVE_DIR/GD-IDS.yaml"            || FL_FIX_WHY+=" no-goal-rows"
+grep -qF 'flow: FLOW-first-run' "$GD_DEFECTIVE_DIR/GD-IDS.yaml"       || FL_FIX_WHY+=" no-event-flow-pointer"
+grep -qF 'Flow-axis mechanical defects' "$GD_DEFECTIVE_DIR/README.md" || FL_FIX_WHY+=" no-readme-flow-defects"
+if [[ -z "$FL_FIX_WHY" ]]; then
+    pass "FL-8 defective-gdd fixture — flows/FLOW-first-run.md + GD-IDS flows/goals/events + README flow-defect ground truth"
+else
+    fail "FL-8 defective-gdd flow fixture incomplete:$FL_FIX_WHY"
+fi
+
+# ── Content-axis Stage 2 guards (CS2-1…CS2-5) ────────────────────────────────
+# Stage 2 made the cross-cutting verbs axis-aware on Content (the mirror of the Flow
+# axis, FL-3…FL-7): the gd-content-axis shard, the content checks in unikit-gd-verify,
+# the content lenses in unikit-gd-review, and the content briefs/routing in
+# unikit-gd-explore. bash cannot run an LLM skill — these are grep invariants on the
+# contract text. All FILE-SCOPED -qF; the negative checks use the set-e-safe
+# `grep -qF … && WHY+=…` idiom. MSYS grep aborts on -iF, so anchors are case-sensitive.
+# (Skill→shard binding for the new shard is covered by the split-5 gd_check_skill_shards
+# calls above; the deep/live defective-gdd CT/RES smoke is deferred to Stage 5.)
+
+# (CS2-1) the gd-content-axis shard carries the content-axis process contracts the
+# cross-cutting verbs load — the canonically-new sections (CT/CU model, scale↔structure,
+# cross-axis staleness, RES/TRACK/KNOB, code-reads-content), plus the CT/CU codes.
+CS2_SHARD_WHY=""
+grep -qF '## Content Axis' "$GD_CONTENT_AXIS"           || CS2_SHARD_WHY+=" content-axis-section"
+grep -qF 'The CT / CU model' "$GD_CONTENT_AXIS"         || CS2_SHARD_WHY+=" ct-cu-model"
+grep -qF 'ref<PREFIX>' "$GD_CONTENT_AXIS"               || CS2_SHARD_WHY+=" ref-prefix"
+grep -qF '↔ structure' "$GD_CONTENT_AXIS"               || CS2_SHARD_WHY+=" scale-structure"
+grep -qF 'Cross-axis staleness' "$GD_CONTENT_AXIS"      || CS2_SHARD_WHY+=" cross-axis-staleness"
+grep -qF 'Code reads content' "$GD_CONTENT_AXIS"        || CS2_SHARD_WHY+=" code-reads-content"
+grep -qF 'CT-<slug>' "$GD_CONTENT_AXIS"                 || CS2_SHARD_WHY+=" ct-code"
+grep -qF 'CU-<ct>-<n>' "$GD_CONTENT_AXIS"               || CS2_SHARD_WHY+=" cu-code"
+if [[ -z "$CS2_SHARD_WHY" ]]; then
+    pass "CS2-1 gd-content-axis shard content contracts (Content Axis/CT-CU model/ref<>/scale↔structure/cross-axis/code-reads-content + CT/CU codes)"
+else
+    fail "CS2-1 gd-content-axis shard contract drift:$CS2_SHARD_WHY"
+fi
+
+# (CS2-2) unikit-gd-verify carries the content-check family — the 9 checks of T4 (the
+# mirror of the system/flow checks plus the content-specific ones), non-empty gated on
+# content_types, with the research: carve-out extended to all three axes.
+CS2_VERIFY_WHY=""
+grep -qF 'Content checks (axis-aware' "$GD_VERIFY_AXIS"         || CS2_VERIFY_WHY+=" content-checks-section"
+grep -qF 'CT/CU id validity' "$GD_VERIFY_AXIS"                  || CS2_VERIFY_WHY+=" ct-cu-id-validity"
+grep -qF 'CU.fields ⊆ CT.fields' "$GD_VERIFY_AXIS"              || CS2_VERIFY_WHY+=" cu-subset-ct"
+grep -qF 'ref<ENT/CU/FORM/SYS/RES>' "$GD_VERIFY_AXIS"           || CS2_VERIFY_WHY+=" ref-resolution"
+grep -qF 'scale ↔ structure' "$GD_VERIFY_AXIS"                  || CS2_VERIFY_WHY+=" scale-structure"
+grep -qF 'belongs_to 3-way' "$GD_VERIFY_AXIS"                   || CS2_VERIFY_WHY+=" belongs_to-3way"
+grep -qF 'Content status/version 2-place' "$GD_VERIFY_AXIS"     || CS2_VERIFY_WHY+=" content-status-version"
+grep -qF 'Content map freshness (3-surface)' "$GD_VERIFY_AXIS"  || CS2_VERIFY_WHY+=" content-map-freshness"
+grep -qF 'RES/TRACK/KNOB coherence' "$GD_VERIFY_AXIS"           || CS2_VERIFY_WHY+=" res-track-knob"
+grep -qF 'Cross-axis impact (system → content type' "$GD_VERIFY_SKILL" || CS2_VERIFY_WHY+=" cross-axis-sys-ct"
+grep -qF 'skip this block silently' "$GD_VERIFY_AXIS"           || CS2_VERIFY_WHY+=" non-empty-gating"
+grep -qF 'on all three axes' "$GD_VERIFY_SKILL"                 || CS2_VERIFY_WHY+=" research-carveout-3axes"
+if [[ -z "$CS2_VERIFY_WHY" ]]; then
+    pass "CS2-2 unikit-gd-verify content checks present (9: id/CU⊆CT/ref<>/scale/belongs_to/status/map-freshness/RES-TRACK-KNOB/cross-axis) + non-empty gating + research carve-out"
+else
+    fail "CS2-2 unikit-gd-verify content checks missing:$CS2_VERIFY_WHY"
+fi
+
+# (CS2-3) unikit-gd-review content lenses present AND activated — the three content
+# lenses carry real prompts in lenses.md, the SKILL body marks them active, and ZERO
+# "stub — Content axis" survives in EITHER file (mirror of FL-4). The genre carve-out is
+# a DIFFERENT marker ("stub — genre, Stage 4"); content lenses must be active now.
+CS2_REVIEW_WHY=""
+grep -qF '**schema-coherence**' "$GD_LENSES"            || CS2_REVIEW_WHY+=" lenses-schema-coherence"
+grep -qF '**catalog-scale**' "$GD_LENSES"               || CS2_REVIEW_WHY+=" lenses-catalog-scale"
+grep -qF '**content-fantasy-delivery**' "$GD_LENSES"    || CS2_REVIEW_WHY+=" lenses-content-fantasy"
+grep -qF 'Content lenses (active)' "$GD_REVIEW_SKILL"   || CS2_REVIEW_WHY+=" skill-content-active"
+grep -qF 'stub — Content axis' "$GD_LENSES"             && CS2_REVIEW_WHY+=" residual-stub-lenses"
+grep -qF 'stub — Content axis' "$GD_REVIEW_SKILL"       && CS2_REVIEW_WHY+=" residual-stub-skill"
+if [[ -z "$CS2_REVIEW_WHY" ]]; then
+    pass "CS2-3 gd-review content lenses present (schema-coherence/catalog-scale/content-fantasy-delivery) + activated (zero 'stub — Content axis' in SKILL+lenses)"
+else
+    fail "CS2-3 gd-review content lenses incomplete/gated:$CS2_REVIEW_WHY"
+fi
+
+# (CS2-4) unikit-gd-explore content surface: the internal-design lens carries both content
+# brief blocks (closing the seed loop unikit-gd-content already reads), and gd-explore tags
+# content research (Target … CONTENT-<slug>) + routes content to /unikit-gd-content.
+CS2_EXPLORE_WHY=""
+grep -qF '## Content Improvement Plan' "$GD_INTERNAL_LENS"  || CS2_EXPLORE_WHY+=" lens-improvement-block"
+grep -qF '## Content Feature Plan' "$GD_INTERNAL_LENS"      || CS2_EXPLORE_WHY+=" lens-feature-block"
+grep -qF 'CONTENT-<slug>' "$GD_INTERNAL_LENS"               || CS2_EXPLORE_WHY+=" lens-content-target-tag"
+grep -qF 'CONTENT-<slug>' "$GD_EXPLORE_SAVE_RESEARCH"       || CS2_EXPLORE_WHY+=" explore-content-target-tag"
+grep -qF 'no add-content' "$GD_EXPLORE_SKILL"               || CS2_EXPLORE_WHY+=" explore-content-route"
+if [[ -z "$CS2_EXPLORE_WHY" ]]; then
+    pass "CS2-4 upstream content surface (internal-design-lens content blocks + CONTENT target tag, gd-explore CONTENT target + content route)"
+else
+    fail "CS2-4 upstream content surface incomplete:$CS2_EXPLORE_WHY"
+fi
+
+# (CS2-5) the GD-IDS.yaml template carries the commented research: pointer on content_types
+# (T3) — the seed pointer unikit-gd-content writes, the non-id path the T4 carve-out excludes.
+if grep -qF 'when the CT was seeded from an explore brief' "$GD_IDS_TPL"; then
+    pass "CS2-5 GD-IDS template — content_types research: pointer present (seed loop + verify carve-out closed)"
+else
+    fail "CS2-5 GD-IDS template — content_types research: pointer missing"
+fi
+
+# ── Content-axis Stage 4 genre guards (G1…G5) ────────────────────────────────
+# Stage 4 added the bundled genre-profile catalog + CLI (exercised in test-genres*.sh
+# / test-skills.sh Part 13b) and wired 3 skills (brainstorm hint / spec resolve+seed /
+# review lens). bash cannot run an LLM skill — these are grep invariants on the contract
+# text. All file-scoped -qF (MSYS grep aborts on -iF). Reuses GD_SPEC_SKILL/GD_REVIEW_SKILL/
+# GD_LENSES/GD_VERIFY_SKILL/GD_GAME_TPL defined above; adds GD_BRAINSTORM_SKILL/GD_CONCEPT_TPL.
+GD_BRAINSTORM_SKILL="$ROOT_DIR/skills/unikit-gd-brainstorm/SKILL.md"
+GD_CONCEPT_TPL="$GD_DATA/templates/CONCEPT.md"
+
+# (G1) brainstorm writes a descriptive genre: hint, CLI-free. POSITIVE presence — NOT an
+# absence-grep on "genres install": the CLI-free body legitimately NAMES those commands in
+# the negative ("never runs ... genres list / genres install"), which an absence-grep would
+# trip. Assert the CLI-free claim + the descriptive-hint instruction instead.
+G1_WHY=""
+grep -qF 'CLI-free' "$GD_BRAINSTORM_SKILL"                 || G1_WHY+=" no-CLI-free-claim"
+grep -qF 'descriptive `genre:` hint' "$GD_BRAINSTORM_SKILL" || G1_WHY+=" no-descriptive-genre-hint"
+if [[ -z "$G1_WHY" ]]; then
+    pass "G1 brainstorm writes descriptive genre: hint (CLI-free, positive-presence guard)"
+else
+    fail "G1 brainstorm genre-hint drift:$G1_WHY"
+fi
+
+# (G2) gd-spec carries the resolve surface: genres list → best-fit → genres install +
+# seed interview + universal baseline + genre_profile: write to GAME.md.
+G2_WHY=""
+grep -qF 'genres list' "$GD_SPEC_SKILL"        || G2_WHY+=" no-genres-list"
+grep -qF 'genres install' "$GD_SPEC_SKILL"     || G2_WHY+=" no-genres-install"
+grep -qF 'best-fit' "$GD_SPEC_SKILL"           || G2_WHY+=" no-best-fit"
+grep -qF 'genre_profile' "$GD_SPEC_SKILL"      || G2_WHY+=" no-genre_profile"
+grep -qF 'Seed interview' "$GD_SPEC_SKILL"     || G2_WHY+=" no-seed-interview"
+grep -qF 'Universal baseline' "$GD_SPEC_SKILL" || G2_WHY+=" no-universal-baseline"
+if [[ -z "$G2_WHY" ]]; then
+    pass "G2 gd-spec genre resolve (genres list→best-fit→install + seed interview + baseline + genre_profile)"
+else
+    fail "G2 gd-spec genre resolve drift:$G2_WHY"
+fi
+
+# (G3) gd-review genre lens ACTIVATED: zero "stub — genre, Stage 4" in BOTH SKILL.md and
+# lenses.md (mirror of CS2-3's content carve-out), profile-completeness + critical_sections/
+# review_emphasis present.
+G3_WHY=""
+grep -qF 'stub — genre, Stage 4' "$GD_REVIEW_SKILL" && G3_WHY+=" residual-stub-skill"
+grep -qF 'stub — genre, Stage 4' "$GD_LENSES"       && G3_WHY+=" residual-stub-lenses"
+grep -qF 'profile-completeness' "$GD_REVIEW_SKILL"  || G3_WHY+=" no-lens-skill"
+grep -qF 'profile-completeness' "$GD_LENSES"        || G3_WHY+=" no-lens-lenses"
+grep -qF 'critical_sections' "$GD_LENSES"           || G3_WHY+=" no-critical_sections"
+grep -qF 'review_emphasis' "$GD_LENSES"             || G3_WHY+=" no-review_emphasis"
+if [[ -z "$G3_WHY" ]]; then
+    pass "G3 gd-review genre lens activated (zero 'stub — genre, Stage 4' in SKILL+lenses, profile-completeness + critical_sections/review_emphasis)"
+else
+    fail "G3 gd-review genre lens drift:$G3_WHY"
+fi
+
+# (G4) verify stays GENRE-BLIND: it never reads the profile (critical_sections) NOR the
+# GAME genre field (genre_profile) — both absent from unikit-gd-verify/SKILL.md.
+G4_WHY=""
+grep -qF 'critical_sections' "$GD_VERIFY_SKILL" && G4_WHY+=" critical_sections-present"
+grep -qF 'genre_profile' "$GD_VERIFY_SKILL"     && G4_WHY+=" genre_profile-present"
+if [[ -z "$G4_WHY" ]]; then
+    pass "G4 unikit-gd-verify genre-blind (no critical_sections, no genre_profile read)"
+else
+    fail "G4 unikit-gd-verify NOT genre-blind:$G4_WHY"
+fi
+
+# (G5) template fields with DISTINCT semantics: genre: (descriptive hint) in CONCEPT.md,
+# genre_profile: (resolved id) in GAME.md. Both bare non-id slugs outside GD-IDS.
+G5_WHY=""
+grep -qF '**genre**:' "$GD_CONCEPT_TPL"        || G5_WHY+=" no-genre-in-CONCEPT"
+grep -qF '**genre_profile**:' "$GD_GAME_TPL"   || G5_WHY+=" no-genre_profile-in-GAME"
+if [[ -z "$G5_WHY" ]]; then
+    pass "G5 template genre fields (genre: in CONCEPT, genre_profile: in GAME)"
+else
+    fail "G5 template genre fields missing:$G5_WHY"
+fi
+
+# (CF-1) Content-axis Stage 5 fixture — the defective-gdd grew the content axis (T13):
+# content-types/CT-*.md on disk + non-empty GD-IDS content_types/content/resources/
+# tracks/knobs with one seeded defect per content check + the README content-defect
+# ground truth (9 checks) + the genre-blind ground-truth note (T14b). bash cannot run
+# the LLM smoke — assert the surface is present + well-formed (mirror of FL-8); the
+# agent-driven /unikit-gd-verify + /unikit-gd-review smoke reads the README ground truth.
+# Reuses GD_DEFECTIVE_DIR.
+CF_FIX_WHY=""
+[[ -s "$GD_DEFECTIVE_DIR/content-types/CT-item.md" ]]  || CF_FIX_WHY+=" no-CT-item"
+[[ -s "$GD_DEFECTIVE_DIR/content-types/CT-card.md" ]]  || CF_FIX_WHY+=" no-CT-card"
+[[ -s "$GD_DEFECTIVE_DIR/content-types/CT-spawn.md" ]] || CF_FIX_WHY+=" no-CT-spawn"
+# content-types/CT-ghost.md must be ABSENT — the phantom Content-Map-freshness row.
+[[ -e "$GD_DEFECTIVE_DIR/content-types/CT-ghost.md" ]] && CF_FIX_WHY+=" CT-ghost-should-be-absent"
+for key in 'content_types:' 'CT-item' 'content:' 'CU-item-' 'resources:' 'RES-scrap' 'tracks:' 'TRACK-rank' 'knobs:' 'KNOB-'; do
+    grep -qF "$key" "$GD_DEFECTIVE_DIR/GD-IDS.yaml" || CF_FIX_WHY+=" no-key-$key"
+done
+grep -qF 'Content-axis mechanical defects' "$GD_DEFECTIVE_DIR/README.md" || CF_FIX_WHY+=" no-readme-content-defects"
+grep -qF 'genre-blind' "$GD_DEFECTIVE_DIR/README.md"                     || CF_FIX_WHY+=" no-genre-blind-note"
+if [[ -z "$CF_FIX_WHY" ]]; then
+    pass "CF-1 defective-gdd content fixture — content-types/CT-* + GD-IDS content keys + README content-defect + genre-blind ground truth"
+else
+    fail "CF-1 defective-gdd content fixture incomplete:$CF_FIX_WHY"
+fi
+
+# ── unikit-gd-apply dispatcher guards (GA-1…GA-5) ────────────────────────────
+# unikit-gd-apply is the multi-zone DISPATCHER: it owns nothing and writes nothing —
+# it resolves each delta to its zone owner, fixes the system-before-sinks dispatch
+# order, and closes with one verify. bash cannot run the LLM dispatch, so assert the
+# contract surface on the SKILL.md: it references all four zone owners + the explore
+# route + the apply-phase3 verify handoff, fixes the order, and (the load-bearing invariant)
+# carries NO Write/Edit in allowed-tools. Mostly -qF file-scoped; the allowed-tools
+# scan extracts the YAML list so the prose mention of `Write`/`Edit` cannot false-match.
+GD_APPLY_SKILL="$ROOT_DIR/skills/unikit-gd-apply/SKILL.md"
+if [[ ! -f "$GD_APPLY_SKILL" ]]; then
+    fail "unikit-gd-apply/SKILL.md — missing (dispatcher guards GA-1…GA-5 cannot run)"
+else
+    # (GA-1) references all 4 zone owners (the dispatch targets).
+    GA1_WHY=""
+    for owner in unikit-gd-spec unikit-gd-system unikit-gd-content unikit-gd-flow; do
+        grep -qF "/$owner" "$GD_APPLY_SKILL" || GA1_WHY+=" no-$owner"
+    done
+    if [[ -z "$GA1_WHY" ]]; then
+        pass "GA-1 gd-apply references all 4 zone owners (spec/system/content/flow)"
+    else
+        fail "GA-1 gd-apply missing zone-owner reference(s):$GA1_WHY"
+    fi
+
+    # (GA-2) dispatch order — systems before the content/flow sinks (the carrying invariant).
+    GA2_WHY=""
+    grep -qF 'system dispatch lands BEFORE any content or flow' "$GD_APPLY_SKILL" || GA2_WHY+=" no-before-invariant"
+    grep -qF 'system-before-sinks' "$GD_APPLY_SKILL"                              || GA2_WHY+=" no-order-token"
+    if [[ -z "$GA2_WHY" ]]; then
+        pass "GA-2 gd-apply fixes the dispatch order (systems → content/flow sinks)"
+    else
+        fail "GA-2 gd-apply dispatch-order invariant missing:$GA2_WHY"
+    fi
+
+    # (GA-3) closes with one unikit-gd-verify pass carrying the apply-phase3 loop-guard
+    # sentinel — the single reserved arg (NOT a union of touched ids); verify recognises it
+    # and suppresses its standalone handoff offer, so apply→verify→apply cannot loop.
+    if grep -qF 'Skill(skill: "unikit-gd-verify", args: "apply-phase3")' "$GD_APPLY_SKILL"; then
+        pass "GA-3 gd-apply closes with one Skill(unikit-gd-verify, apply-phase3) loop-guard pass"
+    else
+        fail "GA-3 gd-apply missing the final unikit-gd-verify apply-phase3 handoff"
+    fi
+
+    # (GA-4) explore route for open questions (GATE 1 — research, not dispatch).
+    if grep -qF '/unikit-gd-explore' "$GD_APPLY_SKILL"; then
+        pass "GA-4 gd-apply routes open questions to /unikit-gd-explore"
+    else
+        fail "GA-4 gd-apply missing the /unikit-gd-explore route"
+    fi
+
+    # (GA-5) load-bearing invariant — NO Write/Edit in allowed-tools (a dispatcher cannot
+    # write), Skill present. Scope to the YAML list so the prose mention of `Write`/`Edit`
+    # in the Ownership section does not false-match.
+    GD_APPLY_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$GD_APPLY_SKILL")
+    GA5_WHY=""
+    grep -qE '^[[:space:]]*-[[:space:]]*Skill$' <<< "$GD_APPLY_TOOLS" || GA5_WHY+=" no-Skill-tool"
+    grep -qE '^[[:space:]]*-[[:space:]]*Write$' <<< "$GD_APPLY_TOOLS" && GA5_WHY+=" has-Write"
+    grep -qE '^[[:space:]]*-[[:space:]]*Edit$'  <<< "$GD_APPLY_TOOLS" && GA5_WHY+=" has-Edit"
+    if [[ -z "$GA5_WHY" ]]; then
+        pass "GA-5 gd-apply allowed-tools has Skill, no Write/Edit (dispatcher writes nothing)"
+    else
+        fail "GA-5 gd-apply allowed-tools invariant violated:$GA5_WHY"
+    fi
+fi
+
+# ── Brownfield recon / explore code-lens / gd-docs guards (RD-1…RD-8) ─────────
+# The brownfield-adoption upgrade added three READ-ONLY verbs at the module edges:
+# unikit-gd-recon (cold-start, code → RECON.md), the unikit-gd-explore code-grounded
+# lens (post-GDD slice), and unikit-gd-docs (workspace → docs/design/). Code reading is
+# quarantined to the two research verbs; the authoring zones + apply never read code
+# (RD-8). bash cannot run an LLM skill — these are grep invariants on the contract text +
+# allowed-tools checks. All file-scoped -qF (MSYS grep aborts on -iF, and Unicode arrows /
+# em-dashes are avoided in anchors); the no-Skill / Write checks reuse the GA-5 awk
+# allowed-tools extraction. The T8-8 guard above was retargeted "two" → "three".
+GD_RECON_SKILL="$ROOT_DIR/skills/unikit-gd-recon/SKILL.md"
+GD_RECON_ENGINE="$ROOT_DIR/skills/unikit-gd-recon/references/code-recon.md"
+GD_DOCS_SKILL="$ROOT_DIR/skills/unikit-gd-docs/SKILL.md"
+GD_DOCS_TOOL="$ROOT_DIR/skills/unikit-docs/SKILL.md"
+
+# (RD-1) unikit-gd-recon present + cold-start research-verb contract: writes RECON.md as an
+# import-seed (Intent Gap + per-fact code-provenance), recommends gd-spec import, and is
+# mechanically "calls no one" — NO Skill in allowed-tools (mirror GA-5), Write + Bash(mkdir *)
+# present (cold-start workspace).
+if [[ ! -f "$GD_RECON_SKILL" ]]; then
+    fail "unikit-gd-recon/SKILL.md — missing (recon guards RD-1…RD-2 cannot run)"
+else
+    RD1_WHY=""
+    grep -qF 'RECON.md' "$GD_RECON_SKILL"                       || RD1_WHY+=" no-RECON.md"
+    grep -qF '## Intent Gap' "$GD_RECON_SKILL"                  || RD1_WHY+=" no-intent-gap"
+    grep -qF 'provenance: extracted from code' "$GD_RECON_SKILL" || RD1_WHY+=" no-code-provenance"
+    grep -qF 'import-seed' "$GD_RECON_SKILL"                    || RD1_WHY+=" no-import-seed"
+    grep -qF '/unikit-gd-spec' "$GD_RECON_SKILL"                || RD1_WHY+=" no-spec-recommend"
+    grep -qF 'cold-start' "$GD_RECON_SKILL"                     || RD1_WHY+=" no-cold-start"
+    RD_RECON_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$GD_RECON_SKILL")
+    grep -qE '^[[:space:]]*-[[:space:]]*Skill$' <<< "$RD_RECON_TOOLS" && RD1_WHY+=" has-Skill"
+    grep -qE '^[[:space:]]*-[[:space:]]*Write$' <<< "$RD_RECON_TOOLS" || RD1_WHY+=" no-Write"
+    grep -qF 'Bash(mkdir *)' <<< "$RD_RECON_TOOLS"                    || RD1_WHY+=" no-mkdir"
+    if [[ -z "$RD1_WHY" ]]; then
+        pass "RD-1 unikit-gd-recon cold-start import-seed (RECON.md/Intent Gap/code-provenance/spec import; no Skill, Write+mkdir)"
+    else
+        fail "RD-1 unikit-gd-recon contract drift:$RD1_WHY"
+    fi
+fi
+
+# (RD-2) the shared code-recon.md engine: P0 systems + P1 content, flows EXCLUDED, engine-
+# agnostic, the per-fact confidence + source-pointer + provenance record. Owned by recon,
+# read by the explore code lens — auto-delivered under references/ (no shard-cycle edit).
+if [[ ! -f "$GD_RECON_ENGINE" ]]; then
+    fail "unikit-gd-recon/references/code-recon.md — missing (the shared extraction engine)"
+else
+    RD2_WHY=""
+    grep -qF 'design-fact' "$GD_RECON_ENGINE"                   || RD2_WHY+=" no-engine-title"
+    grep -qF 'provenance: extracted from code' "$GD_RECON_ENGINE" || RD2_WHY+=" no-provenance"
+    grep -qF 'CT.fields' "$GD_RECON_ENGINE"                     || RD2_WHY+=" no-ct-fields"
+    grep -qF 'EXCLUDED' "$GD_RECON_ENGINE"                      || RD2_WHY+=" no-flows-excluded"
+    grep -qF 'confidence' "$GD_RECON_ENGINE"                    || RD2_WHY+=" no-confidence"
+    grep -qF 'source pointer' "$GD_RECON_ENGINE"                || RD2_WHY+=" no-source-pointer"
+    grep -qF 'engine-agnostic' "$GD_RECON_ENGINE"               || RD2_WHY+=" no-engine-agnostic"
+    if [[ -z "$RD2_WHY" ]]; then
+        pass "RD-2 code-recon.md engine (P0 systems/P1 content/flows-excluded/engine-agnostic + confidence+source+provenance)"
+    else
+        fail "RD-2 code-recon.md engine drift:$RD2_WHY"
+    fi
+fi
+
+# (RD-2a) engine-list sync — the LOAD-BEARING guard behind RD-2b. The test's ENGINES array
+# (defined ~line 283, also mirrored in the per-engine loops ~line 408 and the JS snippet
+# ~line 747) is a MANUAL copy of the canonical ENGINE_REGISTRY in src/core/engines.ts. If a
+# new engine is added to the installer but not to this test, every engine-driven check —
+# RD-2b included — silently runs on the stale list and never notices. Derive the canonical
+# ids straight from engines.ts and assert the test array matches, so a new engine fails HERE
+# first; the dev then updates ENGINES (which cascades into RD-2b's RECON_ENGINE_TOKENS map +
+# the code-recon.md matrix). engines.ts is the source of truth; this is its single mirror-check.
+CANON_ENGINE_IDS=$(grep -oE "id: '[^']+'" "$ROOT_DIR/src/core/engines.ts" | sed "s/^id: '//; s/'$//" | sort | tr '\n' ' ')
+TEST_ENGINE_IDS=$(printf '%s\n' "${ENGINES[@]}" | sort | tr '\n' ' ')
+if [[ "$CANON_ENGINE_IDS" == "$TEST_ENGINE_IDS" ]]; then
+    pass "RD-2a engine-list sync: test ENGINES matches src/core/engines.ts ENGINE_REGISTRY ($CANON_ENGINE_IDS)"
+else
+    fail "RD-2a engine-list DRIFT — engines.ts=[$CANON_ENGINE_IDS] vs test ENGINES=[$TEST_ENGINE_IDS]; update the ENGINES array (~line 283) + RD-2b RECON_ENGINE_TOKENS + the code-recon.md matrix"
+fi
+
+# (RD-2b) the code-recon.md engine matrix MUST cover EVERY canonical UniKit engine. The
+# recon SKILL.md is deliberately engine-agnostic (no stop-words, Part 7c) and defers the
+# per-engine asset forms to this reference; so when a NEW engine is added to the canonical
+# ENGINES list (and the code module), its asset-form row must be added here too, or recon
+# silently cannot reconstruct that engine's content. Driven by the canonical ENGINES array,
+# so a new engine fails the test twice over: once if no token is mapped, once if the matrix
+# lacks it. Adding an engine ⇒ update BOTH RECON_ENGINE_TOKENS and code-recon.md.
+if [[ -f "$GD_RECON_ENGINE" ]]; then
+    declare -A RECON_ENGINE_TOKENS=(
+        ["unity"]="Unity"
+        ["godot"]="Godot 4 (GDScript)"
+        ["godot-net"]="Godot 4 (.NET)"
+        ["unreal-engine-5"]="Unreal 5"
+    )
+    RD2B_WHY=""
+    for engine_id in "${ENGINES[@]}"; do
+        token="${RECON_ENGINE_TOKENS[$engine_id]:-}"
+        if [[ -z "$token" ]]; then
+            RD2B_WHY+=" no-token-for-$engine_id(map it in RECON_ENGINE_TOKENS + add a row to code-recon.md)"
+        elif ! grep -qF "$token" "$GD_RECON_ENGINE"; then
+            RD2B_WHY+=" matrix-missing-$engine_id(token:'$token')"
+        fi
+    done
+    if [[ -z "$RD2B_WHY" ]]; then
+        pass "RD-2b code-recon.md engine matrix covers every canonical engine (${ENGINES[*]})"
+    else
+        fail "RD-2b code-recon.md engine matrix incomplete:$RD2B_WHY"
+    fi
+fi
+
+# (RD-3) gd-principles THIRD One-Way Boundary exception — the read-only research verbs read
+# code; the brownfield carve-out is named; authoring zones + apply are explicitly excluded.
+RD3_WHY=""
+grep -qF 'brownfield-bootstrap carve-out' "$GD_PRINCIPLES" || RD3_WHY+=" no-brownfield-carveout"
+grep -qF 'read-only research verbs' "$GD_PRINCIPLES"       || RD3_WHY+=" no-research-verbs"
+grep -qF 'extracted from code' "$GD_PRINCIPLES"            || RD3_WHY+=" no-code-provenance"
+grep -qF 'are **never** in' "$GD_PRINCIPLES"               || RD3_WHY+=" no-authoring-exclusion"
+if [[ -z "$RD3_WHY" ]]; then
+    pass "RD-3 gd-principles third exception (research verbs read code; brownfield carve-out; authoring/apply excluded)"
+else
+    fail "RD-3 gd-principles third exception drift:$RD3_WHY"
+fi
+
+# (RD-4) code-extraction provenance contract (Task 2): gd-provenance defines the
+# `extracted from code` marker (distinct from trusted SOURCE.md) + the durable banner /
+# import-membrane anti-laundering rule; the gd-review provenance lens detects a code-
+# reconstructed import and holds its extracted-from-SOURCE sections at ≥ Major.
+RD4_WHY=""
+grep -qF 'extracted from code' "$GD_PROVENANCE"     || RD4_WHY+=" provenance-no-marker"
+grep -qF 'durable code-provenance' "$GD_PROVENANCE" || RD4_WHY+=" provenance-no-banner"
+grep -qF 'import membrane' "$GD_PROVENANCE"         || RD4_WHY+=" provenance-no-membrane"
+grep -qF 'code-reconstructed import' "$GD_LENSES"   || RD4_WHY+=" lens-no-detection"
+grep -qF 'extracted from code' "$GD_LENSES"         || RD4_WHY+=" lens-no-marker"
+if [[ -z "$RD4_WHY" ]]; then
+    pass "RD-4 code-extraction provenance contract (gd-provenance marker+banner+membrane; lens detects code-reconstructed import)"
+else
+    fail "RD-4 code-extraction provenance contract drift:$RD4_WHY"
+fi
+
+# (RD-5) explore code-grounded lens: the 4th lens section is present, it reads the recon-
+# owned code-recon.md (cross-skill), tags facts `extracted from code`, the Bootstrap one-way
+# carries the code-lens exception, and the internal-design lens's absolute "never reads code"
+# is SOFTENED to the design/code carve-out (positive guards on the new text).
+RD5_WHY=""
+grep -qF '## Code-grounded lens' "$GD_EXPLORE_SKILL"                    || RD5_WHY+=" no-code-lens-section"
+grep -qF 'unikit-gd-recon/references/code-recon.md' "$GD_EXPLORE_SKILL" || RD5_WHY+=" no-cross-skill-read"
+grep -qF 'extracted from code' "$GD_EXPLORE_SKILL"                      || RD5_WHY+=" no-code-provenance"
+grep -qF 'code-lens exception' "$GD_EXPLORE_SKILL"                      || RD5_WHY+=" no-bootstrap-carveout"
+grep -qF 'reasons about *design*, not code' "$GD_INTERNAL_LENS"        || RD5_WHY+=" no-lens-carveout"
+if [[ -z "$RD5_WHY" ]]; then
+    pass "RD-5 explore code-grounded lens (4th lens + cross-skill code-recon read + code-provenance + softened one-way)"
+else
+    fail "RD-5 explore code-lens drift:$RD5_WHY"
+fi
+
+# (RD-6) unikit-gd-docs present + render contract: the six Variant-B chapters, the draft
+# banner, the --web template path + graceful WARN, the docs/design output, and the leaf-
+# renderer guarantee — NO Skill in allowed-tools (mirror GA-5).
+if [[ ! -f "$GD_DOCS_SKILL" ]]; then
+    fail "unikit-gd-docs/SKILL.md — missing (docs guards RD-6…RD-7 cannot run)"
+else
+    RD6_WHY=""
+    for ch in index systems flows content economy glossary; do
+        grep -qF "$ch.md" "$GD_DOCS_SKILL" || RD6_WHY+=" no-chapter-$ch"
+    done
+    grep -qF 'docs/design/' "$GD_DOCS_SKILL"       || RD6_WHY+=" no-output-dir"
+    grep -qF 'draft banner' "$GD_DOCS_SKILL"       || RD6_WHY+=" no-draft-banner"
+    grep -qF 'html-template.html' "$GD_DOCS_SKILL" || RD6_WHY+=" no-web-template"
+    grep -qF 'WARN [--web]' "$GD_DOCS_SKILL"       || RD6_WHY+=" no-web-warn"
+    RD_DOCS_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$GD_DOCS_SKILL")
+    grep -qE '^[[:space:]]*-[[:space:]]*Skill$' <<< "$RD_DOCS_TOOLS" && RD6_WHY+=" has-Skill"
+    if [[ -z "$RD6_WHY" ]]; then
+        pass "RD-6 unikit-gd-docs render (6 chapters + draft banner + --web template/WARN + docs/design; no Skill)"
+    else
+        fail "RD-6 unikit-gd-docs contract drift:$RD6_WHY"
+    fi
+fi
+
+# (RD-7) docs/ ownership split — unikit-docs carves out docs/design/** (owned by
+# unikit-gd-docs): the --web glob is non-recursive, the ownership boundary names the split.
+RD7_WHY=""
+grep -qF 'docs/design/**' "$GD_DOCS_TOOL" || RD7_WHY+=" docs-no-design-carveout"
+grep -qF 'unikit-gd-docs' "$GD_DOCS_TOOL" || RD7_WHY+=" docs-no-gd-docs-ref"
+grep -qF 'docs/design/' "$GD_DOCS_SKILL"  || RD7_WHY+=" gddocs-no-owned-subtree"
+if [[ -z "$RD7_WHY" ]]; then
+    pass "RD-7 docs/ ownership split (unikit-docs carves out docs/design/**; gd-docs owns it)"
+else
+    fail "RD-7 docs/ ownership split drift:$RD7_WHY"
+fi
+
+# (RD-8) NEGATIVE — the authoring zones (spec/system/content/flow) and the apply dispatcher
+# do NOT read code: none reference the recon-owned code-recon.md engine, and gd-apply keeps
+# its one-way "never read ... project source" prohibition. Code reading is quarantined to
+# the two research verbs (recon + the explore lens), never the authoring/dispatch side.
+RD8_WHY=""
+for z in spec system content flow; do
+    grep -qF 'code-recon.md' "$ROOT_DIR/skills/unikit-gd-$z/SKILL.md" && RD8_WHY+=" $z-reads-code-recon"
+done
+grep -qF 'code-recon.md' "$GD_APPLY_SKILL" && RD8_WHY+=" apply-reads-code-recon"
+grep -qF 'project source' "$GD_APPLY_SKILL" || RD8_WHY+=" apply-no-one-way"
+if [[ -z "$RD8_WHY" ]]; then
+    pass "RD-8 NEGATIVE — authoring zones + apply do not read code (no code-recon.md ref; apply keeps one-way)"
+else
+    fail "RD-8 code-read capability leaked into authoring/apply:$RD8_WHY"
+fi
+
+# ── Decision-First authoring guards (DF-1…DF-6) ──────────────────────────────
+# The Decision-First refactor rewrote the gd-authoring Section-Cycle Contract BODY
+# (heading anchor preserved), made `detailed · partial` an INFERRED status in
+# gd-lifecycle (no stored field, no enum change), and reshaped Phase 3+4 of the three
+# zone skills into a depth-picked, fork-scanned, group-reviewed flow carrying the new
+# `<!-- deferred -->` marker. The render suffix `· partial (n/m)` is emitted from ONE
+# canonical rule (gd-lifecycle) by all FOUR renderers (verify + spec/flow/content maps).
+# These are grep invariants on the contract text + the consumer renderers. All -qF
+# file-scoped (MSYS grep aborts on -iF).
+GD_SECTION_PACKS="$ROOT_DIR/skills/unikit-gd-system/references/section-packs.md"
+
+# (DF-1) gd-authoring carries the Decision-First contract under the PRESERVED anchors
+# (`## Section-Cycle Contract` + `## Delta Discipline`): the depth picker, the
+# `<!-- deferred -->` marker, the card source, the structural group gate, the phase names;
+# the reader-list gained content+apply; the old linear "per section, in order" cycle is GONE.
+DF1_WHY=""
+grep -qF '## Section-Cycle Contract' "$GD_AUTHORING" || DF1_WHY+=" no-anchor(Section-Cycle)"
+grep -qF '## Delta Discipline' "$GD_AUTHORING"       || DF1_WHY+=" no-anchor(Delta-Discipline)"
+grep -qF 'Decision-First' "$GD_AUTHORING"            || DF1_WHY+=" no-decision-first"
+grep -qF 'core/standard/full' "$GD_AUTHORING"        || DF1_WHY+=" no-depth-picker"
+grep -qF '<!-- deferred -->' "$GD_AUTHORING"          || DF1_WHY+=" no-deferred-marker"
+grep -qF 'structural group gate' "$GD_AUTHORING"     || DF1_WHY+=" no-group-gate"
+grep -qF 'Fork scan' "$GD_AUTHORING"                 || DF1_WHY+=" no-fork-scan"
+grep -qF 'Decision interview' "$GD_AUTHORING"        || DF1_WHY+=" no-decision-interview"
+grep -qF 'Group review' "$GD_AUTHORING"              || DF1_WHY+=" no-group-review"
+grep -qF 'drawn from the template' "$GD_AUTHORING"   || DF1_WHY+=" no-card-source"
+grep -qF 'unikit-gd-content' "$GD_AUTHORING"         || DF1_WHY+=" reader-list-no-content"
+grep -qF 'unikit-gd-apply' "$GD_AUTHORING"           || DF1_WHY+=" reader-list-no-apply"
+grep -qF 'per section, in order' "$GD_AUTHORING"     && DF1_WHY+=" OLD-linear-cycle-present"
+if [[ -z "$DF1_WHY" ]]; then
+    pass "DF-1 gd-authoring Decision-First contract (depth-picker · <!-- deferred --> · card source · group gate · 6 phases; anchors preserved; reader-list +content/apply; linear cycle gone)"
+else
+    fail "DF-1 gd-authoring Decision-First contract drift:$DF1_WHY"
+fi
+
+# (DF-2) gd-lifecycle is the CANONICAL HOME of the inferred partial status: the
+# `detailed · partial` rule + `· partial (n/m)` render format + per-zone core-set +
+# partial is a render-time annotation (not a status value) + never stored; reader-list
+# +content/apply. (The enum was collapsed 5->3 this PR — `· partial` adds no status.)
+DF2_WHY=""
+grep -qF 'detailed · partial' "$GD_LIFECYCLE"  || DF2_WHY+=" no-partial-status"
+grep -qF '· partial (n/m)' "$GD_LIFECYCLE"      || DF2_WHY+=" no-partial-format"
+grep -qF 'per-zone core-set' "$GD_LIFECYCLE"   || DF2_WHY+=" no-core-set"
+grep -qF 'A/B/C/D/H' "$GD_LIFECYCLE"           || DF2_WHY+=" no-system-core-listing"
+grep -qF 'canonical home' "$GD_LIFECYCLE"      || DF2_WHY+=" no-canonical-home"
+grep -qF 'never stored' "$GD_LIFECYCLE"        || DF2_WHY+=" partiality-not-marked-inferred"
+grep -qF 'render-time annotation' "$GD_LIFECYCLE" || DF2_WHY+=" partial-not-marked-render-annotation"
+grep -qF 'not-started, skeleton, detailed' "$GD_LIFECYCLE" || DF2_WHY+=" enum-membership-missing"
+grep -qF 'unikit-gd-content' "$GD_LIFECYCLE"   || DF2_WHY+=" reader-list-no-content"
+grep -qF 'unikit-gd-apply' "$GD_LIFECYCLE"     || DF2_WHY+=" reader-list-no-apply"
+if [[ -z "$DF2_WHY" ]]; then
+    pass "DF-2 gd-lifecycle canonical partial rule (detailed · partial inferred/never-stored · · partial (n/m) format · per-zone core-set · partial = render annotation, not a status value; reader-list +content/apply)"
+else
+    fail "DF-2 gd-lifecycle partial rule drift:$DF2_WHY"
+fi
+
+# (DF-3) the three zone skills each carry the Decision-First flow: the depth gate
+# (core/standard/full), section names not bare letters, the silent fork-scan, the
+# seeded-vs-greenfield split (real fork), and the depth INFO marker.
+DF3_WHY=""
+for s in system flow content; do
+    f="$ROOT_DIR/skills/unikit-gd-$s/SKILL.md"
+    # The Decision-First authoring body moved to references/mode-author.md (context-cost
+    # refactor); Phase-2 depth gate stays in the SKILL switch. DF-3 split-grep accordingly.
+    fa="$ROOT_DIR/skills/unikit-gd-$s/references/mode-author.md"
+    grep -qF 'Decision-First' "$fa"        || DF3_WHY+=" $s:no-decision-first"
+    grep -qF 'Depth gate' "$f"             || DF3_WHY+=" $s:no-depth-gate"
+    grep -qF 'core/standard/full' "$f"     || DF3_WHY+=" $s:no-picker"
+    grep -qF 'never by a bare letter' "$fa" || DF3_WHY+=" $s:no-names-rule"
+    grep -qF 'Fork-scan' "$fa"             || DF3_WHY+=" $s:no-fork-scan"
+    grep -qF 'real fork' "$fa"             || DF3_WHY+=" $s:no-seeded-vs-greenfield"
+    grep -qF "depth=<tier>" "$fa"          || DF3_WHY+=" $s:no-depth-marker"
+done
+if [[ -z "$DF3_WHY" ]]; then
+    pass "DF-3 zone skills Decision-First (system/flow/content: depth gate core/standard/full · names-not-letters · fork-scan · seeded-vs-greenfield · depth marker)"
+else
+    fail "DF-3 zone skills Decision-First drift:$DF3_WHY"
+fi
+
+# (DF-4) unikit-gd-verify: the `<!-- deferred -->` marker is INTENTIONAL (not a leak),
+# the `· partial (n/m)` render, the marker⟺render self-check, the NEW core-floor
+# coherence check; the `[To be designed]` placeholder-leak regression still holds.
+DF4_WHY=""
+grep -qF '<!-- deferred -->' "$GD_VERIFY_SKILL" || DF4_WHY+=" no-deferred"
+grep -qF 'intentional' "$GD_VERIFY_SKILL"       || DF4_WHY+=" deferred-not-intentional"
+grep -qF '· partial (n/m)' "$GD_VERIFY_SKILL"   || DF4_WHY+=" no-partial-render"
+grep -qF 'Self-check (marker' "$GD_VERIFY_SKILL" || DF4_WHY+=" no-self-check"
+grep -qF 'Core-floor coherence' "$GD_VERIFY_SKILL" || DF4_WHY+=" no-core-floor-check"
+grep -qF '[To be designed]' "$GD_VERIFY_SKILL"  || DF4_WHY+=" placeholder-leak-regression-lost"
+if [[ -z "$DF4_WHY" ]]; then
+    pass "DF-4 unikit-gd-verify (<!-- deferred -->=intentional · · partial (n/m) render · marker⟺render self-check · core-floor coherence; [To be designed] leak still guarded)"
+else
+    fail "DF-4 unikit-gd-verify deferred/partial drift:$DF4_WHY"
+fi
+
+# (DF-5) consumer parity — the `· partial (n/m)` suffix is emitted by ALL FOUR renderers
+# from the one canonical gd-lifecycle rule (verify + the spec System Map + the flow Flow
+# Map + the content Content Map); the gd-review completeness lens treats the marker as
+# intentional (no misfire); section-packs.md is reframed Decision-First (linear cycle gone).
+DF5_WHY=""
+for f in "$GD_VERIFY_SKILL" "$GD_SPEC_SKILL" "$GD_FLOW_SKILL" "$GD_CONTENT_SKILL"; do
+    grep -qF 'partial (n/m)' "$f" || DF5_WHY+=" $(basename "$(dirname "$f")"):no-partial-render"
+done
+grep -qF '<!-- deferred -->' "$GD_LENSES" || DF5_WHY+=" review-lens-no-deferred"
+grep -qF 'intentional' "$GD_LENSES"        || DF5_WHY+=" review-lens-not-intentional"
+grep -qF 'Decision-First' "$GD_SECTION_PACKS" || DF5_WHY+=" section-packs-not-decision-first"
+grep -qF 'Draft+Approval' "$GD_SECTION_PACKS"  && DF5_WHY+=" section-packs-OLD-linear-cycle"
+if [[ -z "$DF5_WHY" ]]; then
+    pass "DF-5 consumer parity (· partial (n/m) on all 4 renderers verify/spec/flow/content · review completeness no-misfire · section-packs Decision-First)"
+else
+    fail "DF-5 consumer parity drift:$DF5_WHY"
+fi
+
+# (DF-6) the three templates document the `<!-- deferred -->` marker (distinct from the
+# `[To be designed]` skeleton placeholder) and name the per-zone core sections — the card
+# source the Phase 5 group review draws from.
+DF6_WHY=""
+for t in SYSTEM FLOW CONTENT-TYPE; do
+    f="$GD_DATA/templates/$t.md"
+    grep -qF '<!-- deferred -->' "$f" || DF6_WHY+=" $t:no-deferred-doc"
+    grep -qF '[To be designed]' "$f"  || DF6_WHY+=" $t:no-placeholder-distinction"
+    grep -qF 'Core sections' "$f"     || DF6_WHY+=" $t:no-core-sections"
+    grep -qF 'Decision-First' "$f"    || DF6_WHY+=" $t:no-decision-first"
+done
+if [[ -z "$DF6_WHY" ]]; then
+    pass "DF-6 templates document the deferred marker + core sections (SYSTEM/FLOW/CONTENT-TYPE: <!-- deferred --> vs [To be designed] · Core sections · Decision-First)"
+else
+    fail "DF-6 template marker/card drift:$DF6_WHY"
+fi
+
+# ============================================================================
+# Context-optimization guards (mode-extraction + flow-first + P4/P5 + design-read).
+# The flow-first/mode-extraction refactor pulled mode bodies and Step 4.5 out of
+# unikit-plan / unikit-gd-spec into references/, introduced the shared design-read
+# system asset, the GD_RULES_INDEX Rule-Loading Discipline + per-skill anchors, and
+# the precise no-GDD gate hints. bash cannot run an LLM skill — these are grep
+# invariants on the contract text + presence checks on the extracted references.
+# ============================================================================
+
+GD_DESIGN_READ="$GD_DATA/design-read.md"
+PLAN_REFS="$ROOT_DIR/skills/unikit-plan/references"
+GD_SPEC_REFS="$ROOT_DIR/skills/unikit-gd-spec/references"
+GD_RULES_INDEX_TPL="$GD_DATA/templates/GD_RULES_INDEX.md"
+
+# (DR-1) design-read.md source-guard — mirror of the gd-principles block: the shared
+# READ contract installed flat (no engine vars) at
+# .unikit/system/gamedesign/design-read.md. Assert the READ markers (flow-first rule +
+# one-way boundary + read surfaces), that the plan-only ## Flow Context OUTPUT brief is
+# ABSENT (read-only scope), and that it is substitution-free.
+if [[ ! -f "$GD_DESIGN_READ" ]]; then
+    fail "data/gamedesign/design-read.md — missing"
+else
+    DR_WHY=""
+    grep -qF 'intent decides the door' "$GD_DESIGN_READ" || DR_WHY+=" flow-first-rule"
+    grep -qF '## One-Way Boundary' "$GD_DESIGN_READ"     || DR_WHY+=" one-way-boundary"
+    grep -qF 'Read the **registry**' "$GD_DESIGN_READ"   || DR_WHY+=" read-surfaces"
+    if [[ -z "$DR_WHY" ]]; then
+        pass "design-read.md — READ markers present (flow-first rule + one-way boundary + read surfaces)"
+    else
+        fail "design-read.md — missing READ markers:$DR_WHY"
+    fi
+    if grep -qF '## Flow Context' "$GD_DESIGN_READ"; then
+        fail "design-read.md — ## Flow Context OUTPUT brief must NOT be here (plan-only, read-only scope)"
+    else
+        pass "design-read.md — no ## Flow Context output brief (read-only scope held)"
+    fi
+    if grep -qE '\{\{settings_file\}\}|\{\{skills_dir\}\}|\{\{engine_' "$GD_DESIGN_READ"; then
+        fail "design-read.md — contains agent/engine vars (must be substitution-free like gd-principles)"
+    else
+        pass "design-read.md — no agent/engine vars (system-file safe)"
+    fi
+fi
+
+# (MX-1) Mode-extraction: unikit-plan mode bodies live in references/mode-*.md and the
+# inline mode sections are gone from SKILL.md (the Step 0 / Step 1.5 dispatch loads them).
+MX_PLAN_WHY=""
+for m in list add full fast; do
+    [[ -s "$PLAN_REFS/mode-$m.md" ]] || MX_PLAN_WHY+=" mode-$m.md-missing"
+done
+! grep -qF '## List Mode' "$UNIKIT_PLAN_SKILL"        || MX_PLAN_WHY+=" list-still-inline"
+! grep -qF '## Add Mode — Modify' "$UNIKIT_PLAN_SKILL" || MX_PLAN_WHY+=" add-still-inline"
+if [[ -z "$MX_PLAN_WHY" ]]; then
+    pass "unikit-plan — mode bodies extracted to references/mode-*.md (bodies not inline)"
+else
+    fail "unikit-plan — mode-extraction incomplete:$MX_PLAN_WHY"
+fi
+
+# (MX-2) Mode-extraction: unikit-gd-spec six mode bodies live in references/mode-*.md and
+# the inline mode sections are gone from SKILL.md (Step 2 dispatch loads them). The shared
+# Regen-on-Write contract stays in SKILL.md.
+MX_SPEC_WHY=""
+for m in create import edit remap add-system pitch; do
+    [[ -s "$GD_SPEC_REFS/mode-$m.md" ]] || MX_SPEC_WHY+=" mode-$m.md-missing"
+done
+! grep -qF '## Create Mode' "$GD_SPEC_SKILL"  || MX_SPEC_WHY+=" create-still-inline"
+! grep -qF '## Pitch Mode' "$GD_SPEC_SKILL"   || MX_SPEC_WHY+=" pitch-still-inline"
+grep -qF 'Regen-on-Write' "$GD_SPEC_SKILL"    || MX_SPEC_WHY+=" regen-not-shared"
+if [[ -z "$MX_SPEC_WHY" ]]; then
+    pass "unikit-gd-spec — six mode bodies extracted to references/mode-*.md (bodies not inline; Regen-on-Write shared)"
+else
+    fail "unikit-gd-spec — mode-extraction incomplete:$MX_SPEC_WHY"
+fi
+
+# (DC-1) Plan design-context.md: the extracted Step 4.5 body that loads the shared
+# design-read contract, applies Flow-First Resolution, and carries the implemented_version
+# reader (the T8-reader half, asserted at T8-6 above).
+DC_WHY=""
+[[ -s "$UNIKIT_PLAN_DESIGN_CONTEXT" ]]                          || DC_WHY+=" no-file"
+grep -qF 'design-read.md' "$UNIKIT_PLAN_DESIGN_CONTEXT"         || DC_WHY+=" no-design-read-load"
+grep -qF 'Flow-First Resolution' "$UNIKIT_PLAN_DESIGN_CONTEXT"  || DC_WHY+=" no-flow-first"
+if [[ -z "$DC_WHY" ]]; then
+    pass "unikit-plan/references/design-context.md — loads design-read + applies Flow-First Resolution (P3)"
+else
+    fail "unikit-plan design-context.md incomplete:$DC_WHY"
+fi
+
+# (FF-1) Flow-first input markers: explore loads design-read + has the first-class flow
+# input; the plan dispatch names the design-context body.
+FF_WHY=""
+grep -qF 'design-read.md' "$UNIKIT_EXPLORE_SKILL"         || FF_WHY+=" explore-design-read"
+grep -qF 'First-class flow input' "$UNIKIT_EXPLORE_SKILL" || FF_WHY+=" explore-first-class"
+grep -qF 'design-context.md' "$UNIKIT_PLAN_SKILL"         || FF_WHY+=" plan-design-context-dispatch"
+if [[ -z "$FF_WHY" ]]; then
+    pass "flow-first input present (explore design-read + first-class flow input; plan design-context dispatch)"
+else
+    fail "flow-first input incomplete:$FF_WHY"
+fi
+
+# ── Content-read guards (Stage 3: CR-1…CR-3) ─────────────────────────────────
+# Stage 3 delivered the Content axis to the code side READ-ONLY (the mirror of the
+# flow-read, FL-6 + FF-1): the shared design-read content surface + 3-axis door, the
+# unikit-plan ## Content Context brief (design-context.md §4.5.6 + the SKILL.md assembly
+# step), and unikit-explore first-class content grounding. No new writeback — content has
+# no implemented_version (One-Way Boundary stays systems-only). All FILE-SCOPED -qF.
+
+# (CR-1) design-read.md carries the content read-surface + the 3-axis content door in the
+# Flow-First Resolution ladder (the shared contract both code consumers apply).
+CR_DR_WHY=""
+grep -qF 'content_types' "$GD_DESIGN_READ"            || CR_DR_WHY+=" no-content-surface"
+grep -qF 'content-types/*.md' "$GD_DESIGN_READ"       || CR_DR_WHY+=" no-content-doc-surface"
+grep -qF '## Content Map [gen]' "$GD_DESIGN_READ"     || CR_DR_WHY+=" no-content-map-render"
+grep -qF 'system | flow | content' "$GD_DESIGN_READ"  || CR_DR_WHY+=" no-3axis-door"
+if [[ -z "$CR_DR_WHY" ]]; then
+    pass "CR-1 design-read.md content surface (content_types/content-types docs/Content Map) + 3-axis door (system | flow | content)"
+else
+    fail "CR-1 design-read.md content surface/door incomplete:$CR_DR_WHY"
+fi
+
+# (CR-2) unikit-plan emits the ## Content Context brief: the §4.5.6 mechanics live in
+# design-context.md AND the assembly step in SKILL.md references the block (without the
+# SKILL.md half the brief is described but never assembled into PLAN-BRIEF).
+CR_PLAN_WHY=""
+grep -qF '4.5.6' "$UNIKIT_PLAN_DESIGN_CONTEXT"               || CR_PLAN_WHY+=" no-4.5.6"
+grep -qF '## Content Context' "$UNIKIT_PLAN_DESIGN_CONTEXT"  || CR_PLAN_WHY+=" no-content-context-context"
+grep -qF '## Content Context' "$UNIKIT_PLAN_SKILL"           || CR_PLAN_WHY+=" no-content-context-skill"
+if [[ -z "$CR_PLAN_WHY" ]]; then
+    pass "CR-2 unikit-plan ## Content Context (design-context.md §4.5.6 mechanics + SKILL.md assembly step)"
+else
+    fail "CR-2 unikit-plan content brief incomplete:$CR_PLAN_WHY"
+fi
+
+# (CR-3) unikit-explore grounds first-class on the content axis (reads content_types via
+# the design-read content door; One-Way Boundary — read-only).
+CR_EXP_WHY=""
+grep -qF 'content_types' "$UNIKIT_EXPLORE_SKILL"              || CR_EXP_WHY+=" no-content-grounding"
+grep -qF 'First-class content input' "$UNIKIT_EXPLORE_SKILL"  || CR_EXP_WHY+=" no-first-class-content"
+if [[ -z "$CR_EXP_WHY" ]]; then
+    pass "CR-3 unikit-explore content grounding (content_types read + first-class content input)"
+else
+    fail "CR-3 unikit-explore content grounding incomplete:$CR_EXP_WHY"
+fi
+
+# (P5-1) Rule-Loading Discipline: canon in the GD_RULES_INDEX template + anchored in the
+# six rule-loading gd-skills; gd-verify is exempt (mechanical, loads no rules).
+P5_WHY=""
+grep -qF '## Rule-Loading Discipline' "$GD_RULES_INDEX_TPL" || P5_WHY+=" index-canon"
+for s in brainstorm explore spec system flow review; do
+    grep -qF 'Rule-Loading Discipline' "$ROOT_DIR/skills/unikit-gd-$s/SKILL.md" || P5_WHY+=" anchor:$s"
+done
+! grep -qF 'Rule-Loading Discipline' "$GD_VERIFY_SKILL" || P5_WHY+=" verify-not-exempt"
+if [[ -z "$P5_WHY" ]]; then
+    pass "P5 Rule-Loading Discipline — index canon + 6 skill anchors + gd-verify exempt"
+else
+    fail "P5 Rule-Loading Discipline incomplete:$P5_WHY"
+fi
+
+# (P4-1) No-GDD gate hints: gd-system + gd-flow read concepts/INDEX.md when GAME.md is
+# absent and route concept→spec / no-concept→brainstorm.
+P4_WHY=""
+for s in system flow; do
+    grep -qF 'concepts/INDEX.md' "$ROOT_DIR/skills/unikit-gd-$s/SKILL.md"             || P4_WHY+=" $s-no-concepts-read"
+    grep -qF '/unikit-gd-brainstorm` first' "$ROOT_DIR/skills/unikit-gd-$s/SKILL.md" || P4_WHY+=" $s-no-brainstorm-route"
+done
+if [[ -z "$P4_WHY" ]]; then
+    pass "P4 no-GDD gate hints — gd-system + gd-flow read concepts/INDEX.md + route to brainstorm/spec"
+else
+    fail "P4 no-GDD gate hints incomplete:$P4_WHY"
+fi
+
+# unikit-memory distillation-behavior content guards (PLAN.md T1–T10). The router
+# distilled the aif-distillation protocol into unikit-memory as BEHAVIOR; bash cannot
+# run an LLM skill, so these are grep invariants on the contract text + a probe-gated
+# compile smoke for the ported helper. Load-bearing asserts (nothing else catches the
+# regression): (a) Source Map present in BOTH module contracts — the only defense
+# against T6↔T7 drift (guard #2 checks structural completeness, NOT section parity);
+# (b) the ported material-prep.py is delivered (also asserted installed in
+# test-install.sh — unikit-memory is the first skill shipping a scripts/ subdir);
+# (c) zero aif-distillation/ai-factory literal survived the rebrand; (d) the helper
+# actually parses (npm test is bash and never runs the script).
+UM_SKILL="$ROOT_DIR/skills/unikit-memory/SKILL.md"
+UM_PIPELINE="$ROOT_DIR/skills/unikit-memory/references/research-pipeline.md"
+UM_MOD_CODE="$ROOT_DIR/skills/unikit-memory/references/module-code.md"
+UM_MOD_GD="$ROOT_DIR/skills/unikit-memory/references/module-gamedesign.md"
+UM_LARGE="$ROOT_DIR/skills/unikit-memory/references/large-sources.md"
+UM_PREP="$ROOT_DIR/skills/unikit-memory/scripts/material-prep.py"
+
+# (UM-1) research-pipeline carries the pipeline-behavior edits: Source Inventory (#1),
+#        distill-don't-copy (#8), example coverage (#2), merge guard (#9).
+UM_PIPE_WHY=""
+grep -qF 'Source Inventory' "$UM_PIPELINE"      || UM_PIPE_WHY+=" source-inventory(#1)"
+grep -qF "Distill, don't copy" "$UM_PIPELINE"   || UM_PIPE_WHY+=" distill-dont-copy(#8)"
+grep -qF 'Example coverage' "$UM_PIPELINE"       || UM_PIPE_WHY+=" example-coverage(#2)"
+grep -qF 'Merge guard' "$UM_PIPELINE"            || UM_PIPE_WHY+=" merge-guard(#9)"
+if [[ -z "$UM_PIPE_WHY" ]]; then
+    pass "research-pipeline.md — Source Inventory + distill + example coverage + merge guard (T1/T2)"
+else
+    fail "research-pipeline.md — missing:$UM_PIPE_WHY"
+fi
+
+# (UM-2) SKILL.md router carries the Quality Gate (#3), gap-list default (#5), and the
+#        retroactive optimise/Branch E wiring (the inline branch + the bare `optimise`
+#        keyword in the argument-hint). The hint grep anchors on " optimise" (space-led)
+#        so a regression to the dropped `--optimise` flag form fails the guard. The legacy
+#        --into argument-hint assert was removed when WS4 deleted the flag — do NOT
+#        reintroduce a `--into` grep here.
+UM_SKILL_WHY=""
+grep -qF '## Quality Gate' "$UM_SKILL"               || UM_SKILL_WHY+=" quality-gate(#3)"
+grep -qF 'gap list' "$UM_SKILL"                      || UM_SKILL_WHY+=" gap-list(#5)"
+grep -qF '## Branch E: Optimise' "$UM_SKILL"         || UM_SKILL_WHY+=" branch-e(optimise)"
+grep -qE '^argument-hint:.* optimise' "$UM_SKILL"    || UM_SKILL_WHY+=" optimise(hint)"
+if [[ -z "$UM_SKILL_WHY" ]]; then
+    pass "unikit-memory SKILL.md — Quality Gate + gap list + Branch E/optimise wiring (T3/T4/WS3)"
+else
+    fail "unikit-memory SKILL.md — missing:$UM_SKILL_WHY"
+fi
+
+# (UM-2b) WS2/WS3 content surface: references for ALL tiers (core/references) + the unified
+#         Candidate Analyzer with Tier 1 / Tier 2 confidence buckets in module-code.md and the
+#         on-add B.3.5 (research-pipeline.md), plus the minimal Analyzer deferral mirrored in
+#         module-gamedesign.md. bash cannot run the skill, so these are grep invariants on the
+#         contract text.
+UM_OPT_WHY=""
+grep -qF 'core/references' "$UM_MOD_CODE"        || UM_OPT_WHY+=" modc:core-references"
+grep -qF 'Candidate Analyzer' "$UM_MOD_CODE"     || UM_OPT_WHY+=" modc:analyzer"
+grep -qF 'Tier 1' "$UM_MOD_CODE"                 || UM_OPT_WHY+=" modc:tier1"
+grep -qF 'Tier 2' "$UM_MOD_CODE"                 || UM_OPT_WHY+=" modc:tier2"
+grep -qF 'Tier 1' "$UM_PIPELINE"                 || UM_OPT_WHY+=" pipe:tier1"
+grep -qF 'Candidate Analyzer' "$UM_MOD_GD"       || UM_OPT_WHY+=" modgd:analyzer"
+if [[ -z "$UM_OPT_WHY" ]]; then
+    pass "module-code + research-pipeline + module-gamedesign — core/references + Candidate Analyzer Tier1/Tier2 (WS2/WS3)"
+else
+    fail "core-references / Candidate Analyzer Tier1/Tier2 — missing:$UM_OPT_WHY"
+fi
+
+# (UM-3) LOAD-BEARING (a): the ## Source Map provenance format lives in BOTH module
+#        contracts. One assert — the sole guard against T6↔T7 symmetry drift, since
+#        guard #2 (test-module-contract.sh) checks structural completeness, not the
+#        parity of internal format sections.
+UM_SRCMAP_WHY=""
+grep -qF '## Source Map' "$UM_MOD_CODE" || UM_SRCMAP_WHY+=" module-code"
+grep -qF '## Source Map' "$UM_MOD_GD"   || UM_SRCMAP_WHY+=" module-gamedesign"
+if [[ -z "$UM_SRCMAP_WHY" ]]; then
+    pass "module-code + module-gamedesign — ## Source Map format in BOTH (#6 symmetry, T6↔T7)"
+else
+    fail "## Source Map missing in:$UM_SRCMAP_WHY (#6 — guard #2 does NOT check section parity)"
+fi
+
+# (UM-4) module-code carries example coverage (#2) + stable filenames / anti-frag (#7).
+UM_MODC_WHY=""
+grep -qF 'Example coverage' "$UM_MOD_CODE"  || UM_MODC_WHY+=" example-coverage(#2)"
+grep -qF 'Stable filenames' "$UM_MOD_CODE"  || UM_MODC_WHY+=" stable-filenames(#7)"
+if [[ -z "$UM_MODC_WHY" ]]; then
+    pass "module-code.md — example coverage + stable filenames (T6 #2/#7)"
+else
+    fail "module-code.md — missing:$UM_MODC_WHY"
+fi
+
+# (UM-5) large-sources.md exists, references the helper via the install-template path
+#        (NOT the aif-distillation source tree), and points back at the pipeline.
+if [[ ! -s "$UM_LARGE" ]]; then
+    fail "large-sources.md — missing or empty (T8)"
+elif ! grep -qF '{{skills_dir}}/{{self_name}}/scripts/material-prep.py' "$UM_LARGE"; then
+    fail "large-sources.md — helper not referenced via install-template path (T8)"
+elif grep -qF '.claude/skills/aif-distillation' "$UM_LARGE"; then
+    fail "large-sources.md — still points at the aif-distillation source path (T8)"
+else
+    pass "large-sources.md — present + install-template helper path, no source-tree path (T8)"
+fi
+
+# (UM-6) LOAD-BEARING (b): the ported helper is present in source as a SINGLE self-contained
+#        material-prep.py — no sibling modules, no package. (The WS1 split into
+#        mp_config/mp_safety/mp_chunk/mp_books/mp_extract/mp_output was reverted to one file;
+#        all tunables/literals now live in its CONSTANTS section.) This block asserts both the
+#        single file is present AND that no mp_*.py orphan survived the revert. Delivery into an
+#        installed project is asserted in test-install.sh.
+UM_SCRIPTS_DIR="$ROOT_DIR/skills/unikit-memory/scripts"
+UM_MP_WHY=""
+[[ -s "$UM_PREP" ]] || UM_MP_WHY+=" material-prep.py(missing)"
+for m in mp_config mp_safety mp_chunk mp_books mp_extract mp_output; do
+    [[ -e "$UM_SCRIPTS_DIR/$m.py" ]] && UM_MP_WHY+=" $m.py(orphan)"
+done
+if [[ -z "$UM_MP_WHY" ]]; then
+    pass "material-prep.py — single self-contained helper present, no mp_*.py orphans (T1)"
+else
+    fail "material-prep helper layout — issues:$UM_MP_WHY"
+fi
+
+# (UM-7) LOAD-BEARING (c): the rebrand is complete in the single-file helper — no
+#        aif-distillation/ai-factory literal survived (marker constants, docstrings,
+#        User-Agent, argparse desc, SENSITIVE_DIR_NAMES, temp prefixes).
+if grep -qiE 'aif-distillation|ai-factory' "$UM_PREP"; then
+    fail "material-prep.py — stale aif-distillation/ai-factory literal remains (T1 rebrand)"
+    grep -niE 'aif-distillation|ai-factory' "$UM_PREP"
+else
+    pass "material-prep.py — fully rebranded, no aif-distillation/ai-factory literal (T1)"
+fi
+
+# (UM-8) LOAD-BEARING (d): probe-gated parse smoke. T9 rewrote the argparse surface and
+#        marker constants; npm test is bash and never executes the script, so a
+#        non-parsing port would otherwise ship green. Run behind the same Python 3 probe
+#        the script/large-sources.md use; warn (not fail) when no Python 3 is present.
+UM_PY=""
+for c in "python3" "python" "py -3" "py"; do
+    if $c --version 2>/dev/null | grep -q "Python 3"; then UM_PY="$c"; break; fi
+done
+if [[ -n "$UM_PY" ]]; then
+    if $UM_PY "$UM_PREP" --help >/dev/null 2>&1; then
+        pass "material-prep.py — parses + --help OK ($UM_PY) (T10 compile smoke)"
+    else
+        fail "material-prep.py — parse/--help FAILED ($UM_PY) (T10 compile smoke)"
+    fi
+else
+    warn "material-prep.py — no Python 3 interpreter found; compile smoke skipped (probe-gated)"
+fi
+
+# (UM-9) FB2/EPUB extraction smoke + MOBI rejection + heading-less fallback (T9). bash
+#        cannot exercise the extractors, so this drives the real CLI through a Python 3
+#        helper that builds FB2/EPUB/.txt/.py/.mobi fixtures in a temp dir (EPUB zipped on
+#        the fly — no binaries in git), runs material-prep.py, and asserts: chunks made,
+#        source-index.md carries a ## TOC (heading→chunk) + a Headings: breadcrumb, the
+#        FB2/EPUB headings reach the TOC, a Python `#` comment is NOT misparsed as a
+#        heading, a single .mobi fails concretely, a folder .mobi is warned-by-name+skipped,
+#        and a heading-less folder still chunks with NO ## TOC. Same Python 3 probe as
+#        UM-8; warn (not fail) when no interpreter is present. The temp dir is removed.
+if [[ -n "$UM_PY" ]]; then
+    if UM_T9_OUT="$($UM_PY - "$UM_PREP" 2>&1 <<'PY'
+import sys, os, subprocess, tempfile, zipfile, shutil
+PREP = sys.argv[1]
+PY = sys.executable
+fails = []
+
+def run(args):
+    return subprocess.run([PY, PREP] + args, capture_output=True, text=True, encoding="utf-8")
+
+work = tempfile.mkdtemp(prefix="um-t9-")
+try:
+    books = os.path.join(work, "books")
+    os.makedirs(books)
+    fb2 = ('<?xml version="1.0" encoding="utf-8"?>'
+           '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">'
+           '<description><title-info><book-title>FB2 Demo</book-title></title-info></description>'
+           '<body><section><title><p>Intro</p></title><p>Intro body about design.</p>'
+           '<section><title><p>Deep</p></title><p>Nested body.</p></section></section></body></FictionBook>')
+    open(os.path.join(books, "demo.fb2"), "w", encoding="utf-8").write(fb2)
+    with zipfile.ZipFile(os.path.join(books, "demo.epub"), "w") as z:
+        z.writestr("mimetype", "application/epub+zip")
+        z.writestr("META-INF/container.xml",
+                   '<?xml version="1.0"?><container version="1.0" '
+                   'xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles>'
+                   '<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'
+                   '</rootfiles></container>')
+        z.writestr("OEBPS/content.opf",
+                   '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" '
+                   'unique-identifier="b"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
+                   '<dc:title>EPUB Demo</dc:title></metadata><manifest>'
+                   '<item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/></manifest>'
+                   '<spine><itemref idref="c1"/></spine></package>')
+        z.writestr("OEBPS/c1.xhtml",
+                   '<html><body><h1>Chapter One</h1><p>Body paragraph.</p>'
+                   '<h2>Sub</h2><p>More.</p></body></html>')
+    open(os.path.join(books, "notes.txt"), "w", encoding="utf-8").write("Plain text, no headings.\n\nSecond paragraph.\n")
+    open(os.path.join(books, "code.py"), "w", encoding="utf-8").write("# comment not heading\nx=1\n\n# another comment\ny=2\n")
+
+    out = os.path.join(work, "out")
+    r = run(["--out", out, books])
+    if r.returncode != 0:
+        fails.append("folder extraction exited %d: %s" % (r.returncode, r.stderr[-300:]))
+    idx = os.path.join(out, "source-index.md")
+    index_text = open(idx, encoding="utf-8").read() if os.path.exists(idx) else ""
+    chunks_dir = os.path.join(out, "chunks")
+    chunk_files = os.listdir(chunks_dir) if os.path.isdir(chunks_dir) else []
+    if not chunk_files:
+        fails.append("no chunk files produced")
+    if "## TOC" not in index_text:
+        fails.append("source-index.md missing ## TOC")
+    has_breadcrumb = any("Headings:" in open(os.path.join(chunks_dir, f), encoding="utf-8").read() for f in chunk_files)
+    if not has_breadcrumb:
+        fails.append("no chunk carries a Headings: breadcrumb")
+    if "Intro" not in index_text or "Chapter One" not in index_text:
+        fails.append("TOC missing FB2/EPUB headings (Intro / Chapter One)")
+    if "comment not heading" in index_text:
+        fails.append("python # comment leaked into ## TOC (misparsed as heading)")
+
+    mobi = os.path.join(work, "book.mobi")
+    open(mobi, "wb").write(b"\x00MOBI")
+    rm = run(["--out", os.path.join(work, "out2"), mobi])
+    if rm.returncode == 0:
+        fails.append("single .mobi did not fail (expected non-zero exit)")
+    if "MOBI" not in (rm.stderr + rm.stdout):
+        fails.append("single .mobi message not concrete (no MOBI mention)")
+
+    mixed = os.path.join(work, "mixed")
+    os.makedirs(mixed)
+    open(os.path.join(mixed, "keep.md"), "w", encoding="utf-8").write("# Keep\n\ntext\n")
+    open(os.path.join(mixed, "skip.mobi"), "wb").write(b"\x00")
+    rf = run(["--out", os.path.join(work, "out3"), mixed])
+    if rf.returncode != 0:
+        fails.append("mixed folder with .mobi failed (should warn+skip+continue)")
+    if "skip.mobi" not in rf.stderr:
+        fails.append("folder .mobi not warned by name on stderr")
+
+    headless = os.path.join(work, "headless")
+    os.makedirs(headless)
+    open(os.path.join(headless, "a.txt"), "w", encoding="utf-8").write("no headings here\n\nmore text\n")
+    open(os.path.join(headless, "b.py"), "w", encoding="utf-8").write("# not heading\nz=1\n")
+    out4 = os.path.join(work, "out4")
+    rfb = run(["--out", out4, headless])
+    if rfb.returncode != 0:
+        fails.append("heading-less folder failed to chunk")
+    idx4 = os.path.join(out4, "source-index.md")
+    t4 = open(idx4, encoding="utf-8").read() if os.path.exists(idx4) else ""
+    if "## TOC" in t4:
+        fails.append("heading-less source produced a ## TOC (should be omitted)")
+finally:
+    shutil.rmtree(work, ignore_errors=True)
+
+if fails:
+    print("T9 FAIL:")
+    for f in fails:
+        print("  -", f)
+    sys.exit(1)
+print("T9 OK: FB2/EPUB extraction + ## TOC + breadcrumb + MOBI reject + heading-less fallback")
+sys.exit(0)
+PY
+)"; then
+        pass "material-prep.py — FB2/EPUB extraction + ## TOC + breadcrumb + MOBI reject + fallback ($UM_PY) (T9)"
+    else
+        fail "material-prep.py — FB2/EPUB extraction smoke FAILED ($UM_PY) (T9)"
+        echo "$UM_T9_OUT"
+    fi
+else
+    warn "material-prep.py — no Python 3 interpreter found; FB2/EPUB extraction smoke skipped (probe-gated)"
+fi
+
+# (UM-10) Static book-format content guards (T10). These run unconditionally (no Python 3
+#         needed), so the book-format surface is pinned even on a machine that skips the
+#         UM-9 runtime smoke. After the single-file revert all symbols live back in
+#         material-prep.py: format constants (BOOK_EXTENSIONS/REJECTED_BOOK_EXTENSIONS), the
+#         FB2/EPUB extractors, the ## TOC writer, and the loud pdftotext warning. large-sources.md
+#         documents the book formats + MOBI rejection + the pypdf recommendation; SKILL.md
+#         Phase A lists the new extensions.
+UM_T10_WHY=""
+grep -qF 'BOOK_EXTENSIONS' "$UM_PREP"              || UM_T10_WHY+=" prep:BOOK_EXTENSIONS"
+grep -qF 'REJECTED_BOOK_EXTENSIONS' "$UM_PREP"     || UM_T10_WHY+=" prep:REJECTED_BOOK_EXTENSIONS"
+grep -qF 'def extract_fb2' "$UM_PREP"              || UM_T10_WHY+=" prep:extract_fb2"
+grep -qF 'def extract_epub' "$UM_PREP"             || UM_T10_WHY+=" prep:extract_epub"
+grep -qF '## TOC' "$UM_PREP"                       || UM_T10_WHY+=" prep:toc-writer"
+grep -qF 'WARN: Python PDF extractors' "$UM_PREP"  || UM_T10_WHY+=" prep:pdftotext-warning"
+grep -qF 'Supported book formats' "$UM_LARGE"      || UM_T10_WHY+=" large:book-formats"
+grep -qF 'MOBI' "$UM_LARGE"                        || UM_T10_WHY+=" large:mobi"
+grep -qF 'pypdf' "$UM_LARGE"                       || UM_T10_WHY+=" large:pypdf"
+grep -qF '.fb2' "$UM_SKILL"                        || UM_T10_WHY+=" skill:.fb2"
+grep -qF '.epub' "$UM_SKILL"                       || UM_T10_WHY+=" skill:.epub"
+if [[ -z "$UM_T10_WHY" ]]; then
+    pass "book-format static guards — material-prep.py + large-sources.md + SKILL.md (T10)"
+else
+    fail "book-format static guards — missing:$UM_T10_WHY"
+fi
+
+# +check / gate-result / decorative-checkpoint content guards (PLAN.md: gate-result system
+# asset + +check validator on improve/review + unikit-gate-result on verify/review +
+# decorative checkpoint markers in unikit-plan). bash cannot run an LLM skill, so these are
+# grep invariants on the skill/reference contract text. Reuse UNIKIT_VERIFY_SKILL /
+# UNIKIT_PLAN_SKILL defined in the T7/T8 block above. Case-sensitive -qF/-qE (MSYS grep
+# caveat: -iF crashes).
+UNIKIT_IMPROVE_SKILL="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+UNIKIT_REVIEW_SKILL="$ROOT_DIR/skills/unikit-review/SKILL.md"
+
+# (CK-1) +check in BOTH improve + review argument-hints. Anchor on `\+check` (precedent:
+#        the `optimise` hint grep UM-2) so a regression to a bare `check` fails.
+CK_HINT_WHY=""
+grep -qE '^argument-hint:.*\+check' "$UNIKIT_IMPROVE_SKILL" || CK_HINT_WHY+=" improve"
+grep -qE '^argument-hint:.*\+check' "$UNIKIT_REVIEW_SKILL"  || CK_HINT_WHY+=" review"
+if [[ -z "$CK_HINT_WHY" ]]; then
+    pass "unikit-improve + unikit-review — +check in argument-hint"
+else
+    fail "+check missing from argument-hint:$CK_HINT_WHY"
+fi
+
+# (CK-2) the NEW references/{CHECK-MODE,VALIDATOR}.md exist (non-empty) for both skills.
+CK_REF_WHY=""
+for f in \
+  "skills/unikit-improve/references/CHECK-MODE.md" \
+  "skills/unikit-improve/references/VALIDATOR.md" \
+  "skills/unikit-review/references/CHECK-MODE.md" \
+  "skills/unikit-review/references/VALIDATOR.md"; do
+    [[ -s "$ROOT_DIR/$f" ]] || CK_REF_WHY+=" $f"
+done
+if [[ -z "$CK_REF_WHY" ]]; then
+    pass "unikit-improve + unikit-review — references/{CHECK-MODE,VALIDATOR}.md present"
+else
+    fail "+check reference files missing:$CK_REF_WHY"
+fi
+
+# (CK-3) the whole-dispatch skip-fallback WARN wording is pinned in BOTH CHECK-MODE.md
+#        files (locked decision: skip, never inline-analyze).
+CK_IMPROVE_CM="$ROOT_DIR/skills/unikit-improve/references/CHECK-MODE.md"
+CK_REVIEW_CM="$ROOT_DIR/skills/unikit-review/references/CHECK-MODE.md"
+CK_FB_WHY=""
+grep -qF 'WARN [+check]: validator failed' "$CK_IMPROVE_CM" || CK_FB_WHY+=" improve"
+grep -qF 'WARN [+check]: validator failed' "$CK_REVIEW_CM"  || CK_FB_WHY+=" review"
+if [[ -z "$CK_FB_WHY" ]]; then
+    pass "CHECK-MODE.md (improve+review) — skip-fallback WARN wording pinned"
+else
+    fail "WARN [+check]: validator failed wording missing:$CK_FB_WHY"
+fi
+
+# (CK-4) the unikit-gate-result fence + the gate-result-contract.md Bootstrap read present
+#        in BOTH unikit-verify + unikit-review.
+CK_GATE_WHY=""
+grep -qF '```unikit-gate-result'   "$UNIKIT_VERIFY_SKILL" || CK_GATE_WHY+=" verify:fence"
+grep -qF '```unikit-gate-result'   "$UNIKIT_REVIEW_SKILL" || CK_GATE_WHY+=" review:fence"
+grep -qF 'gate-result-contract.md' "$UNIKIT_VERIFY_SKILL" || CK_GATE_WHY+=" verify:contract-read"
+grep -qF 'gate-result-contract.md' "$UNIKIT_REVIEW_SKILL" || CK_GATE_WHY+=" review:contract-read"
+if [[ -z "$CK_GATE_WHY" ]]; then
+    pass "unikit-verify + unikit-review — unikit-gate-result fence + contract Bootstrap read"
+else
+    fail "gate-result fence/contract-read missing:$CK_GATE_WHY"
+fi
+
+# (CK-5) SHARED graceful-degradation wording — ONE -qF string applied to BOTH verify +
+#        review. Locks the Task 3.1 canonical-template <-> Task 2.4(b) mirror contract:
+#        drift in either file's degradation wording fails this guard. ASCII-only substring
+#        (avoids the em-dash in the full sentence) so MSYS grep matches reliably.
+CK_SHARED='emit the block from the inline schema in this section'
+CK_DEGRADE_WHY=""
+grep -qF "$CK_SHARED" "$UNIKIT_VERIFY_SKILL" || CK_DEGRADE_WHY+=" verify"
+grep -qF "$CK_SHARED" "$UNIKIT_REVIEW_SKILL" || CK_DEGRADE_WHY+=" review"
+if [[ -z "$CK_DEGRADE_WHY" ]]; then
+    pass "unikit-verify + unikit-review — shared gate-result graceful-degradation wording identical"
+else
+    fail "shared gate-result degradation wording missing/drifted:$CK_DEGRADE_WHY"
+fi
+
+# (CK-6) unikit-review +check-enabling frontmatter intact — TWO asserts. Without either,
+#        review's +check validator is DEAD ON ARRIVAL, and the suite has no other
+#        allowed-tools CONTENT guard (Part 7b checks list FORMAT only, not tool names).
+CK_RV_FM_WHY=""
+grep -qE '^  - Agent$' "$UNIKIT_REVIEW_SKILL"                  || CK_RV_FM_WHY+=" allowed-tools:Agent"
+grep -qF '<!-- unikit:agents codex -->' "$UNIKIT_REVIEW_SKILL" || CK_RV_FM_WHY+=" subagent-delegation-marker"
+if [[ -z "$CK_RV_FM_WHY" ]]; then
+    pass "unikit-review — Agent in allowed-tools + Subagent Delegation marker (Task 2.4d)"
+else
+    fail "unikit-review +check frontmatter DEAD ON ARRIVAL — missing:$CK_RV_FM_WHY"
+fi
+
+# (CK-7) decorative commit-checkpoint marker in the unikit-plan TASK-FORMAT.md Checklist.
+CK_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+if grep -qF '<!-- Commit checkpoint' "$CK_TASKFMT"; then
+    pass "unikit-plan TASK-FORMAT.md — decorative <!-- Commit checkpoint marker present (Task 4.1)"
+else
+    fail "unikit-plan TASK-FORMAT.md — missing decorative <!-- Commit checkpoint marker (Task 4.1)"
+fi
+
+# ─────────────────────────────────────────────
+# HG: review/verify → apply/explore handoff (buckets + interview + shared engine).
+# (Distinct prefix from the apply-dispatcher GA-1…GA-5 block above — different concern.)
+# The review/verify TAIL was reworked into an honest handoff: full report to screen →
+# two buckets (apply-ready vs research) → a user-in-the-loop interview → one apply pass.
+# The triage engine (the ENTAILED criterion + the interview + decline-vs-direction + the
+# loop-guard sentinel) lives in the gd-critique shard, already bound to review/verify/
+# explore by gd_check_skill_shards above (UNCHANGED — the engine travels on the existing
+# binding). bash cannot run an LLM skill; these are file-scoped grep invariants on the
+# contract text. Reuse GD_CRITIQUE / GD_REVIEW_SKILL / GD_VERIFY_SKILL / GD_APPLY_SKILL /
+# GD_EXPLORE_SKILL; new path var GD_REVIEW_TPL.
+GD_REVIEW_TPL="$GD_DATA/templates/REVIEW.md"
+
+# (HG-1) gd-critique handoff engine — the ENTAILED criterion, the interview model (per-run
+# choice + batch, writes nothing to the GDD), the decline-vs-direction asymmetry (review
+# declines a finding / verify only re-directs a conflict), and the ONE loop-guard sentinel
+# literal (single source of truth — apply writes it, verify reads it).
+HG1_WHY=""
+grep -qF 'Handoff Engine'        "$GD_CRITIQUE" || HG1_WHY+=" no-handoff-engine"
+grep -qF 'ENTAILED criterion'    "$GD_CRITIQUE" || HG1_WHY+=" no-entailed-criterion"
+grep -qF 'apply-ready'           "$GD_CRITIQUE" || HG1_WHY+=" no-apply-ready-bucket"
+grep -qF 'decline-vs-direction'  "$GD_CRITIQUE" || HG1_WHY+=" no-decline-vs-direction"
+grep -qF '[Run the interview]'   "$GD_CRITIQUE" || HG1_WHY+=" no-per-run-interview"
+grep -qF '[Decline]'             "$GD_CRITIQUE" || HG1_WHY+=" no-review-decline-option"
+grep -qF '[Fix as A]'            "$GD_CRITIQUE" || HG1_WHY+=" no-verify-direction-option"
+grep -qF 'apply-phase3'          "$GD_CRITIQUE" || HG1_WHY+=" no-loop-guard-sentinel"
+if [[ -z "$HG1_WHY" ]]; then
+    pass "HG-1 gd-critique handoff engine (ENTAILED + interview + decline-vs-direction + apply-phase3 sentinel)"
+else
+    fail "HG-1 gd-critique handoff engine drift:$HG1_WHY"
+fi
+
+# (HG-2) unikit-gd-review tail — the full report to SCREEN, the two explicit buckets
+# (apply-ready with a Fix field + research), the safeguard + the recommend-only
+# /unikit-gd-apply handoff phase. The buckets are orthogonal to severity (severity stays a
+# column) and REPLACE the old Required/Non-Blocking split.
+HG2_WHY=""
+grep -qF 'Print the full report to the screen' "$GD_REVIEW_SKILL" || HG2_WHY+=" no-screen-print"
+grep -qF '## Apply-ready'        "$GD_REVIEW_SKILL" || HG2_WHY+=" no-apply-ready-bucket"
+grep -qF '## Research'           "$GD_REVIEW_SKILL" || HG2_WHY+=" no-research-bucket"
+grep -qF 'Fix (entailed)'        "$GD_REVIEW_SKILL" || HG2_WHY+=" no-fix-field"
+grep -qF 'Safeguard'             "$GD_REVIEW_SKILL" || HG2_WHY+=" no-safeguard"
+grep -qF '## Phase 6'            "$GD_REVIEW_SKILL" || HG2_WHY+=" no-handoff-phase"
+grep -qF '/unikit-gd-apply'      "$GD_REVIEW_SKILL" || HG2_WHY+=" no-apply-handoff"
+grep -qF 'orthogonal to severity' "$GD_REVIEW_SKILL" || HG2_WHY+=" no-severity-orthogonality"
+if [[ -z "$HG2_WHY" ]]; then
+    pass "HG-2 unikit-gd-review tail (screen-print + apply-ready/research buckets + Fix field + safeguard + /unikit-gd-apply handoff)"
+else
+    fail "HG-2 unikit-gd-review tail drift:$HG2_WHY"
+fi
+
+# (HG-3) the two consumers — unikit-gd-apply reads a review file's apply-ready bucket
+# (detecting reviews/*_review-*.md, carrying each RF-id to the owner's changelog, closing
+# with the apply-phase3 sentinel), and unikit-gd-explore develops the research bucket then
+# proposes /unikit-gd-apply.
+HG3_WHY=""
+grep -qF 'reviews/*_review-*.md'       "$GD_APPLY_SKILL"   || HG3_WHY+=" apply:no-review-file-detect"
+grep -qF '## Apply-ready'              "$GD_APPLY_SKILL"   || HG3_WHY+=" apply:no-apply-ready-read"
+grep -qF 'apply-phase3'                "$GD_APPLY_SKILL"   || HG3_WHY+=" apply:no-sentinel"
+grep -qF 'Carry the review-finding id' "$GD_APPLY_SKILL"   || HG3_WHY+=" apply:no-rf-carry"
+grep -qF 'Research-bucket mode'        "$GD_EXPLORE_SKILL" || HG3_WHY+=" explore:no-research-bucket-mode"
+grep -qF '## Research'                 "$GD_EXPLORE_SKILL" || HG3_WHY+=" explore:no-research-read"
+grep -qF '/unikit-gd-apply'            "$GD_EXPLORE_SKILL" || HG3_WHY+=" explore:no-apply-proposal"
+if [[ -z "$HG3_WHY" ]]; then
+    pass "HG-3 consumers — apply reads review-file apply-ready (RF-carry + apply-phase3) · explore develops research bucket → apply"
+else
+    fail "HG-3 handoff consumers drift:$HG3_WHY"
+fi
+
+# (HG-4) unikit-gd-verify — the four tracks (freshness print-only · entailed→apply-ready ·
+# direction interview · authoring→owner/explore), the read-only declaration (verify writes
+# nothing — the self-heal track was excised this PR; freshness is print-only), the
+# direction-only interview (no decline), the inline-prose handoff (no file), and the
+# LOOP-GUARD (the apply-phase3 sentinel suppresses the offer/interview when verify runs as
+# apply's Phase 3).
+HG4_WHY=""
+grep -qF '4 tracks'          "$GD_VERIFY_SKILL" || HG4_WHY+=" no-4-tracks"
+grep -qF 'print-only'        "$GD_VERIFY_SKILL" || HG4_WHY+=" no-freshness-print-only-track"
+grep -qF 'writes nothing'    "$GD_VERIFY_SKILL" || HG4_WHY+=" no-read-only-declaration"
+grep -qF 'Direction fork'    "$GD_VERIFY_SKILL" || HG4_WHY+=" no-direction-fork-track"
+grep -qF 'Which direction?'  "$GD_VERIFY_SKILL" || HG4_WHY+=" no-direction-interview"
+grep -qF 'no "Decline"'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-decline-ban"
+grep -qF 'inline prose'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-inline-prose-handoff"
+grep -qF 'apply-phase3'      "$GD_VERIFY_SKILL" || HG4_WHY+=" no-sentinel"
+grep -qF 'LOOP-GUARD'        "$GD_VERIFY_SKILL" || HG4_WHY+=" no-loop-guard"
+if [[ -z "$HG4_WHY" ]]; then
+    pass "HG-4 unikit-gd-verify (4 tracks + freshness print-only/read-only + direction-only interview + inline-prose handoff + apply-phase3 LOOP-GUARD)"
+else
+    fail "HG-4 unikit-gd-verify handoff drift:$HG4_WHY"
+fi
+
+# (HG-4b) symmetric to GA-5 — unikit-gd-verify is FULLY READ-ONLY: its allowed-tools carry
+# NO Write / Edit / Bash(mkdir *) (it writes no report file, no Affected line, no doc_status
+# bump, no [gen]-map re-render), while Read/Grep stay (a verify that can't read is dead).
+# Scope to the YAML list so prose mentions of Write/Edit in the Ownership "Never" line do
+# not false-match. (Skill/Agent absence is covered by HG-5.)
+GD_VERIFY_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$GD_VERIFY_SKILL")
+HG4B_WHY=""
+grep -qE '^[[:space:]]*-[[:space:]]*Write$'      <<< "$GD_VERIFY_TOOLS" && HG4B_WHY+=" has-Write"
+grep -qE '^[[:space:]]*-[[:space:]]*Edit$'       <<< "$GD_VERIFY_TOOLS" && HG4B_WHY+=" has-Edit"
+grep -qE '^[[:space:]]*-[[:space:]]*Bash\(mkdir' <<< "$GD_VERIFY_TOOLS" && HG4B_WHY+=" has-mkdir"
+grep -qE '^[[:space:]]*-[[:space:]]*Read$'       <<< "$GD_VERIFY_TOOLS" || HG4B_WHY+=" no-Read"
+grep -qE '^[[:space:]]*-[[:space:]]*Grep$'       <<< "$GD_VERIFY_TOOLS" || HG4B_WHY+=" no-Grep"
+if [[ -z "$HG4B_WHY" ]]; then
+    pass "HG-4b unikit-gd-verify allowed-tools is read-only (Read/Grep present; no Write/Edit/mkdir) — symmetric to GA-5"
+else
+    fail "HG-4b unikit-gd-verify read-only invariant violated:$HG4B_WHY"
+fi
+
+# (HG-5) the SHARED recommend-only handoff line locks the review+verify TAIL with ONE -qF
+# string (drift in either fails — the verify-canonical ↔ review-mirror contract); the
+# REVIEW.md template carries the two buckets + the Fix (entailed) field (canonical
+# reference, aligned with the review SKILL inline format); and NEITHER review nor verify
+# carries `Skill` in allowed-tools (recommend-only — the handoff is a printed command).
+HG5_SHARED='the two handoff tails are identical by contract'
+HG5_WHY=""
+grep -qF "$HG5_SHARED"     "$GD_REVIEW_SKILL" || HG5_WHY+=" review:no-shared-handoff-line"
+grep -qF "$HG5_SHARED"     "$GD_VERIFY_SKILL" || HG5_WHY+=" verify:no-shared-handoff-line"
+grep -qF '## Apply-ready'  "$GD_REVIEW_TPL"   || HG5_WHY+=" tpl:no-apply-ready-bucket"
+grep -qF '## Research'      "$GD_REVIEW_TPL"   || HG5_WHY+=" tpl:no-research-bucket"
+grep -qF 'Fix (entailed)'  "$GD_REVIEW_TPL"   || HG5_WHY+=" tpl:no-fix-field"
+grep -qE '^  - Skill$'     "$GD_REVIEW_SKILL" && HG5_WHY+=" review:Skill-in-allowed-tools"
+grep -qE '^  - Skill$'     "$GD_VERIFY_SKILL" && HG5_WHY+=" verify:Skill-in-allowed-tools"
+if [[ -z "$HG5_WHY" ]]; then
+    pass "HG-5 shared recommend-only handoff line (review+verify, one -qF) + REVIEW.md 2 buckets/Fix field + no Skill in allowed-tools"
+else
+    fail "HG-5 shared handoff/template drift:$HG5_WHY"
+fi
+
+# (HG-6) defective-gdd handoff fixture — a seeded review file under reviews/ (the durable
+# two-bucket interface) with ≥1 apply-ready entailed finding + ≥1 research finding, plus
+# the README "Handoff ground truth" seeds (classification, decline-vs-direction, loop-guard
+# apply-phase3). test-only (under scripts/test-fixtures/, not delivered → no test-install /
+# test-update wiring); the live agent verify/review/apply run is the reviewer's manual step.
+# Reuses GD_DEFECTIVE_DIR (defined above in the flow-fixture block).
+GD_DEFECTIVE_REVIEW="$GD_DEFECTIVE_DIR/reviews/2026-06-25_review-all.md"
+HG6_WHY=""
+[[ -s "$GD_DEFECTIVE_REVIEW" ]]                       || HG6_WHY+=" no-seeded-review-file"
+grep -qF '## Apply-ready'  "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-apply-ready-bucket"
+grep -qF '## Research'      "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-research-bucket"
+grep -qF 'Fix (entailed)'  "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-entailed-fix"
+grep -qF 'RF-2026-06-25-1'  "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-research-finding"
+grep -qF 'RF-2026-06-25-2'  "$GD_DEFECTIVE_REVIEW" 2>/dev/null || HG6_WHY+=" no-apply-ready-finding"
+grep -qF 'Handoff ground truth'  "$GD_DEFECTIVE_DIR/README.md" || HG6_WHY+=" no-readme-handoff-truth"
+grep -qF 'decline-vs-direction'  "$GD_DEFECTIVE_DIR/README.md" || HG6_WHY+=" no-readme-decline-vs-direction"
+grep -qF 'apply-phase3'          "$GD_DEFECTIVE_DIR/README.md" || HG6_WHY+=" no-readme-loop-guard"
+if [[ -z "$HG6_WHY" ]]; then
+    pass "HG-6 defective-gdd handoff fixture — reviews/ seeded review (apply-ready + research) + README handoff ground truth (classification/decline-vs-direction/loop-guard)"
+else
+    fail "HG-6 defective-gdd handoff fixture incomplete:$HG6_WHY"
+fi
+
+# HT: Unit-1 handoff-tail polish (decisions A + B + C — the layer ON TOP of HG-1…HG-6).
+# A — the Handoff Tail contract (runnable command = the LAST block, icon, nothing after)
+#     lives in gd-critique → Handoff Engine and is inherited by review/verify/explore.
+# B — explore's review-file mode mutates the SAME review file IN PLACE (## Research →
+#     ## Apply-ready promotion, brief in-file, zero researches/) → one file command.
+# C — explore accepts RECON.md (pre-GDD carve-out): research saved as usual + a research:
+#     backlink into RECON.md's new ## Explorations section (the asymmetry with B).
+# File-scoped -qF grep invariants on the contract text (bash cannot run an LLM skill).
+# Reuse GD_CRITIQUE / GD_REVIEW_SKILL / GD_VERIFY_SKILL / GD_EXPLORE_SKILL / GD_REVIEW_TPL /
+# GD_RECON_SKILL / GD_INTERNAL_LENS (all defined above).
+
+# (HT-1) gd-critique Handoff Tail contract — the engine A defines: the runnable command is
+# the LAST block (nothing after it), one command on its own line with an icon, and NO
+# downstream-plumbing prose. Inherited by review/verify/explore (HT-2).
+HT1_WHY=""
+grep -qF '### Handoff Tail contract'                  "$GD_CRITIQUE" || HT1_WHY+=" no-tail-contract-heading"
+grep -qF 'The runnable command is the LAST block of the response.' "$GD_CRITIQUE" || HT1_WHY+=" no-command-last-block"
+grep -qF 'One command, on its own line, icon in front' "$GD_CRITIQUE" || HT1_WHY+=" no-one-command-icon"
+grep -qF 'No downstream plumbing.'                    "$GD_CRITIQUE" || HT1_WHY+=" no-downstream-plumbing-ban"
+if [[ -z "$HT1_WHY" ]]; then
+    pass "HT-1 gd-critique Handoff Tail contract (command = last block · one icon-line · no downstream plumbing)"
+else
+    fail "HT-1 gd-critique Handoff Tail contract drift:$HT1_WHY"
+fi
+
+# (HT-2) review + verify Final blocks follow the Tail contract — locked with TWO SHARED
+# -qF strings applied to BOTH skills (drift in either fails: the same contract governs the
+# review tail #1 and the verify tail). verify ALSO keeps its apply-phase3 LOOP-GUARD (the
+# in-apply run prints no command tail). explore INHERITS the contract via its Bootstrap.
+HT2_FOLLOW='Follow the **Handoff Tail contract**'
+HT2_LAST='Then end with the handoff as the LAST block'
+HT2_WHY=""
+grep -qF "$HT2_FOLLOW"        "$GD_REVIEW_SKILL" || HT2_WHY+=" review:no-follow-contract"
+grep -qF "$HT2_FOLLOW"        "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-follow-contract"
+grep -qF "$HT2_LAST"          "$GD_REVIEW_SKILL" || HT2_WHY+=" review:no-last-block"
+grep -qF "$HT2_LAST"          "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-last-block"
+grep -qF 'Nothing prints after the command' "$GD_REVIEW_SKILL" || HT2_WHY+=" review:no-nothing-after"
+grep -qF 'Nothing prints after the command' "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-nothing-after"
+grep -qF 'no command tail'    "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-suppressed-tail"
+grep -qF 'apply-phase3'       "$GD_VERIFY_SKILL" || HT2_WHY+=" verify:no-loop-guard-sentinel"
+grep -qF 'Handoff Tail contract' "$GD_EXPLORE_SKILL" || HT2_WHY+=" explore:no-contract-inheritance"
+if [[ -z "$HT2_WHY" ]]; then
+    pass "HT-2 review+verify Final follow the Tail contract (2 shared -qF + nothing-after) · verify keeps apply-phase3 suppressed tail · explore inherits"
+else
+    fail "HT-2 review/verify/explore Tail-contract drift:$HT2_WHY"
+fi
+
+# (HT-3) explore review-file mode → IN-PLACE promotion (B). The SAME review file is mutated:
+# a developed ## Research finding is promoted into ## Apply-ready (apply reads only that
+# bucket), the brief lives in-file, ZERO researches/, and the output is ONE file command
+# /unikit-gd-apply reviews/X.md. The sanctioned cross-skill write is recorded in BOTH the
+# explore Ownership and the review Ownership; the REVIEW.md template carries the opt#3 note.
+HT3_WHY=""
+grep -qF "developing a review's open questions IN PLACE" "$GD_EXPLORE_RESEARCH_BUCKET" || HT3_WHY+=" explore:no-in-place-mode"
+grep -qF 'Promote the finding in place'   "$GD_EXPLORE_RESEARCH_BUCKET" || HT3_WHY+=" explore:no-promotion-step"
+grep -qF '🛠️ /unikit-gd-apply reviews/'   "$GD_EXPLORE_RESEARCH_BUCKET" || HT3_WHY+=" explore:no-one-file-command"
+grep -qF 'never into `researches/`'       "$GD_EXPLORE_RESEARCH_BUCKET" || HT3_WHY+=" explore:no-zero-researches"
+grep -qF 'Research-bucket mode (in-place promotion)' "$GD_EXPLORE_SKILL" || HT3_WHY+=" explore:no-ownership-note"
+grep -qF 'living pipeline artifact'       "$GD_REVIEW_SKILL"  || HT3_WHY+=" review:no-sanctioned-write-note"
+grep -qF 'promotes it in place'           "$GD_REVIEW_TPL"    || HT3_WHY+=" tpl:no-in-place-promote-note"
+grep -qF 'living pipeline artifact'       "$GD_REVIEW_TPL"    || HT3_WHY+=" tpl:no-living-artifact-note"
+if [[ -z "$HT3_WHY" ]]; then
+    pass "HT-3 explore review-file IN-PLACE (## Research→## Apply-ready · zero researches/ · one file command) + both-skill ownership + REVIEW.md opt#3 note"
+else
+    fail "HT-3 explore in-place review-file drift:$HT3_WHY"
+fi
+
+# (HT-4) explore RECON-input mode + ## Explorations backlink (C). The pre-GDD carve-out:
+# the internal lens engages on RECON.md (no GAME.md), research is saved AS USUAL and a
+# research: backlink is appended to RECON.md's new ## Explorations section (the asymmetry
+# with B). The section + the sanctioned write are recorded in the recon SKILL (format +
+# Ownership); the internal-design-lens reference carries the pre-GDD source carve-out.
+HT4_WHY=""
+grep -qF '## RECON-input mode'        "$GD_EXPLORE_RECON_INPUT" || HT4_WHY+=" explore:no-recon-mode"
+grep -qF 'Pre-GDD carve-out'          "$GD_EXPLORE_RECON_INPUT" || HT4_WHY+=" explore:no-pre-gdd-carveout"
+grep -qF '## Explorations'            "$GD_EXPLORE_SKILL"  || HT4_WHY+=" explore:no-explorations-backlink"
+grep -qF '🗺️ /unikit-gd-spec .unikit/gamedesign/RECON.md' "$GD_EXPLORE_RECON_INPUT" || HT4_WHY+=" explore:no-spec-import-command"
+grep -qF 'RECON-input mode (research + backlink)' "$GD_EXPLORE_SKILL" || HT4_WHY+=" explore:no-recon-ownership-note"
+grep -qF '## Explorations'            "$GD_RECON_SKILL"    || HT4_WHY+=" recon:no-explorations-section"
+grep -qF 'appended by /unikit-gd-explore' "$GD_RECON_SKILL" || HT4_WHY+=" recon:no-explore-writer-note"
+grep -qF 'Pre-GDD source (RECON-input mode)' "$GD_INTERNAL_LENS" || HT4_WHY+=" lens:no-pre-gdd-source-carveout"
+if [[ -z "$HT4_WHY" ]]; then
+    pass "HT-4 explore RECON-input (pre-GDD carve-out · research-as-usual + ## Explorations backlink · spec import) + recon section/ownership + lens carve-out"
+else
+    fail "HT-4 explore RECON-input drift:$HT4_WHY"
+fi
+
+# SL: Unit-2+3 slim (decisions D + E — current-state-only axiom: an artifact holds
+# current state + a minimal provenance anchor, history → git).
+# D — the decisions:/DD-n design-decision log is REMOVED everywhere (write-only, no
+#     machine consumer; the rationale already rides the changelog essence + git).
+# E — the GDD changelog is K1 (the LATEST delta only): a new block REPLACES the prior
+#     one in the document; the full v1…v(N-1) ledger lives in git.
+# File-scoped over data/gamedesign/ + skills/unikit-gd-* + the gamedesign fixtures.
+
+# (SL-1, D) decisions/DD fully removed. The ban is on EXACT tokens (+check-confirmed):
+# the YAML key `decisions:` (bare `decisions` is legitimate English prose — gd-authoring
+# "decisions ride this round", lens "worked-out decisions", README) and the `DD-<n>`
+# design-decision id (precise: `DD-` NOT preceded by a letter — excludes `GDD-first` /
+# `DDD-*` — and followed by a digit / `n` / `<`). NOT bare `DD-`/`decisions`.
+SL_SCOPE=("$GD_DATA" "$ROOT_DIR/scripts/test-fixtures/gamedesign")
+for sl_d in "$ROOT_DIR"/skills/unikit-gd-*/; do SL_SCOPE+=("$sl_d"); done
+SL1_WHY=""
+grep -rnF 'decisions:' "${SL_SCOPE[@]}" >/dev/null 2>&1 && SL1_WHY+=" decisions:-key-present"
+grep -rnE '(^|[^A-Za-z])DD-([0-9]|n|<)' "${SL_SCOPE[@]}" >/dev/null 2>&1 && SL1_WHY+=" DD-<n>-id-token-present"
+grep -qF 'KNOB-slug, DD-n'        "$GD_IDS_TPL"    && SL1_WHY+=" tpl-DD-in-id-list"
+grep -qF 'decisions: []'          "$GD_IDS_TPL"    && SL1_WHY+=" tpl-decisions-section"
+grep -qF '`DD-<n>` | Design decision' "$GD_PRINCIPLES" && SL1_WHY+=" principles-DD-row"
+if [[ -z "$SL1_WHY" ]]; then
+    pass "SL-1 (D) decisions/DD removed — zero decisions:/DD-<n> in data/gamedesign + skills/unikit-gd-* + fixtures (exact tokens) · no DECISIONS in GD-IDS tpl · no DD row in gd-principles"
+else
+    fail "SL-1 decisions/DD drift:$SL1_WHY"
+fi
+
+# (SL-2, E) changelog K1 — the latest-delta-only contract carried by gd-authoring (the
+# owner), all four authored templates (SYSTEM §K / FLOW §F / CONTENT-TYPE §F / GAME
+# ## Changelog), and the three zone skills (system / flow / content) that write it. The
+# AC / GOAL / Fields-delta line + the RF-<date>-n anchor stay (the carrying part — the
+# accumulated prose ledger is what moves to git). Anchor: "latest delta only".
+SL_K1='latest delta only'
+SL2_WHY=""
+grep -qF "$SL_K1" "$GD_AUTHORING"                            || SL2_WHY+=" authoring:no-K1"
+grep -qF "$SL_K1" "$GD_DATA/templates/SYSTEM.md"             || SL2_WHY+=" tpl-system:no-K1"
+grep -qF "$SL_K1" "$GD_DATA/templates/FLOW.md"               || SL2_WHY+=" tpl-flow:no-K1"
+grep -qF "$SL_K1" "$GD_DATA/templates/CONTENT-TYPE.md"       || SL2_WHY+=" tpl-content:no-K1"
+grep -qF "$SL_K1" "$GD_DATA/templates/GAME.md"               || SL2_WHY+=" tpl-game:no-K1"
+grep -qF "$SL_K1" "$ROOT_DIR/skills/unikit-gd-system/references/mode-revise.md"   || SL2_WHY+=" sys-skill:no-K1"
+grep -qF "$SL_K1" "$ROOT_DIR/skills/unikit-gd-flow/references/mode-revise.md"     || SL2_WHY+=" flow-skill:no-K1"
+grep -qF "$SL_K1" "$ROOT_DIR/skills/unikit-gd-content/references/mode-revise.md"  || SL2_WHY+=" content-skill:no-K1"
+# the RF-<date>-n changelog anchor replaces the old DD citation in the changelog format
+grep -qF '(RF-<date>-n)' "$GD_AUTHORING"                     || SL2_WHY+=" authoring:no-RF-anchor"
+if [[ -z "$SL2_WHY" ]]; then
+    pass "SL-2 (E) changelog K1 (latest delta only) in gd-authoring + 4 templates + 3 zone skills · RF-<date>-n essence anchor"
+else
+    fail "SL-2 changelog-K1 drift:$SL2_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -1013,6 +3290,24 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f2: config-tolerance unit tests (unknown agent id in .unikit.json)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f2: config-tolerance unit tests${NC}"
+
+set +e
+CONFIG_TOLERANCE_OUTPUT=$(node "$ROOT_DIR/scripts/test-config-tolerance.mjs" 2>&1)
+CONFIG_TOLERANCE_EXIT=$?
+set -e
+
+if [[ $CONFIG_TOLERANCE_EXIT -eq 0 ]]; then
+    pass "config-tolerance unit tests"
+    echo "$CONFIG_TOLERANCE_OUTPUT" | grep '^PASS ' | sed 's/^/    /'
+else
+    fail "config-tolerance unit tests"
+    echo "$CONFIG_TOLERANCE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
@@ -1030,6 +3325,31 @@ if [[ $MARKER_EXIT -eq 0 ]]; then
 else
     fail "agent-marker validation"
     echo "$MARKER_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g2: agent-filter markers forbidden outside SKILL.md
+# ─────────────────────────────────────────────
+# Reference/template `.md` files do NOT pass through applyAgentFilter — installs
+# only run invocation rewriting + {{}} substitution over them. An agent-filter
+# marker there is therefore either a silently-unprocessed guarded block (content
+# leaks to every agent) or an inline landmine that would throw if the filter is
+# ever enabled for references. SKILL.md is the ONLY surface with agent-filter.
+# Match the fragment form `<!-- unikit:agents` / `<!-- unikit:end` exactly as
+# agent-filter detects it (START_FRAGMENT / END_FRAGMENT in agent-filter.ts) —
+# NOT the bare `unikit:agents` token, which would also match prose and the
+# non-literal `unikit:agents codex guard block` wording in the CHECK-MODE.md
+# files.
+echo -e "\n${BOLD}Part 7g2: agent-filter markers only in SKILL.md${NC}"
+
+MARKER_LEAK_FILES=$(grep -rlE '<!-- unikit:agents|<!-- unikit:end' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null \
+    | grep -v '/SKILL.md$' || true)
+
+if [[ -z "$MARKER_LEAK_FILES" ]]; then
+    pass "no agent-filter markers outside SKILL.md"
+else
+    fail "agent-filter markers found outside SKILL.md (only SKILL.md may carry guarded blocks)"
+    echo "$MARKER_LEAK_FILES" | sed 's/^/      /'
 fi
 
 # ─────────────────────────────────────────────
@@ -1051,6 +3371,36 @@ if [[ $SELF_UPDATE_EXIT -eq 0 ]] && grep -qi 'self-update' <<< "$SELF_UPDATE_OUT
 else
     fail "unikit-ai self-update --help (exit=$SELF_UPDATE_EXIT)"
     echo "$SELF_UPDATE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 7i: installer/registry module file-size guard
+# ─────────────────────────────────────────────
+# Keep the post-refactor installer/* and registry/* submodules and the shared
+# constants.ts under a hard 500-line ceiling so neither the former installer
+# monolith nor the schema-aware registry layer can silently regrow. The limit
+# leaves comfortable headroom over the largest module (installer/rules-sync.ts
+# at ~427, registry/validator.ts at ~297).
+echo -e "\n${BOLD}Part 7i: installer/registry module file-size guard${NC}"
+
+SIZE_LIMIT=500
+SIZE_VIOLATIONS=""
+for f in "$ROOT_DIR"/src/core/installer/*.ts \
+         "$ROOT_DIR"/src/core/registry/*.ts \
+         "$ROOT_DIR"/src/core/registry/migrations/*.ts \
+         "$ROOT_DIR"/src/core/constants.ts; do
+    [[ -f "$f" ]] || continue
+    lines=$(wc -l < "$f" | tr -d ' ')
+    if [[ "$lines" -gt "$SIZE_LIMIT" ]]; then
+        SIZE_VIOLATIONS+="    $(basename "$f"): $lines lines (> $SIZE_LIMIT)\n"
+    fi
+done
+
+if [[ -z "$SIZE_VIOLATIONS" ]]; then
+    pass "installer/registry modules within $SIZE_LIMIT-line limit"
+else
+    fail "installer/registry modules exceed $SIZE_LIMIT-line limit"
+    echo -e "$SIZE_VIOLATIONS"
 fi
 
 # ─────────────────────────────────────────────
@@ -1282,6 +3632,16 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 13b: Genre profile tests (catalog + CLI + schema)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13b: Genre profile tests${NC}"
+if bash "$SCRIPT_DIR/test-genres.sh"; then
+    pass "Genre profile tests passed"
+else
+    fail "Genre profile tests failed"
+fi
+
+# ─────────────────────────────────────────────
 # Part 14: no non-ASCII letters in distributed source code
 # ─────────────────────────────────────────────
 # Rationale: unikit-ai is an international npm CLI. All user-facing strings
@@ -1334,6 +3694,26 @@ if [[ -n "$NON_ASCII_HITS" ]]; then
     echo "$NON_ASCII_HITS" | head -20 | sed 's/^/    /'
 else
     pass "src/ contains only Latin letters"
+fi
+
+# ─────────────────────────────────────────────
+# Part 15: Skill grouping guard
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 15: Skill grouping guard${NC}"
+if bash "$SCRIPT_DIR/test-skill-groups.sh"; then
+    pass "Skill grouping guard passed"
+else
+    fail "Skill grouping guard failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 16: unikit-help navigator guard
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 16: unikit-help navigator guard${NC}"
+if bash "$SCRIPT_DIR/test-help-skill.sh"; then
+    pass "unikit-help navigator guard passed"
+else
+    fail "unikit-help navigator guard failed"
 fi
 
 # ─────────────────────────────────────────────

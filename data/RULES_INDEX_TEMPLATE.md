@@ -1,6 +1,6 @@
 # Rules Index
 
-Knowledge base rules for the project. Located in `.unikit/memory/`.
+Knowledge base rules for the project. Located in `.unikit/memory/code/`.
 
 ## How to use this index
 
@@ -10,8 +10,8 @@ You were directed here by a skill or subagent. The name after "instructions for"
 
 1. **`.unikit/RULES.md`** — project-specific overrides (always wins)
 2. **`.unikit/ARCHITECTURE.md`** — project architecture decisions
-3. **Core rules** (`.unikit/memory/core/`) — universal best practices
-4. **Stack rules** (`.unikit/memory/stack/`) — framework-specific knowledge
+3. **Core rules** (`.unikit/memory/code/core/`) — universal best practices
+4. **Stack rules** (`.unikit/memory/code/stack/`) — framework-specific knowledge
 
 When a project rule in RULES.md or ARCHITECTURE.md conflicts with a core or stack rule, the project rule wins.
 
@@ -27,13 +27,13 @@ For each row in the Core table, check the **Required By** column:
 ### Step 3: Load Stack rules (on demand)
 Load ONLY when the current task involves the framework described in the **Load When** column.
 
-## Core (`.unikit/memory/core/`)
+## Core (`.unikit/memory/code/core/`)
 
 | File | Description | Required By | Load When |
 |------|-------------|-------------|-----------|
 <!-- CORE_TABLE -->
 
-## Stack (`.unikit/memory/stack/`)
+## Stack (`.unikit/memory/code/stack/`)
 
 | File | Description | Load When |
 |------|-------------|-----------|

@@ -19,7 +19,7 @@
 # Engine: unity
 # ─────────────────────────────────────────────
 
-# Core rules — whitelisted set shared across all engines.
+# Core rules — full core-tier set shared across all engines.
 CORE_RULE_UNITY_CODE_STYLE="code-style"
 CORE_RULE_UNITY_DESIGN_PRINCIPLES="design-principles"
 CORE_RULE_UNITY_FOLDERS_STRUCTURE="folders-structure"
@@ -56,7 +56,7 @@ EXPECTED_UNITY_STACK_RULES=(
 )
 
 # ─────────────────────────────────────────────
-# Engine: godot (and godot-net — uses the same core whitelist)
+# Engine: godot (and godot-net — uses the same core-tier set)
 # ─────────────────────────────────────────────
 
 CORE_RULE_GODOT_CODE_STYLE="code-style"
@@ -135,11 +135,65 @@ write_unikit_config() {
   "agents": $agents_json,
   "rules": {
     "installed": {
-      "core": $core_json,
-      "stack": $stack_json
+      "version": "1.0.0",
+      "modules": {
+        "code": {
+          "core": $core_json,
+          "stack": $stack_json
+        }
+      }
     }
   },
   "managedSkills": {}
+}
+JSON
+}
+
+# Build a `genres.installed` JSON array. Each argument is a profile id and
+# becomes `{ "id": "<id>", "version": 1 }`:
+#   json_genre_entries "tycoon" "match3"  →  [{"id":"tycoon","version":1},{"id":"match3","version":1}]
+json_genre_entries() {
+    local parts=()
+    local id
+    for id in "$@"; do
+        parts+=("{\"id\":\"$id\",\"version\":1}")
+    done
+    local IFS=','
+    echo "[${parts[*]}]"
+}
+
+# Write a synthetic, registry-free `.unikit.json` carrying a `genres.installed`
+# list. Distinct from `write_unikit_config`: genres are ORTHOGONAL to knowledge
+# modules — `config.genres.installed` is a flat id list, NOT
+# `rules.installed.modules.gamedesign`. The intentional `_genres` suffix (not
+# `_gamedesign`) marks that orthogonality.
+#
+# Contract:
+#   write_unikit_config_genres <project_dir> <engine> [genres_installed_json]
+#
+#   <genres_installed_json>  JSON array (use json_genre_entries); default `[]`.
+write_unikit_config_genres() {
+    local project_dir="$1"
+    local engine="$2"
+    local genres_json="${3:-[]}"
+
+    mkdir -p "$project_dir"
+    cat > "$project_dir/.unikit.json" <<JSON
+{
+  "version": "1.1.0",
+  "engine": "$engine",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
+  "rules": {
+    "installed": {
+      "version": "1.1.0",
+      "modules": {}
+    }
+  },
+  "genres": {
+    "installed": $genres_json
+  }
 }
 JSON
 }
@@ -298,13 +352,19 @@ seed_rule() {
     local category="$3"
     local rule="$4"
     local source_root="${SEED_RULE_SOURCE_ROOT:-$ROOT_DIR/rules-registry}"
-    local src="$source_root/$engine/$category/$rule.md"
-    local dest_dir="$project/.unikit/memory/$category"
+    # schema:2 sources nest engines under code/<engine>/<tier>/; legacy schema:1
+    # sources keep the flat <engine>/<tier>/ layout. Prefer the schema:2 path and
+    # fall back to flat so both the bundled snapshot and schema:1 fixtures work.
+    local src="$source_root/code/$engine/$category/$rule.md"
+    if [[ ! -f "$src" ]]; then
+        src="$source_root/$engine/$category/$rule.md"
+    fi
+    local dest_dir="$project/.unikit/memory/code/$category"
     mkdir -p "$dest_dir"
     if [[ -f "$src" ]]; then
         cp "$src" "$dest_dir/$rule.md"
     else
-        echo "seed_rule: source rule $src is missing; test setup is broken" >&2
+        echo "seed_rule: source rule for $engine/$category/$rule not found under $source_root (tried code/ and flat); test setup is broken" >&2
         exit 1
     fi
 }
@@ -345,9 +405,9 @@ fake_registry_path() {
 #
 # Creates a minimal .unikit.json inside <project_dir> with:
 #   - engine pinned to <engine>
-#   - rules.installed.core / stack empty
+#   - rules.installed.modules.code.core / stack empty
 #   - rulesRegistry pointing at the fixture fake registry
-#   - .unikit/memory/{core,stack} created
+#   - .unikit/memory/code/{core,stack} created
 #
 # The fixture path is written verbatim so FsRegistry picks it as the
 # primary registry source. Tests that need a seeded state entry should
@@ -373,10 +433,10 @@ use_fake_registry() {
         agents_json='[{"id":"claude","installedSkills":[],"installedSubagents":[]}]'
     fi
 
-    mkdir -p "$project_dir/.unikit/memory/core" "$project_dir/.unikit/memory/stack"
+    mkdir -p "$project_dir/.unikit/memory/code/core" "$project_dir/.unikit/memory/code/stack"
     cat > "$project_dir/.unikit.json" <<JSON
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engine": "$engine",
   "engineMcpKey": null,
   "mcp": { "servers": [] },
@@ -385,8 +445,74 @@ use_fake_registry() {
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": [],
-      "stack": []
+      "modules": {
+        "code": {
+          "core": [],
+          "stack": []
+        }
+      }
+    }
+  },
+  "managedSkills": {}
+}
+JSON
+}
+
+# use_unmigrated_registry <project_dir> <engine> <fixture_name>
+#
+# Like `use_fake_registry`, but seeds a project that PREDATES the modular
+# memory migration — the exact shape the exit-8 staleness guard refuses on:
+#   - legacy flat layout `.unikit/memory/{core,stack}` (NO `memory/code/`),
+#     so the project memory migration chain still reports pending work
+#     (diskPending);
+#   - top-level `version: "1.0.1"` (< MEMORY_MODULAR_MIN_VERSION), so the
+#     version signal also fires (versionStale);
+#   - `rules.installed.modules.code.core` lists `code-style` with a real file
+#     on disk under the flat `memory/core/`, so a wipe (sync reconciling
+#     against the empty `memory/code/`) would be observable in state.
+#
+# A project in this state must make `rules sync` / `rules install` exit 8 and
+# leave `.unikit.json` byte-for-byte unchanged.
+use_unmigrated_registry() {
+    local project_dir="$1"
+    local engine="$2"
+    local fixture_name="$3"
+
+    local fixture_path
+    fixture_path="$(fake_registry_path "$fixture_name")"
+    if [[ ! -f "$fixture_path/manifest.json" ]]; then
+        echo "use_unmigrated_registry: fixture '$fixture_name' missing manifest.json at $fixture_path" >&2
+        exit 1
+    fi
+
+    # Legacy flat layout — deliberately NO memory/code/ wrapper.
+    mkdir -p "$project_dir/.unikit/memory/core" "$project_dir/.unikit/memory/stack"
+    cat > "$project_dir/.unikit/memory/core/code-style.md" <<'MD'
+# code-style
+
+> **Scope**: project
+> **Load when**: writing code in an un-migrated project fixture.
+MD
+
+    cat > "$project_dir/.unikit.json" <<JSON
+{
+  "version": "1.0.1",
+  "engine": "$engine",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
+  "rulesRegistry": "$fixture_path",
+  "rules": {
+    "installed": {
+      "version": "1.0.1",
+      "modules": {
+        "code": {
+          "core": [
+            { "name": "code-style", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "deadbeef" }
+          ],
+          "stack": []
+        }
+      }
     }
   },
   "managedSkills": {}
@@ -509,7 +635,7 @@ _detect_jq() {
 
 # Convert a dotted field path (node-fallback shape) into jq-compatible syntax:
 #   rules.0.id                     -> rules[0].id
-#   rules.installed.core.0.name    -> rules.installed.core[0].name
+#   rules.installed.modules.code.core.0.name    -> rules.installed.modules.code.core[0].name
 #   rules.1                        -> rules[1]
 # jq rejects bare numeric identifiers (`.rules.0.id` is a syntax error); it needs
 # `.rules[0].id` for array access. Node-fallback uses `obj[p]` which works with

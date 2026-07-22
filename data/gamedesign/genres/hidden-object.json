@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "hidden-object",
+  "name": "Hidden-object",
+  "aliases": ["hidden-object", "hog", "hidden-object-game"],
+  "summary": "Игры «найди предмет» со сценами-таксономией и большим объёмом контента (art-cost), экономикой подсказок/энергии и meta-нарративом с декорированием (June's Journey, Hidden City).",
+  "confidence": "high",
+  "default_flow_mode": "linear",
+  "default_packs": ["level-design", "economy", "narrative", "ux-onboarding", "monetization-ethics"],
+  "seed_systems": [
+    { "slug": "scenes", "category": "Gameplay", "tier": "MVP", "why": "сцена + placement объектов — ядро лупа" },
+    { "slug": "hint-economy", "category": "Economy", "tier": "VS", "why": "подсказки и энергия с cd/cost/regen" },
+    { "slug": "meta-decoration", "category": "Meta", "tier": "Alpha", "why": "meta-нарратив + декорирование по главам" }
+  ],
+  "seed_content_types": [
+    { "slug": "scene", "belongs_to": "SYS-scenes", "scale": "bulk", "why": "сцены=контент; Content Budget учитывает art-cost объёма" }
+  ],
+  "seed_entities": [
+    { "slug": "object-list", "why": "список искомых объектов сцены" },
+    { "slug": "decoration", "why": "элементы декорирования meta-нарратива" },
+    { "slug": "chapter", "why": "глава как структура нарратива" }
+  ],
+  "seed_resources": [
+    { "slug": "coins", "kind": "soft", "why": "мягкая валюта на подсказки/декор" },
+    { "slug": "diamonds", "kind": "hard", "why": "твёрдая валюта" },
+    { "slug": "energy", "kind": "event", "why": "энергия с cost/regen — гейт сессии" }
+  ],
+  "critical_sections": ["level-design.SceneTaxonomy", "economy.HintEnergyEconomy", "narrative.MetaNarrativeDecoration"],
+  "review_emphasis": ["scene-taxonomy и content-volume вписаны в Content Budget (art-cost)", "экономика hint+energy (cd/cost/regen) сбалансирована", "meta-нарратив с декорированием держит главы"],
+  "platform_default": "mobile"
+}

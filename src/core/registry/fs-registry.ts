@@ -3,7 +3,9 @@
 import path from 'path';
 import os from 'os';
 import type { RulesRegistry } from './index.js';
-import type { RegistryManifest, RuleCategory, FetchedRule, FetchedReference } from './manifest-types.js';
+import type { RegistryManifest, RuleCategory, ModuleId, FetchedRule, FetchedReference } from './manifest-types.js';
+import { manifestSummary } from './manifest-types.js';
+import { ruleTierSegments } from './rule-path.js';
 import { readTextFile, readJsonFile, fileExists } from '../../utils/fs.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 
@@ -13,8 +15,12 @@ const TAG = 'FsRegistry';
  * Resolve a user-supplied path to an absolute directory.
  * Supports: absolute paths, file:// URIs, ~/ home expansion.
  * Rejects relative paths (returns null).
+ *
+ * Exported so the maintainer `rules registry migrate` / `status` commands can
+ * resolve a configured local `rulesRegistry` value through the exact same logic
+ * the FS transport uses — no duplicated path handling.
  */
-function resolveRegistryPath(raw: string): string | null {
+export function resolveRegistryPath(raw: string): string | null {
   let cleaned = raw;
 
   // file:// URI → path
@@ -43,6 +49,9 @@ export class FsRegistry implements RulesRegistry {
   readonly label: string;
   private readonly rootDir: string | null;
   private readonly rawPath: string;
+  // PHYSICAL schema of the source, cached from the last successful
+  // `fetchManifest`. Drives the rule path layout (flat vs `code/`-prefixed).
+  private physicalSchema: number | null = null;
 
   constructor(pathOrUri: string) {
     this.rawPath = pathOrUri;
@@ -71,17 +80,24 @@ export class FsRegistry implements RulesRegistry {
       return null;
     }
 
-    logInfo(TAG, `manifest loaded, schema=${manifest.schema}, engines=[${Object.keys(manifest.engines ?? {}).join(', ')}]`);
+    this.physicalSchema = typeof manifest.schema === 'number' ? manifest.schema : null;
+    logInfo(TAG, `manifest loaded, schema=${manifest.schema}, ${manifestSummary(manifest)}`);
     return manifest;
   }
 
-  async fetchRule(engineId: string, category: RuleCategory, ruleId: string): Promise<FetchedRule | null> {
+  async fetchRule(
+    module: ModuleId,
+    engineId: string,
+    category: RuleCategory,
+    ruleId: string,
+  ): Promise<FetchedRule | null> {
     if (!this.rootDir) {
       logWarn(TAG, `relative path not allowed: ${this.rawPath}`);
       return null;
     }
 
-    const filePath = path.join(this.rootDir, engineId, category, `${ruleId}.md`);
+    const schema = await this.resolvePhysicalSchema();
+    const filePath = path.join(this.rootDir, ...ruleTierSegments(schema, module, engineId, category), `${ruleId}.md`);
     logInfo(TAG, `fetchRule ${filePath}`);
 
     const content = await readTextFile(filePath);
@@ -94,6 +110,7 @@ export class FsRegistry implements RulesRegistry {
   }
 
   async fetchReferences(
+    module: ModuleId,
     engineId: string,
     category: RuleCategory,
     ruleId: string,
@@ -103,11 +120,13 @@ export class FsRegistry implements RulesRegistry {
       return [];
     }
 
-    logInfo(TAG, `fetchReferences ${engineId}/${category}/${ruleId}: [${filenames.join(', ')}]`);
+    const schema = await this.resolvePhysicalSchema();
+    const tierDir = path.join(this.rootDir, ...ruleTierSegments(schema, module, engineId, category));
+    logInfo(TAG, `fetchReferences ${tierDir}/${ruleId}: [${filenames.join(', ')}]`);
     const results: FetchedReference[] = [];
 
     for (const filename of filenames) {
-      const refPath = path.join(this.rootDir, engineId, category, 'references', filename);
+      const refPath = path.join(tierDir, 'references', filename);
       const content = await readTextFile(refPath);
       if (content !== null) {
         results.push({ filename, content });
@@ -122,5 +141,17 @@ export class FsRegistry implements RulesRegistry {
   /** Check if the path was resolved successfully (not relative). */
   isValid(): boolean {
     return this.rootDir !== null;
+  }
+
+  /**
+   * Physical schema for path building. Lazily loads the manifest once if a rule
+   * fetch races ahead of it; defaults to 1 (flat layout) when the manifest is
+   * absent so behaviour matches the legacy default.
+   */
+  private async resolvePhysicalSchema(): Promise<number> {
+    if (this.physicalSchema === null) {
+      await this.fetchManifest();
+    }
+    return this.physicalSchema ?? 1;
   }
 }

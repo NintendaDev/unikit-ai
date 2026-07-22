@@ -1,7 +1,9 @@
 import path from 'path';
 import { createRequire } from 'module';
 import { readJsonFile, writeJsonFile, fileExists } from '../utils/fs.js';
-import { getAgentConfig } from './agents.js';
+import { AGENT_REGISTRY, getAgentConfig } from './agents.js';
+import { CODE_MODULE_ID, RULE_CATEGORIES, type Tier } from './constants.js';
+import { getModule, listModules } from './modules.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -43,10 +45,27 @@ export interface InstalledRuleEntry {
   installed_hash?: string;
 }
 
+/**
+ * Installed-rule state, keyed by module then tier:
+ * `modules[<module>][<tier>]`. Replaces the legacy flat `{ core, stack }`
+ * shape; `normalizeRulesInstallation` migrates legacy configs in place on load.
+ */
 export interface RulesInstallation {
   version: string;
-  core: InstalledRuleEntry[];
-  stack: InstalledRuleEntry[];
+  modules: Record<string, Record<Tier, InstalledRuleEntry[]>>;
+}
+
+/**
+ * One installed genre profile in `.unikit.json`. `version` is a recorded
+ * provenance fact (which bundled revision was delivered) — the installer
+ * refreshes installed profiles unconditionally (flat rewrite), so `version`
+ * does NOT gate refresh. Genres are orthogonal to knowledge modules:
+ * `genres.installed` is a flat list keyed by profile id, NOT
+ * `rules.installed.modules.*`.
+ */
+export interface GenreInstallEntry {
+  id: string;
+  version: number;
 }
 
 export interface UniKitConfig {
@@ -59,6 +78,14 @@ export interface UniKitConfig {
   extensions?: ExtensionRecord[];
   rules: {
     installed: RulesInstallation;
+  };
+  /**
+   * Selectively installed read-only genre profiles. Optional (additive, like
+   * {@link UniKitConfig.extensions}): absent on configs written before the
+   * genres feature; `loadConfig` always normalizes it to `{ installed: [] }`.
+   */
+  genres?: {
+    installed: GenreInstallEntry[];
   };
 }
 
@@ -130,17 +157,116 @@ function normalizeRuleEntries(raw: unknown): InstalledRuleEntry[] {
   });
 }
 
+/**
+ * The tier list used to (de)serialize one module's state. Registered modules
+ * use their own `tiers` (the gamedesign module persists `library`, not
+ * `stack`); unknown module ids in a loaded config fall back to the `code`
+ * tier list so foreign entries survive a round-trip unchanged in shape.
+ */
+function tiersOf(moduleId: string): readonly Tier[] {
+  return getModule(moduleId)?.tiers ?? RULE_CATEGORIES;
+}
+
+/** A fresh, empty per-tier container for one module. */
+function emptyTierMap(tiers: readonly Tier[]): Record<Tier, InstalledRuleEntry[]> {
+  const map = {} as Record<Tier, InstalledRuleEntry[]>;
+  for (const tier of tiers) {
+    map[tier] = [];
+  }
+  return map;
+}
+
+/** Empty module-keyed rules state with every registered module pre-created. */
+export function emptyRulesInstallation(): RulesInstallation {
+  const modules: Record<string, Record<Tier, InstalledRuleEntry[]>> = {};
+  for (const module of listModules()) {
+    modules[module.id] = emptyTierMap(module.tiers);
+  }
+  return { version: CURRENT_VERSION, modules };
+}
+
+/** Normalize one module's tier map from raw JSON, filling missing tiers. */
+function normalizeModuleTiers(moduleId: string, raw: unknown): Record<Tier, InstalledRuleEntry[]> {
+  const tiers = tiersOf(moduleId);
+  const map = emptyTierMap(tiers);
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    for (const tier of tiers) {
+      map[tier] = normalizeRuleEntries(obj[tier]);
+    }
+  }
+  return map;
+}
+
 function normalizeRulesInstallation(raw: unknown): RulesInstallation {
   if (!raw || typeof raw !== 'object') {
-    return { version: CURRENT_VERSION, core: [], stack: [] };
+    return emptyRulesInstallation();
   }
 
   const inst = raw as Record<string, unknown>;
-  return {
-    version: (inst.version as string) ?? CURRENT_VERSION,
-    core: normalizeRuleEntries(inst.core),
-    stack: normalizeRuleEntries(inst.stack),
-  };
+  const version = (inst.version as string) ?? CURRENT_VERSION;
+
+  // New module-keyed format: { version, modules: { <module>: { <tier>: [] } } }.
+  // Idempotent — re-normalizing an already-migrated config returns the same shape.
+  if (inst.modules && typeof inst.modules === 'object') {
+    const rawModules = inst.modules as Record<string, unknown>;
+    const modules: Record<string, Record<Tier, InstalledRuleEntry[]>> = {};
+    for (const [moduleId, tiers] of Object.entries(rawModules)) {
+      modules[moduleId] = normalizeModuleTiers(moduleId, tiers);
+    }
+    // Guarantee every registered module's container exists so accessors never
+    // miss it (configs written before a module was registered lack its key).
+    for (const module of listModules()) {
+      if (!modules[module.id]) {
+        modules[module.id] = emptyTierMap(module.tiers);
+      }
+    }
+    return { version, modules };
+  }
+
+  // Legacy flat format: { version, core, stack } → wrap under the code module.
+  // `normalizeModuleTiers` reads `inst.core` / `inst.stack` directly off the
+  // top-level object, so the legacy entries land in `modules.code`; the other
+  // registered modules get fresh empty containers.
+  const modules = emptyRulesInstallation().modules;
+  modules[CODE_MODULE_ID] = normalizeModuleTiers(CODE_MODULE_ID, inst);
+  return { version, modules };
+}
+
+/**
+ * Return the LIVE `InstalledRuleEntry[]` for `modules[module][tier]`, lazily
+ * creating the module/tier containers when absent. Call sites mutate the
+ * returned array in place (`push` / `splice`), so a copy would silently break
+ * them — this must always hand back the array stored on the config.
+ */
+export function getModuleTier(
+  config: UniKitConfig,
+  module: string,
+  tier: Tier,
+): InstalledRuleEntry[] {
+  const installed = config.rules.installed;
+  let moduleMap = installed.modules[module];
+  if (!moduleMap) {
+    moduleMap = emptyTierMap(tiersOf(module));
+    installed.modules[module] = moduleMap;
+  }
+  if (!moduleMap[tier]) {
+    moduleMap[tier] = [];
+  }
+  return moduleMap[tier];
+}
+
+/**
+ * Return the LIVE `GenreInstallEntry[]` for `config.genres.installed`, lazily
+ * creating the `genres` container when absent. Mirrors {@link getModuleTier}:
+ * call sites mutate the returned array in place (`push` / `splice`), so this
+ * must hand back the array stored on the config, never a copy.
+ */
+export function getInstalledGenres(config: UniKitConfig): GenreInstallEntry[] {
+  if (!config.genres) {
+    config.genres = { installed: [] };
+  }
+  return config.genres.installed;
 }
 
 function normalizeExtensions(raw: unknown): ExtensionRecord[] {
@@ -154,6 +280,30 @@ function normalizeExtensions(raw: unknown): ExtensionRecord[] {
   });
 }
 
+/**
+ * Normalize the `genres` install-state. A missing/malformed field yields
+ * `{ installed: [] }` (never `undefined`), mirroring
+ * {@link normalizeRulesInstallation}'s "always a container" contract so
+ * accessors and the installer never branch on absence. A version that isn't a
+ * number defaults to `1`.
+ */
+function normalizeGenres(raw: unknown): { installed: GenreInstallEntry[] } {
+  if (!raw || typeof raw !== 'object') return { installed: [] };
+
+  const rawInstalled = (raw as Record<string, unknown>).installed;
+  if (!Array.isArray(rawInstalled)) return { installed: [] };
+
+  const installed: GenreInstallEntry[] = [];
+  for (const item of rawInstalled) {
+    if (item && typeof item === 'object' && typeof (item as Record<string, unknown>).id === 'string') {
+      const entry = item as Record<string, unknown>;
+      const version = typeof entry.version === 'number' ? entry.version : 1;
+      installed.push({ id: entry.id as string, version });
+    }
+  }
+  return { installed };
+}
+
 export async function loadConfig(projectDir: string): Promise<UniKitConfig | null> {
   const configPath = getConfigPath(projectDir);
   const raw = await readJsonFile<Record<string, unknown>>(configPath);
@@ -162,18 +312,29 @@ export async function loadConfig(projectDir: string): Promise<UniKitConfig | nul
   }
 
   const rawAgents = Array.isArray(raw.agents) ? raw.agents : [];
-  const normalizedAgents = rawAgents.map((agent: Record<string, unknown>) => {
-    const agentConfig = getAgentConfig(agent.id as string);
+  const normalizedAgents = rawAgents.flatMap((agent: Record<string, unknown>) => {
+    const id = agent.id as string;
 
-    return {
-      id: agent.id as string,
+    // Tolerate unknown agent ids: a config written for an agent no longer in the
+    // registry (e.g. a dropped install target) is filtered out with a warning
+    // instead of crashing every CLI command through getAgentConfig's throw. The
+    // next saveConfig persists the config without the stale entry (free migration).
+    if (!AGENT_REGISTRY[id]) {
+      console.warn(`WARN: unknown agent '${id}' in .unikit.json — skipping`);
+      return [];
+    }
+
+    const agentConfig = getAgentConfig(id);
+
+    return [{
+      id,
       skillsDir: (agent.skillsDir as string) || agentConfig.skillsDir,
       subagentsDir: (agent.subagentsDir as string) || (agent.agentsDir as string) || agentConfig.subagentsDir,
       installedSkills: Array.isArray(agent.installedSkills) ? agent.installedSkills as string[] : [],
       installedSubagents: Array.isArray(agent.installedSubagents) ? agent.installedSubagents as string[] : Array.isArray(agent.installedAgents) ? agent.installedAgents as string[] : [],
       managedSkills: normalizeManagedSkills(agent.managedSkills),
       managedSubagents: normalizeManagedSkills(agent.managedSubagents),
-    };
+    }];
   });
 
   const rawRules = raw.rules as Record<string, unknown> | undefined;
@@ -191,6 +352,7 @@ export async function loadConfig(projectDir: string): Promise<UniKitConfig | nul
       // saveConfig will persist the config without it so the migration is seamless.
       installed: normalizeRulesInstallation(rawRules?.installed),
     },
+    genres: normalizeGenres(raw.genres),
   };
 }
 

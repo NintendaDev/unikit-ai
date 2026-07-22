@@ -1,11 +1,16 @@
 ---
 name: unikit-devcontext
 description: >-
-  Senior {{engine_name}}/{{engine_code_language}} developer assistant for the current {{engine_name}} project.
-  Use when writing, reviewing, or refactoring {{engine_code_language}} code, designing game architecture,
-  optimizing performance, implementing game logic, or discussing patterns like DI, ECS,
-  MVC, state machines, and event systems. Activate when the user works with game engine scripts
-  or mentions {{engine_name}}-related concepts.
+  Senior {{engine_name}}/{{engine_code_language}} developer that performs direct, ad-hoc
+  code tasks without a formal plan — and the code-execution engine other unikit skills and
+  agents delegate to. Use it whenever the user asks to do something in code right now, e.g.
+  "add this method to this class", "refactor this function", "write a script that does X",
+  "change this code", "optimize this class". Phrases like "without a plan", "no plan",
+  "just do it", or "directly" are strong signals to use this skill rather than planning.
+  Covers writing, refactoring, optimizing, and discussing {{engine_code_language}} code and
+  patterns (DI, ECS, MVC, state machines, event systems). For a larger multi-step feature,
+  plan it with /unikit-plan and build it with /unikit-implement — this skill is for direct,
+  unplanned code work.
 argument-hint: "[task or file path]"
 ---
 
@@ -31,8 +36,8 @@ Before writing code, load the project rules from `.unikit/`:
 
 1. **ALWAYS read** `.unikit/DESCRIPTION.md` — project specification, tech stack, constraints
 2. **ALWAYS read** `.unikit/ARCHITECTURE.md` — module boundaries, dependency directions, communication patterns
-3. **Read `.unikit/memory/RULES_INDEX.md`**. Load rules:
+3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
    - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
-   - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
+   - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **Read `.unikit/skill-context/{{self_name}}/SKILL.md`** if it exists — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict.

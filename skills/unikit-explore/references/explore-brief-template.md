@@ -5,7 +5,7 @@ Project: [Engine, DI framework, key libraries]
 Feature: [path to docs/features/XXX.md]
 Scope: [2-4 key components separated by +]
 Stop condition: [what is NOT implemented in this task]
-Research: [path to .unikit/researches/XXX/RESEARCH_RESULT.md]
+Research: [path to .unikit/code/researches/XXX/RESEARCH_RESULT.md]
 
 ---
 ## CONSTRAINTS

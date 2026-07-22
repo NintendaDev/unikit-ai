@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "puzzle",
+  "name": "Puzzle",
+  "aliases": ["puzzle"],
+  "summary": "Головоломки, где сложность=кривая обучения: вводится механика-примитив, уровни строятся как композиция с решением, нужен level-editor/pipeline (The Witness, Baba Is You).",
+  "confidence": "high",
+  "default_flow_mode": "linear",
+  "default_packs": ["level-design", "pedagogy", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "mechanic-primitive", "category": "Gameplay", "tier": "MVP", "why": "механика-примитив — атом головоломки" },
+    { "slug": "level-pipeline", "category": "Content", "tier": "VS", "why": "level-editor/pipeline для производства уровней" },
+    { "slug": "hint", "category": "UX", "tier": "Alpha", "why": "подсказки при застревании" }
+  ],
+  "seed_content_types": [
+    { "slug": "puzzle-level", "belongs_to": "SYS-level-pipeline", "scale": "bulk", "why": "уровень=композиция+решение; §E Validation проверяет solvability" }
+  ],
+  "seed_entities": [
+    { "slug": "solvability", "why": "гарантия решаемости уровня" },
+    { "slug": "teaching-ordering", "why": "порядок ввода механик = curriculum" }
+  ],
+  "seed_resources": [],
+  "critical_sections": ["pedagogy.MechanicIntroductionCurriculum", "level-design.DifficultyAsLearningCurve", "level-design.LevelEditorPipeline"],
+  "review_emphasis": ["каждая механика вводится через curriculum (teaching-ordering)", "сложность растёт как кривая обучения, не как стена", "у каждого уровня доказана solvability (§E Validation)"],
+  "platform_default": "mobile"
+}

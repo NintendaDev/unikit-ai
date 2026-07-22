@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "dating-sim",
+  "name": "Dating Sim",
+  "aliases": ["dating-simulator", "romance-sim", "otome"],
+  "summary": "Симуляторы свиданий (надмножество VN): многомерные шкалы симпатии, взаимоисключающие маршруты, триггер-таблицы событий и CG поверх всех VN-блоков (Doki Doki, Mystic Messenger).",
+  "confidence": "medium",
+  "default_flow_mode": "conditional",
+  "default_packs": ["narrative", "progression", "player-motivation", "core-loops", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "affection-meter", "category": "Progression", "tier": "MVP", "why": "многомерная шкала симпатии — ось прогрессии романа" },
+    { "slug": "route-gating", "category": "Narrative", "tier": "MVP", "why": "гейтинг маршрутов: взаимоисключающие линии романа" },
+    { "slug": "event-trigger", "category": "Narrative", "tier": "VS", "why": "триггер-таблица событий и CG по порогам/таймфреймам" },
+    { "slug": "route-map", "category": "Narrative", "tier": "MVP", "why": "карта маршрутов (VN-блок)" },
+    { "slug": "asset-manifest", "category": "Content", "tier": "MVP", "why": "манифест ассетов CG/спрайтов (VN-блок)" }
+  ],
+  "seed_content_types": [
+    { "slug": "event", "belongs_to": "SYS-event-trigger", "scale": "bulk", "why": "события свиданий по порогу/таймфрейму И ЕСТЬ контент" },
+    { "slug": "character", "belongs_to": "SYS-asset-manifest", "scale": "curated", "why": "горстка романтических интересов со спрайтами/маршрутами" }
+  ],
+  "seed_entities": [
+    { "slug": "affection-meter", "why": "многомерный мульти-стат симпатии" },
+    { "slug": "route", "why": "романтический маршрут" },
+    { "slug": "relationship-stage", "why": "стадия отношений (порог симпатии)" },
+    { "slug": "event-trigger", "why": "триггер события: порог + таймфрейм" },
+    { "slug": "cg", "why": "event CG как награда" },
+    { "slug": "time-slot", "why": "слот календаря/расписания свиданий" },
+    { "slug": "ending-gate", "why": "гейт концовки по симпатии/маршруту" }
+  ],
+  "seed_resources": [
+    { "slug": "affection", "kind": "soft", "why": "очки симпатии — мягкая шкала прогрессии (трек)" },
+    { "slug": "story-flags", "kind": "event", "why": "флаги-события маршрутов и анлоков CG" }
+  ],
+  "critical_sections": ["progression.AffectionMeter", "narrative.RouteGating", "narrative.EventTriggerTable", "narrative.AssetManifest"],
+  "review_emphasis": ["многомерная шкала симпатии не сводится к одной оси и читаемо влияет на маршруты", "маршруты взаимоисключающи; гейтинг не допускает невалидных комбинаций", "каждое событие/CG имеет валидный триггер (порог + таймфрейм) и достижимо"],
+  "platform_default": "pc"
+}

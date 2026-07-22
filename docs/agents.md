@@ -14,9 +14,9 @@
 | Claude Code | `.claude/` | Yes (`.mcp.json`) | Stable |
 | Codex CLI | `.codex/` | Yes (`.codex/config.toml`) | Beta |
 | Cursor | `.cursor/` | Yes (`.cursor/mcp.json`) | Beta |
-| Gemini CLI | `.gemini/` | Yes (`.gemini/settings.json`) | Beta |
 | Qwen Code | `.qwen/` | Yes (`.qwen/settings.json`) | Beta |
 | OpenCode | `.opencode/` | Yes (`opencode.json`) | Beta |
+| Antigravity | `.agents/` | Yes (`.agents/mcp_config.json`) | Beta |
 
 Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in but rough edges are still possible. See [configuration.md](configuration.md) for details.
 
@@ -32,13 +32,15 @@ Codex CLI is the only supported agent that blocks automatic subagent launches at
 
 Subagents work well, but there is no Skill Tool available to them. To run a subagent against a skill, the subagent's instruction includes an explicit step to read the target skill's `SKILL.md` and follow it. Overall this works acceptably.
 
-### Gemini CLI
-
-When launching some skills, the agent may stall at the very start and do nothing until the user types something like "Continue" or "Proceed". The root cause is still unclear - the behaviour reproduces on both Windows and macOS.
-
 ### OpenCode and Qwen Code
 
-Same "Continue" issue as Gemini CLI: the agent may pause at the beginning of a skill and only resume after an explicit user nudge.
+When launching some skills, the agent may pause at the very start and do nothing until the user types something like "Continue" or "Proceed". The root cause is still unclear - the behaviour reproduces on both Windows and macOS.
+
+### Antigravity
+
+Antigravity (the IDE and CLI share one `.agents/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agents/skills/<name>/` directory triggered by its `description`, like Claude Code. There is no `/unikit-*` slash command and no `Skill` tool, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) degrades to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.
+
+MCP is configured automatically into `.agents/mcp_config.json`, same as other agents; a separate global `~/.gemini/config/mcp_config.json` remains available for user-wide servers, untouched by UniKit.
 
 ## See Also
 

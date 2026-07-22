@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "horror",
+  "name": "Horror",
+  "aliases": ["survival-horror", "horror-game"],
+  "summary": "Хоррор на ощущаемом давлении: pacing/tension через AI-director, stalker-AI на сенсорах, scarcity ресурсов (ammo/health/save-slots), атмосфера и level-design с safe-rooms (Resident Evil, Alien: Isolation).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["ai-behavior", "economy", "level-design", "core-loops", "narrative"],
+  "seed_systems": [
+    { "slug": "ai-director", "category": "Gameplay", "tier": "MVP", "why": "pacing/tension через director — ощущаемое давление это ядро" },
+    { "slug": "enemy-ai", "category": "Gameplay", "tier": "MVP", "why": "stalker-AI на сенсорах: patrol/search/hunt — угроза" },
+    { "slug": "resource-scarcity", "category": "Economy", "tier": "VS", "why": "scarcity ammo/health/save-slots — напряжение через дефицит" },
+    { "slug": "level-design", "category": "Content", "tier": "VS", "why": "safe-rooms + scare triggers — топология страха" },
+    { "slug": "atmosphere", "category": "UX", "tier": "Alpha", "why": "audio cues + атмосфера — носитель ужаса" }
+  ],
+  "seed_content_types": [
+    { "slug": "level", "belongs_to": "SYS-level-design", "scale": "bulk", "why": "уровни/локации со scare triggers, safe-rooms и расстановкой ресурсов" }
+  ],
+  "seed_entities": [
+    { "slug": "enemy", "why": "враг с AI-состояниями (patrol/search/hunt) и сенсорами" },
+    { "slug": "safe-room", "why": "безопасная комната — клапан напряжения и сейв" }
+  ],
+  "seed_resources": [
+    { "slug": "ammo", "kind": "event", "why": "патроны в дефиците — двигатель scarcity" },
+    { "slug": "save-slots", "kind": "event", "why": "слоты сохранения — цена ошибки и напряжение" }
+  ],
+  "critical_sections": ["ai-behavior.AIDirector", "ai-behavior.StalkerSensors", "economy.ResourceScarcity"],
+  "review_emphasis": ["AI-director держит pacing/tension — давление ощущается, а не считывается", "stalker-AI на сенсорах честен: игрок понимает, что его выдало", "scarcity (ammo/health/save-slots) создаёт напряжение без тупиков"],
+  "platform_default": "console"
+}

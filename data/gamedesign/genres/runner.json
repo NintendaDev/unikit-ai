@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "runner",
+  "name": "Endless runner",
+  "aliases": ["runner", "endless-runner", "infinite-runner"],
+  "summary": "Бесконечные раннеры с pacing/segment-архитектурой, процедурной расстановкой чанков, нарастанием скорости и экономикой пикапов/возрождений (Subway Surfers, Temple Run).",
+  "confidence": "high",
+  "default_flow_mode": "linear",
+  "default_packs": ["level-design", "procgen", "economy", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "track", "category": "Gameplay", "tier": "MVP", "why": "lane + obstacle catalog — ядро бега" },
+    { "slug": "chunk-spawner", "category": "Technical", "tier": "MVP", "why": "процедурная расстановка чанков по gap-rule/speed" },
+    { "slug": "speed-ramp", "category": "Progression", "tier": "VS", "why": "нарастание скорости — кривая сложности" },
+    { "slug": "pickup-revive", "category": "Economy", "tier": "Alpha", "why": "экономика пикапов и возрождений (revive)" }
+  ],
+  "seed_content_types": [
+    { "slug": "chunk", "belongs_to": "SYS-chunk-spawner", "scale": "bulk", "why": "chunk/segment=authored unit для procgen-сборки трассы" }
+  ],
+  "seed_entities": [
+    { "slug": "lane", "why": "дорожка движения" },
+    { "slug": "obstacle", "why": "каталог препятствий" },
+    { "slug": "gap-rule", "why": "правило зазора/скорости между чанками" }
+  ],
+  "seed_resources": [
+    { "slug": "coins", "kind": "soft", "why": "мягкая валюта-пикап" },
+    { "slug": "revive", "kind": "event", "why": "возрождение — событийный ресурс" }
+  ],
+  "critical_sections": ["level-design.SegmentArchitecture", "procgen.ChunkSpacing", "level-design.SpeedRamp"],
+  "review_emphasis": ["segment-архитектура и chunk-spacing дают честный pacing", "speed-ramp растёт без скачков-стен", "экономика pickup+revive замкнута"],
+  "platform_default": "mobile"
+}

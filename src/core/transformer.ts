@@ -1,6 +1,7 @@
 import { DefaultTransformer } from './transformers/default.js';
 import { CodexTransformer } from './transformers/codex.js';
 import { QwenTransformer } from './transformers/qwen.js';
+import { AntigravityTransformer } from './transformers/antigravity.js';
 
 export interface TransformResult {
   targetDir: string;
@@ -11,6 +12,15 @@ export interface TransformResult {
 
 export interface AgentTransformer {
   transform(skillName: string, content: string): TransformResult;
+  /**
+   * Rewrite skill invocations (`/unikit-*`) inside a reference `.md` file body.
+   * Optional: only agents that remap invocations (codex/qwen) implement it;
+   * default agents (claude/cursor/opencode) leave it undefined so
+   * references keep `/unikit-*` verbatim. Unlike {@link transform} this never
+   * runs the agent-filter — reference files carry no guarded blocks (enforced
+   * by a source guard in scripts/test-skills.sh).
+   */
+  transformReference?(content: string): string;
   postInstall?(projectDir: string): Promise<void>;
   getWelcomeMessage(): string[];
   getInvocationHint?(): string;
@@ -46,6 +56,7 @@ export function rewriteInvocationPrefix(
 const registry: Record<string, () => AgentTransformer> = {
   codex: () => new CodexTransformer(),
   qwen: () => new QwenTransformer(),
+  antigravity: () => new AntigravityTransformer(),
 };
 
 export function getTransformer(agentId: string): AgentTransformer {

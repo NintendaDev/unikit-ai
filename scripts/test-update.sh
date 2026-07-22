@@ -60,8 +60,12 @@ cat > "$PROJECT_DIR/.unikit.json" << 'EOF'
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": ["code-style", "design-principles", "folders-structure", "performance", "testing"],
-      "stack": ["unitask", "r3"]
+      "modules": {
+        "code": {
+          "core": ["code-style", "design-principles", "folders-structure", "performance", "testing"],
+          "stack": ["unitask", "r3"]
+        }
+      }
     }
   }
 }
@@ -108,9 +112,9 @@ assert_exists "$PROJECT_DIR/.claude/skills/unikit-plan/SKILL.md" "unikit-plan sk
 assert_exists "$PROJECT_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"
 
 # Rules should be installed
-assert_exists "$PROJECT_DIR/.unikit/memory/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "core rule must be installed"
-assert_exists "$PROJECT_DIR/.unikit/memory/stack/${STACK_RULE_UNITY_UNITASK}.md" "stack rule must be installed"
-assert_exists "$PROJECT_DIR/.unikit/memory/RULES_INDEX.md" "RULES_INDEX.md must be generated"
+assert_exists "$PROJECT_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "core rule must be installed"
+assert_exists "$PROJECT_DIR/.unikit/memory/code/stack/${STACK_RULE_UNITY_UNITASK}.md" "stack rule must be installed"
+assert_exists "$PROJECT_DIR/.unikit/memory/code/RULES_INDEX.md" "RULES_INDEX.md must be generated"
 
 # Engine templates should be installed
 assert_exists "$PROJECT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" "ENGINE_RULES.md must be installed for unikit"
@@ -226,8 +230,12 @@ cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": ["code-style"],
-      "stack": []
+      "modules": {
+        "code": {
+          "core": ["code-style"],
+          "stack": []
+        }
+      }
     }
   }
 }
@@ -241,7 +249,7 @@ COMPAT_OUTPUT="$TMPDIR/update-compat.log"
 assert_contains "$COMPAT_OUTPUT" "Engine: unity" "backward compat should show unity engine"
 
 # Should preserve the seeded core rule (sync tags it as source=local).
-assert_exists "$COMPAT_DIR/.unikit/memory/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "backward compat: core rule present"
+assert_exists "$COMPAT_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "backward compat: core rule present"
 
 # Config should now have engine and new MCP format
 COMPAT_ENGINE=$(node -e "
@@ -286,7 +294,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -340,7 +348,7 @@ cat > "$HASH_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -390,7 +398,7 @@ cat > "$ARTIFACT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -436,7 +444,7 @@ cat > "$SA_DRIFT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -494,10 +502,17 @@ cat > "$MULTI_DIR/.unikit.json" << 'EOF'
       "subagentsDir": ".codex/agents",
       "installedSkills": ["unikit", "unikit-plan"],
       "installedSubagents": []
+    },
+    {
+      "id": "antigravity",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan"],
+      "installedSubagents": ["unikit-architecture-sidecar"]
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -509,10 +524,12 @@ MULTI_OUTPUT="$TMPDIR/update-multi.log"
 # Both agents must have per-agent status sections
 assert_contains "$MULTI_OUTPUT" "\[claude\] Skills status:" "claude agent status section must be printed"
 assert_contains "$MULTI_OUTPUT" "\[codex\] Skills status:" "codex agent status section must be printed"
+assert_contains "$MULTI_OUTPUT" "\[antigravity\] Skills status:" "antigravity agent status section must be printed"
 
-# Both agents must have skills installed on disk
+# All three agents must have skills installed on disk
 assert_exists "$MULTI_DIR/.claude/skills/unikit/SKILL.md" "claude must have unikit skill installed"
 assert_exists "$MULTI_DIR/.codex/skills/unikit/SKILL.md" "codex must have unikit skill installed"
+assert_exists "$MULTI_DIR/.agents/skills/unikit/SKILL.md" "antigravity must have unikit skill installed"
 
 # Claude should also have subagent installed
 assert_exists "$MULTI_DIR/.claude/agents/unikit-architecture-sidecar.md" "claude must have subagent installed"
@@ -520,7 +537,10 @@ assert_exists "$MULTI_DIR/.claude/agents/unikit-architecture-sidecar.md" "claude
 # Codex should NOT have subagents (supportsSubagents: false)
 assert_not_exists "$MULTI_DIR/.codex/agents/unikit-architecture-sidecar.md" "codex must not have subagent files"
 
-echo "  ✓ multi-agent update: both agents get skills, per-agent status sections printed"
+# Antigravity should NOT have subagents (supportsSubagents: false), even though one is listed
+assert_not_exists "$MULTI_DIR/.agents/agents/unikit-architecture-sidecar.md" "antigravity must not have subagent files"
+
+echo "  ✓ multi-agent update: all three agents get skills, per-agent status sections printed"
 
 # ─────────────────────────────────────────────
 # Test 13: update with no config - error path
@@ -564,7 +584,7 @@ cat > "$ENGINE_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -608,7 +628,7 @@ else
 fi
 
 # Godot core rule must be present after the seed + sync cycle.
-assert_exists "$ENGINE_DIR/.unikit/memory/core/${CORE_RULE_GODOT_CODE_STYLE}.md" "godot core rule present after switch"
+assert_exists "$ENGINE_DIR/.unikit/memory/code/core/${CORE_RULE_GODOT_CODE_STYLE}.md" "godot core rule present after switch"
 
 echo "  ✓ engine switch: unity->godot triggers reinstall, ENGINE_RULES shows Godot, core rule preserved"
 
@@ -636,7 +656,7 @@ cat > "$NEWSKILL_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -678,7 +698,7 @@ cat > "$LEGACY_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] },
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } },
     "declined": ["FOO", "BAR"]
   }
 }
@@ -732,7 +752,7 @@ cat > "$SA_REMOVED_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -796,7 +816,7 @@ cat > "$SKILLCTX_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -871,7 +891,7 @@ cat > "$SA_HASH_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -933,7 +953,7 @@ cat > "$SA_ARTIFACT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -970,7 +990,7 @@ cat > "$ZERO_DIR/.unikit.json" << 'EOF'
   "mcp": { "servers": [] },
   "agents": [],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style", "design-principles"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style", "design-principles"], "stack": [] } } }
   }
 }
 EOF
@@ -989,9 +1009,9 @@ if [[ "$EXIT_CODE" -ne 0 ]]; then
 fi
 
 # Seeded rules must survive the update (sync tags them source=local).
-assert_exists "$ZERO_DIR/.unikit/memory/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "core rule present with zero agents"
-assert_exists "$ZERO_DIR/.unikit/memory/core/${CORE_RULE_UNITY_DESIGN_PRINCIPLES}.md" "second core rule present with zero agents"
-assert_exists "$ZERO_DIR/.unikit/memory/RULES_INDEX.md" "RULES_INDEX.md must be generated with zero agents"
+assert_exists "$ZERO_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_CODE_STYLE}.md" "core rule present with zero agents"
+assert_exists "$ZERO_DIR/.unikit/memory/code/core/${CORE_RULE_UNITY_DESIGN_PRINCIPLES}.md" "second core rule present with zero agents"
+assert_exists "$ZERO_DIR/.unikit/memory/code/RULES_INDEX.md" "RULES_INDEX.md must be generated with zero agents"
 
 echo "  ✓ zero agents: no crash, seeded rules preserved"
 
@@ -1026,7 +1046,7 @@ cat > "$EXTMISSING_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -1084,7 +1104,7 @@ cat > "$ENGEXT_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": ["code-style"], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
   }
 }
 EOF
@@ -1148,7 +1168,7 @@ cat > "$SAFRC_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -1197,7 +1217,7 @@ cat > "$SAMMS_DIR/.unikit.json" << 'EOF'
     }
   ],
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -1276,7 +1296,7 @@ cat > "$DEVPRIN_DIR/.unikit.json" << 'EOF'
       "installedSubagents": []
     }
   ],
-  "rules": { "installed": { "version": "1.0.0", "core": [], "stack": [] } }
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
 }
 EOF
 inject_fake_registry "$DEVPRIN_DIR"
@@ -1297,6 +1317,203 @@ if grep -q "TAMPERED_BY_TEST" "$PRINCIPLES"; then
 fi
 
 echo "  ✓ dev-principles.md: update refreshes from data/ (tamper marker removed)"
+
+# ─────────────────────────────────────────────
+# Test 30: gd-principles core + 6 shards are system assets — installed on update and
+# flat-rewritten every time (not hash-tracked), same contract as dev-principles. After
+# the shard split they land under .unikit/system/gamedesign/. Reuses the DEVPRIN_DIR
+# project that already ran `update` above. Also guards the orphan-delete of the
+# pre-split flat path (installGamedesignSystemAssets removes it on every update).
+# ─────────────────────────────────────────────
+GD_SYS_DIR="$DEVPRIN_DIR/.unikit/system/gamedesign"
+GD_PRINCIPLES="$GD_SYS_DIR/gd-principles.md"
+assert_exists "$GD_PRINCIPLES" "gd-principles.md (core) must be installed on update (system asset, under gamedesign/)"
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
+    assert_exists "$GD_SYS_DIR/$shard.md" "$shard.md shard must be installed on update (under gamedesign/)"
+done
+
+# Per-shard tamper-refresh (mirror of Test 30c): tamper the core + every shard, run ONE
+# update, and confirm every flat-rewrite cleared its marker.
+echo "GD_TAMPERED_BY_TEST" >> "$GD_PRINCIPLES"
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
+    echo "GD_TAMPERED_BY_TEST" >> "$GD_SYS_DIR/$shard.md"
+done
+# Plant a stale pre-split flat core to prove update orphan-deletes it.
+GD_FLAT_ORPHAN="$DEVPRIN_DIR/.unikit/system/gd-principles.md"
+echo "STALE_FLAT_ORPHAN" > "$GD_FLAT_ORPHAN"
+
+DEVPRIN_OUT3="$TMPDIR/update-gd-principles-3.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT3" 2>&1)
+
+GD_TAMPER_LEFT=""
+grep -q "GD_TAMPERED_BY_TEST" "$GD_PRINCIPLES" && GD_TAMPER_LEFT+=" gd-principles.md"
+for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
+    grep -q "GD_TAMPERED_BY_TEST" "$GD_SYS_DIR/$shard.md" && GD_TAMPER_LEFT+=" $shard.md"
+done
+if [[ -n "$GD_TAMPER_LEFT" ]]; then
+    echo "Assertion failed: update did NOT refresh gd-principles core/shard(s) from data/ (tamper marker present in:$GD_TAMPER_LEFT)"
+    exit 1
+fi
+echo "  ✓ gd-principles core + 6 shards: update refreshes from data/ (tamper markers removed)"
+
+# Orphan-delete: the pre-split flat path must be gone after update.
+assert_not_exists "$GD_FLAT_ORPHAN" \
+    "update orphan-deletes the pre-split flat .unikit/system/gd-principles.md (core moved under gamedesign/)"
+echo "  ✓ gd-principles orphan-delete: stale flat .unikit/system/gd-principles.md removed on update"
+
+# ─────────────────────────────────────────────
+# Test 30b: gate-result-contract.md is delivered on update — the ONLY mechanical guard
+# for the update.ts wiring of installGateResultContract (Task 1.2). DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer
+# (knip/lint can't catch a missing update.ts call — the function stays called from init.ts;
+# test-install.sh exercises only init). Tamper-refresh confirms it is flat-rewritten too.
+# ─────────────────────────────────────────────
+GATE_CONTRACT="$DEVPRIN_DIR/.unikit/system/gate-result-contract.md"
+assert_exists "$GATE_CONTRACT" "gate-result-contract.md must be installed on update (system asset, update.ts wiring)"
+
+echo "GR_TAMPERED_BY_TEST" >> "$GATE_CONTRACT"
+
+DEVPRIN_OUT4="$TMPDIR/update-gate-result-4.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT4" 2>&1)
+
+if grep -q "GR_TAMPERED_BY_TEST" "$GATE_CONTRACT"; then
+    echo "Assertion failed: update did NOT refresh gate-result-contract.md from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ gate-result-contract.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30c: design-read.md is delivered on update — the mechanical guard for the
+# update.ts wiring of installGamedesignSystemAssets. It lands under .unikit/system/gamedesign/
+# (the shared-contract subdir, alongside the gd-principles core + shards), a flat copy (no
+# engine vars), not hash-tracked. DEVPRIN_DIR ran `update` with no prior `init`, so the file
+# existing proves update.ts calls the installer. Tamper-refresh confirms it is flat-rewritten
+# too (mirror of Test 30b).
+# ─────────────────────────────────────────────
+DESIGN_READ="$DEVPRIN_DIR/.unikit/system/gamedesign/design-read.md"
+assert_exists "$DESIGN_READ" "design-read.md must be installed on update (system asset, update.ts wiring)"
+
+echo "DR_TAMPERED_BY_TEST" >> "$DESIGN_READ"
+
+DEVPRIN_OUT5="$TMPDIR/update-design-read-5.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT5" 2>&1)
+
+if grep -q "DR_TAMPERED_BY_TEST" "$DESIGN_READ"; then
+    echo "Assertion failed: update did NOT refresh design-read.md from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ design-read.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30d: genre profiles refresh on update — the ONLY mechanical guard for the
+# update.ts wiring of installGenreProfiles. Genres are SELECTIVE (a bare project
+# delivers none), so we first seed config.genres.installed=[tycoon] and run update
+# (delivery), then tamper the delivered file and run update again (refresh). The
+# file existing + the tamper marker gone proves update.ts calls installGenreProfiles
+# AND refreshes installed profiles — the static grep in test-genres.sh cannot prove
+# the live update.ts call. DEVPRIN_DIR reused.
+# ─────────────────────────────────────────────
+DEVPRIN_CONFIG="$DEVPRIN_DIR/.unikit.json"
+CONFIG="$DEVPRIN_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.genres = { installed: [{ id: 'tycoon', version: 1 }] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+DEVPRIN_OUT6="$TMPDIR/update-genres-6.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT6" 2>&1)
+GENRE_PROFILE="$DEVPRIN_DIR/.unikit/system/gamedesign/genres/tycoon.json"
+assert_exists "$GENRE_PROFILE" "installed genre profile tycoon.json must be delivered on update (update.ts wiring)"
+
+echo "GEN_TAMPERED_BY_TEST" >> "$GENRE_PROFILE"
+
+DEVPRIN_OUT7="$TMPDIR/update-genres-7.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT7" 2>&1)
+
+if grep -q "GEN_TAMPERED_BY_TEST" "$GENRE_PROFILE"; then
+    echo "Assertion failed: update did NOT refresh installed genre profile from data/ (tamper marker still present)"
+    exit 1
+fi
+echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 31: `update --install-new` installs newly added package skills
+# non-interactively AND bootstraps the rules of a module whose first skill just
+# arrived (closes the gap: opting into game-design skills delivers gd rules).
+# Counterpart to Test 15 (no flag / no TTY -> skipped, back-compat).
+# ─────────────────────────────────────────────
+INSTALLNEW_DIR="$TMPDIR/update-install-new"
+mkdir -p "$INSTALLNEW_DIR"
+cat > "$INSTALLNEW_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [
+    { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
+  ],
+  "rules": { "installed": { "version": "1.1.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$INSTALLNEW_DIR"
+
+INSTALLNEW_OUT="$TMPDIR/update-install-new.log"
+(cd "$INSTALLNEW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update --install-new > "$INSTALLNEW_OUT" 2>&1)
+
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-spec/SKILL.md" \
+    "update --install-new installed a new game-design skill (unikit-gd-spec)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-recon/SKILL.md" \
+    "update --install-new installed the new brownfield recon skill (unikit-gd-recon)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-recon/references/code-recon.md" \
+    "unikit-gd-recon's shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
+    "update --install-new installed the new GDD-render skill (unikit-gd-docs)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-plan/SKILL.md" \
+    "update --install-new installed a new code skill (unikit-plan)"
+assert_contains "$INSTALLNEW_OUT" "new skill installed" "new-skill-installed reason text appears"
+assert_contains "$INSTALLNEW_OUT" "Bootstrapped" "bootstrap headline line printed for newly installed module(s)"
+assert_exists "$INSTALLNEW_DIR/.unikit/memory/gamedesign/core/balance.md" \
+    "gamedesign rules bootstrapped after its first skill was installed (gap closed)"
+
+echo "  ✓ update --install-new: new skills installed + module rules bootstrapped"
+
+# ─────────────────────────────────────────────
+# Test 32: `--install-new --skip-new` together -> --skip-new wins (conservative:
+# never install new skills when the user explicitly asked to skip). No new
+# skills installed, no module-rule bootstrap.
+# ─────────────────────────────────────────────
+BOTHFLAGS_DIR="$TMPDIR/update-both-flags"
+mkdir -p "$BOTHFLAGS_DIR"
+cat > "$BOTHFLAGS_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": [] },
+  "agents": [
+    { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
+  ],
+  "rules": { "installed": { "version": "1.1.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$BOTHFLAGS_DIR"
+
+BOTHFLAGS_OUT="$TMPDIR/update-both-flags.log"
+(cd "$BOTHFLAGS_DIR" && node "$ROOT_DIR/dist/cli/index.js" update --install-new --skip-new > "$BOTHFLAGS_OUT" 2>&1)
+
+assert_not_exists "$BOTHFLAGS_DIR/.claude/skills/unikit-gd-spec" \
+    "--skip-new wins over --install-new: no new game-design skill installed"
+assert_not_exists "$BOTHFLAGS_DIR/.unikit/memory/gamedesign" \
+    "--skip-new wins: no gamedesign rules bootstrapped"
+assert_contains "$BOTHFLAGS_OUT" "new in package" \
+    "new skills reported as skipped (new in package), not installed"
+
+echo "  ✓ update --install-new --skip-new: --skip-new wins (no new skills, no bootstrap)"
 
 echo ""
 echo "update smoke tests passed"

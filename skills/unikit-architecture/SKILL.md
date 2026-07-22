@@ -1,14 +1,13 @@
 ---
 name: unikit-architecture
 description: >-
-  Generate architecture guidelines for a game project. Scans project structure to discover
-  the real tech stack using engine-specific rules from references/ENGINE_RULES.md, then
-  generates .unikit/ARCHITECTURE.md with folder structure, dependency rules, and communication
-  patterns. Use when setting up project architecture, asking "which architecture", "describe
-  architecture", "generate architecture doc", or after initial project setup. Also use when
-  the user mentions project architecture, module structure, module boundaries, project
-  organization, dependency rules, or engine-specific modularity concepts (assembly definitions,
-  native modules, build scripts, plugin systems, etc.).
+  Generate the architecture guidelines for a game project. Scans the project structure
+  and tech stack, then produces .unikit/ARCHITECTURE.md describing the folder layout,
+  dependency rules, and how modules communicate. Name a specific pattern or let it
+  auto-detect. Use when the user wants to define or document the project architecture,
+  e.g. "generate architecture", "describe the architecture", "which architecture should
+  I use", "set up project architecture", or mentions module structure, module boundaries,
+  project organization, or dependency rules.
 argument-hint: "[architecture pattern name or empty for auto-detect]"
 allowed-tools:
   - Read
@@ -50,7 +49,7 @@ If the file is missing, inform the user: "Engine rules not found. Please run `un
 **Read `.unikit/DESCRIPTION.md`** if it exists — project specification, tech stack, constraints.
 This gives you the baseline understanding of what technologies are in play before scanning.
 
-**Read `.unikit/memory/RULES_INDEX.md`** if it exists — it contains the index of framework-specific
+**Read `.unikit/memory/code/RULES_INDEX.md`** if it exists — it contains the index of framework-specific
 rule files that the project already uses. This tells you which frameworks and patterns are in play.
 Do NOT read the individual rule files — only the index to understand what's covered.
 
@@ -229,7 +228,7 @@ For each pattern, specify which module or framework provides it.]
 For framework-specific rules, coding conventions, and implementation details see:
 
 - **`.unikit/RULES.md`** — [brief description of what's there]
-- **`.unikit/memory/RULES_INDEX.md`** — index of all framework-specific rule files
+- **`.unikit/memory/code/RULES_INDEX.md`** — index of all framework-specific rule files
 ```
 
 ---
@@ -241,9 +240,9 @@ For framework-specific rules, coding conventions, and implementation details see
 - Folder structure must extend what already exists, not replace it
 - If custom modules were found (SignalBus, EventBus, SaveSystem, etc.), document their role
   in the architecture explicitly — they are first-class architectural elements
-- The "Detailed Rules" section MUST reference `.unikit/memory/RULES_INDEX.md` — that file
+- The "Detailed Rules" section MUST reference `.unikit/memory/code/RULES_INDEX.md` — that file
   is the single source of truth for which rule files exist and when to load them
-- Do NOT duplicate content from RULES.md or memory/RULES_INDEX.md —
+- Do NOT duplicate content from RULES.md or memory/code/RULES_INDEX.md —
   reference them and describe what each contains in one line
 - Keep ARCHITECTURE.md concise — it's a map, not a manual. Detailed rules live in dedicated files
 
@@ -278,7 +277,7 @@ Key architectural decisions:
 - [decision 2]
 - [decision 3]
 
-The document references .unikit/memory/RULES_INDEX.md for detailed framework rules
+The document references .unikit/memory/code/RULES_INDEX.md for detailed framework rules
 and .unikit/RULES.md for coding conventions.
 ```
 

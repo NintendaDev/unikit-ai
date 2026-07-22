@@ -39,7 +39,7 @@ Do not announce, confirm, or mention the language setting.
 The user provides a planning request. Examples:
 - `"implement day/night cycle with customer scheduling"`
 - `"refactor inventory system to use new categories"`
-- `"@.unikit/plans/2026-03-10_core-loop"` (polish an existing plan)
+- `"@.unikit/code/plans/2026-03-10_core-loop"` (polish an existing plan)
 
 ## Configuration
 
@@ -144,7 +144,7 @@ After each iteration, compare the current issues list with the previous one. If 
 
 ## Engine-Aware Critique Rubric
 
-The plan-polisher applies engine-specific checks by loading `.unikit/memory/RULES_INDEX.md`. The coordinator ensures this by passing the plan path — the polisher reads project rules from `.unikit/` automatically.
+The plan-polisher applies engine-specific checks by loading `.unikit/memory/code/RULES_INDEX.md`. The coordinator ensures this by passing the plan path — the polisher reads project rules from `.unikit/` automatically.
 
 ## Output
 

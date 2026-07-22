@@ -13,6 +13,8 @@
 #     an `updateAvailable` field (regression guard for the day it lands)
 #   - Unknown engine in .unikit.json → pass-through, exit 0 (the command
 #     never validates engine against the registry)
+#   - --module gamedesign: after the no-args bootstrap, the backfilled
+#     canonical catalog is reported with a per-rule `registry:bundled` origin
 #
 # Usage: ./scripts/test-rules-status.sh
 
@@ -72,7 +74,7 @@ assert_json_array_length "$TMPDIR/s2.log" rules 0 "rules array is empty"
 echo -e "\n${BOLD}Scenario 3: populated state${NC}"
 
 S3_DIR="$TMPDIR/s3-populated"
-mkdir -p "$S3_DIR/.unikit/memory/core" "$S3_DIR/.unikit/memory/stack"
+mkdir -p "$S3_DIR/.unikit/memory/code/core" "$S3_DIR/.unikit/memory/code/stack"
 cat > "$S3_DIR/.unikit.json" <<EOF
 {
   "version": "1.0.0",
@@ -84,12 +86,16 @@ cat > "$S3_DIR/.unikit.json" <<EOF
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": [
-        { "name": "code-style", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "deadbeef" }
-      ],
-      "stack": [
-        { "name": "sample-stack-rule", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "cafef00d" }
-      ]
+      "modules": {
+        "code": {
+          "core": [
+            { "name": "code-style", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "deadbeef" }
+          ],
+          "stack": [
+            { "name": "sample-stack-rule", "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "cafef00d" }
+          ]
+        }
+      }
     }
   }
 }
@@ -132,7 +138,7 @@ assert_json_field "$TMPDIR/s4.log" registryKind local \
 echo -e "\n${BOLD}Scenario 5: null rulesRegistry (legacy)${NC}"
 
 S5_DIR="$TMPDIR/s5-null-registry"
-mkdir -p "$S5_DIR/.unikit/memory/core" "$S5_DIR/.unikit/memory/stack"
+mkdir -p "$S5_DIR/.unikit/memory/code/core" "$S5_DIR/.unikit/memory/code/stack"
 cat > "$S5_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
@@ -142,7 +148,7 @@ cat > "$S5_DIR/.unikit.json" << 'EOF'
   "agents": [],
   "rulesRegistry": null,
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -193,7 +199,7 @@ fi
 echo -e "\n${BOLD}Scenario 7: unknown engine pass-through${NC}"
 
 S7_DIR="$TMPDIR/s7-unknown-engine"
-mkdir -p "$S7_DIR/.unikit/memory/core" "$S7_DIR/.unikit/memory/stack"
+mkdir -p "$S7_DIR/.unikit/memory/code/core" "$S7_DIR/.unikit/memory/code/stack"
 cat > "$S7_DIR/.unikit.json" <<EOF
 {
   "version": "1.0.0",
@@ -203,7 +209,7 @@ cat > "$S7_DIR/.unikit.json" <<EOF
   "agents": [],
   "rulesRegistry": "$(fake_registry_path minimal-valid)",
   "rules": {
-    "installed": { "version": "1.0.0", "core": [], "stack": [] }
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
   }
 }
 EOF
@@ -213,6 +219,76 @@ assert_cmd_exit 0 "rules status --json with bogus engine exits 0" "$TMPDIR/s7.lo
 
 assert_json_field "$TMPDIR/s7.log" engine unknown-xyz \
     "status echoes the bogus engine without validating it"
+
+# ─────────────────────────────────────────────
+# Scenario 8: un-migrated project → non-blocking out-of-date warning
+# ─────────────────────────────────────────────
+# `rules status` is a read — it never refuses, so a stale project still exits 0
+# but surfaces the warning (human) / `outOfDate: true` (JSON). Same signal the
+# sync/install guard refuses on.
+echo -e "\n${BOLD}Scenario 8: un-migrated project warns (outOfDate)${NC}"
+
+S8_DIR="$TMPDIR/s8-unmigrated"
+use_unmigrated_registry "$S8_DIR" unity minimal-valid
+
+assert_cmd_exit 0 "rules status --json on un-migrated exits 0" "$TMPDIR/s8-json.log" -- \
+    env -C "$S8_DIR" node "$CLI" rules status --json
+assert_json_field "$TMPDIR/s8-json.log" outOfDate true \
+    "status JSON reports outOfDate=true on a stale project"
+
+assert_cmd_exit 0 "rules status (human) on un-migrated exits 0" "$TMPDIR/s8-human.log" -- \
+    env -C "$S8_DIR" node "$CLI" rules status
+assert_stdout_contains "$TMPDIR/s8-human.log" "out of date" \
+    "human status shows the out-of-date warning"
+
+# ─────────────────────────────────────────────
+# Scenario 9: migrated project → no warning, outOfDate=false
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 9: migrated project — no warning${NC}"
+
+S9_DIR="$TMPDIR/s9-migrated"
+use_fake_registry "$S9_DIR" unity minimal-valid
+
+assert_cmd_exit 0 "rules status --json on migrated exits 0" "$TMPDIR/s9-json.log" -- \
+    env -C "$S9_DIR" node "$CLI" rules status --json
+assert_json_field "$TMPDIR/s9-json.log" outOfDate false \
+    "status JSON reports outOfDate=false on a migrated project"
+
+assert_cmd_exit 0 "rules status (human) on migrated exits 0" "$TMPDIR/s9-human.log" -- \
+    env -C "$S9_DIR" node "$CLI" rules status
+assert_not_contains "$TMPDIR/s9-human.log" "out of date" \
+    "human status omits the warning when migrated"
+
+# ─────────────────────────────────────────────
+# Scenario 10: --module gamedesign reports per-rule backfill origin
+# ─────────────────────────────────────────────
+# After the no-args bootstrap, the gamedesign canonical catalog is installed
+# from the bundled snapshot. `rules status --module gamedesign` must list those
+# rules with a per-rule origin of `registry:bundled` (#R2a/#R2b — backfill ids
+# are tagged bundled at install time, not module-wide).
+echo -e "\n${BOLD}Scenario 10: --module gamedesign per-rule backfill origin${NC}"
+
+S10_DIR="$TMPDIR/s10-gd-status"
+use_fake_registry "$S10_DIR" unity minimal-valid '[{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}]'
+
+# Isolate the gamedesign backfill from the live official registry (schema:2,
+# now also carrying gamedesign) — an empty local dir has no manifest.json, so
+# FsRegistry.fetchManifest() returns null and the backfill resolves from
+# bundled deterministically, without network.
+S10_DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/dead-official-s10")"
+mkdir -p "$TMPDIR/dead-official-s10"
+
+env -C "$S10_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S10_DEAD_OFFICIAL" node "$CLI" rules install defaults >/dev/null 2>&1
+
+assert_cmd_exit 0 "rules status --module gamedesign exits 0" "$TMPDIR/s10.log" -- \
+    env -C "$S10_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S10_DEAD_OFFICIAL" node "$CLI" rules status --module gamedesign
+
+assert_stdout_contains "$TMPDIR/s10.log" "gamedesign core:" \
+    "status groups installed rules under the gamedesign core tier"
+assert_stdout_contains "$TMPDIR/s10.log" "balance" \
+    "an installed gamedesign rule is listed"
+assert_stdout_contains "$TMPDIR/s10.log" "registry:bundled" \
+    "backfilled gamedesign rules carry a per-rule bundled origin"
 
 # ─────────────────────────────────────────────
 # Summary

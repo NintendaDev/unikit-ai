@@ -10,7 +10,7 @@
 #
 # Regression guards:
 #   - HARD GUARD: `sync --replace --prune` never materialises rules that
-#     are absent from state (see installer.ts:1337 `if (!existing) continue`).
+#     are absent from state (see installer/rules-sync.ts `if (!existing) continue`).
 #   - Phase 1 case-sensitive coexistence: a legacy `CODE-STYLE` state
 #     entry and a fresh `code-style.md` disk file must stay distinct.
 #   - phase2:downgrade: `--replace` against a registry with a LOWER
@@ -51,10 +51,10 @@ write_sync_config() {
     local fixture="$3"
     local core_json="$4"
     local stack_json="$5"
-    mkdir -p "$project/.unikit/memory/core" "$project/.unikit/memory/stack"
+    mkdir -p "$project/.unikit/memory/code/core" "$project/.unikit/memory/code/stack"
     cat > "$project/.unikit.json" <<EOF
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engine": "$engine",
   "engineMcpKey": null,
   "mcp": { "servers": [] },
@@ -63,8 +63,12 @@ write_sync_config() {
   "rules": {
     "installed": {
       "version": "1.0.0",
-      "core": $core_json,
-      "stack": $stack_json
+      "modules": {
+        "code": {
+          "core": $core_json,
+          "stack": $stack_json
+        }
+      }
     }
   }
 }
@@ -94,7 +98,7 @@ use_fake_registry "$S2_DIR" unity minimal-valid
 assert_cmd_exit 0 "rules sync on empty state exits 0" "$TMPDIR/s2.log" -- \
     env -C "$S2_DIR" node "$CLI" rules sync
 
-if [[ -f "$S2_DIR/.unikit/memory/RULES_INDEX.md" ]]; then
+if [[ -f "$S2_DIR/.unikit/memory/code/RULES_INDEX.md" ]]; then
     fail "empty project should not generate RULES_INDEX.md"
 else
     pass "empty project skips RULES_INDEX.md"
@@ -108,7 +112,7 @@ echo -e "\n${BOLD}Scenario 3: Phase 1 untracked → source=local${NC}"
 S3_DIR="$TMPDIR/s3-untracked"
 write_sync_config "$S3_DIR" unity minimal-valid "[]" "[]"
 # Drop a hand-edited stack rule on disk with no state entry
-cat > "$S3_DIR/.unikit/memory/stack/custom-local.md" << 'EOF'
+cat > "$S3_DIR/.unikit/memory/code/stack/custom-local.md" << 'EOF'
 # Custom Local Rule
 
 > **Scope**: hand-written rule, not from any registry.
@@ -120,9 +124,9 @@ assert_cmd_exit 0 "rules sync registers untracked file" "$TMPDIR/s3.log" -- \
 
 assert_stdout_contains "$TMPDIR/s3.log" "Found untracked rule: stack/custom-local" \
     "Phase 1 emits untracked-found event"
-assert_json_field "$S3_DIR/.unikit.json" "rules.installed.stack.0.name" custom-local \
+assert_json_field "$S3_DIR/.unikit.json" "rules.installed.modules.code.stack.0.name" custom-local \
     "untracked rule added to state"
-assert_json_field "$S3_DIR/.unikit.json" "rules.installed.stack.0.source" local \
+assert_json_field "$S3_DIR/.unikit.json" "rules.installed.modules.code.stack.0.source" local \
     "untracked rule tagged as source=local"
 
 # ─────────────────────────────────────────────
@@ -141,7 +145,7 @@ assert_cmd_exit 0 "rules sync removes orphaned state entry" "$TMPDIR/s4.log" -- 
 
 assert_stdout_contains "$TMPDIR/s4.log" "missing from disk" \
     "Phase 1 emits missing-removed event"
-assert_json_array_length "$S4_DIR/.unikit.json" "rules.installed.core" 0 \
+assert_json_array_length "$S4_DIR/.unikit.json" "rules.installed.modules.code.core" 0 \
     "orphan state entry dropped"
 
 # ─────────────────────────────────────────────
@@ -158,9 +162,9 @@ write_sync_config "$S5_DIR" unity multi-version/v1 \
     '[{"name":"unitask","source":"registry","origin":"primary","version":"1.0.0","installed_hash":"bbbb"}]'
 # Seed disk copies matching state (bogus hashes so they'll be refreshed)
 cp "$ROOT_DIR/scripts/test-fixtures/multi-version/v1/unity/core/code-style.md" \
-    "$S5_DIR/.unikit/memory/core/code-style.md"
+    "$S5_DIR/.unikit/memory/code/core/code-style.md"
 cp "$ROOT_DIR/scripts/test-fixtures/multi-version/v1/unity/stack/unitask.md" \
-    "$S5_DIR/.unikit/memory/stack/unitask.md"
+    "$S5_DIR/.unikit/memory/code/stack/unitask.md"
 # Flip to v2 fixture
 node -e "
     const fs = require('fs');
@@ -178,21 +182,21 @@ node -e "
     const j = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     const coreContent = fs.readFileSync(process.argv[2], 'utf8');
     const stackContent = fs.readFileSync(process.argv[3], 'utf8');
-    j.rules.installed.core[0].installed_hash = crypto.createHash('sha256').update(coreContent, 'utf-8').digest('hex');
-    j.rules.installed.stack[0].installed_hash = crypto.createHash('sha256').update(stackContent, 'utf-8').digest('hex');
+    j.rules.installed.modules.code.core[0].installed_hash = crypto.createHash('sha256').update(coreContent, 'utf-8').digest('hex');
+    j.rules.installed.modules.code.stack[0].installed_hash = crypto.createHash('sha256').update(stackContent, 'utf-8').digest('hex');
     fs.writeFileSync(configPath, JSON.stringify(j, null, 2));
 " "$S5_DIR/.unikit.json" \
-    "$S5_DIR/.unikit/memory/core/code-style.md" \
-    "$S5_DIR/.unikit/memory/stack/unitask.md"
+    "$S5_DIR/.unikit/memory/code/core/code-style.md" \
+    "$S5_DIR/.unikit/memory/code/stack/unitask.md"
 
 assert_cmd_exit 0 "rules sync exit 0 on version bump" "$TMPDIR/s5.log" -- \
     env -C "$S5_DIR" node "$CLI" rules sync
 
 assert_stdout_contains "$TMPDIR/s5.log" "Updating stack/unitask" \
     "Phase 2 updating event fires"
-assert_stdout_contains "$S5_DIR/.unikit/memory/stack/unitask.md" "sentinel: v2" \
+assert_stdout_contains "$S5_DIR/.unikit/memory/code/stack/unitask.md" "sentinel: v2" \
     "v2 content landed on disk"
-assert_json_field "$S5_DIR/.unikit.json" "rules.installed.stack.0.version" 2.0.0 \
+assert_json_field "$S5_DIR/.unikit.json" "rules.installed.modules.code.stack.0.version" 2.0.0 \
     "state version bumped to 2.0.0"
 
 # ─────────────────────────────────────────────
@@ -221,13 +225,13 @@ write_sync_config "$S7_DIR" unity multi-version/v2 \
 # Put the v1 content on disk (older) so if sync were to touch it,
 # the on-disk content would change.
 cp "$ROOT_DIR/scripts/test-fixtures/multi-version/v1/unity/stack/unitask.md" \
-    "$S7_DIR/.unikit/memory/stack/unitask.md"
-SAVED_HASH="$(sha_of "$S7_DIR/.unikit/memory/stack/unitask.md")"
+    "$S7_DIR/.unikit/memory/code/stack/unitask.md"
+SAVED_HASH="$(sha_of "$S7_DIR/.unikit/memory/code/stack/unitask.md")"
 
 assert_cmd_exit 0 "rules sync on local-sourced rule" "$TMPDIR/s7.log" -- \
     env -C "$S7_DIR" node "$CLI" rules sync
 
-assert_file_unchanged "$S7_DIR/.unikit/memory/stack/unitask.md" "$SAVED_HASH" \
+assert_file_unchanged "$S7_DIR/.unikit/memory/code/stack/unitask.md" "$SAVED_HASH" \
     "local-sourced rule was not touched"
 
 # ─────────────────────────────────────────────
@@ -238,9 +242,9 @@ echo -e "\n${BOLD}Scenario 8: --replace overrides source=local${NC}"
 assert_cmd_exit 0 "rules sync --replace on local-sourced rule" "$TMPDIR/s8.log" -- \
     env -C "$S7_DIR" node "$CLI" rules sync --replace
 
-assert_stdout_contains "$S7_DIR/.unikit/memory/stack/unitask.md" "sentinel: v2" \
+assert_stdout_contains "$S7_DIR/.unikit/memory/code/stack/unitask.md" "sentinel: v2" \
     "--replace overwrote the local rule with v2 content"
-assert_json_field "$S7_DIR/.unikit.json" "rules.installed.stack.0.source" registry \
+assert_json_field "$S7_DIR/.unikit.json" "rules.installed.modules.code.stack.0.source" registry \
     "--replace flipped source=local → registry"
 
 # ─────────────────────────────────────────────
@@ -252,20 +256,20 @@ S9_DIR="$TMPDIR/s9-local-mod-skip"
 write_sync_config "$S9_DIR" unity multi-version/v2 \
     "[]" \
     '[{"name":"unitask","source":"registry","origin":"primary","version":"1.0.0","installed_hash":"aaaa"}]'
-cat > "$S9_DIR/.unikit/memory/stack/unitask.md" << 'EOF'
+cat > "$S9_DIR/.unikit/memory/code/stack/unitask.md" << 'EOF'
 # Locally-modified copy
 
 This content intentionally differs from both v1 and v2 so the hash
 compare inside Phase 2 flags it as locally-modified.
 EOF
-SAVED_MOD_HASH="$(sha_of "$S9_DIR/.unikit/memory/stack/unitask.md")"
+SAVED_MOD_HASH="$(sha_of "$S9_DIR/.unikit/memory/code/stack/unitask.md")"
 
 assert_cmd_exit 0 "rules sync on locally-modified rule" "$TMPDIR/s9.log" -- \
     env -C "$S9_DIR" node "$CLI" rules sync
 
 assert_stdout_contains "$TMPDIR/s9.log" "local modifications" \
     "locally-modified skip event printed"
-assert_file_unchanged "$S9_DIR/.unikit/memory/stack/unitask.md" "$SAVED_MOD_HASH" \
+assert_file_unchanged "$S9_DIR/.unikit/memory/code/stack/unitask.md" "$SAVED_MOD_HASH" \
     "locally-modified file left intact"
 
 # ─────────────────────────────────────────────
@@ -278,7 +282,7 @@ assert_cmd_exit 0 "rules sync --replace on locally-modified rule" "$TMPDIR/s10.l
 
 assert_stdout_contains "$TMPDIR/s10.log" "overwriting from registry" \
     "--replace emits overwrite event"
-assert_stdout_contains "$S9_DIR/.unikit/memory/stack/unitask.md" "sentinel: v2" \
+assert_stdout_contains "$S9_DIR/.unikit/memory/code/stack/unitask.md" "sentinel: v2" \
     "--replace landed v2 content on disk"
 
 # ─────────────────────────────────────────────
@@ -294,7 +298,7 @@ write_sync_config "$S11_DIR" unity multi-version/v1 \
     "[]" \
     '[{"name":"unitask","source":"registry","origin":"primary","version":"2.0.0","installed_hash":"aaaa"}]'
 cp "$ROOT_DIR/scripts/test-fixtures/multi-version/v2/unity/stack/unitask.md" \
-    "$S11_DIR/.unikit/memory/stack/unitask.md"
+    "$S11_DIR/.unikit/memory/code/stack/unitask.md"
 # Refresh installed_hash to match the v2 content we just placed so the
 # locally-modified branch stays out of the way.
 node -e "
@@ -303,18 +307,18 @@ node -e "
     const cp = process.argv[1];
     const j = JSON.parse(fs.readFileSync(cp, 'utf8'));
     const content = fs.readFileSync(process.argv[2], 'utf8');
-    j.rules.installed.stack[0].installed_hash = crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
+    j.rules.installed.modules.code.stack[0].installed_hash = crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
     fs.writeFileSync(cp, JSON.stringify(j, null, 2));
-" "$S11_DIR/.unikit.json" "$S11_DIR/.unikit/memory/stack/unitask.md"
+" "$S11_DIR/.unikit.json" "$S11_DIR/.unikit/memory/code/stack/unitask.md"
 
 assert_cmd_exit 0 "rules sync --replace on downgrade" "$TMPDIR/s11.log" -- \
     env -C "$S11_DIR" node "$CLI" rules sync --replace
 
 assert_stdout_contains "$TMPDIR/s11.log" "downgraded" \
     "phase2:downgrade event fired"
-assert_stdout_contains "$S11_DIR/.unikit/memory/stack/unitask.md" "sentinel: v1" \
+assert_stdout_contains "$S11_DIR/.unikit/memory/code/stack/unitask.md" "sentinel: v1" \
     "v1 content landed after downgrade"
-assert_json_field "$S11_DIR/.unikit.json" "rules.installed.stack.0.version" 1.0.0 \
+assert_json_field "$S11_DIR/.unikit.json" "rules.installed.modules.code.stack.0.version" 1.0.0 \
     "state version downgraded to 1.0.0"
 
 # ─────────────────────────────────────────────
@@ -332,33 +336,33 @@ write_sync_config "$S12_DIR" unity minimal-valid \
     '[{"name":"code-style","source":"registry","origin":"primary","version":"1.0.0","installed_hash":"aaaa"}]' \
     "[]"
 cp "$ROOT_DIR/scripts/test-fixtures/minimal-valid/unity/core/code-style.md" \
-    "$S12_DIR/.unikit/memory/core/code-style.md"
+    "$S12_DIR/.unikit/memory/code/core/code-style.md"
 node -e "
     const fs = require('fs');
     const crypto = require('crypto');
     const cp = process.argv[1];
     const j = JSON.parse(fs.readFileSync(cp, 'utf8'));
     const content = fs.readFileSync(process.argv[2], 'utf8');
-    j.rules.installed.core[0].installed_hash = crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
+    j.rules.installed.modules.code.core[0].installed_hash = crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
     fs.writeFileSync(cp, JSON.stringify(j, null, 2));
-" "$S12_DIR/.unikit.json" "$S12_DIR/.unikit/memory/core/code-style.md"
+" "$S12_DIR/.unikit.json" "$S12_DIR/.unikit/memory/code/core/code-style.md"
 
 assert_cmd_exit 0 "sync --replace --prune on hard-guard setup" "$TMPDIR/s12.log" -- \
     env -C "$S12_DIR" node "$CLI" rules sync --replace --prune
 
-CORE_FILES=$(find "$S12_DIR/.unikit/memory/core" -maxdepth 1 -name "*.md" | wc -l | tr -d ' ')
-STACK_FILES=$(find "$S12_DIR/.unikit/memory/stack" -maxdepth 1 -name "*.md" 2> /dev/null | wc -l | tr -d ' ')
+CORE_FILES=$(find "$S12_DIR/.unikit/memory/code/core" -maxdepth 1 -name "*.md" | wc -l | tr -d ' ')
+STACK_FILES=$(find "$S12_DIR/.unikit/memory/code/stack" -maxdepth 1 -name "*.md" 2> /dev/null | wc -l | tr -d ' ')
 
 if [[ "$CORE_FILES" == "1" && "$STACK_FILES" == "0" ]]; then
     pass "hard-guard: only the pre-installed core rule survived (core=$CORE_FILES, stack=$STACK_FILES)"
 else
     fail "hard-guard violated: core=$CORE_FILES, stack=$STACK_FILES (expected 1, 0)"
-    ls "$S12_DIR/.unikit/memory/core" "$S12_DIR/.unikit/memory/stack" 2>&1 || true
+    ls "$S12_DIR/.unikit/memory/code/core" "$S12_DIR/.unikit/memory/code/stack" 2>&1 || true
 fi
 
-assert_json_array_length "$S12_DIR/.unikit.json" "rules.installed.stack" 0 \
+assert_json_array_length "$S12_DIR/.unikit.json" "rules.installed.modules.code.stack" 0 \
     "hard-guard: state stack list stays empty"
-assert_json_array_length "$S12_DIR/.unikit.json" "rules.installed.core" 1 \
+assert_json_array_length "$S12_DIR/.unikit.json" "rules.installed.modules.code.core" 1 \
     "hard-guard: state core list stays at 1"
 
 # ─────────────────────────────────────────────
@@ -389,15 +393,15 @@ else
         '[{"name":"CODE-STYLE","source":"registry","origin":"primary","version":"1.0.0","installed_hash":"legacy"}]' \
         "[]"
     # Both legacy UPPER_CASE and canonical lowercase files on disk.
-    echo "# legacy upper case" > "$S13_DIR/.unikit/memory/core/CODE-STYLE.md"
-    echo "# canonical lowercase" > "$S13_DIR/.unikit/memory/core/code-style.md"
+    echo "# legacy upper case" > "$S13_DIR/.unikit/memory/code/core/CODE-STYLE.md"
+    echo "# canonical lowercase" > "$S13_DIR/.unikit/memory/code/core/code-style.md"
 
     assert_cmd_exit 0 "rules sync on mixed-case state" "$TMPDIR/s13.log" -- \
         env -C "$S13_DIR" node "$CLI" rules sync
 
     CORE_COUNT=$(node -e "
         const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-        console.log(j.rules.installed.core.length);
+        console.log(j.rules.installed.modules.code.core.length);
     " "$S13_DIR/.unikit.json")
 
     if [[ "$CORE_COUNT" == "2" ]]; then
@@ -417,17 +421,17 @@ S14_DIR="$TMPDIR/s14-prune-stack"
 write_sync_config "$S14_DIR" unity minimal-valid \
     "[]" \
     '[{"name":"obsolete-stack-rule","source":"registry","origin":"primary","version":"1.0.0","installed_hash":"aaaa"}]'
-echo "# will be pruned" > "$S14_DIR/.unikit/memory/stack/obsolete-stack-rule.md"
+echo "# will be pruned" > "$S14_DIR/.unikit/memory/code/stack/obsolete-stack-rule.md"
 
 assert_cmd_exit 0 "rules sync --prune on obsolete rule" "$TMPDIR/s14.log" -- \
     env -C "$S14_DIR" node "$CLI" rules sync --prune
 
-if [[ -f "$S14_DIR/.unikit/memory/stack/obsolete-stack-rule.md" ]]; then
+if [[ -f "$S14_DIR/.unikit/memory/code/stack/obsolete-stack-rule.md" ]]; then
     fail "--prune did not remove obsolete rule file"
 else
     pass "--prune removed obsolete rule file"
 fi
-assert_json_array_length "$S14_DIR/.unikit.json" "rules.installed.stack" 0 \
+assert_json_array_length "$S14_DIR/.unikit.json" "rules.installed.modules.code.stack" 0 \
     "--prune removed state entry"
 
 # ─────────────────────────────────────────────
@@ -439,14 +443,14 @@ S15_DIR="$TMPDIR/s15-prune-core"
 write_sync_config "$S15_DIR" unity minimal-valid \
     '[{"name":"obsolete-core-rule","source":"registry","origin":"primary","version":"1.0.0","installed_hash":"aaaa"}]' \
     "[]"
-echo "# core rule with no registry entry" > "$S15_DIR/.unikit/memory/core/obsolete-core-rule.md"
+echo "# core rule with no registry entry" > "$S15_DIR/.unikit/memory/code/core/obsolete-core-rule.md"
 
 assert_cmd_exit 0 "rules sync --prune with obsolete core" "$TMPDIR/s15.log" -- \
     env -C "$S15_DIR" node "$CLI" rules sync --prune
 
-assert_exists "$S15_DIR/.unikit/memory/core/obsolete-core-rule.md" \
+assert_exists "$S15_DIR/.unikit/memory/code/core/obsolete-core-rule.md" \
     "--prune left the core rule file alone"
-assert_json_array_length "$S15_DIR/.unikit.json" "rules.installed.core" 1 \
+assert_json_array_length "$S15_DIR/.unikit.json" "rules.installed.modules.code.core" 1 \
     "--prune left the core state entry alone"
 
 # ─────────────────────────────────────────────
@@ -458,12 +462,12 @@ S16_DIR="$TMPDIR/s16-prune-local"
 write_sync_config "$S16_DIR" unity minimal-valid \
     "[]" \
     '[{"name":"my-local-rule","source":"local","origin":null,"version":null,"installed_hash":"aaaa"}]'
-echo "# hand-written rule" > "$S16_DIR/.unikit/memory/stack/my-local-rule.md"
+echo "# hand-written rule" > "$S16_DIR/.unikit/memory/code/stack/my-local-rule.md"
 
 assert_cmd_exit 0 "rules sync --prune with local rule" "$TMPDIR/s16.log" -- \
     env -C "$S16_DIR" node "$CLI" rules sync --prune
 
-assert_exists "$S16_DIR/.unikit/memory/stack/my-local-rule.md" \
+assert_exists "$S16_DIR/.unikit/memory/code/stack/my-local-rule.md" \
     "--prune kept source=local rule file"
 
 # ─────────────────────────────────────────────
@@ -471,9 +475,9 @@ assert_exists "$S16_DIR/.unikit/memory/stack/my-local-rule.md" \
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Scenario 17: RULES_INDEX.md regeneration${NC}"
 
-assert_exists "$S12_DIR/.unikit/memory/RULES_INDEX.md" \
+assert_exists "$S12_DIR/.unikit/memory/code/RULES_INDEX.md" \
     "hard-guard scenario regenerated RULES_INDEX.md"
-assert_stdout_contains "$S12_DIR/.unikit/memory/RULES_INDEX.md" "code-style" \
+assert_stdout_contains "$S12_DIR/.unikit/memory/code/RULES_INDEX.md" "code-style" \
     "RULES_INDEX lists the surviving rule"
 
 # ─────────────────────────────────────────────
@@ -487,14 +491,14 @@ write_sync_config "$S18_DIR" unity minimal-valid \
     '[{"name":"ghost","source":"registry","origin":"primary","version":"1.0.0","installed_hash":"aaaa"}]'
 # No ghost.md on disk → Phase 1 deletes the state entry
 # Seed a stale RULES_INDEX.md so we can assert it gets removed
-echo "stale index" > "$S18_DIR/.unikit/memory/RULES_INDEX.md"
+echo "stale index" > "$S18_DIR/.unikit/memory/code/RULES_INDEX.md"
 
 assert_cmd_exit 0 "rules sync on vanishing rule" "$TMPDIR/s18.log" -- \
     env -C "$S18_DIR" node "$CLI" rules sync
 
-if [[ -f "$S18_DIR/.unikit/memory/RULES_INDEX.md" ]]; then
+if [[ -f "$S18_DIR/.unikit/memory/code/RULES_INDEX.md" ]]; then
     fail "stale RULES_INDEX.md was not removed"
-    cat "$S18_DIR/.unikit/memory/RULES_INDEX.md"
+    cat "$S18_DIR/.unikit/memory/code/RULES_INDEX.md"
 else
     pass "stale RULES_INDEX.md removed once last rule vanished"
 fi
@@ -509,16 +513,16 @@ write_sync_config "$S19_DIR" unity minimal-valid \
     '[{"name":"code-style","source":"registry","origin":"primary","version":"1.0.0","installed_hash":"aaaa"}]' \
     "[]"
 cp "$ROOT_DIR/scripts/test-fixtures/minimal-valid/unity/core/code-style.md" \
-    "$S19_DIR/.unikit/memory/core/code-style.md"
+    "$S19_DIR/.unikit/memory/code/core/code-style.md"
 node -e "
     const fs = require('fs');
     const crypto = require('crypto');
     const cp = process.argv[1];
     const j = JSON.parse(fs.readFileSync(cp, 'utf8'));
     const content = fs.readFileSync(process.argv[2], 'utf8');
-    j.rules.installed.core[0].installed_hash = crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
+    j.rules.installed.modules.code.core[0].installed_hash = crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
     fs.writeFileSync(cp, JSON.stringify(j, null, 2));
-" "$S19_DIR/.unikit.json" "$S19_DIR/.unikit/memory/core/code-style.md"
+" "$S19_DIR/.unikit.json" "$S19_DIR/.unikit/memory/code/core/code-style.md"
 
 assert_cmd_exit 0 "rules sync on in-sync project" "$TMPDIR/s19.log" -- \
     env -C "$S19_DIR" node "$CLI" rules sync
@@ -535,10 +539,67 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Scenario 20: --replace also regenerates RULES_INDEX${NC}"
 
-assert_exists "$S19_DIR/.unikit/memory/RULES_INDEX.md" \
+assert_exists "$S19_DIR/.unikit/memory/code/RULES_INDEX.md" \
     "in-sync project still regenerated RULES_INDEX.md"
-assert_stdout_contains "$S19_DIR/.unikit/memory/RULES_INDEX.md" "code-style" \
+assert_stdout_contains "$S19_DIR/.unikit/memory/code/RULES_INDEX.md" "code-style" \
     "RULES_INDEX lists code-style"
+
+# ─────────────────────────────────────────────
+# Scenario 21 — un-migrated project: sync refuses with exit 8
+# ─────────────────────────────────────────────
+# Regression for the real footgun: on a version:1.0.1 project with the legacy
+# flat layout, `rules sync` used to reconcile against the (empty) modular path
+# and splice every rule out of .unikit.json. The guard must refuse (exit 8) and
+# leave the config byte-for-byte unchanged BEFORE any disk reconciliation.
+echo -e "\n${BOLD}Scenario 21: un-migrated project refused (exit 8)${NC}"
+
+S21_DIR="$TMPDIR/s21-unmigrated"
+use_unmigrated_registry "$S21_DIR" unity minimal-valid
+S21_SHA="$(sha_of "$S21_DIR/.unikit.json")"
+
+assert_cmd_exit 8 "rules sync on un-migrated project exits 8" "$TMPDIR/s21.log" -- \
+    env -C "$S21_DIR" node "$CLI" rules sync
+assert_stdout_contains "$TMPDIR/s21.log" "out of date" "row21 explains the project is out of date"
+assert_file_unchanged "$S21_DIR/.unikit.json" "$S21_SHA" \
+    "row21 .unikit.json left byte-for-byte unchanged (state not wiped)"
+
+# ─────────────────────────────────────────────
+# Scenario 22 — migrated project still syncs (exit 0)
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Scenario 22: migrated project still syncs (exit 0)${NC}"
+
+S22_DIR="$TMPDIR/s22-migrated"
+use_fake_registry "$S22_DIR" unity minimal-valid
+assert_cmd_exit 0 "rules sync on migrated project exits 0" "$TMPDIR/s22.log" -- \
+    env -C "$S22_DIR" node "$CLI" rules sync
+
+# ─────────────────────────────────────────────
+# Scenario 23 — sync preserves a gamedesign B-merge override (#R2b)
+# ─────────────────────────────────────────────
+# The gamedesign-override fixture installs `balance` from the custom registry
+# (origin `primary`, v9.9.9). A studio override is NOT auto-updated from
+# upstream: a plain `rules sync` must leave it intact — same version, same
+# `primary` origin, same custom content — while the backfilled canonical rules
+# (origin `bundled`) stay put too. This guards Phase 2's "do not overwrite a
+# primary override" rule.
+echo -e "\n${BOLD}Scenario 23: sync preserves a gamedesign override${NC}"
+
+S23_DIR="$TMPDIR/s23-gd-override-sync"
+use_fake_registry "$S23_DIR" unity gamedesign-override '[{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}]'
+env -C "$S23_DIR" node "$CLI" rules install defaults > "$TMPDIR/s23-install.log" 2>&1 || true
+
+assert_cmd_exit 0 "rules sync on override project exits 0" "$TMPDIR/s23.log" -- \
+    env -C "$S23_DIR" node "$CLI" rules sync
+
+assert_cmd_exit 0 "status --module gamedesign after sync exits 0" "$TMPDIR/s23-status.log" -- \
+    env -C "$S23_DIR" node "$CLI" rules status --module gamedesign
+if grep -qE "balance[[:space:]].*v9\.9\.9[[:space:]].*registry:primary" "$TMPDIR/s23-status.log"; then
+    pass "sync left the override intact (balance v9.9.9, origin primary)"
+else
+    fail "sync changed the override (balance should stay v9.9.9 / registry:primary)"
+fi
+assert_stdout_contains "$S23_DIR/.unikit/memory/gamedesign/core/balance.md" "STUDIO OVERRIDE MARKER" \
+    "sync did not overwrite the override's custom content with the bundled rule"
 
 # ─────────────────────────────────────────────
 # Summary

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "live-service-mobile",
+  "name": "Live-service mobile",
+  "aliases": ["live-service", "gaas", "games-as-a-service", "f2p-live"],
+  "summary": "Live-service F2P-мобайл, где экономика=симулируемая сеть валют (faucet/sink), live-ops календарь, монетизация с сегментацией (whales 1–2%→50–70%) и ретеншн D1/D7/D30 (Clash of Clans, Genshin Impact).",
+  "confidence": "medium",
+  "default_flow_mode": "emergent",
+  "default_packs": ["economy", "liveops", "monetization-ethics", "progression", "social"],
+  "seed_systems": [
+    { "slug": "economy-network", "category": "Economy", "tier": "MVP", "why": "typed currencies + faucet/sink map — симулируемая сеть" },
+    { "slug": "live-ops", "category": "Meta", "tier": "VS", "why": "live-ops calendar — ритм событий" },
+    { "slug": "monetization", "category": "Economy", "tier": "VS", "why": "battle pass + offer/SKU + сегментация (whales)" },
+    { "slug": "retention", "category": "Meta", "tier": "Alpha", "why": "retention triggers D1/D7/D30 + A/B hooks" },
+    { "slug": "social", "category": "Social", "tier": "Alpha", "why": "leagues/clans — социальное удержание" }
+  ],
+  "seed_content_types": [
+    { "slug": "offer", "belongs_to": "SYS-monetization", "scale": "curated", "why": "offer/SKU с сегментом и LTV-bucket" },
+    { "slug": "live-event", "belongs_to": "SYS-live-ops", "scale": "curated", "why": "события live-ops календаря" }
+  ],
+  "seed_entities": [
+    { "slug": "battle-pass", "why": "трек прогрессии монетизации" },
+    { "slug": "ltv-bucket", "why": "LTV-сегмент игрока (whales/dolphins/minnows)" },
+    { "slug": "clan", "why": "leagues/clans для социального удержания" }
+  ],
+  "seed_resources": [
+    { "slug": "soft-currency", "kind": "soft", "why": "оборотная валюта faucet/sink map" },
+    { "slug": "premium-currency", "kind": "hard", "why": "премиум-валюта монетизации" },
+    { "slug": "event-token", "kind": "event", "why": "событийный токен live-ops календаря" }
+  ],
+  "critical_sections": ["economy.CurrencyNetwork", "liveops.LiveOpsCalendar", "monetization-ethics.SegmentationLTV"],
+  "review_emphasis": ["экономика замкнута как симулируемая сеть (faucet/sink на каждую валюту)", "монетизация и сегментация (whales 1–2%→50–70%) этичны и устойчивы", "retention D1/D7/D30 подкреплён live-ops календарём и Player Journey"],
+  "platform_default": "mobile"
+}

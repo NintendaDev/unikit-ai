@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "city-builder",
+  "name": "City-builder",
+  "aliases": ["city-builder", "city-sim"],
+  "summary": "Градостроительные симуляторы: зонирование с граф-цепочкой спроса/предложения, агенты-горожане с жизненным путём, радиус/покрытие сервисов, sim-tick с бюджетом трафика и обратная связь бюджет/налоги (Cities: Skylines).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["economy", "balance", "progression", "core-loops", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "zoning", "category": "Gameplay", "tier": "MVP", "why": "зоны R/C/I + граф спроса/предложения — ядро роста города" },
+    { "slug": "resource-chains", "category": "Economy", "tier": "MVP", "why": "узлы-конвертеры I-O — value-chains снабжения" },
+    { "slug": "services", "category": "Gameplay", "tier": "VS", "why": "сервисы с радиусом/ёмкостью — покрытие как гейт" },
+    { "slug": "traffic-sim", "category": "Technical", "tier": "VS", "why": "sim-tick (4 Hz) + бюджет трафика по дорогам/транспорту" },
+    { "slug": "budget", "category": "Economy", "tier": "Alpha", "why": "бюджет/налоги — петля обратной связи экономики города" }
+  ],
+  "seed_content_types": [
+    { "slug": "zone", "belongs_to": "SYS-zoning", "scale": "curated", "why": "типы зон R/C/I с правилами спроса — типизированный набор" }
+  ],
+  "seed_entities": [
+    { "slug": "citizen-agent", "why": "горожанин с потребностью и жизненным путём (lifepath)" },
+    { "slug": "converter-node", "why": "узел цепочки ресурсов: вход-выход (I-O) снабжения" },
+    { "slug": "service", "why": "сервис с радиусом и ёмкостью покрытия" },
+    { "slug": "road-segment", "why": "сегмент дороги — носитель трафика и бюджета тика" }
+  ],
+  "seed_resources": [
+    { "slug": "city-budget", "kind": "soft", "why": "городская казна: налоги-faucet против расходов-drain" }
+  ],
+  "critical_sections": ["economy.SupplyDemandChains", "balance.ServiceCoverage", "core-loops.TickBudget", "economy.BudgetTaxFeedback"],
+  "review_emphasis": ["граф спроса/предложения по зонам замкнут и читаем", "радиус/ёмкость сервисов дают честное покрытие без мёртвых зон", "sim-tick трафика укладывается в бюджет 4 Hz на масштабе города"],
+  "platform_default": "pc"
+}

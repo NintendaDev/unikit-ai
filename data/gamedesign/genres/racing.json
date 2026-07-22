@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "id": "racing",
+  "name": "Racing",
+  "aliases": ["racing-game", "driving"],
+  "summary": "Гонки на модели управления и выборе уровня симуляции: tire-grip, weight-transfer, drift, racing-line, catch-up DDA и sense-of-speed (Forza Horizon, Gran Turismo).",
+  "confidence": "high",
+  "default_flow_mode": "emergent",
+  "default_packs": ["balance", "core-loops", "progression", "ux-onboarding"],
+  "seed_systems": [
+    { "slug": "handling", "category": "Gameplay", "tier": "MVP", "why": "mass/torque/grip/CoG/slip — модель управления, ядро" },
+    { "slug": "surface-friction", "category": "Gameplay", "tier": "VS", "why": "пер-поверхностное сцепление — tire-grip и drift" },
+    { "slug": "track", "category": "Content", "tier": "MVP", "why": "трасса + racing-line + clipping — арена гонки" },
+    { "slug": "rubber-band", "category": "Gameplay", "tier": "Alpha", "why": "catch-up DDA — поддержание накала" },
+    { "slug": "speed-feel", "category": "UX", "tier": "VS", "why": "sense-of-speed — читаемость и азарт" }
+  ],
+  "seed_content_types": [
+    { "slug": "track", "belongs_to": "SYS-track", "scale": "curated", "why": "каталог трасс со схемой racing-line/clipping/поверхностей" }
+  ],
+  "seed_entities": [
+    { "slug": "surface", "why": "тип поверхности (асфальт/гравий/трава) с коэффициентом трения" }
+  ],
+  "seed_resources": [
+    { "slug": "credits", "kind": "soft", "why": "мягкая валюта на машины и апгрейды" }
+  ],
+  "critical_sections": ["balance.HandlingModel", "core-loops.SenseOfSpeed", "balance.CatchUpDDA"],
+  "review_emphasis": ["handling-правила (mass/torque/grip/CoG/slip) живут в SYSTEM C-rules и согласованы", "weight-transfer и drift дают читаемую обратную связь", "rubber-band не убивает мастерство и sense-of-speed"],
+  "platform_default": "console"
+}
