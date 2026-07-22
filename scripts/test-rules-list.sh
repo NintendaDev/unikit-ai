@@ -284,8 +284,15 @@ S9_DIR="$TMPDIR/s9-gd-list"
 mkdir -p "$S9_DIR"
 use_fake_registry "$S9_DIR" unity minimal-valid
 
+# Isolate the backfill from the live official registry (schema:2, now also
+# carrying gamedesign) — without this, `balance` resolves via official
+# instead of bundled, and the assertion below is only stable while their
+# versions happen to match.
+S9_DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/dead-official-s9")"
+mkdir -p "$TMPDIR/dead-official-s9"
+
 assert_cmd_exit 0 "rules list --module gamedesign exits 0" "$TMPDIR/s9.log" -- \
-    env -C "$S9_DIR" node "$CLI" rules list --module gamedesign
+    env -C "$S9_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S9_DEAD_OFFICIAL" node "$CLI" rules list --module gamedesign
 
 assert_stdout_contains "$TMPDIR/s9.log" "Rules catalog for gamedesign" \
     "single-module header names the gamedesign module (back-compat format)"

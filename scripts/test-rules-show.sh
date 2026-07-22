@@ -179,8 +179,15 @@ S8_DIR="$TMPDIR/s8-gd-show"
 mkdir -p "$S8_DIR"
 use_fake_registry "$S8_DIR" unity minimal-valid
 
+# Isolate the backfill from the live official registry (schema:2, now also
+# carrying gamedesign) — without this, `balance` resolves via official
+# instead of bundled, and the assertion below is only stable while their
+# versions happen to match.
+S8_DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/dead-official-s8")"
+mkdir -p "$TMPDIR/dead-official-s8"
+
 assert_cmd_exit 0 "rules show --module gamedesign balance exits 0" "$TMPDIR/s8.log" -- \
-    env -C "$S8_DIR" node "$CLI" rules show --module gamedesign balance
+    env -C "$S8_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S8_DEAD_OFFICIAL" node "$CLI" rules show --module gamedesign balance
 
 assert_stdout_contains "$TMPDIR/s8.log" "balance (core) v1.0.0" \
     "gamedesign core rule header shows id/category/version"

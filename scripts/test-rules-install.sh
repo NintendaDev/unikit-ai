@@ -524,8 +524,16 @@ echo -e "\n${BOLD}Scenario 20: B-merge per-id override + bundled backfill${NC}"
 S20_DIR="$TMPDIR/s20-bmerge"
 use_fake_registry "$S20_DIR" unity gamedesign-override "$SKILLS_CODE_GD"
 
+# The live official registry now carries `gamedesign` too (schema:2), so the
+# canonical per-id backfill for a non-overridden id like `economy` can resolve
+# from official instead of bundled — official ranks above bundled in the
+# chain. Point the official level at an empty local dir (no manifest.json) so
+# `FsRegistry.fetchManifest()` returns null and the backfill is deterministic.
+S20_DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/dead-official-s20")"
+mkdir -p "$TMPDIR/dead-official-s20"
+
 assert_cmd_exit 0 "bootstrap on override fixture exits 0" "$TMPDIR/s20.log" -- \
-    env -C "$S20_DIR" node "$CLI" rules install defaults
+    env -C "$S20_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S20_DEAD_OFFICIAL" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s20.log" "installed gamedesign/core/balance v9.9.9" \
     "override id installs the custom version (9.9.9), not the bundled 1.0.0"
@@ -538,7 +546,7 @@ assert_stdout_contains "$S20_DIR/.unikit/memory/gamedesign/RULES_INDEX.md" "| Fi
 
 # Per-rule origin (robust to install ordering): override → primary, backfill → bundled.
 assert_cmd_exit 0 "status --module gamedesign on override exits 0" "$TMPDIR/s20-status.log" -- \
-    env -C "$S20_DIR" node "$CLI" rules status --module gamedesign
+    env -C "$S20_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S20_DEAD_OFFICIAL" node "$CLI" rules status --module gamedesign
 if grep -qE "balance[[:space:]].*registry:primary" "$TMPDIR/s20-status.log"; then
     pass "override 'balance' carries per-rule origin registry:primary"
 else

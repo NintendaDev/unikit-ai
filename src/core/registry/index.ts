@@ -133,12 +133,37 @@ export interface RulesRegistry {
  * offline-safe last-resort source. Pass `bundledPath=null` to explicitly disable
  * the bundled level (e.g. for isolated tests).
  */
+/**
+ * Build the transport for a single registry URL (git/fs/api dispatch shared
+ * by both the primary and official levels).
+ */
+function buildTransport(url: string): RulesRegistry {
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return new GitRegistry(url);
+  }
+  if (url.startsWith('file://') || url.startsWith('/') || url.startsWith('~/') || /^[A-Za-z]:[\\/]/.test(url)) {
+    return new FsRegistry(url);
+  }
+  // Fallback: try as API stub (will always return null → the next chain level takes over)
+  logWarn('createRegistry', `unrecognized URL format "${url}", using API stub`);
+  return new ApiRegistry(url);
+}
+
 export function createRegistry(
   url: string | null,
   engineId: string,
   bundledPath?: string | null,
 ): ChainedRegistry {
-  const officialGit = new GitRegistry(OFFICIAL_REGISTRY_URL);
+  // Dev/test-only transport override for the official level — isolates a
+  // test run's `gamedesign` per-id backfill from the live official registry
+  // without touching resolve/reset/display, which stay keyed on
+  // `OFFICIAL_REGISTRY_URL` below. Distinct from `UNIKIT_RULES_REPO_URL`,
+  // which only affects the bundled snapshot clone in download-rules.sh.
+  const officialFetchUrl = process.env.UNIKIT_OFFICIAL_REGISTRY_URL || OFFICIAL_REGISTRY_URL;
+  if (process.env.UNIKIT_OFFICIAL_REGISTRY_URL) {
+    logInfo('createRegistry', `official fetch source overridden via UNIKIT_OFFICIAL_REGISTRY_URL=${officialFetchUrl}`);
+  }
+  const officialTransport = buildTransport(officialFetchUrl);
 
   const resolvedBundledPath = bundledPath === undefined ? getBundledRegistryDir() : bundledPath;
   const bundled = resolvedBundledPath ? new FsRegistry(resolvedBundledPath) : undefined;
@@ -148,22 +173,12 @@ export function createRegistry(
   // fetch that would happen if we built a HybridRegistry with primary===official.
   if (!url || url === OFFICIAL_REGISTRY_URL) {
     logInfo('createRegistry', 'no custom URL (or url equals official), using OfficialRegistry (official → bundled)');
-    return new OfficialRegistry(officialGit, engineId, bundled);
+    return new OfficialRegistry(officialTransport, engineId, bundled);
   }
 
-  let primary: RulesRegistry;
-
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    primary = new GitRegistry(url);
-  } else if (url.startsWith('file://') || url.startsWith('/') || url.startsWith('~/') || /^[A-Za-z]:[\\/]/.test(url)) {
-    primary = new FsRegistry(url);
-  } else {
-    // Fallback: try as API stub (will always return null → official takes over)
-    logWarn('createRegistry', `unrecognized URL format "${url}", using API stub`);
-    primary = new ApiRegistry(url);
-  }
+  const primary = buildTransport(url);
 
   const bundledLabel = bundled ? bundled.label : 'none';
-  logInfo('createRegistry', `primary=${primary.label}, official=${officialGit.label}, bundled=${bundledLabel}, engine=${engineId}`);
-  return new HybridRegistry(primary, officialGit, engineId, bundled);
+  logInfo('createRegistry', `primary=${primary.label}, official=${officialTransport.label}, bundled=${bundledLabel}, engine=${engineId}`);
+  return new HybridRegistry(primary, officialTransport, engineId, bundled);
 }

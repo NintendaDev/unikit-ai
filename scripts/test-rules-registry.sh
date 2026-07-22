@@ -457,6 +457,65 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Scenario 20 — UNIKIT_OFFICIAL_REGISTRY_URL transport override
+# ─────────────────────────────────────────────
+# Regression guard for the dev/test-only seam in `createRegistry`: with the
+# env var set, the official level's TRANSPORT is built from the override
+# (fs:<path> instead of git:<official-url>) — but `OFFICIAL_REGISTRY_URL`
+# itself, and the resolve/reset/display dispatch keyed on it, must stay
+# untouched. Without the env var, official fetch stays git-backed as before.
+echo -e "\n${BOLD}Scenario 20: UNIKIT_OFFICIAL_REGISTRY_URL transport override${NC}"
+
+T6_DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/t6-dead-official")"
+mkdir -p "$TMPDIR/t6-dead-official"
+
+set +e
+ENV_SEAM_RESULT=$(UNIKIT_OFFICIAL_REGISTRY_URL="$T6_DEAD_OFFICIAL" node -e "
+const { pathToFileURL } = require('url');
+import(pathToFileURL(process.argv[1]).href).then(mod => {
+    const rOfficial = mod.createRegistry(null, 'unity', null);
+    const overrideUsesFs = rOfficial.label.includes('fs:');
+    const overrideNotGit = !rOfficial.label.includes('git:');
+    const constantUnchanged = mod.OFFICIAL_REGISTRY_URL === '$OFFICIAL_URL';
+    if (overrideUsesFs && overrideNotGit && constantUnchanged) {
+        console.log('OK');
+    } else {
+        console.log('FAIL usesFs=' + overrideUsesFs + ' notGit=' + overrideNotGit
+            + ' constantUnchanged=' + constantUnchanged + ' label=' + rOfficial.label);
+    }
+}).catch(e => { console.log('ERR ' + e.message); });
+" "$REGISTRY_MODULE" 2>&1)
+set -e
+
+if [[ "$ENV_SEAM_RESULT" == "OK" ]]; then
+    pass "env override builds the official transport from fs:<path>"
+    pass "OFFICIAL_REGISTRY_URL constant unchanged by the env override"
+else
+    fail "env override misbehaved — got: $ENV_SEAM_RESULT"
+fi
+
+set +e
+NO_ENV_SEAM_RESULT=$(node -e "
+const { pathToFileURL } = require('url');
+import(pathToFileURL(process.argv[1]).href).then(mod => {
+    const rOfficial = mod.createRegistry(null, 'unity', null);
+    const stillGit = rOfficial.label.includes('git:' + mod.OFFICIAL_REGISTRY_URL);
+    if (stillGit) {
+        console.log('OK');
+    } else {
+        console.log('FAIL label=' + rOfficial.label);
+    }
+}).catch(e => { console.log('ERR ' + e.message); });
+" "$REGISTRY_MODULE" 2>&1)
+set -e
+
+if [[ "$NO_ENV_SEAM_RESULT" == "OK" ]]; then
+    pass "without the env var, official fetch stays git-backed"
+else
+    fail "official fetch regressed without the env var — got: $NO_ENV_SEAM_RESULT"
+fi
+
+# ─────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────
 print_summary_and_exit "rules registry Smoke Tests"

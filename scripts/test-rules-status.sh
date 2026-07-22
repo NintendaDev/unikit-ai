@@ -270,10 +270,18 @@ echo -e "\n${BOLD}Scenario 10: --module gamedesign per-rule backfill origin${NC}
 
 S10_DIR="$TMPDIR/s10-gd-status"
 use_fake_registry "$S10_DIR" unity minimal-valid '[{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}]'
-env -C "$S10_DIR" node "$CLI" rules install defaults >/dev/null 2>&1
+
+# Isolate the gamedesign backfill from the live official registry (schema:2,
+# now also carrying gamedesign) — an empty local dir has no manifest.json, so
+# FsRegistry.fetchManifest() returns null and the backfill resolves from
+# bundled deterministically, without network.
+S10_DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/dead-official-s10")"
+mkdir -p "$TMPDIR/dead-official-s10"
+
+env -C "$S10_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S10_DEAD_OFFICIAL" node "$CLI" rules install defaults >/dev/null 2>&1
 
 assert_cmd_exit 0 "rules status --module gamedesign exits 0" "$TMPDIR/s10.log" -- \
-    env -C "$S10_DIR" node "$CLI" rules status --module gamedesign
+    env -C "$S10_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S10_DEAD_OFFICIAL" node "$CLI" rules status --module gamedesign
 
 assert_stdout_contains "$TMPDIR/s10.log" "gamedesign core:" \
     "status groups installed rules under the gamedesign core tier"
