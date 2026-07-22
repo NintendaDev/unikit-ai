@@ -476,13 +476,15 @@ else
 fi
 
 # ─────────────────────────────────────────────────────
-# Test 3c: Antigravity (skills-only — no subagents, no MCP, postInstall rules)
+# Test 3c: Antigravity (skills-only — no subagents, local MCP config, postInstall rules)
 # ─────────────────────────────────────────────────────
-# Antigravity (IDE + CLI share one .agent/ workspace). Skills install as
-# directories under .agent/skills/ (no workflows-split). supportsSubagents:false
-# and supportsMcp:false → no .agent/agents/ file and no MCP config. postInstall
-# writes .agent/rules/unikit.md guardrails — it fires because ≥1 skill is
-# (re)installed here (installSkills calls it after the skill loop). /unikit-* are
+# Antigravity (IDE + CLI share one .agents/ workspace). Skills install as
+# directories under .agents/skills/ (no workflows-split). supportsSubagents:false
+# → no .agents/agents/ file. supportsMcp:true + settingsFile:'.agents/mcp_config.json',
+# but configureMcp is only invoked from init.ts (not run_update here), so no MCP
+# file is asserted in this block — the writer's output shape is covered by Test 12d.
+# postInstall writes .agents/rules/unikit.md guardrails — it fires because ≥1 skill
+# is (re)installed here (installSkills calls it after the skill loop). /unikit-* are
 # NOT rewritten (skills triggered by description), so references stay verbatim.
 
 ANTIGRAVITY_DIR="$TMPDIR/test-antigravity"
@@ -497,8 +499,8 @@ cat > "$ANTIGRAVITY_DIR/.unikit.json" << 'EOF'
   "agents": [
     {
       "id": "antigravity",
-      "skillsDir": ".agent/skills",
-      "subagentsDir": ".agent/agents",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
       "installedSkills": ["unikit", "unikit-plan"],
       "installedSubagents": ["unikit-architecture-sidecar"]
     }
@@ -513,44 +515,40 @@ inject_fake_registry "$ANTIGRAVITY_DIR"
 seed_rule "$ANTIGRAVITY_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$ANTIGRAVITY_DIR"
 
-# Skills install as .agent/skills/<name>/SKILL.md directories (skills-only)
-assert_exists "$ANTIGRAVITY_DIR/.agent/skills/unikit/SKILL.md" \
-  "antigravity: unikit skill installed as .agent/skills/<name>/SKILL.md"
+# Skills install as .agents/skills/<name>/SKILL.md directories (skills-only)
+assert_exists "$ANTIGRAVITY_DIR/.agents/skills/unikit/SKILL.md" \
+  "antigravity: unikit skill installed as .agents/skills/<name>/SKILL.md"
 # Reference-heavy skills keep their references/ (the reason we did NOT port the
 # workflows-split — a flat branch would collapse same-named reference files).
-assert_exists "$ANTIGRAVITY_DIR/.agent/skills/unikit/references/LANGUAGE_RULES_TEMPLATE.md" \
+assert_exists "$ANTIGRAVITY_DIR/.agents/skills/unikit/references/LANGUAGE_RULES_TEMPLATE.md" \
   "antigravity: unikit skill references/ delivered (non-flat, no workflows-split)"
 # /unikit-* invocations are left verbatim (skills-only, no slash rewrite), same as
 # DefaultTransformer — unikit-plan ships references/TASK-FORMAT.md with one.
-assert_contains "$ANTIGRAVITY_DIR/.agent/skills/unikit-plan/references/TASK-FORMAT.md" '/unikit-implement' \
+assert_contains "$ANTIGRAVITY_DIR/.agents/skills/unikit-plan/references/TASK-FORMAT.md" '/unikit-implement' \
   "antigravity: references keep /unikit-* verbatim (skills-only, no invocation rewrite)"
 
 # postInstall guardrails written (fires because ≥1 skill (re)installed)
-assert_exists "$ANTIGRAVITY_DIR/.agent/rules/unikit.md" \
-  "antigravity: postInstall wrote .agent/rules/unikit.md guardrails"
-assert_contains "$ANTIGRAVITY_DIR/.agent/rules/unikit.md" 'mcp_config.json' \
-  "antigravity: rules file points at the global ~/.gemini/config/mcp_config.json for Unity MCP"
+assert_exists "$ANTIGRAVITY_DIR/.agents/rules/unikit.md" \
+  "antigravity: postInstall wrote .agents/rules/unikit.md guardrails"
+assert_contains "$ANTIGRAVITY_DIR/.agents/rules/unikit.md" '.agents/mcp_config.json' \
+  "antigravity: rules file points at the local, automatically-configured .agents/mcp_config.json"
 
 # supportsSubagents:false → listed subagent must NOT materialize
-assert_not_exists "$ANTIGRAVITY_DIR/.agent/agents/unikit-architecture-sidecar.md" \
+assert_not_exists "$ANTIGRAVITY_DIR/.agents/agents/unikit-architecture-sidecar.md" \
   "antigravity: listed subagent NOT installed (supportsSubagents:false)"
 
-# supportsMcp:false + settingsFile:null → no project MCP config written
-assert_not_exists "$ANTIGRAVITY_DIR/.mcp.json" \
-  "antigravity: no project .mcp.json (supportsMcp:false)"
-
-# No {{...}} template tokens leak into skills or the rules file. settingsFile:null
-# renders {{settings_file}} → literal "the MCP settings file" (template.ts:33);
-# {{skills_cli_agent_flag}} → "--agent antigravity". None stay raw.
+# No {{...}} template tokens leak into skills or the rules file. {{settings_file}}
+# now renders to the literal '.agents/mcp_config.json' (settingsFile is no longer
+# null); {{skills_cli_agent_flag}} → "--agent antigravity". None stay raw.
 ANTIGRAVITY_TOKEN_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
-  "$ANTIGRAVITY_DIR/.agent/skills/" "$ANTIGRAVITY_DIR/.agent/rules/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+  "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 
 if [[ "$ANTIGRAVITY_TOKEN_HITS" -eq 0 ]]; then
-  echo "  ✓ antigravity: skills-only install (references kept), postInstall rules, no subagents/MCP, no {{...}} leak"
+  echo "  ✓ antigravity: skills-only install (references kept), postInstall rules, no subagents, no {{...}} leak"
 else
   echo "Assertion failed: antigravity install leaked $ANTIGRAVITY_TOKEN_HITS template placeholder(s)"
   grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
-    "$ANTIGRAVITY_DIR/.agent/skills/" "$ANTIGRAVITY_DIR/.agent/rules/" --include='*.md' | head -5
+    "$ANTIGRAVITY_DIR/.agents/skills/" "$ANTIGRAVITY_DIR/.agents/rules/" --include='*.md' | head -5
   exit 1
 fi
 
@@ -1051,6 +1049,139 @@ node -e "
 " "$OPENCODE_HTTP_JSON"
 
 echo "  ✓ opencode MCP config: HTTP servers (UnityMCP) skipped; stdio servers (context7) still written"
+
+# ─────────────────────────────────────────────────────
+# Test 12d: Antigravity MCP config shape (serverUrl transform, type stripped)
+# ─────────────────────────────────────────────────────
+# Drives configureMcp('antigravity') directly, verifies the AntigravityMcpWriter
+# transform: naive JSON passthrough (mcpServers container, same as Claude/Cursor)
+# except HTTP servers get `type` stripped and `url` renamed to `serverUrl` (the
+# only schema Antigravity's client understands is `{ command, args, env }` stdio
+# or `{ serverUrl }` remote — never `{ type, url }`).
+# Uses engine=unity for the type/url→serverUrl case (UnityMCP), engine=godot for
+# the env-passthrough case (GodotMCP), same split as the OpenCode block above.
+
+ANTIGRAVITY_MCP_DIR="$TMPDIR/test-antigravity-mcp"
+mkdir -p "$ANTIGRAVITY_MCP_DIR/.agents"
+ANTIGRAVITY_MCP_JSON="$ANTIGRAVITY_MCP_DIR/.agents/mcp_config.json"
+
+# Pre-seed with a non-mcpServers top-level key to assert preservation through
+# configureMcp's upsert path (merge, not overwrite — the invariant the OpenCode
+# regression patch 2026-04-19-11.25.md exists to guard against).
+cat > "$ANTIGRAVITY_MCP_JSON" << 'EOF'
+{
+  "theme": "dark",
+  "customField": { "nested": "value" }
+}
+EOF
+
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const servers = await discoverMcpServers('unity');
+  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'antigravity');
+  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'antigravity');
+" "$ANTIGRAVITY_MCP_DIR" > /dev/null 2>&1)
+
+assert_exists "$ANTIGRAVITY_MCP_JSON" ".agents/mcp_config.json should exist after configureMcp"
+
+node -e "
+  const fs = require('fs');
+  const c = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+  const errors = [];
+
+  if (!c.mcpServers) errors.push('missing top-level mcpServers container');
+
+  // Non-mcpServers top-level keys must survive the upsert
+  if (c.theme !== 'dark') errors.push('top-level \"theme\" lost: ' + JSON.stringify(c.theme));
+  if (!c.customField || c.customField.nested !== 'value')
+    errors.push('top-level \"customField\" lost or mutated: ' + JSON.stringify(c.customField));
+
+  const ctx = c.mcpServers && c.mcpServers.context7;
+  if (!ctx) errors.push('context7 server missing');
+  else {
+    if (ctx.command !== 'npx') errors.push('context7.command expected npx, got ' + JSON.stringify(ctx.command));
+    if (JSON.stringify(ctx.args) !== JSON.stringify(['-y', '@upstash/context7-mcp@latest']))
+      errors.push('context7.args wrong shape: ' + JSON.stringify(ctx.args));
+    if ('env' in ctx) errors.push('context7.env must be absent when source has no env');
+  }
+
+  const unity = c.mcpServers && c.mcpServers.UnityMCP;
+  if (!unity) errors.push('UnityMCP server missing');
+  else {
+    if (unity.serverUrl !== 'http://localhost:8085/mcp')
+      errors.push('UnityMCP.serverUrl wrong: ' + JSON.stringify(unity.serverUrl));
+    if ('type' in unity) errors.push('UnityMCP.type must be stripped');
+    if ('url' in unity) errors.push('UnityMCP.url must be renamed to serverUrl, not left in place');
+  }
+
+  if (errors.length > 0) {
+    console.error('antigravity mcp shape assertion failed:');
+    errors.forEach(e => console.error('  - ' + e));
+    process.exit(1);
+  }
+" "$ANTIGRAVITY_MCP_JSON"
+
+# Idempotency: second configureMcp call above should leave exactly one context7 entry.
+ANTIGRAVITY_CTX_COUNT=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  console.log(Object.keys(c.mcpServers || {}).filter(k => k === 'context7').length);
+" "$ANTIGRAVITY_MCP_JSON")
+if [[ "$ANTIGRAVITY_CTX_COUNT" -ne 1 ]]; then
+  echo "Assertion failed: antigravity idempotency — expected 1 context7 entry, got $ANTIGRAVITY_CTX_COUNT"
+  exit 1
+fi
+
+echo "  ✓ antigravity MCP config: mcpServers container, serverUrl transform, type/url stripped, top-level preserved (idempotent)"
+
+# Separate engine=godot run: neither context7 nor godot-mcp-coding-solo carries a
+# `type`/`url` field, so this exercises naive env passthrough (no key renaming,
+# unlike toml-writer.ts's sanitizeEnv/http_headers rename).
+ANTIGRAVITY_MCP_DIR2="$TMPDIR/test-antigravity-mcp-env"
+mkdir -p "$ANTIGRAVITY_MCP_DIR2"
+
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const servers = await discoverMcpServers('godot');
+  await configureMcp(target, servers, ['context7', 'godot-mcp-coding-solo'], 'antigravity');
+" "$ANTIGRAVITY_MCP_DIR2" > /dev/null 2>&1)
+
+ANTIGRAVITY_MCP_JSON2="$ANTIGRAVITY_MCP_DIR2/.agents/mcp_config.json"
+assert_exists "$ANTIGRAVITY_MCP_JSON2" ".agents/mcp_config.json should exist after godot+antigravity configureMcp"
+
+node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const errors = [];
+
+  const godot = c.mcpServers && c.mcpServers.GodotMCP;
+  if (!godot) errors.push('GodotMCP server missing');
+  else {
+    const expectedEnv = { GODOT_PATH: '/path/to/godot', DEBUG: 'true' };
+    if (!godot.env || typeof godot.env !== 'object' || Array.isArray(godot.env)) {
+      errors.push('GodotMCP.env missing or wrong type: ' + JSON.stringify(godot.env));
+    } else {
+      const actualKeys = Object.keys(godot.env).sort();
+      const expectedKeys = Object.keys(expectedEnv).sort();
+      if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+        errors.push('GodotMCP.env keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
+      }
+      for (const k of expectedKeys) {
+        if (godot.env[k] !== expectedEnv[k]) {
+          errors.push('GodotMCP.env.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.env[k]));
+        }
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('antigravity env passthrough assertion failed:');
+    errors.forEach(e => console.error('  - ' + e));
+    process.exit(1);
+  }
+" "$ANTIGRAVITY_MCP_JSON2"
+
+echo "  ✓ antigravity MCP config: env passthrough (no key renaming) for GodotMCP"
 
 # ─────────────────────────────────────────────────────
 # Test 13: Codex MCP rules injection (skill frontmatter)
