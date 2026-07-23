@@ -85,6 +85,8 @@ Select one or more during `unikit-ai init`. The wizard renders a single flat che
 
 🎞 [От ИИ-плана до закоммиченной фичи на Unity](https://youtu.be/IFdmcxNRPZE)
 
+🎞 [Память AI-агента под свой Unity проект](https://youtu.be/gAXAx7RNgC0)
+
 ---
 
 ## Installation & Updating
