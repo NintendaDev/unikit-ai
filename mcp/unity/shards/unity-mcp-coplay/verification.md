@@ -1,9 +1,9 @@
 ### Gate calibration
 
 A gate marked **GATE LIFTED** is not achievable on the server and must be
-skipped with the reason quoted from here. **This server lifts none of them** —
-every gate is reachable, though several are indirect and none may be trusted
-without a read-back.
+skipped with the reason quoted from here. **This server lifts one gate —
+visual regression.** The other four are reachable, though several are indirect
+and none may be trusted without a read-back.
 
 | gate | how | status |
 |---|---|---|
@@ -11,7 +11,14 @@ without a read-back.
 | tests | `run_tests` + `get_test_job` | ✅ working (activate the `testing` group first) |
 | console | `read_console(action="clear")` **before** the change | 🟡 no watermark — clearing is the only way |
 | validation | `manage_scene action=validate` | 🟡 shallow |
-| visual regression | — | ❌ none |
+| visual regression | — | ❌ lifted |
+
+**GATE LIFTED — visual regression:** there is no baseline store and no image
+comparison on this server. The closest thing, `manage_ui render_ui`, is a
+confirmed fake success — it reports `success` while returning an empty PNG, so
+it cannot even establish a baseline, let alone diff one. `manage_camera` takes
+screenshots but keeps nothing to compare against. Skip the gate; do not
+improvise a comparison out of either.
 
 ### 🔴 `read_console` returns the OLDEST entries
 

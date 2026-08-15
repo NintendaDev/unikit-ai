@@ -1,3 +1,36 @@
+### Editor work kind → tool family
+
+48 tools in 10 groups. Only `core` is active by default — activate the group
+before the first call, or the tool is invisible:
+
+```
+manage_tools(action="activate", group="testing"|"ui"|"vfx"|"animation"|"scripting_ext"|…)
+```
+
+| kind | tools | group |
+|---|---|---|
+| `scene` | `manage_scene` · `manage_gameobject` · `manage_components` · `find_gameobjects` · `manage_prefabs` | core |
+| `ui` | `manage_ui` (UI Toolkit only) · `manage_components` (uGUI — see below) | ui / core |
+| `vfx` | `manage_vfx` · `manage_material` · `manage_texture` · `manage_shader` · `manage_graphics` | vfx / core |
+| `anim` | `manage_animation` | animation |
+| `asset` | `manage_asset` · `manage_prefabs` · `manage_scriptable_object` · `manage_material` · `manage_texture` | core / scripting_ext |
+| `input` | — | — |
+| `settings` | `manage_editor` (tags, layers) · `manage_physics` (collision matrix, physics materials) · `manage_graphics` (RP, lighting) · `manage_build` (player settings) | core |
+
+`manage_components` is the path to anything without a dedicated tool, **uGUI
+included** — there is no uGUI-specific tool on this server. It resolves
+references by name, instanceID, GUID and asset path, but has no converters for
+`LayerMask`, `AnimationCurve` or `Gradient`; set those a different way.
+
+**Kinds this server does not cover — degrade to `manual` and say so:**
+
+- **`input`** — the Input System is not covered at all. There is no tool.
+- **`anim` beyond AnimatorController and clip curves** — Timeline is not covered.
+- **`vfx` via Shader Graph** — `manage_shader` is CRUD over a shader *file*;
+  Shader Graph is not supported.
+
+Do not reach for a lookalike in these cases. Report the gap.
+
 ### `batch_execute` is not a transaction
 
 The product page says the batch is atomic. `BatchExecute.cs` has no rollback at

@@ -403,7 +403,15 @@
         "scene_health",
         "serialized_field_rename_audit",
         "screenshot_baseline",
-        "screenshot_compare"
+        "screenshot_compare",
+        "get_hierarchy",
+        "inspect",
+        "get_component",
+        "find_objects",
+        "get_object_detail",
+        "prefab",
+        "asset",
+        "project_settings"
       ]
     }
   }

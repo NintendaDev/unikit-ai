@@ -542,6 +542,7 @@ For each new task from the report:
 2. Insert the task with `- [ ]` checkbox at the correct position within its phase
 3. Include file paths, class names, and a brief WHY context in the description
 4. If the task has dependencies, note them inline (e.g., `(after Phase 1)`)
+5. Add an `Editor:` line — one per editor target, placed after `Files:`, in the form `Editor: [kind] <container> → <target> : <action>` — **only** when the change touches the editor's **serialized state**. A pure code task omits the field, and when `engine_rules_loaded = false` (no `ENGINE_RULES.md` for this engine) it is not generated at all. Match the form already used by the surrounding tasks in the plan.
 
 **5.2: Improve existing task descriptions in TASKS.md**
 
@@ -578,6 +579,7 @@ Only if PLAN-BRIEF.md exists in the plan folder:
 2. **CONSTRAINTS** — update if architectural assumptions changed during analysis or from updated research constraints
 3. **FILES** — add new file paths from new tasks; remove paths for deleted tasks
 4. **DI BINDINGS** — update if new bindings are needed for new tasks
+5. **EDITOR TARGETS** — add a row for every editor target in new tasks; remove rows for deleted tasks (symmetric with FILES). Leave the section absent when the plan has no `Editor:` task
 
 If PLAN-BRIEF.md doesn't exist, do NOT create it unless changes add 3+ new interfaces or significantly alter the plan's technical scope.
 
@@ -644,7 +646,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 3. **Traceable improvements** — every change must be justified by codebase analysis
 4. **No gold-plating** — don't add tasks outside the feature scope unless critical
 5. **User approves first** — never apply changes without user confirmation
-6. **Keep files in sync** — if PLAN-BRIEF.md exists, its INTERFACES and FILES sections must match the tasks in TASKS.md after improvements
+6. **Keep files in sync** — if PLAN-BRIEF.md exists, its INTERFACES, FILES and EDITOR TARGETS sections must match the tasks in TASKS.md after improvements
 7. **Agent-based delegation** — follow the rules in the **Code Analysis Rules** section; single source of truth for what to delegate vs. do inline
 8. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
 

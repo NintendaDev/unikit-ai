@@ -142,11 +142,15 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 
 **If using a folder plan** (`.unikit/code/plans/<folder>/`):
 - Read **`TASKS.md`** — feature overview (`## Overview`), task checklist with phases and statuses
-- Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, files, DI bindings (if exists in plan folder)
+- Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, files, editor targets, DI bindings (if exists in plan folder)
 - If `TASKS.md` has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
+
+**Parse `## Settings`** from the plan while it is open here — Step 2.4 needs it and runs long before the `Docs:` read in Step 3:
+- `Visual regression: yes/no` — **default `no`** when the line is absent. Gates Step 2.4.
+- `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
 
 Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can be applied inline without re-loading on each delegation.
 
@@ -231,8 +235,15 @@ Launch one Explore task per phase from the plan's task list. For each phase, pro
 - Task descriptions from the roadmap
 - `CHANGED_FILES` list for context
 - Instructions: find implementing code using Glob/Grep, read key files, confirm completeness (not a stub), report status per task with file paths
+- Instructions: **skip any task carrying an `Editor:` line — do not mark it `NOT FOUND`.** It is verified in the main context (see below).
 
-**Fallback:** If Agent tool is unavailable, investigate directly using Glob and Grep.
+**Editor targets are excluded from the Explore fan-out.** A task with an `Editor:` line changed the editor's serialized state; there is nothing in the sources to find, so an Explore agent would honestly return `❌ NOT FOUND` and block correctly completed work. The subagents also have no engine tools — the `allowed-tools` grants in `mcp/*.json` are issued to `unikit-verify`, not to its children. So:
+
+- **Editor tasks stay in this skill's own context** and are verified by **reading the editor state back through the engine MCP**, never with Glob/Grep. The per-kind checks are engine knowledge — see `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` → `## Editor Target Checks`.
+- **MCP unavailable** → `⏭️ SKIPPED (editor target, MCP unavailable)`. Not a failure.
+- **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
+
+**Fallback:** If Agent tool is unavailable, investigate directly using Glob and Grep — with the **same exclusion**: tasks carrying an `Editor:` line are not Glob/Grep-verifiable and keep the treatment above.
 
 ### 1.1 Build Checklist
 
@@ -258,7 +269,8 @@ Statuses:
 - `✅ COMPLETED` — all requirements confirmed in code
 - `⚠️ PARTIAL` — partially implemented, something missing
 - `❌ NOT FOUND` — implementation not found
-- `⏭️ SKIPPED` — task was intentionally skipped by the user
+- `⏭️ SKIPPED` — task was intentionally skipped by the user, or an editor target could not be read back (`⏭️ SKIPPED (editor target, MCP unavailable)`)
+- `⏸️ MANUAL` — an editor target the user took on themselves (`Editor tasks: manual`); reported, never a blocker
 
 ---
 
@@ -266,7 +278,7 @@ Statuses:
 
 **Gate override — `.unikit/system/engine-mcp/verification.md` (read in Step 0).**
 
-Steps 2.1 and 2.2 each have a bail-out branch for "{{engine_mcp_tool}} unavailable". That is not the only way a gate can be unreachable: on some MCP servers the tool is available but the *capability* is not (it starts a test run and never returns a result, or hard-codes a validation pass). So there are two distinct skips:
+Steps 2.1, 2.2 and 2.4 each have a bail-out branch for "{{engine_mcp_tool}} unavailable". That is not the only way a gate can be unreachable: on some MCP servers the tool is available but the *capability* is not (it starts a test run and never returns a result, or hard-codes a validation pass). So there are two distinct skips:
 
 - **MCP unavailable** — {{engine_mcp_tool}} itself is not reachable → skip with the wording given in the step.
 - **Gate lifted** — `verification.md` marks that gate **GATE LIFTED** for the configured server → skip it and note the reason **quoted from the shard**, not `{{engine_mcp_tool}} unavailable`. Do not substitute another tool for a lifted gate, and do not report it as passed.
@@ -303,6 +315,18 @@ Apply all checks defined in `{{skills_dir}}/{{self_name}}/references/ENGINE_RULE
 
 If `ENGINE_RULES.md` is not loaded (Step 0.3), skip this section and note: `Engine-specific checks: skipped (no ENGINE_RULES.md)`
 
+### 2.4 Visual Regression
+
+**Runs only when `Visual regression: yes`** in the plan's `## Settings` (parsed in Step 0.2; absent ⇒ `no` ⇒ skip this step silently).
+
+Compare the current visual state of the changed editor targets against the baseline `/unikit-implement` took in its Step 3.6, using the tools the `verification.md` shard names. Report differences with the target they belong to.
+
+The same two distinct skips as 2.1 / 2.2 apply:
+
+- If {{engine_mcp_tool}} is unavailable — skip and note: `Visual regression: {{engine_mcp_tool}} unavailable, skipped`
+- If `verification.md` marks the visual-regression gate **GATE LIFTED** — skip and note: `Visual regression: gate lifted — <reason from verification.md>`
+
+Today only one of the four supported servers implements visual regression; the other three lift this gate. That is the normal path, not a defect — do not substitute another tool for a lifted gate, and do not report it as passed.
 
 ---
 
@@ -551,7 +575,8 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
   - `warn` — no blockers, but non-blocking findings remain: anti-pattern/TODO warnings (normal mode), docs/test gaps accepted as warnings, ambiguous context drift, or missing milestone linkage.
   - `pass` — no blocking or warning findings.
 - `"blocking"`: `true` only when `status` is `fail` (the result should stop commit/merge).
-- `"blockers"`: include **only** blocking findings, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`verify-task-<id>`, `verify-gate-architecture`, `verify-gate-rules`, `verify-ac-<AC-id>`). `severity` is `error` for blockers (`warning` only when policy escalates a warning-class finding to blocking). Non-blocking notes stay in the human summary, never in `blockers`.
+- `"blockers"`: include **only** blocking findings, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`verify-task-<id>`, `verify-gate-architecture`, `verify-gate-rules`, `verify-ac-<AC-id>`, `verify-editor-<task-id>`). `severity` is `error` for blockers (`warning` only when policy escalates a warning-class finding to blocking). Non-blocking notes stay in the human summary, never in `blockers`.
+  - `verify-editor-<task-id>` covers an editor target that was read back and found **unimplemented or wrong**. The two benign outcomes never enter `blockers`: `⏸️ MANUAL` (the user took the target on) and `⏭️ SKIPPED (editor target, …)` (it could not be read back). Both belong in the human summary.
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
 
@@ -627,9 +652,10 @@ Normal mode already checks all items below but tolerates partial results and war
 
 | Check | Normal mode | Strict mode |
 |-------|-------------|-------------|
-| Task completion | `⚠️ PARTIAL` and `⏭️ SKIPPED` allowed | All tasks must be `✅ COMPLETED` — partial and skipped are failures |
+| Task completion | `⚠️ PARTIAL` and `⏭️ SKIPPED` allowed | All tasks must be `✅ COMPLETED` — partial and skipped are failures. **Carve-out:** `⏭️ SKIPPED (editor target, …)` and `⏸️ MANUAL` are exempt in both modes — the first is an unreachable capability, the second is work the user deliberately took on; failing either would fail correctly completed work |
 | Compilation ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if {{engine_mcp_tool}} is available |
 | Tests ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if test assemblies exist for affected modules |
+| Visual regression (Step 2.4) | Reported if enabled | **Required** to pass if enabled and not gate-lifted |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
 | Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |

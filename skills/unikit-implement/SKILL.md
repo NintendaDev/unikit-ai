@@ -70,6 +70,8 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   )
   ```
 
+  `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When the task carries `Editor:` lines, they go into the prompt **verbatim**, together with the resolved `Editor tasks` mode and the matching `EDITOR TARGETS` rows from `PLAN-BRIEF.md` (Step 3.2, *Delegated execution*).
+
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
 
 - **`rules-agent`** — capture a new project rule. Expands to:
@@ -299,7 +301,7 @@ Then reconcile plan state with reality:
 
 **If using a folder plan** (`.unikit/code/plans/<folder>/`):
 - Read **`TASKS.md`** — feature overview (`## Overview`), task checklist with phases, dependencies, and completion status
-- Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, dependency graph, files, DI bindings (if exists in plan folder)
+- Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings (if exists in plan folder)
 - If `TASKS.md` has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules
@@ -326,10 +328,12 @@ Read the `## Settings` section from `TASKS.md` (or from `PLAN.md` in fast-mode):
 - `Testing: no` → skip test creation entirely
 - `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.4)
 - `Docs: no` → skip documentation checkpoint, emit warning
+- `Visual regression: yes` → in Step 3.6, take a baseline before an editor change and compare after it. **Default when the line is absent: `no`.**
+- `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (`{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
-If `## Settings` section is missing, default to `Testing: no`, `Docs: no`.
+If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, `Visual regression: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
 
-Store the parsed settings — they affect behavior in Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
+Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.6 (visual regression), Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
 
 Understand:
 - Which tasks are completed (`- [x]`) and which are pending (`- [ ]`)
@@ -365,6 +369,8 @@ All tasks in {feature-folder} are completed.
 Nothing to implement.
 ```
 STOP here.
+
+**Counting rule for `⏸️ MANUAL`.** A task marked `- [x] … ⏸️ MANUAL` (Step 3.4) counts as **out of scope**, not as pending: it does not block "all tasks are completed" and it is never picked up again by a later run. It is also not counted as implemented — Step 4 reports it on its own line.
 
 **If `$ARGUMENTS` contains phase/task selectors:**
 
@@ -431,6 +437,16 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 **Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline (rules and dev-principles are already loaded in Step 1.5 / Step 3.0). Instead, degrade parallel scopes to sequential and continue the inline implementation cycle for ALL tasks. Each phase still triggers Step 3.0 Phase Rules Refresh.
 
+**Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
+
+- **`mcp`** — carry it out through the engine MCP. Resolve `kind` → tool family **from the `scene-authoring.md` shard**, never from this file: the tool names differ per server and only the shard is audited. Confirm the result by **reading the changed state back** — not by the response code (fake success is confirmed on two of the four supported servers).
+  - **Locating the table: match the prefix `### Editor work kind →`, not a full heading.** The three shards that carry one end it differently (`tool` / `tool family` / `parent tool`); matching any single full heading finds it on some servers and silently drops the rest into `manual`.
+  - **The shard declares no kind table → say so and degrade to `manual`.** Do not pick tools by guesswork — the shards forbid reaching for a lookalike when a tool is missing.
+- **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
+- **`direct`** — **commit to git before editing** (this is mandatory and the whole reason the mode is gated), then edit the serialized format directly, staying inside the bounds `references/ENGINE_RULES.md` §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
+
+**Delegated execution.** When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim** and the already-resolved mode. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
+
 **3.3: Handle Blockers**
 
 If a task cannot be completed (compilation error, missing dependency, unclear requirement, etc.):
@@ -456,6 +472,10 @@ Based on choice:
 After successful implementation, update `TASKS.md`:
 - Change `- [ ] {task}` to `- [x] {task}`
 - If all tasks in a phase are done, update the phase status: `**Status:** [x] Completed`
+
+**Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
+- Write the checkbox as `- [x]` and append the marker `⏸️ MANUAL` to the task text, right after the description: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. The checkbox must be `[x]` so Step 2 does not pick the task up again on every subsequent run; the marker is what keeps it honest, and it sits in the task text so `/unikit-verify` sees it during the task audit.
+- A `⏸️ MANUAL` task **does not block** "all tasks completed" — the user took it on deliberately. It is **not** counted as implemented either: report it separately (Step 4).
 
 Use the Edit tool to make these changes surgically.
 
@@ -485,6 +505,8 @@ After all tasks in a phase are done, check {{engine_name}} console for compilati
 
 This step is critical: do NOT proceed to commit (3.9) with compilation errors that belong to the current phase. Future-phase errors are acceptable — they indicate planned work, not broken code.
 
+**Visual regression (only when `Visual regression: yes`).** For a phase containing `Editor:` tasks: take a baseline **before** the editor change and compare **after** it. Take the tool names from the `scene-authoring.md` / `verification.md` shard — do **not** hardcode them here, they differ per server. If the shard declares no visual-regression capability, **skip the step and say so** (`WARN [visual regression] not supported by the configured server — skipped`); never substitute an improvised replacement. `/unikit-verify` gates the same setting and lifts the gate on the same grounds.
+
 **3.7: Update context artifacts (if project structure changed)**
 
 After completing a phase, check whether the implementation introduced structural changes that should be reflected in context files:
@@ -503,7 +525,7 @@ Fallback: If Agent tool is unavailable, write tests inline; do NOT invoke `/unik
 
 When writing tests, use:
 1. List of files created/modified in the phase
-2. Relevant context from PLAN-BRIEF.md (constraints, interfaces, key patterns)
+2. Relevant context from PLAN-BRIEF.md (constraints, interfaces, key patterns, editor targets)
 3. The rules and principles already loaded in Step 1.5 Bootstrap + Step 3.0 Phase Rules Refresh
 
 If tests are generated, they will be included in the phase commit.
@@ -558,6 +580,10 @@ Completed:
 - Task {N.K}: {summary}
 ...
 
+Manual (editor targets):
+- Task {N.M}: {[kind] container → target : action}
+...
+
 Affected files:
 - Created: {list of created files}
 - Modified: {list of modified files}
@@ -565,6 +591,8 @@ Affected files:
 
 Remaining tasks: {count} (in {phases} phases)
 ```
+
+The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with its exact instruction, and is **omitted entirely** when there are none. It is **not** the same as "not done": the user chose to carry these out themselves, and `/unikit-verify` does not treat them as blockers.
 
 ### Step 5: Post-Completion Actions
 
@@ -686,6 +714,8 @@ When `$ARGUMENTS` is `status`:
 │ Progress: 10/18 (55%)                           │
 └─────────────────────────────────────────────────┘
 ```
+
+Counts come from the checkboxes. A task marked `- [x] … ⏸️ MANUAL` counts toward its phase's `(N/M tasks)` and toward `Progress` like any other `- [x]` — it is genuinely off the work queue. When any exist in the plan, add one line below the box: `Manual (editor targets): {count}` so the number is never mistaken for implemented work.
 
 Then STOP — do not execute any tasks.
 

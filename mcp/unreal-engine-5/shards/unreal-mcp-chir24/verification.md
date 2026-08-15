@@ -11,7 +11,7 @@ different tool for it.
 | tests | — | ❌ lifted |
 | console | `engineErrors[]` | 🟡 partial — max 3 messages per request |
 | validation | — | ❌ lifted (fake) |
-| visual regression | — | ❌ none |
+| visual regression | — | ❌ lifted |
 
 **GATE LIFTED — tests:** `run_tests` is `GEngine->Exec("automation RunTests")`
 followed by "Check Output Log". It starts the run and returns nothing. There is
@@ -22,6 +22,11 @@ results.
 **GATE LIFTED — validation:** `asset.validate` hard-codes `bIsValid = true`.
 It is not a check, it is a constant. Skip it rather than reporting a pass it
 did not earn.
+
+**GATE LIFTED — visual regression:** there is no baseline capture and no image
+comparison anywhere in the tool surface, and `preview` is refused for all 1381
+actions, so there is not even a dry-run to render. Skip the gate and say the
+server cannot produce a visual baseline.
 
 ### The gates that do work, and their limits
 

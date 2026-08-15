@@ -11,11 +11,16 @@ different tool for it.
 | tests | — | ❌ lifted |
 | console | `runtime_session` | 🟡 partial — only Fennara's own runs |
 | validation | `validate_scene` | 🟢 works |
-| visual regression | — | ❌ none |
+| visual regression | — | ❌ lifted |
 
 **GATE LIFTED — tests:** this server has no test tooling at all. Not a broken
 one, not a partial one — the capability does not exist. Skip the test gate and
 say so plainly; do not fabricate a substitute out of `runtime_session`.
+
+**GATE LIFTED — visual regression:** `screenshot_scene` renders a scene, but
+there is no baseline store and no comparison — nothing keeps a previous image
+or diffs two of them. A one-shot render is not a regression check. Skip the
+gate; do not improvise a comparison by eye out of `screenshot_scene`.
 
 ### The gates that do work, and their limits
 
