@@ -658,7 +658,15 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-verify/references/ENGINE_RULES.
 assert_contains "$CLAUDE_DIR/.claude/skills/unikit-verify/references/ENGINE_RULES.md" \
   "Engine Rules: Unity" "unikit-verify ENGINE_RULES.md should have Unity header"
 
-echo "  ✓ ENGINE_RULES.md: installed for unity engine (unikit + unikit-verify)"
+# unikit-plan gained a planning vocabulary in phase 2. Part 4 of test-skills.sh asserts the
+# template exists in the SOURCE tree; this asserts it actually reaches the project. The
+# Test 7 fixture has unikit-plan in installedSkills (see the config at the top of this file).
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "ENGINE_RULES.md should be installed for unikit-plan (unity)"
+assert_contains "$CLAUDE_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "Engine Rules: Unity" "unikit-plan ENGINE_RULES.md should have Unity header"
+
+echo "  ✓ ENGINE_RULES.md: installed for unity engine (unikit + unikit-verify + unikit-plan)"
 
 # unikit-memory ships a scripts/ subdir (the single self-contained material-prep.py) — the
 # first skill to do so. The non-flat transformer copies the whole skill dir, but nothing
@@ -709,7 +717,20 @@ assert_exists "$GODOT_DIR/.claude/skills/unikit-architecture/references/ENGINE_R
 assert_contains "$GODOT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" \
   "Engine Rules: Godot" "Godot ENGINE_RULES.md should have Godot header"
 
-echo "  ✓ ENGINE_RULES.md: installed for godot engine (both skills)"
+# The graceful-degradation half: no Godot planning vocabulary ships until phases 3-4, so
+# installEngineTemplates must fall through its `continue` branch and stay silent.
+#
+# DO NOT DELETE AS "checking the absence of something that was never there". The fixture
+# above lists only unikit + unikit-architecture in installedSkills, so this looks vacuous —
+# it is not. installEngineTemplates iterates engineConfig.skillTemplates from engines.ts and
+# NEVER consults installedSkills; it creates the skill directory itself. The unikit-plan slot
+# IS declared for godot, so the moment GODOT_RULES.md lands in
+# data/engine-templates/skills/unikit-plan/ this assertion fires — even in this fixture.
+# That is the point: phase 3 must flip it deliberately rather than discover it already green.
+assert_not_exists "$GODOT_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "unikit-plan ENGINE_RULES.md must NOT exist for godot (no vocabulary until phases 3-4)"
+
+echo "  ✓ ENGINE_RULES.md: installed for godot engine (both skills), unikit-plan absent as expected"
 
 # ─────────────────────────────────────────────────────
 # Test 9: Engine-specific rules paths

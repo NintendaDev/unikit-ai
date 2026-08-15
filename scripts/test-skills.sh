@@ -370,6 +370,20 @@ for tpl in "UNITY_RULES.md" "GODOT_RULES.md" "GODOT_NET_RULES.md" "UNREAL_ENGINE
     fi
 done
 
+# Check unikit-plan templates
+# DELIBERATELY Unity-only: the Godot / UE5 planning vocabularies land in
+# phases 3-4. Listing all four here would fail immediately and for the wrong
+# reason. Precedent: unikit-docs above checks 3 of 4 (no GODOT_NET_RULES.md).
+# Their ABSENCE is asserted in test-install.sh Test 8 — see the note there.
+for tpl in "UNITY_RULES.md"; do
+    tpl_path="$TEMPLATES_DIR/unikit-plan/$tpl"
+    if [[ -f "$tpl_path" && -s "$tpl_path" ]]; then
+        pass "engine-templates/skills/unikit-plan/$tpl"
+    else
+        fail "engine-templates/skills/unikit-plan/$tpl — missing or empty"
+    fi
+done
+
 # ─────────────────────────────────────────────
 # Part 4a2: Validate `<!-- unikit-additional-sections -->` tags are balanced
 # Engine templates in data/engine-templates/skills/unikit/ MAY declare an
@@ -3257,6 +3271,250 @@ if [[ -z "$EM8_WHY" ]]; then
     pass "EM-8 fennara .gd doctrine override (write_or_update_file) present in shard + granted in config"
 else
     fail "EM-8 fennara doctrine override drift:$EM8_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# ED: Editor-target grammar layer (ED-1…ED-14)
+# ─────────────────────────────────────────────
+# The whole Editor: layer is a TEXTUAL contract across the plan template, the
+# planner, four consumer skills, two subagents, six MCP configs and four shards.
+# It has no compiler. Its most likely failure is "writer without reader" — a
+# setting written into the plan that nobody parses, or a shard documenting tools
+# the skill was never granted. Both fail SILENTLY on a configured MCP.
+# ED-1…ED-13 are -qF and file-scoped (MSYS grep aborts on -iF); ED-14 is one
+# node pass, cross-file by nature (Part 5b precedent).
+# Path vars: reuse UNIKIT_VERIFY_SKILL / UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
+# CK_TASKFMT / EM_IMPLEMENT_SKILL — declaring ED_* duplicates for the same files is
+# exactly the name drift the CK-* block removed. New vars only where none exists.
+ED_MODE_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+ED_MODE_FAST="$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
+ED_PLAN_TPL="$ROOT_DIR/data/engine-templates/skills/unikit-plan/UNITY_RULES.md"
+ED_IMPLEMENT_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
+ED_COPLAY_SCENE="$ROOT_DIR/mcp/unity/shards/unity-mcp-coplay/scene-authoring.md"
+ED_COPLAY_VERIFY="$ROOT_DIR/mcp/unity/shards/unity-mcp-coplay/verification.md"
+ED_FENNARA_VERIFY="$ROOT_DIR/mcp/godot/shards/godot-mcp-fennara/verification.md"
+ED_CHIR24_VERIFY="$ROOT_DIR/mcp/unreal-engine-5/shards/unreal-mcp-chir24/verification.md"
+ED_BIOME_VERIFY="$ROOT_DIR/mcp/unity/shards/unity-mcp-biome/verification.md"
+
+# (ED-1) The grammar itself. Without the kind list the field is unconstrained and
+# every planner invents its own vocabulary.
+ED1_WHY=""
+grep -qF 'Editor: [kind]' "$CK_TASKFMT" || ED1_WHY+=" grammar-line"
+grep -qF 'scene | ui | vfx | anim | asset | input | settings' "$CK_TASKFMT" || ED1_WHY+=" 7-kinds"
+if [[ -z "$ED1_WHY" ]]; then
+    pass "ED-1 Editor: grammar + 7 kinds present in TASK-FORMAT.md"
+else
+    fail "ED-1 Editor: grammar drift in TASK-FORMAT.md:$ED1_WHY"
+fi
+
+# (ED-2) Both new ## Settings lines. They are parsed by example (like Testing:),
+# so a rename here silently disables the consumer rather than erroring.
+ED2_WHY=""
+grep -qF 'Visual regression' "$CK_TASKFMT" || ED2_WHY+=" visual-regression"
+grep -qF 'Editor tasks' "$CK_TASKFMT"      || ED2_WHY+=" editor-tasks"
+if [[ -z "$ED2_WHY" ]]; then
+    pass "ED-2 both new ## Settings lines present in TASK-FORMAT.md"
+else
+    fail "ED-2 ## Settings line MISSING in TASK-FORMAT.md:$ED2_WHY"
+fi
+
+# (ED-3) The brief's aggregation table.
+if grep -qF '## EDITOR TARGETS' "$CK_TASKFMT"; then
+    pass "ED-3 ## EDITOR TARGETS present in TASK-FORMAT.md"
+else
+    fail "ED-3 ## EDITOR TARGETS missing from TASK-FORMAT.md"
+fi
+
+# (ED-4) NEGATIVE — the only mechanical guard on the engine-neutrality cleanup.
+# TWO files, EIGHT assertions.
+#   TASK-FORMAT.md: references/ is EXCLUDED from the Part 7c engine stop-word scan,
+#   which is precisely how the Unity specifics accumulated there in the first place.
+#   Assert `.cs` (not `path/to/file.cs`): the latter misses the `path/to/file1.cs`
+#   line and would go green on a half-done cleanup. After the cleanup no legitimate
+#   `.cs` remains in the file.
+#   unikit-plan/SKILL.md: Part 7c DOES scan it but catches none of these three
+#   (`Assets/` is not a stop word, `.cs` does not match `(^| )C# `).
+ED4_WHY=""
+grep -qF 'Assets/' "$CK_TASKFMT"        && ED4_WHY+=" tpl:Assets/"
+grep -qF '```csharp' "$CK_TASKFMT"      && ED4_WHY+=" tpl:csharp-fence"
+grep -qF '`.cs`' "$CK_TASKFMT"          && ED4_WHY+=" tpl:.cs"
+grep -qF 'Zenject' "$CK_TASKFMT"        && ED4_WHY+=" tpl:Zenject"
+grep -qF 'Container.Bind' "$CK_TASKFMT" && ED4_WHY+=" tpl:Container.Bind"
+grep -qF 'Assets/' "$UNIKIT_PLAN_SKILL" && ED4_WHY+=" skill:Assets/"
+grep -qF 'Zenject' "$UNIKIT_PLAN_SKILL" && ED4_WHY+=" skill:Zenject"
+grep -qF '`.cs`' "$UNIKIT_PLAN_SKILL"   && ED4_WHY+=" skill:.cs"
+if [[ -z "$ED4_WHY" ]]; then
+    pass "ED-4 no engine specifics left in TASK-FORMAT.md + unikit-plan/SKILL.md (8 assertions)"
+else
+    fail "ED-4 engine specifics leaked back:$ED4_WHY"
+fi
+
+# (ED-5) The planner must READ the vocabulary. Before this phase unikit-plan had
+# zero mentions of ENGINE_RULES while owning a slot in engines.ts.
+if grep -qF 'ENGINE_RULES' "$UNIKIT_PLAN_SKILL"; then
+    pass "ED-5 ENGINE_RULES read wired into unikit-plan/SKILL.md"
+else
+    fail "ED-5 unikit-plan/SKILL.md does not mention ENGINE_RULES"
+fi
+
+# (ED-6) Both mode files, two separate assertions — one mode drifting away from the
+# other is a real scenario, and a single OR would hide it.
+ED6_WHY=""
+grep -qF 'Editor tasks' "$ED_MODE_FULL" || ED6_WHY+=" mode-full"
+grep -qF 'Editor tasks' "$ED_MODE_FAST" || ED6_WHY+=" mode-fast"
+if [[ -z "$ED6_WHY" ]]; then
+    pass "ED-6 Editor tasks question present in BOTH mode-full.md and mode-fast.md"
+else
+    fail "ED-6 Editor tasks question MISSING in:$ED6_WHY"
+fi
+
+# (ED-7) The two-sided contract: a setting written by the planner and read by nobody
+# is lost silently, which is the failure this whole block exists to prevent.
+ED7_WHY=""
+grep -qF 'Editor tasks' "$EM_IMPLEMENT_SKILL"       || ED7_WHY+=" implement-missing-Editor-tasks"
+grep -qF 'Visual regression' "$UNIKIT_VERIFY_SKILL" || ED7_WHY+=" verify-missing-Visual-regression"
+if [[ -z "$ED7_WHY" ]]; then
+    pass "ED-7 settings have readers (Editor tasks→implement, Visual regression→verify)"
+else
+    fail "ED-7 setting written with no reader:$ED7_WHY"
+fi
+
+# (ED-8) The engine vocabulary itself. `{{` must be ZERO: installEngineTemplates
+# writes engine templates VERBATIM (no processTemplate), so a variable would ship
+# to users as literal `{{engine_name}}`.
+ED8_WHY=""
+if [[ -f "$ED_PLAN_TPL" && -s "$ED_PLAN_TPL" ]]; then
+    for marker in '§1' '§2' '§3' '§4' '§5' '§6'; do
+        grep -qF "$marker" "$ED_PLAN_TPL" || ED8_WHY+=" missing:$marker"
+    done
+    grep -qF '{{' "$ED_PLAN_TPL" && ED8_WHY+=" has-template-vars"
+else
+    ED8_WHY+=" missing-or-empty"
+fi
+if [[ -z "$ED8_WHY" ]]; then
+    pass "ED-8 unikit-plan/UNITY_RULES.md present, §1…§6 markers, zero {{ }} vars"
+else
+    fail "ED-8 unikit-plan/UNITY_RULES.md drift:$ED8_WHY"
+fi
+
+# (ED-9) A status that is written but never declared reads as a typo — and a verify
+# that does not know it treats deliberately user-owned work as a failed gate.
+ED9_WHY=""
+grep -qF '⏸️ MANUAL' "$EM_IMPLEMENT_SKILL"  || ED9_WHY+=" implement"
+grep -qF '⏸️ MANUAL' "$UNIKIT_VERIFY_SKILL" || ED9_WHY+=" verify"
+if [[ -z "$ED9_WHY" ]]; then
+    pass "ED-9 ⏸️ MANUAL declared in BOTH unikit-implement and unikit-verify"
+else
+    fail "ED-9 ⏸️ MANUAL missing in:$ED9_WHY"
+fi
+
+# (ED-10) unikit-improve is the THIRD writer of tasks. Without it the first
+# /unikit-improve run silently returns the plan to the pre-Editor format.
+if grep -qF 'Editor:' "$UNIKIT_IMPROVE_SKILL"; then
+    pass "ED-10 Editor: known to unikit-improve (third task writer)"
+else
+    fail "ED-10 unikit-improve/SKILL.md does not mention Editor:"
+fi
+
+# (ED-11) The parallel path. Guard the WORKER, not the coordinator: the worker
+# executes, so its branch is where a silent regression lands — an editor task in
+# parallel would be applied as a plain file edit, bypassing both `direct` gates.
+ED11_WHY=""
+grep -qF 'Editor:' "$ED_IMPLEMENT_WORKER"     || ED11_WHY+=" Editor:"
+grep -qF '⏸️ MANUAL' "$ED_IMPLEMENT_WORKER"  || ED11_WHY+=" ⏸️MANUAL"
+if [[ -z "$ED11_WHY" ]]; then
+    pass "ED-11 Editor: + ⏸️ MANUAL present in unikit-implement-worker.md"
+else
+    fail "ED-11 parallel path unaware of editor targets:$ED11_WHY"
+fi
+
+# (ED-12) The kind table coplay never had. Grep the PREFIX, not a full heading:
+# the three pre-existing shards end it differently (`tool` / `tool family` /
+# `parent tool`), so pinning one full form would silently pass on two servers of
+# four and drop the rest into `manual`.
+if grep -qF '### Editor work kind →' "$ED_COPLAY_SCENE"; then
+    pass "ED-12 coplay scene-authoring declares an Editor work kind table"
+else
+    fail "ED-12 coplay scene-authoring has no '### Editor work kind →' table"
+fi
+
+# (ED-13) verify quotes the gate reason FROM the shard, so the paragraph must exist
+# in the three servers that lift it. The NEGATIVE half is mandatory: adding it to
+# biome, where the gate genuinely works, would silently retire a working check.
+ED13_WHY=""
+grep -qF 'GATE LIFTED — visual regression' "$ED_FENNARA_VERIFY" || ED13_WHY+=" fennara"
+grep -qF 'GATE LIFTED — visual regression' "$ED_COPLAY_VERIFY"  || ED13_WHY+=" coplay"
+grep -qF 'GATE LIFTED — visual regression' "$ED_CHIR24_VERIFY"  || ED13_WHY+=" chir24"
+grep -qF 'GATE LIFTED — visual regression' "$ED_BIOME_VERIFY"   && ED13_WHY+=" biome-should-NOT-lift"
+grep -qF 'This server lifts none of them' "$ED_COPLAY_VERIFY"   && ED13_WHY+=" coplay-self-contradiction"
+if [[ -z "$ED13_WHY" ]]; then
+    pass "ED-13 visual-regression gate lifted in fennara/coplay/chir24, NOT in biome"
+else
+    fail "ED-13 visual-regression gate drift:$ED13_WHY"
+fi
+
+# (ED-14) CROSS-FILE — every tool named in a shard's kind table must be granted to
+# unikit-implement on that same server. The sole mechanical guard on the grants:
+# without it a shard documents tools the skill cannot call, and `Editor tasks: mcp`
+# dies at runtime on "tool not allowed" while reporting "MCP unavailable" — on a
+# CONFIGURED MCP, which the shard preambles explicitly forbid.
+# A separate node pass, not a grep, for the Part 5b reason: comparing two files is
+# not expressible as a single-file assertion.
+ED_GRANTS_RESULT=$(node -e "
+  const fs=require('fs'), path=require('path');
+  const root=process.argv[1];
+  const HEADING='### Editor work kind →';
+  const why=[]; let tables=0;
+
+  for (const dir of fs.readdirSync(root)) {
+    const dirPath=path.join(root, dir);
+    if (!fs.statSync(dirPath).isDirectory()) continue;
+    for (const f of fs.readdirSync(dirPath)) {
+      if (!f.endsWith('.json')) continue;
+      const rel=dir+'/'+f;
+      let m;
+      try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
+      catch { why.push('parse-error:'+rel); continue; }
+
+      const shardRel=m.shards && m.shards['scene-authoring'];
+      if (!shardRel) continue;                       // no shard → nothing to cross-check
+      const shardPath=path.join(dirPath, shardRel);
+      if (!fs.existsSync(shardPath)) { why.push('shard-missing:'+rel); continue; }
+
+      const body=fs.readFileSync(shardPath,'utf8');
+      const at=body.indexOf(HEADING);
+      if (at === -1) continue;                       // no kind table → server degrades to manual
+      tables++;
+
+      const granted=(m['allowed-tools'] && m['allowed-tools'].skills &&
+                     m['allowed-tools'].skills['unikit-implement']) || [];
+      if (!granted.length) { why.push('no-implement-grant:'+rel); continue; }
+      // Single-tool servers route every call through one mega-tool (chir24's
+      // \`unreal\`); the table names PARENTS inside it, which are not grantable.
+      if (granted.length === 1) continue;
+
+      const section=body.slice(at).split(/\n### /)[0];
+      const names=new Set();
+      for (const line of section.split('\n')) {
+        if (!line.trim().startsWith('|')) continue;
+        const cells=line.split('|');
+        if (cells.length < 3) continue;
+        const col2=cells[2];
+        if (/^\s*-+\s*$/.test(col2)) continue;       // markdown separator row
+        for (const mm of col2.matchAll(/\`([a-z_][a-z0-9_]*)/g)) names.add(mm[1]);
+      }
+      const grantSet=new Set(granted);
+      for (const n of names) if (!grantSet.has(n)) why.push('ungranted:'+rel+':'+n);
+    }
+  }
+  if (!tables) why.push('no-kind-table-found-anywhere');
+  console.log(why.length ? why.join(' ') : 'ok');
+" "$MCP_DIR" 2>/dev/null || echo "pass-error")
+
+if [[ "$ED_GRANTS_RESULT" == "ok" ]]; then
+    pass "ED-14 every tool in a shard kind table is granted to unikit-implement on that server"
+else
+    fail "ED-14 shard kind table names tools the skill cannot call: $ED_GRANTS_RESULT"
 fi
 
 # ─────────────────────────────────────────────

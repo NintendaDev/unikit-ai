@@ -82,4 +82,4 @@ Whether the `direct` value of `Editor tasks` (a plain text edit of the serialize
 
 The `unikit-plan` skill offers `direct` only for 🟢 / 🟡 formats, and the `unikit-implement` skill requires a git commit **before** any direct edit so the change is trivially revertible.
 
-> **Invocation forms.** This file is installed **verbatim** — engine templates bypass both `{{...}}` substitution and the per-agent skill-invocation rewrite that adapts slash-prefixed invocations for Codex and Qwen. Never write a slash-prefixed skill invocation here; name skills as `` `unikit-<name>` `` instead.
+> **Verbatim install — two things this file must never contain.** Engine templates are written to the project as-is: they bypass double-brace variable substitution, and they bypass the per-agent rewrite that adapts slash-prefixed skill invocations for Codex and Qwen. So (1) no double-brace variables — they would ship to the user as literal text; (2) no slash-prefixed skill invocations — name skills as `` `unikit-<name>` `` instead.
