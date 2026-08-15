@@ -1436,6 +1436,46 @@ fi
 echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1"
 
 # ─────────────────────────────────────────────────────
+# Test 14c: configByPlatform resolution writes a token-free command
+# ─────────────────────────────────────────────────────
+# Fennara is the only config shipping configByPlatform and NO plain `config`:
+# its binary lives at a different absolute path on each OS. Two things must hold
+# after configureMcp — the server appears at all (the scanMcpDirectory relaxation
+# that stopped requiring `config`), and the persisted command carries no
+# unexpanded `{{...}}` token.
+# The assertion is deliberately platform-agnostic: it checks for the ABSENCE of
+# tokens, never for a concrete path, so it holds on all three platforms.
+
+FENNARA_MCP_DIR="$TMPDIR/test-fennara-mcp"
+mkdir -p "$FENNARA_MCP_DIR"
+
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const servers = await discoverMcpServers('godot');
+  await configureMcp(target, servers, ['godot-mcp-fennara'], 'claude');
+" "$FENNARA_MCP_DIR" > /dev/null 2>&1)
+
+FENNARA_JSON="$FENNARA_MCP_DIR/.mcp.json"
+assert_exists "$FENNARA_JSON" "fennara (configByPlatform-only) must reach the writer and produce .mcp.json"
+assert_contains "$FENNARA_JSON" 'GodotMCP' "fennara must be written under the GodotMCP key"
+assert_not_contains "$FENNARA_JSON" '\{\{' \
+  "resolved fennara config must contain no unexpanded {{...}} token"
+
+FENNARA_CMD=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const s = c.mcpServers && c.mcpServers.GodotMCP;
+  console.log(s && s.command ? s.command : 'missing');
+" "$FENNARA_JSON")
+
+if [[ "$FENNARA_CMD" == "missing" ]] || [[ "$FENNARA_CMD" != *"fennara-mcp"* ]]; then
+  echo "Assertion failed: fennara resolved command should point at a fennara-mcp binary, got \"$FENNARA_CMD\""
+  exit 1
+fi
+
+echo "  ✓ configByPlatform: fennara resolves to a token-free absolute command for $(node -p 'process.platform')"
+
+# ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install
 # ─────────────────────────────────────────────────────
 # Every installed SKILL.md and subagent .md across every test scenario in

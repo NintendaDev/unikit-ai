@@ -530,6 +530,80 @@ else
     fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — missing"
 fi
 
+# ─────────────────────────────────────────────
+# Part 5b: schema fields across ALL MCP configs (one cross-file pass)
+# ─────────────────────────────────────────────
+# Deliberately NOT folded into the four checks above. Each of those validates a
+# single file in isolation (two by directory loop, two by pinned filename) and
+# keeps no accumulator between files, so `order` uniqueness within a `key` group
+# is not expressible there at all, and the structural checks would have to be
+# written out four times. One node pass over mcp/*/*.json covers both.
+#
+# Checks:
+#   - `verified`, when present, carries exactly version + date + toolRegistry
+#   - `order`, when present, is a number
+#   - `configByPlatform`, when present, keys ⊆ {win32,darwin,linux} and each
+#     entry has `command` or `url`
+#   - `order` is unique among is_engine=true entries sharing one `key` — without
+#     that the wizard's radio sort degenerates back to non-deterministic, which
+#     is the exact bug the field exists to fix
+MCP_SCHEMA_RESULT=$(node -e "
+  const fs=require('fs'), path=require('path');
+  const root=process.argv[1];
+  const KNOWN_PLATFORMS=['win32','darwin','linux'];
+  const why=[];
+  const orderByKey=new Map();   // key -> Map<order, fileId>
+
+  for (const dir of fs.readdirSync(root)) {
+    const dirPath=path.join(root, dir);
+    if (!fs.statSync(dirPath).isDirectory()) continue;
+    for (const f of fs.readdirSync(dirPath)) {
+      if (!f.endsWith('.json')) continue;
+      const rel=dir+'/'+f;
+      let m;
+      try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
+      catch { why.push('parse-error:'+rel); continue; }
+
+      if (m.verified !== undefined) {
+        const v=m.verified;
+        if (typeof v!=='object'||v===null||Array.isArray(v)) why.push('verified-not-object:'+rel);
+        else for (const k of ['version','date','toolRegistry'])
+          if (typeof v[k]!=='string'||!v[k]) why.push('verified-missing-'+k+':'+rel);
+      }
+
+      if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
+
+      if (m.configByPlatform !== undefined) {
+        const c=m.configByPlatform;
+        if (typeof c!=='object'||c===null||Array.isArray(c)) why.push('cbp-not-object:'+rel);
+        else for (const [p,cfg] of Object.entries(c)) {
+          if (!KNOWN_PLATFORMS.includes(p)) { why.push('cbp-unknown-platform:'+p+':'+rel); continue; }
+          if (typeof cfg!=='object'||cfg===null) { why.push('cbp-entry-not-object:'+p+':'+rel); continue; }
+          if (!cfg.command && !cfg.url) why.push('cbp-entry-no-command-or-url:'+p+':'+rel);
+        }
+      }
+
+      // Order uniqueness is scoped to the engine group: the radio only ever
+      // renders is_engine entries sharing one key, and universal servers never
+      // compete with them.
+      if (m.is_engine === true && m.key && typeof m.order === 'number') {
+        if (!orderByKey.has(m.key)) orderByKey.set(m.key, new Map());
+        const seen=orderByKey.get(m.key);
+        if (seen.has(m.order)) why.push('duplicate-order:'+m.key+':'+m.order+':'+seen.get(m.order)+'+'+rel);
+        else seen.set(m.order, rel);
+      }
+    }
+  }
+
+  console.log(why.length ? why.join(' ') : 'ok');
+" "$MCP_DIR" 2>/dev/null || echo "pass-error")
+
+if [[ "$MCP_SCHEMA_RESULT" == "ok" ]]; then
+    pass "MCP schema fields valid across all configs (verified/order/configByPlatform + order unique per engine key)"
+else
+    fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
+fi
+
 # TomlMcpWriter unit-style smoke:
 #   - upsert → serialize → readExisting round-trips stdio + HTTP configs
 #   - `type` stripped, `headers` renamed to http_headers, null env dropped
@@ -3140,6 +3214,49 @@ if [[ -z "$EM5_WHY" ]]; then
     pass "EM-5 installEngineMcpShards wired in both init.ts and update.ts"
 else
     fail "EM-5 installEngineMcpShards NOT wired in:$EM5_WHY"
+fi
+
+# (EM-6) No recommendation wording in a Godot displayName. Ranking is expressed by
+# `order` alone (decision #10/#12) — a `[Recommended]` tag next to a paid server both
+# duplicates the ordering and editorialises it. Directory-scoped so the ban cannot be
+# reintroduced in whichever Godot config is added next.
+EM6_WHY=""
+for godot_json in "$ROOT_DIR"/mcp/godot/*.json; do
+    [[ -f "$godot_json" ]] || continue
+    grep -qF '[Recommended]' "$godot_json" && EM6_WHY+=" $(basename "$godot_json")"
+done
+if [[ -z "$EM6_WHY" ]]; then
+    pass "EM-6 no [Recommended] tag in any mcp/godot/*.json displayName"
+else
+    fail "EM-6 [Recommended] tag survives in:$EM6_WHY"
+fi
+
+# (EM-7) Fennara is the only config with no `config` key at all — its binary path differs
+# per OS. Both tokens must be present in the JSON (an accidental absolute path would work
+# on the author's machine and nowhere else) and both must resolve at configure time, which
+# the platform-agnostic install assertion in test-install.sh covers.
+EM_FENNARA_JSON="$ROOT_DIR/mcp/godot/godot-mcp-fennara.json"
+EM7_WHY=""
+grep -qF '{{localappdata}}' "$EM_FENNARA_JSON" || EM7_WHY+=" no-localappdata-token"
+grep -qF '{{home}}' "$EM_FENNARA_JSON"         || EM7_WHY+=" no-home-token"
+if [[ -z "$EM7_WHY" ]]; then
+    pass "EM-7 fennara configByPlatform carries both {{home}} and {{localappdata}} tokens"
+else
+    fail "EM-7 fennara platform tokens missing:$EM7_WHY"
+fi
+
+# (EM-8) The doctrine override lives in the fennara scene-authoring shard and nowhere else.
+# `write_or_update_file` is the ONLY trigger of notify_editor_filesystem(); without this
+# line the agent follows dev-principles p.1, writes .gd directly, and script_diagnostics
+# then reports on content the editor never rescanned — a silently wrong verify gate.
+EM8_WHY=""
+grep -qF 'write_or_update_file' "$ROOT_DIR/mcp/godot/shards/godot-mcp-fennara/scene-authoring.md" \
+    || EM8_WHY+=" shard-missing-override"
+grep -qF 'write_or_update_file' "$EM_FENNARA_JSON" || EM8_WHY+=" json-missing-tool"
+if [[ -z "$EM8_WHY" ]]; then
+    pass "EM-8 fennara .gd doctrine override (write_or_update_file) present in shard + granted in config"
+else
+    fail "EM-8 fennara doctrine override drift:$EM8_WHY"
 fi
 
 # ─────────────────────────────────────────────

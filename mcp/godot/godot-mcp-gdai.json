@@ -1,7 +1,8 @@
 {
   "key": "GodotMCP",
   "is_engine": true,
-  "displayName": "GDAI Godot MCP [Paid][Recommended]",
+  "order": 2,
+  "displayName": "GDAI Godot MCP [Paid]",
   "instruction": "",
   "config": {
 	  "command": "uv",
