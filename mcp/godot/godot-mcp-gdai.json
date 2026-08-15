@@ -41,6 +41,12 @@
 		"clear_output_logs",
 		"view_script",
 		"search_files"
+      ],
+      "unikit-verify": [
+        "get_godot_errors",
+        "get_project_info",
+        "view_script",
+        "search_files"
       ]
     }
   }

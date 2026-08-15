@@ -139,15 +139,38 @@ UniKit AI writes MCP server configuration into the file selected per agent: `.mc
 ```json
 {
   "type": "http",
-  "url": "http://localhost:8085/mcp"
+  "url": "http://127.0.0.1:8080/mcp"
 }
 ```
 
-Requires the UnityMCP package installed in your Unity project. Provides real-time access to:
-- Compile and check for errors
-- Run NUnit tests
-- Inspect scene hierarchy
+Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires the package installed in your Unity project and the Unity Editor running. Provides:
 - Read Unity console logs
+- Trigger a domain reload / asset refresh
+- Run EditMode and PlayMode tests
+- A brace-balance sanity check for scripts
+
+Two caveats worth knowing before you rely on it:
+
+- **The HTTP server does not start on its own.** Start it manually via `Window > MCP for Unity > Start Server`. Until it is running, every tool call fails to connect.
+- **The Unity package manages MCP client configs itself.** On editor load it rewrites (and can remove) MCP entries written by other tools, including the ones UniKit AI installs. Disable that behavior with the EditorPref `MCPForUnity.AutoRegisterEnabled=false` if you want UniKit AI to stay the owner of your agent config.
+
+### UnrealMCP
+
+```json
+{
+  "type": "http",
+  "url": "http://localhost:3000/mcp"
+}
+```
+
+Backed by [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) over its **native** transport (no Node.js bridge process). Setup:
+
+- Enable **Enable Native MCP** in the plugin settings (`bEnableNativeMCP` defaults to `false`; the server then listens on port 3000).
+- A C++ project is required: copy `plugins/McpAutomationBridge` into `<Project>/Plugins/` and build it.
+- Enable `PythonScriptPlugin`, `EditorScriptingUtilities`, `Niagara`, `GameplayAbilities` and `SmartObjects`.
+- The Unreal Editor must be running.
+
+The server exposes exactly **one** tool name — `unreal` — which dispatches to every underlying action. There is no per-action granularity, so `allowed-tools` cannot narrow what an agent may do with this server: granting `unreal` grants everything the plugin implements.
 
 ### Context7
 
@@ -159,6 +182,12 @@ Requires the UnityMCP package installed in your Unity project. Provides real-tim
 ```
 
 Provides up-to-date documentation for any library. Used by `/unikit-memory` to enrich dynamic memory.
+
+### Known limitation: OpenCode does not receive HTTP servers
+
+`src/core/mcp-writers/opencode-writer.ts` only supports stdio servers — those whose config carries a string `command`. Servers declared with `{ "type": "http", "url": ... }` are skipped with a `console.warn`; installation itself does not fail.
+
+In practice this means **UnityMCP (Coplay) and UnrealMCP (ChiR24) are not configured for the OpenCode agent**. All other agents (Claude Code, Codex CLI, Cursor, Qwen Code, Antigravity) receive them normally. If you use OpenCode with Unity or Unreal, add the HTTP server to `opencode.json` by hand.
 
 ## Rules Manifest
 

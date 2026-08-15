@@ -1,11 +1,17 @@
 {
   "key": "UnityMCP",
   "is_engine": true,
-  "displayName": "Coplay Unity MCP (Unity Editor integration)",
-  "instruction": "Coplay Unity MCP: Ensure Unity Editor is running with UnityMCP package installed. Server connects via HTTP at localhost:8085.",
+  "order": 2,
+  "displayName": "Coplay Unity MCP",
+  "instruction": "Coplay Unity MCP: requires the MCP for Unity package installed in the Unity project, with the Editor running. The HTTP server does not start on its own - launch it via Window > MCP for Unity > Start Server (listens on 127.0.0.1:8080). Note: the Unity package manages MCP client configs itself and overwrites external entries when the Editor loads; disable it with the EditorPref MCPForUnity.AutoRegisterEnabled=false.",
+  "verified": {
+    "version": "10.1.2",
+    "date": "2026-08-15",
+    "toolRegistry": "Server/src/services/registry/tool_registry.py"
+  },
   "config": {
     "type": "http",
-    "url": "http://localhost:8085/mcp"
+    "url": "http://127.0.0.1:8080/mcp"
   },
   "allowed-tools": {
     "agents": {
@@ -16,14 +22,14 @@
         "refresh_unity",
         "validate_script"
       ],
-	  "unikit-implement-worker": [
+      "unikit-implement-worker": [
         "read_console",
         "run_tests",
         "get_test_job",
         "refresh_unity",
         "validate_script"
       ],
-	  "unikit-review-sidecar": [
+      "unikit-review-sidecar": [
         "read_console"
       ]
     },
@@ -41,6 +47,13 @@
         "get_test_job",
         "refresh_unity",
         "validate_script"
+      ],
+      "unikit-verify": [
+        "read_console",
+        "refresh_unity",
+        "validate_script",
+        "run_tests",
+        "get_test_job"
       ]
     }
   }

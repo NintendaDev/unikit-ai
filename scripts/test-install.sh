@@ -871,8 +871,8 @@ assert_contains "$CODEX_TOML" 'command = "npx"' \
   "codex stdio server should have command = \"npx\""
 assert_contains "$CODEX_TOML" '^\[mcp_servers\.UnityMCP\]$' \
   "codex toml should contain [mcp_servers.UnityMCP] section"
-assert_contains "$CODEX_TOML" 'url = "http://localhost:8085/mcp"' \
-  "codex http server should have url = \"http://localhost:8085/mcp\""
+assert_contains "$CODEX_TOML" 'url = "http://127.0.0.1:8080/mcp"' \
+  "codex http server should have url = \"http://127.0.0.1:8080/mcp\""
 assert_not_contains "$CODEX_TOML" 'mcpServers' \
   "codex toml must not contain camelCase mcpServers token"
 
@@ -1109,7 +1109,7 @@ node -e "
   const unity = c.mcpServers && c.mcpServers.UnityMCP;
   if (!unity) errors.push('UnityMCP server missing');
   else {
-    if (unity.serverUrl !== 'http://localhost:8085/mcp')
+    if (unity.serverUrl !== 'http://127.0.0.1:8080/mcp')
       errors.push('UnityMCP.serverUrl wrong: ' + JSON.stringify(unity.serverUrl));
     if ('type' in unity) errors.push('UnityMCP.type must be stripped');
     if ('url' in unity) errors.push('UnityMCP.url must be renamed to serverUrl, not left in place');

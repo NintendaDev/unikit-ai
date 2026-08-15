@@ -41,6 +41,11 @@
         "read_output",
         "run_scene",
         "get_project_info"
+      ],
+      "unikit-verify": [
+        "read_output",
+        "run_scene",
+        "get_project_info"
       ]
     }
   }
