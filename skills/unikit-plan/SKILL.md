@@ -401,7 +401,7 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
 **Rules:**
 - Fast mode: launch all 2-4 tasks from scratch.
 - Full mode: Step B already identified key files, directories, and patterns. Use those findings to make Phase A prompts **specific** — include concrete file paths, class names, and module names discovered in Step B. This avoids re-discovery and focuses Phase A on deeper analysis of known areas rather than broad scanning.
-  Example: instead of "find files related to [feature]" → "Read `Assets/Modules/.../IFeatureService.cs` and `Assets/Game/Scripts/.../FeatureController.cs` found in recon. Analyze their interfaces, DI bindings, and integration points."
+  Example: instead of "find files related to [feature]" → "Read `<content-root>/.../IFeatureService.<ext>` and `<content-root>/.../FeatureController.<ext>` found in recon. Analyze their interfaces, DI bindings, and integration points." (`<content-root>` and `<ext>` resolve from `references/ENGINE_RULES.md` §2)
 - After tasks return, synthesize: files to create/modify, patterns to follow, dependencies, risks.
 
 #### Phase B: Technical Deep-Dive (Explore agent)
@@ -514,7 +514,7 @@ When `research_linked = true`: use `RESEARCH_BRIEF.md` as a starting point — v
 2. INTERFACES — full {{engine_code_language}} signatures for every interface in tasks
 3. KEY PATTERNS — code examples for patterns the implementer must follow
 4. FILES — exact paths for files to create/modify
-5. DI BINDINGS — Zenject bindings for installer(s)
+5. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
 
 Self-check: if an interface appears in tasks but not in INTERFACES — add it.
 
@@ -554,12 +554,12 @@ Format with WHY and file paths:
 ```markdown
 - [ ] Task N.M — {what to do}
   WHY: {why this task matters — connects to feature goal, constraint, or dependency}
-  Files: `{path/to/file.cs}`, `{path/to/other.cs}`
+  Files: `{path/to/file.<ext>}`, `{path/to/other.<ext>}`
 ```
 
 For simple tasks (rename, delete, move), file paths in the description are sufficient:
 ```markdown
-- [ ] Task 1.1 — Rename `IShopCustomer.cs` → `IDayCustomer.cs`
+- [ ] Task 1.1 — Rename `IShopCustomer` → `IDayCustomer`
   WHY: Name alignment with domain terminology — "day customer" reflects the day/night cycle mechanic
 ```
 

@@ -1,5 +1,16 @@
 # Plan File Templates
 
+> **Engine placeholders.** These templates are engine-neutral. Four placeholders resolve from `references/ENGINE_RULES.md` §2 (Language & layout) for the active engine — substitute them when writing the plan, never copy them verbatim:
+>
+> | Placeholder | Resolves to |
+> |-------------|-------------|
+> | `<lang>` | the markdown code-fence identifier (§2 "code fence") |
+> | `<ext>` | the source-file extension |
+> | `<content-root>` | the project's content root path |
+> | `{DI binding per ENGINE_RULES.md §2}` | the engine's DI binding form |
+>
+> When `ENGINE_RULES.md` is absent for the active engine, keep the sections but leave the engine-specific bodies out rather than guessing.
+
 ## Tasks Template (`TASKS.md` / `PLAN.md`)
 
 ```markdown
@@ -18,6 +29,8 @@ Fast mode: if no research — see `## Technical Context` section below.
 ## Settings
 - Testing: yes/no
 - Docs: yes/no (full mode only)
+- Visual regression: yes/no (default: no)
+- Editor tasks: mcp | manual | direct
 
 ## Roadmap Linkage (optional)
 Milestone: "[milestone name]" | "none"
@@ -36,10 +49,11 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 
 - [ ] Task 1.1 — brief description of what to do
   WHY: one-line reason why this task is needed in the context of the feature
-  Files: `path/to/file.cs`
+  Files: `path/to/file.<ext>`
 - [ ] Task 1.2 — brief description
   WHY: reason
-  Files: `path/to/file1.cs`, `path/to/file2.cs`
+  Files: `path/to/file1.<ext>`, `path/to/file2.<ext>`
+  Editor: [ui] <container> → <target> : <action>
 <!-- Commit checkpoint: tasks 1.1-1.6 -->
 
 ### Phase 2: {Phase Name}
@@ -49,7 +63,7 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 
 - [ ] Task 2.1 — brief description
   WHY: reason
-  Files: `path/to/file.cs`
+  Files: `path/to/file.<ext>`
 <!-- Commit checkpoint: tasks 2.1-2.4 -->
 
 ...
@@ -86,6 +100,25 @@ Phase 1 → Phase 3 → Phase 4
 Sum of all phases: ~X days
 ```
 
+### Editor task grammar
+
+Some tasks change the engine editor's **serialized state** (scenes, UI, VFX, animation, assets, input maps, project settings) rather than source files. Such a task carries one or more `Editor:` lines:
+
+```
+Editor: [kind] <container> → <target> : <action>
+kind ∈ scene | ui | vfx | anim | asset | input | settings   (default: scene)
+```
+
+Rules:
+
+- **One line per target** — repeat the field when a task touches several targets.
+- The field goes **after** `Files:`.
+- Naming of `<container>` and `<target>` is engine-specific — see `references/ENGINE_RULES.md` (§1 kind → concept, §2 language & layout).
+- **Pure code tasks omit the field entirely.** Editing a plain text or config file stays in `Files:`.
+- When `references/ENGINE_RULES.md` is absent for the active engine, the field is **not generated at all** — the plan degrades to code-only tasks and `## Settings` carries no `Editor tasks` line.
+
+The targets are aggregated into an `## EDITOR TARGETS` table (`PLAN-BRIEF.md` in full mode, `## Technical Context` in fast mode). **Both are omitted entirely when the plan carries no `Editor:` task.**
+
 ### Fast mode differences
 
 - Title: `# {Feature Name} — Plan` (instead of `— Tasks`)
@@ -102,23 +135,27 @@ Sum of all phases: ~X days
 - FORBIDDEN: {anti-pattern with rationale}
 
 ### INTERFACES
-​```csharp
+​```<lang>
 public interface IExample { }
 ​```
 
 ### KEY PATTERNS
-​```csharp
+​```<lang>
 // Pattern example
 ​```
 
 ### FILES
 | Path | Type | Notes |
 |------|------|-------|
-| `Assets/...` | interface | description |
+| `<content-root>/...` | interface | description |
+
+### EDITOR TARGETS
+| Kind | Container | Target | Change |
+|------|-----------|--------|--------|
 
 ### DI BINDINGS
-​```csharp
-Container.Bind<IExample>().To<Example>().AsSingle();
+​```<lang>
+{DI binding per ENGINE_RULES.md §2}
 ​```
 
 ### OUT OF SCOPE
@@ -131,7 +168,7 @@ Container.Bind<IExample>().To<Example>().AsSingle();
 # {Feature Name}
 
 ## CONTEXT
-Project: {{engine_name}} 6 / Zenject / UniTask / R3 / ASPID MVVM / NodeCanvas
+Project: {{engine_name}} / {stack from `.unikit/DESCRIPTION.md`}
 Feature: {brief description}
 Scope: {list of key components/modules affected}
 Stop condition: {what is explicitly NOT implemented in this plan}
@@ -145,7 +182,7 @@ Stop condition: {what is explicitly NOT implemented in this plan}
 ## INTERFACES
 
 ### {InterfaceName} [NEW | MODIFY]
-​```csharp
+​```<lang>
 // Namespace
 public interface IExample
 {
@@ -156,7 +193,7 @@ public interface IExample
 ## KEY PATTERNS
 
 ### {Pattern Name}
-​```csharp
+​```<lang>
 // Code example showing the pattern in context
 ​```
 
@@ -174,17 +211,20 @@ ComponentB
 ### CREATE
 | Path | Type | Notes |
 |------|------|-------|
-| `Assets/Modules/...` | interface | description |
+| `<content-root>/...` | interface | description |
 
 ### MODIFY
 | Path | Change |
 |------|--------|
-| `Assets/Modules/...` | what to change |
+| `<content-root>/...` | what to change |
+
+## EDITOR TARGETS
+| Kind | Container | Target | Change |
+|------|-----------|--------|--------|
 
 ## DI BINDINGS
-​```csharp
-// Installer bindings
-Container.Bind<IExample>().To<Example>().AsSingle();
+​```<lang>
+{DI binding per ENGINE_RULES.md §2} — one line per installer binding
 ​```
 
 ## OUT OF SCOPE
