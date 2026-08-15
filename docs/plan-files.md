@@ -28,6 +28,8 @@ Branch: feature/item-rarity
 ## Settings
 - Testing: no
 - Docs: no
+- Visual regression: no
+- Editor tasks: mcp
 
 ## Commit Plan
 - **Commit 1** (tasks 1-3): "feat(items): add rarity enum and data model"
@@ -38,17 +40,26 @@ Branch: feature/item-rarity
 ### Task 1: Create RarityType enum
 **WHY:** Need a typed rarity classification before any visual or gameplay logic
 **Effort:** S
-**Files:** `Assets/Game/Scripts/Gameplay/Core/Items/RarityType.cs`
+**Files:** `<content-root>/Gameplay/Core/Items/RarityType.<ext>`
 - [ ] Create enum: Common, Uncommon, Rare, Epic, Legendary
-- [ ] Add [Serializable] attribute for inspector support
+- [ ] Add the serialization attribute for inspector support
 
 ### Task 2: Add rarity field to ItemDefinition
 **WHY:** Items need a rarity property for filtering and display
 **Effort:** S
-**Files:** `Assets/Modules/Pawnshop/Inventory/ItemDefinition.cs`
-- [ ] Add [SerializeField] RarityType _rarity field
+**Files:** `<content-root>/Inventory/ItemDefinition.<ext>`
+- [ ] Add a serialized rarity field
 - [ ] Add public RarityType Rarity property
+
+### Task 3: Tint the rarity badge in the item widget
+**WHY:** The rarity has to be readable at a glance in the inventory grid
+**Effort:** S
+**Files:** `<content-root>/UI/ItemWidget.<ext>`
+**Editor:** `[ui] ItemWidget → RarityBadge : bind tint to Rarity`
+- [ ] Add the badge colour lookup
 ```
+
+`<content-root>` and `<ext>` are engine placeholders — see [Editor tasks](#editor-tasks) below.
 
 ### PLAN-BRIEF.md - Technical Context (full mode)
 
@@ -60,17 +71,81 @@ In fast mode, this content is included inline as `## Technical Context` inside `
 # Plan Brief: Item Rarity System
 
 ## Constraints
-- Must work with existing Opsive Ultimate Inventory System
-- Rarity colors must be configurable via ScriptableObject
+- Must work with the project's existing inventory package
+- Rarity colors must be configurable as a data asset
 
 ## Interfaces
 - IItemView already has SetData() - extend, don't replace
-- Existing ItemDefinition is in Modules/Pawnshop/Inventory/
+- Existing ItemDefinition is in the inventory module
+
+## EDITOR TARGETS
+| Kind | Container | Target | Change |
+|------|-----------|--------|--------|
+| ui | ItemWidget | RarityBadge | bind tint to Rarity |
 
 ## Patterns to Follow
-- Use Zenject for DI, not service locators
-- Visual effects via DOTween, not Animator
+- Use the project's DI container, not service locators
+- Visual effects via the project's tweening library, not the animator
 ```
+
+`## EDITOR TARGETS` aggregates every `Editor:` line in the checklist. It is omitted entirely when a plan has no editor work, and `/unikit-improve` keeps it in sync when it adds or removes tasks.
+
+## Editor tasks
+
+Most tasks change source files. Some change the **serialized state of the engine editor** — a scene, a prefab, a UI document, a material, an animation clip, a project setting. Those cannot be expressed as a file edit, so they get an `Editor:` line in addition to (or instead of) `Files:`:
+
+```
+Editor: [kind] <container> → <target> : <action>
+```
+
+`kind` is one of seven: `scene` · `ui` · `vfx` · `anim` · `asset` · `input` · `settings` (default `scene`). One line per target; the field is omitted for pure code tasks.
+
+The naming of `<container>` and `<target>` is engine-specific and comes from the planning vocabulary described below — which is also where the `<content-root>`, `<ext>` and code-fence placeholders in the templates resolve.
+
+### The two settings
+
+| Setting | Written by | Read by |
+|---------|-----------|---------|
+| `Editor tasks: mcp \| manual \| direct` | `/unikit-plan` | `/unikit-implement` |
+| `Visual regression: yes/no` (default `no`) | `/unikit-plan` | **both** — `/unikit-implement` takes the baseline before the change and compares after; `/unikit-verify` gates the result |
+
+`Editor tasks` decides how the editor work is actually carried out:
+
+- **`mcp`** — through the engine MCP server. Chosen **silently** when an engine MCP is configured; you are not asked.
+- **`manual`** — nothing is touched. The task is marked `⏸️ MANUAL` and you get the exact instruction in `[kind] container → target : action` form. `/unikit-verify` reports these but never treats them as blockers.
+- **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always commits to git first.
+
+When no engine MCP is configured, `/unikit-plan` asks which of `manual` / `direct` you want.
+
+### Actual coverage per engine MCP server
+
+`Editor tasks: mcp` is not universally available — it depends on which server your project has configured:
+
+| Server | Engine | Editor authoring |
+|--------|--------|------------------|
+| Unity Biome MCP | Unity | ✅ full — the strongest of the six |
+| Coplay Unity MCP | Unity | ✅ most kinds; no Input System, no Timeline, no Shader Graph |
+| Fennara Godot MCP | Godot | ✅ full, via GDScript worker scripts |
+| GDAI Godot MCP | Godot | ❌ none — degrades to `manual` |
+| Coding-Solo Godot MCP | Godot | ❌ none declared — degrades to `manual` |
+| ChiR24 Unreal MCP | Unreal Engine 5 | ✅ full, through the single `unreal` tool |
+
+A server that declares no per-kind tool table degrades to `manual` and says so, rather than guessing tool names.
+
+Visual regression is narrower still: only **Unity Biome** implements it. The other five lift that gate, and `/unikit-verify` reports it as `gate lifted` with the reason quoted from the server's profile — not as a failure.
+
+### `<ENGINE>_RULES.md` — the planning vocabulary
+
+Each engine can ship a planning vocabulary that `/unikit-plan` loads at bootstrap:
+
+- **Source:** `data/engine-templates/skills/unikit-plan/<ENGINE>_RULES.md`
+- **Installed to:** `<agent-skills-dir>/unikit-plan/references/ENGINE_RULES.md`
+
+It carries six sections: kind → engine concept, language & layout placeholders, when a change counts as editor state, engine planning pitfalls, the scope boundary, and direct-edit feasibility.
+
+The boundary against the rules registry is exact: **the registry says HOW to write code for the engine; this file says HOW to write a plan for it.**
+
+**Current coverage: Unity only.** On Godot and Unreal Engine 5 no vocabulary ships yet, so `/unikit-plan` generates no `Editor:` fields at all, omits the `Editor tasks` setting, and tells you so at confirmation: `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`. That is a normal path, not an error.
 
 ## Plan Discovery
 
@@ -117,7 +192,7 @@ UniKit AI has a built-in learning loop. Every bug fix creates a **patch** - a st
 3. `/unikit-evolve` reads patches incrementally using `.unikit/evolutions/patch-cursor.json`
 4. Evolve classifies patches and writes rules to `RULES.md` or `skill-context/`
 
-**Example patch** (`.unikit/code/patches/2026-03-15-14.30.md`):
+**Example patch** (`.unikit/code/patches/2026-03-15-14.30.md`) — a real artifact from a Unity project, so the paths and package names below are that project's, not a template to copy:
 
 ```markdown
 # NullReferenceException in CustomerItemView.OnInit
