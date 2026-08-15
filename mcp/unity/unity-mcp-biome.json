@@ -9,6 +9,11 @@
     "date": "2026-08-15",
     "toolRegistry": "server/src/unity_mcp/tools/tool_specs.py"
   },
+  "shards": {
+    "capabilities": "shards/unity-mcp-biome/capabilities.md",
+    "scene-authoring": "shards/unity-mcp-biome/scene-authoring.md",
+    "verification": "shards/unity-mcp-biome/verification.md"
+  },
   "config": {
     "command": "uvx",
     "args": [

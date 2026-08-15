@@ -9,6 +9,11 @@
     "date": "2026-08-15",
     "toolRegistry": "src/tools/catalog/capabilities/generated/parent-tool-definitions.generated.ts"
   },
+  "shards": {
+    "capabilities": "shards/unreal-mcp-chir24/capabilities.md",
+    "scene-authoring": "shards/unreal-mcp-chir24/scene-authoring.md",
+    "verification": "shards/unreal-mcp-chir24/verification.md"
+  },
   "config": {
     "type": "http",
     "url": "http://localhost:3000/mcp"
