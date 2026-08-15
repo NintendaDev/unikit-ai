@@ -135,6 +135,25 @@ export const ENGINE_MCP_SHARDS = ['capabilities', 'scene-authoring', 'verificati
 /** One of the three {@link ENGINE_MCP_SHARDS} names. */
 export type EngineMcpShard = (typeof ENGINE_MCP_SHARDS)[number];
 
+/**
+ * Platforms an MCP JSON may declare a `configByPlatform` entry for. The values
+ * are `process.platform` ids, so the lookup is a direct index — a platform
+ * outside this tuple (freebsd, aix, …) falls back to the plain `config` key.
+ */
+export const MCP_PLATFORM_KEYS = ['win32', 'darwin', 'linux'] as const;
+
+/** One of the {@link MCP_PLATFORM_KEYS} ids. */
+export type McpPlatformKey = (typeof MCP_PLATFORM_KEYS)[number];
+
+/**
+ * Path tokens expanded inside a resolved MCP config. They exist because some
+ * servers ship an absolute binary path that differs per OS; the token keeps the
+ * JSON machine-independent. Expansion is best-effort by design — no existence
+ * check, no warning when the target is absent (the MCP client reports that).
+ */
+export const MCP_TOKEN_HOME = '{{home}}';
+export const MCP_TOKEN_LOCALAPPDATA = '{{localappdata}}';
+
 // --- File names ---
 
 export const SKILL_FILE = 'SKILL.md';

@@ -1,9 +1,12 @@
 import path from 'path';
 import { readJsonFile, readTextFile, writeTextFile, getMcpDir, ensureDir, fileExists, listFiles } from '../utils/fs.js';
 import { getAgentConfig } from './agents.js';
-import { ENGINE_MCP_SHARDS, type EngineMcpShard } from './constants.js';
+import { type EngineMcpShard, type McpPlatformKey } from './constants.js';
 import { getEngineConfig } from './engines.js';
+import { resolvePlatformConfig } from './mcp-platform.js';
+import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
+import { logWarn } from '../utils/log.js';
 
 export interface McpAllowedTools {
   agents: Record<string, string[]>;
@@ -15,8 +18,27 @@ export interface McpServerEntry {
   isEngine: boolean;
   displayName: string;
   instruction: string;
-  config: Record<string, unknown>;
+  /**
+   * The platform-independent server config. Optional because a server may ship
+   * `configByPlatform` instead (an absolute binary path that differs per OS);
+   * exactly one of the two must be present — `scanMcpDirectory` drops entries
+   * carrying neither.
+   */
+  config?: Record<string, unknown>;
+  /**
+   * Per-OS config variants, keyed by `process.platform`. Resolved by
+   * `resolvePlatformConfig` (see `mcp-platform.ts`), which falls back to
+   * {@link config} on a platform this map does not cover.
+   */
+  configByPlatform?: Partial<Record<McpPlatformKey, Record<string, unknown>>>;
   allowedTools?: McpAllowedTools;
+  /**
+   * Provenance stamp of the last manual audit of this entry's tool names. MCP
+   * versions are deliberately not pinned, so a server can rename or drop a tool
+   * and silently invalidate `allowed-tools`; the stamp records which version was
+   * read, when, and from which registry file, and is printed by `init`.
+   */
+  verified?: { version: string; date: string; toolRegistry: string };
   /**
    * Presentation order inside a `key` group (ascending, 1-based). Drives the
    * wizard's radio pre-selection and the shard concatenation order. Missing =
@@ -34,32 +56,6 @@ export interface McpServerEntry {
 
 export type DiscoveredServers = Map<string, McpServerEntry>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/**
- * Read the optional `shards` key of an MCP JSON into absolute paths.
- * Keys outside {@link ENGINE_MCP_SHARDS} and non-string values are dropped
- * silently — an unknown shard name is a data typo, not a reason to fail the
- * whole scan. Returns `null` when the entry contributes nothing.
- */
-function parseShards(raw: unknown, dirPath: string): Partial<Record<EngineMcpShard, string>> | null {
-  if (!isRecord(raw)) return null;
-
-  const resolved: Partial<Record<EngineMcpShard, string>> = {};
-  let found = false;
-
-  for (const shard of ENGINE_MCP_SHARDS) {
-    const value = raw[shard];
-    if (typeof value !== 'string' || value.length === 0) continue;
-    resolved[shard] = path.resolve(dirPath, value);
-    found = true;
-  }
-
-  return found ? resolved : null;
-}
-
 async function scanMcpDirectory(dirPath: string): Promise<Map<string, McpServerEntry>> {
   const servers = new Map<string, McpServerEntry>();
   const files = await listFiles(dirPath);
@@ -68,33 +64,10 @@ async function scanMcpDirectory(dirPath: string): Promise<Map<string, McpServerE
     if (!file.endsWith('.json')) continue;
 
     const raw = await readJsonFile<Record<string, unknown>>(path.join(dirPath, file));
-    if (!raw || !raw.key || !raw.displayName || !raw.config) continue;
+    const entry = parseMcpServerEntry(raw, dirPath);
+    if (!entry) continue;
 
-    const fileId = file.replace(/\.json$/, '');
-
-    const entry: McpServerEntry = {
-      key: raw.key as string,
-      isEngine: (raw['is_engine'] as boolean) ?? false,
-      displayName: raw.displayName as string,
-      instruction: (raw.instruction as string) ?? '',
-      config: raw.config as Record<string, unknown>,
-    };
-
-    const allowedTools = raw['allowed-tools'] as McpAllowedTools | undefined;
-    if (allowedTools) {
-      entry.allowedTools = allowedTools;
-    }
-
-    if (typeof raw['order'] === 'number') {
-      entry.order = raw['order'];
-    }
-
-    const shards = parseShards(raw['shards'], dirPath);
-    if (shards) {
-      entry.shards = shards;
-    }
-
-    servers.set(fileId, entry);
+    servers.set(file.replace(/\.json$/, ''), entry);
   }
 
   return servers;
@@ -173,7 +146,16 @@ export async function configureMcp(
     const server = discoveredServers.get(fileId);
     if (!server) continue;
 
-    writer.upsert(settings, server.key, server.config);
+    const resolvedConfig = resolvePlatformConfig(server);
+    if (!resolvedConfig) {
+      logWarn(
+        'configureMcp',
+        `server ${server.key}: no config for platform ${process.platform} and no fallback config, skipping`,
+      );
+      continue;
+    }
+
+    writer.upsert(settings, server.key, resolvedConfig);
     configuredFileIds.push(fileId);
   }
 
@@ -399,6 +381,24 @@ export async function removeExtensionMcpServers(
   }
 
   return removed;
+}
+
+/**
+ * One human-readable audit line per selected server that carries a `verified`
+ * stamp — the counterpart of {@link getMcpInstructions}. Servers without a stamp
+ * contribute nothing (no "unverified" noise). Lives here rather than in `init.ts`
+ * so the CLI layer never has to know the shape of {@link McpServerEntry}.
+ */
+export function getMcpVerifiedStamps(discoveredServers: DiscoveredServers, enabledFileIds: string[]): string[] {
+  const selected = new Set(enabledFileIds);
+  const stamps: string[] = [];
+
+  for (const [fileId, server] of discoveredServers) {
+    if (!selected.has(fileId) || !server.verified) continue;
+    stamps.push(`${server.displayName}: verified v${server.verified.version} (${server.verified.date})`);
+  }
+
+  return stamps;
 }
 
 export function getMcpInstructions(discoveredServers: DiscoveredServers, enabledFileIds: string[]): string[] {

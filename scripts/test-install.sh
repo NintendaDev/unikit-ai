@@ -1375,6 +1375,67 @@ fi
 echo "  ✓ resolveExistingEngine(' unity ') -> action=use, engine=unity (trim applied)"
 
 # ─────────────────────────────────────────────────────
+# Test 14b: MCP picker pre-selection (wizard remembers the previous choice)
+# ─────────────────────────────────────────────────────
+# The wizard is interactive and never runs in this smoke, so the contract is
+# tested through the three exported pure helpers instead of the prompt:
+#   sortMcpChoices        — order asc, missing order last, ties by fileId
+#   isMcpPreselected      — checkbox: null = fresh (all checked), array = mirror
+#   resolveMcpGroupDefault— radio: INDEX of the restored entry, or undefined
+# The regression this guards: once two servers share one key (Unity ships biome
+# + coplay) the picker becomes a radio, and a radio has no notion of "already
+# installed" — a blind Enter on re-init would silently swap the engine MCP.
+
+MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const { sortMcpChoices, isMcpPreselected, resolveMcpGroupDefault } =
+    await import('./dist/cli/wizard/prompts.js');
+
+  // Deliberately supplied out of order, with one entry carrying no \`order\`.
+  const group = sortMcpChoices([
+    { fileId: 'unity-mcp-coplay', displayName: 'Coplay', isEngine: true, order: 2 },
+    { fileId: 'zz-no-order',      displayName: 'NoOrder', isEngine: true },
+    { fileId: 'unity-mcp-biome',  displayName: 'Biome',  isEngine: true, order: 1 },
+  ]);
+
+  process.stdout.write(JSON.stringify({
+    sorted:        group.map(e => e.fileId),
+    freshDefault:  resolveMcpGroupDefault(group, null),
+    reinitDefault: resolveMcpGroupDefault(group, ['unity-mcp-coplay']),
+    absentDefault: resolveMcpGroupDefault(group, ['not-in-this-group']),
+    freshChecked:  isMcpPreselected('context7', null),
+    reinitChecked: isMcpPreselected('context7', ['context7']),
+    reinitUnchecked: isMcpPreselected('context7', ['something-else']),
+  }));
+" 2>/dev/null)
+
+if [[ "$MCP_DEFAULTS" != *'"sorted":["unity-mcp-biome","unity-mcp-coplay","zz-no-order"]'* ]]; then
+  echo "Assertion failed: sortMcpChoices should order by order asc with missing last, got: $MCP_DEFAULTS"
+  exit 1
+fi
+# A fresh install must NOT pin a default — inquirer then pre-selects choice 0,
+# which is the order:1 recommendation.
+if [[ "$MCP_DEFAULTS" == *'"freshDefault"'* ]]; then
+  echo "Assertion failed: resolveMcpGroupDefault(group, null) must be undefined (omitted from JSON), got: $MCP_DEFAULTS"
+  exit 1
+fi
+if [[ "$MCP_DEFAULTS" != *'"reinitDefault":1'* ]]; then
+  echo "Assertion failed: re-init with coplay installed should default to index 1, got: $MCP_DEFAULTS"
+  exit 1
+fi
+if [[ "$MCP_DEFAULTS" == *'"absentDefault"'* ]]; then
+  echo "Assertion failed: nothing from the group installed -> default must be undefined (never pre-select Skip), got: $MCP_DEFAULTS"
+  exit 1
+fi
+if [[ "$MCP_DEFAULTS" != *'"freshChecked":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"reinitChecked":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"reinitUnchecked":false'* ]]; then
+  echo "Assertion failed: isMcpPreselected contract broken (null=all checked, array=mirror), got: $MCP_DEFAULTS"
+  exit 1
+fi
+
+echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1"
+
+# ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install
 # ─────────────────────────────────────────────────────
 # Every installed SKILL.md and subagent .md across every test scenario in

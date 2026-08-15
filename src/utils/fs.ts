@@ -89,12 +89,18 @@ export async function listDirectories(dirPath: string): Promise<string[]> {
   }
 }
 
+// Sorted, not raw readdir order: callers turn this list into user-visible order
+// (the MCP wizard pre-selects the first entry) and into concatenated content
+// (engine-MCP shards, gamedesign system assets). readdir order is filesystem
+// dependent, so without the sort the same repo produces different output on
+// different machines.
 export async function listFiles(dirPath: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
     return entries
       .filter(entry => entry.isFile())
-      .map(entry => entry.name);
+      .map(entry => entry.name)
+      .sort();
   } catch {
     return [];
   }

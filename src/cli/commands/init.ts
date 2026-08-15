@@ -11,7 +11,7 @@ import {
   saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
-import { configureMcp, getMcpInstructions, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
+import { configureMcp, getMcpInstructions, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
 import { collectMcpShards } from '../../core/mcp-shards.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { getAgentOnboarding, cleanupAgentSetup } from '../../core/transformer.js';
@@ -49,6 +49,11 @@ export async function initCommand(): Promise<void> {
       existingConfig?.rulesRegistry ?? null,
       existingConfig?.engine ?? null,
       existingInstalledSkills,
+      // Same null-vs-array contract as existingInstalledSkills: without this a
+      // re-init of a project that picked one engine MCP would silently switch to
+      // whichever alternative sorts first once a second server ships under the
+      // same key.
+      existingConfig?.mcp.servers ?? null,
     );
     const engineId = answers.engine;
 
@@ -208,6 +213,12 @@ export async function initCommand(): Promise<void> {
       const instructions = getMcpInstructions(discoveredServers, answers.mcpServers);
       for (const instruction of instructions) {
         console.log(chalk.dim(`    ${instruction}`));
+      }
+      // MCP versions are deliberately not pinned, so `allowed-tools` can rot
+      // silently. Surfacing which version we last audited lets the user tell how
+      // stale the tool list may be.
+      for (const stamp of getMcpVerifiedStamps(discoveredServers, answers.mcpServers)) {
+        console.log(chalk.dim(`    ${stamp}`));
       }
       if (answers.engineMcpKey) {
         console.log(chalk.dim(`  Engine MCP: ${answers.engineMcpKey}`));

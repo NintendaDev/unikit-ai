@@ -49,6 +49,60 @@ export function resolveExistingEngine(existingEngine: string | null): EngineReso
   };
 }
 
+/** One row of the MCP picker — enough to render a choice and to order it. */
+export interface McpChoiceEntry {
+  fileId: string;
+  displayName: string;
+  isEngine: boolean;
+  order?: number;
+}
+
+// Pure helper -- orders MCP choices deterministically: ascending `order`,
+// entries without one last, ties broken by fileId. Mirrors compareContributors
+// in mcp-shards.ts, because the two express the same intent: `order: 1` is the
+// recommended server, so it heads the list AND leads the concatenated shard.
+// This matters more than cosmetics: inquirer's `type: 'list'` pre-selects the
+// FIRST choice, so without a stable order the wizard's default MCP would vary
+// with filesystem readdir order.
+export function sortMcpChoices(entries: McpChoiceEntry[]): McpChoiceEntry[] {
+  return [...entries].sort((a, b) => {
+    const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) return orderA - orderB;
+
+    return a.fileId.localeCompare(b.fileId);
+  });
+}
+
+// Pure helper -- checkbox pre-selection for a unique-key MCP server.
+// `null` = fresh install (check everything, the historical default); an array =
+// re-init, where we mirror what .unikit.json says is installed. Same semantics
+// as existingInstalledSkills for the skill picker. An empty array is NOT
+// "fresh": it means nothing was selected before, so nothing is pre-checked.
+export function isMcpPreselected(fileId: string, existingMcpServers: string[] | null): boolean {
+  return existingMcpServers ? existingMcpServers.includes(fileId) : true;
+}
+
+// Pure helper -- radio `default` for one duplicate-key group, as an INDEX into
+// the already-sorted entries (inquirer accepts either the value or the index;
+// the index keeps this independent of the choice-value encoding).
+// `undefined` = do not pass a default, which lets inquirer pre-select the first
+// choice, i.e. the `order: 1` recommendation. Returned both for a fresh install
+// and when nothing from this group was previously installed -- "the user skipped
+// this group last time" and "there was no choice to make last time" are
+// indistinguishable on disk, and silently pre-selecting Skip (thereby disabling
+// an MCP on a blind Enter) is worse than re-offering the recommended server.
+export function resolveMcpGroupDefault(
+  sortedEntries: McpChoiceEntry[],
+  existingMcpServers: string[] | null,
+): number | undefined {
+  if (!existingMcpServers) return undefined;
+
+  const index = sortedEntries.findIndex(entry => existingMcpServers.includes(entry.fileId));
+
+  return index === -1 ? undefined : index;
+}
+
 function isCustomRegistry(stored: string | null | undefined): boolean {
   if (!stored) return false;
   const trimmed = stored.trim();
@@ -134,6 +188,7 @@ export async function runWizard(
   existingRulesRegistry: string | null = null,
   existingEngine: string | null = null,
   existingInstalledSkills: string[] | null = null,
+  existingMcpServers: string[] | null = null,
 ): Promise<WizardAnswers> {
   console.log(chalk.dim('\n\u{1F4A1} Run /unikit after setup to analyze your project and generate project-relevant skills.\n'));
 
@@ -274,25 +329,33 @@ export async function runWizard(
 
   if (discoveredServers.size > 0) {
     // Group servers by server.key (duplicate keys = alternative implementations)
-    const groupedByKey = new Map<string, Array<{ fileId: string; displayName: string; isEngine: boolean }>>();
+    const groupedByKey = new Map<string, McpChoiceEntry[]>();
     for (const [fileId, server] of discoveredServers) {
+      const entry: McpChoiceEntry = {
+        fileId,
+        displayName: server.displayName,
+        isEngine: server.isEngine,
+        ...(server.order === undefined ? {} : { order: server.order }),
+      };
       const group = groupedByKey.get(server.key);
       if (group) {
-        group.push({ fileId, displayName: server.displayName, isEngine: server.isEngine });
+        group.push(entry);
       } else {
-        groupedByKey.set(server.key, [{ fileId, displayName: server.displayName, isEngine: server.isEngine }]);
+        groupedByKey.set(server.key, [entry]);
       }
     }
 
     // Separate unique keys (checkbox) from duplicate keys (radio groups)
-    const uniqueKeyEntries: Array<{ fileId: string; displayName: string }> = [];
-    const duplicateKeyGroups: Array<{ key: string; entries: Array<{ fileId: string; displayName: string }> }> = [];
+    const uniqueKeyEntries: McpChoiceEntry[] = [];
+    const duplicateKeyGroups: Array<{ key: string; entries: McpChoiceEntry[] }> = [];
 
     for (const [key, entries] of groupedByKey) {
       if (entries.length === 1) {
         uniqueKeyEntries.push(entries[0]);
       } else {
-        duplicateKeyGroups.push({ key, entries });
+        // Sorted here, once: the radio's `default` (Task 23) is an INDEX into
+        // this array, so ordering must be settled before it is computed.
+        duplicateKeyGroups.push({ key, entries: sortMcpChoices(entries) });
       }
     }
 
@@ -303,10 +366,10 @@ export async function runWizard(
           type: 'checkbox',
           name: 'selected',
           message: 'Configure MCP servers:',
-          choices: uniqueKeyEntries.map(entry => ({
+          choices: sortMcpChoices(uniqueKeyEntries).map(entry => ({
             name: entry.displayName,
             value: entry.fileId,
-            checked: true,
+            checked: isMcpPreselected(entry.fileId, existingMcpServers),
           })),
         },
       ]);
@@ -316,6 +379,10 @@ export async function runWizard(
 
     // Duplicate keys: radio per group + Skip
     for (const group of duplicateKeyGroups) {
+      // `default` is omitted (not set to undefined explicitly) when there is
+      // nothing to restore, so inquirer falls back to the first choice -- the
+      // `order: 1` recommendation.
+      const groupDefault = resolveMcpGroupDefault(group.entries, existingMcpServers);
       const { selected } = await inquirer.prompt([
         {
           type: 'list',
@@ -328,6 +395,7 @@ export async function runWizard(
             })),
             { name: chalk.dim('Skip'), value: '__skip__' },
           ],
+          ...(groupDefault === undefined ? {} : { default: groupDefault }),
         },
       ]);
 

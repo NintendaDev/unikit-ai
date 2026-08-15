@@ -443,7 +443,7 @@ if [[ -f "$MCP_DIR/universal/context7.json" ]]; then
     if validate_json "$MCP_DIR/universal/context7.json"; then
         # Validate required fields
         HAS_FIELDS=$(json_field "$MCP_DIR/universal/context7.json" \
-          "m.key && m.displayName && m.config ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$MCP_DIR/universal/context7.json" "m.key" 2>/dev/null)
             if [[ "$KEY_VAL" == "context7" ]]; then
@@ -452,7 +452,7 @@ if [[ -f "$MCP_DIR/universal/context7.json" ]]; then
                 fail "mcp/universal/context7.json — expected key 'context7', got '$KEY_VAL'"
             fi
         else
-            fail "mcp/universal/context7.json — missing key, displayName, or config"
+            fail "mcp/universal/context7.json — missing key, displayName, or config/configByPlatform"
         fi
     else
         fail "mcp/universal/context7.json — invalid JSON"
@@ -469,12 +469,12 @@ for mcp_file in "$MCP_DIR"/unity/*.json; do
     fname=$(basename "$mcp_file")
     if validate_json "$mcp_file"; then
         HAS_FIELDS=$(json_field "$mcp_file" \
-          "m.key && m.displayName && m.config ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
             pass "mcp/unity/$fname (valid structure, key=$KEY_VAL)"
         else
-            fail "mcp/unity/$fname — missing key, displayName, or config"
+            fail "mcp/unity/$fname — missing key, displayName, or config/configByPlatform"
         fi
     else
         fail "mcp/unity/$fname — invalid JSON"
@@ -492,12 +492,12 @@ for mcp_file in "$MCP_DIR"/godot/*.json; do
     fname=$(basename "$mcp_file")
     if validate_json "$mcp_file"; then
         HAS_FIELDS=$(json_field "$mcp_file" \
-          "m.key && m.displayName && m.config ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$mcp_file" "m.key" 2>/dev/null)
             pass "mcp/godot/$fname (valid structure, key=$KEY_VAL)"
         else
-            fail "mcp/godot/$fname — missing key, displayName, or config"
+            fail "mcp/godot/$fname — missing key, displayName, or config/configByPlatform"
         fi
     else
         fail "mcp/godot/$fname — invalid JSON"
@@ -511,7 +511,7 @@ fi
 if [[ -f "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" ]]; then
     if validate_json "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json"; then
         HAS_FIELDS=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" \
-          "m.key && m.displayName && m.config ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
+          "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
             KEY_VAL=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" "m.key" 2>/dev/null)
             IS_ENGINE=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
@@ -521,7 +521,7 @@ if [[ -f "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" ]]; then
                 fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
             fi
         else
-            fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — missing key, displayName, or config"
+            fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — missing key, displayName, or config/configByPlatform"
         fi
     else
         fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — invalid JSON"
