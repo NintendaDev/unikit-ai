@@ -10,13 +10,14 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpShards, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
 import { renderSyncRulesEvents } from './rules.js';
 import { discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
+import { collectMcpShards } from '../../core/mcp-shards.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { fileExists } from '../../utils/fs.js';
 import { collectReplacedSkills, refreshExtensions } from '../../core/extension-ops.js';
@@ -317,6 +318,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh machine-readable gate-result contract (read by verify + review)
     await installGateResultContract(projectDir);
+
+    // Refresh the per-MCP capability profile (orphan-deletes a stale engine's shards)
+    await installEngineMcpShards(projectDir, await collectMcpShards(discoveredServers, config.mcp.servers));
 
     // Update engine development principles (shared system file, plain rewrite)
     await installDevPrinciples(projectDir, engineId, config.engineMcpKey);

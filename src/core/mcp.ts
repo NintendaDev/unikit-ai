@@ -1,6 +1,7 @@
 import path from 'path';
 import { readJsonFile, readTextFile, writeTextFile, getMcpDir, ensureDir, fileExists, listFiles } from '../utils/fs.js';
 import { getAgentConfig } from './agents.js';
+import { ENGINE_MCP_SHARDS, type EngineMcpShard } from './constants.js';
 import { getEngineConfig } from './engines.js';
 import { getMcpWriter } from './mcp-writers/index.js';
 
@@ -16,12 +17,47 @@ export interface McpServerEntry {
   instruction: string;
   config: Record<string, unknown>;
   allowedTools?: McpAllowedTools;
+  /**
+   * Presentation order inside a `key` group (ascending, 1-based). Drives the
+   * wizard's radio pre-selection and the shard concatenation order. Missing =
+   * last. Never affects the order servers are written into a settings file.
+   */
+  order?: number;
+  /**
+   * Absolute paths to this server's engine-MCP shard sources, keyed by shard
+   * name. The JSON stores paths relative to the config's own directory; they are
+   * resolved here so consumers never need to know which `mcp/<engine>/` dir the
+   * entry came from. A missing key = this server contributes no such shard.
+   */
+  shards?: Partial<Record<EngineMcpShard, string>>;
 }
 
 export type DiscoveredServers = Map<string, McpServerEntry>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Read the optional `shards` key of an MCP JSON into absolute paths.
+ * Keys outside {@link ENGINE_MCP_SHARDS} and non-string values are dropped
+ * silently — an unknown shard name is a data typo, not a reason to fail the
+ * whole scan. Returns `null` when the entry contributes nothing.
+ */
+function parseShards(raw: unknown, dirPath: string): Partial<Record<EngineMcpShard, string>> | null {
+  if (!isRecord(raw)) return null;
+
+  const resolved: Partial<Record<EngineMcpShard, string>> = {};
+  let found = false;
+
+  for (const shard of ENGINE_MCP_SHARDS) {
+    const value = raw[shard];
+    if (typeof value !== 'string' || value.length === 0) continue;
+    resolved[shard] = path.resolve(dirPath, value);
+    found = true;
+  }
+
+  return found ? resolved : null;
 }
 
 async function scanMcpDirectory(dirPath: string): Promise<Map<string, McpServerEntry>> {
@@ -47,6 +83,15 @@ async function scanMcpDirectory(dirPath: string): Promise<Map<string, McpServerE
     const allowedTools = raw['allowed-tools'] as McpAllowedTools | undefined;
     if (allowedTools) {
       entry.allowedTools = allowedTools;
+    }
+
+    if (typeof raw['order'] === 'number') {
+      entry.order = raw['order'];
+    }
+
+    const shards = parseShards(raw['shards'], dirPath);
+    if (shards) {
+      entry.shards = shards;
     }
 
     servers.set(fileId, entry);

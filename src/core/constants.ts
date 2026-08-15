@@ -104,6 +104,37 @@ const SYSTEM_GAMEDESIGN_DIR_NAME = GAMEDESIGN_MODULE_ID;
  */
 export const GAMEDESIGN_GENRES_DIR_NAME = 'genres';
 
+/**
+ * Name of the engine-MCP subdir under `.unikit/system/` — the home for the
+ * per-MCP capability profile delivered as three flat shards. It is a **system
+ * asset**, not a memory rule: the content describes how to drive the MCP server
+ * the user actually picked (bootstrap protocol, scene-authoring idioms, which
+ * verification gates are real), not project knowledge the user curates.
+ *
+ * It lives here rather than inside a skill body because skills are hash-tracked
+ * (`computeSourceHashWithTemplate`) while the shard content varies with the MCP
+ * selection — putting it in a SKILL.md would make every skill's source hash a
+ * function of the MCP choice's *content*. System assets are outside hash
+ * tracking and are flat-rewritten on every init/update, which is exactly the
+ * lifecycle a per-selection profile needs.
+ */
+export const ENGINE_MCP_DIR_NAME = 'engine-mcp';
+
+/**
+ * The three engine-MCP shards, in delivery order. Each becomes
+ * `.unikit/system/engine-mcp/<shard>.md`. Consumer binding:
+ * `capabilities` — read by `unikit-implement` / `unikit-fix` / `unikit-verify` /
+ * `unikit-devcontext`; `scene-authoring` — implement / fix / devcontext;
+ * `verification` — `unikit-verify` only.
+ *
+ * Also the allow-list used when parsing the `shards` key of an MCP JSON: keys
+ * outside this tuple are ignored rather than delivered.
+ */
+export const ENGINE_MCP_SHARDS = ['capabilities', 'scene-authoring', 'verification'] as const;
+
+/** One of the three {@link ENGINE_MCP_SHARDS} names. */
+export type EngineMcpShard = (typeof ENGINE_MCP_SHARDS)[number];
+
 // --- File names ---
 
 export const SKILL_FILE = 'SKILL.md';
@@ -200,6 +231,18 @@ export function systemGamedesignDir(projectDir: string): string {
  */
 export function systemGamedesignGenresDir(projectDir: string): string {
   return path.join(systemGamedesignDir(projectDir), GAMEDESIGN_GENRES_DIR_NAME);
+}
+
+/**
+ * `<projectDir>/.unikit/system/engine-mcp` — home for the three per-MCP shards
+ * ({@link ENGINE_MCP_SHARDS}). Written by `installEngineMcpShards` from the
+ * `shards` key of the MCP JSONs the user selected; outside hash tracking and
+ * flat-rewritten on every init/update, so a MCP or engine switch never leaves a
+ * stale profile behind (the installer orphan-deletes what the new selection did
+ * not contribute).
+ */
+export function systemEngineMcpDir(projectDir: string): string {
+  return path.join(systemDir(projectDir), ENGINE_MCP_DIR_NAME);
 }
 
 /**

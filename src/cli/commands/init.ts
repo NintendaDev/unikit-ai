@@ -5,13 +5,14 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpShards, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
 import { configureMcp, getMcpInstructions, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
+import { collectMcpShards } from '../../core/mcp-shards.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { getAgentOnboarding, cleanupAgentSetup } from '../../core/transformer.js';
 import { removeDirectory } from '../../utils/fs.js';
@@ -168,6 +169,9 @@ export async function initCommand(): Promise<void> {
 
     // Install machine-readable gate-result contract (read by verify + review)
     await installGateResultContract(projectDir);
+
+    // Deliver the per-MCP capability profile contributed by the selected servers
+    await installEngineMcpShards(projectDir, await collectMcpShards(discoveredServers, answers.mcpServers));
 
     // Install engine development principles (shared system file)
     await installDevPrinciples(projectDir, engineId, answers.engineMcpKey);
