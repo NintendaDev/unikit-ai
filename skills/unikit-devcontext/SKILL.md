@@ -12,6 +12,16 @@ description: >-
   plan it with /unikit-plan and build it with /unikit-implement — this skill is for direct,
   unplanned code work.
 argument-hint: "[task or file path]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash(ls *)
+  - Bash(find *)
+  - Bash(wc *)
+  - Bash(git *)
 ---
 
 # Senior {{engine_name}} Developer
@@ -29,6 +39,12 @@ Do not announce, confirm, or mention the language setting.
 ## Development Principles — BLOCKING PRE-REQUISITE
 
 Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. This file contains the canonical Core Principles and Workflow for {{engine_name}} development (MCP-tool usage, comments policy, docs/tests requirements, TODO handling).
+
+Then, in the same pass:
+- If `.unikit/system/engine-mcp/capabilities.md` exists — read it and follow it. The file does not exist → skip this step silently.
+- If `.unikit/system/engine-mcp/scene-authoring.md` exists — read it and follow it. The file does not exist → skip this step silently.
+
+These describe the MCP server actually configured for this project: its bootstrap protocol, which tools are real, and which report success without doing anything. They override generic assumptions about the engine MCP tool.
 
 ## Rules Loading
 

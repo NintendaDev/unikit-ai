@@ -1439,6 +1439,149 @@ fi
 echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30e: engine-mcp shards on update — the ONLY mechanical guard for the update.ts
+# wiring of installEngineMcpShards. Like genres, shards are SELECTION-driven (DEVPRIN_DIR
+# selects zero MCP servers, so it starts with none), so this test walks the full lifecycle
+# on the settled fixture: select a shard-carrying server -> delivery; tamper -> refresh;
+# plant a stray file -> orphan-delete; deselect everything -> the whole profile is removed.
+# That last leg is the one the orphan-delete exists for: system assets have no migration
+# chain, so a stale Unity profile would otherwise survive an engine/MCP switch forever.
+# ─────────────────────────────────────────────
+CONFIG="$DEVPRIN_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineMcpKey = 'UnityMCP';
+    c.mcp = { servers: ['unity-mcp-biome'] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+MCP_SHARD_OUT1="$TMPDIR/update-mcp-shards-1.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT1" 2>&1)
+
+MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
+for shard in capabilities scene-authoring verification; do
+    assert_exists "$MCP_SHARD_DIR/$shard.md" \
+        "engine-mcp $shard.md must be delivered on update (update.ts wiring)"
+done
+
+# Tamper every shard + plant a stray file the current selection did not contribute.
+for shard in capabilities scene-authoring verification; do
+    echo "MCP_TAMPERED_BY_TEST" >> "$MCP_SHARD_DIR/$shard.md"
+done
+echo "STALE_SHARD" > "$MCP_SHARD_DIR/stale.md"
+
+MCP_SHARD_OUT2="$TMPDIR/update-mcp-shards-2.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT2" 2>&1)
+
+MCP_TAMPER_LEFT=""
+for shard in capabilities scene-authoring verification; do
+    grep -q "MCP_TAMPERED_BY_TEST" "$MCP_SHARD_DIR/$shard.md" && MCP_TAMPER_LEFT+=" $shard.md"
+done
+if [[ -n "$MCP_TAMPER_LEFT" ]]; then
+    echo "Assertion failed: update did NOT refresh engine-mcp shard(s) (tamper marker present in:$MCP_TAMPER_LEFT)"
+    exit 1
+fi
+assert_not_exists "$MCP_SHARD_DIR/stale.md" \
+    "update orphan-deletes an engine-mcp shard the current selection did not contribute"
+echo "  ✓ engine-mcp shards: update delivers + refreshes + orphan-deletes (update.ts wiring)"
+
+# Deselect every MCP server -> the whole profile must be swept, not left stale.
+CONFIG="$DEVPRIN_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineMcpKey = null;
+    c.mcp = { servers: [] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+MCP_SHARD_OUT3="$TMPDIR/update-mcp-shards-3.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT3" 2>&1)
+
+for shard in capabilities scene-authoring verification; do
+    assert_not_exists "$MCP_SHARD_DIR/$shard.md" \
+        "deselecting every MCP server orphan-deletes engine-mcp $shard.md (no stale profile)"
+done
+echo "  ✓ engine-mcp shards: deselecting all MCP servers sweeps the whole profile"
+
+# ─────────────────────────────────────────────
+# Test 30f: the MCP selection is part of the skill source hash
+# ─────────────────────────────────────────────
+# MCP tool injection is ADDITIVE (mcp.ts has no removal branch) and the managed-state
+# snapshot is taken AFTER injection, so installedHash always matches itself and the
+# drift check can never fire. Without the MCP component in the source hash, swapping
+# the selected server reinstalls nothing and the old mcp__* ids linger forever as the
+# union of every selection the project ever had.
+#
+# Scenario: install with coplay -> swap the config to biome -> update WITHOUT --force.
+# The frontmatter must lose the coplay-only ids and gain the biome-only ones.
+# The stale-reference leg proves the clean-replace: removeSkillsByName now runs on ANY
+# reinstall decision, not only under --force, so an orphaned reference file is swept.
+#
+# NOTE on coverage: Test 2 above (second update -> `changed: 0`) is the guard against
+# the formulas in buildManagedSkillsState and updateSkills diverging — a mismatch would
+# reinstall everything on every run and Test 2 would fail immediately. It covers the
+# SKILL half only; subagents print no counters (update.ts renders a `Skills status`
+# block and an unconditional `Subagents updated` line), so the subagent side has no
+# observable signal. Accepted: both formulas are edited together in one place.
+
+MCPHASH_DIR="$TMPDIR/update-mcp-source-hash"
+mkdir -p "$MCPHASH_DIR"
+cat > "$MCPHASH_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-coplay"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$MCPHASH_DIR"
+
+MCPHASH_OUT1="$TMPDIR/update-mcp-hash-1.log"
+(cd "$MCPHASH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCPHASH_OUT1" 2>&1)
+
+MCPHASH_SKILL="$MCPHASH_DIR/.claude/skills/unikit-implement/SKILL.md"
+assert_exists "$MCPHASH_SKILL" "unikit-implement must be installed for the MCP source-hash test"
+assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__read_console' \
+    "coplay-only tool id injected on the first update"
+
+# Plant an orphan reference file: the package does not ship it, so a clean replace
+# must remove it. Under the old `force &&` guard it would survive forever.
+MCPHASH_STALE="$MCPHASH_DIR/.claude/skills/unikit-implement/references/stale.md"
+mkdir -p "$(dirname "$MCPHASH_STALE")"
+echo "STALE_REFERENCE" > "$MCPHASH_STALE"
+
+# Swap the selection. Nothing else changes — no --force.
+MCPHASH_CONFIG="$MCPHASH_DIR/.unikit.json"
+CONFIG="$MCPHASH_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.mcp = { servers: ['unity-mcp-biome'] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+MCPHASH_OUT2="$TMPDIR/update-mcp-hash-2.log"
+(cd "$MCPHASH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCPHASH_OUT2" 2>&1)
+
+if grep -q 'mcp__UnityMCP__read_console' "$MCPHASH_SKILL"; then
+    echo "Assertion failed: swapping the MCP selection did NOT drop the coplay-only tool id"
+    echo "  (the MCP selection is missing from the skill source hash)"
+    exit 1
+fi
+assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__scene_change_plan' \
+    "biome-only tool id injected after the selection swap (no --force)"
+assert_not_exists "$MCPHASH_STALE" \
+    "clean replace on any reinstall sweeps an orphaned reference file (not only under --force)"
+
+echo "  ✓ MCP selection in source hash: swap reinstalls, dead tool ids dropped, orphan references swept"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).

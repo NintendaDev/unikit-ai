@@ -183,6 +183,16 @@ assert_contains "$GATE_CONTRACT_PATH" 'unikit-gate-result' \
   "gate-result-contract.md carries the unikit-gate-result fence name"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
+# servers (mcp.servers = []), so nothing contributes a shard and the directory
+# must NOT be created. installEngineMcpShards treats an empty set as a normal
+# path (an engine with no shard-carrying MCP), not a warning.
+# The populated branch is Test 13b below.
+# ─────────────────────────────────────────────────────
+assert_not_exists "$CLAUDE_DIR/.unikit/system/engine-mcp" \
+  "engine-mcp dir NOT created when no MCP server is selected (empty branch)"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-dr: design-read.md installed as a system asset under .unikit/system/gamedesign/
 # (flat copy, no engine vars — installGamedesignSystemAssets copies it alongside the
 # gd-principles core + shards). The extracted mode references + plan design-context.md
@@ -1227,6 +1237,60 @@ assert_contains "$CODEX_UNIKIT_SKILL" 'mcp__context7__query-docs' \
   "codex unikit frontmatter should include context7 query-docs tool"
 
 echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/unikit/SKILL.md"
+
+# ─────────────────────────────────────────────────────
+# Test 13b: engine-mcp shards POPULATED branch (delivery on install)
+# ─────────────────────────────────────────────────────
+# The two smoke fixtures above both pin mcp.servers = [], so they only exercise
+# the empty branch (Test 1b-mcp). This dedicated fixture selects a shard-carrying
+# server (unity-mcp-biome) and asserts the three shards land in
+# .unikit/system/engine-mcp/ as flat copies: header marker present, NO engine vars
+# (they are not substituted — the asset is engine-agnostic by construction).
+# NOTE: this project is installed via run_update, so the branch under test is the
+# update.ts wiring; the init.ts call site is covered by the static grep guard in
+# test-skills.sh Part 6.
+
+MCP_SHARDS_DIR="$TMPDIR/test-mcp-shards"
+mkdir -p "$MCP_SHARDS_DIR"
+
+cat > "$MCP_SHARDS_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-biome"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$MCP_SHARDS_DIR"
+
+seed_rule "$MCP_SHARDS_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$MCP_SHARDS_DIR"
+
+MCP_SHARD_BASE="$MCP_SHARDS_DIR/.unikit/system/engine-mcp"
+for shard in capabilities scene-authoring verification; do
+  assert_exists "$MCP_SHARD_BASE/$shard.md" "engine-mcp shard $shard.md delivered"
+  assert_contains "$MCP_SHARD_BASE/$shard.md" 'Verify by READ-BACK' \
+    "engine-mcp $shard.md carries the shared read-back header"
+  assert_not_contains "$MCP_SHARD_BASE/$shard.md" '\{\{engine_' \
+    "engine-mcp $shard.md has no engine vars (flat copy, no substitution)"
+done
+
+assert_contains "$MCP_SHARD_BASE/capabilities.md" 'Unity Biome MCP' \
+  "engine-mcp capabilities.md attributes the contribution to its server"
+
+echo "  ✓ engine-mcp shards: 3 files delivered from unity-mcp-biome into .unikit/system/engine-mcp/"
 
 # ─────────────────────────────────────────────────────
 # Test 14: resolveExistingEngine verdict matrix (wizard engine reuse)

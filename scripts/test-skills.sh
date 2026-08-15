@@ -3054,6 +3054,95 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# EM: engine-MCP shard layer (EM-1…EM-5)
+# ─────────────────────────────────────────────
+# The shards (.unikit/system/engine-mcp/{capabilities,scene-authoring,verification}.md)
+# are delivered by installEngineMcpShards from the `shards` key of the selected MCP JSONs.
+# Delivery is covered live by test-install.sh (Test 13b) and test-update.sh (Test 30e);
+# the guards here lock the SOURCE side — the reader lines in the skills, the doctrine
+# override, the dead-name sweep on the repaired configs, and the init.ts call site that
+# no runtime test reaches. All `-qF`, file-scoped (MSYS grep aborts on -iF).
+# Path vars: reuse UNIKIT_VERIFY_SKILL; new EM_* for the other three readers.
+EM_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+EM_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
+EM_DEVCONTEXT_SKILL="$ROOT_DIR/skills/unikit-devcontext/SKILL.md"
+EM_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
+
+# (EM-1) capabilities.md is read by ALL FOUR pipeline skills. A delivered asset with no
+# reader line is dead weight; this is the only thing that keeps the four in sync.
+EM1_WHY=""
+grep -qF 'engine-mcp/capabilities.md' "$EM_IMPLEMENT_SKILL"  || EM1_WHY+=" implement"
+grep -qF 'engine-mcp/capabilities.md' "$EM_FIX_SKILL"        || EM1_WHY+=" fix"
+grep -qF 'engine-mcp/capabilities.md' "$UNIKIT_VERIFY_SKILL" || EM1_WHY+=" verify"
+grep -qF 'engine-mcp/capabilities.md' "$EM_DEVCONTEXT_SKILL" || EM1_WHY+=" devcontext"
+if [[ -z "$EM1_WHY" ]]; then
+    pass "EM-1 engine-mcp capabilities.md read by all four pipeline skills"
+else
+    fail "EM-1 engine-mcp capabilities.md reader line MISSING in:$EM1_WHY"
+fi
+
+# (EM-2) scene-authoring.md → implement/fix/devcontext; verification.md → verify ONLY.
+# The negative half is the load-bearing one: verification.md carries the GATE LIFTED
+# overrides for Step 2.1/2.2, which mean nothing outside unikit-verify.
+EM2_WHY=""
+grep -qF 'engine-mcp/scene-authoring.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" scene:implement-missing"
+grep -qF 'engine-mcp/scene-authoring.md' "$EM_FIX_SKILL"        || EM2_WHY+=" scene:fix-missing"
+grep -qF 'engine-mcp/scene-authoring.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" scene:devcontext-missing"
+grep -qF 'engine-mcp/verification.md'    "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" verification:verify-missing"
+grep -qF 'engine-mcp/verification.md' "$EM_IMPLEMENT_SKILL"  && EM2_WHY+=" verification:leaked-into-implement"
+grep -qF 'engine-mcp/verification.md' "$EM_FIX_SKILL"        && EM2_WHY+=" verification:leaked-into-fix"
+grep -qF 'engine-mcp/verification.md' "$EM_DEVCONTEXT_SKILL" && EM2_WHY+=" verification:leaked-into-devcontext"
+if [[ -z "$EM2_WHY" ]]; then
+    pass "EM-2 shard binding: scene-authoring → implement/fix/devcontext · verification → verify ONLY"
+else
+    fail "EM-2 shard binding drift:$EM2_WHY"
+fi
+
+# (EM-3) The GATE LIFTED override must exist on BOTH sides — the shard convention is
+# useless if unikit-verify does not honour it, and dev-principles p.5 would otherwise keep
+# demanding an MCP test run on servers that cannot report results.
+EM3_WHY=""
+grep -qF 'GATE LIFTED' "$UNIKIT_VERIFY_SKILL" || EM3_WHY+=" verify-skill"
+grep -qF 'GATE LIFTED' "$EM_DEV_PRINCIPLES"   || EM3_WHY+=" dev-principles"
+grep -qF 'GATE LIFTED' "$ROOT_DIR/mcp/unreal-engine-5/shards/unreal-mcp-chir24/verification.md" \
+    || EM3_WHY+=" chir24-shard"
+if [[ -z "$EM3_WHY" ]]; then
+    pass "EM-3 GATE LIFTED override present in unikit-verify + dev-principles + the ChiR24 shard"
+else
+    fail "EM-3 GATE LIFTED override MISSING in:$EM3_WHY"
+fi
+
+# (EM-4) Dead-name sweep on the two repaired configs. ChiR24 cut over to a single `unreal`
+# tool, so every old parent name is a guaranteed DIRECT_TOOL_CALL_REMOVED; UE_PROJECT_PATH
+# passed fs.existsSync and then failed every call with NOT_CONNECTED. coplay's 8085 never
+# existed in their repository at all.
+EM_CHIR24_JSON="$ROOT_DIR/mcp/unreal-engine-5/unreal-mcp-chir24.json"
+EM_COPLAY_JSON="$ROOT_DIR/mcp/unity/unity-mcp-coplay.json"
+EM4_WHY=""
+for dead in manage_pipeline manage_performance manage_game_framework manage_behavior_tree manage_navigation UE_PROJECT_PATH; do
+    grep -qF "$dead" "$EM_CHIR24_JSON" && EM4_WHY+=" chir24:$dead"
+done
+grep -qF '8085' "$EM_COPLAY_JSON" && EM4_WHY+=" coplay:8085"
+if [[ -z "$EM4_WHY" ]]; then
+    pass "EM-4 dead-name sweep: no removed tool names / UE_PROJECT_PATH / port 8085 survive"
+else
+    fail "EM-4 DEAD names still present:$EM4_WHY"
+fi
+
+# (EM-5) Static wiring guard for BOTH call sites. test-install.sh installs its projects via
+# `update`, so every runtime shard test exercises update.ts; a dropped init.ts call would be
+# invisible to lint, knip (still called from update.ts) and every smoke test. These two greps
+# are the only coverage of the init side.
+EM5_WHY=""
+grep -qF 'installEngineMcpShards(' "$ROOT_DIR/src/cli/commands/init.ts"   || EM5_WHY+=" init.ts"
+grep -qF 'installEngineMcpShards(' "$ROOT_DIR/src/cli/commands/update.ts" || EM5_WHY+=" update.ts"
+if [[ -z "$EM5_WHY" ]]; then
+    pass "EM-5 installEngineMcpShards wired in both init.ts and update.ts"
+else
+    fail "EM-5 installEngineMcpShards NOT wired in:$EM5_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Codebase integrity checks ===${NC}\n"
@@ -3213,6 +3302,77 @@ for mcp_json in "$MCP_DIR"/*/; do
             pass "$rel_name allowed-tools structure valid"
         else
             fail "$rel_name allowed-tools structure invalid ($ALLOWED_VALID)"
+        fi
+
+        # Recipient RESOLVABILITY (not just structure). Naming a skill/subagent in
+        # allowed-tools only does something if the recipient can accept an injection:
+        # injectToolsIntoSkillFrontmatter returns false when the SKILL.md has no
+        # `allowed-tools:` field, and injectToolsIntoAgentFrontmatter the same for a
+        # subagent without `tools:` — silently, so a dead recipient is invisible
+        # without this guard. That was exactly the unikit-devcontext bug.
+        RECIPIENTS_WHY=""
+        while IFS= read -r recipient; do
+            [[ -z "$recipient" ]] && continue
+            target="$ROOT_DIR/skills/$recipient/SKILL.md"
+            if [[ ! -f "$target" ]]; then
+                RECIPIENTS_WHY+=" skill-missing:$recipient"
+            elif ! grep -qE '^allowed-tools:' "$target"; then
+                RECIPIENTS_WHY+=" skill-cannot-accept:$recipient"
+            fi
+        done < <(json_field "$json_file" "Object.keys(m['allowed-tools'].skills||{}).join('\n')" 2>/dev/null || true)
+
+        while IFS= read -r recipient; do
+            [[ -z "$recipient" ]] && continue
+            target="$ROOT_DIR/subagents/$recipient.md"
+            if [[ ! -f "$target" ]]; then
+                RECIPIENTS_WHY+=" subagent-missing:$recipient"
+            elif ! grep -qE '^tools:' "$target"; then
+                RECIPIENTS_WHY+=" subagent-cannot-accept:$recipient"
+            fi
+        done < <(json_field "$json_file" "Object.keys(m['allowed-tools'].agents||{}).join('\n')" 2>/dev/null || true)
+
+        if [[ -z "$RECIPIENTS_WHY" ]]; then
+            pass "$rel_name allowed-tools recipients all resolvable (exist + can accept injection)"
+        else
+            fail "$rel_name allowed-tools names a DEAD recipient (injection would be a silent no-op):$RECIPIENTS_WHY"
+        fi
+
+        # unikit-verify must be a recipient of every engine MCP: without it the
+        # verify gates have no tools to run and Step 2.1/2.2 degrade to "unavailable".
+        IS_ENGINE=$(json_field "$json_file" "m['is_engine'] === true ? 'yes' : 'no'" 2>/dev/null || echo "no")
+        if [[ "$IS_ENGINE" == "yes" ]]; then
+            HAS_VERIFY=$(json_field "$json_file" "(m['allowed-tools'].skills||{})['unikit-verify'] ? 'yes' : 'no'" 2>/dev/null || echo "no")
+            if [[ "$HAS_VERIFY" == "yes" ]]; then
+                pass "$rel_name (is_engine) grants tools to unikit-verify"
+            else
+                fail "$rel_name is_engine=true but allowed-tools.skills has no unikit-verify entry"
+            fi
+        fi
+
+        # `shards` keys must be a subset of ENGINE_MCP_SHARDS, and every path must resolve.
+        HAS_SHARDS=$(json_field "$json_file" "m['shards'] ? 'yes' : 'no'" 2>/dev/null || echo "no")
+        if [[ "$HAS_SHARDS" == "yes" ]]; then
+            SHARDS_VALID=$(node -e "
+              const fs=require('fs'), path=require('path');
+              const file=process.argv[1];
+              const m=JSON.parse(fs.readFileSync(file,'utf8'));
+              const KNOWN=['capabilities','scene-authoring','verification'];
+              const s=m['shards'];
+              if(typeof s!=='object'||s===null||Array.isArray(s)){console.log('not-object');process.exit(0)}
+              const why=[];
+              for(const[k,v]of Object.entries(s)){
+                if(!KNOWN.includes(k)){why.push('unknown-key:'+k);continue}
+                if(typeof v!=='string'||!v){why.push('not-string:'+k);continue}
+                if(!fs.existsSync(path.resolve(path.dirname(file),v)))why.push('broken-pointer:'+k+'->'+v);
+              }
+              console.log(why.length?why.join(','):'ok');
+            " "$json_file" 2>/dev/null || echo "parse-error")
+
+            if [[ "$SHARDS_VALID" == "ok" ]]; then
+                pass "$rel_name shards keys known + all pointers resolve on disk"
+            else
+                fail "$rel_name shards invalid ($SHARDS_VALID)"
+            fi
         fi
     done
 done

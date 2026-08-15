@@ -138,8 +138,8 @@ export async function initCommand(): Promise<void> {
 
     // Build managed skills and subagents state per agent
     for (const agent of installedAgents) {
-      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, agent.installedSkills, engineId);
-      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId);
+      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, agent.installedSkills, engineId, answers.engineMcpKey, answers.mcpServers);
+      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, answers.engineMcpKey, answers.mcpServers);
     }
 
     // Save config — rules.installed starts empty; /unikit Step 9 fills it.

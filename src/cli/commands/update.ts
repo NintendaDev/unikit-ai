@@ -228,7 +228,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     const entriesByAgent = new Map<string, SkillUpdateEntry[]>();
 
     for (const agent of config.agents) {
-      const result = await updateSkills(agent, projectDir, { force, engineId, engineMcpKey: config.engineMcpKey, replacedSkills, installNewSkills });
+      const result = await updateSkills(agent, projectDir, { force, engineId, engineMcpKey: config.engineMcpKey, mcpServers: config.mcp.servers, replacedSkills, installNewSkills });
       agent.installedSkills = result.installedSkills;
       entriesByAgent.set(agent.id, result.entries);
     }
@@ -244,7 +244,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     for (const agent of config.agents) {
       const agentCfg = getAgentConfig(agent.id);
       if (agentCfg.supportsSubagents) {
-        const result = await updateSubagents(agent, projectDir, { force, engineId, engineMcpKey: config.engineMcpKey });
+        const result = await updateSubagents(agent, projectDir, { force, engineId, engineMcpKey: config.engineMcpKey, mcpServers: config.mcp.servers });
         agent.installedSubagents = result.installedSubagents;
         subagentEntriesByAgent.set(agent.id, result.entries);
       }
@@ -340,8 +340,8 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     const availableSkills = await getAvailableSkills();
     for (const agent of config.agents) {
       const managedSkills = agent.installedSkills.filter(s => availableSkills.includes(s) && !replacedSkills.has(s));
-      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, managedSkills, engineId);
-      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId);
+      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, managedSkills, engineId, config.engineMcpKey, config.mcp.servers);
+      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, config.engineMcpKey, config.mcp.servers);
     }
 
     config.version = currentVersion;

@@ -155,6 +155,12 @@ Bootstrap loads coding rules and principles ONCE upfront so the fix can be imple
 
 Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask).
 
+**Engine-MCP profile (conditional, engine-neutral):**
+5. If `.unikit/system/engine-mcp/capabilities.md` exists — read it and follow it. The file does not exist → skip this step silently.
+6. If `.unikit/system/engine-mcp/scene-authoring.md` exists — read it and follow it. The file does not exist → skip this step silently.
+
+These describe the MCP server actually configured for this project: its bootstrap protocol, which tools are real, and which report success without doing anything. They override generic assumptions about the engine MCP tool.
+
 **Read `.unikit/skill-context/unikit-fix/SKILL.md`** — MANDATORY if the file exists.
 
 This file contains project-specific rules accumulated by `/unikit-evolve` from patches,

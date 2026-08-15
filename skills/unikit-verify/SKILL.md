@@ -158,6 +158,12 @@ Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can b
 
 Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific issues.
 
+**Engine-MCP profile (conditional, engine-neutral):**
+5. If `.unikit/system/engine-mcp/capabilities.md` exists — read it and follow it. The file does not exist → skip this step silently.
+6. If `.unikit/system/engine-mcp/verification.md` exists — read it and follow it. The file does not exist → skip this step silently.
+
+`verification.md` describes what the MCP server actually configured for this project can and cannot verify. **It overrides Step 2.1 "{{engine_name}} Compile Check" and Step 2.2 "{{engine_name}} Test Check"** — see the gate-override rule stated in those steps.
+
 **Read `.unikit/skill-context/unikit-verify/SKILL.md`** — MANDATORY if the file exists.
 
 This file contains project-specific rules accumulated by `/unikit-evolve` from patches,
@@ -258,6 +264,15 @@ Statuses:
 
 ## Step 2: Code Quality Verification
 
+**Gate override — `.unikit/system/engine-mcp/verification.md` (read in Step 0).**
+
+Steps 2.1 and 2.2 each have a bail-out branch for "{{engine_mcp_tool}} unavailable". That is not the only way a gate can be unreachable: on some MCP servers the tool is available but the *capability* is not (it starts a test run and never returns a result, or hard-codes a validation pass). So there are two distinct skips:
+
+- **MCP unavailable** — {{engine_mcp_tool}} itself is not reachable → skip with the wording given in the step.
+- **Gate lifted** — `verification.md` marks that gate **GATE LIFTED** for the configured server → skip it and note the reason **quoted from the shard**, not `{{engine_mcp_tool}} unavailable`. Do not substitute another tool for a lifted gate, and do not report it as passed.
+
+If `verification.md` does not exist, or exists and lifts nothing, both gates apply in full.
+
 ### 2.1 {{engine_name}} Compile Check
 
 Use {{engine_mcp_tool}} to check that the project compiles after implementation:
@@ -265,6 +280,7 @@ Use {{engine_mcp_tool}} to check that the project compiles after implementation:
 - Check the {{engine_name}} console for compilation errors
 - If errors found — display them with `file:line` references
 - If {{engine_mcp_tool}} is unavailable — skip and note: `Compilation check: {{engine_mcp_tool}} unavailable, skipped`
+- If `verification.md` marks the compile gate **GATE LIFTED** — skip and note: `Compilation check: gate lifted — <reason from verification.md>`
 
 ### 2.2 {{engine_name}} Test Check
 
@@ -274,6 +290,7 @@ Use {{engine_mcp_tool}} to run tests for affected modules:
 - Otherwise run all EditMode tests as a baseline check
 - Wait for results and display them — highlight any failures
 - If {{engine_mcp_tool}} is unavailable — skip and note: `Test run: {{engine_mcp_tool}} unavailable, skipped`
+- If `verification.md` marks the tests gate **GATE LIFTED** — skip and note: `Test run: gate lifted — <reason from verification.md>`
 
 ### 2.3 Engine-Specific Checks
 

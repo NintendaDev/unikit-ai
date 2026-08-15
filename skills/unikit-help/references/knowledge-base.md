@@ -48,6 +48,28 @@ design knowledge, pass `--module gamedesign`.
 
 ---
 
+## System assets — not rules, not user-editable
+
+Alongside the memory there is `.unikit/system/`, written by `init`/`update` and **rewritten every
+time**. Editing these by hand is pointless. The user does not curate them; the CLI does.
+
+Relevant to the dev pipeline:
+
+- `dev-principles.md` — the canonical engine development principles + workflow. Read on Bootstrap
+  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`.
+- `engine-mcp/{capabilities,scene-authoring,verification}.md` — the profile of the **engine MCP
+  server the project actually selected**: its bootstrap protocol, which tools are real, which
+  report success while doing nothing, and which verification gates are reachable. Generated from
+  the chosen MCP configs, so switching MCP or engine replaces them (stale shards are deleted).
+  Binding: `capabilities` → implement / fix / verify / devcontext; `scene-authoring` → implement /
+  fix / devcontext; `verification` → verify only, where it can mark a gate **GATE LIFTED** and
+  `/unikit-verify` then skips that gate with the shard's reason instead of demanding the
+  impossible. Not every MCP server ships a profile — a missing file is skipped silently.
+- `cli-contract.md`, `gate-result-contract.md`, `modules.yml`, `gamedesign/` — contracts read on
+  demand by the skills that need them.
+
+---
+
 ## Turning a rule into the knowledge base (the everyday flow)
 
 1. **Quick capture** — `/unikit-rules <one-liner>` appends to `.unikit/RULES.md`. Use it as a

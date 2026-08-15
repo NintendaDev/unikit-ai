@@ -132,22 +132,49 @@ export async function hashInstalledSkill(paths: ResolvedSkillPaths): Promise<str
 
 // --- Source hashes (skill + subagent) ---
 
+/**
+ * Fold the MCP selection into a source hash.
+ *
+ * MCP tool ids are injected into an installed skill's frontmatter, and the
+ * injection is purely **additive** — there is no removal branch. The managed
+ * state snapshot is also taken *after* injection, so `installedHash` always
+ * matches itself and the drift check can never fire. Without this component a
+ * changed MCP selection reinstalls nothing and dead `mcp__*` ids accumulate as
+ * the union of every selection the project ever had.
+ *
+ * This hashes the **input** of the injection, not its output: materialising the
+ * final text would mean running the whole pipeline just to decide whether to
+ * install, plus a second in-memory implementation of an injection that is
+ * currently file-based and positional — two paths that would drift.
+ *
+ * Sorting is mandatory: `config.mcp.servers` comes out of the wizard in answer
+ * order, which is not deterministic.
+ */
+function mcpHashComponent(engineMcpKey: string | null | undefined, mcpServers: string[]): string {
+  return `mcp:${engineMcpKey ?? 'none'}|${[...mcpServers].sort().join(',')}`;
+}
+
 export async function computeSourceHashWithTemplate(
   sourceSkillDir: string,
   engineId: string,
   skillName: string,
   agentId: string,
+  engineMcpKey: string | null | undefined,
+  mcpServers: string[],
 ): Promise<string | null> {
   const baseHash = await hashDirectory(sourceSkillDir);
   if (!baseHash) return null;
 
   // Always include engine ID + agent ID in hash so engine switch and
   // agent-specific filter output both trigger a reinstall for every skill.
+  // The MCP selection is the same kind of global dimension — see mcpHashComponent.
   const combined = createHash('sha256');
+  const mcpComponent = mcpHashComponent(engineMcpKey, mcpServers);
   combined.update(baseHash);
   combined.update(`engine:${engineId}`);
   combined.update(`agent:${agentId}`);
-  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} skill=${skillName}`);
+  combined.update(mcpComponent);
+  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} ${mcpComponent} skill=${skillName}`);
 
   let engineConfig;
   try {
@@ -172,15 +199,19 @@ export async function computeSubagentSourceHash(
   sourcePath: string,
   engineId: string,
   agentId: string,
+  engineMcpKey: string | null | undefined,
+  mcpServers: string[],
 ): Promise<string | null> {
   const fileHash = await hashFile(sourcePath);
   if (!fileHash) return null;
 
   const combined = createHash('sha256');
+  const mcpComponent = mcpHashComponent(engineMcpKey, mcpServers);
   combined.update(fileHash);
   combined.update(`engine:${engineId}`);
   combined.update(`agent:${agentId}`);
-  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} subagent=${stripMdExtension(path.basename(sourcePath))}`);
+  combined.update(mcpComponent);
+  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} ${mcpComponent} subagent=${stripMdExtension(path.basename(sourcePath))}`);
 
   return combined.digest('hex');
 }

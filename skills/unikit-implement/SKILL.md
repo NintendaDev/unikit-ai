@@ -348,6 +348,12 @@ Load the project knowledge base ONCE at the start of execution. This replaces pe
 
 Stack rules are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
 
+**Engine-MCP profile (conditional, engine-neutral):**
+5. If `.unikit/system/engine-mcp/capabilities.md` exists — read it and follow it. The file does not exist → skip this step silently.
+6. If `.unikit/system/engine-mcp/scene-authoring.md` exists — read it and follow it. The file does not exist → skip this step silently.
+
+These describe the MCP server actually configured for this project: its bootstrap protocol, which tools are real, and which report success without doing anything. They override generic assumptions about the engine MCP tool.
+
 Keep an in-memory list of loaded rule file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
 
 ### Step 2: Determine Work Scope
