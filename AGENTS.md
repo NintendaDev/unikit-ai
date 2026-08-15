@@ -58,6 +58,7 @@ What `unikit-ai init` / `update` produces in the user's project root. Detailed w
 | `.unikit.json` | `init` | Persistent config (agents, engine, `rulesRegistry`, `managedSkills`) |
 | `.unikit/system/cli-contract.md` | `init`/`update` (flat-rewrite) | CLI contract for AI skills |
 | `.unikit/system/dev-principles.md` | `init`/`update` (flat-rewrite) | Engine principles with `{{engine_*}}` substituted |
+| `.unikit/system/engine-mcp/*.md` | `init`/`update` (flat-rewrite + orphan-delete) | Capability profile of the *selected* MCP server (3 shards) — source is the `shards` key of the MCP JSON, not `data/` |
 | `.unikit/memory/{core,stack}/*.md` | `rules install`/`sync` | Knowledge-base rules pulled from registry |
 | `.unikit/memory/RULES_INDEX.md` | `rules sync` (regenerated) | Compact rules index — never hand-edit |
 | `<agent-config>/skills/` | `init`/`update` | Installed skills (path varies per agent) |

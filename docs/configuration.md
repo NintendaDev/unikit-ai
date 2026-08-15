@@ -79,7 +79,7 @@ Main configuration file, created by `unikit-ai init`:
 | `agents[].managedSkills` | SHA-256 hash-based change tracking for skill updates |
 | `agents[].managedSubagents` | SHA-256 hash-based change tracking for subagent updates |
 | `extensions` | Array of installed extension records (optional) |
-| `rules.installed` | Currently installed dynamic memory (core + stack). Each entry is an object `{ name, source, origin?, version?, installed_hash? }`. See [Rules Registry](rules-registry.md#unikit-json-registry-fields) for field descriptions. Legacy `string[]` entries are normalized to `{ name, source: "installer" }` on load. |
+| `rules.installed` | Currently installed dynamic memory (core + stack). Each entry is an object `{ name, source, origin?, version?, installed_hash? }`. See [Rules Registry](rules-registry.md#unikitjson-registry-fields) for field descriptions. Legacy `string[]` entries are normalized to `{ name, source: "installer" }` on load. |
 
 ## `.unikit/config.yaml`
 
@@ -134,7 +134,28 @@ git:
 
 UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), or `.agents/mcp_config.json` (Antigravity).
 
+Servers that share one `key` are **alternative implementations of the same engine integration** — the wizard offers them as a radio group and you pick exactly one. Servers with a unique key are offered as a checkbox and can be combined freely.
+
 ### UnityMCP
+
+Two servers compete under this key. The wizard lists them in `order`, so **Unity Biome** is the default offer on a fresh install.
+
+#### Unity Biome MCP (`order: 1`)
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "git+https://github.com/german-krasnikov/unity-biome-mcp.git#subdirectory=server", "unity-biome-mcp"]
+}
+```
+
+Backed by [unity-biome-mcp](https://github.com/german-krasnikov/unity-biome-mcp). Requires **Unity 6 (6000.0+)** and [`uv`](https://docs.astral.sh/uv/). Install the Unity package from the git URL `https://github.com/german-krasnikov/unity-biome-mcp.git?path=unity-plugin`, then run `MCP > Setup Wizard` in Unity. The Editor must be running — the server finds its port through `~/.unity-biome-mcp/ports/*.port`, so no env vars are needed.
+
+The most capable of the four engine servers: transactional scene edits (`scene_change_plan` → `apply_scene_change`), a real console watermark (`console_mark` + `get_console_since`), visual regression baselines, and uGUI / Timeline / Shader Graph authoring. It is stdio, so unlike the HTTP servers it also reaches the OpenCode agent.
+
+Only **38 of 163** tools are visible up front; the rest unlock per category via `discover_tools`. The delivered `capabilities.md` shard explains the protocol — see [Engine-MCP shards](#engine-mcp-shards) below.
+
+#### Coplay Unity MCP (`order: 2`)
 
 ```json
 {
@@ -153,6 +174,89 @@ Two caveats worth knowing before you rely on it:
 
 - **The HTTP server does not start on its own.** Start it manually via `Window > MCP for Unity > Start Server`. Until it is running, every tool call fails to connect.
 - **The Unity package manages MCP client configs itself.** On editor load it rewrites (and can remove) MCP entries written by other tools, including the ones UniKit AI installs. Disable that behavior with the EditorPref `MCPForUnity.AutoRegisterEnabled=false` if you want UniKit AI to stay the owner of your agent config.
+
+### GodotMCP
+
+Three servers compete under this key; **Fennara** is the default offer on a fresh install.
+
+#### Fennara Godot AI (`order: 1`, free)
+
+```json
+{
+  "configByPlatform": {
+    "win32":  { "command": "{{localappdata}}\\Fennara\\bin\\fennara-mcp.exe", "args": [], "env": {} },
+    "darwin": { "command": "{{home}}/Library/Application Support/Fennara/bin/fennara-mcp", "args": [], "env": {} },
+    "linux":  { "command": "{{home}}/.local/share/fennara/bin/fennara-mcp", "args": [], "env": {} }
+  }
+}
+```
+
+Backed by [fennara-godot-ai](https://github.com/fennaraOfficial/fennara-godot-ai). Requires **Godot 4.5+**, x86_64 on Windows/Linux or arm64 on macOS; on Windows also the MSVC Redistributable 2015-2022 x64. Before the first run: install the CLI, run `fennara install` inside the Godot project, then enable the addon.
+
+- **The editor must be open** — there is no headless mode.
+- One daemon serves the account (port 41287). With two projects open, the target is chosen in the Fennara dock, not by the MCP call.
+- Telemetry is enabled by default.
+
+All 14 tools are visible immediately (no bootstrap). Its shape is a code executor rather than an operation catalog: one `run_scene_edit_script` covers scene, UI, VFX and animation work. It is the only Godot server with real run feedback (full stdout+stderr behind a cursor) and version-accurate API docs via `get_class_info`.
+
+This is the only config using [`configByPlatform`](#per-platform-configs) — its binary is an absolute path that differs on each OS.
+
+#### GDAI Godot MCP (`order: 2`, paid) · Coding-Solo Godot MCP (`order: 3`, free)
+
+Both are stdio servers and both work; neither ships an engine-MCP shard yet, so agents fall back to the generic development principles when driving them.
+
+### Engine-MCP shards
+
+When you select an engine MCP, UniKit AI writes a **capability profile** for that specific server into `.unikit/system/engine-mcp/`:
+
+| File | Read by |
+|------|---------|
+| `capabilities.md` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` |
+| `scene-authoring.md` | `/unikit-implement`, `/unikit-fix`, `/unikit-devcontext` |
+| `verification.md` | `/unikit-verify` |
+
+They exist because the four engine servers are genuinely different tools: four incompatible bootstrap protocols, four rollback models, and verification gates that are real on some servers and impossible on others. `verification.md` can mark a gate **GATE LIFTED**, which overrides the compile/test steps of `/unikit-verify` and item 5 of the development principles — without it, verify would demand a test result from a server that cannot produce one.
+
+Mechanics worth knowing:
+
+- The content comes from the `shards` key of the MCP JSON you selected, so it changes when your MCP choice changes. A server without a `shards` key contributes nothing, and skills skip a missing shard file silently.
+- Like `cli-contract.md` and `dev-principles.md`, shards are **system assets — not hash-tracked**. Every `init` / `update` rewrites them from source, so local edits are lost. Put durable project knowledge in `.unikit/memory/` instead.
+- Orphan files are deleted, not just overwritten. Switching engines (or deselecting a server) clears the stale profile rather than leaving a Unity profile in a Godot project.
+
+### MCP JSON schema fields
+
+Beyond `key` / `displayName` / `config`, an MCP JSON may declare three optional fields. All are backward compatible — a config without them behaves exactly as before.
+
+| Field | Purpose |
+|-------|---------|
+| `order` | Presentation order within a `key` group (ascending, 1-based; missing sorts last). Drives the wizard's pre-selection and the order contributions are concatenated into a shard. It does **not** affect the order servers are written into a settings file. |
+| `verified` | `{ version, date, toolRegistry }` — which server version the `allowed-tools` names were last audited against, and the registry file they were read from. Printed in the `init` summary. MCP versions are deliberately not pinned, so this stamp is how you tell whether a tool list may have drifted. |
+| `configByPlatform` | Per-OS config variants keyed by `win32` / `darwin` / `linux`, for servers whose binary path differs per platform. |
+
+#### Per-platform configs
+
+`configByPlatform` wins when it has an entry for the current platform; otherwise the plain `config` is used. A platform outside the three known ids therefore falls back to `config` — and a server that has neither is skipped with a warning rather than failing the install.
+
+Two path tokens are expanded recursively through the selected config (in `command`, in any `args` element, in `env` values):
+
+| Token | Expands to |
+|-------|-----------|
+| `{{home}}` | `os.homedir()` |
+| `{{localappdata}}` | `%LOCALAPPDATA%`, falling back to `~/AppData/Local` |
+
+No existence check is performed on the result — if the binary is not installed yet, your MCP client reports that, not UniKit AI.
+
+### Re-running `init`
+
+On a re-init the wizard mirrors what `.unikit.json` already records:
+
+- **Checkbox groups** (unique keys) pre-check the servers you had installed.
+- **Radio groups** (competing keys) pre-select your previous choice.
+- `Skip` is never pre-selected — "you skipped it last time" and "there was no choice last time" are indistinguishable on disk, so the wizard re-offers the recommended server rather than silently disabling an MCP.
+
+`order: 1` therefore decides the default only on a **fresh** install.
+
+Changing your MCP selection reinstalls all skills and subagents: the selection is part of their source hash, which is how stale `mcp__<Key>__*` entries get cleared from the installed frontmatter.
 
 ### UnrealMCP
 

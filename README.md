@@ -46,12 +46,15 @@ There's no dedicated "scene" skill, but scene work isn't excluded - when a featu
 
 ## Supported Engines
 
-| Engine          | Console Reading | Test Running                                                         |
-| --------------- | --------------- | -------------------------------------------------------------------- |
-| Unity           | Yes             | Yes (requires [UnityMCP](https://github.com/CoplayDev/unity-mcp))    |
-| Godot 4         | Yes             | Yes (requires [Godot MCP](https://github.com/Coding-Solo/godot-mcp)) |
-| Godot 4 .NET    | Yes             | Yes (requires [Godot MCP](https://github.com/Coding-Solo/godot-mcp)) |
-| Unreal Engine 5 | Yes             | Yes (requires [Unreal MCP](https://github.com/ChiR24/Unreal_mcp))    |
+Each engine ships one or more MCP servers. Where several are listed, they are alternatives — `unikit-ai init` offers them as a radio group and you pick one. They are shown here in the order the wizard presents them; the first is the default offer on a fresh install.
+
+| Engine                    | MCP servers (in wizard order)                                                                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Unity                     | [Unity Biome](https://github.com/german-krasnikov/unity-biome-mcp) · [MCP for Unity](https://github.com/CoplayDev/unity-mcp) (Coplay)                                                  |
+| Godot 4 / Godot 4 .NET    | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) · GDAI Godot MCP (paid) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp)                     |
+| Unreal Engine 5           | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp)                                                                                                                              |
+
+These servers are not interchangeable in what they can do — console reading, test running, scene transactions and visual regression are each supported by some and impossible on others. UniKit AI installs a capability profile for the server you actually picked into `.unikit/system/engine-mcp/`, so the pipeline skills know which verification gates are real. See [docs/configuration.md](docs/configuration.md#mcp-configuration) for the per-server detail.
 
 ---
 
@@ -300,7 +303,8 @@ Uses its own config directory and skill format, never touches standard agent fil
 - [Author Official Site](https://nintenda.dev) - personal website and hub for all author's projects
 - [Author Telegram Channel](https://t.me/nintendadev_channel) - follow updates, roadmap previews, and dev blog posts
 - [Unity](https://unity.com) | [Godot](https://godotengine.org) | [Unreal Engine](https://www.unrealengine.com) - Supported game engines
-- [UnityMCP](https://github.com/CoplayDev/unity-mcp) | [Godot MCP](https://github.com/Coding-Solo/godot-mcp) | [Unreal MCP](https://github.com/ChiR24/Unreal_mcp) - Engine MCP servers
+- [Unity Biome](https://github.com/german-krasnikov/unity-biome-mcp) | [MCP for Unity](https://github.com/CoplayDev/unity-mcp) - Unity MCP servers
+- [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) | [Godot MCP](https://github.com/Coding-Solo/godot-mcp) | [Unreal MCP](https://github.com/ChiR24/Unreal_mcp) - Godot and Unreal MCP servers
 - [Claude Code](https://claude.ai/code) - Anthropic's AI coding agent
 - [Qwen Code](https://github.com/QwenLM/qwen-code) - Alibaba's AI coding agent
 - [OpenCode](https://opencode.ai) - Open-source AI coding agent

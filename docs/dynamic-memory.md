@@ -146,21 +146,24 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 │                                              │
 │  Step 1.5 Bootstrap:                         │
 │  1. Read dev-principles.md                   │  ← .unikit/system/ (always)
-│  2. Read RULES.md                            │  ← project overrides
-│  3. Read RULES_INDEX.md                      │
-│  4. Read core rules                          │  ← .unikit/memory/code/core/ (always)
+│  2. Read engine-mcp shards (if present)      │  ← .unikit/system/engine-mcp/ (per-MCP)
+│  3. Read RULES.md                            │  ← project overrides
+│  4. Read RULES_INDEX.md                      │
+│  5. Read core rules                          │  ← .unikit/memory/code/core/ (always)
 │                                              │
 │  Step 3.0 Phase Rules Refresh (per phase):   │
-│  5. Re-read RULES_INDEX.md                   │
-│  6. Load stack rules needed for this phase   │  ← .unikit/memory/code/stack/ (delta)
+│  6. Re-read RULES_INDEX.md                   │
+│  7. Load stack rules needed for this phase   │  ← .unikit/memory/code/stack/ (delta)
 │                                              │
 │  Step 3.2 Implement the task (per task):     │
-│  7. Write code inline (Read/Edit/Write/Bash) │
+│  8. Write code inline (Read/Edit/Write/Bash) │
 │     with the rules already loaded            │
 └──────────────────────────────────────────────┘
 ```
 
-Steps 5-6 in detail:
+Step 2 in detail — the engine-MCP shards are a **per-server capability profile**, not rules. Which shards a skill reads depends on the skill: `capabilities.md` is read by all four pipeline skills, `scene-authoring.md` by implement / fix / devcontext, `verification.md` by verify only. A missing file is skipped silently — engines whose selected MCP ships no profile keep working on the generic principles. `verification.md` may mark a gate **GATE LIFTED**, which overrides the compile/test steps of `/unikit-verify` and item 5 of `dev-principles.md`. See [configuration.md](configuration.md#engine-mcp-shards).
+
+Steps 6-7 in detail:
 - Examines phase name and task descriptions - files involved, frameworks referenced
 - Loads only the stack rules needed for the upcoming phase, based on "Load When" triggers from `RULES_INDEX.md`
 - If a stack rule has references, loads the appropriate quickref or full reference alongside it
