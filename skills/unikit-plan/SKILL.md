@@ -215,6 +215,14 @@ Before any exploration or planning — silently load the project knowledge base.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **`.unikit/skill-context/{{self_name}}/SKILL.md`** — project-specific skill overrides (if exists)
+5. **Read `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md`** — engine planning vocabulary: kind → concept (§1), language & layout (§2), when to write `Editor:` (§3), engine planning pitfalls (§4), out of scope (§5), direct-edit feasibility (§6). Set `engine_rules_loaded = true`.
+
+   **If the file is absent** — this is a **normal path**, not an error (an engine whose planning vocabulary has not shipped yet). Set `engine_rules_loaded = false` and:
+   - Do **not** generate the `Editor:` field in any task.
+   - Do **not** write the `Editor tasks` line into `## Settings` and do **not** ask the editor-mode question (Step 5, `mode-full.md` / `mode-fast.md`).
+   - Report it at the confirmation step — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` goes into **all three** confirmation points: Step 6 **Fast mode**, Step 6 **Full mode**, and `Add Step 3: Confirm` in `mode-add.md` (the `add` mode never reaches Step 6).
+
+   Step 0.5 runs in **every mode except List** — so `add` mode loads the vocabulary too and may append `Editor:` lines to an existing plan on the same terms as `full` / `fast`.
 
 #### Patches (learning from past fixes)
 
@@ -485,6 +493,8 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether to generate tests after each phase
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
+   - `Visual regression: yes/no (default: no)` — read by **both** consumers: `/unikit-implement` takes a baseline before the editor change and compares after it, and `/unikit-verify` gates the result (lifting the gate when the server's `verification.md` shard declares visual regression unavailable). Resolved in `mode-full.md` / `mode-fast.md`.
+   - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`** — no `Editor:` field is generated for that engine, so the setting would have no consumer.
 
 4. **`## Roadmap Linkage`** (optional, only if `.unikit/ROADMAP.md` exists):
    - If linked: `Milestone: "<name>"` and `Rationale: "<why>"`
@@ -492,6 +502,9 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 
 5. **`## Checklist`** — phases with tasks. Every task MUST include description, `WHY:` line, `Files:` line.
    The WHY line answers: "what breaks or is missing if we skip this task?"
+
+   **When to write `Editor:`** — the criterion is neutral: the change touches the **serialized state of the editor**, not source text. Editing a plain text or config file stays in `Files:`. The concrete signals for the active engine are listed in `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` §3 — read them from there, **do not restate them here**: they are engine facts (a scene, a prefab, a blueprint are not the same concept across engines), and a second inline copy diverges from §3 on its first edit.
+   Form: `Editor: [kind] <container> → <target> : <action>`, one line per target, placed after `Files:` (grammar and the 7 kinds: `references/TASK-FORMAT.md` → `### Editor task grammar`). Pure code tasks omit the field. When `engine_rules_loaded = false` the field is **not generated at all**.
 
 6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks. For each `### Commit N: after tasks X-Y` heading, also emit a decorative `<!-- Commit checkpoint: tasks X-Y -->` HTML comment at the matching boundary inside the `## Checklist` (right after the last task of that range). The marker range mirrors the Commit Plan heading (single source of truth) and is **decorative only** — `/unikit-implement` does not parse it. See `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
@@ -501,7 +514,7 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 
 #### Fast Mode: Additional Section
 
-9. **`## Technical Context`** — always included. Contains plan-brief content inline (CONSTRAINTS, INTERFACES, KEY PATTERNS, FILES, DI BINDINGS, OUT OF SCOPE). Same quality bar as PLAN-BRIEF.md. When `research_linked = true`, use the research brief as a starting point but verify and update based on the current codebase state from Phase B.
+9. **`## Technical Context`** — always included. Contains plan-brief content inline (CONSTRAINTS, INTERFACES, KEY PATTERNS, FILES, **EDITOR TARGETS**, DI BINDINGS, OUT OF SCOPE). `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. Same quality bar as PLAN-BRIEF.md. When `research_linked = true`, use the research brief as a starting point but verify and update based on the current codebase state from Phase B.
 
 #### Full Mode: `PLAN-BRIEF.md` (always created)
 
@@ -514,9 +527,10 @@ When `research_linked = true`: use `RESEARCH_BRIEF.md` as a starting point — v
 2. INTERFACES — full {{engine_code_language}} signatures for every interface in tasks
 3. KEY PATTERNS — code examples for patterns the implementer must follow
 4. FILES — exact paths for files to create/modify
-5. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
+5. EDITOR TARGETS — one row per `Editor:` target in the checklist (Kind / Container / Target / Change); the section is omitted entirely when the plan has no `Editor:` task
+6. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
 
-Self-check: if an interface appears in tasks but not in INTERFACES — add it.
+Self-check: if an interface appears in tasks but not in INTERFACES — add it. Likewise, if an `Editor:` target appears in tasks but not in EDITOR TARGETS — add it.
 
 ### Step 6: Confirm with User
 
@@ -526,8 +540,9 @@ After artifacts are created, show the user:
 1. Plan file: `.unikit/code/PLAN.md`
 2. A brief summary of phases identified
 3. Total estimated effort
-4. Remind: "To start implementation, run: `/unikit-implement`"
-5. Ask if they want to adjust anything
+4. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
+5. Remind: "To start implementation, run: `/unikit-implement`"
+6. Ask if they want to adjust anything
 
 **Full mode:**
 1. The feature folder path created
@@ -535,8 +550,9 @@ After artifacts are created, show the user:
 3. Files created: `TASKS.md` and `PLAN-BRIEF.md`, plus research reference if linked
 4. A brief summary of phases identified
 5. Total estimated effort
-6. Remind: "To start implementation, run: `/unikit-implement`"
-7. Ask if they want to adjust anything
+6. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
+7. Remind: "To start implementation, run: `/unikit-implement`"
+8. Ask if they want to adjust anything
 
 ### Step 7: Context Cleanup
 
@@ -587,7 +603,8 @@ Bad examples:
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
 11. **Always create PLAN-BRIEF.md** — even when a research's `RESEARCH_BRIEF.md` exists, the plan always generates its own `PLAN-BRIEF.md` (full mode) or `## Technical Context` (fast mode) based on the current codebase state. The research brief is used as input, not as a replacement — code may have changed since the research was conducted. The plan's brief is the authoritative source for `/unikit-implement`
 12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
-13. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
+13. **`Editor:` marks serialized editor state, nothing else** — write an `Editor:` line **if and only if** the change touches the editor's **serialized state**; a plain text or config file stays in `Files:` (the same criterion as `.unikit/system/dev-principles.md` → `## Workflow`, item 1). Engine-specific signals live in `references/ENGINE_RULES.md` §3; when that file is absent, the field is not generated at all
+14. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
 
 ## Code Analysis & Delegation Rules
 
