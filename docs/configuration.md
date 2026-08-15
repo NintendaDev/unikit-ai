@@ -164,11 +164,14 @@ Only **38 of 163** tools are visible up front; the rest unlock per category via 
 }
 ```
 
-Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires the package installed in your Unity project and the Unity Editor running. Provides:
+Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires the package installed in your Unity project and the Unity Editor running. 48 tools in 10 groups; only `core` is active by default, the rest unlock via `manage_tools(action="activate", group=…)`. Provides:
 - Read Unity console logs
 - Trigger a domain reload / asset refresh
 - Run EditMode and PlayMode tests
 - A brace-balance sanity check for scripts
+- Editor authoring — scenes and GameObjects, components, prefabs, assets and ScriptableObjects, UI Toolkit documents, materials/textures/VFX, AnimatorControllers, and project settings (tags, layers, physics matrix, render pipeline)
+
+**Not covered at all:** the Input System, Timeline, Shader Graph, and visual baselines. Editor tasks of those kinds degrade to `⏸️ MANUAL` rather than being attempted — see [Editor tasks](plan-files.md#editor-tasks).
 
 Two caveats worth knowing before you rely on it:
 
@@ -205,6 +208,8 @@ This is the only config using [`configByPlatform`](#per-platform-configs) — it
 
 Both are stdio servers and both work; neither ships an engine-MCP shard yet, so agents fall back to the generic development principles when driving them.
 
+Neither is capable of **editor authoring**: GDAI exposes no authoring tool at all, and Coding-Solo offers only raw `execute_in_editor` with no audited per-kind protocol. With either selected, tasks carrying an `Editor:` line degrade to `⏸️ MANUAL` — you get the exact instruction and carry it out yourself, rather than the agent guessing tool names. See [Editor tasks](plan-files.md#editor-tasks).
+
 ### Engine-MCP shards
 
 When you select an engine MCP, UniKit AI writes a **capability profile** for that specific server into `.unikit/system/engine-mcp/`:
@@ -212,7 +217,7 @@ When you select an engine MCP, UniKit AI writes a **capability profile** for tha
 | File | Read by |
 |------|---------|
 | `capabilities.md` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` |
-| `scene-authoring.md` | `/unikit-implement`, `/unikit-fix`, `/unikit-devcontext` |
+| `scene-authoring.md` | `/unikit-implement`, `/unikit-fix`, `/unikit-devcontext`, `unikit-implement-worker` |
 | `verification.md` | `/unikit-verify` |
 
 They exist because the four engine servers are genuinely different tools: four incompatible bootstrap protocols, four rollback models, and verification gates that are real on some servers and impossible on others. `verification.md` can mark a gate **GATE LIFTED**, which overrides the compile/test steps of `/unikit-verify` and item 5 of the development principles — without it, verify would demand a test result from a server that cannot produce one.
