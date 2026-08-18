@@ -52,6 +52,9 @@
       ],
       "unikit-verify": [
         "*"
+      ],
+      "unikit-mcp-audit": [
+        "*"
       ]
     }
   }

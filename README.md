@@ -275,7 +275,7 @@ Uses its own config directory and skill format, never touches standard agent fil
 | Guide                                    | Description                                                                                                                        |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | [Development Workflow](docs/workflow.md) | Workflow diagram, skill pipeline, spec-driven approach                                                                             |
-| [Skills Reference](docs/skills.md)       | All 31 skills - 20 code-pipeline + 11 game-design, explore, plan, implement, verify, evolve, and more                              |
+| [Skills Reference](docs/skills.md)       | All 33 skills - 22 code-pipeline + 11 game-design, explore, plan, implement, verify, evolve, and more                              |
 | [Subagents](docs/subagents.md)           | Coordinators, workers, sidecars, delegation aliases                                                                                |
 | [Plan Files](docs/plan-files.md)         | Plan files, self-improvement patches, artifact ownership                                                                           |
 | [Game-Design Module](docs/gamedesign.md) | GDD authoring — the system / flow / content axes, the `## Content Map [gen]`, and the bundled genre-profile catalog (`genres` CLI) |

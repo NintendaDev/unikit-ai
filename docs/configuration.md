@@ -331,7 +331,7 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 20 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 22 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
@@ -348,6 +348,9 @@ your-unity-project/
 │   │   │   └── references/
 │   │   ├── unikit-implement/
 │   │   ├── unikit-improve/
+│   │   ├── unikit-mcp-audit/
+│   │   ├── unikit-mcp-trap/
+│   │   │   └── references/
 │   │   ├── unikit-memory/
 │   │   ├── unikit-plan/
 │   │   │   └── references/
