@@ -54,7 +54,7 @@ Each engine ships one or more MCP servers. Where several are listed, they are al
 | Godot 4 / Godot 4 .NET    | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) · GDAI Godot MCP (paid) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp)                     |
 | Unreal Engine 5           | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp)                                                                                                                              |
 
-These servers are not interchangeable in what they can do — console reading, test running and scene transactions are each supported by some and impossible on others. UniKit AI installs a capability profile for the server you actually picked into `.unikit/system/engine-mcp/`, so the pipeline skills know which verification gates are real. See [docs/configuration.md](docs/configuration.md#mcp-configuration) for the per-server detail.
+These servers are not interchangeable, and UniKit AI does not keep a table of who can do what — such a table is a claim about six moving targets and goes wrong quietly. What an agent may attempt comes from the server's **live catalog**, asked per task. On top of that, UniKit AI installs the selected server's **rules tree** into `.unikit/system/engine-mcp/`: a short list of *exceptions* — checks to perform where this server has been observed to mislead. A rules tree only ever adds an obligation; it never removes a right, and its absence means no known exceptions rather than no capabilities. See [docs/configuration.md](docs/configuration.md#engine-mcp-rules-tree) for the per-server detail.
 
 ---
 

@@ -149,6 +149,7 @@ canonical intent list and the full routing table live in
 | Test the code | `/unikit-verify`, `/unikit-implement` (test phase), `/unikit-fix` | scenarios.md |
 | Fix a bug | `/unikit-fix` (or `/unikit-explore` first for deep bugs) | scenarios.md |
 | Review code quality | `/unikit-review` → `/unikit-fix` | skill-map.md |
+| The engine MCP reported success but nothing changed | `/unikit-mcp-trap` (record the finding) → `/unikit-mcp-audit` (curate later) | skill-map.md |
 | Add a rule / learn from a book or article | `/unikit-rules`, `/unikit-memory` | knowledge-base.md |
 | Share/publish rules across projects | `/unikit-rules-registry`, `unikit-ai rules ...` | knowledge-base.md |
 | "Which skill do I use?" | answer from skill-map.md | skill-map.md |

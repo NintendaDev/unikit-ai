@@ -145,15 +145,18 @@ Two servers compete under this key. The wizard lists them in `order`, so **Unity
 ```json
 {
   "command": "uvx",
-  "args": ["--from", "git+https://github.com/german-krasnikov/unity-biome-mcp.git#subdirectory=server", "unity-biome-mcp"]
+  "args": ["--from", "git+https://github.com/german-krasnikov/unity-biome-mcp.git#subdirectory=server", "unity-biome-mcp"],
+  "env": { "UNITY_MCP_NO_GATING": "1" }
 }
 ```
 
 Backed by [unity-biome-mcp](https://github.com/german-krasnikov/unity-biome-mcp). Requires **Unity 6 (6000.0+)** and [`uv`](https://docs.astral.sh/uv/). Install the Unity package from the git URL `https://github.com/german-krasnikov/unity-biome-mcp.git?path=unity-plugin`, then run `MCP > Setup Wizard` in Unity. The Editor must be running — the server finds its port through `~/.unity-biome-mcp/ports/*.port`, so no env vars are needed.
 
-The most capable of the four engine servers: transactional scene edits (`scene_change_plan` → `apply_scene_change`), a real console watermark (`console_mark` + `get_console_since`), and uGUI / Timeline / Shader Graph authoring. It is stdio, so unlike the HTTP servers it also reaches the OpenCode agent.
+It is stdio, so unlike the HTTP servers it also reaches the OpenCode agent, and it is the deepest of the engine integrations: transactional scene edits, a real console watermark, and authoring across uGUI, UI Toolkit, animation and shaders. What it can do at *your* version is answered by its live catalog, not by a list in this file — which is why you will not find one here.
 
-Only **38 of 163** tools are visible up front; the rest unlock per category via `discover_tools`. The delivered `capabilities.md` shard explains the protocol — see [Engine-MCP shards](#engine-mcp-shards) below.
+It is the first server to ship a **rules tree**: see [Engine-MCP rules tree](#engine-mcp-rules-tree) below for what that is, and what it deliberately does not contain.
+
+**Why UniKit AI sets `env: { "UNITY_MCP_NO_GATING": "1" }`.** Without the flag the catalog arrives gated — the client sees a fraction of it and is expected to unlock the rest per category. At the version stamped in `verified` that unlock was measured **not to reach the client**, which leaves affordances declared and unreachable at once: the worst possible shape, because the failure is silent. The flag turns the whole set on at connect time. It costs roughly 8-10k tokens of context and buys one honest rule — *a tool that is not in your list does not exist here; it is not hidden*. The flag is written identically for every agent (it is all-or-nothing, not per-agent). The vendor does not document the variable, so this is the only place our reason for setting it is written down.
 
 #### Coplay Unity MCP (`order: 2`)
 
@@ -164,14 +167,9 @@ Only **38 of 163** tools are visible up front; the rest unlock per category via 
 }
 ```
 
-Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires the package installed in your Unity project and the Unity Editor running. 48 tools in 10 groups; only `core` is active by default, the rest unlock via `manage_tools(action="activate", group=…)`. Provides:
-- Read Unity console logs
-- Trigger a domain reload / asset refresh
-- Run EditMode and PlayMode tests
-- A brace-balance sanity check for scripts
-- Editor authoring — scenes and GameObjects, components, prefabs, assets and ScriptableObjects, UI Toolkit documents, materials/textures/VFX, AnimatorControllers, and project settings (tags, layers, physics matrix, render pipeline)
+Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires the package installed in your Unity project and the Unity Editor running. Its catalog arrives grouped, with only part of it active up front, so an agent asks it what is reachable rather than assuming. Broadly it covers console reading, domain reload / asset refresh, EditMode and PlayMode test runs, and Editor authoring across scenes, components, prefabs, assets, UI documents, materials, animation and project settings.
 
-**Not covered at all:** the Input System, Timeline, Shader Graph, and visual baselines. Editor tasks of those kinds degrade to `⏸️ MANUAL` rather than being attempted — see [Editor tasks](plan-files.md#editor-tasks).
+It ships no rules tree yet. That means UniKit AI knows of no exceptions for it — not that it can do less, and never a reason to skip an editor task. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
 
 Two caveats worth knowing before you rely on it:
 
@@ -206,37 +204,73 @@ This is the only config using [`configByPlatform`](#per-platform-configs) — it
 
 #### GDAI Godot MCP (`order: 2`, paid) · Coding-Solo Godot MCP (`order: 3`, free)
 
-Both are stdio servers and both work; neither ships an engine-MCP shard yet, so agents fall back to the generic development principles when driving them.
+Both are stdio servers and both work. Neither ships a rules tree yet: UniKit AI knows of no exceptions for either, which is not the same as knowing they can do less — and the generic development principles apply to them exactly as they do to every other server.
 
-Neither is capable of **editor authoring**: GDAI exposes no authoring tool at all, and Coding-Solo offers only raw `execute_in_editor` with no audited per-kind protocol. With either selected, tasks carrying an `Editor:` line degrade to `⏸️ MANUAL` — you get the exact instruction and carry it out yourself, rather than the agent guessing tool names. See [Editor tasks](plan-files.md#editor-tasks).
+What an agent may attempt against them is decided by what their live catalog offers. `⏸️ MANUAL` is reached by trying and finding no route, with the evidence of that absence to show — never by the absence of a rules tree. See [Editor tasks](plan-files.md#editor-tasks).
 
-### Engine-MCP shards
+### Engine-MCP rules tree
 
-When you select an engine MCP, UniKit AI writes a **capability profile** for that specific server into `.unikit/system/engine-mcp/`:
+When you select an engine MCP, UniKit AI copies that server's **rules tree** into `.unikit/system/engine-mcp/`. A rules tree records **exceptions, not capabilities** — the places where this particular server behaves differently from what an honest reading of its own catalog would suggest.
 
 | File | Read by |
 |------|---------|
-| `capabilities.md` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` |
-| `scene-authoring.md` | `/unikit-implement`, `/unikit-fix`, `/unikit-devcontext`, `unikit-implement-worker` |
-| `verification.md` | `/unikit-verify` |
+| `INDEX.md`, base section (everything except the `## Check` table) | `/unikit-plan`, `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext`, `unikit-implement-worker` — once, at Bootstrap |
+| `INDEX.md`, the `## Check` table | `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `unikit-implement-worker` — grepped per editor task, by the task's own area plus the cross-cutting ones |
+| `verification.md` | `/unikit-verify` and no other skill — per-gate calibration: which observation closes which gate |
 
-They exist because the four engine servers are genuinely different tools: four incompatible bootstrap protocols, four rollback models, and verification gates that are real on some servers and impossible on others. `verification.md` can mark a gate **GATE LIFTED**, which overrides the compile/test steps of `/unikit-verify` and item 5 of the development principles — without it, verify would demand a test result from a server that cannot produce one.
+Three invariants hold over everything in the tree, and they are what makes it safe to ship at all:
+
+- **Monotonic.** A rules file only ever *adds* an obligation. It never pre-lifts a gate, never says "use Y instead of X", and never hands out a permission.
+- **Nameless.** No tool name appears anywhere in the tree. Names rot faster than anything else about an MCP server, and the live catalog is the only place they are true — so a rule is keyed by **area** (`ui`, `console`, `rollback`, `batch`, `compile`, `transport`, `visual`, …) instead.
+- **No rules is not no rights.** A missing tree, a missing file, or an area with no matching line changes nothing about what an agent may attempt. `⏸️ MANUAL` is reached by trying and finding no route — never by an absence in this folder.
+
+The genre of every entry is a **check to perform**, not a claim about the server's state: "confirm the content is able to exceed the viewport" stays true whether the bug is present or already fixed, while "the scroll container is broken" starts lying the moment it is fixed — and lies silently.
 
 Mechanics worth knowing:
 
-- The content comes from the `shards` key of the MCP JSON you selected, so it changes when your MCP choice changes. A server without a `shards` key contributes nothing, and skills skip a missing shard file silently.
-- Like `cli-contract.md` and `dev-principles.md`, shards are **system assets — not hash-tracked**. Every `init` / `update` rewrites them from source, so local edits are lost. Put durable project knowledge in `.unikit/memory/` instead.
-- Orphan files are deleted, not just overwritten. Switching engines (or deselecting a server) clears the stale profile rather than leaving a Unity profile in a Godot project.
+- The tree comes from the [`rules`](#mcp-json-schema-fields) pointer of the MCP JSON you selected, so it changes when your MCP choice changes. A server without the pointer contributes nothing, and skills read a missing file as a silent skip.
+- It is **copied, not merged**. One engine takes one engine server, so there is nothing to concatenate and no per-contributor heading; subdirectories are copied as they are, so the tree may grow past its two starting files.
+- Every delivered `.md` gets a **provenance stamp** prepended — `server:`, `version:`, `delivered:`, plus a line saying to fix the source rather than the copy. That stamp is your project's only record of *whose* exceptions are on disk, and it is what the header of `.unikit/MCP-RECHECK-NOTES.md` is compared against at Bootstrap.
+- Like `cli-contract.md` and `dev-principles.md`, the tree is a **system asset — not hash-tracked**. Every `init` / `update` rewrites it from source, so local edits are lost. Findings of your own go in `.unikit/MCP-RECHECK-NOTES.md` (below); durable project knowledge goes in `.unikit/memory/`.
+- Orphans are deleted across the **whole subtree**, not just `*.md`. Switching engines (or deselecting a server) clears the stale tree rather than leaving a Unity tree in a Godot project.
+
+### Project findings — `.unikit/MCP-RECHECK-NOTES.md`
+
+The rules tree is what UniKit AI shipped. This file is what *your* project found out, against the server it actually runs.
+
+- It sits at the root of `.unikit/`, deliberately **outside** `.unikit/system/` — so the installer's flat-rewrite and orphan sweep cannot reach it by construction.
+- **The installer never writes its content.** The only operation it performs is a rename: switching engine MCP servers parks the active file as `MCP-RECHECK-NOTES.archive.<previous-server>.md`, and switching back restores it. A finding is a statement about *one* server, so carrying it across a switch would be worse than losing it — it would look like evidence.
+- Invariant: **one file per server — active or archived, never both.** An interrupted run can leave a second archive behind; it is kept rather than overwritten and announced with a `WARN`, because merging two sessions' findings is a curation call and not the installer's to make.
+- `/unikit-mcp-trap` writes it, `/unikit-mcp-audit` curates it (re-stamp, replay, retire, upstream). Pipeline skills **read** it and never write it: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
+- It obeys the same three invariants as the rules tree, with **one carve-out**: the `evidence:` field of an entry is the single place in the whole system where a tool name may be written down. That is what makes an entry evidence rather than an opinion — and it is why `/unikit-mcp-audit` treats every entry as suspect once the server or its version moves.
 
 ### MCP JSON schema fields
 
-Beyond `key` / `displayName` / `config`, an MCP JSON may declare three optional fields. All are backward compatible — a config without them behaves exactly as before.
+Beyond `key` / `displayName` / `config`, an MCP JSON may declare five optional fields. All are backward compatible — a config without them behaves exactly as before.
 
 | Field | Purpose |
 |-------|---------|
-| `order` | Presentation order within a `key` group (ascending, 1-based; missing sorts last). Drives the wizard's pre-selection and the order contributions are concatenated into a shard. It does **not** affect the order servers are written into a settings file. |
-| `verified` | `{ version, date, toolRegistry }` — which server version the `allowed-tools` names were last audited against, and the registry file they were read from. Printed in the `init` summary. MCP versions are deliberately not pinned, so this stamp is how you tell whether a tool list may have drifted. |
+| `docs` | `{ context7, repo }` — where the server documents *itself*. `repo` generates the single install line printed in the `init` summary (`<displayName> — setup and requirements: <url>`) and is **required** when `is_engine: true`. `context7` is the library id the rules tree names as the server's reference. |
+| `rules` | Directory holding this server's rules tree, resolved relative to the JSON's own directory (`"rules/<server>/"`). Delivered to `.unikit/system/engine-mcp/` — see [Engine-MCP rules tree](#engine-mcp-rules-tree). Absent is a normal state, not a degraded one. |
+| `order` | Presentation order within a `key` group (ascending, 1-based; missing sorts last). Drives the wizard's radio pre-selection and nothing else — it does **not** affect the order servers are written into a settings file. |
+| `verified` | `{ version, date, toolRegistry }` — the server version the **rules tree was measured against**, the date of that measurement, and the registry file it was read from. Printed in the `init` summary and stamped into every delivered rules file. |
 | `configByPlatform` | Per-OS config variants keyed by `win32` / `darwin` / `linux`, for servers whose binary path differs per platform. |
+
+`config` (and each `configByPlatform` variant) may carry an `env` block, handed to the server process verbatim; the path tokens below expand inside its values too. UniKit AI uses it for exactly one thing today — see [`UNITY_MCP_NO_GATING`](#unity-biome-mcp-order-1) above.
+
+**`docs` replaced a hand-written `instruction` field, and the removal is deliberate.** That field restated the vendor's own documentation, which is how it came to carry a measured-false claim about how much of the catalog was reachable. A URL rots more slowly than prose, and when it finally dies it answers 404 loudly instead of walking you through outdated steps in silence. The install facts themselves — engine version, prerequisites, plugin setup — belong to the vendor and are deliberately not mirrored here. A server that needs no setup at all simply omits `docs.repo` and contributes no line.
+
+**`verified` is provenance, not a warning.** It used to mean "the tool names in `allowed-tools` were audited against version X"; with wildcard grants there is no name list left to audit, so it was re-anchored onto the rules tree. Do not attach a staleness warning to it: these servers ship one to three releases a day, so the warning would fire constantly and become noise. A bare stamp answers a different and useful question — *which version were these exceptions actually observed on* — and that answer stays true after the server moves on.
+
+#### Tool grants (`allowed-tools`)
+
+An MCP JSON may name the skills and subagents that receive its tools; the names are injected into the installed frontmatter as `mcp__<Key>__<tool>` (or `mcp__<Key>__*`). Injection is keyed on your **selection**, so changing which MCP you use reinstalls all skills and subagents and clears the old entries.
+
+- **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
+- **The planner is the one exception**, and receives two discovery names only. The discovery protocol is the single layer that does not rot, and a planner physically cannot mutate anything — so a narrow grant costs nothing and documents the boundary.
+- `/unikit-mcp-audit` gets a wildcard because replaying a finding means re-issuing the exact call recorded in its `evidence:` field. Its restraint lives in an eight-step safety envelope, not in the size of its grant.
+- **`/unikit-mcp-trap` receives no grants at all** — it makes zero MCP calls by construction. This cannot be recorded in the JSON itself: the format has no comments, and an empty array would create a recipient with no tools, which the test suite rejects. So it is written down here.
+- The wildcard on the read-only review sidecar is a **deliberate deferral** — narrowing read-only consumers is a separate question — not an oversight to be tidied away.
 
 #### Per-platform configs
 
@@ -279,7 +313,7 @@ Backed by [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) over its **n
 - Enable `PythonScriptPlugin`, `EditorScriptingUtilities`, `Niagara`, `GameplayAbilities` and `SmartObjects`.
 - The Unreal Editor must be running.
 
-The server exposes exactly **one** tool name — `unreal` — which dispatches to every underlying action. There is no per-action granularity, so `allowed-tools` cannot narrow what an agent may do with this server: granting `unreal` grants everything the plugin implements.
+The server exposes exactly **one** tool, which dispatches to every underlying action. There is no per-action granularity, so `allowed-tools` cannot narrow what an agent may do here — granting it grants everything the plugin implements. It ships no rules tree yet.
 
 ### Context7
 
@@ -290,7 +324,11 @@ The server exposes exactly **one** tool name — `unreal` — which dispatches t
 }
 ```
 
-Provides up-to-date documentation for any library. Used by `/unikit-memory` to enrich dynamic memory.
+Provides up-to-date documentation for any library. Used by `/unikit` and `/unikit-architecture` during setup, by `/unikit-explore` while researching, and by `/unikit-memory` to enrich dynamic memory.
+
+`/unikit-implement` and `/unikit-fix` may also reach for it, but only on **two triggers**: an unfamiliar area (what approaches the authors propose — once per area per session), and a dead end (the schema is there, the capability is not). Never routinely at Bootstrap: it is a network dependency inside the editor lane, it costs 2-4k tokens per query, and it makes two runs of the same plan diverge. Whatever comes back describes **intent, not behaviour**, so it carries the same evidence obligations as anything else — with heightened attention, because it has been caught presenting a structurally broken path as an exemplary one. `/unikit-verify` is deliberately **not** granted it: verification needs evidence, not advice.
+
+The server is optional in the wizard. Declining it does not disable anything — it removes one fallback, and the degradation ladder in the development principles continues from there.
 
 ### Known limitation: OpenCode does not receive HTTP servers
 
@@ -368,6 +406,9 @@ your-unity-project/
 │       └── unikit-architecture-sidecar.md    # 8 subagent files (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git)
+│   ├── system/                   # Flat-rewritten on every init/update - never hand-edit
+│   │   └── engine-mcp/            # Rules tree of the selected engine MCP (INDEX.md, verification.md)
+│   ├── MCP-RECHECK-NOTES.md      # Your findings about that server - /unikit-mcp-trap writes, the installer only renames
 │   ├── memory/                   # Dynamic memory, partitioned per knowledge module
 │   │   ├── RULES_INDEX.md        # Auto-generated rule index
 │   │   ├── code/
