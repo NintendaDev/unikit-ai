@@ -106,13 +106,13 @@ export const GAMEDESIGN_GENRES_DIR_NAME = 'genres';
 
 /**
  * Name of the engine-MCP subdir under `.unikit/system/` — the home for the
- * per-MCP capability profile delivered as three flat shards. It is a **system
- * asset**, not a memory rule: the content describes how to drive the MCP server
- * the user actually picked (bootstrap protocol, scene-authoring idioms, which
- * verification gates are real), not project knowledge the user curates.
+ * rules tree of the MCP server the user actually picked. It is a **system
+ * asset**, not a memory rule: the content records the exceptions that server
+ * imposes (which failure classes are live there, which gates are reachable),
+ * not project knowledge the user curates.
  *
  * It lives here rather than inside a skill body because skills are hash-tracked
- * (`computeSourceHashWithTemplate`) while the shard content varies with the MCP
+ * (`computeSourceHashWithTemplate`) while the tree's content varies with the MCP
  * selection — putting it in a SKILL.md would make every skill's source hash a
  * function of the MCP choice's *content*. System assets are outside hash
  * tracking and are flat-rewritten on every init/update, which is exactly the
@@ -121,19 +121,41 @@ export const GAMEDESIGN_GENRES_DIR_NAME = 'genres';
 export const ENGINE_MCP_DIR_NAME = 'engine-mcp';
 
 /**
- * The three engine-MCP shards, in delivery order. Each becomes
- * `.unikit/system/engine-mcp/<shard>.md`. Consumer binding:
- * `capabilities` — read by `unikit-implement` / `unikit-fix` / `unikit-verify` /
- * `unikit-devcontext`; `scene-authoring` — implement / fix / devcontext;
- * `verification` — `unikit-verify` only.
+ * Prefix every MCP-injected frontmatter entry carries: `mcp__<key>__<tool>`.
  *
- * Also the allow-list used when parsing the `shards` key of an MCP JSON: keys
- * outside this tuple are ignored rather than delivered.
+ * It is what makes injection reversible. A skill's `allowed-tools` mixes
+ * hand-authored entries (Read, Bash, Agent, …) with generated ones, and only the
+ * generated half may be rewritten when the grants of a server change — this
+ * prefix is the only thing telling the two apart on disk.
  */
-export const ENGINE_MCP_SHARDS = ['capabilities', 'scene-authoring', 'verification'] as const;
+export const MCP_TOOL_ENTRY_PREFIX = 'mcp__';
 
-/** One of the three {@link ENGINE_MCP_SHARDS} names. */
-export type EngineMcpShard = (typeof ENGINE_MCP_SHARDS)[number];
+/**
+ * Entry point of a server's rules tree — `mcp/<engine>/rules/<fileId>/INDEX.md`
+ * at the source, `.unikit/system/engine-mcp/INDEX.md` once delivered. Its
+ * presence is what makes a `rules` pointer usable, so the schema guard keys on
+ * this name. A missing INDEX means "no known exceptions", never "no
+ * capabilities" — absence of rules never degrades the run.
+ */
+export const MCP_RULES_INDEX_FILE = 'INDEX.md';
+
+/**
+ * Project-local log of MCP findings — `.unikit/MCP-RECHECK-NOTES.md`. It sits at
+ * the root of `.unikit/` rather than under `system/` **by construction**: every
+ * system asset is flat-rewritten on init/update, and this file is user-owned
+ * (written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`). The installer
+ * only ever renames it — see {@link MCP_RECHECK_NOTES_ARCHIVE_PREFIX}.
+ */
+export const MCP_RECHECK_NOTES_FILE = 'MCP-RECHECK-NOTES.md';
+
+/**
+ * Prefix of a parked notes file: `MCP-RECHECK-NOTES.archive.<fileId>.md`.
+ * Switching the engine MCP server parks the active notes under the id of the
+ * server that produced them, because a finding is a statement about one server
+ * and means nothing against another. Invariant: one file per server — active
+ * **or** archived, never both.
+ */
+export const MCP_RECHECK_NOTES_ARCHIVE_PREFIX = 'MCP-RECHECK-NOTES.archive.';
 
 /**
  * Platforms an MCP JSON may declare a `configByPlatform` entry for. The values
@@ -253,15 +275,24 @@ export function systemGamedesignGenresDir(projectDir: string): string {
 }
 
 /**
- * `<projectDir>/.unikit/system/engine-mcp` — home for the three per-MCP shards
- * ({@link ENGINE_MCP_SHARDS}). Written by `installEngineMcpShards` from the
- * `shards` key of the MCP JSONs the user selected; outside hash tracking and
+ * `<projectDir>/.unikit/system/engine-mcp` — home for the rules tree of the
+ * selected engine MCP server. Written by `installEngineMcpRules` as a recursive
+ * copy of that server's `rules` directory; outside hash tracking and
  * flat-rewritten on every init/update, so a MCP or engine switch never leaves a
- * stale profile behind (the installer orphan-deletes what the new selection did
- * not contribute).
+ * stale profile behind (the installer orphan-deletes everything the new
+ * selection did not contribute).
  */
 export function systemEngineMcpDir(projectDir: string): string {
   return path.join(systemDir(projectDir), ENGINE_MCP_DIR_NAME);
+}
+
+/**
+ * `<projectDir>/.unikit/MCP-RECHECK-NOTES.md` — the active findings log. Note
+ * the level: `.unikit/` root, deliberately outside {@link systemDir}, so no
+ * installer sweep can reach it (see {@link MCP_RECHECK_NOTES_FILE}).
+ */
+export function mcpRecheckNotesPath(projectDir: string): string {
+  return path.join(projectDir, UNIKIT_DIR, MCP_RECHECK_NOTES_FILE);
 }
 
 /**

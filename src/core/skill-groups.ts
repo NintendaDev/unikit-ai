@@ -73,7 +73,7 @@ export const SKILL_GROUPS: readonly SkillGroup[] = [
   {
     id: 'tools',
     title: 'Tools',
-    skills: ['unikit-docs', 'unikit-todo'],
+    skills: ['unikit-docs', 'unikit-mcp-audit', 'unikit-mcp-trap', 'unikit-todo'],
   },
 ];
 

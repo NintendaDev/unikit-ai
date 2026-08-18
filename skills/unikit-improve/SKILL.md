@@ -215,7 +215,7 @@ Before any analysis — silently load the project knowledge base. Do NOT narrate
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **`.unikit/skill-context/{{self_name}}/SKILL.md`** — project-specific skill overrides (if exists)
-5. `.unikit/system/dev-principles.md` — engine development principles (used in Step 2.3/2.4 architectural consistency checks)
+5. `.unikit/system/dev-principles.md` — engine development principles, read on **two** levels (used in Step 2.3/2.4 architectural consistency checks and in the Guard B pass, Step 3.3a). Everything **above** the LAZY-READ BOUNDARY is read here, every time: the evidence contract, the claim-class → evidence-class lattice, the nine failure-class names, phase order, the lane, and the `kind` / area vocabularies. The section **below** the boundary — the nine detectors in full and the catalog checklist — is read **once per session, on the first task that touches editor state**, and read **unconditionally**: never gated on which rules happen to be installed, because that is exactly where the universal safety net would disappear (A9).
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 
@@ -394,6 +394,30 @@ Compare the plan against what you found. Categorize issues:
 - Missing dependencies between phases
 - Tasks that could run in parallel but are sequential
 
+**3.3a: Guard B — a phase carrying an `Editor:` task must be serialized alone in its execution layer**
+
+This skill is the **third writer of tasks** (after `/unikit-plan` and `/unikit-plan add`), so it checks the constraint on a plan it did not write.
+
+The unit of parallelism downstream is the **phase**: `unikit-implement-coordinator` builds the phase graph from the `**Dependencies:**` lines, computes execution layers (Layer 0 = phases with no dependencies; Layer N = phases whose dependencies all sit in layers 0..N-1) and runs **every phase of one layer concurrently**, while tasks inside a phase run in order.
+
+Procedure:
+
+1. Collect the phases carrying at least one `Editor:` line.
+2. Recompute the execution layers from the plan's `**Dependencies:**` lines, exactly as the coordinator does.
+3. A layer that holds an editor phase **and** any other phase is a finding.
+
+Two things this check is **not**. It is not a rule about tasks — two `Editor:` tasks inside one phase are already sequential, and recommending they be split would manufacture the very collision the guard exists to prevent; never propose that fix. And it is not limited to editor-versus-editor conflicts — a neighbouring **code** phase writes a source file, the editor re-reads it, the domain reloads, and minutes of unavailability land in the middle of another phase's mutation. Any co-resident phase is the finding, whatever it is doing.
+
+The fix is always on the dependency lines, never on the phase contents: make the editor phase depend on everything that must precede it, and make every remaining phase depend on it directly or transitively.
+
+Each finding goes into the 🔄 Dependency Fixes group in the format below — it must name the **layer**, every phase sharing it, and the `Editor:` task that forces the serialization, because without those three the reader cannot tell which dependency line to add.
+
+```
+🔒 Layer <N> holds Phase <X> beside editor Phase <Y>
+   Editor task: Phase <Y> / Task <n.m> — `Editor: [kind] <container> → <target> : <action>`
+   Fix: add `Phase <Y>` to Phase <X>'s **Dependencies:** (or the reverse, if <X> must run first)
+```
+
 **3.4: Redundant or duplicate tasks**
 - Two tasks doing the same thing
 - Task unnecessary because code already exists
@@ -488,6 +512,9 @@ Source: [research folder name(s)]
 #### 🔄 Dependency Fixes (N)
 1. Phase X should depend on Phase Y
    Reason: [why]
+2. 🔒 Layer N holds Phase X beside editor Phase Y
+   Editor task: Phase Y / Task n.m — `Editor: [kind] <container> → <target> : <action>`
+   Fix: add `Phase Y` to Phase X's **Dependencies:** (or the reverse, if X must run first)
 
 #### 🏗️ Architectural Notes (N)
 1. **[Issue description]**

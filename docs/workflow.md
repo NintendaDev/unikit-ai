@@ -313,7 +313,6 @@ After phase completion:
 
 - Runs compilation check (UnityMCP)
 - Runs tests if `Testing: yes`
-- Takes a visual baseline and compares it if `Visual regression: yes`
 - Creates commit checkpoint
 
 Post-completion:
@@ -387,7 +386,6 @@ Goes through every task in the plan and verifies the code actually implements it
 - Unity compilation (UnityMCP)
 - Tests
 - Editor targets — read back through the engine MCP, not Glob/Grep (a task with an `Editor:` line has no implementing source to find)
-- Visual regression, when `Visual regression: yes`
 - `.meta` file pairing
 - Asmdef boundaries (Modules -> Game FORBIDDEN)
 - Leftover TODOs/FIXMEs

@@ -3,7 +3,9 @@
   "is_engine": true,
   "order": 2,
   "displayName": "GDAI Godot MCP [Paid]",
-  "instruction": "",
+  "docs": {
+    "repo": "https://github.com/3ddelano/gdai-mcp-plugin-godot"
+  },
   "config": {
 	  "command": "uv",
       "args": ["run", "./addons/gdai-mcp-plugin-godot/gdai_mcp_server.py"]

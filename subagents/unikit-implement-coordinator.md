@@ -165,6 +165,8 @@ For each task in the phase, sequentially:
 1. Mark `[~]` in TASKS.md
 2. Implement using direct tool calls (Read, Write, Edit, Glob, Grep, Bash)
 3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
+
+   `dev-principles.md` is read on **two** levels. Everything **above** the LAZY-READ BOUNDARY is read here, on every run — the evidence contract, the claim-class → evidence-class lattice, the nine failure-class names, phase order, the lane, and the `kind` / area vocabularies. The section **below** it — the nine detectors in full and the catalog checklist — is read **once per session, on the first task that touches editor state**, and **unconditionally**: never gated on which rules happen to be installed. Pulling the whole file up here spends the Bootstrap budget the split exists to save; never reading the lower half spends the safety net instead.
 4. Run verification pass scoped to changed files
 5. If material issues found, fix and re-verify (max 2 rounds)
 6. Mark `[x]` or `[!]` in TASKS.md. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`

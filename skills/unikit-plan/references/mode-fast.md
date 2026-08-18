@@ -32,13 +32,13 @@ Based on choice:
 
 Fast mode always uses `Docs: no` in Settings (documentation checkpoint is a full mode feature).
 
-#### Editor mode (`Editor tasks` and `Visual regression`)
+#### Editor mode (`Editor tasks`)
 
 **Gate — `engine_rules_loaded = false` → skip this whole subsection.** Do not ask, and do **not** write an `Editor tasks` line into `## Settings`. Step 0.5 already disabled `Editor:` generation for this engine, so the setting would have no consumer and the question would be unanswerable noise.
 
 When `engine_rules_loaded = true`:
 
-1. **Probe for a configured engine MCP** — check whether `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the same probe `/unikit-implement` uses in Step 3.6). Refinement, when you need to name the server in the question: `.unikit/system/engine-mcp/capabilities.md` exists → a specific engine MCP profile shipped, and its name can be quoted to the user. Its **absence does not** flip the probe — some engine MCP servers ship no shards.
+1. **Probe for a configured engine MCP** — check whether `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the same probe `/unikit-implement` uses in Step 3.6). Refinement, when you need to name the server in the question: `.unikit/system/engine-mcp/INDEX.md` exists → a rules tree shipped for the configured server, and the `server:` line of its delivery stamp is the name to quote. Its **absence does not** flip the probe — a server may ship no rules tree at all, and no rules means no known exceptions, never no capabilities.
 2. **MCP configured → `Editor tasks: mcp`, silently.** No question — asking on every plan is noise.
 3. **MCP not configured → ask:**
 
@@ -52,8 +52,6 @@ No engine MCP is configured. How should those tasks be carried out?
 ```
 
    Offer **`direct` only** when `references/ENGINE_RULES.md` §6 rates the engine's serialized formats 🟢 or 🟡. Where §6 rates them 🔴 (binary or dense generated formats), drop the option entirely rather than showing it and refusing later.
-
-4. **`Visual regression` — ask only when `Editor tasks: mcp`.** In every other case write `Visual regression: no` without asking. Do not try to establish here whether the server actually supports visual regression: that is declared in the `verification.md` shard, which `/unikit-verify` reads, and it already has a **GATE LIFTED** mechanism for it. The planner states the intent; verify decides reachability.
 
 Store the preferences for the `## Settings` and `## Roadmap Linkage` sections in `PLAN.md`.
 

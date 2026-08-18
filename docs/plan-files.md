@@ -28,7 +28,6 @@ Branch: feature/item-rarity
 ## Settings
 - Testing: no
 - Docs: no
-- Visual regression: no
 - Editor tasks: mcp
 
 ## Commit Plan
@@ -98,16 +97,15 @@ Most tasks change source files. Some change the **serialized state of the engine
 Editor: [kind] <container> → <target> : <action>
 ```
 
-`kind` is one of seven: `scene` · `ui` · `vfx` · `anim` · `asset` · `input` · `settings` (default `scene`). One line per target; the field is omitted for pure code tasks.
+`kind` is one of six: `scene` · `ui` · `vfx` · `anim` · `asset` · `settings` (default `scene`). One line per target; the field is omitted for pure code tasks. Input is not a kind of its own — an input-map asset is an `asset`, a legacy input axis is `settings`, and the handling code stays in `Files:`.
 
 The naming of `<container>` and `<target>` is engine-specific and comes from the planning vocabulary described below — which is also where the `<content-root>`, `<ext>` and code-fence placeholders in the templates resolve.
 
-### The two settings
+### The setting
 
 | Setting | Written by | Read by |
 |---------|-----------|---------|
 | `Editor tasks: mcp \| manual \| direct` | `/unikit-plan` | `/unikit-implement` |
-| `Visual regression: yes/no` (default `no`) | `/unikit-plan` | **both** — `/unikit-implement` takes the baseline before the change and compares after; `/unikit-verify` gates the result |
 
 `Editor tasks` decides how the editor work is actually carried out:
 
@@ -117,22 +115,15 @@ The naming of `<container>` and `<target>` is engine-specific and comes from the
 
 When no engine MCP is configured, `/unikit-plan` asks which of `manual` / `direct` you want.
 
-### Actual coverage per engine MCP server
+### What `mcp` does not promise
 
-`Editor tasks: mcp` is not universally available — it depends on which server your project has configured:
+`Editor tasks: mcp` says the work goes **through** the engine MCP server. It does not promise that every target succeeds, and this file deliberately carries no table of which server can do what: such a table is a claim about six moving servers, and it was measured wrong in every row of its own predecessor within four weeks.
 
-| Server | Engine | Editor authoring |
-|--------|--------|------------------|
-| Unity Biome MCP | Unity | ✅ full — the strongest of the six |
-| Coplay Unity MCP | Unity | ✅ most kinds; no Input System, no Timeline, no Shader Graph |
-| Fennara Godot MCP | Godot | ✅ full, via GDScript worker scripts |
-| GDAI Godot MCP | Godot | ❌ none — degrades to `manual` |
-| Coding-Solo Godot MCP | Godot | ❌ none declared — degrades to `manual` |
-| ChiR24 Unreal MCP | Unreal Engine 5 | ✅ full, through the single `unreal` tool |
+What holds instead:
 
-A server that declares no per-kind tool table degrades to `manual` and says so, rather than guessing tool names.
-
-Visual regression is narrower still: only **Unity Biome** implements it. The other five lift that gate, and `/unikit-verify` reports it as `gate lifted` with the reason quoted from the server's profile — not as a failure.
+- The candidate affordances come from the **live catalog**, asked per task — never from a stored list of names, and never from memory.
+- A rules tree, where the selected server has one, adds **checks** on top of that: what to confirm, by area. It never removes a right. Its absence means no known exceptions, not no capabilities — see [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
+- `⏸️ MANUAL` is reached by **trying and finding no route**, with the evidence of that absence to show. Never by an absent rules file, never by an absent table row.
 
 ### `<ENGINE>_RULES.md` — the planning vocabulary
 

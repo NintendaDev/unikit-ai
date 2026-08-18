@@ -21,7 +21,9 @@ fi
 source "$SCRIPT_DIR/test-fixtures.sh"
 
 TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+# The dump has to run BEFORE the cleanup: `set -e` aborts on the first failed assertion,
+# and the assertion message alone cannot say what the engine-mcp tree contained.
+trap 'AIF_EXIT_CODE=$?; if [[ $AIF_EXIT_CODE -ne 0 ]]; then dump_mcp_state "$TMPDIR"; fi; rm -rf "$TMPDIR"' EXIT
 
 # Ensure dist/ is up to date (skipped when a parent runner already built).
 ensure_build
@@ -1260,13 +1262,18 @@ assert_contains "$CODEX_UNIKIT_SKILL" 'mcp__context7__query-docs' \
 echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/unikit/SKILL.md"
 
 # ─────────────────────────────────────────────────────
-# Test 13b: engine-mcp shards POPULATED branch (delivery on install)
+# Test 13b: engine-mcp rules-tree delivery (populated selection)
 # ─────────────────────────────────────────────────────
-# The two smoke fixtures above both pin mcp.servers = [], so they only exercise
-# the empty branch (Test 1b-mcp). This dedicated fixture selects a shard-carrying
-# server (unity-mcp-biome) and asserts the three shards land in
-# .unikit/system/engine-mcp/ as flat copies: header marker present, NO engine vars
-# (they are not substituted — the asset is engine-agnostic by construction).
+# The two smoke fixtures above both pin mcp.servers = [], so they only exercise the
+# no-selection branch (Test 1b-mcp). This fixture selects unity-mcp-biome — the one
+# server carrying a `rules` pointer — and asserts the whole delivery contract: the
+# tree arrives, every file carries the provenance stamp, and nothing about the
+# server's capabilities rides along with it.
+#
+# The stamp assertions are the load-bearing ones. `server:` / `version:` are what a
+# skill compares the MCP-RECHECK-NOTES header against to tell a finding about the
+# configured server from one inherited from another, so a stamp that silently stops
+# being written turns that check into a no-op rather than a failure.
 # NOTE: this project is installed via run_update, so the branch under test is the
 # update.ts wiring; the init.ts call site is covered by the static grep guard in
 # test-skills.sh Part 6.
@@ -1299,19 +1306,101 @@ inject_fake_registry "$MCP_SHARDS_DIR"
 seed_rule "$MCP_SHARDS_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$MCP_SHARDS_DIR"
 
-MCP_SHARD_BASE="$MCP_SHARDS_DIR/.unikit/system/engine-mcp"
-for shard in capabilities scene-authoring verification; do
-  assert_exists "$MCP_SHARD_BASE/$shard.md" "engine-mcp shard $shard.md delivered"
-  assert_contains "$MCP_SHARD_BASE/$shard.md" 'Verify by READ-BACK' \
-    "engine-mcp $shard.md carries the shared read-back header"
-  assert_not_contains "$MCP_SHARD_BASE/$shard.md" '\{\{engine_' \
-    "engine-mcp $shard.md has no engine vars (flat copy, no substitution)"
-done
+MCP_RULES_BASE="$MCP_SHARDS_DIR/.unikit/system/engine-mcp"
+MCP_RULES_INDEX="$MCP_RULES_BASE/INDEX.md"
 
-assert_contains "$MCP_SHARD_BASE/capabilities.md" 'Unity Biome MCP' \
-  "engine-mcp capabilities.md attributes the contribution to its server"
+assert_exists "$MCP_RULES_INDEX" \
+  "engine-mcp/INDEX.md delivered for the selected server's rules tree"
+assert_exists "$MCP_RULES_BASE/verification.md" \
+  "engine-mcp/verification.md delivered alongside the INDEX"
 
-echo "  ✓ engine-mcp shards: 3 files delivered from unity-mcp-biome into .unikit/system/engine-mcp/"
+# The stamp: provenance of THIS copy, and nothing else.
+assert_contains "$MCP_RULES_INDEX" '^server: unity-mcp-biome$' \
+  "delivered rules file carries the server id it came from"
+assert_contains "$MCP_RULES_INDEX" '^version: [0-9]+\.[0-9]+' \
+  "delivered rules file carries the measured server version"
+assert_contains "$MCP_RULES_INDEX" '^delivered: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "delivered rules file carries an ISO delivery date"
+assert_contains "$MCP_RULES_INDEX" 'not here' \
+  "delivered rules file says where to fix it (the source tree, not this copy)"
+
+# The negative half. The retired shard header shipped both banned genres into every
+# project: a count of how many servers share a defect, and a doctrine about tool-name
+# lists. Neither may come back through the stamp.
+assert_not_contains "$MCP_RULES_BASE/verification.md" '[0-9]+ of (the )?[0-9]+' \
+  "no server counter in a delivered rules file"
+
+echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped, no counters"
+
+# ─────────────────────────────────────────────────────
+# Test 13c: an engine MCP that ships NO rules tree — nothing degrades
+# ─────────────────────────────────────────────────────
+# Invariant 3 at the install layer: no rules ≠ no rights. Exactly one of the six engine
+# servers carries a rules tree today, so this is the MAJORITY case and not an edge one,
+# and its whole contract is to be indistinguishable from a well-behaved install except
+# for one absent directory. The failure it guards is a plausible one: a delivery step
+# that reads "no tree" as "misconfigured server" and drops the MCP config, the grants, or
+# both. That would look like a clean install and silently disable editor work on five of
+# the six servers — the exact shape of degradation the rules architecture forbids.
+#
+# unity-mcp-coplay is the fixture because it is the same ENGINE as biome: an assertion
+# that passed only because the engine had no MCP at all would prove nothing.
+
+MCP_NOTREE_DIR="$TMPDIR/test-mcp-no-rules-tree"
+mkdir -p "$MCP_NOTREE_DIR"
+
+cat > "$MCP_NOTREE_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-coplay"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement", "unikit-verify", "unikit-memory"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$MCP_NOTREE_DIR"
+
+seed_rule "$MCP_NOTREE_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$MCP_NOTREE_DIR"
+
+# The one visible difference: no tree to deliver, so no directory. Absent, not empty —
+# an empty directory would read to a skill as a tree whose files failed to arrive.
+assert_not_exists "$MCP_NOTREE_DIR/.unikit/system/engine-mcp" \
+  "no rules tree for the selected server leaves the engine-mcp dir absent (not empty)"
+
+# ...and nothing else differs. The selection is still live, and the mechanical evidence
+# of that is the GRANTS: `update` never rewrites the MCP config itself (configureMcp is
+# driven by the init wizard, covered separately in Test 12), but it does re-run the
+# frontmatter injection from `mcp.servers` on every run. A server the delivery step had
+# written off would inject nothing, and its tools would be unreachable no matter what
+# .mcp.json still said.
+assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__UnityMCP__' \
+  "tool grants are injected for a server that ships no rules tree"
+assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-verify/SKILL.md" 'mcp__UnityMCP__' \
+  "the verify skill keeps its grants too (both sides of the pipeline stay live)"
+
+# ...layer A still arrives, and it is what carries the obligations when a tree does not:
+assert_exists "$MCP_NOTREE_DIR/.unikit/system/dev-principles.md" \
+  "dev-principles.md is delivered regardless of whether the server has a rules tree"
+
+# ...and the unrelated per-skill assets are untouched by the rules-tree cutover. The
+# scripts/ subdir is the one non-markdown payload any skill ships, so it is the first
+# thing a change to the delivery loop would break.
+assert_exists "$MCP_NOTREE_DIR/.claude/skills/unikit-memory/scripts/material-prep.py" \
+  "the scripts/ subdir still ships (the rules-tree cutover did not touch skill assets)"
+
+echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"
 
 # ─────────────────────────────────────────────────────
 # Test 14: resolveExistingEngine verdict matrix (wizard engine reuse)

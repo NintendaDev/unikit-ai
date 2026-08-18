@@ -561,6 +561,20 @@ fi
 #   - `order` is unique among is_engine=true entries sharing one `key` — without
 #     that the wizard's radio sort degenerates back to non-deterministic, which
 #     is the exact bug the field exists to fix
+#   - `docs.context7`, when present, is a Context7 library id (leading slash)
+#   - `docs.repo`, when present, is a URL — and is REQUIRED on is_engine entries:
+#     it is the only thing the `init` summary can generate an install line from,
+#     so without it the user is never told a plugin has to go into the editor
+#   - `rules`, when present, points at an existing directory holding an INDEX.md
+#   - the keys `shards` and `instruction` are ABSENT everywhere. Both are retired,
+#     and both would come back the same way: someone adds a server six months from
+#     now, copies the nearest config as a template, and reintroduces a mechanism
+#     nothing else reads (`shards`) or a slab of restated vendor prose that goes
+#     stale claim by claim (`instruction`). An absent-key guard is stricter than
+#     any check on their contents.
+#
+# Errors accumulate rather than exiting on the first one, and every message names
+# its file and field: fixing ten configs should take one run, not ten.
 MCP_SCHEMA_RESULT=$(node -e "
   const fs=require('fs'), path=require('path');
   const root=process.argv[1];
@@ -586,6 +600,33 @@ MCP_SCHEMA_RESULT=$(node -e "
       }
 
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
+
+      for (const dead of ['shards','instruction'])
+        if (m[dead] !== undefined) why.push('retired-key-'+dead+':'+rel);
+
+      if (m.docs !== undefined) {
+        const d=m.docs;
+        if (typeof d!=='object'||d===null||Array.isArray(d)) why.push('docs-not-object:'+rel);
+        else {
+          if (d.context7 !== undefined && (typeof d.context7!=='string'||!d.context7.startsWith('/')))
+            why.push('docs-context7-not-library-id:'+rel);
+          if (d.repo !== undefined && (typeof d.repo!=='string'||!/^https?:\/\//.test(d.repo)))
+            why.push('docs-repo-not-url:'+rel);
+        }
+      }
+      if (m.is_engine === true && !(m.docs && typeof m.docs.repo==='string' && m.docs.repo))
+        why.push('engine-without-docs-repo:'+rel);
+
+      if (m.rules !== undefined) {
+        if (typeof m.rules!=='string'||!m.rules) why.push('rules-not-string:'+rel);
+        else {
+          const rulesDir=path.resolve(dirPath, m.rules);
+          if (!fs.existsSync(rulesDir)||!fs.statSync(rulesDir).isDirectory())
+            why.push('rules-dir-missing:'+m.rules+':'+rel);
+          else if (!fs.existsSync(path.join(rulesDir,'INDEX.md')))
+            why.push('rules-dir-without-index:'+m.rules+':'+rel);
+        }
+      }
 
       if (m.configByPlatform !== undefined) {
         const c=m.configByPlatform;
@@ -613,7 +654,7 @@ MCP_SCHEMA_RESULT=$(node -e "
 " "$MCP_DIR" 2>/dev/null || echo "pass-error")
 
 if [[ "$MCP_SCHEMA_RESULT" == "ok" ]]; then
-    pass "MCP schema fields valid across all configs (verified/order/configByPlatform + order unique per engine key)"
+    pass "MCP schema fields valid across all configs (verified/order/configByPlatform/docs/rules + order unique, shards+instruction gone)"
 else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi
@@ -773,15 +814,20 @@ DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 if [ ! -f "$DEV_PRINCIPLES" ]; then
     fail "dev-principles.md — missing in data/"
 else
-    if grep -q '## Core Principles' "$DEV_PRINCIPLES"; then
-        pass "dev-principles.md — has Core Principles section"
+    if grep -q '## Layer A' "$DEV_PRINCIPLES"; then
+        pass "dev-principles.md — has the Layer A evidence-contract section"
     else
-        fail "dev-principles.md — missing Core Principles section"
+        fail "dev-principles.md — missing the Layer A evidence-contract section"
     fi
-    if grep -q '## Workflow' "$DEV_PRINCIPLES"; then
-        pass "dev-principles.md — has Workflow section"
+    if grep -q '## Engine workflow' "$DEV_PRINCIPLES"; then
+        pass "dev-principles.md — has Engine workflow section"
     else
-        fail "dev-principles.md — missing Workflow section"
+        fail "dev-principles.md — missing Engine workflow section"
+    fi
+    if grep -q '## Code conventions' "$DEV_PRINCIPLES"; then
+        pass "dev-principles.md — has Code conventions section"
+    else
+        fail "dev-principles.md — missing Code conventions section"
     fi
     # Guard against agent-specific vars leaking back in
     if grep -q '{{settings_file}}\|{{skills_dir}}' "$DEV_PRINCIPLES"; then
@@ -3142,60 +3188,227 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# EM: engine-MCP shard layer (EM-1…EM-5)
+# LA: layer A — the evidence contract in data/dev-principles.md (LA-1…LA-6)
 # ─────────────────────────────────────────────
-# The shards (.unikit/system/engine-mcp/{capabilities,scene-authoring,verification}.md)
-# are delivered by installEngineMcpShards from the `shards` key of the selected MCP JSONs.
-# Delivery is covered live by test-install.sh (Test 13b) and test-update.sh (Test 30e);
-# the guards here lock the SOURCE side — the reader lines in the skills, the doctrine
-# override, the dead-name sweep on the repaired configs, and the init.ts call site that
-# no runtime test reaches. All `-qF`, file-scoped (MSYS grep aborts on -iF).
+# dev-principles.md is read on EVERY Bootstrap by five skills, so it is the one
+# file where a drifted sentence is guaranteed to reach every pipeline run. These
+# guards lock the three things that cannot be re-derived from the text: the
+# vocabularies (they are the source of truth for the kind grammar and every check
+# table's key), the "no names" invariant, and the always/lazy split.
+# All -qF and file-scoped (MSYS grep aborts on -iF) except LA-5, which is regex by
+# construction. LA-4 (the "no names" invariant on this file) moved to the NN block below:
+# the invariant was never about dev-principles.md in particular, and running it on one
+# target while layer C went unwatched is how seven tool names accumulated there.
+LA_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
+LA_SYSTEM_ASSETS="$ROOT_DIR/src/core/installer/system-assets.ts"
+LA_BOUNDARY='<!-- === LAZY-READ BOUNDARY === -->'
+LA_CLASSES=('false success' 'eaten parameter' 'catalog phantom' 'lying validator'
+            'fake rollback' 'transport ambiguity' 'opaque aggregate' 'stale read'
+            'destructive default')
+
+# (LA-1) The evidence contract itself. Without these tokens every downstream
+# "report a verdict" instruction in the pipeline skills points at nothing.
+LA1_WHY=""
+grep -qF 'CLAIM'    "$LA_DEV_PRINCIPLES" || LA1_WHY+=" CLAIM"
+grep -qF 'EVIDENCE' "$LA_DEV_PRINCIPLES" || LA1_WHY+=" EVIDENCE"
+grep -qF 'VERDICT'  "$LA_DEV_PRINCIPLES" || LA1_WHY+=" VERDICT"
+grep -qF 'NOT CONFIRMED' "$LA_DEV_PRINCIPLES" || LA1_WHY+=" NOT-CONFIRMED"
+if [[ -z "$LA1_WHY" ]]; then
+    pass "LA-1 evidence contract present in dev-principles.md"
+else
+    fail "LA-1 evidence contract MISSING in dev-principles.md:$LA1_WHY"
+fi
+
+# (LA-2) All nine failure-class names. The taxonomy is closed: a profile marks which
+# classes are LIVE on a server, so a missing name here silently drops a whole class
+# of silent failure from every check.
+LA2_WHY=""
+for la_class in "${LA_CLASSES[@]}"; do
+    grep -qF "$la_class" "$LA_DEV_PRINCIPLES" || LA2_WHY+=" ${la_class// /-}"
+done
+if [[ -z "$LA2_WHY" ]]; then
+    pass "LA-2 all nine failure-class names present in dev-principles.md"
+else
+    fail "LA-2 failure-class name MISSING in dev-principles.md:$LA2_WHY"
+fi
+
+# (LA-3) Both vocabularies, with their NEGATIVE halves. The input kind was dissolved
+# into asset/scene/code (7 -> 6) and uitk is not an area (UI Toolkit is Unity-only,
+# and an area must survive an engine change) — without the two absence checks either
+# one creeps back as "just one more row" and both vocabularies stop being closed sets.
+LA3_WHY=""
+grep -qF 'scene · ui · vfx · anim · asset · settings' "$LA_DEV_PRINCIPLES" || LA3_WHY+=" kind-6"
+grep -qF 'ui · scene · asset · anim · vfx · settings' "$LA_DEV_PRINCIPLES" || LA3_WHY+=" areas-by-kind"
+grep -qF 'rollback · console · batch · compile · transport · visual' "$LA_DEV_PRINCIPLES" || LA3_WHY+=" areas-cross-cutting"
+grep -qF '· input ·' "$LA_DEV_PRINCIPLES" && LA3_WHY+=" input-kind-resurrected"
+grep -qF 'uitk'      "$LA_DEV_PRINCIPLES" && LA3_WHY+=" uitk-became-an-area"
+grep -qF 'rules ≠ no rights' "$LA_DEV_PRINCIPLES" || LA3_WHY+=" no-rules-no-rights"
+if [[ -z "$LA3_WHY" ]]; then
+    pass "LA-3 kind (6) + areas (12) + the no-rules-no-rights rule present, input/uitk absent"
+else
+    fail "LA-3 vocabulary drift in dev-principles.md:$LA3_WHY"
+fi
+
+# (LA-5) No server counters, in THREE targets. "silent no-ops are confirmed on two of
+# the four supported servers" is an assertion about the state of the servers WITH a
+# counter: fix one server and the sentence is false, silently. The replacement wording
+# is monotone ("a response code is not evidence") and stays true at any server count.
+# Targets: data/ (the layer) · skills/ (they ship into projects and outlive this branch)
+# · system-assets.ts (the header it writes ships too). The matched line is printed with
+# its file — one fail line is not enough to tell a counter from a legitimate number.
+LA5_RE='(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+) of (the )?(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+)[^.]*servers?'
+LA5_HITS=$(grep -rnEi "$LA5_RE" "$LA_DEV_PRINCIPLES" "$ROOT_DIR/skills" "$LA_SYSTEM_ASSETS" --include='*.md' --include='*.ts' 2>/dev/null || true)
+if [[ -n "$LA5_HITS" ]]; then
+    fail "LA-5 server counter survives (an assertion about server state, not a check):"
+    echo "$LA5_HITS" | head -5
+else
+    pass "LA-5 no server counters in dev-principles.md / skills/ / system-assets.ts"
+fi
+
+# (LA-6) The always/lazy split. The boundary marker must exist, the nine class NAMES
+# must sit ABOVE it, and the detailed detectors + the 13-question checklist BELOW.
+# Without this pair the asymmetry collapses on the first edit and the Bootstrap budget
+# quietly reverts to the whole file — with nothing failing.
+LA6_WHY=""
+if ! grep -qF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES"; then
+    LA6_WHY+=" boundary-marker-missing"
+else
+    LA_BLINE=$(grep -nF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES" | head -1 | cut -d: -f1)
+    LA_ABOVE=$(head -n "$LA_BLINE" "$LA_DEV_PRINCIPLES")
+    LA_BELOW=$(tail -n +"$LA_BLINE" "$LA_DEV_PRINCIPLES")
+    for la_class in "${LA_CLASSES[@]}"; do
+        echo "$LA_ABOVE" | grep -qF "$la_class" || LA6_WHY+=" name-not-above:${la_class// /-}"
+    done
+    echo "$LA_BELOW" | grep -qF 'The nine failure classes — detectors' || LA6_WHY+=" detectors-not-below"
+    echo "$LA_BELOW" | grep -qF 'The catalog checklist — 13 questions' || LA6_WHY+=" checklist-not-below"
+    echo "$LA_ABOVE" | grep -qF 'The catalog checklist — 13 questions' && LA6_WHY+=" checklist-leaked-above"
+fi
+if [[ -z "$LA6_WHY" ]]; then
+    pass "LA-6 lazy-read boundary: nine class names above, detectors + 13-question checklist below"
+else
+    fail "LA-6 always/lazy split drift:$LA6_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# GB: guard B — an Editor: phase is serialized alone in its execution layer (GB-1…GB-3)
+# ─────────────────────────────────────────────
+# The rule has two halves and only the pair is correct. The POSITIVE half is that the
+# unit of serialization is the execution LAYER; the NEGATIVE half is that it is not the
+# task — two Editor: tasks inside one phase are already sequential, and a rule phrased
+# per-task would split a safe pair into two phases the coordinator is then free to run
+# concurrently, manufacturing the collision the guard exists to prevent. Both writers of
+# task graphs must carry both halves: unikit-plan writes the graph, unikit-improve audits
+# a graph it did not write. Losing the rule in either file loses it in practice.
+# All -qF and file-scoped (MSYS grep aborts on -iF).
+GB_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+GB_IMPROVE_SKILL="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+GB_TASK_FORMAT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+
+# (GB-1) The positive half, in both task-graph writers: the unit is the LAYER, and the
+# layer is computed the way the coordinator computes it.
+GB1_WHY=""
+grep -qF 'serialized alone in its execution layer' "$GB_PLAN_SKILL"    || GB1_WHY+=" plan:layer-rule"
+grep -qF 'serialized alone in its execution layer' "$GB_IMPROVE_SKILL" || GB1_WHY+=" improve:layer-rule"
+grep -qF 'layers 0..N-1' "$GB_PLAN_SKILL"    || GB1_WHY+=" plan:layer-computation"
+grep -qF 'layers 0..N-1' "$GB_IMPROVE_SKILL" || GB1_WHY+=" improve:layer-computation"
+if [[ -z "$GB1_WHY" ]]; then
+    pass "GB-1 guard B stated as a LAYER rule in unikit-plan + unikit-improve"
+else
+    fail "GB-1 guard B layer wording MISSING in:$GB1_WHY"
+fi
+
+# (GB-2) The negative half. Without it the rule reads as "one Editor: task per phase",
+# which is the inverted requirement — and the inversion is invisible to GB-1.
+GB2_WHY=""
+grep -qF 'already sequential' "$GB_PLAN_SKILL"    || GB2_WHY+=" plan"
+grep -qF 'already sequential' "$GB_IMPROVE_SKILL" || GB2_WHY+=" improve"
+if [[ -z "$GB2_WHY" ]]; then
+    pass "GB-2 tasks-inside-a-phase-are-already-sequential carve-out present in both"
+else
+    fail "GB-2 guard B negative half MISSING in:$GB2_WHY"
+fi
+
+# (GB-3) The grammar reference carries the rule too: TASK-FORMAT.md is what a plan author
+# reads while writing Dependencies: lines, and it is excluded from the Part 7c scan, so
+# nothing else looks at it.
+if grep -qF 'serialized alone in its execution layer' "$GB_TASK_FORMAT"; then
+    pass "GB-3 guard B present in the Editor task grammar (TASK-FORMAT.md)"
+else
+    fail "GB-3 guard B MISSING in skills/unikit-plan/references/TASK-FORMAT.md"
+fi
+
+# ─────────────────────────────────────────────
+# EM: engine-MCP rules layer (EM-1…EM-7)
+# ─────────────────────────────────────────────
+# The shard corpus (mcp/*/shards/**) was dropped with the rules-tree cutover; the
+# per-server profile now lives in mcp/<engine>/rules/<server>/{INDEX,verification}.md.
+# The guards here lock the SOURCE side — the reader lines in the skills, the dead-name
+# sweep on the repaired configs, and the init.ts call site that no runtime test reaches.
+# EM-8 (the fennara .gd doctrine override) died with its shard: the fact it guarded is
+# now a universal line in layer A, guarded there by the LA-* block. EM-1 / EM-2 were
+# retargeted from the shard-era assets to the delivered tree (INDEX.md + the project's
+# MCP-RECHECK-NOTES.md) in the same commit that rewrote the reader lines they grep.
+# All `-qF`, file-scoped (MSYS grep aborts on -iF).
 # Path vars: reuse UNIKIT_VERIFY_SKILL; new EM_* for the other three readers.
 EM_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 EM_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
 EM_DEVCONTEXT_SKILL="$ROOT_DIR/skills/unikit-devcontext/SKILL.md"
 EM_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 
-# (EM-1) capabilities.md is read by ALL FOUR pipeline skills. A delivered asset with no
-# reader line is dead weight; this is the only thing that keeps the four in sync.
+# (EM-1) INDEX.md is the entry point of the delivered rules tree and is read by ALL FOUR
+# pipeline skills. A delivered asset with no reader line is dead weight; this is the only
+# thing that keeps the four in sync. (It replaced capabilities.md with the rules-tree
+# cutover — the shard corpus, and that file with it, no longer exists.)
 EM1_WHY=""
-grep -qF 'engine-mcp/capabilities.md' "$EM_IMPLEMENT_SKILL"  || EM1_WHY+=" implement"
-grep -qF 'engine-mcp/capabilities.md' "$EM_FIX_SKILL"        || EM1_WHY+=" fix"
-grep -qF 'engine-mcp/capabilities.md' "$UNIKIT_VERIFY_SKILL" || EM1_WHY+=" verify"
-grep -qF 'engine-mcp/capabilities.md' "$EM_DEVCONTEXT_SKILL" || EM1_WHY+=" devcontext"
+grep -qF 'engine-mcp/INDEX.md' "$EM_IMPLEMENT_SKILL"  || EM1_WHY+=" implement"
+grep -qF 'engine-mcp/INDEX.md' "$EM_FIX_SKILL"        || EM1_WHY+=" fix"
+grep -qF 'engine-mcp/INDEX.md' "$UNIKIT_VERIFY_SKILL" || EM1_WHY+=" verify"
+grep -qF 'engine-mcp/INDEX.md' "$EM_DEVCONTEXT_SKILL" || EM1_WHY+=" devcontext"
 if [[ -z "$EM1_WHY" ]]; then
-    pass "EM-1 engine-mcp capabilities.md read by all four pipeline skills"
+    pass "EM-1 engine-mcp INDEX.md read by all four pipeline skills"
 else
-    fail "EM-1 engine-mcp capabilities.md reader line MISSING in:$EM1_WHY"
+    fail "EM-1 engine-mcp INDEX.md reader line MISSING in:$EM1_WHY"
 fi
 
-# (EM-2) scene-authoring.md → implement/fix/devcontext; verification.md → verify ONLY.
-# The negative half is the load-bearing one: verification.md carries the GATE LIFTED
-# overrides for Step 2.1/2.2, which mean nothing outside unikit-verify.
+# (EM-2) The rules-tree binding: MCP-RECHECK-NOTES.md → all four readers of the check
+# tables; verification.md → verify ONLY. The negative half is the load-bearing one:
+# verification.md is the per-gate calibration behind the GATE LIFTED verdict, and that
+# verdict means nothing outside unikit-verify. Splitting the calibration across two
+# readers is how two skills come to disagree about what is lifted.
 EM2_WHY=""
-grep -qF 'engine-mcp/scene-authoring.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" scene:implement-missing"
-grep -qF 'engine-mcp/scene-authoring.md' "$EM_FIX_SKILL"        || EM2_WHY+=" scene:fix-missing"
-grep -qF 'engine-mcp/scene-authoring.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" scene:devcontext-missing"
+grep -qF 'MCP-RECHECK-NOTES.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" notes:implement-missing"
+grep -qF 'MCP-RECHECK-NOTES.md' "$EM_FIX_SKILL"        || EM2_WHY+=" notes:fix-missing"
+grep -qF 'MCP-RECHECK-NOTES.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" notes:devcontext-missing"
+grep -qF 'MCP-RECHECK-NOTES.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" notes:verify-missing"
 grep -qF 'engine-mcp/verification.md'    "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" verification:verify-missing"
 grep -qF 'engine-mcp/verification.md' "$EM_IMPLEMENT_SKILL"  && EM2_WHY+=" verification:leaked-into-implement"
 grep -qF 'engine-mcp/verification.md' "$EM_FIX_SKILL"        && EM2_WHY+=" verification:leaked-into-fix"
 grep -qF 'engine-mcp/verification.md' "$EM_DEVCONTEXT_SKILL" && EM2_WHY+=" verification:leaked-into-devcontext"
 if [[ -z "$EM2_WHY" ]]; then
-    pass "EM-2 shard binding: scene-authoring → implement/fix/devcontext · verification → verify ONLY"
+    pass "EM-2 rules-tree binding: notes → all four readers · verification → verify ONLY"
 else
-    fail "EM-2 shard binding drift:$EM2_WHY"
+    fail "EM-2 rules-tree binding drift:$EM2_WHY"
 fi
 
-# (EM-3) The GATE LIFTED override must exist on BOTH sides — the shard convention is
+# (EM-3) The GATE LIFTED override must exist on ALL THREE sides — the convention is
 # useless if unikit-verify does not honour it, and dev-principles p.5 would otherwise keep
-# demanding an MCP test run on servers that cannot report results.
+# demanding an MCP test run on servers that cannot report results. The third target is a
+# server-side file that exercises the override: it was the chir24 shard, and it is the
+# biome verification.md now that the rules tree is the delivered asset. What that file
+# must say is the NEGATIVE of the convention — the verdict is produced by a run, never
+# pre-declared — so the two halves of EM-3 point in opposite directions on purpose.
+EM_BIOME_VERIFICATION="$ROOT_DIR/mcp/unity/rules/unity-mcp-biome/verification.md"
 EM3_WHY=""
 grep -qF 'GATE LIFTED' "$UNIKIT_VERIFY_SKILL" || EM3_WHY+=" verify-skill"
 grep -qF 'GATE LIFTED' "$EM_DEV_PRINCIPLES"   || EM3_WHY+=" dev-principles"
-grep -qF 'GATE LIFTED' "$ROOT_DIR/mcp/unreal-engine-5/shards/unreal-mcp-chir24/verification.md" \
-    || EM3_WHY+=" chir24-shard"
+if [[ -f "$EM_BIOME_VERIFICATION" ]]; then
+    grep -qF 'GATE LIFTED' "$EM_BIOME_VERIFICATION"       || EM3_WHY+=" biome-verification"
+    grep -qF 'is not pre-declared here' "$EM_BIOME_VERIFICATION" || EM3_WHY+=" biome-pre-declared-ban"
+else
+    EM3_WHY+=" biome-verification-missing"
+fi
 if [[ -z "$EM3_WHY" ]]; then
-    pass "EM-3 GATE LIFTED override present in unikit-verify + dev-principles + the ChiR24 shard"
+    pass "EM-3 GATE LIFTED override present in unikit-verify + dev-principles + biome verification.md"
 else
     fail "EM-3 GATE LIFTED override MISSING in:$EM3_WHY"
 fi
@@ -3217,17 +3430,23 @@ else
     fail "EM-4 DEAD names still present:$EM4_WHY"
 fi
 
-# (EM-5) Static wiring guard for BOTH call sites. test-install.sh installs its projects via
-# `update`, so every runtime shard test exercises update.ts; a dropped init.ts call would be
-# invisible to lint, knip (still called from update.ts) and every smoke test. These two greps
-# are the only coverage of the init side.
+# (EM-5) Static wiring guard for BOTH call sites, over the two functions that must run
+# together. test-install.sh installs its projects via `update`, so every runtime profile test
+# exercises update.ts; a dropped init.ts call would be invisible to lint, knip (still called
+# from update.ts) and every smoke test. These greps are the only coverage of the init side.
+#
+# swapMcpRecheckNotes joins installEngineMcpRules here because its failure mode is worse than
+# a missing delivery and completely silent: the notes of the outgoing server stay active under
+# the incoming one, and every reader then treats another server's findings as evidence.
 EM5_WHY=""
-grep -qF 'installEngineMcpShards(' "$ROOT_DIR/src/cli/commands/init.ts"   || EM5_WHY+=" init.ts"
-grep -qF 'installEngineMcpShards(' "$ROOT_DIR/src/cli/commands/update.ts" || EM5_WHY+=" update.ts"
+for fn in installEngineMcpRules swapMcpRecheckNotes; do
+    grep -qF "$fn(" "$ROOT_DIR/src/cli/commands/init.ts"   || EM5_WHY+=" init.ts:$fn"
+    grep -qF "$fn(" "$ROOT_DIR/src/cli/commands/update.ts" || EM5_WHY+=" update.ts:$fn"
+done
 if [[ -z "$EM5_WHY" ]]; then
-    pass "EM-5 installEngineMcpShards wired in both init.ts and update.ts"
+    pass "EM-5 installEngineMcpRules + swapMcpRecheckNotes wired in both init.ts and update.ts"
 else
-    fail "EM-5 installEngineMcpShards NOT wired in:$EM5_WHY"
+    fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
 fi
 
 # (EM-6) No recommendation wording in a Godot displayName. Ranking is expressed by
@@ -3259,30 +3478,20 @@ else
     fail "EM-7 fennara platform tokens missing:$EM7_WHY"
 fi
 
-# (EM-8) The doctrine override lives in the fennara scene-authoring shard and nowhere else.
-# `write_or_update_file` is the ONLY trigger of notify_editor_filesystem(); without this
-# line the agent follows dev-principles p.1, writes .gd directly, and script_diagnostics
-# then reports on content the editor never rescanned — a silently wrong verify gate.
-EM8_WHY=""
-grep -qF 'write_or_update_file' "$ROOT_DIR/mcp/godot/shards/godot-mcp-fennara/scene-authoring.md" \
-    || EM8_WHY+=" shard-missing-override"
-grep -qF 'write_or_update_file' "$EM_FENNARA_JSON" || EM8_WHY+=" json-missing-tool"
-if [[ -z "$EM8_WHY" ]]; then
-    pass "EM-8 fennara .gd doctrine override (write_or_update_file) present in shard + granted in config"
-else
-    fail "EM-8 fennara doctrine override drift:$EM8_WHY"
-fi
-
 # ─────────────────────────────────────────────
-# ED: Editor-target grammar layer (ED-1…ED-14)
+# ED: Editor-target grammar layer (ED-1…ED-11)
 # ─────────────────────────────────────────────
 # The whole Editor: layer is a TEXTUAL contract across the plan template, the
-# planner, four consumer skills, two subagents, six MCP configs and four shards.
-# It has no compiler. Its most likely failure is "writer without reader" — a
-# setting written into the plan that nobody parses, or a shard documenting tools
-# the skill was never granted. Both fail SILENTLY on a configured MCP.
-# ED-1…ED-13 are -qF and file-scoped (MSYS grep aborts on -iF); ED-14 is one
-# node pass, cross-file by nature (Part 5b precedent).
+# planner, four consumer skills and two subagents. It has no compiler. Its most
+# likely failure is "writer without reader" — a setting written into the plan that
+# nobody parses. It fails SILENTLY on a configured MCP.
+# ED-12 (the coplay kind table), ED-13 (the visual-regression gate) and ED-14 (kind
+# table ⊆ grants) died with the shard corpus they grepped: kind tables naming tools
+# exist nowhere now, and `Visual regression` is gone as a setting — the step took its
+# own baseline right before its own change, so on a working run it could only ever
+# come back green; the evidence obligation it pretended to carry lives in layer A.
+# ED-14 returned in schema form below — every check-table `area` ∈ the 12-area vocabulary.
+# All -qF and file-scoped (MSYS grep aborts on -iF).
 # Path vars: reuse UNIKIT_VERIFY_SKILL / UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
 # CK_TASKFMT / EM_IMPLEMENT_SKILL — declaring ED_* duplicates for the same files is
 # exactly the name drift the CK-* block removed. New vars only where none exists.
@@ -3290,32 +3499,56 @@ ED_MODE_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
 ED_MODE_FAST="$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
 ED_PLAN_TPL="$ROOT_DIR/data/engine-templates/skills/unikit-plan/UNITY_RULES.md"
 ED_IMPLEMENT_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
-ED_COPLAY_SCENE="$ROOT_DIR/mcp/unity/shards/unity-mcp-coplay/scene-authoring.md"
-ED_COPLAY_VERIFY="$ROOT_DIR/mcp/unity/shards/unity-mcp-coplay/verification.md"
-ED_FENNARA_VERIFY="$ROOT_DIR/mcp/godot/shards/godot-mcp-fennara/verification.md"
-ED_CHIR24_VERIFY="$ROOT_DIR/mcp/unreal-engine-5/shards/unreal-mcp-chir24/verification.md"
-ED_BIOME_VERIFY="$ROOT_DIR/mcp/unity/shards/unity-mcp-biome/verification.md"
+
+# Shared by ED-14 and by RT-2 / RT-4 below, and deliberately OUT of any numbered guard:
+# a guard is a retirable unit (EM-8, ED-12 and ED-13 were all retired in this branch), and
+# a helper that dies with one would take three others down with a `command not found`
+# under `set -e` rather than a named failure. Same placement LA_CLASSES has relative to the
+# LA guards that read it.
+RT_AREAS=(ui scene asset anim vfx settings rollback console batch compile transport visual)
+
+# Prints one column of the table under the given heading. Field N+1, since the leading
+# pipe makes field 1 empty. Header and separator rows are dropped by rejecting the literal
+# header cells and any row whose cell is all dashes.
+rt_table_column() {
+    local file="$1" heading="$2" column="$3"
+    awk -v h="$heading" -v c="$column" '
+        $0 == h { inside = 1; next }
+        inside && /^## / { exit }
+        inside && /^\|/ {
+            n = split($0, cells, "|")
+            if (c + 1 > n) next
+            v = cells[c + 1]
+            gsub(/^[ \t]+|[ \t]+$/, "", v)
+            if (v == "" || v ~ /^-+$/ || v == "id" || v == "area" || v == "class") next
+            print v
+        }
+    ' "$file"
+}
 
 # (ED-1) The grammar itself. Without the kind list the field is unconstrained and
 # every planner invents its own vocabulary.
 ED1_WHY=""
 grep -qF 'Editor: [kind]' "$CK_TASKFMT" || ED1_WHY+=" grammar-line"
-grep -qF 'scene | ui | vfx | anim | asset | input | settings' "$CK_TASKFMT" || ED1_WHY+=" 7-kinds"
+grep -qF 'scene | ui | vfx | anim | asset | settings' "$CK_TASKFMT" || ED1_WHY+=" 6-kinds"
+grep -qF '| input |' "$CK_TASKFMT" && ED1_WHY+=" input-kind-resurrected"
 if [[ -z "$ED1_WHY" ]]; then
-    pass "ED-1 Editor: grammar + 7 kinds present in TASK-FORMAT.md"
+    pass 'ED-1 Editor: grammar + 6 kinds present in TASK-FORMAT.md (input dissolved)'
 else
     fail "ED-1 Editor: grammar drift in TASK-FORMAT.md:$ED1_WHY"
 fi
 
-# (ED-2) Both new ## Settings lines. They are parsed by example (like Testing:),
-# so a rename here silently disables the consumer rather than erroring.
+# (ED-2) The `Editor tasks` ## Settings line. It is parsed by example (like Testing:),
+# so a rename here silently disables the consumer rather than erroring. The negative
+# half is the other direction: `Visual regression` was removed as a setting, and a
+# resurrection here would ship a writer whose reader no longer exists.
 ED2_WHY=""
-grep -qF 'Visual regression' "$CK_TASKFMT" || ED2_WHY+=" visual-regression"
 grep -qF 'Editor tasks' "$CK_TASKFMT"      || ED2_WHY+=" editor-tasks"
+grep -qF 'Visual regression' "$CK_TASKFMT" && ED2_WHY+=" visual-regression-resurrected"
 if [[ -z "$ED2_WHY" ]]; then
-    pass "ED-2 both new ## Settings lines present in TASK-FORMAT.md"
+    pass "ED-2 Editor tasks ## Settings line present in TASK-FORMAT.md (Visual regression dissolved)"
 else
-    fail "ED-2 ## Settings line MISSING in TASK-FORMAT.md:$ED2_WHY"
+    fail "ED-2 ## Settings drift in TASK-FORMAT.md:$ED2_WHY"
 fi
 
 # (ED-3) The brief's aggregation table.
@@ -3372,11 +3605,11 @@ fi
 # is lost silently, which is the failure this whole block exists to prevent.
 ED7_WHY=""
 grep -qF 'Editor tasks' "$EM_IMPLEMENT_SKILL"       || ED7_WHY+=" implement-missing-Editor-tasks"
-grep -qF 'Visual regression' "$UNIKIT_VERIFY_SKILL" || ED7_WHY+=" verify-missing-Visual-regression"
+grep -qF 'Visual regression' "$UNIKIT_VERIFY_SKILL" && ED7_WHY+=" verify-Visual-regression-resurrected"
 if [[ -z "$ED7_WHY" ]]; then
-    pass "ED-7 settings have readers (Editor tasks→implement, Visual regression→verify)"
+    pass "ED-7 Editor tasks has its reader (→implement); Visual regression has no reader left"
 else
-    fail "ED-7 setting written with no reader:$ED7_WHY"
+    fail "ED-7 setting/reader drift:$ED7_WHY"
 fi
 
 # (ED-8) The engine vocabulary itself. `{{` must be ZERO: installEngineTemplates
@@ -3428,93 +3661,283 @@ else
     fail "ED-11 parallel path unaware of editor targets:$ED11_WHY"
 fi
 
-# (ED-12) The kind table coplay never had. Grep the PREFIX, not a full heading:
-# the three pre-existing shards end it differently (`tool` / `tool family` /
-# `parent tool`), so pinning one full form would silently pass on two servers of
-# four and drop the rest into `manual`.
-if grep -qF '### Editor work kind →' "$ED_COPLAY_SCENE"; then
-    pass "ED-12 coplay scene-authoring declares an Editor work kind table"
+# (ED-14) The schema replacement. The old ED-14 asserted that every tool named in a
+# shard kind table was granted to that server; both the table and the shard are gone, and
+# with them the only construction this layer had for naming tools. What replaces it is the
+# KEY of the surviving table: every row of a rules-tree check table is filed under an
+# `area`, and an area outside the 12-word vocabulary is unreachable by construction —
+# executors grep their own `kind` plus the cross-cutting set and would never see the row.
+# Directory-scoped over every rules tree, so the next server added is covered without an
+# edit here. The empty-set branch FAILS: a vacuous loop is how this guard would retire
+# itself the day someone moves the tree.
+ED14_WHY=""
+ED14_SEEN=0
+for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+    [[ -f "$rt_index" ]] || continue
+    ED14_SEEN=$((ED14_SEEN + 1))
+    rt_id="$(basename "$(dirname "$rt_index")")"
+    while IFS= read -r rt_area; do
+        [[ -n "$rt_area" ]] || continue
+        rt_known=0
+        for rt_known_area in "${RT_AREAS[@]}"; do
+            [[ "$rt_area" == "$rt_known_area" ]] && rt_known=1 && break
+        done
+        [[ $rt_known -eq 1 ]] || ED14_WHY+=" $rt_id:$rt_area"
+    done < <(rt_table_column "$rt_index" '## Check' 2)
+done
+if [[ $ED14_SEEN -eq 0 ]]; then
+    fail "ED-14 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+elif [[ -z "$ED14_WHY" ]]; then
+    pass "ED-14 every check-table area is one of the 12 ($ED14_SEEN rules tree(s) scanned)"
 else
-    fail "ED-12 coplay scene-authoring has no '### Editor work kind →' table"
+    fail "ED-14 check-table area outside the 12-word vocabulary:$ED14_WHY"
 fi
 
-# (ED-13) verify quotes the gate reason FROM the shard, so the paragraph must exist
-# in the three servers that lift it. The NEGATIVE half is mandatory: adding it to
-# biome, where the gate genuinely works, would silently retire a working check.
-ED13_WHY=""
-grep -qF 'GATE LIFTED — visual regression' "$ED_FENNARA_VERIFY" || ED13_WHY+=" fennara"
-grep -qF 'GATE LIFTED — visual regression' "$ED_COPLAY_VERIFY"  || ED13_WHY+=" coplay"
-grep -qF 'GATE LIFTED — visual regression' "$ED_CHIR24_VERIFY"  || ED13_WHY+=" chir24"
-grep -qF 'GATE LIFTED — visual regression' "$ED_BIOME_VERIFY"   && ED13_WHY+=" biome-should-NOT-lift"
-grep -qF 'This server lifts none of them' "$ED_COPLAY_VERIFY"   && ED13_WHY+=" coplay-self-contradiction"
-if [[ -z "$ED13_WHY" ]]; then
-    pass "ED-13 visual-regression gate lifted in fennara/coplay/chir24, NOT in biome"
+# ─────────────────────────────────────────────
+# RT: rules-tree + recheck-notes form (RT-1…RT-6)
+# ─────────────────────────────────────────────
+# The rules tree and the notes file of a project are read by grep, section by section, by
+# five different callers. Nothing parses them, so a renamed heading does not error — it
+# silently returns nothing, and a reader that finds nothing proceeds with every right it
+# had. That failure is indistinguishable from a well-behaved server, which is exactly why
+# the shape needs a guard and the content does not.
+# All -qF and file-scoped (MSYS grep aborts on -iF).
+RT_NOTES_SPEC="$ROOT_DIR/skills/unikit-mcp-trap/references/notes-format.md"
+RT_HEADINGS=('## Access' '## Live failure classes' '## Shape and cost' '## Check'
+             '## Irreversible' '## Lane' '## When this file is silent')
+
+# (RT-1) The seven headings of an INDEX.md. Six of them are reached by grep at Bootstrap
+# or per task; a heading that drifted its title reads back as "this server has nothing to
+# say about that", which is the one wrong answer this file exists to prevent.
+RT1_WHY=""
+RT1_SEEN=0
+for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+    [[ -f "$rt_index" ]] || continue
+    RT1_SEEN=$((RT1_SEEN + 1))
+    rt_id="$(basename "$(dirname "$rt_index")")"
+    for rt_heading in "${RT_HEADINGS[@]}"; do
+        # -x, not a substring match: `## Irreversible writes` still contains `## Irreversible`,
+        # and a heading that grew a suffix is exactly the drift a grep-addressed file dies of.
+        grep -qxF "$rt_heading" "$rt_index" || RT1_WHY+=" $rt_id:${rt_heading// /-}"
+    done
+done
+if [[ $RT1_SEEN -eq 0 ]]; then
+    fail "RT-1 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+elif [[ -z "$RT1_WHY" ]]; then
+    pass "RT-1 all seven INDEX.md headings present ($RT1_SEEN rules tree(s) scanned)"
 else
-    fail "ED-13 visual-regression gate drift:$ED13_WHY"
+    fail "RT-1 INDEX.md heading MISSING:$RT1_WHY"
 fi
 
-# (ED-14) CROSS-FILE — every tool named in a shard's kind table must be granted to
-# unikit-implement on that same server. The sole mechanical guard on the grants:
-# without it a shard documents tools the skill cannot call, and `Editor tasks: mcp`
-# dies at runtime on "tool not allowed" while reporting "MCP unavailable" — on a
-# CONFIGURED MCP, which the shard preambles explicitly forbid.
-# A separate node pass, not a grep, for the Part 5b reason: comparing two files is
-# not expressible as a single-file assertion.
-ED_GRANTS_RESULT=$(node -e "
-  const fs=require('fs'), path=require('path');
-  const root=process.argv[1];
-  const HEADING='### Editor work kind →';
-  const why=[]; let tables=0;
-
-  for (const dir of fs.readdirSync(root)) {
-    const dirPath=path.join(root, dir);
-    if (!fs.statSync(dirPath).isDirectory()) continue;
-    for (const f of fs.readdirSync(dirPath)) {
-      if (!f.endsWith('.json')) continue;
-      const rel=dir+'/'+f;
-      let m;
-      try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
-      catch { why.push('parse-error:'+rel); continue; }
-
-      const shardRel=m.shards && m.shards['scene-authoring'];
-      if (!shardRel) continue;                       // no shard → nothing to cross-check
-      const shardPath=path.join(dirPath, shardRel);
-      if (!fs.existsSync(shardPath)) { why.push('shard-missing:'+rel); continue; }
-
-      const body=fs.readFileSync(shardPath,'utf8');
-      const at=body.indexOf(HEADING);
-      if (at === -1) continue;                       // no kind table → server degrades to manual
-      tables++;
-
-      const granted=(m['allowed-tools'] && m['allowed-tools'].skills &&
-                     m['allowed-tools'].skills['unikit-implement']) || [];
-      if (!granted.length) { why.push('no-implement-grant:'+rel); continue; }
-      // Single-tool servers route every call through one mega-tool (chir24's
-      // \`unreal\`); the table names PARENTS inside it, which are not grantable.
-      if (granted.length === 1) continue;
-
-      const section=body.slice(at).split(/\n### /)[0];
-      const names=new Set();
-      for (const line of section.split('\n')) {
-        if (!line.trim().startsWith('|')) continue;
-        const cells=line.split('|');
-        if (cells.length < 3) continue;
-        const col2=cells[2];
-        if (/^\s*-+\s*$/.test(col2)) continue;       // markdown separator row
-        for (const mm of col2.matchAll(/\`([a-z_][a-z0-9_]*)/g)) names.add(mm[1]);
-      }
-      const grantSet=new Set(granted);
-      for (const n of names) if (!grantSet.has(n)) why.push('ungranted:'+rel+':'+n);
-    }
-  }
-  if (!tables) why.push('no-kind-table-found-anywhere');
-  console.log(why.length ? why.join(' ') : 'ok');
-" "$MCP_DIR" 2>/dev/null || echo "pass-error")
-
-if [[ "$ED_GRANTS_RESULT" == "ok" ]]; then
-    pass "ED-14 every tool in a shard kind table is granted to unikit-implement on that server"
+# (RT-2) The `Live failure classes` rows are a projection of the closed taxonomy in layer
+# A, not a free-text list. A row whose class name drifted is worse than an absent row: the
+# executor greps the nine names it knows, misses this one, and reads the server as clean
+# of a class the profile was written to flag. Reuses LA_CLASSES — a second copy of the
+# nine names is exactly the drift a closed taxonomy exists to make impossible.
+RT2_WHY=""
+for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+    [[ -f "$rt_index" ]] || continue
+    rt_id="$(basename "$(dirname "$rt_index")")"
+    while IFS= read -r rt_class; do
+        [[ -n "$rt_class" ]] || continue
+        rt_known=0
+        for rt_known_class in "${LA_CLASSES[@]}"; do
+            [[ "$rt_class" == "$rt_known_class" ]] && rt_known=1 && break
+        done
+        [[ $rt_known -eq 1 ]] || RT2_WHY+=" $rt_id:${rt_class// /-}"
+    done < <(rt_table_column "$rt_index" '## Live failure classes' 1)
+done
+if [[ -z "$RT2_WHY" ]]; then
+    pass "RT-2 every Live-failure-classes row is one of the nine taxonomy names"
 else
-    fail "ED-14 shard kind table names tools the skill cannot call: $ED_GRANTS_RESULT"
+    fail "RT-2 failure class outside the taxonomy of nine:$RT2_WHY"
+fi
+
+# (RT-3) The notes format, asserted on the canonical example inside the spec rather than
+# on its prose. That example is what both skills copy from, and it is the one object in
+# the repository shaped like a real notes file. Two sections because there are two readers
+# (executors grep the check table, the audit replays the protocol); three header fields
+# because `server:` / `version:` are what tell a finding about THIS server from one
+# inherited from another.
+RT3_SHAPE="$(awk '/^```markdown$/{f=1;next} f&&/^```$/{exit} f' "$RT_NOTES_SPEC" 2>/dev/null || true)"
+RT3_WHY=""
+if [[ -z "$RT3_SHAPE" ]]; then
+    RT3_WHY+=" shape-example-missing"
+else
+    for rt_section in '## Check' '## Observation protocol'; do
+        echo "$RT3_SHAPE" | grep -qF "$rt_section" || RT3_WHY+=" section:${rt_section// /-}"
+    done
+    for rt_field in 'server:' 'version:' 'audited:'; do
+        echo "$RT3_SHAPE" | grep -qF "$rt_field" || RT3_WHY+=" header:$rt_field"
+    done
+fi
+if [[ -z "$RT3_WHY" ]]; then
+    pass "RT-3 notes shape: two sections + server:/version:/audited: header"
+else
+    fail "RT-3 notes shape drift in notes-format.md:$RT3_WHY"
+fi
+
+# (RT-4) Genre, on the same example. A note may carry a CHECK and nothing else: a lifted
+# gate written into a note removes an obligation for good, and `⏸️ MANUAL` written into
+# one hands away a whole capability on a finding that was only ever about one call. Both
+# read as helpful, and both are the failure this file exists to avoid — which is why the
+# ban is asserted on the example every author copies, not merely stated in the prose above
+# it. The prose table naming these two as forbidden is deliberately out of scope: it IS
+# the ban, and greping it would make stating the rule indistinguishable from breaking it.
+# The area check runs here too — a note filed under an unknown area is unreachable for the
+# same reason a bad INDEX row is (ED-14).
+RT4_WHY=""
+if [[ -z "$RT3_SHAPE" ]]; then
+    RT4_WHY+=" shape-example-missing"
+else
+    echo "$RT3_SHAPE" | grep -qF 'GATE LIFTED' && RT4_WHY+=" gate-lifted-in-a-note"
+    echo "$RT3_SHAPE" | grep -qF '⏸️ MANUAL'   && RT4_WHY+=" manual-in-a-note"
+    RT4_SHAPE_FILE="$(mktemp)"
+    printf '%s\n' "$RT3_SHAPE" > "$RT4_SHAPE_FILE"
+    while IFS= read -r rt_area; do
+        [[ -n "$rt_area" ]] || continue
+        rt_known=0
+        for rt_known_area in "${RT_AREAS[@]}"; do
+            [[ "$rt_area" == "$rt_known_area" ]] && rt_known=1 && break
+        done
+        [[ $rt_known -eq 1 ]] || RT4_WHY+=" area:$rt_area"
+    done < <(rt_table_column "$RT4_SHAPE_FILE" '## Check' 2)
+    rm -f "$RT4_SHAPE_FILE"
+fi
+if [[ -z "$RT4_WHY" ]]; then
+    pass "RT-4 notes genre: check-only, no lifted gate, no ⏸️ MANUAL, areas within the 12"
+else
+    fail "RT-4 notes genre violation in the notes-format.md example:$RT4_WHY"
+fi
+
+# (RT-5) The notes file is the accumulated knowledge of the project, and the only right
+# the installer has over it is to RENAME it when the selected server changes. The day some
+# installer module starts writing its content, the contract inverts silently: an `update`
+# would begin overwriting findings that cost a human a live editor to produce. The
+# resolver `mcpRecheckNotesPath(` is the mechanical handle on that — it may appear only
+# where it is declared and inside the swap module that owns the rename.
+RT5_HITS="$(grep -rln 'mcpRecheckNotesPath(' "$ROOT_DIR/src" --include='*.ts' 2>/dev/null || true)"
+RT5_WHY=""
+while IFS= read -r rt_file; do
+    [[ -n "$rt_file" ]] || continue
+    case "$(basename "$rt_file")" in
+        constants.ts|mcp-notes.ts) ;;
+        *) RT5_WHY+=" $(basename "$rt_file")" ;;
+    esac
+done <<< "$RT5_HITS"
+if [[ -z "$RT5_WHY" ]]; then
+    pass "RT-5 mcpRecheckNotesPath( confined to constants.ts + mcp-notes.ts (rename only)"
+else
+    fail "RT-5 the installer reaches the notes file outside the swap step:$RT5_WHY"
+fi
+
+# (RT-6) Invariant 3, in the files that EXECUTE it. "No rules" must never resolve to
+# `⏸️ MANUAL`: that status is for one situation only — there is no route, and that was
+# established by trying. Asserted as the POSITIVE sentence rather than as the absence of a
+# linkage, because absence is also what an empty file has, and this rule has to be stated
+# where the decision gets taken. One shared anchor across all five, so drift in any single
+# executor fails rather than quietly leaving four correct files to vouch for a fifth.
+RT6_ANCHOR='never disables the engine MCP and never turns a target into `⏸️ MANUAL`'
+RT6_WHY=""
+grep -qF "$RT6_ANCHOR" "$ED_IMPLEMENT_WORKER" || RT6_WHY+=" implement-worker"
+grep -qF "$RT6_ANCHOR" "$EM_IMPLEMENT_SKILL"  || RT6_WHY+=" implement"
+grep -qF "$RT6_ANCHOR" "$EM_FIX_SKILL"        || RT6_WHY+=" fix"
+grep -qF "$RT6_ANCHOR" "$EM_DEVCONTEXT_SKILL" || RT6_WHY+=" devcontext"
+grep -qF "$RT6_ANCHOR" "$UNIKIT_VERIFY_SKILL" || RT6_WHY+=" verify"
+if [[ -z "$RT6_WHY" ]]; then
+    pass "RT-6 invariant 3 (absence never means ⏸️ MANUAL) stated in all four skills + the worker"
+else
+    fail "RT-6 invariant 3 MISSING in:$RT6_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# NN: the "no names" invariant — three targets, one regex
+# ─────────────────────────────────────────────
+# A tool name is lower_snake_case inside a backtick span; that is the only shape one takes
+# in these files, and this is the only check that stops the architecture from becoming a
+# tool registry again. It replaces the single-target LA-4: the invariant was never about
+# dev-principles.md in particular, and layer C was measured carrying seven tool names for
+# exactly as long as nothing looked at it.
+#
+# The regex does NOT tell a server tool name from a snake_case ENGINE API or a config key,
+# and both live legitimately in layer C — so the guard carries a written allowlist, one
+# entry per token with the reason it is allowed. That is monotone: the allowlist adds an
+# obligation to explain a new token, it never removes the check. A target whose allowlist
+# is empty keeps zero tolerance. Every hit is printed WITH its file and line, because
+# "engine API or tool name?" cannot be decided from a count.
+NN_RE='`[a-z][a-z0-9]*_[a-z0-9_]*'
+# token            why it is allowed
+NN_ALLOW=(
+    add_child      # Godot Node API
+    add_to_group   # Godot Node API
+    call_deferred  # Godot Object API
+    class_name     # GDScript keyword
+    co_await       # C++ coroutine keyword (UE5)
+    emit_signal    # Godot Object API
+    export_presets # Godot export config file name
+    get_node       # Godot Node API
+    get_service    # ServiceLocator method, GDScript naming convention
+    get_tree       # Godot Node API
+    load_threaded  # Godot ResourceLoader API
+    m_             # Unity serialized-file key prefix (m_EditorVersion)
+    set_process    # Godot Node API
+    test_          # GUT test-file naming convention (test_*.gd)
+)
+
+# Prints "file:line:`token" for every backticked lower-snake token outside the allowlist.
+nn_scan() {
+    local hit token known allowed
+    { grep -rnoE "$NN_RE" "$@" 2>/dev/null || true; } | while IFS= read -r hit; do
+        token="${hit##*\`}"
+        allowed=0
+        for known in "${NN_ALLOW[@]}"; do
+            [[ "$token" == "$known" ]] && allowed=1 && break
+        done
+        [[ $allowed -eq 1 ]] || echo "$hit"
+    done
+}
+
+# (NN-1) The rules trees. Empty allowlist in practice: a server profile is the ONE place a
+# name would be most tempting and shortest-lived — the whole architecture rests on these
+# files carrying checks rather than a catalog.
+NN1_TARGETS=()
+for rt_rule_file in "$ROOT_DIR"/mcp/*/rules/*/*.md; do
+    [[ -f "$rt_rule_file" ]] || continue
+    NN1_TARGETS+=("$rt_rule_file")
+done
+if [[ ${#NN1_TARGETS[@]} -eq 0 ]]; then
+    fail "NN-1 no mcp/*/rules/**/*.md found — the guard has no object left"
+else
+    NN1_HITS="$(nn_scan "${NN1_TARGETS[@]}")"
+    if [[ -z "$NN1_HITS" ]]; then
+        pass "NN-1 rules trees carry no backticked lower-snake token (no tool names)"
+    else
+        fail "NN-1 a rules tree names tools:"
+        echo "$NN1_HITS" | head -5
+    fi
+fi
+
+# (NN-2) Layer A. Zero tolerance, empty allowlist — dev-principles.md is read on every
+# Bootstrap by five skills, so a name here reaches every pipeline run in the project.
+NN2_HITS="$(nn_scan "$LA_DEV_PRINCIPLES")"
+if [[ -z "$NN2_HITS" ]]; then
+    pass "NN-2 dev-principles.md carries no backticked lower-snake token (no tool names)"
+else
+    fail "NN-2 dev-principles.md names tools:"
+    echo "$NN2_HITS" | head -5
+fi
+
+# (NN-3) Layer C. The allowlist above is spent almost entirely here: engine templates are
+# the one shipped surface where snake_case is legitimate, because GDScript and the Unity
+# serialized formats use it. `references/` is excluded from the Part 7c stop-word scan and
+# engine stop-words are ALLOWED in an engine template anyway, so before this guard nothing
+# looked at layer C at all — which is how seven tool names accumulated in one table there.
+NN3_HITS="$(nn_scan "$ROOT_DIR/data/engine-templates")"
+if [[ -z "$NN3_HITS" ]]; then
+    pass "NN-3 engine templates carry no un-allowlisted lower-snake token (no tool names)"
+else
+    fail "NN-3 engine template names a tool (or a new API token needs an allowlist entry):"
+    echo "$NN3_HITS" | head -5
 fi
 
 # ─────────────────────────────────────────────
@@ -3724,31 +4147,6 @@ for mcp_json in "$MCP_DIR"/*/; do
             fi
         fi
 
-        # `shards` keys must be a subset of ENGINE_MCP_SHARDS, and every path must resolve.
-        HAS_SHARDS=$(json_field "$json_file" "m['shards'] ? 'yes' : 'no'" 2>/dev/null || echo "no")
-        if [[ "$HAS_SHARDS" == "yes" ]]; then
-            SHARDS_VALID=$(node -e "
-              const fs=require('fs'), path=require('path');
-              const file=process.argv[1];
-              const m=JSON.parse(fs.readFileSync(file,'utf8'));
-              const KNOWN=['capabilities','scene-authoring','verification'];
-              const s=m['shards'];
-              if(typeof s!=='object'||s===null||Array.isArray(s)){console.log('not-object');process.exit(0)}
-              const why=[];
-              for(const[k,v]of Object.entries(s)){
-                if(!KNOWN.includes(k)){why.push('unknown-key:'+k);continue}
-                if(typeof v!=='string'||!v){why.push('not-string:'+k);continue}
-                if(!fs.existsSync(path.resolve(path.dirname(file),v)))why.push('broken-pointer:'+k+'->'+v);
-              }
-              console.log(why.length?why.join(','):'ok');
-            " "$json_file" 2>/dev/null || echo "parse-error")
-
-            if [[ "$SHARDS_VALID" == "ok" ]]; then
-                pass "$rel_name shards keys known + all pointers resolve on disk"
-            else
-                fail "$rel_name shards invalid ($SHARDS_VALID)"
-            fi
-        fi
     done
 done
 
@@ -3909,21 +4307,26 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7i: installer/registry module file-size guard
+# Part 7i: core module file-size guard
 # ─────────────────────────────────────────────
-# Keep the post-refactor installer/* and registry/* submodules and the shared
-# constants.ts under a hard 500-line ceiling so neither the former installer
-# monolith nor the schema-aware registry layer can silently regrow. The limit
-# leaves comfortable headroom over the largest module (installer/rules-sync.ts
-# at ~427, registry/validator.ts at ~297).
-echo -e "\n${BOLD}Part 7i: installer/registry module file-size guard${NC}"
+# Keep the whole of src/core/ — the root modules plus the installer/* and
+# registry/* submodules — under a hard 500-line ceiling so neither the former
+# installer monolith nor the schema-aware registry layer can silently regrow. The
+# limit leaves headroom over the largest module (core/extensions.ts at ~487,
+# registry/chained-registry.ts at ~491, installer/rules-sync.ts at ~484).
+#
+# The root src/core/*.ts glob closes what used to be the rule's blind spot:
+# constants.ts was listed by name and everything beside it — mcp.ts above all,
+# the module the rules-tree work kept splitting — went unguarded, so a project
+# rule that reads as mechanical was enforced by hand review alone.
+echo -e "\n${BOLD}Part 7i: core module file-size guard${NC}"
 
 SIZE_LIMIT=500
 SIZE_VIOLATIONS=""
-for f in "$ROOT_DIR"/src/core/installer/*.ts \
+for f in "$ROOT_DIR"/src/core/*.ts \
+         "$ROOT_DIR"/src/core/installer/*.ts \
          "$ROOT_DIR"/src/core/registry/*.ts \
-         "$ROOT_DIR"/src/core/registry/migrations/*.ts \
-         "$ROOT_DIR"/src/core/constants.ts; do
+         "$ROOT_DIR"/src/core/registry/migrations/*.ts; do
     [[ -f "$f" ]] || continue
     lines=$(wc -l < "$f" | tr -d ' ')
     if [[ "$lines" -gt "$SIZE_LIMIT" ]]; then
@@ -3932,9 +4335,9 @@ for f in "$ROOT_DIR"/src/core/installer/*.ts \
 done
 
 if [[ -z "$SIZE_VIOLATIONS" ]]; then
-    pass "installer/registry modules within $SIZE_LIMIT-line limit"
+    pass "src/core modules within $SIZE_LIMIT-line limit"
 else
-    fail "installer/registry modules exceed $SIZE_LIMIT-line limit"
+    fail "src/core modules exceed $SIZE_LIMIT-line limit"
     echo -e "$SIZE_VIOLATIONS"
 fi
 

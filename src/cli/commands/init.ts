@@ -5,14 +5,15 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpShards, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
-import { configureMcp, getMcpInstructions, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
-import { collectMcpShards } from '../../core/mcp-shards.js';
+import { configureMcp, getMcpDocsLines, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
+import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
+import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { getAgentOnboarding, cleanupAgentSetup } from '../../core/transformer.js';
 import { removeDirectory } from '../../utils/fs.js';
@@ -147,6 +148,8 @@ export async function initCommand(): Promise<void> {
       agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, answers.engineMcpKey, answers.mcpServers);
     }
 
+    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, answers.mcpServers);
+
     // Save config — rules.installed starts empty; /unikit Step 9 fills it.
     // genres.installed also starts empty; /unikit-gd-spec installs profiles later.
     const config: UniKitConfig = {
@@ -165,6 +168,28 @@ export async function initCommand(): Promise<void> {
         installed: [],
       },
     };
+    // Park / restore the MCP findings log BEFORE the config write: the previous
+    // selection is read from `existingConfig`, and `saveConfig` overwrites it.
+    // Running this afterwards makes the swap a no-op and leaves the outgoing
+    // server's findings active under the incoming one.
+    //
+    // The previous id is resolved against the PREVIOUS engine's catalog, not
+    // `discoveredServers` (which was scanned for the newly chosen engine). An
+    // engine switch is precisely the case the swap exists for, and resolving it
+    // against the new catalog would find nothing and park nothing.
+    const previousEngineServer = existingConfig
+      ? resolveSelectedEngineServer(
+          await discoverMcpServers(existingConfig.engine),
+          existingConfig.mcp?.servers ?? [],
+        )
+      : null;
+
+    await swapMcpRecheckNotes(
+      projectDir,
+      previousEngineServer?.fileId ?? null,
+      selectedEngineServer?.fileId ?? null,
+    );
+
     await saveConfig(projectDir, config);
 
     console.log(chalk.green('✓ Configuration saved to .unikit.json'));
@@ -175,8 +200,8 @@ export async function initCommand(): Promise<void> {
     // Install machine-readable gate-result contract (read by verify + review)
     await installGateResultContract(projectDir);
 
-    // Deliver the per-MCP capability profile contributed by the selected servers
-    await installEngineMcpShards(projectDir, await collectMcpShards(discoveredServers, answers.mcpServers));
+    // Deliver the rules tree of the selected engine MCP server
+    await installEngineMcpRules(projectDir, selectedEngineServer);
 
     // Install engine development principles (shared system file)
     await installDevPrinciples(projectDir, engineId, answers.engineMcpKey);
@@ -210,13 +235,12 @@ export async function initCommand(): Promise<void> {
     // Global MCP summary
     if (answers.mcpServers.length > 0) {
       console.log(chalk.green(`  MCP servers configured: ${answers.mcpServers.join(', ')}`));
-      const instructions = getMcpInstructions(discoveredServers, answers.mcpServers);
-      for (const instruction of instructions) {
-        console.log(chalk.dim(`    ${instruction}`));
+      for (const line of getMcpDocsLines(discoveredServers, answers.mcpServers)) {
+        console.log(chalk.dim(`    ${line}`));
       }
-      // MCP versions are deliberately not pinned, so `allowed-tools` can rot
-      // silently. Surfacing which version we last audited lets the user tell how
-      // stale the tool list may be.
+      // MCP versions are deliberately not pinned. Surfacing which version the
+      // rules tree was measured against lets the user judge how far the server
+      // has moved since — provenance, not a staleness warning.
       for (const stamp of getMcpVerifiedStamps(discoveredServers, answers.mcpServers)) {
         console.log(chalk.dim(`    ${stamp}`));
       }

@@ -1,4 +1,4 @@
-import inquirer from 'inquirer';
+import type inquirer from 'inquirer';
 import chalk from 'chalk';
 import { getAgentChoices } from '../../core/agents.js';
 import { getEngineChoices, getAllEngineIds } from '../../core/engines.js';
@@ -7,6 +7,20 @@ import { getAvailableSkills } from '../../core/installer/skills.js';
 import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
 import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
 import { OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
+
+// `inquirer` is ~240ms of module graph, and only the interactive prompts below
+// ever touch it -- a non-interactive `unikit-ai update` or `rules *` used to pay
+// that cost on every invocation just because this module sits on the static
+// import chain from `cli/index.ts`. The import above is type-only (erased at
+// compile time); the value is pulled in on first prompt and cached for the
+// rest of the process, so each consuming function opens with a local
+// `const inquirer = await loadInquirer()` and its call sites read unchanged.
+let inquirerModule: typeof inquirer | null = null;
+
+async function loadInquirer(): Promise<typeof inquirer> {
+  inquirerModule ??= (await import('inquirer')).default;
+  return inquirerModule;
+}
 
 export interface AgentWizardSelection {
   id: string;
@@ -58,12 +72,12 @@ export interface McpChoiceEntry {
 }
 
 // Pure helper -- orders MCP choices deterministically: ascending `order`,
-// entries without one last, ties broken by fileId. Mirrors compareContributors
-// in mcp-shards.ts, because the two express the same intent: `order: 1` is the
-// recommended server, so it heads the list AND leads the concatenated shard.
-// This matters more than cosmetics: inquirer's `type: 'list'` pre-selects the
-// FIRST choice, so without a stable order the wizard's default MCP would vary
-// with filesystem readdir order.
+// entries without one last, ties broken by fileId. Since the shard corpus was
+// retired this is the ONLY thing `order` still drives: one engine takes one
+// engine server, so there is no longer any content to concatenate in a defined
+// order. It matters more than cosmetics: inquirer's `type: 'list'` pre-selects
+// the FIRST choice, so without a stable order the wizard's default MCP would
+// vary with filesystem readdir order.
 export function sortMcpChoices(entries: McpChoiceEntry[]): McpChoiceEntry[] {
   return [...entries].sort((a, b) => {
     const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
@@ -119,6 +133,7 @@ function isCustomRegistry(stored: string | null | undefined): boolean {
 // `resolveRegistryUrl()` maps them to the official URL at runtime; no
 // migration is needed.
 async function promptRulesRegistry(engineId: string, existingRegistry: string | null): Promise<string> {
+  const inquirer = await loadInquirer();
   const isCustom = isCustomRegistry(existingRegistry);
 
   const { useCustom } = await inquirer.prompt([
@@ -190,6 +205,7 @@ export async function runWizard(
   existingInstalledSkills: string[] | null = null,
   existingMcpServers: string[] | null = null,
 ): Promise<WizardAnswers> {
+  const inquirer = await loadInquirer();
   console.log(chalk.dim('\n\u{1F4A1} Run /unikit after setup to analyze your project and generate project-relevant skills.\n'));
 
   const selectedByDefault = new Set(defaultAgentIds);

@@ -1,6 +1,5 @@
 import chalk from 'chalk';
 import path from 'path';
-import inquirer from 'inquirer';
 import { getCurrentVersion, loadConfig, saveConfig, type UniKitConfig } from '../../core/config.js';
 import {
   buildManagedSkillsState, getAvailableSkills, updateSkills,
@@ -10,14 +9,15 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpShards, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
 import { renderSyncRulesEvents } from './rules.js';
 import { discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
-import { collectMcpShards } from '../../core/mcp-shards.js';
+import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
+import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { fileExists } from '../../utils/fs.js';
 import { collectReplacedSkills, refreshExtensions } from '../../core/extension-ops.js';
@@ -207,6 +207,10 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       if (installNew) {
         for (const skill of newSkills) installNewSkills.add(skill);
       } else if (process.stdout.isTTY) {
+        // Lazy: `inquirer` is ~240ms of module graph and this is the only branch
+        // in the whole command that needs it. Every non-TTY run (the entire test
+        // suite, and CI) used to pay for it at import time.
+        const { default: inquirer } = await import('inquirer');
         const { chosen } = await inquirer.prompt([
           {
             type: 'checkbox',
@@ -319,8 +323,23 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Refresh machine-readable gate-result contract (read by verify + review)
     await installGateResultContract(projectDir);
 
-    // Refresh the per-MCP capability profile (orphan-deletes a stale engine's shards)
-    await installEngineMcpShards(projectDir, await collectMcpShards(discoveredServers, config.mcp.servers));
+    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, config.mcp.servers);
+
+    // `update` does not re-ask for servers, but the selection still moves under
+    // it: editing `.unikit.json` and re-running is how an engine switch reaches
+    // this command, and everything else here already honours it (skills are
+    // reinstalled, stale grants cleared, the rules tree swept). The findings log
+    // has to follow the same switch, or a note about the old server stays active
+    // under the new one and reads as evidence about it.
+    //
+    // The previous id comes from the stamp in the tree currently on disk — the
+    // only before-state this command has, since the config is already the new
+    // answer. Read it BEFORE installEngineMcpRules overwrites the stamp.
+    const previousEngineServer = await readDeliveredEngineMcpServer(projectDir);
+    await swapMcpRecheckNotes(projectDir, previousEngineServer, selectedEngineServer?.fileId ?? null);
+
+    // Refresh the selected server's rules tree (orphan-deletes a stale engine's copy)
+    await installEngineMcpRules(projectDir, selectedEngineServer);
 
     // Update engine development principles (shared system file, plain rewrite)
     await installDevPrinciples(projectDir, engineId, config.engineMcpKey);

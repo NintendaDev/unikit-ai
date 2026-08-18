@@ -1,7 +1,7 @@
 // --- Platform-scoped MCP config resolution ---
 //
 // Picks the per-OS variant of an MCP server's config and expands the path tokens
-// inside it. Kept out of `mcp.ts` for the same reason as `mcp-shards.ts`: that
+// inside it. Kept out of `mcp.ts` for the same reason as `mcp-rules.ts`: that
 // module already carries discovery, configuration, rule collection and
 // frontmatter injection, and growing it further would repeat the monolith the
 // 500-line guard prevents in `installer/` and `registry/`. The dependency runs

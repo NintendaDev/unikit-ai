@@ -328,12 +328,11 @@ Read the `## Settings` section from `TASKS.md` (or from `PLAN.md` in fast-mode):
 - `Testing: no` → skip test creation entirely
 - `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.4)
 - `Docs: no` → skip documentation checkpoint, emit warning
-- `Visual regression: yes` → in Step 3.6, take a baseline before an editor change and compare after it. **Default when the line is absent: `no`.**
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (`{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
-If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, `Visual regression: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
+If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
 
-Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.6 (visual regression), Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
+Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
 
 Understand:
 - Which tasks are completed (`- [x]`) and which are pending (`- [ ]`)
@@ -352,11 +351,24 @@ Load the project knowledge base ONCE at the start of execution. This replaces pe
 
 Stack rules are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
 
-**Engine-MCP profile (conditional, engine-neutral):**
-5. If `.unikit/system/engine-mcp/capabilities.md` exists — read it and follow it. The file does not exist → skip this step silently.
-6. If `.unikit/system/engine-mcp/scene-authoring.md` exists — read it and follow it. The file does not exist → skip this step silently.
+**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
-These describe the MCP server actually configured for this project: its bootstrap protocol, which tools are real, and which report success without doing anything. They override generic assumptions about the engine MCP tool.
+5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:` / `version:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per task, by area (Step 3.2).
+6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `version:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+
+   ```
+   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   ```
+
+   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`, never to this skill.
+
+**Either file absent → skip it, print one line, and continue with every right you had:**
+
+```
+MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+```
+
+No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
 
 Keep an in-memory list of loaded rule file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
 
@@ -439,11 +451,46 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 **Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
 
-- **`mcp`** — carry it out through the engine MCP. Resolve `kind` → tool family **from the `scene-authoring.md` shard**, never from this file: the tool names differ per server and only the shard is audited. Confirm the result by **reading the changed state back** — not by the response code (fake success is confirmed on two of the four supported servers).
-  - **Locating the table: match the prefix `### Editor work kind →`, not a full heading.** The three shards that carry one end it differently (`tool` / `tool family` / `parent tool`); matching any single full heading finds it on some servers and silently drops the rest into `manual`.
-  - **The shard declares no kind table → say so and degrade to `manual`.** Do not pick tools by guesswork — the shards forbid reaching for a lookalike when a tool is missing.
+- **`mcp`** — carry it out through the engine MCP, in this order, on **every** such task:
+
+  1. **Candidates from the live catalog, by intent.** Take the task's `kind` and its action, and pick 3-5 candidate affordances out of the tool list you actually hold. That list is the only place a name may come from — not this file, not a rules file, not memory. A name recalled instead of read is a `catalog phantom` you invented.
+  2. **Ask the server for the schema** of those 3-5 before calling any of them. A one-line or empty declaration does not mean "no parameters".
+  3. **Grep by area.** Read the `## Check` table of `.unikit/system/engine-mcp/INDEX.md` and of `.unikit/MCP-RECHECK-NOTES.md`, filtered to this task's own area — the one its `kind` names — **plus every cross-cutting area**: `rollback · console · batch · compile · transport · visual`. The cross-cutting six are read **always**; the lines are short, and the moment one becomes applicable is not knowable in advance.
+  4. **Execute, then read the changed state back.** Close the claim with the evidence class its claim class requires (`dev-principles.md` → A2). A response code is not evidence; the evidence is the read-back of what you claimed to change.
+
+  **No rules file, or no check line for this area → nothing changes.** Every right you had, you keep: an absent exception is not an absent capability, and it is never a reason to mark the target `⏸️ MANUAL` (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show.
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
 - **`direct`** — **commit to git before editing** (this is mandatory and the whole reason the mode is gated), then edit the serialized format directly, staying inside the bounds `references/ENGINE_RULES.md` §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
+
+**A call that misled you is a finding — and it goes in two places, neither of them the notes file.**
+
+- the run report for this task, as a candidate line: the `area`, what has to be confirmed, and the raw call with the raw answer it gave;
+- the plan's `## MCP Findings` table (`id | area | confirm that | evidence | from`) — the half that survives the session.
+
+**Never write `.unikit/MCP-RECHECK-NOTES.md` from here.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running `/unikit-mcp-trap`.
+
+**The library reference — two triggers, and never on Bootstrap.**
+
+Reach for it on exactly two occasions:
+
+1. **an unfamiliar area** — what approaches the authors propose; once per area per session;
+2. **a dead end** — you hold the schema and the capability still is not there.
+
+**Never routinely, and never at Bootstrap.** It is a network dependency inside the editor lane, a few thousand tokens per query, and it makes the run irreproducible — two runs of the same plan diverge. It also mixes a source with a systematic bias toward confidence into the hot path: retrieval returns what is most relevant, and a caveat is almost never the most relevant answer to "how do I do this".
+
+**The identifier is already known.** It is carried in the header of `.unikit/system/engine-mcp/INDEX.md`, which names the reference for the configured server — so nothing has to be resolved at run time.
+
+**Say when you reached for it, and why.** One line into the run report, at the moment of the call — the network was touched and the report has to show it:
+
+```
+Reference: trigger <1|2> — <the area, or the dead end>
+```
+
+Without it the run reads as if everything came from observation, which is exactly the confusion a source biased toward confidence should not get for free.
+
+**How the answer is treated.** The reference describes **intent, not behaviour**. Anything taken from it carries the same evidence obligations as anything else, and with heightened attention: it has been caught presenting a structurally broken path as an exemplary example. It never closes a claim — only an observation does (`dev-principles.md` → A2).
+
+**The reference is optional in the wizard.** If it was not configured, trigger 2 simply has no fallback: descend the degradation ladder (`dev-principles.md` → D3) and reach `⏸️ MANUAL` at its proper rung only — by absence of a route, established by trying. An unconfigured reference is not itself a missing capability.
 
 **Delegated execution.** When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim** and the already-resolved mode. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
 
@@ -504,8 +551,6 @@ After all tasks in a phase are done, check {{engine_name}} console for compilati
 4. Repeat the check→fix cycle until no errors from the current phase remain
 
 This step is critical: do NOT proceed to commit (3.9) with compilation errors that belong to the current phase. Future-phase errors are acceptable — they indicate planned work, not broken code.
-
-**Visual regression (only when `Visual regression: yes`).** For a phase containing `Editor:` tasks: take a baseline **before** the editor change and compare **after** it. Take the tool names from the `scene-authoring.md` / `verification.md` shard — do **not** hardcode them here, they differ per server. If the shard declares no visual-regression capability, **skip the step and say so** (`WARN [visual regression] not supported by the configured server — skipped`); never substitute an improvised replacement. `/unikit-verify` gates the same setting and lifts the gate on the same grounds.
 
 **3.7: Update context artifacts (if project structure changed)**
 
