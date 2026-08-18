@@ -224,6 +224,9 @@ export async function installGenreProfiles(projectDir: string, config: UniKitCon
 /** Markdown files get the provenance stamp; everything else is copied verbatim. */
 const STAMPABLE_EXTENSION = '.md';
 
+/** Key of the stamp line naming the server a delivered file came from. */
+const STAMP_SERVER_KEY = 'server: ';
+
 /** Separator between the ISO date and the time in an ISO 8601 timestamp. */
 const ISO_DATE_TIME_SEPARATOR = 'T';
 
@@ -261,6 +264,34 @@ function renderEngineMcpRulesStamp(fileId: string, version: string, deliveredOn:
     '---',
     '',
   ].join('\n');
+}
+
+/**
+ * Which server the rules tree currently on disk was delivered from, read back
+ * out of its own provenance stamp.
+ *
+ * This is the `update` path's only record of the PREVIOUS selection. `init`
+ * reads it from the config it is about to overwrite; `update` has no such
+ * before-state — `config.mcp.servers` is already the current answer by the time
+ * anything runs. The stamp fills that gap without introducing new state, which
+ * is what it was put there for.
+ *
+ * @returns the recorded file id, or `null` when nothing is installed or the
+ *          installed copy predates the stamp.
+ */
+export async function readDeliveredEngineMcpServer(projectDir: string): Promise<string | null> {
+  const indexPath = path.join(systemEngineMcpDir(projectDir), MCP_RULES_INDEX_FILE);
+  const content = await readTextFile(indexPath);
+  if (!content) return null;
+
+  for (const line of content.split('\n')) {
+    if (line.startsWith(STAMP_SERVER_KEY)) {
+      const fileId = line.slice(STAMP_SERVER_KEY.length).trim();
+      return fileId.length > 0 ? fileId : null;
+    }
+  }
+
+  return null;
 }
 
 /**

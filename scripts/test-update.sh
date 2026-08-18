@@ -40,7 +40,10 @@ restore_package_state() {
     fi
     rm -rf "$TMPDIR"
 }
-trap restore_package_state EXIT
+# INT/TERM as well as EXIT: an interrupted run that skipped the restore would
+# leave a doctored config in the WORKING TREE, not in a temp dir — it would
+# poison every later run and the repository besides.
+trap restore_package_state EXIT INT TERM
 
 PROJECT_DIR="$TMPDIR/update-smoke"
 mkdir -p "$PROJECT_DIR"
@@ -1775,6 +1778,147 @@ assert_contains "$NARROW_AGENT" '^  - Read$' \
 
 BIOME_JSON_BACKUP=""
 echo "  ✓ narrowed grants: dead mcp__ names removed without a reinstall, hand-authored entries kept"
+
+# ─────────────────────────────────────────────
+# Test 30i: the MCP findings log follows the server it belongs to
+# ─────────────────────────────────────────────
+# `.unikit/MCP-RECHECK-NOTES.md` records what one MCP server was caught doing.
+# Carried across a server switch it would be worse than lost — it would read as
+# evidence about a server that never produced it. So the installer parks it under
+# the outgoing server's id and restores it on the way back.
+#
+# Module-level rather than CLI-level, and the reason is a contract, not
+# convenience: the swap's live caller is `init`, whose previous selection comes
+# from the config it is about to overwrite. `update` never re-asks for servers, so
+# its call is a documented no-op and drives none of this. That leaves `init`, and
+# `init` is a wizard no smoke test can drive. Same precedent as the TomlMcpWriter
+# and `sortMcpChoices` checks: exercise the unit through node.
+#
+# Covered: park under the OUTGOING id, restore the incoming server's own file,
+# never overwrite a taken archive slot, and idempotence when nothing changed.
+
+NOTES_SWAP_TMP=$(mktemp -d)
+NOTES_SWAP_RESULT=$(cd "$ROOT_DIR" && NOTES_ROOT="$NOTES_SWAP_TMP" node --input-type=module -e "
+  import fs from 'fs';
+  import path from 'path';
+  import { swapMcpRecheckNotes } from './dist/core/installer/mcp-notes.js';
+
+  const root = process.env.NOTES_ROOT;
+  const unikit = path.join(root, '.unikit');
+  fs.mkdirSync(unikit, { recursive: true });
+  const active = path.join(unikit, 'MCP-RECHECK-NOTES.md');
+  const archive = id => path.join(unikit, 'MCP-RECHECK-NOTES.archive.' + id + '.md');
+  const why = [];
+  const read = f => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').trim() : null);
+
+  // park: biome -> fennara
+  fs.writeFileSync(active, 'BIOME_FINDING');
+  await swapMcpRecheckNotes(root, 'unity-mcp-biome', 'godot-mcp-fennara');
+  if (fs.existsSync(active)) why.push('active-survived-the-switch');
+  if (read(archive('unity-mcp-biome')) !== 'BIOME_FINDING') why.push('parked-under-wrong-id-or-rewritten');
+
+  // restore: fennara -> biome, with fennara's own notes parked in turn
+  fs.writeFileSync(active, 'FENNARA_FINDING');
+  await swapMcpRecheckNotes(root, 'godot-mcp-fennara', 'unity-mcp-biome');
+  if (read(active) !== 'BIOME_FINDING') why.push('restore-did-not-return-the-servers-own-notes');
+  if (read(archive('godot-mcp-fennara')) !== 'FENNARA_FINDING') why.push('outgoing-notes-not-parked-on-restore');
+  if (fs.existsSync(archive('unity-mcp-biome'))) why.push('archive-left-beside-the-restored-active');
+
+  // a taken archive slot is never overwritten — it is evidence of an interrupted run
+  fs.writeFileSync(archive('unity-mcp-biome'), 'ORPHAN_FROM_A_BROKEN_RUN');
+  fs.writeFileSync(active, 'SECOND_BIOME_FINDING');
+  await swapMcpRecheckNotes(root, 'unity-mcp-biome', 'godot-mcp-fennara');
+  if (read(archive('unity-mcp-biome')) !== 'ORPHAN_FROM_A_BROKEN_RUN') why.push('taken-archive-slot-overwritten');
+  if (read(path.join(unikit, 'MCP-RECHECK-NOTES.archive.unity-mcp-biome.1.md')) !== 'SECOND_BIOME_FINDING')
+    why.push('collision-not-indexed');
+
+  // idempotence: same server in and out touches nothing
+  const before = fs.readdirSync(unikit).sort().join('|');
+  await swapMcpRecheckNotes(root, 'godot-mcp-fennara', 'godot-mcp-fennara');
+  if (fs.readdirSync(unikit).sort().join('|') !== before) why.push('no-op-branch-touched-the-disk');
+
+  console.log(why.length ? why.join(' ') : 'ok');
+" 2>/dev/null || echo "swap-error")
+rm -rf "$NOTES_SWAP_TMP"
+
+if [[ "$NOTES_SWAP_RESULT" != "ok" ]]; then
+    echo "Assertion failed: MCP recheck-notes swap is broken: $NOTES_SWAP_RESULT"
+    exit 1
+fi
+echo "  ✓ recheck notes: parked under the outgoing server, restored on the way back, archives never overwritten"
+
+# ─────────────────────────────────────────────
+# Test 30j: an engine switch through `update` parks the findings log too
+# ─────────────────────────────────────────────
+# Sibling of 30i, and the half a module-level test cannot reach. `update` does not
+# re-ask for servers, but the selection still moves under it — editing
+# `.unikit.json` and re-running is how an engine switch arrives here, and Test 30g
+# above proves the command honours it everywhere else (skills reinstalled, stale
+# grants cleared). The findings log has to follow the same switch.
+#
+# The ordering is the whole point and it fails silently: the previous server id
+# comes from the provenance stamp in the tree on disk, and `installEngineMcpRules`
+# overwrites that stamp. Read it after, and the "previous" server is the new one,
+# the swap no-ops, and biome's findings sit active under fennara looking like
+# evidence about fennara.
+
+NOTES_CLI_DIR="$TMPDIR/update-notes-engine-switch"
+mkdir -p "$NOTES_CLI_DIR"
+cat > "$NOTES_CLI_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-biome"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$NOTES_CLI_DIR"
+
+NOTES_CLI_OUT1="$TMPDIR/update-notes-cli-1.log"
+(cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT1" 2>&1)
+
+# The log is user-authored (`/unikit-mcp-trap` writes it); seed it by hand, because
+# the installer must only ever rename this file, never create or rewrite it.
+NOTES_CLI_ACTIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.md"
+NOTES_CLI_ARCHIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.archive.unity-mcp-biome.md"
+echo "BIOME_FINDING" > "$NOTES_CLI_ACTIVE"
+
+CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engine = 'godot';
+    c.engineMcpKey = 'GodotMCP';
+    c.mcp = { servers: ['godot-mcp-fennara'] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+NOTES_CLI_OUT2="$TMPDIR/update-notes-cli-2.log"
+(cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT2" 2>&1)
+
+if [[ -f "$NOTES_CLI_ACTIVE" ]]; then
+    echo "Assertion failed: an engine switch through update left the old server's findings active"
+    echo "  (the previous id is read from the delivered stamp — reading it AFTER"
+    echo "   installEngineMcpRules rewrites the stamp makes the swap a silent no-op)"
+    echo "--- content still active ---"
+    cat "$NOTES_CLI_ACTIVE"
+    echo "----------------------------"
+    exit 1
+fi
+assert_exists "$NOTES_CLI_ARCHIVE" \
+    "the log is parked under the id of the server that produced it"
+assert_contains "$NOTES_CLI_ARCHIVE" 'BIOME_FINDING' \
+    "parking is a rename — the installer never rewrites note content"
+
+echo "  ✓ recheck notes: an engine switch through update parks the outgoing server's log"
 
 # ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills

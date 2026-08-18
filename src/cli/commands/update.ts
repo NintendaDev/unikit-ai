@@ -10,7 +10,7 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -322,10 +322,18 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, config.mcp.servers);
 
-    // `update` never re-asks for servers, so this is a no-op by construction. It
-    // is wired anyway for symmetry with `init` and because the day the selection
-    // does become mutable here, a missing call is a silent bug, not a red test.
-    await swapMcpRecheckNotes(projectDir, selectedEngineServer?.fileId ?? null, selectedEngineServer?.fileId ?? null);
+    // `update` does not re-ask for servers, but the selection still moves under
+    // it: editing `.unikit.json` and re-running is how an engine switch reaches
+    // this command, and everything else here already honours it (skills are
+    // reinstalled, stale grants cleared, the rules tree swept). The findings log
+    // has to follow the same switch, or a note about the old server stays active
+    // under the new one and reads as evidence about it.
+    //
+    // The previous id comes from the stamp in the tree currently on disk — the
+    // only before-state this command has, since the config is already the new
+    // answer. Read it BEFORE installEngineMcpRules overwrites the stamp.
+    const previousEngineServer = await readDeliveredEngineMcpServer(projectDir);
+    await swapMcpRecheckNotes(projectDir, previousEngineServer, selectedEngineServer?.fileId ?? null);
 
     // Refresh the selected server's rules tree (orphan-deletes a stale engine's copy)
     await installEngineMcpRules(projectDir, selectedEngineServer);

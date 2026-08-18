@@ -405,7 +405,7 @@ export async function removeExtensionMcpServers(
 
 /**
  * One human-readable audit line per selected server that carries a `verified`
- * stamp — the counterpart of {@link getMcpInstructions}. Servers without a stamp
+ * stamp — the counterpart of {@link getMcpDocsLines}. Servers without a stamp
  * contribute nothing (no "unverified" noise). Lives here rather than in `init.ts`
  * so the CLI layer never has to know the shape of {@link McpServerEntry}.
  */

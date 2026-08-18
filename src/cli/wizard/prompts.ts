@@ -58,12 +58,12 @@ export interface McpChoiceEntry {
 }
 
 // Pure helper -- orders MCP choices deterministically: ascending `order`,
-// entries without one last, ties broken by fileId. Mirrors compareContributors
-// in mcp-shards.ts, because the two express the same intent: `order: 1` is the
-// recommended server, so it heads the list AND leads the concatenated shard.
-// This matters more than cosmetics: inquirer's `type: 'list'` pre-selects the
-// FIRST choice, so without a stable order the wizard's default MCP would vary
-// with filesystem readdir order.
+// entries without one last, ties broken by fileId. Since the shard corpus was
+// retired this is the ONLY thing `order` still drives: one engine takes one
+// engine server, so there is no longer any content to concatenate in a defined
+// order. It matters more than cosmetics: inquirer's `type: 'list'` pre-selects
+// the FIRST choice, so without a stable order the wizard's default MCP would
+// vary with filesystem readdir order.
 export function sortMcpChoices(entries: McpChoiceEntry[]): McpChoiceEntry[] {
   return [...entries].sort((a, b) => {
     const orderA = a.order ?? Number.MAX_SAFE_INTEGER;

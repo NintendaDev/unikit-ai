@@ -12,7 +12,11 @@
 // is authored by `/unikit-mcp-trap` and curated by `/unikit-mcp-audit`, and the
 // only operation here is a rename.
 //
-// Invariant: one file per server — active OR archived, never both.
+// Invariant: one file per server — active OR archived, never both. It holds on
+// every path a completed run can take. The one exception is an interrupted run,
+// which leaves an extra archive behind: restoring picks the newest and KEEPS the
+// rest, because merging two sessions' findings is a curation call and not the
+// installer's to make. That state is announced by a WARN, never silent.
 
 import path from 'path';
 import {
@@ -150,6 +154,8 @@ export async function swapMcpRecheckNotes(
   if (archives.length > 1) {
     // The others are left on disk on purpose: each is a real session's findings,
     // and merging them is a curation call that belongs to `/unikit-mcp-audit`.
+    // This is the one state in which a server holds an active file AND an
+    // archive at the same time — hence the WARN rather than a silent restore.
     logWarn(
       'swapMcpRecheckNotes',
       `${archives.length} archives exist for ${nextFileId}, restored the newest and kept ${archives.length - 1}`,
