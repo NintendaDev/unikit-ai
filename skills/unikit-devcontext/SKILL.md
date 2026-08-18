@@ -12,6 +12,16 @@ description: >-
   plan it with /unikit-plan and build it with /unikit-implement — this skill is for direct,
   unplanned code work.
 argument-hint: "[task or file path]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash(ls *)
+  - Bash(find *)
+  - Bash(wc *)
+  - Bash(git *)
 ---
 
 # Senior {{engine_name}} Developer
@@ -28,7 +38,15 @@ Do not announce, confirm, or mention the language setting.
 
 ## Development Principles — BLOCKING PRE-REQUISITE
 
-Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. This file contains the canonical Core Principles and Workflow for {{engine_name}} development (MCP-tool usage, comments policy, docs/tests requirements, TODO handling).
+Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. Read everything **above** the LAZY-READ BOUNDARY: Layer A — the evidence contract (`CLAIM / EVIDENCE / VERDICT`, the claim-class → evidence-class lattice, the nine failure classes, discipline, phase order, lane, stop-conditions, the `kind` and area vocabularies, "no rules ≠ no rights"), then the engine workflow and the code conventions ({{engine_mcp_tool}} usage, comments policy, docs/tests requirements, TODO handling). The section **below** the boundary is read once per session, on the first Editor task — unconditionally, never gated on which rules are installed.
+
+Then, in the same pass:
+- `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:` / `version:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. The `## Check` table is **not** read here: it is grepped per editor task, by that task's own area plus the six cross-cutting ones (`rollback · console · batch · compile · transport · visual`).
+- `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `version:` / `audited:`), compared against that stamp. A mismatch is one `WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)` and nothing else — the entries are suspect, not void, and they still apply. Retiring them is `/unikit-mcp-audit`'s job.
+- **Either file absent → skip it and continue with the same rights.** No rules means no known exceptions, never no capabilities: absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`dev-principles.md` → **A9**). Say it once: `MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged`.
+- **Names never come from a file.** Candidate affordances are picked from the live catalog by intent, their schemas are requested from the server before the first call, and the result is closed by reading the changed state back — a response code is not evidence.
+
+These describe the MCP server actually configured for this project: its bootstrap protocol, which tools are real, and which report success without doing anything. They override generic assumptions about the engine MCP tool.
 
 ## Rules Loading
 

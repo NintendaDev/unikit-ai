@@ -70,6 +70,8 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   )
   ```
 
+  `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When the task carries `Editor:` lines, they go into the prompt **verbatim**, together with the resolved `Editor tasks` mode and the matching `EDITOR TARGETS` rows from `PLAN-BRIEF.md` (Step 3.2, *Delegated execution*).
+
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
 
 - **`rules-agent`** — capture a new project rule. Expands to:
@@ -299,7 +301,7 @@ Then reconcile plan state with reality:
 
 **If using a folder plan** (`.unikit/code/plans/<folder>/`):
 - Read **`TASKS.md`** — feature overview (`## Overview`), task checklist with phases, dependencies, and completion status
-- Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, dependency graph, files, DI bindings (if exists in plan folder)
+- Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings (if exists in plan folder)
 - If `TASKS.md` has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules
@@ -326,10 +328,11 @@ Read the `## Settings` section from `TASKS.md` (or from `PLAN.md` in fast-mode):
 - `Testing: no` → skip test creation entirely
 - `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.4)
 - `Docs: no` → skip documentation checkpoint, emit warning
+- `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (`{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
-If `## Settings` section is missing, default to `Testing: no`, `Docs: no`.
+If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
 
-Store the parsed settings — they affect behavior in Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
+Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
 
 Understand:
 - Which tasks are completed (`- [x]`) and which are pending (`- [ ]`)
@@ -348,6 +351,25 @@ Load the project knowledge base ONCE at the start of execution. This replaces pe
 
 Stack rules are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
 
+**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
+
+5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:` / `version:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per task, by area (Step 3.2).
+6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `version:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+
+   ```
+   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   ```
+
+   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`, never to this skill.
+
+**Either file absent → skip it, print one line, and continue with every right you had:**
+
+```
+MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+```
+
+No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
+
 Keep an in-memory list of loaded rule file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
 
 ### Step 2: Determine Work Scope
@@ -359,6 +381,8 @@ All tasks in {feature-folder} are completed.
 Nothing to implement.
 ```
 STOP here.
+
+**Counting rule for `⏸️ MANUAL`.** A task marked `- [x] … ⏸️ MANUAL` (Step 3.4) counts as **out of scope**, not as pending: it does not block "all tasks are completed" and it is never picked up again by a later run. It is also not counted as implemented — Step 4 reports it on its own line.
 
 **If `$ARGUMENTS` contains phase/task selectors:**
 
@@ -425,6 +449,51 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 **Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline (rules and dev-principles are already loaded in Step 1.5 / Step 3.0). Instead, degrade parallel scopes to sequential and continue the inline implementation cycle for ALL tasks. Each phase still triggers Step 3.0 Phase Rules Refresh.
 
+**Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
+
+- **`mcp`** — carry it out through the engine MCP, in this order, on **every** such task:
+
+  1. **Candidates from the live catalog, by intent.** Take the task's `kind` and its action, and pick 3-5 candidate affordances out of the tool list you actually hold. That list is the only place a name may come from — not this file, not a rules file, not memory. A name recalled instead of read is a `catalog phantom` you invented.
+  2. **Ask the server for the schema** of those 3-5 before calling any of them. A one-line or empty declaration does not mean "no parameters".
+  3. **Grep by area.** Read the `## Check` table of `.unikit/system/engine-mcp/INDEX.md` and of `.unikit/MCP-RECHECK-NOTES.md`, filtered to this task's own area — the one its `kind` names — **plus every cross-cutting area**: `rollback · console · batch · compile · transport · visual`. The cross-cutting six are read **always**; the lines are short, and the moment one becomes applicable is not knowable in advance.
+  4. **Execute, then read the changed state back.** Close the claim with the evidence class its claim class requires (`dev-principles.md` → A2). A response code is not evidence; the evidence is the read-back of what you claimed to change.
+
+  **No rules file, or no check line for this area → nothing changes.** Every right you had, you keep: an absent exception is not an absent capability, and it is never a reason to mark the target `⏸️ MANUAL` (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show.
+- **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
+- **`direct`** — **commit to git before editing** (this is mandatory and the whole reason the mode is gated), then edit the serialized format directly, staying inside the bounds `references/ENGINE_RULES.md` §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
+
+**A call that misled you is a finding — and it goes in two places, neither of them the notes file.**
+
+- the run report for this task, as a candidate line: the `area`, what has to be confirmed, and the raw call with the raw answer it gave;
+- the plan's `## MCP Findings` table (`id | area | confirm that | evidence | from`) — the half that survives the session.
+
+**Never write `.unikit/MCP-RECHECK-NOTES.md` from here.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running `/unikit-mcp-trap`.
+
+**The library reference — two triggers, and never on Bootstrap.**
+
+Reach for it on exactly two occasions:
+
+1. **an unfamiliar area** — what approaches the authors propose; once per area per session;
+2. **a dead end** — you hold the schema and the capability still is not there.
+
+**Never routinely, and never at Bootstrap.** It is a network dependency inside the editor lane, a few thousand tokens per query, and it makes the run irreproducible — two runs of the same plan diverge. It also mixes a source with a systematic bias toward confidence into the hot path: retrieval returns what is most relevant, and a caveat is almost never the most relevant answer to "how do I do this".
+
+**The identifier is already known.** It is carried in the header of `.unikit/system/engine-mcp/INDEX.md`, which names the reference for the configured server — so nothing has to be resolved at run time.
+
+**Say when you reached for it, and why.** One line into the run report, at the moment of the call — the network was touched and the report has to show it:
+
+```
+Reference: trigger <1|2> — <the area, or the dead end>
+```
+
+Without it the run reads as if everything came from observation, which is exactly the confusion a source biased toward confidence should not get for free.
+
+**How the answer is treated.** The reference describes **intent, not behaviour**. Anything taken from it carries the same evidence obligations as anything else, and with heightened attention: it has been caught presenting a structurally broken path as an exemplary example. It never closes a claim — only an observation does (`dev-principles.md` → A2).
+
+**The reference is optional in the wizard.** If it was not configured, trigger 2 simply has no fallback: descend the degradation ladder (`dev-principles.md` → D3) and reach `⏸️ MANUAL` at its proper rung only — by absence of a route, established by trying. An unconfigured reference is not itself a missing capability.
+
+**Delegated execution.** When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim** and the already-resolved mode. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
+
 **3.3: Handle Blockers**
 
 If a task cannot be completed (compilation error, missing dependency, unclear requirement, etc.):
@@ -450,6 +519,10 @@ Based on choice:
 After successful implementation, update `TASKS.md`:
 - Change `- [ ] {task}` to `- [x] {task}`
 - If all tasks in a phase are done, update the phase status: `**Status:** [x] Completed`
+
+**Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
+- Write the checkbox as `- [x]` and append the marker `⏸️ MANUAL` to the task text, right after the description: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. The checkbox must be `[x]` so Step 2 does not pick the task up again on every subsequent run; the marker is what keeps it honest, and it sits in the task text so `/unikit-verify` sees it during the task audit.
+- A `⏸️ MANUAL` task **does not block** "all tasks completed" — the user took it on deliberately. It is **not** counted as implemented either: report it separately (Step 4).
 
 Use the Edit tool to make these changes surgically.
 
@@ -497,7 +570,7 @@ Fallback: If Agent tool is unavailable, write tests inline; do NOT invoke `/unik
 
 When writing tests, use:
 1. List of files created/modified in the phase
-2. Relevant context from PLAN-BRIEF.md (constraints, interfaces, key patterns)
+2. Relevant context from PLAN-BRIEF.md (constraints, interfaces, key patterns, editor targets)
 3. The rules and principles already loaded in Step 1.5 Bootstrap + Step 3.0 Phase Rules Refresh
 
 If tests are generated, they will be included in the phase commit.
@@ -552,6 +625,10 @@ Completed:
 - Task {N.K}: {summary}
 ...
 
+Manual (editor targets):
+- Task {N.M}: {[kind] container → target : action}
+...
+
 Affected files:
 - Created: {list of created files}
 - Modified: {list of modified files}
@@ -559,6 +636,8 @@ Affected files:
 
 Remaining tasks: {count} (in {phases} phases)
 ```
+
+The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with its exact instruction, and is **omitted entirely** when there are none. It is **not** the same as "not done": the user chose to carry these out themselves, and `/unikit-verify` does not treat them as blockers.
 
 ### Step 5: Post-Completion Actions
 
@@ -680,6 +759,8 @@ When `$ARGUMENTS` is `status`:
 │ Progress: 10/18 (55%)                           │
 └─────────────────────────────────────────────────┘
 ```
+
+Counts come from the checkboxes. A task marked `- [x] … ⏸️ MANUAL` counts toward its phase's `(N/M tasks)` and toward `Progress` like any other `- [x]` — it is genuinely off the work queue. When any exist in the plan, add one line below the box: `Manual (editor targets): {count}` so the number is never mistaken for implemented work.
 
 Then STOP — do not execute any tasks.
 

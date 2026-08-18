@@ -48,6 +48,36 @@ design knowledge, pass `--module gamedesign`.
 
 ---
 
+## System assets — not rules, not user-editable
+
+Alongside the memory there is `.unikit/system/`, written by `init`/`update` and **rewritten every
+time**. Editing these by hand is pointless. The user does not curate them; the CLI does.
+
+Relevant to the dev pipeline:
+
+- `dev-principles.md` — the canonical engine development principles + workflow. Read on Bootstrap
+  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`.
+- `engine-mcp/{INDEX,verification}.md` — the **rules tree of the engine MCP server the project
+  actually selected**, delivered verbatim from the package with a provenance stamp. It records
+  **exceptions, not capabilities**: no tool names, no inventory of what the server cannot do —
+  only checks to perform. `INDEX.md` carries a base section (read in full, once, at Bootstrap by
+  everyone using the engine MCP) plus a check table keyed by **area**, which implement / fix /
+  devcontext / verify read by grep — their own work kind's area, plus every cross-cutting area.
+  `verification.md` is read by `/unikit-verify` **only**, and calibrates which gates are
+  reachable; **GATE LIFTED** is a runtime verdict verify reaches by trying and producing the
+  evidence of absence — it is never pre-written into the file. Switching MCP or engine replaces
+  the tree (stale files are deleted). Not every MCP server ships one, and a missing file changes
+  nothing: no known exceptions is not the same as no capabilities, so nothing is disabled and
+  nothing becomes manual.
+- `.unikit/MCP-RECHECK-NOTES.md` — **not** a system asset, and deliberately outside
+  `system/`: the project's own findings about that server, in the same area-keyed form, read by
+  the same greps. `init` / `update` never rewrite it (only rename it when the server changes).
+  Written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`.
+- `cli-contract.md`, `gate-result-contract.md`, `modules.yml`, `gamedesign/` — contracts read on
+  demand by the skills that need them.
+
+---
+
 ## Turning a rule into the knowledge base (the everyday flow)
 
 1. **Quick capture** — `/unikit-rules <one-liner>` appends to `.unikit/RULES.md`. Use it as a

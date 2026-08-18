@@ -146,21 +146,26 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 │                                              │
 │  Step 1.5 Bootstrap:                         │
 │  1. Read dev-principles.md                   │  ← .unikit/system/ (always)
-│  2. Read RULES.md                            │  ← project overrides
-│  3. Read RULES_INDEX.md                      │
-│  4. Read core rules                          │  ← .unikit/memory/code/core/ (always)
+│  2. Read the engine-MCP rules tree + notes   │  ← .unikit/system/engine-mcp/ + .unikit/
+│  3. Read RULES.md                            │  ← project overrides
+│  4. Read RULES_INDEX.md                      │
+│  5. Read core rules                          │  ← .unikit/memory/code/core/ (always)
 │                                              │
 │  Step 3.0 Phase Rules Refresh (per phase):   │
-│  5. Re-read RULES_INDEX.md                   │
-│  6. Load stack rules needed for this phase   │  ← .unikit/memory/code/stack/ (delta)
+│  6. Re-read RULES_INDEX.md                   │
+│  7. Load stack rules needed for this phase   │  ← .unikit/memory/code/stack/ (delta)
 │                                              │
 │  Step 3.2 Implement the task (per task):     │
-│  7. Write code inline (Read/Edit/Write/Bash) │
+│  8. Write code inline (Read/Edit/Write/Bash) │
 │     with the rules already loaded            │
 └──────────────────────────────────────────────┘
 ```
 
-Steps 5-6 in detail:
+Step 2 in detail — the engine-MCP rules tree holds **exceptions** for the one server this project is configured against, not capabilities and not knowledge-base rules. At Bootstrap a skill reads the **base section** of `.unikit/system/engine-mcp/INDEX.md` (everything except its `## Check` table) plus the **header** of `.unikit/MCP-RECHECK-NOTES.md`, and compares the two: a mismatch is one `WARN` and the entries still apply, because they are suspect rather than void. The `## Check` table is *not* read here — it is grepped per editor task, by that task's area plus the cross-cutting ones. `/unikit-verify` additionally reads `.unikit/system/engine-mcp/verification.md`, and no other skill does.
+
+A missing file is skipped silently, and that is a supported state: no rules means no known exceptions, never fewer rights. See [configuration.md](configuration.md#engine-mcp-rules-tree).
+
+Steps 6-7 in detail:
 - Examines phase name and task descriptions - files involved, frameworks referenced
 - Loads only the stack rules needed for the upcoming phase, based on "Load When" triggers from `RULES_INDEX.md`
 - If a stack rule has references, loads the appropriate quickref or full reference alongside it

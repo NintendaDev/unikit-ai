@@ -165,9 +165,11 @@ For each task in the phase, sequentially:
 1. Mark `[~]` in TASKS.md
 2. Implement using direct tool calls (Read, Write, Edit, Glob, Grep, Bash)
 3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
+
+   `dev-principles.md` is read on **two** levels. Everything **above** the LAZY-READ BOUNDARY is read here, on every run — the evidence contract, the claim-class → evidence-class lattice, the nine failure-class names, phase order, the lane, and the `kind` / area vocabularies. The section **below** it — the nine detectors in full and the catalog checklist — is read **once per session, on the first task that touches editor state**, and **unconditionally**: never gated on which rules happen to be installed. Pulling the whole file up here spends the Bootstrap budget the split exists to save; never reading the lower half spends the safety net instead.
 4. Run verification pass scoped to changed files
 5. If material issues found, fix and re-verify (max 2 rounds)
-6. Mark `[x]` or `[!]` in TASKS.md
+6. Mark `[x]` or `[!]` in TASKS.md. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
 7. If any task fails, stop the phase
 
 ## Parallel Phase Dispatch
@@ -181,6 +183,8 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
   - the phase number and all its tasks
   - the plan folder path
   - `commit_policy: skip` (coordinator handles commits centrally)
+  - **any `Editor:` lines of those tasks, verbatim** — a worker that receives only the description implements an editor target as pure code
+  - **`editor_mode:`** — the `Editor tasks` value from the plan's `## Settings`. Absent from the plan → pass `manual`, never `direct`
 - Maximum **3 parallel workers** per layer. If more phases are ready, split into sub-batches.
 
 ### Example dispatch (Phase 1 and Phase 4 are independent)
@@ -188,12 +192,17 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
 ```
 Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 1.1 (description), 1.2 (description), ...
-  commit_policy: skip. Return list of modified files."
+    Task 1.2 Editor: [ui] <container> → <target> : <action>
+  editor_mode: mcp
+  commit_policy: skip. Return list of modified files and manual_targets."
 
 Agent(unikit-implement-worker): "Execute Phase 4 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 4.1 (description), 4.2 (description), ...
-  commit_policy: skip. Return list of modified files."
+  editor_mode: mcp
+  commit_policy: skip. Return list of modified files and manual_targets."
 ```
+
+Include the `Editor:` line only for tasks that carry one; a phase of pure code tasks passes `editor_mode` and nothing else new.
 
 ### Conflict detection after parallel execution
 

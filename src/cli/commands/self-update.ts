@@ -1,6 +1,5 @@
 import chalk from 'chalk';
 import semver from 'semver';
-import inquirer from 'inquirer';
 import { execSync } from 'child_process';
 import { realpathSync } from 'fs';
 import { getCurrentVersion } from '../../core/config.js';
@@ -63,6 +62,9 @@ export async function selfUpdateCommand(): Promise<void> {
     return;
   }
 
+  // Lazy: see the note in wizard/prompts.ts -- the confirm below is the only
+  // thing here that needs inquirer, and it is already behind a TTY gate.
+  const { default: inquirer } = await import('inquirer');
   const { shouldUpdate } = await inquirer.prompt([{
     type: 'confirm',
     name: 'shouldUpdate',

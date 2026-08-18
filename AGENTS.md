@@ -58,6 +58,8 @@ What `unikit-ai init` / `update` produces in the user's project root. Detailed w
 | `.unikit.json` | `init` | Persistent config (agents, engine, `rulesRegistry`, `managedSkills`) |
 | `.unikit/system/cli-contract.md` | `init`/`update` (flat-rewrite) | CLI contract for AI skills |
 | `.unikit/system/dev-principles.md` | `init`/`update` (flat-rewrite) | Engine principles with `{{engine_*}}` substituted |
+| `.unikit/system/engine-mcp/**` | `init`/`update` (recursive copy + orphan-delete over the whole subtree) | Rules tree of the *selected* engine MCP server — **exceptions, not capabilities**; source is the `rules` pointer of the MCP JSON, not `data/`. Every `.md` carries a `server:`/`version:`/`delivered:` provenance stamp |
+| `.unikit/MCP-RECHECK-NOTES.md` | `/unikit-mcp-trap` (writes) · `/unikit-mcp-audit` (curates) · installer **renames only** | This project's findings about the server it actually runs. The installer never touches the content: switching servers parks it as `MCP-RECHECK-NOTES.archive.<fileId>.md` and switching back restores it. Invariant: one file per server — active **or** archived, never both. Lives outside `system/` so the flat-rewrite cannot reach it |
 | `.unikit/memory/{core,stack}/*.md` | `rules install`/`sync` | Knowledge-base rules pulled from registry |
 | `.unikit/memory/RULES_INDEX.md` | `rules sync` (regenerated) | Compact rules index — never hand-edit |
 | `<agent-config>/skills/` | `init`/`update` | Installed skills (path varies per agent) |

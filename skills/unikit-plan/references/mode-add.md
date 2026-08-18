@@ -27,10 +27,12 @@ Parse the user's description and determine changes: new tasks/phases, modificati
 If changes require codebase understanding → launch Explore tasks (same as Step 4 Phase A). Skip if purely structural.
 
 Apply changes with Edit tool, preserving unaffected content:
-- New tasks/phases follow existing format (numbering, WHY, Files, effort)
+- New tasks/phases follow existing format (numbering, WHY, `Files:`, `Editor:`, effort)
+  - `Editor:` — one line per editor target, placed after `Files:`, only when the change touches the editor's **serialized state** (concrete signals for the active engine: `references/ENGINE_RULES.md` §3). Omitted for pure code tasks, and **not generated at all** when `engine_rules_loaded = false`.
+  - Add mode does **not** introduce a `## Settings` section and does not re-ask the editor-mode question — it extends an existing plan and inherits its settings.
 - Update Total Estimated Effort, Commit Plan, Dependency Graph as needed
 - Update PLAN-BRIEF.md / Technical Context if changes affect constraints, interfaces, or patterns
 
 ### Add Step 3: Confirm
 
-Show: plan path, what changed, updated effort. Ask if anything needs adjustment. **STOP after confirmation.**
+Show: plan path, what changed, updated effort. When `engine_rules_loaded = false`, also show the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` — Add mode never reaches Step 6, so this is its **only** confirmation point for the skipped editor fields. Ask if anything needs adjustment. **STOP after confirmation.**

@@ -1,8 +1,11 @@
 {
   "key": "GodotMCP",
   "is_engine": true,
+  "order": 3,
   "displayName": "Coding-Solo Godot MCP [Free]",
-  "instruction": "Coding-Solo Godot MCP: Ensure Godot Editor path is configured via GODOT_PATH environment variable.",
+  "docs": {
+    "repo": "https://github.com/Coding-Solo/godot-mcp"
+  },
   "config": {
     "command": "npx",
     "args": ["@coding-solo/godot-mcp"],
@@ -38,6 +41,11 @@
       ],
       "unikit-fix": [
         "execute_in_editor",
+        "read_output",
+        "run_scene",
+        "get_project_info"
+      ],
+      "unikit-verify": [
         "read_output",
         "run_scene",
         "get_project_info"

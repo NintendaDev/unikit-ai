@@ -39,6 +39,12 @@ export interface UpdateSkillsOptions {
   force?: boolean;
   engineId?: string;
   engineMcpKey?: string | null;
+  /**
+   * The project's selected MCP server file ids (`config.mcp.servers`). Folded
+   * into every source hash so a changed selection reinstalls the skills — MCP
+   * tool injection is additive and would otherwise accumulate dead ids.
+   */
+  mcpServers?: string[];
   replacedSkills?: Set<string>;
   /**
    * Skills newly added to the package that the caller opted to install this
@@ -65,9 +71,11 @@ async function getManagedSkillState(
   agent: AgentInstallation,
   skillName: string,
   engineId: string,
+  engineMcpKey: string | null | undefined,
+  mcpServers: string[],
 ): Promise<ManagedSkillState | null> {
   const sourceSkillDir = path.join(getSkillsDir(), skillName);
-  const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id);
+  const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id, engineMcpKey, mcpServers);
   if (!sourceHash) {
     return null;
   }
@@ -81,16 +89,28 @@ async function getManagedSkillState(
   return { sourceHash, installedHash };
 }
 
+/**
+ * Snapshot the managed state written into `.unikit.json`.
+ *
+ * `engineMcpKey` / `mcpServers` MUST be threaded through here, not only into
+ * {@link updateSkills}: the snapshot and the comparison have to be computed by
+ * the *same* formula. If they diverge, `previousState.sourceHash !== sourceHash`
+ * is true on every single run and every skill is reinstalled forever — a
+ * mismatch neither the type-checker nor knip can see, because both signatures
+ * stay valid.
+ */
 export async function buildManagedSkillsState(
   projectDir: string,
   agent: AgentInstallation,
   baseSkills: string[],
   engineId: string,
+  engineMcpKey: string | null | undefined,
+  mcpServers: string[],
 ): Promise<Record<string, ManagedSkillState>> {
   const state: Record<string, ManagedSkillState> = {};
 
   for (const skillName of baseSkills) {
-    const managed = await getManagedSkillState(projectDir, agent, skillName, engineId);
+    const managed = await getManagedSkillState(projectDir, agent, skillName, engineId, engineMcpKey, mcpServers);
     if (managed) {
       state[skillName] = managed;
     }
@@ -260,7 +280,7 @@ export async function updateSkills(
   projectDir: string,
   options: UpdateSkillsOptions = {},
 ): Promise<UpdateSkillsResult> {
-  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, replacedSkills, installNewSkills } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, mcpServers = [], replacedSkills, installNewSkills } = options;
   const availableSkills = await getAvailableSkills();
   const availableSet = new Set(availableSkills);
 
@@ -320,7 +340,7 @@ export async function updateSkills(
 
   for (const skillName of updatableSkills) {
     const sourceSkillDir = path.join(getSkillsDir(), skillName);
-    const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id);
+    const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id, engineMcpKey, mcpServers);
     const paths = resolveSkillPaths(projectDir, agent.skillsDir, agent.id, skillName, sourceSkillDir);
     const installedHash = await hashInstalledSkill(paths);
     const previousState = previousManaged[skillName];
@@ -361,7 +381,15 @@ export async function updateSkills(
 
   const skillsToInstall = updatableSkills.filter(skillName => shouldInstall.get(skillName)?.install === true);
 
-  if (force && skillsToInstall.length > 0) {
+  // Clean-replace on ANY reinstall decision, not only --force. copyDirectory
+  // overwrites the files the package still ships, but leaves behind reference
+  // files that were renamed or dropped upstream — they would otherwise survive
+  // in the project forever. The trade-off is deliberate: if an install then
+  // fails (try/catch above), the skill is absent rather than stale, and the next
+  // run picks it up via 'missing-installed-artifact' — the state self-heals.
+  // Extension-replaced skills are already excluded from updatableSkills, and
+  // extension injections are applied later in update.ts, so both survive.
+  if (skillsToInstall.length > 0) {
     await removeSkillsByName(projectDir, agent, skillsToInstall);
   }
 

@@ -32,6 +32,27 @@ Based on choice:
 
 Fast mode always uses `Docs: no` in Settings (documentation checkpoint is a full mode feature).
 
+#### Editor mode (`Editor tasks`)
+
+**Gate — `engine_rules_loaded = false` → skip this whole subsection.** Do not ask, and do **not** write an `Editor tasks` line into `## Settings`. Step 0.5 already disabled `Editor:` generation for this engine, so the setting would have no consumer and the question would be unanswerable noise.
+
+When `engine_rules_loaded = true`:
+
+1. **Probe for a configured engine MCP** — check whether `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the same probe `/unikit-implement` uses in Step 3.6). Refinement, when you need to name the server in the question: `.unikit/system/engine-mcp/INDEX.md` exists → a rules tree shipped for the configured server, and the `server:` line of its delivery stamp is the name to quote. Its **absence does not** flip the probe — a server may ship no rules tree at all, and no rules means no known exceptions, never no capabilities.
+2. **MCP configured → `Editor tasks: mcp`, silently.** No question — asking on every plan is noise.
+3. **MCP not configured → ask:**
+
+```
+AskUserQuestion: This plan contains editor work (scenes, UI, VFX, animation, assets).
+No engine MCP is configured. How should those tasks be carried out?
+
+   a. manual — the task is marked `⏸️ MANUAL`; no files are touched, and you get the
+      exact instruction in the form `[kind] container → target : action`
+   b. direct — the file format is edited directly (a git commit is made first)
+```
+
+   Offer **`direct` only** when `references/ENGINE_RULES.md` §6 rates the engine's serialized formats 🟢 or 🟡. Where §6 rates them 🔴 (binary or dense generated formats), drop the option entirely rather than showing it and refusing later.
+
 Store the preferences for the `## Settings` and `## Roadmap Linkage` sections in `PLAN.md`.
 
 **If `.unikit/ROADMAP.md` exists and the user chose milestone linkage:** follow the same milestone selection procedure as in Full Mode Step C (read ROADMAP.md, list candidates, ask user to pick, store milestone name).

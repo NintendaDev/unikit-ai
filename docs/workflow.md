@@ -307,6 +307,8 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 
 Reads skill-context rules first, then plan TASKS.md. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
+Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text after a mandatory git commit. See [Editor tasks](plan-files.md#editor-tasks).
+
 After phase completion:
 
 - Runs compilation check (UnityMCP)
@@ -383,6 +385,7 @@ Goes through every task in the plan and verifies the code actually implements it
 
 - Unity compilation (UnityMCP)
 - Tests
+- Editor targets — read back through the engine MCP, not Glob/Grep (a task with an `Editor:` line has no implementing source to find)
 - `.meta` file pairing
 - Asmdef boundaries (Modules -> Game FORBIDDEN)
 - Leftover TODOs/FIXMEs
@@ -392,7 +395,7 @@ Goes through every task in the plan and verifies the code actually implements it
 
 When the plan cited a design system's acceptance criteria and all of them are met, stamps `implemented_version` back into `GD-IDS.yaml` - the one sanctioned code -> design write, checked against the AC snapshotted in the plan rather than the live GDD.
 
-Strict mode raises the bar: partial completion is a failure, compilation and tests are required, leftover TODOs are blocking. If gaps are found, suggests `/unikit-fix`.
+Strict mode raises the bar: partial completion is a failure, compilation and tests are required, leftover TODOs are blocking. Two carve-outs survive strict mode, because failing them would fail correctly completed work: an editor target the configured server cannot read back, and one marked `⏸️ MANUAL` because you took it on yourself. If gaps are found, suggests `/unikit-fix`.
 
 ### `/unikit-commit [scope]` - conventional commits
 

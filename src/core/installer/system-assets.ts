@@ -9,7 +9,7 @@
 import path from 'path';
 import {
   getDataDir, getEngineTemplatesDir,
-  fileExists, readTextFile, writeTextFile, listFiles, removeFile,
+  fileExists, readTextFile, writeTextFile, listFiles, listFilesRecursive, removeFile,
 } from '../../utils/fs.js';
 import { getInstalledGenres, type AgentInstallation, type UniKitConfig } from '../config.js';
 import { getAgentConfig } from '../agents.js';
@@ -20,9 +20,10 @@ import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
   GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID,
-  GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE,
-  systemDir, systemGamedesignDir, systemGamedesignGenresDir,
+  GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
+  systemDir, systemGamedesignDir, systemGamedesignGenresDir, systemEngineMcpDir,
 } from '../constants.js';
+import type { SelectedEngineServer } from '../mcp-rules.js';
 import { listModules } from '../modules.js';
 import { buildSubagentTemplateVars } from './shared.js';
 
@@ -216,6 +217,181 @@ export async function installGenreProfiles(projectDir: string, config: UniKitCon
       logInfo('installGenreProfiles', `removed orphan genre profile ${name}`);
     }
   }
+}
+
+// --- Engine-MCP rules-tree installation ---
+
+/** Markdown files get the provenance stamp; everything else is copied verbatim. */
+const STAMPABLE_EXTENSION = '.md';
+
+/** Key of the stamp line naming the server a delivered file came from. */
+const STAMP_SERVER_KEY = 'server: ';
+
+/** Separator between the ISO date and the time in an ISO 8601 timestamp. */
+const ISO_DATE_TIME_SEPARATOR = 'T';
+
+/** Today in `YYYY-MM-DD`, the granularity the delivery stamp records. */
+function isoToday(): string {
+  return new Date().toISOString().split(ISO_DATE_TIME_SEPARATOR)[0];
+}
+
+/**
+ * Provenance stamp prepended to every delivered markdown file.
+ *
+ * It records **where this copy came from**, and nothing else. It is deliberately
+ * not a statement about the server: no tool names, no counters, no list of what
+ * is missing — those are the three genres the rules architecture bans, and a
+ * header that ships into every project is the easiest place for them to creep
+ * back in.
+ *
+ * The stamp is also the reference point for the notes header: skills compare the
+ * `server:` / `version:` recorded here against the one in
+ * `.unikit/MCP-RECHECK-NOTES.md` to tell a finding about the configured server
+ * from a finding inherited from another one. `version` is empty when the source
+ * JSON carries no `verified` block — the comparison then degrades to `server:`
+ * alone, which the installer says out loud.
+ */
+function renderEngineMcpRulesStamp(fileId: string, version: string, deliveredOn: string): string {
+  return [
+    '<!-- Delivered by unikit-ai from the rules tree of the selected engine MCP server. -->',
+    '<!-- Fix it at the source (the package\'s `mcp/<engine>/rules/<server>/`), not here: -->',
+    '<!-- every init / update rewrites this folder. -->',
+    '',
+    `server: ${fileId}`,
+    `version: ${version}`,
+    `delivered: ${deliveredOn}`,
+    '',
+    '---',
+    '',
+  ].join('\n');
+}
+
+/**
+ * Which server the rules tree currently on disk was delivered from, read back
+ * out of its own provenance stamp.
+ *
+ * This is the `update` path's only record of the PREVIOUS selection. `init`
+ * reads it from the config it is about to overwrite; `update` has no such
+ * before-state — `config.mcp.servers` is already the current answer by the time
+ * anything runs. The stamp fills that gap without introducing new state, which
+ * is what it was put there for.
+ *
+ * @returns the recorded file id, or `null` when nothing is installed or the
+ *          installed copy predates the stamp.
+ */
+export async function readDeliveredEngineMcpServer(projectDir: string): Promise<string | null> {
+  const indexPath = path.join(systemEngineMcpDir(projectDir), MCP_RULES_INDEX_FILE);
+  const content = await readTextFile(indexPath);
+  if (!content) return null;
+
+  for (const line of content.split('\n')) {
+    if (line.startsWith(STAMP_SERVER_KEY)) {
+      const fileId = line.slice(STAMP_SERVER_KEY.length).trim();
+      return fileId.length > 0 ? fileId : null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Deliver the selected engine MCP server's rules tree into
+ * `.unikit/system/engine-mcp/`.
+ *
+ * A copy, not a merge: one engine takes one engine server, so there is nothing
+ * to concatenate and no per-contributor heading to attribute. Subdirectories are
+ * copied as they are — the tree is free to grow past its two starting files.
+ *
+ * NOT hash-tracked; every init/update rewrites the folder. Orphan-delete runs
+ * over the **whole subtree**, not just `*.md`, because it is the only thing
+ * standing between a project that switched engine (or swapped its MCP server)
+ * and a stale profile — system assets have no migration chain.
+ *
+ * A `null` selection, or a server that ships no `rules` pointer, sweeps the
+ * folder and leaves it absent. That is a normal state, not a degraded one: no
+ * rules means no known exceptions, never no capabilities, and skills read a
+ * missing file as a silent skip.
+ *
+ * @param deliveredOn ISO date stamped into every delivered file. Defaults to
+ *                    today; a parameter only so a test can pin it.
+ */
+export async function installEngineMcpRules(
+  projectDir: string,
+  selected: SelectedEngineServer | null,
+  deliveredOn: string = isoToday(),
+): Promise<void> {
+  const destDir = systemEngineMcpDir(projectDir);
+  const sourceDir = selected?.entry.rulesDir ?? null;
+  const wanted = new Set<string>();
+
+  if (sourceDir) {
+    const version = selected!.entry.verified?.version ?? '';
+    if (!version) {
+      logWarn(
+        'installEngineMcpRules',
+        `server ${selected!.fileId} carries no verified.version — stamping an empty version`,
+      );
+    }
+
+    const sourceFiles = await listFilesRecursive(sourceDir);
+    if (sourceFiles.length === 0) {
+      logWarn('installEngineMcpRules', `rules tree is empty or unreadable: ${sourceDir}`);
+    }
+
+    for (const absSource of sourceFiles) {
+      const relPath = path.relative(sourceDir, absSource);
+      const content = await readTextFile(absSource);
+      if (content === null) {
+        logWarn('installEngineMcpRules', `unreadable rules file, skipped: ${absSource}`);
+        continue;
+      }
+
+      const stamped = relPath.endsWith(STAMPABLE_EXTENSION)
+        ? renderEngineMcpRulesStamp(selected!.fileId, version, deliveredOn) + content.trim() + '\n'
+        : content;
+
+      await writeTextFile(path.join(destDir, relPath), stamped);
+      wanted.add(relPath);
+      logInfo(
+        'installEngineMcpRules',
+        `stamped ${relPath} with server=${selected!.fileId} version=${version}`,
+      );
+    }
+  }
+
+  // Orphan-delete the whole subtree, not just markdown: the tree may have grown
+  // subdirectories, and anything the current selection did not contribute is by
+  // definition left over from a previous one.
+  for (const absInstalled of await listFilesRecursive(destDir)) {
+    const relPath = path.relative(destDir, absInstalled);
+    if (wanted.has(relPath)) continue;
+    await removeFile(absInstalled);
+    logInfo('installEngineMcpRules', `removed orphan ${relPath}`);
+  }
+
+  if (wanted.size === 0) {
+    logInfo(
+      'installEngineMcpRules',
+      `no rules tree for the selected server, swept .unikit/system/${ENGINE_MCP_DIR_NAME}/`,
+    );
+    return;
+  }
+
+  // A tree without an entry point is a data defect worth naming: every skill
+  // that reads the profile enters through INDEX.md, so the rest of the tree is
+  // delivered but unreachable. Still a warn, not an abort — the run degrades to
+  // "no known exceptions", which is a supported state.
+  if (!wanted.has(MCP_RULES_INDEX_FILE)) {
+    logWarn(
+      'installEngineMcpRules',
+      `rules tree of ${selected?.fileId} has no ${MCP_RULES_INDEX_FILE} — skills enter through it`,
+    );
+  }
+
+  logInfo(
+    'installEngineMcpRules',
+    `installed ${wanted.size} rules file(s) into .unikit/system/${ENGINE_MCP_DIR_NAME}/`,
+  );
 }
 
 // --- Module registry snapshot installation ---

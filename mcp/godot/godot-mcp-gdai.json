@@ -1,8 +1,11 @@
 {
   "key": "GodotMCP",
   "is_engine": true,
-  "displayName": "GDAI Godot MCP [Paid][Recommended]",
-  "instruction": "",
+  "order": 2,
+  "displayName": "GDAI Godot MCP [Paid]",
+  "docs": {
+    "repo": "https://github.com/3ddelano/gdai-mcp-plugin-godot"
+  },
   "config": {
 	  "command": "uv",
       "args": ["run", "./addons/gdai-mcp-plugin-godot/gdai_mcp_server.py"]
@@ -41,6 +44,12 @@
 		"clear_output_logs",
 		"view_script",
 		"search_files"
+      ],
+      "unikit-verify": [
+        "get_godot_errors",
+        "get_project_info",
+        "view_script",
+        "search_files"
       ]
     }
   }

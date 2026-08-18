@@ -21,7 +21,9 @@ fi
 source "$SCRIPT_DIR/test-fixtures.sh"
 
 TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+# The dump has to run BEFORE the cleanup: `set -e` aborts on the first failed assertion,
+# and the assertion message alone cannot say what the engine-mcp tree contained.
+trap 'AIF_EXIT_CODE=$?; if [[ $AIF_EXIT_CODE -ne 0 ]]; then dump_mcp_state "$TMPDIR"; fi; rm -rf "$TMPDIR"' EXIT
 
 # Ensure dist/ is up to date (skipped when a parent runner already built).
 ensure_build
@@ -181,6 +183,16 @@ GATE_CONTRACT_PATH="$CLAUDE_DIR/.unikit/system/gate-result-contract.md"
 assert_exists "$GATE_CONTRACT_PATH" "gate-result-contract.md created in .unikit/system/"
 assert_contains "$GATE_CONTRACT_PATH" 'unikit-gate-result' \
   "gate-result-contract.md carries the unikit-gate-result fence name"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
+# servers (mcp.servers = []), so nothing contributes a shard and the directory
+# must NOT be created. installEngineMcpShards treats an empty set as a normal
+# path (an engine with no shard-carrying MCP), not a warning.
+# The populated branch is Test 13b below.
+# ─────────────────────────────────────────────────────
+assert_not_exists "$CLAUDE_DIR/.unikit/system/engine-mcp" \
+  "engine-mcp dir NOT created when no MCP server is selected (empty branch)"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-dr: design-read.md installed as a system asset under .unikit/system/gamedesign/
@@ -648,7 +660,15 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-verify/references/ENGINE_RULES.
 assert_contains "$CLAUDE_DIR/.claude/skills/unikit-verify/references/ENGINE_RULES.md" \
   "Engine Rules: Unity" "unikit-verify ENGINE_RULES.md should have Unity header"
 
-echo "  ✓ ENGINE_RULES.md: installed for unity engine (unikit + unikit-verify)"
+# unikit-plan gained a planning vocabulary in phase 2. Part 4 of test-skills.sh asserts the
+# template exists in the SOURCE tree; this asserts it actually reaches the project. The
+# Test 7 fixture has unikit-plan in installedSkills (see the config at the top of this file).
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "ENGINE_RULES.md should be installed for unikit-plan (unity)"
+assert_contains "$CLAUDE_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "Engine Rules: Unity" "unikit-plan ENGINE_RULES.md should have Unity header"
+
+echo "  ✓ ENGINE_RULES.md: installed for unity engine (unikit + unikit-verify + unikit-plan)"
 
 # unikit-memory ships a scripts/ subdir (the single self-contained material-prep.py) — the
 # first skill to do so. The non-flat transformer copies the whole skill dir, but nothing
@@ -699,7 +719,20 @@ assert_exists "$GODOT_DIR/.claude/skills/unikit-architecture/references/ENGINE_R
 assert_contains "$GODOT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" \
   "Engine Rules: Godot" "Godot ENGINE_RULES.md should have Godot header"
 
-echo "  ✓ ENGINE_RULES.md: installed for godot engine (both skills)"
+# The graceful-degradation half: no Godot planning vocabulary ships until phases 3-4, so
+# installEngineTemplates must fall through its `continue` branch and stay silent.
+#
+# DO NOT DELETE AS "checking the absence of something that was never there". The fixture
+# above lists only unikit + unikit-architecture in installedSkills, so this looks vacuous —
+# it is not. installEngineTemplates iterates engineConfig.skillTemplates from engines.ts and
+# NEVER consults installedSkills; it creates the skill directory itself. The unikit-plan slot
+# IS declared for godot, so the moment GODOT_RULES.md lands in
+# data/engine-templates/skills/unikit-plan/ this assertion fires — even in this fixture.
+# That is the point: phase 3 must flip it deliberately rather than discover it already green.
+assert_not_exists "$GODOT_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "unikit-plan ENGINE_RULES.md must NOT exist for godot (no vocabulary until phases 3-4)"
+
+echo "  ✓ ENGINE_RULES.md: installed for godot engine (both skills), unikit-plan absent as expected"
 
 # ─────────────────────────────────────────────────────
 # Test 9: Engine-specific rules paths
@@ -871,8 +904,8 @@ assert_contains "$CODEX_TOML" 'command = "npx"' \
   "codex stdio server should have command = \"npx\""
 assert_contains "$CODEX_TOML" '^\[mcp_servers\.UnityMCP\]$' \
   "codex toml should contain [mcp_servers.UnityMCP] section"
-assert_contains "$CODEX_TOML" 'url = "http://localhost:8085/mcp"' \
-  "codex http server should have url = \"http://localhost:8085/mcp\""
+assert_contains "$CODEX_TOML" 'url = "http://127.0.0.1:8080/mcp"' \
+  "codex http server should have url = \"http://127.0.0.1:8080/mcp\""
 assert_not_contains "$CODEX_TOML" 'mcpServers' \
   "codex toml must not contain camelCase mcpServers token"
 
@@ -1109,7 +1142,7 @@ node -e "
   const unity = c.mcpServers && c.mcpServers.UnityMCP;
   if (!unity) errors.push('UnityMCP server missing');
   else {
-    if (unity.serverUrl !== 'http://localhost:8085/mcp')
+    if (unity.serverUrl !== 'http://127.0.0.1:8080/mcp')
       errors.push('UnityMCP.serverUrl wrong: ' + JSON.stringify(unity.serverUrl));
     if ('type' in unity) errors.push('UnityMCP.type must be stripped');
     if ('url' in unity) errors.push('UnityMCP.url must be renamed to serverUrl, not left in place');
@@ -1229,6 +1262,147 @@ assert_contains "$CODEX_UNIKIT_SKILL" 'mcp__context7__query-docs' \
 echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/unikit/SKILL.md"
 
 # ─────────────────────────────────────────────────────
+# Test 13b: engine-mcp rules-tree delivery (populated selection)
+# ─────────────────────────────────────────────────────
+# The two smoke fixtures above both pin mcp.servers = [], so they only exercise the
+# no-selection branch (Test 1b-mcp). This fixture selects unity-mcp-biome — the one
+# server carrying a `rules` pointer — and asserts the whole delivery contract: the
+# tree arrives, every file carries the provenance stamp, and nothing about the
+# server's capabilities rides along with it.
+#
+# The stamp assertions are the load-bearing ones. `server:` / `version:` are what a
+# skill compares the MCP-RECHECK-NOTES header against to tell a finding about the
+# configured server from one inherited from another, so a stamp that silently stops
+# being written turns that check into a no-op rather than a failure.
+# NOTE: this project is installed via run_update, so the branch under test is the
+# update.ts wiring; the init.ts call site is covered by the static grep guard in
+# test-skills.sh Part 6.
+
+MCP_SHARDS_DIR="$TMPDIR/test-mcp-shards"
+mkdir -p "$MCP_SHARDS_DIR"
+
+cat > "$MCP_SHARDS_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-biome"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$MCP_SHARDS_DIR"
+
+seed_rule "$MCP_SHARDS_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$MCP_SHARDS_DIR"
+
+MCP_RULES_BASE="$MCP_SHARDS_DIR/.unikit/system/engine-mcp"
+MCP_RULES_INDEX="$MCP_RULES_BASE/INDEX.md"
+
+assert_exists "$MCP_RULES_INDEX" \
+  "engine-mcp/INDEX.md delivered for the selected server's rules tree"
+assert_exists "$MCP_RULES_BASE/verification.md" \
+  "engine-mcp/verification.md delivered alongside the INDEX"
+
+# The stamp: provenance of THIS copy, and nothing else.
+assert_contains "$MCP_RULES_INDEX" '^server: unity-mcp-biome$' \
+  "delivered rules file carries the server id it came from"
+assert_contains "$MCP_RULES_INDEX" '^version: [0-9]+\.[0-9]+' \
+  "delivered rules file carries the measured server version"
+assert_contains "$MCP_RULES_INDEX" '^delivered: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "delivered rules file carries an ISO delivery date"
+assert_contains "$MCP_RULES_INDEX" 'not here' \
+  "delivered rules file says where to fix it (the source tree, not this copy)"
+
+# The negative half. The retired shard header shipped both banned genres into every
+# project: a count of how many servers share a defect, and a doctrine about tool-name
+# lists. Neither may come back through the stamp.
+assert_not_contains "$MCP_RULES_BASE/verification.md" '[0-9]+ of (the )?[0-9]+' \
+  "no server counter in a delivered rules file"
+
+echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped, no counters"
+
+# ─────────────────────────────────────────────────────
+# Test 13c: an engine MCP that ships NO rules tree — nothing degrades
+# ─────────────────────────────────────────────────────
+# Invariant 3 at the install layer: no rules ≠ no rights. Exactly one of the six engine
+# servers carries a rules tree today, so this is the MAJORITY case and not an edge one,
+# and its whole contract is to be indistinguishable from a well-behaved install except
+# for one absent directory. The failure it guards is a plausible one: a delivery step
+# that reads "no tree" as "misconfigured server" and drops the MCP config, the grants, or
+# both. That would look like a clean install and silently disable editor work on five of
+# the six servers — the exact shape of degradation the rules architecture forbids.
+#
+# unity-mcp-coplay is the fixture because it is the same ENGINE as biome: an assertion
+# that passed only because the engine had no MCP at all would prove nothing.
+
+MCP_NOTREE_DIR="$TMPDIR/test-mcp-no-rules-tree"
+mkdir -p "$MCP_NOTREE_DIR"
+
+cat > "$MCP_NOTREE_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-coplay"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement", "unikit-verify", "unikit-memory"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$MCP_NOTREE_DIR"
+
+seed_rule "$MCP_NOTREE_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$MCP_NOTREE_DIR"
+
+# The one visible difference: no tree to deliver, so no directory. Absent, not empty —
+# an empty directory would read to a skill as a tree whose files failed to arrive.
+assert_not_exists "$MCP_NOTREE_DIR/.unikit/system/engine-mcp" \
+  "no rules tree for the selected server leaves the engine-mcp dir absent (not empty)"
+
+# ...and nothing else differs. The selection is still live, and the mechanical evidence
+# of that is the GRANTS: `update` never rewrites the MCP config itself (configureMcp is
+# driven by the init wizard, covered separately in Test 12), but it does re-run the
+# frontmatter injection from `mcp.servers` on every run. A server the delivery step had
+# written off would inject nothing, and its tools would be unreachable no matter what
+# .mcp.json still said.
+assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__UnityMCP__' \
+  "tool grants are injected for a server that ships no rules tree"
+assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-verify/SKILL.md" 'mcp__UnityMCP__' \
+  "the verify skill keeps its grants too (both sides of the pipeline stay live)"
+
+# ...layer A still arrives, and it is what carries the obligations when a tree does not:
+assert_exists "$MCP_NOTREE_DIR/.unikit/system/dev-principles.md" \
+  "dev-principles.md is delivered regardless of whether the server has a rules tree"
+
+# ...and the unrelated per-skill assets are untouched by the rules-tree cutover. The
+# scripts/ subdir is the one non-markdown payload any skill ships, so it is the first
+# thing a change to the delivery loop would break.
+assert_exists "$MCP_NOTREE_DIR/.claude/skills/unikit-memory/scripts/material-prep.py" \
+  "the scripts/ subdir still ships (the rules-tree cutover did not touch skill assets)"
+
+echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"
+
+# ─────────────────────────────────────────────────────
 # Test 14: resolveExistingEngine verdict matrix (wizard engine reuse)
 # ─────────────────────────────────────────────────────
 # Pure-function contract for the init wizard Step 2 skip: the exported
@@ -1309,6 +1483,107 @@ if [[ "$RESOLVE_TRIMMED" != *'"action":"use"'* ]] || [[ "$RESOLVE_TRIMMED" != *'
 fi
 
 echo "  ✓ resolveExistingEngine(' unity ') -> action=use, engine=unity (trim applied)"
+
+# ─────────────────────────────────────────────────────
+# Test 14b: MCP picker pre-selection (wizard remembers the previous choice)
+# ─────────────────────────────────────────────────────
+# The wizard is interactive and never runs in this smoke, so the contract is
+# tested through the three exported pure helpers instead of the prompt:
+#   sortMcpChoices        — order asc, missing order last, ties by fileId
+#   isMcpPreselected      — checkbox: null = fresh (all checked), array = mirror
+#   resolveMcpGroupDefault— radio: INDEX of the restored entry, or undefined
+# The regression this guards: once two servers share one key (Unity ships biome
+# + coplay) the picker becomes a radio, and a radio has no notion of "already
+# installed" — a blind Enter on re-init would silently swap the engine MCP.
+
+MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const { sortMcpChoices, isMcpPreselected, resolveMcpGroupDefault } =
+    await import('./dist/cli/wizard/prompts.js');
+
+  // Deliberately supplied out of order, with one entry carrying no \`order\`.
+  const group = sortMcpChoices([
+    { fileId: 'unity-mcp-coplay', displayName: 'Coplay', isEngine: true, order: 2 },
+    { fileId: 'zz-no-order',      displayName: 'NoOrder', isEngine: true },
+    { fileId: 'unity-mcp-biome',  displayName: 'Biome',  isEngine: true, order: 1 },
+  ]);
+
+  process.stdout.write(JSON.stringify({
+    sorted:        group.map(e => e.fileId),
+    freshDefault:  resolveMcpGroupDefault(group, null),
+    reinitDefault: resolveMcpGroupDefault(group, ['unity-mcp-coplay']),
+    absentDefault: resolveMcpGroupDefault(group, ['not-in-this-group']),
+    freshChecked:  isMcpPreselected('context7', null),
+    reinitChecked: isMcpPreselected('context7', ['context7']),
+    reinitUnchecked: isMcpPreselected('context7', ['something-else']),
+  }));
+" 2>/dev/null)
+
+if [[ "$MCP_DEFAULTS" != *'"sorted":["unity-mcp-biome","unity-mcp-coplay","zz-no-order"]'* ]]; then
+  echo "Assertion failed: sortMcpChoices should order by order asc with missing last, got: $MCP_DEFAULTS"
+  exit 1
+fi
+# A fresh install must NOT pin a default — inquirer then pre-selects choice 0,
+# which is the order:1 recommendation.
+if [[ "$MCP_DEFAULTS" == *'"freshDefault"'* ]]; then
+  echo "Assertion failed: resolveMcpGroupDefault(group, null) must be undefined (omitted from JSON), got: $MCP_DEFAULTS"
+  exit 1
+fi
+if [[ "$MCP_DEFAULTS" != *'"reinitDefault":1'* ]]; then
+  echo "Assertion failed: re-init with coplay installed should default to index 1, got: $MCP_DEFAULTS"
+  exit 1
+fi
+if [[ "$MCP_DEFAULTS" == *'"absentDefault"'* ]]; then
+  echo "Assertion failed: nothing from the group installed -> default must be undefined (never pre-select Skip), got: $MCP_DEFAULTS"
+  exit 1
+fi
+if [[ "$MCP_DEFAULTS" != *'"freshChecked":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"reinitChecked":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"reinitUnchecked":false'* ]]; then
+  echo "Assertion failed: isMcpPreselected contract broken (null=all checked, array=mirror), got: $MCP_DEFAULTS"
+  exit 1
+fi
+
+echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1"
+
+# ─────────────────────────────────────────────────────
+# Test 14c: configByPlatform resolution writes a token-free command
+# ─────────────────────────────────────────────────────
+# Fennara is the only config shipping configByPlatform and NO plain `config`:
+# its binary lives at a different absolute path on each OS. Two things must hold
+# after configureMcp — the server appears at all (the scanMcpDirectory relaxation
+# that stopped requiring `config`), and the persisted command carries no
+# unexpanded `{{...}}` token.
+# The assertion is deliberately platform-agnostic: it checks for the ABSENCE of
+# tokens, never for a concrete path, so it holds on all three platforms.
+
+FENNARA_MCP_DIR="$TMPDIR/test-fennara-mcp"
+mkdir -p "$FENNARA_MCP_DIR"
+
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const servers = await discoverMcpServers('godot');
+  await configureMcp(target, servers, ['godot-mcp-fennara'], 'claude');
+" "$FENNARA_MCP_DIR" > /dev/null 2>&1)
+
+FENNARA_JSON="$FENNARA_MCP_DIR/.mcp.json"
+assert_exists "$FENNARA_JSON" "fennara (configByPlatform-only) must reach the writer and produce .mcp.json"
+assert_contains "$FENNARA_JSON" 'GodotMCP' "fennara must be written under the GodotMCP key"
+assert_not_contains "$FENNARA_JSON" '\{\{' \
+  "resolved fennara config must contain no unexpanded {{...}} token"
+
+FENNARA_CMD=$(node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const s = c.mcpServers && c.mcpServers.GodotMCP;
+  console.log(s && s.command ? s.command : 'missing');
+" "$FENNARA_JSON")
+
+if [[ "$FENNARA_CMD" == "missing" ]] || [[ "$FENNARA_CMD" != *"fennara-mcp"* ]]; then
+  echo "Assertion failed: fennara resolved command should point at a fennara-mcp binary, got \"$FENNARA_CMD\""
+  exit 1
+fi
+
+echo "  ✓ configByPlatform: fennara resolves to a token-free absolute command for $(node -p 'process.platform')"
 
 # ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install

@@ -27,7 +27,31 @@ fi
 source "$SCRIPT_DIR/test-fixtures.sh"
 
 TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+
+# Test 30h swaps a package MCP config in place; BIOME_JSON_BACKUP names the copy it
+# has to be restored from. Restoring it belongs in the trap and not next to the test:
+# `set -e` aborts on the first failed assertion, and a run that leaves a doctored
+# config behind in the working tree poisons every later run and the repo besides.
+BIOME_JSON="$ROOT_DIR/mcp/unity/unity-mcp-biome.json"
+BIOME_JSON_BACKUP=""
+restore_package_state() {
+    # First statement, so it captures the status that triggered the trap rather than the
+    # status of anything this function does.
+    local exit_code=$?
+    if [[ -n "$BIOME_JSON_BACKUP" && -f "$BIOME_JSON_BACKUP" ]]; then
+        cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
+    fi
+    # A failing run gets the engine-mcp evidence dumped before the temp tree goes: the
+    # assertion that aborted printed one path and nothing about the state around it.
+    if [[ $exit_code -ne 0 ]]; then
+        dump_mcp_state "$TMPDIR"
+    fi
+    rm -rf "$TMPDIR"
+}
+# INT/TERM as well as EXIT: an interrupted run that skipped the restore would
+# leave a doctored config in the WORKING TREE, not in a temp dir — it would
+# poison every later run and the repository besides.
+trap restore_package_state EXIT INT TERM
 
 PROJECT_DIR="$TMPDIR/update-smoke"
 mkdir -p "$PROJECT_DIR"
@@ -1437,6 +1461,496 @@ if grep -q "GEN_TAMPERED_BY_TEST" "$GENRE_PROFILE"; then
     exit 1
 fi
 echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30e: engine-mcp assets on update — the ONLY mechanical guard on the update.ts
+# wiring. Three legs, because the same call has three branches and only one of them is
+# about writing files:
+#   Leg 1 — a pre-cutover shard profile on disk is SWEPT (the migration path). System
+#           assets have NO migration chain, so this orphan-delete is the only thing that
+#           will ever remove the three shards a pre-cutover project still carries.
+#   Leg 2 — the selected server's rules tree is DELIVERED, stamped (the fresh path).
+#   Leg 3 — a hand-edited copy is REFRESHED, and a file the tree does not contain is
+#           removed (tamper-refresh + recursive orphan-delete).
+# ─────────────────────────────────────────────
+CONFIG="$DEVPRIN_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineMcpKey = 'UnityMCP';
+    c.mcp = { servers: ['unity-mcp-biome'] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
+
+# Leg 1 — the UPGRADE path. Every project installed before the cutover carries the three
+# shards on disk, and the orphan-delete inside installEngineMcpRules is the only thing
+# that will ever remove them: system assets have no migration chain. Two of the three
+# names are absent from the rules tree and go as orphans; `verification.md` survives as a
+# NAME and is overwritten instead — which is the point of seeding all three with the same
+# marker. A sweep that only removed files would leave the pre-cutover body in place under
+# a name the new tree still uses, and no assertion on the other two would notice.
+mkdir -p "$MCP_SHARD_DIR"
+for shard in capabilities scene-authoring verification; do
+    echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_SHARD_DIR/$shard.md"
+done
+
+MCP_SHARD_OUT1="$TMPDIR/update-mcp-shards-1.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT1" 2>&1)
+
+for shard in capabilities scene-authoring; do
+    assert_not_exists "$MCP_SHARD_DIR/$shard.md" \
+        "update sweeps the pre-cutover engine-mcp $shard.md (no stale profile survives)"
+done
+assert_not_contains "$MCP_SHARD_DIR/verification.md" 'STALE_PRE_CUTOVER_PROFILE' \
+    "a pre-cutover shard whose name the rules tree reuses is overwritten, not left in place"
+echo "  ✓ engine-mcp: a pre-cutover profile is swept / overwritten on update (update.ts wiring)"
+
+# The same update that swept the shards delivered the tree in their place — one call,
+# both branches, which is why Leg 1 does not need its own re-run.
+assert_exists "$MCP_SHARD_DIR/INDEX.md" \
+    "update delivers the selected server's rules tree in place of the swept shards"
+assert_contains "$MCP_SHARD_DIR/INDEX.md" '^server: unity-mcp-biome$' \
+    "the delivered tree is stamped with the server it came from"
+
+# Leg 2 — the FRESH path. Nothing on disk, a populated selection: the tree is created.
+rm -rf "$MCP_SHARD_DIR"
+MCP_SHARD_OUT2="$TMPDIR/update-mcp-shards-2.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT2" 2>&1)
+
+assert_exists "$MCP_SHARD_DIR/INDEX.md" \
+    "selecting an engine MCP delivers its rules tree on a clean project"
+assert_exists "$MCP_SHARD_DIR/verification.md" \
+    "the whole tree is delivered, not just its entry point"
+echo "  ✓ engine-mcp: the selected server's rules tree is delivered on update"
+
+# Leg 3 — TAMPER-REFRESH + recursive orphan-delete. System assets are not hash-tracked,
+# so a hand-edited copy must be overwritten on the next update rather than kept; and the
+# sweep must reach a nested path, since the tree is free to grow subdirectories and a
+# `*.md`-only loop would leave a stale one behind forever.
+echo "HAND_EDITED" > "$MCP_SHARD_DIR/INDEX.md"
+mkdir -p "$MCP_SHARD_DIR/stale-subdir"
+echo "LEFTOVER" > "$MCP_SHARD_DIR/stale-subdir/orphan.txt"
+
+MCP_SHARD_OUT3="$TMPDIR/update-mcp-shards-3.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT3" 2>&1)
+
+assert_not_contains "$MCP_SHARD_DIR/INDEX.md" 'HAND_EDITED' \
+    "a hand-edited rules file is rewritten on update (system assets are not hash-tracked)"
+assert_not_exists "$MCP_SHARD_DIR/stale-subdir/orphan.txt" \
+    "orphan-delete reaches a nested non-markdown file (recursive, not *.md-only)"
+echo "  ✓ engine-mcp: tamper-refresh restores the tree and sweeps a nested orphan"
+
+# ─────────────────────────────────────────────
+# Test 30f: the MCP selection is part of the skill source hash
+# ─────────────────────────────────────────────
+# MCP tool injection is ADDITIVE (mcp.ts has no removal branch) and the managed-state
+# snapshot is taken AFTER injection, so installedHash always matches itself and the
+# drift check can never fire. Without the MCP component in the source hash, swapping
+# the selected server reinstalls nothing and the old mcp__* ids linger forever as the
+# union of every selection the project ever had.
+#
+# Scenario: install with coplay -> swap the config to biome -> update WITHOUT --force.
+# The frontmatter must lose the coplay-only ids and gain the biome-only ones.
+# The stale-reference leg proves the clean-replace: removeSkillsByName now runs on ANY
+# reinstall decision, not only under --force, so an orphaned reference file is swept.
+#
+# NOTE on coverage: Test 2 above (second update -> `changed: 0`) is the guard against
+# the formulas in buildManagedSkillsState and updateSkills diverging — a mismatch would
+# reinstall everything on every run and Test 2 would fail immediately. It covers the
+# SKILL half only; subagents print no counters (update.ts renders a `Skills status`
+# block and an unconditional `Subagents updated` line), so the subagent side has no
+# observable signal. Accepted: both formulas are edited together in one place.
+
+MCPHASH_DIR="$TMPDIR/update-mcp-source-hash"
+mkdir -p "$MCPHASH_DIR"
+cat > "$MCPHASH_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-coplay"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$MCPHASH_DIR"
+
+MCPHASH_OUT1="$TMPDIR/update-mcp-hash-1.log"
+(cd "$MCPHASH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCPHASH_OUT1" 2>&1)
+
+MCPHASH_SKILL="$MCPHASH_DIR/.claude/skills/unikit-implement/SKILL.md"
+assert_exists "$MCPHASH_SKILL" "unikit-implement must be installed for the MCP source-hash test"
+assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__read_console' \
+    "coplay-only tool id injected on the first update"
+
+# Plant an orphan reference file: the package does not ship it, so a clean replace
+# must remove it. Under the old `force &&` guard it would survive forever.
+MCPHASH_STALE="$MCPHASH_DIR/.claude/skills/unikit-implement/references/stale.md"
+mkdir -p "$(dirname "$MCPHASH_STALE")"
+echo "STALE_REFERENCE" > "$MCPHASH_STALE"
+
+# Swap the selection. Nothing else changes — no --force.
+MCPHASH_CONFIG="$MCPHASH_DIR/.unikit.json"
+CONFIG="$MCPHASH_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.mcp = { servers: ['unity-mcp-biome'] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+MCPHASH_OUT2="$TMPDIR/update-mcp-hash-2.log"
+(cd "$MCPHASH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCPHASH_OUT2" 2>&1)
+
+if grep -q 'mcp__UnityMCP__read_console' "$MCPHASH_SKILL"; then
+    echo "Assertion failed: swapping the MCP selection did NOT drop the coplay-only tool id"
+    echo "  (the MCP selection is missing from the skill source hash)"
+    exit 1
+fi
+# Biome grants executors a wildcard, so the biome-side probe is the wildcard entry
+# itself — there is no biome-only NAME left to look for. It is a strictly sharper
+# probe than the name it replaces: `mcp__UnityMCP__*` can only come from the biome
+# entry, and the assertion above already proved coplay's names are gone.
+assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__\*' \
+    "biome wildcard grant injected after the selection swap (no --force)"
+assert_not_exists "$MCPHASH_STALE" \
+    "clean replace on any reinstall sweeps an orphaned reference file (not only under --force)"
+
+echo "  ✓ MCP selection in source hash: swap reinstalls, dead tool ids dropped, orphan references swept"
+
+# ─────────────────────────────────────────────
+# Test 30g: switching the ENGINE drops the grants of the old engine's MCP server
+# ─────────────────────────────────────────────
+# Phase 0, measurement 0.2 (plan task 2). Sibling of Test 30f, different path:
+# 30f swaps one Unity server for another (`engine` unchanged); here the ENGINE
+# itself changes and the MCP selection empties out. This is the last place a dead
+# grant is still possible through the RE-INSTALL path: `injectMcpRules` now syncs
+# rather than appends, but a deselected server contributes no entry for this skill at
+# all, so its sync never runs and only a source-hash reinstall can clear the ids.
+# Test 30h covers the other half — the server stays selected and its grants narrow.
+#
+# Expectation (verified, not reasoned about): `hashing.ts` folds BOTH `engine:<id>`
+# and the MCP component into the source hash, so unity+biome -> godot+none must
+# reinstall every skill and take the stale ids with it.
+#
+# Verdict is mirrored into
+# .ai-factory/mcp-features/studies/2026-08-18-mcp-rules-architecture/PHASE-0-measurements.md
+# On failure this prints the SURVIVING frontmatter entries, not just the file name —
+# a bare "assertion failed" gives nothing to confirm the verdict with.
+
+ENGSWITCH_DIR="$TMPDIR/update-engine-switch-grants"
+mkdir -p "$ENGSWITCH_DIR"
+cat > "$ENGSWITCH_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-biome"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$ENGSWITCH_DIR"
+
+ENGSWITCH_OUT1="$TMPDIR/update-engine-switch-1.log"
+(cd "$ENGSWITCH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$ENGSWITCH_OUT1" 2>&1)
+
+ENGSWITCH_SKILL="$ENGSWITCH_DIR/.claude/skills/unikit-implement/SKILL.md"
+assert_exists "$ENGSWITCH_SKILL" "unikit-implement must be installed for the engine-switch grant test"
+assert_contains "$ENGSWITCH_SKILL" 'mcp__UnityMCP__' \
+    "unity+biome install injects mcp__UnityMCP__ grants into unikit-implement frontmatter"
+
+# Switch the engine and deselect every server. Nothing else changes — no --force.
+ENGSWITCH_CONFIG="$ENGSWITCH_DIR/.unikit.json"
+CONFIG="$ENGSWITCH_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engine = 'godot';
+    c.engineMcpKey = null;
+    c.mcp = { servers: [] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+ENGSWITCH_OUT2="$TMPDIR/update-engine-switch-2.log"
+(cd "$ENGSWITCH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$ENGSWITCH_OUT2" 2>&1)
+
+# The skill must still be there — a grant that vanished because the whole skill
+# vanished proves nothing about grant cleanup.
+assert_exists "$ENGSWITCH_SKILL" "unikit-implement is still installed after the engine switch"
+
+if grep -q 'mcp__UnityMCP__' "$ENGSWITCH_SKILL"; then
+    echo "Assertion failed: switching the engine did NOT drop the old server's mcp__UnityMCP__ grants"
+    echo "  (a deselected server runs no sync of its own, so only a reinstall can clear them —"
+    echo "   the engine is missing from the skill source hash, or the reinstall did not fire)"
+    echo "  File: $ENGSWITCH_SKILL"
+    echo "--- surviving frontmatter entries ---"
+    grep -n 'mcp__UnityMCP__' "$ENGSWITCH_SKILL" | head -10
+    echo "-------------------------------------"
+    exit 1
+fi
+
+echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clears stale mcp__UnityMCP__ grants (0.2 CONFIRMED)"
+
+# ─────────────────────────────────────────────
+# Test 30h: narrowing a server's grants clears the dead names it left behind
+# ─────────────────────────────────────────────
+# The real upgrade path for every existing user, and the one neither 30f nor 30g
+# reaches: the engine does not change, the selected servers do not change — only the
+# grant list INSIDE the server's own JSON does.
+#
+# `mcpHashComponent` hashes `mcp:<engineMcpKey>|<sorted fileIds>`, i.e. the INPUT of
+# the injection, not its output. Both are identical here, so no artifact's source hash
+# moves and `skipUnchanged` keeps the installed copy. The named grants therefore
+# survive on disk unless `injectMcpRules` removes them itself.
+#
+# The subject is a SUBAGENT on purpose: the pipeline skills get their sources rewritten
+# elsewhere in this branch (which shifts their hash and hides the defect), while
+# `unikit-implement-coordinator` is not touched by any of that work. Its hash never
+# moves, so it is the artifact where a missing removal branch stays visible.
+
+NARROW_DIR="$TMPDIR/update-narrowed-grants"
+mkdir -p "$NARROW_DIR"
+cat > "$NARROW_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-biome"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement"],
+      "installedSubagents": ["unikit-implement-coordinator"]
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$NARROW_DIR"
+
+# Stand in the shoes of a project installed BEFORE the cutover: same key, same file id,
+# a named grant list. Only `allowed-tools` differs from what the package ships today.
+BIOME_JSON_BACKUP="$TMPDIR/unity-mcp-biome.json.orig"
+cp "$BIOME_JSON" "$BIOME_JSON_BACKUP"
+
+BIOME_JSON="$BIOME_JSON" BIOME_SRC="$BIOME_JSON_BACKUP" node -e "
+    const fs=require('fs');
+    const m=JSON.parse(fs.readFileSync(process.env.BIOME_SRC,'utf8'));
+    m['allowed-tools'].agents['unikit-implement-coordinator'] = ['scene_change_plan','get_console'];
+    fs.writeFileSync(process.env.BIOME_JSON, JSON.stringify(m,null,2));
+"
+
+NARROW_OUT1="$TMPDIR/update-narrowed-1.log"
+(cd "$NARROW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NARROW_OUT1" 2>&1)
+
+NARROW_AGENT="$NARROW_DIR/.claude/agents/unikit-implement-coordinator.md"
+assert_exists "$NARROW_AGENT" "unikit-implement-coordinator must be installed for the narrowed-grants test"
+assert_contains "$NARROW_AGENT" 'mcp__UnityMCP__scene_change_plan' \
+    "the pre-cutover named grant is injected on the first update"
+
+# Restore the shipped config: same engine, same selection, wildcard grants.
+cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
+
+NARROW_OUT2="$TMPDIR/update-narrowed-2.log"
+(cd "$NARROW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NARROW_OUT2" 2>&1)
+
+if grep -q 'mcp__UnityMCP__scene_change_plan' "$NARROW_AGENT"; then
+    echo "Assertion failed: narrowing the grants did NOT drop the dead name from the frontmatter"
+    echo "  (injectMcpRules appended instead of syncing: nothing reinstalls this subagent,"
+    echo "   so its own removal branch is the only thing that can clear the entry)"
+    echo "  File: $NARROW_AGENT"
+    echo "--- surviving frontmatter entries ---"
+    grep -n 'mcp__UnityMCP__' "$NARROW_AGENT" | head -10
+    echo "-------------------------------------"
+    exit 1
+fi
+assert_contains "$NARROW_AGENT" 'mcp__UnityMCP__\*' \
+    "the wildcard grant replaces the names it superseded"
+assert_contains "$NARROW_AGENT" '^  - Read$' \
+    "hand-authored (non-mcp__) entries survive the sync untouched"
+
+BIOME_JSON_BACKUP=""
+echo "  ✓ narrowed grants: dead mcp__ names removed without a reinstall, hand-authored entries kept"
+
+# ─────────────────────────────────────────────
+# Test 30i: the MCP findings log follows the server it belongs to
+# ─────────────────────────────────────────────
+# `.unikit/MCP-RECHECK-NOTES.md` records what one MCP server was caught doing.
+# Carried across a server switch it would be worse than lost — it would read as
+# evidence about a server that never produced it. So the installer parks it under
+# the outgoing server's id and restores it on the way back.
+#
+# Module-level rather than CLI-level, and the reason is a contract, not
+# convenience: the swap's live caller is `init`, whose previous selection comes
+# from the config it is about to overwrite. `update` never re-asks for servers, so
+# its call is a documented no-op and drives none of this. That leaves `init`, and
+# `init` is a wizard no smoke test can drive. Same precedent as the TomlMcpWriter
+# and `sortMcpChoices` checks: exercise the unit through node.
+#
+# Covered: park under the OUTGOING id, restore the incoming server's own file,
+# never overwrite a taken archive slot, and idempotence when nothing changed.
+
+NOTES_SWAP_TMP=$(mktemp -d)
+NOTES_SWAP_ERR="$TMPDIR/update-notes-swap.err"
+NOTES_SWAP_RESULT=$(cd "$ROOT_DIR" && NOTES_ROOT="$NOTES_SWAP_TMP" node --input-type=module -e "
+  import fs from 'fs';
+  import path from 'path';
+  import { swapMcpRecheckNotes } from './dist/core/installer/mcp-notes.js';
+
+  const root = process.env.NOTES_ROOT;
+  const unikit = path.join(root, '.unikit');
+  fs.mkdirSync(unikit, { recursive: true });
+  const active = path.join(unikit, 'MCP-RECHECK-NOTES.md');
+  const archive = id => path.join(unikit, 'MCP-RECHECK-NOTES.archive.' + id + '.md');
+  const why = [];
+  const read = f => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').trim() : null);
+
+  // park: biome -> fennara
+  fs.writeFileSync(active, 'BIOME_FINDING');
+  await swapMcpRecheckNotes(root, 'unity-mcp-biome', 'godot-mcp-fennara');
+  if (fs.existsSync(active)) why.push('active-survived-the-switch');
+  if (read(archive('unity-mcp-biome')) !== 'BIOME_FINDING') why.push('parked-under-wrong-id-or-rewritten');
+
+  // restore: fennara -> biome, with fennara's own notes parked in turn
+  fs.writeFileSync(active, 'FENNARA_FINDING');
+  await swapMcpRecheckNotes(root, 'godot-mcp-fennara', 'unity-mcp-biome');
+  if (read(active) !== 'BIOME_FINDING') why.push('restore-did-not-return-the-servers-own-notes');
+  if (read(archive('godot-mcp-fennara')) !== 'FENNARA_FINDING') why.push('outgoing-notes-not-parked-on-restore');
+  if (fs.existsSync(archive('unity-mcp-biome'))) why.push('archive-left-beside-the-restored-active');
+
+  // a taken archive slot is never overwritten — it is evidence of an interrupted run
+  fs.writeFileSync(archive('unity-mcp-biome'), 'ORPHAN_FROM_A_BROKEN_RUN');
+  fs.writeFileSync(active, 'SECOND_BIOME_FINDING');
+  await swapMcpRecheckNotes(root, 'unity-mcp-biome', 'godot-mcp-fennara');
+  if (read(archive('unity-mcp-biome')) !== 'ORPHAN_FROM_A_BROKEN_RUN') why.push('taken-archive-slot-overwritten');
+  if (read(path.join(unikit, 'MCP-RECHECK-NOTES.archive.unity-mcp-biome.1.md')) !== 'SECOND_BIOME_FINDING')
+    why.push('collision-not-indexed');
+
+  // idempotence: same server in and out touches nothing
+  const before = fs.readdirSync(unikit).sort().join('|');
+  await swapMcpRecheckNotes(root, 'godot-mcp-fennara', 'godot-mcp-fennara');
+  if (fs.readdirSync(unikit).sort().join('|') !== before) why.push('no-op-branch-touched-the-disk');
+
+  console.log(why.length ? why.join(' ') : 'ok');
+" 2>"$NOTES_SWAP_ERR" || echo "swap-error")
+rm -rf "$NOTES_SWAP_TMP"
+
+if [[ "$NOTES_SWAP_RESULT" != "ok" ]]; then
+    echo "Assertion failed: MCP recheck-notes swap is broken: $NOTES_SWAP_RESULT"
+    echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
+    exit 1
+fi
+
+# The collision branch must also SAY so. Indexing the archive silently would leave the
+# orphan of an interrupted run sitting on disk with nothing pointing at it: the notes are
+# hand-authored, no installer step ever revisits them, and the only moment anyone can
+# learn that two files now claim the same server is the run that made it happen.
+if ! grep -qF 'archive name taken' "$NOTES_SWAP_ERR"; then
+    echo "Assertion failed: an indexed archive slot was written without a WARN"
+    echo "  (the .N file is the outcome; the warning is the only notice the operator gets)"
+    echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
+    exit 1
+fi
+
+echo "  ✓ recheck notes: parked under the outgoing server, restored on the way back, archives never overwritten (collision warns)"
+
+# ─────────────────────────────────────────────
+# Test 30j: an engine switch through `update` parks the findings log too
+# ─────────────────────────────────────────────
+# Sibling of 30i, and the half a module-level test cannot reach. `update` does not
+# re-ask for servers, but the selection still moves under it — editing
+# `.unikit.json` and re-running is how an engine switch arrives here, and Test 30g
+# above proves the command honours it everywhere else (skills reinstalled, stale
+# grants cleared). The findings log has to follow the same switch.
+#
+# The ordering is the whole point and it fails silently: the previous server id
+# comes from the provenance stamp in the tree on disk, and `installEngineMcpRules`
+# overwrites that stamp. Read it after, and the "previous" server is the new one,
+# the swap no-ops, and biome's findings sit active under fennara looking like
+# evidence about fennara.
+
+NOTES_CLI_DIR="$TMPDIR/update-notes-engine-switch"
+mkdir -p "$NOTES_CLI_DIR"
+cat > "$NOTES_CLI_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-biome"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$NOTES_CLI_DIR"
+
+NOTES_CLI_OUT1="$TMPDIR/update-notes-cli-1.log"
+(cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT1" 2>&1)
+
+# The log is user-authored (`/unikit-mcp-trap` writes it); seed it by hand, because
+# the installer must only ever rename this file, never create or rewrite it.
+NOTES_CLI_ACTIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.md"
+NOTES_CLI_ARCHIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.archive.unity-mcp-biome.md"
+echo "BIOME_FINDING" > "$NOTES_CLI_ACTIVE"
+
+CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engine = 'godot';
+    c.engineMcpKey = 'GodotMCP';
+    c.mcp = { servers: ['godot-mcp-fennara'] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+NOTES_CLI_OUT2="$TMPDIR/update-notes-cli-2.log"
+(cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT2" 2>&1)
+
+if [[ -f "$NOTES_CLI_ACTIVE" ]]; then
+    echo "Assertion failed: an engine switch through update left the old server's findings active"
+    echo "  (the previous id is read from the delivered stamp — reading it AFTER"
+    echo "   installEngineMcpRules rewrites the stamp makes the swap a silent no-op)"
+    echo "--- content still active ---"
+    cat "$NOTES_CLI_ACTIVE"
+    echo "----------------------------"
+    exit 1
+fi
+assert_exists "$NOTES_CLI_ARCHIVE" \
+    "the log is parked under the id of the server that produced it"
+assert_contains "$NOTES_CLI_ARCHIVE" 'BIOME_FINDING' \
+    "parking is a rename — the installer never rewrites note content"
+
+# The same switch must also take the outgoing server's RULES with it. fennara ships no
+# rules tree, so the correct end state is an empty tree — biome's files swept, nothing
+# put back. Leaving them would be the worse half of the same bug the parked notes guard
+# against: a project reading one server's exceptions while talking to another.
+NOTES_CLI_RULES="$NOTES_CLI_DIR/.unikit/system/engine-mcp"
+assert_not_exists "$NOTES_CLI_RULES/INDEX.md" \
+    "a server switch sweeps the outgoing server's rules tree (INDEX.md does not survive)"
+assert_not_exists "$NOTES_CLI_RULES/verification.md" \
+    "the sweep covers the whole tree, not just its entry point"
+
+echo "  ✓ recheck notes: an engine switch through update parks the log and sweeps the old rules tree"
 
 # ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
