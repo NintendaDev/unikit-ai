@@ -365,25 +365,15 @@ Extensions can provide MCP (Model Context Protocol) server configurations that a
 
 #### MCP Template Format
 
-The template must contain either a `command` or `url` field, and may optionally declare tool permissions that are injected into installed skills and subagents:
+The template file is the **server config itself** — the object that lands under your key in the agent's settings file. It is written through verbatim, so it holds exactly what your MCP client expects and nothing more: no `key` (that comes from the manifest entry), no wrapper `config` object, no metadata fields.
+
+Validation is one rule: the template must carry a top-level `command` **or** `url`. A template that carries neither is rejected with a warning and that server is skipped — the rest of the install continues.
 
 ```json
 {
-  "key": "context7",
-  "displayName": "Context7 (library documentation)",
-  "instruction": "Context7: No additional configuration needed.",
-  "config": {
-    "command": "npx",
-    "args": ["-y", "@upstash/context7-mcp@latest"]
-  },
-  "allowed-tools": {
-    "agents": {
-      "my-subagent": ["resolve-library-id", "query-docs"]
-    },
-    "skills": {
-      "my-skill": ["resolve-library-id", "query-docs"]
-    }
-  }
+  "command": "npx",
+  "args": ["-y", "@upstash/context7-mcp@latest"],
+  "env": { "MY_SERVER_TOKEN": "..." }
 }
 ```
 
@@ -391,14 +381,14 @@ Or for HTTP-based servers:
 
 ```json
 {
-  "config": {
-    "type": "http",
-    "url": "http://localhost:9090/mcp"
-  }
+  "type": "http",
+  "url": "http://localhost:9090/mcp"
 }
 ```
 
-The `config` object is merged into each agent's settings file under `mcpServers.<key>`. All agents with MCP support receive the server entry:
+> The richer per-server schema used by the servers UniKit **ships** — `key`, `displayName`, `docs`, `rules`, `order`, `verified`, `configByPlatform`, `allowed-tools` — is a different format, read from the package's own `mcp/` directory. It does not apply to extension templates. See [MCP JSON schema fields](configuration.md#mcp-json-schema-fields).
+
+The template is written into each agent's settings file under `mcpServers.<key>` (the exact container and field names vary per agent — the writer handles that). All agents with MCP support receive the server entry:
 
 | Agent | MCP Settings File |
 |-------|------------------|
@@ -410,16 +400,20 @@ The `config` object is merged into each agent's settings file under `mcpServers.
 
 On `extension remove`, the key is deleted from the settings file.
 
-#### Tool Permission Injection (`allowed-tools`)
+#### Tool permissions for an extension MCP server
 
-The optional `allowed-tools` block declares which MCP tools each skill or subagent is allowed to call. At install time the tool names are expanded into the fully qualified MCP form (`mcp__<server-key>__<tool>`) and injected into the target skill/subagent frontmatter. The frontmatter field differs per agent:
+**An extension MCP server does not grant tools to skills.** Installing the extension writes the server into the agent's settings file, and that is the whole of it — an `allowed-tools` block placed in a template is not read by anything. Grant declarations are a feature of the servers UniKit ships, not of extension templates.
 
-- Claude Code uses `allowed-tools:` (comma-separated list appended to the existing value)
-- All other agents use `tools:` in the same shape
+What the extension installer does do, right after writing the server config, is **re-inject the grants of the packaged servers** into the skills and subagents those servers name as recipients. That step exists so a replacement skill delivered by your extension still receives the MCP tools it is entitled to; it never widens anything on your extension's behalf.
 
-Injection is idempotent: re-running install, update, or extension refresh merges new entries and deduplicates existing ones, never duplicating a tool already present. Removing the extension also strips the injected tool names back out of the frontmatter lists, preserving any tools that were declared manually or by other sources.
+If a skill in your extension must call your server, add the qualified name — `mcp__<your-key>__<tool>`, or `mcp__<your-key>__*` for the whole server — to that skill's own `allowed-tools:` frontmatter, which your extension ships. Whether that entry survives an `update` depends on one thing:
 
-Use `allowed-tools` when a skill must reach a specific MCP server (for example `/unikit-explore` calling Context7 for library docs), while keeping unrelated skills in the project unaffected.
+- **A skill under its own name survives.** The re-injection pass opens only the skills and subagents that a packaged server actually names as a recipient. Your own skill is not one of them, so nothing ever rewrites its frontmatter.
+- **A skill that *replaces* a packaged one may not.** If the skill you replace is a recipient of a packaged grant, the pass opens it — and it is a sync: every `mcp__`-prefixed entry the packaged servers do not currently grant is removed, yours included. Entries without that prefix (`Read`, `Bash`, `Agent`, …) are never touched.
+
+So for a replacement skill, treat the frontmatter grant as non-durable and reach your server from a skill that carries its own name instead.
+
+For how the packaged servers declare grants — wildcards for executors, a narrow list only where narrowing is the point — see [Tool grants](configuration.md#tool-grants-allowed-tools).
 
 ---
 
