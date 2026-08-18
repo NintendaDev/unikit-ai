@@ -494,8 +494,12 @@ else
     fail "env override misbehaved — got: $ENV_SEAM_RESULT"
 fi
 
+# `env -u` is mandatory, not cosmetic: test-fixtures.sh exports a suite-wide
+# UNIKIT_OFFICIAL_REGISTRY_URL (the hermetic offline-official level), so the
+# unset half of this guard has to unset it explicitly instead of relying on the
+# variable happening to be absent from the ambient environment.
 set +e
-NO_ENV_SEAM_RESULT=$(node -e "
+NO_ENV_SEAM_RESULT=$(env -u UNIKIT_OFFICIAL_REGISTRY_URL node -e "
 const { pathToFileURL } = require('url');
 import(pathToFileURL(process.argv[1]).href).then(mod => {
     const rOfficial = mod.createRegistry(null, 'unity', null);

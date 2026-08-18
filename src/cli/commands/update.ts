@@ -1,6 +1,5 @@
 import chalk from 'chalk';
 import path from 'path';
-import inquirer from 'inquirer';
 import { getCurrentVersion, loadConfig, saveConfig, type UniKitConfig } from '../../core/config.js';
 import {
   buildManagedSkillsState, getAvailableSkills, updateSkills,
@@ -208,6 +207,10 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       if (installNew) {
         for (const skill of newSkills) installNewSkills.add(skill);
       } else if (process.stdout.isTTY) {
+        // Lazy: `inquirer` is ~240ms of module graph and this is the only branch
+        // in the whole command that needs it. Every non-TTY run (the entire test
+        // suite, and CI) used to pay for it at import time.
+        const { default: inquirer } = await import('inquirer');
         const { chosen } = await inquirer.prompt([
           {
             type: 'checkbox',

@@ -1,4 +1,4 @@
-import inquirer from 'inquirer';
+import type inquirer from 'inquirer';
 import chalk from 'chalk';
 import { getAgentChoices } from '../../core/agents.js';
 import { getEngineChoices, getAllEngineIds } from '../../core/engines.js';
@@ -7,6 +7,20 @@ import { getAvailableSkills } from '../../core/installer/skills.js';
 import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
 import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
 import { OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
+
+// `inquirer` is ~240ms of module graph, and only the interactive prompts below
+// ever touch it -- a non-interactive `unikit-ai update` or `rules *` used to pay
+// that cost on every invocation just because this module sits on the static
+// import chain from `cli/index.ts`. The import above is type-only (erased at
+// compile time); the value is pulled in on first prompt and cached for the
+// rest of the process, so each consuming function opens with a local
+// `const inquirer = await loadInquirer()` and its call sites read unchanged.
+let inquirerModule: typeof inquirer | null = null;
+
+async function loadInquirer(): Promise<typeof inquirer> {
+  inquirerModule ??= (await import('inquirer')).default;
+  return inquirerModule;
+}
 
 export interface AgentWizardSelection {
   id: string;
@@ -119,6 +133,7 @@ function isCustomRegistry(stored: string | null | undefined): boolean {
 // `resolveRegistryUrl()` maps them to the official URL at runtime; no
 // migration is needed.
 async function promptRulesRegistry(engineId: string, existingRegistry: string | null): Promise<string> {
+  const inquirer = await loadInquirer();
   const isCustom = isCustomRegistry(existingRegistry);
 
   const { useCustom } = await inquirer.prompt([
@@ -190,6 +205,7 @@ export async function runWizard(
   existingInstalledSkills: string[] | null = null,
   existingMcpServers: string[] | null = null,
 ): Promise<WizardAnswers> {
+  const inquirer = await loadInquirer();
   console.log(chalk.dim('\n\u{1F4A1} Run /unikit after setup to analyze your project and generate project-relevant skills.\n'));
 
   const selectedByDefault = new Set(defaultAgentIds);

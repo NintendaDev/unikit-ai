@@ -390,6 +390,37 @@ normalize_path_for_json() {
     fi
 }
 
+# ─────────────────────────────────────────────
+# Hermetic `official` registry level
+# ─────────────────────────────────────────────
+# Every CLI invocation builds a registry chain whose `official` level is a
+# GitRegistry pointed at raw.githubusercontent.com, so an un-redirected `update`
+# or `rules *` makes a live HTTP round-trip — ~0.8s each on a good link and up
+# to the 10s fetch timeout on a bad one. A full run makes hundreds of those
+# calls: the network was by far the largest single cost in `npm test`, and a
+# green run silently depended on GitHub being reachable.
+#
+# Point the level at `test-fixtures/offline-official/` — a manifest that is
+# VALID but carries no modules. The official level then resolves instantly and
+# contributes nothing, so every chain falls through to the bundled snapshot,
+# which is the offline path every fixture-based expectation is already written
+# against. (The per-scenario `DEAD_OFFICIAL` overrides scattered through the
+# rules tests are the same trick applied one call at a time; they still set
+# their own value and still win.) A valid-but-empty manifest is used rather
+# than a non-existent path on purpose: a missing manifest makes FsRegistry emit
+# `[WARN] manifest not found` on stderr, and `assert_cmd_exit` folds stderr into
+# the same log the `--json` asserts parse — the warning would break them.
+#
+# An externally exported value also wins, so a deliberate live-network run stays
+# one variable away:
+#   UNIKIT_OFFICIAL_REGISTRY_URL=https://raw.githubusercontent.com/NintendaDev/unikit-ai-rules/main npm test
+if [[ -z "${UNIKIT_OFFICIAL_REGISTRY_URL:-}" ]]; then
+    _UNIKIT_FIXTURES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/test-fixtures"
+    UNIKIT_OFFICIAL_REGISTRY_URL="$(normalize_path_for_json "$_UNIKIT_FIXTURES_DIR/offline-official")"
+    export UNIKIT_OFFICIAL_REGISTRY_URL
+    unset _UNIKIT_FIXTURES_DIR
+fi
+
 # Resolve a fake-registry fixture name to its absolute path. The fixture
 # tree lives under `scripts/test-fixtures/<name>/` and ships a root
 # manifest.json plus at least one engine subdirectory.
