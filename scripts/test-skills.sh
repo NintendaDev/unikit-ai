@@ -561,6 +561,20 @@ fi
 #   - `order` is unique among is_engine=true entries sharing one `key` — without
 #     that the wizard's radio sort degenerates back to non-deterministic, which
 #     is the exact bug the field exists to fix
+#   - `docs.context7`, when present, is a Context7 library id (leading slash)
+#   - `docs.repo`, when present, is a URL — and is REQUIRED on is_engine entries:
+#     it is the only thing the `init` summary can generate an install line from,
+#     so without it the user is never told a plugin has to go into the editor
+#   - `rules`, when present, points at an existing directory holding an INDEX.md
+#   - the keys `shards` and `instruction` are ABSENT everywhere. Both are retired,
+#     and both would come back the same way: someone adds a server six months from
+#     now, copies the nearest config as a template, and reintroduces a mechanism
+#     nothing else reads (`shards`) or a slab of restated vendor prose that goes
+#     stale claim by claim (`instruction`). An absent-key guard is stricter than
+#     any check on their contents.
+#
+# Errors accumulate rather than exiting on the first one, and every message names
+# its file and field: fixing ten configs should take one run, not ten.
 MCP_SCHEMA_RESULT=$(node -e "
   const fs=require('fs'), path=require('path');
   const root=process.argv[1];
@@ -586,6 +600,33 @@ MCP_SCHEMA_RESULT=$(node -e "
       }
 
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
+
+      for (const dead of ['shards','instruction'])
+        if (m[dead] !== undefined) why.push('retired-key-'+dead+':'+rel);
+
+      if (m.docs !== undefined) {
+        const d=m.docs;
+        if (typeof d!=='object'||d===null||Array.isArray(d)) why.push('docs-not-object:'+rel);
+        else {
+          if (d.context7 !== undefined && (typeof d.context7!=='string'||!d.context7.startsWith('/')))
+            why.push('docs-context7-not-library-id:'+rel);
+          if (d.repo !== undefined && (typeof d.repo!=='string'||!/^https?:\/\//.test(d.repo)))
+            why.push('docs-repo-not-url:'+rel);
+        }
+      }
+      if (m.is_engine === true && !(m.docs && typeof m.docs.repo==='string' && m.docs.repo))
+        why.push('engine-without-docs-repo:'+rel);
+
+      if (m.rules !== undefined) {
+        if (typeof m.rules!=='string'||!m.rules) why.push('rules-not-string:'+rel);
+        else {
+          const rulesDir=path.resolve(dirPath, m.rules);
+          if (!fs.existsSync(rulesDir)||!fs.statSync(rulesDir).isDirectory())
+            why.push('rules-dir-missing:'+m.rules+':'+rel);
+          else if (!fs.existsSync(path.join(rulesDir,'INDEX.md')))
+            why.push('rules-dir-without-index:'+m.rules+':'+rel);
+        }
+      }
 
       if (m.configByPlatform !== undefined) {
         const c=m.configByPlatform;
@@ -613,7 +654,7 @@ MCP_SCHEMA_RESULT=$(node -e "
 " "$MCP_DIR" 2>/dev/null || echo "pass-error")
 
 if [[ "$MCP_SCHEMA_RESULT" == "ok" ]]; then
-    pass "MCP schema fields valid across all configs (verified/order/configByPlatform + order unique per engine key)"
+    pass "MCP schema fields valid across all configs (verified/order/configByPlatform/docs/rules + order unique, shards+instruction gone)"
 else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi

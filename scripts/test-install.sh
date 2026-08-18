@@ -1260,15 +1260,18 @@ assert_contains "$CODEX_UNIKIT_SKILL" 'mcp__context7__query-docs' \
 echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/unikit/SKILL.md"
 
 # ─────────────────────────────────────────────────────
-# Test 13b: engine-mcp POPULATED-selection branch — INTERIM FORM
+# Test 13b: engine-mcp rules-tree delivery (populated selection)
 # ─────────────────────────────────────────────────────
 # The two smoke fixtures above both pin mcp.servers = [], so they only exercise the
-# no-selection branch (Test 1b-mcp). This dedicated fixture selects a server that used
-# to carry three shards (unity-mcp-biome). The shard corpus was dropped with the
-# rules-tree cutover, so the selection now contributes nothing and the directory must
-# stay absent — a populated SELECTION with an empty CONTRIBUTION, which is the one
-# combination Test 1b-mcp cannot express. The fixture is kept because the rules-tree
-# delivery smoke lands on it.
+# no-selection branch (Test 1b-mcp). This fixture selects unity-mcp-biome — the one
+# server carrying a `rules` pointer — and asserts the whole delivery contract: the
+# tree arrives, every file carries the provenance stamp, and nothing about the
+# server's capabilities rides along with it.
+#
+# The stamp assertions are the load-bearing ones. `server:` / `version:` are what a
+# skill compares the MCP-RECHECK-NOTES header against to tell a finding about the
+# configured server from one inherited from another, so a stamp that silently stops
+# being written turns that check into a no-op rather than a failure.
 # NOTE: this project is installed via run_update, so the branch under test is the
 # update.ts wiring; the init.ts call site is covered by the static grep guard in
 # test-skills.sh Part 6.
@@ -1301,11 +1304,31 @@ inject_fake_registry "$MCP_SHARDS_DIR"
 seed_rule "$MCP_SHARDS_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$MCP_SHARDS_DIR"
 
-MCP_SHARD_BASE="$MCP_SHARDS_DIR/.unikit/system/engine-mcp"
-assert_not_exists "$MCP_SHARD_BASE" \
-  "engine-mcp dir NOT created for a selected server while the shard corpus is gone"
+MCP_RULES_BASE="$MCP_SHARDS_DIR/.unikit/system/engine-mcp"
+MCP_RULES_INDEX="$MCP_RULES_BASE/INDEX.md"
 
-echo "  ✓ engine-mcp: unity-mcp-biome selected, nothing contributed, directory stays absent"
+assert_exists "$MCP_RULES_INDEX" \
+  "engine-mcp/INDEX.md delivered for the selected server's rules tree"
+assert_exists "$MCP_RULES_BASE/verification.md" \
+  "engine-mcp/verification.md delivered alongside the INDEX"
+
+# The stamp: provenance of THIS copy, and nothing else.
+assert_contains "$MCP_RULES_INDEX" '^server: unity-mcp-biome$' \
+  "delivered rules file carries the server id it came from"
+assert_contains "$MCP_RULES_INDEX" '^version: [0-9]+\.[0-9]+' \
+  "delivered rules file carries the measured server version"
+assert_contains "$MCP_RULES_INDEX" '^delivered: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "delivered rules file carries an ISO delivery date"
+assert_contains "$MCP_RULES_INDEX" 'not here' \
+  "delivered rules file says where to fix it (the source tree, not this copy)"
+
+# The negative half. The retired shard header shipped both banned genres into every
+# project: a count of how many servers share a defect, and a doctrine about tool-name
+# lists. Neither may come back through the stamp.
+assert_not_contains "$MCP_RULES_BASE/verification.md" '[0-9]+ of (the )?[0-9]+' \
+  "no server counter in a delivered rules file"
+
+echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped, no counters"
 
 # ─────────────────────────────────────────────────────
 # Test 14: resolveExistingEngine verdict matrix (wizard engine reuse)

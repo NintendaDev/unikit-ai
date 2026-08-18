@@ -238,9 +238,9 @@ export async function initCommand(): Promise<void> {
       for (const line of getMcpDocsLines(discoveredServers, answers.mcpServers)) {
         console.log(chalk.dim(`    ${line}`));
       }
-      // MCP versions are deliberately not pinned, so `allowed-tools` can rot
-      // silently. Surfacing which version we last audited lets the user tell how
-      // stale the tool list may be.
+      // MCP versions are deliberately not pinned. Surfacing which version the
+      // rules tree was measured against lets the user judge how far the server
+      // has moved since — provenance, not a staleness warning.
       for (const stamp of getMcpVerifiedStamps(discoveredServers, answers.mcpServers)) {
         console.log(chalk.dim(`    ${stamp}`));
       }

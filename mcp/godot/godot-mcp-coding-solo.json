@@ -3,6 +3,9 @@
   "is_engine": true,
   "order": 3,
   "displayName": "Coding-Solo Godot MCP [Free]",
+  "docs": {
+    "repo": "https://github.com/Coding-Solo/godot-mcp"
+  },
   "config": {
     "command": "npx",
     "args": ["@coding-solo/godot-mcp"],

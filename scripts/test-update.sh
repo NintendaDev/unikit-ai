@@ -27,7 +27,20 @@ fi
 source "$SCRIPT_DIR/test-fixtures.sh"
 
 TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+
+# Test 30h swaps a package MCP config in place; BIOME_JSON_BACKUP names the copy it
+# has to be restored from. Restoring it belongs in the trap and not next to the test:
+# `set -e` aborts on the first failed assertion, and a run that leaves a doctored
+# config behind in the working tree poisons every later run and the repo besides.
+BIOME_JSON="$ROOT_DIR/mcp/unity/unity-mcp-biome.json"
+BIOME_JSON_BACKUP=""
+restore_package_state() {
+    if [[ -n "$BIOME_JSON_BACKUP" && -f "$BIOME_JSON_BACKUP" ]]; then
+        cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
+    fi
+    rm -rf "$TMPDIR"
+}
+trap restore_package_state EXIT
 
 PROJECT_DIR="$TMPDIR/update-smoke"
 mkdir -p "$PROJECT_DIR"
@@ -1439,15 +1452,15 @@ fi
 echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
-# Test 30e: engine-mcp assets on update — INTERIM FORM, and still the ONLY mechanical
-# guard on the update.ts wiring. The shard corpus was dropped with the rules-tree
-# cutover, so no MCP config contributes anything to .unikit/system/engine-mcp/ any more
-# and installEngineMcpShards has nothing left to write. Two legs, because "writes
-# nothing" and "removes what is already there" are different branches of the same call:
-#   Leg 1 — a pre-cutover profile on disk is SWEPT (the migration path).
-#   Leg 2 — a populated selection creates nothing (the fresh path).
-# The full lifecycle (delivery, provenance stamp, tamper-refresh, recursive
-# orphan-delete) returns here as the rules-tree smoke.
+# Test 30e: engine-mcp assets on update — the ONLY mechanical guard on the update.ts
+# wiring. Three legs, because the same call has three branches and only one of them is
+# about writing files:
+#   Leg 1 — a pre-cutover shard profile on disk is SWEPT (the migration path). System
+#           assets have NO migration chain, so this orphan-delete is the only thing that
+#           will ever remove the three shards a pre-cutover project still carries.
+#   Leg 2 — the selected server's rules tree is DELIVERED, stamped (the fresh path).
+#   Leg 3 — a hand-edited copy is REFRESHED, and a file the tree does not contain is
+#           removed (tamper-refresh + recursive orphan-delete).
 # ─────────────────────────────────────────────
 CONFIG="$DEVPRIN_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
@@ -1459,11 +1472,12 @@ CONFIG="$DEVPRIN_CONFIG" node -e "
 MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
 
 # Leg 1 — the UPGRADE path. Every project installed before the cutover carries the three
-# shards on disk, and system assets have NO migration chain: the orphan-delete inside
-# installEngineMcpShards is the only thing that will ever remove them. That loop runs
-# BEFORE the empty-set early return, so an empty contribution sweeps the whole profile.
-# This leg is why the guard survives Task 8 at all — unlike EM-8 / ED-12 / ED-13, its
-# subject did not disappear with the shard corpus, it became load-bearing.
+# shards on disk, and the orphan-delete inside installEngineMcpRules is the only thing
+# that will ever remove them: system assets have no migration chain. Two of the three
+# names are absent from the rules tree and go as orphans; `verification.md` survives as a
+# NAME and is overwritten instead — which is the point of seeding all three with the same
+# marker. A sweep that only removed files would leave the pre-cutover body in place under
+# a name the new tree still uses, and no assertion on the other two would notice.
 mkdir -p "$MCP_SHARD_DIR"
 for shard in capabilities scene-authoring verification; do
     echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_SHARD_DIR/$shard.md"
@@ -1472,21 +1486,48 @@ done
 MCP_SHARD_OUT1="$TMPDIR/update-mcp-shards-1.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT1" 2>&1)
 
-for shard in capabilities scene-authoring verification; do
+for shard in capabilities scene-authoring; do
     assert_not_exists "$MCP_SHARD_DIR/$shard.md" \
         "update sweeps the pre-cutover engine-mcp $shard.md (no stale profile survives)"
 done
-echo "  ✓ engine-mcp: a pre-cutover profile is swept on update (orphan-delete, update.ts wiring)"
+assert_not_contains "$MCP_SHARD_DIR/verification.md" 'STALE_PRE_CUTOVER_PROFILE' \
+    "a pre-cutover shard whose name the rules tree reuses is overwritten, not left in place"
+echo "  ✓ engine-mcp: a pre-cutover profile is swept / overwritten on update (update.ts wiring)"
 
-# Leg 2 — the FRESH path. A selection that used to carry three shards now contributes
-# nothing, so nothing is (re)created.
+# The same update that swept the shards delivered the tree in their place — one call,
+# both branches, which is why Leg 1 does not need its own re-run.
+assert_exists "$MCP_SHARD_DIR/INDEX.md" \
+    "update delivers the selected server's rules tree in place of the swept shards"
+assert_contains "$MCP_SHARD_DIR/INDEX.md" '^server: unity-mcp-biome$' \
+    "the delivered tree is stamped with the server it came from"
+
+# Leg 2 — the FRESH path. Nothing on disk, a populated selection: the tree is created.
 rm -rf "$MCP_SHARD_DIR"
 MCP_SHARD_OUT2="$TMPDIR/update-mcp-shards-2.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT2" 2>&1)
 
-assert_not_exists "$MCP_SHARD_DIR" \
-    "selecting an engine MCP delivers no engine-mcp asset while the shard corpus is gone"
-echo "  ✓ engine-mcp: shard corpus dropped — nothing is contributed, directory stays absent"
+assert_exists "$MCP_SHARD_DIR/INDEX.md" \
+    "selecting an engine MCP delivers its rules tree on a clean project"
+assert_exists "$MCP_SHARD_DIR/verification.md" \
+    "the whole tree is delivered, not just its entry point"
+echo "  ✓ engine-mcp: the selected server's rules tree is delivered on update"
+
+# Leg 3 — TAMPER-REFRESH + recursive orphan-delete. System assets are not hash-tracked,
+# so a hand-edited copy must be overwritten on the next update rather than kept; and the
+# sweep must reach a nested path, since the tree is free to grow subdirectories and a
+# `*.md`-only loop would leave a stale one behind forever.
+echo "HAND_EDITED" > "$MCP_SHARD_DIR/INDEX.md"
+mkdir -p "$MCP_SHARD_DIR/stale-subdir"
+echo "LEFTOVER" > "$MCP_SHARD_DIR/stale-subdir/orphan.txt"
+
+MCP_SHARD_OUT3="$TMPDIR/update-mcp-shards-3.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT3" 2>&1)
+
+assert_not_contains "$MCP_SHARD_DIR/INDEX.md" 'HAND_EDITED' \
+    "a hand-edited rules file is rewritten on update (system assets are not hash-tracked)"
+assert_not_exists "$MCP_SHARD_DIR/stale-subdir/orphan.txt" \
+    "orphan-delete reaches a nested non-markdown file (recursive, not *.md-only)"
+echo "  ✓ engine-mcp: tamper-refresh restores the tree and sweeps a nested orphan"
 
 # ─────────────────────────────────────────────
 # Test 30f: the MCP selection is part of the skill source hash
@@ -1561,8 +1602,12 @@ if grep -q 'mcp__UnityMCP__read_console' "$MCPHASH_SKILL"; then
     echo "  (the MCP selection is missing from the skill source hash)"
     exit 1
 fi
-assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__scene_change_plan' \
-    "biome-only tool id injected after the selection swap (no --force)"
+# Biome grants executors a wildcard, so the biome-side probe is the wildcard entry
+# itself — there is no biome-only NAME left to look for. It is a strictly sharper
+# probe than the name it replaces: `mcp__UnityMCP__*` can only come from the biome
+# entry, and the assertion above already proved coplay's names are gone.
+assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__\*' \
+    "biome wildcard grant injected after the selection swap (no --force)"
 assert_not_exists "$MCPHASH_STALE" \
     "clean replace on any reinstall sweeps an orphaned reference file (not only under --force)"
 
@@ -1574,9 +1619,10 @@ echo "  ✓ MCP selection in source hash: swap reinstalls, dead tool ids dropped
 # Phase 0, measurement 0.2 (plan task 2). Sibling of Test 30f, different path:
 # 30f swaps one Unity server for another (`engine` unchanged); here the ENGINE
 # itself changes and the MCP selection empties out. This is the last place a dead
-# grant is still possible, because MCP tool injection is ADDITIVE — mcp.ts has no
-# removal branch at all, so the ONLY thing that can clear an `mcp__<OldKey>__*`
-# entry is a full skill reinstall triggered by source-hash divergence.
+# grant is still possible through the RE-INSTALL path: `injectMcpRules` now syncs
+# rather than appends, but a deselected server contributes no entry for this skill at
+# all, so its sync never runs and only a source-hash reinstall can clear the ids.
+# Test 30h covers the other half — the server stays selected and its grants narrow.
 #
 # Expectation (verified, not reasoned about): `hashing.ts` folds BOTH `engine:<id>`
 # and the MCP component into the source hash, so unity+biome -> godot+none must
@@ -1636,8 +1682,8 @@ assert_exists "$ENGSWITCH_SKILL" "unikit-implement is still installed after the 
 
 if grep -q 'mcp__UnityMCP__' "$ENGSWITCH_SKILL"; then
     echo "Assertion failed: switching the engine did NOT drop the old server's mcp__UnityMCP__ grants"
-    echo "  (injection is additive and has no removal branch — only a reinstall can clear them,"
-    echo "   so the engine is missing from the skill source hash, or the reinstall did not fire)"
+    echo "  (a deselected server runs no sync of its own, so only a reinstall can clear them —"
+    echo "   the engine is missing from the skill source hash, or the reinstall did not fire)"
     echo "  File: $ENGSWITCH_SKILL"
     echo "--- surviving frontmatter entries ---"
     grep -n 'mcp__UnityMCP__' "$ENGSWITCH_SKILL" | head -10
@@ -1646,6 +1692,89 @@ if grep -q 'mcp__UnityMCP__' "$ENGSWITCH_SKILL"; then
 fi
 
 echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clears stale mcp__UnityMCP__ grants (0.2 CONFIRMED)"
+
+# ─────────────────────────────────────────────
+# Test 30h: narrowing a server's grants clears the dead names it left behind
+# ─────────────────────────────────────────────
+# The real upgrade path for every existing user, and the one neither 30f nor 30g
+# reaches: the engine does not change, the selected servers do not change — only the
+# grant list INSIDE the server's own JSON does.
+#
+# `mcpHashComponent` hashes `mcp:<engineMcpKey>|<sorted fileIds>`, i.e. the INPUT of
+# the injection, not its output. Both are identical here, so no artifact's source hash
+# moves and `skipUnchanged` keeps the installed copy. The named grants therefore
+# survive on disk unless `injectMcpRules` removes them itself.
+#
+# The subject is a SUBAGENT on purpose: the pipeline skills get their sources rewritten
+# elsewhere in this branch (which shifts their hash and hides the defect), while
+# `unikit-implement-coordinator` is not touched by any of that work. Its hash never
+# moves, so it is the artifact where a missing removal branch stays visible.
+
+NARROW_DIR="$TMPDIR/update-narrowed-grants"
+mkdir -p "$NARROW_DIR"
+cat > "$NARROW_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-biome"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement"],
+      "installedSubagents": ["unikit-implement-coordinator"]
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$NARROW_DIR"
+
+# Stand in the shoes of a project installed BEFORE the cutover: same key, same file id,
+# a named grant list. Only `allowed-tools` differs from what the package ships today.
+BIOME_JSON_BACKUP="$TMPDIR/unity-mcp-biome.json.orig"
+cp "$BIOME_JSON" "$BIOME_JSON_BACKUP"
+
+BIOME_JSON="$BIOME_JSON" BIOME_SRC="$BIOME_JSON_BACKUP" node -e "
+    const fs=require('fs');
+    const m=JSON.parse(fs.readFileSync(process.env.BIOME_SRC,'utf8'));
+    m['allowed-tools'].agents['unikit-implement-coordinator'] = ['scene_change_plan','get_console'];
+    fs.writeFileSync(process.env.BIOME_JSON, JSON.stringify(m,null,2));
+"
+
+NARROW_OUT1="$TMPDIR/update-narrowed-1.log"
+(cd "$NARROW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NARROW_OUT1" 2>&1)
+
+NARROW_AGENT="$NARROW_DIR/.claude/agents/unikit-implement-coordinator.md"
+assert_exists "$NARROW_AGENT" "unikit-implement-coordinator must be installed for the narrowed-grants test"
+assert_contains "$NARROW_AGENT" 'mcp__UnityMCP__scene_change_plan' \
+    "the pre-cutover named grant is injected on the first update"
+
+# Restore the shipped config: same engine, same selection, wildcard grants.
+cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
+
+NARROW_OUT2="$TMPDIR/update-narrowed-2.log"
+(cd "$NARROW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NARROW_OUT2" 2>&1)
+
+if grep -q 'mcp__UnityMCP__scene_change_plan' "$NARROW_AGENT"; then
+    echo "Assertion failed: narrowing the grants did NOT drop the dead name from the frontmatter"
+    echo "  (injectMcpRules appended instead of syncing: nothing reinstalls this subagent,"
+    echo "   so its own removal branch is the only thing that can clear the entry)"
+    echo "  File: $NARROW_AGENT"
+    echo "--- surviving frontmatter entries ---"
+    grep -n 'mcp__UnityMCP__' "$NARROW_AGENT" | head -10
+    echo "-------------------------------------"
+    exit 1
+fi
+assert_contains "$NARROW_AGENT" 'mcp__UnityMCP__\*' \
+    "the wildcard grant replaces the names it superseded"
+assert_contains "$NARROW_AGENT" '^  - Read$' \
+    "hand-authored (non-mcp__) entries survive the sync untouched"
+
+BIOME_JSON_BACKUP=""
+echo "  ✓ narrowed grants: dead mcp__ names removed without a reinstall, hand-authored entries kept"
 
 # ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills

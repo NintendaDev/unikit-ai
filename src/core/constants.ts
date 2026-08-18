@@ -121,6 +121,16 @@ export const GAMEDESIGN_GENRES_DIR_NAME = 'genres';
 export const ENGINE_MCP_DIR_NAME = 'engine-mcp';
 
 /**
+ * Prefix every MCP-injected frontmatter entry carries: `mcp__<key>__<tool>`.
+ *
+ * It is what makes injection reversible. A skill's `allowed-tools` mixes
+ * hand-authored entries (Read, Bash, Agent, …) with generated ones, and only the
+ * generated half may be rewritten when the grants of a server change — this
+ * prefix is the only thing telling the two apart on disk.
+ */
+export const MCP_TOOL_ENTRY_PREFIX = 'mcp__';
+
+/**
  * Entry point of a server's rules tree — `mcp/<engine>/rules/<fileId>/INDEX.md`
  * at the source, `.unikit/system/engine-mcp/INDEX.md` once delivered. Its
  * presence is what makes a `rules` pointer usable, so the schema guard keys on

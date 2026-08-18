@@ -3,6 +3,9 @@
   "is_engine": true,
   "order": 1,
   "displayName": "Fennara Godot AI [Free]",
+  "docs": {
+    "repo": "https://github.com/fennaraOfficial/fennara-godot-ai"
+  },
   "verified": {
     "version": "0.4.2",
     "date": "2026-08-15",
