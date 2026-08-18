@@ -9,11 +9,6 @@
     "date": "2026-08-15",
     "toolRegistry": "Server/src/services/registry/tool_registry.py"
   },
-  "shards": {
-    "capabilities": "shards/unity-mcp-coplay/capabilities.md",
-    "scene-authoring": "shards/unity-mcp-coplay/scene-authoring.md",
-    "verification": "shards/unity-mcp-coplay/verification.md"
-  },
   "config": {
     "type": "http",
     "url": "http://127.0.0.1:8080/mcp"

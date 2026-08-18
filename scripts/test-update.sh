@@ -1439,13 +1439,14 @@ fi
 echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
-# Test 30e: engine-mcp shards on update — the ONLY mechanical guard for the update.ts
-# wiring of installEngineMcpShards. Like genres, shards are SELECTION-driven (DEVPRIN_DIR
-# selects zero MCP servers, so it starts with none), so this test walks the full lifecycle
-# on the settled fixture: select a shard-carrying server -> delivery; tamper -> refresh;
-# plant a stray file -> orphan-delete; deselect everything -> the whole profile is removed.
-# That last leg is the one the orphan-delete exists for: system assets have no migration
-# chain, so a stale Unity profile would otherwise survive an engine/MCP switch forever.
+# Test 30e: engine-mcp assets on update — INTERIM FORM. The shard corpus was dropped
+# with the rules-tree cutover, so no MCP config contributes anything to
+# .unikit/system/engine-mcp/ any more and installEngineMcpShards is a guaranteed no-op:
+# an empty set leaves the directory absent. This leg keeps the wiring point covered by
+# asserting exactly that — selecting a server that used to ship three shards now
+# delivers nothing. The full lifecycle (delivery, provenance stamp, tamper-refresh,
+# recursive orphan-delete) returns here as the rules-tree smoke, which is the only
+# mechanical guard on the update.ts call site.
 # ─────────────────────────────────────────────
 CONFIG="$DEVPRIN_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
@@ -1458,48 +1459,9 @@ MCP_SHARD_OUT1="$TMPDIR/update-mcp-shards-1.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT1" 2>&1)
 
 MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
-for shard in capabilities scene-authoring verification; do
-    assert_exists "$MCP_SHARD_DIR/$shard.md" \
-        "engine-mcp $shard.md must be delivered on update (update.ts wiring)"
-done
-
-# Tamper every shard + plant a stray file the current selection did not contribute.
-for shard in capabilities scene-authoring verification; do
-    echo "MCP_TAMPERED_BY_TEST" >> "$MCP_SHARD_DIR/$shard.md"
-done
-echo "STALE_SHARD" > "$MCP_SHARD_DIR/stale.md"
-
-MCP_SHARD_OUT2="$TMPDIR/update-mcp-shards-2.log"
-(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT2" 2>&1)
-
-MCP_TAMPER_LEFT=""
-for shard in capabilities scene-authoring verification; do
-    grep -q "MCP_TAMPERED_BY_TEST" "$MCP_SHARD_DIR/$shard.md" && MCP_TAMPER_LEFT+=" $shard.md"
-done
-if [[ -n "$MCP_TAMPER_LEFT" ]]; then
-    echo "Assertion failed: update did NOT refresh engine-mcp shard(s) (tamper marker present in:$MCP_TAMPER_LEFT)"
-    exit 1
-fi
-assert_not_exists "$MCP_SHARD_DIR/stale.md" \
-    "update orphan-deletes an engine-mcp shard the current selection did not contribute"
-echo "  ✓ engine-mcp shards: update delivers + refreshes + orphan-deletes (update.ts wiring)"
-
-# Deselect every MCP server -> the whole profile must be swept, not left stale.
-CONFIG="$DEVPRIN_CONFIG" node -e "
-    const fs=require('fs'); const f=process.env.CONFIG;
-    const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.engineMcpKey = null;
-    c.mcp = { servers: [] };
-    fs.writeFileSync(f, JSON.stringify(c,null,2));
-"
-MCP_SHARD_OUT3="$TMPDIR/update-mcp-shards-3.log"
-(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT3" 2>&1)
-
-for shard in capabilities scene-authoring verification; do
-    assert_not_exists "$MCP_SHARD_DIR/$shard.md" \
-        "deselecting every MCP server orphan-deletes engine-mcp $shard.md (no stale profile)"
-done
-echo "  ✓ engine-mcp shards: deselecting all MCP servers sweeps the whole profile"
+assert_not_exists "$MCP_SHARD_DIR" \
+    "selecting an engine MCP delivers no engine-mcp asset while the shard corpus is gone"
+echo "  ✓ engine-mcp: shard corpus dropped — nothing is contributed, directory stays absent"
 
 # ─────────────────────────────────────────────
 # Test 30f: the MCP selection is part of the skill source hash

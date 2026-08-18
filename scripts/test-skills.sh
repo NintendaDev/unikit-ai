@@ -3258,14 +3258,17 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# EM: engine-MCP shard layer (EM-1…EM-5)
+# EM: engine-MCP rules layer (EM-1…EM-7)
 # ─────────────────────────────────────────────
-# The shards (.unikit/system/engine-mcp/{capabilities,scene-authoring,verification}.md)
-# are delivered by installEngineMcpShards from the `shards` key of the selected MCP JSONs.
-# Delivery is covered live by test-install.sh (Test 13b) and test-update.sh (Test 30e);
-# the guards here lock the SOURCE side — the reader lines in the skills, the doctrine
-# override, the dead-name sweep on the repaired configs, and the init.ts call site that
-# no runtime test reaches. All `-qF`, file-scoped (MSYS grep aborts on -iF).
+# The shard corpus (mcp/*/shards/**) was dropped with the rules-tree cutover; the
+# per-server profile now lives in mcp/<engine>/rules/<server>/{INDEX,verification}.md.
+# The guards here lock the SOURCE side — the reader lines in the skills, the dead-name
+# sweep on the repaired configs, and the init.ts call site that no runtime test reaches.
+# EM-8 (the fennara .gd doctrine override) died with its shard: the fact it guarded is
+# now a universal line in layer A, guarded there by the LA-* block. The reader-line and
+# call-site guards below still name the shard-era assets — they are rewritten to the
+# rules tree in the same phase that lands the installer.
+# All `-qF`, file-scoped (MSYS grep aborts on -iF).
 # Path vars: reuse UNIKIT_VERIFY_SKILL; new EM_* for the other three readers.
 EM_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 EM_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
@@ -3302,16 +3305,16 @@ else
     fail "EM-2 shard binding drift:$EM2_WHY"
 fi
 
-# (EM-3) The GATE LIFTED override must exist on BOTH sides — the shard convention is
-# useless if unikit-verify does not honour it, and dev-principles p.5 would otherwise keep
-# demanding an MCP test run on servers that cannot report results.
+# (EM-3) The GATE LIFTED override must exist on BOTH sides — the convention is useless
+# if unikit-verify does not honour it, and dev-principles p.5 would otherwise keep
+# demanding an MCP test run on servers that cannot report results. The third target — a
+# server-side file that exercises the override — was the chir24 shard; it is restored as
+# the biome verification.md once the rules tree is the delivered asset.
 EM3_WHY=""
 grep -qF 'GATE LIFTED' "$UNIKIT_VERIFY_SKILL" || EM3_WHY+=" verify-skill"
 grep -qF 'GATE LIFTED' "$EM_DEV_PRINCIPLES"   || EM3_WHY+=" dev-principles"
-grep -qF 'GATE LIFTED' "$ROOT_DIR/mcp/unreal-engine-5/shards/unreal-mcp-chir24/verification.md" \
-    || EM3_WHY+=" chir24-shard"
 if [[ -z "$EM3_WHY" ]]; then
-    pass "EM-3 GATE LIFTED override present in unikit-verify + dev-principles + the ChiR24 shard"
+    pass "EM-3 GATE LIFTED override present in unikit-verify + dev-principles"
 else
     fail "EM-3 GATE LIFTED override MISSING in:$EM3_WHY"
 fi
@@ -3375,30 +3378,18 @@ else
     fail "EM-7 fennara platform tokens missing:$EM7_WHY"
 fi
 
-# (EM-8) The doctrine override lives in the fennara scene-authoring shard and nowhere else.
-# `write_or_update_file` is the ONLY trigger of notify_editor_filesystem(); without this
-# line the agent follows dev-principles p.1, writes .gd directly, and script_diagnostics
-# then reports on content the editor never rescanned — a silently wrong verify gate.
-EM8_WHY=""
-grep -qF 'write_or_update_file' "$ROOT_DIR/mcp/godot/shards/godot-mcp-fennara/scene-authoring.md" \
-    || EM8_WHY+=" shard-missing-override"
-grep -qF 'write_or_update_file' "$EM_FENNARA_JSON" || EM8_WHY+=" json-missing-tool"
-if [[ -z "$EM8_WHY" ]]; then
-    pass "EM-8 fennara .gd doctrine override (write_or_update_file) present in shard + granted in config"
-else
-    fail "EM-8 fennara doctrine override drift:$EM8_WHY"
-fi
-
 # ─────────────────────────────────────────────
-# ED: Editor-target grammar layer (ED-1…ED-14)
+# ED: Editor-target grammar layer (ED-1…ED-11)
 # ─────────────────────────────────────────────
 # The whole Editor: layer is a TEXTUAL contract across the plan template, the
-# planner, four consumer skills, two subagents, six MCP configs and four shards.
-# It has no compiler. Its most likely failure is "writer without reader" — a
-# setting written into the plan that nobody parses, or a shard documenting tools
-# the skill was never granted. Both fail SILENTLY on a configured MCP.
-# ED-1…ED-13 are -qF and file-scoped (MSYS grep aborts on -iF); ED-14 is one
-# node pass, cross-file by nature (Part 5b precedent).
+# planner, four consumer skills and two subagents. It has no compiler. Its most
+# likely failure is "writer without reader" — a setting written into the plan that
+# nobody parses. It fails SILENTLY on a configured MCP.
+# ED-12 (the coplay kind table), ED-13 (the visual-regression gate) and ED-14 (kind
+# table ⊆ grants) died with the shard corpus they grepped: kind tables naming tools
+# exist nowhere now, and `Visual regression` is itself on the way out as a setting.
+# ED-14 returns in schema form — every check-table `area` ∈ the 12-area vocabulary.
+# All -qF and file-scoped (MSYS grep aborts on -iF).
 # Path vars: reuse UNIKIT_VERIFY_SKILL / UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
 # CK_TASKFMT / EM_IMPLEMENT_SKILL — declaring ED_* duplicates for the same files is
 # exactly the name drift the CK-* block removed. New vars only where none exists.
@@ -3406,11 +3397,6 @@ ED_MODE_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
 ED_MODE_FAST="$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
 ED_PLAN_TPL="$ROOT_DIR/data/engine-templates/skills/unikit-plan/UNITY_RULES.md"
 ED_IMPLEMENT_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
-ED_COPLAY_SCENE="$ROOT_DIR/mcp/unity/shards/unity-mcp-coplay/scene-authoring.md"
-ED_COPLAY_VERIFY="$ROOT_DIR/mcp/unity/shards/unity-mcp-coplay/verification.md"
-ED_FENNARA_VERIFY="$ROOT_DIR/mcp/godot/shards/godot-mcp-fennara/verification.md"
-ED_CHIR24_VERIFY="$ROOT_DIR/mcp/unreal-engine-5/shards/unreal-mcp-chir24/verification.md"
-ED_BIOME_VERIFY="$ROOT_DIR/mcp/unity/shards/unity-mcp-biome/verification.md"
 
 # (ED-1) The grammar itself. Without the kind list the field is unconstrained and
 # every planner invents its own vocabulary.
@@ -3543,95 +3529,6 @@ if [[ -z "$ED11_WHY" ]]; then
     pass "ED-11 Editor: + ⏸️ MANUAL present in unikit-implement-worker.md"
 else
     fail "ED-11 parallel path unaware of editor targets:$ED11_WHY"
-fi
-
-# (ED-12) The kind table coplay never had. Grep the PREFIX, not a full heading:
-# the three pre-existing shards end it differently (`tool` / `tool family` /
-# `parent tool`), so pinning one full form would silently pass on two servers of
-# four and drop the rest into `manual`.
-if grep -qF '### Editor work kind →' "$ED_COPLAY_SCENE"; then
-    pass "ED-12 coplay scene-authoring declares an Editor work kind table"
-else
-    fail "ED-12 coplay scene-authoring has no '### Editor work kind →' table"
-fi
-
-# (ED-13) verify quotes the gate reason FROM the shard, so the paragraph must exist
-# in the three servers that lift it. The NEGATIVE half is mandatory: adding it to
-# biome, where the gate genuinely works, would silently retire a working check.
-ED13_WHY=""
-grep -qF 'GATE LIFTED — visual regression' "$ED_FENNARA_VERIFY" || ED13_WHY+=" fennara"
-grep -qF 'GATE LIFTED — visual regression' "$ED_COPLAY_VERIFY"  || ED13_WHY+=" coplay"
-grep -qF 'GATE LIFTED — visual regression' "$ED_CHIR24_VERIFY"  || ED13_WHY+=" chir24"
-grep -qF 'GATE LIFTED — visual regression' "$ED_BIOME_VERIFY"   && ED13_WHY+=" biome-should-NOT-lift"
-grep -qF 'This server lifts none of them' "$ED_COPLAY_VERIFY"   && ED13_WHY+=" coplay-self-contradiction"
-if [[ -z "$ED13_WHY" ]]; then
-    pass "ED-13 visual-regression gate lifted in fennara/coplay/chir24, NOT in biome"
-else
-    fail "ED-13 visual-regression gate drift:$ED13_WHY"
-fi
-
-# (ED-14) CROSS-FILE — every tool named in a shard's kind table must be granted to
-# unikit-implement on that same server. The sole mechanical guard on the grants:
-# without it a shard documents tools the skill cannot call, and `Editor tasks: mcp`
-# dies at runtime on "tool not allowed" while reporting "MCP unavailable" — on a
-# CONFIGURED MCP, which the shard preambles explicitly forbid.
-# A separate node pass, not a grep, for the Part 5b reason: comparing two files is
-# not expressible as a single-file assertion.
-ED_GRANTS_RESULT=$(node -e "
-  const fs=require('fs'), path=require('path');
-  const root=process.argv[1];
-  const HEADING='### Editor work kind →';
-  const why=[]; let tables=0;
-
-  for (const dir of fs.readdirSync(root)) {
-    const dirPath=path.join(root, dir);
-    if (!fs.statSync(dirPath).isDirectory()) continue;
-    for (const f of fs.readdirSync(dirPath)) {
-      if (!f.endsWith('.json')) continue;
-      const rel=dir+'/'+f;
-      let m;
-      try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
-      catch { why.push('parse-error:'+rel); continue; }
-
-      const shardRel=m.shards && m.shards['scene-authoring'];
-      if (!shardRel) continue;                       // no shard → nothing to cross-check
-      const shardPath=path.join(dirPath, shardRel);
-      if (!fs.existsSync(shardPath)) { why.push('shard-missing:'+rel); continue; }
-
-      const body=fs.readFileSync(shardPath,'utf8');
-      const at=body.indexOf(HEADING);
-      if (at === -1) continue;                       // no kind table → server degrades to manual
-      tables++;
-
-      const granted=(m['allowed-tools'] && m['allowed-tools'].skills &&
-                     m['allowed-tools'].skills['unikit-implement']) || [];
-      if (!granted.length) { why.push('no-implement-grant:'+rel); continue; }
-      // Single-tool servers route every call through one mega-tool (chir24's
-      // \`unreal\`); the table names PARENTS inside it, which are not grantable.
-      if (granted.length === 1) continue;
-
-      const section=body.slice(at).split(/\n### /)[0];
-      const names=new Set();
-      for (const line of section.split('\n')) {
-        if (!line.trim().startsWith('|')) continue;
-        const cells=line.split('|');
-        if (cells.length < 3) continue;
-        const col2=cells[2];
-        if (/^\s*-+\s*$/.test(col2)) continue;       // markdown separator row
-        for (const mm of col2.matchAll(/\`([a-z_][a-z0-9_]*)/g)) names.add(mm[1]);
-      }
-      const grantSet=new Set(granted);
-      for (const n of names) if (!grantSet.has(n)) why.push('ungranted:'+rel+':'+n);
-    }
-  }
-  if (!tables) why.push('no-kind-table-found-anywhere');
-  console.log(why.length ? why.join(' ') : 'ok');
-" "$MCP_DIR" 2>/dev/null || echo "pass-error")
-
-if [[ "$ED_GRANTS_RESULT" == "ok" ]]; then
-    pass "ED-14 every tool in a shard kind table is granted to unikit-implement on that server"
-else
-    fail "ED-14 shard kind table names tools the skill cannot call: $ED_GRANTS_RESULT"
 fi
 
 # ─────────────────────────────────────────────
@@ -3841,31 +3738,6 @@ for mcp_json in "$MCP_DIR"/*/; do
             fi
         fi
 
-        # `shards` keys must be a subset of ENGINE_MCP_SHARDS, and every path must resolve.
-        HAS_SHARDS=$(json_field "$json_file" "m['shards'] ? 'yes' : 'no'" 2>/dev/null || echo "no")
-        if [[ "$HAS_SHARDS" == "yes" ]]; then
-            SHARDS_VALID=$(node -e "
-              const fs=require('fs'), path=require('path');
-              const file=process.argv[1];
-              const m=JSON.parse(fs.readFileSync(file,'utf8'));
-              const KNOWN=['capabilities','scene-authoring','verification'];
-              const s=m['shards'];
-              if(typeof s!=='object'||s===null||Array.isArray(s)){console.log('not-object');process.exit(0)}
-              const why=[];
-              for(const[k,v]of Object.entries(s)){
-                if(!KNOWN.includes(k)){why.push('unknown-key:'+k);continue}
-                if(typeof v!=='string'||!v){why.push('not-string:'+k);continue}
-                if(!fs.existsSync(path.resolve(path.dirname(file),v)))why.push('broken-pointer:'+k+'->'+v);
-              }
-              console.log(why.length?why.join(','):'ok');
-            " "$json_file" 2>/dev/null || echo "parse-error")
-
-            if [[ "$SHARDS_VALID" == "ok" ]]; then
-                pass "$rel_name shards keys known + all pointers resolve on disk"
-            else
-                fail "$rel_name shards invalid ($SHARDS_VALID)"
-            fi
-        fi
     done
 done
 

@@ -9,11 +9,6 @@
     "date": "2026-08-15",
     "toolRegistry": "local/crates/fennara-mcp/src/runtime/schemas.rs"
   },
-  "shards": {
-    "capabilities": "shards/godot-mcp-fennara/capabilities.md",
-    "scene-authoring": "shards/godot-mcp-fennara/scene-authoring.md",
-    "verification": "shards/godot-mcp-fennara/verification.md"
-  },
   "configByPlatform": {
     "win32": {
       "command": "{{localappdata}}\\Fennara\\bin\\fennara-mcp.exe",
