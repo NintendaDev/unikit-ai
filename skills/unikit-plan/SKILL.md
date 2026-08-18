@@ -224,6 +224,18 @@ Before any exploration or planning — silently load the project knowledge base.
 
    Step 0.5 runs in **every mode except List** — so `add` mode loads the vocabulary too and may append `Editor:` lines to an existing plan on the same terms as `full` / `fast`.
 
+6. **Read `.unikit/system/engine-mcp/INDEX.md` — the base section only.** The delivery stamp plus every section **except** the `## Check` table: access, the live failure classes, shape and cost, what is irreversible here, the lane, and what to do when the file is silent. Those are the exceptions that shape *planning* — an irreversible write decides where a commit boundary falls, the lane decides what may never run in parallel, shape and cost decide how the work splits into phases. Set `mcp_index_loaded = true`.
+
+   **Do not read the `## Check` table.** It is keyed by area for the executors, which grep their own task's area plus the cross-cutting ones on every editor task. A plan that carries checks forward has started making the executor's decisions with month-old information.
+
+   **If the file is absent** — a **normal path**, not an error (a server that ships no rules tree, or no engine MCP at all). Set `mcp_index_loaded = false`, print exactly one line, and continue with the same rights:
+
+   ```
+   MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+   ```
+
+   Absence never switches a task to `⏸️ MANUAL`, never suppresses an `Editor:` field, and never disables the engine MCP (`.unikit/system/dev-principles.md` → **A9 · no rules ≠ no rights**).
+
 #### Patches (learning from past fixes)
 
 If `.unikit/code/patches/` exists:
@@ -454,6 +466,26 @@ loaded).
 This step embodies the **one-way boundary**: it only *reads* design artifacts — never write to
 `.unikit/gamedesign/`.
 
+### Step 4.6: Read the Catalog Negatively (only when the plan carries editor work)
+
+**Gate.** Runs only when Step 4 established that the feature touches the editor's **serialized state** *and* an engine MCP is configured (`{{engine_mcp_tool}}` present in `{{settings_file}}`). A pure-code plan skips this step and makes no call at all.
+
+Whatever engine-MCP grants this skill's frontmatter carries are read-only discovery and nothing else — that is the whole of the planner's contact with the engine MCP. Use them **once**, to answer exactly two questions:
+
+1. **Which kinds of editor work have no route here at all** — so the plan does not schedule an intent this project cannot carry out. The six-word `kind` vocabulary is in `.unikit/system/dev-principles.md` → A8.
+2. **Which evidence classes are reachable** — so no acceptance criterion is written against evidence nobody can produce. The claim-class → evidence-class lattice is A2 of the same file.
+
+That is the entire question. **Not** which tool does it, **not** how it is called, **not** a strategy. A question of this shape keeps its answer for months ("is there a test run at all"); a question about a name loses it in days — which is why neither the question nor its answer is written into the plan.
+
+**What the outcome may change, and what it may not:**
+
+- a kind of work with no route → do not schedule it as engine-MCP work: express the change in a form that has a route, or keep the task and name the missing capability in its `WHY:`. **Do not pre-write `⏸️ MANUAL` into the task.** That is a runtime verdict, reached by trying and producing the evidence of absence (A9); a planner that writes it in advance has lifted the executor's obligation to try;
+- an evidence class that is not reachable → rewrite the acceptance criterion against a class that is, or say plainly in `## Overview` that it cannot be closed here. Never silently downgrade it to the cheapest observation available.
+
+**The planner never:** calls anything that changes state, reads the `## Check` table, reads `.unikit/MCP-RECHECK-NOTES.md`, or opens Context7. The reference is the executors' resource — `/unikit-implement` and `/unikit-fix` reach for it on two triggers, and neither of them is "planning".
+
+**No engine MCP configured, or discovery yields nothing → skip.** Plan against the base principles, unchanged. The absence of an answer is not a restriction (A9).
+
 ### Step 5: Create the Plan
 
 Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
@@ -504,17 +536,33 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
    The WHY line answers: "what breaks or is missing if we skip this task?"
 
    **When to write `Editor:`** — the criterion is neutral: the change touches the **serialized state of the editor**, not source text. Editing a plain text or config file stays in `Files:`. The concrete signals for the active engine are listed in `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` §3 — read them from there, **do not restate them here**: they are engine facts (a scene, a prefab, a blueprint are not the same concept across engines), and a second inline copy diverges from §3 on its first edit.
-   Form: `Editor: [kind] <container> → <target> : <action>`, one line per target, placed after `Files:` (grammar and the 7 kinds: `references/TASK-FORMAT.md` → `### Editor task grammar`). Pure code tasks omit the field. When `engine_rules_loaded = false` the field is **not generated at all**.
+   Form: `Editor: [kind] <container> → <target> : <action>`, one line per target, placed after `Files:` (grammar and the 6 kinds: `references/TASK-FORMAT.md` → `### Editor task grammar`). Pure code tasks omit the field. When `engine_rules_loaded = false` the field is **not generated at all**.
 
 6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks. For each `### Commit N: after tasks X-Y` heading, also emit a decorative `<!-- Commit checkpoint: tasks X-Y -->` HTML comment at the matching boundary inside the `## Checklist` (right after the last task of that range). The marker range mirrors the Commit Plan heading (single source of truth) and is **decorative only** — `/unikit-implement` does not parse it. See `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
-7. **`## Dependency Graph`** — phase dependencies in ASCII.
+7. **`## MCP Findings`** — emitted **empty** by the planner, filled by the executor. Include it whenever the plan carries at least one `Editor:` task (the same condition as `## EDITOR TARGETS`); omit it otherwise. The planner writes the heading and the table header, and nothing else — this is the executor's handoff surface to `/unikit-mcp-trap`, which reads it through a window (the heading down to the next `##`, or 30 lines) and opens no other part of the plan. Shape and column contract: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### MCP findings section`.
 
-8. **`## Total Estimated Effort`** — sum of all phases.
+8. **`## Dependency Graph`** — phase dependencies in ASCII.
+
+   **Guard B — a phase carrying an `Editor:` task is serialized alone in its execution layer.**
+
+   The unit of parallelism downstream is the **phase**. `/unikit-implement` and `unikit-implement-coordinator` build the phase graph from the `**Dependencies:**` lines, compute execution layers (Layer 0 = phases with no dependencies; Layer N = phases whose dependencies all sit in layers 0..N-1) and run **every phase of one layer concurrently**, while the tasks *inside* a phase always run in order.
+
+   So this is a rule about **layers**, never about tasks. Two `Editor:` tasks in the same phase are already sequential and cannot collide; what collides is two phases that happen to share a layer. Splitting a safe pair of editor tasks into two phases to "separate" them creates exactly the collision it was meant to prevent.
+
+   The hazard is wider than editor-versus-editor: a neighbouring **code** phase writes a source file, the editor re-reads it, the domain reloads — total unavailability measured in minutes, landing in the middle of another phase's mutation. Any phase sharing a layer with editor work is the hazard, whatever that phase is doing.
+
+   **How to write it.** When a phase carries at least one `Editor:` line, write the dependency lines so that the phase is the only member of its layer:
+   - the editor phase **depends on every phase that must precede it**, so nothing from the earlier layers lands beside it;
+   - **every remaining phase depends on the editor phase**, directly or transitively, so nothing from the later ones does either.
+
+   Then check the graph you actually wrote, not the intent: walk the layers the way the coordinator does and confirm that every layer holding an editor phase has exactly one member. If serialization makes the plan awkward, move the editor work into a phase of its own rather than relaxing the rule.
+
+9. **`## Total Estimated Effort`** — sum of all phases.
 
 #### Fast Mode: Additional Section
 
-9. **`## Technical Context`** — always included. Contains plan-brief content inline (CONSTRAINTS, INTERFACES, KEY PATTERNS, FILES, **EDITOR TARGETS**, DI BINDINGS, OUT OF SCOPE). `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. Same quality bar as PLAN-BRIEF.md. When `research_linked = true`, use the research brief as a starting point but verify and update based on the current codebase state from Phase B.
+10. **`## Technical Context`** — always included. Contains plan-brief content inline (CONSTRAINTS, INTERFACES, KEY PATTERNS, FILES, **EDITOR TARGETS**, DI BINDINGS, OUT OF SCOPE). `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. Same quality bar as PLAN-BRIEF.md. When `research_linked = true`, use the research brief as a starting point but verify and update based on the current codebase state from Phase B.
 
 #### Full Mode: `PLAN-BRIEF.md` (always created)
 
@@ -605,6 +653,8 @@ Bad examples:
 12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
 13. **`Editor:` marks serialized editor state, nothing else** — write an `Editor:` line **if and only if** the change touches the editor's **serialized state**; a plain text or config file stays in `Files:` (the same criterion as `.unikit/system/dev-principles.md` → Layer A, **A8 · "Serialized state is the boundary"**). Engine-specific signals live in `references/ENGINE_RULES.md` §3; when that file is absent, the field is not generated at all
 14. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
+15. **A plan is intent, not inventory — no tool name ever reaches it** — the plan says *what has to be true*, never *what to call*. Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else: a name in a plan is a name that will be wrong by the time the plan is executed, and it silently overrides the executor's own discovery. This also settles the reverse: the planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance
+16. **A phase carrying an `Editor:` task is serialized alone in its execution layer** — the unit of parallelism downstream is the **phase**, so the constraint is expressed in `## Dependency Graph` and nowhere else (Step 5, `## Dependency Graph`). It is not a rule about tasks: two `Editor:` tasks inside one phase already run sequentially
 
 ## Code Analysis & Delegation Rules
 

@@ -14,6 +14,11 @@ most show a one-line description and an empty parameter list. Request the full
 schema before calling an unfamiliar one; arguments the truncated declaration
 omits still go through, because validation runs against the full schema server-side.
 
+**Project-relative paths are written from the content root down**, with the root
+folder itself as the first segment and forward slashes throughout — `<root>/Sub/File.ext`.
+An absolute path, or one that climbs out of the root, is rejected. This is the form to use
+whenever a path has to be handed to the server or reserved for a scratch folder.
+
 ## Live failure classes
 
 | class | here | what it turns into |
@@ -77,3 +82,9 @@ Two reasons to ask the reference:
 The reference describes **intent, not behaviour**. What you take from it carries
 the same evidence obligations, and with heightened attention: it has been caught
 presenting a structurally broken path as an exemplary example.
+
+The reference is **optional** in the installer. When it was not configured, the
+second reason above simply has no answer available: descend the degradation ladder
+in `dev-principles` and reach `⏸️ MANUAL` only at its own rung — by absence of a
+route, established by trying. A reference nobody configured is not a capability
+this server lacks.

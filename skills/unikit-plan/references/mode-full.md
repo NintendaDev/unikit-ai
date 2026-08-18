@@ -99,7 +99,7 @@ Based on choice:
 
 When `engine_rules_loaded = true`:
 
-1. **Probe for a configured engine MCP** — check whether `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the same probe `/unikit-implement` uses in Step 3.6). Refinement, when you need to name the server in the question: `.unikit/system/engine-mcp/capabilities.md` exists → a specific engine MCP profile shipped, and its name can be quoted to the user. Its **absence does not** flip the probe — some engine MCP servers ship no shards.
+1. **Probe for a configured engine MCP** — check whether `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the same probe `/unikit-implement` uses in Step 3.6). Refinement, when you need to name the server in the question: `.unikit/system/engine-mcp/INDEX.md` exists → a rules tree shipped for the configured server, and the `server:` line of its delivery stamp is the name to quote. Its **absence does not** flip the probe — a server may ship no rules tree at all, and no rules means no known exceptions, never no capabilities.
 2. **MCP configured → `Editor tasks: mcp`, silently.** No question — asking on every plan is noise.
 3. **MCP not configured → ask:**
 

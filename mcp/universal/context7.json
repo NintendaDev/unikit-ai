@@ -26,6 +26,14 @@
       "unikit-memory": [
         "resolve-library-id",
         "query-docs"
+      ],
+      "unikit-implement": [
+        "resolve-library-id",
+        "query-docs"
+      ],
+      "unikit-fix": [
+        "resolve-library-id",
+        "query-docs"
       ]
     }
   }

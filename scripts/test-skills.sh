@@ -3299,6 +3299,54 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# GB: guard B — an Editor: phase is serialized alone in its execution layer (GB-1…GB-3)
+# ─────────────────────────────────────────────
+# The rule has two halves and only the pair is correct. The POSITIVE half is that the
+# unit of serialization is the execution LAYER; the NEGATIVE half is that it is not the
+# task — two Editor: tasks inside one phase are already sequential, and a rule phrased
+# per-task would split a safe pair into two phases the coordinator is then free to run
+# concurrently, manufacturing the collision the guard exists to prevent. Both writers of
+# task graphs must carry both halves: unikit-plan writes the graph, unikit-improve audits
+# a graph it did not write. Losing the rule in either file loses it in practice.
+# All -qF and file-scoped (MSYS grep aborts on -iF).
+GB_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+GB_IMPROVE_SKILL="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+GB_TASK_FORMAT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+
+# (GB-1) The positive half, in both task-graph writers: the unit is the LAYER, and the
+# layer is computed the way the coordinator computes it.
+GB1_WHY=""
+grep -qF 'serialized alone in its execution layer' "$GB_PLAN_SKILL"    || GB1_WHY+=" plan:layer-rule"
+grep -qF 'serialized alone in its execution layer' "$GB_IMPROVE_SKILL" || GB1_WHY+=" improve:layer-rule"
+grep -qF 'layers 0..N-1' "$GB_PLAN_SKILL"    || GB1_WHY+=" plan:layer-computation"
+grep -qF 'layers 0..N-1' "$GB_IMPROVE_SKILL" || GB1_WHY+=" improve:layer-computation"
+if [[ -z "$GB1_WHY" ]]; then
+    pass "GB-1 guard B stated as a LAYER rule in unikit-plan + unikit-improve"
+else
+    fail "GB-1 guard B layer wording MISSING in:$GB1_WHY"
+fi
+
+# (GB-2) The negative half. Without it the rule reads as "one Editor: task per phase",
+# which is the inverted requirement — and the inversion is invisible to GB-1.
+GB2_WHY=""
+grep -qF 'already sequential' "$GB_PLAN_SKILL"    || GB2_WHY+=" plan"
+grep -qF 'already sequential' "$GB_IMPROVE_SKILL" || GB2_WHY+=" improve"
+if [[ -z "$GB2_WHY" ]]; then
+    pass "GB-2 tasks-inside-a-phase-are-already-sequential carve-out present in both"
+else
+    fail "GB-2 guard B negative half MISSING in:$GB2_WHY"
+fi
+
+# (GB-3) The grammar reference carries the rule too: TASK-FORMAT.md is what a plan author
+# reads while writing Dependencies: lines, and it is excluded from the Part 7c scan, so
+# nothing else looks at it.
+if grep -qF 'serialized alone in its execution layer' "$GB_TASK_FORMAT"; then
+    pass "GB-3 guard B present in the Editor task grammar (TASK-FORMAT.md)"
+else
+    fail "GB-3 guard B MISSING in skills/unikit-plan/references/TASK-FORMAT.md"
+fi
+
+# ─────────────────────────────────────────────
 # EM: engine-MCP rules layer (EM-1…EM-7)
 # ─────────────────────────────────────────────
 # The shard corpus (mcp/*/shards/**) was dropped with the rules-tree cutover; the
@@ -3306,9 +3354,9 @@ fi
 # The guards here lock the SOURCE side — the reader lines in the skills, the dead-name
 # sweep on the repaired configs, and the init.ts call site that no runtime test reaches.
 # EM-8 (the fennara .gd doctrine override) died with its shard: the fact it guarded is
-# now a universal line in layer A, guarded there by the LA-* block. The reader-line and
-# call-site guards below still name the shard-era assets — they are rewritten to the
-# rules tree in the same phase that lands the installer.
+# now a universal line in layer A, guarded there by the LA-* block. EM-1 / EM-2 were
+# retargeted from the shard-era assets to the delivered tree (INDEX.md + the project's
+# MCP-RECHECK-NOTES.md) in the same commit that rewrote the reader lines they grep.
 # All `-qF`, file-scoped (MSYS grep aborts on -iF).
 # Path vars: reuse UNIKIT_VERIFY_SKILL; new EM_* for the other three readers.
 EM_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
@@ -3316,34 +3364,39 @@ EM_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
 EM_DEVCONTEXT_SKILL="$ROOT_DIR/skills/unikit-devcontext/SKILL.md"
 EM_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 
-# (EM-1) capabilities.md is read by ALL FOUR pipeline skills. A delivered asset with no
-# reader line is dead weight; this is the only thing that keeps the four in sync.
+# (EM-1) INDEX.md is the entry point of the delivered rules tree and is read by ALL FOUR
+# pipeline skills. A delivered asset with no reader line is dead weight; this is the only
+# thing that keeps the four in sync. (It replaced capabilities.md with the rules-tree
+# cutover — the shard corpus, and that file with it, no longer exists.)
 EM1_WHY=""
-grep -qF 'engine-mcp/capabilities.md' "$EM_IMPLEMENT_SKILL"  || EM1_WHY+=" implement"
-grep -qF 'engine-mcp/capabilities.md' "$EM_FIX_SKILL"        || EM1_WHY+=" fix"
-grep -qF 'engine-mcp/capabilities.md' "$UNIKIT_VERIFY_SKILL" || EM1_WHY+=" verify"
-grep -qF 'engine-mcp/capabilities.md' "$EM_DEVCONTEXT_SKILL" || EM1_WHY+=" devcontext"
+grep -qF 'engine-mcp/INDEX.md' "$EM_IMPLEMENT_SKILL"  || EM1_WHY+=" implement"
+grep -qF 'engine-mcp/INDEX.md' "$EM_FIX_SKILL"        || EM1_WHY+=" fix"
+grep -qF 'engine-mcp/INDEX.md' "$UNIKIT_VERIFY_SKILL" || EM1_WHY+=" verify"
+grep -qF 'engine-mcp/INDEX.md' "$EM_DEVCONTEXT_SKILL" || EM1_WHY+=" devcontext"
 if [[ -z "$EM1_WHY" ]]; then
-    pass "EM-1 engine-mcp capabilities.md read by all four pipeline skills"
+    pass "EM-1 engine-mcp INDEX.md read by all four pipeline skills"
 else
-    fail "EM-1 engine-mcp capabilities.md reader line MISSING in:$EM1_WHY"
+    fail "EM-1 engine-mcp INDEX.md reader line MISSING in:$EM1_WHY"
 fi
 
-# (EM-2) scene-authoring.md → implement/fix/devcontext; verification.md → verify ONLY.
-# The negative half is the load-bearing one: verification.md carries the GATE LIFTED
-# overrides for Step 2.1/2.2, which mean nothing outside unikit-verify.
+# (EM-2) The rules-tree binding: MCP-RECHECK-NOTES.md → all four readers of the check
+# tables; verification.md → verify ONLY. The negative half is the load-bearing one:
+# verification.md is the per-gate calibration behind the GATE LIFTED verdict, and that
+# verdict means nothing outside unikit-verify. Splitting the calibration across two
+# readers is how two skills come to disagree about what is lifted.
 EM2_WHY=""
-grep -qF 'engine-mcp/scene-authoring.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" scene:implement-missing"
-grep -qF 'engine-mcp/scene-authoring.md' "$EM_FIX_SKILL"        || EM2_WHY+=" scene:fix-missing"
-grep -qF 'engine-mcp/scene-authoring.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" scene:devcontext-missing"
+grep -qF 'MCP-RECHECK-NOTES.md' "$EM_IMPLEMENT_SKILL"  || EM2_WHY+=" notes:implement-missing"
+grep -qF 'MCP-RECHECK-NOTES.md' "$EM_FIX_SKILL"        || EM2_WHY+=" notes:fix-missing"
+grep -qF 'MCP-RECHECK-NOTES.md' "$EM_DEVCONTEXT_SKILL" || EM2_WHY+=" notes:devcontext-missing"
+grep -qF 'MCP-RECHECK-NOTES.md' "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" notes:verify-missing"
 grep -qF 'engine-mcp/verification.md'    "$UNIKIT_VERIFY_SKILL" || EM2_WHY+=" verification:verify-missing"
 grep -qF 'engine-mcp/verification.md' "$EM_IMPLEMENT_SKILL"  && EM2_WHY+=" verification:leaked-into-implement"
 grep -qF 'engine-mcp/verification.md' "$EM_FIX_SKILL"        && EM2_WHY+=" verification:leaked-into-fix"
 grep -qF 'engine-mcp/verification.md' "$EM_DEVCONTEXT_SKILL" && EM2_WHY+=" verification:leaked-into-devcontext"
 if [[ -z "$EM2_WHY" ]]; then
-    pass "EM-2 shard binding: scene-authoring → implement/fix/devcontext · verification → verify ONLY"
+    pass "EM-2 rules-tree binding: notes → all four readers · verification → verify ONLY"
 else
-    fail "EM-2 shard binding drift:$EM2_WHY"
+    fail "EM-2 rules-tree binding drift:$EM2_WHY"
 fi
 
 # (EM-3) The GATE LIFTED override must exist on BOTH sides — the convention is useless

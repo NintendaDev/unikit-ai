@@ -90,6 +90,15 @@ feat(<module>): <description>
 
 ...
 
+## MCP Findings
+
+(Only when the plan carries at least one `Editor:` task. The planner emits the heading and
+the header row and stops there; the executor appends a row when an engine MCP call misled it.)
+
+| id | area | confirm that | evidence | from |
+|---|---|---|---|---|
+| F1 | rollback | the snapshot captured more than zero files | `<call>(paths="...")` → `state=ready files=0` | task 2.3 |
+
 ## Dependency Graph
 
 Phase 1 → Phase 2 → Phase 4
@@ -116,8 +125,27 @@ Rules:
 - Naming of `<container>` and `<target>` is engine-specific — see `references/ENGINE_RULES.md` (§1 kind → concept, §2 language & layout).
 - **Pure code tasks omit the field entirely.** Editing a plain text or config file stays in `Files:`.
 - When `references/ENGINE_RULES.md` is absent for the active engine, the field is **not generated at all** — the plan degrades to code-only tasks and `## Settings` carries no `Editor tasks` line.
+- **A phase carrying an `Editor:` line is serialized alone in its execution layer.** The unit of parallelism downstream is the **phase** — the coordinator runs every phase of one layer concurrently and the tasks inside a phase in order — so the `**Dependencies:**` lines of an editor-bearing phase must leave it as the only member of its layer. This is not a rule about tasks: two `Editor:` tasks in one phase are already sequential, and splitting them into two phases to "separate" them is what creates the collision. The hazard includes plain code phases: a source write triggers a domain reload, and minutes of unavailability land in the middle of another phase's mutation.
 
 The targets are aggregated into an `## EDITOR TARGETS` table (`PLAN-BRIEF.md` in full mode, `## Technical Context` in fast mode). **Both are omitted entirely when the plan carries no `Editor:` task.**
+
+### MCP findings section
+
+`## MCP Findings` belongs to the **`TASKS.md` / `PLAN.md`** template above, at `##` level, next to `## Commit Plan`. It is **not** part of `PLAN-BRIEF.md`: `/unikit-mcp-trap` greps plans for this heading, and a copy living in the brief would make its reading window land on the wrong file.
+
+An executor that hits a misleading engine MCP response records it **here, in the plan, and nowhere else**. It does not edit `.unikit/MCP-RECHECK-NOTES.md` itself: one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
+
+| column | what goes in it |
+|--------|-----------------|
+| `id` | `F<n>`, allocated in order within this plan and never reused. `/unikit-mcp-trap` records it as `from: <plan>#<id>`, which is how a repeat pass knows the row was already transferred |
+| `area` | one of the 12 words in `.unikit/system/dev-principles.md` -> A8. The key is an **area**, never a tool name — that is what keeps the row reachable after the server changes. Anything server-specific goes into the text of the check |
+| `confirm that` | the check, phrased as an instruction to verify. **Only a check** — never a lifted gate, never "use Y instead of X", never an assertion about what the server can or cannot do |
+| `evidence` | the raw call and the raw answer it gave. This is the one column where a tool name is legitimate, and the only reason it is here: without the raw call the finding cannot be replayed, retired, or upstreamed |
+| `from` | the task that observed it (`task 2.3`) |
+
+Three rows never belong here: a pre-declared `GATE LIFTED`, a list of what the server cannot do, and a named replacement for a call. All three lift an obligation permanently. A check that has gone stale merely costs one extra call and **fails safe** — the pipeline stops instead of driving past.
+
+`/unikit-mcp-trap` reads the section through a window — the heading down to the next `##` heading, or 30 lines, whichever comes first — and reads nothing else from the plan. Keep the table short, and keep the heading at `##`: a findings table demoted to `###`, or nested inside another section, is invisible to it.
 
 ### Fast mode differences
 
