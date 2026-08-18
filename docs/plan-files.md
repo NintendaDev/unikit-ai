@@ -98,7 +98,7 @@ Most tasks change source files. Some change the **serialized state of the engine
 Editor: [kind] <container> → <target> : <action>
 ```
 
-`kind` is one of seven: `scene` · `ui` · `vfx` · `anim` · `asset` · `input` · `settings` (default `scene`). One line per target; the field is omitted for pure code tasks.
+`kind` is one of six: `scene` · `ui` · `vfx` · `anim` · `asset` · `settings` (default `scene`). One line per target; the field is omitted for pure code tasks. Input is not a kind of its own — an input-map asset is an `asset`, a legacy input axis is `settings`, and the handling code stays in `Files:`.
 
 The naming of `<container>` and `<target>` is engine-specific and comes from the planning vocabulary described below — which is also where the `<content-root>`, `<ext>` and code-fence placeholders in the templates resolve.
 
