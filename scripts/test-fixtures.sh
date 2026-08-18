@@ -231,6 +231,42 @@ assert_not_contains() {
     fi
 }
 
+# ─────────────────────────────────────────────
+# Failure diagnostics for the engine-MCP surface
+# ─────────────────────────────────────────────
+# Dumps the two states no assertion message can carry: what the engine-mcp tree actually
+# holds, and which findings-log files exist. `Missing path: .../INDEX.md` cannot tell an
+# empty tree from a partially delivered one from a file delivered under another name, and
+# the temp projects are removed by the very next line of the trap that calls this — so a
+# failing run has exactly one moment in which the evidence still exists.
+#
+# Driven by what is on disk rather than by a variable each test has to remember to set:
+# bookkeeping that must be kept in sync is bookkeeping that goes stale without failing.
+# The ABSENCE branches print too — half the diagnoses here are "the directory was never
+# created", and a silent dump would be indistinguishable from a dump that found nothing
+# because it looked in the wrong place.
+dump_mcp_state() {
+    local root="$1" found entry
+    [[ -d "$root" ]] || return 0
+
+    found=0
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] || continue
+        found=1
+        echo "--- engine-mcp tree: ${entry#"$root"/} ---"
+        ls -la "$entry" 2>&1 || true
+    done < <(find "$root" -type d -name engine-mcp 2>/dev/null || true)
+    [[ $found -eq 1 ]] || echo "--- engine-mcp tree: none under the test root (absence is half the diagnosis) ---"
+
+    found=0
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] || continue
+        found=1
+        echo "--- findings log: ${entry#"$root"/} ---"
+    done < <(find "$root" -name 'MCP-RECHECK-NOTES*' 2>/dev/null || true)
+    [[ $found -eq 1 ]] || echo "--- findings log: no MCP-RECHECK-NOTES* file under the test root ---"
+}
+
 assert_exists() {
     local path="$1"
     local hint="$2"

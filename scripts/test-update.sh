@@ -35,8 +35,16 @@ TMPDIR=$(mktemp -d)
 BIOME_JSON="$ROOT_DIR/mcp/unity/unity-mcp-biome.json"
 BIOME_JSON_BACKUP=""
 restore_package_state() {
+    # First statement, so it captures the status that triggered the trap rather than the
+    # status of anything this function does.
+    local exit_code=$?
     if [[ -n "$BIOME_JSON_BACKUP" && -f "$BIOME_JSON_BACKUP" ]]; then
         cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
+    fi
+    # A failing run gets the engine-mcp evidence dumped before the temp tree goes: the
+    # assertion that aborted printed one path and nothing about the state around it.
+    if [[ $exit_code -ne 0 ]]; then
+        dump_mcp_state "$TMPDIR"
     fi
     rm -rf "$TMPDIR"
 }

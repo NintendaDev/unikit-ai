@@ -3500,6 +3500,32 @@ ED_MODE_FAST="$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
 ED_PLAN_TPL="$ROOT_DIR/data/engine-templates/skills/unikit-plan/UNITY_RULES.md"
 ED_IMPLEMENT_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
 
+# Shared by ED-14 and by RT-2 / RT-4 below, and deliberately OUT of any numbered guard:
+# a guard is a retirable unit (EM-8, ED-12 and ED-13 were all retired in this branch), and
+# a helper that dies with one would take three others down with a `command not found`
+# under `set -e` rather than a named failure. Same placement LA_CLASSES has relative to the
+# LA guards that read it.
+RT_AREAS=(ui scene asset anim vfx settings rollback console batch compile transport visual)
+
+# Prints one column of the table under the given heading. Field N+1, since the leading
+# pipe makes field 1 empty. Header and separator rows are dropped by rejecting the literal
+# header cells and any row whose cell is all dashes.
+rt_table_column() {
+    local file="$1" heading="$2" column="$3"
+    awk -v h="$heading" -v c="$column" '
+        $0 == h { inside = 1; next }
+        inside && /^## / { exit }
+        inside && /^\|/ {
+            n = split($0, cells, "|")
+            if (c + 1 > n) next
+            v = cells[c + 1]
+            gsub(/^[ \t]+|[ \t]+$/, "", v)
+            if (v == "" || v ~ /^-+$/ || v == "id" || v == "area" || v == "class") next
+            print v
+        }
+    ' "$file"
+}
+
 # (ED-1) The grammar itself. Without the kind list the field is unconstrained and
 # every planner invents its own vocabulary.
 ED1_WHY=""
@@ -3644,27 +3670,6 @@ fi
 # Directory-scoped over every rules tree, so the next server added is covered without an
 # edit here. The empty-set branch FAILS: a vacuous loop is how this guard would retire
 # itself the day someone moves the tree.
-RT_AREAS=(ui scene asset anim vfx settings rollback console batch compile transport visual)
-
-# Prints one column of the table under the given heading. Field N+1, since the leading
-# pipe makes field 1 empty. Header and separator rows are dropped by rejecting the literal
-# header cells and any row whose cell is all dashes.
-rt_table_column() {
-    local file="$1" heading="$2" column="$3"
-    awk -v h="$heading" -v c="$column" '
-        $0 == h { inside = 1; next }
-        inside && /^## / { exit }
-        inside && /^\|/ {
-            n = split($0, cells, "|")
-            if (c + 1 > n) next
-            v = cells[c + 1]
-            gsub(/^[ \t]+|[ \t]+$/, "", v)
-            if (v == "" || v ~ /^-+$/ || v == "id" || v == "area" || v == "class") next
-            print v
-        }
-    ' "$file"
-}
-
 ED14_WHY=""
 ED14_SEEN=0
 for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do

@@ -21,7 +21,9 @@ fi
 source "$SCRIPT_DIR/test-fixtures.sh"
 
 TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+# The dump has to run BEFORE the cleanup: `set -e` aborts on the first failed assertion,
+# and the assertion message alone cannot say what the engine-mcp tree contained.
+trap 'AIF_EXIT_CODE=$?; if [[ $AIF_EXIT_CODE -ne 0 ]]; then dump_mcp_state "$TMPDIR"; fi; rm -rf "$TMPDIR"' EXIT
 
 # Ensure dist/ is up to date (skipped when a parent runner already built).
 ensure_build
