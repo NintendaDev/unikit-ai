@@ -1582,6 +1582,85 @@ assert_not_exists "$MCPHASH_STALE" \
 echo "  ✓ MCP selection in source hash: swap reinstalls, dead tool ids dropped, orphan references swept"
 
 # ─────────────────────────────────────────────
+# Test 30g: switching the ENGINE drops the grants of the old engine's MCP server
+# ─────────────────────────────────────────────
+# Phase 0, measurement 0.2 (plan task 2). Sibling of Test 30f, different path:
+# 30f swaps one Unity server for another (`engine` unchanged); here the ENGINE
+# itself changes and the MCP selection empties out. This is the last place a dead
+# grant is still possible, because MCP tool injection is ADDITIVE — mcp.ts has no
+# removal branch at all, so the ONLY thing that can clear an `mcp__<OldKey>__*`
+# entry is a full skill reinstall triggered by source-hash divergence.
+#
+# Expectation (verified, not reasoned about): `hashing.ts` folds BOTH `engine:<id>`
+# and the MCP component into the source hash, so unity+biome -> godot+none must
+# reinstall every skill and take the stale ids with it.
+#
+# Verdict is mirrored into
+# .ai-factory/mcp-features/studies/2026-08-18-mcp-rules-architecture/PHASE-0-measurements.md
+# On failure this prints the SURVIVING frontmatter entries, not just the file name —
+# a bare "assertion failed" gives nothing to confirm the verdict with.
+
+ENGSWITCH_DIR="$TMPDIR/update-engine-switch-grants"
+mkdir -p "$ENGSWITCH_DIR"
+cat > "$ENGSWITCH_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-biome"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
+}
+EOF
+inject_fake_registry "$ENGSWITCH_DIR"
+
+ENGSWITCH_OUT1="$TMPDIR/update-engine-switch-1.log"
+(cd "$ENGSWITCH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$ENGSWITCH_OUT1" 2>&1)
+
+ENGSWITCH_SKILL="$ENGSWITCH_DIR/.claude/skills/unikit-implement/SKILL.md"
+assert_exists "$ENGSWITCH_SKILL" "unikit-implement must be installed for the engine-switch grant test"
+assert_contains "$ENGSWITCH_SKILL" 'mcp__UnityMCP__' \
+    "unity+biome install injects mcp__UnityMCP__ grants into unikit-implement frontmatter"
+
+# Switch the engine and deselect every server. Nothing else changes — no --force.
+ENGSWITCH_CONFIG="$ENGSWITCH_DIR/.unikit.json"
+CONFIG="$ENGSWITCH_CONFIG" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engine = 'godot';
+    c.engineMcpKey = null;
+    c.mcp = { servers: [] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+ENGSWITCH_OUT2="$TMPDIR/update-engine-switch-2.log"
+(cd "$ENGSWITCH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$ENGSWITCH_OUT2" 2>&1)
+
+# The skill must still be there — a grant that vanished because the whole skill
+# vanished proves nothing about grant cleanup.
+assert_exists "$ENGSWITCH_SKILL" "unikit-implement is still installed after the engine switch"
+
+if grep -q 'mcp__UnityMCP__' "$ENGSWITCH_SKILL"; then
+    echo "Assertion failed: switching the engine did NOT drop the old server's mcp__UnityMCP__ grants"
+    echo "  (injection is additive and has no removal branch — only a reinstall can clear them,"
+    echo "   so the engine is missing from the skill source hash, or the reinstall did not fire)"
+    echo "  File: $ENGSWITCH_SKILL"
+    echo "--- surviving frontmatter entries ---"
+    grep -n 'mcp__UnityMCP__' "$ENGSWITCH_SKILL" | head -10
+    echo "-------------------------------------"
+    exit 1
+fi
+
+echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clears stale mcp__UnityMCP__ grants (0.2 CONFIRMED)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).
