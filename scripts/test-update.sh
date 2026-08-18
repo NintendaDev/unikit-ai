@@ -1439,14 +1439,15 @@ fi
 echo "  ✓ genre profiles: update delivers + refreshes installed profiles from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
-# Test 30e: engine-mcp assets on update — INTERIM FORM. The shard corpus was dropped
-# with the rules-tree cutover, so no MCP config contributes anything to
-# .unikit/system/engine-mcp/ any more and installEngineMcpShards is a guaranteed no-op:
-# an empty set leaves the directory absent. This leg keeps the wiring point covered by
-# asserting exactly that — selecting a server that used to ship three shards now
-# delivers nothing. The full lifecycle (delivery, provenance stamp, tamper-refresh,
-# recursive orphan-delete) returns here as the rules-tree smoke, which is the only
-# mechanical guard on the update.ts call site.
+# Test 30e: engine-mcp assets on update — INTERIM FORM, and still the ONLY mechanical
+# guard on the update.ts wiring. The shard corpus was dropped with the rules-tree
+# cutover, so no MCP config contributes anything to .unikit/system/engine-mcp/ any more
+# and installEngineMcpShards has nothing left to write. Two legs, because "writes
+# nothing" and "removes what is already there" are different branches of the same call:
+#   Leg 1 — a pre-cutover profile on disk is SWEPT (the migration path).
+#   Leg 2 — a populated selection creates nothing (the fresh path).
+# The full lifecycle (delivery, provenance stamp, tamper-refresh, recursive
+# orphan-delete) returns here as the rules-tree smoke.
 # ─────────────────────────────────────────────
 CONFIG="$DEVPRIN_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
@@ -1455,10 +1456,34 @@ CONFIG="$DEVPRIN_CONFIG" node -e "
     c.mcp = { servers: ['unity-mcp-biome'] };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
+MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
+
+# Leg 1 — the UPGRADE path. Every project installed before the cutover carries the three
+# shards on disk, and system assets have NO migration chain: the orphan-delete inside
+# installEngineMcpShards is the only thing that will ever remove them. That loop runs
+# BEFORE the empty-set early return, so an empty contribution sweeps the whole profile.
+# This leg is why the guard survives Task 8 at all — unlike EM-8 / ED-12 / ED-13, its
+# subject did not disappear with the shard corpus, it became load-bearing.
+mkdir -p "$MCP_SHARD_DIR"
+for shard in capabilities scene-authoring verification; do
+    echo "STALE_PRE_CUTOVER_PROFILE" > "$MCP_SHARD_DIR/$shard.md"
+done
+
 MCP_SHARD_OUT1="$TMPDIR/update-mcp-shards-1.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT1" 2>&1)
 
-MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
+for shard in capabilities scene-authoring verification; do
+    assert_not_exists "$MCP_SHARD_DIR/$shard.md" \
+        "update sweeps the pre-cutover engine-mcp $shard.md (no stale profile survives)"
+done
+echo "  ✓ engine-mcp: a pre-cutover profile is swept on update (orphan-delete, update.ts wiring)"
+
+# Leg 2 — the FRESH path. A selection that used to carry three shards now contributes
+# nothing, so nothing is (re)created.
+rm -rf "$MCP_SHARD_DIR"
+MCP_SHARD_OUT2="$TMPDIR/update-mcp-shards-2.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCP_SHARD_OUT2" 2>&1)
+
 assert_not_exists "$MCP_SHARD_DIR" \
     "selecting an engine MCP delivers no engine-mcp asset while the shard corpus is gone"
 echo "  ✓ engine-mcp: shard corpus dropped — nothing is contributed, directory stays absent"
