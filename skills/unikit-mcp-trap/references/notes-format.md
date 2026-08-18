@@ -111,7 +111,7 @@ check, where it can be rewritten without breaking the index.
 | a row that says | when the server fixes it |
 |---|---|
 | "confirm the snapshot captured more than zero files" | the check passes first try. Cost: one call |
-| "GATE LIFTED — there is no visual regression here" | **the obligation is gone forever** |
+| "GATE LIFTED — there is no test run here" | **the obligation is gone forever** |
 | "use Y instead of X" | **the workaround outlives the fix**; that X works again is never discovered |
 
 The danger is the genre, not the staleness. Under this rule the worst outcome of an

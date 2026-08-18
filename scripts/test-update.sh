@@ -1798,6 +1798,7 @@ echo "  ✓ narrowed grants: dead mcp__ names removed without a reinstall, hand-
 # never overwrite a taken archive slot, and idempotence when nothing changed.
 
 NOTES_SWAP_TMP=$(mktemp -d)
+NOTES_SWAP_ERR="$TMPDIR/update-notes-swap.err"
 NOTES_SWAP_RESULT=$(cd "$ROOT_DIR" && NOTES_ROOT="$NOTES_SWAP_TMP" node --input-type=module -e "
   import fs from 'fs';
   import path from 'path';
@@ -1838,14 +1839,27 @@ NOTES_SWAP_RESULT=$(cd "$ROOT_DIR" && NOTES_ROOT="$NOTES_SWAP_TMP" node --input-
   if (fs.readdirSync(unikit).sort().join('|') !== before) why.push('no-op-branch-touched-the-disk');
 
   console.log(why.length ? why.join(' ') : 'ok');
-" 2>/dev/null || echo "swap-error")
+" 2>"$NOTES_SWAP_ERR" || echo "swap-error")
 rm -rf "$NOTES_SWAP_TMP"
 
 if [[ "$NOTES_SWAP_RESULT" != "ok" ]]; then
     echo "Assertion failed: MCP recheck-notes swap is broken: $NOTES_SWAP_RESULT"
+    echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
     exit 1
 fi
-echo "  ✓ recheck notes: parked under the outgoing server, restored on the way back, archives never overwritten"
+
+# The collision branch must also SAY so. Indexing the archive silently would leave the
+# orphan of an interrupted run sitting on disk with nothing pointing at it: the notes are
+# hand-authored, no installer step ever revisits them, and the only moment anyone can
+# learn that two files now claim the same server is the run that made it happen.
+if ! grep -qF 'archive name taken' "$NOTES_SWAP_ERR"; then
+    echo "Assertion failed: an indexed archive slot was written without a WARN"
+    echo "  (the .N file is the outcome; the warning is the only notice the operator gets)"
+    echo "--- stderr ---"; cat "$NOTES_SWAP_ERR" 2>/dev/null || true; echo "--------------"
+    exit 1
+fi
+
+echo "  ✓ recheck notes: parked under the outgoing server, restored on the way back, archives never overwritten (collision warns)"
 
 # ─────────────────────────────────────────────
 # Test 30j: an engine switch through `update` parks the findings log too
@@ -1918,7 +1932,17 @@ assert_exists "$NOTES_CLI_ARCHIVE" \
 assert_contains "$NOTES_CLI_ARCHIVE" 'BIOME_FINDING' \
     "parking is a rename — the installer never rewrites note content"
 
-echo "  ✓ recheck notes: an engine switch through update parks the outgoing server's log"
+# The same switch must also take the outgoing server's RULES with it. fennara ships no
+# rules tree, so the correct end state is an empty tree — biome's files swept, nothing
+# put back. Leaving them would be the worse half of the same bug the parked notes guard
+# against: a project reading one server's exceptions while talking to another.
+NOTES_CLI_RULES="$NOTES_CLI_DIR/.unikit/system/engine-mcp"
+assert_not_exists "$NOTES_CLI_RULES/INDEX.md" \
+    "a server switch sweeps the outgoing server's rules tree (INDEX.md does not survive)"
+assert_not_exists "$NOTES_CLI_RULES/verification.md" \
+    "the sweep covers the whole tree, not just its entry point"
+
+echo "  ✓ recheck notes: an engine switch through update parks the log and sweeps the old rules tree"
 
 # ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills

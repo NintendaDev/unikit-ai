@@ -1331,6 +1331,76 @@ assert_not_contains "$MCP_RULES_BASE/verification.md" '[0-9]+ of (the )?[0-9]+' 
 echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped, no counters"
 
 # ─────────────────────────────────────────────────────
+# Test 13c: an engine MCP that ships NO rules tree — nothing degrades
+# ─────────────────────────────────────────────────────
+# Invariant 3 at the install layer: no rules ≠ no rights. Exactly one of the six engine
+# servers carries a rules tree today, so this is the MAJORITY case and not an edge one,
+# and its whole contract is to be indistinguishable from a well-behaved install except
+# for one absent directory. The failure it guards is a plausible one: a delivery step
+# that reads "no tree" as "misconfigured server" and drops the MCP config, the grants, or
+# both. That would look like a clean install and silently disable editor work on five of
+# the six servers — the exact shape of degradation the rules architecture forbids.
+#
+# unity-mcp-coplay is the fixture because it is the same ENGINE as biome: an assertion
+# that passed only because the engine had no MCP at all would prove nothing.
+
+MCP_NOTREE_DIR="$TMPDIR/test-mcp-no-rules-tree"
+mkdir -p "$MCP_NOTREE_DIR"
+
+cat > "$MCP_NOTREE_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": ["unity-mcp-coplay"] },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-implement", "unikit-verify", "unikit-memory"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$MCP_NOTREE_DIR"
+
+seed_rule "$MCP_NOTREE_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$MCP_NOTREE_DIR"
+
+# The one visible difference: no tree to deliver, so no directory. Absent, not empty —
+# an empty directory would read to a skill as a tree whose files failed to arrive.
+assert_not_exists "$MCP_NOTREE_DIR/.unikit/system/engine-mcp" \
+  "no rules tree for the selected server leaves the engine-mcp dir absent (not empty)"
+
+# ...and nothing else differs. The selection is still live, and the mechanical evidence
+# of that is the GRANTS: `update` never rewrites the MCP config itself (configureMcp is
+# driven by the init wizard, covered separately in Test 12), but it does re-run the
+# frontmatter injection from `mcp.servers` on every run. A server the delivery step had
+# written off would inject nothing, and its tools would be unreachable no matter what
+# .mcp.json still said.
+assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__UnityMCP__' \
+  "tool grants are injected for a server that ships no rules tree"
+assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-verify/SKILL.md" 'mcp__UnityMCP__' \
+  "the verify skill keeps its grants too (both sides of the pipeline stay live)"
+
+# ...layer A still arrives, and it is what carries the obligations when a tree does not:
+assert_exists "$MCP_NOTREE_DIR/.unikit/system/dev-principles.md" \
+  "dev-principles.md is delivered regardless of whether the server has a rules tree"
+
+# ...and the unrelated per-skill assets are untouched by the rules-tree cutover. The
+# scripts/ subdir is the one non-markdown payload any skill ships, so it is the first
+# thing a change to the delivery loop would break.
+assert_exists "$MCP_NOTREE_DIR/.claude/skills/unikit-memory/scripts/material-prep.py" \
+  "the scripts/ subdir still ships (the rules-tree cutover did not touch skill assets)"
+
+echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"
+
+# ─────────────────────────────────────────────────────
 # Test 14: resolveExistingEngine verdict matrix (wizard engine reuse)
 # ─────────────────────────────────────────────────────
 # Pure-function contract for the init wizard Step 2 skip: the exported

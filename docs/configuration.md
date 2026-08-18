@@ -151,7 +151,7 @@ Two servers compete under this key. The wizard lists them in `order`, so **Unity
 
 Backed by [unity-biome-mcp](https://github.com/german-krasnikov/unity-biome-mcp). Requires **Unity 6 (6000.0+)** and [`uv`](https://docs.astral.sh/uv/). Install the Unity package from the git URL `https://github.com/german-krasnikov/unity-biome-mcp.git?path=unity-plugin`, then run `MCP > Setup Wizard` in Unity. The Editor must be running — the server finds its port through `~/.unity-biome-mcp/ports/*.port`, so no env vars are needed.
 
-The most capable of the four engine servers: transactional scene edits (`scene_change_plan` → `apply_scene_change`), a real console watermark (`console_mark` + `get_console_since`), visual regression baselines, and uGUI / Timeline / Shader Graph authoring. It is stdio, so unlike the HTTP servers it also reaches the OpenCode agent.
+The most capable of the four engine servers: transactional scene edits (`scene_change_plan` → `apply_scene_change`), a real console watermark (`console_mark` + `get_console_since`), and uGUI / Timeline / Shader Graph authoring. It is stdio, so unlike the HTTP servers it also reaches the OpenCode agent.
 
 Only **38 of 163** tools are visible up front; the rest unlock per category via `discover_tools`. The delivered `capabilities.md` shard explains the protocol — see [Engine-MCP shards](#engine-mcp-shards) below.
 

@@ -61,6 +61,8 @@ Five Unity-specific traps that must be resolved **at planning time**, not discov
 4. **ScriptableObject work is `Editor:`, not `Files:`.** Writing the SO class is `Files:`; creating the `.asset` and filling its values is an `Editor: [asset] …` line. A plan that lists only the class leaves the data half unbuilt.
 5. **Never plan `.meta` files.** Unity generates and maintains them on refresh — a task that creates or edits a `.meta` is always wrong. (Verification is a separate matter: the `unikit-verify` skill still checks `.meta` pairing after the fact, and that check stays.)
 
+**The cut this section is held to.** One mechanical test decides whether a rule belongs here at all: *would it still be true after the engine MCP server is replaced?* Survives the swap → it is a property of the engine and belongs in this file. Dies when a server or its plugin is updated → it is an exception of that server, and its only home is that server's `INDEX.md` in `.unikit/system/engine-mcp/`. All five rules above pass: each is a property of Unity's own serialization, prefab or assembly model, and none of them mentions a server. A sixth may join them only after the same test, and a rule that describes what some server can or cannot do fails it by construction — this file never names a tool.
+
 ## §5 Out of scope
 
 This file does **not** carry code-writing rules. The boundary is exact:

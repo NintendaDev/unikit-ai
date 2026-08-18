@@ -525,7 +525,6 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether to generate tests after each phase
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
-   - `Visual regression: yes/no (default: no)` — read by **both** consumers: `/unikit-implement` takes a baseline before the editor change and compares after it, and `/unikit-verify` gates the result (lifting the gate when the server's `verification.md` shard declares visual regression unavailable). Resolved in `mode-full.md` / `mode-fast.md`.
    - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`** — no `Editor:` field is generated for that engine, so the setting would have no consumer.
 
 4. **`## Roadmap Linkage`** (optional, only if `.unikit/ROADMAP.md` exists):

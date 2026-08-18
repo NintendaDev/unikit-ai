@@ -148,8 +148,7 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
 
-**Parse `## Settings`** from the plan while it is open here — Step 2.4 needs it and runs long before the `Docs:` read in Step 3:
-- `Visual regression: yes/no` — **default `no`** when the line is absent. Gates Step 2.4.
+**Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
 - `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
 
 Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can be applied inline without re-loading on each delegation.
@@ -295,7 +294,7 @@ Statuses:
 
 **Gate calibration — `.unikit/system/engine-mcp/verification.md` (read in Step 0).**
 
-Steps 2.1, 2.2 and 2.4 each have a bail-out branch for "{{engine_mcp_tool}} unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
+Steps 2.1 and 2.2 each have a bail-out branch for "{{engine_mcp_tool}} unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
 
 - **MCP unavailable** — {{engine_mcp_tool}} itself is not reachable → skip with the wording given in the step.
 - **Gate closed** — the gate produced the class of evidence `verification.md` names for it → report it passed, on that evidence and no other.
@@ -334,19 +333,6 @@ Apply all checks defined in `{{skills_dir}}/{{self_name}}/references/ENGINE_RULE
 - **Read-only path enforcement** — flag any modifications to engine-defined read-only directories
 
 If `ENGINE_RULES.md` is not loaded (Step 0.3), skip this section and note: `Engine-specific checks: skipped (no ENGINE_RULES.md)`
-
-### 2.4 Visual Regression
-
-**Runs only when `Visual regression: yes`** in the plan's `## Settings` (parsed in Step 0.2; absent ⇒ `no` ⇒ skip this step silently).
-
-Compare the current visual state of the changed editor targets against the baseline `/unikit-implement` took in its Step 3.6. Resolve the affordance from the live catalog by intent — `verification.md` names the class of evidence the gate needs, never the call that produces it. Report differences with the target they belong to.
-
-The same two distinct skips as 2.1 / 2.2 apply:
-
-- If {{engine_mcp_tool}} is unavailable — skip and note: `Visual regression: {{engine_mcp_tool}} unavailable, skipped`
-- If the visual-regression gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Visual regression: gate lifted — <the observation that established it>`
-
-A gate that turns out to be unreachable here is the normal path, not a defect — do not substitute another tool for a lifted gate, and do not report it as passed.
 
 ---
 
@@ -675,7 +661,6 @@ Normal mode already checks all items below but tolerates partial results and war
 | Task completion | `⚠️ PARTIAL` and `⏭️ SKIPPED` allowed | All tasks must be `✅ COMPLETED` — partial and skipped are failures. **Carve-out:** `⏭️ SKIPPED (editor target, …)` and `⏸️ MANUAL` are exempt in both modes — the first is an unreachable capability, the second is work the user deliberately took on; failing either would fail correctly completed work |
 | Compilation ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if {{engine_mcp_tool}} is available |
 | Tests ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if test assemblies exist for affected modules |
-| Visual regression (Step 2.4) | Reported if enabled | **Required** to pass if enabled and not gate-lifted |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
 | Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |

@@ -29,7 +29,6 @@ Fast mode: if no research — see `## Technical Context` section below.
 ## Settings
 - Testing: yes/no
 - Docs: yes/no (full mode only)
-- Visual regression: yes/no (default: no)
 - Editor tasks: mcp | manual | direct
 
 ## Roadmap Linkage (optional)

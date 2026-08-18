@@ -328,12 +328,11 @@ Read the `## Settings` section from `TASKS.md` (or from `PLAN.md` in fast-mode):
 - `Testing: no` → skip test creation entirely
 - `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.4)
 - `Docs: no` → skip documentation checkpoint, emit warning
-- `Visual regression: yes` → in Step 3.6, take a baseline before an editor change and compare after it. **Default when the line is absent: `no`.**
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (`{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
-If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, `Visual regression: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
+If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
 
-Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.6 (visual regression), Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
+Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
 
 Understand:
 - Which tasks are completed (`- [x]`) and which are pending (`- [ ]`)
@@ -552,8 +551,6 @@ After all tasks in a phase are done, check {{engine_name}} console for compilati
 4. Repeat the check→fix cycle until no errors from the current phase remain
 
 This step is critical: do NOT proceed to commit (3.9) with compilation errors that belong to the current phase. Future-phase errors are acceptable — they indicate planned work, not broken code.
-
-**Visual regression (only when `Visual regression: yes`).** For a phase containing `Editor:` tasks: take a baseline **before** the editor change and compare **after** it. Take the tool names from the `scene-authoring.md` / `verification.md` shard — do **not** hardcode them here, they differ per server. If the shard declares no visual-regression capability, **skip the step and say so** (`WARN [visual regression] not supported by the configured server — skipped`); never substitute an improvised replacement. `/unikit-verify` gates the same setting and lifts the gate on the same grounds.
 
 **3.7: Update context artifacts (if project structure changed)**
 

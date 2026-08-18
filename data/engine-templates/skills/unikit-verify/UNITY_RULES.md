@@ -70,21 +70,23 @@ Each finding should be cross-referenced with surrounding `#if DEBUG` / `#endif` 
 
 Applies to plan tasks carrying an `Editor:` line. These targets changed the editor's **serialized state**, so there is nothing in the sources to grep — each is confirmed by **reading the state back through the MCP**, one signal per `kind`.
 
-Tool names below are the Unity Biome set (`order: 1`, the default Unity server). On any other configured server, take the equivalent from its `verification.md` / `scene-authoring.md` shard — **the shard wins over this table**. If a signal has no tool on the configured server, report `⏭️ SKIPPED (editor target, MCP unavailable)`; never substitute a lookalike.
+The right column names the **class of evidence** the signal requires, never the call that produces it. A class survives a server change; a name does not, and a name that has gone stale reads as an instruction to do the wrong thing. Resolve the affordance from the live catalog by intent.
 
-| kind | signal to confirm | read it back with |
-|------|-------------------|-------------------|
-| `scene` | the object exists at the stated hierarchy path | `get_hierarchy` · `find_objects` · `get_object_detail` |
-| `scene` | the component is present on that object | `get_component` · `inspect` |
-| `scene` / `asset` | the serialized field holds the intended value | `inspect` · `get_object_detail` |
-| `scene` / `ui` | the wired reference is **not** `null` (no missing-reference) | `validate_references` · `lint_scene_refs` · `inspect` |
-| `ui` / `vfx` / `anim` | the object exists inside the prefab and carries the change | `prefab` · `get_hierarchy` |
-| `asset` | the asset exists at the stated path and is of the expected type | `asset` |
-| `settings` | the layer, tag, or input axis is registered | `project_settings` |
+Before you resolve it, read the project's rules for this server: grep the check table in `.unikit/system/engine-mcp/INDEX.md` for your task's `kind` area plus every cross-cutting area, and read `.unikit/system/engine-mcp/verification.md` in full — that file is read by this skill and no other. Both are optional. Their absence means there are no known exceptions for this server, never that there are no capabilities, and it never turns a target into `⏸️ MANUAL`. Report `⏭️ SKIPPED (editor target, MCP unavailable)` only when the affordance is absent and you established that by trying; never substitute a lookalike.
+
+| kind | signal to confirm | what closes it (`dev-principles.md` → A2) |
+|------|-------------------|-------------------------------------------|
+| `scene` | the object exists at the stated hierarchy path | *the thing exists in the project* — read it from the project, not from a catalog and not from memory |
+| `scene` | the component is present on that object | *the thing exists in the project* — read the object's own component set back |
+| `scene` / `asset` | the serialized field holds the intended value | *a field or property changed* — read that field back after the write |
+| `scene` / `ui` | the wired reference is **not** `null` (no missing-reference) | *a field or property changed* — read the reference field back off the object. A checker that answers "clean" is a `lying validator` candidate: it may corroborate, never close |
+| `ui` / `vfx` / `anim` | the object exists inside the prefab and carries the change | both classes, in that order — *exists in the project*, then *a field or property changed* on it |
+| `asset` | the asset exists at the stated path and is of the expected type | *the thing exists in the project* — read it back from the project by its path |
+| `settings` | the layer, tag, or axis is registered | *the thing exists in the project* — read the setting back out of the project's own settings state |
 
 Two rules that keep this honest:
 
-1. **A `success` response is not evidence.** Every one of these is a *read*, taken after the write, precisely because success codes are unreliable. Do not accept the writing call's own answer.
+1. **A `success` response is not evidence.** Every one of these is a *read*, taken after the write, precisely because success codes are unreliable (`false success`). Do not accept the writing call's own answer.
 2. **A field left at its default is indistinguishable from a field never set.** When the intended value equals the type default, confirm through a second signal (the object diff, or the component's presence) rather than reporting a pass on an ambiguous read.
 
 ### `.meta` is verified but never planned
