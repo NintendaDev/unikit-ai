@@ -3,7 +3,6 @@
   "is_engine": true,
   "order": 1,
   "displayName": "Fennara Godot AI [Free]",
-  "instruction": "Fennara Godot AI: requires Godot 4.5+, x86_64 only on Windows/Linux and arm64 on macOS. On Windows the MSVC Redistributable 2015-2022 x64 must be installed. Before the first run: install the CLI, run `fennara install` inside the Godot project, then enable the addon. THE EDITOR MUST BE OPEN - headless operation is not possible. One daemon per account (port 41287); with two projects open the target is chosen in the Fennara dock. Telemetry is enabled by default.",
   "verified": {
     "version": "0.4.2",
     "date": "2026-08-15",

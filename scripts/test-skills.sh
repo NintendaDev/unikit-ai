@@ -3336,17 +3336,23 @@ else
     fail "EM-4 DEAD names still present:$EM4_WHY"
 fi
 
-# (EM-5) Static wiring guard for BOTH call sites. test-install.sh installs its projects via
-# `update`, so every runtime shard test exercises update.ts; a dropped init.ts call would be
-# invisible to lint, knip (still called from update.ts) and every smoke test. These two greps
-# are the only coverage of the init side.
+# (EM-5) Static wiring guard for BOTH call sites, over the two functions that must run
+# together. test-install.sh installs its projects via `update`, so every runtime profile test
+# exercises update.ts; a dropped init.ts call would be invisible to lint, knip (still called
+# from update.ts) and every smoke test. These greps are the only coverage of the init side.
+#
+# swapMcpRecheckNotes joins installEngineMcpRules here because its failure mode is worse than
+# a missing delivery and completely silent: the notes of the outgoing server stay active under
+# the incoming one, and every reader then treats another server's findings as evidence.
 EM5_WHY=""
-grep -qF 'installEngineMcpShards(' "$ROOT_DIR/src/cli/commands/init.ts"   || EM5_WHY+=" init.ts"
-grep -qF 'installEngineMcpShards(' "$ROOT_DIR/src/cli/commands/update.ts" || EM5_WHY+=" update.ts"
+for fn in installEngineMcpRules swapMcpRecheckNotes; do
+    grep -qF "$fn(" "$ROOT_DIR/src/cli/commands/init.ts"   || EM5_WHY+=" init.ts:$fn"
+    grep -qF "$fn(" "$ROOT_DIR/src/cli/commands/update.ts" || EM5_WHY+=" update.ts:$fn"
+done
 if [[ -z "$EM5_WHY" ]]; then
-    pass "EM-5 installEngineMcpShards wired in both init.ts and update.ts"
+    pass "EM-5 installEngineMcpRules + swapMcpRecheckNotes wired in both init.ts and update.ts"
 else
-    fail "EM-5 installEngineMcpShards NOT wired in:$EM5_WHY"
+    fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
 fi
 
 # (EM-6) No recommendation wording in a Godot displayName. Ranking is expressed by
@@ -3898,21 +3904,26 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7i: installer/registry module file-size guard
+# Part 7i: core module file-size guard
 # ─────────────────────────────────────────────
-# Keep the post-refactor installer/* and registry/* submodules and the shared
-# constants.ts under a hard 500-line ceiling so neither the former installer
-# monolith nor the schema-aware registry layer can silently regrow. The limit
-# leaves comfortable headroom over the largest module (installer/rules-sync.ts
-# at ~427, registry/validator.ts at ~297).
-echo -e "\n${BOLD}Part 7i: installer/registry module file-size guard${NC}"
+# Keep the whole of src/core/ — the root modules plus the installer/* and
+# registry/* submodules — under a hard 500-line ceiling so neither the former
+# installer monolith nor the schema-aware registry layer can silently regrow. The
+# limit leaves headroom over the largest module (core/extensions.ts at ~487,
+# registry/chained-registry.ts at ~491, installer/rules-sync.ts at ~484).
+#
+# The root src/core/*.ts glob closes what used to be the rule's blind spot:
+# constants.ts was listed by name and everything beside it — mcp.ts above all,
+# the module the rules-tree work kept splitting — went unguarded, so a project
+# rule that reads as mechanical was enforced by hand review alone.
+echo -e "\n${BOLD}Part 7i: core module file-size guard${NC}"
 
 SIZE_LIMIT=500
 SIZE_VIOLATIONS=""
-for f in "$ROOT_DIR"/src/core/installer/*.ts \
+for f in "$ROOT_DIR"/src/core/*.ts \
+         "$ROOT_DIR"/src/core/installer/*.ts \
          "$ROOT_DIR"/src/core/registry/*.ts \
-         "$ROOT_DIR"/src/core/registry/migrations/*.ts \
-         "$ROOT_DIR"/src/core/constants.ts; do
+         "$ROOT_DIR"/src/core/registry/migrations/*.ts; do
     [[ -f "$f" ]] || continue
     lines=$(wc -l < "$f" | tr -d ' ')
     if [[ "$lines" -gt "$SIZE_LIMIT" ]]; then
@@ -3921,9 +3932,9 @@ for f in "$ROOT_DIR"/src/core/installer/*.ts \
 done
 
 if [[ -z "$SIZE_VIOLATIONS" ]]; then
-    pass "installer/registry modules within $SIZE_LIMIT-line limit"
+    pass "src/core modules within $SIZE_LIMIT-line limit"
 else
-    fail "installer/registry modules exceed $SIZE_LIMIT-line limit"
+    fail "src/core modules exceed $SIZE_LIMIT-line limit"
     echo -e "$SIZE_VIOLATIONS"
 fi
 

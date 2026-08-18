@@ -3,7 +3,6 @@
   "is_engine": true,
   "order": 3,
   "displayName": "Coding-Solo Godot MCP [Free]",
-  "instruction": "Coding-Solo Godot MCP: Ensure Godot Editor path is configured via GODOT_PATH environment variable.",
   "config": {
     "command": "npx",
     "args": ["@coding-solo/godot-mcp"],

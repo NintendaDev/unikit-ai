@@ -1,7 +1,7 @@
 import path from 'path';
 import { readJsonFile, readTextFile, writeTextFile, getMcpDir, ensureDir, fileExists, listFiles } from '../utils/fs.js';
 import { getAgentConfig } from './agents.js';
-import { type EngineMcpShard, type McpPlatformKey } from './constants.js';
+import { type McpPlatformKey } from './constants.js';
 import { getEngineConfig } from './engines.js';
 import { resolvePlatformConfig } from './mcp-platform.js';
 import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
@@ -17,7 +17,6 @@ export interface McpServerEntry {
   key: string;
   isEngine: boolean;
   displayName: string;
-  instruction: string;
   /**
    * The platform-independent server config. Optional because a server may ship
    * `configByPlatform` instead (an absolute binary path that differs per OS);
@@ -41,17 +40,28 @@ export interface McpServerEntry {
   verified?: { version: string; date: string; toolRegistry: string };
   /**
    * Presentation order inside a `key` group (ascending, 1-based). Drives the
-   * wizard's radio pre-selection and the shard concatenation order. Missing =
-   * last. Never affects the order servers are written into a settings file.
+   * wizard's radio pre-selection — and nothing else since the shard corpus was
+   * retired: one engine takes one engine server, so there is no longer any
+   * content to concatenate in a defined order. Missing = last. Never affects the
+   * order servers are written into a settings file.
    */
   order?: number;
   /**
-   * Absolute paths to this server's engine-MCP shard sources, keyed by shard
-   * name. The JSON stores paths relative to the config's own directory; they are
-   * resolved here so consumers never need to know which `mcp/<engine>/` dir the
-   * entry came from. A missing key = this server contributes no such shard.
+   * Where this server documents itself: `context7` is a Context7 library id,
+   * `repo` the upstream repository URL. Both optional. `repo` is what the `init`
+   * summary generates its install line from — the field replaced the
+   * hand-written `instruction` prose, which restated vendor documentation and
+   * went stale claim by claim.
    */
-  shards?: Partial<Record<EngineMcpShard, string>>;
+  docs?: { context7?: string; repo?: string };
+  /**
+   * Absolute path to this server's rules tree (`INDEX.md` and whatever else it
+   * grew) — the exceptions this server imposes, never a list of what it can do.
+   * The JSON stores the path relative to the config's own directory; it is
+   * resolved here so consumers never need to know which `mcp/<engine>/` dir the
+   * entry came from. Absent = no known exceptions, which degrades nothing.
+   */
+  rulesDir?: string;
 }
 
 export type DiscoveredServers = Map<string, McpServerEntry>;
@@ -64,7 +74,7 @@ async function scanMcpDirectory(dirPath: string): Promise<Map<string, McpServerE
     if (!file.endsWith('.json')) continue;
 
     const raw = await readJsonFile<Record<string, unknown>>(path.join(dirPath, file));
-    const entry = parseMcpServerEntry(raw, dirPath);
+    const entry = parseMcpServerEntry(raw, dirPath, file);
     if (!entry) continue;
 
     servers.set(file.replace(/\.json$/, ''), entry);
@@ -401,15 +411,23 @@ export function getMcpVerifiedStamps(discoveredServers: DiscoveredServers, enabl
   return stamps;
 }
 
-export function getMcpInstructions(discoveredServers: DiscoveredServers, enabledFileIds: string[]): string[] {
+/**
+ * One install line per selected server, generated from {@link McpServerEntry.docs}.
+ *
+ * Replaces the retired per-server `instruction` prose. The template is fixed and
+ * the only variable part is a URL, so there is nothing here that can quietly go
+ * stale: a dead repository answers 404 loudly, where prose walks the user
+ * through outdated steps in silence. A server without `docs.repo` contributes
+ * nothing — deliberate for a server that needs no setup at all.
+ */
+export function getMcpDocsLines(discoveredServers: DiscoveredServers, enabledFileIds: string[]): string[] {
   const selected = new Set(enabledFileIds);
-  const instructions: string[] = [];
+  const lines: string[] = [];
 
   for (const [fileId, server] of discoveredServers) {
-    if (selected.has(fileId) && server.instruction) {
-      instructions.push(server.instruction);
-    }
+    if (!selected.has(fileId) || !server.docs?.repo) continue;
+    lines.push(`${server.displayName} — setup and requirements: ${server.docs.repo}`);
   }
 
-  return instructions;
+  return lines;
 }

@@ -3,7 +3,6 @@
   "is_engine": true,
   "order": 2,
   "displayName": "Coplay Unity MCP",
-  "instruction": "Coplay Unity MCP: requires the MCP for Unity package installed in the Unity project, with the Editor running. The HTTP server does not start on its own - launch it via Window > MCP for Unity > Start Server (listens on 127.0.0.1:8080). Note: the Unity package manages MCP client configs itself and overwrites external entries when the Editor loads; disable it with the EditorPref MCPForUnity.AutoRegisterEnabled=false.",
   "verified": {
     "version": "10.1.2",
     "date": "2026-08-15",

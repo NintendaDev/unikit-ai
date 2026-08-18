@@ -3,7 +3,6 @@
   "is_engine": true,
   "order": 1,
   "displayName": "ChiR24 Unreal MCP (Unreal Engine >= 5.0)",
-  "instruction": "ChiR24 Unreal MCP (native transport): enable \"Enable Native MCP\" in the plugin settings (bEnableNativeMCP defaults to false, port 3000). Requires a C++ project: copy plugins/McpAutomationBridge into <Project>/Plugins/ and build it; enable PythonScriptPlugin, EditorScriptingUtilities, Niagara, GameplayAbilities and SmartObjects. The Unreal Editor must be running. Only UE 5.7.4 is actually verified; 5.8 Preview 1 does not build. Advisory GHSA-x982-3jx2-x6q3 (RCE) is fixed in 0.5.31 - until that release ships, do not expose the loopback port outside the machine.",
   "verified": {
     "version": "0.5.30",
     "date": "2026-08-15",
