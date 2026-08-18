@@ -106,7 +106,7 @@ Some tasks change the engine editor's **serialized state** (scenes, UI, VFX, ani
 
 ```
 Editor: [kind] <container> → <target> : <action>
-kind ∈ scene | ui | vfx | anim | asset | input | settings   (default: scene)
+kind ∈ scene | ui | vfx | anim | asset | settings   (default: scene)
 ```
 
 Rules:

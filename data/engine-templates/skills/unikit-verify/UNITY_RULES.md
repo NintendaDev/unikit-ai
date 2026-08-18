@@ -80,7 +80,7 @@ Tool names below are the Unity Biome set (`order: 1`, the default Unity server).
 | `scene` / `ui` | the wired reference is **not** `null` (no missing-reference) | `validate_references` · `lint_scene_refs` · `inspect` |
 | `ui` / `vfx` / `anim` | the object exists inside the prefab and carries the change | `prefab` · `get_hierarchy` |
 | `asset` | the asset exists at the stated path and is of the expected type | `asset` |
-| `input` / `settings` | the layer, tag, or input axis is registered | `project_settings` |
+| `settings` | the layer, tag, or input axis is registered | `project_settings` |
 
 Two rules that keep this honest:
 

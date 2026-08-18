@@ -439,7 +439,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 **Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
 
-- **`mcp`** — carry it out through the engine MCP. Resolve `kind` → tool family **from the `scene-authoring.md` shard**, never from this file: the tool names differ per server and only the shard is audited. Confirm the result by **reading the changed state back** — not by the response code (fake success is confirmed on two of the four supported servers).
+- **`mcp`** — carry it out through the engine MCP. Resolve `kind` → tool family **from the `scene-authoring.md` shard**, never from this file: the tool names differ per server and only the shard is audited. Confirm the result by **reading the changed state back** — not by the response code (a response code is not evidence; the evidence is the read-back of what you claimed to change).
   - **Locating the table: match the prefix `### Editor work kind →`, not a full heading.** The three shards that carry one end it differently (`tool` / `tool family` / `parent tool`); matching any single full heading finds it on some servers and silently drops the rest into `manual`.
   - **The shard declares no kind table → say so and degrade to `manual`.** Do not pick tools by guesswork — the shards forbid reaching for a lookalike when a tool is missing.
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.

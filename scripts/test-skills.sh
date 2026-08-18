@@ -773,15 +773,20 @@ DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 if [ ! -f "$DEV_PRINCIPLES" ]; then
     fail "dev-principles.md — missing in data/"
 else
-    if grep -q '## Core Principles' "$DEV_PRINCIPLES"; then
-        pass "dev-principles.md — has Core Principles section"
+    if grep -q '## Layer A' "$DEV_PRINCIPLES"; then
+        pass "dev-principles.md — has the Layer A evidence-contract section"
     else
-        fail "dev-principles.md — missing Core Principles section"
+        fail "dev-principles.md — missing the Layer A evidence-contract section"
     fi
-    if grep -q '## Workflow' "$DEV_PRINCIPLES"; then
-        pass "dev-principles.md — has Workflow section"
+    if grep -q '## Engine workflow' "$DEV_PRINCIPLES"; then
+        pass "dev-principles.md — has Engine workflow section"
     else
-        fail "dev-principles.md — missing Workflow section"
+        fail "dev-principles.md — missing Engine workflow section"
+    fi
+    if grep -q '## Code conventions' "$DEV_PRINCIPLES"; then
+        pass "dev-principles.md — has Code conventions section"
+    else
+        fail "dev-principles.md — missing Code conventions section"
     fi
     # Guard against agent-specific vars leaking back in
     if grep -q '{{settings_file}}\|{{skills_dir}}' "$DEV_PRINCIPLES"; then
@@ -3142,6 +3147,117 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# LA: layer A — the evidence contract in data/dev-principles.md (LA-1…LA-6)
+# ─────────────────────────────────────────────
+# dev-principles.md is read on EVERY Bootstrap by five skills, so it is the one
+# file where a drifted sentence is guaranteed to reach every pipeline run. These
+# guards lock the three things that cannot be re-derived from the text: the
+# vocabularies (they are the source of truth for the kind grammar and every check
+# table's key), the "no names" invariant, and the always/lazy split.
+# All -qF and file-scoped (MSYS grep aborts on -iF) except LA-4/LA-5, which are
+# regex by construction.
+LA_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
+LA_SYSTEM_ASSETS="$ROOT_DIR/src/core/installer/system-assets.ts"
+LA_BOUNDARY='<!-- === LAZY-READ BOUNDARY === -->'
+LA_CLASSES=('false success' 'eaten parameter' 'catalog phantom' 'lying validator'
+            'fake rollback' 'transport ambiguity' 'opaque aggregate' 'stale read'
+            'destructive default')
+
+# (LA-1) The evidence contract itself. Without these tokens every downstream
+# "report a verdict" instruction in the pipeline skills points at nothing.
+LA1_WHY=""
+grep -qF 'CLAIM'    "$LA_DEV_PRINCIPLES" || LA1_WHY+=" CLAIM"
+grep -qF 'EVIDENCE' "$LA_DEV_PRINCIPLES" || LA1_WHY+=" EVIDENCE"
+grep -qF 'VERDICT'  "$LA_DEV_PRINCIPLES" || LA1_WHY+=" VERDICT"
+grep -qF 'NOT CONFIRMED' "$LA_DEV_PRINCIPLES" || LA1_WHY+=" NOT-CONFIRMED"
+if [[ -z "$LA1_WHY" ]]; then
+    pass "LA-1 evidence contract present in dev-principles.md"
+else
+    fail "LA-1 evidence contract MISSING in dev-principles.md:$LA1_WHY"
+fi
+
+# (LA-2) All nine failure-class names. The taxonomy is closed: a profile marks which
+# classes are LIVE on a server, so a missing name here silently drops a whole class
+# of silent failure from every check.
+LA2_WHY=""
+for la_class in "${LA_CLASSES[@]}"; do
+    grep -qF "$la_class" "$LA_DEV_PRINCIPLES" || LA2_WHY+=" ${la_class// /-}"
+done
+if [[ -z "$LA2_WHY" ]]; then
+    pass "LA-2 all nine failure-class names present in dev-principles.md"
+else
+    fail "LA-2 failure-class name MISSING in dev-principles.md:$LA2_WHY"
+fi
+
+# (LA-3) Both vocabularies, with their NEGATIVE halves. The input kind was dissolved
+# into asset/scene/code (7 -> 6) and uitk is not an area (UI Toolkit is Unity-only,
+# and an area must survive an engine change) — without the two absence checks either
+# one creeps back as "just one more row" and both vocabularies stop being closed sets.
+LA3_WHY=""
+grep -qF 'scene · ui · vfx · anim · asset · settings' "$LA_DEV_PRINCIPLES" || LA3_WHY+=" kind-6"
+grep -qF 'ui · scene · asset · anim · vfx · settings' "$LA_DEV_PRINCIPLES" || LA3_WHY+=" areas-by-kind"
+grep -qF 'rollback · console · batch · compile · transport · visual' "$LA_DEV_PRINCIPLES" || LA3_WHY+=" areas-cross-cutting"
+grep -qF '· input ·' "$LA_DEV_PRINCIPLES" && LA3_WHY+=" input-kind-resurrected"
+grep -qF 'uitk'      "$LA_DEV_PRINCIPLES" && LA3_WHY+=" uitk-became-an-area"
+grep -qF 'rules ≠ no rights' "$LA_DEV_PRINCIPLES" || LA3_WHY+=" no-rules-no-rights"
+if [[ -z "$LA3_WHY" ]]; then
+    pass "LA-3 kind (6) + areas (12) + the no-rules-no-rights rule present, input/uitk absent"
+else
+    fail "LA-3 vocabulary drift in dev-principles.md:$LA3_WHY"
+fi
+
+# (LA-4) The "no names" invariant, mechanically. A tool name is lower_snake_case inside
+# a backtick span; that is the ONLY shape a tool name takes in these files, and this is
+# the only check that stops the layer from silently becoming a tool registry again.
+# UPPER_SNAKE env vars do not match by construction (the leading class is [a-z]).
+if grep -nE '`[a-z]+_[a-z]' "$LA_DEV_PRINCIPLES" > /dev/null 2>&1; then
+    fail "LA-4 dev-principles.md names tools (backticked lower-snake tokens):"
+    grep -nE '`[a-z]+_[a-z]' "$LA_DEV_PRINCIPLES" | head -5
+else
+    pass "LA-4 dev-principles.md carries no backticked lower-snake token (no tool names)"
+fi
+
+# (LA-5) No server counters, in THREE targets. "silent no-ops are confirmed on two of
+# the four supported servers" is an assertion about the state of the servers WITH a
+# counter: fix one server and the sentence is false, silently. The replacement wording
+# is monotone ("a response code is not evidence") and stays true at any server count.
+# Targets: data/ (the layer) · skills/ (they ship into projects and outlive this branch)
+# · system-assets.ts (the header it writes ships too). The matched line is printed with
+# its file — one fail line is not enough to tell a counter from a legitimate number.
+LA5_RE='(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+) of (the )?(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+)[^.]*servers?'
+LA5_HITS=$(grep -rnEi "$LA5_RE" "$LA_DEV_PRINCIPLES" "$ROOT_DIR/skills" "$LA_SYSTEM_ASSETS" --include='*.md' --include='*.ts' 2>/dev/null || true)
+if [[ -n "$LA5_HITS" ]]; then
+    fail "LA-5 server counter survives (an assertion about server state, not a check):"
+    echo "$LA5_HITS" | head -5
+else
+    pass "LA-5 no server counters in dev-principles.md / skills/ / system-assets.ts"
+fi
+
+# (LA-6) The always/lazy split. The boundary marker must exist, the nine class NAMES
+# must sit ABOVE it, and the detailed detectors + the 13-question checklist BELOW.
+# Without this pair the asymmetry collapses on the first edit and the Bootstrap budget
+# quietly reverts to the whole file — with nothing failing.
+LA6_WHY=""
+if ! grep -qF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES"; then
+    LA6_WHY+=" boundary-marker-missing"
+else
+    LA_BLINE=$(grep -nF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES" | head -1 | cut -d: -f1)
+    LA_ABOVE=$(head -n "$LA_BLINE" "$LA_DEV_PRINCIPLES")
+    LA_BELOW=$(tail -n +"$LA_BLINE" "$LA_DEV_PRINCIPLES")
+    for la_class in "${LA_CLASSES[@]}"; do
+        echo "$LA_ABOVE" | grep -qF "$la_class" || LA6_WHY+=" name-not-above:${la_class// /-}"
+    done
+    echo "$LA_BELOW" | grep -qF 'The nine failure classes — detectors' || LA6_WHY+=" detectors-not-below"
+    echo "$LA_BELOW" | grep -qF 'The catalog checklist — 13 questions' || LA6_WHY+=" checklist-not-below"
+    echo "$LA_ABOVE" | grep -qF 'The catalog checklist — 13 questions' && LA6_WHY+=" checklist-leaked-above"
+fi
+if [[ -z "$LA6_WHY" ]]; then
+    pass "LA-6 lazy-read boundary: nine class names above, detectors + 13-question checklist below"
+else
+    fail "LA-6 always/lazy split drift:$LA6_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # EM: engine-MCP shard layer (EM-1…EM-5)
 # ─────────────────────────────────────────────
 # The shards (.unikit/system/engine-mcp/{capabilities,scene-authoring,verification}.md)
@@ -3300,9 +3416,10 @@ ED_BIOME_VERIFY="$ROOT_DIR/mcp/unity/shards/unity-mcp-biome/verification.md"
 # every planner invents its own vocabulary.
 ED1_WHY=""
 grep -qF 'Editor: [kind]' "$CK_TASKFMT" || ED1_WHY+=" grammar-line"
-grep -qF 'scene | ui | vfx | anim | asset | input | settings' "$CK_TASKFMT" || ED1_WHY+=" 7-kinds"
+grep -qF 'scene | ui | vfx | anim | asset | settings' "$CK_TASKFMT" || ED1_WHY+=" 6-kinds"
+grep -qF '| input |' "$CK_TASKFMT" && ED1_WHY+=" input-kind-resurrected"
 if [[ -z "$ED1_WHY" ]]; then
-    pass "ED-1 Editor: grammar + 7 kinds present in TASK-FORMAT.md"
+    pass 'ED-1 Editor: grammar + 6 kinds present in TASK-FORMAT.md (input dissolved)'
 else
     fail "ED-1 Editor: grammar drift in TASK-FORMAT.md:$ED1_WHY"
 fi

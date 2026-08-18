@@ -326,7 +326,7 @@ The same two distinct skips as 2.1 / 2.2 apply:
 - If {{engine_mcp_tool}} is unavailable — skip and note: `Visual regression: {{engine_mcp_tool}} unavailable, skipped`
 - If `verification.md` marks the visual-regression gate **GATE LIFTED** — skip and note: `Visual regression: gate lifted — <reason from verification.md>`
 
-Today only one of the four supported servers implements visual regression; the other three lift this gate. That is the normal path, not a defect — do not substitute another tool for a lifted gate, and do not report it as passed.
+A server whose `verification.md` lifts this gate is the normal path, not a defect — do not substitute another tool for a lifted gate, and do not report it as passed.
 
 ---
 

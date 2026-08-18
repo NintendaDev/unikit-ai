@@ -38,7 +38,7 @@ Do not announce, confirm, or mention the language setting.
 
 ## Development Principles — BLOCKING PRE-REQUISITE
 
-Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. This file contains the canonical Core Principles and Workflow for {{engine_name}} development (MCP-tool usage, comments policy, docs/tests requirements, TODO handling).
+Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. Read everything **above** the LAZY-READ BOUNDARY: Layer A — the evidence contract (`CLAIM / EVIDENCE / VERDICT`, the claim-class → evidence-class lattice, the nine failure classes, discipline, phase order, lane, stop-conditions, the `kind` and area vocabularies, "no rules ≠ no rights"), then the engine workflow and the code conventions ({{engine_mcp_tool}} usage, comments policy, docs/tests requirements, TODO handling). The section **below** the boundary is read once per session, on the first Editor task — unconditionally, never gated on which rules are installed.
 
 Then, in the same pass:
 - If `.unikit/system/engine-mcp/capabilities.md` exists — read it and follow it. The file does not exist → skip this step silently.
