@@ -8,7 +8,7 @@ import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
-  saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
+  saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
 import { configureMcp, getMcpDocsLines, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
@@ -17,6 +17,8 @@ import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { getAgentOnboarding, cleanupAgentSetup } from '../../core/transformer.js';
 import { removeDirectory } from '../../utils/fs.js';
+import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
+import { logInfo } from '../../utils/log.js';
 
 async function removeAgentSetup(projectDir: string, agent: AgentInstallation): Promise<void> {
   await removeDirectory(path.join(projectDir, agent.skillsDir));
@@ -27,6 +29,25 @@ export async function initCommand(): Promise<void> {
   const projectDir = process.cwd();
 
   console.log(chalk.bold.blue('\n🎮 UniKit — AI-powered game development toolkit\n'));
+
+  // Migrate the on-disk layout BEFORE the config is read. `init` is a full
+  // migrator too, not only `update`: re-running it on an old project is the
+  // most common way users upgrade, and until now the chain never ran here at
+  // all. Placement is load-bearing — the chain rewrites `.unikit.json` itself
+  // (the MCP steps convert `mcp.servers` and rename its keys), and the wizard
+  // below receives `existingConfig?.mcp.servers` as its pre-selection. Read the
+  // config first and the wizard pre-selects from the pre-migration form.
+  //
+  // The anchor comes from `readConfigVersion`, not from the loaded config:
+  // `loadConfig` defaults a missing `version` to the current package version.
+  // A fresh project (no config at all) yields `null` → the version half is off,
+  // `detect` finds nothing, and the chain is a no-op.
+  const projectVersion = await readConfigVersion(projectDir);
+  logInfo('init', `running project migrations (currentVersion=${projectVersion ?? 'null'})`);
+  const migrated = await runProjectMemoryMigrations(projectDir, projectVersion);
+  logInfo('init', migrated.applied.length > 0
+    ? `applied: [${migrated.applied.join(', ')}]`
+    : 'no pending migrations');
 
   const hasExistingConfig = await configExists(projectDir);
   const existingConfig = hasExistingConfig ? await loadConfig(projectDir) : null;

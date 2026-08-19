@@ -361,6 +361,27 @@ export async function saveConfig(projectDir: string, config: UniKitConfig): Prom
   await writeJsonFile(configPath, config);
 }
 
+/**
+ * Read the project's RECORDED version straight off the raw JSON — the version
+ * anchor input for the migration chain.
+ *
+ * Deliberately NOT `loadConfig(...)?.version`: `loadConfig` defaults a missing
+ * `version` field to the current package version, which makes the oldest
+ * projects in existence — the ones written before the field was introduced —
+ * look freshly stamped, and the version half of every migration would go quiet
+ * on exactly them. Here a missing FILE and a missing FIELD both return `null`,
+ * which the runner reads as "no version signal; `detect` decides".
+ *
+ * No normalization, no defaulting, no shape validation: an unparseable value is
+ * returned as-is and the runner reports it (a warning) rather than this reader
+ * inventing a number.
+ */
+export async function readConfigVersion(projectDir: string): Promise<string | null> {
+  const raw = await readJsonFile<Record<string, unknown>>(getConfigPath(projectDir));
+  if (!raw) return null;
+  return typeof raw.version === 'string' ? raw.version : null;
+}
+
 export async function configExists(projectDir: string): Promise<boolean> {
   const configPath = getConfigPath(projectDir);
   return fileExists(configPath);

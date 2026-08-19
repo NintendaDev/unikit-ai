@@ -85,11 +85,24 @@ function buildRegistry(config: UniKitConfig): ChainedRegistry {
  * Truth table (ver × disk): ok/ok → false; ok/pending → true (disk is ground
  * truth); stale/modular → true (accepted false-positive: cost = run `update`
  * once); stale/pending → true. OR (not AND) keeps the two mixed rows true.
+ *
+ * `config.version` is also handed to the chain as its version anchor input, so
+ * a step whose `since` is above it counts as pending here too. Note the trap it
+ * carries: `normalizeConfig` defaults a MISSING `version` field to the current
+ * package version, so a project that never recorded one looks freshly stamped
+ * to the version half. Only `detect` catches that project — which is the third
+ * reason the runner ORs the halves rather than gating on the version.
  */
 async function isProjectStale(projectDir: string, config: UniKitConfig): Promise<boolean> {
   const version = config.version;
   const versionStale = !!semver.valid(version) && semver.lt(version, MEMORY_MODULAR_MIN_VERSION);
-  const diskPending = (await planMigrationChain({ projectDir }, PROJECT_MEMORY_MIGRATIONS)).length > 0;
+  const pending = await planMigrationChain({ projectDir }, PROJECT_MEMORY_MIGRATIONS, {
+    logTag: 'rules', currentVersion: version,
+  });
+  const diskPending = pending.length > 0;
+  logInfo('rules', `staleness: version=${version ?? 'null'} versionStale=${versionStale} `
+    + `diskPending=${pending.length}${diskPending ? ` [${pending.join(', ')}]` : ''} `
+    + `minModular=${MEMORY_MODULAR_MIN_VERSION}`);
   return versionStale || diskPending;
 }
 

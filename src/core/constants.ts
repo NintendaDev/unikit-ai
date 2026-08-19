@@ -329,3 +329,17 @@ export const WORKSPACE_ARTIFACT_FILES = ['PLAN.md', 'FIX_PLAN.md'] as const;
 export const WORKSPACE_ARTIFACT_RENAMES: readonly { from: string; to: string }[] = [
   { from: 'RESEARCHES_INDEX.md', to: path.join('researches', 'INDEX.md') },
 ];
+
+// --- Migration version anchors (`Migration.since`) ---
+//
+// The release each project-migration step ships in. A project whose recorded
+// `.unikit.json.version` is strictly below the anchor has not seen that step,
+// whatever the disk says — which is the coarse half of the run condition
+// (`src/core/migrations/runner.ts` documents why the two halves are OR-ed).
+//
+// An anchor names a RELEASE, not a feature: if the release these steps go out
+// in is renumbered, the anchor moves with it. Leaving it behind switches the
+// version half off for exactly the users sitting on the previous number.
+
+/** Modular `memory/<module>` layout + module-scoped workspace (PR#1 / PR#4). */
+export const MIGRATION_SINCE_MODULAR_LAYOUT = '1.1.0';

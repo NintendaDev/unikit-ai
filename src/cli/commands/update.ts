@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import path from 'path';
-import { getCurrentVersion, loadConfig, saveConfig, type UniKitConfig } from '../../core/config.js';
+import { getCurrentVersion, loadConfig, readConfigVersion, saveConfig, type UniKitConfig } from '../../core/config.js';
 import {
   buildManagedSkillsState, getAvailableSkills, updateSkills,
   type SkillUpdateEntry,
@@ -26,7 +26,7 @@ import { createRegistry, type ChainedRegistry } from '../../core/registry/index.
 import { bootstrapModuleRules } from '../../core/installer/rules-bootstrap.js';
 import { resolveModuleCatalog, type ModuleCatalog } from '../../core/installer/module-catalog.js';
 import { listModules, resolveSkillModule, moduleHasInstalledSkills } from '../../core/modules.js';
-import { logWarn } from '../../utils/log.js';
+import { logInfo, logWarn } from '../../utils/log.js';
 import { applyAllInjections } from '../../core/injections.js';
 
 interface UpdateCommandOptions {
@@ -141,7 +141,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
   console.log(chalk.bold.blue('\n🎮 UniKit — Update\n'));
 
-  const config = await loadConfig(projectDir);
+  let config = await loadConfig(projectDir);
 
   if (!config) {
     console.log(chalk.red('Error: No .unikit.json found.'));
@@ -167,7 +167,27 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // under `.unikit/code/`, so the skill reinstall and (later) `syncAllModules`
     // Phase 1 reconciliation both operate on the modular layout. Idempotent: a
     // no-op once already migrated. Runs before the `config.version` stamp below.
-    await runProjectMemoryMigrations(projectDir);
+    const projectVersion = await readConfigVersion(projectDir);
+    logInfo('update', `running project migrations (currentVersion=${projectVersion ?? 'null'})`);
+    const migrated = await runProjectMemoryMigrations(projectDir, projectVersion);
+    logInfo('update', migrated.applied.length > 0
+      ? `applied: [${migrated.applied.join(', ')}]`
+      : 'no pending migrations');
+
+    // Re-read the config: from Phase 1 on the chain rewrites `.unikit.json`
+    // itself (the MCP steps convert `mcp.servers` and rename its keys), so the
+    // object loaded above is a snapshot of the PRE-migration file. Every
+    // consumer below — `resolveSelectedEngineServer`, the engine-MCP tree
+    // delivery, the settings reconciliation — must see the migrated form.
+    //
+    // This is the same class of ordering bug as the `swapMcpRecheckNotes` call
+    // order (read the previous selection BEFORE persisting the new one): a step
+    // reading an in-memory copy of a file another step has already rewritten.
+    // Re-reading (rather than hoisting the chain above `loadConfig`) keeps the
+    // "no config → exit 1" guard and the version banner on the values that were
+    // actually on disk when the command started.
+    config = (await loadConfig(projectDir)) ?? config;
+    logInfo('update', 'config re-read after migrations');
 
     // Refresh extensions from sources (check for updates)
     let extensions = config.extensions ?? [];
