@@ -75,7 +75,7 @@ Before writing code:
    - **A call that misled you is a finding**: return it to the coordinator as a candidate line — the `area`, what has to be confirmed, and the raw call with the raw answer. Do **not** write `.unikit/MCP-RECHECK-NOTES.md` yourself; one observation is a bad sample, and the durable surface passes through a human running `/unikit-mcp-trap`.
    - **No mode passed → degrade to `manual`, never to `direct`.** `direct` is irreversible and requires a git commit taken *before* the edit, which you cannot make (see Rules: do not create commits). Returning the target unimplemented is always recoverable; a bad direct edit is not.
 4. Run one verification pass scoped to the changed files:
-   - Check for compilation by reading {{engine_mcp_tool}} console (if available)
+   - Check for compilation by reading the MCP server `{{engine_mcp_tool}}` console (if available)
    - Verify the implementation matches the task description
    - Check changed files against loaded rules
 5. Run local quality checks on the changed scope:

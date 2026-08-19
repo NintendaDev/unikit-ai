@@ -460,20 +460,20 @@ After the fix is implemented, you MUST continue through ALL remaining steps (4 �
 
 ### 4.1 {{engine_name}} Compile Check
 
-Use {{engine_mcp_tool}} to check that the project compiles after the fix:
-- Refresh/recompile the project through {{engine_mcp_tool}}
+Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after the fix:
+- Refresh/recompile the project through MCP server `{{engine_mcp_tool}}`
 - Check the {{engine_name}} console for compilation errors
 - If errors found — display them with `file:line` references and fix them
-- If {{engine_mcp_tool}} is unavailable — skip and note: `Compilation check: {{engine_mcp_tool}} unavailable, skipped`
+- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Compilation check: engine MCP unavailable, skipped`
 
 ### 4.2 {{engine_name}} Test Run
 
-Use {{engine_mcp_tool}} to run tests for the affected module:
+Use MCP server `{{engine_mcp_tool}}` to run tests for the affected module:
 - Determine which test assembly covers the modified module (check CLAUDE.md for the list of test assemblies)
-- Run the relevant test assembly through {{engine_mcp_tool}}
+- Run the relevant test assembly through MCP server `{{engine_mcp_tool}}`
 - Wait for results and display them — highlight any failures
 - If tests fail because of the fix — investigate and fix the regression
-- If {{engine_mcp_tool}} is unavailable — skip and note: `Test run: {{engine_mcp_tool}} unavailable, skipped`
+- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
 
 ### 4.3 Engine Companion Files
 

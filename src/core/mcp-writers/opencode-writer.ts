@@ -1,4 +1,5 @@
-import { findKeyInContainer, type McpWriter } from './index.js';
+import type { McpWriter } from './index.js';
+import { findKeyInContainer } from './shared.js';
 import { fileExists, readTextFile } from '../../utils/fs.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {

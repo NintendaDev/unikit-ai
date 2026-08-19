@@ -44,31 +44,6 @@ export interface McpWriter {
   serialize(settings: Record<string, unknown>): string;
 }
 
-/**
- * Shared `findKey` body: every writer differs only in which container it looks
- * in, so the matching rule itself is defined once. See {@link McpWriter.findKey}
- * for why the `reserved` exclusion is not optional.
- */
-export function findKeyInContainer(
-  settings: Record<string, unknown>,
-  container: string,
-  code: string,
-  reserved: Set<string>,
-): string | null {
-  const servers = settings[container];
-  if (typeof servers !== 'object' || servers === null || Array.isArray(servers)) {
-    return null;
-  }
-
-  const wanted = code.trim().toLowerCase();
-  for (const key of Object.keys(servers as Record<string, unknown>)) {
-    if (reserved.has(key)) continue;
-    if (key.trim().toLowerCase() === wanted) return key;
-  }
-
-  return null;
-}
-
 const jsonWriter = new JsonMcpWriter();
 const tomlWriter = new TomlMcpWriter();
 const opencodeWriter = new OpenCodeMcpWriter();

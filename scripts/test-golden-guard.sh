@@ -77,6 +77,12 @@ echo -e "\n${BOLD}Part B: no residual flat memory literals in source${NC}"
 # migrated forms carry `code/` after `memory/`, so `memory/code/core` and
 # `memory/code/RULES_INDEX.md` do NOT match. Bare `RULES_INDEX.md` (no path) is
 # intentionally not matched.
+#
+# The three excluded files are the ones whose JOB is the flat layout: this guard
+# (it names the pattern), and the two migration smokes, which have to CREATE the
+# pre-modular shape before they can assert it is gone. Excluding them by name
+# keeps that need visible; assembling the path from variables to slip past the
+# grep would hide it.
 FLAT_PATTERN='\.unikit/memory/(core|stack)/|memory/RULES_INDEX\.md'
 
 set +e
@@ -84,6 +90,7 @@ OFFENDERS=$(grep -rnE "$FLAT_PATTERN" \
     "$ROOT_DIR/src" "$ROOT_DIR/scripts" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" \
     --exclude=test-golden-guard.sh \
     --exclude=test-memory-migration.sh \
+    --exclude=test-migrations.sh \
     --exclude=test-fixtures.sh)
 set -e
 

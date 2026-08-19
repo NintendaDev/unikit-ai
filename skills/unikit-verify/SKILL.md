@@ -294,11 +294,11 @@ Statuses:
 
 **Gate calibration — `.unikit/system/engine-mcp/verification.md` (read in Step 0).**
 
-Steps 2.1 and 2.2 each have a bail-out branch for "{{engine_mcp_tool}} unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
+Steps 2.1 and 2.2 each have a bail-out branch for "engine MCP unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
 
-- **MCP unavailable** — {{engine_mcp_tool}} itself is not reachable → skip with the wording given in the step.
+- **MCP unavailable** — MCP server `{{engine_mcp_tool}}` itself is not reachable → skip with the wording given in the step.
 - **Gate closed** — the gate produced the class of evidence `verification.md` names for it → report it passed, on that evidence and no other.
-- **`GATE LIFTED`** — **a verdict this skill produces, never a line it reads.** `verification.md` pre-declares nothing: it says which gates are reachable and what proves them. A gate is lifted only when you **tried it, found no affordance, and can present the evidence of that absence** — then skip it and note the reason as the observation that established it, not as `{{engine_mcp_tool}} unavailable`. Do not substitute another tool for a lifted gate, and never report it as passed.
+- **`GATE LIFTED`** — **a verdict this skill produces, never a line it reads.** `verification.md` pre-declares nothing: it says which gates are reachable and what proves them. A gate is lifted only when you **tried it, found no affordance, and can present the evidence of that absence** — then skip it and note the reason as the observation that established it, not as `engine MCP unavailable`. Do not substitute another tool for a lifted gate, and never report it as passed.
 
 A gate marked **partly** reachable is not lifted in advance either: attempt it, and lift only the half that produced evidence of absence.
 
@@ -306,21 +306,21 @@ If `verification.md` does not exist, **every gate applies in full.** A missing c
 
 ### 2.1 {{engine_name}} Compile Check
 
-Use {{engine_mcp_tool}} to check that the project compiles after implementation:
-- Refresh/recompile the project through {{engine_mcp_tool}}
+Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after implementation:
+- Refresh/recompile the project through MCP server `{{engine_mcp_tool}}`
 - Check the {{engine_name}} console for compilation errors
 - If errors found — display them with `file:line` references
-- If {{engine_mcp_tool}} is unavailable — skip and note: `Compilation check: {{engine_mcp_tool}} unavailable, skipped`
+- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Compilation check: engine MCP unavailable, skipped`
 - If the compile gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Compilation check: gate lifted — <the observation that established it>`
 
 ### 2.2 {{engine_name}} Test Check
 
-Use {{engine_mcp_tool}} to run tests for affected modules:
+Use MCP server `{{engine_mcp_tool}}` to run tests for affected modules:
 - Determine which test assemblies cover the modified modules (check CLAUDE.md for the list of test assemblies)
 - If changed files include modules with test assemblies — run those assemblies specifically
 - Otherwise run all EditMode tests as a baseline check
 - Wait for results and display them — highlight any failures
-- If {{engine_mcp_tool}} is unavailable — skip and note: `Test run: {{engine_mcp_tool}} unavailable, skipped`
+- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
 - If the tests gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`. `verification.md` also names what the gate must require of a passing run (a readable result, and a test count above zero); a run that reports success over zero tests has not closed it
 
 ### 2.3 Engine-Specific Checks
@@ -508,8 +508,8 @@ The `implemented` state is **read-only everywhere else**: GAME.md's `## System M
 | 3.1 | Create CustomerView | ❌ Not found | File missing |
 
 ### Code Quality
-- Compilation: ✅ / ⏭️ {{engine_mcp_tool}} unavailable
-- Tests: ✅ 12 passed, 0 failed / ⏭️ {{engine_mcp_tool}} unavailable
+- Compilation: ✅ / ⏭️ engine MCP unavailable
+- Tests: ✅ 12 passed, 0 failed / ⏭️ engine MCP unavailable
 - Engine checks: ✅ All passed (per ENGINE_RULES.md)
 - Anti-patterns: ⚠️ 2 warnings
 
@@ -659,8 +659,8 @@ Normal mode already checks all items below but tolerates partial results and war
 | Check | Normal mode | Strict mode |
 |-------|-------------|-------------|
 | Task completion | `⚠️ PARTIAL` and `⏭️ SKIPPED` allowed | All tasks must be `✅ COMPLETED` — partial and skipped are failures. **Carve-out:** `⏭️ SKIPPED (editor target, …)` and `⏸️ MANUAL` are exempt in both modes — the first is an unreachable capability, the second is work the user deliberately took on; failing either would fail correctly completed work |
-| Compilation ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if {{engine_mcp_tool}} is available |
-| Tests ({{engine_mcp_tool}}) | Reported if available | **Required** to pass if test assemblies exist for affected modules |
+| Compilation (MCP server `{{engine_mcp_tool}}`) | Reported if available | **Required** to pass if MCP server `{{engine_mcp_tool}}` is available |
+| Tests (MCP server `{{engine_mcp_tool}}`) | Reported if available | **Required** to pass if test assemblies exist for affected modules |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
 | Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |

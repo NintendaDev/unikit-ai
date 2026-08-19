@@ -328,7 +328,7 @@ Read the `## Settings` section from `TASKS.md` (or from `PLAN.md` in fast-mode):
 - `Testing: no` → skip test creation entirely
 - `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.4)
 - `Docs: no` → skip documentation checkpoint, emit warning
-- `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (`{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
+- `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
 If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
 
@@ -538,11 +538,11 @@ Progress: {completed}/{total} ({percent}%) · {remaining} remaining in scope
 
 After all tasks in a phase are done, check {{engine_name}} console for compilation errors.
 
-**Prerequisite:** Check if {{engine_mcp_tool}} is configured in `{{settings_file}}` at the project root. If {{engine_mcp_tool}} is not present in MCP settings — skip this step entirely and proceed to 3.7.
+**Prerequisite:** Check if MCP server `{{engine_mcp_tool}}` is configured in `{{settings_file}}` at the project root. If MCP server `{{engine_mcp_tool}}` is not present in MCP settings — skip this step entirely and proceed to 3.7.
 
-**If {{engine_mcp_tool}} is available:**
+**If MCP server `{{engine_mcp_tool}}` is available:**
 
-1. Read the {{engine_name}} console log via {{engine_mcp_tool}}, filtering for errors
+1. Read the {{engine_name}} console log via MCP server `{{engine_mcp_tool}}`, filtering for errors
 2. Analyze each error:
    - **Error relates to code created/modified in the current phase** → fix it inline using the same execution mode logic as Step 3.2 (default: inline; develop-agent only for true parallel/deep-dive)
    - **Error relates to code planned in a future phase** (check remaining tasks in `TASKS.md`) → skip, note in progress report: `"Known error: {description} — will be resolved in Phase {N}, task {N.M}"`

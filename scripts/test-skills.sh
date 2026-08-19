@@ -4463,6 +4463,164 @@ for engine in "${!ENGINE_MCP_DIRS[@]}"; do
 done
 
 # ─────────────────────────────────────────────
+# Part 7e2: MT-1 / MT-2 — the `{{engine_mcp_tool}}` substitution form
+# ─────────────────────────────────────────────
+# The value substituted here is a VENDOR CODE, and the prose around it is read by
+# an agent that has to find that code as a literal key in the settings file. Two
+# counters pin the form:
+#
+#   MT-1  every occurrence is wrapped in backticks
+#   MT-2  every wrapped occurrence carries the `MCP server ` label
+#
+# Written as EQUALITIES between counts, not as a search for a negation. The pair
+# mechanically forbids the third form the corpus used to carry — the variable
+# sitting inside a code span or a fenced block together with other words, where
+# backticks cannot be added at all — without needing an allowlist: such an
+# occurrence is unwrapped by construction, so MT-1 catches it.
+#
+# The class-B probe is why this matters beyond tidiness. A skill greps the
+# settings file for the code; a code printed with a neighbouring word inside one
+# span is not found, the skill concludes the engine MCP is not configured, and the
+# whole pipeline degrades to `manual` with the compile and test gates skipped —
+# silently, and looking exactly like a project that has no MCP.
+#
+# Scope: skills/**/*.md, subagents/*.md, data/dev-principles.md.
+# `data/engine-templates/**` is excluded — ED-8 already bans `{{` there outright.
+echo -e "\n${BOLD}Part 7e2: {{engine_mcp_tool}} substitution form (MT-1/MT-2)${NC}"
+
+MT_SCOPE=("$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data/dev-principles.md")
+
+MT_TOTAL=$(grep -rhoF '{{engine_mcp_tool}}' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+MT_WRAPPED=$(grep -rhoF '`{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+MT_LABELLED=$(grep -rhoF 'MCP server `{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+
+if [[ "$MT_TOTAL" -eq 0 ]]; then
+    fail "MT-1: no {{engine_mcp_tool}} occurrences found at all — the scope is wrong, not the corpus"
+elif [[ "$MT_TOTAL" -eq "$MT_WRAPPED" ]]; then
+    pass "MT-1: all $MT_TOTAL {{engine_mcp_tool}} occurrences are backtick-wrapped"
+else
+    fail "MT-1: $MT_TOTAL occurrences of {{engine_mcp_tool}}, only $MT_WRAPPED wrapped in backticks"
+    grep -rn '{{engine_mcp_tool}}' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null \
+      | grep -vF '`{{engine_mcp_tool}}`' | sed 's/^/      /' | head -10
+fi
+
+if [[ "$MT_WRAPPED" -eq "$MT_LABELLED" ]]; then
+    pass "MT-2: all $MT_WRAPPED wrapped occurrences carry the \`MCP server\` label"
+else
+    fail "MT-2: $MT_WRAPPED wrapped occurrences, only $MT_LABELLED preceded by 'MCP server '"
+    grep -rn '`{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null \
+      | grep -vF 'MCP server `{{engine_mcp_tool}}`' | sed 's/^/      /' | head -10
+fi
+
+# ─────────────────────────────────────────────
+# Part 7e3: key/code/docs invariants across the MCP catalog
+# ─────────────────────────────────────────────
+# What Part 5b cannot express, because it holds no accumulator tying a config to
+# the file it was read from or to the rules tree it points at:
+#
+#   - `key` == the JSON's own basename. The key is the server's internal identity
+#     and every other surface derives from it: the config map, the delivery stamp,
+#     the findings-log name, the archive names. Letting them drift makes the
+#     rename migration's four surfaces disagree with each other.
+#   - `code` present and non-empty. `parseMcpServerEntry` DROPS an entry without
+#     one — the wizard would simply not offer the server, with no error anywhere.
+#   - `docs.context7` REQUIRED of a server that ships a rules tree, and matching
+#     the id its INDEX.md names. Presence is deliberately NOT required of every
+#     engine server: an id is added only when it was actually resolved by a pinned
+#     request, and a guard demanding one everywhere would red the suite exactly
+#     when the honest answer is "not verified" — leaving one way out, inventing
+#     it. The tree is the one place the two halves can be compared, so it is the
+#     one place the field is mandatory.
+echo -e "\n${BOLD}Part 7e3: MCP key/code/docs invariants${NC}"
+
+MCP_IDENTITY_RESULT=$(node -e "
+  const fs=require('fs'), path=require('path');
+  const root=process.argv[1];
+  const why=[];
+
+  for (const dir of fs.readdirSync(root)) {
+    const dirPath=path.join(root, dir);
+    if (!fs.statSync(dirPath).isDirectory()) continue;
+    for (const f of fs.readdirSync(dirPath)) {
+      if (!f.endsWith('.json')) continue;
+      const rel=dir+'/'+f;
+      const fileId=f.replace(/\.json\$/, '');
+      let m;
+      try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
+      catch { why.push('parse-error:'+rel); continue; }
+
+      if (m.key !== fileId) why.push('key-not-fileid:'+rel+':key='+JSON.stringify(m.key));
+      if (typeof m.code !== 'string' || !m.code) why.push('code-missing:'+rel);
+
+      if (typeof m.rules === 'string' && m.rules) {
+        const indexPath=path.resolve(dirPath, m.rules, 'INDEX.md');
+        const declared=m.docs && m.docs.context7;
+        if (typeof declared !== 'string' || !declared) {
+          why.push('rules-tree-without-context7:'+rel);
+        } else if (fs.existsSync(indexPath)) {
+          const index=fs.readFileSync(indexPath,'utf8');
+          if (!index.includes(declared)) why.push('index-does-not-name-context7-id:'+declared+':'+rel);
+        }
+      }
+    }
+  }
+
+  console.log(why.length ? why.join(' ') : 'ok');
+" "$MCP_DIR" 2>/dev/null || echo "pass-error")
+
+if [[ "$MCP_IDENTITY_RESULT" == "ok" ]]; then
+    pass "MCP catalog: key == fileId, code present, rules-tree servers declare a context7 id matching their INDEX"
+else
+    fail "MCP catalog identity invariants violated: $MCP_IDENTITY_RESULT"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7e4: migration-chain anchors
+# ─────────────────────────────────────────────
+# Two rules the runner depends on and cannot check for itself:
+#
+#   - `since`, WHEN DECLARED, is valid semver and does not decrease in declaration
+#     order. The runner sorts by it, so declaration order that disagrees with the
+#     anchors is a lie a reader will believe. Steps without `since` are skipped:
+#     the registry chain has no version axis at all (its context is `{registryDir}`
+#     and `currentVersion` is never passed), and demanding an anchor there would
+#     force someone to invent one.
+#   - a step with NEITHER `since` NOR `detect` can never fire. The runner throws on
+#     it at runtime; this catches it at `npm test` instead.
+echo -e "\n${BOLD}Part 7e4: migration-chain anchors${NC}"
+
+MIGRATION_ANCHOR_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const semver = (await import('semver')).default;
+  const chains = [
+    ['PROJECT_MEMORY_MIGRATIONS', (await import('./dist/core/memory-migrations/index.js')).PROJECT_MEMORY_MIGRATIONS],
+    ['REGISTRY_MIGRATIONS', (await import('./dist/core/registry/migrations/index.js')).REGISTRY_MIGRATIONS],
+  ];
+  const why = [];
+
+  for (const [name, chain] of chains) {
+    if (!Array.isArray(chain)) { why.push('chain-not-array:'+name); continue; }
+    let previous = null;
+    for (const step of chain) {
+      if (!step.since && !step.detect) why.push('step-never-fires:'+name+':'+step.id);
+      if (step.since === undefined) continue;
+      if (!semver.valid(step.since)) { why.push('since-not-semver:'+name+':'+step.id+':'+step.since); continue; }
+      if (previous && semver.lt(step.since, previous)) {
+        why.push('since-decreases:'+name+':'+step.id+':'+step.since+'<'+previous);
+      }
+      previous = step.since;
+    }
+  }
+
+  process.stdout.write(why.length ? why.join(' ') : 'ok');
+" 2>/dev/null || echo "pass-error")
+
+if [[ "$MIGRATION_ANCHOR_RESULT" == "ok" ]]; then
+    pass "migration chains: since is valid semver and non-decreasing; no step without since AND detect"
+else
+    fail "migration chain anchors violated: $MIGRATION_ANCHOR_RESULT"
+fi
+
+# ─────────────────────────────────────────────
 # Part 7f: agent-filter unit tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7f: agent-filter unit tests${NC}"
@@ -4633,6 +4791,26 @@ if [[ $INSTALL_SMOKE_EXIT -eq 0 ]]; then
 else
     fail "install smoke tests"
     echo "$INSTALL_SMOKE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 9b: Migration chain + MCP reconciliation smoke tests
+# ─────────────────────────────────────────────
+# Runs after install/update: those two prove the commands work at all, this one
+# proves the version matrix and the settings-file write rules underneath them.
+echo -e "\n${BOLD}=== Migration + MCP reconciliation smoke tests ===${NC}\n"
+
+set +e
+MIGRATIONS_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-migrations.sh" 2>&1)
+MIGRATIONS_SMOKE_EXIT=$?
+set -e
+
+if [[ $MIGRATIONS_SMOKE_EXIT -eq 0 ]]; then
+    pass "migration + MCP reconciliation smoke tests"
+    echo "$MIGRATIONS_SMOKE_OUTPUT" | grep '✓' | sed 's/^/    /'
+else
+    fail "migration + MCP reconciliation smoke tests"
+    echo "$MIGRATIONS_SMOKE_OUTPUT" | sed 's/^/      /'
 fi
 
 # ─────────────────────────────────────────────
