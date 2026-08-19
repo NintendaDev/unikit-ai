@@ -389,10 +389,10 @@ S15_DIR="$TMPDIR/s15-engine-missing"
 mkdir -p "$S15_DIR/.unikit/memory/code/core" "$S15_DIR/.unikit/memory/code/stack"
 cat > "$S15_DIR/.unikit.json" <<EOF
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "unreal-engine-6",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": "$(fake_registry_path minimal-valid)",
   "rules": {
@@ -451,10 +451,10 @@ S16_DIR="$TMPDIR/s16-empty-core"
 mkdir -p "$S16_DIR/.unikit/memory/code/core" "$S16_DIR/.unikit/memory/code/stack"
 cat > "$S16_DIR/.unikit.json" <<EOF
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}],
   "rulesRegistry": "$(normalize_path_for_json "$S16_FIXTURE")",
   "rules": {
@@ -693,10 +693,10 @@ S25_DIR="$TMPDIR/s25-all-failed"
 mkdir -p "$S25_DIR/.unikit/memory/code/core" "$S25_DIR/.unikit/memory/code/stack"
 cat > "$S25_DIR/.unikit.json" <<EOF
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": $SKILLS_CODE_ONLY,
   "rulesRegistry": "$(normalize_path_for_json "$S25_FIXTURE")",
   "rules": {

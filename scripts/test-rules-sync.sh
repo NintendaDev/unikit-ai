@@ -54,10 +54,10 @@ write_sync_config() {
     mkdir -p "$project/.unikit/memory/code/core" "$project/.unikit/memory/code/stack"
     cat > "$project/.unikit.json" <<EOF
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "$engine",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": "$(fake_registry_path "$fixture")",
   "rules": {

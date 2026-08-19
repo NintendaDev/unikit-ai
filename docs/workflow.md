@@ -311,7 +311,7 @@ Tasks carrying an `Editor:` line target the editor's serialized state rather tha
 
 After phase completion:
 
-- Runs compilation check (UnityMCP)
+- Runs compilation check (through the engine MCP server)
 - Runs tests if `Testing: yes`
 - Creates commit checkpoint
 
@@ -383,7 +383,7 @@ Reports include concrete code fixes for Critical/Warning items. Commits mode als
 
 Goes through every task in the plan and verifies the code actually implements it. Runs per-phase Explore agents for completion audit. Checks:
 
-- Unity compilation (UnityMCP)
+- Engine compilation (through the engine MCP server)
 - Tests
 - Editor targets — read back through the engine MCP, not Glob/Grep (a task with an `Editor:` line has no implementing source to find)
 - `.meta` file pairing

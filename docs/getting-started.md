@@ -175,11 +175,11 @@ A `RULES_INDEX.md` file is auto-generated with descriptions and "Load when" trig
 
 For agents with MCP support, the wizard configures:
 
-| Engine | Engine MCP | General |
-|--------|-----------|---------|
-| Unity | [UnityMCP](https://github.com/CoplayDev/unity-mcp) | [Context7](https://github.com/upstash/context7) |
-| Godot 4 / Godot 4 .NET | [Godot MCP](https://github.com/Coding-Solo/godot-mcp) | [Context7](https://github.com/upstash/context7) |
-| Unreal Engine 5 | [Unreal MCP](https://github.com/ChiR24/Unreal_mcp) | [Context7](https://github.com/upstash/context7) |
+| Engine | Engine MCP (you pick one) | General |
+|--------|---------------------------|---------|
+| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) | [Context7](https://github.com/upstash/context7) |
+| Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (default) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) | [Context7](https://github.com/upstash/context7) |
+| Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) | [Context7](https://github.com/upstash/context7) |
 
 Engine MCP servers give the agent real-time feedback - compilation errors, tests, logs - so it can fix issues without developer involvement. Context7 is used by `/unikit-memory` and other skills for up-to-date library documentation lookup.
 

@@ -37,11 +37,12 @@ export interface UpdateSubagentsOptions {
   engineId?: string;
   engineMcpKey?: string | null;
   /**
-   * The project's selected MCP server file ids (`config.mcp.servers`). Folded
-   * into every source hash so a changed selection reinstalls the subagents —
-   * MCP tool injection is additive and would otherwise accumulate dead ids.
+   * The project's MCP selection as `key → code` (`config.mcp.servers`). Folded
+   * into every source hash so a changed selection — or a changed vendor code
+   * under an unchanged selection — reinstalls the subagents; MCP tool injection
+   * is additive and would otherwise accumulate dead ids.
    */
-  mcpServers?: string[];
+  mcpServers?: Record<string, string>;
 }
 
 // --- Agent installation ---
@@ -106,7 +107,7 @@ export async function buildManagedSubagentsState(
   baseSubagents: string[],
   engineId: string,
   engineMcpKey: string | null | undefined,
-  mcpServers: string[],
+  mcpServers: Record<string, string>,
 ): Promise<Record<string, ManagedSkillState>> {
   const state: Record<string, ManagedSkillState> = {};
   const packageSubagentsDir = getSubagentsDir();
@@ -133,7 +134,7 @@ export async function updateSubagents(
   projectDir: string,
   options: UpdateSubagentsOptions = {},
 ): Promise<UpdateSubagentsResult> {
-  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, mcpServers = [] } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, mcpServers = {} } = options;
 
   const packageSubagentsDir = getSubagentsDir();
   const availableFiles = await listFiles(packageSubagentsDir);

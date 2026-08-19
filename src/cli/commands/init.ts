@@ -8,15 +8,18 @@ import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
-  saveConfig, configExists, loadConfig, getCurrentVersion, emptyRulesInstallation,
+  saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
-import { configureMcp, getMcpDocsLines, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
+import { getMcpDocsLines, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
+import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { getAgentOnboarding, cleanupAgentSetup } from '../../core/transformer.js';
 import { removeDirectory } from '../../utils/fs.js';
+import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
+import { logInfo } from '../../utils/log.js';
 
 async function removeAgentSetup(projectDir: string, agent: AgentInstallation): Promise<void> {
   await removeDirectory(path.join(projectDir, agent.skillsDir));
@@ -27,6 +30,25 @@ export async function initCommand(): Promise<void> {
   const projectDir = process.cwd();
 
   console.log(chalk.bold.blue('\n🎮 UniKit — AI-powered game development toolkit\n'));
+
+  // Migrate the on-disk layout BEFORE the config is read. `init` is a full
+  // migrator too, not only `update`: re-running it on an old project is the
+  // most common way users upgrade, and until now the chain never ran here at
+  // all. Placement is load-bearing — the chain rewrites `.unikit.json` itself
+  // (the MCP steps convert `mcp.servers` and rename its keys), and the wizard
+  // below receives `existingConfig?.mcp.servers` as its pre-selection. Read the
+  // config first and the wizard pre-selects from the pre-migration form.
+  //
+  // The anchor comes from `readConfigVersion`, not from the loaded config:
+  // `loadConfig` defaults a missing `version` to the current package version.
+  // A fresh project (no config at all) yields `null` → the version half is off,
+  // `detect` finds nothing, and the chain is a no-op.
+  const projectVersion = await readConfigVersion(projectDir);
+  logInfo('init', `running project migrations (currentVersion=${projectVersion ?? 'null'})`);
+  const migrated = await runProjectMemoryMigrations(projectDir, projectVersion);
+  logInfo('init', migrated.applied.length > 0
+    ? `applied: [${migrated.applied.join(', ')}]`
+    : 'no pending migrations');
 
   const hasExistingConfig = await configExists(projectDir);
   const existingConfig = hasExistingConfig ? await loadConfig(projectDir) : null;
@@ -54,7 +76,7 @@ export async function initCommand(): Promise<void> {
       // re-init of a project that picked one engine MCP would silently switch to
       // whichever alternative sorts first once a second server ships under the
       // same key.
-      existingConfig?.mcp.servers ?? null,
+      existingConfig ? Object.keys(existingConfig.mcp.servers) : null,
     );
     const engineId = answers.engine;
 
@@ -95,6 +117,11 @@ export async function initCommand(): Promise<void> {
     // Discover MCP servers for the selected engine
     const discoveredServers = await discoverMcpServers(engineId);
 
+    // The persisted form of the selection: `key → vendor code`. Built once,
+    // here, so the source hashes and the config write cannot disagree about
+    // which code each selected server was registered under.
+    const mcpServerMap = buildMcpServerMap(discoveredServers, answers.mcpServers);
+
     for (const agentSelection of answers.agents) {
       const agentConfig = getAgentConfig(agentSelection.id);
 
@@ -111,14 +138,6 @@ export async function initCommand(): Promise<void> {
         ? await installSubagents(projectDir, agentConfig.subagentsDir, { agentId: agentSelection.id, engineId, engineMcpKey: answers.engineMcpKey })
         : [];
 
-      // Configure MCP per agent (writes to agent's settings file)
-      await configureMcp(
-        projectDir,
-        discoveredServers,
-        answers.mcpServers,
-        agentSelection.id,
-      );
-
       installedAgents.push({
         id: agentSelection.id,
         skillsDir: agentConfig.skillsDir,
@@ -127,6 +146,25 @@ export async function initCommand(): Promise<void> {
         installedSubagents: subagentFiles,
       });
     }
+
+    // Write the MCP settings file of every installed agent. Lifted out of the
+    // per-agent install loop above so `init` and `update` drive one and the same
+    // pass — see `mcp-reconcile.ts`.
+    await reconcileMcpSettings(
+      projectDir,
+      discoveredServers,
+      answers.mcpServers,
+      installedAgents.map(agent => agent.id),
+      // Re-init on a project that installed extensions: their settings keys must
+      // stay off limits to the normalisation scan. `null` on a fresh install,
+      // which has no extensions by definition.
+      existingConfig,
+      // The codes as they stand on disk RIGHT NOW — `saveConfig` below has not
+      // run yet, which is the whole point: it is what lets the pass recognise a
+      // server whose code moved and delete the entry left under the old one.
+      // Hoisting the config write above this call makes every swap a no-op.
+      existingConfig?.mcp.servers ?? {},
+    );
 
     // Install engine templates
     await installEngineTemplates(projectDir, engineId, installedAgents);
@@ -144,8 +182,8 @@ export async function initCommand(): Promise<void> {
 
     // Build managed skills and subagents state per agent
     for (const agent of installedAgents) {
-      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, agent.installedSkills, engineId, answers.engineMcpKey, answers.mcpServers);
-      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, answers.engineMcpKey, answers.mcpServers);
+      agent.managedSkills = await buildManagedSkillsState(projectDir, agent, agent.installedSkills, engineId, answers.engineMcpKey, mcpServerMap);
+      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents, engineId, answers.engineMcpKey, mcpServerMap);
     }
 
     const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, answers.mcpServers);
@@ -158,7 +196,7 @@ export async function initCommand(): Promise<void> {
       engineMcpKey: answers.engineMcpKey,
       rulesRegistry: answers.rulesRegistry,
       mcp: {
-        servers: answers.mcpServers,
+        servers: mcpServerMap,
       },
       agents: installedAgents,
       rules: {
@@ -180,7 +218,7 @@ export async function initCommand(): Promise<void> {
     const previousEngineServer = existingConfig
       ? resolveSelectedEngineServer(
           await discoverMcpServers(existingConfig.engine),
-          existingConfig.mcp?.servers ?? [],
+          Object.keys(existingConfig.mcp?.servers ?? {}),
         )
       : null;
 

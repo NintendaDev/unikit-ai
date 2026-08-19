@@ -32,7 +32,7 @@ TMPDIR=$(mktemp -d)
 # has to be restored from. Restoring it belongs in the trap and not next to the test:
 # `set -e` aborts on the first failed assertion, and a run that leaves a doctored
 # config behind in the working tree poisons every later run and the repo besides.
-BIOME_JSON="$ROOT_DIR/mcp/unity/unity-mcp-biome.json"
+BIOME_JSON="$ROOT_DIR/mcp/unity/unity-biome-mcp.json"
 BIOME_JSON_BACKUP=""
 restore_package_state() {
     # First statement, so it captures the status that triggered the trap rather than the
@@ -70,7 +70,7 @@ cat > "$PROJECT_DIR/.unikit.json" << 'EOF'
   "engine": "unity",
   "engineMcpKey": null,
   "mcp": {
-    "servers": []
+    "servers": {}
   },
   "agents": [
     {
@@ -233,7 +233,12 @@ echo "  ✓ engine template drift: ENGINE_RULES.md restored after modification"
 COMPAT_DIR="$TMPDIR/update-compat"
 mkdir -p "$COMPAT_DIR"
 
-# Old config format: no engine, old MCP format
+# Old config format: no engine, no version bump, and the pre-1.2.0 MCP shape.
+# The `servers` ARRAY here is deliberate and must stay an array: this fixture is
+# what exercises the `mcp-servers-map` migration end to end (a sweep that
+# "modernizes" it to `{}` silently removes the only coverage of that step on the
+# update path). The missing `engine` field is deliberate too — the migration has
+# to fall back to the same default the loader uses.
 cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
@@ -281,15 +286,18 @@ COMPAT_ENGINE=$(node -e "
   console.log(c.engine || 'missing');
 " "$COMPAT_DIR/.unikit.json")
 
+# The end state is the `key -> code` MAP: an array means the migration never
+# ran (or ran and bailed), which is the failure this probe exists to catch.
 COMPAT_MCP=$(node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
   const mcp = c.mcp;
-  if (!mcp || !Array.isArray(mcp.servers)) { console.log('old'); process.exit(0); }
+  const servers = mcp && mcp.servers;
+  if (!servers || Array.isArray(servers) || typeof servers !== 'object') { console.log('old'); process.exit(0); }
   console.log('new-global');
 " "$COMPAT_DIR/.unikit.json")
 
 if [[ "$COMPAT_ENGINE" == "unity" && "$COMPAT_MCP" == "new-global" ]]; then
-  echo "  ✓ backward compat: engine defaulted to unity, MCP normalized to global format"
+  echo "  ✓ backward compat: engine defaulted to unity, mcp.servers migrated array -> map"
 else
   echo "Assertion failed: backward compat - engine=$COMPAT_ENGINE (expected unity), mcp=$COMPAT_MCP (expected new-global)"
   exit 1
@@ -307,7 +315,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -361,7 +369,7 @@ cat > "$HASH_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -411,7 +419,7 @@ cat > "$ARTIFACT_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -457,7 +465,7 @@ cat > "$SA_DRIFT_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -511,7 +519,7 @@ cat > "$MULTI_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -597,7 +605,7 @@ cat > "$ENGINE_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -669,7 +677,7 @@ cat > "$NEWSKILL_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -711,7 +719,7 @@ cat > "$LEGACY_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -765,7 +773,7 @@ cat > "$SA_REMOVED_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -829,7 +837,7 @@ cat > "$SKILLCTX_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -904,7 +912,7 @@ cat > "$SA_HASH_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -966,7 +974,7 @@ cat > "$SA_ARTIFACT_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1011,7 +1019,7 @@ cat > "$ZERO_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [],
   "rules": {
     "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style", "design-principles"], "stack": [] } } }
@@ -1059,7 +1067,7 @@ cat > "$EXTMISSING_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1117,7 +1125,7 @@ cat > "$ENGEXT_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1181,7 +1189,7 @@ cat > "$SAFRC_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1230,7 +1238,7 @@ cat > "$SAMMS_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1310,7 +1318,7 @@ cat > "$DEVPRIN_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1477,7 +1485,7 @@ CONFIG="$DEVPRIN_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engineMcpKey = 'UnityMCP';
-    c.mcp = { servers: ['unity-mcp-biome'] };
+    c.mcp = { servers: ['unity-biome-mcp'] };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 MCP_SHARD_DIR="$DEVPRIN_DIR/.unikit/system/engine-mcp"
@@ -1509,7 +1517,7 @@ echo "  ✓ engine-mcp: a pre-cutover profile is swept / overwritten on update (
 # both branches, which is why Leg 1 does not need its own re-run.
 assert_exists "$MCP_SHARD_DIR/INDEX.md" \
     "update delivers the selected server's rules tree in place of the swept shards"
-assert_contains "$MCP_SHARD_DIR/INDEX.md" '^server: unity-mcp-biome$' \
+assert_contains "$MCP_SHARD_DIR/INDEX.md" '^server: unity-biome-mcp$' \
     "the delivered tree is stamped with the server it came from"
 
 # Leg 2 — the FRESH path. Nothing on disk, a populated selection: the tree is created.
@@ -1568,7 +1576,7 @@ cat > "$MCPHASH_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": ["unity-mcp-coplay"] },
+  "mcp": { "servers": { "coplay-unity-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1602,7 +1610,7 @@ MCPHASH_CONFIG="$MCPHASH_DIR/.unikit.json"
 CONFIG="$MCPHASH_CONFIG" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.mcp = { servers: ['unity-mcp-biome'] };
+    c.mcp = { servers: ['unity-biome-mcp'] };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 MCPHASH_OUT2="$TMPDIR/update-mcp-hash-2.log"
@@ -1615,9 +1623,9 @@ if grep -q 'mcp__UnityMCP__read_console' "$MCPHASH_SKILL"; then
 fi
 # Biome grants executors a wildcard, so the biome-side probe is the wildcard entry
 # itself — there is no biome-only NAME left to look for. It is a strictly sharper
-# probe than the name it replaces: `mcp__UnityMCP__*` can only come from the biome
+# probe than the name it replaces: `mcp__unity-biome-mcp__*` can only come from the biome
 # entry, and the assertion above already proved coplay's names are gone.
-assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__\*' \
+assert_contains "$MCPHASH_SKILL" 'mcp__unity-biome-mcp__\*' \
     "biome wildcard grant injected after the selection swap (no --force)"
 assert_not_exists "$MCPHASH_STALE" \
     "clean replace on any reinstall sweeps an orphaned reference file (not only under --force)"
@@ -1651,7 +1659,7 @@ cat > "$ENGSWITCH_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": ["unity-mcp-biome"] },
+  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1671,8 +1679,8 @@ ENGSWITCH_OUT1="$TMPDIR/update-engine-switch-1.log"
 
 ENGSWITCH_SKILL="$ENGSWITCH_DIR/.claude/skills/unikit-implement/SKILL.md"
 assert_exists "$ENGSWITCH_SKILL" "unikit-implement must be installed for the engine-switch grant test"
-assert_contains "$ENGSWITCH_SKILL" 'mcp__UnityMCP__' \
-    "unity+biome install injects mcp__UnityMCP__ grants into unikit-implement frontmatter"
+assert_contains "$ENGSWITCH_SKILL" 'mcp__unity-biome-mcp__' \
+    "unity+biome install injects mcp__unity-biome-mcp__ grants into unikit-implement frontmatter"
 
 # Switch the engine and deselect every server. Nothing else changes — no --force.
 ENGSWITCH_CONFIG="$ENGSWITCH_DIR/.unikit.json"
@@ -1681,7 +1689,7 @@ CONFIG="$ENGSWITCH_CONFIG" node -e "
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'godot';
     c.engineMcpKey = null;
-    c.mcp = { servers: [] };
+    c.mcp = { servers: {} };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 ENGSWITCH_OUT2="$TMPDIR/update-engine-switch-2.log"
@@ -1691,18 +1699,18 @@ ENGSWITCH_OUT2="$TMPDIR/update-engine-switch-2.log"
 # vanished proves nothing about grant cleanup.
 assert_exists "$ENGSWITCH_SKILL" "unikit-implement is still installed after the engine switch"
 
-if grep -q 'mcp__UnityMCP__' "$ENGSWITCH_SKILL"; then
-    echo "Assertion failed: switching the engine did NOT drop the old server's mcp__UnityMCP__ grants"
+if grep -q 'mcp__unity-biome-mcp__' "$ENGSWITCH_SKILL"; then
+    echo "Assertion failed: switching the engine did NOT drop the old server's mcp__unity-biome-mcp__ grants"
     echo "  (a deselected server runs no sync of its own, so only a reinstall can clear them —"
     echo "   the engine is missing from the skill source hash, or the reinstall did not fire)"
     echo "  File: $ENGSWITCH_SKILL"
     echo "--- surviving frontmatter entries ---"
-    grep -n 'mcp__UnityMCP__' "$ENGSWITCH_SKILL" | head -10
+    grep -n 'mcp__unity-biome-mcp__' "$ENGSWITCH_SKILL" | head -10
     echo "-------------------------------------"
     exit 1
 fi
 
-echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clears stale mcp__UnityMCP__ grants (0.2 CONFIRMED)"
+echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clears stale mcp__unity-biome-mcp__ grants (0.2 CONFIRMED)"
 
 # ─────────────────────────────────────────────
 # Test 30h: narrowing a server's grants clears the dead names it left behind
@@ -1728,7 +1736,7 @@ cat > "$NARROW_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": ["unity-mcp-biome"] },
+  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1745,7 +1753,7 @@ inject_fake_registry "$NARROW_DIR"
 
 # Stand in the shoes of a project installed BEFORE the cutover: same key, same file id,
 # a named grant list. Only `allowed-tools` differs from what the package ships today.
-BIOME_JSON_BACKUP="$TMPDIR/unity-mcp-biome.json.orig"
+BIOME_JSON_BACKUP="$TMPDIR/unity-biome-mcp.json.orig"
 cp "$BIOME_JSON" "$BIOME_JSON_BACKUP"
 
 BIOME_JSON="$BIOME_JSON" BIOME_SRC="$BIOME_JSON_BACKUP" node -e "
@@ -1760,7 +1768,7 @@ NARROW_OUT1="$TMPDIR/update-narrowed-1.log"
 
 NARROW_AGENT="$NARROW_DIR/.claude/agents/unikit-implement-coordinator.md"
 assert_exists "$NARROW_AGENT" "unikit-implement-coordinator must be installed for the narrowed-grants test"
-assert_contains "$NARROW_AGENT" 'mcp__UnityMCP__scene_change_plan' \
+assert_contains "$NARROW_AGENT" 'mcp__unity-biome-mcp__scene_change_plan' \
     "the pre-cutover named grant is injected on the first update"
 
 # Restore the shipped config: same engine, same selection, wildcard grants.
@@ -1769,17 +1777,17 @@ cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
 NARROW_OUT2="$TMPDIR/update-narrowed-2.log"
 (cd "$NARROW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NARROW_OUT2" 2>&1)
 
-if grep -q 'mcp__UnityMCP__scene_change_plan' "$NARROW_AGENT"; then
+if grep -q 'mcp__unity-biome-mcp__scene_change_plan' "$NARROW_AGENT"; then
     echo "Assertion failed: narrowing the grants did NOT drop the dead name from the frontmatter"
     echo "  (injectMcpRules appended instead of syncing: nothing reinstalls this subagent,"
     echo "   so its own removal branch is the only thing that can clear the entry)"
     echo "  File: $NARROW_AGENT"
     echo "--- surviving frontmatter entries ---"
-    grep -n 'mcp__UnityMCP__' "$NARROW_AGENT" | head -10
+    grep -n 'mcp__unity-biome-mcp__' "$NARROW_AGENT" | head -10
     echo "-------------------------------------"
     exit 1
 fi
-assert_contains "$NARROW_AGENT" 'mcp__UnityMCP__\*' \
+assert_contains "$NARROW_AGENT" 'mcp__unity-biome-mcp__\*' \
     "the wildcard grant replaces the names it superseded"
 assert_contains "$NARROW_AGENT" '^  - Read$' \
     "hand-authored (non-mcp__) entries survive the sync untouched"
@@ -1822,28 +1830,28 @@ NOTES_SWAP_RESULT=$(cd "$ROOT_DIR" && NOTES_ROOT="$NOTES_SWAP_TMP" node --input-
 
   // park: biome -> fennara
   fs.writeFileSync(active, 'BIOME_FINDING');
-  await swapMcpRecheckNotes(root, 'unity-mcp-biome', 'godot-mcp-fennara');
+  await swapMcpRecheckNotes(root, 'unity-biome-mcp', 'fennara-godot-mcp');
   if (fs.existsSync(active)) why.push('active-survived-the-switch');
-  if (read(archive('unity-mcp-biome')) !== 'BIOME_FINDING') why.push('parked-under-wrong-id-or-rewritten');
+  if (read(archive('unity-biome-mcp')) !== 'BIOME_FINDING') why.push('parked-under-wrong-id-or-rewritten');
 
   // restore: fennara -> biome, with fennara's own notes parked in turn
   fs.writeFileSync(active, 'FENNARA_FINDING');
-  await swapMcpRecheckNotes(root, 'godot-mcp-fennara', 'unity-mcp-biome');
+  await swapMcpRecheckNotes(root, 'fennara-godot-mcp', 'unity-biome-mcp');
   if (read(active) !== 'BIOME_FINDING') why.push('restore-did-not-return-the-servers-own-notes');
-  if (read(archive('godot-mcp-fennara')) !== 'FENNARA_FINDING') why.push('outgoing-notes-not-parked-on-restore');
-  if (fs.existsSync(archive('unity-mcp-biome'))) why.push('archive-left-beside-the-restored-active');
+  if (read(archive('fennara-godot-mcp')) !== 'FENNARA_FINDING') why.push('outgoing-notes-not-parked-on-restore');
+  if (fs.existsSync(archive('unity-biome-mcp'))) why.push('archive-left-beside-the-restored-active');
 
   // a taken archive slot is never overwritten — it is evidence of an interrupted run
-  fs.writeFileSync(archive('unity-mcp-biome'), 'ORPHAN_FROM_A_BROKEN_RUN');
+  fs.writeFileSync(archive('unity-biome-mcp'), 'ORPHAN_FROM_A_BROKEN_RUN');
   fs.writeFileSync(active, 'SECOND_BIOME_FINDING');
-  await swapMcpRecheckNotes(root, 'unity-mcp-biome', 'godot-mcp-fennara');
-  if (read(archive('unity-mcp-biome')) !== 'ORPHAN_FROM_A_BROKEN_RUN') why.push('taken-archive-slot-overwritten');
-  if (read(path.join(unikit, 'MCP-RECHECK-NOTES.archive.unity-mcp-biome.1.md')) !== 'SECOND_BIOME_FINDING')
+  await swapMcpRecheckNotes(root, 'unity-biome-mcp', 'fennara-godot-mcp');
+  if (read(archive('unity-biome-mcp')) !== 'ORPHAN_FROM_A_BROKEN_RUN') why.push('taken-archive-slot-overwritten');
+  if (read(path.join(unikit, 'MCP-RECHECK-NOTES.archive.unity-biome-mcp.1.md')) !== 'SECOND_BIOME_FINDING')
     why.push('collision-not-indexed');
 
   // idempotence: same server in and out touches nothing
   const before = fs.readdirSync(unikit).sort().join('|');
-  await swapMcpRecheckNotes(root, 'godot-mcp-fennara', 'godot-mcp-fennara');
+  await swapMcpRecheckNotes(root, 'fennara-godot-mcp', 'fennara-godot-mcp');
   if (fs.readdirSync(unikit).sort().join('|') !== before) why.push('no-op-branch-touched-the-disk');
 
   console.log(why.length ? why.join(' ') : 'ok');
@@ -1891,7 +1899,7 @@ cat > "$NOTES_CLI_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": ["unity-mcp-biome"] },
+  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1912,7 +1920,7 @@ NOTES_CLI_OUT1="$TMPDIR/update-notes-cli-1.log"
 # The log is user-authored (`/unikit-mcp-trap` writes it); seed it by hand, because
 # the installer must only ever rename this file, never create or rewrite it.
 NOTES_CLI_ACTIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.md"
-NOTES_CLI_ARCHIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.archive.unity-mcp-biome.md"
+NOTES_CLI_ARCHIVE="$NOTES_CLI_DIR/.unikit/MCP-RECHECK-NOTES.archive.unity-biome-mcp.md"
 echo "BIOME_FINDING" > "$NOTES_CLI_ACTIVE"
 
 CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
@@ -1920,7 +1928,7 @@ CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'godot';
     c.engineMcpKey = 'GodotMCP';
-    c.mcp = { servers: ['godot-mcp-fennara'] };
+    c.mcp = { servers: ['fennara-godot-mcp'] };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 NOTES_CLI_OUT2="$TMPDIR/update-notes-cli-2.log"
@@ -1966,7 +1974,7 @@ cat > "$INSTALLNEW_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
   ],
@@ -2008,7 +2016,7 @@ cat > "$BOTHFLAGS_DIR/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
   ],

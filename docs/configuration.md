@@ -10,8 +10,8 @@ Main configuration file, created by `unikit-ai init`:
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "EngineMCP",
-  "mcp": { "servers": ["unity-mcp", "context7"] },
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP", "context7": "context7" } },
   "agents": [
     {
       "id": "claude",
@@ -67,9 +67,9 @@ Main configuration file, created by `unikit-ai init`:
 |-------|-------------|
 | `version` | Package version at time of install |
 | `engine` | Game engine identifier (`unity`, `godot`, `godot-net`, `unreal-engine-5`) |
-| `engineMcpKey` | MCP server key for the selected engine (or `null`) |
+| `engineMcpKey` | Vendor code of the selected engine MCP server, or `null`. **Derived** — recomputed from `mcp.servers` on every write, never an independent input. |
 | `rulesRegistry` | Rules registry URL or local path. Defaults to the official `NintendaDev/unikit-ai-rules` URL. See [Rules Registry](rules-registry.md) for details. |
-| `mcp.servers` | Globally selected MCP server file IDs |
+| `mcp.servers` | Globally selected MCP servers as `key → code`. The **key** is the server's file id — the name of its JSON file under `mcp/`, an internal identity that is never written anywhere else. The **value** is the vendor code UniKit registered that server under in the agent's settings file (`mcpServers.<code>`), stored per project because it is the only record of what was actually written. Configs written before 1.2.0 carry a bare `string[]` of file ids here and are converted on the next `unikit-ai init` / `unikit-ai update`. |
 | `agents` | Array of installed agent configurations |
 | `agents[].id` | Agent identifier (`claude`) |
 | `agents[].skillsDir` | Where skills are installed |
@@ -134,11 +134,30 @@ git:
 
 UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), or `.agents/mcp_config.json` (Antigravity).
 
-Servers that share one `key` are **alternative implementations of the same engine integration** — the wizard offers them as a radio group and you pick exactly one. Servers with a unique key are offered as a checkbox and can be combined freely.
+Every server carries two names, and keeping them apart is what the rest of this section rests on:
 
-### UnityMCP
+- **`key`** — the server's internal identity, always equal to the name of its JSON file under `mcp/`. It is what `.unikit.json` records your selection under, what the delivery stamp and the findings log are named after, and it is never written into an agent's settings file.
+- **`code`** — the **vendor code**: the key the server is actually registered under in your settings file (`mcpServers.<code>`), the middle segment of every `mcp__<code>__*` grant, and the value `{{engine_mcp_tool}}` expands to in skill prose.
 
-Two servers compete under this key. The wizard lists them in `order`, so **Unity Biome** is the default offer on a fresh install.
+Before 1.2.0 there was only `key`, and the engine alternatives of one engine were made to share it — which meant UniKit registered Unity Biome under the name `UnityMCP` while the server itself registers as `unity-biome-mcp`. The two entries coexisted in `.mcp.json`, and the grants followed the one nobody was talking to.
+
+**Engine servers of one engine are alternative implementations** — the wizard offers them as a radio group and you pick exactly one. The group is now the engine's own catalog directory (`mcp/unity/`, `mcp/godot/`, …), not a shared key; `godot` and `godot-net` share `mcp/godot/`, so they share the group. Everything else is additive and is offered as a checkbox.
+
+| Server | `key` (file id) | `code` (settings key, grant prefix) |
+|--------|-----------------|-------------------------------------|
+| Unity Biome MCP | `unity-biome-mcp` | `unity-biome-mcp` |
+| Coplay Unity MCP | `coplay-unity-mcp` | `UnityMCP` |
+| Fennara Godot AI | `fennara-godot-mcp` | `fennara` |
+| GDAI Godot MCP | `gdai-godot-mcp` | `godot-mcp` |
+| Coding-Solo Godot MCP | `coding-solo-godot-mcp` | `godot` |
+| ChiR24 Unreal MCP | `chir24-unreal-mcp` | `unreal-engine` |
+| Context7 | `context7` | `context7` |
+
+Each code is the one its vendor uses, so an entry UniKit writes and an entry the vendor's own editor plugin writes are the same entry rather than two.
+
+### Unity
+
+Two engine servers compete here. The wizard lists them in `order`, so **Unity Biome** is the default offer on a fresh install.
 
 #### Unity Biome MCP (`order: 1`)
 
@@ -176,9 +195,9 @@ Two caveats worth knowing before you rely on it:
 - **The HTTP server does not start on its own.** Start it manually via `Window > MCP for Unity > Start Server`. Until it is running, every tool call fails to connect.
 - **The Unity package manages MCP client configs itself.** On editor load it rewrites (and can remove) MCP entries written by other tools, including the ones UniKit AI installs. Disable that behavior with the EditorPref `MCPForUnity.AutoRegisterEnabled=false` if you want UniKit AI to stay the owner of your agent config.
 
-### GodotMCP
+### Godot
 
-Three servers compete under this key; **Fennara** is the default offer on a fresh install.
+Three engine servers compete here (`godot` and `godot-net` share the same catalog directory, so they are offered the same three); **Fennara** is the default offer on a fresh install.
 
 #### Fennara Godot AI (`order: 1`, free)
 
@@ -246,13 +265,13 @@ The rules tree is what UniKit AI shipped. This file is what *your* project found
 
 ### MCP JSON schema fields
 
-Beyond `key` / `displayName` / `config`, an MCP JSON may declare five optional fields. All are backward compatible — a config without them behaves exactly as before.
+Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `configByPlatform`. `key` must equal the file's own basename and `code` must be non-empty — an entry missing either is dropped at scan time, so the server is simply never offered. Beyond those, an MCP JSON may declare five optional fields. All five are backward compatible — a config without them behaves exactly as before.
 
 | Field | Purpose |
 |-------|---------|
 | `docs` | `{ context7, repo }` — where the server documents *itself*. `repo` generates the single install line printed in the `init` summary (`<displayName> — setup and requirements: <url>`) and is **required** when `is_engine: true`. `context7` is the library id the rules tree names as the server's reference. |
 | `rules` | Directory holding this server's rules tree, resolved relative to the JSON's own directory (`"rules/<server>/"`). Delivered to `.unikit/system/engine-mcp/` — see [Engine-MCP rules tree](#engine-mcp-rules-tree). Absent is a normal state, not a degraded one. |
-| `order` | Presentation order within a `key` group (ascending, 1-based; missing sorts last). Drives the wizard's radio pre-selection and nothing else — it does **not** affect the order servers are written into a settings file. |
+| `order` | Presentation order within one engine group — the `is_engine` servers of a single `mcp/<engine>/` directory (ascending, 1-based; missing sorts last). Drives the wizard's radio pre-selection and nothing else — it does **not** affect the order servers are written into a settings file. |
 | `verified` | `{ version, date, toolRegistry }` — the server version the **rules tree was measured against**, the date of that measurement, and the registry file it was read from. Printed in the `init` summary and stamped into every delivered rules file. |
 | `configByPlatform` | Per-OS config variants keyed by `win32` / `darwin` / `linux`, for servers whose binary path differs per platform. |
 
@@ -264,7 +283,7 @@ Beyond `key` / `displayName` / `config`, an MCP JSON may declare five optional f
 
 #### Tool grants (`allowed-tools`)
 
-An MCP JSON may name the skills and subagents that receive its tools; the names are injected into the installed frontmatter as `mcp__<Key>__<tool>` (or `mcp__<Key>__*`). Injection is keyed on your **selection**, so changing which MCP you use reinstalls all skills and subagents and clears the old entries.
+An MCP JSON may name the skills and subagents that receive its tools; the names are injected into the installed frontmatter as `mcp__<code>__<tool>` (or `mcp__<code>__*`) — the **vendor code**, which is what the running server publishes its tools under. Injection is keyed on your **selection**, so changing which MCP you use reinstalls all skills and subagents and clears the old entries; a server whose code changes while your selection stays put has its dead names removed too.
 
 - **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
 - **The planner is the one exception**, and receives two discovery names only. The discovery protocol is the single layer that does not rot, and a planner physically cannot mutate anything — so a narrow grant costs nothing and documents the boundary.
@@ -285,19 +304,37 @@ Two path tokens are expanded recursively through the selected config (in `comman
 
 No existence check is performed on the result — if the binary is not installed yet, your MCP client reports that, not UniKit AI.
 
+### What UniKit writes into your settings file
+
+The settings file is shared property: the vendor's editor plugin writes into it, you write into it, extensions write into it. Since 1.2.0 UniKit reconciles rather than overwrites, and it does so on **both** `init` and `update` — `update` used to leave the file alone entirely, which is the wrong half of the cycle to skip, because `init` is run once while a plugin rewrites its own entry between runs.
+
+Per selected server, in this order:
+
+1. **A code that changed since the last write** — the entry standing under the old code is an orphan (nothing is listening on it, while its grants stay live in every skill's frontmatter), so it is removed. This is also the whole upgrade path off the pre-1.2.0 schema: the migration deliberately preserves the code UniKit *wrote* last time, so the divergence surfaces once and heals itself.
+2. **No entry** → the server is written in full.
+3. **An entry under our exact code** → `command` and `args` are **left alone**. Whoever wrote them knows things UniKit does not: a pinned version, a local build, an API key. Overwriting them is how the duplicate-registration bug this release fixes came about.
+4. **An entry under a case or whitespace variant** of our code → removed and rewritten under the canonical spelling. Leaving it is not an option: grants are literal, so `mcp__UnityMCP__*` confers nothing on tools published as `mcp__unityMCP__*`. The scan is bounded — a key registered by an extension is never treated as a variant of ours, however similar it looks.
+5. **`env` is the one narrow exception** and is overlaid onto an existing entry as well. It is UniKit's own field: `UNITY_MCP_NO_GATING=1` is what makes "gating is removed by configuration" a true statement about your project, and a plugin that rewrites the entry carries it away with everything else. The field name differs per agent (`environment` on OpenCode, `env` elsewhere) and Codex and OpenCode drop empty values.
+
+The pass is idempotent — it compares the serialized result against what is on disk and does not rewrite an unchanged file.
+
+**Version placeholders.** A shipped config may carry the token `{{ VERSION }}` where a version has to match something on your machine rather than something UniKit knows. Unity Biome does: its server version must match the version of the Unity package, and opening Unity writes the pin for you. Until it is filled in, every `init` and `update` prints a warning naming the server. Unlike the path tokens above, this one is **not** expanded — it is a marker meant to be replaced, and a run that still finds it says so out loud.
+
 ### Re-running `init`
 
 On a re-init the wizard mirrors what `.unikit.json` already records:
 
-- **Checkbox groups** (unique keys) pre-check the servers you had installed.
-- **Radio groups** (competing keys) pre-select your previous choice.
+- **Checkbox groups** (universal servers, and any engine directory holding just one) pre-check the servers you had installed.
+- **Radio groups** (the engine alternatives of one catalog directory) pre-select your previous choice.
 - `Skip` is never pre-selected — "you skipped it last time" and "there was no choice last time" are indistinguishable on disk, so the wizard re-offers the recommended server rather than silently disabling an MCP.
 
 `order: 1` therefore decides the default only on a **fresh** install.
 
-Changing your MCP selection reinstalls all skills and subagents: the selection is part of their source hash, which is how stale `mcp__<Key>__*` entries get cleared from the installed frontmatter.
+Changing your MCP selection reinstalls all skills and subagents: the selection is part of their source hash, which is how stale `mcp__<code>__*` entries get cleared from the installed frontmatter. The hash covers both halves of every `mcp.servers` entry, so a server whose vendor code changes while your selection stays the same still triggers the reinstall.
 
-### UnrealMCP
+### Unreal Engine 5
+
+The single engine server here registers under the code `unreal-engine`.
 
 ```json
 {
@@ -334,7 +371,9 @@ The server is optional in the wizard. Declining it does not disable anything —
 
 `src/core/mcp-writers/opencode-writer.ts` only supports stdio servers — those whose config carries a string `command`. Servers declared with `{ "type": "http", "url": ... }` are skipped with a `console.warn`; installation itself does not fail.
 
-In practice this means **UnityMCP (Coplay) and UnrealMCP (ChiR24) are not configured for the OpenCode agent**. All other agents (Claude Code, Codex CLI, Cursor, Qwen Code, Antigravity) receive them normally. If you use OpenCode with Unity or Unreal, add the HTTP server to `opencode.json` by hand.
+In practice this means **Coplay Unity MCP (`UnityMCP`) and ChiR24 Unreal MCP (`unreal-engine`) are not configured for the OpenCode agent**. All other agents (Claude Code, Codex CLI, Cursor, Qwen Code, Antigravity) receive them normally. If you use OpenCode with Unity or Unreal, add the HTTP server to `opencode.json` by hand. Unity Biome MCP is stdio, so it is unaffected.
+
+One consequence is worth naming, because it looks like a bug and is not: switching **to** an HTTP server on OpenCode removes the previous engine server's entry and writes nothing in its place. The removal is the swap doing its job; the missing write is this limitation. The settings file legitimately ends up with no engine server.
 
 ## Rules Manifest
 

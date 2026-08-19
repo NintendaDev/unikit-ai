@@ -530,7 +530,7 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{skills_cli_agent_flag}}` | `--agent claude-code` | CLI agent flag |
 | `{{engine_name}}` | `Unity` | Game engine name |
 | `{{engine_code_language}}` | `CSharp` | Engine's programming language |
-| `{{engine_mcp_tool}}` | `UnityMCP` | Engine MCP server key |
+| `{{engine_mcp_tool}}` | `unity-biome-mcp` | Vendor code of the engine MCP server — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. Not the server's file id. |
 
 Use these in SKILL.md files to write agent-agnostic skills:
 

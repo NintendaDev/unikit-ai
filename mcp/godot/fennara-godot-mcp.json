@@ -1,9 +1,11 @@
 {
-  "key": "GodotMCP",
+  "key": "fennara-godot-mcp",
+  "code": "fennara",
   "is_engine": true,
   "order": 1,
   "displayName": "Fennara Godot AI [Free]",
   "docs": {
+    "context7": "/fennaraofficial/fennara-godot-ai",
     "repo": "https://github.com/fennaraOfficial/fennara-godot-ai"
   },
   "verified": {

@@ -18,7 +18,7 @@ import path from 'path';
 import { fileExists, movePath } from '../../utils/fs.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
-  CODE_MODULE_ID, UNIKIT_DIR,
+  CODE_MODULE_ID, MIGRATION_SINCE_MODULAR_LAYOUT, UNIKIT_DIR,
   WORKSPACE_ARTIFACT_DIRS, WORKSPACE_ARTIFACT_FILES, WORKSPACE_ARTIFACT_RENAMES,
   workspaceDir,
 } from '../constants.js';
@@ -57,6 +57,11 @@ function relocations(): Relocation[] {
  */
 const workspaceCodeRelocationMigration: Migration<WorkspaceMigrationContext> = {
   id: 'workspace-1-to-2-code-relocate',
+  // Same anchor as the memory wrap: both belong to the modular layout. It is
+  // deliberately inert for the projects this step actually targets — they sit
+  // at 1.1.0 already, and `lt('1.1.0','1.1.0')` is false — so `detect` carries
+  // this step alone, exactly as it did before anchors existed.
+  since: MIGRATION_SINCE_MODULAR_LAYOUT,
 
   async detect({ projectDir }) {
     const flatRoot = path.join(projectDir, UNIKIT_DIR);

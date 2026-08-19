@@ -21,6 +21,7 @@ import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
   GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID,
   GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
+  MCP_STAMP_SERVER_KEY,
   systemDir, systemGamedesignDir, systemGamedesignGenresDir, systemEngineMcpDir,
 } from '../constants.js';
 import type { SelectedEngineServer } from '../mcp-rules.js';
@@ -225,7 +226,7 @@ export async function installGenreProfiles(projectDir: string, config: UniKitCon
 const STAMPABLE_EXTENSION = '.md';
 
 /** Key of the stamp line naming the server a delivered file came from. */
-const STAMP_SERVER_KEY = 'server: ';
+const STAMP_SERVER_KEY = `${MCP_STAMP_SERVER_KEY} `;
 
 /** Separator between the ISO date and the time in an ISO 8601 timestamp. */
 const ISO_DATE_TIME_SEPARATOR = 'T';
@@ -257,7 +258,7 @@ function renderEngineMcpRulesStamp(fileId: string, version: string, deliveredOn:
     '<!-- Fix it at the source (the package\'s `mcp/<engine>/rules/<server>/`), not here: -->',
     '<!-- every init / update rewrites this folder. -->',
     '',
-    `server: ${fileId}`,
+    `${STAMP_SERVER_KEY}${fileId}`,
     `version: ${version}`,
     `delivered: ${deliveredOn}`,
     '',

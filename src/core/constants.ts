@@ -121,7 +121,10 @@ export const GAMEDESIGN_GENRES_DIR_NAME = 'genres';
 export const ENGINE_MCP_DIR_NAME = 'engine-mcp';
 
 /**
- * Prefix every MCP-injected frontmatter entry carries: `mcp__<key>__<tool>`.
+ * Prefix every MCP-injected frontmatter entry carries: `mcp__<code>__<tool>`,
+ * where `code` is the VENDOR code the server is registered under in the agent's
+ * settings file — never its `key`, which is the package-internal file id and is
+ * written nowhere.
  *
  * It is what makes injection reversible. A skill's `allowed-tools` mixes
  * hand-authored entries (Read, Bash, Agent, …) with generated ones, and only the
@@ -140,6 +143,27 @@ export const MCP_TOOL_ENTRY_PREFIX = 'mcp__';
 export const MCP_RULES_INDEX_FILE = 'INDEX.md';
 
 /**
+ * The literal a server config carries where a pinned version belongs, until
+ * something fills it in.
+ *
+ * The biome server is installed straight from git, and its server half must
+ * match the Unity package half — a mismatch is a protocol mismatch, not a
+ * cosmetic one. UniKit cannot know the number: it is whatever the user's Unity
+ * package is, and opening the editor writes the pin itself. So the shipped
+ * config carries the placeholder and the reconciliation warns while it is still
+ * there.
+ *
+ * Safe to leave in the config: `expandTokens` (`mcp-platform.ts`) substitutes
+ * `{{home}}` and `{{localappdata}}` by exact `split`/`join` and passes anything
+ * else through untouched — measured, not assumed.
+ *
+ * A separate `_v` field was rejected: it would be a second copy of the same
+ * fact, and `OpenCodeMcpWriter` rebuilds the entry from `command`/`args`/`env`
+ * alone, so the copy would silently not survive for one agent in four.
+ */
+export const MCP_VERSION_PLACEHOLDER = '{{ VERSION }}';
+
+/**
  * Project-local log of MCP findings — `.unikit/MCP-RECHECK-NOTES.md`. It sits at
  * the root of `.unikit/` rather than under `system/` **by construction**: every
  * system asset is flat-rewritten on init/update, and this file is user-owned
@@ -156,6 +180,36 @@ export const MCP_RECHECK_NOTES_FILE = 'MCP-RECHECK-NOTES.md';
  * **or** archived, never both.
  */
 export const MCP_RECHECK_NOTES_ARCHIVE_PREFIX = 'MCP-RECHECK-NOTES.archive.';
+
+/**
+ * Key of the line naming the server a file belongs to. It appears in two
+ * places that are compared against each other: the delivery stamp at the top of
+ * every file in `.unikit/system/engine-mcp/`, and the header of the project's
+ * `.unikit/MCP-RECHECK-NOTES.md`. Both carry a FILE ID, which is why renaming a
+ * file id has to rewrite both — a stamp updated alone turns every pipeline
+ * skill's Bootstrap into a permanent "notes header ≠ configured server" warning
+ * that nothing but a human can clear.
+ */
+export const MCP_STAMP_SERVER_KEY = 'server:';
+
+/**
+ * Pre-1.2.0 MCP file id → its 1.2.0 name.
+ *
+ * The file id used to be a descriptive filename; from 1.2.0 it IS the server's
+ * `key` — its internal identity — so the two had to be brought into line. The
+ * table is the only place the old names survive, and four surfaces read it: the
+ * keys of `config.mcp.servers`, the archived findings logs
+ * (`MCP-RECHECK-NOTES.archive.<fileId>.md`), the `server:` line of the delivered
+ * rules tree, and the `server:` header inside the findings logs themselves.
+ */
+export const MCP_FILE_ID_RENAMES: Readonly<Record<string, string>> = {
+  'unity-mcp-biome': 'unity-biome-mcp',
+  'unity-mcp-coplay': 'coplay-unity-mcp',
+  'godot-mcp-fennara': 'fennara-godot-mcp',
+  'godot-mcp-gdai': 'gdai-godot-mcp',
+  'godot-mcp-coding-solo': 'coding-solo-godot-mcp',
+  'unreal-mcp-chir24': 'chir24-unreal-mcp',
+};
 
 /**
  * Platforms an MCP JSON may declare a `configByPlatform` entry for. The values
@@ -177,6 +231,14 @@ export const MCP_TOKEN_HOME = '{{home}}';
 export const MCP_TOKEN_LOCALAPPDATA = '{{localappdata}}';
 
 // --- File names ---
+
+/**
+ * The project config. Named here rather than in `config.ts` because the
+ * migration chain reaches the same file as RAW JSON — `config.ts` cannot be the
+ * owner of a path its own bypass route needs.
+ */
+export const CONFIG_FILE = '.unikit.json';
+
 
 export const SKILL_FILE = 'SKILL.md';
 export const RULES_INDEX_FILE = 'RULES_INDEX.md';
@@ -329,3 +391,20 @@ export const WORKSPACE_ARTIFACT_FILES = ['PLAN.md', 'FIX_PLAN.md'] as const;
 export const WORKSPACE_ARTIFACT_RENAMES: readonly { from: string; to: string }[] = [
   { from: 'RESEARCHES_INDEX.md', to: path.join('researches', 'INDEX.md') },
 ];
+
+// --- Migration version anchors (`Migration.since`) ---
+//
+// The release each project-migration step ships in. A project whose recorded
+// `.unikit.json.version` is strictly below the anchor has not seen that step,
+// whatever the disk says — which is the coarse half of the run condition
+// (`src/core/migrations/runner.ts` documents why the two halves are OR-ed).
+//
+// An anchor names a RELEASE, not a feature: if the release these steps go out
+// in is renumbered, the anchor moves with it. Leaving it behind switches the
+// version half off for exactly the users sitting on the previous number.
+
+/** Modular `memory/<module>` layout + module-scoped workspace (PR#1 / PR#4). */
+export const MIGRATION_SINCE_MODULAR_LAYOUT = '1.1.0';
+
+/** MCP vendor codes: `mcp.servers` key→code map + renamed server file ids. */
+export const MIGRATION_SINCE_MCP_VENDOR_CODES = '1.2.0';

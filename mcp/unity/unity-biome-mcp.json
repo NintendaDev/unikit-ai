@@ -1,5 +1,6 @@
 {
-  "key": "UnityMCP",
+  "key": "unity-biome-mcp",
+  "code": "unity-biome-mcp",
   "is_engine": true,
   "order": 1,
   "displayName": "Unity Biome MCP",
@@ -7,7 +8,7 @@
     "context7": "/german-krasnikov/unity-biome-mcp",
     "repo": "https://github.com/german-krasnikov/unity-biome-mcp"
   },
-  "rules": "rules/unity-mcp-biome/",
+  "rules": "rules/unity-biome-mcp/",
   "verified": {
     "version": "1.37.2",
     "date": "2026-08-18",
@@ -17,7 +18,7 @@
     "command": "uvx",
     "args": [
       "--from",
-      "git+https://github.com/german-krasnikov/unity-biome-mcp.git#subdirectory=server",
+      "git+https://github.com/german-krasnikov/unity-biome-mcp.git@v{{ VERSION }}#subdirectory=server",
       "unity-biome-mcp"
     ],
     "env": {

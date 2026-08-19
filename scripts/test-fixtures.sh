@@ -180,10 +180,10 @@ write_unikit_config_genres() {
     mkdir -p "$project_dir"
     cat > "$project_dir/.unikit.json" <<JSON
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "$engine",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
   "rules": {
     "installed": {
@@ -463,6 +463,19 @@ fi
 #
 #   fake_registry_path minimal-valid
 #   → <ROOT_DIR>/scripts/test-fixtures/minimal-valid (Node-resolvable form)
+# The `version` a fixture stamps when it means "a current, fully migrated
+# project". Read from package.json rather than pinned to a literal: the
+# migration chain's version half compares this against each step's `since`, so
+# a hardcoded number silently turns every release that ships a migration into a
+# project that "never ran update" — and every `rules sync` / `rules install`
+# fixture into an exit 8. Fixtures that must look OLD (use_unmigrated_registry)
+# keep an explicit old literal; that is the one place a number belongs.
+current_project_version() {
+    # `cd` first: $ROOT_DIR is an MSYS path under Git Bash, and Windows node
+    # cannot `require` it verbatim.
+    (cd "$ROOT_DIR" && node -p "require('./package.json').version" 2>/dev/null) || echo "1.1.0"
+}
+
 fake_registry_path() {
     local name="$1"
     normalize_path_for_json "$ROOT_DIR/scripts/test-fixtures/$name"
@@ -503,10 +516,10 @@ use_fake_registry() {
     mkdir -p "$project_dir/.unikit/memory/code/core" "$project_dir/.unikit/memory/code/stack"
     cat > "$project_dir/.unikit.json" <<JSON
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "$engine",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": $agents_json,
   "rulesRegistry": "$fixture_path",
   "rules": {
@@ -566,7 +579,7 @@ MD
   "version": "1.0.1",
   "engine": "$engine",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
   "rulesRegistry": "$fixture_path",
   "rules": {

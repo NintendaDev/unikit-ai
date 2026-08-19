@@ -130,7 +130,7 @@ A file that is absent is skipped **silently** — see A9.
 
 ## Engine workflow
 
-1. **Source files vs editor state.** Write source files (`{{engine_code_language}}` sources, configs, plain text) **directly** through Read / Edit / Write — {{engine_mcp_tool}} is not the tool for that. For **editor-side work** — scenes, prefabs, components, assets, materials, UI, VFX, animation — {{engine_mcp_tool}} is the **preferred** path, but the choice stays yours. Which of the two a change is, is decided by one criterion and one only: **serialized state is the boundary** (A8).
+1. **Source files vs editor state.** Write source files (`{{engine_code_language}}` sources, configs, plain text) **directly** through Read / Edit / Write — MCP server `{{engine_mcp_tool}}` is not the tool for that. For **editor-side work** — scenes, prefabs, components, assets, materials, UI, VFX, animation — MCP server `{{engine_mcp_tool}}` is the **preferred** path, but the choice stays yours. Which of the two a change is, is decided by one criterion and one only: **serialized state is the boundary** (A8).
 
 2. **Confirm by reading, not by the response code.** After every write — a source file or editor state alike — read the changed thing back. `success` is not evidence; the evidence is the read-back of what you claimed to change (A1, A2).
 

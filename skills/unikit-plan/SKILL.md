@@ -468,7 +468,7 @@ This step embodies the **one-way boundary**: it only *reads* design artifacts â€
 
 ### Step 4.6: Read the Catalog Negatively (only when the plan carries editor work)
 
-**Gate.** Runs only when Step 4 established that the feature touches the editor's **serialized state** *and* an engine MCP is configured (`{{engine_mcp_tool}}` present in `{{settings_file}}`). A pure-code plan skips this step and makes no call at all.
+**Gate.** Runs only when Step 4 established that the feature touches the editor's **serialized state** *and* an engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}`). A pure-code plan skips this step and makes no call at all.
 
 Whatever engine-MCP grants this skill's frontmatter carries are read-only discovery and nothing else â€” that is the whole of the planner's contact with the engine MCP. Use them **once**, to answer exactly two questions:
 

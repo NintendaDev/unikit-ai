@@ -1,9 +1,11 @@
 {
-  "key": "GodotMCP",
+  "key": "gdai-godot-mcp",
+  "code": "godot-mcp",
   "is_engine": true,
   "order": 2,
   "displayName": "GDAI Godot MCP [Paid]",
   "docs": {
+    "context7": "/3ddelano/gdai-mcp-plugin-godot",
     "repo": "https://github.com/3ddelano/gdai-mcp-plugin-godot"
   },
   "config": {

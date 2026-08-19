@@ -1,5 +1,6 @@
 import { parse, stringify } from 'smol-toml';
 import type { McpWriter } from './index.js';
+import { findKeyInContainer } from './shared.js';
 import { fileExists, readTextFile } from '../../utils/fs.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -84,6 +85,23 @@ export class TomlMcpWriter implements McpWriter {
     }
     delete servers[key];
     return true;
+  }
+
+  findKey(settings: Record<string, unknown>, code: string, reserved: Set<string>): string | null {
+    return findKeyInContainer(settings, 'mcp_servers', code, reserved);
+  }
+
+  mergeEnv(settings: Record<string, unknown>, key: string, env: Record<string, unknown>): void {
+    const servers = settings['mcp_servers'];
+    if (!isRecord(servers)) return;
+    const entry = servers[key];
+    if (!isRecord(entry)) return;
+
+    // Sanitized, not passed through: TOML has no null, so `smol-toml` throws on
+    // one. Dropping empty values is part of this writer's contract, not an
+    // implementation detail — the same rule `upsert` already applies.
+    const merged = { ...(isRecord(entry['env']) ? entry['env'] : {}), ...env };
+    entry['env'] = sanitizeEnv(merged, key);
   }
 
   serialize(settings: Record<string, unknown>): string {

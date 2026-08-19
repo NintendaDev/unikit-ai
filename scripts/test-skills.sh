@@ -521,27 +521,27 @@ if [[ "$GODOT_MCP_COUNT" -eq 0 ]]; then
     fail "mcp/godot/ — no MCP JSON files found"
 fi
 
-# unreal-engine-5/ must have unreal-mcp-chir24.json
-if [[ -f "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" ]]; then
-    if validate_json "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json"; then
-        HAS_FIELDS=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" \
+# unreal-engine-5/ must have chir24-unreal-mcp.json
+if [[ -f "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
+    if validate_json "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json"; then
+        HAS_FIELDS=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" \
           "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
-            KEY_VAL=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" "m.key" 2>/dev/null)
-            IS_ENGINE=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
+            KEY_VAL=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.key" 2>/dev/null)
+            IS_ENGINE=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
             if [[ -n "$KEY_VAL" && "$IS_ENGINE" == "true" ]]; then
-                pass "mcp/unreal-engine-5/unreal-mcp-chir24.json (valid structure, key=$KEY_VAL, is_engine=true)"
+                pass "mcp/unreal-engine-5/chir24-unreal-mcp.json (valid structure, key=$KEY_VAL, is_engine=true)"
             else
-                fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
+                fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
             fi
         else
-            fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — missing key, displayName, or config/configByPlatform"
+            fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — missing key, displayName, or config/configByPlatform"
         fi
     else
-        fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — invalid JSON"
+        fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — invalid JSON"
     fi
 else
-    fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — missing"
+    fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — missing"
 fi
 
 # ─────────────────────────────────────────────
@@ -558,7 +558,7 @@ fi
 #   - `order`, when present, is a number
 #   - `configByPlatform`, when present, keys ⊆ {win32,darwin,linux} and each
 #     entry has `command` or `url`
-#   - `order` is unique among is_engine=true entries sharing one `key` — without
+#   - `order` is unique among is_engine=true entries of one DIRECTORY — without
 #     that the wizard's radio sort degenerates back to non-deterministic, which
 #     is the exact bug the field exists to fix
 #   - `docs.context7`, when present, is a Context7 library id (leading slash)
@@ -580,7 +580,7 @@ MCP_SCHEMA_RESULT=$(node -e "
   const root=process.argv[1];
   const KNOWN_PLATFORMS=['win32','darwin','linux'];
   const why=[];
-  const orderByKey=new Map();   // key -> Map<order, fileId>
+  const orderByKey=new Map();   // directory -> Map<order, fileId>
 
   for (const dir of fs.readdirSync(root)) {
     const dirPath=path.join(root, dir);
@@ -638,13 +638,16 @@ MCP_SCHEMA_RESULT=$(node -e "
         }
       }
 
-      // Order uniqueness is scoped to the engine group: the radio only ever
-      // renders is_engine entries sharing one key, and universal servers never
-      // compete with them.
-      if (m.is_engine === true && m.key && typeof m.order === 'number') {
-        if (!orderByKey.has(m.key)) orderByKey.set(m.key, new Map());
-        const seen=orderByKey.get(m.key);
-        if (seen.has(m.order)) why.push('duplicate-order:'+m.key+':'+m.order+':'+seen.get(m.order)+'+'+rel);
+      // Order uniqueness is scoped to the engine group, and since 1.2.0 the
+      // group is the DIRECTORY, not the key: the radio renders the is_engine
+      // entries of one \`mcp/<dir>/\` folder, and universal servers never compete
+      // with them. Keying this on \`m.key\` would now be vacuous — every JSON
+      // carries its own basename there, so each group would hold one entry and
+      // no collision could ever be expressed.
+      if (m.is_engine === true && typeof m.order === 'number') {
+        if (!orderByKey.has(dir)) orderByKey.set(dir, new Map());
+        const seen=orderByKey.get(dir);
+        if (seen.has(m.order)) why.push('duplicate-order:'+dir+':'+m.order+':'+seen.get(m.order)+'+'+rel);
         else seen.set(m.order, rel);
       }
     }
@@ -3397,7 +3400,7 @@ fi
 # biome verification.md now that the rules tree is the delivered asset. What that file
 # must say is the NEGATIVE of the convention — the verdict is produced by a run, never
 # pre-declared — so the two halves of EM-3 point in opposite directions on purpose.
-EM_BIOME_VERIFICATION="$ROOT_DIR/mcp/unity/rules/unity-mcp-biome/verification.md"
+EM_BIOME_VERIFICATION="$ROOT_DIR/mcp/unity/rules/unity-biome-mcp/verification.md"
 EM3_WHY=""
 grep -qF 'GATE LIFTED' "$UNIKIT_VERIFY_SKILL" || EM3_WHY+=" verify-skill"
 grep -qF 'GATE LIFTED' "$EM_DEV_PRINCIPLES"   || EM3_WHY+=" dev-principles"
@@ -3417,8 +3420,8 @@ fi
 # tool, so every old parent name is a guaranteed DIRECT_TOOL_CALL_REMOVED; UE_PROJECT_PATH
 # passed fs.existsSync and then failed every call with NOT_CONNECTED. coplay's 8085 never
 # existed in their repository at all.
-EM_CHIR24_JSON="$ROOT_DIR/mcp/unreal-engine-5/unreal-mcp-chir24.json"
-EM_COPLAY_JSON="$ROOT_DIR/mcp/unity/unity-mcp-coplay.json"
+EM_CHIR24_JSON="$ROOT_DIR/mcp/unreal-engine-5/chir24-unreal-mcp.json"
+EM_COPLAY_JSON="$ROOT_DIR/mcp/unity/coplay-unity-mcp.json"
 EM4_WHY=""
 for dead in manage_pipeline manage_performance manage_game_framework manage_behavior_tree manage_navigation UE_PROJECT_PATH; do
     grep -qF "$dead" "$EM_CHIR24_JSON" && EM4_WHY+=" chir24:$dead"
@@ -3468,7 +3471,7 @@ fi
 # per OS. Both tokens must be present in the JSON (an accidental absolute path would work
 # on the author's machine and nowhere else) and both must resolve at configure time, which
 # the platform-agnostic install assertion in test-install.sh covers.
-EM_FENNARA_JSON="$ROOT_DIR/mcp/godot/godot-mcp-fennara.json"
+EM_FENNARA_JSON="$ROOT_DIR/mcp/godot/fennara-godot-mcp.json"
 EM7_WHY=""
 grep -qF '{{localappdata}}' "$EM_FENNARA_JSON" || EM7_WHY+=" no-localappdata-token"
 grep -qF '{{home}}' "$EM_FENNARA_JSON"         || EM7_WHY+=" no-home-token"
@@ -3934,8 +3937,15 @@ RT5_HITS="$(grep -rln 'mcpRecheckNotesPath(' "$ROOT_DIR/src" --include='*.ts' 2>
 RT5_WHY=""
 while IFS= read -r rt_file; do
     [[ -n "$rt_file" ]] || continue
-    case "$(basename "$rt_file")" in
-        constants.ts|mcp-notes.ts) ;;
+    case "$(basename "$rt_file")$(dirname "$rt_file" | sed 's|.*/||')" in
+        # The declaration, the swap module that owns the rename — and the MCP
+        # MIGRATION, which is the one thing here that is not the installer. It
+        # rewrites the `server:` header when a file id is renamed under the
+        # project's feet; leaving that line stale makes every pipeline skill
+        # print "notes header ≠ configured server" forever, and nothing but a
+        # human can clear it. The exception is narrow by construction: a
+        # migration runs once per project and writes no findings.
+        constants.ts*|mcp-notes.ts*|index.tsmcp-migrations) ;;
         *) RT5_WHY+=" $(basename "$rt_file")" ;;
     esac
 done <<< "$RT5_HITS"
@@ -4168,6 +4178,41 @@ else
     echo "$NN3_HITS" | head -5
 fi
 
+# (NN-4) The rules registry — the fourth surface, and the only one this repository does not
+# author. A different detector from NN-1…NN-3 on purpose: a rule is user-facing knowledge
+# where snake_case is ordinary (GDScript APIs, serialized-format keys), so the backticked-
+# token regex would need an allowlist the size of the corpus. `mcp__` is unambiguous — the
+# string can only be a grant name — and it is exactly the shape that rots. The middle
+# segment of that prefix is a VENDOR CODE, chosen per server since 1.2.0, so a rule naming
+# one is wrong for every user who picked a different server of the same engine.
+#
+# Measured: `code/unity/core/testing.md` shipped `mcp__UnityMCP__run_tests`, correct only by
+# accident — biome and coplay were made to share one key, and the moment that ended the rule
+# started instructing biome users to call a server that is not theirs. Rules are copied into
+# projects VERBATIM (processTemplate never runs on them) and sync by their own version, so
+# nothing downstream can repair the name.
+#
+# Scope is the delivered content (`code/`, `gamedesign/`), not the registry's own README and
+# docs — those describe the mechanism legitimately and never reach a project. The registry is
+# a gitignored CLONE refreshed by scripts/download-rules.sh, so a failure here is fixed
+# upstream in NintendaDev/unikit-ai-rules and clears once the snapshot is refreshed.
+NN4_ROOT="$ROOT_DIR/rules-registry"
+NN4_TARGETS=()
+for nn4_tier_dir in "$NN4_ROOT/code" "$NN4_ROOT/gamedesign"; do
+    [[ -d "$nn4_tier_dir" ]] && NN4_TARGETS+=("$nn4_tier_dir")
+done
+if [[ ${#NN4_TARGETS[@]} -eq 0 ]]; then
+    fail "NN-4 no rules-registry/{code,gamedesign} found — the guard has no object left (run scripts/download-rules.sh)"
+else
+    NN4_HITS="$({ grep -rnF 'mcp__' "${NN4_TARGETS[@]}" --include='*.md' 2>/dev/null || true; })"
+    if [[ -z "$NN4_HITS" ]]; then
+        pass "NN-4 registry rules name no MCP tool (no mcp__ grant prefix in delivered rule content)"
+    else
+        fail "NN-4 a registry rule names an MCP tool — fix upstream in NintendaDev/unikit-ai-rules:"
+        echo "$NN4_HITS" | head -5
+    fi
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
@@ -4379,9 +4424,20 @@ for mcp_json in "$MCP_DIR"/*/; do
 done
 
 # ─────────────────────────────────────────────
-# Part 7e: All is_engine=true entries share same key per engine scope
+# Part 7e: All is_engine=true entries carry DISTINCT codes per engine scope
 # ─────────────────────────────────────────────
-echo -e "\n${BOLD}=== is_engine entries share same key per engine scope ===${NC}\n"
+# The inversion of the pre-1.2.0 rule, and it guards the same runtime check —
+# `discoverMcpServers` throws on a violation, so a defect here takes down every
+# `init`/`update` for that engine, not just this suite.
+#
+# Why it flipped: `key` became the JSON's own basename, so "all engine servers
+# share one key" is now false by construction (Unity ships two, Godot three) and
+# the grouping it expressed moved to the directory. What has to hold instead is
+# that no two of them register under the same `code` — two entries with one code
+# are one entry in the agent's settings file, and a swap could not tell which to
+# remove, leaving an orphan with live grants aimed at a server that is not
+# running.
+echo -e "\n${BOLD}=== is_engine entries carry distinct codes per engine scope ===${NC}\n"
 
 declare -A ENGINE_MCP_DIRS=(["unity"]="unity" ["godot"]="godot" ["godot-net"]="godot" ["unreal-engine-5"]="unreal-engine-5")
 KEY_UNIQUENESS_ERRORS=0
@@ -4391,46 +4447,213 @@ for engine in "${!ENGINE_MCP_DIRS[@]}"; do
     UNIVERSAL_DIR_PATH="$MCP_DIR/universal"
     ENGINE_DIR_PATH="$MCP_DIR/$mcp_dir"
 
-    # Collect keys from is_engine=true entries across universal + engine directories
+    # Collect codes from is_engine=true entries across universal + engine directories
     RESULT=$(node -e "
       const fs = require('fs');
       const path = require('path');
-      const engineKeys = [];
+      const engineCodes = [];
+      const missing = [];
       for (const dir of process.argv.slice(1)) {
         if (!fs.existsSync(dir)) continue;
         for (const f of fs.readdirSync(dir)) {
           if (!f.endsWith('.json')) continue;
           try {
             const m = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
-            if (m.is_engine === true && m.key) engineKeys.push(m.key);
+            if (m.is_engine !== true) continue;
+            if (typeof m.code !== 'string' || !m.code) { missing.push(f); continue; }
+            engineCodes.push(m.code);
           } catch {}
         }
       }
-      const unique = [...new Set(engineKeys)];
-      if (unique.length === 0) {
+      const duplicates = [...new Set(engineCodes.filter((c, i) => engineCodes.indexOf(c) !== i))];
+      if (missing.length > 0) {
+        console.log('NOCODE:' + missing.join(','));
+      } else if (engineCodes.length === 0) {
         console.log('NONE');
-      } else if (unique.length === 1) {
-        console.log('OK:' + unique[0] + ':' + engineKeys.length);
+      } else if (duplicates.length === 0) {
+        console.log('OK:' + engineCodes.join(','));
       } else {
-        console.log('MISMATCH:' + unique.join(','));
+        console.log('DUPLICATE:' + duplicates.join(','));
       }
     " "$UNIVERSAL_DIR_PATH" "$ENGINE_DIR_PATH" 2>/dev/null || echo "ERROR")
 
     if [[ "$RESULT" == OK:* ]]; then
         INFO="${RESULT#OK:}"
-        pass "engine $engine: all is_engine entries share key ($INFO)"
+        pass "engine $engine: is_engine codes distinct ($INFO)"
     elif [[ "$RESULT" == NONE ]]; then
         fail "engine $engine: no is_engine=true entries found"
         KEY_UNIQUENESS_ERRORS=$((KEY_UNIQUENESS_ERRORS + 1))
-    elif [[ "$RESULT" == MISMATCH:* ]]; then
-        KEYS="${RESULT#MISMATCH:}"
-        fail "engine $engine: is_engine entries have different keys: $KEYS"
+    elif [[ "$RESULT" == NOCODE:* ]]; then
+        FILES="${RESULT#NOCODE:}"
+        fail "engine $engine: is_engine entries without a code: $FILES"
+        KEY_UNIQUENESS_ERRORS=$((KEY_UNIQUENESS_ERRORS + 1))
+    elif [[ "$RESULT" == DUPLICATE:* ]]; then
+        CODES="${RESULT#DUPLICATE:}"
+        fail "engine $engine: is_engine entries share code(s): $CODES"
         KEY_UNIQUENESS_ERRORS=$((KEY_UNIQUENESS_ERRORS + 1))
     else
-        fail "engine $engine: failed to check is_engine key consistency"
+        fail "engine $engine: failed to check is_engine code distinctness"
         KEY_UNIQUENESS_ERRORS=$((KEY_UNIQUENESS_ERRORS + 1))
     fi
 done
+
+# ─────────────────────────────────────────────
+# Part 7e2: MT-1 / MT-2 — the `{{engine_mcp_tool}}` substitution form
+# ─────────────────────────────────────────────
+# The value substituted here is a VENDOR CODE, and the prose around it is read by
+# an agent that has to find that code as a literal key in the settings file. Two
+# counters pin the form:
+#
+#   MT-1  every occurrence is wrapped in backticks
+#   MT-2  every wrapped occurrence carries the `MCP server ` label
+#
+# Written as EQUALITIES between counts, not as a search for a negation. The pair
+# mechanically forbids the third form the corpus used to carry — the variable
+# sitting inside a code span or a fenced block together with other words, where
+# backticks cannot be added at all — without needing an allowlist: such an
+# occurrence is unwrapped by construction, so MT-1 catches it.
+#
+# The class-B probe is why this matters beyond tidiness. A skill greps the
+# settings file for the code; a code printed with a neighbouring word inside one
+# span is not found, the skill concludes the engine MCP is not configured, and the
+# whole pipeline degrades to `manual` with the compile and test gates skipped —
+# silently, and looking exactly like a project that has no MCP.
+#
+# Scope: skills/**/*.md, subagents/*.md, data/dev-principles.md.
+# `data/engine-templates/**` is excluded — ED-8 already bans `{{` there outright.
+echo -e "\n${BOLD}Part 7e2: {{engine_mcp_tool}} substitution form (MT-1/MT-2)${NC}"
+
+MT_SCOPE=("$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data/dev-principles.md")
+
+MT_TOTAL=$(grep -rhoF '{{engine_mcp_tool}}' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+MT_WRAPPED=$(grep -rhoF '`{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+MT_LABELLED=$(grep -rhoF 'MCP server `{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+
+if [[ "$MT_TOTAL" -eq 0 ]]; then
+    fail "MT-1: no {{engine_mcp_tool}} occurrences found at all — the scope is wrong, not the corpus"
+elif [[ "$MT_TOTAL" -eq "$MT_WRAPPED" ]]; then
+    pass "MT-1: all $MT_TOTAL {{engine_mcp_tool}} occurrences are backtick-wrapped"
+else
+    fail "MT-1: $MT_TOTAL occurrences of {{engine_mcp_tool}}, only $MT_WRAPPED wrapped in backticks"
+    grep -rn '{{engine_mcp_tool}}' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null \
+      | grep -vF '`{{engine_mcp_tool}}`' | sed 's/^/      /' | head -10
+fi
+
+if [[ "$MT_WRAPPED" -eq "$MT_LABELLED" ]]; then
+    pass "MT-2: all $MT_WRAPPED wrapped occurrences carry the \`MCP server\` label"
+else
+    fail "MT-2: $MT_WRAPPED wrapped occurrences, only $MT_LABELLED preceded by 'MCP server '"
+    grep -rn '`{{engine_mcp_tool}}`' "${MT_SCOPE[@]}" --include='*.md' 2>/dev/null \
+      | grep -vF 'MCP server `{{engine_mcp_tool}}`' | sed 's/^/      /' | head -10
+fi
+
+# ─────────────────────────────────────────────
+# Part 7e3: key/code/docs invariants across the MCP catalog
+# ─────────────────────────────────────────────
+# What Part 5b cannot express, because it holds no accumulator tying a config to
+# the file it was read from or to the rules tree it points at:
+#
+#   - `key` == the JSON's own basename. The key is the server's internal identity
+#     and every other surface derives from it: the config map, the delivery stamp,
+#     the findings-log name, the archive names. Letting them drift makes the
+#     rename migration's four surfaces disagree with each other.
+#   - `code` present and non-empty. `parseMcpServerEntry` DROPS an entry without
+#     one — the wizard would simply not offer the server, with no error anywhere.
+#   - `docs.context7` REQUIRED of a server that ships a rules tree, and matching
+#     the id its INDEX.md names. Presence is deliberately NOT required of every
+#     engine server: an id is added only when it was actually resolved by a pinned
+#     request, and a guard demanding one everywhere would red the suite exactly
+#     when the honest answer is "not verified" — leaving one way out, inventing
+#     it. The tree is the one place the two halves can be compared, so it is the
+#     one place the field is mandatory.
+echo -e "\n${BOLD}Part 7e3: MCP key/code/docs invariants${NC}"
+
+MCP_IDENTITY_RESULT=$(node -e "
+  const fs=require('fs'), path=require('path');
+  const root=process.argv[1];
+  const why=[];
+
+  for (const dir of fs.readdirSync(root)) {
+    const dirPath=path.join(root, dir);
+    if (!fs.statSync(dirPath).isDirectory()) continue;
+    for (const f of fs.readdirSync(dirPath)) {
+      if (!f.endsWith('.json')) continue;
+      const rel=dir+'/'+f;
+      const fileId=f.replace(/\.json\$/, '');
+      let m;
+      try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
+      catch { why.push('parse-error:'+rel); continue; }
+
+      if (m.key !== fileId) why.push('key-not-fileid:'+rel+':key='+JSON.stringify(m.key));
+      if (typeof m.code !== 'string' || !m.code) why.push('code-missing:'+rel);
+
+      if (typeof m.rules === 'string' && m.rules) {
+        const indexPath=path.resolve(dirPath, m.rules, 'INDEX.md');
+        const declared=m.docs && m.docs.context7;
+        if (typeof declared !== 'string' || !declared) {
+          why.push('rules-tree-without-context7:'+rel);
+        } else if (fs.existsSync(indexPath)) {
+          const index=fs.readFileSync(indexPath,'utf8');
+          if (!index.includes(declared)) why.push('index-does-not-name-context7-id:'+declared+':'+rel);
+        }
+      }
+    }
+  }
+
+  console.log(why.length ? why.join(' ') : 'ok');
+" "$MCP_DIR" 2>/dev/null || echo "pass-error")
+
+if [[ "$MCP_IDENTITY_RESULT" == "ok" ]]; then
+    pass "MCP catalog: key == fileId, code present, rules-tree servers declare a context7 id matching their INDEX"
+else
+    fail "MCP catalog identity invariants violated: $MCP_IDENTITY_RESULT"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7e4: migration-chain anchors
+# ─────────────────────────────────────────────
+# Two rules the runner depends on and cannot check for itself:
+#
+#   - `since`, WHEN DECLARED, is valid semver and does not decrease in declaration
+#     order. The runner sorts by it, so declaration order that disagrees with the
+#     anchors is a lie a reader will believe. Steps without `since` are skipped:
+#     the registry chain has no version axis at all (its context is `{registryDir}`
+#     and `currentVersion` is never passed), and demanding an anchor there would
+#     force someone to invent one.
+#   - a step with NEITHER `since` NOR `detect` can never fire. The runner throws on
+#     it at runtime; this catches it at `npm test` instead.
+echo -e "\n${BOLD}Part 7e4: migration-chain anchors${NC}"
+
+MIGRATION_ANCHOR_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const semver = (await import('semver')).default;
+  const chains = [
+    ['PROJECT_MEMORY_MIGRATIONS', (await import('./dist/core/memory-migrations/index.js')).PROJECT_MEMORY_MIGRATIONS],
+    ['REGISTRY_MIGRATIONS', (await import('./dist/core/registry/migrations/index.js')).REGISTRY_MIGRATIONS],
+  ];
+  const why = [];
+
+  for (const [name, chain] of chains) {
+    if (!Array.isArray(chain)) { why.push('chain-not-array:'+name); continue; }
+    let previous = null;
+    for (const step of chain) {
+      if (!step.since && !step.detect) why.push('step-never-fires:'+name+':'+step.id);
+      if (step.since === undefined) continue;
+      if (!semver.valid(step.since)) { why.push('since-not-semver:'+name+':'+step.id+':'+step.since); continue; }
+      if (previous && semver.lt(step.since, previous)) {
+        why.push('since-decreases:'+name+':'+step.id+':'+step.since+'<'+previous);
+      }
+      previous = step.since;
+    }
+  }
+
+  process.stdout.write(why.length ? why.join(' ') : 'ok');
+" 2>/dev/null || echo "pass-error")
+
+if [[ "$MIGRATION_ANCHOR_RESULT" == "ok" ]]; then
+    pass "migration chains: since is valid semver and non-decreasing; no step without since AND detect"
+else
+    fail "migration chain anchors violated: $MIGRATION_ANCHOR_RESULT"
+fi
 
 # ─────────────────────────────────────────────
 # Part 7f: agent-filter unit tests
@@ -4603,6 +4826,26 @@ if [[ $INSTALL_SMOKE_EXIT -eq 0 ]]; then
 else
     fail "install smoke tests"
     echo "$INSTALL_SMOKE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 9b: Migration chain + MCP reconciliation smoke tests
+# ─────────────────────────────────────────────
+# Runs after install/update: those two prove the commands work at all, this one
+# proves the version matrix and the settings-file write rules underneath them.
+echo -e "\n${BOLD}=== Migration + MCP reconciliation smoke tests ===${NC}\n"
+
+set +e
+MIGRATIONS_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-migrations.sh" 2>&1)
+MIGRATIONS_SMOKE_EXIT=$?
+set -e
+
+if [[ $MIGRATIONS_SMOKE_EXIT -eq 0 ]]; then
+    pass "migration + MCP reconciliation smoke tests"
+    echo "$MIGRATIONS_SMOKE_OUTPUT" | grep '✓' | sed 's/^/    /'
+else
+    fail "migration + MCP reconciliation smoke tests"
+    echo "$MIGRATIONS_SMOKE_OUTPUT" | sed 's/^/      /'
 fi
 
 # ─────────────────────────────────────────────

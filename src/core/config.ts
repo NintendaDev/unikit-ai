@@ -2,14 +2,29 @@ import path from 'path';
 import { createRequire } from 'module';
 import { readJsonFile, writeJsonFile, fileExists } from '../utils/fs.js';
 import { AGENT_REGISTRY, getAgentConfig } from './agents.js';
-import { CODE_MODULE_ID, RULE_CATEGORIES, type Tier } from './constants.js';
+import { CODE_MODULE_ID, CONFIG_FILE, RULE_CATEGORIES, type Tier } from './constants.js';
 import { getModule, listModules } from './modules.js';
+import { logInfo } from '../utils/log.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
 
 export interface McpConfig {
-  servers: string[];
+  /**
+   * The project's MCP selection as `key → code`, where `key` is the server's
+   * internal identity (the JSON file's basename, never written anywhere) and
+   * `code` is the vendor code the server is actually registered under in the
+   * agent's settings file (`mcpServers.<code>`, `mcp__<code>__*` grants).
+   *
+   * The code is stored per project because it is the only record of what UniKit
+   * WROTE: on a swap the outgoing entry has to be found by the code that was
+   * used at the time, not by the code the package ships today.
+   *
+   * Pre-1.2.0 configs carry a bare `string[]` of file ids here. `normalizeMcp`
+   * does NOT convert that form — the `mcp-servers-map` migration does, straight
+   * on the raw JSON (see `mcp-migrations`).
+   */
+  servers: Record<string, string>;
 }
 
 export interface ManagedSkillState {
@@ -71,6 +86,12 @@ export interface GenreInstallEntry {
 export interface UniKitConfig {
   version: string;
   engine: string;
+  /**
+   * The vendor code of the selected ENGINE server — a DERIVED field, kept for
+   * back-compat reading (and as the migration's only source of the pre-1.2.0
+   * code). It is recomputed from `mcp.servers` + the catalog's `is_engine` flag
+   * on every write; never treat it as an independent input.
+   */
   engineMcpKey: string | null;
   rulesRegistry: string | null;
   mcp: McpConfig;
@@ -89,7 +110,7 @@ export interface UniKitConfig {
   };
 }
 
-const CONFIG_FILENAME = '.unikit.json';
+const CONFIG_FILENAME = CONFIG_FILE;
 const CURRENT_VERSION: string = pkg.version;
 
 function getConfigPath(projectDir: string): string {
@@ -119,17 +140,46 @@ function normalizeManagedSkills(raw: unknown): Record<string, ManagedSkillState>
   return result;
 }
 
+/**
+ * Normalize `mcp` into the `key → code` map form.
+ *
+ * The legacy array form is deliberately NOT converted here. Building the map
+ * needs the OLD vendor code of the engine server (kept in `engineMcpKey`) and
+ * the package catalog — knowledge that belongs to a migration step, not to a
+ * loader. `loadConfig` therefore reports the legacy form as an empty selection,
+ * exactly as it did before this field changed shape, and the `mcp-servers-map`
+ * step converts it on raw JSON.
+ *
+ * The notice is gated on a NON-EMPTY array on purpose, and is `logInfo` rather
+ * than `logWarn`: `"servers": []` appears in dozens of test fixtures where
+ * there is nothing to migrate, and `logWarn` writes to stderr unconditionally —
+ * which the bash harness folds into the log its `--json` assertions parse.
+ */
 function normalizeMcp(raw: unknown): McpConfig {
   if (!raw || typeof raw !== 'object') {
-    return { servers: [] };
+    return { servers: {} };
   }
 
   const mcp = raw as Record<string, unknown>;
+
   if (Array.isArray(mcp.servers)) {
-    return { servers: mcp.servers.filter((s): s is string => typeof s === 'string') };
+    if (mcp.servers.length > 0) {
+      logInfo('config', 'mcp.servers is in the legacy array form — migration pending');
+    }
+    return { servers: {} };
   }
 
-  return { servers: [] };
+  if (mcp.servers && typeof mcp.servers === 'object') {
+    const servers: Record<string, string> = {};
+    for (const [key, code] of Object.entries(mcp.servers as Record<string, unknown>)) {
+      if (key && typeof code === 'string' && code.length > 0) {
+        servers[key] = code;
+      }
+    }
+    return { servers };
+  }
+
+  return { servers: {} };
 }
 
 function normalizeRuleEntries(raw: unknown): InstalledRuleEntry[] {
@@ -359,6 +409,27 @@ export async function loadConfig(projectDir: string): Promise<UniKitConfig | nul
 export async function saveConfig(projectDir: string, config: UniKitConfig): Promise<void> {
   const configPath = getConfigPath(projectDir);
   await writeJsonFile(configPath, config);
+}
+
+/**
+ * Read the project's RECORDED version straight off the raw JSON — the version
+ * anchor input for the migration chain.
+ *
+ * Deliberately NOT `loadConfig(...)?.version`: `loadConfig` defaults a missing
+ * `version` field to the current package version, which makes the oldest
+ * projects in existence — the ones written before the field was introduced —
+ * look freshly stamped, and the version half of every migration would go quiet
+ * on exactly them. Here a missing FILE and a missing FIELD both return `null`,
+ * which the runner reads as "no version signal; `detect` decides".
+ *
+ * No normalization, no defaulting, no shape validation: an unparseable value is
+ * returned as-is and the runner reports it (a warning) rather than this reader
+ * inventing a number.
+ */
+export async function readConfigVersion(projectDir: string): Promise<string | null> {
+  const raw = await readJsonFile<Record<string, unknown>>(getConfigPath(projectDir));
+  if (!raw) return null;
+  return typeof raw.version === 'string' ? raw.version : null;
 }
 
 export async function configExists(projectDir: string): Promise<boolean> {

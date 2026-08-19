@@ -17,12 +17,13 @@ import path from 'path';
 import { fileExists, movePath } from '../../utils/fs.js';
 import { logInfo } from '../../utils/log.js';
 import {
-  CODE_MODULE_ID, RULE_CATEGORIES, RULES_INDEX_FILE,
+  CODE_MODULE_ID, MIGRATION_SINCE_MODULAR_LAYOUT, RULE_CATEGORIES, RULES_INDEX_FILE,
   memoryDir, moduleDir, moduleTierDir,
 } from '../constants.js';
 import { runMigrationChain } from '../migrations/runner.js';
 import type { Migration, MigrationChainResult } from '../migrations/types.js';
 import { PROJECT_WORKSPACE_MIGRATIONS } from '../workspace-migrations/index.js';
+import { PROJECT_MCP_MIGRATIONS } from '../mcp-migrations/index.js';
 
 interface MemoryMigrationContext {
   projectDir: string;
@@ -36,16 +37,21 @@ interface MemoryMigrationContext {
  * system files AND memory are all stale. `versionStale` flags those projects up
  * front.
  *
- * It is intentionally NOT bumped for every layout migration. The workspace
- * relocation (PR#4) ships to projects that are already at `1.1.0`
- * (`semver.lt('1.1.0','1.1.0') === false`), so `versionStale` cannot see their
- * pending workspace move. That is by design: per-migration staleness is the job
- * of `diskPending` (the migration chain's own `detect` pass via
- * `planMigrationChain`), which catches ANY un-applied step — memory or
- * workspace — regardless of version. Keeping this pin fixed avoids forcing a
- * version bump (and a sweep of every version-seeding test fixture) for each new
- * relocation step. Raising it later is a deliberate defense-in-depth lever, not
- * a requirement for the workspace gate.
+ * **Why this is an explicit literal and NOT derived as `max(since)`.** It is a
+ * different question from a migration anchor. `Migration.since` asks "has this
+ * project seen THIS step?"; this constant asks "is this project so old that
+ * everything about it is stale?". Deriving it from the anchors would answer the
+ * second question with the first one: any future step anchored at, say, 1.5.0
+ * would instantly declare every 1.4.x project version-stale even with a clean
+ * `detect` and nothing pending on disk.
+ *
+ * The derivation is also redundant. Since the runner ORs the two halves, a
+ * 1.1.0 project already gets `versionPending === true` for every step anchored
+ * above it — `planMigrationChain` returns those ids and `diskPending` raises
+ * the same flag, one step at a time and only for steps that really exist.
+ *
+ * So this pin stays where it is: it marks the pre-modular era, not the latest
+ * relocation. Per-migration staleness is `diskPending`'s job.
  */
 export const MEMORY_MODULAR_MIN_VERSION = '1.1.0';
 
@@ -57,6 +63,7 @@ export const MEMORY_MODULAR_MIN_VERSION = '1.1.0';
  */
 const codeWrapMigration: Migration<MemoryMigrationContext> = {
   id: 'memory-1-to-2-code-wrap',
+  since: MIGRATION_SINCE_MODULAR_LAYOUT,
 
   async detect({ projectDir }) {
     const memDir = memoryDir(projectDir);
@@ -95,22 +102,38 @@ const codeWrapMigration: Migration<MemoryMigrationContext> = {
   },
 };
 
-// The single project migration chain. The memory wrap runs first, then the
-// workspace relocation — both keyed by `projectDir` only, so the two
-// structurally identical contexts compose into one chain. Kept under the
-// historical name `PROJECT_MEMORY_MIGRATIONS` because the `rules` staleness
-// guard imports it by that name; it now covers memory AND workspace staleness.
+// The single project migration chain: the memory wrap, the workspace
+// relocation, then the MCP steps — every context is keyed by `projectDir`
+// only, so the structurally identical shapes compose into one chain. Kept
+// under the historical name `PROJECT_MEMORY_MIGRATIONS` because the `rules`
+// staleness guard imports it by that name; it now covers memory, workspace AND
+// MCP-config staleness.
+//
+// Declaration order is documentation, not policy — the runner sorts by `since`
+// (1.1.0 layout steps, then the 1.2.0 MCP steps).
 export const PROJECT_MEMORY_MIGRATIONS: readonly Migration<MemoryMigrationContext>[] = [
   codeWrapMigration,
   ...PROJECT_WORKSPACE_MIGRATIONS,
+  ...PROJECT_MCP_MIGRATIONS,
 ];
 
 /**
  * Run the project migration chain (memory wrap + workspace relocation) against
  * `projectDir`. Safe to call on every `update`: it no-ops once the modular
  * layout is fully in place.
+ *
+ * `currentVersion` is the project's RECORDED version — read with
+ * `readConfigVersion`, which returns `null` both for a missing config and for a
+ * config with no `version` field. Do not source it from `loadConfig`: that
+ * defaults a missing field to the current package version, so the oldest
+ * projects in existence would read as freshly stamped and the version half of
+ * every step would go quiet on exactly them. `null` is honest — it turns the
+ * version half off and leaves `detect` in charge.
  */
-export async function runProjectMemoryMigrations(projectDir: string): Promise<MigrationChainResult> {
-  logInfo('memory:migrate', 'running project memory migrations');
-  return runMigrationChain({ projectDir }, PROJECT_MEMORY_MIGRATIONS);
+export async function runProjectMemoryMigrations(
+  projectDir: string,
+  currentVersion: string | null,
+): Promise<MigrationChainResult> {
+  logInfo('memory:migrate', `running project memory migrations (currentVersion=${currentVersion ?? 'null'})`);
+  return runMigrationChain({ projectDir }, PROJECT_MEMORY_MIGRATIONS, { currentVersion });
 }

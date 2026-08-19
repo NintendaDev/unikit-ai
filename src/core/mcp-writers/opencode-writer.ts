@@ -1,4 +1,5 @@
 import type { McpWriter } from './index.js';
+import { findKeyInContainer } from './shared.js';
 import { fileExists, readTextFile } from '../../utils/fs.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -98,6 +99,28 @@ export class OpenCodeMcpWriter implements McpWriter {
     }
     delete servers[key];
     return true;
+  }
+
+  findKey(settings: Record<string, unknown>, code: string, reserved: Set<string>): string | null {
+    return findKeyInContainer(settings, 'mcp', code, reserved);
+  }
+
+  mergeEnv(settings: Record<string, unknown>, key: string, env: Record<string, unknown>): void {
+    const servers = settings['mcp'];
+    if (!isRecord(servers)) return;
+    const entry = servers[key];
+    if (!isRecord(entry)) return;
+
+    // The field is `environment`, NOT `env` — OpenCode's own schema. Writing
+    // `env` here by analogy with the JSON writer would leave the client
+    // ignoring it, and `UNITY_MCP_NO_GATING=1` would silently fail to arrive on
+    // exactly one agent out of four: the surface this whole exception exists
+    // for, unclosed. Empty values are dropped, as in `upsert`.
+    const merged = { ...(isRecord(entry['environment']) ? entry['environment'] : {}), ...env };
+    const sanitized = sanitizeEnv(merged, key);
+    if (Object.keys(sanitized).length > 0) {
+      entry['environment'] = sanitized;
+    }
   }
 
   serialize(settings: Record<string, unknown>): string {

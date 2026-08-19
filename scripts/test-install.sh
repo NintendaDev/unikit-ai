@@ -48,7 +48,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -186,7 +186,7 @@ assert_contains "$GATE_CONTRACT_PATH" 'unikit-gate-result' \
 
 # ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
-# servers (mcp.servers = []), so nothing contributes a shard and the directory
+# servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
 # path (an engine with no shard-carrying MCP), not a warning.
 # The populated branch is Test 13b below.
@@ -256,7 +256,7 @@ cat > "$NOSUB_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "codex",
@@ -295,7 +295,7 @@ cat > "$CODEX_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "codex",
@@ -402,7 +402,7 @@ cat > "$QWEN_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "qwen",
@@ -507,7 +507,7 @@ cat > "$ANTIGRAVITY_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "antigravity",
@@ -608,7 +608,7 @@ cat > "$LOCAL_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -690,7 +690,7 @@ cat > "$GODOT_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "godot",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -755,7 +755,7 @@ cat > "$MCP_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": "EngineMCP",
-  "mcp": { "servers": ["unity-mcp", "context7"] },
+  "mcp": { "servers": { "unity-mcp": "EngineMCP", "context7": "context7" } },
   "agents": [
     {
       "id": "claude",
@@ -801,7 +801,7 @@ node -e "
   if (!m['unikit-architecture-sidecar'].sourceHash || !m['unikit-architecture-sidecar'].installedHash) { process.exit(1); }
 " "$MCP_DIR/.unikit.json"
 
-echo "  ✓ MCP config: claude agent setup works with servers array"
+echo "  ✓ MCP config: claude agent setup works with the key→code servers map"
 echo "  ✓ managedSubagents: hash tracking persisted for claude subagents"
 
 # Check no template placeholders remain in installed subagents
@@ -829,7 +829,7 @@ cat > "$COMPAT_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -890,10 +890,11 @@ mkdir -p "$CODEX_MCP_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
-  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'codex');
-  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'codex');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'codex');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'codex');
 " "$CODEX_MCP_DIR" > /dev/null 2>&1)
 
 CODEX_TOML="$CODEX_MCP_DIR/.codex/config.toml"
@@ -924,9 +925,10 @@ mkdir -p "$CLAUDE_MCP_REGRESS_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
-  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'claude');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'claude');
 " "$CLAUDE_MCP_REGRESS_DIR" > /dev/null 2>&1)
 
 assert_exists "$CLAUDE_MCP_REGRESS_DIR/.mcp.json" "claude .mcp.json must exist (regression check)"
@@ -952,7 +954,7 @@ echo "  ✓ claude MCP config regression: .mcp.json stays camelCase JSON with mc
 #   - environment preserved only when source `env` is non-empty
 #   - existing non-mcp top-level keys survive the write (merge, not rewrite)
 # Uses engine=godot so we can assert both the no-env path (context7) and the
-# with-env path (godot-mcp-coding-solo).
+# with-env path (coding-solo-godot-mcp).
 
 OPENCODE_MCP_DIR="$TMPDIR/test-opencode-mcp"
 mkdir -p "$OPENCODE_MCP_DIR"
@@ -969,10 +971,11 @@ EOF
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('godot');
-  await configureMcp(target, servers, ['context7', 'godot-mcp-coding-solo'], 'opencode');
-  await configureMcp(target, servers, ['context7', 'godot-mcp-coding-solo'], 'opencode');
+  await configureMcp(target, servers, ['context7', 'coding-solo-godot-mcp'], 'opencode');
+  await configureMcp(target, servers, ['context7', 'coding-solo-godot-mcp'], 'opencode');
 " "$OPENCODE_MCP_DIR" > /dev/null 2>&1)
 
 assert_exists "$OPENCODE_JSON" "opencode.json should exist after configureMcp"
@@ -1000,27 +1003,27 @@ node -e "
     if ('environment' in ctx) errors.push('context7.environment must be absent when source env is empty');
   }
 
-  const godot = c.mcp && c.mcp.GodotMCP;
-  if (!godot) errors.push('GodotMCP server missing');
+  const godot = c.mcp && c.mcp.godot;
+  if (!godot) errors.push('godot server missing');
   else {
-    if (godot.type !== 'local') errors.push('GodotMCP.type expected local, got ' + JSON.stringify(godot.type));
+    if (godot.type !== 'local') errors.push('godot.type expected local, got ' + JSON.stringify(godot.type));
     if (JSON.stringify(godot.command) !== JSON.stringify(['npx', '@coding-solo/godot-mcp']))
-      errors.push('GodotMCP.command wrong shape: ' + JSON.stringify(godot.command));
+      errors.push('godot.command wrong shape: ' + JSON.stringify(godot.command));
 
     // Per-key environment check (order-independent): ensures the writer preserves
     // every source env entry verbatim and does not inject or drop keys.
     const expectedEnv = { GODOT_PATH: '/path/to/godot', DEBUG: 'true' };
     if (!godot.environment || typeof godot.environment !== 'object' || Array.isArray(godot.environment)) {
-      errors.push('GodotMCP.environment missing or wrong type: ' + JSON.stringify(godot.environment));
+      errors.push('godot.environment missing or wrong type: ' + JSON.stringify(godot.environment));
     } else {
       const actualKeys = Object.keys(godot.environment).sort();
       const expectedKeys = Object.keys(expectedEnv).sort();
       if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
-        errors.push('GodotMCP.environment keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
+        errors.push('godot.environment keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
       }
       for (const k of expectedKeys) {
         if (godot.environment[k] !== expectedEnv[k]) {
-          errors.push('GodotMCP.environment.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.environment[k]));
+          errors.push('godot.environment.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.environment[k]));
         }
       }
     }
@@ -1058,9 +1061,10 @@ mkdir -p "$OPENCODE_HTTP_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
-  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'opencode');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'opencode');
 " "$OPENCODE_HTTP_DIR" > /dev/null 2>&1)
 
 OPENCODE_HTTP_JSON="$OPENCODE_HTTP_DIR/opencode.json"
@@ -1092,7 +1096,8 @@ echo "  ✓ opencode MCP config: HTTP servers (UnityMCP) skipped; stdio servers 
 # only schema Antigravity's client understands is `{ command, args, env }` stdio
 # or `{ serverUrl }` remote — never `{ type, url }`).
 # Uses engine=unity for the type/url→serverUrl case (UnityMCP), engine=godot for
-# the env-passthrough case (GodotMCP), same split as the OpenCode block above.
+# the env-passthrough case (coding-solo, code "godot"), same split as the
+# OpenCode block above.
 
 ANTIGRAVITY_MCP_DIR="$TMPDIR/test-antigravity-mcp"
 mkdir -p "$ANTIGRAVITY_MCP_DIR/.agents"
@@ -1110,10 +1115,11 @@ EOF
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
-  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'antigravity');
-  await configureMcp(target, servers, ['context7', 'unity-mcp-coplay'], 'antigravity');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'antigravity');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'antigravity');
 " "$ANTIGRAVITY_MCP_DIR" > /dev/null 2>&1)
 
 assert_exists "$ANTIGRAVITY_MCP_JSON" ".agents/mcp_config.json should exist after configureMcp"
@@ -1167,7 +1173,7 @@ fi
 
 echo "  ✓ antigravity MCP config: mcpServers container, serverUrl transform, type/url stripped, top-level preserved (idempotent)"
 
-# Separate engine=godot run: neither context7 nor godot-mcp-coding-solo carries a
+# Separate engine=godot run: neither context7 nor coding-solo-godot-mcp carries a
 # `type`/`url` field, so this exercises naive env passthrough (no key renaming,
 # unlike toml-writer.ts's sanitizeEnv/http_headers rename).
 ANTIGRAVITY_MCP_DIR2="$TMPDIR/test-antigravity-mcp-env"
@@ -1175,9 +1181,10 @@ mkdir -p "$ANTIGRAVITY_MCP_DIR2"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('godot');
-  await configureMcp(target, servers, ['context7', 'godot-mcp-coding-solo'], 'antigravity');
+  await configureMcp(target, servers, ['context7', 'coding-solo-godot-mcp'], 'antigravity');
 " "$ANTIGRAVITY_MCP_DIR2" > /dev/null 2>&1)
 
 ANTIGRAVITY_MCP_JSON2="$ANTIGRAVITY_MCP_DIR2/.agents/mcp_config.json"
@@ -1187,21 +1194,21 @@ node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
   const errors = [];
 
-  const godot = c.mcpServers && c.mcpServers.GodotMCP;
-  if (!godot) errors.push('GodotMCP server missing');
+  const godot = c.mcpServers && c.mcpServers.godot;
+  if (!godot) errors.push('godot server missing');
   else {
     const expectedEnv = { GODOT_PATH: '/path/to/godot', DEBUG: 'true' };
     if (!godot.env || typeof godot.env !== 'object' || Array.isArray(godot.env)) {
-      errors.push('GodotMCP.env missing or wrong type: ' + JSON.stringify(godot.env));
+      errors.push('godot.env missing or wrong type: ' + JSON.stringify(godot.env));
     } else {
       const actualKeys = Object.keys(godot.env).sort();
       const expectedKeys = Object.keys(expectedEnv).sort();
       if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
-        errors.push('GodotMCP.env keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
+        errors.push('godot.env keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
       }
       for (const k of expectedKeys) {
         if (godot.env[k] !== expectedEnv[k]) {
-          errors.push('GodotMCP.env.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.env[k]));
+          errors.push('godot.env.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.env[k]));
         }
       }
     }
@@ -1214,13 +1221,13 @@ node -e "
   }
 " "$ANTIGRAVITY_MCP_JSON2"
 
-echo "  ✓ antigravity MCP config: env passthrough (no key renaming) for GodotMCP"
+echo "  ✓ antigravity MCP config: env passthrough (no key renaming) for the godot server"
 
 # ─────────────────────────────────────────────────────
 # Test 13: Codex MCP rules injection (skill frontmatter)
 # ─────────────────────────────────────────────────────
 # Uses a dedicated project dir (NOT the Test 3 CODEX_DIR, which is pinned
-# to mcp.servers = [] and carries the Codex-rewrite assertions). Here we
+# to mcp.servers = {} and carries the Codex-rewrite assertions). Here we
 # enable context7 in the config and verify collectMcpRules +
 # injectToolsIntoSkillFrontmatter work format-agnostically for codex.
 
@@ -1232,7 +1239,7 @@ cat > "$CODEX_MCP_RULES_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": ["context7"] },
+  "mcp": { "servers": { "context7": "context7" } },
   "agents": [
     {
       "id": "codex",
@@ -1264,8 +1271,8 @@ echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/uniki
 # ─────────────────────────────────────────────────────
 # Test 13b: engine-mcp rules-tree delivery (populated selection)
 # ─────────────────────────────────────────────────────
-# The two smoke fixtures above both pin mcp.servers = [], so they only exercise the
-# no-selection branch (Test 1b-mcp). This fixture selects unity-mcp-biome — the one
+# The two smoke fixtures above both pin mcp.servers = {}, so they only exercise the
+# no-selection branch (Test 1b-mcp). This fixture selects unity-biome-mcp — the one
 # server carrying a `rules` pointer — and asserts the whole delivery contract: the
 # tree arrives, every file carries the provenance stamp, and nothing about the
 # server's capabilities rides along with it.
@@ -1286,7 +1293,7 @@ cat > "$MCP_SHARDS_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": ["unity-mcp-biome"] },
+  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1315,7 +1322,7 @@ assert_exists "$MCP_RULES_BASE/verification.md" \
   "engine-mcp/verification.md delivered alongside the INDEX"
 
 # The stamp: provenance of THIS copy, and nothing else.
-assert_contains "$MCP_RULES_INDEX" '^server: unity-mcp-biome$' \
+assert_contains "$MCP_RULES_INDEX" '^server: unity-biome-mcp$' \
   "delivered rules file carries the server id it came from"
 assert_contains "$MCP_RULES_INDEX" '^version: [0-9]+\.[0-9]+' \
   "delivered rules file carries the measured server version"
@@ -1343,7 +1350,7 @@ echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamp
 # both. That would look like a clean install and silently disable editor work on five of
 # the six servers — the exact shape of degradation the rules architecture forbids.
 #
-# unity-mcp-coplay is the fixture because it is the same ENGINE as biome: an assertion
+# coplay-unity-mcp is the fixture because it is the same ENGINE as biome: an assertion
 # that passed only because the engine had no MCP at all would prove nothing.
 
 MCP_NOTREE_DIR="$TMPDIR/test-mcp-no-rules-tree"
@@ -1354,7 +1361,7 @@ cat > "$MCP_NOTREE_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": ["unity-mcp-coplay"] },
+  "mcp": { "servers": { "coplay-unity-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1502,15 +1509,15 @@ MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
 
   // Deliberately supplied out of order, with one entry carrying no \`order\`.
   const group = sortMcpChoices([
-    { fileId: 'unity-mcp-coplay', displayName: 'Coplay', isEngine: true, order: 2 },
+    { fileId: 'coplay-unity-mcp', displayName: 'Coplay', isEngine: true, order: 2 },
     { fileId: 'zz-no-order',      displayName: 'NoOrder', isEngine: true },
-    { fileId: 'unity-mcp-biome',  displayName: 'Biome',  isEngine: true, order: 1 },
+    { fileId: 'unity-biome-mcp',  displayName: 'Biome',  isEngine: true, order: 1 },
   ]);
 
   process.stdout.write(JSON.stringify({
     sorted:        group.map(e => e.fileId),
     freshDefault:  resolveMcpGroupDefault(group, null),
-    reinitDefault: resolveMcpGroupDefault(group, ['unity-mcp-coplay']),
+    reinitDefault: resolveMcpGroupDefault(group, ['coplay-unity-mcp']),
     absentDefault: resolveMcpGroupDefault(group, ['not-in-this-group']),
     freshChecked:  isMcpPreselected('context7', null),
     reinitChecked: isMcpPreselected('context7', ['context7']),
@@ -1518,7 +1525,7 @@ MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
   }));
 " 2>/dev/null)
 
-if [[ "$MCP_DEFAULTS" != *'"sorted":["unity-mcp-biome","unity-mcp-coplay","zz-no-order"]'* ]]; then
+if [[ "$MCP_DEFAULTS" != *'"sorted":["unity-biome-mcp","coplay-unity-mcp","zz-no-order"]'* ]]; then
   echo "Assertion failed: sortMcpChoices should order by order asc with missing last, got: $MCP_DEFAULTS"
   exit 1
 fi
@@ -1561,20 +1568,21 @@ mkdir -p "$FENNARA_MCP_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('godot');
-  await configureMcp(target, servers, ['godot-mcp-fennara'], 'claude');
+  await configureMcp(target, servers, ['fennara-godot-mcp'], 'claude');
 " "$FENNARA_MCP_DIR" > /dev/null 2>&1)
 
 FENNARA_JSON="$FENNARA_MCP_DIR/.mcp.json"
 assert_exists "$FENNARA_JSON" "fennara (configByPlatform-only) must reach the writer and produce .mcp.json"
-assert_contains "$FENNARA_JSON" 'GodotMCP' "fennara must be written under the GodotMCP key"
+assert_contains "$FENNARA_JSON" 'fennara' "fennara must be written under its vendor code"
 assert_not_contains "$FENNARA_JSON" '\{\{' \
   "resolved fennara config must contain no unexpanded {{...}} token"
 
 FENNARA_CMD=$(node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-  const s = c.mcpServers && c.mcpServers.GodotMCP;
+  const s = c.mcpServers && c.mcpServers.fennara;
   console.log(s && s.command ? s.command : 'missing');
 " "$FENNARA_JSON")
 
