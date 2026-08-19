@@ -143,6 +143,27 @@ export const MCP_TOOL_ENTRY_PREFIX = 'mcp__';
 export const MCP_RULES_INDEX_FILE = 'INDEX.md';
 
 /**
+ * The literal a server config carries where a pinned version belongs, until
+ * something fills it in.
+ *
+ * The biome server is installed straight from git, and its server half must
+ * match the Unity package half — a mismatch is a protocol mismatch, not a
+ * cosmetic one. UniKit cannot know the number: it is whatever the user's Unity
+ * package is, and opening the editor writes the pin itself. So the shipped
+ * config carries the placeholder and the reconciliation warns while it is still
+ * there.
+ *
+ * Safe to leave in the config: `expandTokens` (`mcp-platform.ts`) substitutes
+ * `{{home}}` and `{{localappdata}}` by exact `split`/`join` and passes anything
+ * else through untouched — measured, not assumed.
+ *
+ * A separate `_v` field was rejected: it would be a second copy of the same
+ * fact, and `OpenCodeMcpWriter` rebuilds the entry from `command`/`args`/`env`
+ * alone, so the copy would silently not survive for one agent in four.
+ */
+export const MCP_VERSION_PLACEHOLDER = '{{ VERSION }}';
+
+/**
  * Project-local log of MCP findings — `.unikit/MCP-RECHECK-NOTES.md`. It sits at
  * the root of `.unikit/` rather than under `system/` **by construction**: every
  * system asset is flat-rewritten on init/update, and this file is user-owned

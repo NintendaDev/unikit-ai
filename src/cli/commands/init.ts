@@ -159,6 +159,11 @@ export async function initCommand(): Promise<void> {
       // stay off limits to the normalisation scan. `null` on a fresh install,
       // which has no extensions by definition.
       existingConfig,
+      // The codes as they stand on disk RIGHT NOW — `saveConfig` below has not
+      // run yet, which is the whole point: it is what lets the pass recognise a
+      // server whose code moved and delete the entry left under the old one.
+      // Hoisting the config write above this call makes every swap a no-op.
+      existingConfig?.mcp.servers ?? {},
     );
 
     // Install engine templates

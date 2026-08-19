@@ -18,6 +18,7 @@
 
 import path from 'path';
 import { getAgentConfig } from './agents.js';
+import { MCP_VERSION_PLACEHOLDER } from './constants.js';
 import type { UniKitConfig } from './config.js';
 import { getExtensionDir, loadExtensionManifest } from './extensions.js';
 import { ensureDir, writeTextFile } from '../utils/fs.js';
@@ -66,9 +67,19 @@ async function collectReservedKeys(projectDir: string, config: UniKitConfig | nu
  * In both "present" branches the `env` overlay is applied — the single field we
  * impose on an entry we did not write (see {@link McpWriter.mergeEnv}).
  *
+ * A server whose code CHANGED since the last write is a fourth case, and the
+ * only one that removes anything: the entry standing under the stored code is an
+ * orphan — nothing is listening on it, while its grants stay live in every
+ * skill's frontmatter. See {@link storedCodes}.
+ *
  * @param enabledFileIds the selection, by file id — the keys of
  *                       `config.mcp.servers`, or the wizard's answer on `init`.
  * @param reserved       settings keys owned by extensions; never normalised.
+ * @param storedCodes    `key → code` as PERSISTED before this run recomputed it.
+ *                       Read from the on-disk config, never from the freshly
+ *                       built map: the two differ exactly for the servers whose
+ *                       registration has to be moved, and comparing the new map
+ *                       against itself makes every swap a silent no-op.
  * @returns the file ids actually written (a server with no config for this
  *          platform is skipped with a warning, not an abort).
  */
@@ -78,6 +89,7 @@ export async function configureMcp(
   enabledFileIds: string[],
   agentId: string = 'claude',
   reserved: Set<string> = new Set(),
+  storedCodes: Record<string, string> = {},
 ): Promise<string[]> {
   const agent = getAgentConfig(agentId);
 
@@ -93,6 +105,11 @@ export async function configureMcp(
   await ensureDir(settingsDir);
 
   const settings = await writer.readExisting(settingsPath);
+  // The before-image, serialized through the same writer so the comparison at
+  // the end is between two outputs of one formatter and never trips on
+  // whitespace the file happened to carry.
+  const before = writer.serialize(settings);
+  const placeholderCandidates: string[] = [];
 
   for (const fileId of enabledFileIds) {
     const server = discoveredServers.get(fileId);
@@ -105,6 +122,27 @@ export async function configureMcp(
         `server ${server.code}: no config for platform ${process.platform} and no fallback config, skipping`,
       );
       continue;
+    }
+
+    // The SWAP, before anything else touches this entry. A code that differs
+    // from the one persisted last run means UniKit registered this server under
+    // a name it no longer uses — the entry sitting there is an orphan, and it is
+    // invisible to every other branch here (`findKey` looks for the CURRENT
+    // code, so it never sees it). Left in place it keeps a dead server declared
+    // while the grants it conferred stay live in the installed frontmatter.
+    //
+    // This is also the whole upgrade path off the pre-1.2.0 schema: the
+    // `mcp-servers-map` migration deliberately preserved the OLD code, so the
+    // divergence shows up here on the first run and heals itself. No separate
+    // migration for `.mcp.json` is needed.
+    const storedCode = storedCodes[fileId];
+    if (storedCode && storedCode !== server.code) {
+      logInfo('mcp', `swap detected for ${fileId}: ${storedCode} -> ${server.code}`);
+      if (writer.remove(settings, storedCode)) {
+        logInfo('mcp', `removed orphan entry ${storedCode} from ${settingsPath}`);
+      }
+    } else {
+      logInfo('mcp', `no code change for ${fileId}`);
     }
 
     // The rule holds for `context7` as much as for an engine server: a user may
@@ -122,6 +160,13 @@ export async function configureMcp(
       logInfo('mcp', `server ${server.code}: normalized from ${existingKey}`);
     }
 
+    // A server whose shipped config carries the version placeholder can leave one
+    // in the settings file; collected here so the check at the end can name the
+    // server instead of reporting an anonymous token.
+    if (JSON.stringify(resolvedConfig).includes(MCP_VERSION_PLACEHOLDER)) {
+      placeholderCandidates.push(server.code);
+    }
+
     const env = resolvedConfig['env'];
     if (env && typeof env === 'object' && !Array.isArray(env)) {
       const envRecord = env as Record<string, unknown>;
@@ -134,8 +179,39 @@ export async function configureMcp(
   }
 
   if (configuredFileIds.length > 0) {
-    await writeTextFile(settingsPath, writer.serialize(settings));
-    console.log(`[mcp] ${agentId} -> ${settingsPath} (${configuredFileIds.length} servers)`);
+    // Idempotence is checked on the SERIALIZED result, not on a flag set along
+    // the way. `update` runs this pass on every invocation, and a pass that
+    // rewrites an identical settings file each time churns the mtime of a file
+    // users have open in an editor and makes "the last run changed my config"
+    // impossible to read off the disk. Comparing the output to what is already
+    // there is the only check that cannot drift from what is actually written.
+    const serialized = writer.serialize(settings);
+
+    // The version-placeholder detector. It reads the SETTINGS FILE, not the
+    // package config, which is what makes it useful: a user who pinned the
+    // version by hand — or whose Unity editor wrote the pin for them — has no
+    // placeholder left on disk and hears nothing, while an entry still carrying
+    // it gets a loud line every run until it is filled in. Living inside this
+    // pass rather than in `init` is deliberate: `init` runs once, and the pin is
+    // exactly the thing that goes stale afterwards.
+    if (serialized.includes(MCP_VERSION_PLACEHOLDER)) {
+      for (const code of placeholderCandidates) {
+        logWarn(
+          'mcp',
+          `server ${code}: version placeholder not filled — open Unity or set the version manually `
+          + '(the server version must match the version of the Unity package)',
+        );
+      }
+    } else if (placeholderCandidates.length > 0) {
+      logInfo('mcp', `version pin filled for: ${placeholderCandidates.join(', ')}`);
+    }
+
+    if (serialized === before) {
+      logInfo('mcp', `${agentId}: settings unchanged, not rewritten`);
+    } else {
+      await writeTextFile(settingsPath, serialized);
+      console.log(`[mcp] ${agentId} -> ${settingsPath} (${configuredFileIds.length} servers)`);
+    }
   }
 
   return configuredFileIds;
@@ -159,11 +235,20 @@ export async function configureMcp(
  * It changes nothing in this scope and blocks nothing; it is recorded so
  * "we normalised the only variant there was" is not mistaken for proven.
  *
- * @param agentIds the agents installed for this project.
- * @param config   the project config, read for its extension list only — the
- *                 keys those extensions registered are excluded from the
- *                 normalisation scan. `null` is accepted (a fresh `init` has
- *                 not written one yet) and means "no extensions".
+ * ORDER TRAP — the same one `swapMcpRecheckNotes` already carries: the caller
+ * must read `storedCodes` off the config that is still on disk, run this pass,
+ * and only THEN persist the new map. Persist first and `stored === current` for
+ * every entry, no swap fires, and the orphan survives. On the `update` path the
+ * before-state is the local snapshot taken before the codes were recomputed —
+ * NOT `config.mcp.servers`, which by then already holds the new values.
+ *
+ * @param agentIds    the agents installed for this project.
+ * @param config      the project config, read for its extension list only — the
+ *                    keys those extensions registered are excluded from the
+ *                    normalisation scan. `null` is accepted (a fresh `init` has
+ *                    not written one yet) and means "no extensions".
+ * @param storedCodes `key → code` as persisted BEFORE this run; empty means
+ *                    "nothing was registered yet", so nothing can be orphaned.
  */
 export async function reconcileMcpSettings(
   projectDir: string,
@@ -171,6 +256,7 @@ export async function reconcileMcpSettings(
   enabledFileIds: string[],
   agentIds: string[],
   config: UniKitConfig | null = null,
+  storedCodes: Record<string, string> = {},
 ): Promise<void> {
   const reserved = await collectReservedKeys(projectDir, config);
   if (reserved.size > 0) {
@@ -178,6 +264,6 @@ export async function reconcileMcpSettings(
   }
 
   for (const agentId of agentIds) {
-    await configureMcp(projectDir, discoveredServers, enabledFileIds, agentId, reserved);
+    await configureMcp(projectDir, discoveredServers, enabledFileIds, agentId, reserved, storedCodes);
   }
 }

@@ -16,6 +16,7 @@ import { syncAllModules } from '../../core/installer/rules-sync.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
 import { renderSyncRulesEvents } from './rules.js';
 import { discoverMcpServers, collectMcpRules } from '../../core/mcp.js';
+import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
@@ -349,6 +350,26 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     console.log(chalk.dim('Injecting MCP tool permissions...\n'));
     const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
+
+    // Reconcile the agents' MCP settings files. Until 1.2.0 `update` never wrote
+    // them at all — `configureMcp` was reachable only from `init` — so the `env`
+    // overlay, the orphan removal and the placeholder detector fired exactly
+    // once in a project's life. They are needed HERE: `init` is run once, while
+    // the Unity plugin rewrites its own entry between runs and carries our `env`
+    // away with it.
+    //
+    // `storedMcpCodes` is the pre-recompute snapshot taken above, not
+    // `config.mcp.servers` — by this point the map in memory already holds the
+    // new codes, and comparing it against itself would make every swap a no-op.
+    // The pass is idempotent: with nothing to change it does not touch the file.
+    await reconcileMcpSettings(
+      projectDir,
+      discoveredServers,
+      Object.keys(config.mcp.servers),
+      config.agents.map(agent => agent.id),
+      config,
+      storedMcpCodes,
+    );
 
     // Re-apply extension injections (after base skills updated + MCP injected)
     if (extensions.length > 0) {
