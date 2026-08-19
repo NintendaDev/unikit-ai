@@ -4178,6 +4178,41 @@ else
     echo "$NN3_HITS" | head -5
 fi
 
+# (NN-4) The rules registry — the fourth surface, and the only one this repository does not
+# author. A different detector from NN-1…NN-3 on purpose: a rule is user-facing knowledge
+# where snake_case is ordinary (GDScript APIs, serialized-format keys), so the backticked-
+# token regex would need an allowlist the size of the corpus. `mcp__` is unambiguous — the
+# string can only be a grant name — and it is exactly the shape that rots. The middle
+# segment of that prefix is a VENDOR CODE, chosen per server since 1.2.0, so a rule naming
+# one is wrong for every user who picked a different server of the same engine.
+#
+# Measured: `code/unity/core/testing.md` shipped `mcp__UnityMCP__run_tests`, correct only by
+# accident — biome and coplay were made to share one key, and the moment that ended the rule
+# started instructing biome users to call a server that is not theirs. Rules are copied into
+# projects VERBATIM (processTemplate never runs on them) and sync by their own version, so
+# nothing downstream can repair the name.
+#
+# Scope is the delivered content (`code/`, `gamedesign/`), not the registry's own README and
+# docs — those describe the mechanism legitimately and never reach a project. The registry is
+# a gitignored CLONE refreshed by scripts/download-rules.sh, so a failure here is fixed
+# upstream in NintendaDev/unikit-ai-rules and clears once the snapshot is refreshed.
+NN4_ROOT="$ROOT_DIR/rules-registry"
+NN4_TARGETS=()
+for nn4_tier_dir in "$NN4_ROOT/code" "$NN4_ROOT/gamedesign"; do
+    [[ -d "$nn4_tier_dir" ]] && NN4_TARGETS+=("$nn4_tier_dir")
+done
+if [[ ${#NN4_TARGETS[@]} -eq 0 ]]; then
+    fail "NN-4 no rules-registry/{code,gamedesign} found — the guard has no object left (run scripts/download-rules.sh)"
+else
+    NN4_HITS="$({ grep -rnF 'mcp__' "${NN4_TARGETS[@]}" --include='*.md' 2>/dev/null || true; })"
+    if [[ -z "$NN4_HITS" ]]; then
+        pass "NN-4 registry rules name no MCP tool (no mcp__ grant prefix in delivered rule content)"
+    else
+        fail "NN-4 a registry rule names an MCP tool — fix upstream in NintendaDev/unikit-ai-rules:"
+        echo "$NN4_HITS" | head -5
+    fi
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
