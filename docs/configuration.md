@@ -10,8 +10,8 @@ Main configuration file, created by `unikit-ai init`:
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "EngineMCP",
-  "mcp": { "servers": ["unity-mcp", "context7"] },
+  "engineMcpKey": "UnityMCP",
+  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP", "context7": "context7" } },
   "agents": [
     {
       "id": "claude",
@@ -67,9 +67,9 @@ Main configuration file, created by `unikit-ai init`:
 |-------|-------------|
 | `version` | Package version at time of install |
 | `engine` | Game engine identifier (`unity`, `godot`, `godot-net`, `unreal-engine-5`) |
-| `engineMcpKey` | MCP server key for the selected engine (or `null`) |
+| `engineMcpKey` | Vendor code of the selected engine MCP server, or `null`. **Derived** — recomputed from `mcp.servers` on every write, never an independent input. |
 | `rulesRegistry` | Rules registry URL or local path. Defaults to the official `NintendaDev/unikit-ai-rules` URL. See [Rules Registry](rules-registry.md) for details. |
-| `mcp.servers` | Globally selected MCP server file IDs |
+| `mcp.servers` | Globally selected MCP servers as `key → code`. The **key** is the server's file id — the name of its JSON file under `mcp/`, an internal identity that is never written anywhere else. The **value** is the vendor code UniKit registered that server under in the agent's settings file (`mcpServers.<code>`), stored per project because it is the only record of what was actually written. Configs written before 1.2.0 carry a bare `string[]` of file ids here and are converted on the next `unikit-ai init` / `unikit-ai update`. |
 | `agents` | Array of installed agent configurations |
 | `agents[].id` | Agent identifier (`claude`) |
 | `agents[].skillsDir` | Where skills are installed |
@@ -295,7 +295,7 @@ On a re-init the wizard mirrors what `.unikit.json` already records:
 
 `order: 1` therefore decides the default only on a **fresh** install.
 
-Changing your MCP selection reinstalls all skills and subagents: the selection is part of their source hash, which is how stale `mcp__<Key>__*` entries get cleared from the installed frontmatter.
+Changing your MCP selection reinstalls all skills and subagents: the selection is part of their source hash, which is how stale `mcp__<Key>__*` entries get cleared from the installed frontmatter. The hash covers both halves of every `mcp.servers` entry, so a server whose vendor code changes while your selection stays the same still triggers the reinstall.
 
 ### UnrealMCP
 

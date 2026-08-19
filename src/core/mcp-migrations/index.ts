@@ -169,13 +169,14 @@ const mcpServersMapMigration: Migration<McpMigrationContext> = {
       }
 
       // Non-engine servers: the pre-1.2.0 schema stored no code for them at
-      // all, so the package `key` is the only available value. It carries the
-      // assumption that their code never changed — true for the one universal
-      // server that exists today (`context7`), whose key has been stable since
-      // it shipped. A vendor renaming a universal server needs its own step;
-      // there is no record here to migrate from.
-      servers[fileId] = entry.key;
-      logInfo(LOG_TAG, `key=${fileId} code=${entry.key} source=package`);
+      // all, so the code the package ships today is the only available value. It
+      // carries the assumption that their code never changed — true for the one
+      // universal server that exists today (`context7`), which registered under
+      // that same name before the field was split out. A vendor renaming a
+      // universal server needs its own step; there is no record here to migrate
+      // from.
+      servers[fileId] = entry.code;
+      logInfo(LOG_TAG, `key=${fileId} code=${entry.code} source=package`);
     }
 
     const mcp = rawMcp(raw) ?? {};

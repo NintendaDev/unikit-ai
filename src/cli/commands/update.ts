@@ -189,6 +189,59 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     config = (await loadConfig(projectDir)) ?? config;
     logInfo('update', 'config re-read after migrations');
 
+    // Recompute the vendor codes BEFORE anything reads them.
+    //
+    // `update` never re-asks for servers, so the codes it finds on disk are
+    // whatever the last write left there — and after the `mcp-servers-map`
+    // migration that is deliberately the OLD code (`UnityMCP`), preserved so the
+    // reconciliation can recognise the orphan entry it has to remove. Every
+    // artifact below then substitutes `config.engineMcpKey` into itself:
+    // `updateSkills`, `updateSubagents`, `installDevPrinciples` and both
+    // `build*State` calls. `saveConfig` is the LAST call in the command and does
+    // not touch this field, so without a recompute here the stale code is what
+    // lands in every installed skill.
+    //
+    // That failure does not heal on the next run. `mcpHashComponent` is computed
+    // from the same stale value, so the following `update` sees no divergence
+    // and reinstalls nothing: the prose says `UnityMCP`, `.mcp.json` says
+    // `unity-biome-mcp`, the class-B probe finds no key, and the pipeline
+    // decides the engine MCP is not configured — silently skipping the
+    // compilation and test gates for every run after this one.
+    //
+    // Same ordering trap as `swapMcpRecheckNotes`: recomputing after the skill
+    // loop fixes only the *next* run, recomputing before the config is read
+    // has nothing to read.
+    const discoveredServers = await discoverMcpServers(engineId);
+
+    // The codes as they were persisted, kept before the map is rewritten. Exactly
+    // one consumer needs them — the orphan removal in `reconcileMcpSettings`,
+    // which compares "what we registered last time" against "what we register
+    // now". After the loop below that information exists nowhere else.
+    const storedMcpCodes: Record<string, string> = { ...config.mcp.servers };
+
+    for (const [key, storedCode] of Object.entries(storedMcpCodes)) {
+      const server = discoveredServers.get(key);
+      // A selection can outlive the file that produced it (a vendor dropped, an
+      // engine switched). Leave the entry alone: dropping it here would erase a
+      // selection the user may still restore by switching back.
+      if (!server) continue;
+      if (server.code === storedCode) {
+        logInfo('update', `mcp code unchanged: key=${key} code=${storedCode}`);
+        continue;
+      }
+      config.mcp.servers[key] = server.code;
+      logInfo('update', `mcp code rewritten: key=${key} ${storedCode} -> ${server.code}`);
+    }
+
+    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, Object.keys(config.mcp.servers));
+    const recomputedEngineCode = selectedEngineServer?.entry.code ?? null;
+    if (recomputedEngineCode !== config.engineMcpKey) {
+      logInfo('update', `engineMcpKey recomputed: ${config.engineMcpKey ?? 'null'} -> ${recomputedEngineCode ?? 'null'}`);
+      config.engineMcpKey = recomputedEngineCode;
+    } else {
+      logInfo('update', `engineMcpKey unchanged: ${config.engineMcpKey ?? 'null'}`);
+    }
+
     // Refresh extensions from sources (check for updates)
     let extensions = config.extensions ?? [];
     if (extensions.length > 0) {
@@ -294,7 +347,6 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Inject MCP tool permissions (after all skills — base + extension — are installed)
     console.log(chalk.dim('Injecting MCP tool permissions...\n'));
-    const discoveredServers = await discoverMcpServers(engineId);
     const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
 
@@ -342,8 +394,6 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh machine-readable gate-result contract (read by verify + review)
     await installGateResultContract(projectDir);
-
-    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, Object.keys(config.mcp.servers));
 
     // `update` does not re-ask for servers, but the selection still moves under
     // it: editing `.unikit.json` and re-running is how an engine switch reaches

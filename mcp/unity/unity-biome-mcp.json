@@ -1,5 +1,6 @@
 {
-  "key": "UnityMCP",
+  "key": "unity-biome-mcp",
+  "code": "unity-biome-mcp",
   "is_engine": true,
   "order": 1,
   "displayName": "Unity Biome MCP",

@@ -1,9 +1,11 @@
 {
-  "key": "UnityMCP",
+  "key": "coplay-unity-mcp",
+  "code": "UnityMCP",
   "is_engine": true,
   "order": 2,
   "displayName": "Coplay Unity MCP",
   "docs": {
+    "context7": "/coplaydev/unity-mcp",
     "repo": "https://github.com/CoplayDev/unity-mcp"
   },
   "verified": {

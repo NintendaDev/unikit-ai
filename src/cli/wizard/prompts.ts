@@ -1,12 +1,13 @@
 import type inquirer from 'inquirer';
 import chalk from 'chalk';
 import { getAgentChoices } from '../../core/agents.js';
-import { getEngineChoices, getAllEngineIds } from '../../core/engines.js';
+import { getEngineChoices, getAllEngineIds, getEngineConfig } from '../../core/engines.js';
 import { discoverMcpServers } from '../../core/mcp.js';
 import { getAvailableSkills } from '../../core/installer/skills.js';
 import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
 import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
 import { OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
+import { logInfo } from '../../utils/log.js';
 
 // `inquirer` is ~240ms of module graph, and only the interactive prompts below
 // ever touch it -- a non-interactive `unikit-ai update` or `rules *` used to pay
@@ -344,8 +345,23 @@ export async function runWizard(
   let engineMcpKey: string | null = null;
 
   if (discoveredServers.size > 0) {
-    // Group servers by server.key (duplicate keys = alternative implementations)
-    const groupedByKey = new Map<string, McpChoiceEntry[]>();
+    // The picker has exactly two shapes, and the split is `is_engine` + the
+    // catalog directory the server was scanned out of:
+    //
+    //   - ENGINE servers of one directory are alternatives — a project takes one
+    //     of them — so they render as a radio with a Skip. `mcp/godot/` holds
+    //     three, and `godot` / `godot-net` share that directory, which is why the
+    //     grouping is by directory and not by engine id.
+    //   - everything else is additive and renders as a checkbox.
+    //
+    // Before 1.2.0 the axis was `server.key`, which worked only while the
+    // alternatives of one engine were made to share a key by hand. Since `key`
+    // became each JSON's own basename that is no longer true of any of them, and
+    // grouping on it would put every engine server in its own group of one — a
+    // checkbox offering three mutually exclusive Godot servers at once.
+    const engineGroups = new Map<string, McpChoiceEntry[]>();
+    const standaloneEntries: McpChoiceEntry[] = [];
+
     for (const [fileId, server] of discoveredServers) {
       const entry: McpChoiceEntry = {
         fileId,
@@ -353,27 +369,36 @@ export async function runWizard(
         isEngine: server.isEngine,
         ...(server.order === undefined ? {} : { order: server.order }),
       };
-      const group = groupedByKey.get(server.key);
+
+      if (!server.isEngine || server.originDir === null) {
+        standaloneEntries.push(entry);
+        continue;
+      }
+
+      const group = engineGroups.get(server.originDir);
       if (group) {
         group.push(entry);
       } else {
-        groupedByKey.set(server.key, [entry]);
+        engineGroups.set(server.originDir, [entry]);
       }
     }
 
-    // Separate unique keys (checkbox) from duplicate keys (radio groups)
-    const uniqueKeyEntries: McpChoiceEntry[] = [];
-    const duplicateKeyGroups: Array<{ key: string; entries: McpChoiceEntry[] }> = [];
+    // A directory holding exactly one engine server has no choice to offer:
+    // fold it into the checkbox rather than rendering a one-option radio.
+    const uniqueKeyEntries: McpChoiceEntry[] = [...standaloneEntries];
+    const duplicateKeyGroups: Array<{ entries: McpChoiceEntry[] }> = [];
 
-    for (const [key, entries] of groupedByKey) {
+    for (const [dir, entries] of engineGroups) {
+      logInfo('wizard:mcp', `engine group "${dir}": ${entries.map(e => e.fileId).join(', ')}`);
       if (entries.length === 1) {
         uniqueKeyEntries.push(entries[0]);
       } else {
         // Sorted here, once: the radio's `default` (Task 23) is an INDEX into
         // this array, so ordering must be settled before it is computed.
-        duplicateKeyGroups.push({ key, entries: sortMcpChoices(entries) });
+        duplicateKeyGroups.push({ entries: sortMcpChoices(entries) });
       }
     }
+    logInfo('wizard:mcp', `checkbox group: ${uniqueKeyEntries.map(e => e.fileId).join(', ') || '(empty)'}`);
 
     // Unique keys: checkbox (multi-select), all checked by default
     if (uniqueKeyEntries.length > 0) {
@@ -393,7 +418,7 @@ export async function runWizard(
       mcpServers.push(...(selected as string[]));
     }
 
-    // Duplicate keys: radio per group + Skip
+    // Engine alternatives: radio per group + Skip
     for (const group of duplicateKeyGroups) {
       // `default` is omitted (not set to undefined explicitly) when there is
       // nothing to restore, so inquirer falls back to the first choice -- the
@@ -403,7 +428,13 @@ export async function runWizard(
         {
           type: 'list',
           name: 'selected',
-          message: `Select MCP server for "${group.key}":`,
+          // The label is the ENGINE's display name, assigned rather than
+          // derived. It used to be the shared `key` ("UnityMCP"), which no
+          // longer exists as a concept; the directory that replaced it as the
+          // grouping axis is a package-layout detail ("mcp/unity") and printing
+          // it would leak our folder names at the user. `engine` is the id the
+          // user just picked, so this is the one name in play they already know.
+          message: `Select MCP server for "${getEngineConfig(engine).displayName}":`,
           choices: [
             ...group.entries.map(entry => ({
               name: entry.displayName,
@@ -424,7 +455,7 @@ export async function runWizard(
     for (const fileId of mcpServers) {
       const server = discoveredServers.get(fileId);
       if (server?.isEngine) {
-        engineMcpKey = server.key;
+        engineMcpKey = server.code;
         break;
       }
     }

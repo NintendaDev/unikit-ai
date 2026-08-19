@@ -11,7 +11,8 @@ import {
   saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
-import { configureMcp, getMcpDocsLines, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
+import { getMcpDocsLines, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
+import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
@@ -137,14 +138,6 @@ export async function initCommand(): Promise<void> {
         ? await installSubagents(projectDir, agentConfig.subagentsDir, { agentId: agentSelection.id, engineId, engineMcpKey: answers.engineMcpKey })
         : [];
 
-      // Configure MCP per agent (writes to agent's settings file)
-      await configureMcp(
-        projectDir,
-        discoveredServers,
-        answers.mcpServers,
-        agentSelection.id,
-      );
-
       installedAgents.push({
         id: agentSelection.id,
         skillsDir: agentConfig.skillsDir,
@@ -153,6 +146,20 @@ export async function initCommand(): Promise<void> {
         installedSubagents: subagentFiles,
       });
     }
+
+    // Write the MCP settings file of every installed agent. Lifted out of the
+    // per-agent install loop above so `init` and `update` drive one and the same
+    // pass — see `mcp-reconcile.ts`.
+    await reconcileMcpSettings(
+      projectDir,
+      discoveredServers,
+      answers.mcpServers,
+      installedAgents.map(agent => agent.id),
+      // Re-init on a project that installed extensions: their settings keys must
+      // stay off limits to the normalisation scan. `null` on a fresh install,
+      // which has no extensions by definition.
+      existingConfig,
+    );
 
     // Install engine templates
     await installEngineTemplates(projectDir, engineId, installedAgents);

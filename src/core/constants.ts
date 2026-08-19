@@ -121,7 +121,10 @@ export const GAMEDESIGN_GENRES_DIR_NAME = 'genres';
 export const ENGINE_MCP_DIR_NAME = 'engine-mcp';
 
 /**
- * Prefix every MCP-injected frontmatter entry carries: `mcp__<key>__<tool>`.
+ * Prefix every MCP-injected frontmatter entry carries: `mcp__<code>__<tool>`,
+ * where `code` is the VENDOR code the server is registered under in the agent's
+ * settings file — never its `key`, which is the package-internal file id and is
+ * written nowhere.
  *
  * It is what makes injection reversible. A skill's `allowed-tools` mixes
  * hand-authored entries (Read, Bash, Agent, …) with generated ones, and only the

@@ -890,7 +890,8 @@ mkdir -p "$CODEX_MCP_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
   await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'codex');
   await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'codex');
@@ -924,7 +925,8 @@ mkdir -p "$CLAUDE_MCP_REGRESS_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
   await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'claude');
 " "$CLAUDE_MCP_REGRESS_DIR" > /dev/null 2>&1)
@@ -969,7 +971,8 @@ EOF
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('godot');
   await configureMcp(target, servers, ['context7', 'coding-solo-godot-mcp'], 'opencode');
   await configureMcp(target, servers, ['context7', 'coding-solo-godot-mcp'], 'opencode');
@@ -1000,27 +1003,27 @@ node -e "
     if ('environment' in ctx) errors.push('context7.environment must be absent when source env is empty');
   }
 
-  const godot = c.mcp && c.mcp.GodotMCP;
-  if (!godot) errors.push('GodotMCP server missing');
+  const godot = c.mcp && c.mcp.godot;
+  if (!godot) errors.push('godot server missing');
   else {
-    if (godot.type !== 'local') errors.push('GodotMCP.type expected local, got ' + JSON.stringify(godot.type));
+    if (godot.type !== 'local') errors.push('godot.type expected local, got ' + JSON.stringify(godot.type));
     if (JSON.stringify(godot.command) !== JSON.stringify(['npx', '@coding-solo/godot-mcp']))
-      errors.push('GodotMCP.command wrong shape: ' + JSON.stringify(godot.command));
+      errors.push('godot.command wrong shape: ' + JSON.stringify(godot.command));
 
     // Per-key environment check (order-independent): ensures the writer preserves
     // every source env entry verbatim and does not inject or drop keys.
     const expectedEnv = { GODOT_PATH: '/path/to/godot', DEBUG: 'true' };
     if (!godot.environment || typeof godot.environment !== 'object' || Array.isArray(godot.environment)) {
-      errors.push('GodotMCP.environment missing or wrong type: ' + JSON.stringify(godot.environment));
+      errors.push('godot.environment missing or wrong type: ' + JSON.stringify(godot.environment));
     } else {
       const actualKeys = Object.keys(godot.environment).sort();
       const expectedKeys = Object.keys(expectedEnv).sort();
       if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
-        errors.push('GodotMCP.environment keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
+        errors.push('godot.environment keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
       }
       for (const k of expectedKeys) {
         if (godot.environment[k] !== expectedEnv[k]) {
-          errors.push('GodotMCP.environment.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.environment[k]));
+          errors.push('godot.environment.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.environment[k]));
         }
       }
     }
@@ -1058,7 +1061,8 @@ mkdir -p "$OPENCODE_HTTP_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
   await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'opencode');
 " "$OPENCODE_HTTP_DIR" > /dev/null 2>&1)
@@ -1092,7 +1096,8 @@ echo "  ✓ opencode MCP config: HTTP servers (UnityMCP) skipped; stdio servers 
 # only schema Antigravity's client understands is `{ command, args, env }` stdio
 # or `{ serverUrl }` remote — never `{ type, url }`).
 # Uses engine=unity for the type/url→serverUrl case (UnityMCP), engine=godot for
-# the env-passthrough case (GodotMCP), same split as the OpenCode block above.
+# the env-passthrough case (coding-solo, code "godot"), same split as the
+# OpenCode block above.
 
 ANTIGRAVITY_MCP_DIR="$TMPDIR/test-antigravity-mcp"
 mkdir -p "$ANTIGRAVITY_MCP_DIR/.agents"
@@ -1110,7 +1115,8 @@ EOF
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
   await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'antigravity');
   await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'antigravity');
@@ -1175,7 +1181,8 @@ mkdir -p "$ANTIGRAVITY_MCP_DIR2"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('godot');
   await configureMcp(target, servers, ['context7', 'coding-solo-godot-mcp'], 'antigravity');
 " "$ANTIGRAVITY_MCP_DIR2" > /dev/null 2>&1)
@@ -1187,21 +1194,21 @@ node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
   const errors = [];
 
-  const godot = c.mcpServers && c.mcpServers.GodotMCP;
-  if (!godot) errors.push('GodotMCP server missing');
+  const godot = c.mcpServers && c.mcpServers.godot;
+  if (!godot) errors.push('godot server missing');
   else {
     const expectedEnv = { GODOT_PATH: '/path/to/godot', DEBUG: 'true' };
     if (!godot.env || typeof godot.env !== 'object' || Array.isArray(godot.env)) {
-      errors.push('GodotMCP.env missing or wrong type: ' + JSON.stringify(godot.env));
+      errors.push('godot.env missing or wrong type: ' + JSON.stringify(godot.env));
     } else {
       const actualKeys = Object.keys(godot.env).sort();
       const expectedKeys = Object.keys(expectedEnv).sort();
       if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
-        errors.push('GodotMCP.env keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
+        errors.push('godot.env keys mismatch: expected ' + JSON.stringify(expectedKeys) + ', got ' + JSON.stringify(actualKeys));
       }
       for (const k of expectedKeys) {
         if (godot.env[k] !== expectedEnv[k]) {
-          errors.push('GodotMCP.env.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.env[k]));
+          errors.push('godot.env.' + k + ' mismatch: expected ' + JSON.stringify(expectedEnv[k]) + ', got ' + JSON.stringify(godot.env[k]));
         }
       }
     }
@@ -1214,7 +1221,7 @@ node -e "
   }
 " "$ANTIGRAVITY_MCP_JSON2"
 
-echo "  ✓ antigravity MCP config: env passthrough (no key renaming) for GodotMCP"
+echo "  ✓ antigravity MCP config: env passthrough (no key renaming) for the godot server"
 
 # ─────────────────────────────────────────────────────
 # Test 13: Codex MCP rules injection (skill frontmatter)
@@ -1561,20 +1568,21 @@ mkdir -p "$FENNARA_MCP_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
   const target = process.argv[1];
-  const { discoverMcpServers, configureMcp } = await import('./dist/core/mcp.js');
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('godot');
   await configureMcp(target, servers, ['fennara-godot-mcp'], 'claude');
 " "$FENNARA_MCP_DIR" > /dev/null 2>&1)
 
 FENNARA_JSON="$FENNARA_MCP_DIR/.mcp.json"
 assert_exists "$FENNARA_JSON" "fennara (configByPlatform-only) must reach the writer and produce .mcp.json"
-assert_contains "$FENNARA_JSON" 'GodotMCP' "fennara must be written under the GodotMCP key"
+assert_contains "$FENNARA_JSON" 'fennara' "fennara must be written under its vendor code"
 assert_not_contains "$FENNARA_JSON" '\{\{' \
   "resolved fennara config must contain no unexpanded {{...}} token"
 
 FENNARA_CMD=$(node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-  const s = c.mcpServers && c.mcpServers.GodotMCP;
+  const s = c.mcpServers && c.mcpServers.fennara;
   console.log(s && s.command ? s.command : 'missing');
 " "$FENNARA_JSON")
 

@@ -558,7 +558,7 @@ fi
 #   - `order`, when present, is a number
 #   - `configByPlatform`, when present, keys ⊆ {win32,darwin,linux} and each
 #     entry has `command` or `url`
-#   - `order` is unique among is_engine=true entries sharing one `key` — without
+#   - `order` is unique among is_engine=true entries of one DIRECTORY — without
 #     that the wizard's radio sort degenerates back to non-deterministic, which
 #     is the exact bug the field exists to fix
 #   - `docs.context7`, when present, is a Context7 library id (leading slash)
@@ -580,7 +580,7 @@ MCP_SCHEMA_RESULT=$(node -e "
   const root=process.argv[1];
   const KNOWN_PLATFORMS=['win32','darwin','linux'];
   const why=[];
-  const orderByKey=new Map();   // key -> Map<order, fileId>
+  const orderByKey=new Map();   // directory -> Map<order, fileId>
 
   for (const dir of fs.readdirSync(root)) {
     const dirPath=path.join(root, dir);
@@ -638,13 +638,16 @@ MCP_SCHEMA_RESULT=$(node -e "
         }
       }
 
-      // Order uniqueness is scoped to the engine group: the radio only ever
-      // renders is_engine entries sharing one key, and universal servers never
-      // compete with them.
-      if (m.is_engine === true && m.key && typeof m.order === 'number') {
-        if (!orderByKey.has(m.key)) orderByKey.set(m.key, new Map());
-        const seen=orderByKey.get(m.key);
-        if (seen.has(m.order)) why.push('duplicate-order:'+m.key+':'+m.order+':'+seen.get(m.order)+'+'+rel);
+      // Order uniqueness is scoped to the engine group, and since 1.2.0 the
+      // group is the DIRECTORY, not the key: the radio renders the is_engine
+      // entries of one \`mcp/<dir>/\` folder, and universal servers never compete
+      // with them. Keying this on \`m.key\` would now be vacuous — every JSON
+      // carries its own basename there, so each group would hold one entry and
+      // no collision could ever be expressed.
+      if (m.is_engine === true && typeof m.order === 'number') {
+        if (!orderByKey.has(dir)) orderByKey.set(dir, new Map());
+        const seen=orderByKey.get(dir);
+        if (seen.has(m.order)) why.push('duplicate-order:'+dir+':'+m.order+':'+seen.get(m.order)+'+'+rel);
         else seen.set(m.order, rel);
       }
     }
@@ -4386,9 +4389,20 @@ for mcp_json in "$MCP_DIR"/*/; do
 done
 
 # ─────────────────────────────────────────────
-# Part 7e: All is_engine=true entries share same key per engine scope
+# Part 7e: All is_engine=true entries carry DISTINCT codes per engine scope
 # ─────────────────────────────────────────────
-echo -e "\n${BOLD}=== is_engine entries share same key per engine scope ===${NC}\n"
+# The inversion of the pre-1.2.0 rule, and it guards the same runtime check —
+# `discoverMcpServers` throws on a violation, so a defect here takes down every
+# `init`/`update` for that engine, not just this suite.
+#
+# Why it flipped: `key` became the JSON's own basename, so "all engine servers
+# share one key" is now false by construction (Unity ships two, Godot three) and
+# the grouping it expressed moved to the directory. What has to hold instead is
+# that no two of them register under the same `code` — two entries with one code
+# are one entry in the agent's settings file, and a swap could not tell which to
+# remove, leaving an orphan with live grants aimed at a server that is not
+# running.
+echo -e "\n${BOLD}=== is_engine entries carry distinct codes per engine scope ===${NC}\n"
 
 declare -A ENGINE_MCP_DIRS=(["unity"]="unity" ["godot"]="godot" ["godot-net"]="godot" ["unreal-engine-5"]="unreal-engine-5")
 KEY_UNIQUENESS_ERRORS=0
@@ -4398,43 +4412,52 @@ for engine in "${!ENGINE_MCP_DIRS[@]}"; do
     UNIVERSAL_DIR_PATH="$MCP_DIR/universal"
     ENGINE_DIR_PATH="$MCP_DIR/$mcp_dir"
 
-    # Collect keys from is_engine=true entries across universal + engine directories
+    # Collect codes from is_engine=true entries across universal + engine directories
     RESULT=$(node -e "
       const fs = require('fs');
       const path = require('path');
-      const engineKeys = [];
+      const engineCodes = [];
+      const missing = [];
       for (const dir of process.argv.slice(1)) {
         if (!fs.existsSync(dir)) continue;
         for (const f of fs.readdirSync(dir)) {
           if (!f.endsWith('.json')) continue;
           try {
             const m = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
-            if (m.is_engine === true && m.key) engineKeys.push(m.key);
+            if (m.is_engine !== true) continue;
+            if (typeof m.code !== 'string' || !m.code) { missing.push(f); continue; }
+            engineCodes.push(m.code);
           } catch {}
         }
       }
-      const unique = [...new Set(engineKeys)];
-      if (unique.length === 0) {
+      const duplicates = [...new Set(engineCodes.filter((c, i) => engineCodes.indexOf(c) !== i))];
+      if (missing.length > 0) {
+        console.log('NOCODE:' + missing.join(','));
+      } else if (engineCodes.length === 0) {
         console.log('NONE');
-      } else if (unique.length === 1) {
-        console.log('OK:' + unique[0] + ':' + engineKeys.length);
+      } else if (duplicates.length === 0) {
+        console.log('OK:' + engineCodes.join(','));
       } else {
-        console.log('MISMATCH:' + unique.join(','));
+        console.log('DUPLICATE:' + duplicates.join(','));
       }
     " "$UNIVERSAL_DIR_PATH" "$ENGINE_DIR_PATH" 2>/dev/null || echo "ERROR")
 
     if [[ "$RESULT" == OK:* ]]; then
         INFO="${RESULT#OK:}"
-        pass "engine $engine: all is_engine entries share key ($INFO)"
+        pass "engine $engine: is_engine codes distinct ($INFO)"
     elif [[ "$RESULT" == NONE ]]; then
         fail "engine $engine: no is_engine=true entries found"
         KEY_UNIQUENESS_ERRORS=$((KEY_UNIQUENESS_ERRORS + 1))
-    elif [[ "$RESULT" == MISMATCH:* ]]; then
-        KEYS="${RESULT#MISMATCH:}"
-        fail "engine $engine: is_engine entries have different keys: $KEYS"
+    elif [[ "$RESULT" == NOCODE:* ]]; then
+        FILES="${RESULT#NOCODE:}"
+        fail "engine $engine: is_engine entries without a code: $FILES"
+        KEY_UNIQUENESS_ERRORS=$((KEY_UNIQUENESS_ERRORS + 1))
+    elif [[ "$RESULT" == DUPLICATE:* ]]; then
+        CODES="${RESULT#DUPLICATE:}"
+        fail "engine $engine: is_engine entries share code(s): $CODES"
         KEY_UNIQUENESS_ERRORS=$((KEY_UNIQUENESS_ERRORS + 1))
     else
-        fail "engine $engine: failed to check is_engine key consistency"
+        fail "engine $engine: failed to check is_engine code distinctness"
         KEY_UNIQUENESS_ERRORS=$((KEY_UNIQUENESS_ERRORS + 1))
     fi
 done

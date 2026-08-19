@@ -836,7 +836,7 @@ export async function rulesStatusCommand(options: { json?: boolean; checkUpdates
 
   if (outOfDate) {
     console.log(chalk.yellow(
-      '⚠ Project is out of date — `.unikit/` layout (memory and/or workspace) not migrated to the modular `code/` module.',
+      '⚠ Project is out of date — the project migration chain has pending work (`.unikit/` layout, workspace, or the `.unikit.json` MCP section).',
     ));
     console.log(chalk.yellow('  Run `unikit-ai update` before `rules sync` / `rules install`.'));
     console.log('');

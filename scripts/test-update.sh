@@ -1623,9 +1623,9 @@ if grep -q 'mcp__UnityMCP__read_console' "$MCPHASH_SKILL"; then
 fi
 # Biome grants executors a wildcard, so the biome-side probe is the wildcard entry
 # itself — there is no biome-only NAME left to look for. It is a strictly sharper
-# probe than the name it replaces: `mcp__UnityMCP__*` can only come from the biome
+# probe than the name it replaces: `mcp__unity-biome-mcp__*` can only come from the biome
 # entry, and the assertion above already proved coplay's names are gone.
-assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__\*' \
+assert_contains "$MCPHASH_SKILL" 'mcp__unity-biome-mcp__\*' \
     "biome wildcard grant injected after the selection swap (no --force)"
 assert_not_exists "$MCPHASH_STALE" \
     "clean replace on any reinstall sweeps an orphaned reference file (not only under --force)"
@@ -1679,8 +1679,8 @@ ENGSWITCH_OUT1="$TMPDIR/update-engine-switch-1.log"
 
 ENGSWITCH_SKILL="$ENGSWITCH_DIR/.claude/skills/unikit-implement/SKILL.md"
 assert_exists "$ENGSWITCH_SKILL" "unikit-implement must be installed for the engine-switch grant test"
-assert_contains "$ENGSWITCH_SKILL" 'mcp__UnityMCP__' \
-    "unity+biome install injects mcp__UnityMCP__ grants into unikit-implement frontmatter"
+assert_contains "$ENGSWITCH_SKILL" 'mcp__unity-biome-mcp__' \
+    "unity+biome install injects mcp__unity-biome-mcp__ grants into unikit-implement frontmatter"
 
 # Switch the engine and deselect every server. Nothing else changes — no --force.
 ENGSWITCH_CONFIG="$ENGSWITCH_DIR/.unikit.json"
@@ -1699,18 +1699,18 @@ ENGSWITCH_OUT2="$TMPDIR/update-engine-switch-2.log"
 # vanished proves nothing about grant cleanup.
 assert_exists "$ENGSWITCH_SKILL" "unikit-implement is still installed after the engine switch"
 
-if grep -q 'mcp__UnityMCP__' "$ENGSWITCH_SKILL"; then
-    echo "Assertion failed: switching the engine did NOT drop the old server's mcp__UnityMCP__ grants"
+if grep -q 'mcp__unity-biome-mcp__' "$ENGSWITCH_SKILL"; then
+    echo "Assertion failed: switching the engine did NOT drop the old server's mcp__unity-biome-mcp__ grants"
     echo "  (a deselected server runs no sync of its own, so only a reinstall can clear them —"
     echo "   the engine is missing from the skill source hash, or the reinstall did not fire)"
     echo "  File: $ENGSWITCH_SKILL"
     echo "--- surviving frontmatter entries ---"
-    grep -n 'mcp__UnityMCP__' "$ENGSWITCH_SKILL" | head -10
+    grep -n 'mcp__unity-biome-mcp__' "$ENGSWITCH_SKILL" | head -10
     echo "-------------------------------------"
     exit 1
 fi
 
-echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clears stale mcp__UnityMCP__ grants (0.2 CONFIRMED)"
+echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clears stale mcp__unity-biome-mcp__ grants (0.2 CONFIRMED)"
 
 # ─────────────────────────────────────────────
 # Test 30h: narrowing a server's grants clears the dead names it left behind
@@ -1768,7 +1768,7 @@ NARROW_OUT1="$TMPDIR/update-narrowed-1.log"
 
 NARROW_AGENT="$NARROW_DIR/.claude/agents/unikit-implement-coordinator.md"
 assert_exists "$NARROW_AGENT" "unikit-implement-coordinator must be installed for the narrowed-grants test"
-assert_contains "$NARROW_AGENT" 'mcp__UnityMCP__scene_change_plan' \
+assert_contains "$NARROW_AGENT" 'mcp__unity-biome-mcp__scene_change_plan' \
     "the pre-cutover named grant is injected on the first update"
 
 # Restore the shipped config: same engine, same selection, wildcard grants.
@@ -1777,17 +1777,17 @@ cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
 NARROW_OUT2="$TMPDIR/update-narrowed-2.log"
 (cd "$NARROW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NARROW_OUT2" 2>&1)
 
-if grep -q 'mcp__UnityMCP__scene_change_plan' "$NARROW_AGENT"; then
+if grep -q 'mcp__unity-biome-mcp__scene_change_plan' "$NARROW_AGENT"; then
     echo "Assertion failed: narrowing the grants did NOT drop the dead name from the frontmatter"
     echo "  (injectMcpRules appended instead of syncing: nothing reinstalls this subagent,"
     echo "   so its own removal branch is the only thing that can clear the entry)"
     echo "  File: $NARROW_AGENT"
     echo "--- surviving frontmatter entries ---"
-    grep -n 'mcp__UnityMCP__' "$NARROW_AGENT" | head -10
+    grep -n 'mcp__unity-biome-mcp__' "$NARROW_AGENT" | head -10
     echo "-------------------------------------"
     exit 1
 fi
-assert_contains "$NARROW_AGENT" 'mcp__UnityMCP__\*' \
+assert_contains "$NARROW_AGENT" 'mcp__unity-biome-mcp__\*' \
     "the wildcard grant replaces the names it superseded"
 assert_contains "$NARROW_AGENT" '^  - Read$' \
     "hand-authored (non-mcp__) entries survive the sync untouched"

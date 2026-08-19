@@ -1,9 +1,11 @@
 {
-  "key": "UnrealMCP",
+  "key": "chir24-unreal-mcp",
+  "code": "unreal-engine",
   "is_engine": true,
   "order": 1,
   "displayName": "ChiR24 Unreal MCP (Unreal Engine >= 5.0)",
   "docs": {
+    "context7": "/chir24/unreal_mcp",
     "repo": "https://github.com/ChiR24/Unreal_mcp"
   },
   "verified": {

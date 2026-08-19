@@ -15,7 +15,7 @@ Read this file before using `unikit-ai` commands via Bash tool.
 | 5 | Registry validation failed (bad manifest, schema mismatch, engine missing, empty `rules install defaults` bootstrap set — no rules for any module whose skills are installed) |
 | 6 | Registry already initialized at target path (rules registry init) |
 | 7 | Target path occupied by non-registry files (rules registry init) |
-| 8 | Project out of date — run `unikit-ai update` before `rules sync` / `rules install` (memory layout not migrated to the modular `code/` module) |
+| 8 | Project out of date — run `unikit-ai update` before `rules sync` / `rules install`. Raised when the project migration chain still reports pending work: the memory layout or the workspace not yet relocated under the modular `code/` module, the `.unikit.json` MCP section not yet converted, or a project whose recorded version predates a migration this release ships |
 
 ## Rules Commands
 
@@ -38,7 +38,7 @@ Output: Human-readable aggregated report (or help text for the bare form). Exit 
 
 ### `unikit-ai rules sync`
 
-Reconcile disk ↔ .unikit.json state and regenerate RULES_INDEX.md. By default refreshes registry-sourced rules whose version changed and skips locally-modified files with a warning. Use --replace to overwrite local modifications and re-fetch rules at the same version; use --prune to remove obsolete stack rules that vanished from the registry; combine both for a full mirror (the old `sync --force`). Exits 8 when the project memory layout has not been migrated to the modular `code/` module — run `unikit-ai update` first.
+Reconcile disk ↔ .unikit.json state and regenerate RULES_INDEX.md. By default refreshes registry-sourced rules whose version changed and skips locally-modified files with a warning. Use --replace to overwrite local modifications and re-fetch rules at the same version; use --prune to remove obsolete stack rules that vanished from the registry; combine both for a full mirror (the old `sync --force`). Exits 8 when the project migration chain still has pending work (memory layout, workspace, or the `.unikit.json` MCP section) — run `unikit-ai update` first.
 Flags: `--replace`, `--prune`
 
 ### `unikit-ai rules status`

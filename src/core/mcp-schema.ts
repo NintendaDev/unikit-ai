@@ -17,7 +17,18 @@
 import path from 'path';
 import { MCP_PLATFORM_KEYS, type McpPlatformKey } from './constants.js';
 import type { McpAllowedTools, McpServerEntry } from './mcp.js';
-import { logWarn } from '../utils/log.js';
+import { logInfo, logWarn } from '../utils/log.js';
+
+/**
+ * Everything one JSON object can say about itself.
+ *
+ * `originDir` is deliberately absent: which catalog folder an entry was read out
+ * of is not written in the file, it is where the file sits. The scanner stamps
+ * it on — see `scanMcpDirectory` — and this type is what makes forgetting that
+ * step a compile error rather than a wizard that silently groups every server
+ * into one radio.
+ */
+export type ParsedMcpServerEntry = Omit<McpServerEntry, 'originDir'>;
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -132,19 +143,34 @@ function parseVerified(raw: unknown): McpServerEntry['verified'] | null {
  *                 malformed field names its source without the caller having to
  *                 re-derive it.
  * @returns `null` when the object cannot describe a usable server: no `key`, no
- *          `displayName`, or neither `config` nor `configByPlatform`. That last
- *          disjunction matters — a server whose binary path differs per OS ships
- *          only `configByPlatform`, and demanding `config` would drop it before
- *          it ever reached the wizard.
+ *          `code`, no `displayName`, or neither `config` nor `configByPlatform`.
+ *          That last disjunction matters — a server whose binary path differs
+ *          per OS ships only `configByPlatform`, and demanding `config` would
+ *          drop it before it ever reached the wizard.
+ *
+ *          `code` joins `key` as a hard requirement rather than an optional
+ *          field defaulting to the key. The two answer different questions —
+ *          `key` is who this server IS inside the package, `code` is the name it
+ *          is REGISTERED under in the agent's settings file — and a default
+ *          would silently register a server under its file id the day someone
+ *          forgets the field. That is not a degraded install; it is grants
+ *          (`mcp__<code>__*`) aimed at a container key that does not exist, and
+ *          nothing downstream can tell it apart from a correct one.
  */
-export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: string): McpServerEntry | null {
+export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: string): ParsedMcpServerEntry | null {
   if (!isRecord(raw) || !raw.key || !raw.displayName) return null;
+
+  if (typeof raw.code !== 'string' || raw.code.length === 0) {
+    logWarn('parseMcpServerEntry', `dropped ${fileName}: missing or empty "code"`);
+    return null;
+  }
 
   const configByPlatform = parseConfigByPlatform(raw['configByPlatform']);
   if (!raw.config && !configByPlatform) return null;
 
-  const entry: McpServerEntry = {
+  const entry: ParsedMcpServerEntry = {
     key: raw.key as string,
+    code: raw.code,
     isEngine: (raw['is_engine'] as boolean) ?? false,
     displayName: raw.displayName as string,
   };
@@ -180,6 +206,11 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
   if (rulesDir) {
     entry.rulesDir = rulesDir;
   }
+
+  logInfo(
+    'parseMcpServerEntry',
+    `${fileName}: key=${entry.key} code=${entry.code} is_engine=${entry.isEngine}`,
+  );
 
   return entry;
 }

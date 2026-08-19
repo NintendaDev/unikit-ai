@@ -3,10 +3,9 @@ import { readJsonFile, readTextFile, writeTextFile, getMcpDir, ensureDir, fileEx
 import { getAgentConfig } from './agents.js';
 import { MCP_TOOL_ENTRY_PREFIX, type McpPlatformKey } from './constants.js';
 import { getEngineConfig } from './engines.js';
-import { resolvePlatformConfig } from './mcp-platform.js';
 import { isRecord, parseMcpServerEntry } from './mcp-schema.js';
 import { getMcpWriter } from './mcp-writers/index.js';
-import { logInfo, logWarn } from '../utils/log.js';
+import { logInfo } from '../utils/log.js';
 
 export interface McpAllowedTools {
   agents: Record<string, string[]>;
@@ -14,7 +13,45 @@ export interface McpAllowedTools {
 }
 
 export interface McpServerEntry {
+  /**
+   * The server's INTERNAL identity — the basename of its JSON file under `mcp/`.
+   * It never leaves the package: nothing is written under it, no grant is
+   * prefixed with it, and no user ever types it. It is what `config.mcp.servers`
+   * keys on and what the rules tree, the delivery stamp and the findings log are
+   * filed under, so it must stay stable across vendor renames.
+   */
   key: string;
+  /**
+   * The VENDOR code — the name this server is registered under in the agent's
+   * settings file (`mcpServers.<code>`), the prefix of every grant it confers
+   * (`mcp__<code>__*`), and the value `{{engine_mcp_tool}}` resolves to.
+   *
+   * Split from {@link key} in 1.2.0 because the two were one field and the
+   * conflation was writing a second, dead entry: UniKit registered the Unity
+   * biome server as `UnityMCP` while the Unity plugin registered the very same
+   * server as `unity-biome-mcp`, so the grants covered a container key nothing
+   * was listening on. The code is the vendor's to choose and ours to record; the
+   * key is ours alone.
+   */
+  code: string;
+  /**
+   * Which catalog directory this entry was scanned out of: the name of the
+   * engine's `mcp/<mcpDir>/` folder, or `null` for a server read from
+   * `mcp/universal/`.
+   *
+   * Filled at scan time because that is the only place the directory is known —
+   * by the time the wizard groups the entries, they are a flat map keyed by file
+   * id. It replaced `key` as the grouping axis: the alternatives of one engine
+   * used to be recognizable by sharing a key, and once `key` became each JSON's
+   * own basename there was nothing left to group on. The directory is the more
+   * honest axis anyway — "these are the servers for this engine" is exactly what
+   * the folder means, and it needs no field to be kept in sync.
+   *
+   * It is an INTERNAL discriminator, never shown: `mcp/unity` in a prompt would
+   * leak the package's layout at the user. The radio prints the engine's display
+   * name instead.
+   */
+  originDir: string | null;
   isEngine: boolean;
   displayName: string;
   /**
@@ -47,11 +84,14 @@ export interface McpServerEntry {
    */
   verified?: { version: string; date: string; toolRegistry: string };
   /**
-   * Presentation order inside a `key` group (ascending, 1-based). Drives the
-   * wizard's radio pre-selection — and nothing else since the shard corpus was
-   * retired: one engine takes one engine server, so there is no longer any
-   * content to concatenate in a defined order. Missing = last. Never affects the
-   * order servers are written into a settings file.
+   * Presentation order inside one catalog directory's engine group (ascending,
+   * 1-based). Drives the wizard's radio pre-selection — and nothing else since
+   * the shard corpus was retired: one engine takes one engine server, so there
+   * is no longer any content to concatenate in a defined order. Missing = last.
+   * Never affects the order servers are written into a settings file.
+   *
+   * The group used to be "the servers sharing a `key`"; it is now "the
+   * `is_engine` servers of one `mcp/<dir>/` folder" — see {@link originDir}.
    */
   order?: number;
   /**
@@ -74,7 +114,14 @@ export interface McpServerEntry {
 
 export type DiscoveredServers = Map<string, McpServerEntry>;
 
-async function scanMcpDirectory(dirPath: string): Promise<Map<string, McpServerEntry>> {
+/**
+ * @param originDir the engine catalog folder these entries belong to, or `null`
+ *                  for `mcp/universal/`. Stamped onto every entry here because
+ *                  this is the only layer that still knows which directory the
+ *                  JSON came from — the merged map downstream is keyed by file
+ *                  id alone.
+ */
+async function scanMcpDirectory(dirPath: string, originDir: string | null): Promise<Map<string, McpServerEntry>> {
   const servers = new Map<string, McpServerEntry>();
   const files = await listFiles(dirPath);
 
@@ -85,7 +132,7 @@ async function scanMcpDirectory(dirPath: string): Promise<Map<string, McpServerE
     const entry = parseMcpServerEntry(raw, dirPath, file);
     if (!entry) continue;
 
-    servers.set(file.replace(/\.json$/, ''), entry);
+    servers.set(file.replace(/\.json$/, ''), { ...entry, originDir });
   }
 
   return servers;
@@ -97,7 +144,7 @@ export async function discoverMcpServers(engineId: string): Promise<DiscoveredSe
 
   // Scan universal servers
   const universalDir = path.join(mcpDir, 'universal');
-  const universalServers = await scanMcpDirectory(universalDir);
+  const universalServers = await scanMcpDirectory(universalDir, null);
   for (const [fileId, entry] of universalServers) {
     merged.set(fileId, entry);
   }
@@ -105,7 +152,7 @@ export async function discoverMcpServers(engineId: string): Promise<DiscoveredSe
   // Scan engine-specific servers (override universal on fileId collision)
   const engineMcpDir = getEngineConfig(engineId).mcpDir;
   const engineDir = path.join(mcpDir, engineMcpDir);
-  const engineServers = await scanMcpDirectory(engineDir);
+  const engineServers = await scanMcpDirectory(engineDir, engineMcpDir);
   for (const [fileId, entry] of engineServers) {
     if (merged.has(fileId)) {
       console.log(`MCP: engine server "${fileId}" overrides universal server with same filename`);
@@ -119,10 +166,29 @@ export async function discoverMcpServers(engineId: string): Promise<DiscoveredSe
     throw new Error(`MCP: engine "${engineId}" has no MCP server with is_engine=true`);
   }
 
-  // Validate: all is_engine=true entries must share the same key
-  const engineKeys = new Set(engineMcps.map(m => m.key));
-  if (engineKeys.size > 1) {
-    throw new Error(`MCP: engine "${engineId}" has is_engine=true entries with different keys: ${[...engineKeys].join(', ')}`);
+  // Validate: all is_engine=true entries must carry DISTINCT vendor codes.
+  //
+  // This inverts the pre-1.2.0 rule ("they all share one key"), which described
+  // the alternatives of one engine as one radio group. Since `key` became the
+  // JSON's own basename, that rule is false by construction — Unity ships two
+  // engine servers, Godot three — and leaving it in place would throw on every
+  // `init`/`update` for those engines. The grouping it used to express now comes
+  // from the directory (see `runWizard`).
+  //
+  // What has to hold instead is the opposite: two servers registering under one
+  // code are indistinguishable in the agent's settings file, so a swap could not
+  // tell which entry to remove and the orphan would survive with live grants
+  // pointing at a server that is not running. That is a data defect in the
+  // catalog, caught here rather than in the settings file.
+  const seenCodes = new Map<string, string>();
+  for (const entry of engineMcps) {
+    const previous = seenCodes.get(entry.code);
+    if (previous) {
+      throw new Error(
+        `MCP: engine "${engineId}" has is_engine=true entries sharing code "${entry.code}": ${previous}, ${entry.key}`,
+      );
+    }
+    seenCodes.set(entry.code, entry.key);
   }
 
   return merged;
@@ -137,52 +203,6 @@ export function getEngineMcpServers(discoveredServers: DiscoveredServers): McpSe
   }
 
   return result;
-}
-
-export async function configureMcp(
-  projectDir: string,
-  discoveredServers: DiscoveredServers,
-  enabledFileIds: string[],
-  agentId: string = 'claude',
-): Promise<string[]> {
-  const agent = getAgentConfig(agentId);
-
-  if (!agent.supportsMcp || !agent.settingsFile) {
-    return [];
-  }
-
-  const writer = getMcpWriter(agentId);
-  const configuredFileIds: string[] = [];
-  const settingsPath = path.join(projectDir, agent.settingsFile);
-  const settingsDir = path.dirname(settingsPath);
-
-  await ensureDir(settingsDir);
-
-  const settings = await writer.readExisting(settingsPath);
-
-  for (const fileId of enabledFileIds) {
-    const server = discoveredServers.get(fileId);
-    if (!server) continue;
-
-    const resolvedConfig = resolvePlatformConfig(server);
-    if (!resolvedConfig) {
-      logWarn(
-        'configureMcp',
-        `server ${server.key}: no config for platform ${process.platform} and no fallback config, skipping`,
-      );
-      continue;
-    }
-
-    writer.upsert(settings, server.key, resolvedConfig);
-    configuredFileIds.push(fileId);
-  }
-
-  if (configuredFileIds.length > 0) {
-    await writeTextFile(settingsPath, writer.serialize(settings));
-    console.log(`[mcp] ${agentId} -> ${settingsPath} (${configuredFileIds.length} servers)`);
-  }
-
-  return configuredFileIds;
 }
 
 /**
@@ -204,7 +224,7 @@ export function buildMcpServerMap(
   for (const fileId of enabledFileIds) {
     const server = discoveredServers.get(fileId);
     if (!server) continue;
-    map[fileId] = server.key;
+    map[fileId] = server.code;
   }
   return map;
 }
@@ -219,7 +239,7 @@ export function collectMcpRules(
   for (const [fileId, server] of discoveredServers) {
     if (!enabled.has(fileId) || !server.allowedTools) continue;
 
-    const prefix = `${MCP_TOOL_ENTRY_PREFIX}${server.key}__`;
+    const prefix = `${MCP_TOOL_ENTRY_PREFIX}${server.code}__`;
 
     for (const [agentName, tools] of Object.entries(server.allowedTools.agents ?? {})) {
       if (!merged.agents[agentName]) merged.agents[agentName] = [];
