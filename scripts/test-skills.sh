@@ -3694,6 +3694,120 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Content guards on the layer A and layer C additions (LA-7, LA-8, ED-15)
+# ─────────────────────────────────────────────
+# These three sit here rather than inside their own families for one mechanical reason:
+# they read path vars declared with the EM and ED families above (EM_FIX_SKILL, ED_PLAN_TPL),
+# and `set -u` makes forward references fatal. The prefix names what a guard watches, not
+# where it lives.
+#
+# What they watch: the texts Phase 2 added live in files nothing parses. A renamed heading
+# is not an error — it silently returns nothing, and a reader that finds nothing carries on
+# with every right it had. Anchors are therefore chosen by FORMULATION, never by heading:
+# a heading gets rewritten during cosmetics, a formulation only together with its meaning.
+# Same reasoning that put RT-6 on a sentence instead of a section name.
+
+# (LA-7) D4 exists and sits BELOW the lazy-read boundary — asserted by the marker's line
+# number, the way LA-6 does it. The negative half matters more than the positive one: a
+# section that drifts above the marker is read on every Bootstrap by every pipeline skill,
+# the budget decision 2 protects is spent, and nothing else in the suite would notice.
+# Both anchors are FORMULATIONS and neither is the heading: a formulation proves the
+# section exists, where it sits and that it did not leak, all three at once, while a
+# heading anchor would additionally fail on a rename that changed nothing.
+LA7_ANCHORS=('A group is a list, not a script' 'Validation and mutation are two calls.')
+LA7_WHY=""
+if ! grep -qF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES"; then
+    LA7_WHY+=" boundary-marker-missing"
+else
+    LA7_BLINE=$(grep -nF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES" | head -1 | cut -d: -f1)
+    LA7_ABOVE=$(head -n "$LA7_BLINE" "$LA_DEV_PRINCIPLES")
+    LA7_BELOW=$(tail -n +"$LA7_BLINE" "$LA_DEV_PRINCIPLES")
+    for la7_anchor in "${LA7_ANCHORS[@]}"; do
+        echo "$LA7_BELOW" | grep -qF "$la7_anchor" || LA7_WHY+=" not-below:${la7_anchor// /-}"
+        echo "$LA7_ABOVE" | grep -qF "$la7_anchor" && LA7_WHY+=" leaked-above:${la7_anchor// /-}"
+    done
+fi
+if [[ -z "$LA7_WHY" ]]; then
+    pass "LA-7 D4 (group call) present and below the lazy-read boundary, no anchor above it"
+else
+    fail "LA-7 D4 placement drift in dev-principles.md:$LA7_WHY"
+fi
+
+# (LA-8) The other half of the same layer-A delivery, the half that landed in a skill
+# consumer rather than in dev-principles.md: the diagnostic ladder and the diagnosis output
+# contract in /unikit-fix. The `Unverified` field gets its own anchor because it is the one
+# that goes first — it is the only field of the six that looks optional, and dropping it
+# turns a hypothesis into an established fact for whoever implements the fix.
+LA8_ANCHORS=(
+    'cheapest deterministic signal first, most expensive probe last'   # the ladder, by its ordering claim
+    'The diagnosis contract — six fields'                             # the contract, by its own count
+    '**Unverified:** what remained a hypothesis'                      # the field
+    '**This field is never empty.**'                                  # and the rule that keeps it filled
+)
+LA8_WHY=""
+for la8_anchor in "${LA8_ANCHORS[@]}"; do
+    grep -qF "$la8_anchor" "$EM_FIX_SKILL" || LA8_WHY+=" ${la8_anchor// /-}"
+done
+if [[ -z "$LA8_WHY" ]]; then
+    pass "LA-8 diagnostic ladder + diagnosis contract (incl. Unverified) present in unikit-fix"
+else
+    fail "LA-8 anchor MISSING in skills/unikit-fix/SKILL.md:$LA8_WHY"
+fi
+
+# (ED-15) Layer C — the two §4 rules Phase 2 added, plus the coherence of the three
+# counters §4 carries. A hard count ("§4 has seven rules") would break on every future
+# edit; coherence breaks only when the numbers disagree with the body, which is the one
+# failure that has no detector at all today. The intro numeral, the number of numbered
+# rules and the numeral in "All … rules above pass" must be the same, and the ordinal that
+# follows it exactly one greater.
+ed15_word_to_num() {
+    case "$1" in
+        one|One|first|First)             echo 1 ;;
+        two|Two|second|Second)           echo 2 ;;
+        three|Three|third|Third)         echo 3 ;;
+        four|Four|fourth|Fourth)         echo 4 ;;
+        five|Five|fifth|Fifth)           echo 5 ;;
+        six|Six|sixth|Sixth)             echo 6 ;;
+        seven|Seven|seventh|Seventh)     echo 7 ;;
+        eight|Eight|eighth|Eighth)       echo 8 ;;
+        nine|Nine|ninth|Ninth)           echo 9 ;;
+        ten|Ten|tenth|Tenth)             echo 10 ;;
+        eleven|Eleven|eleventh|Eleventh) echo 11 ;;
+        twelve|Twelve|twelfth|Twelfth)   echo 12 ;;
+        *)                               echo 0 ;;
+    esac
+}
+ED15_ANCHORS=(
+    "The input-infrastructure object gets its own \`Editor:\` target."   # §4.6
+    "The owner of a UI element's geometry is named in \`<target>\`."     # §4.7
+)
+ED15_WHY=""
+if [[ ! -f "$ED_PLAN_TPL" ]]; then
+    ED15_WHY+=" template-missing"
+else
+    for ed15_anchor in "${ED15_ANCHORS[@]}"; do
+        grep -qF "$ed15_anchor" "$ED_PLAN_TPL" || ED15_WHY+=" rule-missing:${ed15_anchor:0:24}"
+    done
+    ED15_SECTION=$(awk '/^## §5 /{exit} /^## §4 /{inside=1} inside{print}' "$ED_PLAN_TPL")
+    ED15_INTRO_WORD=$(echo "$ED15_SECTION" | awk '/traps that must be resolved/{print $1; exit}')
+    ED15_PASS_WORD=$(echo "$ED15_SECTION" | grep -oE 'All [A-Za-z]+ rules above pass' | head -1 | awk '{print $2}' || true)
+    ED15_NEXT_WORD=$(echo "$ED15_SECTION" | grep -oE 'An? [A-Za-z]+ may join them' | head -1 | awk '{print $2}' || true)
+    ED15_COUNT=$(echo "$ED15_SECTION" | grep -cE '^[0-9]+\. ' || true)
+    ED15_INTRO_N=$(ed15_word_to_num "${ED15_INTRO_WORD:-}")
+    ED15_PASS_N=$(ed15_word_to_num "${ED15_PASS_WORD:-}")
+    ED15_NEXT_N=$(ed15_word_to_num "${ED15_NEXT_WORD:-}")
+    [[ $ED15_COUNT -gt 0 ]] || ED15_WHY+=" no-numbered-rules-in-§4"
+    [[ $ED15_INTRO_N -eq $ED15_COUNT ]] || ED15_WHY+=" intro(${ED15_INTRO_WORD:-?}=$ED15_INTRO_N)≠rules($ED15_COUNT)"
+    [[ $ED15_PASS_N  -eq $ED15_COUNT ]] || ED15_WHY+=" all-pass(${ED15_PASS_WORD:-?}=$ED15_PASS_N)≠rules($ED15_COUNT)"
+    [[ $ED15_NEXT_N  -eq $((ED15_COUNT + 1)) ]] || ED15_WHY+=" next(${ED15_NEXT_WORD:-?}=$ED15_NEXT_N)≠rules+1($((ED15_COUNT + 1)))"
+fi
+if [[ -z "$ED15_WHY" ]]; then
+    pass "ED-15 both new §4 rules present; intro / body / closing counters coherent ($ED15_COUNT rules)"
+else
+    fail "ED-15 §4 drift in UNITY_RULES.md:$ED15_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # RT: rules-tree + recheck-notes form (RT-1…RT-6)
 # ─────────────────────────────────────────────
 # The rules tree and the notes file of a project are read by grep, section by section, by
@@ -3848,6 +3962,120 @@ if [[ -z "$RT6_WHY" ]]; then
     pass "RT-6 invariant 3 (absence never means ⏸️ MANUAL) stated in all four skills + the worker"
 else
     fail "RT-6 invariant 3 MISSING in:$RT6_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# RT-7…RT-10: the distilled tree, guarded against turning back into a registry
+# ─────────────────────────────────────────────
+# All four watch one failure with four faces: a key that disagrees with its own row, an
+# obligation lifted before anyone tried, a file that grew past its budget, a phrase that
+# was measured going false. An empty target set is a FAIL and not a silent pass — there is
+# exactly one rules tree today, the loop goes empty on the first directory move, and that
+# is precisely when a green result is worth the least. Same convention ED-14 and RT-1 use.
+RT9_BUDGET=130
+RT10_TOKENS=('no silent no-ops' '✅ working' 'Strengths' 'instead of')
+
+# (RT-7) The check table is reached by grepping the `area` key, and ED-14 asserts only that
+# the key belongs to the 12-word vocabulary. A row whose id prefix disagrees with its own
+# area (`ui-3 | scene | …`) passes ED-14 and is then missed by every caller that greps its
+# own area — unreachable exactly when it is needed. Three assertions: the table is not
+# empty, ids are unique, and the id prefix is the area.
+RT7_WHY=""
+RT7_SEEN=0
+for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+    [[ -f "$rt_index" ]] || continue
+    RT7_SEEN=$((RT7_SEEN + 1))
+    rt_id="$(basename "$(dirname "$rt_index")")"
+    RT7_ROW_IDS=()
+    RT7_ROW_AREAS=()
+    while IFS= read -r rt_cell; do RT7_ROW_IDS+=("$rt_cell"); done < <(rt_table_column "$rt_index" '## Check' 1)
+    while IFS= read -r rt_cell; do RT7_ROW_AREAS+=("$rt_cell"); done < <(rt_table_column "$rt_index" '## Check' 2)
+    if [[ ${#RT7_ROW_IDS[@]} -eq 0 ]]; then
+        RT7_WHY+=" $rt_id:check-table-empty"
+        continue
+    fi
+    RT7_TAKEN=" "
+    for rt_i in "${!RT7_ROW_IDS[@]}"; do
+        rt_row_id="${RT7_ROW_IDS[$rt_i]}"
+        rt_row_area="${RT7_ROW_AREAS[$rt_i]:-<missing>}"
+        case "$RT7_TAKEN" in
+            *" $rt_row_id "*) RT7_WHY+=" $rt_id:duplicate-id($rt_row_id)" ;;
+            *)               RT7_TAKEN+="$rt_row_id " ;;
+        esac
+        [[ "${rt_row_id%%-*}" == "$rt_row_area" ]] || RT7_WHY+=" $rt_id:prefix≠area($rt_row_id|$rt_row_area)"
+    done
+done
+if [[ $RT7_SEEN -eq 0 ]]; then
+    fail "RT-7 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+elif [[ -z "$RT7_WHY" ]]; then
+    pass "RT-7 check table non-empty, ids unique, id prefix == area ($RT7_SEEN rules tree(s) scanned)"
+else
+    fail "RT-7 check-table key drift:$RT7_WHY"
+fi
+
+# (RT-8) Zero `GATE LIFTED` in any INDEX.md — symmetric to RT-4, which guards the same
+# thing in the notes. A gate lifted in advance lifts the obligation permanently and for
+# everyone, while lifting is a runtime verdict of /unikit-verify. EM-3 requires the
+# sentence that says so to be present in verification.md; the presence of that caveat in
+# one file is not the absence of a pre-lifted gate in another, which is why this check is
+# separate and points elsewhere.
+RT8_WHY=""
+for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+    [[ -f "$rt_index" ]] || continue
+    rt_id="$(basename "$(dirname "$rt_index")")"
+    while IFS= read -r rt_hit; do
+        [[ -n "$rt_hit" ]] && RT8_WHY+=" $rt_id:line-${rt_hit%%:*}"
+    done < <(grep -nF 'GATE LIFTED' "$rt_index" || true)
+done
+if [[ -z "$RT8_WHY" ]]; then
+    pass "RT-8 no pre-lifted gate in any rules-tree INDEX.md"
+else
+    fail "RT-8 GATE LIFTED written in advance:$RT8_WHY"
+fi
+
+# (RT-9) The budget. 130 lines is not a style rule: it is the only thing between an
+# amendment and the 160-line tool catalog it replaced, which otherwise returns one row at
+# a time with nothing noticing until it is whole again.
+RT9_WHY=""
+RT9_SEEN=0
+for rt_index in "$ROOT_DIR"/mcp/*/rules/*/INDEX.md; do
+    [[ -f "$rt_index" ]] || continue
+    RT9_SEEN=$((RT9_SEEN + 1))
+    rt_id="$(basename "$(dirname "$rt_index")")"
+    RT9_LEN=$(wc -l < "$rt_index" | tr -d '[:space:]')
+    [[ $RT9_LEN -le $RT9_BUDGET ]] || RT9_WHY+=" $rt_id:${RT9_LEN}>${RT9_BUDGET}"
+done
+if [[ $RT9_SEEN -eq 0 ]]; then
+    fail "RT-9 no mcp/*/rules/*/INDEX.md found — the guard has no object left"
+elif [[ -z "$RT9_WHY" ]]; then
+    pass "RT-9 every INDEX.md within the $RT9_BUDGET-line budget ($RT9_SEEN rules tree(s) scanned)"
+else
+    fail "RT-9 INDEX.md over budget:$RT9_WHY"
+fi
+
+# (RT-10) Genre tokens, measured rather than imagined: the first three stood verbatim in
+# the retired biome shard and every one of them went false within four weeks — a claim
+# about server state has a shelf life, a check does not. The fourth is the "instead of X
+# use Y" shape, forbidden outright by the monotonicity invariant. Scans the whole tree and
+# not just INDEX.md, because verification.md is prose on the same subject.
+RT10_WHY=""
+RT10_SEEN=0
+while IFS= read -r rt_file; do
+    [[ -f "$rt_file" ]] || continue
+    RT10_SEEN=$((RT10_SEEN + 1))
+    for rt_token in "${RT10_TOKENS[@]}"; do
+        while IFS= read -r rt_hit; do
+            [[ -n "$rt_hit" ]] || continue
+            RT10_WHY+=" ${rt_file#"$ROOT_DIR/"}:${rt_hit%%:*}(${rt_token// /-})"
+        done < <(grep -nF "$rt_token" "$rt_file" || true)
+    done
+done < <(find "$ROOT_DIR"/mcp -type f -path '*/rules/*' 2>/dev/null)
+if [[ $RT10_SEEN -eq 0 ]]; then
+    fail "RT-10 no files under mcp/*/rules/** — the guard has no object left"
+elif [[ -z "$RT10_WHY" ]]; then
+    pass "RT-10 none of the four measured genre tokens in mcp/*/rules/** ($RT10_SEEN file(s) scanned)"
+else
+    fail "RT-10 genre token in the rules tree:$RT10_WHY"
 fi
 
 # ─────────────────────────────────────────────

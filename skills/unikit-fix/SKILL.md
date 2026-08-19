@@ -221,6 +221,44 @@ To fix this efficiently, I need more context:
 4. When did this start happening?
 ```
 
+### When the symptom lives in the editor, not in the source
+
+Investigation splits by where the symptom actually lives. The code-research delegates read the
+**source** — their tools are enough there. The editor rungs below are walked by **the skill body
+itself**: every one of them is a call to the engine MCP, and those grants are held by this skill,
+not by whatever it delegates to. Both modes pass through here, so the ladder is available on the
+planning path and on the immediate-fix path alike.
+
+Take the rungs in order — cheapest deterministic signal first, most expensive probe last — and
+stop at the first one that names a cause. Each rung is a **class of signal**, never a tool; the
+vocabulary is the one `.unikit/system/dev-principles.md` → **D2** uses. D2 answers *is there such
+a signal at all*; this ladder answers *in which order to take them*.
+
+1. **Console delta from a marker** — place the marker, reproduce, read only what appeared after it.
+2. **Compilation diagnostics with coordinates** — a build that does not pass explains most symptoms before any state is worth reading.
+3. **A narrow structural read** — the one object or component the symptom points at, not the tree around it.
+4. **A targeted probe chosen by the symptom** — read the state the symptom claims is wrong, directly.
+5. **A deterministic behaviour run** — a test with a readable result, or a scripted run.
+6. **A frame** — **only** when the symptom is visual.
+
+Three rules hold across the whole ladder:
+
+- **Reproduce once.** One reproduction, and only where reproducing is safe. A symptom that damages state on the way is described from what you already have, not re-triggered.
+- **No identical call twice without new evidence.** The same call with the same arguments against the same state is not a second observation; it is the first one, paid for twice.
+- **A visual symptom directs the diagnosis, it does not close it.** A frame tells you where to look. The evidence is the state you read afterwards.
+
+**Report every rung you walk.** One line per rung, in the order you took them:
+
+```
+rung <N> — <signal class> → <raw observation>
+```
+
+A rung skipped on purpose is named with its reason (`rung 6 — frame → skipped, the symptom is not
+visual`). Without these lines the ladder is indistinguishable from prose: nobody can check that the
+expensive probe came *after* the cheap one rather than *instead of* it.
+
+---
+
 **After understanding the problem, ask the user to choose a mode:**
 
 ```
@@ -245,10 +283,18 @@ Investigate the codebase enough to understand the problem and create a plan.
 
 **Fallback:** If Agent tool is unavailable, investigate directly using Glob/Grep/Read.
 
+For a symptom that lives in the editor rather than in the source, walk the rungs from Step 1 yourself — the delegates cover the source half only.
+
 After tasks return, synthesize findings to:
 1. Identify the root cause (or most likely candidates)
 2. Map affected files and functions
 3. Assess impact scope
+
+The synthesis is written in the **diagnosis contract** below — six fields, `## Analysis` in the plan file.
+`.unikit/system/dev-principles.md` → **A1** covers a different moment: `CLAIM / EVIDENCE / VERDICT` reports
+**finished** work and ends in a binary verdict. A diagnosis is **unfinished** work — it has no verdict to give,
+so it carries a boundary and a named list of what is still a guess instead. The two do not compete and neither
+replaces the other.
 
 Then create `.unikit/code/FIX_PLAN.md`:
 
@@ -260,11 +306,14 @@ Then create `.unikit/code/FIX_PLAN.md`:
 
 ## Analysis
 
-What was found during investigation:
-- Root cause (or suspected root cause)
-- Affected files and classes
-- Impact scope
-- Related {{engine_name}} systems (if applicable)
+The diagnosis contract — six fields, and every one of them is filled:
+
+- **Symptom:** what is observably wrong, in the terms it actually presents in.
+- **Evidence:** the raw observations the diagnosis rests on — a console line, a diagnostic with coordinates, a value read back. A retelling is not evidence: write down what you saw, not what it meant to you.
+- **Boundary:** how far the investigation actually reached, and therefore what it does not cover.
+- **Probable cause:** the mechanism that explains the symptom, stated as the candidate it still is.
+- **Next action:** the single step the fix starts with.
+- **Unverified:** what remained a hypothesis. **This field is never empty.** When everything was verified it reads `nothing` — a deliberate statement, not an omission. A hypothesis that goes unnamed here is read as established by whoever implements the fix.
 
 ## Fix Steps
 
@@ -343,6 +392,13 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
 - Whether the issue is in a Module or Game script (affects where the fix goes)
 
 **Fallback:** If Agent tool is unavailable, investigate directly using Glob/Grep/Read — find relevant files, read the code around the issue, trace the data flow, check for similar patterns.
+
+For a symptom that lives in the editor rather than in the source, walk the rungs from Step 1 yourself — the delegates cover the source half only.
+
+**Report the synthesis in the diagnosis contract** — the same six fields Step 1.1 writes into `## Analysis`
+(symptom · evidence · boundary · probable cause · next action · unverified). On this path there is no plan file,
+so the contract goes into the session output; **Unverified** is filled here too, and reads `nothing` only when
+nothing was left to guess. Step 3 fixes what this contract established, not what it merely suspected.
 
 ---
 

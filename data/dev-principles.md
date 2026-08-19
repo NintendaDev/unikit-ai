@@ -212,3 +212,15 @@ Never, at any rung:
 - retry a non-idempotent call to see whether it works this time;
 - report a claim with no evidence and let the next phase discover it;
 - quietly downgrade the claim to the one thing you *can* prove and report **that** as the result.
+
+### D4. Group calls, and the economics of reads
+
+The read economy and the evidence discipline of a group are already written down: **A4** (minimal
+scope, compression asymmetry, read-back) and **D1**/**D2** (the `opaque aggregate` detector, and
+the question about avoiding a full re-read). What follows is only what does not reduce to them;
+the server's own half of the rule is the `batch-1` row of the check table in the engine-MCP `INDEX.md`.
+
+- **Group two or more compatible actions, never one.** A group of one is a call with a wrapper around it: it costs the same and it buys an aggregate report where a direct answer was available.
+- **A group is a list, not a script.** There are no references between its elements. Order does not carry a result from one element to the next, and an element that needs the outcome of another is a second call, not a later line in the same one.
+- **Runs, frames and waits go as separate calls.** Each has an execution discipline of its own — a duration, a lane, a result read on its own terms — and a group flattens all three into a single summary.
+- **Validation and mutation are two calls.** Merged into one they give either a mutation nothing checked or a check that executed nothing, and the report cannot tell you which of the two you got.

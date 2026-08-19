@@ -145,7 +145,8 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 │  Pipeline skill (e.g. /unikit-implement)     │
 │                                              │
 │  Step 1.5 Bootstrap:                         │
-│  1. Read dev-principles.md                   │  ← .unikit/system/ (always)
+│  1. Read dev-principles.md, above the        │  ← .unikit/system/ (every Bootstrap)
+│     LAZY-READ BOUNDARY                       │
 │  2. Read the engine-MCP rules tree + notes   │  ← .unikit/system/engine-mcp/ + .unikit/
 │  3. Read RULES.md                            │  ← project overrides
 │  4. Read RULES_INDEX.md                      │
@@ -160,6 +161,8 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 │     with the rules already loaded            │
 └──────────────────────────────────────────────┘
 ```
+
+Step 1 in detail — `dev-principles.md` is **not** read whole on every Bootstrap. A `<!-- === LAZY-READ BOUNDARY === -->` marker splits it: everything **above** the marker is read every time (the evidence contract, the nine failure-class *names*, the discipline rules, phase order, engine workflow, code conventions). Everything **below** it — the deep reference: per-class detectors, the catalog checklist, the degradation ladder, and the group-call and read-economy section — is read **once per session, on the first Editor task**, and unconditionally: never gated on which rules happen to be installed, because otherwise the universal safety net would disappear exactly where no rules exist. A session that never touches editor state never pays for the deep half.
 
 Step 2 in detail — the engine-MCP rules tree holds **exceptions** for the one server this project is configured against, not capabilities and not knowledge-base rules. At Bootstrap a skill reads the **base section** of `.unikit/system/engine-mcp/INDEX.md` (everything except its `## Check` table) plus the **header** of `.unikit/MCP-RECHECK-NOTES.md`, and compares the two: a mismatch is one `WARN` and the entries still apply, because they are suspect rather than void. The `## Check` table is *not* read here — it is grepped per editor task, by that task's area plus the cross-cutting ones. `/unikit-verify` additionally reads `.unikit/system/engine-mcp/verification.md`, and no other skill does.
 
