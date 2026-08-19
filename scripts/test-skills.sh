@@ -3711,7 +3711,10 @@ fi
 # number, the way LA-6 does it. The negative half matters more than the positive one: a
 # section that drifts above the marker is read on every Bootstrap by every pipeline skill,
 # the budget decision 2 protects is spent, and nothing else in the suite would notice.
-LA7_ANCHORS=('### D4. Group calls' 'A group is a list, not a script')
+# Both anchors are FORMULATIONS and neither is the heading: a formulation proves the
+# section exists, where it sits and that it did not leak, all three at once, while a
+# heading anchor would additionally fail on a rename that changed nothing.
+LA7_ANCHORS=('A group is a list, not a script' 'Validation and mutation are two calls.')
 LA7_WHY=""
 if ! grep -qF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES"; then
     LA7_WHY+=" boundary-marker-missing"
