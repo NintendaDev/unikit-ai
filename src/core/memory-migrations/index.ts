@@ -23,6 +23,7 @@ import {
 import { runMigrationChain } from '../migrations/runner.js';
 import type { Migration, MigrationChainResult } from '../migrations/types.js';
 import { PROJECT_WORKSPACE_MIGRATIONS } from '../workspace-migrations/index.js';
+import { PROJECT_MCP_MIGRATIONS } from '../mcp-migrations/index.js';
 
 interface MemoryMigrationContext {
   projectDir: string;
@@ -101,14 +102,19 @@ const codeWrapMigration: Migration<MemoryMigrationContext> = {
   },
 };
 
-// The single project migration chain. The memory wrap runs first, then the
-// workspace relocation — both keyed by `projectDir` only, so the two
-// structurally identical contexts compose into one chain. Kept under the
-// historical name `PROJECT_MEMORY_MIGRATIONS` because the `rules` staleness
-// guard imports it by that name; it now covers memory AND workspace staleness.
+// The single project migration chain: the memory wrap, the workspace
+// relocation, then the MCP steps — every context is keyed by `projectDir`
+// only, so the structurally identical shapes compose into one chain. Kept
+// under the historical name `PROJECT_MEMORY_MIGRATIONS` because the `rules`
+// staleness guard imports it by that name; it now covers memory, workspace AND
+// MCP-config staleness.
+//
+// Declaration order is documentation, not policy — the runner sorts by `since`
+// (1.1.0 layout steps, then the 1.2.0 MCP steps).
 export const PROJECT_MEMORY_MIGRATIONS: readonly Migration<MemoryMigrationContext>[] = [
   codeWrapMigration,
   ...PROJECT_WORKSPACE_MIGRATIONS,
+  ...PROJECT_MCP_MIGRATIONS,
 ];
 
 /**

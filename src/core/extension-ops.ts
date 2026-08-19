@@ -128,9 +128,13 @@ export async function installExtensionAssetsForAllAgents(
 
   // Re-inject MCP tool permissions into all installed skills/subagents
   // (replacement skills and extension skills need MCP tools in frontmatter)
-  if (config.mcp?.servers?.length) {
+  // `Object.keys(...)`, not `.length`: on a `Record<string, string>` the index
+  // signature makes `servers.length` a valid `string` EXPRESSION to tsc while
+  // being `undefined` at runtime — the guard would silently stop re-injecting
+  // MCP grants into extension skills, with no error anywhere.
+  if (Object.keys(config.mcp?.servers ?? {}).length > 0) {
     const discoveredServers = await discoverMcpServers(config.engine);
-    const mcpAllowedTools = collectMcpRules(discoveredServers, config.mcp.servers);
+    const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
   }
 }
@@ -342,9 +346,13 @@ export async function restoreBaseSkills(
   }
 
   // Re-inject MCP tool permissions into restored skills
-  if (config.mcp?.servers?.length) {
+  // `Object.keys(...)`, not `.length`: on a `Record<string, string>` the index
+  // signature makes `servers.length` a valid `string` EXPRESSION to tsc while
+  // being `undefined` at runtime — the guard would silently stop re-injecting
+  // MCP grants into extension skills, with no error anywhere.
+  if (Object.keys(config.mcp?.servers ?? {}).length > 0) {
     const discoveredServers = await discoverMcpServers(config.engine);
-    const mcpAllowedTools = collectMcpRules(discoveredServers, config.mcp.servers);
+    const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
   }
 

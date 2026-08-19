@@ -80,7 +80,7 @@ cat > "$S3_DIR/.unikit.json" <<EOF
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": "$(fake_registry_path minimal-valid)",
   "rules": {
@@ -144,7 +144,7 @@ cat > "$S5_DIR/.unikit.json" << 'EOF'
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": null,
   "rules": {
@@ -205,7 +205,7 @@ cat > "$S7_DIR/.unikit.json" <<EOF
   "version": "1.0.0",
   "engine": "unknown-xyz",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": "$(fake_registry_path minimal-valid)",
   "rules": {

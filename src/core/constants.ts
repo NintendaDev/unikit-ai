@@ -158,6 +158,36 @@ export const MCP_RECHECK_NOTES_FILE = 'MCP-RECHECK-NOTES.md';
 export const MCP_RECHECK_NOTES_ARCHIVE_PREFIX = 'MCP-RECHECK-NOTES.archive.';
 
 /**
+ * Key of the line naming the server a file belongs to. It appears in two
+ * places that are compared against each other: the delivery stamp at the top of
+ * every file in `.unikit/system/engine-mcp/`, and the header of the project's
+ * `.unikit/MCP-RECHECK-NOTES.md`. Both carry a FILE ID, which is why renaming a
+ * file id has to rewrite both — a stamp updated alone turns every pipeline
+ * skill's Bootstrap into a permanent "notes header ≠ configured server" warning
+ * that nothing but a human can clear.
+ */
+export const MCP_STAMP_SERVER_KEY = 'server:';
+
+/**
+ * Pre-1.2.0 MCP file id → its 1.2.0 name.
+ *
+ * The file id used to be a descriptive filename; from 1.2.0 it IS the server's
+ * `key` — its internal identity — so the two had to be brought into line. The
+ * table is the only place the old names survive, and four surfaces read it: the
+ * keys of `config.mcp.servers`, the archived findings logs
+ * (`MCP-RECHECK-NOTES.archive.<fileId>.md`), the `server:` line of the delivered
+ * rules tree, and the `server:` header inside the findings logs themselves.
+ */
+export const MCP_FILE_ID_RENAMES: Readonly<Record<string, string>> = {
+  'unity-mcp-biome': 'unity-biome-mcp',
+  'unity-mcp-coplay': 'coplay-unity-mcp',
+  'godot-mcp-fennara': 'fennara-godot-mcp',
+  'godot-mcp-gdai': 'gdai-godot-mcp',
+  'godot-mcp-coding-solo': 'coding-solo-godot-mcp',
+  'unreal-mcp-chir24': 'chir24-unreal-mcp',
+};
+
+/**
  * Platforms an MCP JSON may declare a `configByPlatform` entry for. The values
  * are `process.platform` ids, so the lookup is a direct index — a platform
  * outside this tuple (freebsd, aix, …) falls back to the plain `config` key.
@@ -177,6 +207,14 @@ export const MCP_TOKEN_HOME = '{{home}}';
 export const MCP_TOKEN_LOCALAPPDATA = '{{localappdata}}';
 
 // --- File names ---
+
+/**
+ * The project config. Named here rather than in `config.ts` because the
+ * migration chain reaches the same file as RAW JSON — `config.ts` cannot be the
+ * owner of a path its own bypass route needs.
+ */
+export const CONFIG_FILE = '.unikit.json';
+
 
 export const SKILL_FILE = 'SKILL.md';
 export const RULES_INDEX_FILE = 'RULES_INDEX.md';
@@ -343,3 +381,6 @@ export const WORKSPACE_ARTIFACT_RENAMES: readonly { from: string; to: string }[]
 
 /** Modular `memory/<module>` layout + module-scoped workspace (PR#1 / PR#4). */
 export const MIGRATION_SINCE_MODULAR_LAYOUT = '1.1.0';
+
+/** MCP vendor codes: `mcp.servers` key→code map + renamed server file ids. */
+export const MIGRATION_SINCE_MCP_VENDOR_CODES = '1.2.0';

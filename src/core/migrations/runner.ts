@@ -29,6 +29,16 @@ const UNANCHORED_SINCE = '0.0.0';
  * anchors keep the order the chain author wrote.
  */
 function inApplyOrder<Ctx>(migrations: readonly Migration<Ctx>[]): Migration<Ctx>[] {
+  // Validated in a pre-pass rather than inside the comparator: `semver.compare`
+  // throws on a malformed version, and a throw from inside `sort` names neither
+  // the step nor the field. The chain author gets both.
+  for (const migration of migrations) {
+    if (migration.since && !semver.valid(migration.since)) {
+      throw new Error(
+        `Migration "${migration.id}" declares an invalid "since" version: "${migration.since}".`,
+      );
+    }
+  }
   return [...migrations].sort((a, b) =>
     semver.compare(a.since ?? UNANCHORED_SINCE, b.since ?? UNANCHORED_SINCE));
 }

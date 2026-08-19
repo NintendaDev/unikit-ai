@@ -43,7 +43,7 @@ const ghostConfig = {
     engine: 'unity',
     engineMcpKey: null,
     rulesRegistry: null,
-    mcp: { servers: [] },
+    mcp: { servers: {} },
     agents: [
         { id: 'gemini', skillsDir: '.gemini/skills', subagentsDir: '.gemini/agents', installedSkills: [], installedSubagents: [] },
         { id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents', installedSkills: ['unikit'], installedSubagents: [] },

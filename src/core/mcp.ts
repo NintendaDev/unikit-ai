@@ -185,6 +185,30 @@ export async function configureMcp(
   return configuredFileIds;
 }
 
+/**
+ * Build the persisted `key → code` selection map for `config.mcp.servers`.
+ *
+ * The code is snapshotted at write time on purpose: it is what UniKit actually
+ * registered in the agent's settings file, and a later swap has to find that
+ * entry by the code that was used THEN, not by the one the package ships by
+ * the time the swap runs.
+ *
+ * A file id with no entry in the catalog is dropped — a selection can outlive
+ * the server file that produced it (an engine switch, a removed vendor).
+ */
+export function buildMcpServerMap(
+  discoveredServers: DiscoveredServers,
+  enabledFileIds: string[],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const fileId of enabledFileIds) {
+    const server = discoveredServers.get(fileId);
+    if (!server) continue;
+    map[fileId] = server.key;
+  }
+  return map;
+}
+
 export function collectMcpRules(
   discoveredServers: DiscoveredServers,
   enabledFileIds: string[],

@@ -295,7 +295,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Inject MCP tool permissions (after all skills — base + extension — are installed)
     console.log(chalk.dim('Injecting MCP tool permissions...\n'));
     const discoveredServers = await discoverMcpServers(engineId);
-    const mcpAllowedTools = collectMcpRules(discoveredServers, config.mcp.servers);
+    const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
 
     // Re-apply extension injections (after base skills updated + MCP injected)
@@ -343,7 +343,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Refresh machine-readable gate-result contract (read by verify + review)
     await installGateResultContract(projectDir);
 
-    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, config.mcp.servers);
+    const selectedEngineServer = resolveSelectedEngineServer(discoveredServers, Object.keys(config.mcp.servers));
 
     // `update` does not re-ask for servers, but the selection still moves under
     // it: editing `.unikit.json` and re-running is how an engine switch reaches

@@ -521,27 +521,27 @@ if [[ "$GODOT_MCP_COUNT" -eq 0 ]]; then
     fail "mcp/godot/ — no MCP JSON files found"
 fi
 
-# unreal-engine-5/ must have unreal-mcp-chir24.json
-if [[ -f "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" ]]; then
-    if validate_json "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json"; then
-        HAS_FIELDS=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" \
+# unreal-engine-5/ must have chir24-unreal-mcp.json
+if [[ -f "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" ]]; then
+    if validate_json "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json"; then
+        HAS_FIELDS=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" \
           "m.key && m.displayName && (m.config || m.configByPlatform) ? 'ok' : 'missing'" 2>/dev/null || echo "missing")
         if [[ "$HAS_FIELDS" == "ok" ]]; then
-            KEY_VAL=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" "m.key" 2>/dev/null)
-            IS_ENGINE=$(json_field "$MCP_DIR/unreal-engine-5/unreal-mcp-chir24.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
+            KEY_VAL=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.key" 2>/dev/null)
+            IS_ENGINE=$(json_field "$MCP_DIR/unreal-engine-5/chir24-unreal-mcp.json" "m.is_engine === true ? 'true' : 'false'" 2>/dev/null)
             if [[ -n "$KEY_VAL" && "$IS_ENGINE" == "true" ]]; then
-                pass "mcp/unreal-engine-5/unreal-mcp-chir24.json (valid structure, key=$KEY_VAL, is_engine=true)"
+                pass "mcp/unreal-engine-5/chir24-unreal-mcp.json (valid structure, key=$KEY_VAL, is_engine=true)"
             else
-                fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
+                fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — key='$KEY_VAL', is_engine=$IS_ENGINE (expected non-empty key + is_engine=true)"
             fi
         else
-            fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — missing key, displayName, or config/configByPlatform"
+            fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — missing key, displayName, or config/configByPlatform"
         fi
     else
-        fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — invalid JSON"
+        fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — invalid JSON"
     fi
 else
-    fail "mcp/unreal-engine-5/unreal-mcp-chir24.json — missing"
+    fail "mcp/unreal-engine-5/chir24-unreal-mcp.json — missing"
 fi
 
 # ─────────────────────────────────────────────
@@ -3397,7 +3397,7 @@ fi
 # biome verification.md now that the rules tree is the delivered asset. What that file
 # must say is the NEGATIVE of the convention — the verdict is produced by a run, never
 # pre-declared — so the two halves of EM-3 point in opposite directions on purpose.
-EM_BIOME_VERIFICATION="$ROOT_DIR/mcp/unity/rules/unity-mcp-biome/verification.md"
+EM_BIOME_VERIFICATION="$ROOT_DIR/mcp/unity/rules/unity-biome-mcp/verification.md"
 EM3_WHY=""
 grep -qF 'GATE LIFTED' "$UNIKIT_VERIFY_SKILL" || EM3_WHY+=" verify-skill"
 grep -qF 'GATE LIFTED' "$EM_DEV_PRINCIPLES"   || EM3_WHY+=" dev-principles"
@@ -3417,8 +3417,8 @@ fi
 # tool, so every old parent name is a guaranteed DIRECT_TOOL_CALL_REMOVED; UE_PROJECT_PATH
 # passed fs.existsSync and then failed every call with NOT_CONNECTED. coplay's 8085 never
 # existed in their repository at all.
-EM_CHIR24_JSON="$ROOT_DIR/mcp/unreal-engine-5/unreal-mcp-chir24.json"
-EM_COPLAY_JSON="$ROOT_DIR/mcp/unity/unity-mcp-coplay.json"
+EM_CHIR24_JSON="$ROOT_DIR/mcp/unreal-engine-5/chir24-unreal-mcp.json"
+EM_COPLAY_JSON="$ROOT_DIR/mcp/unity/coplay-unity-mcp.json"
 EM4_WHY=""
 for dead in manage_pipeline manage_performance manage_game_framework manage_behavior_tree manage_navigation UE_PROJECT_PATH; do
     grep -qF "$dead" "$EM_CHIR24_JSON" && EM4_WHY+=" chir24:$dead"
@@ -3468,7 +3468,7 @@ fi
 # per OS. Both tokens must be present in the JSON (an accidental absolute path would work
 # on the author's machine and nowhere else) and both must resolve at configure time, which
 # the platform-agnostic install assertion in test-install.sh covers.
-EM_FENNARA_JSON="$ROOT_DIR/mcp/godot/godot-mcp-fennara.json"
+EM_FENNARA_JSON="$ROOT_DIR/mcp/godot/fennara-godot-mcp.json"
 EM7_WHY=""
 grep -qF '{{localappdata}}' "$EM_FENNARA_JSON" || EM7_WHY+=" no-localappdata-token"
 grep -qF '{{home}}' "$EM_FENNARA_JSON"         || EM7_WHY+=" no-home-token"
@@ -3934,8 +3934,15 @@ RT5_HITS="$(grep -rln 'mcpRecheckNotesPath(' "$ROOT_DIR/src" --include='*.ts' 2>
 RT5_WHY=""
 while IFS= read -r rt_file; do
     [[ -n "$rt_file" ]] || continue
-    case "$(basename "$rt_file")" in
-        constants.ts|mcp-notes.ts) ;;
+    case "$(basename "$rt_file")$(dirname "$rt_file" | sed 's|.*/||')" in
+        # The declaration, the swap module that owns the rename — and the MCP
+        # MIGRATION, which is the one thing here that is not the installer. It
+        # rewrites the `server:` header when a file id is renamed under the
+        # project's feet; leaving that line stale makes every pipeline skill
+        # print "notes header ≠ configured server" forever, and nothing but a
+        # human can clear it. The exception is narrow by construction: a
+        # migration runs once per project and writes no findings.
+        constants.ts*|mcp-notes.ts*|index.tsmcp-migrations) ;;
         *) RT5_WHY+=" $(basename "$rt_file")" ;;
     esac
 done <<< "$RT5_HITS"

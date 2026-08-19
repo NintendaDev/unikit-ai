@@ -149,9 +149,18 @@ export async function hashInstalledSkill(paths: ResolvedSkillPaths): Promise<str
  *
  * Sorting is mandatory: `config.mcp.servers` comes out of the wizard in answer
  * order, which is not deterministic.
+ *
+ * Both halves of each entry are hashed (`key=code`, not `key` alone). The code
+ * is what gets substituted into a skill's text and injected as its `mcp__<code>`
+ * grants, so a server whose vendor code changes while the SELECTION stays put
+ * must still reinstall every skill — a set-only hash would call that identical.
  */
-function mcpHashComponent(engineMcpKey: string | null | undefined, mcpServers: string[]): string {
-  return `mcp:${engineMcpKey ?? 'none'}|${[...mcpServers].sort().join(',')}`;
+function mcpHashComponent(
+  engineMcpKey: string | null | undefined,
+  mcpServers: Record<string, string>,
+): string {
+  const pairs = Object.entries(mcpServers).map(([key, code]) => `${key}=${code}`).sort();
+  return `mcp:${engineMcpKey ?? 'none'}|${pairs.join(',')}`;
 }
 
 export async function computeSourceHashWithTemplate(
@@ -160,7 +169,7 @@ export async function computeSourceHashWithTemplate(
   skillName: string,
   agentId: string,
   engineMcpKey: string | null | undefined,
-  mcpServers: string[],
+  mcpServers: Record<string, string>,
 ): Promise<string | null> {
   const baseHash = await hashDirectory(sourceSkillDir);
   if (!baseHash) return null;
@@ -200,7 +209,7 @@ export async function computeSubagentSourceHash(
   engineId: string,
   agentId: string,
   engineMcpKey: string | null | undefined,
-  mcpServers: string[],
+  mcpServers: Record<string, string>,
 ): Promise<string | null> {
   const fileHash = await hashFile(sourcePath);
   if (!fileHash) return null;

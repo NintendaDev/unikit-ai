@@ -40,11 +40,12 @@ export interface UpdateSkillsOptions {
   engineId?: string;
   engineMcpKey?: string | null;
   /**
-   * The project's selected MCP server file ids (`config.mcp.servers`). Folded
-   * into every source hash so a changed selection reinstalls the skills — MCP
-   * tool injection is additive and would otherwise accumulate dead ids.
+   * The project's MCP selection as `key → code` (`config.mcp.servers`). Folded
+   * into every source hash so a changed selection — or a changed vendor code
+   * under an unchanged selection — reinstalls the skills; MCP tool injection is
+   * additive and would otherwise accumulate dead ids.
    */
-  mcpServers?: string[];
+  mcpServers?: Record<string, string>;
   replacedSkills?: Set<string>;
   /**
    * Skills newly added to the package that the caller opted to install this
@@ -72,7 +73,7 @@ async function getManagedSkillState(
   skillName: string,
   engineId: string,
   engineMcpKey: string | null | undefined,
-  mcpServers: string[],
+  mcpServers: Record<string, string>,
 ): Promise<ManagedSkillState | null> {
   const sourceSkillDir = path.join(getSkillsDir(), skillName);
   const sourceHash = await computeSourceHashWithTemplate(sourceSkillDir, engineId, skillName, agent.id, engineMcpKey, mcpServers);
@@ -105,7 +106,7 @@ export async function buildManagedSkillsState(
   baseSkills: string[],
   engineId: string,
   engineMcpKey: string | null | undefined,
-  mcpServers: string[],
+  mcpServers: Record<string, string>,
 ): Promise<Record<string, ManagedSkillState>> {
   const state: Record<string, ManagedSkillState> = {};
 
@@ -280,7 +281,7 @@ export async function updateSkills(
   projectDir: string,
   options: UpdateSkillsOptions = {},
 ): Promise<UpdateSkillsResult> {
-  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, mcpServers = [], replacedSkills, installNewSkills } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, mcpServers = {}, replacedSkills, installNewSkills } = options;
   const availableSkills = await getAvailableSkills();
   const availableSet = new Set(availableSkills);
 
