@@ -662,6 +662,51 @@ else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi
 
+# Part 5b guard: the hint key inside mcp/universal/context7.json is pinned to the
+# MCP_COMMENT_KEY constant in the source tree.
+#
+# The literal lives in two places at once — in the data and in the OpenCode
+# writer, which assembles its output from a whitelist and therefore carries the
+# hint through BY NAME. Rename one half and the other breaks in silence: nothing
+# else here would notice, because Part 5 and 5b keep no whitelist of keys inside
+# `config`, and the absent-key guards above are top-level only.
+#
+# It insures Codex as well, from the other side. Its TOML writer carries the key
+# through BY ACCIDENT — it copies fields it does not recognise — and the day
+# that writer is refactored onto a whitelist, the hint would vanish from one
+# agent with nothing to say so.
+#
+# The constant is read from `src/core/constants.ts`, never from `dist/`. Not a
+# question of step order (CI builds before it tests) but the convention of this
+# suite — Part 7i greps `src/core/*.ts` the same way: the source tree is what is
+# under test, and `dist/` may lag the working tree.
+#
+# The `^export const` anchor is load-bearing rather than cosmetic. The constant
+# carries TSDoc explaining why it is a constant and not a literal, and the
+# natural way to write that quotes the declaration itself; with no anchor
+# `grep -oE` returns two lines, COMMENT_KEY goes multi-line, and the comparison
+# fails with a message whose cause cannot be read off it. The anchor is also the
+# declaration form the constant promised, so the two check each other.
+#
+# An empty COMMENT_KEY — constant renamed or deleted — is a fail and not a skip,
+# on the convention already in force in ED-14 and RT-1.
+COMMENT_KEY=$(grep -oE "^export const MCP_COMMENT_KEY = '[^']+'" "$ROOT_DIR/src/core/constants.ts" | sed "s/.*'\(.*\)'/\1/")
+if [[ -z "$COMMENT_KEY" ]]; then
+    fail "MCP hint key: MCP_COMMENT_KEY not found in src/core/constants.ts (expected form: export const MCP_COMMENT_KEY = '<key>')"
+else
+    CONTEXT7_COMMENT=$(node -e "
+      const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      const cfg = m.config || {};
+      const key = process.argv[2];
+      console.log(key in cfg ? 'ok' : (Object.keys(cfg).join(',') || '(empty config)'));
+    " "$MCP_DIR/universal/context7.json" "$COMMENT_KEY" 2>/dev/null || echo "read-error")
+    if [[ "$CONTEXT7_COMMENT" == "ok" ]]; then
+        pass "MCP hint key: mcp/universal/context7.json config carries '$COMMENT_KEY' (pinned to MCP_COMMENT_KEY)"
+    else
+        fail "MCP hint key: constant MCP_COMMENT_KEY = '$COMMENT_KEY', but mcp/universal/context7.json config has keys: $CONTEXT7_COMMENT"
+    fi
+fi
+
 # TomlMcpWriter unit-style smoke:
 #   - upsert → serialize → readExisting round-trips stdio + HTTP configs
 #   - `type` stripped, `headers` renamed to http_headers, null env dropped
