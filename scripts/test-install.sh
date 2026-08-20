@@ -893,16 +893,18 @@ mkdir -p "$CODEX_MCP_DIR"
   const { discoverMcpServers } = await import('./dist/core/mcp.js');
   const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
   const servers = await discoverMcpServers('unity');
-  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'codex');
-  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'codex');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp', 'unity-biome-mcp'], 'codex');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp', 'unity-biome-mcp'], 'codex');
 " "$CODEX_MCP_DIR" > /dev/null 2>&1)
 
 CODEX_TOML="$CODEX_MCP_DIR/.codex/config.toml"
 assert_exists "$CODEX_TOML" ".codex/config.toml should exist after configureMcp"
 assert_contains "$CODEX_TOML" '^\[mcp_servers\.context7\]$' \
   "codex toml should contain [mcp_servers.context7] section"
-assert_contains "$CODEX_TOML" 'command = "npx"' \
-  "codex stdio server should have command = \"npx\""
+assert_contains "$CODEX_TOML" 'command = "uvx"' \
+  "codex stdio server should have command = \"uvx\""
+assert_contains "$CODEX_TOML" 'url = "https://mcp.context7.com/mcp"' \
+  "codex http server context7 should have url = \"https://mcp.context7.com/mcp\""
 assert_contains "$CODEX_TOML" '^\[mcp_servers\.UnityMCP\]$' \
   "codex toml should contain [mcp_servers.UnityMCP] section"
 assert_contains "$CODEX_TOML" 'url = "http://127.0.0.1:8080/mcp"' \
@@ -916,7 +918,7 @@ if [[ "$CONTEXT7_SECTIONS" -ne 1 ]]; then
   exit 1
 fi
 
-echo "  ✓ codex MCP config: stdio + HTTP servers written to .codex/config.toml (idempotent)"
+echo "  ✓ codex MCP config: stdio (unity-biome-mcp) + HTTP (context7, UnityMCP) written to .codex/config.toml (idempotent)"
 
 # Claude regression: same discoveredServers must still produce valid JSON
 # with camelCase mcpServers.<key>.command field.
@@ -933,28 +935,39 @@ mkdir -p "$CLAUDE_MCP_REGRESS_DIR"
 
 assert_exists "$CLAUDE_MCP_REGRESS_DIR/.mcp.json" "claude .mcp.json must exist (regression check)"
 
-CLAUDE_REGRESS_CMD=$(node -e "
+node -e "
   const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-  console.log((c.mcpServers && c.mcpServers.context7 && c.mcpServers.context7.command) || 'missing');
-" "$CLAUDE_MCP_REGRESS_DIR/.mcp.json")
+  const errors = [];
 
-if [[ "$CLAUDE_REGRESS_CMD" != "npx" ]]; then
-  echo "Assertion failed: claude .mcp.json regression — expected mcpServers.context7.command = \"npx\", got \"$CLAUDE_REGRESS_CMD\""
-  exit 1
-fi
+  const ctx = c.mcpServers && c.mcpServers.context7;
+  if (!ctx) errors.push('mcpServers.context7 missing — camelCase container or entry lost');
+  else {
+    if (ctx.type !== 'http') errors.push('context7.type expected \"http\", got ' + JSON.stringify(ctx.type));
+    if (ctx.url !== 'https://mcp.context7.com/mcp')
+      errors.push('context7.url expected \"https://mcp.context7.com/mcp\", got ' + JSON.stringify(ctx.url));
+    if (!('_comment' in ctx)) errors.push('context7._comment missing — the API-key hint must reach the settings file');
+  }
 
-echo "  ✓ claude MCP config regression: .mcp.json stays camelCase JSON with mcpServers.context7.command"
+  if (errors.length > 0) {
+    console.error('claude .mcp.json regression assertion failed:');
+    errors.forEach(e => console.error('  - ' + e));
+    process.exit(1);
+  }
+" "$CLAUDE_MCP_REGRESS_DIR/.mcp.json"
+
+echo "  ✓ claude MCP config regression: .mcp.json stays camelCase JSON with mcpServers.context7 as http + hint"
 
 # ─────────────────────────────────────────────────────
 # Test 12b: OpenCode MCP config shape (mcp container, local type, command array, environment)
 # ─────────────────────────────────────────────────────
 # Drives configureMcp('opencode') directly, verifies the OpenCode JSON shape:
 #   - top-level container `mcp` (not `mcpServers`)
-#   - each server: type === 'local', command === [cmd, ...args]
+#   - a local server: type === 'local', command === [cmd, ...args]
+#   - a remote server: type === 'remote', url, no `command`, no `environment`
 #   - environment preserved only when source `env` is non-empty
 #   - existing non-mcp top-level keys survive the write (merge, not rewrite)
-# Uses engine=godot so we can assert both the no-env path (context7) and the
-# with-env path (coding-solo-godot-mcp).
+# Uses engine=godot so we can assert both the remote path (context7) and the
+# local with-env path (coding-solo-godot-mcp).
 
 OPENCODE_MCP_DIR="$TMPDIR/test-opencode-mcp"
 mkdir -p "$OPENCODE_MCP_DIR"
@@ -996,11 +1009,12 @@ node -e "
   const ctx = c.mcp && c.mcp.context7;
   if (!ctx) errors.push('context7 server missing');
   else {
-    if (ctx.type !== 'local') errors.push('context7.type expected local, got ' + JSON.stringify(ctx.type));
-    if (!Array.isArray(ctx.command)) errors.push('context7.command must be array');
-    else if (JSON.stringify(ctx.command) !== JSON.stringify(['npx', '-y', '@upstash/context7-mcp@latest']))
-      errors.push('context7.command wrong shape: ' + JSON.stringify(ctx.command));
-    if ('environment' in ctx) errors.push('context7.environment must be absent when source env is empty');
+    if (ctx.type !== 'remote') errors.push('context7.type expected remote, got ' + JSON.stringify(ctx.type));
+    if ('command' in ctx) errors.push('context7.command must be absent on a remote entry, got ' + JSON.stringify(ctx.command));
+    if (ctx.url !== 'https://mcp.context7.com/mcp')
+      errors.push('context7.url expected https://mcp.context7.com/mcp, got ' + JSON.stringify(ctx.url));
+    if (!('_comment' in ctx)) errors.push('context7._comment missing — the named passthrough must carry the hint through');
+    if ('environment' in ctx) errors.push('context7.environment must be absent on a remote entry (no process to configure), got ' + JSON.stringify(ctx.environment));
   }
 
   const godot = c.mcp && c.mcp.godot;
@@ -1046,17 +1060,20 @@ if [[ "$CTX_COUNT" -ne 1 ]]; then
   exit 1
 fi
 
-echo "  ✓ opencode MCP config: mcp container, local type, command array, per-key environment, top-level preserved (idempotent)"
+echo "  ✓ opencode MCP config: mcp container, remote + local types, command array, per-key environment, top-level preserved (idempotent)"
 
 # ─────────────────────────────────────────────────────
-# Test 12c: OpenCode MCP config skips non-stdio (HTTP) servers
+# Test 12c: OpenCode MCP config writes HTTP servers as remote
 # ─────────────────────────────────────────────────────
-# UnityMCP is HTTP-only (type: 'http', url: ...). OpenCode's on-disk shape is
-# stdio-only (type: 'local', command: [...]). Rather than silently degrading
-# HTTP to an empty-command local server, the writer must skip the entry with
-# a warning. This test pins that contract.
+# UnityMCP is HTTP-only (type: 'http', url: ...). The writer now distinguishes
+# two transports and translates an HTTP source into OpenCode's own remote shape
+# (type: 'remote', url: ...) instead of declining to emit anything. There is no
+# degradation in either direction: a remote entry never acquires an empty
+# `command`, and a local entry is still built from `command`/`args`/`env`.
+# This test pins the translation and, through the `command` absence check,
+# keeps the original point of the block — HTTP must not become a broken local.
 
-OPENCODE_HTTP_DIR="$TMPDIR/test-opencode-mcp-http-skip"
+OPENCODE_HTTP_DIR="$TMPDIR/test-opencode-mcp-http-remote"
 mkdir -p "$OPENCODE_HTTP_DIR"
 
 (cd "$ROOT_DIR" && node --input-type=module -e "
@@ -1075,17 +1092,33 @@ node -e "
   const errors = [];
 
   if (!c.mcp) errors.push('missing top-level mcp container');
-  if (!c.mcp.context7) errors.push('stdio context7 must still be written');
-  if (c.mcp.UnityMCP) errors.push('HTTP UnityMCP must be skipped, not written as local');
+
+  const unity = c.mcp && c.mcp.UnityMCP;
+  if (!unity) errors.push('HTTP UnityMCP must be written as remote, not skipped');
+  else {
+    if (unity.type !== 'remote') errors.push('UnityMCP.type expected remote, got ' + JSON.stringify(unity.type));
+    if (unity.url !== 'http://127.0.0.1:8080/mcp')
+      errors.push('UnityMCP.url expected http://127.0.0.1:8080/mcp, got ' + JSON.stringify(unity.url));
+    if ('command' in unity)
+      errors.push('UnityMCP.command must be absent — HTTP must not degrade into a local entry, got ' + JSON.stringify(unity.command));
+  }
+
+  const ctx = c.mcp && c.mcp.context7;
+  if (!ctx) errors.push('context7 must be written as remote, not skipped');
+  else {
+    if (ctx.type !== 'remote') errors.push('context7.type expected remote, got ' + JSON.stringify(ctx.type));
+    if ('command' in ctx)
+      errors.push('context7.command must be absent on a remote entry, got ' + JSON.stringify(ctx.command));
+  }
 
   if (errors.length > 0) {
-    console.error('opencode http-skip assertion failed:');
+    console.error('opencode http-remote assertion failed:');
     errors.forEach(e => console.error('  - ' + e));
     process.exit(1);
   }
 " "$OPENCODE_HTTP_JSON"
 
-echo "  ✓ opencode MCP config: HTTP servers (UnityMCP) skipped; stdio servers (context7) still written"
+echo "  ✓ opencode MCP config: HTTP servers (UnityMCP, context7) written as remote, never as local with an empty command"
 
 # ─────────────────────────────────────────────────────
 # Test 12d: Antigravity MCP config shape (serverUrl transform, type stripped)
@@ -1139,9 +1172,11 @@ node -e "
   const ctx = c.mcpServers && c.mcpServers.context7;
   if (!ctx) errors.push('context7 server missing');
   else {
-    if (ctx.command !== 'npx') errors.push('context7.command expected npx, got ' + JSON.stringify(ctx.command));
-    if (JSON.stringify(ctx.args) !== JSON.stringify(['-y', '@upstash/context7-mcp@latest']))
-      errors.push('context7.args wrong shape: ' + JSON.stringify(ctx.args));
+    if (ctx.serverUrl !== 'https://mcp.context7.com/mcp')
+      errors.push('context7.serverUrl expected https://mcp.context7.com/mcp, got ' + JSON.stringify(ctx.serverUrl));
+    if ('type' in ctx) errors.push('context7.type must be stripped, got ' + JSON.stringify(ctx.type));
+    if ('url' in ctx) errors.push('context7.url must be renamed to serverUrl, not left in place');
+    if (!('_comment' in ctx)) errors.push('context7._comment missing — the passthrough writer must carry the hint through verbatim');
     if ('env' in ctx) errors.push('context7.env must be absent when source has no env');
   }
 

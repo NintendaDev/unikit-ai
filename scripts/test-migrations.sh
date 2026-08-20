@@ -485,11 +485,14 @@ else
     fail "swap back: expected only 'unity-biome-mcp' to remain, got '$SWAP_BACK_KEYS'"
 fi
 
-# 4d — the SAME swap on OpenCode is correct while being only half of it, and the
-# expectation is pinned so the writer's refusal is never read as a swap defect.
-# `toOpenCodeServerConfig` returns null for anything whose `command` is not a
-# string, and coplay is HTTP: removal happens, the write does not, and the
-# settings file legitimately ends up without an engine server.
+# 4d — the SAME swap on OpenCode, which used to be only half of one. While the
+# writer refused anything whose `command` was not a string, the swap to HTTP
+# coplay removed the old entry and wrote nothing in its place, and the pinned
+# expectation existed so that refusal was never misread as a swap defect. The
+# writer now translates an HTTP source into OpenCode's own remote shape, so both
+# halves happen here exactly as they do on claude — and the entry that lands is
+# asserted to be remote, not merely present, because the shape is the half the
+# key list cannot see.
 SWAP_OC="$TMPDIR/swap-opencode"; mkdir -p "$SWAP_OC"
 reconcile "$SWAP_OC" '["unity-biome-mcp"]' opencode
 reconcile "$SWAP_OC" '["coplay-unity-mcp"]' opencode '{"coplay-unity-mcp":"unity-biome-mcp"}'
@@ -498,10 +501,22 @@ SWAP_OC_KEYS=$(node -e "
   const c = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
   console.log(Object.keys(c.mcp || {}).sort().join(',') || '(none)');
 " "$SWAP_OC/opencode.json")
-if [[ "$SWAP_OC_KEYS" == "(none)" ]]; then
-    pass "swap on opencode: removal yes, write no — an HTTP server is refused by the writer, not by the swap"
+if [[ "$SWAP_OC_KEYS" == "UnityMCP" ]]; then
+    pass "swap on opencode: removal and write both happen — an HTTP server lands as a remote entry"
 else
-    fail "swap on opencode: expected no server entries after the HTTP swap, got '$SWAP_OC_KEYS'"
+    fail "swap on opencode: expected only 'UnityMCP' to remain after the HTTP swap, got '$SWAP_OC_KEYS'"
+fi
+
+SWAP_OC_TYPE=$(node -e "
+  const fs = require('fs');
+  const c = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+  const e = (c.mcp || {}).UnityMCP || {};
+  console.log([e.type || '(no type)', 'command' in e ? 'has-command' : 'no-command'].join(','));
+" "$SWAP_OC/opencode.json")
+if [[ "$SWAP_OC_TYPE" == "remote,no-command" ]]; then
+    pass "swap on opencode: the written entry is type=remote with no command field"
+else
+    fail "swap on opencode: expected 'remote,no-command' for the written entry, got '$SWAP_OC_TYPE'"
 fi
 
 # 4e — the version placeholder reaches the settings file, and the reconciliation

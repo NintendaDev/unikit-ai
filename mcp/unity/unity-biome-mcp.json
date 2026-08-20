@@ -3,7 +3,7 @@
   "code": "unity-biome-mcp",
   "is_engine": true,
   "order": 1,
-  "displayName": "Unity Biome MCP",
+  "displayName": "Unity Biome MCP (Unity 6000.0+)",
   "docs": {
     "context7": "/german-krasnikov/unity-biome-mcp",
     "repo": "https://github.com/german-krasnikov/unity-biome-mcp"

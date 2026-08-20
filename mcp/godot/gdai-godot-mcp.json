@@ -3,7 +3,7 @@
   "code": "godot-mcp",
   "is_engine": true,
   "order": 2,
-  "displayName": "GDAI Godot MCP [Paid]",
+  "displayName": "GDAI Godot MCP [Paid] (Godot 4.1+)",
   "docs": {
     "context7": "/3ddelano/gdai-mcp-plugin-godot",
     "repo": "https://github.com/3ddelano/gdai-mcp-plugin-godot"
