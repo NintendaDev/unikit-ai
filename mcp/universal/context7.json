@@ -6,8 +6,9 @@
     "repo": "https://github.com/upstash/context7"
   },
   "config": {
-    "command": "npx",
-    "args": ["-y", "@upstash/context7-mcp@latest"]
+    "type": "http",
+    "url": "https://mcp.context7.com/mcp",
+    "_comment": "Higher rate limits with a free API key — add an Authorization: Bearer <YOUR_API_KEY> header. The field name differs per client — per-client examples: https://context7.com/docs/resources/all-clients"
   },
   "allowed-tools": {
     "agents": {},

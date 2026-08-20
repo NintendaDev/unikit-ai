@@ -164,6 +164,25 @@ export const MCP_RULES_INDEX_FILE = 'INDEX.md';
 export const MCP_VERSION_PLACEHOLDER = '{{ VERSION }}';
 
 /**
+ * Key of the optional hint line a server config may carry inside `config` —
+ * `_comment`, always last.
+ *
+ * A constant rather than a literal for the same reason
+ * {@link MCP_VERSION_PLACEHOLDER} standing next to it is one: the string lives
+ * in two places at once — in the data (`mcp/universal/context7.json`) and in the
+ * code that carries it through (`mcp-writers/opencode-writer.ts`, which builds
+ * its output from a whitelist and would drop an unnamed field by construction).
+ * With no shared source, renaming one half silently breaks the other, and
+ * nothing downstream would fail loudly enough to notice.
+ *
+ * The field is a hint addressed to the person reading their own settings file —
+ * where to get an API key, which header carries it. It is not a mechanism: no
+ * consumer reads it, and no behaviour anywhere changes depending on whether it
+ * is present, absent, or says something else entirely.
+ */
+export const MCP_COMMENT_KEY = '_comment';
+
+/**
  * Project-local log of MCP findings — `.unikit/MCP-RECHECK-NOTES.md`. It sits at
  * the root of `.unikit/` rather than under `system/` **by construction**: every
  * system asset is flat-rewritten on init/update, and this file is user-owned
