@@ -177,9 +177,11 @@ For agents with MCP support, the wizard configures:
 
 | Engine | Engine MCP (you pick one) | General |
 |--------|---------------------------|---------|
-| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) | [Context7](https://github.com/upstash/context7) |
-| Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (default) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) | [Context7](https://github.com/upstash/context7) |
-| Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) | [Context7](https://github.com/upstash/context7) |
+| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS → 6.x) | [Context7](https://github.com/upstash/context7) |
+| Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (default, Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum) | [Context7](https://github.com/upstash/context7) |
+| Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+) | [Context7](https://github.com/upstash/context7) |
+
+The versions are each vendor's own **floor**, and the default is not the most permissive choice: on Godot the default (Fennara) has the highest floor of the three, so a 4.3 project wants GDAI or Coding-Solo instead. UniKit AI does not detect your engine version — the bracket in the wizard is the whole warning you get.
 
 Engine MCP servers give the agent real-time feedback - compilation errors, tests, logs - so it can fix issues without developer involvement. Context7 is used by `/unikit-memory` and other skills for up-to-date library documentation lookup.
 

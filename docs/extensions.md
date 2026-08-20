@@ -372,7 +372,7 @@ Validation is one rule: the template must carry a top-level `command` **or** `ur
 ```json
 {
   "command": "npx",
-  "args": ["-y", "@upstash/context7-mcp@latest"],
+  "args": ["-y", "<your-mcp-package>"],
   "env": { "MY_SERVER_TOKEN": "..." }
 }
 ```

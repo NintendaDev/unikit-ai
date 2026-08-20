@@ -171,7 +171,7 @@ Two engine servers compete here. The wizard lists them in `order`, so **Unity Bi
 
 Backed by [unity-biome-mcp](https://github.com/german-krasnikov/unity-biome-mcp). Requires **Unity 6 (6000.0+)** and [`uv`](https://docs.astral.sh/uv/). Install the Unity package from the git URL `https://github.com/german-krasnikov/unity-biome-mcp.git?path=unity-plugin`, then run `MCP > Setup Wizard` in Unity. The Editor must be running — the server finds its port through `~/.unity-biome-mcp/ports/*.port`, so no env vars are needed.
 
-It is stdio, so unlike the HTTP servers it also reaches the OpenCode agent, and it is the deepest of the engine integrations: transactional scene edits, a real console watermark, and authoring across uGUI, UI Toolkit, animation and shaders. What it can do at *your* version is answered by its live catalog, not by a list in this file — which is why you will not find one here.
+It is the deepest of the engine integrations: transactional scene edits, a real console watermark, and authoring across uGUI, UI Toolkit, animation and shaders. What it can do at *your* version is answered by its live catalog, not by a list in this file — which is why you will not find one here.
 
 It is the first server to ship a **rules tree**: see [Engine-MCP rules tree](#engine-mcp-rules-tree) below for what that is, and what it deliberately does not contain.
 
@@ -186,7 +186,7 @@ It is the first server to ship a **rules tree**: see [Engine-MCP rules tree](#en
 }
 ```
 
-Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires the package installed in your Unity project and the Unity Editor running. Its catalog arrives grouped, with only part of it active up front, so an agent asks it what is reachable rather than assuming. Broadly it covers console reading, domain reload / asset refresh, EditMode and PlayMode test runs, and Editor authoring across scenes, components, prefabs, assets, UI documents, materials, animation and project settings.
+Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires **Unity 2021.3 LTS → 6.x**, the package installed in your Unity project, and the Unity Editor running. Its catalog arrives grouped, with only part of it active up front, so an agent asks it what is reachable rather than assuming. Broadly it covers console reading, domain reload / asset refresh, EditMode and PlayMode test runs, and Editor authoring across scenes, components, prefabs, assets, UI documents, materials, animation and project settings.
 
 It ships no rules tree yet. That means UniKit AI knows of no exceptions for it — not that it can do less, and never a reason to skip an editor task. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
 
@@ -222,6 +222,8 @@ All 14 tools are visible immediately (no bootstrap). Its shape is a code executo
 This is the only config using [`configByPlatform`](#per-platform-configs) — its binary is an absolute path that differs on each OS.
 
 #### GDAI Godot MCP (`order: 2`, paid) · Coding-Solo Godot MCP (`order: 3`, free)
+
+**GDAI requires Godot 4.1+.** Coding-Solo declares no version threshold at all — its prerequisites say only "Godot Engine installed" — which is why it is the one entry in the Godot radio with no version in brackets. An undeclared threshold, not a forgotten one: a bracketed "Godot 4.x" there would be our inference rather than the vendor claim.
 
 Both are stdio servers and both work. Neither ships a rules tree yet: UniKit AI knows of no exceptions for either, which is not the same as knowing they can do less — and the generic development principles apply to them exactly as they do to every other server.
 
@@ -277,6 +279,8 @@ Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `co
 
 `config` (and each `configByPlatform` variant) may carry an `env` block, handed to the server process verbatim; the path tokens below expand inside its values too. UniKit AI uses it for exactly one thing today — see [`UNITY_MCP_NO_GATING`](#unity-biome-mcp-order-1) above.
 
+`config` may also carry **`_comment` as its last field**: a one-line hint addressed to whoever opens their own settings file. Every writer carries it through verbatim — Codex because it copies fields it does not recognise, OpenCode through a passthrough naming the key explicitly, since that writer assembles its output from a whitelist and would otherwise drop it. Nothing reads the value: no consumer changes behaviour depending on whether it is present, absent, or says something else entirely. The key is pinned to the `MCP_COMMENT_KEY` constant by a guard in `scripts/test-skills.sh` Part 5b, so the data and the writer cannot drift apart. [Context7](#context7) is the one server using it today.
+
 **`docs` replaced a hand-written `instruction` field, and the removal is deliberate.** That field restated the vendor's own documentation, which is how it came to carry a measured-false claim about how much of the catalog was reachable. A URL rots more slowly than prose, and when it finally dies it answers 404 loudly instead of walking you through outdated steps in silence. The install facts themselves — engine version, prerequisites, plugin setup — belong to the vendor and are deliberately not mirrored here. A server that needs no setup at all simply omits `docs.repo` and contributes no line.
 
 **`verified` is provenance, not a warning.** It used to mean "the tool names in `allowed-tools` were audited against version X"; with wildcard grants there is no name list left to audit, so it was re-anchored onto the rules tree. Do not attach a staleness warning to it: these servers ship one to three releases a day, so the warning would fire constantly and become noise. A bare stamp answers a different and useful question — *which version were these exceptions actually observed on* — and that answer stays true after the server moves on.
@@ -314,7 +318,7 @@ Per selected server, in this order:
 2. **No entry** → the server is written in full.
 3. **An entry under our exact code** → `command` and `args` are **left alone**. Whoever wrote them knows things UniKit does not: a pinned version, a local build, an API key. Overwriting them is how the duplicate-registration bug this release fixes came about.
 4. **An entry under a case or whitespace variant** of our code → removed and rewritten under the canonical spelling. Leaving it is not an option: grants are literal, so `mcp__UnityMCP__*` confers nothing on tools published as `mcp__unityMCP__*`. The scan is bounded — a key registered by an extension is never treated as a variant of ours, however similar it looks.
-5. **`env` is the one narrow exception** and is overlaid onto an existing entry as well. It is UniKit's own field: `UNITY_MCP_NO_GATING=1` is what makes "gating is removed by configuration" a true statement about your project, and a plugin that rewrites the entry carries it away with everything else. The field name differs per agent (`environment` on OpenCode, `env` elsewhere) and Codex and OpenCode drop empty values.
+5. **`env` is the one narrow exception** and is overlaid onto an existing entry as well. It is UniKit's own field: `UNITY_MCP_NO_GATING=1` is what makes "gating is removed by configuration" a true statement about your project, and a plugin that rewrites the entry carries it away with everything else. The field name differs per agent (`environment` on OpenCode, `env` elsewhere) and Codex and OpenCode drop empty values. On OpenCode a **remote** entry is skipped by the overlay entirely: `environment` configures a spawned process, and a remote server has none. No shipped server reaches that path today — all three HTTP ones carry no `env` — but OpenCode is the one agent that declares a `$schema`, where a field that does not belong there can invalidate the whole file rather than a single entry.
 
 The pass is idempotent — it compares the serialized result against what is on disk and does not rewrite an unchanged file.
 
@@ -343,7 +347,9 @@ The single engine server here registers under the code `unreal-engine`.
 }
 ```
 
-Backed by [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) over its **native** transport (no Node.js bridge process). Setup:
+Backed by [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) over its **native** transport (no Node.js bridge process). Requires **Unreal Engine 5.0+**; the vendor tests up to 5.8 (preview). The wizard shows the floor only — a ceiling goes stale on every engine release and means no more than "not tested further", while the floor is the half that makes a choice wrong.
+
+Setup:
 
 - Enable **Enable Native MCP** in the plugin settings (`bEnableNativeMCP` defaults to `false`; the server then listens on port 3000).
 - A C++ project is required: copy `plugins/McpAutomationBridge` into `<Project>/Plugins/` and build it.
@@ -356,24 +362,25 @@ The server exposes exactly **one** tool, which dispatches to every underlying ac
 
 ```json
 {
-  "command": "npx",
-  "args": ["-y", "@upstash/context7-mcp@latest"]
+  "type": "http",
+  "url": "https://mcp.context7.com/mcp",
+  "_comment": "Higher rate limits with a free API key — add an Authorization: Bearer <YOUR_API_KEY> header. The field name differs per client — per-client examples: https://context7.com/docs/resources/all-clients"
 }
 ```
 
-Provides up-to-date documentation for any library. Used by `/unikit` and `/unikit-architecture` during setup, by `/unikit-explore` while researching, and by `/unikit-memory` to enrich dynamic memory.
+Provides up-to-date documentation for any library. It is a hosted HTTP endpoint: nothing is installed and no local process is spawned. Used by `/unikit` and `/unikit-architecture` during setup, by `/unikit-explore` while researching, and by `/unikit-memory` to enrich dynamic memory.
 
 `/unikit-implement` and `/unikit-fix` may also reach for it, but only on **two triggers**: an unfamiliar area (what approaches the authors propose — once per area per session), and a dead end (the schema is there, the capability is not). Never routinely at Bootstrap: it is a network dependency inside the editor lane, it costs 2-4k tokens per query, and it makes two runs of the same plan diverge. Whatever comes back describes **intent, not behaviour**, so it carries the same evidence obligations as anything else — with heightened attention, because it has been caught presenting a structurally broken path as an exemplary one. `/unikit-verify` is deliberately **not** granted it: verification needs evidence, not advice.
 
 The server is optional in the wizard. Declining it does not disable anything — it removes one fallback, and the degradation ladder in the development principles continues from there.
 
-### Known limitation: OpenCode does not receive HTTP servers
+**The server works anonymously.** A free API key from [context7.com/dashboard](https://context7.com/dashboard) raises your rate limits — it does not unlock access. That is why no `headers` block is shipped: a literal `Bearer YOUR_API_KEY` would answer 401 on every fresh install and, by rule 3 above (an entry standing under our exact code is left alone), would never repair itself.
 
-`src/core/mcp-writers/opencode-writer.ts` only supports stdio servers — those whose config carries a string `command`. Servers declared with `{ "type": "http", "url": ... }` are skipped with a `console.warn`; installation itself does not fail.
+**`_comment` is where to look when you do want the key.** It is an ordinary string carried into your settings file, addressed to you and read by nothing. It names the *header* rather than a field name, because the field name differs per client — Codex writes `http_headers`, Antigravity has a shape of its own — so the per-client examples at [context7.com/docs/resources/all-clients](https://context7.com/docs/resources/all-clients) are the authority on where the header actually goes. See [MCP JSON schema fields](#mcp-json-schema-fields) for the field itself.
 
-In practice this means **Coplay Unity MCP (`UnityMCP`) and ChiR24 Unreal MCP (`unreal-engine`) are not configured for the OpenCode agent**. All other agents (Claude Code, Codex CLI, Cursor, Qwen Code, Antigravity) receive them normally. If you use OpenCode with Unity or Unreal, add the HTTP server to `opencode.json` by hand. Unity Biome MCP is stdio, so it is unaffected.
+You can delete the hint from your own settings file and `update` will **not** put it back. That is the same rule that preserves an API key you typed in by hand: UniKit does not rewrite an entry already standing under our code.
 
-One consequence is worth naming, because it looks like a bug and is not: switching **to** an HTTP server on OpenCode removes the previous engine server's entry and writes nothing in its place. The removal is the swap doing its job; the missing write is this limitation. The settings file legitimately ends up with no engine server.
+**A project installed before this change keeps its `npx` entry**, by decision rather than oversight — there is no migration, because rewriting an entry you may have edited is precisely what rule 3 exists to prevent. To move over, delete the `context7` entry from your settings file and run `unikit-ai update`.
 
 ## Rules Manifest
 

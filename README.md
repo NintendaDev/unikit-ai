@@ -46,13 +46,13 @@ There's no dedicated "scene" skill, but scene work isn't excluded - when a featu
 
 ## Supported Engines
 
-Each engine ships one or more MCP servers. Where several are listed, they are alternatives — `unikit-ai init` offers them as a radio group and you pick one. They are shown here in the order the wizard presents them; the first is the default offer on a fresh install.
+Each engine ships one or more MCP servers. Where several are listed, they are alternatives — `unikit-ai init` offers them as a radio group and you pick one. They are shown here in the order the wizard presents them; the first is the default offer on a fresh install. The versions below are each vendor's own **floor**, and the default is not the most permissive choice — on Godot it has the highest floor of the three — so check yours before accepting it. UniKit AI does not detect your engine version.
 
 | Engine                    | MCP servers (in wizard order)                                                                                                                                                        |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Unity                     | [Unity Biome](https://github.com/german-krasnikov/unity-biome-mcp) · [MCP for Unity](https://github.com/CoplayDev/unity-mcp) (Coplay)                                                  |
-| Godot 4 / Godot 4 .NET    | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) · GDAI Godot MCP (paid) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp)                     |
-| Unreal Engine 5           | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp)                                                                                                                              |
+| Unity                     | [Unity Biome](https://github.com/german-krasnikov/unity-biome-mcp) (Unity 6000.0+) · [MCP for Unity](https://github.com/CoplayDev/unity-mcp) (Coplay, Unity 2021.3 LTS → 6.x)                                                  |
+| Godot 4 / Godot 4 .NET    | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (Godot 4.5+) · GDAI Godot MCP (paid, Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum)                     |
+| Unreal Engine 5           | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+)                                                                                                                              |
 
 These servers are not interchangeable, and UniKit AI does not keep a table of who can do what — such a table is a claim about six moving targets and goes wrong quietly. What an agent may attempt comes from the server's **live catalog**, asked per task. On top of that, UniKit AI installs the selected server's **rules tree** into `.unikit/system/engine-mcp/`: a short list of *exceptions* — checks to perform where this server has been observed to mislead. A rules tree only ever adds an obligation; it never removes a right, and its absence means no known exceptions rather than no capabilities. See [docs/configuration.md](docs/configuration.md#engine-mcp-rules-tree) for the per-server detail.
 

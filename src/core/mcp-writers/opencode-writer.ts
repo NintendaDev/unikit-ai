@@ -157,9 +157,11 @@ export class OpenCodeMcpWriter implements McpWriter {
     // one new shape and changes nothing for hand-written entries that carry no
     // `type` at all.
     //
-    // No live case today — all seven servers in the catalog were checked (three
-    // HTTP, none with `env`; three stdio with `env`; fennara with an empty
-    // `env: {}`). This is prophylaxis, and saying so keeps the next reader from
+    // No live case today — all seven catalog servers were checked: the three
+    // HTTP ones carry no `env` at all, and every `env` that does exist (two
+    // non-empty, fennara's empty `{}`) belongs to a local server. That is the
+    // load-bearing half: nothing reaches this guard as things stand today.
+    // So it is prophylaxis, and saying so keeps the next reader from
     // reading it as a fix for a bug that was actually happening. It matters
     // because OpenCode is the one agent that declares a `$schema`, where a field
     // that does not belong can invalidate the whole file rather than one entry.
