@@ -117,19 +117,26 @@ function parseConfigByPlatform(raw: unknown): Partial<Record<McpPlatformKey, Rec
 }
 
 /**
- * Read the optional `verified` audit stamp. All three fields are required — a
- * partial stamp is worse than none, since `init` would print it as if the audit
- * were complete.
+ * Read the optional `verified` audit stamp. Both fields are required — a
+ * partial stamp is worse than none, since a measurement with no date behind it
+ * cannot be judged old, and a date with no registry behind it cannot be redone.
+ *
+ * The stamp is a maintainer's working note and is never delivered into a
+ * project: nothing here reaches the rules tree, the notes header, or the `init`
+ * summary. A `version` key, should one survive in a config, is read by nobody —
+ * comparing versions was structurally dead (both sides of every comparison came
+ * from the same package constant), so the field was dropped rather than kept as
+ * a warning that could not fire.
  */
 function parseVerified(raw: unknown): McpServerEntry['verified'] | null {
   if (!isRecord(raw)) return null;
 
-  const { version, date, toolRegistry } = raw;
-  if (typeof version !== 'string' || typeof date !== 'string' || typeof toolRegistry !== 'string') {
+  const { date, toolRegistry } = raw;
+  if (typeof date !== 'string' || typeof toolRegistry !== 'string') {
     return null;
   }
 
-  return { version, date, toolRegistry };
+  return { date, toolRegistry };
 }
 
 /**

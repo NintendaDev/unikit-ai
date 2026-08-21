@@ -228,14 +228,6 @@ const STAMPABLE_EXTENSION = '.md';
 /** Key of the stamp line naming the server a delivered file came from. */
 const STAMP_SERVER_KEY = `${MCP_STAMP_SERVER_KEY} `;
 
-/** Separator between the ISO date and the time in an ISO 8601 timestamp. */
-const ISO_DATE_TIME_SEPARATOR = 'T';
-
-/** Today in `YYYY-MM-DD`, the granularity the delivery stamp records. */
-function isoToday(): string {
-  return new Date().toISOString().split(ISO_DATE_TIME_SEPARATOR)[0];
-}
-
 /**
  * Provenance stamp prepended to every delivered markdown file.
  *
@@ -246,21 +238,30 @@ function isoToday(): string {
  * back in.
  *
  * The stamp is also the reference point for the notes header: skills compare the
- * `server:` / `version:` recorded here against the one in
- * `.unikit/MCP-RECHECK-NOTES.md` to tell a finding about the configured server
- * from a finding inherited from another one. `version` is empty when the source
- * JSON carries no `verified` block — the comparison then degrades to `server:`
- * alone, which the installer says out loud.
+ * `server:` recorded here against the one in `.unikit/MCP-RECHECK-NOTES.md` to
+ * tell a finding about the configured server from a finding inherited from
+ * another one.
+ *
+ * It carries the server id alone. A `version:` line used to sit here, but both
+ * sides of the comparison it fed — this stamp and the notes header written from
+ * it — came from the same package constant, so a mismatch could only ever be
+ * produced by a UniKit release and never by the user's server moving. A
+ * `delivered:` date sat here too, and it was the one field that changed on every
+ * run: each `update` produced a diff on every file of the tree consisting of one
+ * date, and nothing read it.
+ *
+ * What that buys is worth stating, because it is the reason to prefer the short
+ * stamp over the informative one: a delivered file is now byte-identical between
+ * runs for as long as the tree and the server are unchanged, so an unexpected
+ * diff is a signal rather than noise to scroll past.
  */
-function renderEngineMcpRulesStamp(fileId: string, version: string, deliveredOn: string): string {
+function renderEngineMcpRulesStamp(fileId: string): string {
   return [
     '<!-- Delivered by unikit-ai from the rules tree of the selected engine MCP server. -->',
     '<!-- Fix it at the source (the package\'s `mcp/<engine>/rules/<server>/`), not here: -->',
     '<!-- every init / update rewrites this folder. -->',
     '',
     `${STAMP_SERVER_KEY}${fileId}`,
-    `version: ${version}`,
-    `delivered: ${deliveredOn}`,
     '',
     '---',
     '',
@@ -312,28 +313,16 @@ export async function readDeliveredEngineMcpServer(projectDir: string): Promise<
  * folder and leaves it absent. That is a normal state, not a degraded one: no
  * rules means no known exceptions, never no capabilities, and skills read a
  * missing file as a silent skip.
- *
- * @param deliveredOn ISO date stamped into every delivered file. Defaults to
- *                    today; a parameter only so a test can pin it.
  */
 export async function installEngineMcpRules(
   projectDir: string,
   selected: SelectedEngineServer | null,
-  deliveredOn: string = isoToday(),
 ): Promise<void> {
   const destDir = systemEngineMcpDir(projectDir);
   const sourceDir = selected?.entry.rulesDir ?? null;
   const wanted = new Set<string>();
 
   if (sourceDir) {
-    const version = selected!.entry.verified?.version ?? '';
-    if (!version) {
-      logWarn(
-        'installEngineMcpRules',
-        `server ${selected!.fileId} carries no verified.version — stamping an empty version`,
-      );
-    }
-
     const sourceFiles = await listFilesRecursive(sourceDir);
     if (sourceFiles.length === 0) {
       logWarn('installEngineMcpRules', `rules tree is empty or unreadable: ${sourceDir}`);
@@ -348,15 +337,12 @@ export async function installEngineMcpRules(
       }
 
       const stamped = relPath.endsWith(STAMPABLE_EXTENSION)
-        ? renderEngineMcpRulesStamp(selected!.fileId, version, deliveredOn) + content.trim() + '\n'
+        ? renderEngineMcpRulesStamp(selected!.fileId) + content.trim() + '\n'
         : content;
 
       await writeTextFile(path.join(destDir, relPath), stamped);
       wanted.add(relPath);
-      logInfo(
-        'installEngineMcpRules',
-        `stamped ${relPath} with server=${selected!.fileId} version=${version}`,
-      );
+      logInfo('installEngineMcpRules', `stamped ${relPath} with server=${selected!.fileId}`);
     }
   }
 

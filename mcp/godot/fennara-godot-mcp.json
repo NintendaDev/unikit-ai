@@ -9,7 +9,6 @@
     "repo": "https://github.com/fennaraOfficial/fennara-godot-ai"
   },
   "verified": {
-    "version": "0.4.2",
     "date": "2026-08-15",
     "toolRegistry": "local/crates/fennara-mcp/src/runtime/schemas.rs"
   },

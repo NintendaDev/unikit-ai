@@ -9,7 +9,6 @@
     "repo": "https://github.com/ChiR24/Unreal_mcp"
   },
   "verified": {
-    "version": "0.5.30",
     "date": "2026-08-15",
     "toolRegistry": "src/tools/catalog/capabilities/generated/parent-tool-definitions.generated.ts"
   },

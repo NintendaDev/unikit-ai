@@ -11,7 +11,7 @@ import {
   saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
   type AgentInstallation, type UniKitConfig,
 } from '../../core/config.js';
-import { getMcpDocsLines, getMcpVerifiedStamps, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
+import { getMcpDocsLines, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
@@ -275,12 +275,6 @@ export async function initCommand(): Promise<void> {
       console.log(chalk.green(`  MCP servers configured: ${answers.mcpServers.join(', ')}`));
       for (const line of getMcpDocsLines(discoveredServers, answers.mcpServers)) {
         console.log(chalk.dim(`    ${line}`));
-      }
-      // MCP versions are deliberately not pinned. Surfacing which version the
-      // rules tree was measured against lets the user judge how far the server
-      // has moved since — provenance, not a staleness warning.
-      for (const stamp of getMcpVerifiedStamps(discoveredServers, answers.mcpServers)) {
-        console.log(chalk.dim(`    ${stamp}`));
       }
       if (answers.engineMcpKey) {
         console.log(chalk.dim(`  Engine MCP: ${answers.engineMcpKey}`));

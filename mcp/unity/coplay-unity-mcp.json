@@ -9,7 +9,6 @@
     "repo": "https://github.com/CoplayDev/unity-mcp"
   },
   "verified": {
-    "version": "10.1.2",
     "date": "2026-08-15",
     "toolRegistry": "Server/src/services/registry/tool_registry.py"
   },
