@@ -69,25 +69,6 @@ export interface McpServerEntry {
   configByPlatform?: Partial<Record<McpPlatformKey, Record<string, unknown>>>;
   allowedTools?: McpAllowedTools;
   /**
-   * When this entry's **rules tree** was last measured, and against which tool
-   * registry. A maintainer's working note — it stays in the package and is
-   * delivered nowhere.
-   *
-   * Re-anchored twice. First when `allowed-tools` went to wildcards: there is no
-   * list of tool names left to audit, so the old reading ("these names were
-   * checked") records work nobody does any more, and `toolRegistry` became
-   * "where the registry the measurement read lived". Then again when the server
-   * `version` was dropped: comparing versions was structurally dead, because
-   * both sides of every comparison — the stamp on the delivered tree and the
-   * notes header written from it — came from this same package constant, so the
-   * mismatch could only ever be announced by a UniKit release and never by the
-   * user's server moving.
-   *
-   * What survives is the half that was always the useful one: a date says how
-   * old the measurement is, and `toolRegistry` says where to redo it.
-   */
-  verified?: { date: string; toolRegistry: string };
-  /**
    * Presentation order inside one catalog directory's engine group (ascending,
    * 1-based). Drives the wizard's radio pre-selection — and nothing else since
    * the shard corpus was retired: one engine takes one engine server, so there

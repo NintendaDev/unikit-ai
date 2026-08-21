@@ -554,13 +554,6 @@ fi
 # written out four times. One node pass over mcp/*/*.json covers both.
 #
 # Checks:
-#   - `verified`, when present, carries exactly date + toolRegistry — and NOT `version`,
-#     which is checked separately as an absent key. The field used to hold the server
-#     version the rules tree was measured against, and it fed a comparison whose two
-#     sides (the delivery stamp, and the notes header written out of it) both came from
-#     this same package constant, so the mismatch could only be produced by a UniKit
-#     release. Adding it back to one config would restore a dead mechanism silently,
-#     which is precisely what an absent-key guard is for
 #   - `order`, when present, is a number
 #   - `configByPlatform`, when present, keys ⊆ {win32,darwin,linux} and each
 #     entry has `command` or `url`
@@ -572,11 +565,12 @@ fi
 #     it is the only thing the `init` summary can generate an install line from,
 #     so without it the user is never told a plugin has to go into the editor
 #   - `rules`, when present, points at an existing directory holding an INDEX.md
-#   - the keys `shards` and `instruction` are ABSENT everywhere. Both are retired,
-#     and both would come back the same way: someone adds a server six months from
-#     now, copies the nearest config as a template, and reintroduces a mechanism
-#     nothing else reads (`shards`) or a slab of restated vendor prose that goes
-#     stale claim by claim (`instruction`). An absent-key guard is stricter than
+#   - the keys `shards`, `instruction` and `verified` are ABSENT everywhere. All three
+#     are retired, and all three would come back the same way: someone adds a server
+#     six months from now, copies the nearest config as a template, and reintroduces a
+#     mechanism nothing else reads (`shards`), a slab of restated vendor prose that goes
+#     stale claim by claim (`instruction`), or a hand-maintained measurement date whose
+#     last consumer was deleted (`verified`). An absent-key guard is stricter than
 #     any check on their contents.
 #
 # Errors accumulate rather than exiting on the first one, and every message names
@@ -598,19 +592,9 @@ MCP_SCHEMA_RESULT=$(node -e "
       try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
       catch { why.push('parse-error:'+rel); continue; }
 
-      if (m.verified !== undefined) {
-        const v=m.verified;
-        if (typeof v!=='object'||v===null||Array.isArray(v)) why.push('verified-not-object:'+rel);
-        else {
-          for (const k of ['date','toolRegistry'])
-            if (typeof v[k]!=='string'||!v[k]) why.push('verified-missing-'+k+':'+rel);
-          if (v.version !== undefined) why.push('verified-version-returned:'+rel);
-        }
-      }
-
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
 
-      for (const dead of ['shards','instruction'])
+      for (const dead of ['shards','instruction','verified'])
         if (m[dead] !== undefined) why.push('retired-key-'+dead+':'+rel);
 
       if (m.docs !== undefined) {
@@ -666,7 +650,7 @@ MCP_SCHEMA_RESULT=$(node -e "
 " "$MCP_DIR" 2>/dev/null || echo "pass-error")
 
 if [[ "$MCP_SCHEMA_RESULT" == "ok" ]]; then
-    pass "MCP schema fields valid across all configs (verified/order/configByPlatform/docs/rules + order unique, shards+instruction gone)"
+    pass "MCP schema fields valid across all configs (order/configByPlatform/docs/rules + order unique, shards+instruction+verified gone)"
 else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi

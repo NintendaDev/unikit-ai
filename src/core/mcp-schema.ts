@@ -117,29 +117,6 @@ function parseConfigByPlatform(raw: unknown): Partial<Record<McpPlatformKey, Rec
 }
 
 /**
- * Read the optional `verified` audit stamp. Both fields are required — a
- * partial stamp is worse than none, since a measurement with no date behind it
- * cannot be judged old, and a date with no registry behind it cannot be redone.
- *
- * The stamp is a maintainer's working note and is never delivered into a
- * project: nothing here reaches the rules tree, the notes header, or the `init`
- * summary. A `version` key, should one survive in a config, is read by nobody —
- * comparing versions was structurally dead (both sides of every comparison came
- * from the same package constant), so the field was dropped rather than kept as
- * a warning that could not fire.
- */
-function parseVerified(raw: unknown): McpServerEntry['verified'] | null {
-  if (!isRecord(raw)) return null;
-
-  const { date, toolRegistry } = raw;
-  if (typeof date !== 'string' || typeof toolRegistry !== 'string') {
-    return null;
-  }
-
-  return { date, toolRegistry };
-}
-
-/**
  * Parse one MCP JSON object into an entry.
  *
  * @param raw      the parsed JSON object.
@@ -188,11 +165,6 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
 
   if (configByPlatform) {
     entry.configByPlatform = configByPlatform;
-  }
-
-  const verified = parseVerified(raw['verified']);
-  if (verified) {
-    entry.verified = verified;
   }
 
   const allowedTools = raw['allowed-tools'] as McpAllowedTools | undefined;

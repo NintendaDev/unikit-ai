@@ -1,7 +1,7 @@
 // --- MCP settings-file reconciliation ---
 //
 // Everything that WRITES a server into an agent's settings file lives here.
-// `mcp.ts` keeps discovery, rule collection, the docs/verified summary lines and
+// `mcp.ts` keeps discovery, rule collection, the docs summary lines and
 // the frontmatter helpers; it had 443 of its 500 allowed lines used up (the
 // per-file ceiling is enforced by `test-skills.sh` Part 7i over `src/core/*.ts`)
 // and the reconciliation rules that follow — key normalisation, the `env`

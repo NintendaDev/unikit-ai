@@ -8,10 +8,6 @@
     "context7": "/fennaraofficial/fennara-godot-ai",
     "repo": "https://github.com/fennaraOfficial/fennara-godot-ai"
   },
-  "verified": {
-    "date": "2026-08-15",
-    "toolRegistry": "local/crates/fennara-mcp/src/runtime/schemas.rs"
-  },
   "configByPlatform": {
     "win32": {
       "command": "{{localappdata}}\\Fennara\\bin\\fennara-mcp.exe",
