@@ -3177,17 +3177,37 @@ else
     pass "MG-2 no REFUSE step in unikit-mcp-audit"
 fi
 
-# (MG-3) The promise, in the two places that phrase it that way. NOTE the asymmetry with
-# MG-1, and it is deliberate: docs/skills.md never contained "refuses on a dirty scene" —
-# it said "refuses on any of them" after listing the measurements — so asserting that
-# literal there would pass without checking anything. Its own literal is the git working
-# tree, which the skill no longer inspects at all and whose grant is gone.
+# (MG-3) The promise, in the three places that carried it. NOTE the asymmetry with MG-1,
+# and it is deliberate: docs/skills.md never contained "refuses on a dirty scene" — it said
+# "refuses on any of them" after listing the measurements — so asserting that literal there
+# would pass without checking anything. Its own claim is the git working tree, which the
+# skill no longer inspects at all and whose grant is gone. MG-1 does not cover that claim:
+# a rewrite can drop the words "eight-step" and keep "measures … the git working tree".
+#
+# That third check is SECTION-SCOPED, and the scoping is the load-bearing part. This file
+# documents thirty-odd skills and several of them work on the git working tree for real —
+# /unikit-commit stages and commits it, /unikit-review already says "Analyzes staged
+# changes (git status + git diff --cached)", /unikit-fix requires a commit before a direct
+# edit. A file-wide negative on three such ordinary words goes red the first time somebody
+# writes a correct sentence about one of THOSE skills, pointing at unikit-mcp-audit, which
+# their change never touched. The cheapest way to green is then to delete this assert — and
+# it is the only mechanical protection the claim has. A false red that converts into a
+# removed guard is worse than no guard, so the window is what makes the short literal safe.
+# Same technique as MF-2 (awk window over Step 3.4) and MH-8 (over the skills: block).
+MG3_AUDIT_SECTION="$(awk '/^### .*unikit-mcp-audit/{f=1;next} f&&(/^## /||/^### /){exit} f' \
+    "$MG_DOCS_SKILLS" 2>/dev/null || true)"
 MG3_WHY=""
 grep -qF 'refuses on a dirty scene' "$MG_AUDIT"     && MG3_WHY+=" skill"
 grep -qF 'refuses on a dirty scene' "$MG_SKILL_MAP" && MG3_WHY+=" skill-map"
-grep -qF 'the git working tree'     "$MG_DOCS_SKILLS" && MG3_WHY+=" docs-skills-git"
+# An empty window is a FAIL, not a pass: renaming the heading would otherwise retire the
+# check in silence — the same vacuous-negative failure this guard was rewritten to escape.
+if [[ -z "$MG3_AUDIT_SECTION" ]]; then
+    MG3_WHY+=" docs-skills-section-not-found"
+elif echo "$MG3_AUDIT_SECTION" | grep -qF 'the git working tree'; then
+    MG3_WHY+=" docs-skills-git"
+fi
 if [[ -z "$MG3_WHY" ]]; then
-    pass "MG-3 the withdrawn refusal promise is gone from skill, skill-map and docs"
+    pass "MG-3 the withdrawn refusal promise is gone from skill, skill-map and the docs audit section"
 else
     fail "MG-3 withdrawn promise still advertised in:$MG3_WHY"
 fi
