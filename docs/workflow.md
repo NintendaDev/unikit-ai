@@ -315,11 +315,14 @@ After phase completion:
 - Runs tests if `Testing: yes`
 - Creates commit checkpoint
 
-Post-completion:
+Post-completion, in order:
 
 - Checks TODO.md for resolved tasks
 - Proposes new rules via background agents
 - Triggers documentation checkpoint if `Docs: yes`
+- Decides what to do with the plan file
+- **Offers to move MCP findings to the durable log** - if the plan's `## MCP Findings` table has rows, hands the plan path to `/unikit-mcp-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
+- Offers `/unikit-review` then `/unikit-commit` - **invoked as skills, in your session**, not delegated to a subagent. That distinction is real: a subagent carries findings into a context you cannot see, `file:line` references stop being clickable, and you cannot ask a follow-up question about a finding. The two steps above it *are* delegated, because their output is a file rather than a conversation
 
 ### `/unikit-fix [bug description]` - fix and learn
 
