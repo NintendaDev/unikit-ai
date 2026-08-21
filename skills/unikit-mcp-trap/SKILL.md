@@ -73,18 +73,18 @@ Silently load — do not narrate:
 1. **`{{skills_dir}}/{{self_name}}/references/notes-format.md`** — the format this skill
    owns. Mandatory; without it, do not write.
 2. **`.unikit/system/engine-mcp/INDEX.md`**, first lines only — the delivery stamp
-   (`server:` / `version:`). This is the configured server, the second side of every
-   header comparison. File absent → there are no known exceptions for this server; that
+   (`server:`). This is the configured server, the second side of every header
+   comparison. File absent → there are no known exceptions for this server; that
    restricts nothing and switches nothing to `⏸️ MANUAL`. Carry the server as unknown
    and say so once.
-3. **`.unikit/MCP-RECHECK-NOTES.md`** if it exists — its header (`server:` / `version:` /
-   `audited:`) and the ids already taken.
+3. **`.unikit/MCP-RECHECK-NOTES.md`** if it exists — its header (`server:` / `audited:`)
+   and the ids already taken.
 
 **Header mismatch is a WARN, never a stop.** If the notes header names a different
-server or version than the stamp, print exactly one line and keep going:
+server than the stamp, print exactly one line and keep going:
 
 ```
-WARN [mcp-trap] server/version in notes header ≠ configured (<notes> ≠ <configured>)
+WARN [mcp-trap] server in notes header ≠ configured (<notes> ≠ <configured>)
 ```
 
 The existing entries stay in force — they are *suspect*, not void, and suspect entries
@@ -156,7 +156,11 @@ draft **both halves** the format requires:
 - **above the line** — the check: `id | area | confirm that …`, phrased as an
   instruction to verify, with **no tool name in it**;
 - **below the line** — the observation: `id | observed | replay | evidence | from`,
-  where `evidence` is the raw call and the raw answer it gave.
+  where `evidence` is the raw call and the raw answer it gave, and `observed` is the date
+  the finding was **observed** — today's date (`Bash(date *)`) for something seen in this
+  session, and for a row lifted out of a plan the date already written there, copied
+  across. Never the date of the transfer: the column says when this was run into, and a
+  transfer date would quietly relabel it.
 
 `area` comes from the 12-word vocabulary in `dev-principles.md` → A8 — the check table
 is keyed by area precisely so it survives a server change, and a key outside that
@@ -175,11 +179,11 @@ form. If it cannot be expressed as a check, it does not belong in this file.
 
 Write `.unikit/MCP-RECHECK-NOTES.md` per `references/notes-format.md`:
 
-- **File absent** → create it with the full header (`server:` / `version:` from the
-  delivery stamp, `audited: never`), both section headings, and the accepted rows.
+- **File absent** → create it with the full header (`server:` from the delivery stamp,
+  `audited: never`), both section headings, and the accepted rows.
 - **File present** → append rows to both tables, allocating fresh ids. Do **not** touch
-  the header: `server:` / `version:` describe where the existing entries came from, and
-  `audited:` belongs to `/unikit-mcp-audit`.
+  the header: `server:` describes where the existing entries came from, and `audited:`
+  belongs to `/unikit-mcp-audit`.
 
 Both halves of a note are written together, always. A check with no observation behind
 it cannot be replayed, retired, or upstreamed — it is a rumour with an id.

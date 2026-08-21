@@ -63,9 +63,9 @@ Silently load — do not narrate:
    classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read the
    deep reference below the boundary too: this skill touches editor state, so it is a
    first Editor task by definition.
-3. **`.unikit/system/engine-mcp/INDEX.md`** — the delivery stamp (`server:` /
-   `version:`) and the base section, including **how a project-relative asset path is
-   written for this engine** (see "The asset root is a contract" below). File absent →
+3. **`.unikit/system/engine-mcp/INDEX.md`** — the delivery stamp (`server:`) and the
+   base section, including **how a project-relative asset path is written for this
+   engine** (see "The asset root is a contract" below). File absent →
    there are no known exceptions; that restricts nothing and switches nothing to
    `⏸️ MANUAL`.
 4. **`.unikit/MCP-RECHECK-NOTES.md`** — the file being curated. Absent → say so and
@@ -96,19 +96,24 @@ matrix into `references/code-recon.md`.
 
 ## Job 1 — stamp
 
-Compare the notes header (`server:` / `version:`) against the delivery stamp.
+Compare the notes header (`server:`) against the delivery stamp.
 
 Different → print one line and continue:
 
 ```
-WARN [mcp-audit] server/version in notes header ≠ configured (<notes> ≠ <configured>)
+WARN [mcp-audit] server in notes header ≠ configured (<notes> ≠ <configured>)
 ```
 
 A mismatch makes every entry **suspect**, not void. Suspect entries stay in force: a
-stale check costs one call and fails safe, while dropping checks on a version bump
-throws away the protection they were written for. What the mismatch changes is the
-**priority** of the replay pass — these are the rows most worth replaying, and they are
-offered first.
+stale check costs one call and fails safe, while dropping checks because the server
+underneath them changed throws away the protection they were written for. What the
+mismatch changes is the **priority** of the replay pass — these are the rows most worth
+replaying, and they are offered first.
+
+The installer renames this file on every completed server switch, so a mismatch is not
+the ordinary case: it means a switch was interrupted, or the file arrived by hand. That
+is still information and not an error — and it is not a re-stamp instruction either, see
+"What this skill never does".
 
 ## Job 2 — replay
 
@@ -236,8 +241,8 @@ merges, the local row becomes a duplicate and the next audit retires it under Jo
 - **Never deletes or edits anything it did not create in this run.**
 - **Never repeats a failed sweep blindly** — it reports what remains, by name.
 - **Never edits the packaged rules tree**, and never edits a plan.
-- **Never rewrites `server:` / `version:`** in the notes header to make a mismatch go
-  away. The mismatch is information: it is what makes rows suspect.
+- **Never rewrites `server:`** in the notes header to make a mismatch go away. The
+  mismatch is information: it is what makes rows suspect.
 - **Never writes `⏸️ MANUAL`** because rules are missing, and never treats an
   unreachable editor as proof that a capability is absent — that is a stop-condition
   (A7), reported as a fact.
