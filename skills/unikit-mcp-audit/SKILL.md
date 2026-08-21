@@ -144,7 +144,9 @@ document editor state, and one runs an engine where "compiling" is not a concept
 status blob is not even atomic — four calls in one minute named three different ports.
 
 **1 — INSTRUCT, then ASK.** Say what this run does and what the editor has to look like
-for it, then ask once. Nothing is read from the server before this.
+for it, then ask once. **Nothing is created and nothing is mutated before the answer.**
+The one thing read from the server beforehand is the optional courtesy line in item 3 —
+it names the open scene, it is allowed to fail, and no decision depends on it.
 
 The message carries, in this order:
 
@@ -169,9 +171,11 @@ any row whose `replay` field is missing or unreadable.
 **3 — MARK.** Place a console marker. Everything after it is the delta this run is
 answerable for.
 
-This is the **first call this skill makes to the server in the whole run** — worth knowing
-when reading a transport error, since there is no earlier call whose success would have
-told you the connection was alive.
+This is the **first call this skill is required to make** — worth knowing when reading a
+transport error here. Only one call can precede it, the optional courtesy read in Step 1,
+and it is allowed to have failed or been skipped, so its success is not something you can
+lean on: treat a failure at MARK as the first evidence about the connection, not the
+second.
 
 **4 — REPLAY.** Execute strictly inside the sandbox:
 

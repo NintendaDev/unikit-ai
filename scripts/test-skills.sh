@@ -3234,6 +3234,24 @@ else
     fail "MG-6 unikit-mcp-audit lost the no-silent-demotion rule"
 fi
 
+# (MG-7) Step 1 carves out the one read that precedes the confirmation. Both halves, and
+# the NEGATIVE one is why this guard exists: the absolute claim "nothing is read from the
+# server before this" is the natural way to write the step, it is what was written first,
+# and it silently contradicts two other statements in the same section — item 3 requires
+# printing the open scene name, which can only come from a read, and MARK is described as
+# the first required call. An agent obeying the absolute version drops the courtesy line,
+# and the courtesy line is the entire mechanism that solves the original complaint.
+MG7_WHY=""
+grep -qF 'The one thing read from the server beforehand is the optional courtesy line' "$MG_AUDIT" \
+    || MG7_WHY+=" carve-out-missing"
+grep -qF 'Nothing is read from the server before this' "$MG_AUDIT" && MG7_WHY+=" absolute-claim-returned"
+grep -qF 'first call this skill is required to make' "$MG_AUDIT" || MG7_WHY+=" mark-not-qualified"
+if [[ -z "$MG7_WHY" ]]; then
+    pass "MG-7 the pre-confirmation read is carved out; MARK is the first REQUIRED call"
+else
+    fail "MG-7 step 1 / MARK contradiction:$MG7_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # HG: review/verify → apply/explore handoff (buckets + interview + shared engine).
 # (Distinct prefix from the apply-dispatcher GA-1…GA-5 block above — different concern.)
