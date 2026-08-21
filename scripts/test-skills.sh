@@ -3040,6 +3040,128 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# MH: the handoff from a filled table to the durable notes file.
+# Recording findings per task (MF above) only pays off if somebody offers to move them; a
+# table nobody reads is the same loss one step later. These guards pin the offer, the
+# input form that makes it work, and the two reference surfaces that describe it.
+MH_TRAP="$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
+MH_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+MH_SKILL_MAP="$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+MH_DOCS_SKILLS="$ROOT_DIR/docs/skills.md"
+
+# (MH-1) The handoff step exists in unikit-implement.
+if grep -qF 'MCP Findings handoff' "$MF_IMPLEMENT"; then
+    pass "MH-1 unikit-implement carries the MCP Findings handoff step"
+else
+    fail "MH-1 unikit-implement has no MCP Findings handoff step"
+fi
+
+# (MH-2) The renumbering was carried through. Inserting a step in the middle of Step 5 means
+# renaming three of them, and this range line is the ONE mechanical trace of whether that
+# was finished — every other reference is prose that reads fine while being wrong.
+if grep -qF 'Steps 5.4–5.8 are sequential' "$MF_IMPLEMENT"; then
+    pass "MH-2 Step 5 renumbering complete (5.4-5.8 sequential)"
+else
+    fail "MH-2 Step 5 range line not updated — the renumbering is half-applied"
+fi
+
+# (MH-3) The trap grew an input contract. Before this it had none at all: the body opened
+# straight into the session scan, so the argument shape lived only in the frontmatter hint.
+if grep -qF '## Input' "$MH_TRAP"; then
+    pass "MH-3 unikit-mcp-trap has an ## Input section"
+else
+    fail "MH-3 unikit-mcp-trap ## Input missing — the three call forms are undocumented in the body"
+fi
+
+# (MH-4) The load-bearing half of the explicit-path form: the Step 1 shortcut is OFF. The
+# handoff is called FROM the run that produced the findings, i.e. the same session, so with
+# the shortcut live the path is ignored in exactly the scenario the form was added for.
+if grep -qF 'the Step 1 shortcut is off' "$MH_TRAP"; then
+    pass "MH-4 explicit path disables the session shortcut"
+else
+    fail "MH-4 unikit-mcp-trap does not disable the Step 1 shortcut on an explicit path"
+fi
+
+# (MH-5) The stale step reference is gone. Documentation is Step 5.3 and always was; the
+# file said 5.4 in two places, and inserting a step made the drift worse. Both literals are
+# checked because they are worded differently and one guard would leave the other standing.
+MH5_WHY=""
+grep -qF 'documentation checkpoint (Step 5.4)' "$MF_IMPLEMENT" && MH5_WHY+=" checkpoint-ref"
+grep -qF 'Step 5.4 (documentation)'            "$MF_IMPLEMENT" && MH5_WHY+=" settings-ref"
+if [[ -z "$MH5_WHY" ]]; then
+    pass "MH-5 no stale Step 5.4-as-documentation references survive"
+else
+    fail "MH-5 stale documentation step reference:$MH5_WHY"
+fi
+
+# (MH-6) Parity of the two reference surfaces. They describe the same skill to two different
+# readers (the in-agent navigator and the published docs) and drift apart silently, because
+# nothing makes a reader of one open the other.
+MH6_WHY=""
+grep -qF 'a path to a plan file' "$MH_SKILL_MAP"   || MH6_WHY+=" skill-map"
+grep -qF 'A path to a plan file' "$MH_DOCS_SKILLS" || MH6_WHY+=" docs-skills"
+if [[ -z "$MH6_WHY" ]]; then
+    pass "MH-6 the plan-path input form documented on both reference surfaces"
+else
+    fail "MH-6 plan-path form missing from:$MH6_WHY"
+fi
+
+# (MH-7) The coordinator knows the table exists. It had ZERO occurrences before this work,
+# and it is a separate entry point (`claude --agent unikit-implement-coordinator`) that
+# unikit-implement never runs — so both holes lived here at once: in its single-phase branch
+# it executes tasks itself with no writer, and it ends a run with no offer. One counter
+# catches the return of either.
+if grep -qF '## MCP Findings' "$MH_COORD"; then
+    pass "MH-7 implement-coordinator knows the ## MCP Findings table"
+else
+    fail "MH-7 implement-coordinator has no ## MCP Findings mention — writer and handoff holes are back"
+fi
+
+# (MH-8) …and can act on the offer it prints. A recommendation naming a skill the agent may
+# not invoke is a dead end for the user, who has nothing to replace it with.
+if awk '/^skills:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MH_COORD" | grep -qF 'unikit-mcp-trap'; then
+    pass "MH-8 implement-coordinator lists unikit-mcp-trap in skills:"
+else
+    fail "MH-8 implement-coordinator recommends /unikit-mcp-trap without listing it in skills:"
+fi
+
+# ─────────────────────────────────────────────
+# SI: review is INVOKED as a skill from unikit-implement, not delegated to a subagent.
+# The step used to say only "run /unikit-review", naming no mechanism, while its two
+# neighbours said "Delegate to <agent>" under a delegation pre-requisite block — so the
+# model generalised from the neighbours. These guards hold the positive statements; a
+# blanket "no Delegate to" check over the file is WRONG and must not be added, because
+# Steps 5.2 and 5.3 delegate legitimately.
+SI_REVIEW="$ROOT_DIR/skills/unikit-review/SKILL.md"
+
+# (SI-1) The Tier 1 call is spelled out as a call.
+if grep -qF 'Skill(skill: "unikit-review")' "$MF_IMPLEMENT"; then
+    pass "SI-1 unikit-implement invokes unikit-review through Skill()"
+else
+    fail "SI-1 unikit-implement has no Skill(skill: \"unikit-review\") invocation"
+fi
+
+# (SI-2) The line that stops the generalisation. Without it the neighbours win again the
+# next time this step is rewritten.
+if grep -qF 'Review is NOT delegated here' "$MF_IMPLEMENT"; then
+    pass "SI-2 unikit-implement states that review is not delegated"
+else
+    fail "SI-2 unikit-implement does not say review is invoked rather than delegated"
+fi
+
+# (SI-3) The frontmatter half of the same contract, and the reason it is a guard rather
+# than a one-off edit: `context: fork` made the skill run in a forked context no matter WHO
+# called it, so switching the caller from a subagent to Skill() would have changed the
+# mechanism and delivered none of the four things SI-2 promises — the findings would still
+# land somewhere the user cannot see, and the +check validator would still be an agent
+# inside an agent. It was the only occurrence in the repository, undocumented and unguarded.
+if grep -qE '^context:' "$SI_REVIEW"; then
+    fail "SI-3 unikit-review declares a context: mode — an in-session invocation cannot deliver what Step 5.6 claims"
+else
+    pass "SI-3 unikit-review runs in the caller's context (no context: fork)"
+fi
+
+# ─────────────────────────────────────────────
 # HG: review/verify → apply/explore handoff (buckets + interview + shared engine).
 # (Distinct prefix from the apply-dispatcher GA-1…GA-5 block above — different concern.)
 # The review/verify TAIL was reworked into an honest handoff: full report to screen →

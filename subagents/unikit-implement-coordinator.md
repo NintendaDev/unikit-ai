@@ -19,6 +19,7 @@ skills:
   - unikit-commit
   - unikit-review
   - unikit-docs
+  - unikit-mcp-trap
 ---
 
 You are the implementation coordinator for a {{engine_name}} project.
@@ -170,6 +171,8 @@ For each task in the phase, sequentially:
 4. Run verification pass scoped to changed files
 5. If material issues found, fix and re-verify (max 2 rounds)
 6. Mark `[x]` or `[!]` in TASKS.md. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
+
+   **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task — `F<n>` is one more than the highest id already there (read the table first, so a re-run does not restart the numbering), `observed` is today's date, and dedup is semantic: drop a candidate saying the same thing about the same `area` as an existing row, by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — one observation is a bad sample, and the durable surface passes through a human running `/unikit-mcp-trap`.
 7. If any task fails, stop the phase
 
 ## Parallel Phase Dispatch
@@ -296,7 +299,13 @@ Layers executed: N (M parallel, K sequential)
 Commits created: N
 Status: complete | partial | failed
 Remaining tasks: [list if any]
+MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them into
+  .unikit/MCP-RECHECK-NOTES.md
 
 ⏎ This agent session is complete. Please close it (Ctrl+C or /exit)
   and return to your main Claude Code session to continue working.
 ```
+
+The `MCP findings:` line appears **only when the plan's `## MCP Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
+
+**Why this one is printed rather than invoked.** `/unikit-implement` Step 5.5 offers the same handoff as a real `Skill(...)` call, and that is the right shape there. Here it is not: this agent ends by telling the user to close the session, and `/unikit-mcp-trap` is interactive — it presents candidates and asks which to record. Started here it would be cut off mid-question. This is the legitimate degenerate tier of the dispatch, chosen because the session boundary makes the inline call impossible, not to avoid making it.

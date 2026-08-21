@@ -396,8 +396,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   lifted gate and never a named workaround.
 - **When:** right after a call reported success while changing nothing, ate an argument, or
   validated a broken state — "write this down", "record this MCP finding", "add a recheck note".
-- **In:** the finding in one line, or nothing (then it harvests the session, and optionally the
-  `## MCP Findings` table of plans touched since the last audit).
+- **In:** three forms — the finding in one line; a path to a plan file (harvests that plan's
+  `## MCP Findings` table only, the session is not touched); or nothing, which harvests the
+  session first and then offers to scan the tables of plans touched since the last audit.
 - **Out:** `.unikit/MCP-RECHECK-NOTES.md`.
 - **Optional.** Pairs with `/unikit-mcp-audit`, which curates what this writes.
 

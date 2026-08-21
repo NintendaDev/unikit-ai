@@ -327,13 +327,13 @@ These rules change how this skill orchestrates work (priorities, delegation, com
 Read the `## Settings` section from `TASKS.md` (or from `PLAN.md` in fast-mode):
 - `Testing: yes` → after completing each phase, write tests inline (default) for the code created in that phase, or via `develop-agent` for parallel/deep-dive (same execution-mode logic as Step 3.2)
 - `Testing: no` → skip test creation entirely
-- `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.4)
+- `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.3)
 - `Docs: no` → skip documentation checkpoint, emit warning
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
 If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
 
-Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
+Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.8 (tests), Step 3.9 (commit), and Step 5.3 (documentation).
 
 Understand:
 - Which tasks are completed (`- [x]`) and which are pending (`- [ ]`)
@@ -652,7 +652,7 @@ The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with
 
 After all tasks in the current scope are done, perform the following actions.
 
-**IMPORTANT:** Steps 5.1–5.3 delegate work to Agent calls and do NOT wait for user input. This ensures the pipeline runs to completion without interruption. Steps 5.4–5.7 are sequential and may involve user interaction.
+**IMPORTANT:** Steps 5.1–5.3 delegate work to Agent calls and do NOT wait for user input. This ensures the pipeline runs to completion without interruption. Steps 5.4–5.8 are sequential and may involve user interaction.
 
 **5.1: Check TODO.md**
 
@@ -719,7 +719,22 @@ Based on choice:
 - Keep it — documents what was done
 - User can delete before merging if desired
 
-**5.5: Verify or Commit**
+**5.5: MCP Findings handoff**
+
+Read the plan's `## MCP Findings` table.
+
+- **No rows** (or no such heading) → say nothing at all and go to 5.6. Not a note, not a "no findings this run" line. A run with no findings is the ordinary case, and a line announcing it every time is how a signal becomes wallpaper.
+- **Rows present** → offer to move them to the durable surface:
+
+```
+<n> MCP findings recorded in this plan. Transfer them to .unikit/MCP-RECHECK-NOTES.md?
+```
+
+  On agreement, invoke `Skill(skill: "unikit-mcp-trap", args: "<path to the plan file>")`. The explicit path is what makes it read *this* plan and nothing else — see that skill's `## Input`.
+
+**Why here, before review and commit.** The findings are part of the result of this run, and they are the part with no other keeper: the code is in git, the tasks are in the plan, and a finding lives only in a table nobody has read yet. Put this after review and it competes with a discussion of code quality for the user's attention — and loses, every time, ending up "later", which is where it was before this step existed.
+
+**5.6: Verify or Commit**
 
 ```
 All tasks complete. What's next?
@@ -730,16 +745,26 @@ Options:
 ```
 
 Based on choice:
-- Verify first → run `/unikit-review`, after it completes run `/unikit-commit`
-- Skip to commit → run `/unikit-commit` directly
+- **Verify first** → invoke `unikit-review`, wait for it to return, then invoke `unikit-commit`.
+- **Skip to commit** → invoke `unikit-commit`.
 
-Commit staging rules — see Rule 8 in **Important Rules**.
+**These are skill invocations, in this session — not delegations.** Three tiers, in order:
 
-**5.6: Context Cleanup**
+- **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit")`, inline, waiting for each to return before starting the next. This is the path on Claude Code.
+- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, one at a time, waiting for each. The slash form is rewritten per agent by the installer (Codex `$unikit-review`, Qwen `/skills unikit-review`); `Skill(...)` is **not** rewritten and non-Claude agents have no `Skill` tool, so without this tier the step is dead on 5 of 6 agents. This must be a **real call**, not a printed recommendation.
+- **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at all, print the ordered `Run: /unikit-…` list for the user to execute by hand. Last resort, never the default.
+
+The invocation must be **a real call, not printed text**, and must not be wrapped in triple backticks.
+
+**Review is NOT delegated here — unlike Steps 5.2 and 5.3.** State it plainly, because the shape of this file argues the other way: two steps above say "Delegate to `rules-agent`" and "Delegate to `docs-agent`", a `Subagent Delegation — BLOCKING PRE-REQUISITE` block sits at the top, and generalising from the neighbours is exactly how this step came to be read as a delegation.
+
+Why the distinction is real and not stylistic: a subagent carries the findings into a context you cannot see, so `file:line` references stop being clickable, no follow-up question can be asked about a finding, and — since `unikit-review` holds `Agent` in `allowed-tools` for its `+check` validator — the validator would run as an agent inside an agent. `rules-agent` and `docs-agent` are delegated precisely because their output is *not* a conversation: they write a file and finish.
+
+**5.7: Context Cleanup**
 
 Suggest the user to free up context space if needed: `/clear` (full reset) or `/compact` (compress history).
 
-**5.7: Next steps**
+**5.8: Next steps**
 
 ```
 Next steps:

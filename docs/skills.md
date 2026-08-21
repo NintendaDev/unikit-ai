@@ -443,15 +443,18 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 - Add tasks (deduplicates, refines verbose descriptions), mark complete, view status
 - Also triggered by "remind me to...", "don't forget to...", "we need to..."
 
-### `/unikit-mcp-trap [finding]` - record an MCP finding
+### `/unikit-mcp-trap [finding | plan path]` - record an MCP finding
 
 ```
 /unikit-mcp-trap                                 # Harvest findings from the current session
 /unikit-mcp-trap the snapshot reported ready with zero files
+/unikit-mcp-trap .unikit/code/plans/2026-08-18_ui/TASKS.md   # Take this plan's table, nothing else
 ```
 - Writes `.unikit/MCP-RECHECK-NOTES.md` - the project's log of what has to be re-checked about the **engine MCP server it actually talks to**
 - Zero MCP calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing
-- Takes findings from the session first; nothing there → offers to scan the `## MCP Findings` table of plans touched since the last audit, reading **the table only**, never the plan body
+- Three input forms. **A finding in one line** is recorded directly. **A path to a plan file** harvests that plan's `## MCP Findings` table and nothing else — the session is not consulted at all, which matters because the caller is usually the run that just produced those rows. **No argument** takes findings from the session first, then offers to scan the tables of plans touched since the last audit
+- Reads **the table only**, never the plan body: a window from the heading to the next `##`, with a 30-line cap that applies only to the multi-plan scan — and a table outgrowing it is announced, not truncated in silence
+- `/unikit-implement` offers the transfer at the end of a run (Step 5.5), passing the plan path, so findings recorded per task reach the durable log while the context is still there
 - Every note is written in one genre - **a check to perform**. A lifted gate or a "use Y instead of X" is refused: a stale check costs one call and fails safe, a lifted obligation never comes back
 - The executor that hit the trap does not write here - one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human
 

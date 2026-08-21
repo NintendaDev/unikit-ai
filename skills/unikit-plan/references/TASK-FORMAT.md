@@ -147,7 +147,9 @@ An executor that hits a misleading engine MCP response records it **here, in the
 
 Three rows never belong here: a pre-declared `GATE LIFTED`, a list of what the server cannot do, and a named replacement for a call. All three lift an obligation permanently. A check that has gone stale merely costs one extra call and **fails safe** — the pipeline stops instead of driving past.
 
-`/unikit-mcp-trap` reads the section through a window — the heading down to the next `##` heading, or 30 lines, whichever comes first — and reads nothing else from the plan. Keep the table short, and keep the heading at `##`: a findings table demoted to `###`, or nested inside another section, is invisible to it.
+`/unikit-mcp-trap` reads the section through a window — the heading down to the next `##` heading — and reads nothing else from the plan. Keep the heading at `##`: a findings table demoted to `###`, or nested inside another section, is invisible to it.
+
+The window carries a 30-line cap **only when trap is scanning many plans at once** (called with no arguments). Handed one plan by path — which is what `/unikit-implement` Step 5.5 does — it reads to the next `##` with no cap, because there is one named file and nothing to ration. When the cap does close a window, trap says so and names how many rows it did not read; the table growing past it is a warning, not a silent loss.
 
 ### Fast mode differences
 

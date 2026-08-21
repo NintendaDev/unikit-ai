@@ -6,13 +6,15 @@ description: >-
   here. Use right after a call reported success while changing nothing, ate an
   argument, or validated a broken state, e.g. "write this down", "record this MCP
   finding", "the server lied — note it", "add a recheck note", "trap this". Takes
-  findings already in the session first (they cost nothing), then optionally scans
-  the "## MCP Findings" table of plans touched since the last audit — the table
-  only, never the plan body. Writes in the one allowed genre — a check to perform;
-  never a lifted gate, never a named workaround, never a claim about what the
-  server can or cannot do. Makes zero MCP calls and needs no editor. To replay,
-  retire, or upstream existing notes use /unikit-mcp-audit instead.
-argument-hint: "[optional: the finding in one line]  (writes .unikit/MCP-RECHECK-NOTES.md; zero MCP calls)"
+  three forms of input: the finding in one line, a path to a plan file (harvests
+  the "## MCP Findings" table of that plan and nothing else), or nothing at all —
+  then it takes findings already in the session first, and offers to scan the
+  tables of plans touched since the last audit. The table only, never the plan
+  body. Writes in the one allowed genre — a check to perform; never a lifted gate,
+  never a named workaround, never a claim about what the server can or cannot do.
+  Makes zero MCP calls and needs no editor. To replay, retire, or upstream
+  existing notes use /unikit-mcp-audit instead.
+argument-hint: "[the finding in one line | path to a plan file | empty]  (writes .unikit/MCP-RECHECK-NOTES.md; zero MCP calls)"
 allowed-tools:
   - Read
   - Write
@@ -90,6 +92,28 @@ WARN [mcp-trap] server in notes header ≠ configured (<notes> ≠ <configured>)
 The existing entries stay in force — they are *suspect*, not void, and suspect entries
 still fail safe. Retiring them is `/unikit-mcp-audit`'s job, not this skill's.
 
+## Input
+
+`$ARGUMENTS` takes three forms. Resolve which one this is **before** Step 1 — the branches
+differ in what is read, not merely in where they start.
+
+| form | what happens |
+|---|---|
+| **the finding in one line** — `the snapshot reported ready with zero files` | straight to Step 5 with that one candidate. No session scan, no plan scan, no disk read beyond Bootstrap |
+| **a path to a plan file** — `.unikit/code/plans/2026-08-18_ui/TASKS.md` | read the `## MCP Findings` window of **that plan only** (Step 3) → Step 4 → Step 5. The session is **not** harvested and no other plan is looked at |
+| **empty** | the default pass: Step 1 (session) → Step 2 (offer to scan plans) → Step 3 |
+
+**On an explicit path, the Step 1 shortcut is off.** That shortcut — *something found in the
+session → go to Step 5 and stop, do not scan plans* — is right when nobody named a source,
+and wrong the moment somebody did. The form exists mainly to be called from the end of a
+`/unikit-implement` run, which is **the same session** that produced the findings, so the
+shortcut would fire every time and the path would be ignored in exactly the scenario it was
+added for. Named source wins; the session is not consulted at all.
+
+**A path that does not exist, or carries no `## MCP Findings` heading** → say so in one line
+and stop. Do not silently fall back to scanning: the caller named a file, and a different
+file's findings are not a smaller answer to that request, they are a wrong one.
+
 ## Step 1 — the current session
 
 Findings already in this conversation cost nothing to collect: they were observed here,
@@ -103,6 +127,10 @@ what it skipped, a read that predated the change it was meant to prove.
 
 **Something found → go to Step 5 and stop.** Do not scan plans. The session is the
 cheapest and the most reliable source; the plan scan exists only because sessions end.
+
+**This whole step is skipped when a plan path was given** (see `## Input`). The shortcut
+above assumes nobody named a source — with a path in hand it would swallow the request,
+because the caller is usually the very session that produced the rows.
 
 ## Step 2 — ask before reading anything from disk
 
@@ -127,16 +155,30 @@ nothing to find", and the next run would repeat the same offer against the same 
 
 ## Step 3 — read the table, never the body
 
-Agreed → for each candidate plan read **only the findings table**:
+Agreed, or a plan path was given → read **only the findings table**:
 
 1. `Grep` the heading `## MCP Findings` in the plan.
-2. Take the window from that heading to the next `##` heading, or 30 lines, whichever
-   comes first.
+2. Take the window from that heading to the next `##` heading. **On a bulk scan** (the
+   empty form, many candidate plans) stop at 30 lines if the next `##` has not arrived by
+   then; **on an explicit plan path** there is no line cap — one named file, nothing to
+   ration.
 3. Read nothing else from that file. Not the tasks, not the brief, not the checklist.
 
 The window is the whole contract. A plan is a large file written for a different
 purpose, and reading it whole to harvest three rows is how a cheap maintenance skill
 turns into an expensive one.
+
+**A window that closed on the cap is announced, never silent:**
+
+```
+WARN [mcp-trap] <plan>: the findings table is longer than the read window — <n> rows not read
+```
+
+The cap used to be unreachable: the table was filled once, in a run's closing report, so
+the next `##` always came first. Executors now append a row per task through the whole
+run, so a long editor-heavy plan can genuinely outgrow it — and rows dropped without a
+word are the exact failure this file exists to prevent, arriving one step later. Re-run
+against the named plan to take the rest.
 
 ## Step 4 — drop what was already transferred
 
@@ -165,6 +207,28 @@ draft **both halves** the format requires:
 `area` comes from the 12-word vocabulary in `dev-principles.md` → A8 — the check table
 is keyed by area precisely so it survives a server change, and a key outside that
 vocabulary is unreachable by the greps the executors run.
+
+**How a plan row becomes two notes rows.** The plan's six columns split across the line:
+
+| plan column | goes to |
+|---|---|
+| `area`, `confirm that` | the `## Check` row, above the line |
+| `observed`, `evidence`, `from` | the `## Observation protocol` row, below the line |
+| `id` | **not** carried — notes ids are `R<n>`, allocated here; the plan's `F<n>` is recorded in `from:` as `<plan>#<id>` |
+| — | `replay` has no plan column. It is decided **here**, defaulting to `manual` |
+
+`observed` is **directional**, and this is the one place the rule can be got wrong:
+
+- a finding raised in **this session** → today's date, via `Bash(date *)`;
+- a row lifted out of **a plan** → the plan's own `observed` value, **copied verbatim**.
+
+The grant sitting right there makes the wrong version easy to write — `date` on both paths
+— and it puts the transfer date in a column labelled "observed", which is precisely the
+relabelling the column was added to prevent.
+
+**A plan in the old five-column format has no `observed`.** Leave the field empty and say
+so once, in one line. Never today's date: the finding was not observed today, and an
+invented date is worse than an admitted gap because nothing downstream can tell them apart.
 
 `replay` defaults to **`manual`**. Promote it to `safe` only when every condition in
 `references/notes-format.md` → "replay: safe" holds. When in doubt it is `manual`; the
@@ -203,7 +267,7 @@ writes as much as to a server's.
 
 - **Never calls the engine MCP.** No verification of the finding, no re-observation, no
   catalog lookup. If the finding needs replaying, that is `/unikit-mcp-audit`.
-- **Never edits a plan.** Plans are read through a 30-line window and left untouched;
+- **Never edits a plan.** Plans are read through the findings window and left untouched;
   the transfer is recorded on the notes side, as `from:`.
 - **Never edits the packaged rules tree.** `.unikit/system/engine-mcp/` is rewritten by
   every `init` / `update`; an edit there is lost, and lost silently. A finding that
