@@ -554,7 +554,13 @@ fi
 # written out four times. One node pass over mcp/*/*.json covers both.
 #
 # Checks:
-#   - `verified`, when present, carries exactly version + date + toolRegistry
+#   - `verified`, when present, carries exactly date + toolRegistry — and NOT `version`,
+#     which is checked separately as an absent key. The field used to hold the server
+#     version the rules tree was measured against, and it fed a comparison whose two
+#     sides (the delivery stamp, and the notes header written out of it) both came from
+#     this same package constant, so the mismatch could only be produced by a UniKit
+#     release. Adding it back to one config would restore a dead mechanism silently,
+#     which is precisely what an absent-key guard is for
 #   - `order`, when present, is a number
 #   - `configByPlatform`, when present, keys ⊆ {win32,darwin,linux} and each
 #     entry has `command` or `url`
@@ -595,8 +601,11 @@ MCP_SCHEMA_RESULT=$(node -e "
       if (m.verified !== undefined) {
         const v=m.verified;
         if (typeof v!=='object'||v===null||Array.isArray(v)) why.push('verified-not-object:'+rel);
-        else for (const k of ['version','date','toolRegistry'])
-          if (typeof v[k]!=='string'||!v[k]) why.push('verified-missing-'+k+':'+rel);
+        else {
+          for (const k of ['date','toolRegistry'])
+            if (typeof v[k]!=='string'||!v[k]) why.push('verified-missing-'+k+':'+rel);
+          if (v.version !== undefined) why.push('verified-version-returned:'+rel);
+        }
       }
 
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
@@ -3918,9 +3927,12 @@ fi
 # (RT-3) The notes format, asserted on the canonical example inside the spec rather than
 # on its prose. That example is what both skills copy from, and it is the one object in
 # the repository shaped like a real notes file. Two sections because there are two readers
-# (executors grep the check table, the audit replays the protocol); three header fields
-# because `server:` / `version:` are what tell a finding about THIS server from one
-# inherited from another.
+# (executors grep the check table, the audit replays the protocol); two header fields
+# because `server:` is what tells a finding about THIS server from one inherited from
+# another, and `audited:` is the cursor trap reads to decide which plans are new. A third
+# field, `version:`, used to sit between them and was dropped: it was copied out of the
+# delivery stamp the package writes, so the comparison it fed had the same constant on
+# both sides and could never fire for the reason it existed.
 RT3_SHAPE="$(awk '/^```markdown$/{f=1;next} f&&/^```$/{exit} f' "$RT_NOTES_SPEC" 2>/dev/null || true)"
 RT3_WHY=""
 if [[ -z "$RT3_SHAPE" ]]; then
@@ -3929,12 +3941,13 @@ else
     for rt_section in '## Check' '## Observation protocol'; do
         echo "$RT3_SHAPE" | grep -qF "$rt_section" || RT3_WHY+=" section:${rt_section// /-}"
     done
-    for rt_field in 'server:' 'version:' 'audited:'; do
+    for rt_field in 'server:' 'audited:'; do
         echo "$RT3_SHAPE" | grep -qF "$rt_field" || RT3_WHY+=" header:$rt_field"
     done
+    echo "$RT3_SHAPE" | grep -qE '^version:' && RT3_WHY+=" header:version-returned"
 fi
 if [[ -z "$RT3_WHY" ]]; then
-    pass "RT-3 notes shape: two sections + server:/version:/audited: header"
+    pass "RT-3 notes shape: two sections + server:/audited: header, no version"
 else
     fail "RT-3 notes shape drift in notes-format.md:$RT3_WHY"
 fi

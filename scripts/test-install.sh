@@ -1312,10 +1312,11 @@ echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/uniki
 # tree arrives, every file carries the provenance stamp, and nothing about the
 # server's capabilities rides along with it.
 #
-# The stamp assertions are the load-bearing ones. `server:` / `version:` are what a
-# skill compares the MCP-RECHECK-NOTES header against to tell a finding about the
-# configured server from one inherited from another, so a stamp that silently stops
-# being written turns that check into a no-op rather than a failure.
+# The stamp assertions are the load-bearing ones. `server:` is what a skill compares
+# the MCP-RECHECK-NOTES header against to tell a finding about the configured server
+# from one inherited from another, so a stamp that silently stops being written turns
+# that check into a no-op rather than a failure. It is also the WHOLE stamp: `version:`
+# and `delivered:` were removed, and the negative asserts below are what keep them out.
 # NOTE: this project is installed via run_update, so the branch under test is the
 # update.ts wiring; the init.ts call site is covered by the static grep guard in
 # test-skills.sh Part 6.
@@ -1359,10 +1360,6 @@ assert_exists "$MCP_RULES_BASE/verification.md" \
 # The stamp: provenance of THIS copy, and nothing else.
 assert_contains "$MCP_RULES_INDEX" '^server: unity-biome-mcp$' \
   "delivered rules file carries the server id it came from"
-assert_contains "$MCP_RULES_INDEX" '^version: [0-9]+\.[0-9]+' \
-  "delivered rules file carries the measured server version"
-assert_contains "$MCP_RULES_INDEX" '^delivered: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
-  "delivered rules file carries an ISO delivery date"
 assert_contains "$MCP_RULES_INDEX" 'not here' \
   "delivered rules file says where to fix it (the source tree, not this copy)"
 
@@ -1372,7 +1369,19 @@ assert_contains "$MCP_RULES_INDEX" 'not here' \
 assert_not_contains "$MCP_RULES_BASE/verification.md" '[0-9]+ of (the )?[0-9]+' \
   "no server counter in a delivered rules file"
 
-echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped, no counters"
+# `version:` and `delivered:` are guarded by their ABSENCE, which is stricter than any
+# assert on their contents and is the only thing that stops either coming back silently
+# in a later commit. Both were removed for reasons a future reader will not have in
+# front of them: the version fed a comparison whose two sides came from the same package
+# constant, and the delivery date was the one field that changed on every run, producing
+# a one-line diff on every file of the tree that nothing read. Their absence is also what
+# makes a delivered file byte-identical between runs, so an unexpected diff is a signal.
+assert_not_contains "$MCP_RULES_INDEX" '^version:' \
+  "no version line in the delivery stamp"
+assert_not_contains "$MCP_RULES_INDEX" '^delivered:' \
+  "no delivery date in the delivery stamp"
+
+echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamped with the server id alone, no counters"
 
 # ─────────────────────────────────────────────────────
 # Test 13c: an engine MCP that ships NO rules tree — nothing degrades
