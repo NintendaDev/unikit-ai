@@ -23,7 +23,6 @@ when the selected server changes.
 <!-- Written by /unikit-mcp-trap · curated by /unikit-mcp-audit · install only renames it -->
 
 server:  <file id of the selected engine MCP server>
-version: <version from its delivery stamp, or empty>
 audited: <YYYY-MM-DD, or `never`>
 
 ## Check                                        ← read by the AGENT, by grep
@@ -36,9 +35,9 @@ audited: <YYYY-MM-DD, or `never`>
 ## Observation protocol                         ← read ONLY by the audit
 | id | observed | replay | evidence | from |
 |---|---|---|---|---|
-| R1 | 1.37.2 | safe | `<call>(paths="…/DoesNotExist")` → `state=ready files=0` · the path is not validated | |
-| R2 | 1.37.2 | safe | `<call>(path="<content root>/X", action="read")` → `err: resolved path escapes the content root` | plans/2026-08-18_ui/TASKS.md#F2 |
-| R3 | 1.37.2 | manual | `<call>(name="probe")` → written under the client's working directory, not the project | |
+| R1 | 2026-08-18 | safe | `<call>(paths="…/DoesNotExist")` → `state=ready files=0` · the path is not validated | |
+| R2 | 2026-08-18 | safe | `<call>(path="<content root>/X", action="read")` → `err: resolved path escapes the content root` | plans/2026-08-18_ui/TASKS.md#F2 |
+| R3 | 2026-08-19 | manual | `<call>(name="probe")` → written under the client's working directory, not the project | |
 ```
 
 ### Two sections, because there are two readers
@@ -54,6 +53,22 @@ ships or writes where a tool name is legitimate.
 Merged into a single table, the two would force every executor to carry evidence twice
 as long as the instruction it is reading, on every task.
 
+### `observed` — a date, and nothing reads it
+
+`observed` is the date the finding was **observed**. No skill reads it. It exists so that
+a human opening this file can tell when they ran into this.
+
+It is written by whoever did the observing, never by whoever moved the row here: a row
+harvested out of a plan carries the date already in that plan's `## MCP Findings` table,
+copied across verbatim, and a finding raised in the session being trapped carries today's.
+Stamping the transfer date on both would relabel the column — it would then say when the
+note was filed, which is a fact nobody needs and which is already implied by the ids.
+
+**Replay order stays keyed on `R<n>`, not on this column.** Ids are allocated in order and
+never reused, so they are already a monotonic clock; sorting a replay pass by a date would
+add a second ordering that can tie, can be empty on a row lifted from an old plan, and can
+disagree with the ids for no gain.
+
 ---
 
 ## Header
@@ -61,13 +76,18 @@ as long as the instruction it is reading, on every task.
 | field | written by | meaning |
 |---|---|---|
 | `server:` | trap, on creation | the file id of the server these entries were observed on |
-| `version:` | trap, on creation | its version from the delivery stamp; empty when the stamp carries none |
 | `audited:` | audit only | date of the last curation pass; `never` on a fresh file |
 
-`server:` / `version:` are compared against the delivery stamp at the top of
+`server:` is compared against the delivery stamp at the top of
 `.unikit/system/engine-mcp/INDEX.md`. **A mismatch is one WARN and nothing else** — the
 entries are *suspect*, and still applied. A stale check costs one call; dropping checks
-on a version bump costs the protection they existed for.
+because the server moved costs the protection they existed for.
+
+There is no `version:` field, and adding one back would not help. It used to be copied
+here out of the delivery stamp, which the package writes — so both sides of the comparison
+came from the same package constant, and the mismatch could only ever be produced by a
+UniKit release, never by the server on this machine moving. A comparison that cannot fire
+for the reason it was written is worse than none: it reads like a guard.
 
 Trap never rewrites the header of an existing file. `audited:` moves only when an audit
 pass has actually re-examined the entries behind it.
@@ -155,7 +175,7 @@ cost of the two mistakes is not comparable, so the tie goes to `manual`.
 | # | case | what happens |
 |---|---|---|
 | 1 | **new finding** | the executor puts a candidate in its run report and in the plan's `## MCP Findings` — never in this file; a human runs `/unikit-mcp-trap` |
-| 2 | **server updated** | rows whose `observed` ≠ the current version are suspect, **applied anyway**, one WARN |
+| 2 | **the server changed** | the header names a different server than the delivery stamp: every row is suspect, **applied anyway**, one WARN |
 | 3 | **trap fixed** | the audit replays the evidence of a `replay: safe` row → offers to retire it |
 | 4 | **the call disappeared** | the replay fails → same outcome as "fixed"; no separate mechanism needed |
 | 5 | **finding went upstream** | the packaged `INDEX.md` gained it → the audit sees the duplicate → offers to drop the local row |
@@ -191,3 +211,9 @@ server if one exists. Contents are never rewritten by the installer.
 Consequence for both skills: the header is the only thing that says which server the
 rows belong to, and it must never be silently "corrected" to match the current one. A
 header that disagrees with the delivery stamp is information — that is exactly case 2.
+
+Because the rename runs on every completed swap, that disagreement should be unreachable
+in the ordinary course: it means the run that switched servers did not finish, or the file
+was carried in by hand from another project. Both are worth one WARN and no more. Neither
+is worth dropping the entries over — a check written against another server is at worst a
+redundant call, and the genre above is what guarantees that.

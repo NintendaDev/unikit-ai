@@ -2,7 +2,6 @@
 name: unikit-review
 description: Perform a code review on {{engine_name}} {{engine_code_language}} code. Checks for bugs, security issues, performance problems, and best practices against the project's coding rules, design principles, and framework-specific conventions. Supports four modes — staged changes, a pull request, a commit range, or individual files. Use when the user says "review code", "check my code", "code review", "review PR", "review staged changes", "review these commits", or "is this code okay". Optional +check flag validates findings via a fresh-context subagent.
 argument-hint: "[+check] [script.cs ... | @folder ... | PR number | branch/commit/tag | empty]"
-context: fork
 allowed-tools:
   - Read
   - Grep

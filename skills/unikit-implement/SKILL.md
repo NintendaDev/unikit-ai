@@ -21,6 +21,7 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(git *)
+  - Bash(date *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -326,13 +327,13 @@ These rules change how this skill orchestrates work (priorities, delegation, com
 Read the `## Settings` section from `TASKS.md` (or from `PLAN.md` in fast-mode):
 - `Testing: yes` → after completing each phase, write tests inline (default) for the code created in that phase, or via `develop-agent` for parallel/deep-dive (same execution-mode logic as Step 3.2)
 - `Testing: no` → skip test creation entirely
-- `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.4)
+- `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.3)
 - `Docs: no` → skip documentation checkpoint, emit warning
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
 If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
 
-Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.8 (tests), Step 3.9 (commit), and Step 5.4 (documentation).
+Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.8 (tests), Step 3.9 (commit), and Step 5.3 (documentation).
 
 Understand:
 - Which tasks are completed (`- [x]`) and which are pending (`- [ ]`)
@@ -353,8 +354,8 @@ Stack rules are NOT loaded here — they are loaded lazily per-phase in Step 3.0
 
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:` / `version:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per task, by area (Step 3.2).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `version:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per task, by area (Step 3.2).
+6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
    WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
@@ -465,7 +466,9 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 **A call that misled you is a finding — and it goes in two places, neither of them the notes file.**
 
 - the run report for this task, as a candidate line: the `area`, what has to be confirmed, and the raw call with the raw answer it gave;
-- the plan's `## MCP Findings` table (`id | area | confirm that | evidence | from`) — the half that survives the session.
+- the plan's `## MCP Findings` table — the half that survives the session. Columns and their contract: `references/TASK-FORMAT.md` → `### MCP findings section`.
+
+**When it is written: in Step 3.4, by the same `Edit` pass that ticks the checkbox** — not at the end of the run. The finding and the task that produced it are one unit of work, and a table filled only at the end is lost to every `/clear`, every context overflow and every session that simply stops. Ticking the box and appending the row together is what makes the two survive or fail as one.
 
 **Never write `.unikit/MCP-RECHECK-NOTES.md` from here.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running `/unikit-mcp-trap`.
 
@@ -523,6 +526,12 @@ After successful implementation, update `TASKS.md`:
 **Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
 - Write the checkbox as `- [x]` and append the marker `⏸️ MANUAL` to the task text, right after the description: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. The checkbox must be `[x]` so Step 2 does not pick the task up again on every subsequent run; the marker is what keeps it honest, and it sits in the task text so `/unikit-verify` sees it during the task audit.
 - A `⏸️ MANUAL` task **does not block** "all tasks completed" — the user took it on deliberately. It is **not** counted as implemented either: report it separately (Step 4).
+
+**The task produced an MCP finding (Step 3.2)** — a third outcome to record in the same pass:
+- Append the row to the plan's `## MCP Findings` table now, in the same `Edit` that ticks the checkbox. Not at the end of the phase, not at the end of the run.
+- **Id:** `F<n>`, where `<n>` is one more than the highest already in the table. Read the table before appending — a re-run of the same task must not restart the numbering and collide with rows written earlier.
+- **`observed`:** the date you observed it, `Bash(date *)`.
+- **Dedup is semantic, not mechanical.** Drop a candidate that says the same thing about the same `area` as a row already there, judging by meaning rather than by string match; only the id allocation is mechanical. Being loose here is deliberate — the error is cheap in both directions. A duplicate that slips through costs one extra line, which `/unikit-mcp-trap` or `/unikit-mcp-audit` drops later; merging two observations that were not the same thing destroys the `evidence` of one of them, and evidence is the half that cannot be reconstructed.
 
 Use the Edit tool to make these changes surgically.
 
@@ -643,7 +652,7 @@ The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with
 
 After all tasks in the current scope are done, perform the following actions.
 
-**IMPORTANT:** Steps 5.1–5.3 delegate work to Agent calls and do NOT wait for user input. This ensures the pipeline runs to completion without interruption. Steps 5.4–5.7 are sequential and may involve user interaction.
+**IMPORTANT:** Steps 5.1–5.3 delegate work to Agent calls and do NOT wait for user input. This ensures the pipeline runs to completion without interruption. Steps 5.4–5.8 are sequential and may involve user interaction.
 
 **5.1: Check TODO.md**
 
@@ -710,7 +719,22 @@ Based on choice:
 - Keep it — documents what was done
 - User can delete before merging if desired
 
-**5.5: Verify or Commit**
+**5.5: MCP Findings handoff**
+
+Read the plan's `## MCP Findings` table.
+
+- **No rows** (or no such heading) → say nothing at all and go to 5.6. Not a note, not a "no findings this run" line. A run with no findings is the ordinary case, and a line announcing it every time is how a signal becomes wallpaper.
+- **Rows present** → offer to move them to the durable surface:
+
+```
+<n> MCP findings recorded in this plan. Transfer them to .unikit/MCP-RECHECK-NOTES.md?
+```
+
+  On agreement, invoke `Skill(skill: "unikit-mcp-trap", args: "<path to the plan file>")`. The explicit path is what makes it read *this* plan and nothing else — see that skill's `## Input`.
+
+**Why here, before review and commit.** The findings are part of the result of this run, and they are the part with no other keeper: the code is in git, the tasks are in the plan, and a finding lives only in a table nobody has read yet. Put this after review and it competes with a discussion of code quality for the user's attention — and loses, every time, ending up "later", which is where it was before this step existed.
+
+**5.6: Verify or Commit**
 
 ```
 All tasks complete. What's next?
@@ -721,16 +745,26 @@ Options:
 ```
 
 Based on choice:
-- Verify first → run `/unikit-review`, after it completes run `/unikit-commit`
-- Skip to commit → run `/unikit-commit` directly
+- **Verify first** → invoke `unikit-review`, wait for it to return, then invoke `unikit-commit`.
+- **Skip to commit** → invoke `unikit-commit`.
 
-Commit staging rules — see Rule 8 in **Important Rules**.
+**These are skill invocations, in this session — not delegations.** Three tiers, in order:
 
-**5.6: Context Cleanup**
+- **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit")`, inline, waiting for each to return before starting the next. This is the path on Claude Code.
+- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, one at a time, waiting for each. The slash form is rewritten per agent by the installer (Codex `$unikit-review`, Qwen `/skills unikit-review`); `Skill(...)` is **not** rewritten and non-Claude agents have no `Skill` tool, so without this tier the step is dead on 5 of 6 agents. This must be a **real call**, not a printed recommendation.
+- **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at all, print the ordered `Run: /unikit-…` list for the user to execute by hand. Last resort, never the default.
+
+The invocation must be **a real call, not printed text**, and must not be wrapped in triple backticks.
+
+**Review is NOT delegated here — unlike Steps 5.2 and 5.3.** State it plainly, because the shape of this file argues the other way: two steps above say "Delegate to `rules-agent`" and "Delegate to `docs-agent`", a `Subagent Delegation — BLOCKING PRE-REQUISITE` block sits at the top, and generalising from the neighbours is exactly how this step came to be read as a delegation.
+
+Why the distinction is real and not stylistic: a subagent carries the findings into a context you cannot see, so `file:line` references stop being clickable, no follow-up question can be asked about a finding, and — since `unikit-review` holds `Agent` in `allowed-tools` for its `+check` validator — the validator would run as an agent inside an agent. `rules-agent` and `docs-agent` are delegated precisely because their output is *not* a conversation: they write a file and finish.
+
+**5.7: Context Cleanup**
 
 Suggest the user to free up context space if needed: `/clear` (full reset) or `/compact` (compress history).
 
-**5.7: Next steps**
+**5.8: Next steps**
 
 ```
 Next steps:

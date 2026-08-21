@@ -76,6 +76,8 @@ Dependency-aware plan execution.
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
 - After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, handles commit checkpoints, advances to the next layer
 - Annotates `TASKS.md` with layer markers and `[~]` / `[x]` / `[!]` status in real time
+- **Is itself a writer of `## MCP Findings`** in the single-phase branch, where no worker exists to do it - same rules as everywhere else (`F<n>` = highest present + 1, `observed` = the date, semantic dedup), and never touches `.unikit/MCP-RECHECK-NOTES.md`
+- Ends by **printing** a `/unikit-mcp-trap <plan path>` recommendation when the table has rows. Printed rather than invoked because this agent closes the session on exit, and the trap is interactive - it would be cut off mid-question
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `model: inherit`, `maxTurns: 40`. Can spawn: `unikit-implement-worker`, four sidecars.
 
@@ -100,6 +102,7 @@ Executes exactly ONE task from the active plan, then returns control.
 
 - Implements the task, verifies it, runs local quality checks via skill knowledge (no Agent delegation - workers cannot spawn children)
 - Does not create commits; the coordinator owns git state
+- **Writes its own row into the plan's `## MCP Findings` table** when an engine MCP call misled it, rather than returning a candidate to the coordinator. Workers have no worktree isolation, so they all edit the same plan file - which is safe only because a phase carrying an `Editor:` line is alone in its execution layer, leaving one writer at a time. Handing the row back instead would defer the write to the end of the layer and lose it if the coordinator failed
 - Carries `skills: [unikit-devcontext, unikit-verify]` so it has full access to the pipeline knowledge base without spawning anything
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 16`.

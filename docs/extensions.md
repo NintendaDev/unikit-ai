@@ -386,7 +386,7 @@ Or for HTTP-based servers:
 }
 ```
 
-> The richer per-server schema used by the servers UniKit **ships** — `key`, `displayName`, `docs`, `rules`, `order`, `verified`, `configByPlatform`, `allowed-tools` — is a different format, read from the package's own `mcp/` directory. It does not apply to extension templates. See [MCP JSON schema fields](configuration.md#mcp-json-schema-fields).
+> The richer per-server schema used by the servers UniKit **ships** — `key`, `displayName`, `docs`, `rules`, `order`, `configByPlatform`, `allowed-tools` — is a different format, read from the package's own `mcp/` directory. It does not apply to extension templates. See [MCP JSON schema fields](configuration.md#mcp-json-schema-fields).
 
 The template is written into each agent's settings file under `mcpServers.<key>` (the exact container and field names vary per agent — the writer handles that). All agents with MCP support receive the server entry:
 

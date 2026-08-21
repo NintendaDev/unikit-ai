@@ -396,21 +396,24 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   lifted gate and never a named workaround.
 - **When:** right after a call reported success while changing nothing, ate an argument, or
   validated a broken state — "write this down", "record this MCP finding", "add a recheck note".
-- **In:** the finding in one line, or nothing (then it harvests the session, and optionally the
-  `## MCP Findings` table of plans touched since the last audit).
+- **In:** three forms — the finding in one line; a path to a plan file (harvests that plan's
+  `## MCP Findings` table only, the session is not touched); or nothing, which harvests the
+  session first and then offers to scan the tables of plans touched since the last audit.
 - **Out:** `.unikit/MCP-RECHECK-NOTES.md`.
 - **Optional.** Pairs with `/unikit-mcp-audit`, which curates what this writes.
 
 ### unikit-mcp-audit
-- **Purpose:** Curate those notes — re-stamp on a server/version change, replay `replay: safe`
+- **Purpose:** Curate those notes — re-stamp on a change of server, replay `replay: safe`
   findings inside a disposable sandbox, offer to retire what was fixed or went upstream, and
   print a ready diff for the packaged rules tree.
 - **When:** "audit the MCP notes", "are these findings still true", "the server was updated —
   revisit the notes".
 - **In:** nothing, a note id (`R2`), or one of `stamp` / `replay` / `retire` / `upstream`.
 - **Out:** an updated `.unikit/MCP-RECHECK-NOTES.md` (+ an upstream diff, printed).
-- **Optional.** Mutates a live editor when replaying — refuses on a dirty scene, compilation, or
-  Play Mode, and never saves the scene.
+- **Optional.** Mutates a live editor when replaying. It takes no pre-flight measurements: it
+  tells you how to prepare the editor, names everything it will create, and asks once — that
+  confirmation is the whole gate. Works only inside a `UNIKIT_AUDIT_<runid>` sandbox and never
+  saves the scene.
 
 ### unikit-help
 - **Purpose:** This navigator. Diagnoses what the user is trying to do and points to the right skill

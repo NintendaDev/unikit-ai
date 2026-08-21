@@ -554,7 +554,6 @@ fi
 # written out four times. One node pass over mcp/*/*.json covers both.
 #
 # Checks:
-#   - `verified`, when present, carries exactly version + date + toolRegistry
 #   - `order`, when present, is a number
 #   - `configByPlatform`, when present, keys ⊆ {win32,darwin,linux} and each
 #     entry has `command` or `url`
@@ -566,11 +565,12 @@ fi
 #     it is the only thing the `init` summary can generate an install line from,
 #     so without it the user is never told a plugin has to go into the editor
 #   - `rules`, when present, points at an existing directory holding an INDEX.md
-#   - the keys `shards` and `instruction` are ABSENT everywhere. Both are retired,
-#     and both would come back the same way: someone adds a server six months from
-#     now, copies the nearest config as a template, and reintroduces a mechanism
-#     nothing else reads (`shards`) or a slab of restated vendor prose that goes
-#     stale claim by claim (`instruction`). An absent-key guard is stricter than
+#   - the keys `shards`, `instruction` and `verified` are ABSENT everywhere. All three
+#     are retired, and all three would come back the same way: someone adds a server
+#     six months from now, copies the nearest config as a template, and reintroduces a
+#     mechanism nothing else reads (`shards`), a slab of restated vendor prose that goes
+#     stale claim by claim (`instruction`), or a hand-maintained measurement date whose
+#     last consumer was deleted (`verified`). An absent-key guard is stricter than
 #     any check on their contents.
 #
 # Errors accumulate rather than exiting on the first one, and every message names
@@ -592,16 +592,9 @@ MCP_SCHEMA_RESULT=$(node -e "
       try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
       catch { why.push('parse-error:'+rel); continue; }
 
-      if (m.verified !== undefined) {
-        const v=m.verified;
-        if (typeof v!=='object'||v===null||Array.isArray(v)) why.push('verified-not-object:'+rel);
-        else for (const k of ['version','date','toolRegistry'])
-          if (typeof v[k]!=='string'||!v[k]) why.push('verified-missing-'+k+':'+rel);
-      }
-
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
 
-      for (const dead of ['shards','instruction'])
+      for (const dead of ['shards','instruction','verified'])
         if (m[dead] !== undefined) why.push('retired-key-'+dead+':'+rel);
 
       if (m.docs !== undefined) {
@@ -657,7 +650,7 @@ MCP_SCHEMA_RESULT=$(node -e "
 " "$MCP_DIR" 2>/dev/null || echo "pass-error")
 
 if [[ "$MCP_SCHEMA_RESULT" == "ok" ]]; then
-    pass "MCP schema fields valid across all configs (verified/order/configByPlatform/docs/rules + order unique, shards+instruction gone)"
+    pass "MCP schema fields valid across all configs (order/configByPlatform/docs/rules + order unique, shards+instruction+verified gone)"
 else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi
@@ -2947,6 +2940,323 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# MF: MCP findings are recorded AT THE TASK, not at the end of the run.
+# The table used to be filled once, in the run's closing report — which is precisely the
+# moment a session is most likely to have already ended. These guards pin the two halves
+# of the fix: the column that makes a transferred row honest (`observed`), and the anchor
+# that says WHEN the row is written, in each of the four writers.
+# Reuses CK_TASKFMT + EM_* path vars are declared later (EM block), so the three skill
+# paths are taken locally here.
+MF_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+MF_FIX="$ROOT_DIR/skills/unikit-fix/SKILL.md"
+MF_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+MF_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
+
+# (MF-1) `observed` reaches BOTH surfaces of the format: the template a planner copies and
+# the column contract a writer reads. A column present in one and not the other is how a
+# six-column table starts receiving five-column rows.
+MF1_WHY=""
+grep -qF '| id | area | confirm that | observed | evidence | from |' "$CK_TASKFMT" || MF1_WHY+=" template"
+grep -qF '| `observed` |' "$CK_TASKFMT"                                            || MF1_WHY+=" contract-row"
+if [[ -z "$MF1_WHY" ]]; then
+    pass "MF-1 observed column in both the MCP Findings template and its column contract"
+else
+    fail "MF-1 observed column missing in TASK-FORMAT.md:$MF1_WHY"
+fi
+
+# (MF-2) The write anchor exists in Step 3.4 of unikit-implement — the step that ticks the
+# checkbox. Anchored on the heading plus the table name rather than on prose, because this
+# is a structural claim: the section that marks a task also records the finding.
+if awk '/^\*\*3\.4: Mark task as completed\*\*/{f=1} f&&/^\*\*3\.5/{exit} f' "$MF_IMPLEMENT" \
+     | grep -qF '## MCP Findings'; then
+    pass "MF-2 unikit-implement Step 3.4 records the finding with the checkbox"
+else
+    fail "MF-2 unikit-implement Step 3.4 has no ## MCP Findings anchor — the write drifted back to the end of the run"
+fi
+
+# (MF-3) The worker writes the row itself (variant B). BOTH halves are asserted, and the
+# negative one is load-bearing: the cancelled behaviour was "hand it back to the
+# coordinator", and a half-applied edit leaves both instructions standing at once.
+MF3_WHY=""
+grep -qF '## MCP Findings' "$MF_WORKER"                             || MF3_WHY+=" append-missing"
+grep -qF 'return it to the coordinator as a candidate line' "$MF_WORKER" && MF3_WHY+=" handback-survived"
+if [[ -z "$MF3_WHY" ]]; then
+    pass "MF-3 implement-worker appends the row itself; the coordinator hand-back is gone"
+else
+    fail "MF-3 implement-worker findings contract drift:$MF3_WHY"
+fi
+
+# (MF-4) The append scheme borrows an invariant it does not own — one editor phase per
+# execution layer, hence one writer at a time. Written down where the invariant lives, so
+# relaxing the invariant cannot silently break the writers.
+if grep -qF '`## MCP Findings` is written under this invariant' "$CK_TASKFMT"; then
+    pass "MF-4 TASK-FORMAT.md ties the findings append to the serialization invariant"
+else
+    fail "MF-4 TASK-FORMAT.md does not say the findings append depends on one-editor-phase-per-layer"
+fi
+
+# (MF-5) Parity across all THREE plan-side writers. unikit-fix and unikit-verify carry the
+# same defect the research found in unikit-implement — they said WHERE and not WHEN — and
+# they write into the same table, so a missed one produces rows without `observed`. This
+# is the only guard that holds the three together once the edits are separated in time.
+MF5_WHY=""
+grep -qF 'observed' "$MF_IMPLEMENT" || MF5_WHY+=" implement"
+grep -qF 'observed' "$MF_FIX"       || MF5_WHY+=" fix"
+grep -qF 'observed' "$MF_VERIFY"    || MF5_WHY+=" verify"
+if [[ -z "$MF5_WHY" ]]; then
+    pass "MF-5 observed known to all three plan-side findings writers"
+else
+    fail "MF-5 observed column unknown to:$MF5_WHY"
+fi
+
+# (MF-6) The capability behind the rule. `observed` is a date the writer produces at the
+# moment of observation, and a skill with no date grant can only recall one — the class of
+# unverified claim dev-principles A1/A2 exists to forbid, landing in a durable file. Every
+# other skill that writes a dated artifact carries this grant; these three were the gap.
+MF6_WHY=""
+grep -qF 'Bash(date *)' "$MF_IMPLEMENT" || MF6_WHY+=" implement"
+grep -qF 'Bash(date *)' "$MF_FIX"       || MF6_WHY+=" fix"
+grep -qF 'Bash(date *)' "$MF_VERIFY"    || MF6_WHY+=" verify"
+if [[ -z "$MF6_WHY" ]]; then
+    pass "MF-6 Bash(date *) granted to all three plan-side findings writers"
+else
+    fail "MF-6 observed is required but the date grant is missing in:$MF6_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# MH: the handoff from a filled table to the durable notes file.
+# Recording findings per task (MF above) only pays off if somebody offers to move them; a
+# table nobody reads is the same loss one step later. These guards pin the offer, the
+# input form that makes it work, and the two reference surfaces that describe it.
+MH_TRAP="$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
+MH_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+MH_SKILL_MAP="$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+MH_DOCS_SKILLS="$ROOT_DIR/docs/skills.md"
+
+# (MH-1) The handoff step exists in unikit-implement.
+if grep -qF 'MCP Findings handoff' "$MF_IMPLEMENT"; then
+    pass "MH-1 unikit-implement carries the MCP Findings handoff step"
+else
+    fail "MH-1 unikit-implement has no MCP Findings handoff step"
+fi
+
+# (MH-2) The renumbering was carried through. Inserting a step in the middle of Step 5 means
+# renaming three of them, and this range line is the ONE mechanical trace of whether that
+# was finished — every other reference is prose that reads fine while being wrong.
+if grep -qF 'Steps 5.4–5.8 are sequential' "$MF_IMPLEMENT"; then
+    pass "MH-2 Step 5 renumbering complete (5.4-5.8 sequential)"
+else
+    fail "MH-2 Step 5 range line not updated — the renumbering is half-applied"
+fi
+
+# (MH-3) The trap grew an input contract. Before this it had none at all: the body opened
+# straight into the session scan, so the argument shape lived only in the frontmatter hint.
+if grep -qF '## Input' "$MH_TRAP"; then
+    pass "MH-3 unikit-mcp-trap has an ## Input section"
+else
+    fail "MH-3 unikit-mcp-trap ## Input missing — the three call forms are undocumented in the body"
+fi
+
+# (MH-4) The load-bearing half of the explicit-path form: the Step 1 shortcut is OFF. The
+# handoff is called FROM the run that produced the findings, i.e. the same session, so with
+# the shortcut live the path is ignored in exactly the scenario the form was added for.
+if grep -qF 'the Step 1 shortcut is off' "$MH_TRAP"; then
+    pass "MH-4 explicit path disables the session shortcut"
+else
+    fail "MH-4 unikit-mcp-trap does not disable the Step 1 shortcut on an explicit path"
+fi
+
+# (MH-5) The stale step reference is gone. Documentation is Step 5.3 and always was; the
+# file said 5.4 in two places, and inserting a step made the drift worse. Both literals are
+# checked because they are worded differently and one guard would leave the other standing.
+MH5_WHY=""
+grep -qF 'documentation checkpoint (Step 5.4)' "$MF_IMPLEMENT" && MH5_WHY+=" checkpoint-ref"
+grep -qF 'Step 5.4 (documentation)'            "$MF_IMPLEMENT" && MH5_WHY+=" settings-ref"
+if [[ -z "$MH5_WHY" ]]; then
+    pass "MH-5 no stale Step 5.4-as-documentation references survive"
+else
+    fail "MH-5 stale documentation step reference:$MH5_WHY"
+fi
+
+# (MH-6) Parity of the two reference surfaces. They describe the same skill to two different
+# readers (the in-agent navigator and the published docs) and drift apart silently, because
+# nothing makes a reader of one open the other.
+MH6_WHY=""
+grep -qF 'a path to a plan file' "$MH_SKILL_MAP"   || MH6_WHY+=" skill-map"
+grep -qF 'A path to a plan file' "$MH_DOCS_SKILLS" || MH6_WHY+=" docs-skills"
+if [[ -z "$MH6_WHY" ]]; then
+    pass "MH-6 the plan-path input form documented on both reference surfaces"
+else
+    fail "MH-6 plan-path form missing from:$MH6_WHY"
+fi
+
+# (MH-7) The coordinator knows the table exists. It had ZERO occurrences before this work,
+# and it is a separate entry point (`claude --agent unikit-implement-coordinator`) that
+# unikit-implement never runs — so both holes lived here at once: in its single-phase branch
+# it executes tasks itself with no writer, and it ends a run with no offer. One counter
+# catches the return of either.
+if grep -qF '## MCP Findings' "$MH_COORD"; then
+    pass "MH-7 implement-coordinator knows the ## MCP Findings table"
+else
+    fail "MH-7 implement-coordinator has no ## MCP Findings mention — writer and handoff holes are back"
+fi
+
+# (MH-8) …and can act on the offer it prints. A recommendation naming a skill the agent may
+# not invoke is a dead end for the user, who has nothing to replace it with.
+if awk '/^skills:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MH_COORD" | grep -qF 'unikit-mcp-trap'; then
+    pass "MH-8 implement-coordinator lists unikit-mcp-trap in skills:"
+else
+    fail "MH-8 implement-coordinator recommends /unikit-mcp-trap without listing it in skills:"
+fi
+
+# ─────────────────────────────────────────────
+# SI: review is INVOKED as a skill from unikit-implement, not delegated to a subagent.
+# The step used to say only "run /unikit-review", naming no mechanism, while its two
+# neighbours said "Delegate to <agent>" under a delegation pre-requisite block — so the
+# model generalised from the neighbours. These guards hold the positive statements; a
+# blanket "no Delegate to" check over the file is WRONG and must not be added, because
+# Steps 5.2 and 5.3 delegate legitimately.
+SI_REVIEW="$ROOT_DIR/skills/unikit-review/SKILL.md"
+
+# (SI-1) The Tier 1 call is spelled out as a call.
+if grep -qF 'Skill(skill: "unikit-review")' "$MF_IMPLEMENT"; then
+    pass "SI-1 unikit-implement invokes unikit-review through Skill()"
+else
+    fail "SI-1 unikit-implement has no Skill(skill: \"unikit-review\") invocation"
+fi
+
+# (SI-2) The line that stops the generalisation. Without it the neighbours win again the
+# next time this step is rewritten.
+if grep -qF 'Review is NOT delegated here' "$MF_IMPLEMENT"; then
+    pass "SI-2 unikit-implement states that review is not delegated"
+else
+    fail "SI-2 unikit-implement does not say review is invoked rather than delegated"
+fi
+
+# (SI-3) The frontmatter half of the same contract, and the reason it is a guard rather
+# than a one-off edit: `context: fork` made the skill run in a forked context no matter WHO
+# called it, so switching the caller from a subagent to Skill() would have changed the
+# mechanism and delivered none of the four things SI-2 promises — the findings would still
+# land somewhere the user cannot see, and the +check validator would still be an agent
+# inside an agent. It was the only occurrence in the repository, undocumented and unguarded.
+if grep -qE '^context:' "$SI_REVIEW"; then
+    fail "SI-3 unikit-review declares a context: mode — an in-session invocation cannot deliver what Step 5.6 claims"
+else
+    pass "SI-3 unikit-review runs in the caller's context (no context: fork)"
+fi
+
+# ─────────────────────────────────────────────
+# MG: the audit gate is one manual confirmation, not a pre-flight measurement.
+# The old envelope refused on `dirty`, and a fresh empty untitled scene — the only safe
+# place to replay — is dirty by default, so it rejected the correct state structurally and
+# passed a configured production scene. The measurement is gone; these guards keep the
+# retired mechanism from surviving in any of the four places it was described.
+MG_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+MG_SKILL_MAP="$MH_SKILL_MAP"
+MG_DOCS_SKILLS="$MH_DOCS_SKILLS"
+MG_DOCS_CONFIG="$ROOT_DIR/docs/configuration.md"
+
+# (MG-1) `eight-step` gone from all THREE surfaces that carried it. A removed mechanism
+# surviving in a description is worse than a stale comment: the description is what the
+# user reads to decide what they are agreeing to.
+MG1_WHY=""
+grep -qF 'eight-step' "$MG_AUDIT"        && MG1_WHY+=" skill"
+grep -qF 'eight-step' "$MG_DOCS_SKILLS"  && MG1_WHY+=" docs-skills"
+grep -qF 'eight-step' "$MG_DOCS_CONFIG"  && MG1_WHY+=" docs-configuration"
+if [[ -z "$MG1_WHY" ]]; then
+    pass "MG-1 the eight-step envelope is gone from skill + both docs surfaces"
+else
+    fail "MG-1 retired eight-step envelope still described in:$MG1_WHY"
+fi
+
+# (MG-2) The REFUSE step itself. Named as a step, it is the inverted gate; its absence is
+# the mechanical trace that the envelope was actually rebuilt and not merely renumbered.
+if grep -qF 'REFUSE' "$MG_AUDIT"; then
+    fail "MG-2 the REFUSE step is back in unikit-mcp-audit — the inverted dirty gate returned"
+else
+    pass "MG-2 no REFUSE step in unikit-mcp-audit"
+fi
+
+# (MG-3) The promise, in the three places that carried it. NOTE the asymmetry with MG-1,
+# and it is deliberate: docs/skills.md never contained "refuses on a dirty scene" — it said
+# "refuses on any of them" after listing the measurements — so asserting that literal there
+# would pass without checking anything. Its own claim is the git working tree, which the
+# skill no longer inspects at all and whose grant is gone. MG-1 does not cover that claim:
+# a rewrite can drop the words "eight-step" and keep "measures … the git working tree".
+#
+# That third check is SECTION-SCOPED, and the scoping is the load-bearing part. This file
+# documents thirty-odd skills and several of them work on the git working tree for real —
+# /unikit-commit stages and commits it, /unikit-review already says "Analyzes staged
+# changes (git status + git diff --cached)", /unikit-fix requires a commit before a direct
+# edit. A file-wide negative on three such ordinary words goes red the first time somebody
+# writes a correct sentence about one of THOSE skills, pointing at unikit-mcp-audit, which
+# their change never touched. The cheapest way to green is then to delete this assert — and
+# it is the only mechanical protection the claim has. A false red that converts into a
+# removed guard is worse than no guard, so the window is what makes the short literal safe.
+# Same technique as MF-2 (awk window over Step 3.4) and MH-8 (over the skills: block).
+MG3_AUDIT_SECTION="$(awk '/^### .*unikit-mcp-audit/{f=1;next} f&&(/^## /||/^### /){exit} f' \
+    "$MG_DOCS_SKILLS" 2>/dev/null || true)"
+MG3_WHY=""
+grep -qF 'refuses on a dirty scene' "$MG_AUDIT"     && MG3_WHY+=" skill"
+grep -qF 'refuses on a dirty scene' "$MG_SKILL_MAP" && MG3_WHY+=" skill-map"
+# An empty window is a FAIL, not a pass: renaming the heading would otherwise retire the
+# check in silence — the same vacuous-negative failure this guard was rewritten to escape.
+if [[ -z "$MG3_AUDIT_SECTION" ]]; then
+    MG3_WHY+=" docs-skills-section-not-found"
+elif echo "$MG3_AUDIT_SECTION" | grep -qF 'the git working tree'; then
+    MG3_WHY+=" docs-skills-git"
+fi
+if [[ -z "$MG3_WHY" ]]; then
+    pass "MG-3 the withdrawn refusal promise is gone from skill, skill-map and the docs audit section"
+else
+    fail "MG-3 withdrawn promise still advertised in:$MG3_WHY"
+fi
+
+# (MG-4) The grant follows the behaviour. git was read only inside the deleted MEASURE
+# step; a grant outliving its only caller is how a capability quietly stays available.
+if awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MG_AUDIT" | grep -qF 'Bash(git'; then
+    fail "MG-4 unikit-mcp-audit still grants Bash(git *) with no step that uses it"
+else
+    pass "MG-4 Bash(git *) grant removed together with the MEASURE step"
+fi
+
+# (MG-5) The courtesy-line contract, anchored on the formulation rather than the heading —
+# a heading is rewritten during cosmetics, a formulation only together with its meaning.
+# Without this the scene line becomes a gate again the first time someone "improves" it.
+if grep -qF 'shown, not checked' "$MG_AUDIT"; then
+    pass "MG-5 the open-scene line is contracted as shown-not-checked"
+else
+    fail "MG-5 unikit-mcp-audit lost the shown-not-checked contract for the scene line"
+fi
+
+# (MG-6) The no-silent-demotion rule. The REPLAY step says "could not be reproduced in the
+# sandbox → not safe"; applied to a replay that failed because a compile landed mid-run,
+# it corrupts a correct row on evidence that never existed.
+if grep -qF 'A failed replay is not automatically a demotion' "$MG_AUDIT"; then
+    pass "MG-6 a replay failure under instability is offered, not written"
+else
+    fail "MG-6 unikit-mcp-audit lost the no-silent-demotion rule"
+fi
+
+# (MG-7) Step 1 carves out the one read that precedes the confirmation. Both halves, and
+# the NEGATIVE one is why this guard exists: the absolute claim "nothing is read from the
+# server before this" is the natural way to write the step, it is what was written first,
+# and it silently contradicts two other statements in the same section — item 3 requires
+# printing the open scene name, which can only come from a read, and MARK is described as
+# the first required call. An agent obeying the absolute version drops the courtesy line,
+# and the courtesy line is the entire mechanism that solves the original complaint.
+MG7_WHY=""
+grep -qF 'The one thing read from the server beforehand is the optional courtesy line' "$MG_AUDIT" \
+    || MG7_WHY+=" carve-out-missing"
+grep -qF 'Nothing is read from the server before this' "$MG_AUDIT" && MG7_WHY+=" absolute-claim-returned"
+grep -qF 'first call this skill is required to make' "$MG_AUDIT" || MG7_WHY+=" mark-not-qualified"
+if [[ -z "$MG7_WHY" ]]; then
+    pass "MG-7 the pre-confirmation read is carved out; MARK is the first REQUIRED call"
+else
+    fail "MG-7 step 1 / MARK contradiction:$MG7_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # HG: review/verify → apply/explore handoff (buckets + interview + shared engine).
 # (Distinct prefix from the apply-dispatcher GA-1…GA-5 block above — different concern.)
 # The review/verify TAIL was reworked into an honest handoff: full report to screen →
@@ -3918,9 +4228,12 @@ fi
 # (RT-3) The notes format, asserted on the canonical example inside the spec rather than
 # on its prose. That example is what both skills copy from, and it is the one object in
 # the repository shaped like a real notes file. Two sections because there are two readers
-# (executors grep the check table, the audit replays the protocol); three header fields
-# because `server:` / `version:` are what tell a finding about THIS server from one
-# inherited from another.
+# (executors grep the check table, the audit replays the protocol); two header fields
+# because `server:` is what tells a finding about THIS server from one inherited from
+# another, and `audited:` is the cursor trap reads to decide which plans are new. A third
+# field, `version:`, used to sit between them and was dropped: it was copied out of the
+# delivery stamp the package writes, so the comparison it fed had the same constant on
+# both sides and could never fire for the reason it existed.
 RT3_SHAPE="$(awk '/^```markdown$/{f=1;next} f&&/^```$/{exit} f' "$RT_NOTES_SPEC" 2>/dev/null || true)"
 RT3_WHY=""
 if [[ -z "$RT3_SHAPE" ]]; then
@@ -3929,12 +4242,13 @@ else
     for rt_section in '## Check' '## Observation protocol'; do
         echo "$RT3_SHAPE" | grep -qF "$rt_section" || RT3_WHY+=" section:${rt_section// /-}"
     done
-    for rt_field in 'server:' 'version:' 'audited:'; do
+    for rt_field in 'server:' 'audited:'; do
         echo "$RT3_SHAPE" | grep -qF "$rt_field" || RT3_WHY+=" header:$rt_field"
     done
+    echo "$RT3_SHAPE" | grep -qE '^version:' && RT3_WHY+=" header:version-returned"
 fi
 if [[ -z "$RT3_WHY" ]]; then
-    pass "RT-3 notes shape: two sections + server:/version:/audited: header"
+    pass "RT-3 notes shape: two sections + server:/audited: header, no version"
 else
     fail "RT-3 notes shape drift in notes-format.md:$RT3_WHY"
 fi

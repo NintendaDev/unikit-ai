@@ -60,6 +60,37 @@ Branch: feature/item-rarity
 
 `<content-root>` and `<ext>` are engine placeholders — see [Editor tasks](#editor-tasks) below.
 
+#### `## MCP Findings` — the executor's handoff surface
+
+A plan that carries at least one `Editor:` task also carries a `## MCP Findings` section. `/unikit-plan` emits the heading and the header row and stops there; the executors fill it in.
+
+```markdown
+## MCP Findings
+
+| id | area | confirm that | observed | evidence | from |
+|---|---|---|---|---|---|
+| F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 |
+```
+
+A row is written when an engine MCP call **misled** you — it reported success while changing nothing, ate an argument, or validated a broken state.
+
+| column | what goes in it |
+|--------|-----------------|
+| `id` | `F<n>`, allocated in order within this plan, never reused |
+| `area` | one of the 12 area words — never a tool name, so the row stays reachable after the server changes |
+| `confirm that` | the check, phrased as an instruction to verify. **Only a check** — never a lifted gate, never "use Y instead of X" |
+| `observed` | the date it was observed, written by whoever observed it |
+| `evidence` | the raw call and the raw answer. The one column where a tool name is legitimate |
+| `from` | the task that observed it |
+
+Three rules make this work:
+
+- **The row is written at the task, not at the end of the run** — by the same edit that ticks the checkbox. A table filled only in the closing report is lost to every `/clear`, which is exactly the moment a long run is most likely to end.
+- **Five writers, one table.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, plus `unikit-implement-worker` and `unikit-implement-coordinator` when the plan runs in parallel. None of them writes `.unikit/MCP-RECHECK-NOTES.md` directly: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
+- **The table is read through a window.** `/unikit-mcp-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, and never nest the table inside another section.
+
+At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-mcp-trap`, which turns accepted rows into entries in `.unikit/MCP-RECHECK-NOTES.md`. See [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
+
 ### PLAN-BRIEF.md - Technical Context (full mode)
 
 Technical context that doesn't belong in the task checklist. Always created in full mode - even when a research's `RESEARCH_BRIEF.md` exists, the plan generates its own brief based on the current codebase state. The research brief is used as input, not a replacement.

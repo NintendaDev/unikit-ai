@@ -21,6 +21,7 @@ allowed-tools:
   - Bash(git *)
   - Bash(rm *)
   - Bash(mkdir *)
+  - Bash(date *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -157,8 +158,8 @@ Stack rules are loaded on-demand later — when investigation reveals which fram
 
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:` / `version:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `version:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3).
+6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
    WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
@@ -427,7 +428,11 @@ When implementing inline, apply:
 
 **No rules file, or no check line for this area → nothing changes.** Every right you had, you keep: an absent exception is not an absent capability, and it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
 
-**A call that misled you is a finding — and it goes in two places, neither of them the notes file.** Put it in the fix report as a candidate line (the `area`, what has to be confirmed, the raw call with the raw answer), and — when this fix is running against a plan — into that plan's `## MCP Findings` table. **Never write `.unikit/MCP-RECHECK-NOTES.md` from here:** one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
+**A call that misled you is a finding — and it goes in two places, neither of them the notes file.** Put it in the fix report as a candidate line (the `area`, what has to be confirmed, the raw call with the raw answer), and — when this fix is running against a plan — into that plan's `## MCP Findings` table.
+
+**When: on finishing the step that produced it, not in the fix report at the end.** A finding held until the report is lost to every `/clear` and every session that stops early, which is the whole reason the table exists. `F<n>` is one more than the highest id already in the table — read the table before appending, so a re-run does not restart the numbering; `observed` is the date you observed it (`Bash(date *)`), because `/unikit-mcp-trap` copies that column into the notes verbatim and an empty one turns into the date of the transfer; dedup is semantic — drop a candidate saying the same thing about the same `area` as an existing row, judging by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
+
+**Never write `.unikit/MCP-RECHECK-NOTES.md` from here:** one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
 
 **The library reference — two triggers, and never on Bootstrap.**
 

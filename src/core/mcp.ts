@@ -69,21 +69,6 @@ export interface McpServerEntry {
   configByPlatform?: Partial<Record<McpPlatformKey, Record<string, unknown>>>;
   allowedTools?: McpAllowedTools;
   /**
-   * Which server version this entry's **rules tree** was measured against.
-   *
-   * Re-anchored when `allowed-tools` went to wildcards: there is no list of tool
-   * names left to audit, so the old reading ("these names were checked") records
-   * work nobody does any more. What still needs a date is the tree — a finding
-   * is a claim about one version, and a version four releases old is worth
-   * re-measuring. `toolRegistry` becomes "where the registry the measurement
-   * read lived".
-   *
-   * It is a provenance stamp, not a warning: the surrounding architecture bans
-   * hanging "may be stale" on it, because at one to three releases a day such a
-   * notice is noise on the first day and invisible by the second.
-   */
-  verified?: { version: string; date: string; toolRegistry: string };
-  /**
    * Presentation order inside one catalog directory's engine group (ascending,
    * 1-based). Drives the wizard's radio pre-selection — and nothing else since
    * the shard corpus was retired: one engine takes one engine server, so there
@@ -445,24 +430,6 @@ export async function removeExtensionMcpServers(
   }
 
   return removed;
-}
-
-/**
- * One human-readable audit line per selected server that carries a `verified`
- * stamp — the counterpart of {@link getMcpDocsLines}. Servers without a stamp
- * contribute nothing (no "unverified" noise). Lives here rather than in `init.ts`
- * so the CLI layer never has to know the shape of {@link McpServerEntry}.
- */
-export function getMcpVerifiedStamps(discoveredServers: DiscoveredServers, enabledFileIds: string[]): string[] {
-  const selected = new Set(enabledFileIds);
-  const stamps: string[] = [];
-
-  for (const [fileId, server] of discoveredServers) {
-    if (!selected.has(fileId) || !server.verified) continue;
-    stamps.push(`${server.displayName}: verified v${server.verified.version} (${server.verified.date})`);
-  }
-
-  return stamps;
 }
 
 /**

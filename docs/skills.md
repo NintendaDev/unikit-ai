@@ -443,15 +443,18 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 - Add tasks (deduplicates, refines verbose descriptions), mark complete, view status
 - Also triggered by "remind me to...", "don't forget to...", "we need to..."
 
-### `/unikit-mcp-trap [finding]` - record an MCP finding
+### `/unikit-mcp-trap [finding | plan path]` - record an MCP finding
 
 ```
 /unikit-mcp-trap                                 # Harvest findings from the current session
 /unikit-mcp-trap the snapshot reported ready with zero files
+/unikit-mcp-trap .unikit/code/plans/2026-08-18_ui/TASKS.md   # Take this plan's table, nothing else
 ```
 - Writes `.unikit/MCP-RECHECK-NOTES.md` - the project's log of what has to be re-checked about the **engine MCP server it actually talks to**
 - Zero MCP calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing
-- Takes findings from the session first; nothing there → offers to scan the `## MCP Findings` table of plans touched since the last audit, reading **the table only**, never the plan body
+- Three input forms. **A finding in one line** is recorded directly. **A path to a plan file** harvests that plan's `## MCP Findings` table and nothing else — the session is not consulted at all, which matters because the caller is usually the run that just produced those rows. **No argument** takes findings from the session first, then offers to scan the tables of plans touched since the last audit
+- Reads **the table only**, never the plan body: a window from the heading to the next `##`, with a 30-line cap that applies only to the multi-plan scan — and a table outgrowing it is announced, not truncated in silence
+- `/unikit-implement` offers the transfer at the end of a run (Step 5.5), passing the plan path, so findings recorded per task reach the durable log while the context is still there
 - Every note is written in one genre - **a check to perform**. A lifted gate or a "use Y instead of X" is refused: a stale check costs one call and fails safe, a lifted obligation never comes back
 - The executor that hit the trap does not write here - one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human
 
@@ -462,8 +465,9 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 /unikit-mcp-audit R2                             # One note
 /unikit-mcp-audit upstream                       # Only print the diff for the packaged rules tree
 ```
-- Four jobs: **re-stamp** (server/version moved → every entry is suspect, and offered first), **replay** (`replay: safe` rows reproduced in a disposable sandbox), **retire** (offer to drop what was fixed or went upstream), **upstream** (print a ready diff for the packaged `INDEX.md`)
-- Replaying mutates a live editor, so it runs behind an eight-step safety envelope: it measures scene/compile/Play-Mode state and the git working tree **in the project directory**, refuses on any of them, shows every name it will create before taking **one** confirmation, works only inside a `UNIKIT_AUDIT_<runid>` sandbox, and **never saves the scene** - so even a failed sweep leaves nothing on disk
+- Four jobs: **re-stamp** (the server moved → every entry is suspect, and offered first), **replay** (`replay: safe` rows reproduced in a disposable sandbox), **retire** (offer to drop what was fixed or went upstream), **upstream** (print a ready diff for the packaged `INDEX.md`)
+- Replaying mutates a live editor, so it runs behind a six-step envelope whose only gate is **you**: it opens by telling you how to prepare the editor (save your scene, open an empty one, no compile and no Play Mode), names every object it will create, and asks once. It works only inside a `UNIKIT_AUDIT_<runid>` sandbox, deletes it in one action, and **never saves the scene** - so even a failed sweep leaves nothing on disk
+- **It takes no pre-flight measurements, on purpose.** The previous gate refused on a dirty scene - and a fresh empty untitled scene, the one safe place to run this, is dirty by default, so the gate rejected the only correct state every time while a configured production scene passed. Such a check is not portable either: across the catalog, one server reports no scene-dirty state, one does not document editor state, and one runs an engine with no concept of compiling
 - The sweep is proved, not announced: a prefix search returning zero plus a clean console delta, or a loud `ERROR` listing what remains - never a blind repeat of the deletion
 - Deletes only what it created in this run. Leftovers from an aborted earlier run are recognisable by their `<runid>` and swept only under a separate confirmation
 - A **project** tool, not a release tool: it never edits the packaged rules tree (`init`/`update` rewrite it), it prints a PR diff instead

@@ -9,11 +9,6 @@
     "repo": "https://github.com/german-krasnikov/unity-biome-mcp"
   },
   "rules": "rules/unity-biome-mcp/",
-  "verified": {
-    "version": "1.37.2",
-    "date": "2026-08-18",
-    "toolRegistry": "server/src/unity_mcp/tools/tool_specs.py"
-  },
   "config": {
     "command": "uvx",
     "args": [

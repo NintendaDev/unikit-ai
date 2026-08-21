@@ -21,6 +21,7 @@ allowed-tools:
   - Bash(ls *)
   - Bash(find *)
   - Bash(wc *)
+  - Bash(date *)
   - Agent
   - AskUserQuestion
   - Skill
@@ -163,8 +164,8 @@ Stack rules are loaded on-demand if Step 4.3 fixes reveal framework-specific iss
 
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:` / `version:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every target here. **Do not read the `## Check` table now** — it is grepped per editor target, by area (Step 1).
-6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `version:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every target here. **Do not read the `## Check` table now** — it is grepped per editor target, by area (Step 1).
+6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
    WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
@@ -255,7 +256,7 @@ Launch one Explore task per phase from the plan's task list. For each phase, pro
 - **Editor tasks stay in this skill's own context** and are verified by **reading the editor state back through the engine MCP**, never with Glob/Grep. The per-kind checks are engine knowledge — see `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` → `## Editor Target Checks`.
 - **Verify against the editor, never against the plan.** The acceptance criterion is closed by what the editor reports now, not by what the plan said would happen and not by what the implementation report claimed. Re-reading the plan's own words back is not verification: it makes a planning error invisible, because the two sides of the comparison have the same author.
 - **Per target, before the read-back:** pick candidate affordances from the live catalog by intent (never from a file, never from memory), ask the server for their schemas, and grep the `## Check` tables of `.unikit/system/engine-mcp/INDEX.md` and `.unikit/MCP-RECHECK-NOTES.md` for this target's own area **plus every cross-cutting area** — `rollback · console · batch · compile · transport · visual`. No matching line changes nothing: an absent exception is not an absent capability (A9).
-- **A call that misled you is a finding.** Record it in the verification report as a candidate line (the `area`, what has to be confirmed, the raw call and the raw answer) and in the plan's `## MCP Findings` table. **Never write `.unikit/MCP-RECHECK-NOTES.md` from here** — the durable surface passes through a human running `/unikit-mcp-trap`.
+- **A call that misled you is a finding.** Record it in the verification report as a candidate line (the `area`, what has to be confirmed, the raw call and the raw answer) and in the plan's `## MCP Findings` table. **Write the table row on the pass over the target that produced it, not in the verification summary** — a finding held until the summary is lost to every run that stops early. `F<n>` is one more than the highest id already in the table (read the table first, so a re-verify does not restart the numbering); `observed` is the date you observed it (`Bash(date *)`), copied into the notes verbatim by `/unikit-mcp-trap`, so leaving it empty makes the notes record the transfer date instead; dedup is semantic — a candidate saying the same thing about the same `area` as an existing row is dropped, by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`. **Never write `.unikit/MCP-RECHECK-NOTES.md` from here** — the durable surface passes through a human running `/unikit-mcp-trap`.
 - **MCP unavailable** → `⏭️ SKIPPED (editor target, MCP unavailable)`. Not a failure.
 - **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
 

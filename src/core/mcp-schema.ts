@@ -117,22 +117,6 @@ function parseConfigByPlatform(raw: unknown): Partial<Record<McpPlatformKey, Rec
 }
 
 /**
- * Read the optional `verified` audit stamp. All three fields are required — a
- * partial stamp is worse than none, since `init` would print it as if the audit
- * were complete.
- */
-function parseVerified(raw: unknown): McpServerEntry['verified'] | null {
-  if (!isRecord(raw)) return null;
-
-  const { version, date, toolRegistry } = raw;
-  if (typeof version !== 'string' || typeof date !== 'string' || typeof toolRegistry !== 'string') {
-    return null;
-  }
-
-  return { version, date, toolRegistry };
-}
-
-/**
  * Parse one MCP JSON object into an entry.
  *
  * @param raw      the parsed JSON object.
@@ -181,11 +165,6 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
 
   if (configByPlatform) {
     entry.configByPlatform = configByPlatform;
-  }
-
-  const verified = parseVerified(raw['verified']);
-  if (verified) {
-    entry.verified = verified;
   }
 
   const allowedTools = raw['allowed-tools'] as McpAllowedTools | undefined;

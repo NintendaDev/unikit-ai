@@ -2,17 +2,18 @@
 name: unikit-mcp-audit
 description: >-
   Curate .unikit/MCP-RECHECK-NOTES.md — the project's log of findings about the
-  configured engine MCP server. Four jobs: re-stamp (the server or version moved,
-  so every entry is suspect), replay (reproduce a `replay: safe` finding inside a
+  configured engine MCP server. Four jobs: re-stamp (the server moved, so every
+  entry is suspect), replay (reproduce a `replay: safe` finding inside a
   disposable sandbox to see whether it still holds), retire (offer to drop what was
   fixed or went upstream), and upstream (print a ready diff for the packaged
   INDEX.md). Use for "audit the MCP notes", "are these findings still true",
   "recheck the MCP traps", "clean up MCP-RECHECK-NOTES", "the server was updated —
-  revisit the notes". Replaying mutates a live editor, so it runs behind an
-  eight-step safety envelope: refuses on a dirty scene, compilation, or Play Mode,
-  shows everything it will create before one confirmation, and never saves the
-  scene. To record a NEW finding use /unikit-mcp-trap instead.
-argument-hint: "[optional: a note id such as R2, or `stamp` | `replay` | `retire` | `upstream`]  (mutates a live editor — gated)"
+  revisit the notes". Replaying mutates a live editor, so it starts by telling you
+  how to prepare it — save your scene, open an empty one — and asks once before
+  touching anything. Everything it creates lives under a single UNIKIT_AUDIT_<runid>
+  prefix, is deleted in one action, and the scene is never saved. To record a NEW
+  finding use /unikit-mcp-trap instead.
+argument-hint: "[optional: a note id such as R2, or `stamp` | `replay` | `retire` | `upstream`]  (mutates a live editor — asks first)"
 allowed-tools:
   - Read
   - Write
@@ -20,7 +21,6 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
-  - Bash(git *)
   - Bash(date *)
 disable-model-invocation: false
 user-invocable: true
@@ -63,9 +63,9 @@ Silently load — do not narrate:
    classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read the
    deep reference below the boundary too: this skill touches editor state, so it is a
    first Editor task by definition.
-3. **`.unikit/system/engine-mcp/INDEX.md`** — the delivery stamp (`server:` /
-   `version:`) and the base section, including **how a project-relative asset path is
-   written for this engine** (see "The asset root is a contract" below). File absent →
+3. **`.unikit/system/engine-mcp/INDEX.md`** — the delivery stamp (`server:`) and the
+   base section, including **how a project-relative asset path is written for this
+   engine** (see "The asset root is a contract" below). File absent →
    there are no known exceptions; that restricts nothing and switches nothing to
    `⏸️ MANUAL`.
 4. **`.unikit/MCP-RECHECK-NOTES.md`** — the file being curated. Absent → say so and
@@ -96,61 +96,88 @@ matrix into `references/code-recon.md`.
 
 ## Job 1 — stamp
 
-Compare the notes header (`server:` / `version:`) against the delivery stamp.
+Compare the notes header (`server:`) against the delivery stamp.
 
 Different → print one line and continue:
 
 ```
-WARN [mcp-audit] server/version in notes header ≠ configured (<notes> ≠ <configured>)
+WARN [mcp-audit] server in notes header ≠ configured (<notes> ≠ <configured>)
 ```
 
 A mismatch makes every entry **suspect**, not void. Suspect entries stay in force: a
-stale check costs one call and fails safe, while dropping checks on a version bump
-throws away the protection they were written for. What the mismatch changes is the
-**priority** of the replay pass — these are the rows most worth replaying, and they are
-offered first.
+stale check costs one call and fails safe, while dropping checks because the server
+underneath them changed throws away the protection they were written for. What the
+mismatch changes is the **priority** of the replay pass — these are the rows most worth
+replaying, and they are offered first.
+
+The installer renames this file on every completed server switch, so a mismatch is not
+the ordinary case: it means a switch was interrupted, or the file arrived by hand. That
+is still information and not an error — and it is not a re-stamp instruction either, see
+"What this skill never does".
 
 ## Job 2 — replay
 
 Only rows marked `replay: safe` are ever replayed. `replay: manual` rows are **shown,
-never executed** — see Step 4.
+never executed** — see Step 2.
 
 Replaying executes an arbitrary call taken from a note's `evidence` field against a live
 editor. That is a mutating operation and this skill is granted accordingly; the
 restraint lives in the **behaviour below**, not in the tool perimeter, and it is
-compensated by the structural rollback in Steps 2 and 8.
+compensated by the structural rollback in SWEEP and CONFIRM.
 
-### The eight-step safety envelope
+### The six-step safety envelope
 
-The order is load-bearing. It is "gates with no edits between them" — every measurement
-happens before anything is created, and the confirmation happens before anything is
-executed.
+The order is load-bearing. It is "gates with no edits between them" — the whole run is
+described and confirmed before anything is created, and nothing is executed before that
+confirmation.
 
-**1 — MEASURE.** Read from the server: is the scene dirty, is the editor playing, is it
-compiling. Read the **project directory path from the server itself** and check the
-cleanliness of the git working tree *there*. The agent runs in a different repository
-than the project; checking the repository you happen to be standing in proves nothing
-about the one you are about to mutate.
+**There are no pre-flight measurements. The user's confirmation is the only gate.**
 
-**2 — REFUSE.** Dirty scene → stop. Compiling → stop. Play Mode → stop. Report the
-measurement that closed the route and what the user has to do about it. This step is why
-the skill never creates a scene of its own: creating one is among the most dangerous
-operations available — on one server it discards unsaved work, on another it loses a
-flag and destroys it.
+That is a deliberate inversion of what stood here, and the reason is measurement, not
+taste. The gate used to refuse on `dirty` — and a **fresh empty untitled scene, the one
+safe place to run this, is `dirty=True` by default** (`mcp_status` → `scene=New Scene
+dirty=True`). The gate therefore rejected the only correct state *structurally, every
+time*, while a configured saved production scene reads `dirty=False` and sailed through.
+The check was not merely weak; it was pointing the wrong way. Nor is such a check
+portable: of the servers surveyed, one reports no scene-dirty state at all, one does not
+document editor state, and one runs an engine where "compiling" is not a concept. The
+status blob is not even atomic — four calls in one minute named three different ports.
 
-**3 — PRESENT.** Show, in one message: what was measured, **every name that will be
-created**, and which rows will be replayed. Take **one informed confirmation** for the
-whole run. Not one per row — a stream of prompts trains the user to accept without
-reading, which is the failure mode this step exists to prevent.
+**1 — INSTRUCT, then ASK.** Say what this run does and what the editor has to look like
+for it, then ask once. **Nothing is created and nothing is mutated before the answer.**
+The one thing read from the server beforehand is the optional courtesy line in item 3 —
+it names the open scene, it is allowed to fail, and no decision depends on it.
 
-**4 — FILTER.** Drop `replay: manual` rows from execution and simply display them, with
+The message carries, in this order:
+
+1. **What the audit does to the open scene:** it creates objects there and it **never
+   saves**. Whatever is in the scene when you say yes is what it will be worked on top of.
+2. **What the user is asked to do:** (a) save the scene you care about, (b) create a new
+   empty scene, (c) make sure nothing is compiling and Play Mode is off.
+3. **A courtesy line naming the currently open scene** — see "The scene line is a
+   courtesy" below.
+4. **Everything that will be created:** the sandbox root `UNIKIT_AUDIT_<runid>`, the asset
+   folder if one is needed, the filename prefix — plus which rows will be replayed and
+   which will only be shown.
+5. **The question:** `Editor ready? [y/N]`.
+
+Anything other than an explicit yes ends the run. Nothing has been touched at this point,
+so there is nothing to undo.
+
+**2 — FILTER.** Drop `replay: manual` rows from execution and simply display them, with
 the reason they cannot be replayed automatically. `manual` is also the **default** for
 any row whose `replay` field is missing or unreadable.
 
-**5 — MARK.** Place a console marker. Everything after it is the delta this run is
+**3 — MARK.** Place a console marker. Everything after it is the delta this run is
 answerable for.
 
-**6 — REPLAY.** Execute strictly inside the sandbox:
+This is the **first call this skill is required to make** — worth knowing when reading a
+transport error here. Only one call can precede it, the optional courtesy read in Step 1,
+and it is allowed to have failed or been skipped, so its success is not something you can
+lean on: treat a failure at MARK as the first evidence about the connection, not the
+second.
+
+**4 — REPLAY.** Execute strictly inside the sandbox:
 
 ```
 UNIKIT_AUDIT_<runid>                     the single root object in the scene
@@ -165,14 +192,56 @@ the row as `manual` from here on.
 Each replayed row yields a verdict on its own claim: does the trap still reproduce? Read
 the state back — the response is not the answer, per A1.
 
-**7 — SWEEP.** Delete the sandbox root in one action. One root, one deletion; that is
+**A row that failed to replay because the editor was unstable is not silently demoted.**
+See "A failed replay is not automatically a demotion" below: the rule above turns "did not
+reproduce in the sandbox" into `manual`, and applied blindly it would corrupt a perfectly
+good `safe` row whose replay happened to land during a compile.
+
+**5 — SWEEP.** Delete the sandbox root in one action. One root, one deletion; that is
 what the naming was for.
 
-**8 — CONFIRM.** Search by the `<runid>` prefix and **do not save the scene**.
+**6 — CONFIRM.** Search by the `<runid>` prefix and **do not save the scene**.
 
-Step 8 is the structural guarantee: the scene was never saved, so even a sweep that
+Step 6 is the structural guarantee: the scene was never saved, so even a sweep that
 fails leaves nothing on disk. That is why the scene must not be saved even when
 everything looks clean — saving would convert a recoverable mess into a committed one.
+
+### The scene line is a courtesy, not a check
+
+Step 1 prints the name of the currently open scene. That line is **shown, and nothing
+else**: it is not compared against anything, no value of it changes the run, and if the
+call that produces it fails, the line is simply absent and the run continues to the
+question.
+
+Three words, so it is not turned back into a gate later: **shown, not checked.**
+
+**Name the scene, never characterise it.** Print what it is called and stop there — not
+"clean", not "empty", not "safe to use". This skill no longer measures scene state, so any
+such word is invented; and even when it was measured, "clean" said far more than the
+measurement supported. That was the original complaint: `dirty=False` on a fully configured
+production scene got reported as a clean scene, which is a `false success` (A3) on the
+reporting side. Where an unsaved-changes state genuinely has to be described anywhere in
+this pipeline, the words are **"no unsaved changes"**, which is what was actually read.
+
+What it is for is the original complaint. A user reads "create a new empty scene", says
+yes, and has in fact forgotten — with the name in front of them they see their production
+scene sitting there and answer no. It solves that by informing a human, which is the only
+place the judgement belongs now.
+
+### A failed replay is not automatically a demotion
+
+A `safe` row whose replay does not reproduce is a **retirement candidate** (Job 3) — the
+server was fixed, or the call is gone. A `safe` row whose replay fails while the editor is
+unstable is **neither**: it is a run that produced no evidence.
+
+So when there is reason to suspect instability — a compile started mid-run, the transport
+answered inconsistently, the console shows unrelated errors after the marker — **do not
+write `manual` into the row**. Report the failure with the reason and offer the demotion
+to the user as a choice.
+
+Without this, the REPLAY rule ("could not be reproduced in the sandbox → not `safe`")
+quietly downgrades a correct row because a domain reload happened to land in the middle of
+it, and the note is degraded for good on evidence that never existed.
 
 ### The sweep is proved, not announced
 
@@ -232,12 +301,18 @@ merges, the local row becomes a duplicate and the next audit retires it under Jo
 
 ## What this skill never does
 
-- **Never saves the scene.** Not on success, not to "clean up". Step 8.
+- **Never saves the scene.** Not on success, not to "clean up". Step 6.
+- **Never creates a scene of its own, and never re-opens the one that was there.** The
+  dangerous half is the **return**, not the creation: opening the production scene back
+  over a dirty scratch scene is a second `destructive default` call — a class this very
+  server declares (`a scene is created over an unsaved one`) — and the editor's
+  Save / Don't Save dialog is one an agent cannot answer. Preparing the editor is the
+  user's step, in Step 1, and it stays there.
 - **Never deletes or edits anything it did not create in this run.**
 - **Never repeats a failed sweep blindly** — it reports what remains, by name.
 - **Never edits the packaged rules tree**, and never edits a plan.
-- **Never rewrites `server:` / `version:`** in the notes header to make a mismatch go
-  away. The mismatch is information: it is what makes rows suspect.
+- **Never rewrites `server:`** in the notes header to make a mismatch go away. The
+  mismatch is information: it is what makes rows suspect.
 - **Never writes `⏸️ MANUAL`** because rules are missing, and never treats an
   unreachable editor as proof that a capability is absent — that is a stop-condition
   (A7), reported as a fact.
