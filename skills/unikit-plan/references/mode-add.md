@@ -16,13 +16,13 @@ Use unified plan detection:
 3. Only one exists → use it
 4. No plan found → tell user to create one first, **STOP**
 
-Load the plan: `TASKS.md` + `PLAN-BRIEF.md` for folder plans, or `PLAN.md` for fast plans.
+Load the plan manifest: `.unikit/code/plans/<folder>/PLAN.md` for folder plans, or `.unikit/code/PLAN.md` for the flat fast plan. There is no second file to load.
 
 Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules) are already loaded by Bootstrap (Step 0.5).
 
 ### Add Step 2: Analyze & Apply
 
-Parse the user's description and determine changes: new tasks/phases, modifications, settings, updates to PLAN-BRIEF.md (full mode) or `## Technical Context` (fast mode).
+Parse the user's description and determine changes: new tasks/phases, modifications, settings, updates to the manifest's `## Technical Context`.
 
 If changes require codebase understanding → launch Explore tasks (same as Step 4 Phase A). Skip if purely structural.
 
@@ -30,8 +30,8 @@ Apply changes with Edit tool, preserving unaffected content:
 - New tasks/phases follow existing format (numbering, WHY, `Files:`, `Editor:`, effort)
   - `Editor:` — one line per editor target, placed after `Files:`, only when the change touches the editor's **serialized state** (concrete signals for the active engine: `references/ENGINE_RULES.md` §3). Omitted for pure code tasks, and **not generated at all** when `engine_rules_loaded = false`.
   - Add mode does **not** introduce a `## Settings` section and does not re-ask the editor-mode question — it extends an existing plan and inherits its settings.
-- Update Total Estimated Effort, Commit Plan, Dependency Graph as needed
-- Update PLAN-BRIEF.md / Technical Context if changes affect constraints, interfaces, or patterns
+- Update the manifest's `## Total Estimated Effort`, `## Commit Plan` and `## Dependency Graph` as needed
+- Update the `## Technical Context` section if changes affect constraints, interfaces, or patterns
 
 ### Add Step 3: Confirm
 

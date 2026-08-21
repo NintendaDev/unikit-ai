@@ -114,7 +114,7 @@ No engine MCP is configured. How should those tasks be carried out?
 
    Offer **`direct` only** when `references/ENGINE_RULES.md` §6 rates the engine's serialized formats 🟢 or 🟡. Where §6 rates them 🔴 (binary or dense generated formats), drop the option entirely rather than showing it and refusing later.
 
-Store the preferences — they affect the `## Settings` section in `TASKS.md`, whether a testing phase is added, whether `/unikit-implement` shows a documentation checkpoint, and how `/unikit-implement` executes `Editor:` tasks.
+Store the preferences — they affect the `## Settings` section in `.unikit/code/plans/<folder>/PLAN.md`, whether a testing phase is added, whether `/unikit-implement` shows a documentation checkpoint, and how `/unikit-implement` executes `Editor:` tasks.
 
 **If `.unikit/ROADMAP.md` exists and the user chose milestone linkage:**
 - Read `.unikit/ROADMAP.md` and list candidate milestones (prefer unchecked items)

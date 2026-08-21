@@ -14,10 +14,12 @@ Scan for plans in all locations:
 2. **Full plans** — list all folders in `.unikit/code/plans/` (if directory exists)
 3. **Fix plan** — check if `.unikit/code/FIX_PLAN.md` exists
 
+Listing never opens a plan folder — a folder is a plan whatever its manifest contains. That is what keeps this mode unchanged as new plan modes are added.
+
 ### List Step 2: Gather Info
 
 For each found plan:
-- **Name** — folder name (for full plans), "PLAN.md" (fast), "FIX_PLAN.md" (fix)
+- **Name** — folder name (for full plans), `.unikit/code/PLAN.md` (fast), `.unikit/code/FIX_PLAN.md` (fix)
 - **Progress** — count completed (`- [x]`) and total (`- [ ]` + `- [x]`) task checkboxes
 - **Branch match** — compare plan name with current git branch (`git branch --show-current`). If on `<configured branch prefix><name>` and a plan folder ends with `_<name>` → mark as `← current branch`
 

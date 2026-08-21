@@ -11,7 +11,17 @@
 >
 > When `ENGINE_RULES.md` is absent for the active engine, keep the sections but leave the engine-specific bodies out rather than guessing.
 
-## Tasks Template (`TASKS.md` / `PLAN.md`)
+## Naming vocabulary (flat plan vs folder manifest)
+
+Two different files carry the name `PLAN.md`: the flat fast plan and the manifest of a plan folder. The path tells them apart; prose does not. An unqualified mention inside a consumer resolves to "whichever one is nearer", and which one that is depends on which paragraph the reader happened to read first — so the name is never written bare.
+
+- **Flat fast plan** — always written as the full path `.unikit/code/PLAN.md`.
+- **Folder plan manifest** — always written as the full path `.unikit/code/plans/<folder>/PLAN.md`, as the glob `plans/*/PLAN.md`, or as the phrase "the plan folder's `PLAN.md`".
+- **A bare `PLAN.md` token is forbidden** in `skills/**` and `subagents/*`. This section — where the name is declared — is the only exception.
+
+## Plan Manifest Template
+
+Placement: Fast → `.unikit/code/PLAN.md`; Full/Ultra → `.unikit/code/plans/<folder>/PLAN.md`.
 
 ```markdown
 # {Feature Name} — Tasks
@@ -23,8 +33,7 @@ Answer: WHAT is done, WHY it is needed, WHAT GOAL it pursues.
 ## Based on
 (Optional) Use Research Reference Format from the main skill file to link researches.
 
-Full mode: if no research — technical context is in `PLAN-BRIEF.md` next to this file.
-Fast mode: if no research — see `## Technical Context` section below.
+If no research — technical context is in the `## Technical Context` section below.
 
 ## Settings
 - Testing: yes/no
@@ -106,6 +115,78 @@ Phase 1 → Phase 3 → Phase 4
 
 ## Total Estimated Effort
 Sum of all phases: ~X days
+
+---
+
+## Technical Context
+
+### CONTEXT
+Project: {{engine_name}} / {stack from `.unikit/DESCRIPTION.md`}
+Feature: {brief description}
+Scope: {list of key components/modules affected}
+Stop condition: {what is explicitly NOT implemented in this plan}
+
+### CONSTRAINTS
+- MUST: {constraint with rationale}
+- MUST: {constraint with rationale}
+- FORBIDDEN: {anti-pattern with rationale}
+- FORBIDDEN: {anti-pattern with rationale}
+
+### INTERFACES
+
+#### {InterfaceName} [NEW | MODIFY]
+​```<lang>
+// Namespace
+public interface IExample
+{
+    // Key methods with signatures
+}
+​```
+
+### KEY PATTERNS
+
+#### {Pattern Name}
+​```<lang>
+// Code example showing the pattern in context
+​```
+
+### DEPENDENCY GRAPH
+
+ComponentA
+  <- IDependency (ctor inject)
+  <- IOtherDependency (ctor inject)
+
+ComponentB
+  <- ComponentA (ctor inject)
+
+### FILES
+
+#### CREATE
+| Path | Type | Notes |
+|------|------|-------|
+| `<content-root>/...` | interface | description |
+
+#### MODIFY
+| Path | Change |
+|------|--------|
+| `<content-root>/...` | what to change |
+
+### EDITOR TARGETS
+| Kind | Container | Target | Change |
+|------|-----------|--------|--------|
+
+### DI BINDINGS
+​```<lang>
+{DI binding per ENGINE_RULES.md §2} — one line per installer binding
+​```
+
+### OUT OF SCOPE
+- What is explicitly NOT part of this plan
+
+## Open Questions
+(Optional) Uncertainties the planning pass could not close. One line each.
+Placed last, **after** `## Technical Context`, so it never falls inside the
+`## MCP Findings` window (which runs from that heading to the next `##`).
 ```
 
 ### Editor task grammar
@@ -128,11 +209,11 @@ Rules:
 
   **`## MCP Findings` is written under this invariant, and would need a different scheme without it.** Executors append their rows straight into the plan file, and `unikit-implement-worker` has no worktree isolation — every worker edits the same file. That is safe only because the phase that can produce an MCP finding is alone in its layer, so there is never more than one writer at a time. If the serialization rule is ever relaxed, the append scheme has to be revisited before it is: the fallback is a per-task mailbox (`plans/<plan>/findings/<task>.md`) collected at the end, which costs a directory and a second phase and is why it was not chosen now.
 
-The targets are aggregated into an `## EDITOR TARGETS` table (`PLAN-BRIEF.md` in full mode, `## Technical Context` in fast mode). **Both are omitted entirely when the plan carries no `Editor:` task.**
+The targets are aggregated into the `### EDITOR TARGETS` table inside `## Technical Context`. It is omitted entirely when the plan carries no `Editor:` task.
 
 ### MCP findings section
 
-`## MCP Findings` belongs to the **`TASKS.md` / `PLAN.md`** template above, at `##` level, next to `## Commit Plan`. It is **not** part of `PLAN-BRIEF.md`: `/unikit-mcp-trap` greps plans for this heading, and a copy living in the brief would make its reading window land on the wrong file.
+`## MCP Findings` lives in the manifest at `##` level, next to `## Commit Plan` and **above** `## Technical Context`. `/unikit-mcp-trap` reads the heading down to the next `##`; a findings table demoted to `###`, or placed inside `## Technical Context`, is invisible to it.
 
 An executor that hits a misleading engine MCP response records it **here, in the plan, and nowhere else**. It does not edit `.unikit/MCP-RECHECK-NOTES.md` itself: one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
 
@@ -155,110 +236,3 @@ The window carries a 30-line cap **only when trap is scanning many plans at once
 
 - Title: `# {Feature Name} — Plan` (instead of `— Tasks`)
 - Settings: no `Docs` line
-- Append `## Technical Context` after `Total Estimated Effort`:
-
-```markdown
----
-
-## Technical Context
-
-### CONSTRAINTS
-- MUST: {constraint with rationale}
-- FORBIDDEN: {anti-pattern with rationale}
-
-### INTERFACES
-​```<lang>
-public interface IExample { }
-​```
-
-### KEY PATTERNS
-​```<lang>
-// Pattern example
-​```
-
-### FILES
-| Path | Type | Notes |
-|------|------|-------|
-| `<content-root>/...` | interface | description |
-
-### EDITOR TARGETS
-| Kind | Container | Target | Change |
-|------|-----------|--------|--------|
-
-### DI BINDINGS
-​```<lang>
-{DI binding per ENGINE_RULES.md §2}
-​```
-
-### OUT OF SCOPE
-- What is NOT part of this plan
-```
-
-## Plan Brief Template
-
-```markdown
-# {Feature Name}
-
-## CONTEXT
-Project: {{engine_name}} / {stack from `.unikit/DESCRIPTION.md`}
-Feature: {brief description}
-Scope: {list of key components/modules affected}
-Stop condition: {what is explicitly NOT implemented in this plan}
-
-## CONSTRAINTS
-- MUST: {constraint with rationale}
-- MUST: {constraint with rationale}
-- FORBIDDEN: {anti-pattern with rationale}
-- FORBIDDEN: {anti-pattern with rationale}
-
-## INTERFACES
-
-### {InterfaceName} [NEW | MODIFY]
-​```<lang>
-// Namespace
-public interface IExample
-{
-    // Key methods with signatures
-}
-​```
-
-## KEY PATTERNS
-
-### {Pattern Name}
-​```<lang>
-// Code example showing the pattern in context
-​```
-
-## DEPENDENCY GRAPH
-
-ComponentA
-  <- IDependency (ctor inject)
-  <- IOtherDependency (ctor inject)
-
-ComponentB
-  <- ComponentA (ctor inject)
-
-## FILES
-
-### CREATE
-| Path | Type | Notes |
-|------|------|-------|
-| `<content-root>/...` | interface | description |
-
-### MODIFY
-| Path | Change |
-|------|--------|
-| `<content-root>/...` | what to change |
-
-## EDITOR TARGETS
-| Kind | Container | Target | Change |
-|------|-----------|--------|--------|
-
-## DI BINDINGS
-​```<lang>
-{DI binding per ENGINE_RULES.md §2} — one line per installer binding
-​```
-
-## OUT OF SCOPE
-- What is explicitly NOT part of this plan
-```

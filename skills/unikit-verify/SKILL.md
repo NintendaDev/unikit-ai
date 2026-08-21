@@ -29,7 +29,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "1.2"
+  version: "1.3"
   category: quality
 ---
 
@@ -135,16 +135,8 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 
 ### 0.2 Read Plan & Context
 
-**If using `.unikit/code/PLAN.md`** (fast-mode plan):
-- Read **`.unikit/code/PLAN.md`** — single file containing checklist, overview, settings, and optionally technical context inline
-- Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
-- Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
-- Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
-
-**If using a folder plan** (`.unikit/code/plans/<folder>/`):
-- Read **`TASKS.md`** — feature overview (`## Overview`), task checklist with phases and statuses
-- Read **`PLAN-BRIEF.md`** — technical context: constraints, interfaces, key patterns, files, editor targets, DI bindings (if exists in plan folder)
-- If `TASKS.md` has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
+- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. One file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases, dependencies and completion status, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
+- If the manifest has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
@@ -443,7 +435,7 @@ Check whether the implementation introduced user-facing changes that should be r
 
 **a) Check plan's Docs policy:**
 
-Read the `## Settings` section from `TASKS.md` (or `.unikit/code/PLAN.md`):
+Read the `## Settings` section from the plan manifest:
 - If `Docs: yes` — verify that documentation was actually updated during implementation (check `CHANGED_FILES` for `README.md`, `docs/*.md`, or `.unikit/docs-config.json`). If no doc files were modified: `WARN [docs] Docs policy was 'yes' but no documentation files were changed — run /unikit-docs`
 - If `Docs: no` or missing — check whether the implementation introduced new public APIs, new modules, changed configuration, or modified user-facing behavior. If yes: `WARN [docs] Implementation changed public API/behavior but Docs policy was no/unset — consider /unikit-docs`
 
@@ -563,7 +555,7 @@ For each fix iteration (Fix now / Fix critical only). Fixes are written by this 
 - For each incomplete/partial task — implement the missing parts
 - For TODO/debug artifacts — clean up
 - For anti-patterns — fix
-- Update `TASKS.md` after fixes
+- Update the plan manifest after fixes — checkbox lines and the `## MCP Findings` table only. `## Technical Context` is never rewritten from here; it belongs to `/unikit-plan` and `/unikit-improve`
 - After fixes — re-run checks on affected items
 
 ### 4.4 Machine-Readable Gate Result

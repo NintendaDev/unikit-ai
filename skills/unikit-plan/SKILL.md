@@ -28,7 +28,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "7.2"
+  version: "7.3"
   category: planning
 ---
 
@@ -44,14 +44,13 @@ Three modes:
 **Output artifacts by mode:**
 
 **Fast mode** → single flat file `.unikit/code/PLAN.md`:
-- Contains everything: overview, settings, checklist, commit plan, dependency graph, and a `## Technical Context` section with plan-brief content (always generated based on current codebase state).
+- **`.unikit/code/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
 - Temporary plan for quick work — `/unikit-implement` may offer deletion after completion.
 
 **Full mode** → folder `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/`:
-- **`TASKS.md`** — actionable checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph.
-- **`PLAN-BRIEF.md`** — always created. Structured technical brief (constraints, interfaces, key patterns, dependency graph, files) for the implementing agent, based on current codebase state at planning time.
+- **`.unikit/code/plans/<folder>/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
 
-When a research is linked (from `/unikit-explore`), the plan references it via `## Based on` using the Research Reference Format below. The research's `RESEARCH_BRIEF.md` is used as **input** for generating the plan's own `PLAN-BRIEF.md`, not as a replacement. This ensures the plan's brief reflects the actual codebase state at planning time, which may differ from exploration time.
+When a research is linked (from `/unikit-explore`), the plan references it via `## Based on` using the Research Reference Format below. The research's `RESEARCH_BRIEF.md` is used as **input** for generating the plan's own `## Technical Context`, not as a replacement — the plan's section reflects the actual codebase state at planning time and supersedes the research brief.
 
 ### Research Reference Format
 
@@ -349,7 +348,7 @@ Highlight the most relevant entries in the question text (e.g., "Recommended: #1
    - Read its `RESEARCH_BRIEF.md` and `RESEARCH_SOURCE.md` (if exists) for technical context
    - Use as planning context and as **starting point** for Phase B deep-dive — reduces scope of Explore tasks in Step 4
    - Mark `research_linked = true` and store research path for `## Based on` (uses Research Reference Format)
-   - `PLAN-BRIEF.md` is still created in Step 5 — research brief is used as input, not replacement (the plan's brief reflects the actual codebase state at planning time)
+   - The plan's `## Technical Context` is still generated in Step 5 — research brief is used as input, not replacement (the section reflects the actual codebase state at planning time)
 
 ### Step 3: Analyze Requirements
 
@@ -372,7 +371,7 @@ Wait for answers before proceeding. Do not plan based on assumptions when the de
 ### Step 4: Explore the Codebase & Technical Design
 
 This is the most critical step. The goal is to produce a **deep technical understanding** sufficient
-for writing actionable tasks with meaningful WHY context and for generating a `PLAN-BRIEF.md` that reflects the actual codebase state at planning time.
+for writing actionable tasks with meaningful WHY context and for generating a `## Technical Context` that reflects the actual codebase state at planning time.
 
 You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to write precise prompts for Explore tasks and to synthesize their results against project conventions.
 
@@ -426,7 +425,7 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
 
 #### Phase B: Technical Deep-Dive (Explore agent)
 
-**Always runs** — produces `PLAN-BRIEF.md` content based on the current codebase state.
+**Always runs** — produces the plan's `## Technical Context` content based on the current codebase state.
 
 When `research_linked = true`: use `RESEARCH_BRIEF.md` as a **starting point** for the deep-dive. The research brief provides initial constraints, interfaces, and patterns — but Phase B verifies them against the actual code and updates/extends as needed. This ensures the plan's brief is fresh and accurate even if the codebase changed since the research was conducted.
 
@@ -438,11 +437,11 @@ Launch an Explore task for detailed technical analysis using findings from Phase
 3. Identify patterns the new feature must follow (naming, structure, registration)
 4. Find constraints — what is MUST vs FORBIDDEN based on existing code
 
-Return format: structured report matching the Plan Brief Template sections from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`. Do not guess — base on actual code read. Thoroughness: very thorough.
+Return format: structured report matching the `## Technical Context` section of the Plan Manifest Template in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`. Do not guess — base on actual code read. Thoroughness: very thorough.
 
 **Fallback:** If Agent tool is unavailable, perform analysis inline using Read.
 
-Synthesize the task's findings with Bootstrap rules to produce `PLAN-BRIEF.md` content.
+Synthesize the task's findings with Bootstrap rules to produce the plan's `## Technical Context` content.
 
 #### Phase C: Additional context
 
@@ -492,33 +491,33 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
-- **Full mode** → `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
+- **Full mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
 
 #### Plan Sections (both modes)
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
-2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Set `Attached` to the current timestamp (`YYYY-MM-DD HH:MM`). After all research entries, add "`PLAN-BRIEF.md` (in this folder)" for full mode or "see `## Technical Context` section below" for fast mode.
-   If no research: fast mode → "see `## Technical Context` section below"; full mode → "`PLAN-BRIEF.md` (in this folder)."
+2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Set `Attached` to the current timestamp (`YYYY-MM-DD HH:MM`). After all research entries, add "see the `## Technical Context` section below".
+   If no research: "see the `## Technical Context` section below".
 
    **`## Design`** (game-design module — only when `design_linked = true`) — insert the
    design snapshot prepared in Step 4.5 directly after `## Based on`: System + `SYS-id`,
-   version, optional delta, and cited Acceptance Criteria. In full mode it lives in
-   `PLAN-BRIEF.md`; in fast mode it goes into `PLAN.md`. Omit this section entirely for
-   pure-code plans (`design_linked = false`).
+   version, optional delta, and cited Acceptance Criteria. It lives in the plan manifest,
+   directly after `## Based on`. Omit this section entirely for pure-code plans
+   (`design_linked = false`).
 
    **`## Flow Context`** (game-design module — only when a flow is in scope: the flow door,
    or a flow that exercises the resolved system; from Step 4.5 / `design-context.md`) — insert
    the flow brief directly after `## Design`: the `FLOW-id` + wiring-mode, the `GOAL` steps
    touching the relevant system(s), the code shape implied by the mode, and the derived
-   (read-only) `Realized` state. Same file placement as `## Design`. Omit when no flow is in scope.
+   (read-only) `Realized` state. Same placement as `## Design`, in the plan manifest. Omit when no flow is in scope.
 
    **`## Content Context`** (game-design module — only when a content type is in scope: the
    content door, or a content type that feeds the resolved system; from Step 4.5 /
    `design-context.md` §4.5.6) — insert the content brief directly after `## Flow Context`: the
    `CT-id` + `scale`, the `CT.fields` schema (the data contract the code reads), the `belongs_to`
    system, and the code shape implied by `scale` (`bulk` → a data-driven loader; `curated` → named
-   instances). Same file placement as `## Design`. Omit when no content type is in scope. There is
+   instances). Same placement as `## Design`, in the plan manifest. Omit when no content type is in scope. There is
    **no** writeback — content has no `implemented_version` (read-only, the same stance as a flow's
    `Realized`).
 
@@ -559,25 +558,21 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 
 9. **`## Total Estimated Effort`** — sum of all phases.
 
-#### Fast Mode: Additional Section
+10. **`## Technical Context`** — always included, in every mode. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
-10. **`## Technical Context`** — always included. Contains plan-brief content inline (CONSTRAINTS, INTERFACES, KEY PATTERNS, FILES, **EDITOR TARGETS**, DI BINDINGS, OUT OF SCOPE). `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. Same quality bar as PLAN-BRIEF.md. When `research_linked = true`, use the research brief as a starting point but verify and update based on the current codebase state from Phase B.
+   When `research_linked = true`: use `RESEARCH_BRIEF.md` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `## Technical Context` is the authoritative source for `/unikit-implement` — it supersedes the research brief.
 
-#### Full Mode: `PLAN-BRIEF.md` (always created)
+   **Quality checklist:**
+   1. CONSTRAINTS — non-obvious decisions with rationale (MUST / FORBIDDEN)
+   2. INTERFACES — full {{engine_code_language}} signatures for every interface in tasks
+   3. KEY PATTERNS — code examples for patterns the implementer must follow
+   4. FILES — exact paths for files to create/modify
+   5. EDITOR TARGETS — one row per `Editor:` target in the checklist (Kind / Container / Target / Change); the section is omitted entirely when the plan has no `Editor:` task
+   6. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
 
-**Always created** — the plan's own technical brief based on the current codebase state at planning time. Use Plan Brief Template from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`. Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns.
+   Self-check (within the one manifest): if an interface appears in the tasks but not in `### INTERFACES` — add it; likewise for an `Editor:` target missing from `### EDITOR TARGETS`.
 
-When `research_linked = true`: use `RESEARCH_BRIEF.md` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `PLAN-BRIEF.md` is the authoritative source for `/unikit-implement` — it supersedes the research brief.
-
-**Quality checklist:**
-1. CONSTRAINTS — non-obvious decisions with rationale (MUST / FORBIDDEN)
-2. INTERFACES — full {{engine_code_language}} signatures for every interface in tasks
-3. KEY PATTERNS — code examples for patterns the implementer must follow
-4. FILES — exact paths for files to create/modify
-5. EDITOR TARGETS — one row per `Editor:` target in the checklist (Kind / Container / Target / Change); the section is omitted entirely when the plan has no `Editor:` task
-6. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
-
-Self-check: if an interface appears in tasks but not in INTERFACES — add it. Likewise, if an `Editor:` target appears in tasks but not in EDITOR TARGETS — add it.
+11. **`## Open Questions`** (optional, last section of the manifest) — uncertainties the planning pass could not close, one line each. Written **after** `## Technical Context` so it stays outside the `## MCP Findings` window (which runs from that heading to the next `##`). `unikit-plan-polisher` writes its leftovers here; omit the section entirely when there are none.
 
 ### Step 6: Confirm with User
 
@@ -594,7 +589,7 @@ After artifacts are created, show the user:
 **Full mode:**
 1. The feature folder path created
 2. The git branch name (only if `branch_created = true`; if `false`, show current branch name instead)
-3. Files created: `TASKS.md` and `PLAN-BRIEF.md`, plus research reference if linked
+3. File created: `.unikit/code/plans/<dated-folder>/PLAN.md`, plus research reference if linked
 4. A brief summary of phases identified
 5. Total estimated effort
 6. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
@@ -607,7 +602,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 
 ## Task Description Requirements
 
-Every task in `TASKS.md` MUST include:
+Every task in the plan manifest MUST include:
 - **Clear deliverable** — what exactly is produced (class, interface, configuration, etc.)
 - **WHY line** — one sentence explaining why this task matters in the context of the feature
 - **File paths** — where changes will be made or files created (use `Files:` line under the task)
@@ -648,8 +643,8 @@ Bad examples:
 8. **Actionable tasks** — each task must have a clear, concrete deliverable
 9. **Respect module boundaries** — follow the project's Modular Monolith architecture (Modules/ → Game/ allowed, Game/ → Modules/ FORBIDDEN)
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
-11. **Always create PLAN-BRIEF.md** — even when a research's `RESEARCH_BRIEF.md` exists, the plan always generates its own `PLAN-BRIEF.md` (full mode) or `## Technical Context` (fast mode) based on the current codebase state. The research brief is used as input, not as a replacement — code may have changed since the research was conducted. The plan's brief is the authoritative source for `/unikit-implement`
-12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
+11. **Always generate `## Technical Context`** — even when a research's `RESEARCH_BRIEF.md` exists, the plan generates its own section based on the current codebase state. The research brief is input, not a replacement; the plan's section is the authoritative source for `/unikit-implement`
+12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
 13. **`Editor:` marks serialized editor state, nothing else** — write an `Editor:` line **if and only if** the change touches the editor's **serialized state**; a plain text or config file stays in `Files:` (the same criterion as `.unikit/system/dev-principles.md` → Layer A, **A8 · "Serialized state is the boundary"**). Engine-specific signals live in `references/ENGINE_RULES.md` §3; when that file is absent, the field is not generated at all
 14. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
 15. **A plan is intent, not inventory — no tool name ever reaches it** — the plan says *what has to be true*, never *what to call*. Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else: a name in a plan is a name that will be wrong by the time the plan is executed, and it silently overrides the executor's own discovery. This also settles the reverse: the planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance
@@ -662,7 +657,7 @@ Use **Explore tasks** for codebase analysis — not `unikit-devcontext` or `deve
 ## Quick Reference
 ```
 /unikit-plan fast <description>           → .unikit/code/PLAN.md
-/unikit-plan full <description>           → .unikit/code/plans/YYYY-MM-DD_name/ (TASKS.md + PLAN-BRIEF.md)
+/unikit-plan full <description>           → .unikit/code/plans/YYYY-MM-DD_name/PLAN.md
 /unikit-plan full --base master <desc>    → same, branch from master
 /unikit-plan add <what to change>         → modifies existing plan in-place
 /unikit-plan <description>                → asks Full or Fast interactively

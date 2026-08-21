@@ -69,12 +69,12 @@ The user may provide:
    a. If the user provided an explicit `@<path>`, use that folder.
    b. Scan `.unikit/code/plans/` for the most recent feature folder (by date prefix or modification time).
    c. If no plan found — stop and report.
-2. Read `TASKS.md` from the plan folder. Parse all phases and tasks:
+2. Read the plan folder's `.unikit/code/plans/<folder>/PLAN.md` manifest. Parse all phases and tasks:
    - Phase grouping (Phase 1, Phase 2, ...)
    - Phase dependencies from the dependencies line (supports both English and localized headers, see "Dependency Parsing" below)
    - Task number and description
    - Completion status (`[ ]`, `[x]`, `[~]`, `[!]`)
-3. Read `PLAN-BRIEF.md` for context.
+3. Read the manifest's `## Technical Context` for context — no second read, it is a section of the file you already read.
 4. Build a **phase dependency graph** (see "Dependency Parsing" below).
 5. Compute **execution layers** — groups of phases whose dependencies are all satisfied:
    - Layer 0: all phases with no dependencies
@@ -127,7 +127,7 @@ Note: annotations use English regardless of the plan language. The phase headers
 - **After success**: mark task as complete `[x]`
 - **After failure**: mark task as `[!]` with `<!-- failed: reason -->`
 
-Update TASKS.md immediately before and after each layer to ensure crash-visible state.
+Update the manifest immediately before and after each layer to ensure crash-visible state.
 
 ## Execution Algorithm
 
@@ -163,14 +163,14 @@ report final summary
 When only one phase is ready, execute it directly within the coordinator (no worker overhead).
 
 For each task in the phase, sequentially:
-1. Mark `[~]` in TASKS.md
+1. Mark `[~]` in the manifest
 2. Implement using direct tool calls (Read, Write, Edit, Glob, Grep, Bash)
 3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
 
    `dev-principles.md` is read on **two** levels. Everything **above** the LAZY-READ BOUNDARY is read here, on every run — the evidence contract, the claim-class → evidence-class lattice, the nine failure-class names, phase order, the lane, and the `kind` / area vocabularies. The section **below** it — the nine detectors in full and the catalog checklist — is read **once per session, on the first task that touches editor state**, and **unconditionally**: never gated on which rules happen to be installed. Pulling the whole file up here spends the Bootstrap budget the split exists to save; never reading the lower half spends the safety net instead.
 4. Run verification pass scoped to changed files
 5. If material issues found, fix and re-verify (max 2 rounds)
-6. Mark `[x]` or `[!]` in TASKS.md. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
+6. Mark `[x]` or `[!]` in the manifest. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
 
    **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task — `F<n>` is one more than the highest id already there (read the table first, so a re-run does not restart the numbering), `observed` is today's date, and dedup is semantic: drop a candidate saying the same thing about the same `area` as an existing row, by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — one observation is a bad sample, and the durable surface passes through a human running `/unikit-mcp-trap`.
 7. If any task fails, stop the phase
@@ -218,7 +218,7 @@ After all workers in a layer complete:
 ### Worker failure handling
 
 - If any worker fails, stop the entire layer.
-- Mark failed phase tasks as `[!]` in TASKS.md.
+- Mark failed phase tasks as `[!]` in the manifest.
 - Do not advance to next layer.
 - Report which phases succeeded and which failed.
 

@@ -26,13 +26,13 @@ Purpose:
 
 ## Language
 
-**Always return results to the coordinator in English.** Plan artifacts (TASKS.md, PLAN-BRIEF.md) are written in the project language from `.unikit/config.yaml` (`language.artifacts`). But the structured output summary returned to the coordinator is always English.
+**Always return results to the coordinator in English.** The plan manifest (`.unikit/code/plans/<folder>/PLAN.md`) is written in the project language from `.unikit/config.yaml` (`language.artifacts`). But the structured output summary returned to the coordinator is always English.
 
 ## Rules
 
 - You are a normal subagent. Never invoke nested subagents or agent teams.
 - When injected `/unikit-plan` or `/unikit-improve` instructions mention `Agent(...)` or other delegated exploration, replace that with direct `Read`, `Glob`, `Grep`, and `Bash` work.
-- Do not implement code. Your write scope is limited to `.unikit/code/plans/` plan files (TASKS.md, PLAN-BRIEF.md, and related plan artifacts).
+- Do not implement code. Your write scope is limited to `.unikit/code/plans/` plan files (the `plans/<folder>/PLAN.md` manifest and related plan artifacts).
 - Respect `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`.
 
 ## Workflow — phased with hard budget
@@ -58,7 +58,7 @@ re-read on demand).
 
 Use Read/Glob/Grep/Bash to gather just enough context for concrete tasks.
 Stop at 6 tool calls regardless of how incomplete you feel. Remaining
-uncertainties go into `PLAN-BRIEF.md` under an "Open questions" section —
+uncertainties go into the manifest under an `## Open Questions` section —
 they are NOT a reason for more tool calls.
 
 Parse the caller's request here and pick the target plan folder:
@@ -67,8 +67,9 @@ Parse the caller's request here and pick the target plan folder:
 
 ### Phase C — Write plan (MANDATORY, no budget)
 
-Write `TASKS.md` and `PLAN-BRIEF.md` (or a single `PLAN.md` in fast mode)
-following the `/unikit-plan` template. You MUST reach this phase.
+Write the plan manifest — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan,
+`.unikit/code/PLAN.md` for a fast plan — following the `/unikit-plan` template.
+You MUST reach this phase.
 
 **Write-barrier:** if you've reached turn 12 without having written any plan
 file, STOP exploring and write NOW with what you have. A partial plan with
@@ -114,8 +115,7 @@ of the block causes the entire coordinator run to fail.
 plan_path: <relative path to plan folder, or "none" if nothing was written>
 plan_created: yes | no
 files_written:
-  - TASKS.md
-  - PLAN-BRIEF.md
+  - <plan folder>/PLAN.md
 tasks_count: <integer or 0>
 needs_further_refinement: yes | no
 issues:

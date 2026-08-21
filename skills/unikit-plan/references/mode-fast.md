@@ -53,7 +53,7 @@ No engine MCP is configured. How should those tasks be carried out?
 
    Offer **`direct` only** when `references/ENGINE_RULES.md` §6 rates the engine's serialized formats 🟢 or 🟡. Where §6 rates them 🔴 (binary or dense generated formats), drop the option entirely rather than showing it and refusing later.
 
-Store the preferences for the `## Settings` and `## Roadmap Linkage` sections in `PLAN.md`.
+Store the preferences for the `## Settings` and `## Roadmap Linkage` sections in `.unikit/code/PLAN.md`.
 
 **If `.unikit/ROADMAP.md` exists and the user chose milestone linkage:** follow the same milestone selection procedure as in Full Mode Step C (read ROADMAP.md, list candidates, ask user to pick, store milestone name).
 

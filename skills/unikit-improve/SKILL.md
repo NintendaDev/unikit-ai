@@ -22,7 +22,7 @@ allowed-tools:
   - Skill
 metadata:
   author: unikit
-  version: "2.1"
+  version: "2.2"
   category: planning
 ---
 
@@ -52,7 +52,7 @@ alternative.
 ## Core Idea
 
 ```
-existing feature plan (TASKS.md + PLAN-BRIEF.md)
+existing feature plan (the PLAN.md manifest)
     + project rules (Bootstrap: RULES_INDEX → core/stack rules)
     + deeper codebase analysis via Explore tasks (with doc references)
     + user feedback (optional)
@@ -73,7 +73,7 @@ This skill is a **plan refinement orchestrator**, not a code writer. It loads pr
 **Do NOT use `/unikit-devcontext` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`). Plan refinement needs code reading and analysis, not code writing.
 
 **What you CAN do directly** (without Explore tasks):
-- Read any `.md` documentation files (`TASKS.md`, `PLAN-BRIEF.md`, `.unikit/*.md`)
+- Read any `.md` documentation files (the plan manifest, `.unikit/*.md`)
 - **Lightweight structural queries** via Glob/Grep — checking if a file/folder exists, listing `.asmdef` names, counting files matching a pattern, verifying a namespace or class name is present
 
 **What you MUST delegate to Explore tasks:**
@@ -104,8 +104,9 @@ When both `--list` and `@<path>` are present, `--list` wins and no refinement is
 If `$ARGUMENTS` contains `@<path>`:
 
 1. Resolve the path (relative to project root; absolute paths allowed)
-2. If the path is a directory containing `TASKS.md` and `PLAN-BRIEF.md` → use it
-3. If missing → show "Plan folder not found: `<path>`" and **STOP**
+2. If the path is a directory holding a plan manifest (`<path>/PLAN.md`) → use it
+3. If the path is a directory containing `TASKS.md` (a pre-merge plan) → tell the user to run `unikit-ai update` and **STOP**. Do not read or convert it here — `update` is the sole migrator, the same refuse-over-autofix principle `rules sync` applies with exit 8.
+4. If missing → show "Plan folder not found: `<path>`" and **STOP**
 
 Remaining argument text (after removing `@<path>`) is the improvement prompt.
 
@@ -124,7 +125,7 @@ If `$ARGUMENTS` contains `--list`, run read-only discovery and **STOP**:
 3. Get current branch:
    git branch --show-current
 4. Scan .unikit/code/plans/ for all feature folders (both YYYY-MM-DD_name and legacy DDD-name formats)
-5. For each, check if TASKS.md has uncompleted tasks (- [ ])
+5. For each, check if its .unikit/code/plans/<folder>/PLAN.md has uncompleted tasks (- [ ])
 6. Mark which folder matches the current git branch (if any):
    - Extract feature name from branch (e.g. feature/customers-system → customers-system)
    - Match folder ending with _<feature-name> (new format) or *-<feature-name> (legacy)
@@ -142,7 +143,7 @@ Current branch: feature/customers-system
     🔄 2026-03-09_customer-config-refactor (2 tasks remaining)
 
 Use:
-  /unikit-improve                                              # auto-detect (PLAN.md → branch → latest)
+  /unikit-improve                                              # auto-detect (.unikit/code/PLAN.md → branch → latest)
   /unikit-improve customers-system                             # by name
   /unikit-improve @.unikit/code/plans/2026-03-08_customers-system  # by path
 
@@ -221,13 +222,8 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 
 ### Step 1: Load Feature Plan
 
-**If using `.unikit/code/PLAN.md`** (fast-mode plan):
-- Read **`.unikit/code/PLAN.md`** — single file containing overview, checklist, settings, and optionally technical context inline
-
-**If using a folder plan** (`.unikit/code/plans/<folder>/`):
-- Read `TASKS.md` — feature overview (`## Overview`), task checklist with phases, settings, and dependencies
-- Read `PLAN-BRIEF.md` — technical context: constraints, interfaces, key patterns, dependency graph, files, DI bindings (if exists in plan folder)
-- If `TASKS.md` has a `## Based on` section → parse all linked research entries (folder name + `Attached` timestamp for each). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** `PLAN-BRIEF.md` (not instead of it) — both are needed for cross-referencing in Step 3.8.
+- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. One file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
+- If the manifest has a `## Based on` section → parse all linked research entries (folder name + `Attached` timestamp for each). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
 
 Understand:
 - Feature scope and goals
@@ -250,7 +246,7 @@ Check whether research context has changed since the plan was created or if new 
 
 2. If any `research_updated = true`:
    - Re-read the updated research's `RESEARCH_BRIEF.md`
-   - Compare new constraints, interfaces, and decisions against current `PLAN-BRIEF.md` and `TASKS.md`
+   - Compare new constraints, interfaces, and decisions against the current manifest — its `## Technical Context` and its `## Checklist`
    - Collect differences as `research_improvements` (these will appear in the report under a dedicated section)
 
 3. After processing linked researches → check for **new** researches:
@@ -444,7 +440,7 @@ If the user provided improvement instructions beyond just a feature name:
 **3.8: Research consistency (only when `research_improvements` is non-empty)**
 
 If Step 1.5 produced `research_improvements` (from updated or newly linked researches):
-- Compare research `RESEARCH_BRIEF.md` constraints against `PLAN-BRIEF.md` constraints — find mismatches
+- Compare research `RESEARCH_BRIEF.md` constraints against the manifest's `### CONSTRAINTS` — find mismatches
 - Find interfaces defined in research but missing from plan tasks
 - Find decisions in research that contradict plan tasks
 - Flag research open questions that the plan resolved without justification
@@ -468,7 +464,7 @@ Show the user what you found. When `research_improvements` is non-empty, the rep
 ## Plan Improvement Report
 
 Feature: [feature folder name]
-Files: TASKS.md, PLAN-BRIEF.md
+Files: <plan folder>/PLAN.md
 Phases analyzed: N
 Tasks analyzed: N
 Researches checked: N (list names if any)
@@ -480,7 +476,7 @@ Source: [research folder name(s)]
 #### Updated Constraints (N)
 1. **[Constraint from research]**
    Change: [what changed in the research vs what the plan has]
-   Action: [update PLAN-BRIEF.md constraint / update task description]
+   Action: [update the constraint in `## Technical Context` / update task description]
 
 #### New/Changed Interfaces (N)
 1. **[Interface name]**
@@ -541,7 +537,7 @@ Apply improvements?
 ```
 
 Based on choice:
-- **Apply all** → apply all improvements to TASKS.md and PLAN-BRIEF.md, proceed to Step 5
+- **Apply all** → apply all improvements to the manifest, proceed to Step 5
 - **Choose which** → use `AskUserQuestion` with `multiSelect: true` to let the user pick items. Group options by category (Missing Tasks, Task Improvements, Dependency Fixes, Architectural Notes, Removals). Each option label = `"#N: short description"`. After the user selects → proceed to Step 5, applying **only the selected items**. Unselected items are skipped without comment.
 - **No** → keep plan as is → **STOP**
 
@@ -560,9 +556,11 @@ Ready to proceed with implementation.
 
 ### Step 5: Apply Approved Improvements
 
-Based on user's choice, apply changes sequentially. Use `Edit` for surgical changes; `Write` only if changes are too extensive for Edit.
+Based on user's choice, apply changes sequentially.
 
-**5.1: Add missing tasks to TASKS.md**
+Use `Edit` for every change. **`Write` over a plan manifest is forbidden** — the file carries `## Technical Context` (and, in an ultra bundle, `## Phase Index`), and a regenerating write silently drops whatever the current pass did not reconstruct. When a change is too large for a single `Edit`, split it into several `Edit` calls; do not fall back to `Write`.
+
+**5.1: Add missing tasks to the manifest's `## Checklist`**
 
 For each new task from the report:
 1. Determine the correct phase (create a new phase if needed)
@@ -571,27 +569,27 @@ For each new task from the report:
 4. If the task has dependencies, note them inline (e.g., `(after Phase 1)`)
 5. Add an `Editor:` line — one per editor target, placed after `Files:`, in the form `Editor: [kind] <container> → <target> : <action>` — **only** when the change touches the editor's **serialized state**. A pure code task omits the field, and when `engine_rules_loaded = false` (no `ENGINE_RULES.md` for this engine) it is not generated at all. Match the form already used by the surrounding tasks in the plan.
 
-**5.2: Improve existing task descriptions in TASKS.md**
+**5.2: Improve existing task descriptions in the manifest**
 
 For each task flagged for improvement:
-1. Locate the exact task line in TASKS.md
+1. Locate the exact task line in the manifest's `## Checklist`
 2. Replace the vague description with the improved one from the report
 3. Add specific file paths, class names, namespace references
 4. Do NOT change `- [x]` to `- [ ]` — preserve completion status
 
-**5.3: Fix dependency ordering in TASKS.md**
+**5.3: Fix dependency ordering in the manifest**
 
 1. Move tasks/phases to correct positions if ordering was wrong
 2. Update inline dependency references if task numbers shifted
 3. Verify that no task references a dependency that comes after it
 
-**5.4: Remove redundant tasks from TASKS.md**
+**5.4: Remove redundant tasks from the manifest**
 
 1. Delete the task line (and its sub-items if any)
 2. Check if the parent phase is now empty — remove the phase header too if so
 3. Update any other tasks that referenced the removed task
 
-**5.5: Update research references in TASKS.md (`## Based on`)**
+**5.5: Update research references in the manifest (`## Based on`)**
 
 Only when `research_improvements` is non-empty (Step 1.5 found updates):
 
@@ -599,16 +597,16 @@ Only when `research_improvements` is non-empty (Step 1.5 found updates):
 
 2. **Newly attached researches** — for each new research the user selected in Step 1.5: add a new entry to `## Based on` using the Research Reference Format from `/unikit-plan` (folder name, `Attached` timestamp, file links). If `## Based on` section doesn't exist yet, create it after `## Overview`.
 
-**5.6: Update PLAN-BRIEF.md (if exists)**
+**5.6: Update `## Technical Context` in the manifest**
 
-Only if PLAN-BRIEF.md exists in the plan folder:
-1. **INTERFACES** — add new interfaces that appeared in new tasks or from research; remove interfaces for deleted tasks
-2. **CONSTRAINTS** — update if architectural assumptions changed during analysis or from updated research constraints
-3. **FILES** — add new file paths from new tasks; remove paths for deleted tasks
-4. **DI BINDINGS** — update if new bindings are needed for new tasks
-5. **EDITOR TARGETS** — add a row for every editor target in new tasks; remove rows for deleted tasks (symmetric with FILES). Leave the section absent when the plan has no `Editor:` task
+Only when the applied improvements changed the technical picture:
+1. `### INTERFACES` — add interfaces that appeared in new tasks or from research; remove interfaces for deleted tasks
+2. `### CONSTRAINTS` — update if architectural assumptions changed during analysis or from updated research constraints
+3. `### FILES` — add new paths from new tasks; remove paths for deleted tasks
+4. `### DI BINDINGS` — update if new bindings are needed for new tasks
+5. `### EDITOR TARGETS` — add a row for every editor target in new tasks; remove rows for deleted tasks (symmetric with FILES). Leave the subsection absent when the plan has no `Editor:` task
 
-If PLAN-BRIEF.md doesn't exist, do NOT create it unless changes add 3+ new interfaces or significantly alter the plan's technical scope.
+The section always exists — there is no "create it if missing" branch any more.
 
 **5.7: Update Overview section**
 
@@ -630,20 +628,12 @@ Research updates: (only if research_improvements was non-empty)
 - Hidden by +check: N
 - Adjusted by +check: M
 
-💾 Changes applied to TASKS.md:
+💾 Changes applied to .unikit/code/plans/[feature]/PLAN.md:
 - Tasks added: N (list brief names)
 - Descriptions improved: N
 - Dependencies reordered: N
 - Tasks removed: N
-
-💾 Changes applied to PLAN-BRIEF.md: (if updated)
-- Interfaces added/removed: N
-- Constraints updated: N
-- Files updated: N
-
-Updated files:
-- .unikit/code/plans/[feature]/TASKS.md
-- .unikit/code/plans/[feature]/PLAN-BRIEF.md (if updated)
+- Technical Context updated: interfaces N, constraints N, files N (only if changed)
 ```
 
 ### Step 6: Next Steps
@@ -673,7 +663,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 3. **Traceable improvements** — every change must be justified by codebase analysis
 4. **No gold-plating** — don't add tasks outside the feature scope unless critical
 5. **User approves first** — never apply changes without user confirmation
-6. **Keep files in sync** — if PLAN-BRIEF.md exists, its INTERFACES, FILES and EDITOR TARGETS sections must match the tasks in TASKS.md after improvements
+6. **Keep the manifest internally consistent** — after improvements, `### INTERFACES`, `### FILES` and `### EDITOR TARGETS` must match the tasks in `## Checklist`. There is no second file to sync with; the check is inside one file
 7. **Agent-based delegation** — follow the rules in the **Code Analysis Rules** section; single source of truth for what to delegate vs. do inline
 8. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
 
@@ -687,7 +677,7 @@ User: /unikit-improve
 
 → Branch: feature/customers-system → looking for *_customers-system
 → Found: .unikit/code/plans/2026-03-08_customers-system/
-→ Reading TASKS.md and PLAN-BRIEF.md...
+→ Reading the plan manifest...
 → Bootstrap: loading rules from RULES_INDEX...
 → Deep codebase analysis via Explore tasks...
 → Report with findings → User approves → Changes applied

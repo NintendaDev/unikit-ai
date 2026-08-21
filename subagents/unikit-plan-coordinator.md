@@ -32,7 +32,7 @@ Do not announce, confirm, or mention the language setting.
 **Internal communication is always English:**
 - All prompts to `unikit-plan-polisher` — English only
 - Plan-polisher always returns results in English
-- Plan artifacts (TASKS.md, PLAN-BRIEF.md) are written in the project language
+- The plan manifest (`.unikit/code/plans/<folder>/PLAN.md`) is written in the project language
 
 ## Input
 
@@ -69,7 +69,7 @@ while needs_further_refinement == yes AND iteration < max_iterations:
     parse polisher-report block (see Result Parsing below)
 
 # Done
-read final plan files (TASKS.md + PLAN-BRIEF.md)
+read the final plan manifest
 report summary
 ```
 
@@ -104,7 +104,7 @@ Do NOT run any more exploration tool calls.
 If plan files already exist at <expected plan_path>, re-read them and emit
 the block now describing what is on disk.
 
-If no plan files exist yet, write minimal TASKS.md + PLAN-BRIEF.md based on
+If no plan file exists yet, write a minimal manifest based on
 the original request using what you already know — partial is fine — then
 emit the block.
 
