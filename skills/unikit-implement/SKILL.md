@@ -21,6 +21,7 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(git *)
+  - Bash(date *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -465,7 +466,9 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 **A call that misled you is a finding — and it goes in two places, neither of them the notes file.**
 
 - the run report for this task, as a candidate line: the `area`, what has to be confirmed, and the raw call with the raw answer it gave;
-- the plan's `## MCP Findings` table (`id | area | confirm that | evidence | from`) — the half that survives the session.
+- the plan's `## MCP Findings` table — the half that survives the session. Columns and their contract: `references/TASK-FORMAT.md` → `### MCP findings section`.
+
+**When it is written: in Step 3.4, by the same `Edit` pass that ticks the checkbox** — not at the end of the run. The finding and the task that produced it are one unit of work, and a table filled only at the end is lost to every `/clear`, every context overflow and every session that simply stops. Ticking the box and appending the row together is what makes the two survive or fail as one.
 
 **Never write `.unikit/MCP-RECHECK-NOTES.md` from here.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running `/unikit-mcp-trap`.
 
@@ -523,6 +526,12 @@ After successful implementation, update `TASKS.md`:
 **Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
 - Write the checkbox as `- [x]` and append the marker `⏸️ MANUAL` to the task text, right after the description: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. The checkbox must be `[x]` so Step 2 does not pick the task up again on every subsequent run; the marker is what keeps it honest, and it sits in the task text so `/unikit-verify` sees it during the task audit.
 - A `⏸️ MANUAL` task **does not block** "all tasks completed" — the user took it on deliberately. It is **not** counted as implemented either: report it separately (Step 4).
+
+**The task produced an MCP finding (Step 3.2)** — a third outcome to record in the same pass:
+- Append the row to the plan's `## MCP Findings` table now, in the same `Edit` that ticks the checkbox. Not at the end of the phase, not at the end of the run.
+- **Id:** `F<n>`, where `<n>` is one more than the highest already in the table. Read the table before appending — a re-run of the same task must not restart the numbering and collide with rows written earlier.
+- **`observed`:** the date you observed it, `Bash(date *)`.
+- **Dedup is semantic, not mechanical.** Drop a candidate that says the same thing about the same `area` as a row already there, judging by meaning rather than by string match; only the id allocation is mechanical. Being loose here is deliberate — the error is cheap in both directions. A duplicate that slips through costs one extra line, which `/unikit-mcp-trap` or `/unikit-mcp-audit` drops later; merging two observations that were not the same thing destroys the `evidence` of one of them, and evidence is the half that cannot be reconstructed.
 
 Use the Edit tool to make these changes surgically.
 

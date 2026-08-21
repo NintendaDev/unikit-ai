@@ -94,9 +94,9 @@ feat(<module>): <description>
 (Only when the plan carries at least one `Editor:` task. The planner emits the heading and
 the header row and stops there; the executor appends a row when an engine MCP call misled it.)
 
-| id | area | confirm that | evidence | from |
-|---|---|---|---|---|
-| F1 | rollback | the snapshot captured more than zero files | `<call>(paths="...")` → `state=ready files=0` | task 2.3 |
+| id | area | confirm that | observed | evidence | from |
+|---|---|---|---|---|---|
+| F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 |
 
 ## Dependency Graph
 
@@ -126,6 +126,8 @@ Rules:
 - When `references/ENGINE_RULES.md` is absent for the active engine, the field is **not generated at all** — the plan degrades to code-only tasks and `## Settings` carries no `Editor tasks` line.
 - **A phase carrying an `Editor:` line is serialized alone in its execution layer.** The unit of parallelism downstream is the **phase** — the coordinator runs every phase of one layer concurrently and the tasks inside a phase in order — so the `**Dependencies:**` lines of an editor-bearing phase must leave it as the only member of its layer. This is not a rule about tasks: two `Editor:` tasks in one phase are already sequential, and splitting them into two phases to "separate" them is what creates the collision. The hazard includes plain code phases: a source write triggers a domain reload, and minutes of unavailability land in the middle of another phase's mutation.
 
+  **`## MCP Findings` is written under this invariant, and would need a different scheme without it.** Executors append their rows straight into the plan file, and `unikit-implement-worker` has no worktree isolation — every worker edits the same file. That is safe only because the phase that can produce an MCP finding is alone in its layer, so there is never more than one writer at a time. If the serialization rule is ever relaxed, the append scheme has to be revisited before it is: the fallback is a per-task mailbox (`plans/<plan>/findings/<task>.md`) collected at the end, which costs a directory and a second phase and is why it was not chosen now.
+
 The targets are aggregated into an `## EDITOR TARGETS` table (`PLAN-BRIEF.md` in full mode, `## Technical Context` in fast mode). **Both are omitted entirely when the plan carries no `Editor:` task.**
 
 ### MCP findings section
@@ -139,6 +141,7 @@ An executor that hits a misleading engine MCP response records it **here, in the
 | `id` | `F<n>`, allocated in order within this plan and never reused. `/unikit-mcp-trap` records it as `from: <plan>#<id>`, which is how a repeat pass knows the row was already transferred |
 | `area` | one of the 12 words in `.unikit/system/dev-principles.md` -> A8. The key is an **area**, never a tool name — that is what keeps the row reachable after the server changes. Anything server-specific goes into the text of the check |
 | `confirm that` | the check, phrased as an instruction to verify. **Only a check** — never a lifted gate, never "use Y instead of X", never an assertion about what the server can or cannot do |
+| `observed` | the date the finding was **observed** (`YYYY-MM-DD`), written by whoever observed it. `/unikit-mcp-trap` copies this column into the notes verbatim rather than dating the transfer, so a row that arrives here undated makes the notes say when it was filed instead of when it happened — and the label then lies about its own contents |
 | `evidence` | the raw call and the raw answer it gave. This is the one column where a tool name is legitimate, and the only reason it is here: without the raw call the finding cannot be replayed, retired, or upstreamed |
 | `from` | the task that observed it (`task 2.3`) |
 

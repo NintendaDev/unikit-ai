@@ -21,6 +21,7 @@ allowed-tools:
   - Bash(git *)
   - Bash(rm *)
   - Bash(mkdir *)
+  - Bash(date *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -427,7 +428,11 @@ When implementing inline, apply:
 
 **No rules file, or no check line for this area → nothing changes.** Every right you had, you keep: an absent exception is not an absent capability, and it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
 
-**A call that misled you is a finding — and it goes in two places, neither of them the notes file.** Put it in the fix report as a candidate line (the `area`, what has to be confirmed, the raw call with the raw answer), and — when this fix is running against a plan — into that plan's `## MCP Findings` table. **Never write `.unikit/MCP-RECHECK-NOTES.md` from here:** one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
+**A call that misled you is a finding — and it goes in two places, neither of them the notes file.** Put it in the fix report as a candidate line (the `area`, what has to be confirmed, the raw call with the raw answer), and — when this fix is running against a plan — into that plan's `## MCP Findings` table.
+
+**When: on finishing the step that produced it, not in the fix report at the end.** A finding held until the report is lost to every `/clear` and every session that stops early, which is the whole reason the table exists. `F<n>` is one more than the highest id already in the table — read the table before appending, so a re-run does not restart the numbering; `observed` is the date you observed it (`Bash(date *)`), because `/unikit-mcp-trap` copies that column into the notes verbatim and an empty one turns into the date of the transfer; dedup is semantic — drop a candidate saying the same thing about the same `area` as an existing row, judging by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
+
+**Never write `.unikit/MCP-RECHECK-NOTES.md` from here:** one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
 
 **The library reference — two triggers, and never on Bootstrap.**
 

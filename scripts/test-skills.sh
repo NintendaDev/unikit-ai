@@ -2956,6 +2956,90 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# MF: MCP findings are recorded AT THE TASK, not at the end of the run.
+# The table used to be filled once, in the run's closing report — which is precisely the
+# moment a session is most likely to have already ended. These guards pin the two halves
+# of the fix: the column that makes a transferred row honest (`observed`), and the anchor
+# that says WHEN the row is written, in each of the four writers.
+# Reuses CK_TASKFMT + EM_* path vars are declared later (EM block), so the three skill
+# paths are taken locally here.
+MF_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+MF_FIX="$ROOT_DIR/skills/unikit-fix/SKILL.md"
+MF_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+MF_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
+
+# (MF-1) `observed` reaches BOTH surfaces of the format: the template a planner copies and
+# the column contract a writer reads. A column present in one and not the other is how a
+# six-column table starts receiving five-column rows.
+MF1_WHY=""
+grep -qF '| id | area | confirm that | observed | evidence | from |' "$CK_TASKFMT" || MF1_WHY+=" template"
+grep -qF '| `observed` |' "$CK_TASKFMT"                                            || MF1_WHY+=" contract-row"
+if [[ -z "$MF1_WHY" ]]; then
+    pass "MF-1 observed column in both the MCP Findings template and its column contract"
+else
+    fail "MF-1 observed column missing in TASK-FORMAT.md:$MF1_WHY"
+fi
+
+# (MF-2) The write anchor exists in Step 3.4 of unikit-implement — the step that ticks the
+# checkbox. Anchored on the heading plus the table name rather than on prose, because this
+# is a structural claim: the section that marks a task also records the finding.
+if awk '/^\*\*3\.4: Mark task as completed\*\*/{f=1} f&&/^\*\*3\.5/{exit} f' "$MF_IMPLEMENT" \
+     | grep -qF '## MCP Findings'; then
+    pass "MF-2 unikit-implement Step 3.4 records the finding with the checkbox"
+else
+    fail "MF-2 unikit-implement Step 3.4 has no ## MCP Findings anchor — the write drifted back to the end of the run"
+fi
+
+# (MF-3) The worker writes the row itself (variant B). BOTH halves are asserted, and the
+# negative one is load-bearing: the cancelled behaviour was "hand it back to the
+# coordinator", and a half-applied edit leaves both instructions standing at once.
+MF3_WHY=""
+grep -qF '## MCP Findings' "$MF_WORKER"                             || MF3_WHY+=" append-missing"
+grep -qF 'return it to the coordinator as a candidate line' "$MF_WORKER" && MF3_WHY+=" handback-survived"
+if [[ -z "$MF3_WHY" ]]; then
+    pass "MF-3 implement-worker appends the row itself; the coordinator hand-back is gone"
+else
+    fail "MF-3 implement-worker findings contract drift:$MF3_WHY"
+fi
+
+# (MF-4) The append scheme borrows an invariant it does not own — one editor phase per
+# execution layer, hence one writer at a time. Written down where the invariant lives, so
+# relaxing the invariant cannot silently break the writers.
+if grep -qF '`## MCP Findings` is written under this invariant' "$CK_TASKFMT"; then
+    pass "MF-4 TASK-FORMAT.md ties the findings append to the serialization invariant"
+else
+    fail "MF-4 TASK-FORMAT.md does not say the findings append depends on one-editor-phase-per-layer"
+fi
+
+# (MF-5) Parity across all THREE plan-side writers. unikit-fix and unikit-verify carry the
+# same defect the research found in unikit-implement — they said WHERE and not WHEN — and
+# they write into the same table, so a missed one produces rows without `observed`. This
+# is the only guard that holds the three together once the edits are separated in time.
+MF5_WHY=""
+grep -qF 'observed' "$MF_IMPLEMENT" || MF5_WHY+=" implement"
+grep -qF 'observed' "$MF_FIX"       || MF5_WHY+=" fix"
+grep -qF 'observed' "$MF_VERIFY"    || MF5_WHY+=" verify"
+if [[ -z "$MF5_WHY" ]]; then
+    pass "MF-5 observed known to all three plan-side findings writers"
+else
+    fail "MF-5 observed column unknown to:$MF5_WHY"
+fi
+
+# (MF-6) The capability behind the rule. `observed` is a date the writer produces at the
+# moment of observation, and a skill with no date grant can only recall one — the class of
+# unverified claim dev-principles A1/A2 exists to forbid, landing in a durable file. Every
+# other skill that writes a dated artifact carries this grant; these three were the gap.
+MF6_WHY=""
+grep -qF 'Bash(date *)' "$MF_IMPLEMENT" || MF6_WHY+=" implement"
+grep -qF 'Bash(date *)' "$MF_FIX"       || MF6_WHY+=" fix"
+grep -qF 'Bash(date *)' "$MF_VERIFY"    || MF6_WHY+=" verify"
+if [[ -z "$MF6_WHY" ]]; then
+    pass "MF-6 Bash(date *) granted to all three plan-side findings writers"
+else
+    fail "MF-6 observed is required but the date grant is missing in:$MF6_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # HG: review/verify → apply/explore handoff (buckets + interview + shared engine).
 # (Distinct prefix from the apply-dispatcher GA-1…GA-5 block above — different concern.)
 # The review/verify TAIL was reworked into an honest handoff: full report to screen →
