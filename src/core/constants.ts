@@ -396,8 +396,16 @@ export function workspaceDir(projectDir: string, module: string): string {
 // the `code/` segment, and (c) the golden-guard #3 regex that forbids the bare
 // form from reappearing in tracked content.
 
+/**
+ * Plans directory inside a module workspace. Declared here rather than in the
+ * plan-artifact block below because {@link WORKSPACE_ARTIFACT_DIRS} consumes it
+ * at module-evaluation time — a `const` referenced before its own declaration
+ * is a temporal-dead-zone error, not a hoisted read.
+ */
+export const PLANS_DIR_NAME = 'plans';
+
 /** Directory artifacts that relocate 1:1 (same basename under the module dir). */
-export const WORKSPACE_ARTIFACT_DIRS = ['plans', 'patches', 'researches'] as const;
+export const WORKSPACE_ARTIFACT_DIRS = [PLANS_DIR_NAME, 'patches', 'researches'] as const;
 
 /** File artifacts that relocate 1:1 (same basename under the module dir). */
 export const WORKSPACE_ARTIFACT_FILES = ['PLAN.md', 'FIX_PLAN.md'] as const;
@@ -410,6 +418,41 @@ export const WORKSPACE_ARTIFACT_FILES = ['PLAN.md', 'FIX_PLAN.md'] as const;
 export const WORKSPACE_ARTIFACT_RENAMES: readonly { from: string; to: string }[] = [
   { from: 'RESEARCHES_INDEX.md', to: path.join('researches', 'INDEX.md') },
 ];
+
+// --- Plan artifacts (files INSIDE a plan folder) ---
+//
+// Deliberately NOT part of WORKSPACE_ARTIFACT_* above: that inventory means
+// "artifact at the top of the workspace" and is consumed by golden-guard #3.
+// These names live one level deeper — inside every `plans/<folder>/` — and are
+// reachable only by walking that directory (see
+// `workspace-migrations/plan-artifact.ts`). The directory name itself is
+// `PLANS_DIR_NAME`, declared above next to its first consumer.
+
+/** The single manifest a plan folder carries after the merge. */
+export const PLAN_MANIFEST_FILE = 'PLAN.md';
+
+/** Pre-merge checklist file, renamed to {@link PLAN_MANIFEST_FILE}. */
+export const LEGACY_PLAN_TASKS_FILE = 'TASKS.md';
+
+/** Pre-merge technical brief, folded into the manifest's Technical Context. */
+export const LEGACY_PLAN_BRIEF_FILE = 'PLAN-BRIEF.md';
+
+/** The manifest heading the brief body is folded under. */
+export const PLAN_TECHNICAL_CONTEXT_HEADING = '## Technical Context';
+
+/** The horizontal rule that closes the manifest body before its Technical Context. */
+export const PLAN_CONTEXT_SEPARATOR = '---';
+
+/**
+ * Cross-axis sections that live at `##` level in the manifest and must never be
+ * demoted. `/unikit-verify` step 3.8 resolves `## Design` by its heading and
+ * SKIPS THE CHECK SILENTLY when it is absent, so a demoted `### Design` does not
+ * fail — it stops the design ACs being checked and stops `implemented_version`
+ * being stamped, while the report reads "no ## Design section".
+ */
+export const PLAN_LIFTED_HEADINGS = [
+  '## Design', '## Flow Context', '## Content Context',
+] as const;
 
 // --- Migration version anchors (`Migration.since`) ---
 //
@@ -427,3 +470,14 @@ export const MIGRATION_SINCE_MODULAR_LAYOUT = '1.1.0';
 
 /** MCP vendor codes: `mcp.servers` key→code map + renamed server file ids. */
 export const MIGRATION_SINCE_MCP_VENDOR_CODES = '1.2.0';
+
+/**
+ * Plan folder carries one `PLAN.md` manifest (TASKS.md + PLAN-BRIEF.md merged).
+ *
+ * Same value as {@link MIGRATION_SINCE_MCP_VENDOR_CODES} because an anchor names
+ * a RELEASE, not a feature, and both steps go out in 1.2.0. Kept as its own
+ * constant rather than reusing that one: the two are independent changes that
+ * happen to share a release, and a plan migration importing an MCP-named anchor
+ * would read as a dependency it does not have.
+ */
+export const MIGRATION_SINCE_PLAN_MANIFEST = '1.2.0';

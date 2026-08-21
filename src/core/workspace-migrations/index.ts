@@ -23,12 +23,11 @@ import {
   workspaceDir,
 } from '../constants.js';
 import type { Migration } from '../migrations/types.js';
+import type { WorkspaceMigrationContext } from './context.js';
 
 const LOG_TAG = 'workspace:migrate';
 
-interface WorkspaceMigrationContext {
-  projectDir: string;
-}
+export type { WorkspaceMigrationContext } from './context.js';
 
 /** One relocation: `<flatRoot>/<from>` → `<codeRoot>/<to>` (basenames may differ). */
 interface Relocation {
@@ -100,3 +99,14 @@ const workspaceCodeRelocationMigration: Migration<WorkspaceMigrationContext> = {
 export const PROJECT_WORKSPACE_MIGRATIONS: readonly Migration<WorkspaceMigrationContext>[] = [
   workspaceCodeRelocationMigration,
 ];
+
+// The plan-manifest merge lives one level deeper — inside the plan folders this
+// step relocates — and is a separate concern with a separate anchor, so it is
+// its own set rather than a third entry above. `PROJECT_MEMORY_MIGRATIONS`
+// declares the sets in release order and Part 7e4 reads that declaration as a
+// timeline, which is the reason a step never joins a set anchored below it.
+//
+// The ordering that actually matters is not declaration order but the anchor:
+// the merge walks `.unikit/code/plans/*`, which does not exist on a pre-modular
+// project until the relocation above has run, and 1.1.0 < 1.2.0 guarantees it.
+export { PROJECT_PLAN_ARTIFACT_MIGRATIONS } from './plan-artifact.js';

@@ -4971,7 +4971,7 @@ fi
 # ─────────────────────────────────────────────
 # Part 7e4: migration-chain anchors
 # ─────────────────────────────────────────────
-# Two rules the runner depends on and cannot check for itself:
+# Three rules the runner depends on and cannot check for itself:
 #
 #   - `since`, WHEN DECLARED, is valid semver and does not decrease in declaration
 #     order. The runner sorts by it, so declaration order that disagrees with the
@@ -4981,10 +4981,17 @@ fi
 #     force someone to invent one.
 #   - a step with NEITHER `since` NOR `detect` can never fire. The runner throws on
 #     it at runtime; this catches it at `npm test` instead.
+#   - an anchor ABOVE the package version makes `versionPending` permanently true
+#     for every project stamped with the previous number, so `isProjectStale` never
+#     clears and `rules sync` answers exit 8 forever — with no `update` able to
+#     lift it. The anchor and the release bump ship together, in one commit; this
+#     is the only mechanical guard on that pairing anywhere in the repository.
 echo -e "\n${BOLD}Part 7e4: migration-chain anchors${NC}"
 
 MIGRATION_ANCHOR_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const fs = await import('node:fs');
   const semver = (await import('semver')).default;
+  const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
   const chains = [
     ['PROJECT_MEMORY_MIGRATIONS', (await import('./dist/core/memory-migrations/index.js')).PROJECT_MEMORY_MIGRATIONS],
     ['REGISTRY_MIGRATIONS', (await import('./dist/core/registry/migrations/index.js')).REGISTRY_MIGRATIONS],
@@ -5001,6 +5008,9 @@ MIGRATION_ANCHOR_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
       if (previous && semver.lt(step.since, previous)) {
         why.push('since-decreases:'+name+':'+step.id+':'+step.since+'<'+previous);
       }
+      if (semver.valid(pkg) && semver.gt(step.since, pkg)) {
+        why.push('since-above-package-version:'+name+':'+step.id+':'+step.since+'>'+pkg);
+      }
       previous = step.since;
     }
   }
@@ -5009,7 +5019,7 @@ MIGRATION_ANCHOR_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
 " 2>/dev/null || echo "pass-error")
 
 if [[ "$MIGRATION_ANCHOR_RESULT" == "ok" ]]; then
-    pass "migration chains: since is valid semver and non-decreasing; no step without since AND detect"
+    pass "migration chains: since is valid semver, non-decreasing, never above the package version; no step without since AND detect"
 else
     fail "migration chain anchors violated: $MIGRATION_ANCHOR_RESULT"
 fi

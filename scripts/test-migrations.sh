@@ -150,32 +150,39 @@ echo -e "\n${BOLD}=== Migration chain + MCP reconciliation smoke ===${NC}\n"
 
 echo -e "${BOLD}Section 1: version matrix${NC}"
 
-# Row 1 — 1.0.0, flat memory + array. Both groups of steps, in `since` order.
+# Row 1 — 1.0.0, flat memory + array. Every group of steps, in `since` order.
+# The plan merge is carried by the version half and applies as a no-op (this
+# project has no plan folders) — which is the contract every step owes since
+# the runner started ORing the halves, and the reason the row lists it.
 M1="$TMPDIR/matrix-1.0.0"; mkdir -p "$M1"
 write_legacy_config "$M1" '"version": "1.0.0",'
 seed_flat_memory "$M1"
 M1_APPLIED=$(plan_chain "$M1" "1.0.0")
-if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename" ]]; then
-    pass "matrix 1.0.0: both step groups applied, ordered by since ($M1_APPLIED)"
+if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge" ]]; then
+    pass "matrix 1.0.0: every step group applied, ordered by since ($M1_APPLIED)"
 else
-    fail "matrix 1.0.0: expected all four steps in since order, got '$M1_APPLIED'"
+    fail "matrix 1.0.0: expected all five steps in since order, got '$M1_APPLIED'"
 fi
 
-# Row 2 — 1.1.0, modular memory + array. Only the 1.2.0 steps.
+# Row 2 — 1.1.0, modular memory + array. The 1.1.0 steps are quiet; every 1.2.0
+# step — the two MCP ones and the plan merge — is above the stamp.
 M2="$TMPDIR/matrix-1.1.0"; mkdir -p "$M2"
 write_legacy_config "$M2" '"version": "1.1.0",'
 seed_modular_memory "$M2"
 M2_APPLIED=$(plan_chain "$M2" "1.1.0")
-if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename" ]]; then
-    pass "matrix 1.1.0: only the since:1.2.0 steps applied ($M2_APPLIED)"
+if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge" ]]; then
+    pass "matrix 1.1.0: only the steps anchored above the stamp applied ($M2_APPLIED)"
 else
-    fail "matrix 1.1.0: expected only the MCP steps, got '$M2_APPLIED'"
+    fail "matrix 1.1.0: expected the MCP steps + the plan merge, got '$M2_APPLIED'"
 fi
 
-# Row 3 — 1.2.0, modular memory + array. The version half is quiet (the project
-# is stamped with the very version the steps are anchored at), so this row is
-# carried by `detect` alone. It is the regression that matters most: every dev
-# project running `npm link` before publication is stamped this way.
+# Row 3 — 1.2.0, modular memory + array. The version half is quiet for the whole
+# 1.2.0 group (the project is stamped with the very version they are anchored
+# at), so this row is carried by `detect` alone. It is the regression that
+# matters most: every dev project running `npm link` before publication is
+# stamped this way. The plan merge is absent here on purpose — its `detect`
+# finds no plan folder on this project, and with the version half quiet that is
+# the whole signal.
 M3="$TMPDIR/matrix-1.2.0"; mkdir -p "$M3"
 write_legacy_config "$M3" '"version": "1.2.0",'
 seed_modular_memory "$M3"
@@ -677,5 +684,248 @@ assert_not_contains "$HASH_SKILL" 'mcp__unity-biome-mcp__' \
   "code-change hash: the previous prefix is swept out of the frontmatter"
 cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
 BIOME_JSON_BACKUP=""
+
+# ─────────────────────────────────────────────────────
+# Section 6: the plan-manifest merge
+# ─────────────────────────────────────────────────────
+# What golden-guard #3 does NOT cover: it drives one already-modular plan folder
+# through `update`. The interesting states of this step are the ones it refuses
+# to touch and the ones it half-finishes, so they are seeded here directly under
+# `.unikit/code/plans/` and run through a single `update`.
+
+echo -e "\n${BOLD}Section 6: plan-manifest merge${NC}"
+
+P6="$TMPDIR/plan-merge"; mkdir -p "$P6"
+use_fake_registry "$P6" unity minimal-valid
+P6_PLANS="$P6/.unikit/code/plans"
+mkdir -p "$P6_PLANS/selfheal" "$P6_PLANS/completed" "$P6_PLANS/statusonly" \
+         "$P6_PLANS/live" "$P6_PLANS/dup"
+
+# The flat fast plan — a DIFFERENT artifact that shares the manifest's basename.
+# Nothing in this step may reach it (scenario 8).
+printf '# fast plan\n\n- [ ] Task 1 open\n' > "$P6/.unikit/code/PLAN.md"
+P6_FLAT_SHA="$(sha_of "$P6/.unikit/code/PLAN.md")"
+
+# (6) fold self-heal: the rename half already ran, the brief is still on disk.
+printf '# plan\n\n## Checklist\n\n- [ ] Task 1 open\n' \
+    > "$P6_PLANS/selfheal/PLAN.md"
+printf '# Brief\n\n## CONSTRAINTS\n- MUST: resume\n' \
+    > "$P6_PLANS/selfheal/PLAN-BRIEF.md"
+
+# (9) completed: zero `- [ ]` lines. Untouched forever, both files.
+printf '# tasks\n\n- [x] Task 1 shipped\n' > "$P6_PLANS/completed/TASKS.md"
+printf '# Brief\n\n## CONSTRAINTS\n- MUST: archived\n' > "$P6_PLANS/completed/PLAN-BRIEF.md"
+P6_DONE_TASKS_SHA="$(sha_of "$P6_PLANS/completed/TASKS.md")"
+P6_DONE_BRIEF_SHA="$(sha_of "$P6_PLANS/completed/PLAN-BRIEF.md")"
+
+# (11) the counter must not read a phase status line as an open task: the only
+#      square brackets here are `**Status:** [ ] Not started`, and the folder is
+#      completed. Count it and every finished plan in existence would migrate.
+printf '# tasks\n\n**Status:** [ ] Not started\n\n- [x] Task 1 shipped\n' \
+    > "$P6_PLANS/statusonly/TASKS.md"
+P6_STATUS_SHA="$(sha_of "$P6_PLANS/statusonly/TASKS.md")"
+
+# (12) lift: `## Design` in the brief must land at `##` level ABOVE the
+#      separator, never demoted into `### Design` inside Technical Context.
+printf '# tasks\n\n## Checklist\n\n- [ ] Task 1 open\n' > "$P6_PLANS/live/TASKS.md"
+printf '# Brief\n\n## Design\nSYS-combat v3\n\n## CONSTRAINTS\n- MUST: live\n' \
+    > "$P6_PLANS/live/PLAN-BRIEF.md"
+
+# (13) dedup: the block sits in BOTH files. The manifest's copy wins and the
+#      brief's is dropped, so the merged file carries exactly one.
+printf '# tasks\n\n## Design\nSYS-combat v3 (authoritative)\n\n- [ ] Task 1 open\n' \
+    > "$P6_PLANS/dup/TASKS.md"
+printf '# Brief\n\n## Design\nSYS-combat v2 (stale copy)\n\n## CONSTRAINTS\n- MUST: dup\n' \
+    > "$P6_PLANS/dup/PLAN-BRIEF.md"
+
+run_update "$P6" "$TMPDIR/plan-merge-update.log"
+
+# 6 — self-heal
+assert_contains   "$P6_PLANS/selfheal/PLAN.md" '## Technical Context' \
+  "self-heal: the brief folded into a manifest that already existed"
+assert_contains   "$P6_PLANS/selfheal/PLAN.md" '### CONSTRAINTS' \
+  "self-heal: the brief headings came down one level"
+assert_not_exists "$P6_PLANS/selfheal/PLAN-BRIEF.md" \
+  "self-heal: the brief is removed once the write is verified"
+
+# 8 — the flat fast plan is a different artifact and is never touched
+assert_file_unchanged "$P6/.unikit/code/PLAN.md" "$P6_FLAT_SHA" \
+  "flat code/PLAN.md untouched by the plan-folder merge"
+
+# 9 + 10 — selectivity, and a mixed project migrating exactly the live folders
+assert_file_unchanged "$P6_PLANS/completed/TASKS.md" "$P6_DONE_TASKS_SHA" \
+  "completed plan: TASKS.md byte-identical"
+assert_file_unchanged "$P6_PLANS/completed/PLAN-BRIEF.md" "$P6_DONE_BRIEF_SHA" \
+  "completed plan: PLAN-BRIEF.md byte-identical"
+assert_not_exists "$P6_PLANS/completed/PLAN.md" \
+  "completed plan: no manifest created"
+assert_exists     "$P6_PLANS/live/PLAN.md" \
+  "mixed project: the folder with an open task did migrate"
+
+# 11 — a phase status line is not an open task
+assert_file_unchanged "$P6_PLANS/statusonly/TASKS.md" "$P6_STATUS_SHA" \
+  "status line is not a checkbox: the folder counts as completed"
+
+# 12 — the lift, asserted from both sides
+assert_contains     "$P6_PLANS/live/PLAN.md" '^## Design$' \
+  "lift: ## Design kept its heading level"
+assert_not_contains "$P6_PLANS/live/PLAN.md" '^### Design$' \
+  "lift: ## Design was never demoted into Technical Context"
+P6_LIVE_DESIGN=$(grep -n '^## Design$' "$P6_PLANS/live/PLAN.md" | cut -d: -f1)
+# `tail -1`, not `head -1`: the merge appends its separator LAST, and a manifest
+# body may legitimately carry an earlier one (frontmatter, a horizontal rule).
+# Anchoring on the first would make this assertion pass for the wrong reason.
+P6_LIVE_RULE=$(grep -n '^---$' "$P6_PLANS/live/PLAN.md" | tail -1 | cut -d: -f1)
+if [[ -n "$P6_LIVE_DESIGN" && -n "$P6_LIVE_RULE" && "$P6_LIVE_DESIGN" -lt "$P6_LIVE_RULE" ]]; then
+    pass "lift: ## Design sits above the separator (line $P6_LIVE_DESIGN < $P6_LIVE_RULE)"
+else
+    fail "lift: expected ## Design above the separator, got design=$P6_LIVE_DESIGN rule=$P6_LIVE_RULE"
+fi
+
+# 13 — dedup keeps exactly one, and it is the manifest's own
+P6_DUP_COUNT=$(grep -c '^## Design$' "$P6_PLANS/dup/PLAN.md")
+if [[ "$P6_DUP_COUNT" -eq 1 ]]; then
+    pass "dedup: exactly one ## Design survives the merge"
+else
+    fail "dedup: expected exactly one ## Design in the merged manifest, got $P6_DUP_COUNT"
+fi
+assert_contains     "$P6_PLANS/dup/PLAN.md" 'authoritative' \
+  "dedup: the manifest's own copy is the one kept"
+assert_not_contains "$P6_PLANS/dup/PLAN.md" 'stale copy' \
+  "dedup: the brief's duplicate is dropped, not demoted"
+
+# 4 — idempotence: a second update rewrites nothing
+P6_LIVE_SHA="$(sha_of "$P6_PLANS/live/PLAN.md")"
+P6_SELFHEAL_SHA="$(sha_of "$P6_PLANS/selfheal/PLAN.md")"
+run_update "$P6" "$TMPDIR/plan-merge-update-2.log"
+assert_file_unchanged "$P6_PLANS/live/PLAN.md" "$P6_LIVE_SHA" \
+  "idempotence: the merged manifest is byte-identical on a second update"
+assert_file_unchanged "$P6_PLANS/selfheal/PLAN.md" "$P6_SELFHEAL_SHA" \
+  "idempotence: the self-healed manifest is byte-identical on a second update"
+
+# 7 — no permanent pending. The completed and status-only folders are skipped by
+#     `apply`, so `detect` must call them done too; disagree and `rules sync`
+#     answers exit 8 with no `update` able to clear it.
+assert_cmd_exit 0 "no permanent pending: rules sync exits 0 after the merge" \
+  "$TMPDIR/plan-merge-sync.log" -- env -C "$P6" node "$CLI" rules sync
+
+# 14 — the same claim on a project where there is no work BY CONSTRUCTION: every
+#      folder is completed, so nothing is ever migrated and nothing may hang.
+P14="$TMPDIR/plan-all-completed"; mkdir -p "$P14"
+use_fake_registry "$P14" unity minimal-valid
+mkdir -p "$P14/.unikit/code/plans/done-a" "$P14/.unikit/code/plans/done-b"
+printf '# tasks\n\n- [x] Task 1 shipped\n' > "$P14/.unikit/code/plans/done-a/TASKS.md"
+printf '# Brief\n\n## CONSTRAINTS\n- MUST: a\n' > "$P14/.unikit/code/plans/done-a/PLAN-BRIEF.md"
+printf '# tasks\n\n- [x] Task 1 shipped\n' > "$P14/.unikit/code/plans/done-b/TASKS.md"
+P14_A_SHA="$(sha_of "$P14/.unikit/code/plans/done-a/TASKS.md")"
+run_update "$P14" "$TMPDIR/plan-all-completed-update.log"
+assert_file_unchanged "$P14/.unikit/code/plans/done-a/TASKS.md" "$P14_A_SHA" \
+  "all-completed project: nothing was migrated"
+assert_cmd_exit 0 "all-completed project: rules sync exits 0 (the gate creates no pending work)" \
+  "$TMPDIR/plan-all-completed-sync.log" -- env -C "$P14" node "$CLI" rules sync
+
+# 15 — a folder the process cannot write must not strand the rest, and must not
+#      abort the chain. `readTextFile` answers null on failure, but `movePath`,
+#      `writeTextFile` and `removeFile` throw, and `update` awaits the chain
+#      directly — so without the guard one read-only PLAN.md ends the whole run.
+#      Probe-gated: a filesystem that ignores the read-only bit (some mounts,
+#      some CI containers running as root) would make the scenario vacuous.
+P15="$TMPDIR/plan-unwritable"; mkdir -p "$P15"
+use_fake_registry "$P15" unity minimal-valid
+P15_PLANS="$P15/.unikit/code/plans"
+mkdir -p "$P15_PLANS/locked" "$P15_PLANS/healthy"
+printf '# plan\n\n- [ ] Task 1 open\n' > "$P15_PLANS/locked/PLAN.md"
+printf '# Brief\n\n## CONSTRAINTS\n- MUST: locked\n' > "$P15_PLANS/locked/PLAN-BRIEF.md"
+printf '# tasks\n\n- [ ] Task 1 open\n' > "$P15_PLANS/healthy/TASKS.md"
+printf '# Brief\n\n## CONSTRAINTS\n- MUST: healthy\n' > "$P15_PLANS/healthy/PLAN-BRIEF.md"
+
+P15_PROBE=$(LOCKED="$P15_PLANS/locked/PLAN.md" node -e "
+  const fs = require('fs');
+  fs.chmodSync(process.env.LOCKED, 0o444);
+  try { fs.appendFileSync(process.env.LOCKED, 'x'); process.stdout.write('writable'); }
+  catch { process.stdout.write('unwritable'); }
+" 2>/dev/null || echo 'probe-error')
+
+if [[ "$P15_PROBE" == "unwritable" ]]; then
+    assert_cmd_exit 0 "unwritable plan folder: update still exits 0" \
+      "$TMPDIR/plan-unwritable-update.log" -- env -C "$P15" node "$CLI" update
+    assert_exists     "$P15_PLANS/healthy/PLAN.md" \
+      "unwritable plan folder: the healthy folder still migrated"
+    assert_not_exists "$P15_PLANS/healthy/PLAN-BRIEF.md" \
+      "unwritable plan folder: the healthy brief was still folded and removed"
+    assert_exists     "$P15_PLANS/locked/PLAN-BRIEF.md" \
+      "unwritable plan folder: the brief it could not fold is left in place"
+else
+    echo "  - skipped: this filesystem ignores the read-only bit (probe=$P15_PROBE)"
+fi
+LOCKED="$P15_PLANS/locked/PLAN.md" node -e "
+  require('fs').chmodSync(process.env.LOCKED, 0o666);
+" 2>/dev/null || true
+
+# ─────────────────────────────────────────────────────
+# Section 7: plan-artifact pure functions
+# ─────────────────────────────────────────────────────
+# The three exported helpers are the only part of the step with no observable
+# side effect, so the end-to-end scenarios above can only reach them through a
+# whole `update`. These assertions are why they are exported at all — without a
+# caller outside the module, `ignoreExportsUsedInFile` keeps knip quiet and the
+# export surface would sit there unjustified.
+#
+# Strings are assembled from `String.fromCharCode` rather than written with
+# escapes: the block is a double-quoted bash string, where a backtick opens a
+# command substitution and a backslash is eaten before node ever sees it.
+
+echo -e "\n${BOLD}Section 7: plan-artifact pure functions${NC}"
+
+PURE_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const m = await import('./dist/core/workspace-migrations/plan-artifact.js');
+  const NL = String.fromCharCode(10);
+  const FENCE = String.fromCharCode(96).repeat(3);
+  const why = [];
+  const eq = (name, actual, expected) => {
+    if (actual !== expected) why.push(name + '=' + JSON.stringify(actual));
+  };
+
+  // openTaskCount — the selectivity signal
+  eq('open-counted', m.openTaskCount(['- [ ] a', '- [x] b'].join(NL)), 1);
+  eq('status-line-not-a-task', m.openTaskCount(['**Status:** [ ] Not started', '- [x] b'].join(NL)), 0);
+  eq('fenced-checkbox-ignored', m.openTaskCount([FENCE + 'md', '- [ ] sample', FENCE].join(NL)), 0);
+  eq('none-is-zero', m.openTaskCount('# title'), 0);
+
+  // foldBrief — H1 dropped, headings demoted one level, fences untouched
+  const folded = m.foldBrief([
+    '# Brief', '', '## CONSTRAINTS', '- MUST: x', '', '### CREATE', 'y', '',
+    FENCE + 'bash', '# not a heading', FENCE, '', '###### deep', '', ''
+  ].join(NL));
+  eq('h1-dropped', folded.split(NL)[0], '### CONSTRAINTS');
+  eq('h2-demoted', folded.includes('### CONSTRAINTS'), true);
+  eq('h3-demoted', folded.includes('#### CREATE'), true);
+  eq('h6-untouched', folded.includes('###### deep'), true);
+  eq('fence-untouched', folded.includes(NL + '# not a heading' + NL), true);
+  eq('trailing-blanks-trimmed', folded.endsWith('###### deep'), true);
+
+  // liftDesignSections — verbatim lift, dedup against the manifest
+  const brief = ['# Brief', '', '## Design', 'SYS-combat', '', '## CONSTRAINTS', '- MUST: x'].join(NL);
+  const lifted = m.liftDesignSections(brief, ['# Plan', '', '## Checklist'].join(NL));
+  eq('lifted-verbatim', lifted.lifted, ['## Design', 'SYS-combat'].join(NL));
+  eq('lifted-out-of-rest', lifted.rest.includes('## Design'), false);
+  eq('rest-keeps-the-others', lifted.rest.includes('## CONSTRAINTS'), true);
+
+  const deduped = m.liftDesignSections(brief, ['# Plan', '', '## Design', 'authoritative'].join(NL));
+  eq('dup-not-lifted', deduped.lifted, '');
+  eq('dup-not-demoted-either', deduped.rest.includes('Design'), false);
+
+  const none = m.liftDesignSections(['# Brief', '', '## CONSTRAINTS'].join(NL), '# Plan');
+  eq('no-section-empty-lift', none.lifted, '');
+  eq('no-section-rest-intact', none.rest.includes('## CONSTRAINTS'), true);
+
+  process.stdout.write(why.length ? why.join(' ') : 'ok');
+" 2>/dev/null || echo "pure-error")
+
+if [[ "$PURE_RESULT" == "ok" ]]; then
+    pass "plan-artifact helpers: openTaskCount, foldBrief and liftDesignSections hold their contracts"
+else
+    fail "plan-artifact helper contract violated: $PURE_RESULT"
+fi
 
 print_summary_and_exit "Migration + MCP reconciliation Smoke Tests"
