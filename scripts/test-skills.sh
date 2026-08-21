@@ -3162,6 +3162,79 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# MG: the audit gate is one manual confirmation, not a pre-flight measurement.
+# The old envelope refused on `dirty`, and a fresh empty untitled scene — the only safe
+# place to replay — is dirty by default, so it rejected the correct state structurally and
+# passed a configured production scene. The measurement is gone; these guards keep the
+# retired mechanism from surviving in any of the four places it was described.
+MG_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+MG_SKILL_MAP="$MH_SKILL_MAP"
+MG_DOCS_SKILLS="$MH_DOCS_SKILLS"
+MG_DOCS_CONFIG="$ROOT_DIR/docs/configuration.md"
+
+# (MG-1) `eight-step` gone from all THREE surfaces that carried it. A removed mechanism
+# surviving in a description is worse than a stale comment: the description is what the
+# user reads to decide what they are agreeing to.
+MG1_WHY=""
+grep -qF 'eight-step' "$MG_AUDIT"        && MG1_WHY+=" skill"
+grep -qF 'eight-step' "$MG_DOCS_SKILLS"  && MG1_WHY+=" docs-skills"
+grep -qF 'eight-step' "$MG_DOCS_CONFIG"  && MG1_WHY+=" docs-configuration"
+if [[ -z "$MG1_WHY" ]]; then
+    pass "MG-1 the eight-step envelope is gone from skill + both docs surfaces"
+else
+    fail "MG-1 retired eight-step envelope still described in:$MG1_WHY"
+fi
+
+# (MG-2) The REFUSE step itself. Named as a step, it is the inverted gate; its absence is
+# the mechanical trace that the envelope was actually rebuilt and not merely renumbered.
+if grep -qF 'REFUSE' "$MG_AUDIT"; then
+    fail "MG-2 the REFUSE step is back in unikit-mcp-audit — the inverted dirty gate returned"
+else
+    pass "MG-2 no REFUSE step in unikit-mcp-audit"
+fi
+
+# (MG-3) The promise, in the two places that phrase it that way. NOTE the asymmetry with
+# MG-1, and it is deliberate: docs/skills.md never contained "refuses on a dirty scene" —
+# it said "refuses on any of them" after listing the measurements — so asserting that
+# literal there would pass without checking anything. Its own literal is the git working
+# tree, which the skill no longer inspects at all and whose grant is gone.
+MG3_WHY=""
+grep -qF 'refuses on a dirty scene' "$MG_AUDIT"     && MG3_WHY+=" skill"
+grep -qF 'refuses on a dirty scene' "$MG_SKILL_MAP" && MG3_WHY+=" skill-map"
+grep -qF 'the git working tree'     "$MG_DOCS_SKILLS" && MG3_WHY+=" docs-skills-git"
+if [[ -z "$MG3_WHY" ]]; then
+    pass "MG-3 the withdrawn refusal promise is gone from skill, skill-map and docs"
+else
+    fail "MG-3 withdrawn promise still advertised in:$MG3_WHY"
+fi
+
+# (MG-4) The grant follows the behaviour. git was read only inside the deleted MEASURE
+# step; a grant outliving its only caller is how a capability quietly stays available.
+if awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$MG_AUDIT" | grep -qF 'Bash(git'; then
+    fail "MG-4 unikit-mcp-audit still grants Bash(git *) with no step that uses it"
+else
+    pass "MG-4 Bash(git *) grant removed together with the MEASURE step"
+fi
+
+# (MG-5) The courtesy-line contract, anchored on the formulation rather than the heading —
+# a heading is rewritten during cosmetics, a formulation only together with its meaning.
+# Without this the scene line becomes a gate again the first time someone "improves" it.
+if grep -qF 'shown, not checked' "$MG_AUDIT"; then
+    pass "MG-5 the open-scene line is contracted as shown-not-checked"
+else
+    fail "MG-5 unikit-mcp-audit lost the shown-not-checked contract for the scene line"
+fi
+
+# (MG-6) The no-silent-demotion rule. The REPLAY step says "could not be reproduced in the
+# sandbox → not safe"; applied to a replay that failed because a compile landed mid-run,
+# it corrupts a correct row on evidence that never existed.
+if grep -qF 'A failed replay is not automatically a demotion' "$MG_AUDIT"; then
+    pass "MG-6 a replay failure under instability is offered, not written"
+else
+    fail "MG-6 unikit-mcp-audit lost the no-silent-demotion rule"
+fi
+
+# ─────────────────────────────────────────────
 # HG: review/verify → apply/explore handoff (buckets + interview + shared engine).
 # (Distinct prefix from the apply-dispatcher GA-1…GA-5 block above — different concern.)
 # The review/verify TAIL was reworked into an honest handoff: full report to screen →

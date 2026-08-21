@@ -403,15 +403,17 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Optional.** Pairs with `/unikit-mcp-audit`, which curates what this writes.
 
 ### unikit-mcp-audit
-- **Purpose:** Curate those notes — re-stamp on a server/version change, replay `replay: safe`
+- **Purpose:** Curate those notes — re-stamp on a change of server, replay `replay: safe`
   findings inside a disposable sandbox, offer to retire what was fixed or went upstream, and
   print a ready diff for the packaged rules tree.
 - **When:** "audit the MCP notes", "are these findings still true", "the server was updated —
   revisit the notes".
 - **In:** nothing, a note id (`R2`), or one of `stamp` / `replay` / `retire` / `upstream`.
 - **Out:** an updated `.unikit/MCP-RECHECK-NOTES.md` (+ an upstream diff, printed).
-- **Optional.** Mutates a live editor when replaying — refuses on a dirty scene, compilation, or
-  Play Mode, and never saves the scene.
+- **Optional.** Mutates a live editor when replaying. It takes no pre-flight measurements: it
+  tells you how to prepare the editor, names everything it will create, and asks once — that
+  confirmation is the whole gate. Works only inside a `UNIKIT_AUDIT_<runid>` sandbox and never
+  saves the scene.
 
 ### unikit-help
 - **Purpose:** This navigator. Diagnoses what the user is trying to do and points to the right skill
