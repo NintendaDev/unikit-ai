@@ -496,6 +496,25 @@ After saving a research, update `.unikit/code/researches/INDEX.md` so other skil
 
 6. The top-level index does **not** record the research mode. A consumer that needs it reads the first line of `RESEARCH_RESULT.md`; `/unikit-plan` does not need it at all — it reads `RESEARCH_BRIEF.md`.
 
+### Research Coherence Gate
+
+After **all** writing is done — the artifacts, the three canonical files and
+`researches/INDEX.md` — and **before** confirming the save to the user, read
+`{{skills_dir}}/{{self_name}}/references/coherence-gate.md` and run the gate it specifies.
+The read is conditional: this is the only moment the file is needed, so it is not loaded at
+the start of an exploration.
+
+The order matters in both directions. The gate re-reads the durable files from disk, so
+running it before the write has nothing to read; and confirming before it runs tells the
+user the research is safe while it may still be incoherent.
+
+In ultra the gate runs **after** the bundle integrity checks, not instead of them.
+
+If `references/coherence-gate.md` cannot be read, print one line
+`WARN [coherence] reference missing — saving without the coherence pass` and continue — the
+same trade as the ultra reference above: the research has already been done and written, and
+losing it over a missing reference file is not acceptable.
+
 ### Important rules for saving
 
 - **Don't auto-save** — Always offer and let the user decide
@@ -504,6 +523,7 @@ After saving a research, update `.unikit/code/researches/INDEX.md` so other skil
 - **Generate RESEARCH_BRIEF.md** — always create the structured brief alongside RESEARCH_RESULT.md
 - **Generate RESEARCH_SOURCE.md** — for prompt-based explorations only (see [RESEARCH_SOURCE.md for prompt-based explorations](#research_sourcemd-for-prompt-based-explorations))
 - **Always update researches/INDEX.md** — this is how other skills discover researches
+- **Run the coherence gate** — it is part of saving, not an option. It runs *after* the user has agreed to save, so it neither replaces the question nor weakens `Don't auto-save`
 - The user may edit the suggested name before you save
 
 ---
@@ -684,7 +704,7 @@ When it feels like things are crystallizing, you might summarize:
 
 **Next steps** (if ready):
 - Save research: I'll create a research record
-- Create a plan: /unikit-plan [fast|full] <description>
+- Create a plan: /unikit-plan [fast|full|ultra] <description>
 - Keep exploring: just keep talking
 ```
 
