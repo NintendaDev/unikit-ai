@@ -42,7 +42,7 @@ raises quality. Maximum quality comes from the full chain.
 **Fast track** (game jams, MVPs, small fixes): `/unikit-plan fast <feature>` →
 `/unikit-implement`. Fast plans are a single flat `.unikit/code/PLAN.md`, no git branch.
 
-**Full mode** adds a git branch, a codebase recon pass, a richer `PLAN-BRIEF.md`, and optional
+**Full mode** adds a git branch, a codebase recon pass, a richer `## Technical Context`, and optional
 test/docs checkpoints — use it for real features.
 
 **Why `/unikit-improve` matters:** an LLM never follows 100% of the rules on the first pass, so

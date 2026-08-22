@@ -78,7 +78,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   door* — a flow-named request grounds on the flow, a system-named one on the system,
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the
   system's `AC-<id>`s.
-- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/{TASKS.md,PLAN-BRIEF.md}`.
+- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/PLAN.md`.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 
 ### unikit-improve
@@ -95,7 +95,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
 - **In:** the latest plan, or `@<folder>`, or a phase/task selector. Bootstraps rules once, then
   codes inline.
-- **Out:** project source code; updates `TASKS.md` checkboxes.
+- **Out:** project source code; updates the plan manifest's checkboxes.
 - **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
   `/unikit-verify` / `/unikit-commit`.
 

@@ -95,9 +95,9 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
  │      /unikit-plan        │                │    /unikit-fix     │
  │                          │                │                    │
  │  fast → no branch,       │                │   Bug fixes        │
- │         TASKS.md         │                │   With patches     │
+ │         PLAN.md          │                │   With patches     │
  │  full → git branch,      │                │                    │
- │         TASKS.md         │                └─────────┬──────────┘
+ │         PLAN.md          │                └─────────┬──────────┘
  │  add  → extend plan      │                          │
  └─────────────┬────────────┘                          ▼
                │                          ┌────────────────────┐
@@ -166,7 +166,7 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
 | `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/{date}_{name}/` |
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
-| `/unikit-implement` | Execute plan tasks one by one | No | Updates `TASKS.md` status |
+| `/unikit-implement` | Execute plan tasks one by one | No | Updates the plan manifest status |
 | `/unikit-fix` | Bug fixes, errors, hotfixes | No | Optional `.unikit/code/FIX_PLAN.md` |
 | `/unikit-verify` | Post-implementation quality check | No | Verification report |
 | `/unikit-review` | Code review against rules | No | Review report |
@@ -204,13 +204,13 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit-architecture` | `.unikit/ARCHITECTURE.md` | Architecture guidelines |
 | `/unikit-roadmap` | `.unikit/ROADMAP.md` | Milestone tracking |
 | `/unikit-rules` | `.unikit/RULES.md` | Append/update rules only |
-| `/unikit-plan` | `.unikit/code/plans/*/TASKS.md`, `PLAN-BRIEF.md` | `/unikit-improve` refines |
+| `/unikit-plan` | `.unikit/code/plans/*/PLAN.md` | `/unikit-improve` refines |
 | `/unikit-explore` | `.unikit/code/researches/` | Exploration artifacts |
 | `/unikit-fix` | `.unikit/code/FIX_PLAN.md`, `.unikit/code/patches/*.md` | Bug-fix learning loop |
 | `/unikit-evolve` | `.unikit/evolutions/*`, `.unikit/skill-context/*` | Evolution logs + skill overrides |
 | `/unikit-memory` | `.unikit/memory/code/{core,stack}/`, `RULES_INDEX.md` | Dynamic memory management (module-aware; see [Dynamic Memory](dynamic-memory.md)) |
 | `/unikit-skills-context` | `.unikit/skill-context/<skill>/SKILL.md` | Skill workflow overrides |
-| `/unikit-implement` | `.unikit/code/plans/*/TASKS.md` (status updates) | Marks tasks complete |
+| `/unikit-implement` | `.unikit/code/plans/*/PLAN.md` (status updates) | Marks tasks complete |
 | `/unikit-todo` | `.unikit/TODO.md` | Lightweight task list |
 | `/unikit-docs` | `README.md`, `docs/*.md`, `AGENTS.md` | Documentation generation |
 | `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report, no writes |
@@ -266,7 +266,7 @@ When a linked `gamedesign` workspace exists, it also grounds first-class on the 
 Three planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
-- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/YYYY-MM-DD_name/` with `TASKS.md` + `PLAN-BRIEF.md`
+- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/YYYY-MM-DD_name/` with a single `PLAN.md` manifest
 - **Add** - extends an existing plan with new tasks
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
@@ -291,7 +291,7 @@ Second-pass analysis. Runs 2-3 deep Explore agents to:
 - Remove redundant work
 - Check architectural consistency
 
-Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Updates both TASKS.md and PLAN-BRIEF.md in sync.
+Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Edits the manifest in place; `Write` over it is forbidden.
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
@@ -305,7 +305,7 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 /unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
 ```
 
-Reads skill-context rules first, then plan TASKS.md. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
+Reads skill-context rules first, then the plan manifest. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
 Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text after a mandatory git commit. See [Editor tasks](plan-files.md#editor-tasks).
 

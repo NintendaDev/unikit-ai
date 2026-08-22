@@ -78,7 +78,7 @@ Three modes:
 - **Full** - creates git branch, asks about testing/logging, saves plan
 - **Add** - extends an existing plan with new tasks
 
-Fast and Full modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates `TASKS.md` (checklist) and `PLAN-BRIEF.md` (technical context). Add mode extends an existing plan folder without re-exploring.
+Fast and Full modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Add mode extends an existing plan folder without re-exploring.
 
 ### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
 
@@ -105,7 +105,7 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 /unikit-implement core-loop          # Find plan by name
 /unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
 ```
-- Reads skill-context rules first, then plan TASKS.md
+- Reads skill-context rules first, then the plan manifest
 - Executes tasks one by one with commit checkpoints
 - Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and implements tasks inline with `Read/Edit/Write/Bash`. The `develop-agent` alias is used only for true parallel scopes or deep-dive single tasks
 - Supports selective execution by phase, task numbers, or feature name
@@ -448,7 +448,7 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 ```
 /unikit-mcp-trap                                 # Harvest findings from the current session
 /unikit-mcp-trap the snapshot reported ready with zero files
-/unikit-mcp-trap .unikit/code/plans/2026-08-18_ui/TASKS.md   # Take this plan's table, nothing else
+/unikit-mcp-trap .unikit/code/plans/2026-08-18_ui/PLAN.md   # Take this plan's table, nothing else
 ```
 - Writes `.unikit/MCP-RECHECK-NOTES.md` - the project's log of what has to be re-checked about the **engine MCP server it actually talks to**
 - Zero MCP calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing

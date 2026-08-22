@@ -2505,7 +2505,7 @@ fi
 
 # (CR-2) unikit-plan emits the ## Content Context brief: the §4.5.6 mechanics live in
 # design-context.md AND the assembly step in SKILL.md references the block (without the
-# SKILL.md half the brief is described but never assembled into PLAN-BRIEF).
+# SKILL.md half the brief is described but never assembled into the manifest).
 CR_PLAN_WHY=""
 grep -qF '4.5.6' "$UNIKIT_PLAN_DESIGN_CONTEXT"               || CR_PLAN_WHY+=" no-4.5.6"
 grep -qF '## Content Context' "$UNIKIT_PLAN_DESIGN_CONTEXT"  || CR_PLAN_WHY+=" no-content-context-context"
@@ -2937,6 +2937,149 @@ if grep -qF '<!-- Commit checkpoint' "$CK_TASKFMT"; then
     pass "unikit-plan TASK-FORMAT.md — decorative <!-- Commit checkpoint marker present (Task 4.1)"
 else
     fail "unikit-plan TASK-FORMAT.md — missing decorative <!-- Commit checkpoint marker (Task 4.1)"
+fi
+
+# ─────────────────────────────────────────────
+# PL: the plan manifest is ONE file, and it stays one.
+# RISK-007 in the plan bundle stated the gap in full: the suite could not detect a
+# half-applied rename. Zero asserts existed on the names of the files inside a plan
+# folder — `TASKS.md` appeared nowhere in this script, `PLAN-BRIEF` only in a comment,
+# and the five `TASKS.md` seeds in test-golden-guard.sh are opaque relocation fixtures
+# that would have stayed green through the whole rename. That is worse than no coverage:
+# it is false confidence. Five guards close five distinct ways to get it wrong — bring
+# an old name back, leave a name unqualified, reorder the manifest, resurrect the second
+# file, resurrect the machinery that kept two files in step.
+# Placed AFTER the CK block on purpose: PL reuses UNIKIT_PLAN_SKILL, UNIKIT_IMPROVE_SKILL
+# and CK_TASKFMT, all declared above, and `set -u` makes a forward reference fatal.
+PL_TASKFMT="$CK_TASKFMT"                                  # skills/unikit-plan/references/TASK-FORMAT.md
+PL_SCAN_ROOTS=("$ROOT_DIR/skills" "$ROOT_DIR/subagents")
+PL_VOCAB_ALLOW="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+
+# (PL-1) The naming vocabulary. After the merge two different files are called
+# PLAN.md: the flat fast plan (.unikit/code/PLAN.md) and the folder manifest
+# (.unikit/code/plans/<folder>/PLAN.md). Paths tell them apart; prose does not.
+# A bare backtick-delimited `PLAN.md` is therefore forbidden everywhere in
+# skills/** and subagents/*, with ONE measured allowlist entry:
+#   skills/unikit-plan/references/TASK-FORMAT.md — the file that DECLARES the
+#   vocabulary and must be able to name the file it is naming.
+# Every legitimate reference is qualified and so cannot match: `.unikit/code/PLAN.md`,
+# `.unikit/code/plans/<folder>/PLAN.md`, `plans/*/PLAN.md` all carry a path prefix
+# inside the same backticks, which puts a `/` where the opening backtick would have to be.
+# Extending this allowlist is a signal that the vocabulary was broken, not that the
+# guard is strict — every entry must carry its reason in this comment.
+PL1_HITS="$({ grep -rn -- '`PLAN\.md`' "${PL_SCAN_ROOTS[@]}" --include='*.md' 2>/dev/null || true; } | { grep -vF "$PL_VOCAB_ALLOW" || true; })"
+if [[ -z "$PL1_HITS" ]]; then
+    pass "PL-1 no bare \`PLAN.md\` in skills/** or subagents/* (every mention is path-qualified)"
+else
+    fail "PL-1 a bare \`PLAN.md\` is ambiguous — qualify it with its path:"
+    echo "$PL1_HITS" | head -5
+fi
+
+# (PL-2) Zero occurrences of the pre-merge file names anywhere in the delivered
+# surfaces. This is the guard RISK-007 says the suite never had: before it, a
+# half-applied rename left 17 files broken silently and nothing turned red.
+# Scope is skills/**, subagents/* and data/** (UNITY_RULES.md lives there). docs/**
+# is deliberately OUT of scope — the documentation is rewritten by tasks 15-16, and a
+# second guard over it would be a second owner of one fact; those tasks carry an
+# explicit grep in their acceptance criteria instead.
+# ONE measured allowlist entry: the pre-merge detection branch in
+# skills/unikit-improve/SKILL.md. That branch exists to recognise an
+# un-migrated plan folder and send the user to `unikit-ai update`; a branch that
+# DESCRIBES the old shape instead of naming it cannot be executed reliably, so
+# this is the one place where the retired name is load-bearing rather than stale.
+# The entry is pinned to the marker `(a pre-merge plan)` on that same line, not
+# to the file — exempting the whole file would re-open the 27 occurrences the
+# merge removed from it.
+PL2_ALLOW='(a pre-merge plan)'
+PL2_HITS="$({ grep -rn -e 'TASKS\.md' -e 'PLAN-BRIEF' "${PL_SCAN_ROOTS[@]}" "$ROOT_DIR/data" --include='*.md' 2>/dev/null || true; } | { grep -vF "$PL2_ALLOW" || true; })"
+if [[ -z "$PL2_HITS" ]]; then
+    pass "PL-2 the pre-merge names (TASKS.md / PLAN-BRIEF) are gone from skills/**, subagents/*, data/**"
+else
+    fail "PL-2 a pre-merge plan file name survived the merge:"
+    echo "$PL2_HITS" | head -5
+fi
+
+# (PL-3) Degenerate-to-fail, on the NN-4 convention: if the scan finds no object
+# at all — no skills/, no subagents/ — PL-1 and PL-2 would pass vacuously, and a
+# vacuous pass on a rename guard is exactly the false confidence RISK-007 named.
+PL3_SCANNED="$({ grep -rl -- '`' "${PL_SCAN_ROOTS[@]}" --include='*.md' 2>/dev/null || true; })"
+if [[ -n "$PL3_SCANNED" ]]; then
+    pass "PL-3 the vocabulary scan has an object ($(echo "$PL3_SCANNED" | wc -l | tr -d ' ') markdown files under skills/ + subagents/)"
+else
+    fail "PL-3 nothing scanned — PL-1 and PL-2 would pass vacuously"
+fi
+
+# (PL-4) The manifest section order is a contract, not layout. /unikit-mcp-trap reads
+# its section as "the `## MCP Findings` heading down to the next `##`", so where that
+# heading sits decides what the trap transfers into the project's notes. Three
+# assertions over the template block in TASK-FORMAT.md, by LINE ORDER inside the
+# fence rather than by grep -c — a heading named in prose elsewhere in the file must
+# not be able to satisfy this:
+#   1. `## MCP Findings` stands ABOVE `## Technical Context`. Below it, the nine
+#      `###` subsections of the technical brief fall inside the findings window.
+#   2. The findings window is CLOSED by a following `##` — it never runs to the end
+#      of the template. The canonical tail (A4) is `## Dependency Graph` →
+#      `## Total Estimated Effort` → `## Technical Context`, so the window shuts on
+#      the first of them.
+#   3. After `## Technical Context` there is either nothing or exactly ONE heading —
+#      `## Open Questions`, which the planning pass fills. Stated as a pair invariant
+#      rather than as "Technical Context is last", because the positional form would
+#      turn red on the very tail section this delivery introduces.
+# The existence probe is not decoration: the awk below runs inside an assignment,
+# and under `set -e` a command substitution that exits non-zero kills the whole
+# suite with a bash message instead of a readable verdict. NN-1 / NN-4 / PL-3 all
+# degenerate to `fail` when their object is gone; this keeps PL-4 on the same
+# convention. The trailing `|| true` covers every other awk exit path.
+if [[ ! -f "$PL_TASKFMT" ]]; then
+    fail "PL-4 TASK-FORMAT.md missing — the guard has no object left"
+else
+    PL4_WHY="$(awk '
+    /^## Plan Manifest Template/ { seek = 1; next }
+    seek && /^```/               { infence = 1; seek = 0; next }
+    infence && /^```/            { infence = 0; exit }
+    infence && /^## /            { n++; head[n] = $0 }
+    END {
+        mcp = 0; tech = 0
+        for (i = 1; i <= n; i++) {
+            if (head[i] == "## MCP Findings")      mcp  = i
+            if (head[i] == "## Technical Context") tech = i
+        }
+        if (mcp  == 0) printf " no-MCP-Findings-heading-in-template"
+        if (tech == 0) printf " no-Technical-Context-heading-in-template"
+        if (mcp == 0 || tech == 0) exit
+        if (mcp > tech) printf " findings-below-technical-context"
+        if (mcp == n)   printf " findings-window-runs-to-end-of-template"
+        for (i = tech + 1; i <= n; i++)
+            if (head[i] != "## Open Questions") printf " unexpected-tail-section(%s)", head[i]
+    }
+' "$PL_TASKFMT" || true)"
+    if [[ -z "$PL4_WHY" ]]; then
+        pass "PL-4 manifest section order — MCP Findings above Technical Context, findings window closed, only Open Questions may follow"
+    else
+        fail "PL-4 manifest section order broken in $PL_TASKFMT:$PL4_WHY"
+    fi
+fi
+
+# (PL-5) The three sync mechanisms the merge removed. Each existed ONLY because a
+# plan was two files; a copy-paste from an old revision brings any of them back
+# without any other guard noticing. The middle assert is POSITIVE on purpose —
+# without it, deleting the two-file sync rule is indistinguishable from deleting
+# the rule that replaced it.
+# The third anchor quotes the retired rule 11 in full rather than the two words
+# `Always create`. Two words are a phrase anyone might write about anything —
+# `Always created` on the neighbouring line already matches them as a substring —
+# and the guard would then turn red with a message naming a second file that does
+# not exist, sending the reader after a fault nobody introduced. This literal is a
+# regression detector; scripts/ is outside PL-2's scan roots, so it can name the
+# retired file without contradicting the guard three blocks above.
+PL5_WHY=""
+if grep -qF 'Keep files in sync' "$UNIKIT_IMPROVE_SKILL"; then PL5_WHY+=" improve-still-syncs-two-files"; fi
+grep -qF '`Write` over a plan manifest is forbidden' "$UNIKIT_IMPROVE_SKILL" || PL5_WHY+=" improve-missing-Write-ban"
+if grep -qF 'Always create PLAN-BRIEF.md' "$UNIKIT_PLAN_SKILL"; then PL5_WHY+=" plan-still-creates-a-second-file"; fi
+if [[ -z "$PL5_WHY" ]]; then
+    pass "PL-5 two-file sync machinery stays retired (no Keep-files-in-sync, no Always-create; the Write ban is in place)"
+else
+    fail "PL-5 a two-file mechanism came back:$PL5_WHY"
 fi
 
 # ─────────────────────────────────────────────

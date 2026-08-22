@@ -16,7 +16,7 @@
 Two different files carry the name `PLAN.md`: the flat fast plan and the manifest of a plan folder. The path tells them apart; prose does not. An unqualified mention inside a consumer resolves to "whichever one is nearer", and which one that is depends on which paragraph the reader happened to read first — so the name is never written bare.
 
 - **Flat fast plan** — always written as the full path `.unikit/code/PLAN.md`.
-- **Folder plan manifest** — always written as the full path `.unikit/code/plans/<folder>/PLAN.md`, as the glob `plans/*/PLAN.md`, or as the phrase "the plan folder's `PLAN.md`".
+- **Folder plan manifest** — always written as the full path `.unikit/code/plans/<folder>/PLAN.md`, as the glob `plans/*/PLAN.md`, or as the bare-token-free phrase "the plan folder's manifest". The third form carries no backticked name on purpose: a phrase that quotes `PLAN.md` is the very shape the rule below forbids, so sanctioning it here would hand the next author a form the guard rejects.
 - **A bare `PLAN.md` token is forbidden** in `skills/**` and `subagents/*`. This section — where the name is declared — is the only exception.
 
 ## Plan Manifest Template
