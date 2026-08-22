@@ -30,7 +30,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "2.4"
+  version: "2.5"
   category: implementation
 ---
 
@@ -252,6 +252,10 @@ STOP here after handling the choice.
 
 **If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to use.
 
+**Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
+
+**Reading depth:** read the manifest plus the phase file of the **active task** — one task is executed at a time, so holding every phase in context means holding what is not being executed. Re-read the active phase file on resume, even when a previous session already read it.
+
 #### 0.2: Check for Uncommitted Changes
 
 **Skip this step for read-only modes (`--list`, `status`) — they already STOPped in Step 0.1.**
@@ -367,6 +371,11 @@ MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
 ```
 
 No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
+
+**Ultra plan bundle reader contract — once, before the first task is executed:**
+
+7. `.unikit/system/ultra-plan-read.md` — how to read an ultra plan bundle: detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. Name it and follow it; never restate it here — one contract, one place.
+   **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
 
 Keep an in-memory list of loaded rule file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
 

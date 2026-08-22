@@ -22,7 +22,7 @@ allowed-tools:
   - Skill
 metadata:
   author: unikit
-  version: "2.2"
+  version: "2.3"
   category: planning
 ---
 
@@ -203,6 +203,10 @@ If `$ARGUMENTS` is empty (no parameters):
 
 3. **Use the resolved plan.**
 
+**Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
+
+**Reading depth:** read the manifest plus **every** phase file — improvement is not local, and moving a task between phases touches two of them.
+
 ### Step 0.5: Bootstrap Context (MANDATORY)
 
 Before any analysis — silently load the project knowledge base. Do NOT narrate the loading process to the user.
@@ -217,6 +221,8 @@ Before any analysis — silently load the project knowledge base. Do NOT narrate
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **`.unikit/skill-context/{{self_name}}/SKILL.md`** — project-specific skill overrides (if exists)
 5. `.unikit/system/dev-principles.md` — engine development principles, read on **two** levels (used in Step 2.3/2.4 architectural consistency checks and in the Guard B pass, Step 3.3a). Everything **above** the LAZY-READ BOUNDARY is read here, every time: the evidence contract, the claim-class → evidence-class lattice, the nine failure-class names, phase order, the lane, and the `kind` / area vocabularies. The section **below** the boundary — the nine detectors in full and the catalog checklist — is read **once per session, on the first task that touches editor state**, and read **unconditionally**: never gated on which rules happen to be installed, because that is exactly where the universal safety net would disappear (A9).
+6. **`.unikit/system/ultra-plan-read.md`** — the reader contract for an ultra plan bundle: detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. Name it and follow it; never restate it here — one contract, one place.
+   **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 
@@ -559,6 +565,8 @@ Ready to proceed with implementation.
 Based on user's choice, apply changes sequentially.
 
 Use `Edit` for every change. **`Write` over a plan manifest is forbidden** — the file carries `## Technical Context` (and, in an ultra bundle, `## Phase Index`), and a regenerating write silently drops whatever the current pass did not reconstruct. When a change is too large for a single `Edit`, split it into several `Edit` calls; do not fall back to `Write`.
+
+**Editing an ultra bundle.** The manifest and every affected phase file are edited **together** — never regenerate the manifest alone when phase detail changed, and never write a checkbox into a phase file. After the write, re-run the bundle integrity checks named in `.unikit/system/ultra-plan-read.md`; a bundle left inconsistent by an improvement blocks the next consumer that opens it.
 
 **5.1: Add missing tasks to the manifest's `## Checklist`**
 

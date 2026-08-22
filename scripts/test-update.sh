@@ -1961,6 +1961,32 @@ assert_not_exists "$NOTES_CLI_RULES/verification.md" \
 echo "  ✓ recheck notes: an engine switch through update parks the log and sweeps the old rules tree"
 
 # ─────────────────────────────────────────────
+# Test 30k: ultra-plan-read.md is delivered on update — the ONLY mechanical guard for
+# the update.ts wiring of installUltraPlanReadContract. Without it a missing update.ts
+# call is invisible: the function stays called from init.ts, so neither lint nor knip
+# sees an unused export, and test-install.sh exercises only the init path. DEVPRIN_DIR
+# ran `update` with no prior `init`, so the file existing proves update.ts calls the
+# installer; tamper-refresh confirms it is flat-rewritten from data/ too (mirror of 30b).
+# Placed last in the 30-family so the numbering reads in order. By then Test 30e has
+# switched this project's engine MCP, which is harmless here on purpose: the asset is
+# engine- and agent-agnostic and is rewritten on every update regardless of selection.
+# ─────────────────────────────────────────────
+ULTRA_READ="$DEVPRIN_DIR/.unikit/system/ultra-plan-read.md"
+assert_exists "$ULTRA_READ" "ultra-plan-read.md must be installed on update (system asset, update.ts wiring)"
+
+echo "UR_TAMPERED_BY_TEST" >> "$ULTRA_READ"
+
+DEVPRIN_OUT8="$TMPDIR/update-ultra-read-8.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT8" 2>&1)
+
+if grep -q "UR_TAMPERED_BY_TEST" "$ULTRA_READ"; then
+    echo "Assertion failed: update did NOT refresh ultra-plan-read.md from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ ultra-plan-read.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).

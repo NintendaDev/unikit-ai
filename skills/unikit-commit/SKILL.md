@@ -56,6 +56,8 @@ Do not announce, confirm, or mention the language setting.
    - Read `.unikit/ARCHITECTURE.md` (if present) to verify staged changes don't violate module boundaries or dependency rules defined there
    - Read `.unikit/ROADMAP.md` (if present) to check milestone alignment — for `feat`/`fix`/`perf` commits, check if changes relate to an unchecked milestone and suggest mentioning it in the commit body
    - Read `.unikit/skill-context/unikit-commit/SKILL.md` (if present) — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict
+   - Read `.unikit/system/ultra-plan-read.md` — the reader contract for an ultra plan bundle: detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. Name it and follow it; never restate it here — one contract, one place.
+     **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
    - Missing optional files (`ROADMAP.md`) are `WARN`, not blockers
    - These are lightweight checks — flag only clear violations as `WARN`, don't block the commit
    - Never modify these files
@@ -64,6 +66,17 @@ Do not announce, confirm, or mention the language setting.
    - Check if `.unikit/code/plans/` contains an active plan (look for a `plans/*/PLAN.md` manifest)
    - If a plan exists and staged changes clearly relate to a planned task, suggest referencing the phase/task number in the commit message body (e.g., "Phase 8, tasks 8.1-8.3")
    - This is optional — suggest it, don't require it
+
+   **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
+
+   A broken bundle is a `WARN` here, never a blocker — like every other context check in this skill. Plan linkage is optional, and refusing to record finished work because a plan file lost a link punishes the wrong action. Blocking on bundle integrity belongs to `/unikit-verify`.
+
+   **Reading depth:** read the manifest plus the phase files of the **current commit group** only — staged paths are mapped onto groups, and the rest of the bundle is not needed.
+
+   **Commit-group mapping** (ultra bundles only) — how a staged path is mapped onto a group:
+   - Resolve the group first: `## Commit Plan` names **task ranges** (`### Commit N: after tasks X-Y`), never file names. Take that range, look the tasks up in `## Phase Index`, and read **only** the phase files they live in — never the whole bundle.
+   - When one phase carries tasks from **different** commit groups, ownership is read from its `## Task N.M` sections — not from the phase's `## Files in This Phase` table, which belongs to the phase and not to any one group.
+   - When two groups overlap on a file, stage at hunk level rather than assigning the whole file to one of them.
 
 5. **Determine Commit Type**
    - `feat`: New feature

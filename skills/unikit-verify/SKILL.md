@@ -29,7 +29,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "1.3"
+  version: "1.4"
   category: quality
 ---
 
@@ -103,6 +103,8 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   - normal vs strict context-gate thresholds.
 - If this contract conflicts with older examples in this file, follow the contract.
 - Also read `.unikit/system/gate-result-contract.md` — the canonical schema for the machine-readable `unikit-gate-result` block emitted in Step 4.4. If it is missing or unreadable, do not block: the Step 4.4 section is self-sufficient on the schema and degrades gracefully (see there).
+- Also read `.unikit/system/ultra-plan-read.md` — the reader contract for an ultra plan bundle: detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. Name it and follow it; never restate it here — one contract, one place.
+  **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
 
 ### 0.1 Find Feature Plan
 
@@ -132,6 +134,10 @@ Based on choice:
 **If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to verify.
 
 Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Strict Mode section).
+
+**Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
+
+**Reading depth:** read the manifest plus **every** phase file **before** verification begins — this gate validates the plan as a whole, and a phase read late is a phase whose criteria were never applied.
 
 ### 0.2 Read Plan & Context
 
@@ -253,6 +259,8 @@ Launch one Explore task per phase from the plan's task list. For each phase, pro
 - **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
 
 **Fallback:** If Agent tool is unavailable, investigate directly using Glob and Grep — with the **same exclusion**: tasks carrying an `Editor:` line are not Glob/Grep-verifiable and keep the treatment above.
+
+**In an ultra bundle the checkbox is not the specification.** Verify implementation against the detailed per-task interfaces, edge cases, logging, acceptance criteria, and commands — **not only the short checkbox text**. The manifest's checklist line is a pointer; what is verified against is the task's own `### Acceptance Criteria` and `### Verification` in its phase file. Pass those to each Explore task alongside the checklist line.
 
 ### 1.1 Build Checklist
 
@@ -578,6 +586,8 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
   - `verify-editor-<task-id>` covers an editor target that was read back and found **unimplemented or wrong**. The two benign outcomes never enter `blockers`: `⏸️ MANUAL` (the user took the target on) and `⏭️ SKIPPED (editor target, …)` (it could not be read back). Both belong in the human summary.
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
+
+**Ultra bundle — verification commands outside the grant.** Commands under a task's `### Verification` are executed within the grant this skill already holds. Anything outside it is printed with the `⏸️ MANUAL` status in the report **and** must reach this block, or it is lost in silence: an unrun verification command is an accepted skip, so `status` is at least `warn` and the human summary names the command and the task. It is not a blocker and it never enters `blockers`. **`allowed-tools` is not widened for this** — the `⏸️ MANUAL` idiom already exists for editor targets.
 
 ```unikit-gate-result
 {
