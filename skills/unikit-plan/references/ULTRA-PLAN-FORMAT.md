@@ -94,6 +94,9 @@ not layout.
 ## Settings
 ## Roadmap Linkage   (optional)
 
+## Architecture and Decisions   (optional)
+- [A cross-phase boundary, contract or decision — and why this one was chosen]
+
 ## Phase Index
 1. [Phase 1: {name}](phase-01-{slug}.md) — Tasks 1.1-1.2
 2. [Phase 2: {name}](phase-02-{slug}.md) — Tasks 2.1-2.2
@@ -149,6 +152,11 @@ Rules:
   heading (`## Task 1.1: Foo` → `#task-11-foo`).
 - The checkbox line stays short and **must** carry its `([details](…))` link. `WHY:` and
   `Files:` are kept from the base format, unchanged.
+- **`## Architecture and Decisions` holds decisions that bind two or more phases** — a module
+  boundary, a shared contract, a chosen trade-off. A decision internal to one phase belongs in
+  that task's `### Required Interfaces and Contracts` and is not lifted here. The section is
+  **optional** and is omitted entirely when there are no such decisions: a mandatory empty
+  section is an invitation to fill it for form's sake, which the Required Detail Gate forbids.
 - **The example above is deliberately complete, not elided.** Two phases with two tasks each is
   the smallest example in which the three projections of the task set can disagree, and the
   bundle contract test validates the template itself: the `## Phase Index` ranges, the checklist
@@ -178,22 +186,59 @@ Tasks: {N}.1-{N}.M
 Depends on: none | Phase {K}
 
 ## Objective
+[The observable outcome this phase must produce.]
+
 ## Current-Code Evidence
+
 | Path | Symbols / lines | Why it matters |
+|------|-----------------|----------------|
+| `{path}` | `{Class.method}` / lines {A}-{B} | [Existing pattern, integration point or contradiction this phase acts on] |
+
 ## Files in This Phase
+
 | Path | Action | Required change |
+|------|--------|-----------------|
+| `{path}` | create / modify / delete | [Exact responsibility — not "update the file"] |
 
 ## Task {N}.{M}: {Deliverable}
+
 ### Intent
+[Why this task exists and what later work depends on it.]
+
 ### Implementation Steps
+1. [Concrete edit in a named file and symbol.]
+2. [Exact control and data flow.]
+3. [Integration or migration step.]
+
 ### Required Interfaces and Contracts
+- Types, signatures, schemas, events, environment variables or config.
+- Compatibility requirements and invariants.
+- Concise pseudocode **when prose leaves meaningful ambiguity** — never a pasted source file.
+
 ### Error Handling and Logging
+- Failure modes and the expected behaviour of each.
+- Log events and levels, the safe fields, and the fields that must **not** be logged.
+- Follow the plan's `Logging:` setting.
+
 ### Tests
+- When `Testing: yes`: exact cases, fixtures, test files and commands.
+- When `Testing: no`: the literal `Not planned by user preference`; no test tasks are added.
+
 ### Acceptance Criteria
+- [Observable, independently verifiable result.]
+
 ### Verification
+- `{exact command or manual check}`
+- Expected result: [...]
 
 ## Phase Risks and Mitigations
+- Risk: [what can go wrong in this phase]
+  Mitigation: [what makes it not happen, or makes it cheap when it does]
+
 ## Phase Completion Checklist
+- Every task in this phase satisfies its acceptance criteria.
+- The required verification commands pass.
+- The manifest's task checkboxes are ticked immediately after verified completion, not at the end of the phase.
 ```
 
 Rules:
@@ -266,6 +311,14 @@ Each check is **blocking**:
 5. No `phase-*.md` is missing from `## Phase Index` (no orphans).
 6. Dependency references point to task IDs that exist.
 7. The `## Phase Index` ranges cover exactly the set of checklist tasks.
+8. No `phase-*.md` contains a task checkbox (`- [ ]` or `- [x]`). Progress lives only in the
+   manifest; a checkbox in a phase file is a second source of progress, and it diverges from
+   the first the moment one of them is ticked.
+9. The task ranges in `## Commit Plan` agree with `## Phase Index` and with `## Checklist` —
+   every `### Commit N: after tasks X-Y` range is made of task IDs that exist, and the union of
+   the ranges stays within the checklist's task set. `/unikit-commit` resolves a commit group by
+   taking its range, locating those tasks through `## Phase Index` and reading only the phase
+   files that hold them, so a range naming a task nobody has sends it to the wrong files.
 
 The reason, kept in the words the original used: a broken or missing link means **the
 committed specification is incomplete** — verify the plan, do not verify it partially.

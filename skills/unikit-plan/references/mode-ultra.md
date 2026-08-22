@@ -117,6 +117,7 @@ phase.**
 | Subsection | Where it goes |
 |-----------|---------------|
 | `CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE` | the manifest, `## Technical Context` |
+| a decision binding two or more phases | the manifest, `## Architecture and Decisions` |
 | `INTERFACES`, `KEY PATTERNS` | the phase, `### Required Interfaces and Contracts` of the task that owns it |
 | `FILES` | the phase, `## Files in This Phase` |
 | `EDITOR TARGETS` | the phase, `### Required Interfaces and Contracts` of the task carrying the `Editor:` line |

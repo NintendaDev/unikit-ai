@@ -56,7 +56,12 @@ const FORBIDDEN_DELEGATION_WORDS = ['handle', 'support', 'wire up', 'as needed',
 const INTEGRITY_REASON = 'the committed specification is incomplete';
 
 const DETAIL_GATE_POINTS = 7;
-const INTEGRITY_POINTS = 7;
+// 9 = the 7 checks the port carried over, plus the 2 restored from the format ultra was
+// ported from: "no checkbox in a phase file" (which existed here as a rule with no check)
+// and "commit-plan ranges agree with the index and the checklist" (which existed nowhere,
+// while `/unikit-commit` resolves a group through `## Phase Index` and so breaks on drift).
+// Changing this number requires naming, here, which check was added or removed and why.
+const INTEGRITY_POINTS = 9;
 
 // Every file here must carry the literal marker. The list IS the contract:
 // a consumer that "forgets" ultra degrades silently to full-plan behaviour, and
