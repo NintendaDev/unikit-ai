@@ -62,6 +62,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 - Saves results to `.unikit/code/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
 - Maintains `researches/INDEX.md`; use `init` to rebuild the index
 - The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised only as the leading token, never inferred
+- Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and holds the confirmation until the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The read-only pass goes to a fresh context and falls back to inline; if the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
 - When direction is clear, transition to `/unikit-plan`
 
 ### `/unikit-plan [fast|full|ultra|add|--list] [--base <branch>] <description>` - plan the work
@@ -81,7 +82,7 @@ Four modes:
 - **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: reached only by typing `ultra`, never offered and never inferred
 - **Add** - extends an existing plan with new tasks
 
-Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned. Add mode extends an existing plan folder without re-exploring.
+Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan folder without re-exploring.
 
 ### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
 

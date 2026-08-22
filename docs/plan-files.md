@@ -165,7 +165,10 @@ not even under `language.artifacts: ru`:
 **What lives where.** Everything mutable during execution stays in the manifest: the
 checklist checkboxes, `## MCP Findings`, `## Commit Plan`, `## Settings`, and the
 cross-phase part of `## Technical Context` (`CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`,
-`OUT OF SCOPE`). The task-scoped detail moves into the phase files, and **phase files are
+`OUT OF SCOPE`). The manifest also carries an optional `## Architecture and Decisions` for
+decisions that bind **two or more** phases — a module boundary, a shared contract, a chosen
+trade-off. A decision internal to one phase belongs in that task's section instead, and the
+whole section is omitted when there are no cross-phase decisions. The task-scoped detail moves into the phase files, and **phase files are
 read-only during execution** — a skill executing a plan never writes into `phase-*.md`.
 That single write surface is what keeps `F<n>` numbering in `## MCP Findings` from
 branching across phases.
@@ -186,12 +189,19 @@ specification is incomplete.
 | `/unikit-verify` | the manifest plus every phase file |
 | `/unikit-improve` | the manifest plus every phase file |
 | `/unikit-commit` | the manifest plus the phase files of the current commit group |
+| `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the current layer |
+
+That table has one owner — `.unikit/system/ultra-plan-read.md` — and where the two
+disagree, the contract is right and this page is stale.
 
 The full rules — detection, mutability, the blocking integrity checks and the commit-group
 mapping — live in `.unikit/system/ultra-plan-read.md`, installed into every project. The
 producer side (the manifest and phase templates, the **Required Detail Gate** every task
-must clear, the **Integrity Checks** run before the plan is shown) lives in the
-`unikit-plan` skill's `references/ULTRA-PLAN-FORMAT.md`. Neither is restated here.
+must clear, the **nine Integrity Checks** run before the plan is shown) lives in the
+`unikit-plan` skill's `references/ULTRA-PLAN-FORMAT.md`. Neither is restated here. Two of
+the nine are worth knowing by name because they catch what the three projections cannot: no
+`phase-*.md` may carry a task checkbox, and the task ranges in `## Commit Plan` must agree
+with `## Phase Index` and `## Checklist`.
 
 **What the bundle does not change.** Plan discovery is untouched, and so is
 `/unikit-plan --list`. The flat fast plan `.unikit/code/PLAN.md` and `.unikit/code/FIX_PLAN.md`
@@ -378,7 +388,7 @@ Each `## Based on` entry records a **`Brief SHA256`** — the SHA256 of that res
 
 Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine MCP), optional tests, commit checkpoint.
 
-In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ: implement reads the manifest plus the phase file of the **active task**, while verify reads the manifest plus **every** phase file.
+In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ per consumer: implement reads the manifest plus the phase file of the **active task**; verify and improve read the manifest plus **every** phase file; commit reads the manifest plus the phase files of the current commit group; and `unikit-implement-coordinator` — the parallel execution path, a separate entry point that does its own detection — reads the manifest plus the phase files of the phases it dispatches in the current layer. The full table lives in `.unikit/system/ultra-plan-read.md`.
 
 ### /unikit-fix ↔ /unikit-implement
 

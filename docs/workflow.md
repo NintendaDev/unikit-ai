@@ -271,7 +271,7 @@ Four planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/YYYY-MM-DD_name/` with a single `PLAN.md` manifest
-- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: type `ultra`, or you get Full
+- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: type `ultra`, or you get Full. Two mechanisms hold that, and both had to be repaired: the opt-in itself is the first-token parse in Step 0, and the **shape of what you get** is held by the redirect in `TASK-FORMAT.md` and by the `ULTRA-PLAN-FORMAT.md` specification. Without the second one, typing `ultra` still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
 - **Add** - extends an existing plan with new tasks
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
