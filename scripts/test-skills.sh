@@ -3230,8 +3230,18 @@ done
 grep -qF 'verification bug' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-not-mandatory"
 for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     n="$(basename "$(dirname "$f")")"
-    RDC_BRIEF_LINES="$(grep -F 'RESEARCH_BRIEF.md' "$f" || true)"
-    if printf '%s' "$RDC_BRIEF_LINES" | grep -qF 'instead'; then RDC_WHY+=" $n-still-reads-instead"; fi
+    # The negative half binds to the ADJACENCY, not to the word and not to the line. Two
+    # earlier shapes were measured and both are wrong: `grep -qF 'instead'` over lines naming
+    # the brief condemns the correct sentence ("read the plan's `## Technical Context` instead
+    # of `RESEARCH_BRIEF.md`"), and ordering the two tokens across the whole line does not fix
+    # it either — the repaired sentence names the brief TWICE, so the first occurrence and a
+    # later `instead` still match. What is banned is the brief immediately followed by
+    # `instead`; anything else is prose. Same class as the RD-A anchor above: a negative assert
+    # binds to a form, never to a word (patch 2026-08-22-12.40).
+    if grep -qE 'RESEARCH_BRIEF\.md`?[[:space:]]+instead' "$f"; then RDC_WHY+=" $n-still-reads-instead"; fi
+    # The positive counterpart, and the durable half: a positive assert cannot false-positive,
+    # so it — not the negative — is what survives a rewrite of the sentence.
+    grep -qF 'as a substitute for the plan' "$f" || RDC_WHY+=" $n-no-substitute-ban"
 done
 if [[ -z "$RDC_WHY" ]]; then
     pass "RD-C one canonical WARN [research-drift] label; implement/verify check the hash and never read the brief instead of the plan"

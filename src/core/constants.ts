@@ -291,14 +291,7 @@ export const GD_PRINCIPLES_FILE = 'gd-principles.md';
  * the `unikit-gate-result` fenced block.
  */
 export const GATE_RESULT_CONTRACT_FILE = 'gate-result-contract.md';
-/**
- * Reader contract for an ultra plan bundle, shared by FOUR pipeline skills.
- * Installed flat into `.unikit/system/ultra-plan-read.md` from
- * `data/ultra-plan-read.md`. Engine- and agent-agnostic (no substitution) and NOT
- * hash-tracked — rewritten on every init/update. It is a system asset rather than
- * a skill reference because `references/` is per-skill: the alternative is four
- * copies of one contract, and a copied contract drifts.
- */
+/** Reader contract for an ultra plan bundle; rationale on `installUltraPlanReadContract`. */
 export const ULTRA_PLAN_READ_FILE = 'ultra-plan-read.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';

@@ -73,10 +73,7 @@ Do not announce, confirm, or mention the language setting.
 
    **Reading depth:** read the manifest plus the phase files of the **current commit group** only — staged paths are mapped onto groups, and the rest of the bundle is not needed.
 
-   **Commit-group mapping** (ultra bundles only) — how a staged path is mapped onto a group:
-   - Resolve the group first: `## Commit Plan` names **task ranges** (`### Commit N: after tasks X-Y`), never file names. Take that range, look the tasks up in `## Phase Index`, and read **only** the phase files they live in — never the whole bundle.
-   - When one phase carries tasks from **different** commit groups, ownership is read from its `## Task N.M` sections — not from the phase's `## Files in This Phase` table, which belongs to the phase and not to any one group.
-   - When two groups overlap on a file, stage at hunk level rather than assigning the whole file to one of them.
+   **Commit-group mapping** (ultra bundles only): a staged path is mapped onto a group by the rules in `.unikit/system/ultra-plan-read.md` → `## Commit-group mapping` — how the group is resolved, how ownership is read when one phase spans two groups, and what to do when groups overlap on a file. Follow them there; they are not repeated here.
 
 5. **Determine Commit Type**
    - `feat`: New feature

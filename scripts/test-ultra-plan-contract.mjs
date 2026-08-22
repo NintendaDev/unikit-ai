@@ -81,7 +81,12 @@ const readerConsumers = [
 ];
 
 const READER_CONTRACT_FILE = 'ultra-plan-read.md';
-const DEGRADATION_TOKEN = 'missing';
+// Anchored on the FORMULATION, never on one ordinary word. `missing` was the first choice and
+// it is exactly the kind of token an innocent sentence writes: any line naming both the
+// contract and a missing phase file made T16 report "carries 2 lines (expected exactly 1)",
+// which points at the wrong thing entirely. A false positive on an identity check teaches
+// people to delete it (patch 2026-08-22-12.40).
+const DEGRADATION_TOKEN = 'is missing or unreadable, do not block';
 
 // Threshold measured, not chosen: before this port these files carried ZERO lines naming
 // `Phase Index`; the detection branch adds none, the improve `Write` ban names it once and
@@ -90,6 +95,31 @@ const DEGRADATION_TOKEN = 'missing';
 // the format ultra was ported from. Raising the threshold requires updating this reason.
 const MAX_PHASE_INDEX_MENTIONS = 2;
 const PHASE_INDEX_TOKEN = 'Phase Index';
+
+// Sections of the reader contract a consumer may NAME but must never REPRODUCE. The counter
+// above cannot see a restatement on its own: a full copy of `## Commit-group mapping` names
+// `Phase Index` exactly once, under the threshold — measured, that is precisely how three
+// verbatim bullets reached `unikit-commit` with T17 green.
+//
+// The wording is DERIVED from the contract, never listed here. A hand-written list of phrases
+// knows only about the rules that existed when it was typed: add a fourth rule to the section
+// and its copy sails through, which is the same class of failure one level up.
+//
+// Scope is deliberately ONE section, and the reason is measured rather than assumed:
+// `## Integrity is blocking` carries a paragraph ABOUT `/unikit-commit` — its sanctioned
+// non-blocking exception — and the commit skill legitimately echoes that rationale, so
+// shingling that section reported 12 hits on a CORRECT file. A guard that forces a debatable
+// rewrite is worse than one with a stated scope; the integrity side stays covered by the
+// `Phase Index` counter above.
+const POINTER_ONLY_SECTIONS = ['## Commit-group mapping'];
+
+// Eight consecutive words, measured on the real regression rather than picked: the
+// restatement this check exists for reproduces 75 of the section's 94 shingles, while all four
+// correct consumers reproduce ZERO — at every window from 5 to 10. Eight sits in the middle of
+// that gap: long enough that innocent prose cannot reach it by coincidence, short enough that
+// a copy which has since DRIFTED still matches (the real one had already diverged in three
+// places, which is exactly what exact-phrase matching would have started missing).
+const SHINGLE_WORDS = 8;
 
 // ── Harness ──────────────────────────────────────────────────────────────────
 
@@ -163,6 +193,19 @@ function extractFenced(spec, headingText) {
  */
 function flatten(text) {
     return text.replace(/\s+/g, ' ');
+}
+
+/** Words of a markdown fragment: lowercased, emphasis and backticks dropped. */
+function normalizedWords(text) {
+    return text.toLowerCase().replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+}
+
+/** Every window of `size` consecutive words in `text`. */
+function wordShingles(text, size) {
+    const w = normalizedWords(text);
+    const out = new Set();
+    for (let i = 0; i + size <= w.length; i++) out.add(w.slice(i, i + size).join(' '));
+    return out;
 }
 
 /** Section body between `heading` and the next `## ` heading. */
@@ -363,7 +406,38 @@ if (!degradationBroken) {
     }
 }
 
-// --- T17: no consumer restates the integrity checklist ---
+// --- T17: no consumer reproduces a pointer-only section of the contract ---
+// The wording is read out of the contract first. If that derivation yields nothing, every
+// consumer check below would pass on an empty set — a vacuous pass on a restatement guard is
+// the false confidence this family exists to prevent, so it is reported as a failure of its
+// own (NN-4 / RT-7 convention).
+const contractPath = `data/${READER_CONTRACT_FILE}`;
+const contractText = await readRepoFile(contractPath);
+const pointerOnlyShingles = new Set();
+let derivationError = null;
+
+if (contractText === null) {
+    derivationError = `${contractPath} is missing — the derivation has no object`;
+} else {
+    for (const heading of POINTER_ONLY_SECTIONS) {
+        const body = extractSection(contractText, heading);
+        if (body === null) {
+            derivationError = `no "${heading}" section in ${contractPath}`;
+            break;
+        }
+        for (const shingle of wordShingles(body, SHINGLE_WORDS)) pointerOnlyShingles.add(shingle);
+    }
+    if (!derivationError && pointerOnlyShingles.size === 0) {
+        derivationError = `${JSON.stringify(POINTER_ONLY_SECTIONS)} yielded no ${SHINGLE_WORDS}-word runs — the section is empty`;
+    }
+}
+
+if (derivationError) {
+    fail('T17 pointer-only-wording-derived', derivationError);
+} else {
+    pass(`T17 pointer-only-wording-derived (${pointerOnlyShingles.size} runs)`);
+}
+
 for (const rel of readerConsumers) {
     const content = await readRepoFile(rel);
     if (content === null) {
@@ -371,8 +445,13 @@ for (const rel of readerConsumers) {
         continue;
     }
     const mentions = content.split('\n').filter((l) => l.includes(PHASE_INDEX_TOKEN)).length;
-    assertTrue(`T17 no-restated-contract (${rel})`, mentions <= MAX_PHASE_INDEX_MENTIONS,
-        `${mentions} lines name "${PHASE_INDEX_TOKEN}" (max ${MAX_PHASE_INDEX_MENTIONS}) — a consumer restating the contract instead of pointing at it`);
+    const flatBody = normalizedWords(content).join(' ');
+    const restated = [...pointerOnlyShingles].filter((shingle) => flatBody.includes(shingle));
+    assertTrue(`T17 no-restated-contract (${rel})`,
+        mentions <= MAX_PHASE_INDEX_MENTIONS && restated.length === 0,
+        restated.length > 0
+            ? `reproduces ${restated.length} ${SHINGLE_WORDS}-word run(s) from a pointer-only section of ${READER_CONTRACT_FILE}, e.g. "${restated[0]}" — name the rule and point at the contract, never repeat it`
+            : `${mentions} lines name "${PHASE_INDEX_TOKEN}" (max ${MAX_PHASE_INDEX_MENTIONS}) — a consumer restating the contract instead of pointing at it`);
 }
 
 // --- T18..T20: the detail gate and the integrity checks are present and complete ---
