@@ -5,8 +5,13 @@
 > token, never offered in the interactive mode question and never inferred from
 > the complexity of the task.
 >
-> Steps A-C run before the Shared Steps in `SKILL.md`; Steps D-H replace Step 5 and
-> Step 6 of the shared workflow.
+> Steps A-C run before the Shared Steps in `SKILL.md`; Steps D-H **refine** Step 5 and
+> Step 6 of the shared workflow — they decide the phase partition, the write order, the
+> distribution of technical context and the contents of the confirmation. They do **not**
+> cancel the section list of Step 5, the rules governing what those sections contain, or
+> Guard B. Everything Step 5 says about the content of the manifest's sections holds in
+> ultra unchanged — the single exception is the task-scoped subsections of
+> `## Technical Context`, which Step G distributes into the phase files.
 
 ## Ultra Mode — Blocking Prerequisite
 
@@ -25,21 +30,29 @@ Identical to full mode — follow `mode-full.md` Step A, then return here.
 
 ### Step B: Quick Reconnaissance
 
-Identical to full mode — follow `mode-full.md` Step B, with **one scope adjustment**:
-launch **2-3** focused Explore tasks instead of 1-3, covering architecture, existing
-patterns, integration and side effects, and the test/operational surface. The depth the
-Required Detail Gate demands is produced here — a thin recon becomes a vague phase file,
-and the gate then rejects a bundle that could have been written correctly the first time.
+Take from `mode-full.md` Step B only the **dispatch form** and its rules for writing the
+prompts. The scope is **not** inherited: launch **2-3** focused Explore tasks covering
+architecture, existing patterns, integration and side effects, and the test/operational
+surface. The `1-3 tasks max` limit stated in `mode-full.md` does **not** apply in ultra —
+it is that file's own limit, and ultra declares its own here. The depth the Required Detail
+Gate demands is produced here — a thin recon becomes a vague phase file, and the gate then
+rejects a bundle that could have been written correctly the first time.
 
 The dispatch form is the same as `mode-full.md` Step B — `Agent(subagent_type: Explore,
 prompt: …)`, naming no model. Unifying the dispatch form across the repository is the
 subject of a separate research bundle; until it closes, a new dispatch follows the one
 existing model-free template rather than adding another copy of the literal.
 
+When the Explore tasks return, **return here**.
+
 ### Step C: Ask About Preferences
 
 Identical to full mode — follow `mode-full.md` Step C, including the editor mode question
-and the roadmap milestone linkage.
+and the roadmap milestone linkage, **then return here**.
+
+That file ends Step C with `continue to the Shared Steps (Step 2) in SKILL.md`. In an ultra
+run that line does **not** terminate this file: the Shared Steps are indeed next, and
+Steps D-H below run afterwards, refining Step 5 and Step 6 in the sense stated at the top.
 
 ## Step D: Partition the work into phases
 
@@ -133,6 +146,8 @@ Then **STOP**.
 - The design axis (`unikit-gd-*`) is untouched.
 - `--list` is unchanged.
 - `/unikit-fix` and its flat `FIX_PLAN.md` stay outside the bundle model.
+- `add` mode is routed from Step 0 and never reaches the Step 1.5 dispatch that loads this
+  file, so its behaviour on an ultra bundle is specified in `mode-add.md`, not here.
 
 ## When the checks fail
 
