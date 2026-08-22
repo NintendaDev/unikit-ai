@@ -24,7 +24,7 @@ allowed-tools:
   - Skill
 metadata:
   author: unikit
-  version: "2.4"
+  version: "2.5"
   category: planning
 ---
 
@@ -251,7 +251,7 @@ Check whether research context has changed since the plan was created or if new 
    - Recompute the SHA256 of that research's `RESEARCH_BRIEF.md` using the same five normalization rules as `/unikit-plan`: strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, and no reformatting (line order and leading whitespace preserved). Feed the normalized text through **stdin, never a temp file** — `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`.
    - Recomputed ≠ recorded → emit `WARN [research-drift]: <folder> — linked brief is no longer byte-identical to the one this plan was built from` and mark `research_updated = true`. Say it that way and not "the research changed": the brief is regenerated wholesale on every save, so the honest claim is about identity of the input, not about the intent of its author.
    - Recomputed == recorded → unchanged, whatever any timestamp says.
-   - No `Brief SHA256` recorded (an older plan, or the hash tool was unavailable at planning time) → drift is **unknown**, not false. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)` and offer the user a re-link, which records a hash from now on.
+   - No `Brief SHA256` recorded (an older plan, or the hash tool was unavailable at planning time) → drift is **unknown**, not false. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)` and offer the user a re-link, which records a hash from now on. This branch only **asks** — the write is Step 5.5 item 3, and an offer whose write step does not exist is worse than no offer: it leaves the user believing the state was cleared.
      **Do NOT fall back to any older timestamp field.** A reader that still parses a field nothing writes any more is a mechanism that rots silently and cannot be told apart from a working one — and it would make the negative half of guard RD-A impossible to assert, which is the only thing standing between this change and a half-applied replacement.
    - `RESEARCH_BRIEF.md` missing or unreadable → emit `WARN [research-drift]: <folder> source missing`.
    - Neither `shasum` nor `sha256sum` available → emit `WARN [research-drift]: no SHA256 tool available — drift checks skipped` **once** for the whole run, and continue.
@@ -611,7 +611,9 @@ Only when `research_improvements` is non-empty (Step 1.5 found updates):
 
 1. **Newly attached researches** — for each new research the user selected in Step 1.5: add a new entry to `## Based on` using the Research Reference Format from `/unikit-plan` (folder name, a freshly computed `Brief SHA256`, file links). If `## Based on` section doesn't exist yet, create it after `## Overview`.
 
-2. **Drifted researches** — do **NOT** rewrite the hash automatically. A stale hash is the record of what the plan was built against; overwriting it silently erases the only evidence that the plan and its source have diverged, at the exact moment that evidence is needed. Rewrite it **only** when the user explicitly asks for a rebase onto the new research, and only together with the corresponding updates to the tasks and to `## Technical Context`.
+2. **Re-linked researches** — for an entry already in `## Based on` that carries **no** `Brief SHA256` and whose re-link the user accepted in Step 1.5: compute the hash of the current `RESEARCH_BRIEF.md` by the procedure above and write a `- **Brief SHA256**: <64 hex chars>` line into that entry, dropping the dead `- **Attached**: …` line (the retired link-timestamp field) if the plan still carries one. This is the only writer that **records the field on an entry that has none**: the on-disk plan migration rewrites the manifest but never touches `## Based on`, so without this branch a plan created before the field reports `drift unknown` on every run forever, and `/unikit-verify` holds its gate at `warn` with no command able to clear it. The recorded hash describes what the brief is **now**, and that is honest only because the user was asked: an accepted re-link writes the earlier drift off as unknowable, it does not measure it. Never perform this write without that answer — silently hashing at read time would claim "no drift" about a period nobody looked at.
+
+3. **Drifted researches** — do **NOT** rewrite the hash automatically. A stale hash is the record of what the plan was built against; overwriting it silently erases the only evidence that the plan and its source have diverged, at the exact moment that evidence is needed. Rewrite it **only** when the user explicitly asks for a rebase onto the new research, and only together with the corresponding updates to the tasks and to `## Technical Context`.
 
 **5.6: Update `## Technical Context` in the manifest**
 
@@ -636,7 +638,7 @@ If the total number of tasks or phases changed significantly (added a phase, rem
 ## Plan Improved
 
 Research updates: (only if research_improvements was non-empty)
-- Researches: N linked, M drifted, K rebased (list names) — drift is shown even when no rebase was requested
+- Researches: N linked, M drifted, K rebased, R re-linked (list names) — drift is shown even when no rebase was requested; `re-linked` counts entries that had no `Brief SHA256` and now do
 - New researches attached: N (list names)
 - Constraints/interfaces updated from research: N
 

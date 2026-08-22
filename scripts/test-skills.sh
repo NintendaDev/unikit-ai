@@ -3174,6 +3174,7 @@ UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 # regressed — a false positive on a negative assert teaches people to delete it.
 RDA_READERS=("$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
 RDA_ALL=("$UNIKIT_PLAN_SKILL" "${RDA_READERS[@]}")
+RDA_ATTACHED_ALLOW='(the retired link-timestamp field)'
 RDA_WHY=""
 for f in "${RDA_ALL[@]}"; do
     n="$(basename "$(dirname "$f")")"
@@ -3182,7 +3183,12 @@ for f in "${RDA_ALL[@]}"; do
     grep -qF 'one final newline' "$f" || RDA_WHY+=" $n-no-final-newline-rule"
     grep -qF 'never a temp file' "$f" || RDA_WHY+=" $n-no-stdin-rule"
     grep -qF 'RESEARCH_BRIEF.md' "$f" || RDA_WHY+=" $n-no-hashed-object"
-    if grep -qF '**Attached**' "$f"; then RDA_WHY+=" $n-attached-survives"; fi
+    # ONE measured allowlist entry, on the PL-2 precedent and for the same reason: the
+    # /unikit-improve branch that REMOVES the retired field has to name it, and a branch that
+    # DESCRIBES the old shape instead of naming it cannot be executed reliably. Pinned to the
+    # marker on that same line, never to the file — exempting the file would re-open every
+    # occurrence the replacement removed from it.
+    if grep -F '**Attached**' "$f" | grep -vF "$RDA_ATTACHED_ALLOW" | grep -q .; then RDA_WHY+=" $n-attached-survives"; fi
 done
 if [[ -z "$RDA_WHY" ]]; then
     pass "RD-A Brief SHA256 + the one normalization procedure present in all four files (old timestamp field gone)"
@@ -3231,6 +3237,35 @@ if [[ -z "$RDC_WHY" ]]; then
     pass "RD-C one canonical WARN [research-drift] label; implement/verify check the hash and never read the brief instead of the plan"
 else
     fail "RD-C drift label / writer-reader split:$RDC_WHY"
+fi
+
+# (RD-D) The field has a writer for an entry that does not carry it.
+# RD-A proves three consumers READ `Brief SHA256` and that /unikit-plan writes it on create.
+# Nothing proved anything can write one into an entry created BEFORE the field existed — and
+# the on-disk plan migration rewrites the manifest without touching `## Based on`. Measured:
+# every plan that predates the field reported `drift unknown` on every run, /unikit-verify
+# held its gate at `warn` permanently, and Step 1.5 offered the user a re-link that Step 5.5
+# had no branch to carry out. Reachability is a separate invariant from presence — a guard
+# that an artifact exists says nothing about whether control flow reaches it
+# (patch 2026-08-22-09.18).
+# Both halves are load-bearing and neither substitutes for the other: the WRITE half asserts
+# Step 5.5 carries the branch, the WIRING half asserts the Step 1.5 offer names the step that
+# performs it. An offer pointing nowhere and a branch nobody reaches fail differently and are
+# equally dead. Anchored on formulations, never on the step numbers, which renumber.
+RDD_STEP55="$(awk '/^\*\*5\.5:/{f=1} f&&/^\*\*5\.6:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
+RDD_WHY=""
+# Degenerate to fail when the section is gone (NN-4 / RT-7 convention).
+[[ -n "$RDD_STEP55" ]] || RDD_WHY+=" no-step-5.5-body"
+printf '%s' "$RDD_STEP55" | grep -qF 'records the field on an entry that has none' || RDD_WHY+=" no-relink-writer"
+printf '%s' "$RDD_STEP55" | grep -qF 'Brief SHA256' || RDD_WHY+=" writer-does-not-name-the-field"
+grep -qF 'the write is Step 5.5 item 3' "$UNIKIT_IMPROVE_SKILL" || RDD_WHY+=" offer-not-wired-to-writer"
+# The write is gated on the user's answer: hashing a brief nobody was asked about would claim
+# "no drift" over a period that was never examined.
+printf '%s' "$RDD_STEP55" | grep -qF 'Never perform this write without that answer' || RDD_WHY+=" write-not-gated-on-consent"
+if [[ -z "$RDD_WHY" ]]; then
+    pass "RD-D a hashless \`## Based on\` entry has a writer, and the Step 1.5 offer is wired to it"
+else
+    fail "RD-D the drift-unknown state has no exit:$RDD_WHY"
 fi
 
 # ─────────────────────────────────────────────
