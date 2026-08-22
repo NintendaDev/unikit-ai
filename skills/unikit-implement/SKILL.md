@@ -23,6 +23,8 @@ allowed-tools:
   - Bash(wc *)
   - Bash(git *)
   - Bash(date *)
+  - Bash(shasum *)
+  - Bash(sha256sum *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -30,7 +32,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "2.5"
+  version: "2.6"
   category: implementation
 ---
 
@@ -304,9 +306,26 @@ Then reconcile plan state with reality:
 ### Step 1: Load Plan Context
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. One file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases, dependencies and completion status, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
-- If the manifest has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
+- If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH_BRIEF.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research brief (`/unikit-plan`: it was synthesized from the research and then verified against the code). The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules
+
+**Research drift check.** For each entry in `## Based on` that carries a `Brief SHA256` field:
+
+1. Recompute the SHA256 of that research's `RESEARCH_BRIEF.md` with the canonical five-rule normalization — strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, no reformatting (line order and leading whitespace preserved) — fed through **stdin, never a temp file**: `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`.
+2. Recomputed == recorded → say nothing and continue.
+3. Recomputed ≠ recorded → emit
+   `WARN [research-drift]: <folder> — linked brief is no longer byte-identical to the one this plan was built from`
+   and continue **against the plan**, not against the research. Do not expand scope, do not add tasks, do not rewrite the hash. A rebase is `/unikit-improve`'s job and happens only when the user explicitly asks for it. The wording is deliberate: the brief is regenerated wholesale on every save, so a mismatch proves the input is not the same bytes — not that the author changed their mind. Claiming the latter would make the warning read as a finding.
+4. `RESEARCH_BRIEF.md` missing or unreadable → emit `WARN [research-drift]: <folder> source missing` and continue against the plan.
+5. No `Brief SHA256` recorded (a plan predating this field) → drift is **unknown**, not absent. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)`.
+6. Neither `shasum` nor `sha256sum` available → emit `WARN [research-drift]: no SHA256 tool available — drift checks skipped` **once** for the whole run, and continue.
+
+The label `WARN [research-drift]` is canonical and the same for every outcome; per-branch labels would make them indistinguishable when a log is grepped for drift.
+
+There is no bundle-validation branch here. `## Based on` always names a folder under `.unikit/code/researches/`, and the hashed file is always `RESEARCH_BRIEF.md` — one shape, one filename. A source path that varies between a single configured file and a bundle entry point would need such a branch; UniKit's does not.
+
+Drift is printed **once**, here at plan load — not before each task. Execution continues on the scope of the plan; the offer to re-plan goes into the Step 5 final report as the single line `Research drifted — consider /unikit-improve <plan> before continuing`.
 
 The manifest's `## Overview` tells you WHAT to do and WHY; its `## Technical Context` tells you HOW; DESCRIPTION.md and ARCHITECTURE.md give project-wide context.
 
@@ -650,7 +669,10 @@ Affected files:
 - Deleted: {list of deleted files}
 
 Remaining tasks: {count} (in {phases} phases)
+Research drifted — consider /unikit-improve <plan> before continuing
 ```
+
+The `Research drifted` line appears **only** when the Step 1 drift check emitted at least one `WARN [research-drift]`, and is omitted entirely otherwise. It carries the offer forward past the point where the warning scrolled away; it is not a blocker and never stops the run.
 
 The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with its exact instruction, and is **omitted entirely** when there are none. It is **not** the same as "not done": the user chose to carry these out themselves, and `/unikit-verify` does not treat them as blockers.
 

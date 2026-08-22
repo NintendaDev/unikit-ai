@@ -3144,6 +3144,96 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# RD: research drift is a CONTENT signal, and one procedure computes it in four files.
+# `## Based on` used to carry a link timestamp compared against a research index
+# timestamp — two clocks written by the same class of agent with the same care. The
+# field is now the SHA256 of the linked `RESEARCH_BRIEF.md`, and three consumers
+# recompute it. Three guards close the three ways that goes wrong: the procedure
+# diverges, the grant that makes it runnable is missing, or the label and the
+# writer/reader split drift apart.
+# Placed next to the PL family and reusing UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
+# UNIKIT_VERIFY_SKILL declared above; UNIKIT_IMPLEMENT_SKILL has no earlier declaration
+# (the MF block below takes its own path var locally), so it is declared here — `set -u`
+# makes a forward reference fatal.
+UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+
+# (RD-A) The recorded field and the normalization procedure, in all FOUR files.
+# unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
+# normalization diverges by a single rule in ONE of them, that skill reports drift that
+# did not happen — and the failure reads as "the research changed", not as "the guard is
+# missing". The tokens are chosen, not sampled: `UTF-8 BOM` and `one final newline` are
+# the two rules whose divergence produces a FALSE drift on byte-identical content (and
+# the BOM rule exists because this project's primary platform is Windows);
+# `never a temp file` is the stdin rule; `RESEARCH_BRIEF.md` is the hashed object — a
+# file that hashes RESEARCH_RESULT.md instead would hash its volatile `Updated:` line,
+# and RESEARCH_SOURCE.md is a growing dialogue log. The negative half is load-bearing:
+# without it a half-applied replacement leaves both mechanisms standing and a consumer
+# reads a field /unikit-plan no longer writes. That half is anchored on the FIELD form
+# `**Attached**`, never on the bare word: `Attached` is ordinary English and a sentence
+# beginning "Attached research folders are…" would turn the guard red with nothing
+# regressed — a false positive on a negative assert teaches people to delete it.
+RDA_READERS=("$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
+RDA_ALL=("$UNIKIT_PLAN_SKILL" "${RDA_READERS[@]}")
+RDA_WHY=""
+for f in "${RDA_ALL[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Brief SHA256'      "$f" || RDA_WHY+=" $n-no-field"
+    grep -qF 'UTF-8 BOM'         "$f" || RDA_WHY+=" $n-no-bom-rule"
+    grep -qF 'one final newline' "$f" || RDA_WHY+=" $n-no-final-newline-rule"
+    grep -qF 'never a temp file' "$f" || RDA_WHY+=" $n-no-stdin-rule"
+    grep -qF 'RESEARCH_BRIEF.md' "$f" || RDA_WHY+=" $n-no-hashed-object"
+    if grep -qF '**Attached**' "$f"; then RDA_WHY+=" $n-attached-survives"; fi
+done
+if [[ -z "$RDA_WHY" ]]; then
+    pass "RD-A Brief SHA256 + the one normalization procedure present in all four files (old timestamp field gone)"
+else
+    fail "RD-A research-drift procedure diverged:$RDA_WHY"
+fi
+
+# (RD-B) The grant that makes the procedure followable at all. Without it the
+# normalization text is an instruction the skill cannot carry out, and the skill degrades
+# to the WARN branch on every single plan — silently, because that WARN branch is a
+# legitimate state. Both names are required: `shasum` ships with perl (macOS, Git Bash),
+# `sha256sum` with GNU coreutils (Linux, Git Bash).
+RDB_WHY=""
+for f in "${RDA_ALL[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Bash(shasum *)'    "$f" || RDB_WHY+=" $n-no-shasum"
+    grep -qF 'Bash(sha256sum *)' "$f" || RDB_WHY+=" $n-no-sha256sum"
+done
+if [[ -z "$RDB_WHY" ]]; then
+    pass "RD-B the hash grant follows the procedure into all four skills"
+else
+    fail "RD-B a skill carries the normalization procedure but not the grant:$RDB_WHY"
+fi
+
+# (RD-C) One label for every drift branch, and the writer/reader split.
+# The label: every branch shares `WARN [research-drift]` precisely so a log can be
+# grepped for drift; per-branch labels would make them indistinguishable in aggregate.
+# The split: only unikit-plan (on create) and unikit-improve (on an explicit rebase) may
+# WRITE a hash. The negative half is the load-bearing one — `instead` is legitimate in a
+# dozen other places in these files, so the search is narrowed to lines naming the brief
+# itself: reading the live brief INSTEAD of the plan is the scope-widening channel this
+# whole contract exists to close, and a drift check standing next to that channel is
+# decoration.
+RDC_WHY=""
+for f in "${RDA_READERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'WARN [research-drift]' "$f" || RDC_WHY+=" $n-no-canonical-label"
+done
+grep -qF 'verification bug' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-not-mandatory"
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+    n="$(basename "$(dirname "$f")")"
+    RDC_BRIEF_LINES="$(grep -F 'RESEARCH_BRIEF.md' "$f" || true)"
+    if printf '%s' "$RDC_BRIEF_LINES" | grep -qF 'instead'; then RDC_WHY+=" $n-still-reads-instead"; fi
+done
+if [[ -z "$RDC_WHY" ]]; then
+    pass "RD-C one canonical WARN [research-drift] label; implement/verify check the hash and never read the brief instead of the plan"
+else
+    fail "RD-C drift label / writer-reader split:$RDC_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # MF: MCP findings are recorded AT THE TASK, not at the end of the run.
 # The table used to be filled once, in the run's closing report — which is precisely the
 # moment a session is most likely to have already ended. These guards pin the two halves

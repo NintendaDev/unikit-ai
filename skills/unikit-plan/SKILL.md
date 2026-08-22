@@ -23,6 +23,8 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(git *)
+  - Bash(shasum *)
+  - Bash(sha256sum *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -30,7 +32,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "7.4"
+  version: "7.5"
   category: planning
 ---
 
@@ -61,11 +63,11 @@ When a research is linked (from `/unikit-explore`), the plan references it via `
 
 ### Research Reference Format
 
-Standard block for `## Based on` when linking to a research. Each research entry includes an `Attached` timestamp (`YYYY-MM-DD HH:MM`) — this is the moment the research was linked to the plan. `/unikit-improve` uses `Attached` to detect if the research was updated after linking.
+Standard block for `## Based on` when linking to a research. Each entry records the SHA256 of the research's `RESEARCH_BRIEF.md` as it was at linking time. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute it to detect that the research actually changed — a content signal, not a clock comparison. The plan does **not** copy the brief: the plan's own `## Technical Context` is already a snapshot, and it is a better one because it was checked against the current code.
 
 ```
 ### YYYY-MM-DD_name
-- **Attached**: YYYY-MM-DD HH:MM
+- **Brief SHA256**: <64 hex chars>
 - `RESEARCH_BRIEF.md` — structured technical context
 - `RESEARCH_RESULT.md` — full research (consult when brief is unclear)
 - `RESEARCH_SOURCE.md` — original exploration dialogue (only include if file exists)
@@ -75,11 +77,45 @@ Full paths are resolved from `.unikit/code/researches/<folder-name>/`. Example:
 
 ```
 ### 2026-03-15_customer-items-on-scene
-- **Attached**: 2026-03-15 16:30
+- **Brief SHA256**: 9f2c1d4e7a05b83c6e1f0a94d27b5c38ea6417d9b0c25f83a1e46d7c92b0f5a1
 - `RESEARCH_BRIEF.md` — structured technical context
 - `RESEARCH_RESULT.md` — full research (consult when brief is unclear)
 - `RESEARCH_SOURCE.md` — original exploration dialogue
 ```
+
+**What is hashed: `RESEARCH_BRIEF.md`, whole, and nothing else.**
+
+The rule is: hash the requirements, never the log. A research file that mixes declared requirements with an append-only session log has to be hashed section by section, behind start/end markers, or every append reports drift that did not happen. UniKit already separates the two **by file**, so the same decision needs no markers here:
+
+| File | Role | Hashed |
+|------|------|--------|
+| `RESEARCH_BRIEF.md` | the planner's declared input — constraints, interfaces, patterns, files | **yes, whole** |
+| `RESEARCH_RESULT.md` | the full research; carries an `Updated:` line that changes on every revision | no — a record, and its timestamp is exactly the volatile field a hash must not see |
+| `RESEARCH_SOURCE.md` | the dialogue log (prompt-based explorations only) | no — a log. This skill reads it for context, and that is **not** a reason to hash it: any appended clarification would fire drift with the requirements unchanged |
+
+Do not add start/end markers to the brief to "match" some other format. The file split is the marker.
+
+**Computing the hash.** Normalize, then hash — never hash the raw bytes:
+
+1. Strip a leading **UTF-8 BOM** if present.
+2. LF line endings — strip every carriage return (`CR`, byte `0x0D`).
+3. Trim trailing spaces from every line.
+4. Exactly **one final newline**.
+5. **Preserve line order and leading whitespace.** This is a prohibition, not a transformation: the brief carries fenced code blocks and an indented `## DEPENDENCY GRAPH`, and any well-meaning re-indentation breaks every hash that was ever recorded.
+
+Feed the normalized text through **stdin, never a temp file**: `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum` when `shasum` is unavailable.
+
+HTML comments are **kept** in the hashed text. There is no pasted copy of the brief anywhere in the plan, so there is nothing to align the digest with. The brief's template comments are stable text: the template ships via `unikit-ai update`, existing briefs are project files and are never re-delivered, so a template edit cannot retroactively flip an already-recorded hash.
+
+Rejected alternative: `git hash-object` would reuse the existing `Bash(git *)` grant instead of adding two, and `.unikit/` is not gitignored so the brief is normally tracked. It is SHA-1 with a blob header — the field says SHA256 — and it would make the check depend on git while this skill explicitly supports `git.enabled: false`.
+
+**When no hash tool is available.** If neither `shasum` nor `sha256sum` runs, **omit the `Brief SHA256` line entirely** and print one line to the user:
+
+```
+WARN [research] no SHA256 tool available — drift detection disabled for this link
+```
+
+Do not write a placeholder and do not substitute a timestamp: an absent field is honester than a field that looks like a hash and is not one. The same applies when a linked research has no `RESEARCH_BRIEF.md` — omit the line and print `WARN [research] <folder>: no RESEARCH_BRIEF.md`. Neither branch blocks plan creation: drift detection is a convenience, not a gate.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -518,7 +554,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
-2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Set `Attached` to the current timestamp (`YYYY-MM-DD HH:MM`). After all research entries, add "see the `## Technical Context` section below".
+2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Compute `Brief SHA256` for each linked research per the procedure above. After all research entries, add "see the `## Technical Context` section below".
    If no research: "see the `## Technical Context` section below".
 
    **`## Design`** (game-design module — only when `design_linked = true`) — insert the

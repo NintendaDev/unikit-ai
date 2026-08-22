@@ -22,6 +22,8 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(date *)
+  - Bash(shasum *)
+  - Bash(sha256sum *)
   - Agent
   - AskUserQuestion
   - Skill
@@ -29,7 +31,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "1.4"
+  version: "1.5"
   category: quality
 ---
 
@@ -142,10 +144,29 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 ### 0.2 Read Plan & Context
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. One file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases, dependencies and completion status, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
-- If the manifest has a `## Based on` section pointing to a research → read that research's `RESEARCH_BRIEF.md` instead
+- If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH_BRIEF.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research brief (`/unikit-plan`: it was synthesized from the research and then verified against the code). The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
+
+**Research drift check.** For each entry in `## Based on` that carries a `Brief SHA256` field:
+
+1. Recompute the SHA256 of that research's `RESEARCH_BRIEF.md` with the canonical five-rule normalization — strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, no reformatting (line order and leading whitespace preserved) — fed through **stdin, never a temp file**: `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`.
+2. Recomputed == recorded → say nothing and continue.
+3. Recomputed ≠ recorded → emit
+   `WARN [research-drift]: <folder> — linked brief is no longer byte-identical to the one this plan was built from`
+   and continue **against the plan**, not against the research. Do not expand scope, do not add tasks, do not rewrite the hash. A rebase is `/unikit-improve`'s job and happens only when the user explicitly asks for it. The wording is deliberate: the brief is regenerated wholesale on every save, so a mismatch proves the input is not the same bytes — not that the author changed their mind. Claiming the latter would make the warning read as a finding.
+4. `RESEARCH_BRIEF.md` missing or unreadable → emit `WARN [research-drift]: <folder> source missing` and continue against the plan.
+5. No `Brief SHA256` recorded (a plan predating this field) → drift is **unknown**, not absent. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)`.
+6. Neither `shasum` nor `sha256sum` available → emit `WARN [research-drift]: no SHA256 tool available — drift checks skipped` **once** for the whole run, and continue.
+
+The label `WARN [research-drift]` is canonical and the same for every outcome; per-branch labels would make them indistinguishable when a log is grepped for drift.
+
+There is no bundle-validation branch here. `## Based on` always names a folder under `.unikit/code/researches/`, and the hashed file is always `RESEARCH_BRIEF.md` — one shape, one filename. A source path that varies between a single configured file and a bundle entry point would need such a branch; UniKit's does not.
+
+**Skipping this drift check is a verification bug.** A verification that passed while the plan and its source had diverged is the one failure this check exists to prevent.
+
+Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit-gate-result` block — otherwise it is lost with the session, the same argument that carries `⏸️ MANUAL` commands there. The gate level is `warn`, **never** `fail`: source drift does not make the implementation wrong, it makes it debatable, and the decision is the user's.
 
 **Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
 - `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
@@ -585,6 +606,7 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
 - `"blockers"`: include **only** blocking findings, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`verify-task-<id>`, `verify-gate-architecture`, `verify-gate-rules`, `verify-ac-<AC-id>`, `verify-editor-<task-id>`). `severity` is `error` for blockers (`warning` only when policy escalates a warning-class finding to blocking). Non-blocking notes stay in the human summary, never in `blockers`.
   - `verify-editor-<task-id>` covers an editor target that was read back and found **unimplemented or wrong**. The two benign outcomes never enter `blockers`: `⏸️ MANUAL` (the user took the target on) and `⏭️ SKIPPED (editor target, …)` (it could not be read back). Both belong in the human summary.
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
+- **Research drift.** Every `WARN [research-drift]` line from Step 0.2 raises `status` to at least `warn` and is named in the human summary. It is **never** a blocker and never enters `blockers`: source drift makes the work debatable, not wrong, and the call is the user's.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
 
 **Ultra bundle — verification commands outside the grant.** Commands under a task's `### Verification` are executed within the grant this skill already holds. Anything outside it is printed with the `⏸️ MANUAL` status in the report **and** must reach this block, or it is lost in silence: an unrun verification command is an accepted skip, so `status` is at least `warn` and the human summary names the command and the task. It is not a blocker and it never enters `blockers`. **`allowed-tools` is not widened for this** — the `⏸️ MANUAL` idiom already exists for editor targets.

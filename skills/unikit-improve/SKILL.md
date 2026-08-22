@@ -17,12 +17,14 @@ allowed-tools:
   - Bash(ls *)
   - Bash(find *)
   - Bash(wc *)
+  - Bash(shasum *)
+  - Bash(sha256sum *)
   - Agent
   - AskUserQuestion
   - Skill
 metadata:
   author: unikit
-  version: "2.3"
+  version: "2.4"
   category: planning
 ---
 
@@ -229,7 +231,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 ### Step 1: Load Feature Plan
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. One file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
-- If the manifest has a `## Based on` section → parse all linked research entries (folder name + `Attached` timestamp for each). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
+- If the manifest has a `## Based on` section → parse all linked research entries (folder name + `Brief SHA256` for each — the field may be absent, see Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
 
 Understand:
 - Feature scope and goals
@@ -237,7 +239,7 @@ Understand:
 - Dependencies between tasks
 - Which tasks are already completed (checkboxes `- [x]`)
 - Architecture decisions made
-- Which researches are linked and when they were attached
+- Which researches are linked, and the `Brief SHA256` recorded for each
 
 ### Step 1.5: Research Check
 
@@ -246,9 +248,15 @@ Check whether research context has changed since the plan was created or if new 
 #### Case A: Plan has linked researches (`## Based on` exists with entries)
 
 1. For each entry in `linked_researches`:
-   - Read `.unikit/code/researches/INDEX.md` and find the matching entry by `Path`
-   - Compare its `Updated` timestamp against the `Attached` timestamp from the plan
-   - If `Updated > Attached` → the research was revised after being linked to the plan. Mark it as `research_updated = true`
+   - Recompute the SHA256 of that research's `RESEARCH_BRIEF.md` using the same five normalization rules as `/unikit-plan`: strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, and no reformatting (line order and leading whitespace preserved). Feed the normalized text through **stdin, never a temp file** — `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`.
+   - Recomputed ≠ recorded → emit `WARN [research-drift]: <folder> — linked brief is no longer byte-identical to the one this plan was built from` and mark `research_updated = true`. Say it that way and not "the research changed": the brief is regenerated wholesale on every save, so the honest claim is about identity of the input, not about the intent of its author.
+   - Recomputed == recorded → unchanged, whatever any timestamp says.
+   - No `Brief SHA256` recorded (an older plan, or the hash tool was unavailable at planning time) → drift is **unknown**, not false. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)` and offer the user a re-link, which records a hash from now on.
+     **Do NOT fall back to any older timestamp field.** A reader that still parses a field nothing writes any more is a mechanism that rots silently and cannot be told apart from a working one — and it would make the negative half of guard RD-A impossible to assert, which is the only thing standing between this change and a half-applied replacement.
+   - `RESEARCH_BRIEF.md` missing or unreadable → emit `WARN [research-drift]: <folder> source missing`.
+   - Neither `shasum` nor `sha256sum` available → emit `WARN [research-drift]: no SHA256 tool available — drift checks skipped` **once** for the whole run, and continue.
+
+   The label `WARN [research-drift]` is canonical and shared with `/unikit-implement` and `/unikit-verify`; per-branch labels would make the outcomes indistinguishable when a log is grepped for drift.
 
 2. If any `research_updated = true`:
    - Re-read the updated research's `RESEARCH_BRIEF.md`
@@ -257,8 +265,8 @@ Check whether research context has changed since the plan was created or if new 
 
 3. After processing linked researches → check for **new** researches:
    - Read `.unikit/code/researches/INDEX.md`
-   - Find the latest `Attached` timestamp among all `linked_researches` entries
-   - Filter index for researches with `Date` **newer** than this latest `Attached` timestamp
+   - The boundary for "researches newer than this plan" is the **plan's own date**, not a per-research field: a folder plan uses the `YYYY-MM-DD` prefix of its folder name; the flat `.unikit/code/PLAN.md` uses the file's modification time. The plan folder's date is the moment the plan was created, which is exactly the question this filter asks — per-research link timestamps answered it only by coincidence, because all of them were written in the same session.
+   - Filter index for researches with `Date` **newer** than that boundary
    - Take up to 5 entries, check relevance against the plan's feature scope (compare Summary against plan Overview)
    - If relevant entries found → ask user:
      ```
@@ -601,9 +609,9 @@ For each task flagged for improvement:
 
 Only when `research_improvements` is non-empty (Step 1.5 found updates):
 
-1. **Updated linked researches** — for each research where `Updated > Attached`: update the `Attached` timestamp to the current time (`YYYY-MM-DD HH:MM`). This marks that the plan now reflects the latest research state.
+1. **Newly attached researches** — for each new research the user selected in Step 1.5: add a new entry to `## Based on` using the Research Reference Format from `/unikit-plan` (folder name, a freshly computed `Brief SHA256`, file links). If `## Based on` section doesn't exist yet, create it after `## Overview`.
 
-2. **Newly attached researches** — for each new research the user selected in Step 1.5: add a new entry to `## Based on` using the Research Reference Format from `/unikit-plan` (folder name, `Attached` timestamp, file links). If `## Based on` section doesn't exist yet, create it after `## Overview`.
+2. **Drifted researches** — do **NOT** rewrite the hash automatically. A stale hash is the record of what the plan was built against; overwriting it silently erases the only evidence that the plan and its source have diverged, at the exact moment that evidence is needed. Rewrite it **only** when the user explicitly asks for a rebase onto the new research, and only together with the corresponding updates to the tasks and to `## Technical Context`.
 
 **5.6: Update `## Technical Context` in the manifest**
 
@@ -628,7 +636,7 @@ If the total number of tasks or phases changed significantly (added a phase, rem
 ## Plan Improved
 
 Research updates: (only if research_improvements was non-empty)
-- Researches re-synced: N (list names, updated Attached timestamps)
+- Researches: N linked, M drifted, K rebased (list names) — drift is shown even when no rebase was requested
 - New researches attached: N (list names)
 - Constraints/interfaces updated from research: N
 
