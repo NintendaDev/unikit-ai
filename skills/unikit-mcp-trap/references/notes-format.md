@@ -36,7 +36,7 @@ audited: <YYYY-MM-DD, or `never`>
 | id | observed | replay | evidence | from |
 |---|---|---|---|---|
 | R1 | 2026-08-18 | safe | `<call>(paths="…/DoesNotExist")` → `state=ready files=0` · the path is not validated | |
-| R2 | 2026-08-18 | safe | `<call>(path="<content root>/X", action="read")` → `err: resolved path escapes the content root` | plans/2026-08-18_ui/TASKS.md#F2 |
+| R2 | 2026-08-18 | safe | `<call>(path="<content root>/X", action="read")` → `err: resolved path escapes the content root` | plans/2026-08-18_ui/PLAN.md#F2 |
 | R3 | 2026-08-19 | manual | `<call>(name="probe")` → written under the client's working directory, not the project | |
 ```
 

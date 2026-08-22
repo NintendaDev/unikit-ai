@@ -22,7 +22,9 @@ import {
 } from '../constants.js';
 import { runMigrationChain } from '../migrations/runner.js';
 import type { Migration, MigrationChainResult } from '../migrations/types.js';
-import { PROJECT_WORKSPACE_MIGRATIONS } from '../workspace-migrations/index.js';
+import {
+  PROJECT_PLAN_ARTIFACT_MIGRATIONS, PROJECT_WORKSPACE_MIGRATIONS,
+} from '../workspace-migrations/index.js';
 import { PROJECT_MCP_MIGRATIONS } from '../mcp-migrations/index.js';
 
 interface MemoryMigrationContext {
@@ -103,18 +105,24 @@ const codeWrapMigration: Migration<MemoryMigrationContext> = {
 };
 
 // The single project migration chain: the memory wrap, the workspace
-// relocation, then the MCP steps — every context is keyed by `projectDir`
-// only, so the structurally identical shapes compose into one chain. Kept
-// under the historical name `PROJECT_MEMORY_MIGRATIONS` because the `rules`
-// staleness guard imports it by that name; it now covers memory, workspace AND
-// MCP-config staleness.
+// relocation, the MCP steps, then the plan-manifest merge — every context is
+// keyed by `projectDir` only, so the structurally identical shapes compose into
+// one chain. Kept under the historical name `PROJECT_MEMORY_MIGRATIONS` because
+// the `rules` staleness guard imports it by that name; it now covers memory,
+// workspace, MCP-config AND plan-artifact staleness.
 //
 // Declaration order is documentation, not policy — the runner sorts by `since`
-// (1.1.0 layout steps, then the 1.2.0 MCP steps).
+// (the 1.1.0 layout steps, then the 1.2.0 group: the two MCP steps and the
+// plan-manifest merge, which ship in the same release). Within that group the
+// sort is stable, so declaration order decides — and it does not need to: the
+// merge walks `.unikit/code/plans/*`, which on a pre-modular project does not
+// exist until the 1.1.0 relocation has run, and the anchors alone order those
+// two correctly.
 export const PROJECT_MEMORY_MIGRATIONS: readonly Migration<MemoryMigrationContext>[] = [
   codeWrapMigration,
   ...PROJECT_WORKSPACE_MIGRATIONS,
   ...PROJECT_MCP_MIGRATIONS,
+  ...PROJECT_PLAN_ARTIFACT_MIGRATIONS,
 ];
 
 /**

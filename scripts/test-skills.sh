@@ -2428,10 +2428,10 @@ else
     fi
 fi
 
-# (MX-1) Mode-extraction: unikit-plan mode bodies live in references/mode-*.md and the
-# inline mode sections are gone from SKILL.md (the Step 0 / Step 1.5 dispatch loads them).
+# (MX-1) Mode-extraction: unikit-plan's five mode bodies live in references/mode-*.md and
+# the inline mode sections are gone from SKILL.md (the Step 0 / Step 1.5 dispatch loads them).
 MX_PLAN_WHY=""
-for m in list add full fast; do
+for m in list add full fast ultra; do
     [[ -s "$PLAN_REFS/mode-$m.md" ]] || MX_PLAN_WHY+=" mode-$m.md-missing"
 done
 ! grep -qF '## List Mode' "$UNIKIT_PLAN_SKILL"        || MX_PLAN_WHY+=" list-still-inline"
@@ -2440,6 +2440,385 @@ if [[ -z "$MX_PLAN_WHY" ]]; then
     pass "unikit-plan — mode bodies extracted to references/mode-*.md (bodies not inline)"
 else
     fail "unikit-plan — mode-extraction incomplete:$MX_PLAN_WHY"
+fi
+
+# (UX-1) argument-hint ↔ mode-*.md set equality. Until this guard, the two sets
+# matched by coincidence: `argument-hint` is checked nowhere for unikit-plan (the
+# only argument-hint asserts in this suite are unikit-memory's and CK-1's), so a
+# mode could be added to one and forgotten in the other in either direction —
+# a hint that offers a mode with no body, or a body no one can reach.
+# The FIRST `[...]` group of the hint is the mode group; `--base <branch>` is a
+# separate group and never reaches the parser. Leading dashes are STRIPPED rather
+# than filtered: the hint writes `--list` while the body is `mode-list.md`, so
+# dropping dashed tokens would discard `list` and make the sets differ by
+# construction. Both sides degenerate to `fail` when empty (NN-4 / RT-7
+# convention) — an empty side means the parse broke, not that the sets agree.
+# A duplicated token is checked SEPARATELY, before the sets are compared: `sort -u` on
+# both sides makes `[fast | fast | full …]` compare equal to the body list, so set
+# equality alone cannot see it. The dedup assert is what turns that into a red run.
+UX1_HINT="$(grep -m1 '^argument-hint:' "$UNIKIT_PLAN_SKILL")"
+UX1_RAW="$(printf '%s' "$UX1_HINT" | sed -n 's/^[^[]*\[\([^]]*\)\].*/\1/p' | tr '|' '\n' \
+    | sed 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^--*//' | grep -v '^$' | sort)"
+UX1_TOKENS="$(printf '%s' "$UX1_RAW" | sort -u)"
+UX1_BODIES="$(cd "$PLAN_REFS" && ls mode-*.md 2>/dev/null | sed 's/^mode-//; s/\.md$//' | sort -u)"
+UX1_WHY=""
+[[ -n "$UX1_TOKENS" ]] || UX1_WHY+=" hint-parse-empty"
+[[ -n "$UX1_BODIES" ]] || UX1_WHY+=" no-mode-bodies"
+if [[ -z "$UX1_WHY" ]] && [[ "$UX1_RAW" != "$UX1_TOKENS" ]]; then
+    UX1_WHY+=" duplicate-token-in-hint"
+fi
+if [[ -z "$UX1_WHY" ]] && [[ "$UX1_TOKENS" != "$UX1_BODIES" ]]; then
+    UX1_WHY+=" hint≠bodies"
+fi
+if [[ -z "$UX1_WHY" ]]; then
+    pass "UX-1 unikit-plan argument-hint modes == references/mode-*.md bodies ($(echo "$UX1_TOKENS" | tr '\n' ' '))"
+else
+    fail "UX-1 unikit-plan argument-hint ↔ mode bodies:$UX1_WHY"
+    echo "      hint tokens: $(echo "$UX1_RAW" | tr '\n' ' ')"
+    echo "      mode bodies: $(echo "$UX1_BODIES" | tr '\n' ' ')"
+fi
+
+# (UX-2) A mode must stay REACHABLE, not merely exist. MX-1 checks that a mode body is on
+# disk and UX-1 that the hint offers it; neither notices that the dispatch can still throw
+# the mode away. It did: Step 0.2 carried a second, hand-maintained copy of the mode-keyword
+# set — "**If no mode keyword** (`full`/`fast`/`add`) is found:" — which went stale the
+# moment `ultra` was added, so `/unikit-plan ultra` with no description fell through to the
+# Full/Fast question and silently became a different mode. The fix was to delete the copy,
+# not to extend it, so the guard is anchored on the ABSENCE of a restated set: any backticked
+# token on that line is a second source of truth for the Step 0 parsing rules and will go
+# stale on the next mode exactly as this one did. Degenerates to `fail` when the line is gone
+# (NN-4 / RT-7 convention) — a missing anchor means the guard lost its object, not that the
+# invariant holds.
+UX2_LINE="$(grep -n 'If no mode keyword' "$UNIKIT_PLAN_SKILL" || true)"
+UX2_WHY=""
+if [[ -z "$UX2_LINE" ]]; then
+    UX2_WHY+=" gate-line-missing"
+elif printf '%s' "$UX2_LINE" | grep -q '`'; then
+    UX2_WHY+=" gate-restates-the-mode-keyword-set"
+fi
+if [[ -z "$UX2_WHY" ]]; then
+    pass "UX-2 unikit-plan Step 0.2 mode gate defers to the Step 0 parsing rules (no second keyword list)"
+else
+    fail "UX-2 unikit-plan Step 0.2 mode gate:$UX2_WHY"
+    [[ -n "$UX2_LINE" ]] && echo "      $UX2_LINE"
+fi
+
+# ─────────────────────────────────────────────
+# UP: the ultra PRODUCER. Phase 1 and Phase 2 of the port fix repaired the paths on which
+# `/unikit-plan ultra` silently produced an ordinary full plan — no error, no orphan, no
+# integrity violation, nothing to notice. These guards are the only thing that would turn
+# red if any of it came back. Anchors sit on the ABSENCE of the old formulation or on a
+# counter wherever possible (the UX-2 / RT-6 convention): a returning sentence is a likelier
+# regression than an un-made edit, and a positive anchor breaks on cosmetics.
+# Path vars are taken LOCALLY: UNIKIT_IMPROVE_SKILL and friends are declared further down
+# and `set -u` makes a forward reference fatal (the MF family does the same).
+UP_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+UP_MODE_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+UP_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+UP_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+
+# The graceful-degradation sentence is DERIVED from `unikit-implement/SKILL.md`, never held
+# as a literal here. A copy in the test would be a third source of truth of exactly the class
+# these guards exist to forbid.
+UP_DEGRADATION="$(grep -h 'ultra-plan-read.md' "$UP_IMPLEMENT" \
+    | grep 'is missing or unreadable, do not block' \
+    | sed 's/^[[:space:]]*//' | head -1)"
+
+UP_WHY=""
+[[ -f "$UP_TASKFMT"     ]] || UP_WHY+=" no-task-format"
+[[ -f "$UP_MODE_ULTRA"  ]] || UP_WHY+=" no-mode-ultra"
+[[ -f "$UP_MODE_ADD"    ]] || UP_WHY+=" no-mode-add"
+[[ -n "$UP_DEGRADATION" ]] || UP_WHY+=" no-degradation-source"
+
+if [[ -z "$UP_WHY" ]]; then
+    # (UP-1) BOTH sides of the redirect, in one guard. TASK-FORMAT.md declared itself
+    # canonical for ultra while its manifest template carries neither the marker nor
+    # `## Phase Index`; Step 5 sent the reader there unconditionally. A half-applied fix is
+    # the likeliest outcome, and it must not pass: repairing one side leaves the other
+    # standing and the contradiction survives.
+    [[ "$(grep -cF 'ULTRA-PLAN-FORMAT.md' "$UP_TASKFMT")" == "1" ]] \
+        || UP_WHY+=" UP-1:task-format-redirect-count"
+    if grep -qF 'Full/Ultra' "$UP_TASKFMT"; then UP_WHY+=" UP-1:placement-still-claims-ultra"; fi
+    if grep -qF 'Use the canonical templates from' "$UNIKIT_PLAN_SKILL"; then
+        UP_WHY+=" UP-1:step5-unconditional-template-source"
+    fi
+    awk '/^### Step 5: Create the Plan/{f=1} /^### Step 6/{f=0} f' "$UNIKIT_PLAN_SKILL" \
+        | grep -qF 'ULTRA-PLAN-FORMAT.md' || UP_WHY+=" UP-1:step5-missing-ultra-branch"
+
+    # (UP-2) Step 0.5 must not name the modes one by one. Same defect class as UX-2 one step
+    # over: the heading already carries the whole rule, and any enumeration in the body is a
+    # second source of truth that goes stale on the next mode — as it did, losing `ultra`
+    # and with it the `engine_rules_loaded` flag that `mode-ultra.md` Step C depends on.
+    UP2_BODY="$(awk '/^### Step 0.5: Bootstrap Context/{f=1;next} /^#### /{f=0} f' "$UNIKIT_PLAN_SKILL")"
+    if [[ -z "$UP2_BODY" ]]; then
+        UP_WHY+=" UP-2:step-0.5-body-missing"
+    elif printf '%s' "$UP2_BODY" | grep -qE '(fast|full|add|ultra), (and )?(fast|full|add|ultra)'; then
+        UP_WHY+=" UP-2:body-enumerates-modes"
+    fi
+
+    # (UP-3) Two claims that are false in ultra and pull the task-scoped subsections back
+    # into the manifest. Guarded by absence: both were unconditional sentences, and an
+    # unconditional sentence is restored far more easily than a branch is invented.
+    if grep -qF 'always included, in every mode' "$UNIKIT_PLAN_SKILL"; then
+        UP_WHY+=" UP-3:nine-subsections-unconditional"
+    fi
+    if grep -qF 'within the one manifest' "$UNIKIT_PLAN_SKILL"; then
+        UP_WHY+=" UP-3:self-check-single-file"
+    fi
+
+    # (UP-4) POSITIONAL, not merely present. The ultra reconnaissance depth gate is useless
+    # below Phase C: by then the synthesis has already happened. Same reasoning as LA-7 —
+    # a section that drifts past its reader is read at the wrong moment.
+    UP4_ULTRA_LINE="$(awk '/^### Step 4: Explore the Codebase/{f=1} /^### Step 4.5/{f=0} f && /^#### /{print NR": "$0}' "$UNIKIT_PLAN_SKILL" | grep -i 'ultra' | head -1 | cut -d: -f1)"
+    UP4_PHASEC_LINE="$(grep -n '^#### Phase C: Additional context' "$UNIKIT_PLAN_SKILL" | head -1 | cut -d: -f1)"
+    if [[ -z "$UP4_ULTRA_LINE" || -z "$UP4_PHASEC_LINE" ]]; then
+        UP_WHY+=" UP-4:ultra-depth-subsection-missing"
+    elif (( UP4_ULTRA_LINE > UP4_PHASEC_LINE )); then
+        UP_WHY+=" UP-4:ultra-depth-below-phase-c"
+    fi
+
+    # (UP-5) `replace` was the single word that let an honest executor throw away the whole
+    # Step 5 section contract — Guard B included, which is what keeps an editor phase alone
+    # in its execution layer. Guard B is named twice on purpose: once in Step D, once in the
+    # corrected relationship sentence.
+    if grep -qF 'replace Step 5 and Step 6' "$UP_MODE_ULTRA"; then
+        UP_WHY+=" UP-5:steps-d-h-still-replace-step-5"
+    fi
+    (( "$(grep -cF 'Guard B' "$UP_MODE_ULTRA")" >= 2 )) || UP_WHY+=" UP-5:guard-b-under-named"
+    awk '/^## Not part of ultra/{f=1} f' "$UP_MODE_ULTRA" | grep -qF 'mode is routed from Step 0' \
+        || UP_WHY+=" UP-5:add-not-placed"
+
+    # (UP-6) Expressed as a COUNTER, so it survives a rewording of the return instruction
+    # while the invariant it protects does not move: every step that delegates into
+    # `mode-full.md` must say to come back. `mode-full.md` legitimately ends its Step C with
+    # a terminal "continue to the Shared Steps", which in an ultra run walks past Steps D-H.
+    UP6_DELEGATING=0
+    UP6_RETURNING=0
+    for st in 'Step A' 'Step B' 'Step C'; do
+        UP6_SEC="$(awk -v s="^### $st" '$0 ~ s{f=1;next} /^#+ Step /{f=0} f' "$UP_MODE_ULTRA")"
+        if printf '%s' "$UP6_SEC" | grep -qF 'mode-full.md'; then
+            UP6_DELEGATING=$((UP6_DELEGATING + 1))
+            if printf '%s' "$UP6_SEC" | grep -qF 'return here'; then
+                UP6_RETURNING=$((UP6_RETURNING + 1))
+            fi
+        fi
+    done
+    (( UP6_DELEGATING >= 3 )) || UP_WHY+=" UP-6:delegating-steps-lost($UP6_DELEGATING)"
+    (( UP6_DELEGATING == UP6_RETURNING )) \
+        || UP_WHY+=" UP-6:delegating($UP6_DELEGATING)-returning($UP6_RETURNING)"
+
+    # (UP-7) `add` on a bundle used to append to the manifest alone, breaking it three
+    # different ways depending on what it wrote. The fix is a refusal that names its owner;
+    # a silent stop is indistinguishable from "there was nothing to add".
+    [[ "$(grep -cF 'unikit:plan-mode:ultra' "$UP_MODE_ADD")" == "1" ]] \
+        || UP_WHY+=" UP-7:marker-count"
+    grep -qF 'unikit-improve' "$UP_MODE_ADD" || UP_WHY+=" UP-7:no-routing"
+    grep -qF "$UP_DEGRADATION" "$UP_MODE_ADD" || UP_WHY+=" UP-7:degradation-wording-drifted"
+fi
+
+if [[ -z "$UP_WHY" ]]; then
+    pass "UP-1..UP-7 ultra producer: the redirect holds on both sides, Step 0.5 keeps no mode list, the manifest claims are branched, the depth gate is in place and add refuses a bundle"
+else
+    fail "UP ultra producer:$UP_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# US: the SUBAGENTS and the plan consumers. These are exactly the files `markerConsumers` in
+# scripts/test-ultra-plan-contract.mjs does not list, and that test's own comment warns that
+# a consumer which forgets ultra degrades silently with nothing else in the suite noticing.
+# The gap is closed here rather than by widening that list, so the contract test keeps one
+# owner. Values owned by it — the seven task subsections, the `Phase Index` threshold — are
+# READ from it, never copied.
+US_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+US_PLAN_COORD="$ROOT_DIR/subagents/unikit-plan-coordinator.md"
+US_IMPL_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+US_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
+US_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+US_CONTRACT_TEST="$ROOT_DIR/scripts/test-ultra-plan-contract.mjs"
+
+US_WHY=""
+for f in "$US_POLISHER" "$US_PLAN_COORD" "$US_IMPL_COORD" "$US_WORKER" "$US_IMPROVE" "$US_CONTRACT_TEST"; do
+    [[ -f "$f" ]] || US_WHY+=" missing:$(basename "$f")"
+done
+
+if [[ -z "$US_WHY" ]]; then
+    # Derived from the contract test — the owner of both values.
+    US_SUBSECTIONS="$(awk '/^const TASK_SUBSECTIONS = \[/{f=1;next} /^\];/{f=0} f' "$US_CONTRACT_TEST" \
+        | sed -e "s/^[[:space:]]*'//" -e "s/',*[[:space:]]*$//")"
+    US_MAX_PI="$(sed -n 's/^const MAX_PHASE_INDEX_MENTIONS = \([0-9][0-9]*\);.*/\1/p' "$US_CONTRACT_TEST" | head -1)"
+    [[ -n "$US_SUBSECTIONS" ]] || US_WHY+=" US-4:subsection-list-unreadable"
+    [[ -n "$US_MAX_PI"      ]] || US_WHY+=" US-7:threshold-unreadable"
+fi
+
+if [[ -z "$US_WHY" ]]; then
+    # (US-1) The one actively destructive hole of the port: the polisher wrote the manifest
+    # with `Write`, which drops `## Phase Index` wholesale and orphans every phase file.
+    # Checked through a WINDOW over Phase C, because `Write` is legitimate in the create
+    # branch — a whole-file grep could not tell the two apart.
+    [[ "$(grep -cF 'unikit:plan-mode:ultra' "$US_POLISHER")" == "1" ]] || US_WHY+=" US-1:marker-count"
+    US1_PHASE_C="$(awk '/^### Phase C/{f=1;next} /^### Phase D/{f=0} f' "$US_POLISHER")"
+    if [[ -z "$US1_PHASE_C" ]]; then
+        US_WHY+=" US-1:phase-c-missing"
+    else
+        printf '%s' "$US1_PHASE_C" | grep -qF 'Edit' || US_WHY+=" US-1:no-edit-branch"
+        printf '%s' "$US1_PHASE_C" | grep -qF 'forbidden' || US_WHY+=" US-1:no-write-ban"
+    fi
+
+    # (US-2) A key that is written and never read is a dead key, so both sides are one guard.
+    # The coordinator half is scoped to the PARSING PROCEDURE: a key named in the validation
+    # prose but absent from the list of keys extracted by literal name is never read at all,
+    # and a whole-file grep cannot tell those two states apart.
+    grep -qF 'plan_mode' "$US_POLISHER" || US_WHY+=" US-2:polisher-does-not-report-plan_mode"
+    US2_KEYS="$(awk '/extract these keys by literal name/{f=1} f{print} /^3\. Validate/{f=0}' "$US_PLAN_COORD")"
+    if [[ -z "$US2_KEYS" ]]; then
+        US_WHY+=" US-2:key-extraction-step-missing"
+    else
+        printf '%s' "$US2_KEYS" | grep -qF 'plan_mode' || US_WHY+=" US-2:plan_mode-not-extracted"
+    fi
+
+    # (US-3) The implement coordinator is a SECOND, independent entry point: the detection in
+    # unikit-implement/SKILL.md never runs for it. The negative half is the load-bearing one —
+    # "no second read" was the sentence asserting one read is enough, which is false for a
+    # bundle whose task detail lives in the phase files.
+    [[ "$(grep -cF 'unikit:plan-mode:ultra' "$US_IMPL_COORD")" == "1" ]] || US_WHY+=" US-3:marker-count"
+    if grep -qF 'no second read' "$US_IMPL_COORD"; then US_WHY+=" US-3:no-second-read-returned"; fi
+
+    # (US-4) The hand-off is closed, so reading the phase file is worthless unless the
+    # coordinator PASSES it on. The seven names come from the contract test; adding an eighth
+    # subsection there makes this guard demand it too, instead of silently ignoring it.
+    # Scoped to the DISPATCH RULES, not the whole file: the example dispatch below them names
+    # the same subsections, so a whole-file grep stays green while the rule that actually
+    # governs the hand-off has lost one.
+    US4_RULES="$(awk '/^### Dispatch rules/{f=1;next} /^### /{f=0} f' "$US_IMPL_COORD")"
+    if [[ -z "$US4_RULES" ]]; then
+        US_WHY+=" US-4:dispatch-rules-missing"
+    else
+        while IFS= read -r sub; do
+            [[ -z "$sub" ]] && continue
+            printf '%s' "$US4_RULES" | grep -qF "$sub" || US_WHY+=" US-4:not-passed:${sub// /-}"
+        done <<< "$US_SUBSECTIONS"
+    fi
+
+    # (US-5) The worker's WRITE contract was already right (`never a phase file`); its READ
+    # contract did not exist. Both halves are asserted so the pair reads as one contract.
+    grep -qF 'never a phase file' "$US_WORKER" || US_WHY+=" US-5:write-rule-lost"
+    grep -qF 'read-only' "$US_WORKER"          || US_WHY+=" US-5:no-read-only-rule"
+
+    # (US-6) M1: a closed hand-off that sends the delegate to the manifest for rows which,
+    # in a bundle, live in a phase file. Anchored on the ABSENCE of the bare pairing rather
+    # than on the presence of the fix: any line naming both must also name ultra.
+    US6_BAD="$(awk '/EDITOR TARGETS/ && /from the manifest/ && !/ultra/{printf "%s,", NR}' "$UP_IMPLEMENT")"
+    [[ -z "$US6_BAD" ]] || US_WHY+=" US-6:editor-targets-sourced-from-manifest(lines:$US6_BAD)"
+
+    # (US-7) The sentence M1 and M2 were both derived from, plus the improve-side rule that
+    # contradicted its own umbrella rule 40 lines above it. The threshold is the contract
+    # test's: a consumer restating the reader contract instead of pointing at it.
+    for f in "$UP_IMPLEMENT" "$UNIKIT_VERIFY_SKILL" "$US_IMPROVE"; do
+        if grep -qF 'One file carries everything' "$f"; then
+            US_WHY+=" US-7:one-file-claim-returned:$(basename "$(dirname "$f")")"
+        fi
+    done
+    if grep -qF 'There is no second file to sync with' "$US_IMPROVE"; then
+        US_WHY+=" US-7:improve-single-file-sync-returned"
+    fi
+    US7_PI="$(grep -cF 'Phase Index' "$US_IMPROVE")"
+    (( US7_PI <= US_MAX_PI )) || US_WHY+=" US-7:improve-phase-index-mentions($US7_PI-max-$US_MAX_PI)"
+
+    # (US-8) Three NEW readers of the reader contract now carry the degradation sentence. It
+    # is compared against `unikit-implement/SKILL.md` derivatively — the same discipline the
+    # contract test applies to its four, extended to the readers it does not know about.
+    for f in "$US_POLISHER" "$US_IMPL_COORD" "$UP_MODE_ADD"; do
+        grep -qF "$UP_DEGRADATION" "$f" || US_WHY+=" US-8:degradation-drifted:$(basename "$f")"
+    done
+fi
+
+if [[ -z "$US_WHY" ]]; then
+    pass "US-1..US-8 ultra consumers: the polisher cannot Write over a bundle, plan_mode is read as well as written, the coordinator passes the task spec, and no consumer claims one file carries everything"
+else
+    fail "US ultra consumers:$US_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# CG: the research coherence gate, and what is left of the research spec that UR-3 does not
+# watch. A gate that is written but never called is the likeliest outcome of adding one, so
+# CG-3 checks its POSITION, not merely its presence: called before the write, it re-reads
+# files that do not exist yet.
+CG_REF="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+CG_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+CG_RESEARCH_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+
+CG_WHY=""
+# (CG-1) It must exist, be non-empty, and NOT carry frontmatter — a reference with `name:`
+# and `description:` is picked up by the Part 1 skill validation and fails it.
+if [[ ! -s "$CG_REF" ]]; then
+    CG_WHY+=" CG-1:reference-missing-or-empty"
+else
+    if [[ "$(head -1 "$CG_REF")" == "---" ]]; then CG_WHY+=" CG-1:reference-has-frontmatter"; fi
+
+    # (CG-2) The gate's substance. Criterion 4 — quoting both sides — is what stops the gate
+    # from becoming a formality, and the durable-scope rule is what makes it check the thing
+    # that survives a /clear rather than what the session still remembers.
+    (( "$(grep -cE '^[0-9]+\. ' "$CG_REF")" >= 4 )) || CG_WHY+=" CG-2:fewer-than-four-criteria"
+    grep -qF 'not evidence' "$CG_REF"                  || CG_WHY+=" CG-2:no-durable-scope-rule"
+    grep -qF 'Agent(subagent_type: Explore)' "$CG_REF" || CG_WHY+=" CG-2:no-fresh-context-pass"
+    grep -qF 'WARN [coherence]' "$CG_REF"              || CG_WHY+=" CG-2:no-inline-fallback"
+    grep -qF 'Integrity' "$CG_REF"                     || CG_WHY+=" CG-2:no-boundary-with-integrity"
+fi
+
+if [[ ! -f "$CG_SKILL" ]]; then
+    CG_WHY+=" CG-3:explore-skill-missing"
+else
+    # (CG-3) Position, not presence. The gate re-reads the durable files from disk, so a call
+    # placed before the write re-reads files that do not exist yet, and a call placed after
+    # the confirmation tells the user the save succeeded while it may still be incoherent.
+    # Both landmarks are structural and both degenerate to `fail` when missing: the write
+    # step it must follow, and the `## Init` maintenance command it must precede — that
+    # command rebuilds the index and saves no research at all, so a gate that drifted into
+    # it would never run on a save.
+    CG3_WRITE="$(grep -n '^### Step 4: Update the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    CG3_INIT="$(grep -n '^## Init: Rebuilding the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    CG3_GATE="$(grep -n 'references/coherence-gate.md' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    if [[ -z "$CG3_GATE" ]]; then
+        CG_WHY+=" CG-3:gate-never-called"
+    elif [[ -z "$CG3_WRITE" ]]; then
+        CG_WHY+=" CG-3:index-write-step-missing"
+    elif [[ -z "$CG3_INIT" ]]; then
+        CG_WHY+=" CG-3:init-section-missing"
+    elif (( CG3_GATE < CG3_WRITE )); then
+        CG_WHY+=" CG-3:gate-called-before-the-write($CG3_GATE-before-$CG3_WRITE)"
+    elif (( CG3_GATE > CG3_INIT )); then
+        CG_WHY+=" CG-3:gate-drifted-into-the-init-command($CG3_GATE-after-$CG3_INIT)"
+    fi
+
+    # (CG-4) A missing reference must not lose an exploration that already happened — the
+    # same trade the ultra reference makes one section above. The no-auto-save rule is
+    # asserted alongside it: the gate runs after the user agreed, and must never be read as
+    # replacing the question.
+    grep -qF 'WARN [coherence] reference missing' "$CG_SKILL" || CG_WHY+=" CG-4:no-reference-degradation"
+    grep -qF 'auto-save' "$CG_SKILL"                          || CG_WHY+=" CG-4:auto-save-rule-lost"
+
+    # (CG-5) ultra is the natural next step after an ultra research and was not offered.
+    if grep -qF '/unikit-plan [fast|full] <' "$CG_SKILL"; then CG_WHY+=" CG-5:next-steps-omit-ultra"; fi
+fi
+
+# (CG-6) The research spec must not take back the containers the port brought with it.
+# Overlaps UR-3 deliberately: UR-3 watches the vocabulary and the owner rule, CG-6 watches
+# the absence of the retired names and the count of the checks. An overlap is cheaper here
+# than a gap.
+if [[ ! -f "$CG_RESEARCH_SPEC" ]]; then
+    CG_WHY+=" CG-6:research-spec-missing"
+else
+    if grep -qF 'Active Summary' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-6:active-summary-returned"; fi
+    if grep -qF 'Traceability' "$CG_RESEARCH_SPEC";   then CG_WHY+=" CG-6:traceability-returned"; fi
+    grep -qF 'RESEARCH_BRIEF.md' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-6:no-lift-obligation"
+    CG6_CHECKS="$(awk '/^## Integrity/{f=1;next} /^## /{f=0} f' "$CG_RESEARCH_SPEC" | grep -cE '^[0-9]+\. ')"
+    (( CG6_CHECKS == 5 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-5)"
+fi
+
+if [[ -z "$CG_WHY" ]]; then
+    pass "CG-1..CG-6 the coherence gate exists, is called after the write, degrades without losing work, and the research spec keeps no container it does not have"
+else
+    fail "CG research coherence gate:$CG_WHY"
 fi
 
 # (MX-2) Mode-extraction: unikit-gd-spec six mode bodies live in references/mode-*.md and
@@ -2505,7 +2884,7 @@ fi
 
 # (CR-2) unikit-plan emits the ## Content Context brief: the §4.5.6 mechanics live in
 # design-context.md AND the assembly step in SKILL.md references the block (without the
-# SKILL.md half the brief is described but never assembled into PLAN-BRIEF).
+# SKILL.md half the brief is described but never assembled into the manifest).
 CR_PLAN_WHY=""
 grep -qF '4.5.6' "$UNIKIT_PLAN_DESIGN_CONTEXT"               || CR_PLAN_WHY+=" no-4.5.6"
 grep -qF '## Content Context' "$UNIKIT_PLAN_DESIGN_CONTEXT"  || CR_PLAN_WHY+=" no-content-context-context"
@@ -2937,6 +3316,362 @@ if grep -qF '<!-- Commit checkpoint' "$CK_TASKFMT"; then
     pass "unikit-plan TASK-FORMAT.md — decorative <!-- Commit checkpoint marker present (Task 4.1)"
 else
     fail "unikit-plan TASK-FORMAT.md — missing decorative <!-- Commit checkpoint marker (Task 4.1)"
+fi
+
+# ─────────────────────────────────────────────
+# PL: the plan manifest is ONE file, and it stays one.
+# RISK-007 in the plan bundle stated the gap in full: the suite could not detect a
+# half-applied rename. Zero asserts existed on the names of the files inside a plan
+# folder — `TASKS.md` appeared nowhere in this script, `PLAN-BRIEF` only in a comment,
+# and the five `TASKS.md` seeds in test-golden-guard.sh are opaque relocation fixtures
+# that would have stayed green through the whole rename. That is worse than no coverage:
+# it is false confidence. Five guards close five distinct ways to get it wrong — bring
+# an old name back, leave a name unqualified, reorder the manifest, resurrect the second
+# file, resurrect the machinery that kept two files in step.
+# Placed AFTER the CK block on purpose: PL reuses UNIKIT_PLAN_SKILL, UNIKIT_IMPROVE_SKILL
+# and CK_TASKFMT, all declared above, and `set -u` makes a forward reference fatal.
+PL_TASKFMT="$CK_TASKFMT"                                  # skills/unikit-plan/references/TASK-FORMAT.md
+PL_SCAN_ROOTS=("$ROOT_DIR/skills" "$ROOT_DIR/subagents")
+PL_VOCAB_ALLOW="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+
+# (PL-1) The naming vocabulary. After the merge two different files are called
+# PLAN.md: the flat fast plan (.unikit/code/PLAN.md) and the folder manifest
+# (.unikit/code/plans/<folder>/PLAN.md). Paths tell them apart; prose does not.
+# A bare backtick-delimited `PLAN.md` is therefore forbidden everywhere in
+# skills/** and subagents/*, with ONE measured allowlist entry:
+#   skills/unikit-plan/references/TASK-FORMAT.md — the file that DECLARES the
+#   vocabulary and must be able to name the file it is naming.
+# Every legitimate reference is qualified and so cannot match: `.unikit/code/PLAN.md`,
+# `.unikit/code/plans/<folder>/PLAN.md`, `plans/*/PLAN.md` all carry a path prefix
+# inside the same backticks, which puts a `/` where the opening backtick would have to be.
+# Extending this allowlist is a signal that the vocabulary was broken, not that the
+# guard is strict — every entry must carry its reason in this comment.
+PL1_HITS="$({ grep -rn -- '`PLAN\.md`' "${PL_SCAN_ROOTS[@]}" --include='*.md' 2>/dev/null || true; } | { grep -vF "$PL_VOCAB_ALLOW" || true; })"
+if [[ -z "$PL1_HITS" ]]; then
+    pass "PL-1 no bare \`PLAN.md\` in skills/** or subagents/* (every mention is path-qualified)"
+else
+    fail "PL-1 a bare \`PLAN.md\` is ambiguous — qualify it with its path:"
+    echo "$PL1_HITS" | head -5
+fi
+
+# (PL-2) Zero occurrences of the pre-merge file names anywhere in the delivered
+# surfaces. This is the guard RISK-007 says the suite never had: before it, a
+# half-applied rename left 17 files broken silently and nothing turned red.
+# Scope is skills/**, subagents/* and data/** (UNITY_RULES.md lives there). docs/**
+# is deliberately OUT of scope — the documentation is rewritten by tasks 15-16, and a
+# second guard over it would be a second owner of one fact; those tasks carry an
+# explicit grep in their acceptance criteria instead.
+# ONE measured allowlist entry: the pre-merge detection branch in
+# skills/unikit-improve/SKILL.md. That branch exists to recognise an
+# un-migrated plan folder and send the user to `unikit-ai update`; a branch that
+# DESCRIBES the old shape instead of naming it cannot be executed reliably, so
+# this is the one place where the retired name is load-bearing rather than stale.
+# The entry is pinned to the marker `(a pre-merge plan)` on that same line, not
+# to the file — exempting the whole file would re-open the 27 occurrences the
+# merge removed from it.
+PL2_ALLOW='(a pre-merge plan)'
+PL2_HITS="$({ grep -rn -e 'TASKS\.md' -e 'PLAN-BRIEF' "${PL_SCAN_ROOTS[@]}" "$ROOT_DIR/data" --include='*.md' 2>/dev/null || true; } | { grep -vF "$PL2_ALLOW" || true; })"
+if [[ -z "$PL2_HITS" ]]; then
+    pass "PL-2 the pre-merge names (TASKS.md / PLAN-BRIEF) are gone from skills/**, subagents/*, data/**"
+else
+    fail "PL-2 a pre-merge plan file name survived the merge:"
+    echo "$PL2_HITS" | head -5
+fi
+
+# (PL-3) Degenerate-to-fail, on the NN-4 convention: if the scan finds no object
+# at all — no skills/, no subagents/ — PL-1 and PL-2 would pass vacuously, and a
+# vacuous pass on a rename guard is exactly the false confidence RISK-007 named.
+PL3_SCANNED="$({ grep -rl -- '`' "${PL_SCAN_ROOTS[@]}" --include='*.md' 2>/dev/null || true; })"
+if [[ -n "$PL3_SCANNED" ]]; then
+    pass "PL-3 the vocabulary scan has an object ($(echo "$PL3_SCANNED" | wc -l | tr -d ' ') markdown files under skills/ + subagents/)"
+else
+    fail "PL-3 nothing scanned — PL-1 and PL-2 would pass vacuously"
+fi
+
+# (PL-4) The manifest section order is a contract, not layout. /unikit-mcp-trap reads
+# its section as "the `## MCP Findings` heading down to the next `##`", so where that
+# heading sits decides what the trap transfers into the project's notes. Three
+# assertions over the template block in TASK-FORMAT.md, by LINE ORDER inside the
+# fence rather than by grep -c — a heading named in prose elsewhere in the file must
+# not be able to satisfy this:
+#   1. `## MCP Findings` stands ABOVE `## Technical Context`. Below it, the nine
+#      `###` subsections of the technical brief fall inside the findings window.
+#   2. The findings window is CLOSED by a following `##` — it never runs to the end
+#      of the template. The canonical tail (A4) is `## Dependency Graph` →
+#      `## Total Estimated Effort` → `## Technical Context`, so the window shuts on
+#      the first of them.
+#   3. After `## Technical Context` there is either nothing or exactly ONE heading —
+#      `## Open Questions`, which the planning pass fills. Stated as a pair invariant
+#      rather than as "Technical Context is last", because the positional form would
+#      turn red on the very tail section this delivery introduces.
+# The existence probe is not decoration: the awk below runs inside an assignment,
+# and under `set -e` a command substitution that exits non-zero kills the whole
+# suite with a bash message instead of a readable verdict. NN-1 / NN-4 / PL-3 all
+# degenerate to `fail` when their object is gone; this keeps PL-4 on the same
+# convention. The trailing `|| true` covers every other awk exit path.
+if [[ ! -f "$PL_TASKFMT" ]]; then
+    fail "PL-4 TASK-FORMAT.md missing — the guard has no object left"
+else
+    PL4_WHY="$(awk '
+    /^## Plan Manifest Template/ { seek = 1; next }
+    seek && /^```/               { infence = 1; seek = 0; next }
+    infence && /^```/            { infence = 0; exit }
+    infence && /^## /            { n++; head[n] = $0 }
+    END {
+        mcp = 0; tech = 0
+        for (i = 1; i <= n; i++) {
+            if (head[i] == "## MCP Findings")      mcp  = i
+            if (head[i] == "## Technical Context") tech = i
+        }
+        if (mcp  == 0) printf " no-MCP-Findings-heading-in-template"
+        if (tech == 0) printf " no-Technical-Context-heading-in-template"
+        if (mcp == 0 || tech == 0) exit
+        if (mcp > tech) printf " findings-below-technical-context"
+        if (mcp == n)   printf " findings-window-runs-to-end-of-template"
+        for (i = tech + 1; i <= n; i++)
+            if (head[i] != "## Open Questions") printf " unexpected-tail-section(%s)", head[i]
+    }
+' "$PL_TASKFMT" || true)"
+    if [[ -z "$PL4_WHY" ]]; then
+        pass "PL-4 manifest section order — MCP Findings above Technical Context, findings window closed, only Open Questions may follow"
+    else
+        fail "PL-4 manifest section order broken in $PL_TASKFMT:$PL4_WHY"
+    fi
+fi
+
+# (PL-5) The three sync mechanisms the merge removed. Each existed ONLY because a
+# plan was two files; a copy-paste from an old revision brings any of them back
+# without any other guard noticing. The middle assert is POSITIVE on purpose —
+# without it, deleting the two-file sync rule is indistinguishable from deleting
+# the rule that replaced it.
+# The third anchor quotes the retired rule 11 in full rather than the two words
+# `Always create`. Two words are a phrase anyone might write about anything —
+# `Always created` on the neighbouring line already matches them as a substring —
+# and the guard would then turn red with a message naming a second file that does
+# not exist, sending the reader after a fault nobody introduced. This literal is a
+# regression detector; scripts/ is outside PL-2's scan roots, so it can name the
+# retired file without contradicting the guard three blocks above.
+PL5_WHY=""
+if grep -qF 'Keep files in sync' "$UNIKIT_IMPROVE_SKILL"; then PL5_WHY+=" improve-still-syncs-two-files"; fi
+grep -qF '`Write` over a plan manifest is forbidden' "$UNIKIT_IMPROVE_SKILL" || PL5_WHY+=" improve-missing-Write-ban"
+if grep -qF 'Always create PLAN-BRIEF.md' "$UNIKIT_PLAN_SKILL"; then PL5_WHY+=" plan-still-creates-a-second-file"; fi
+if [[ -z "$PL5_WHY" ]]; then
+    pass "PL-5 two-file sync machinery stays retired (no Keep-files-in-sync, no Always-create; the Write ban is in place)"
+else
+    fail "PL-5 a two-file mechanism came back:$PL5_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# RD: research drift is a CONTENT signal, and one procedure computes it in four files.
+# `## Based on` used to carry a link timestamp compared against a research index
+# timestamp — two clocks written by the same class of agent with the same care. The
+# field is now the SHA256 of the linked `RESEARCH_BRIEF.md`, and three consumers
+# recompute it. Three guards close the three ways that goes wrong: the procedure
+# diverges, the grant that makes it runnable is missing, or the label and the
+# writer/reader split drift apart.
+# Placed next to the PL family and reusing UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
+# UNIKIT_VERIFY_SKILL declared above; UNIKIT_IMPLEMENT_SKILL has no earlier declaration
+# (the MF block below takes its own path var locally), so it is declared here — `set -u`
+# makes a forward reference fatal.
+UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+
+# (RD-A) The recorded field and the normalization procedure, in all FOUR files.
+# unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
+# normalization diverges by a single rule in ONE of them, that skill reports drift that
+# did not happen — and the failure reads as "the research changed", not as "the guard is
+# missing". The tokens are chosen, not sampled: `UTF-8 BOM` and `one final newline` are
+# the two rules whose divergence produces a FALSE drift on byte-identical content (and
+# the BOM rule exists because this project's primary platform is Windows);
+# `never a temp file` is the stdin rule; `RESEARCH_BRIEF.md` is the hashed object — a
+# file that hashes RESEARCH_RESULT.md instead would hash its volatile `Updated:` line,
+# and RESEARCH_SOURCE.md is a growing dialogue log. The negative half is load-bearing:
+# without it a half-applied replacement leaves both mechanisms standing and a consumer
+# reads a field /unikit-plan no longer writes. That half is anchored on the FIELD form
+# `**Attached**`, never on the bare word: `Attached` is ordinary English and a sentence
+# beginning "Attached research folders are…" would turn the guard red with nothing
+# regressed — a false positive on a negative assert teaches people to delete it.
+RDA_READERS=("$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
+RDA_ALL=("$UNIKIT_PLAN_SKILL" "${RDA_READERS[@]}")
+RDA_ATTACHED_ALLOW='(the retired link-timestamp field)'
+RDA_WHY=""
+for f in "${RDA_ALL[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Brief SHA256'      "$f" || RDA_WHY+=" $n-no-field"
+    grep -qF 'UTF-8 BOM'         "$f" || RDA_WHY+=" $n-no-bom-rule"
+    grep -qF 'one final newline' "$f" || RDA_WHY+=" $n-no-final-newline-rule"
+    grep -qF 'never a temp file' "$f" || RDA_WHY+=" $n-no-stdin-rule"
+    grep -qF 'RESEARCH_BRIEF.md' "$f" || RDA_WHY+=" $n-no-hashed-object"
+    # ONE measured allowlist entry, on the PL-2 precedent and for the same reason: the
+    # /unikit-improve branch that REMOVES the retired field has to name it, and a branch that
+    # DESCRIBES the old shape instead of naming it cannot be executed reliably. Pinned to the
+    # marker on that same line, never to the file — exempting the file would re-open every
+    # occurrence the replacement removed from it.
+    if grep -F '**Attached**' "$f" | grep -vF "$RDA_ATTACHED_ALLOW" | grep -q .; then RDA_WHY+=" $n-attached-survives"; fi
+done
+if [[ -z "$RDA_WHY" ]]; then
+    pass "RD-A Brief SHA256 + the one normalization procedure present in all four files (old timestamp field gone)"
+else
+    fail "RD-A research-drift procedure diverged:$RDA_WHY"
+fi
+
+# (RD-B) The grant that makes the procedure followable at all. Without it the
+# normalization text is an instruction the skill cannot carry out, and the skill degrades
+# to the WARN branch on every single plan — silently, because that WARN branch is a
+# legitimate state. Both names are required: `shasum` ships with perl (macOS, Git Bash),
+# `sha256sum` with GNU coreutils (Linux, Git Bash).
+RDB_WHY=""
+for f in "${RDA_ALL[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Bash(shasum *)'    "$f" || RDB_WHY+=" $n-no-shasum"
+    grep -qF 'Bash(sha256sum *)' "$f" || RDB_WHY+=" $n-no-sha256sum"
+done
+if [[ -z "$RDB_WHY" ]]; then
+    pass "RD-B the hash grant follows the procedure into all four skills"
+else
+    fail "RD-B a skill carries the normalization procedure but not the grant:$RDB_WHY"
+fi
+
+# (RD-C) One label for every drift branch, and the writer/reader split.
+# The label: every branch shares `WARN [research-drift]` precisely so a log can be
+# grepped for drift; per-branch labels would make them indistinguishable in aggregate.
+# The split: only unikit-plan (on create) and unikit-improve (on an explicit rebase) may
+# WRITE a hash. The negative half is the load-bearing one — `instead` is legitimate in a
+# dozen other places in these files, so the search is narrowed to lines naming the brief
+# itself: reading the live brief INSTEAD of the plan is the scope-widening channel this
+# whole contract exists to close, and a drift check standing next to that channel is
+# decoration.
+RDC_WHY=""
+for f in "${RDA_READERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'WARN [research-drift]' "$f" || RDC_WHY+=" $n-no-canonical-label"
+done
+grep -qF 'verification bug' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-not-mandatory"
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+    n="$(basename "$(dirname "$f")")"
+    # The negative half binds to the ADJACENCY, not to the word and not to the line. Two
+    # earlier shapes were measured and both are wrong: `grep -qF 'instead'` over lines naming
+    # the brief condemns the correct sentence ("read the plan's `## Technical Context` instead
+    # of `RESEARCH_BRIEF.md`"), and ordering the two tokens across the whole line does not fix
+    # it either — the repaired sentence names the brief TWICE, so the first occurrence and a
+    # later `instead` still match. What is banned is the brief immediately followed by
+    # `instead`; anything else is prose. Same class as the RD-A anchor above: a negative assert
+    # binds to a form, never to a word (patch 2026-08-22-12.40).
+    if grep -qE 'RESEARCH_BRIEF\.md`?[[:space:]]+instead' "$f"; then RDC_WHY+=" $n-still-reads-instead"; fi
+    # The positive counterpart, and the durable half: a positive assert cannot false-positive,
+    # so it — not the negative — is what survives a rewrite of the sentence.
+    grep -qF 'as a substitute for the plan' "$f" || RDC_WHY+=" $n-no-substitute-ban"
+done
+if [[ -z "$RDC_WHY" ]]; then
+    pass "RD-C one canonical WARN [research-drift] label; implement/verify check the hash and never read the brief instead of the plan"
+else
+    fail "RD-C drift label / writer-reader split:$RDC_WHY"
+fi
+
+# (RD-D) The field has a writer for an entry that does not carry it.
+# RD-A proves three consumers READ `Brief SHA256` and that /unikit-plan writes it on create.
+# Nothing proved anything can write one into an entry created BEFORE the field existed — and
+# the on-disk plan migration rewrites the manifest without touching `## Based on`. Measured:
+# every plan that predates the field reported `drift unknown` on every run, /unikit-verify
+# held its gate at `warn` permanently, and Step 1.5 offered the user a re-link that Step 5.5
+# had no branch to carry out. Reachability is a separate invariant from presence — a guard
+# that an artifact exists says nothing about whether control flow reaches it
+# (patch 2026-08-22-09.18).
+# Both halves are load-bearing and neither substitutes for the other: the WRITE half asserts
+# Step 5.5 carries the branch, the WIRING half asserts the Step 1.5 offer names the step that
+# performs it. An offer pointing nowhere and a branch nobody reaches fail differently and are
+# equally dead. Anchored on formulations, never on the step numbers, which renumber.
+RDD_STEP55="$(awk '/^\*\*5\.5:/{f=1} f&&/^\*\*5\.6:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
+RDD_WHY=""
+# Degenerate to fail when the section is gone (NN-4 / RT-7 convention).
+[[ -n "$RDD_STEP55" ]] || RDD_WHY+=" no-step-5.5-body"
+printf '%s' "$RDD_STEP55" | grep -qF 'records the field on an entry that has none' || RDD_WHY+=" no-relink-writer"
+printf '%s' "$RDD_STEP55" | grep -qF 'Brief SHA256' || RDD_WHY+=" writer-does-not-name-the-field"
+grep -qF 'the write is Step 5.5 item 3' "$UNIKIT_IMPROVE_SKILL" || RDD_WHY+=" offer-not-wired-to-writer"
+# The write is gated on the user's answer: hashing a brief nobody was asked about would claim
+# "no drift" over a period that was never examined.
+printf '%s' "$RDD_STEP55" | grep -qF 'Never perform this write without that answer' || RDD_WHY+=" write-not-gated-on-consent"
+if [[ -z "$RDD_WHY" ]]; then
+    pass "RD-D a hashless \`## Based on\` entry has a writer, and the Step 1.5 offer is wired to it"
+else
+    fail "RD-D the drift-unknown state has no exit:$RDD_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# UR: ultra research — the second ultra marker, and the identifier contract.
+# ─────────────────────────────────────────────
+
+# (UR-1) The reference exists, the marker is declared exactly where it belongs, and the
+# two ultra markers are DISTINCT strings. A copy-paste that gives a research folder the
+# plan marker would make /unikit-implement treat a research as a bundle — and the failure
+# would surface as a missing phase file, far from its cause. The two cross negatives are
+# the content of this guard; the positives only give them an object.
+UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+UR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+UR_PLAN_SPEC="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+UR_WHY=""
+[[ -s "$UR_REF" ]] || UR_WHY+=" no-reference"
+grep -qF 'unikit:research-mode:ultra' "$UR_REF"     || UR_WHY+=" no-marker-in-reference"
+grep -qF 'ULTRA-RESEARCH-FORMAT.md'   "$UR_EXPLORE" || UR_WHY+=" no-dispatch"
+if grep -qF 'unikit:plan-mode:ultra' "$UR_REF"; then UR_WHY+=" plan-marker-in-research-reference"; fi
+if grep -qF 'unikit:research-mode:ultra' "$UR_PLAN_SPEC"; then UR_WHY+=" research-marker-in-plan-spec"; fi
+
+# (UR-2) `init` rebuilds the index from RESEARCH_RESULT.md only. Without this rule written
+# down, a folder carrying adaptive artifacts reads as malformed to the next person editing
+# the rebuild loop — and the index silently loses a research.
+grep -qF 'Adaptive artifacts in a folder are neither read nor listed' "$UR_EXPLORE" || UR_WHY+=" init-not-robust"
+
+if [[ -z "$UR_WHY" ]]; then
+    pass "UR-1/UR-2 ultra research reference + dispatch; the plan and research markers stay distinct; init survives extra files"
+else
+    fail "UR-1/UR-2 ultra research contract:$UR_WHY"
+fi
+
+# (UR-3) The identifier contract: a CLOSED vocabulary with a named owner.
+# Practice diverges in both directions when the vocabulary is left open — the prefixes a
+# spec names go unused while the ones actually used go unnamed. Six prefixes, and a seventh
+# is a decision rather than a convenience. The guard checks that the vocabulary is PRESENT
+# and has not shrunk; forbidding an unknown prefix by grep would need an allowlist the size
+# of the corpus, so closure is held by the spec text and by Integrity checks 4-5.
+# The owner assert is load-bearing, and it names the BRIEF: `RESEARCH_BRIEF.md` is the one
+# file /unikit-plan takes as input and hashes, so a requirement-bearing ID living anywhere
+# else is invisible to the planner and its change produces no drift. The anchor sits on the
+# FORMULATION, not on a heading — a heading is rewritten during cosmetics, a formulation only
+# together with its meaning (the RT-6 / DEGRADATION_TOKEN convention).
+# Two NEGATIVE asserts sit beside it: `Active Summary` and `Traceability` are containers this
+# repository does not have — the first was never ported, the second lives in the original's
+# bundle INDEX.md, a file UniKit deliberately does not have. Both arrived with the port and
+# both read as authoritative; the negative half is what stops the next edit from the original
+# bringing them back.
+# The vocabulary greps are scoped TWICE, and both narrowings are load-bearing: to the body
+# of `## Identifiers`, and to the table-row form `| `<prefix>`. Searching the whole file for
+# a bare backticked prefix is what the first version did, and it could not fail: `ADR-`
+# occurs in the adaptive-artifacts table and twice more in prose, `DEC-` in Integrity check 4,
+# so deleting either row from the vocabulary table left the guard green. A guard that cannot
+# go red is worse than no guard — it reports confidence it never earned.
+UR3_WHY=""
+UR3_SECTION=""
+if ! grep -qF '## Identifiers' "$UR_REF"; then
+    UR3_WHY+=" no-section"
+else
+    UR3_SECTION="$(awk '/^## Identifiers$/{f=1;next} /^## /{f=0} f' "$UR_REF")"
+    # Degenerate to fail when the section is empty (NN-4 / RT-7 convention): an object-less
+    # guard must go red rather than pass on nothing.
+    if [[ -z "$UR3_SECTION" ]]; then
+        UR3_WHY+=" empty-section"
+    else
+        for pfx in 'C-' 'REQ-' 'DEC-' 'RISK-' 'OQ-' 'ADR-'; do
+            printf '%s' "$UR3_SECTION" | grep -qF "| \`$pfx" || UR3_WHY+=" vocab-missing:$pfx"
+        done
+    fi
+fi
+grep -qF "must exist in \`RESEARCH_BRIEF.md\`" "$UR_REF" || UR3_WHY+=" no-owner-rule"
+grep -qF 'never reused'                 "$UR_REF" || UR3_WHY+=" no-stability-rule"
+if grep -qF 'Active Summary' "$UR_REF"; then UR3_WHY+=" active-summary-returned"; fi
+if grep -qF 'Traceability'   "$UR_REF"; then UR3_WHY+=" traceability-returned";   fi
+if [[ -z "$UR3_WHY" ]]; then
+    pass "UR-3 the identifier vocabulary is closed (six prefixes), homed in the brief and the result, and stable"
+else
+    fail "UR-3 identifier contract:$UR3_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -4971,7 +5706,7 @@ fi
 # ─────────────────────────────────────────────
 # Part 7e4: migration-chain anchors
 # ─────────────────────────────────────────────
-# Two rules the runner depends on and cannot check for itself:
+# Three rules the runner depends on and cannot check for itself:
 #
 #   - `since`, WHEN DECLARED, is valid semver and does not decrease in declaration
 #     order. The runner sorts by it, so declaration order that disagrees with the
@@ -4981,10 +5716,17 @@ fi
 #     force someone to invent one.
 #   - a step with NEITHER `since` NOR `detect` can never fire. The runner throws on
 #     it at runtime; this catches it at `npm test` instead.
+#   - an anchor ABOVE the package version makes `versionPending` permanently true
+#     for every project stamped with the previous number, so `isProjectStale` never
+#     clears and `rules sync` answers exit 8 forever — with no `update` able to
+#     lift it. The anchor and the release bump ship together, in one commit; this
+#     is the only mechanical guard on that pairing anywhere in the repository.
 echo -e "\n${BOLD}Part 7e4: migration-chain anchors${NC}"
 
 MIGRATION_ANCHOR_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const fs = await import('node:fs');
   const semver = (await import('semver')).default;
+  const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
   const chains = [
     ['PROJECT_MEMORY_MIGRATIONS', (await import('./dist/core/memory-migrations/index.js')).PROJECT_MEMORY_MIGRATIONS],
     ['REGISTRY_MIGRATIONS', (await import('./dist/core/registry/migrations/index.js')).REGISTRY_MIGRATIONS],
@@ -5001,6 +5743,9 @@ MIGRATION_ANCHOR_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
       if (previous && semver.lt(step.since, previous)) {
         why.push('since-decreases:'+name+':'+step.id+':'+step.since+'<'+previous);
       }
+      if (semver.valid(pkg) && semver.gt(step.since, pkg)) {
+        why.push('since-above-package-version:'+name+':'+step.id+':'+step.since+'>'+pkg);
+      }
       previous = step.since;
     }
   }
@@ -5009,7 +5754,7 @@ MIGRATION_ANCHOR_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
 " 2>/dev/null || echo "pass-error")
 
 if [[ "$MIGRATION_ANCHOR_RESULT" == "ok" ]]; then
-    pass "migration chains: since is valid semver and non-decreasing; no step without since AND detect"
+    pass "migration chains: since is valid semver, non-decreasing, never above the package version; no step without since AND detect"
 else
     fail "migration chain anchors violated: $MIGRATION_ANCHOR_RESULT"
 fi
@@ -5149,6 +5894,30 @@ if [[ -z "$SIZE_VIOLATIONS" ]]; then
 else
     fail "src/core modules exceed $SIZE_LIMIT-line limit"
     echo -e "$SIZE_VIOLATIONS"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7j: ultra plan bundle contract
+# ─────────────────────────────────────────────
+# Two invariants grep cannot express: (a) the canonical manifest template extracted
+# FROM ULTRA-PLAN-FORMAT.md is self-consistent across its three projections of the task
+# set, and (b) every consumer carries the literal mode marker. The template is
+# extracted, never copied — a test holding its own copy validates itself.
+# Placed inside the codebase-integrity block (after 7i, before the Part 8 smoke tests)
+# because it runs no CLI and reads no dist/ — it works on source text alone.
+echo -e "\n${BOLD}Part 7j: ultra plan bundle contract${NC}"
+
+set +e
+ULTRA_CONTRACT_OUTPUT=$(node "$ROOT_DIR/scripts/test-ultra-plan-contract.mjs" 2>&1)
+ULTRA_CONTRACT_EXIT=$?
+set -e
+
+if [[ $ULTRA_CONTRACT_EXIT -eq 0 ]]; then
+    pass "ultra plan bundle contract"
+    echo "$ULTRA_CONTRACT_OUTPUT" | grep '^PASS ' | sed 's/^/    /'
+else
+    fail "ultra plan bundle contract"
+    echo "$ULTRA_CONTRACT_OUTPUT" | sed 's/^/      /'
 fi
 
 # ─────────────────────────────────────────────

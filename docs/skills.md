@@ -49,20 +49,23 @@ Generates architecture guidelines:
 
 These skills form the core development loop. See [Development Workflow](workflow.md) for the full diagram and how they connect.
 
-### `/unikit-explore [init | topic]` - discovery before planning
+### `/unikit-explore [init | ultra | topic]` - discovery before planning
 
 ```
 /unikit-explore real-time multiplayer sync
 /unikit-explore the inventory system is getting complex
 /unikit-explore init                                     # Rebuild researches index
+/unikit-explore ultra save-system trade-offs              # Adds adaptive artifacts
 ```
 - Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code
 - Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the knowledge base
 - Saves results to `.unikit/code/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
 - Maintains `researches/INDEX.md`; use `init` to rebuild the index
+- The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised only as the leading token, never inferred
+- Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and holds the confirmation until the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The read-only pass goes to a fresh context and falls back to inline; if the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
 - When direction is clear, transition to `/unikit-plan`
 
-### `/unikit-plan [fast|full|add|--list] [--base <branch>] <description>` - plan the work
+### `/unikit-plan [fast|full|ultra|add|--list] [--base <branch>] <description>` - plan the work
 
 ```
 /unikit-plan Add item rarity system              # Asks which mode
@@ -73,12 +76,13 @@ These skills form the core development loop. See [Development Workflow](workflow
 /unikit-plan full --base main Add new feature     # Specify base branch for full mode
 ```
 
-Three modes:
+Four modes:
 - **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - creates git branch, asks about testing/logging, saves plan
+- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: reached only by typing `ultra`, never offered and never inferred
 - **Add** - extends an existing plan with new tasks
 
-Fast and Full modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates `TASKS.md` (checklist) and `PLAN-BRIEF.md` (technical context). Add mode extends an existing plan folder without re-exploring.
+Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan folder without re-exploring.
 
 ### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
 
@@ -105,7 +109,7 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 /unikit-implement core-loop          # Find plan by name
 /unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
 ```
-- Reads skill-context rules first, then plan TASKS.md
+- Reads skill-context rules first, then the plan manifest
 - Executes tasks one by one with commit checkpoints
 - Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and implements tasks inline with `Read/Edit/Write/Bash`. The `develop-agent` alias is used only for true parallel scopes or deep-dive single tasks
 - Supports selective execution by phase, task numbers, or feature name
@@ -448,7 +452,7 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 ```
 /unikit-mcp-trap                                 # Harvest findings from the current session
 /unikit-mcp-trap the snapshot reported ready with zero files
-/unikit-mcp-trap .unikit/code/plans/2026-08-18_ui/TASKS.md   # Take this plan's table, nothing else
+/unikit-mcp-trap .unikit/code/plans/2026-08-18_ui/PLAN.md   # Take this plan's table, nothing else
 ```
 - Writes `.unikit/MCP-RECHECK-NOTES.md` - the project's log of what has to be re-checked about the **engine MCP server it actually talks to**
 - Zero MCP calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing

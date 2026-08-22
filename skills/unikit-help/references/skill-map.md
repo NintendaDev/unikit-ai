@@ -63,6 +63,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **In:** a topic / question / system name — or, when a design workspace exists, a **flow**
   / player sequence (a *first-class flow input* grounded on the dynamics axis via the shared
   `design-read` contract). `init` rebuilds the researches index.
+- **Modes:** default | `init` | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
+  dependency graph — written into the research folder by relevance, never by checklist).
 - **Out:** `.unikit/code/researches/<date>_<name>/` (`RESEARCH_RESULT.md` + `RESEARCH_BRIEF.md`),
   and `researches/INDEX.md`.
 - **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the brief),
@@ -72,13 +74,15 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Purpose:** Turn a feature into a dependency-ordered task plan + technical brief.
 - **When:** "plan this feature", "create tasks". The first **required** step of building.
 - **In:** a feature description, or a research brief, or a roadmap milestone. Modes: `fast`
-  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `add` (extend)
-  — each mode body loads on demand from `references/mode-*.md`.
+  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `ultra`
+  (full plus one deeply specified file per phase — explicit keyword only, never inferred),
+  `add` (extend) — each mode body loads on demand from `references/mode-*.md`.
   If a game-design workspace exists, planning resolves **flow-first** (*intent decides the
   door* — a flow-named request grounds on the flow, a system-named one on the system,
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the
   system's `AC-<id>`s.
-- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/{TASKS.md,PLAN-BRIEF.md}`.
+- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/PLAN.md` — or, in
+  ultra, that folder's manifest plus its `phase-NN-*.md` files.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 
 ### unikit-improve
@@ -95,7 +99,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
 - **In:** the latest plan, or `@<folder>`, or a phase/task selector. Bootstraps rules once, then
   codes inline.
-- **Out:** project source code; updates `TASKS.md` checkboxes.
+- **Out:** project source code; updates the plan manifest's checkboxes.
 - **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
   `/unikit-verify` / `/unikit-commit`.
 

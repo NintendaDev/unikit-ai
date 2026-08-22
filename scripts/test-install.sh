@@ -185,6 +185,17 @@ assert_contains "$GATE_CONTRACT_PATH" 'unikit-gate-result' \
   "gate-result-contract.md carries the unikit-gate-result fence name"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-ur: ultra-plan-read.md installed as a system asset (flat copy, no vars)
+# Engine- and agent-agnostic, modeled on installGateResultContract. It is a system asset
+# rather than a skill reference because FOUR skills read it (implement/verify/improve/commit)
+# and references/ is per-skill — the alternative is four copies, and a copy drifts.
+# ─────────────────────────────────────────────────────
+ULTRA_READ_PATH="$CLAUDE_DIR/.unikit/system/ultra-plan-read.md"
+assert_exists "$ULTRA_READ_PATH" "ultra-plan-read.md created in .unikit/system/"
+assert_contains "$ULTRA_READ_PATH" 'unikit:plan-mode:ultra' \
+  "ultra-plan-read.md carries the bundle marker it tells consumers to look for"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal

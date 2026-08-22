@@ -19,7 +19,7 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, GAMEDESIGN_MODULE_ID,
   GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
   MCP_STAMP_SERVER_KEY,
   systemDir, systemGamedesignDir, systemGamedesignGenresDir, systemEngineMcpDir,
@@ -108,6 +108,31 @@ export async function installGateResultContract(projectDir: string): Promise<voi
 
   await writeTextFile(destPath, content);
   logInfo('installGateResultContract', 'installed .unikit/system/gate-result-contract.md');
+}
+
+// --- Ultra plan bundle reader contract ---
+
+/**
+ * Reader contract for an ultra plan bundle — a flat copy from
+ * `data/ultra-plan-read.md` with NO substitution (engine- and agent-agnostic).
+ * NOT hash-tracked — every init/update rewrites it. It is a system asset rather
+ * than a skill reference because FOUR skills read it (/unikit-implement,
+ * /unikit-verify, /unikit-improve, /unikit-commit) and `references/` is
+ * per-skill: the alternative is four copies, and a copied contract drifts.
+ */
+export async function installUltraPlanReadContract(projectDir: string): Promise<void> {
+  const srcPath = path.join(getDataDir(), ULTRA_PLAN_READ_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, ULTRA_PLAN_READ_FILE);
+
+  const content = await readTextFile(srcPath);
+  if (!content) {
+    logWarn('installUltraPlanReadContract', 'ultra-plan-read.md not found in data/, skipping');
+    return;
+  }
+
+  await writeTextFile(destPath, content);
+  logInfo('installUltraPlanReadContract', 'installed .unikit/system/ultra-plan-read.md');
 }
 
 // --- Dev Principles installation ---

@@ -10,8 +10,10 @@ description: >-
   framework should we use", "how do I implement this in code", "compare these technical
   approaches", "how does this code work", "investigate this error deeply". Research and
   analysis only — it never writes code. This is the CODE / engineering explorer — for
-  GAME-DESIGN, GDD, mechanics, or balance research (no code) use /unikit-gd-explore.
-argument-hint: "init | [topic, system name, or question]"
+  GAME-DESIGN, GDD, mechanics, or balance research (no code) use /unikit-gd-explore. The
+  explicit `ultra` token adds adaptive artifacts (C4 view, ADRs, dependency graph) to the
+  research folder; it is never inferred.
+argument-hint: "init | ultra | [topic, system name, or question]"
 allowed-tools:
   - Read
   - Glob
@@ -29,7 +31,7 @@ allowed-tools:
 user-invocable: true
 metadata:
   author: unikit
-  version: "2.1"
+  version: "2.2"
   category: research
 ---
 
@@ -233,6 +235,7 @@ Without this context you'll give generic {{engine_name}} advice instead of advic
 
 The argument after `/unikit-explore` can be:
 - **`init`** — a special command that rebuilds `researches/INDEX.md` (see [Init: Rebuilding the Researches Index](#init-rebuilding-the-researches-index))
+- **`ultra`** — the leading token switches on adaptive research artifacts. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` and follow it when saving. Everything before saving — the stance, the exploration itself — is unchanged. `ultra` is recognised **only** as the leading token; it is never inferred from the size or difficulty of the topic.
 - A vague idea: "object pooling system"
 - A specific problem: "the save system is getting unwieldy"
 - A system name: to explore its architecture
@@ -243,6 +246,8 @@ The argument after `/unikit-explore` can be:
 - Nothing: just enter explore mode
 
 If the argument is exactly `init`, skip all exploration logic and execute the init workflow below. Then stop — do not enter explore mode.
+
+If the leading token is `ultra`, strip it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. `ultra` with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
 
 ### Exploration mode detection
 
@@ -323,7 +328,11 @@ If the user agrees:
    mkdir -p .unikit/code/researches/<generated-folder-name>
    ```
 
+   **In ultra mode**, follow the write order in `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md`: the adaptive artifacts first, `RESEARCH_RESULT.md` second. Writing the index of artifacts before the artifacts would point its links at files that do not exist yet.
+
 3. Write `RESEARCH_RESULT.md` — the complete research with ALL diagrams, detailed descriptions, analysis, comparisons, and everything that was discussed and presented to the user during the exploration:
+
+   **In ultra mode**, the very first line of the file is the research mode marker `<!-- unikit:research-mode:ultra -->`, and a `## Artifact Index` section follows immediately after `## Table of Contents`. Both are specified in `references/ULTRA-RESEARCH-FORMAT.md`; neither is restated here.
 
 ```markdown
 # <Research Title>
@@ -334,6 +343,7 @@ Status: completed | in-progress | needs-follow-up
 Research: <folder-name>
 
 ## Table of Contents
+- [Artifact Index](#artifact-index) — ultra mode only; omit this line in a standard research
 - [Topic](#topic)
 - [Context](#context)
 - [Exploration](#exploration)
@@ -396,7 +406,8 @@ The `RESEARCH_RESULT.md` should be a comprehensive document that anyone can read
 
    a. Read the template from `{{skills_dir}}/{{self_name}}/references/explore-brief-template.md`
    b. Read the filling rules from `{{skills_dir}}/{{self_name}}/references/explore-brief-prompt.md`
-   c. Fill the template using the research findings from `RESEARCH_RESULT.md`, following the filling rules
+   c. Fill the template using the research findings from `RESEARCH_RESULT.md`, following the filling rules.
+      **In ultra** the source is `RESEARCH_RESULT.md` **and** the adaptive artifacts that were created — in the part of them that changes requirements, constraints, interfaces or patterns. Lifting those conclusions into the brief is mandatory before the folder is handed to `/unikit-plan` (`references/ULTRA-RESEARCH-FORMAT.md`); the artifact keeps the reasoning, the brief carries the requirement.
    d. Write the result to `.unikit/code/researches/<folder-name>/RESEARCH_BRIEF.md`
 
    **Language Awareness for RESEARCH_BRIEF.md**: The `RESEARCH_BRIEF.md` follows the same language rules as other artifacts. When the configured language is not English, translate ALL section headings and ALL prose/comment content into the target language. Only code identifiers, code blocks, file paths, and table data (paths, types) stay in English.
@@ -483,6 +494,27 @@ After saving a research, update `.unikit/code/researches/INDEX.md` so other skil
 
 5. The **Status** field matches the `Status:` line in `RESEARCH_RESULT.md`.
 
+6. The top-level index does **not** record the research mode. A consumer that needs it reads the first line of `RESEARCH_RESULT.md`; `/unikit-plan` does not need it at all — it reads `RESEARCH_BRIEF.md`.
+
+### Research Coherence Gate
+
+After **all** writing is done — the artifacts, the three canonical files and
+`researches/INDEX.md` — and **before** confirming the save to the user, read
+`{{skills_dir}}/{{self_name}}/references/coherence-gate.md` and run the gate it specifies.
+The read is conditional: this is the only moment the file is needed, so it is not loaded at
+the start of an exploration.
+
+The order matters in both directions. The gate re-reads the durable files from disk, so
+running it before the write has nothing to read; and confirming before it runs tells the
+user the research is safe while it may still be incoherent.
+
+In ultra the gate runs **after** the bundle integrity checks, not instead of them.
+
+If `references/coherence-gate.md` cannot be read, print one line
+`WARN [coherence] reference missing — saving without the coherence pass` and continue — the
+same trade as the ultra reference above: the research has already been done and written, and
+losing it over a missing reference file is not acceptable.
+
 ### Important rules for saving
 
 - **Don't auto-save** — Always offer and let the user decide
@@ -491,6 +523,7 @@ After saving a research, update `.unikit/code/researches/INDEX.md` so other skil
 - **Generate RESEARCH_BRIEF.md** — always create the structured brief alongside RESEARCH_RESULT.md
 - **Generate RESEARCH_SOURCE.md** — for prompt-based explorations only (see [RESEARCH_SOURCE.md for prompt-based explorations](#research_sourcemd-for-prompt-based-explorations))
 - **Always update researches/INDEX.md** — this is how other skills discover researches
+- **Run the coherence gate** — it is part of saving, not an option. It runs *after* the user has agreed to save, so it neither replaces the question nor weakens `Don't auto-save`
 - The user may edit the suggested name before you save
 
 ---
@@ -498,6 +531,8 @@ After saving a research, update `.unikit/code/researches/INDEX.md` so other skil
 ## Init: Rebuilding the Researches Index
 
 When the argument is exactly `init`, synchronize `.unikit/code/researches/INDEX.md` with the actual contents of `.unikit/code/researches/`. This is a maintenance command — no exploration, no questions, just sync and report.
+
+Rebuilding reads `RESEARCH_RESULT.md` only. Adaptive artifacts in a folder are neither read nor listed by `init` — the top-level index registers researches, not the files inside one. A folder carrying extra `.md` files is normal and must **not** be reported as malformed.
 
 ### Algorithm
 
@@ -669,7 +704,7 @@ When it feels like things are crystallizing, you might summarize:
 
 **Next steps** (if ready):
 - Save research: I'll create a research record
-- Create a plan: /unikit-plan [fast|full] <description>
+- Create a plan: /unikit-plan [fast|full|ultra] <description>
 - Keep exploring: just keep talking
 ```
 

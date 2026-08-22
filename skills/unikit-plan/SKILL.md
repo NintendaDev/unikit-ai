@@ -2,15 +2,17 @@
 name: unikit-plan
 description: >-
   Create an implementation plan for a feature — a dependency-ordered, actionable task
-  list for the project. Has three modes: fast (a quick single-pass plan), full (a richer
-  plan that can also create a git branch), and add (extend an existing plan with more
-  tasks). Pick the mode from the user's wording: "full plan" runs full; "quick plan" or
+  list for the project. Has four modes: fast (a quick single-pass plan), full (a richer
+  plan that can also create a git branch), ultra (an opt-in multi-file bundle), and add
+  (extend an existing plan with more tasks). Pick the mode from the user's wording: "full plan" runs full; "quick plan" or
   "fast plan" runs fast; a plain "create a plan" with no qualifier defaults to fast; "add
   to the plan" or "extend the plan" runs add. Use whenever the user wants to plan a
   feature or task, e.g. "create a plan", "create a full plan", "create a quick plan",
   "plan this feature", "just plan this", "add this to the plan", "extend the plan", "add
-  a phase to the plan".
-argument-hint: "[fast | full | add | --list] [--base <branch>] <feature description in free form>"
+  a phase to the plan". The `ultra` keyword — and only that explicit keyword — produces a
+  multi-file bundle (a manifest plus one deeply specified file per phase) for later
+  execution by a smaller model; it is never chosen for you.
+argument-hint: "[fast | full | ultra | add | --list] [--base <branch>] <feature description in free form>"
 allowed-tools:
   - Read
   - Write
@@ -21,6 +23,8 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(git *)
+  - Bash(shasum *)
+  - Bash(sha256sum *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -28,7 +32,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "7.2"
+  version: "7.5"
   category: planning
 ---
 
@@ -36,30 +40,34 @@ metadata:
 
 Create a structured feature plan and roadmap for the current {{engine_name}} project.
 
-Three modes:
+Four modes:
 - **Fast** — quick plan, no git branch, saves to `.unikit/code/PLAN.md`
 - **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<dated-folder>/`
+- **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. Reached **only** by the explicit `ultra` keyword — never offered, never inferred
 - **Add** — modify/extend an existing plan without creating a branch
 
 **Output artifacts by mode:**
 
 **Fast mode** → single flat file `.unikit/code/PLAN.md`:
-- Contains everything: overview, settings, checklist, commit plan, dependency graph, and a `## Technical Context` section with plan-brief content (always generated based on current codebase state).
+- **`.unikit/code/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
 - Temporary plan for quick work — `/unikit-implement` may offer deletion after completion.
 
 **Full mode** → folder `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/`:
-- **`TASKS.md`** — actionable checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph.
-- **`PLAN-BRIEF.md`** — always created. Structured technical brief (constraints, interfaces, key patterns, dependency graph, files) for the implementing agent, based on current codebase state at planning time.
+- **`.unikit/code/plans/<folder>/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
 
-When a research is linked (from `/unikit-explore`), the plan references it via `## Based on` using the Research Reference Format below. The research's `RESEARCH_BRIEF.md` is used as **input** for generating the plan's own `PLAN-BRIEF.md`, not as a replacement. This ensures the plan's brief reflects the actual codebase state at planning time, which may differ from exploration time.
+**Ultra mode** → the same folder, additively:
+- **`.unikit/code/plans/<folder>/PLAN.md`** — the same manifest, carrying the mode marker plus `## Phase Index` and `## Cross-Phase Dependencies`, with `## Technical Context` reduced to its cross-phase part.
+- **`phase-NN-<slug>.md`** — one file per phase, holding the task-scoped detail. The canonical shape of both is `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`.
+
+When a research is linked (from `/unikit-explore`), the plan references it via `## Based on` using the Research Reference Format below. The research's `RESEARCH_BRIEF.md` is used as **input** for generating the plan's own `## Technical Context`, not as a replacement — the plan's section reflects the actual codebase state at planning time and supersedes the research brief.
 
 ### Research Reference Format
 
-Standard block for `## Based on` when linking to a research. Each research entry includes an `Attached` timestamp (`YYYY-MM-DD HH:MM`) — this is the moment the research was linked to the plan. `/unikit-improve` uses `Attached` to detect if the research was updated after linking.
+Standard block for `## Based on` when linking to a research. Each entry records the SHA256 of the research's `RESEARCH_BRIEF.md` as it was at linking time. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute it to detect that the research actually changed — a content signal, not a clock comparison. The plan does **not** copy the brief: the plan's own `## Technical Context` is already a snapshot, and it is a better one because it was checked against the current code.
 
 ```
 ### YYYY-MM-DD_name
-- **Attached**: YYYY-MM-DD HH:MM
+- **Brief SHA256**: <64 hex chars>
 - `RESEARCH_BRIEF.md` — structured technical context
 - `RESEARCH_RESULT.md` — full research (consult when brief is unclear)
 - `RESEARCH_SOURCE.md` — original exploration dialogue (only include if file exists)
@@ -69,11 +77,45 @@ Full paths are resolved from `.unikit/code/researches/<folder-name>/`. Example:
 
 ```
 ### 2026-03-15_customer-items-on-scene
-- **Attached**: 2026-03-15 16:30
+- **Brief SHA256**: 9f2c1d4e7a05b83c6e1f0a94d27b5c38ea6417d9b0c25f83a1e46d7c92b0f5a1
 - `RESEARCH_BRIEF.md` — structured technical context
 - `RESEARCH_RESULT.md` — full research (consult when brief is unclear)
 - `RESEARCH_SOURCE.md` — original exploration dialogue
 ```
+
+**What is hashed: `RESEARCH_BRIEF.md`, whole, and nothing else.**
+
+The rule is: hash the requirements, never the log. A research file that mixes declared requirements with an append-only session log has to be hashed section by section, behind start/end markers, or every append reports drift that did not happen. UniKit already separates the two **by file**, so the same decision needs no markers here:
+
+| File | Role | Hashed |
+|------|------|--------|
+| `RESEARCH_BRIEF.md` | the planner's declared input — constraints, interfaces, patterns, files | **yes, whole** |
+| `RESEARCH_RESULT.md` | the full research; carries an `Updated:` line that changes on every revision | no — a record, and its timestamp is exactly the volatile field a hash must not see |
+| `RESEARCH_SOURCE.md` | the dialogue log (prompt-based explorations only) | no — a log. This skill reads it for context, and that is **not** a reason to hash it: any appended clarification would fire drift with the requirements unchanged |
+
+Do not add start/end markers to the brief to "match" some other format. The file split is the marker.
+
+**Computing the hash.** Normalize, then hash — never hash the raw bytes:
+
+1. Strip a leading **UTF-8 BOM** if present.
+2. LF line endings — strip every carriage return (`CR`, byte `0x0D`).
+3. Trim trailing spaces from every line.
+4. Exactly **one final newline**.
+5. **Preserve line order and leading whitespace.** This is a prohibition, not a transformation: the brief carries fenced code blocks and an indented `## DEPENDENCY GRAPH`, and any well-meaning re-indentation breaks every hash that was ever recorded.
+
+Feed the normalized text through **stdin, never a temp file**: `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum` when `shasum` is unavailable.
+
+HTML comments are **kept** in the hashed text. There is no pasted copy of the brief anywhere in the plan, so there is nothing to align the digest with. The brief's template comments are stable text: the template ships via `unikit-ai update`, existing briefs are project files and are never re-delivered, so a template edit cannot retroactively flip an already-recorded hash.
+
+Rejected alternative: `git hash-object` would reuse the existing `Bash(git *)` grant instead of adding two, and `.unikit/` is not gitignored so the brief is normally tracked. It is SHA-1 with a blob header — the field says SHA256 — and it would make the check depend on git while this skill explicitly supports `git.enabled: false`.
+
+**When no hash tool is available.** If neither `shasum` nor `sha256sum` runs, **omit the `Brief SHA256` line entirely** and print one line to the user:
+
+```
+WARN [research] no SHA256 tool available — drift detection disabled for this link
+```
+
+Do not write a placeholder and do not substitute a timestamp: an absent field is honester than a field that looks like a hash and is not one. The same applies when a linked research has no `RESEARCH_BRIEF.md` — omit the line and print `WARN [research] <folder>: no RESEARCH_BRIEF.md`. Neither branch blocks plan creation: drift detection is a convenience, not a gate.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -96,15 +138,18 @@ alternative.
 
 ## Input
 
-`$ARGUMENTS` — optional keyword `full`, `fast`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language.
+`$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language.
 
 **Parsing rules:**
 1. Extract `--base <branch>` if present anywhere in arguments → store as `base_branch`, remove from text
 2. If `--list` is present → list mode, show all plans and STOP
 3. If the first word (after flag removal) is `full` → full mode, remaining text is the feature description
 4. If the first word is `fast` → fast mode, remaining text is the feature description
-5. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
-6. Otherwise → ask interactively, entire text is the description
+5. If the first word is `ultra` → ultra mode, remaining text is the feature description
+6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
+7. Otherwise → ask interactively, entire text is the description
+
+`ultra` is recognised **only** as the leading mode token. It is never inferred from the description, never offered in Step 0.2, and never selected because the feature looks large.
 
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
@@ -116,6 +161,7 @@ alternative.
 /unikit-plan full Item appraisal system                    → mode: full, base: HEAD, description: "Item appraisal system"
 /unikit-plan full --base master Item appraisal system      → mode: full, base: master, description: "Item appraisal system"
 /unikit-plan fast Item appraisal system                    → mode: fast, description: "Item appraisal system"
+/unikit-plan ultra Item appraisal system                   → mode: ultra, base: HEAD, description: "Item appraisal system"
 /unikit-plan add Add error handling phase                  → mode: add, description: "Add error handling phase"
 /unikit-plan Item appraisal system                         → mode: ?, ask user
 ```
@@ -178,7 +224,7 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
    AskUserQuestion: Describe the feature you want to plan.
    ```
 
-**If no mode keyword** (`full`/`fast`/`add`) is found:
+**If no mode keyword** was found by the Step 0 parsing rules:
 
 If the description was already resolved above → ask only about the mode:
 ```
@@ -202,9 +248,11 @@ Based on choice:
 - Full → full mode (the Full-mode additional steps load in Step 1.5)
 - Fast → fast mode (the Fast-mode additional step loads in Step 1.5)
 
+Ultra is deliberately absent from this question — see the parsing rules in Step 0.
+
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
-Before any exploration or planning — silently load the project knowledge base. Do NOT narrate the loading process to the user. Runs for fast, full, and add modes.
+Before any exploration or planning — silently load the project knowledge base. Do NOT narrate the loading process to the user. Runs in every mode named by this step's heading.
 
 #### Required reads (always, every time, in parallel)
 
@@ -276,7 +324,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
 **Fast mode** → skip steps 3-5 below. The plan goes to `.unikit/code/PLAN.md` (flat file, no folder).
 
-**Full mode** → continue:
+**Full and ultra modes** → continue:
 
 3. **Get today's date** in `YYYY-MM-DD` format.
 4. Compose the folder name: `{YYYY-MM-DD}_{feature-name}` (e.g. `2026-03-10_item-appraisal-system`)
@@ -292,18 +340,22 @@ ls .unikit/code/plans/
 ### Step 1.5: Load the Mode Body
 
 The shared preamble (Steps 0–1) is done. Load the selected mode's reference body
-on demand — do **not** keep all four mode bodies in context at once:
+on demand — do **not** keep all five mode bodies in context at once:
 
 - **Full mode** → load `{{skills_dir}}/{{self_name}}/references/mode-full.md`, run its
   additional steps (git branch, recon, preferences), then continue to the Shared Steps below.
 - **Fast mode** → load `{{skills_dir}}/{{self_name}}/references/mode-fast.md`, run its
   preferences step, then continue to the Shared Steps below.
+- **Ultra mode** → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md`, run its
+  additional steps A-C (git branch, recon, preferences), then continue to the Shared Steps
+  below. Steps D-H of that body run later — they replace Step 5 and Step 6 of the shared
+  workflow, so do **not** run them here.
 
 (`--list` and `add` modes already dispatched in Step 0 to their own bodies — `mode-list.md` / `mode-add.md` — and STOP; they never reach here.)
 
 ---
 
-## Shared Steps (both modes)
+## Shared Steps (all planning modes)
 
 ### Step 2: Check for Related Researches
 
@@ -349,7 +401,7 @@ Highlight the most relevant entries in the question text (e.g., "Recommended: #1
    - Read its `RESEARCH_BRIEF.md` and `RESEARCH_SOURCE.md` (if exists) for technical context
    - Use as planning context and as **starting point** for Phase B deep-dive — reduces scope of Explore tasks in Step 4
    - Mark `research_linked = true` and store research path for `## Based on` (uses Research Reference Format)
-   - `PLAN-BRIEF.md` is still created in Step 5 — research brief is used as input, not replacement (the plan's brief reflects the actual codebase state at planning time)
+   - The plan's `## Technical Context` is still generated in Step 5 — research brief is used as input, not replacement (the section reflects the actual codebase state at planning time)
 
 ### Step 3: Analyze Requirements
 
@@ -372,7 +424,7 @@ Wait for answers before proceeding. Do not plan based on assumptions when the de
 ### Step 4: Explore the Codebase & Technical Design
 
 This is the most critical step. The goal is to produce a **deep technical understanding** sufficient
-for writing actionable tasks with meaningful WHY context and for generating a `PLAN-BRIEF.md` that reflects the actual codebase state at planning time.
+for writing actionable tasks with meaningful WHY context and for generating a `## Technical Context` that reflects the actual codebase state at planning time.
 
 You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to write precise prompts for Explore tasks and to synthesize their results against project conventions.
 
@@ -426,7 +478,7 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
 
 #### Phase B: Technical Deep-Dive (Explore agent)
 
-**Always runs** — produces `PLAN-BRIEF.md` content based on the current codebase state.
+**Always runs** — produces the plan's `## Technical Context` content based on the current codebase state.
 
 When `research_linked = true`: use `RESEARCH_BRIEF.md` as a **starting point** for the deep-dive. The research brief provides initial constraints, interfaces, and patterns — but Phase B verifies them against the actual code and updates/extends as needed. This ensures the plan's brief is fresh and accurate even if the codebase changed since the research was conducted.
 
@@ -438,11 +490,34 @@ Launch an Explore task for detailed technical analysis using findings from Phase
 3. Identify patterns the new feature must follow (naming, structure, registration)
 4. Find constraints — what is MUST vs FORBIDDEN based on existing code
 
-Return format: structured report matching the Plan Brief Template sections from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`. Do not guess — base on actual code read. Thoroughness: very thorough.
+Return format: structured report matching the `## Technical Context` section of the Plan Manifest Template in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`. Do not guess — base on actual code read. Thoroughness: very thorough.
 
 **Fallback:** If Agent tool is unavailable, perform analysis inline using Read.
 
-Synthesize the task's findings with Bootstrap rules to produce `PLAN-BRIEF.md` content.
+Synthesize the task's findings with Bootstrap rules to produce the plan's `## Technical Context` content.
+
+#### Ultra depth gate (ultra mode only)
+
+In ultra, reconnaissance is **not finished** until the plan has code-level evidence for
+**every** phase:
+
+- relevant existing paths and symbols
+- callers/consumers and side effects
+- exact integration and configuration points
+- existing tests, fixtures, commands, logging, migration, and documentation patterns
+
+This is the material the phase file's `## Current-Code Evidence` table and its
+`### Implementation Steps` are written from. Thin reconnaissance does not survive the
+detail floor — it is rejected by `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`
+→ `## Required Detail Gate`.
+
+**Do not paste entire source files into phase plans.** Cite only the evidence that makes the
+implementation steps deterministic. A file pasted whole goes stale on the first edit made
+against it, and it reads as more authoritative than a path-and-symbol citation while being
+less true.
+
+When evidence for a phase cannot be gathered, the decision goes into the manifest's
+`## Open Questions` as a blocking question — it is never hidden behind a vague step.
 
 #### Phase C: Additional context
 
@@ -488,37 +563,46 @@ That is the entire question. **Not** which tool does it, **not** how it is calle
 
 ### Step 5: Create the Plan
 
-Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
+- **Fast and full** — use the canonical templates from
+  `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
+- **Ultra** — the canonical source of templates and integrity checks is
+  `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md` and nothing else.
+  `TASK-FORMAT.md` describes the single-file format and applies only where the bundle
+  specification explicitly points back at it.
 
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
-- **Full mode** → `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
+- **Full mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
+- **Ultra mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
 
-#### Plan Sections (both modes)
+In ultra, Step 5 is carried out by `mode-ultra.md` Steps D-G — the section list below still
+applies to the manifest, minus the task-level subsections of `## Technical Context`.
+
+#### Plan Sections (all planning modes)
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
-2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Set `Attached` to the current timestamp (`YYYY-MM-DD HH:MM`). After all research entries, add "`PLAN-BRIEF.md` (in this folder)" for full mode or "see `## Technical Context` section below" for fast mode.
-   If no research: fast mode → "see `## Technical Context` section below"; full mode → "`PLAN-BRIEF.md` (in this folder)."
+2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Compute `Brief SHA256` for each linked research per the procedure above. After all research entries, add "see the `## Technical Context` section below".
+   If no research: "see the `## Technical Context` section below".
 
    **`## Design`** (game-design module — only when `design_linked = true`) — insert the
    design snapshot prepared in Step 4.5 directly after `## Based on`: System + `SYS-id`,
-   version, optional delta, and cited Acceptance Criteria. In full mode it lives in
-   `PLAN-BRIEF.md`; in fast mode it goes into `PLAN.md`. Omit this section entirely for
-   pure-code plans (`design_linked = false`).
+   version, optional delta, and cited Acceptance Criteria. It lives in the plan manifest,
+   directly after `## Based on`. Omit this section entirely for pure-code plans
+   (`design_linked = false`).
 
    **`## Flow Context`** (game-design module — only when a flow is in scope: the flow door,
    or a flow that exercises the resolved system; from Step 4.5 / `design-context.md`) — insert
    the flow brief directly after `## Design`: the `FLOW-id` + wiring-mode, the `GOAL` steps
    touching the relevant system(s), the code shape implied by the mode, and the derived
-   (read-only) `Realized` state. Same file placement as `## Design`. Omit when no flow is in scope.
+   (read-only) `Realized` state. Same placement as `## Design`, in the plan manifest. Omit when no flow is in scope.
 
    **`## Content Context`** (game-design module — only when a content type is in scope: the
    content door, or a content type that feeds the resolved system; from Step 4.5 /
    `design-context.md` §4.5.6) — insert the content brief directly after `## Flow Context`: the
    `CT-id` + `scale`, the `CT.fields` schema (the data contract the code reads), the `belongs_to`
    system, and the code shape implied by `scale` (`bulk` → a data-driven loader; `curated` → named
-   instances). Same file placement as `## Design`. Omit when no content type is in scope. There is
+   instances). Same placement as `## Design`, in the plan manifest. Omit when no content type is in scope. There is
    **no** writeback — content has no `implemented_version` (read-only, the same stance as a flow's
    `Realized`).
 
@@ -559,25 +643,21 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 
 9. **`## Total Estimated Effort`** — sum of all phases.
 
-#### Fast Mode: Additional Section
+10. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **fast and full** all nine live in the one plan file. In **ultra** the section shrinks to its cross-phase part — `CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE` — and the remaining five are distributed into the phase files by the one rule that decides every case: **cross-phase goes in the manifest, task-scoped goes in the phase** (`{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`). Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
-10. **`## Technical Context`** — always included. Contains plan-brief content inline (CONSTRAINTS, INTERFACES, KEY PATTERNS, FILES, **EDITOR TARGETS**, DI BINDINGS, OUT OF SCOPE). `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. Same quality bar as PLAN-BRIEF.md. When `research_linked = true`, use the research brief as a starting point but verify and update based on the current codebase state from Phase B.
+   When `research_linked = true`: use `RESEARCH_BRIEF.md` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `## Technical Context` is the authoritative source for `/unikit-implement` — it supersedes the research brief.
 
-#### Full Mode: `PLAN-BRIEF.md` (always created)
+   **Quality checklist:**
+   1. CONSTRAINTS — non-obvious decisions with rationale (MUST / FORBIDDEN)
+   2. INTERFACES — full {{engine_code_language}} signatures for every interface in tasks
+   3. KEY PATTERNS — code examples for patterns the implementer must follow
+   4. FILES — exact paths for files to create/modify
+   5. EDITOR TARGETS — one row per `Editor:` target in the checklist (Kind / Container / Target / Change); the section is omitted entirely when the plan has no `Editor:` task
+   6. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
 
-**Always created** — the plan's own technical brief based on the current codebase state at planning time. Use Plan Brief Template from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`. Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns.
+   Self-check: if an interface appears in the tasks but not in `### INTERFACES` — add it; likewise for an `Editor:` target missing from `### EDITOR TARGETS`. In **fast and full** both subsections sit in the plan file and the check runs inside that one file. In **ultra** both live in the phase file of the task that owns them, and the check runs between the manifest checklist and that phase file. Do **not** pull either subsection back into the manifest to make the check easier — that is the distribution rule reversed.
 
-When `research_linked = true`: use `RESEARCH_BRIEF.md` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `PLAN-BRIEF.md` is the authoritative source for `/unikit-implement` — it supersedes the research brief.
-
-**Quality checklist:**
-1. CONSTRAINTS — non-obvious decisions with rationale (MUST / FORBIDDEN)
-2. INTERFACES — full {{engine_code_language}} signatures for every interface in tasks
-3. KEY PATTERNS — code examples for patterns the implementer must follow
-4. FILES — exact paths for files to create/modify
-5. EDITOR TARGETS — one row per `Editor:` target in the checklist (Kind / Container / Target / Change); the section is omitted entirely when the plan has no `Editor:` task
-6. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
-
-Self-check: if an interface appears in tasks but not in INTERFACES — add it. Likewise, if an `Editor:` target appears in tasks but not in EDITOR TARGETS — add it.
+11. **`## Open Questions`** (optional, last section of the manifest) — uncertainties the planning pass could not close, one line each. Written **after** `## Technical Context` so it stays outside the `## MCP Findings` window (which runs from that heading to the next `##`). `unikit-plan-polisher` writes its leftovers here; omit the section entirely when there are none.
 
 ### Step 6: Confirm with User
 
@@ -594,12 +674,16 @@ After artifacts are created, show the user:
 **Full mode:**
 1. The feature folder path created
 2. The git branch name (only if `branch_created = true`; if `false`, show current branch name instead)
-3. Files created: `TASKS.md` and `PLAN-BRIEF.md`, plus research reference if linked
+3. File created: `.unikit/code/plans/<dated-folder>/PLAN.md`, plus research reference if linked
 4. A brief summary of phases identified
 5. Total estimated effort
 6. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
 7. Remind: "To start implementation, run: `/unikit-implement`"
 8. Ask if they want to adjust anything
+
+**Ultra mode:** the full-mode items above, plus the bundle-specific items in
+`mode-ultra.md` Step H (phase-file count, task count, integrity result, and the
+not-implementation-ready line when blocking open questions exist).
 
 ### Step 7: Context Cleanup
 
@@ -607,7 +691,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 
 ## Task Description Requirements
 
-Every task in `TASKS.md` MUST include:
+Every task in the plan manifest MUST include:
 - **Clear deliverable** — what exactly is produced (class, interface, configuration, etc.)
 - **WHY line** — one sentence explaining why this task matters in the context of the feature
 - **File paths** — where changes will be made or files created (use `Files:` line under the task)
@@ -648,8 +732,8 @@ Bad examples:
 8. **Actionable tasks** — each task must have a clear, concrete deliverable
 9. **Respect module boundaries** — follow the project's Modular Monolith architecture (Modules/ → Game/ allowed, Game/ → Modules/ FORBIDDEN)
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
-11. **Always create PLAN-BRIEF.md** — even when a research's `RESEARCH_BRIEF.md` exists, the plan always generates its own `PLAN-BRIEF.md` (full mode) or `## Technical Context` (fast mode) based on the current codebase state. The research brief is used as input, not as a replacement — code may have changed since the research was conducted. The plan's brief is the authoritative source for `/unikit-implement`
-12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/TASKS.md` + `PLAN-BRIEF.md`
+11. **Always generate `## Technical Context`** — even when a research's `RESEARCH_BRIEF.md` exists, the plan generates its own section based on the current codebase state. The research brief is input, not a replacement; the plan's section is the authoritative source for `/unikit-implement`
+12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
 13. **`Editor:` marks serialized editor state, nothing else** — write an `Editor:` line **if and only if** the change touches the editor's **serialized state**; a plain text or config file stays in `Files:` (the same criterion as `.unikit/system/dev-principles.md` → Layer A, **A8 · "Serialized state is the boundary"**). Engine-specific signals live in `references/ENGINE_RULES.md` §3; when that file is absent, the field is not generated at all
 14. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
 15. **A plan is intent, not inventory — no tool name ever reaches it** — the plan says *what has to be true*, never *what to call*. Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else: a name in a plan is a name that will be wrong by the time the plan is executed, and it silently overrides the executor's own discovery. This also settles the reverse: the planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance
@@ -662,8 +746,9 @@ Use **Explore tasks** for codebase analysis — not `unikit-devcontext` or `deve
 ## Quick Reference
 ```
 /unikit-plan fast <description>           → .unikit/code/PLAN.md
-/unikit-plan full <description>           → .unikit/code/plans/YYYY-MM-DD_name/ (TASKS.md + PLAN-BRIEF.md)
+/unikit-plan full <description>           → .unikit/code/plans/YYYY-MM-DD_name/PLAN.md
 /unikit-plan full --base master <desc>    → same, branch from master
+/unikit-plan ultra <description>          → .unikit/code/plans/YYYY-MM-DD_name/ (PLAN.md + phase-NN-*.md)
 /unikit-plan add <what to change>         → modifies existing plan in-place
 /unikit-plan <description>                → asks Full or Fast interactively
 ```

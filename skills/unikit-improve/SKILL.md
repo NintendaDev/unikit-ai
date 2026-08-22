@@ -17,12 +17,14 @@ allowed-tools:
   - Bash(ls *)
   - Bash(find *)
   - Bash(wc *)
+  - Bash(shasum *)
+  - Bash(sha256sum *)
   - Agent
   - AskUserQuestion
   - Skill
 metadata:
   author: unikit
-  version: "2.1"
+  version: "2.5"
   category: planning
 ---
 
@@ -52,7 +54,7 @@ alternative.
 ## Core Idea
 
 ```
-existing feature plan (TASKS.md + PLAN-BRIEF.md)
+existing feature plan (the PLAN.md manifest)
     + project rules (Bootstrap: RULES_INDEX → core/stack rules)
     + deeper codebase analysis via Explore tasks (with doc references)
     + user feedback (optional)
@@ -73,7 +75,7 @@ This skill is a **plan refinement orchestrator**, not a code writer. It loads pr
 **Do NOT use `/unikit-devcontext` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`). Plan refinement needs code reading and analysis, not code writing.
 
 **What you CAN do directly** (without Explore tasks):
-- Read any `.md` documentation files (`TASKS.md`, `PLAN-BRIEF.md`, `.unikit/*.md`)
+- Read any `.md` documentation files (the plan manifest, `.unikit/*.md`)
 - **Lightweight structural queries** via Glob/Grep — checking if a file/folder exists, listing `.asmdef` names, counting files matching a pattern, verifying a namespace or class name is present
 
 **What you MUST delegate to Explore tasks:**
@@ -104,8 +106,9 @@ When both `--list` and `@<path>` are present, `--list` wins and no refinement is
 If `$ARGUMENTS` contains `@<path>`:
 
 1. Resolve the path (relative to project root; absolute paths allowed)
-2. If the path is a directory containing `TASKS.md` and `PLAN-BRIEF.md` → use it
-3. If missing → show "Plan folder not found: `<path>`" and **STOP**
+2. If the path is a directory holding a plan manifest (`<path>/PLAN.md`) → use it
+3. If the path is a directory containing `TASKS.md` (a pre-merge plan) → tell the user to run `unikit-ai update` and **STOP**. Do not read or convert it here — `update` is the sole migrator, the same refuse-over-autofix principle `rules sync` applies with exit 8.
+4. If missing → show "Plan folder not found: `<path>`" and **STOP**
 
 Remaining argument text (after removing `@<path>`) is the improvement prompt.
 
@@ -124,7 +127,7 @@ If `$ARGUMENTS` contains `--list`, run read-only discovery and **STOP**:
 3. Get current branch:
    git branch --show-current
 4. Scan .unikit/code/plans/ for all feature folders (both YYYY-MM-DD_name and legacy DDD-name formats)
-5. For each, check if TASKS.md has uncompleted tasks (- [ ])
+5. For each, check if its .unikit/code/plans/<folder>/PLAN.md has uncompleted tasks (- [ ])
 6. Mark which folder matches the current git branch (if any):
    - Extract feature name from branch (e.g. feature/customers-system → customers-system)
    - Match folder ending with _<feature-name> (new format) or *-<feature-name> (legacy)
@@ -142,7 +145,7 @@ Current branch: feature/customers-system
     🔄 2026-03-09_customer-config-refactor (2 tasks remaining)
 
 Use:
-  /unikit-improve                                              # auto-detect (PLAN.md → branch → latest)
+  /unikit-improve                                              # auto-detect (.unikit/code/PLAN.md → branch → latest)
   /unikit-improve customers-system                             # by name
   /unikit-improve @.unikit/code/plans/2026-03-08_customers-system  # by path
 
@@ -202,6 +205,10 @@ If `$ARGUMENTS` is empty (no parameters):
 
 3. **Use the resolved plan.**
 
+**Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
+
+**Reading depth:** read the manifest plus **every** phase file — improvement is not local, and moving a task between phases touches two of them.
+
 ### Step 0.5: Bootstrap Context (MANDATORY)
 
 Before any analysis — silently load the project knowledge base. Do NOT narrate the loading process to the user.
@@ -216,18 +223,15 @@ Before any analysis — silently load the project knowledge base. Do NOT narrate
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **`.unikit/skill-context/{{self_name}}/SKILL.md`** — project-specific skill overrides (if exists)
 5. `.unikit/system/dev-principles.md` — engine development principles, read on **two** levels (used in Step 2.3/2.4 architectural consistency checks and in the Guard B pass, Step 3.3a). Everything **above** the LAZY-READ BOUNDARY is read here, every time: the evidence contract, the claim-class → evidence-class lattice, the nine failure-class names, phase order, the lane, and the `kind` / area vocabularies. The section **below** the boundary — the nine detectors in full and the catalog checklist — is read **once per session, on the first task that touches editor state**, and read **unconditionally**: never gated on which rules happen to be installed, because that is exactly where the universal safety net would disappear (A9).
+6. **`.unikit/system/ultra-plan-read.md`** — the reader contract for an ultra plan bundle: detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. Name it and follow it; never restate it here — one contract, one place.
+   **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 
 ### Step 1: Load Feature Plan
 
-**If using `.unikit/code/PLAN.md`** (fast-mode plan):
-- Read **`.unikit/code/PLAN.md`** — single file containing overview, checklist, settings, and optionally technical context inline
-
-**If using a folder plan** (`.unikit/code/plans/<folder>/`):
-- Read `TASKS.md` — feature overview (`## Overview`), task checklist with phases, settings, and dependencies
-- Read `PLAN-BRIEF.md` — technical context: constraints, interfaces, key patterns, dependency graph, files, DI bindings (if exists in plan folder)
-- If `TASKS.md` has a `## Based on` section → parse all linked research entries (folder name + `Attached` timestamp for each). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** `PLAN-BRIEF.md` (not instead of it) — both are needed for cross-referencing in Step 3.8.
+- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
+- If the manifest has a `## Based on` section → parse all linked research entries (folder name + `Brief SHA256` for each — the field may be absent, see Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
 
 Understand:
 - Feature scope and goals
@@ -235,7 +239,7 @@ Understand:
 - Dependencies between tasks
 - Which tasks are already completed (checkboxes `- [x]`)
 - Architecture decisions made
-- Which researches are linked and when they were attached
+- Which researches are linked, and the `Brief SHA256` recorded for each
 
 ### Step 1.5: Research Check
 
@@ -244,19 +248,25 @@ Check whether research context has changed since the plan was created or if new 
 #### Case A: Plan has linked researches (`## Based on` exists with entries)
 
 1. For each entry in `linked_researches`:
-   - Read `.unikit/code/researches/INDEX.md` and find the matching entry by `Path`
-   - Compare its `Updated` timestamp against the `Attached` timestamp from the plan
-   - If `Updated > Attached` → the research was revised after being linked to the plan. Mark it as `research_updated = true`
+   - Recompute the SHA256 of that research's `RESEARCH_BRIEF.md` using the same five normalization rules as `/unikit-plan`: strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, and no reformatting (line order and leading whitespace preserved). Feed the normalized text through **stdin, never a temp file** — `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`.
+   - Recomputed ≠ recorded → emit `WARN [research-drift]: <folder> — linked brief is no longer byte-identical to the one this plan was built from` and mark `research_updated = true`. Say it that way and not "the research changed": the brief is regenerated wholesale on every save, so the honest claim is about identity of the input, not about the intent of its author.
+   - Recomputed == recorded → unchanged, whatever any timestamp says.
+   - No `Brief SHA256` recorded (an older plan, or the hash tool was unavailable at planning time) → drift is **unknown**, not false. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)` and offer the user a re-link, which records a hash from now on. This branch only **asks** — the write is Step 5.5 item 3, and an offer whose write step does not exist is worse than no offer: it leaves the user believing the state was cleared.
+     **Do NOT fall back to any older timestamp field.** A reader that still parses a field nothing writes any more is a mechanism that rots silently and cannot be told apart from a working one — and it would make the negative half of guard RD-A impossible to assert, which is the only thing standing between this change and a half-applied replacement.
+   - `RESEARCH_BRIEF.md` missing or unreadable → emit `WARN [research-drift]: <folder> source missing`.
+   - Neither `shasum` nor `sha256sum` available → emit `WARN [research-drift]: no SHA256 tool available — drift checks skipped` **once** for the whole run, and continue.
+
+   The label `WARN [research-drift]` is canonical and shared with `/unikit-implement` and `/unikit-verify`; per-branch labels would make the outcomes indistinguishable when a log is grepped for drift.
 
 2. If any `research_updated = true`:
    - Re-read the updated research's `RESEARCH_BRIEF.md`
-   - Compare new constraints, interfaces, and decisions against current `PLAN-BRIEF.md` and `TASKS.md`
+   - Compare new constraints, interfaces, and decisions against the current manifest — its `## Technical Context` and its `## Checklist`
    - Collect differences as `research_improvements` (these will appear in the report under a dedicated section)
 
 3. After processing linked researches → check for **new** researches:
    - Read `.unikit/code/researches/INDEX.md`
-   - Find the latest `Attached` timestamp among all `linked_researches` entries
-   - Filter index for researches with `Date` **newer** than this latest `Attached` timestamp
+   - The boundary for "researches newer than this plan" is the **plan's own date**, not a per-research field: a folder plan uses the `YYYY-MM-DD` prefix of its folder name; the flat `.unikit/code/PLAN.md` uses the file's modification time. The plan folder's date is the moment the plan was created, which is exactly the question this filter asks — per-research link timestamps answered it only by coincidence, because all of them were written in the same session.
+   - Filter index for researches with `Date` **newer** than that boundary
    - Take up to 5 entries, check relevance against the plan's feature scope (compare Summary against plan Overview)
    - If relevant entries found → ask user:
      ```
@@ -444,7 +454,7 @@ If the user provided improvement instructions beyond just a feature name:
 **3.8: Research consistency (only when `research_improvements` is non-empty)**
 
 If Step 1.5 produced `research_improvements` (from updated or newly linked researches):
-- Compare research `RESEARCH_BRIEF.md` constraints against `PLAN-BRIEF.md` constraints — find mismatches
+- Compare research `RESEARCH_BRIEF.md` constraints against the manifest's `### CONSTRAINTS` — find mismatches
 - Find interfaces defined in research but missing from plan tasks
 - Find decisions in research that contradict plan tasks
 - Flag research open questions that the plan resolved without justification
@@ -468,7 +478,7 @@ Show the user what you found. When `research_improvements` is non-empty, the rep
 ## Plan Improvement Report
 
 Feature: [feature folder name]
-Files: TASKS.md, PLAN-BRIEF.md
+Files: <plan folder>/PLAN.md
 Phases analyzed: N
 Tasks analyzed: N
 Researches checked: N (list names if any)
@@ -480,7 +490,7 @@ Source: [research folder name(s)]
 #### Updated Constraints (N)
 1. **[Constraint from research]**
    Change: [what changed in the research vs what the plan has]
-   Action: [update PLAN-BRIEF.md constraint / update task description]
+   Action: [update the constraint in `## Technical Context` / update task description]
 
 #### New/Changed Interfaces (N)
 1. **[Interface name]**
@@ -541,7 +551,7 @@ Apply improvements?
 ```
 
 Based on choice:
-- **Apply all** → apply all improvements to TASKS.md and PLAN-BRIEF.md, proceed to Step 5
+- **Apply all** → apply all improvements to the manifest, proceed to Step 5
 - **Choose which** → use `AskUserQuestion` with `multiSelect: true` to let the user pick items. Group options by category (Missing Tasks, Task Improvements, Dependency Fixes, Architectural Notes, Removals). Each option label = `"#N: short description"`. After the user selects → proceed to Step 5, applying **only the selected items**. Unselected items are skipped without comment.
 - **No** → keep plan as is → **STOP**
 
@@ -560,9 +570,13 @@ Ready to proceed with implementation.
 
 ### Step 5: Apply Approved Improvements
 
-Based on user's choice, apply changes sequentially. Use `Edit` for surgical changes; `Write` only if changes are too extensive for Edit.
+Based on user's choice, apply changes sequentially.
 
-**5.1: Add missing tasks to TASKS.md**
+Use `Edit` for every change. **`Write` over a plan manifest is forbidden** — the file carries `## Technical Context` (and, in an ultra bundle, `## Phase Index`), and a regenerating write silently drops whatever the current pass did not reconstruct. When a change is too large for a single `Edit`, split it into several `Edit` calls; do not fall back to `Write`.
+
+**Editing an ultra bundle.** The manifest and every affected phase file are edited **together** — never regenerate the manifest alone when phase detail changed, and never write a checkbox into a phase file. After the write, re-run the bundle integrity checks named in `.unikit/system/ultra-plan-read.md`; a bundle left inconsistent by an improvement blocks the next consumer that opens it.
+
+**5.1: Add missing tasks to the manifest's `## Checklist`**
 
 For each new task from the report:
 1. Determine the correct phase (create a new phase if needed)
@@ -570,45 +584,57 @@ For each new task from the report:
 3. Include file paths, class names, and a brief WHY context in the description
 4. If the task has dependencies, note them inline (e.g., `(after Phase 1)`)
 5. Add an `Editor:` line — one per editor target, placed after `Files:`, in the form `Editor: [kind] <container> → <target> : <action>` — **only** when the change touches the editor's **serialized state**. A pure code task omits the field, and when `engine_rules_loaded = false` (no `ENGINE_RULES.md` for this engine) it is not generated at all. Match the form already used by the surrounding tasks in the plan.
+6. **Ultra bundle only** — the checklist line is a pointer, so create what it points at: a `## Task N.M:` section in the phase file of that phase, with all seven subsections (`### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`), and append the `([details](phase-NN-<slug>.md#task-nm-<slug>))` link to the checkbox line — the anchor is the GitHub slug of the task heading, per `unikit-plan/references/ULTRA-PLAN-FORMAT.md`. When the task needs a **new** phase, create `phase-NN-<slug>.md` and register it in the manifest's `## Phase Index` with its task range; an unregistered file is an orphan and blocks every consumer.
 
-**5.2: Improve existing task descriptions in TASKS.md**
+**5.2: Improve existing task descriptions in the manifest**
 
 For each task flagged for improvement:
-1. Locate the exact task line in TASKS.md
+1. Locate the exact task line in the manifest's `## Checklist`
 2. Replace the vague description with the improved one from the report
 3. Add specific file paths, class names, namespace references
 4. Do NOT change `- [x]` to `- [ ]` — preserve completion status
 
-**5.3: Fix dependency ordering in TASKS.md**
+**5.3: Fix dependency ordering in the manifest**
 
 1. Move tasks/phases to correct positions if ordering was wrong
 2. Update inline dependency references if task numbers shifted
 3. Verify that no task references a dependency that comes after it
 
-**5.4: Remove redundant tasks from TASKS.md**
+**Ultra bundle — renumbering is not a local edit.** A task identifier appears in three projections: the task range in the manifest's index, the checkbox in `## Checklist`, and the `## Task N.M:` heading in the phase file. Changing it also invalidates the `([details](…))` anchor, which is derived from that heading. Change an identifier only together with all three projections **and** the anchor; when in doubt do not renumber — add the task under a new number instead.
+
+**5.4: Remove redundant tasks from the manifest**
 
 1. Delete the task line (and its sub-items if any)
 2. Check if the parent phase is now empty — remove the phase header too if so
 3. Update any other tasks that referenced the removed task
+4. **Ultra bundle only** — delete the task's `## Task N.M:` section from its phase file. If the phase is now empty, delete `phase-NN-<slug>.md` **and** its index row together: the file without its row is an orphan, the row without its file is a dangling link, and each on its own is a blocking violation.
 
-**5.5: Update research references in TASKS.md (`## Based on`)**
+**5.5: Update research references in the manifest (`## Based on`)**
 
 Only when `research_improvements` is non-empty (Step 1.5 found updates):
 
-1. **Updated linked researches** — for each research where `Updated > Attached`: update the `Attached` timestamp to the current time (`YYYY-MM-DD HH:MM`). This marks that the plan now reflects the latest research state.
+1. **Newly attached researches** — for each new research the user selected in Step 1.5: add a new entry to `## Based on` using the Research Reference Format from `/unikit-plan` (folder name, a freshly computed `Brief SHA256`, file links). If `## Based on` section doesn't exist yet, create it after `## Overview`.
 
-2. **Newly attached researches** — for each new research the user selected in Step 1.5: add a new entry to `## Based on` using the Research Reference Format from `/unikit-plan` (folder name, `Attached` timestamp, file links). If `## Based on` section doesn't exist yet, create it after `## Overview`.
+2. **Re-linked researches** — for an entry already in `## Based on` that carries **no** `Brief SHA256` and whose re-link the user accepted in Step 1.5: compute the hash of the current `RESEARCH_BRIEF.md` by the procedure above and write a `- **Brief SHA256**: <64 hex chars>` line into that entry, dropping the dead `- **Attached**: …` line (the retired link-timestamp field) if the plan still carries one. This is the only writer that **records the field on an entry that has none**: the on-disk plan migration rewrites the manifest but never touches `## Based on`, so without this branch a plan created before the field reports `drift unknown` on every run forever, and `/unikit-verify` holds its gate at `warn` with no command able to clear it. The recorded hash describes what the brief is **now**, and that is honest only because the user was asked: an accepted re-link writes the earlier drift off as unknowable, it does not measure it. Never perform this write without that answer — silently hashing at read time would claim "no drift" about a period nobody looked at.
 
-**5.6: Update PLAN-BRIEF.md (if exists)**
+3. **Drifted researches** — do **NOT** rewrite the hash automatically. A stale hash is the record of what the plan was built against; overwriting it silently erases the only evidence that the plan and its source have diverged, at the exact moment that evidence is needed. Rewrite it **only** when the user explicitly asks for a rebase onto the new research, and only together with the corresponding updates to the tasks and to `## Technical Context`.
 
-Only if PLAN-BRIEF.md exists in the plan folder:
-1. **INTERFACES** — add new interfaces that appeared in new tasks or from research; remove interfaces for deleted tasks
-2. **CONSTRAINTS** — update if architectural assumptions changed during analysis or from updated research constraints
-3. **FILES** — add new file paths from new tasks; remove paths for deleted tasks
-4. **DI BINDINGS** — update if new bindings are needed for new tasks
-5. **EDITOR TARGETS** — add a row for every editor target in new tasks; remove rows for deleted tasks (symmetric with FILES). Leave the section absent when the plan has no `Editor:` task
+**5.6: Update `## Technical Context`**
 
-If PLAN-BRIEF.md doesn't exist, do NOT create it unless changes add 3+ new interfaces or significantly alter the plan's technical scope.
+In fast and full every subsection below is edited in the manifest. In an ultra bundle only
+`### CONSTRAINTS` stays there — `### INTERFACES`, `### FILES`, `### DI BINDINGS` and
+`### EDITOR TARGETS` are edited in the phase file of the task that owns them, by the one rule
+that decides every case: cross-phase goes in the manifest, task-scoped goes in the phase
+(`unikit-plan/references/ULTRA-PLAN-FORMAT.md`).
+
+Only when the applied improvements changed the technical picture:
+1. `### INTERFACES` — add interfaces that appeared in new tasks or from research; remove interfaces for deleted tasks
+2. `### CONSTRAINTS` — update if architectural assumptions changed during analysis or from updated research constraints
+3. `### FILES` — add new paths from new tasks; remove paths for deleted tasks
+4. `### DI BINDINGS` — update if new bindings are needed for new tasks
+5. `### EDITOR TARGETS` — add a row for every editor target in new tasks; remove rows for deleted tasks (symmetric with FILES). Leave the subsection absent when the plan has no `Editor:` task
+
+The section always exists — there is no "create it if missing" branch any more.
 
 **5.7: Update Overview section**
 
@@ -622,7 +648,7 @@ If the total number of tasks or phases changed significantly (added a phase, rem
 ## Plan Improved
 
 Research updates: (only if research_improvements was non-empty)
-- Researches re-synced: N (list names, updated Attached timestamps)
+- Researches: N linked, M drifted, K rebased, R re-linked (list names) — drift is shown even when no rebase was requested; `re-linked` counts entries that had no `Brief SHA256` and now do
 - New researches attached: N (list names)
 - Constraints/interfaces updated from research: N
 
@@ -630,20 +656,12 @@ Research updates: (only if research_improvements was non-empty)
 - Hidden by +check: N
 - Adjusted by +check: M
 
-💾 Changes applied to TASKS.md:
+💾 Changes applied to .unikit/code/plans/[feature]/PLAN.md:
 - Tasks added: N (list brief names)
 - Descriptions improved: N
 - Dependencies reordered: N
 - Tasks removed: N
-
-💾 Changes applied to PLAN-BRIEF.md: (if updated)
-- Interfaces added/removed: N
-- Constraints updated: N
-- Files updated: N
-
-Updated files:
-- .unikit/code/plans/[feature]/TASKS.md
-- .unikit/code/plans/[feature]/PLAN-BRIEF.md (if updated)
+- Technical Context updated: interfaces N, constraints N, files N (only if changed)
 ```
 
 ### Step 6: Next Steps
@@ -673,7 +691,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 3. **Traceable improvements** — every change must be justified by codebase analysis
 4. **No gold-plating** — don't add tasks outside the feature scope unless critical
 5. **User approves first** — never apply changes without user confirmation
-6. **Keep files in sync** — if PLAN-BRIEF.md exists, its INTERFACES, FILES and EDITOR TARGETS sections must match the tasks in TASKS.md after improvements
+6. **Keep the plan internally consistent** — after improvements, `### INTERFACES`, `### FILES` and `### EDITOR TARGETS` must match the tasks in `## Checklist`. In fast and full those subsections sit in the manifest and the check runs inside that one file. In an ultra bundle they live in the phase file of the task that owns them, and what is reconciled is the manifest's checklist against those `## Task N.M:` sections — the rule is unchanged, only its reach is wider
 7. **Agent-based delegation** — follow the rules in the **Code Analysis Rules** section; single source of truth for what to delegate vs. do inline
 8. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
 
@@ -687,7 +705,7 @@ User: /unikit-improve
 
 → Branch: feature/customers-system → looking for *_customers-system
 → Found: .unikit/code/plans/2026-03-08_customers-system/
-→ Reading TASKS.md and PLAN-BRIEF.md...
+→ Reading the plan manifest...
 → Bootstrap: loading rules from RULES_INDEX...
 → Deep codebase analysis via Explore tasks...
 → Report with findings → User approves → Changes applied

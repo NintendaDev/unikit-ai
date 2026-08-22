@@ -95,9 +95,9 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
  │      /unikit-plan        │                │    /unikit-fix     │
  │                          │                │                    │
  │  fast → no branch,       │                │   Bug fixes        │
- │         TASKS.md         │                │   With patches     │
+ │         PLAN.md          │                │   With patches     │
  │  full → git branch,      │                │                    │
- │         TASKS.md         │                └─────────┬──────────┘
+ │         PLAN.md          │                └─────────┬──────────┘
  │  add  → extend plan      │                          │
  └─────────────┬────────────┘                          ▼
                │                          ┌────────────────────┐
@@ -155,6 +155,8 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
           └──────────────────────┘
 ```
 
+In ultra the same box additionally holds `phase-NN-*.md` files.
+
 ## When to Use What?
 
 | Command | Use Case | Creates Branch? | Output |
@@ -164,9 +166,10 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
 | `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<date>_<name>/` (optional - output can be used directly in the current session for fast planning) |
 | `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
 | `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/{date}_{name}/` |
+| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Yes | `.unikit/code/plans/{date}_{name}/` (`PLAN.md` + `phase-NN-*.md`) |
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
-| `/unikit-implement` | Execute plan tasks one by one | No | Updates `TASKS.md` status |
+| `/unikit-implement` | Execute plan tasks one by one | No | Updates the plan manifest status |
 | `/unikit-fix` | Bug fixes, errors, hotfixes | No | Optional `.unikit/code/FIX_PLAN.md` |
 | `/unikit-verify` | Post-implementation quality check | No | Verification report |
 | `/unikit-review` | Code review against rules | No | Review report |
@@ -204,13 +207,13 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit-architecture` | `.unikit/ARCHITECTURE.md` | Architecture guidelines |
 | `/unikit-roadmap` | `.unikit/ROADMAP.md` | Milestone tracking |
 | `/unikit-rules` | `.unikit/RULES.md` | Append/update rules only |
-| `/unikit-plan` | `.unikit/code/plans/*/TASKS.md`, `PLAN-BRIEF.md` | `/unikit-improve` refines |
+| `/unikit-plan` | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-improve` refines |
 | `/unikit-explore` | `.unikit/code/researches/` | Exploration artifacts |
 | `/unikit-fix` | `.unikit/code/FIX_PLAN.md`, `.unikit/code/patches/*.md` | Bug-fix learning loop |
 | `/unikit-evolve` | `.unikit/evolutions/*`, `.unikit/skill-context/*` | Evolution logs + skill overrides |
 | `/unikit-memory` | `.unikit/memory/code/{core,stack}/`, `RULES_INDEX.md` | Dynamic memory management (module-aware; see [Dynamic Memory](dynamic-memory.md)) |
 | `/unikit-skills-context` | `.unikit/skill-context/<skill>/SKILL.md` | Skill workflow overrides |
-| `/unikit-implement` | `.unikit/code/plans/*/TASKS.md` (status updates) | Marks tasks complete |
+| `/unikit-implement` | `.unikit/code/plans/*/PLAN.md` (status updates) | Marks tasks complete |
 | `/unikit-todo` | `.unikit/TODO.md` | Lightweight task list |
 | `/unikit-docs` | `README.md`, `docs/*.md`, `AGENTS.md` | Documentation generation |
 | `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report, no writes |
@@ -253,20 +256,22 @@ Maintains `researches/INDEX.md`; use `init` to rebuild the index from disk. When
 
 When a linked `gamedesign` workspace exists, it also grounds first-class on the design registry - systems, `flows:`, and `content_types:` in `GD-IDS.yaml` - resolving whichever axis the request actually names, so research stays consistent with the GDD (read-only; never edits it).
 
-### `/unikit-plan [fast|full|add|--list] <description>` - plan the work
+### `/unikit-plan [fast|full|ultra|add|--list] <description>` - plan the work
 
 ```
 /unikit-plan Add item rarity system              # Asks which mode
 /unikit-plan fast Add sound effects manager       # Quick plan, no branch
 /unikit-plan full Add item rarity system          # Git branch + full plan
+/unikit-plan ultra Add item appraisal system       # Git branch + plan bundle
 /unikit-plan add Add visual effects to rarity     # Extend existing plan
 /unikit-plan --list                               # Show available plans
 ```
 
-Three planning modes plus list:
+Four planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
-- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/YYYY-MM-DD_name/` with `TASKS.md` + `PLAN-BRIEF.md`
+- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/YYYY-MM-DD_name/` with a single `PLAN.md` manifest
+- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: type `ultra`, or you get Full. Two mechanisms hold that, and both had to be repaired: the opt-in itself is the first-token parse in Step 0, and the **shape of what you get** is held by the redirect in `TASK-FORMAT.md` and by the `ULTRA-PLAN-FORMAT.md` specification. Without the second one, typing `ultra` still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
 - **Add** - extends an existing plan with new tasks
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
@@ -291,7 +296,7 @@ Second-pass analysis. Runs 2-3 deep Explore agents to:
 - Remove redundant work
 - Check architectural consistency
 
-Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Updates both TASKS.md and PLAN-BRIEF.md in sync.
+Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Edits the manifest in place; `Write` over it is forbidden.
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
@@ -305,7 +310,7 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 /unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
 ```
 
-Reads skill-context rules first, then plan TASKS.md. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
+Reads skill-context rules first, then the plan manifest. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
 Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text after a mandatory git commit. See [Editor tasks](plan-files.md#editor-tasks).
 

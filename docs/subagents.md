@@ -71,11 +71,11 @@ Everything else (`unikit-implement-worker`, `unikit-plan-polisher`, sidecars, de
 
 Dependency-aware plan execution.
 
-- Reads `TASKS.md`, builds the phase dependency graph, groups independent phases into layers
+- Reads the plan manifest, builds the phase dependency graph, groups independent phases into layers
 - **Single ready phase** → executes tasks directly inside the coordinator (no worker overhead). Bootstraps principles + rules (`dev-principles.md`, `RULES.md`, `RULES_INDEX.md`, core rules) before the phase, then writes code inline
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
 - After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, handles commit checkpoints, advances to the next layer
-- Annotates `TASKS.md` with layer markers and `[~]` / `[x]` / `[!]` status in real time
+- Annotates the manifest with layer markers and `[~]` / `[x]` / `[!]` status in real time
 - **Is itself a writer of `## MCP Findings`** in the single-phase branch, where no worker exists to do it - same rules as everywhere else (`F<n>` = highest present + 1, `observed` = the date, semantic dedup), and never touches `.unikit/MCP-RECHECK-NOTES.md`
 - Ends by **printing** a `/unikit-mcp-trap <plan path>` recommendation when the table has rows. Printed rather than invoked because this agent closes the session on exit, and the trap is interactive - it would be cut off mid-question
 
@@ -115,7 +115,7 @@ Single refinement pass over a plan, then hand back.
 - Critiques it against implementation-readiness criteria
 - Runs at most **one** improvement pass, then returns a structured summary to the coordinator
 - Carries `skills: [unikit-plan, unikit-improve]`
-- Returns the summary in English (structured output), while plan artifacts themselves (`TASKS.md`, `PLAN-BRIEF.md`) stay in the configured project language
+- Returns the summary in English (structured output), while the plan manifest (`PLAN.md`) itself stays in the configured project language
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 12`.
 
@@ -178,4 +178,4 @@ Day-to-day work through slash commands (`/unikit-implement`, `/unikit-fix`, `/un
 
 - [Skills Reference](skills.md) - the 22 code-pipeline skills that workflow skills delegate to or compose over
 - [Development Workflow](workflow.md) - where coordinators and sidecars fit in the end-to-end flow
-- [Plan Files](plan-files.md) - the `TASKS.md` / `PLAN-BRIEF.md` artifacts coordinators read and workers update
+- [Plan Files](plan-files.md) - the `PLAN.md` manifest coordinators read and workers update

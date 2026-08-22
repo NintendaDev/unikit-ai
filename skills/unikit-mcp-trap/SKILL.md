@@ -27,7 +27,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "1.0"
+  version: "1.1"
   category: tools
 ---
 
@@ -100,7 +100,7 @@ differ in what is read, not merely in where they start.
 | form | what happens |
 |---|---|
 | **the finding in one line** — `the snapshot reported ready with zero files` | straight to Step 5 with that one candidate. No session scan, no plan scan, no disk read beyond Bootstrap |
-| **a path to a plan file** — `.unikit/code/plans/2026-08-18_ui/TASKS.md` | read the `## MCP Findings` window of **that plan only** (Step 3) → Step 4 → Step 5. The session is **not** harvested and no other plan is looked at |
+| **a path to a plan file** — `.unikit/code/plans/2026-08-18_ui/PLAN.md` | read the `## MCP Findings` window of **that plan only** (Step 3) → Step 4 → Step 5. The session is **not** harvested and no other plan is looked at |
 | **empty** | the default pass: Step 1 (session) → Step 2 (offer to scan plans) → Step 3 |
 
 **On an explicit path, the Step 1 shortcut is off.** That shortcut — *something found in the
@@ -142,7 +142,14 @@ No findings in this session. <N> plans changed after <audited>. Review them? [y/
 
 `<audited>` is the `audited:` date from the notes header; `never` means every plan is a
 candidate. Candidate plans are `.unikit/code/PLAN.md` and
-`.unikit/code/plans/*/TASKS.md`, filtered by modification time against `<audited>`.
+`.unikit/code/plans/*/PLAN.md`, filtered by modification time against `<audited>`.
+
+This glob is load-bearing: a stale one matches nothing and the run reports *no findings*,
+which is indistinguishable from success. Whenever the plan manifest is renamed, this line
+changes with it.
+
+The glob stays one file per plan even for an ultra bundle: `## MCP Findings` lives in the
+manifest, never in a phase file, so trap never walks `phase-*.md`.
 
 **Declined → print one line and stop:**
 

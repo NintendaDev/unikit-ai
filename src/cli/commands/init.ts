@@ -5,7 +5,7 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
@@ -237,6 +237,9 @@ export async function initCommand(): Promise<void> {
 
     // Install machine-readable gate-result contract (read by verify + review)
     await installGateResultContract(projectDir);
+
+    // Install the ultra plan bundle reader contract (read by implement/verify/improve/commit)
+    await installUltraPlanReadContract(projectDir);
 
     // Deliver the rules tree of the selected engine MCP server
     await installEngineMcpRules(projectDir, selectedEngineServer);

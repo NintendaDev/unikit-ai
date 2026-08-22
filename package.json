@@ -75,6 +75,7 @@
       "scripts/genres-validate.mjs",
       "scripts/test-agent-filter.mjs",
       "scripts/test-config-tolerance.mjs",
+      "scripts/test-ultra-plan-contract.mjs",
       "scripts/validate-agent-markers.mjs",
       "src/core/cli-contract.ts"
     ]

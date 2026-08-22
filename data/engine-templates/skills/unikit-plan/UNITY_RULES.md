@@ -34,7 +34,7 @@ Placeholder values for the plan templates in `references/TASK-FORMAT.md`:
 | content root (`<content-root>`) | `Assets` |
 | DI binding form | `Container.Bind<IExample>().To<Example>().AsSingle();` (Zenject) |
 
-Use these verbatim when writing `Files:` lines, `PLAN-BRIEF.md` code blocks, and the `DI BINDINGS` section. Do not invent alternatives — if a project's stack differs (a different DI container, a different content root), the project's own `.unikit/DESCRIPTION.md` wins over this table.
+Use these verbatim when writing `Files:` lines, `## Technical Context` code blocks, and the `### DI BINDINGS` subsection. Do not invent alternatives — if a project's stack differs (a different DI container, a different content root), the project's own `.unikit/DESCRIPTION.md` wins over this table.
 
 ## §3 When to write `Editor:`
 

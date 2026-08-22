@@ -11,13 +11,22 @@ Plans are stored in two locations depending on mode:
 | Source | Plan Location | Contents |
 |--------|--------------|----------|
 | `/unikit-plan fast` | `.unikit/code/PLAN.md` | Single flat file: overview, settings, checklist, commit plan, and `## Technical Context` inline |
-| `/unikit-plan full` | `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/` | `TASKS.md` + `PLAN-BRIEF.md` |
+| `/unikit-plan full` | `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/` | One manifest — `PLAN.md` — carrying the same sections |
+| `/unikit-plan ultra` | `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/` | `PLAN.md` + `phase-NN-<slug>.md` |
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
 | `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
 
-### TASKS.md - Task Checklist
+Ultra reuses the full-mode folder and the same `PLAN.md` entry point — moving a plan from full to ultra is purely additive: phase files appear, nothing is renamed, external links stay valid.
 
-Dependency-ordered checklist with WHY context, effort estimates, and file paths:
+**Two different files are called `PLAN.md`.** The flat `.unikit/code/PLAN.md` is the throwaway fast plan; `.unikit/code/plans/<folder>/PLAN.md` is a folder plan's manifest. Nothing else distinguishes them — always read the path, never the name. Skills are held to the same rule by a guard (`PL-1`): inside `skills/**` and `subagents/*` the name may never be written bare, only as a full path, as the glob `plans/*/PLAN.md`, or as the phrase "the plan folder's manifest".
+
+**Migration is selective.** `unikit-ai update` merges the old two-file form into one `PLAN.md` only in folders that still have open tasks. A plan whose checklist is fully ticked is left exactly as it was, with `TASKS.md` and `PLAN-BRIEF.md` side by side — a finished plan is a record, and a record is not rewritten. So `.unikit/code/plans/` stays mixed, permanently and by design; the two shapes are not a half-finished migration. Anything that has to read across old plans (the `implemented_version` migration-grace scan in `/unikit-plan`) locates blocks by heading and never by file name, which is why it globs `plans/*/*.md`.
+
+A folder plan stays a folder even with a single file in it — discovery looks for the folder and never opens it, which is what lets new plan shapes be added without touching any consumer.
+
+### PLAN.md — the plan manifest
+
+One file per folder plan: overview, settings, the dependency-ordered checklist with WHY context, effort estimates and file paths, the commit plan, and the technical context that does not belong in the checklist. In fast mode the very same sections live in the flat `.unikit/code/PLAN.md`.
 
 ```markdown
 # Tasks: Item Rarity System
@@ -56,9 +65,46 @@ Branch: feature/item-rarity
 **Files:** `<content-root>/UI/ItemWidget.<ext>`
 **Editor:** `[ui] ItemWidget → RarityBadge : bind tint to Rarity`
 - [ ] Add the badge colour lookup
+
+---
+
+## Technical Context
+
+### CONTEXT
+Project, feature, scope, and the stop condition — what this plan explicitly does not implement.
+
+### CONSTRAINTS
+MUST / FORBIDDEN lines, each with its rationale.
+
+### INTERFACES
+Signatures of every interface the plan introduces or changes, marked `[NEW | MODIFY]`.
+
+### KEY PATTERNS
+The patterns the code must follow, shown in context rather than named.
+
+### DEPENDENCY GRAPH
+Which component receives which dependency, and how.
+
+### FILES
+`CREATE` and `MODIFY` tables — every path the plan touches.
+
+### EDITOR TARGETS
+| Kind | Container | Target | Change |
+|------|-----------|--------|--------|
+| ui | ItemWidget | RarityBadge | bind tint to Rarity |
+
+### DI BINDINGS
+One line per installer binding, per `ENGINE_RULES.md` §2.
+
+### OUT OF SCOPE
+What is explicitly not part of this plan.
 ```
 
 `<content-root>` and `<ext>` are engine placeholders — see [Editor tasks](#editor-tasks) below.
+
+`## EDITOR TARGETS` aggregates every `Editor:` line in the checklist. It is omitted entirely when a plan has no editor work, and `/unikit-improve` keeps it in sync when it adds or removes tasks.
+
+The manifest is edited in place. `Write` over it is forbidden — the file carries `## Technical Context` alongside the checklist, and a regenerating write silently drops whatever the current pass did not reconstruct.
 
 #### `## MCP Findings` — the executor's handoff surface
 
@@ -87,38 +133,82 @@ Three rules make this work:
 
 - **The row is written at the task, not at the end of the run** — by the same edit that ticks the checkbox. A table filled only in the closing report is lost to every `/clear`, which is exactly the moment a long run is most likely to end.
 - **Five writers, one table.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, plus `unikit-implement-worker` and `unikit-implement-coordinator` when the plan runs in parallel. None of them writes `.unikit/MCP-RECHECK-NOTES.md` directly: one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human.
-- **The table is read through a window.** `/unikit-mcp-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, and never nest the table inside another section.
+- **The table is read through a window.** `/unikit-mcp-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, keep it above `## Technical Context`, and never nest the table inside another section.
 
 At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-mcp-trap`, which turns accepted rows into entries in `.unikit/MCP-RECHECK-NOTES.md`. See [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
 
-### PLAN-BRIEF.md - Technical Context (full mode)
+### Ultra bundle — a manifest plus one file per phase
 
-Technical context that doesn't belong in the task checklist. Always created in full mode - even when a research's `RESEARCH_BRIEF.md` exists, the plan generates its own brief based on the current codebase state. The research brief is used as input, not a replacement.
+`/unikit-plan ultra` writes the same folder plan with one extra layer: the manifest keeps
+the checklist, and every phase gets its own file carrying the detail that does not fit a
+checklist line. Two situations call for it — a plan written by a strong model and executed
+later by a smaller one, and a feature whose per-task specification (exact paths and
+symbols, ordered edits, interfaces, error handling, acceptance criteria, verification
+commands) is simply too long to live inside `## Checklist`.
 
-In fast mode, this content is included inline as `## Technical Context` inside `PLAN.md`.
+**Ultra is strictly opt-in.** It is never offered in the interactive mode question and
+never inferred from how big the feature looks. You type it or you do not get it.
 
-```markdown
-# Plan Brief: Item Rarity System
-
-## Constraints
-- Must work with the project's existing inventory package
-- Rarity colors must be configurable as a data asset
-
-## Interfaces
-- IItemView already has SetData() - extend, don't replace
-- Existing ItemDefinition is in the inventory module
-
-## EDITOR TARGETS
-| Kind | Container | Target | Change |
-|------|-----------|--------|--------|
-| ui | ItemWidget | RarityBadge | bind tint to Rarity |
-
-## Patterns to Follow
-- Use the project's DI container, not service locators
-- Visual effects via the project's tweening library, not the animator
+```text
+.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/
+├── PLAN.md                 ← the manifest (same name as a full plan)
+└── phase-NN-<slug>.md      ← one file per phase
 ```
 
-`## EDITOR TARGETS` aggregates every `Editor:` line in the checklist. It is omitted entirely when a plan has no editor work, and `/unikit-improve` keeps it in sync when it adds or removes tasks.
+The first line of the manifest is the mode marker, written verbatim and never translated —
+not even under `language.artifacts: ru`:
+
+```
+<!-- unikit:plan-mode:ultra -->
+```
+
+**What lives where.** Everything mutable during execution stays in the manifest: the
+checklist checkboxes, `## MCP Findings`, `## Commit Plan`, `## Settings`, and the
+cross-phase part of `## Technical Context` (`CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`,
+`OUT OF SCOPE`). The manifest also carries an optional `## Architecture and Decisions` for
+decisions that bind **two or more** phases — a module boundary, a shared contract, a chosen
+trade-off. A decision internal to one phase belongs in that task's section instead, and the
+whole section is omitted when there are no cross-phase decisions. The task-scoped detail moves into the phase files, and **phase files are
+read-only during execution** — a skill executing a plan never writes into `phase-*.md`.
+That single write surface is what keeps `F<n>` numbering in `## MCP Findings` from
+branching across phases.
+
+**Three projections.** Every task exists exactly three times: a range line in
+`## Phase Index`, a checkbox in `## Checklist`, and a `## Task N.M:` section in exactly one
+phase file. They have to agree because each answers a different question — which files
+belong to the bundle, what is done, and what the task actually is. A checkbox without a
+section is a task nobody specified; a section nobody links to is work nobody tracks.
+Neither is a warning: an inconsistent bundle blocks its consumers, because the committed
+specification is incomplete.
+
+**How the consumers read it** — reading depth is per consumer, not one rule:
+
+| Consumer | Reads |
+|----------|-------|
+| `/unikit-implement` | the manifest plus the phase file of the active task |
+| `/unikit-verify` | the manifest plus every phase file |
+| `/unikit-improve` | the manifest plus every phase file |
+| `/unikit-commit` | the manifest plus the phase files of the current commit group |
+| `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the current layer |
+
+That table has one owner — `.unikit/system/ultra-plan-read.md` — and where the two
+disagree, the contract is right and this page is stale.
+
+The full rules — detection, mutability, the blocking integrity checks and the commit-group
+mapping — live in `.unikit/system/ultra-plan-read.md`, installed into every project. The
+producer side (the manifest and phase templates, the **Required Detail Gate** every task
+must clear, the **nine Integrity Checks** run before the plan is shown) lives in the
+`unikit-plan` skill's `references/ULTRA-PLAN-FORMAT.md`. Neither is restated here. Two of
+the nine are worth knowing by name because they catch what the three projections cannot: no
+`phase-*.md` may carry a task checkbox, and the task ranges in `## Commit Plan` must agree
+with `## Phase Index` and `## Checklist`.
+
+**What the bundle does not change.** Plan discovery is untouched, and so is
+`/unikit-plan --list`. The flat fast plan `.unikit/code/PLAN.md` and `.unikit/code/FIX_PLAN.md`
+are never bundles — a fix plan is architecturally a flat file and stays outside the model.
+The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra mode at all.
+`/unikit-review` is not a consumer either: it is diff/PR-scoped and reads no plan, so a
+broken bundle passes review in silence and only `/unikit-verify` blocks on it.
 
 ## Editor tasks
 
@@ -179,6 +269,8 @@ The boundary against the rules registry is exact: **the registry says HOW to wri
 
 If both `.unikit/code/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
 
+Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
+
 ## Artifact Ownership
 
 To avoid ownership conflicts, artifact writers are command-scoped:
@@ -190,8 +282,7 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/ARCHITECTURE.md` | `/unikit-architecture` | Architecture guidelines |
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
 | `.unikit/RULES.md` | `/unikit-rules` | Convention source of truth |
-| `.unikit/code/plans/*/TASKS.md` | `/unikit-plan` | `/unikit-improve` refines existing |
-| `.unikit/code/plans/*/PLAN-BRIEF.md` | `/unikit-plan` | Always created; research used as input, not replacement |
+| `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
 | `.unikit/code/patches/*.md` | `/unikit-fix` | Self-improvement patches |
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |
@@ -284,16 +375,20 @@ Plan files are the shared state between exploration, planning, implementation, a
   └────────┬─────────┘                ┌──────────────────┐
            │                          │  /unikit-evolve  │
            ▼                          └──────────────────┘
-      TASKS.md [x]
+       PLAN.md [x]
 ```
 
 ### /unikit-explore → /unikit-plan
 
-Explore saves research artifacts to `.unikit/code/researches/<date>_<name>/` (three files: `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, `RESEARCH_SOURCE.md`). When planning begins, `/unikit-plan` reads `researches/INDEX.md` and offers to link relevant researches. If linked, the plan reads `RESEARCH_BRIEF.md` as a starting point for its own `PLAN-BRIEF.md` - verifying and extending the research against the current codebase state. The plan references linked research via a `## Based on` section.
+Explore saves research artifacts to `.unikit/code/researches/<date>_<name>/` (three files: `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, `RESEARCH_SOURCE.md`). When planning begins, `/unikit-plan` reads `researches/INDEX.md` and offers to link relevant researches. If linked, the plan reads `RESEARCH_BRIEF.md` as a starting point for its own `## Technical Context` - verifying and extending the research against the current codebase state. The plan references linked research via a `## Based on` section.
+
+Each `## Based on` entry records a **`Brief SHA256`** — the SHA256 of that research's `RESEARCH_BRIEF.md` as it stood at linking time, computed over normalized text (BOM stripped, LF endings, trailing spaces trimmed, exactly one final newline, nothing reformatted). Only the brief is hashed: `RESEARCH_RESULT.md` carries a volatile `Updated:` line and `RESEARCH_SOURCE.md` is an append-only dialogue log, so hashing either would report drift on every edit that changed no requirement. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute the hash and report a mismatch as `WARN [research-drift]`. An entry with **no** `Brief SHA256` means drift is *unknown*, not absent — the plan predates the field, or no hash tool was available when it was written. `/unikit-improve` records one when you accept the re-link it offers, and that is the only way the state clears — no migration backfills it and no consumer writes it while merely reading. Drift never blocks: work continues against the plan, which is the authoritative snapshot, and a rebase onto the newer research happens only when the user asks `/unikit-improve` for one.
 
 ### /unikit-plan → /unikit-implement
 
-Plan creates the task checklist (`TASKS.md` or `PLAN.md`) and technical context (`PLAN-BRIEF.md` or inline `## Technical Context`). Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the brief for technical context, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine MCP), optional tests, commit checkpoint.
+Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine MCP), optional tests, commit checkpoint.
+
+In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ per consumer: implement reads the manifest plus the phase file of the **active task**; verify and improve read the manifest plus **every** phase file; commit reads the manifest plus the phase files of the current commit group; and `unikit-implement-coordinator` — the parallel execution path, a separate entry point that does its own detection — reads the manifest plus the phase files of the phases it dispatches in the current layer. The full table lives in `.unikit/system/ultra-plan-read.md`.
 
 ### /unikit-fix ↔ /unikit-implement
 
