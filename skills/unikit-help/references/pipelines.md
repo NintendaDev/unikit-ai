@@ -45,6 +45,10 @@ raises quality. Maximum quality comes from the full chain.
 **Full mode** adds a git branch, a codebase recon pass, a richer `## Technical Context`, and optional
 test/docs checkpoints — use it for real features.
 
+**Ultra mode** is Full plus one deeply specified file per phase, so a smaller model can execute
+what a stronger one planned. The manifest keeps the checklist; the phase files carry the detail.
+It is reached only by typing `ultra` — never offered, never inferred.
+
 **Why `/unikit-improve` matters:** an LLM never follows 100% of the rules on the first pass, so
 the first plan always has small (sometimes large) issues — invented APIs, missed rules,
 wrong installers. `improve` re-reads the rules and the research and fixes the plan. Running it
@@ -233,7 +237,7 @@ Pick the row that matches what the user already has:
 | **A GDD, several decided edits across zones** | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | **A GDD, wants to publish/export it for people** | `/unikit-gd-docs` (→ `docs/design/*.md`; `--web` for HTML) | share the rendered docs |
 | **A feature idea, needs direction** | `/unikit-explore <topic>` | `/unikit-plan` |
-| **A clear feature** | `/unikit-plan [fast\|full] <feature>` | `/unikit-improve` → `/unikit-implement` |
+| **A clear feature** | `/unikit-plan [fast\|full\|ultra] <feature>` | `/unikit-improve` → `/unikit-implement` |
 | **A research brief already** | `/unikit-plan` (it finds the latest research) | `/unikit-implement` |
 | **A plan, wants code** | `/unikit-implement` | `/unikit-verify` → `/unikit-commit` |
 | **Written code to check** | `/unikit-review` and/or `/unikit-verify` | `/unikit-fix` |

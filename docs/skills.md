@@ -49,20 +49,22 @@ Generates architecture guidelines:
 
 These skills form the core development loop. See [Development Workflow](workflow.md) for the full diagram and how they connect.
 
-### `/unikit-explore [init | topic]` - discovery before planning
+### `/unikit-explore [init | ultra | topic]` - discovery before planning
 
 ```
 /unikit-explore real-time multiplayer sync
 /unikit-explore the inventory system is getting complex
 /unikit-explore init                                     # Rebuild researches index
+/unikit-explore ultra save-system trade-offs              # Adds adaptive artifacts
 ```
 - Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code
 - Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the knowledge base
 - Saves results to `.unikit/code/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
 - Maintains `researches/INDEX.md`; use `init` to rebuild the index
+- The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised only as the leading token, never inferred
 - When direction is clear, transition to `/unikit-plan`
 
-### `/unikit-plan [fast|full|add|--list] [--base <branch>] <description>` - plan the work
+### `/unikit-plan [fast|full|ultra|add|--list] [--base <branch>] <description>` - plan the work
 
 ```
 /unikit-plan Add item rarity system              # Asks which mode
@@ -73,12 +75,13 @@ These skills form the core development loop. See [Development Workflow](workflow
 /unikit-plan full --base main Add new feature     # Specify base branch for full mode
 ```
 
-Three modes:
+Four modes:
 - **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - creates git branch, asks about testing/logging, saves plan
+- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: reached only by typing `ultra`, never offered and never inferred
 - **Add** - extends an existing plan with new tasks
 
-Fast and Full modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Add mode extends an existing plan folder without re-exploring.
+Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned. Add mode extends an existing plan folder without re-exploring.
 
 ### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
 

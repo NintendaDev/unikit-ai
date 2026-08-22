@@ -46,7 +46,7 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 |--------------------------|--------------------|-------|--------------------|
 | "where do I start", "I'm new" | onboard | `.unikit/config.yaml` present? no→`/unikit`; yes→ask idea/GDD | framework installed? |
 | "how do I start coding" | begin a feature | have a plan? yes→`/unikit-implement`; no→`/unikit-plan` | is there a plan / research? |
-| "how do I plan a feature" | plan | `/unikit-plan [fast\|full] <feature>` | fast vs full (throwaway vs real) |
+| "how do I plan a feature" | plan | `/unikit-plan [fast\|full\|ultra] <feature>` | fast vs full vs ultra (throwaway / real / delegated to a smaller model) |
 | "the plan looks rough / wrong" | refine plan | `/unikit-improve` (run 1-3x) | — |
 | "how do I test my code" | verify/test | `/unikit-verify`; tests come from `/unikit-implement` test phase; failures→`/unikit-fix` | unit vs vs-plan vs manual (see QA note) |
 | "fix this bug" / error pasted | bug | `/unikit-fix <bug>`; deep→`/unikit-explore` first | is it deep/unknown-location? |

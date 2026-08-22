@@ -12,8 +12,11 @@ Plans are stored in two locations depending on mode:
 |--------|--------------|----------|
 | `/unikit-plan fast` | `.unikit/code/PLAN.md` | Single flat file: overview, settings, checklist, commit plan, and `## Technical Context` inline |
 | `/unikit-plan full` | `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/` | One manifest — `PLAN.md` — carrying the same sections |
+| `/unikit-plan ultra` | `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/` | `PLAN.md` + `phase-NN-<slug>.md` |
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
 | `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
+
+Ultra reuses the full-mode folder and the same `PLAN.md` entry point — moving a plan from full to ultra is purely additive: phase files appear, nothing is renamed, external links stay valid.
 
 **Two different files are called `PLAN.md`.** The flat `.unikit/code/PLAN.md` is the throwaway fast plan; `.unikit/code/plans/<folder>/PLAN.md` is a folder plan's manifest. Nothing else distinguishes them — always read the path, never the name. Skills are held to the same rule by a guard (`PL-1`): inside `skills/**` and `subagents/*` the name may never be written bare, only as a full path, as the glob `plans/*/PLAN.md`, or as the phrase "the plan folder's manifest".
 
@@ -134,6 +137,69 @@ Three rules make this work:
 
 At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-mcp-trap`, which turns accepted rows into entries in `.unikit/MCP-RECHECK-NOTES.md`. See [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
 
+### Ultra bundle — a manifest plus one file per phase
+
+`/unikit-plan ultra` writes the same folder plan with one extra layer: the manifest keeps
+the checklist, and every phase gets its own file carrying the detail that does not fit a
+checklist line. Two situations call for it — a plan written by a strong model and executed
+later by a smaller one, and a feature whose per-task specification (exact paths and
+symbols, ordered edits, interfaces, error handling, acceptance criteria, verification
+commands) is simply too long to live inside `## Checklist`.
+
+**Ultra is strictly opt-in.** It is never offered in the interactive mode question and
+never inferred from how big the feature looks. You type it or you do not get it.
+
+```text
+.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/
+├── PLAN.md                 ← the manifest (same name as a full plan)
+└── phase-NN-<slug>.md      ← one file per phase
+```
+
+The first line of the manifest is the mode marker, written verbatim and never translated —
+not even under `language.artifacts: ru`:
+
+```
+<!-- unikit:plan-mode:ultra -->
+```
+
+**What lives where.** Everything mutable during execution stays in the manifest: the
+checklist checkboxes, `## MCP Findings`, `## Commit Plan`, `## Settings`, and the
+cross-phase part of `## Technical Context` (`CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`,
+`OUT OF SCOPE`). The task-scoped detail moves into the phase files, and **phase files are
+read-only during execution** — a skill executing a plan never writes into `phase-*.md`.
+That single write surface is what keeps `F<n>` numbering in `## MCP Findings` from
+branching across phases.
+
+**Three projections.** Every task exists exactly three times: a range line in
+`## Phase Index`, a checkbox in `## Checklist`, and a `## Task N.M:` section in exactly one
+phase file. They have to agree because each answers a different question — which files
+belong to the bundle, what is done, and what the task actually is. A checkbox without a
+section is a task nobody specified; a section nobody links to is work nobody tracks.
+Neither is a warning: an inconsistent bundle blocks its consumers, because the committed
+specification is incomplete.
+
+**How the consumers read it** — reading depth is per consumer, not one rule:
+
+| Consumer | Reads |
+|----------|-------|
+| `/unikit-implement` | the manifest plus the phase file of the active task |
+| `/unikit-verify` | the manifest plus every phase file |
+| `/unikit-improve` | the manifest plus every phase file |
+| `/unikit-commit` | the manifest plus the phase files of the current commit group |
+
+The full rules — detection, mutability, the blocking integrity checks and the commit-group
+mapping — live in `.unikit/system/ultra-plan-read.md`, installed into every project. The
+producer side (the manifest and phase templates, the **Required Detail Gate** every task
+must clear, the **Integrity Checks** run before the plan is shown) lives in the
+`unikit-plan` skill's `references/ULTRA-PLAN-FORMAT.md`. Neither is restated here.
+
+**What the bundle does not change.** Plan discovery is untouched, and so is
+`/unikit-plan --list`. The flat fast plan `.unikit/code/PLAN.md` and `.unikit/code/FIX_PLAN.md`
+are never bundles — a fix plan is architecturally a flat file and stays outside the model.
+The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra mode at all.
+`/unikit-review` is not a consumer either: it is diff/PR-scoped and reads no plan, so a
+broken bundle passes review in silence and only `/unikit-verify` blocks on it.
+
 ## Editor tasks
 
 Most tasks change source files. Some change the **serialized state of the engine editor** — a scene, a prefab, a UI document, a material, an animation clip, a project setting. Those cannot be expressed as a file edit, so they get an `Editor:` line in addition to (or instead of) `Files:`:
@@ -193,6 +259,8 @@ The boundary against the rules registry is exact: **the registry says HOW to wri
 
 If both `.unikit/code/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
 
+Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
+
 ## Artifact Ownership
 
 To avoid ownership conflicts, artifact writers are command-scoped:
@@ -204,7 +272,7 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/ARCHITECTURE.md` | `/unikit-architecture` | Architecture guidelines |
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
 | `.unikit/RULES.md` | `/unikit-rules` | Convention source of truth |
-| `.unikit/code/plans/*/PLAN.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing |
+| `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
 | `.unikit/code/patches/*.md` | `/unikit-fix` | Self-improvement patches |
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |
@@ -309,6 +377,8 @@ Each `## Based on` entry records a **`Brief SHA256`** — the SHA256 of that res
 ### /unikit-plan → /unikit-implement
 
 Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine MCP), optional tests, commit checkpoint.
+
+In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ: implement reads the manifest plus the phase file of the **active task**, while verify reads the manifest plus **every** phase file.
 
 ### /unikit-fix ↔ /unikit-implement
 
