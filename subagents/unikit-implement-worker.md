@@ -65,6 +65,12 @@ Before writing code:
 ## Workflow
 
 1. Parse the coordinator's request. Identify the single target task.
+
+   **The task specification may arrive in the prompt.** For an ultra bundle the coordinator passes the task's whole section — `### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`. When it is there, **execute against it**: the checklist line is a pointer, not the specification.
+
+   **If it is not there and the plan is an ultra bundle** — the first line of the manifest equals `<!-- unikit:plan-mode:ultra -->` — do not invent the missing detail and do not go read the phase file yourself: you have no phase graph, and a second route to the specification is a second source of truth that drifts from the first. Return the task to the coordinator stating that the specification was not passed.
+
+   **`phase-*.md` files are read-only while you execute.** Everything you change lives in the manifest. This holds even when the fix looks trivial — a wrong path in a phase file is reported in your run report, never edited.
 2. Load rules (see above).
 3. Implement the target task using direct tool calls.
 

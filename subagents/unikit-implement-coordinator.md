@@ -74,7 +74,14 @@ The user may provide:
    - Phase dependencies from the dependencies line (supports both English and localized headers, see "Dependency Parsing" below)
    - Task number and description
    - Completion status (`[ ]`, `[x]`, `[~]`, `[!]`)
-3. Read the manifest's `## Technical Context` for context — no second read, it is a section of the file you already read.
+   **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged.
+
+   **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
+
+   A phase file named in `## Phase Index` that is missing on disk is a blocking integrity violation: stop and report it, and do **not** dispatch that phase. A task ticked `[x]` is no reason to continue — a checkbox is weaker than a specification.
+3. Read the manifest's `## Technical Context` for context.
+   - **Ordinary plan** — it is a section of the file you already read, so reading it again buys nothing.
+   - **Ultra bundle** — the manifest carries only the cross-phase part (`CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE`); the task-scoped subsections live in the phase files. Your reading depth is the manifest **plus the phase files of the phases you are dispatching in the current layer** — layers execute one at a time, so future layers' phases have no business in your context. The depth is stated in the reading-depth table of `.unikit/system/ultra-plan-read.md`, not decided here.
 4. Build a **phase dependency graph** (see "Dependency Parsing" below).
 5. Compute **execution layers** — groups of phases whose dependencies are all satisfied:
    - Layer 0: all phases with no dependencies
@@ -184,11 +191,13 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
 - Launch ALL workers in a single message for true concurrency.
 - Pass each worker:
   - the phase number and all its tasks
+  - **in an ultra bundle, the full `## Task N.M:` section of every task of that phase**, copied from the phase file: `### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`. The manifest's checklist line is a **pointer**; what the worker executes is the task's own section in its phase file. The hand-off is closed — whatever is not in the prompt, the worker does not see.
   - the plan folder path
   - `commit_policy: skip` (coordinator handles commits centrally)
   - **any `Editor:` lines of those tasks, verbatim** — a worker that receives only the description implements an editor target as pure code
   - **`editor_mode:`** — the `Editor tasks` value from the plan's `## Settings`. Absent from the plan → pass `manual`, never `direct`
 - Maximum **3 parallel workers** per layer. If more phases are ready, split into sub-batches.
+- **Ultra, blocking:** a task present in the manifest's checklist whose `## Task N.M:` section exists in no phase file, or exists in more than one, is an integrity violation. Stop and report it; do not dispatch that phase with a one-line description standing in for the missing specification.
 
 ### Example dispatch (Phase 1 and Phase 4 are independent)
 
@@ -201,6 +210,28 @@ Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/code/plans
 
 Agent(unikit-implement-worker): "Execute Phase 4 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 4.1 (description), 4.2 (description), ...
+  editor_mode: mcp
+  commit_policy: skip. Return list of modified files and manual_targets."
+
+For an ultra bundle the `Tasks:` line is replaced by the task specifications themselves —
+one block per task, every subsection passed **in full** (elided here only for length):
+
+Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/code/plans/2026-03-10_core-loop.
+  ## Task 1.1: Add the session store
+  ### Intent
+  <full text>
+  ### Implementation Steps
+  <full text>
+  ### Required Interfaces and Contracts
+  <full text — in ultra this is where the task's editor targets live>
+  ### Error Handling and Logging
+  <full text>
+  ### Tests
+  <full text>
+  ### Acceptance Criteria
+  <full text>
+  ### Verification
+  <full text>
   editor_mode: mcp
   commit_policy: skip. Return list of modified files and manual_targets."
 ```

@@ -37,6 +37,7 @@ human, never a branch condition for a skill — read the marker.
 | `/unikit-verify` | the manifest plus **every** phase file | verification validates the plan as a whole and checks the implementation against per-task criteria |
 | `/unikit-improve` | the manifest plus **every** phase file | improvement is not local — moving a task between phases touches two of them |
 | `/unikit-commit` | the manifest plus the phase files of the **current commit group** | staged paths are mapped onto groups; the rest of the bundle is not needed |
+| `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the **current layer** | layers execute one at a time, so the phases of future layers have no business in the context; the hand-off to a worker is closed, so what it does not read, it cannot pass on |
 
 ## What is mutable
 

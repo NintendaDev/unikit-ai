@@ -74,7 +74,7 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   )
   ```
 
-  `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When the task carries `Editor:` lines, they go into the prompt **verbatim**, together with the resolved `Editor tasks` mode and the matching `### EDITOR TARGETS` rows from the manifest's `## Technical Context` (Step 3.2, *Delegated execution*).
+  `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When the task carries `Editor:` lines, they go into the prompt **verbatim**, together with the resolved `Editor tasks` mode and the matching `### EDITOR TARGETS` rows from the manifest's `## Technical Context` (Step 3.2, *Delegated execution*). **In an ultra bundle those rows are not in the manifest** — the task's editor targets live in the `### Required Interfaces and Contracts` of its own section in the phase file, and that is where they are taken from.
 
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
 
@@ -473,6 +473,8 @@ Choose execution mode:
 
 When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, the principles from `dev-principles.md`, the task description from the manifest's `## Checklist`, and the technical context from its `## Technical Context`.
 
+**In an ultra bundle the checklist line is a pointer, not the specification.** The task's specification is its `## Task N.M:` section in the phase file — `### Intent` through `### Verification` — and the manifest's `## Technical Context` supplies only the cross-phase part.
+
 **Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline (rules and dev-principles are already loaded in Step 1.5 / Step 3.0). Instead, degrade parallel scopes to sequential and continue the inline implementation cycle for ALL tasks. Each phase still triggers Step 3.0 Phase Rules Refresh.
 
 **Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
@@ -520,7 +522,7 @@ Without it the run reads as if everything came from observation, which is exactl
 
 **The reference is optional in the wizard.** If it was not configured, trigger 2 simply has no fallback: descend the degradation ladder (`dev-principles.md` → D3) and reach `⏸️ MANUAL` at its proper rung only — by absence of a route, established by trying. An unconfigured reference is not itself a missing capability.
 
-**Delegated execution.** When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim** and the already-resolved mode. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
+**Delegated execution.** When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim** and the already-resolved mode. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. **In an ultra bundle the whole task section goes into the prompt**, not just the `Editor:` lines: a delegate that receives only the checklist line loses the implementation steps, the contracts and the acceptance criteria along with the targets. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
 
 **3.3: Handle Blockers**
 
@@ -604,7 +606,7 @@ Fallback: If Agent tool is unavailable, write tests inline; do NOT invoke `/unik
 
 When writing tests, use:
 1. List of files created/modified in the phase
-2. Relevant context from the manifest's `## Technical Context` (constraints, interfaces, key patterns, editor targets)
+2. Relevant context from the manifest's `## Technical Context` (constraints, interfaces, key patterns, editor targets). In an ultra bundle the manifest carries only the cross-phase part, and the task's own `### Tests` sits in its phase file
 3. The rules and principles already loaded in Step 1.5 Bootstrap + Step 3.0 Phase Rules Refresh
 
 If tests are generated, they will be included in the phase commit.
