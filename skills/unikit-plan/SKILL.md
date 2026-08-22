@@ -252,7 +252,7 @@ Ultra is deliberately absent from this question — see the parsing rules in Ste
 
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
-Before any exploration or planning — silently load the project knowledge base. Do NOT narrate the loading process to the user. Runs for fast, full, and add modes.
+Before any exploration or planning — silently load the project knowledge base. Do NOT narrate the loading process to the user. Runs in every mode named by this step's heading.
 
 #### Required reads (always, every time, in parallel)
 
@@ -496,6 +496,29 @@ Return format: structured report matching the `## Technical Context` section of 
 
 Synthesize the task's findings with Bootstrap rules to produce the plan's `## Technical Context` content.
 
+#### Ultra depth gate (ultra mode only)
+
+In ultra, reconnaissance is **not finished** until the plan has code-level evidence for
+**every** phase:
+
+- relevant existing paths and symbols
+- callers/consumers and side effects
+- exact integration and configuration points
+- existing tests, fixtures, commands, logging, migration, and documentation patterns
+
+This is the material the phase file's `## Current-Code Evidence` table and its
+`### Implementation Steps` are written from. Thin reconnaissance does not survive the
+detail floor — it is rejected by `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`
+→ `## Required Detail Gate`.
+
+**Do not paste entire source files into phase plans.** Cite only the evidence that makes the
+implementation steps deterministic. A file pasted whole goes stale on the first edit made
+against it, and it reads as more authoritative than a path-and-symbol citation while being
+less true.
+
+When evidence for a phase cannot be gathered, the decision goes into the manifest's
+`## Open Questions` as a blocking question — it is never hidden behind a vague step.
+
 #### Phase C: Additional context
 
 Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules, patches, skill-context) were already loaded in Step 0.5 (Bootstrap). This phase handles only remaining optional reads.
@@ -540,7 +563,12 @@ That is the entire question. **Not** which tool does it, **not** how it is calle
 
 ### Step 5: Create the Plan
 
-Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
+- **Fast and full** — use the canonical templates from
+  `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
+- **Ultra** — the canonical source of templates and integrity checks is
+  `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md` and nothing else.
+  `TASK-FORMAT.md` describes the single-file format and applies only where the bundle
+  specification explicitly points back at it.
 
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
@@ -615,7 +643,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 9. **`## Total Estimated Effort`** — sum of all phases.
 
-10. **`## Technical Context`** — always included, in every mode. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
+10. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **fast and full** all nine live in the one plan file. In **ultra** the section shrinks to its cross-phase part — `CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE` — and the remaining five are distributed into the phase files by the one rule that decides every case: **cross-phase goes in the manifest, task-scoped goes in the phase** (`{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`). Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
    When `research_linked = true`: use `RESEARCH_BRIEF.md` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `## Technical Context` is the authoritative source for `/unikit-implement` — it supersedes the research brief.
 
@@ -627,7 +655,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    5. EDITOR TARGETS — one row per `Editor:` target in the checklist (Kind / Container / Target / Change); the section is omitted entirely when the plan has no `Editor:` task
    6. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
 
-   Self-check (within the one manifest): if an interface appears in the tasks but not in `### INTERFACES` — add it; likewise for an `Editor:` target missing from `### EDITOR TARGETS`.
+   Self-check: if an interface appears in the tasks but not in `### INTERFACES` — add it; likewise for an `Editor:` target missing from `### EDITOR TARGETS`. In **fast and full** both subsections sit in the plan file and the check runs inside that one file. In **ultra** both live in the phase file of the task that owns them, and the check runs between the manifest checklist and that phase file. Do **not** pull either subsection back into the manifest to make the check easier — that is the distribution rule reversed.
 
 11. **`## Open Questions`** (optional, last section of the manifest) — uncertainties the planning pass could not close, one line each. Written **after** `## Technical Context` so it stays outside the `## MCP Findings` window (which runs from that heading to the next `##`). `unikit-plan-polisher` writes its leftovers here; omit the section entirely when there are none.
 

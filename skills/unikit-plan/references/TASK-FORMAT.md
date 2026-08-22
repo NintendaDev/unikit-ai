@@ -19,9 +19,15 @@ Two different files carry the name `PLAN.md`: the flat fast plan and the manifes
 - **Folder plan manifest** — always written as the full path `.unikit/code/plans/<folder>/PLAN.md`, as the glob `plans/*/PLAN.md`, or as the bare-token-free phrase "the plan folder's manifest". The third form carries no backticked name on purpose: a phrase that quotes `PLAN.md` is the very shape the rule below forbids, so sanctioning it here would hand the next author a form the guard rejects.
 - **A bare `PLAN.md` token is forbidden** in `skills/**` and `subagents/*`. This section — where the name is declared — is the only exception.
 
+> **This file is the fast/full single-file format.** For an ultra bundle the canonical
+> source is `ULTRA-PLAN-FORMAT.md` — it owns the mode marker, the manifest template, the
+> phase file template, the per-task detail floor and the integrity checks. Ultra is
+> **additive** to what is described here: every rule below still holds in ultra unless the
+> bundle specification names the difference.
+
 ## Plan Manifest Template
 
-Placement: Fast → `.unikit/code/PLAN.md`; Full/Ultra → `.unikit/code/plans/<folder>/PLAN.md`.
+Placement: Fast → `.unikit/code/PLAN.md`; Full → `.unikit/code/plans/<folder>/PLAN.md`.
 
 ```markdown
 # {Feature Name} — Tasks
