@@ -82,26 +82,27 @@ removing it makes the replacement look unmotivated.
 
 ## Identifiers
 
-IDs are optional. Add one only when something else references it — another artifact, the
-`## Traceability` table, or a handoff. Do not add IDs to make a short note look formal; an
-unreferenced ID is noise with a version number.
+IDs are optional. Add one only when something else references it — another artifact or a
+handoff. Do not add IDs to make a short note look formal; an unreferenced ID is noise with a
+version number.
 
 The vocabulary is closed. Six prefixes, and adding a seventh is a decision, not a
 convenience:
 
 | Prefix | Means | Lives in |
 |--------|-------|----------|
-| `C-<n>` | a constraint the subject imposes | Active Summary → Constraints |
-| `REQ-<n>` | a requirement established by evidence | Active Summary → Requirements |
-| `DEC-<n>` | a decision taken | Active Summary → Decisions |
-| `RISK-<n>` | a material risk | Active Summary → Risks |
-| `OQ-<n>` | an open question | Active Summary → Open questions |
+| `C-<n>` | a constraint the subject imposes | `RESEARCH_BRIEF.md` → `## CONSTRAINTS` |
+| `REQ-<n>` | a requirement established by evidence | `RESEARCH_BRIEF.md` → `## CONTEXT` |
+| `DEC-<n>` | a decision taken | `RESEARCH_RESULT.md` → `## Decisions` |
+| `RISK-<n>` | a material risk | `RESEARCH_RESULT.md` → `## Conclusions` |
+| `OQ-<n>` | an open question | `RESEARCH_RESULT.md` → `## Open Questions` |
 | `ADR-<nnnn>` | a decision heavy enough to need its own file | its own file; the ID **is** the filename |
 
-**The Active Summary owns every ID.** A `## Traceability` table is a view over them, never a
-second source: an ID that exists only in the table is a defect, not a shorthand. This matters
-because `/unikit-plan` reads the brief and the summary and nothing else — an ID it cannot
-resolve there is invisible.
+**An ID that affects the plan's requirements must exist in `RESEARCH_BRIEF.md`.** The brief is
+the one file `/unikit-plan` takes as input and hashes, so a requirement-bearing ID that lives
+anywhere else is invisible to the planner and its change produces no drift. IDs that live only
+in `RESEARCH_RESULT.md` trace the reasoning rather than state a requirement — that is allowed,
+and it is said out loud here so the split is a choice and not an oversight.
 
 **An ID is stable and is never reused.** A withdrawn question keeps its number out of
 circulation; the next one takes the following number. Reuse silently rewrites the history of
@@ -135,9 +136,11 @@ Each check is **blocking**; saving stops until it passes:
 3. ADR numbers are unique within the folder.
 4. **Every ID is unique within the research.** Two `DEC-7` in one research make any reference
    to them unresolvable, and nothing catches it except reading both.
-5. **Every ID in `## Traceability` resolves in the Active Summary.** This is the mechanical
-   form of "the Active Summary owns every ID": a table row citing a code the summary does not
-   define is the one way a second source of truth arrives unnoticed.
+5. **Every ID an adaptive artifact cites resolves in `RESEARCH_BRIEF.md` or in
+   `RESEARCH_RESULT.md`.** An artifact citing a code neither file defines is the one way a
+   second source of truth arrives unnoticed. This check also covers the lift: a C4, ADR or
+   dependency-graph conclusion that changes requirements, constraints, interfaces or patterns
+   and has not reached the brief leaves the folder unfinished, and saving stops until it does.
 
 ## What ultra research does not change
 
@@ -148,6 +151,13 @@ Each check is **blocking**; saving stops until it passes:
 - The `init` rebuild branch.
 - **The input to `/unikit-plan`.** The plan reads `RESEARCH_BRIEF.md`; adaptive artifacts are
   optional reading "for the rationale", never a source of requirements.
+
+**The lift is an obligation, not a courtesy.** Any C4, ADR or dependency-graph conclusion that
+changes requirements, constraints, interfaces or patterns **must** be carried into
+`RESEARCH_BRIEF.md` before the folder is handed to `/unikit-plan`. The artifact stays the place
+of the reasoning; the brief is the place of the requirement. This is the producer's duty: the
+planner has no way to learn that an ADR in the folder was never lifted, and because only the
+brief is hashed, superseding an unlifted ADR produces no drift at all.
 
 The research-drift check (`## Based on` → `Brief SHA256`) needs no special case for an ultra
 research folder. It hashes `RESEARCH_BRIEF.md` — one fixed filename in one fixed location —

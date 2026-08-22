@@ -3314,9 +3314,16 @@ fi
 # is a decision rather than a convenience. The guard checks that the vocabulary is PRESENT
 # and has not shrunk; forbidding an unknown prefix by grep would need an allowlist the size
 # of the corpus, so closure is held by the spec text and by Integrity checks 4-5.
-# The owner assert is load-bearing: without it a `## Traceability` table becomes a second
-# source of truth, and /unikit-plan — which reads the brief and the summary and nothing
-# else — cannot resolve an ID that lives only in the table.
+# The owner assert is load-bearing, and it names the BRIEF: `RESEARCH_BRIEF.md` is the one
+# file /unikit-plan takes as input and hashes, so a requirement-bearing ID living anywhere
+# else is invisible to the planner and its change produces no drift. The anchor sits on the
+# FORMULATION, not on a heading — a heading is rewritten during cosmetics, a formulation only
+# together with its meaning (the RT-6 / DEGRADATION_TOKEN convention).
+# Two NEGATIVE asserts sit beside it: `Active Summary` and `Traceability` are containers this
+# repository does not have — the first was never ported, the second lives in the original's
+# bundle INDEX.md, a file UniKit deliberately does not have. Both arrived with the port and
+# both read as authoritative; the negative half is what stops the next edit from the original
+# bringing them back.
 # The vocabulary greps are scoped TWICE, and both narrowings are load-bearing: to the body
 # of `## Identifiers`, and to the table-row form `| `<prefix>`. Searching the whole file for
 # a bare backticked prefix is what the first version did, and it could not fail: `ADR-`
@@ -3339,10 +3346,12 @@ else
         done
     fi
 fi
-grep -qF 'Active Summary owns every ID' "$UR_REF" || UR3_WHY+=" no-owner-rule"
+grep -qF "must exist in \`RESEARCH_BRIEF.md\`" "$UR_REF" || UR3_WHY+=" no-owner-rule"
 grep -qF 'never reused'                 "$UR_REF" || UR3_WHY+=" no-stability-rule"
+if grep -qF 'Active Summary' "$UR_REF"; then UR3_WHY+=" active-summary-returned"; fi
+if grep -qF 'Traceability'   "$UR_REF"; then UR3_WHY+=" traceability-returned";   fi
 if [[ -z "$UR3_WHY" ]]; then
-    pass "UR-3 the identifier vocabulary is closed (six prefixes), owned by the Active Summary, and stable"
+    pass "UR-3 the identifier vocabulary is closed (six prefixes), homed in the brief and the result, and stable"
 else
     fail "UR-3 identifier contract:$UR3_WHY"
 fi

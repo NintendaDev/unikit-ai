@@ -406,7 +406,8 @@ The `RESEARCH_RESULT.md` should be a comprehensive document that anyone can read
 
    a. Read the template from `{{skills_dir}}/{{self_name}}/references/explore-brief-template.md`
    b. Read the filling rules from `{{skills_dir}}/{{self_name}}/references/explore-brief-prompt.md`
-   c. Fill the template using the research findings from `RESEARCH_RESULT.md`, following the filling rules
+   c. Fill the template using the research findings from `RESEARCH_RESULT.md`, following the filling rules.
+      **In ultra** the source is `RESEARCH_RESULT.md` **and** the adaptive artifacts that were created — in the part of them that changes requirements, constraints, interfaces or patterns. Lifting those conclusions into the brief is mandatory before the folder is handed to `/unikit-plan` (`references/ULTRA-RESEARCH-FORMAT.md`); the artifact keeps the reasoning, the brief carries the requirement.
    d. Write the result to `.unikit/code/researches/<folder-name>/RESEARCH_BRIEF.md`
 
    **Language Awareness for RESEARCH_BRIEF.md**: The `RESEARCH_BRIEF.md` follows the same language rules as other artifacts. When the configured language is not English, translate ALL section headings and ALL prose/comment content into the target language. Only code identifiers, code blocks, file paths, and table data (paths, types) stay in English.
