@@ -351,7 +351,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     const mcpAllowedTools = collectMcpRules(discoveredServers, Object.keys(config.mcp.servers));
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
 
-    // Reconcile the agents' MCP settings files. Until 1.2.0 `update` never wrote
+    // Reconcile the agents' MCP settings files. Until 2.0.0 `update` never wrote
     // them at all — `configureMcp` was reachable only from `init` — so the `env`
     // overlay, the orphan removal and the placeholder detector fired exactly
     // once in a project's life. They are needed HERE: `init` is run once, while

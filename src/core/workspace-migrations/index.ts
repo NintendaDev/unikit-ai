@@ -108,5 +108,5 @@ export const PROJECT_WORKSPACE_MIGRATIONS: readonly Migration<WorkspaceMigration
 //
 // The ordering that actually matters is not declaration order but the anchor:
 // the merge walks `.unikit/code/plans/*`, which does not exist on a pre-modular
-// project until the relocation above has run, and 1.1.0 < 1.2.0 guarantees it.
+// project until the relocation above has run, and 1.1.0 < 2.0.0 guarantees it.
 export { PROJECT_PLAN_ARTIFACT_MIGRATIONS } from './plan-artifact.js';

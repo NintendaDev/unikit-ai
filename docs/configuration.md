@@ -69,7 +69,7 @@ Main configuration file, created by `unikit-ai init`:
 | `engine` | Game engine identifier (`unity`, `godot`, `godot-net`, `unreal-engine-5`) |
 | `engineMcpKey` | Vendor code of the selected engine MCP server, or `null`. **Derived** — recomputed from `mcp.servers` on every write, never an independent input. |
 | `rulesRegistry` | Rules registry URL or local path. Defaults to the official `NintendaDev/unikit-ai-rules` URL. See [Rules Registry](rules-registry.md) for details. |
-| `mcp.servers` | Globally selected MCP servers as `key → code`. The **key** is the server's file id — the name of its JSON file under `mcp/`, an internal identity that is never written anywhere else. The **value** is the vendor code UniKit registered that server under in the agent's settings file (`mcpServers.<code>`), stored per project because it is the only record of what was actually written. Configs written before 1.2.0 carry a bare `string[]` of file ids here and are converted on the next `unikit-ai init` / `unikit-ai update`. |
+| `mcp.servers` | Globally selected MCP servers as `key → code`. The **key** is the server's file id — the name of its JSON file under `mcp/`, an internal identity that is never written anywhere else. The **value** is the vendor code UniKit registered that server under in the agent's settings file (`mcpServers.<code>`), stored per project because it is the only record of what was actually written. Configs written before 2.0.0 carry a bare `string[]` of file ids here and are converted on the next `unikit-ai init` / `unikit-ai update`. |
 | `agents` | Array of installed agent configurations |
 | `agents[].id` | Agent identifier (`claude`) |
 | `agents[].skillsDir` | Where skills are installed |
@@ -139,7 +139,7 @@ Every server carries two names, and keeping them apart is what the rest of this 
 - **`key`** — the server's internal identity, always equal to the name of its JSON file under `mcp/`. It is what `.unikit.json` records your selection under, what the delivery stamp and the findings log are named after, and it is never written into an agent's settings file.
 - **`code`** — the **vendor code**: the key the server is actually registered under in your settings file (`mcpServers.<code>`), the middle segment of every `mcp__<code>__*` grant, and the value `{{engine_mcp_tool}}` expands to in skill prose.
 
-Before 1.2.0 there was only `key`, and the engine alternatives of one engine were made to share it — which meant UniKit registered Unity Biome under the name `UnityMCP` while the server itself registers as `unity-biome-mcp`. The two entries coexisted in `.mcp.json`, and the grants followed the one nobody was talking to.
+Before 2.0.0 there was only `key`, and the engine alternatives of one engine were made to share it — which meant UniKit registered Unity Biome under the name `UnityMCP` while the server itself registers as `unity-biome-mcp`. The two entries coexisted in `.mcp.json`, and the grants followed the one nobody was talking to.
 
 **Engine servers of one engine are alternative implementations** — the wizard offers them as a radio group and you pick exactly one. The group is now the engine's own catalog directory (`mcp/unity/`, `mcp/godot/`, …), not a shared key; `godot` and `godot-net` share `mcp/godot/`, so they share the group. Everything else is additive and is offered as a checkbox.
 
@@ -313,11 +313,11 @@ No existence check is performed on the result — if the binary is not installed
 
 ### What UniKit writes into your settings file
 
-The settings file is shared property: the vendor's editor plugin writes into it, you write into it, extensions write into it. Since 1.2.0 UniKit reconciles rather than overwrites, and it does so on **both** `init` and `update` — `update` used to leave the file alone entirely, which is the wrong half of the cycle to skip, because `init` is run once while a plugin rewrites its own entry between runs.
+The settings file is shared property: the vendor's editor plugin writes into it, you write into it, extensions write into it. Since 2.0.0 UniKit reconciles rather than overwrites, and it does so on **both** `init` and `update` — `update` used to leave the file alone entirely, which is the wrong half of the cycle to skip, because `init` is run once while a plugin rewrites its own entry between runs.
 
 Per selected server, in this order:
 
-1. **A code that changed since the last write** — the entry standing under the old code is an orphan (nothing is listening on it, while its grants stay live in every skill's frontmatter), so it is removed. This is also the whole upgrade path off the pre-1.2.0 schema: the migration deliberately preserves the code UniKit *wrote* last time, so the divergence surfaces once and heals itself.
+1. **A code that changed since the last write** — the entry standing under the old code is an orphan (nothing is listening on it, while its grants stay live in every skill's frontmatter), so it is removed. This is also the whole upgrade path off the pre-2.0.0 schema: the migration deliberately preserves the code UniKit *wrote* last time, so the divergence surfaces once and heals itself.
 2. **No entry** → the server is written in full.
 3. **An entry under our exact code** → `command` and `args` are **left alone**. Whoever wrote them knows things UniKit does not: a pinned version, a local build, an API key. Overwriting them is how the duplicate-registration bug this release fixes came about.
 4. **An entry under a case or whitespace variant** of our code → removed and rewritten under the canonical spelling. Leaving it is not an option: grants are literal, so `mcp__UnityMCP__*` confers nothing on tools published as `mcp__unityMCP__*`. The scan is bounded — a key registered by an extension is never treated as a variant of ours, however similar it looks.

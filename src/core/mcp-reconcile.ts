@@ -131,7 +131,7 @@ export async function configureMcp(
     // code, so it never sees it). Left in place it keeps a dead server declared
     // while the grants it conferred stay live in the installed frontmatter.
     //
-    // This is also the whole upgrade path off the pre-1.2.0 schema: the
+    // This is also the whole upgrade path off the pre-2.0.0 schema: the
     // `mcp-servers-map` migration deliberately preserved the OLD code, so the
     // divergence shows up here on the first run and heals itself. No separate
     // migration for `.mcp.json` is needed.

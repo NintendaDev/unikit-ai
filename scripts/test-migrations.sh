@@ -2,7 +2,7 @@
 # Smoke tests: the project migration chain and the MCP settings reconciliation.
 # Usage: ./scripts/test-migrations.sh
 #
-# Two mechanisms land together in 1.2.0 and only make sense read together:
+# Two mechanisms land together in 2.0.0 and only make sense read together:
 #
 #   - the chain gained a VERSION anchor (`since`) ORed with `detect`, so a step
 #     fires either because the project predates it or because the state it looks
@@ -75,7 +75,7 @@ plan_chain() {
     " 2>/dev/null)
 }
 
-# A pre-1.2.0 config: `mcp.servers` is still a bare array of file ids, and the
+# A pre-2.0.0 config: `mcp.servers` is still a bare array of file ids, and the
 # engine server's vendor code lives in `engineMcpKey`.
 write_legacy_config() {
     local project="$1"
@@ -164,7 +164,7 @@ else
     fail "matrix 1.0.0: expected all five steps in since order, got '$M1_APPLIED'"
 fi
 
-# Row 2 — 1.1.0, modular memory + array. The 1.1.0 steps are quiet; every 1.2.0
+# Row 2 — 1.1.0, modular memory + array. The 1.1.0 steps are quiet; every 2.0.0
 # step — the two MCP ones and the plan merge — is above the stamp.
 M2="$TMPDIR/matrix-1.1.0"; mkdir -p "$M2"
 write_legacy_config "$M2" '"version": "1.1.0",'
@@ -176,21 +176,21 @@ else
     fail "matrix 1.1.0: expected the MCP steps + the plan merge, got '$M2_APPLIED'"
 fi
 
-# Row 3 — 1.2.0, modular memory + array. The version half is quiet for the whole
-# 1.2.0 group (the project is stamped with the very version they are anchored
+# Row 3 — 2.0.0, modular memory + array. The version half is quiet for the whole
+# 2.0.0 group (the project is stamped with the very version they are anchored
 # at), so this row is carried by `detect` alone. It is the regression that
 # matters most: every dev project running `npm link` before publication is
 # stamped this way. The plan merge is absent here on purpose — its `detect`
 # finds no plan folder on this project, and with the version half quiet that is
 # the whole signal.
-M3="$TMPDIR/matrix-1.2.0"; mkdir -p "$M3"
-write_legacy_config "$M3" '"version": "1.2.0",'
+M3="$TMPDIR/matrix-2.0.0"; mkdir -p "$M3"
+write_legacy_config "$M3" '"version": "2.0.0",'
 seed_modular_memory "$M3"
-M3_APPLIED=$(plan_chain "$M3" "1.2.0")
+M3_APPLIED=$(plan_chain "$M3" "2.0.0")
 if [[ "$M3_APPLIED" == "mcp-servers-map,mcp-fileid-rename" ]]; then
-    pass "matrix 1.2.0: detect carries the MCP steps when the version half is quiet ($M3_APPLIED)"
+    pass "matrix 2.0.0: detect carries the MCP steps when the version half is quiet ($M3_APPLIED)"
 else
-    fail "matrix 1.2.0: expected the MCP steps via detect, got '$M3_APPLIED'"
+    fail "matrix 2.0.0: expected the MCP steps via detect, got '$M3_APPLIED'"
 fi
 
 # Row 4 — no `version` field at all. `readConfigVersion` answers null, the version
@@ -422,14 +422,14 @@ cat > "$RESERVED/.unikit/extensions/my-ext/extension.json" << 'EOF'
   "mcpServers": [{ "key": "Unity-Biome-MCP", "template": "server.json" }]
 }
 EOF
-cat > "$RESERVED/.unikit.json" << 'EOF'
+cat > "$RESERVED/.unikit.json" <<EOF
 {
-  "version": "1.2.0",
+  "version": "$(current_project_version)",
   "engine": "unity",
   "engineMcpKey": "unity-biome-mcp",
   "mcp": { "servers": { "unity-biome-mcp": "unity-biome-mcp" } },
   "agents": [],
-  "rules": { "installed": { "version": "1.2.0", "modules": { "code": { "core": [], "stack": [] } } } },
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } },
   "extensions": [{ "name": "my-ext", "source": "local", "version": "1.0.0" }]
 }
 EOF
@@ -637,14 +637,14 @@ fi
 # 5d — an empty selection must stay silent on stderr. `rules --json` output is
 # parsed by the harness, and a stray warn line lands in the same stream.
 EMPTY="$TMPDIR/empty-servers"; mkdir -p "$EMPTY"
-cat > "$EMPTY/.unikit.json" << 'EOF'
+cat > "$EMPTY/.unikit.json" <<EOF
 {
-  "version": "1.2.0",
+  "version": "$(current_project_version)",
   "engine": "unity",
   "engineMcpKey": null,
   "mcp": { "servers": {} },
   "agents": [],
-  "rules": { "installed": { "version": "1.2.0", "modules": { "code": { "core": [], "stack": [] } } } }
+  "rules": { "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } } }
 }
 EOF
 inject_fake_registry "$EMPTY"
@@ -662,7 +662,7 @@ fi
 # reinstall: the code is part of the artifact source hash, and without that the
 # prose and the settings file drift apart with nothing to notice it.
 HASH="$TMPDIR/code-change-hash"; mkdir -p "$HASH"
-write_map_config "$HASH" "1.2.0" "unity-biome-mcp"
+write_map_config "$HASH" "$(current_project_version)" "unity-biome-mcp"
 inject_fake_registry "$HASH"
 run_update "$HASH" "$TMPDIR/code-hash-1.log"
 HASH_SKILL="$HASH/.claude/skills/unikit-implement/SKILL.md"

@@ -631,7 +631,7 @@ MCP_SCHEMA_RESULT=$(node -e "
         }
       }
 
-      // Order uniqueness is scoped to the engine group, and since 1.2.0 the
+      // Order uniqueness is scoped to the engine group, and since 2.0.0 the
       // group is the DIRECTORY, not the key: the radio renders the is_engine
       // entries of one \`mcp/<dir>/\` folder, and universal servers never compete
       // with them. Keying this on \`m.key\` would now be vacuous — every JSON
@@ -5277,7 +5277,7 @@ fi
 # where snake_case is ordinary (GDScript APIs, serialized-format keys), so the backticked-
 # token regex would need an allowlist the size of the corpus. `mcp__` is unambiguous — the
 # string can only be a grant name — and it is exactly the shape that rots. The middle
-# segment of that prefix is a VENDOR CODE, chosen per server since 1.2.0, so a rule naming
+# segment of that prefix is a VENDOR CODE, chosen per server since 2.0.0, so a rule naming
 # one is wrong for every user who picked a different server of the same engine.
 #
 # Measured: `code/unity/core/testing.md` shipped `mcp__UnityMCP__run_tests`, correct only by
@@ -5520,7 +5520,7 @@ done
 # ─────────────────────────────────────────────
 # Part 7e: All is_engine=true entries carry DISTINCT codes per engine scope
 # ─────────────────────────────────────────────
-# The inversion of the pre-1.2.0 rule, and it guards the same runtime check —
+# The inversion of the pre-2.0.0 rule, and it guards the same runtime check —
 # `discoverMcpServers` throws on a violation, so a defect here takes down every
 # `init`/`update` for that engine, not just this suite.
 #

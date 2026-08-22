@@ -20,7 +20,7 @@ export interface McpConfig {
    * WROTE: on a swap the outgoing entry has to be found by the code that was
    * used at the time, not by the code the package ships today.
    *
-   * Pre-1.2.0 configs carry a bare `string[]` of file ids here. `normalizeMcp`
+   * Pre-2.0.0 configs carry a bare `string[]` of file ids here. `normalizeMcp`
    * does NOT convert that form — the `mcp-servers-map` migration does, straight
    * on the raw JSON (see `mcp-migrations`).
    */
@@ -88,7 +88,7 @@ export interface UniKitConfig {
   engine: string;
   /**
    * The vendor code of the selected ENGINE server — a DERIVED field, kept for
-   * back-compat reading (and as the migration's only source of the pre-1.2.0
+   * back-compat reading (and as the migration's only source of the pre-2.0.0
    * code). It is recomputed from `mcp.servers` + the catalog's `is_engine` flag
    * on every write; never treat it as an independent input.
    */

@@ -112,7 +112,7 @@ const codeWrapMigration: Migration<MemoryMigrationContext> = {
 // workspace, MCP-config AND plan-artifact staleness.
 //
 // Declaration order is documentation, not policy — the runner sorts by `since`
-// (the 1.1.0 layout steps, then the 1.2.0 group: the two MCP steps and the
+// (the 1.1.0 layout steps, then the 2.0.0 group: the two MCP steps and the
 // plan-manifest merge, which ship in the same release). Within that group the
 // sort is stable, so declaration order decides — and it does not need to: the
 // merge walks `.unikit/code/plans/*`, which on a pre-modular project does not

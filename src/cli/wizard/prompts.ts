@@ -354,7 +354,7 @@ export async function runWizard(
     //     grouping is by directory and not by engine id.
     //   - everything else is additive and renders as a checkbox.
     //
-    // Before 1.2.0 the axis was `server.key`, which worked only while the
+    // Before 2.0.0 the axis was `server.key`, which worked only while the
     // alternatives of one engine were made to share a key by hand. Since `key`
     // became each JSON's own basename that is no longer true of any of them, and
     // grouping on it would put every engine server in its own group of one — a

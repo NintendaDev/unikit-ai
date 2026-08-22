@@ -24,7 +24,7 @@ const UNANCHORED_SINCE = '0.0.0';
  * Chain order: ascending `since`, ties broken by declaration order.
  *
  * Version anchors are the chain's real timeline — a step that shipped in 1.1.0
- * must run before one that shipped in 1.2.0 even if a later edit appended it
+ * must run before one that shipped in 2.0.0 even if a later edit appended it
  * above in the array. `Array.prototype.sort` is stable in ES2019+, so equal
  * anchors keep the order the chain author wrote.
  */

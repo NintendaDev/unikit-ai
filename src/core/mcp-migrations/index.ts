@@ -1,7 +1,7 @@
 // MCP migrations — on-disk conversion of the `mcp` section of `.unikit.json`
 // and of the file ids stored alongside it.
 //
-// 1.2.0 splits one identifier into two. `key` becomes the server's INTERNAL
+// 2.0.0 splits one identifier into two. `key` becomes the server's INTERNAL
 // identity (the JSON file's basename) and never leaves the package; `code` is
 // the VENDOR code the server is actually registered under in the agent's
 // settings file (`mcpServers.<code>`, `mcp__<code>__*` grants). The project
@@ -141,7 +141,7 @@ const mcpServersMapMigration: Migration<McpMigrationContext> = {
 
     for (const fileId of legacy) {
       // `mcp-fileid-rename` runs AFTER this step, so a legacy config still names
-      // servers by their pre-1.2.0 file ids while the catalog on disk is already
+      // servers by their pre-2.0.0 file ids while the catalog on disk is already
       // renamed. Resolve through the table rather than dropping the entry —
       // dropping would erase the user's whole MCP selection on exactly the
       // projects this migration exists for. The KEY stays as found; renaming
@@ -168,7 +168,7 @@ const mcpServersMapMigration: Migration<McpMigrationContext> = {
         continue;
       }
 
-      // Non-engine servers: the pre-1.2.0 schema stored no code for them at
+      // Non-engine servers: the pre-2.0.0 schema stored no code for them at
       // all, so the code the package ships today is the only available value. It
       // carries the assumption that their code never changed — true for the one
       // universal server that exists today (`context7`), which registered under
@@ -191,7 +191,7 @@ function archiveStem(fileId: string): string {
 }
 
 /**
- * Archived findings logs whose name carries a pre-1.2.0 file id, paired with
+ * Archived findings logs whose name carries a pre-2.0.0 file id, paired with
  * the name they should take. The index suffix (`.1`, `.2`, … — allocated when a
  * previous run was interrupted mid-swap) is preserved verbatim: it distinguishes
  * two real sessions' findings and is not ours to renumber.
@@ -217,7 +217,7 @@ async function legacyArchiveRenames(projectDir: string): Promise<{ from: string;
   return renames;
 }
 
-/** Every file whose `server:` line may still name a pre-1.2.0 id. */
+/** Every file whose `server:` line may still name a pre-2.0.0 id. */
 async function serverLineFiles(projectDir: string): Promise<string[]> {
   const unikitDir = path.join(projectDir, UNIKIT_DIR);
   // Markdown only — the stamp is prepended to `.md` files, and the rules tree
@@ -269,7 +269,7 @@ function rewriteServerLine(content: string): string | null {
   return changed ? lines.join('\n') : null;
 }
 
-/** Rename the pre-1.2.0 ids stored as keys (or legacy entries) of `mcp.servers`. */
+/** Rename the pre-2.0.0 ids stored as keys (or legacy entries) of `mcp.servers`. */
 async function renameConfigServerIds(projectDir: string, raw: RawConfig | null): Promise<void> {
   const mcp = rawMcp(raw);
   if (!raw || !mcp || !mcp.servers) return;
@@ -299,7 +299,7 @@ async function renameConfigServerIds(projectDir: string, raw: RawConfig | null):
 }
 
 /**
- * Rename the pre-1.2.0 MCP file ids across the four surfaces that store one:
+ * Rename the pre-2.0.0 MCP file ids across the four surfaces that store one:
  * the keys of `config.mcp.servers`, the names of the archived findings logs,
  * the delivery stamp of the installed rules tree, and the `server:` header
  * inside the findings logs themselves.

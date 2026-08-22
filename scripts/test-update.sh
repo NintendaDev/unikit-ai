@@ -233,7 +233,7 @@ echo "  ✓ engine template drift: ENGINE_RULES.md restored after modification"
 COMPAT_DIR="$TMPDIR/update-compat"
 mkdir -p "$COMPAT_DIR"
 
-# Old config format: no engine, no version bump, and the pre-1.2.0 MCP shape.
+# Old config format: no engine, no version bump, and the pre-2.0.0 MCP shape.
 # The `servers` ARRAY here is deliberate and must stay an array: this fixture is
 # what exercises the `mcp-servers-map` migration end to end (a sweep that
 # "modernizes" it to `{}` silently removes the only coverage of that step on the

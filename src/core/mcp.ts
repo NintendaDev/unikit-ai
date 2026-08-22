@@ -26,7 +26,7 @@ export interface McpServerEntry {
    * settings file (`mcpServers.<code>`), the prefix of every grant it confers
    * (`mcp__<code>__*`), and the value `{{engine_mcp_tool}}` resolves to.
    *
-   * Split from {@link key} in 1.2.0 because the two were one field and the
+   * Split from {@link key} in 2.0.0 because the two were one field and the
    * conflation was writing a second, dead entry: UniKit registered the Unity
    * biome server as `UnityMCP` while the Unity plugin registered the very same
    * server as `unity-biome-mcp`, so the grants covered a container key nothing
@@ -153,7 +153,7 @@ export async function discoverMcpServers(engineId: string): Promise<DiscoveredSe
 
   // Validate: all is_engine=true entries must carry DISTINCT vendor codes.
   //
-  // This inverts the pre-1.2.0 rule ("they all share one key"), which described
+  // This inverts the pre-2.0.0 rule ("they all share one key"), which described
   // the alternatives of one engine as one radio group. Since `key` became the
   // JSON's own basename, that rule is false by construction — Unity ships two
   // engine servers, Godot three — and leaving it in place would throw on every

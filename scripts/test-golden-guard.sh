@@ -284,14 +284,15 @@ assert_not_exists "$WS1/.unikit/plans" "no flat plans/ resurrected on 2nd update
 assert_not_exists "$WS1/.unikit/PLAN.md" "no flat PLAN.md resurrected on 2nd update"
 
 # ── Scenario B3 — exit-8 gate is driven by diskPending, NOT versionStale ──
-# The project is at version 1.1.0 (already-modular memory via use_fake_registry,
-# so `versionStale` is false) but carries a flat workspace. `rules sync` must
+# The project is at the current package version (`use_fake_registry` stamps
+# `current_project_version`, and the memory it seeds is already modular, so
+# `versionStale` is false) but carries a flat workspace. `rules sync` must
 # still refuse with exit 8 purely on the workspace step's diskPending signal,
 # proving the gate needs no version bump.
-echo -e "\n${BOLD}B3: rules sync exits 8 on flat workspace at version 1.1.0 (diskPending)${NC}"
+echo -e "\n${BOLD}B3: rules sync exits 8 on flat workspace at the current version (diskPending)${NC}"
 WS3="$TMPDIR/ws-gate"
 mkdir -p "$WS3"
-use_fake_registry "$WS3" unity minimal-valid   # version 1.1.0, modular memory/code
+use_fake_registry "$WS3" unity minimal-valid   # current_project_version, modular memory/code
 seed_flat_workspace "$WS3"
 WS3_CONFIG_SHA="$(sha_of "$WS3/.unikit.json")"
 

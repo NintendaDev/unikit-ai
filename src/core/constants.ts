@@ -212,9 +212,9 @@ export const MCP_RECHECK_NOTES_ARCHIVE_PREFIX = 'MCP-RECHECK-NOTES.archive.';
 export const MCP_STAMP_SERVER_KEY = 'server:';
 
 /**
- * Pre-1.2.0 MCP file id → its 1.2.0 name.
+ * Pre-2.0.0 MCP file id → its 2.0.0 name.
  *
- * The file id used to be a descriptive filename; from 1.2.0 it IS the server's
+ * The file id used to be a descriptive filename; from 2.0.0 it IS the server's
  * `key` — its internal identity — so the two had to be brought into line. The
  * table is the only place the old names survive, and four surfaces read it: the
  * keys of `config.mcp.servers`, the archived findings logs
@@ -471,15 +471,15 @@ export const PLAN_LIFTED_HEADINGS = [
 export const MIGRATION_SINCE_MODULAR_LAYOUT = '1.1.0';
 
 /** MCP vendor codes: `mcp.servers` key→code map + renamed server file ids. */
-export const MIGRATION_SINCE_MCP_VENDOR_CODES = '1.2.0';
+export const MIGRATION_SINCE_MCP_VENDOR_CODES = '2.0.0';
 
 /**
  * Plan folder carries one `PLAN.md` manifest (TASKS.md + PLAN-BRIEF.md merged).
  *
  * Same value as {@link MIGRATION_SINCE_MCP_VENDOR_CODES} because an anchor names
- * a RELEASE, not a feature, and both steps go out in 1.2.0. Kept as its own
+ * a RELEASE, not a feature, and both steps go out in 2.0.0. Kept as its own
  * constant rather than reusing that one: the two are independent changes that
  * happen to share a release, and a plan migration importing an MCP-named anchor
  * would read as a dependency it does not have.
  */
-export const MIGRATION_SINCE_PLAN_MANIFEST = '1.2.0';
+export const MIGRATION_SINCE_PLAN_MANIFEST = '2.0.0';
