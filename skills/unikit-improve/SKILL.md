@@ -230,7 +230,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 
 ### Step 1: Load Feature Plan
 
-- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. One file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
+- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
 - If the manifest has a `## Based on` section → parse all linked research entries (folder name + `Brief SHA256` for each — the field may be absent, see Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
 
 Understand:
@@ -584,6 +584,7 @@ For each new task from the report:
 3. Include file paths, class names, and a brief WHY context in the description
 4. If the task has dependencies, note them inline (e.g., `(after Phase 1)`)
 5. Add an `Editor:` line — one per editor target, placed after `Files:`, in the form `Editor: [kind] <container> → <target> : <action>` — **only** when the change touches the editor's **serialized state**. A pure code task omits the field, and when `engine_rules_loaded = false` (no `ENGINE_RULES.md` for this engine) it is not generated at all. Match the form already used by the surrounding tasks in the plan.
+6. **Ultra bundle only** — the checklist line is a pointer, so create what it points at: a `## Task N.M:` section in the phase file of that phase, with all seven subsections (`### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`), and append the `([details](phase-NN-<slug>.md#task-nm-<slug>))` link to the checkbox line — the anchor is the GitHub slug of the task heading, per `unikit-plan/references/ULTRA-PLAN-FORMAT.md`. When the task needs a **new** phase, create `phase-NN-<slug>.md` and register it in the manifest's `## Phase Index` with its task range; an unregistered file is an orphan and blocks every consumer.
 
 **5.2: Improve existing task descriptions in the manifest**
 
@@ -599,11 +600,14 @@ For each task flagged for improvement:
 2. Update inline dependency references if task numbers shifted
 3. Verify that no task references a dependency that comes after it
 
+**Ultra bundle — renumbering is not a local edit.** A task identifier appears in three projections: the task range in the manifest's index, the checkbox in `## Checklist`, and the `## Task N.M:` heading in the phase file. Changing it also invalidates the `([details](…))` anchor, which is derived from that heading. Change an identifier only together with all three projections **and** the anchor; when in doubt do not renumber — add the task under a new number instead.
+
 **5.4: Remove redundant tasks from the manifest**
 
 1. Delete the task line (and its sub-items if any)
 2. Check if the parent phase is now empty — remove the phase header too if so
 3. Update any other tasks that referenced the removed task
+4. **Ultra bundle only** — delete the task's `## Task N.M:` section from its phase file. If the phase is now empty, delete `phase-NN-<slug>.md` **and** its index row together: the file without its row is an orphan, the row without its file is a dangling link, and each on its own is a blocking violation.
 
 **5.5: Update research references in the manifest (`## Based on`)**
 
@@ -615,7 +619,13 @@ Only when `research_improvements` is non-empty (Step 1.5 found updates):
 
 3. **Drifted researches** — do **NOT** rewrite the hash automatically. A stale hash is the record of what the plan was built against; overwriting it silently erases the only evidence that the plan and its source have diverged, at the exact moment that evidence is needed. Rewrite it **only** when the user explicitly asks for a rebase onto the new research, and only together with the corresponding updates to the tasks and to `## Technical Context`.
 
-**5.6: Update `## Technical Context` in the manifest**
+**5.6: Update `## Technical Context`**
+
+In fast and full every subsection below is edited in the manifest. In an ultra bundle only
+`### CONSTRAINTS` stays there — `### INTERFACES`, `### FILES`, `### DI BINDINGS` and
+`### EDITOR TARGETS` are edited in the phase file of the task that owns them, by the one rule
+that decides every case: cross-phase goes in the manifest, task-scoped goes in the phase
+(`unikit-plan/references/ULTRA-PLAN-FORMAT.md`).
 
 Only when the applied improvements changed the technical picture:
 1. `### INTERFACES` — add interfaces that appeared in new tasks or from research; remove interfaces for deleted tasks
@@ -681,7 +691,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 3. **Traceable improvements** — every change must be justified by codebase analysis
 4. **No gold-plating** — don't add tasks outside the feature scope unless critical
 5. **User approves first** — never apply changes without user confirmation
-6. **Keep the manifest internally consistent** — after improvements, `### INTERFACES`, `### FILES` and `### EDITOR TARGETS` must match the tasks in `## Checklist`. There is no second file to sync with; the check is inside one file
+6. **Keep the plan internally consistent** — after improvements, `### INTERFACES`, `### FILES` and `### EDITOR TARGETS` must match the tasks in `## Checklist`. In fast and full those subsections sit in the manifest and the check runs inside that one file. In an ultra bundle they live in the phase file of the task that owns them, and what is reconciled is the manifest's checklist against those `## Task N.M:` sections — the rule is unchanged, only its reach is wider
 7. **Agent-based delegation** — follow the rules in the **Code Analysis Rules** section; single source of truth for what to delegate vs. do inline
 8. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English)
 
