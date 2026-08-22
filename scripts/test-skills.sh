@@ -2503,6 +2503,324 @@ else
     [[ -n "$UX2_LINE" ]] && echo "      $UX2_LINE"
 fi
 
+# ─────────────────────────────────────────────
+# UP: the ultra PRODUCER. Phase 1 and Phase 2 of the port fix repaired the paths on which
+# `/unikit-plan ultra` silently produced an ordinary full plan — no error, no orphan, no
+# integrity violation, nothing to notice. These guards are the only thing that would turn
+# red if any of it came back. Anchors sit on the ABSENCE of the old formulation or on a
+# counter wherever possible (the UX-2 / RT-6 convention): a returning sentence is a likelier
+# regression than an un-made edit, and a positive anchor breaks on cosmetics.
+# Path vars are taken LOCALLY: UNIKIT_IMPROVE_SKILL and friends are declared further down
+# and `set -u` makes a forward reference fatal (the MF family does the same).
+UP_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+UP_MODE_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+UP_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+UP_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+
+# The graceful-degradation sentence is DERIVED from `unikit-implement/SKILL.md`, never held
+# as a literal here. A copy in the test would be a third source of truth of exactly the class
+# these guards exist to forbid.
+UP_DEGRADATION="$(grep -h 'ultra-plan-read.md' "$UP_IMPLEMENT" \
+    | grep 'is missing or unreadable, do not block' \
+    | sed 's/^[[:space:]]*//' | head -1)"
+
+UP_WHY=""
+[[ -f "$UP_TASKFMT"     ]] || UP_WHY+=" no-task-format"
+[[ -f "$UP_MODE_ULTRA"  ]] || UP_WHY+=" no-mode-ultra"
+[[ -f "$UP_MODE_ADD"    ]] || UP_WHY+=" no-mode-add"
+[[ -n "$UP_DEGRADATION" ]] || UP_WHY+=" no-degradation-source"
+
+if [[ -z "$UP_WHY" ]]; then
+    # (UP-1) BOTH sides of the redirect, in one guard. TASK-FORMAT.md declared itself
+    # canonical for ultra while its manifest template carries neither the marker nor
+    # `## Phase Index`; Step 5 sent the reader there unconditionally. A half-applied fix is
+    # the likeliest outcome, and it must not pass: repairing one side leaves the other
+    # standing and the contradiction survives.
+    [[ "$(grep -cF 'ULTRA-PLAN-FORMAT.md' "$UP_TASKFMT")" == "1" ]] \
+        || UP_WHY+=" UP-1:task-format-redirect-count"
+    if grep -qF 'Full/Ultra' "$UP_TASKFMT"; then UP_WHY+=" UP-1:placement-still-claims-ultra"; fi
+    if grep -qF 'Use the canonical templates from' "$UNIKIT_PLAN_SKILL"; then
+        UP_WHY+=" UP-1:step5-unconditional-template-source"
+    fi
+    awk '/^### Step 5: Create the Plan/{f=1} /^### Step 6/{f=0} f' "$UNIKIT_PLAN_SKILL" \
+        | grep -qF 'ULTRA-PLAN-FORMAT.md' || UP_WHY+=" UP-1:step5-missing-ultra-branch"
+
+    # (UP-2) Step 0.5 must not name the modes one by one. Same defect class as UX-2 one step
+    # over: the heading already carries the whole rule, and any enumeration in the body is a
+    # second source of truth that goes stale on the next mode — as it did, losing `ultra`
+    # and with it the `engine_rules_loaded` flag that `mode-ultra.md` Step C depends on.
+    UP2_BODY="$(awk '/^### Step 0.5: Bootstrap Context/{f=1;next} /^#### /{f=0} f' "$UNIKIT_PLAN_SKILL")"
+    if [[ -z "$UP2_BODY" ]]; then
+        UP_WHY+=" UP-2:step-0.5-body-missing"
+    elif printf '%s' "$UP2_BODY" | grep -qE '(fast|full|add|ultra), (and )?(fast|full|add|ultra)'; then
+        UP_WHY+=" UP-2:body-enumerates-modes"
+    fi
+
+    # (UP-3) Two claims that are false in ultra and pull the task-scoped subsections back
+    # into the manifest. Guarded by absence: both were unconditional sentences, and an
+    # unconditional sentence is restored far more easily than a branch is invented.
+    if grep -qF 'always included, in every mode' "$UNIKIT_PLAN_SKILL"; then
+        UP_WHY+=" UP-3:nine-subsections-unconditional"
+    fi
+    if grep -qF 'within the one manifest' "$UNIKIT_PLAN_SKILL"; then
+        UP_WHY+=" UP-3:self-check-single-file"
+    fi
+
+    # (UP-4) POSITIONAL, not merely present. The ultra reconnaissance depth gate is useless
+    # below Phase C: by then the synthesis has already happened. Same reasoning as LA-7 —
+    # a section that drifts past its reader is read at the wrong moment.
+    UP4_ULTRA_LINE="$(awk '/^### Step 4: Explore the Codebase/{f=1} /^### Step 4.5/{f=0} f && /^#### /{print NR": "$0}' "$UNIKIT_PLAN_SKILL" | grep -i 'ultra' | head -1 | cut -d: -f1)"
+    UP4_PHASEC_LINE="$(grep -n '^#### Phase C: Additional context' "$UNIKIT_PLAN_SKILL" | head -1 | cut -d: -f1)"
+    if [[ -z "$UP4_ULTRA_LINE" || -z "$UP4_PHASEC_LINE" ]]; then
+        UP_WHY+=" UP-4:ultra-depth-subsection-missing"
+    elif (( UP4_ULTRA_LINE > UP4_PHASEC_LINE )); then
+        UP_WHY+=" UP-4:ultra-depth-below-phase-c"
+    fi
+
+    # (UP-5) `replace` was the single word that let an honest executor throw away the whole
+    # Step 5 section contract — Guard B included, which is what keeps an editor phase alone
+    # in its execution layer. Guard B is named twice on purpose: once in Step D, once in the
+    # corrected relationship sentence.
+    if grep -qF 'replace Step 5 and Step 6' "$UP_MODE_ULTRA"; then
+        UP_WHY+=" UP-5:steps-d-h-still-replace-step-5"
+    fi
+    (( "$(grep -cF 'Guard B' "$UP_MODE_ULTRA")" >= 2 )) || UP_WHY+=" UP-5:guard-b-under-named"
+    awk '/^## Not part of ultra/{f=1} f' "$UP_MODE_ULTRA" | grep -qF 'mode is routed from Step 0' \
+        || UP_WHY+=" UP-5:add-not-placed"
+
+    # (UP-6) Expressed as a COUNTER, so it survives a rewording of the return instruction
+    # while the invariant it protects does not move: every step that delegates into
+    # `mode-full.md` must say to come back. `mode-full.md` legitimately ends its Step C with
+    # a terminal "continue to the Shared Steps", which in an ultra run walks past Steps D-H.
+    UP6_DELEGATING=0
+    UP6_RETURNING=0
+    for st in 'Step A' 'Step B' 'Step C'; do
+        UP6_SEC="$(awk -v s="^### $st" '$0 ~ s{f=1;next} /^#+ Step /{f=0} f' "$UP_MODE_ULTRA")"
+        if printf '%s' "$UP6_SEC" | grep -qF 'mode-full.md'; then
+            UP6_DELEGATING=$((UP6_DELEGATING + 1))
+            if printf '%s' "$UP6_SEC" | grep -qF 'return here'; then
+                UP6_RETURNING=$((UP6_RETURNING + 1))
+            fi
+        fi
+    done
+    (( UP6_DELEGATING >= 3 )) || UP_WHY+=" UP-6:delegating-steps-lost($UP6_DELEGATING)"
+    (( UP6_DELEGATING == UP6_RETURNING )) \
+        || UP_WHY+=" UP-6:delegating($UP6_DELEGATING)-returning($UP6_RETURNING)"
+
+    # (UP-7) `add` on a bundle used to append to the manifest alone, breaking it three
+    # different ways depending on what it wrote. The fix is a refusal that names its owner;
+    # a silent stop is indistinguishable from "there was nothing to add".
+    [[ "$(grep -cF 'unikit:plan-mode:ultra' "$UP_MODE_ADD")" == "1" ]] \
+        || UP_WHY+=" UP-7:marker-count"
+    grep -qF 'unikit-improve' "$UP_MODE_ADD" || UP_WHY+=" UP-7:no-routing"
+    grep -qF "$UP_DEGRADATION" "$UP_MODE_ADD" || UP_WHY+=" UP-7:degradation-wording-drifted"
+fi
+
+if [[ -z "$UP_WHY" ]]; then
+    pass "UP-1..UP-7 ultra producer: the redirect holds on both sides, Step 0.5 keeps no mode list, the manifest claims are branched, the depth gate is in place and add refuses a bundle"
+else
+    fail "UP ultra producer:$UP_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# US: the SUBAGENTS and the plan consumers. These are exactly the files `markerConsumers` in
+# scripts/test-ultra-plan-contract.mjs does not list, and that test's own comment warns that
+# a consumer which forgets ultra degrades silently with nothing else in the suite noticing.
+# The gap is closed here rather than by widening that list, so the contract test keeps one
+# owner. Values owned by it — the seven task subsections, the `Phase Index` threshold — are
+# READ from it, never copied.
+US_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+US_PLAN_COORD="$ROOT_DIR/subagents/unikit-plan-coordinator.md"
+US_IMPL_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+US_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
+US_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+US_CONTRACT_TEST="$ROOT_DIR/scripts/test-ultra-plan-contract.mjs"
+
+US_WHY=""
+for f in "$US_POLISHER" "$US_PLAN_COORD" "$US_IMPL_COORD" "$US_WORKER" "$US_IMPROVE" "$US_CONTRACT_TEST"; do
+    [[ -f "$f" ]] || US_WHY+=" missing:$(basename "$f")"
+done
+
+if [[ -z "$US_WHY" ]]; then
+    # Derived from the contract test — the owner of both values.
+    US_SUBSECTIONS="$(awk '/^const TASK_SUBSECTIONS = \[/{f=1;next} /^\];/{f=0} f' "$US_CONTRACT_TEST" \
+        | sed -e "s/^[[:space:]]*'//" -e "s/',*[[:space:]]*$//")"
+    US_MAX_PI="$(sed -n 's/^const MAX_PHASE_INDEX_MENTIONS = \([0-9][0-9]*\);.*/\1/p' "$US_CONTRACT_TEST" | head -1)"
+    [[ -n "$US_SUBSECTIONS" ]] || US_WHY+=" US-4:subsection-list-unreadable"
+    [[ -n "$US_MAX_PI"      ]] || US_WHY+=" US-7:threshold-unreadable"
+fi
+
+if [[ -z "$US_WHY" ]]; then
+    # (US-1) The one actively destructive hole of the port: the polisher wrote the manifest
+    # with `Write`, which drops `## Phase Index` wholesale and orphans every phase file.
+    # Checked through a WINDOW over Phase C, because `Write` is legitimate in the create
+    # branch — a whole-file grep could not tell the two apart.
+    [[ "$(grep -cF 'unikit:plan-mode:ultra' "$US_POLISHER")" == "1" ]] || US_WHY+=" US-1:marker-count"
+    US1_PHASE_C="$(awk '/^### Phase C/{f=1;next} /^### Phase D/{f=0} f' "$US_POLISHER")"
+    if [[ -z "$US1_PHASE_C" ]]; then
+        US_WHY+=" US-1:phase-c-missing"
+    else
+        printf '%s' "$US1_PHASE_C" | grep -qF 'Edit' || US_WHY+=" US-1:no-edit-branch"
+        printf '%s' "$US1_PHASE_C" | grep -qF 'forbidden' || US_WHY+=" US-1:no-write-ban"
+    fi
+
+    # (US-2) A key that is written and never read is a dead key, so both sides are one guard.
+    # The coordinator half is scoped to the PARSING PROCEDURE: a key named in the validation
+    # prose but absent from the list of keys extracted by literal name is never read at all,
+    # and a whole-file grep cannot tell those two states apart.
+    grep -qF 'plan_mode' "$US_POLISHER" || US_WHY+=" US-2:polisher-does-not-report-plan_mode"
+    US2_KEYS="$(awk '/extract these keys by literal name/{f=1} f{print} /^3\. Validate/{f=0}' "$US_PLAN_COORD")"
+    if [[ -z "$US2_KEYS" ]]; then
+        US_WHY+=" US-2:key-extraction-step-missing"
+    else
+        printf '%s' "$US2_KEYS" | grep -qF 'plan_mode' || US_WHY+=" US-2:plan_mode-not-extracted"
+    fi
+
+    # (US-3) The implement coordinator is a SECOND, independent entry point: the detection in
+    # unikit-implement/SKILL.md never runs for it. The negative half is the load-bearing one —
+    # "no second read" was the sentence asserting one read is enough, which is false for a
+    # bundle whose task detail lives in the phase files.
+    [[ "$(grep -cF 'unikit:plan-mode:ultra' "$US_IMPL_COORD")" == "1" ]] || US_WHY+=" US-3:marker-count"
+    if grep -qF 'no second read' "$US_IMPL_COORD"; then US_WHY+=" US-3:no-second-read-returned"; fi
+
+    # (US-4) The hand-off is closed, so reading the phase file is worthless unless the
+    # coordinator PASSES it on. The seven names come from the contract test; adding an eighth
+    # subsection there makes this guard demand it too, instead of silently ignoring it.
+    # Scoped to the DISPATCH RULES, not the whole file: the example dispatch below them names
+    # the same subsections, so a whole-file grep stays green while the rule that actually
+    # governs the hand-off has lost one.
+    US4_RULES="$(awk '/^### Dispatch rules/{f=1;next} /^### /{f=0} f' "$US_IMPL_COORD")"
+    if [[ -z "$US4_RULES" ]]; then
+        US_WHY+=" US-4:dispatch-rules-missing"
+    else
+        while IFS= read -r sub; do
+            [[ -z "$sub" ]] && continue
+            printf '%s' "$US4_RULES" | grep -qF "$sub" || US_WHY+=" US-4:not-passed:${sub// /-}"
+        done <<< "$US_SUBSECTIONS"
+    fi
+
+    # (US-5) The worker's WRITE contract was already right (`never a phase file`); its READ
+    # contract did not exist. Both halves are asserted so the pair reads as one contract.
+    grep -qF 'never a phase file' "$US_WORKER" || US_WHY+=" US-5:write-rule-lost"
+    grep -qF 'read-only' "$US_WORKER"          || US_WHY+=" US-5:no-read-only-rule"
+
+    # (US-6) M1: a closed hand-off that sends the delegate to the manifest for rows which,
+    # in a bundle, live in a phase file. Anchored on the ABSENCE of the bare pairing rather
+    # than on the presence of the fix: any line naming both must also name ultra.
+    US6_BAD="$(awk '/EDITOR TARGETS/ && /from the manifest/ && !/ultra/{printf "%s,", NR}' "$UP_IMPLEMENT")"
+    [[ -z "$US6_BAD" ]] || US_WHY+=" US-6:editor-targets-sourced-from-manifest(lines:$US6_BAD)"
+
+    # (US-7) The sentence M1 and M2 were both derived from, plus the improve-side rule that
+    # contradicted its own umbrella rule 40 lines above it. The threshold is the contract
+    # test's: a consumer restating the reader contract instead of pointing at it.
+    for f in "$UP_IMPLEMENT" "$UNIKIT_VERIFY_SKILL" "$US_IMPROVE"; do
+        if grep -qF 'One file carries everything' "$f"; then
+            US_WHY+=" US-7:one-file-claim-returned:$(basename "$(dirname "$f")")"
+        fi
+    done
+    if grep -qF 'There is no second file to sync with' "$US_IMPROVE"; then
+        US_WHY+=" US-7:improve-single-file-sync-returned"
+    fi
+    US7_PI="$(grep -cF 'Phase Index' "$US_IMPROVE")"
+    (( US7_PI <= US_MAX_PI )) || US_WHY+=" US-7:improve-phase-index-mentions($US7_PI-max-$US_MAX_PI)"
+
+    # (US-8) Three NEW readers of the reader contract now carry the degradation sentence. It
+    # is compared against `unikit-implement/SKILL.md` derivatively — the same discipline the
+    # contract test applies to its four, extended to the readers it does not know about.
+    for f in "$US_POLISHER" "$US_IMPL_COORD" "$UP_MODE_ADD"; do
+        grep -qF "$UP_DEGRADATION" "$f" || US_WHY+=" US-8:degradation-drifted:$(basename "$f")"
+    done
+fi
+
+if [[ -z "$US_WHY" ]]; then
+    pass "US-1..US-8 ultra consumers: the polisher cannot Write over a bundle, plan_mode is read as well as written, the coordinator passes the task spec, and no consumer claims one file carries everything"
+else
+    fail "US ultra consumers:$US_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# CG: the research coherence gate, and what is left of the research spec that UR-3 does not
+# watch. A gate that is written but never called is the likeliest outcome of adding one, so
+# CG-3 checks its POSITION, not merely its presence: called before the write, it re-reads
+# files that do not exist yet.
+CG_REF="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+CG_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+CG_RESEARCH_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+
+CG_WHY=""
+# (CG-1) It must exist, be non-empty, and NOT carry frontmatter — a reference with `name:`
+# and `description:` is picked up by the Part 1 skill validation and fails it.
+if [[ ! -s "$CG_REF" ]]; then
+    CG_WHY+=" CG-1:reference-missing-or-empty"
+else
+    if [[ "$(head -1 "$CG_REF")" == "---" ]]; then CG_WHY+=" CG-1:reference-has-frontmatter"; fi
+
+    # (CG-2) The gate's substance. Criterion 4 — quoting both sides — is what stops the gate
+    # from becoming a formality, and the durable-scope rule is what makes it check the thing
+    # that survives a /clear rather than what the session still remembers.
+    (( "$(grep -cE '^[0-9]+\. ' "$CG_REF")" >= 4 )) || CG_WHY+=" CG-2:fewer-than-four-criteria"
+    grep -qF 'not evidence' "$CG_REF"                  || CG_WHY+=" CG-2:no-durable-scope-rule"
+    grep -qF 'Agent(subagent_type: Explore)' "$CG_REF" || CG_WHY+=" CG-2:no-fresh-context-pass"
+    grep -qF 'WARN [coherence]' "$CG_REF"              || CG_WHY+=" CG-2:no-inline-fallback"
+    grep -qF 'Integrity' "$CG_REF"                     || CG_WHY+=" CG-2:no-boundary-with-integrity"
+fi
+
+if [[ ! -f "$CG_SKILL" ]]; then
+    CG_WHY+=" CG-3:explore-skill-missing"
+else
+    # (CG-3) Position, not presence. The gate re-reads the durable files from disk, so a call
+    # placed before the write re-reads files that do not exist yet, and a call placed after
+    # the confirmation tells the user the save succeeded while it may still be incoherent.
+    # Both landmarks are structural and both degenerate to `fail` when missing: the write
+    # step it must follow, and the `## Init` maintenance command it must precede — that
+    # command rebuilds the index and saves no research at all, so a gate that drifted into
+    # it would never run on a save.
+    CG3_WRITE="$(grep -n '^### Step 4: Update the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    CG3_INIT="$(grep -n '^## Init: Rebuilding the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    CG3_GATE="$(grep -n 'references/coherence-gate.md' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    if [[ -z "$CG3_GATE" ]]; then
+        CG_WHY+=" CG-3:gate-never-called"
+    elif [[ -z "$CG3_WRITE" ]]; then
+        CG_WHY+=" CG-3:index-write-step-missing"
+    elif [[ -z "$CG3_INIT" ]]; then
+        CG_WHY+=" CG-3:init-section-missing"
+    elif (( CG3_GATE < CG3_WRITE )); then
+        CG_WHY+=" CG-3:gate-called-before-the-write($CG3_GATE-before-$CG3_WRITE)"
+    elif (( CG3_GATE > CG3_INIT )); then
+        CG_WHY+=" CG-3:gate-drifted-into-the-init-command($CG3_GATE-after-$CG3_INIT)"
+    fi
+
+    # (CG-4) A missing reference must not lose an exploration that already happened — the
+    # same trade the ultra reference makes one section above. The no-auto-save rule is
+    # asserted alongside it: the gate runs after the user agreed, and must never be read as
+    # replacing the question.
+    grep -qF 'WARN [coherence] reference missing' "$CG_SKILL" || CG_WHY+=" CG-4:no-reference-degradation"
+    grep -qF 'auto-save' "$CG_SKILL"                          || CG_WHY+=" CG-4:auto-save-rule-lost"
+
+    # (CG-5) ultra is the natural next step after an ultra research and was not offered.
+    if grep -qF '/unikit-plan [fast|full] <' "$CG_SKILL"; then CG_WHY+=" CG-5:next-steps-omit-ultra"; fi
+fi
+
+# (CG-6) The research spec must not take back the containers the port brought with it.
+# Overlaps UR-3 deliberately: UR-3 watches the vocabulary and the owner rule, CG-6 watches
+# the absence of the retired names and the count of the checks. An overlap is cheaper here
+# than a gap.
+if [[ ! -f "$CG_RESEARCH_SPEC" ]]; then
+    CG_WHY+=" CG-6:research-spec-missing"
+else
+    if grep -qF 'Active Summary' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-6:active-summary-returned"; fi
+    if grep -qF 'Traceability' "$CG_RESEARCH_SPEC";   then CG_WHY+=" CG-6:traceability-returned"; fi
+    grep -qF 'RESEARCH_BRIEF.md' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-6:no-lift-obligation"
+    CG6_CHECKS="$(awk '/^## Integrity/{f=1;next} /^## /{f=0} f' "$CG_RESEARCH_SPEC" | grep -cE '^[0-9]+\. ')"
+    (( CG6_CHECKS == 5 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-5)"
+fi
+
+if [[ -z "$CG_WHY" ]]; then
+    pass "CG-1..CG-6 the coherence gate exists, is called after the write, degrades without losing work, and the research spec keeps no container it does not have"
+else
+    fail "CG research coherence gate:$CG_WHY"
+fi
+
 # (MX-2) Mode-extraction: unikit-gd-spec six mode bodies live in references/mode-*.md and
 # the inline mode sections are gone from SKILL.md (Step 2 dispatch loads them). The shared
 # Regen-on-Write contract stays in SKILL.md.
