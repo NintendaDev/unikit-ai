@@ -2428,10 +2428,10 @@ else
     fi
 fi
 
-# (MX-1) Mode-extraction: unikit-plan mode bodies live in references/mode-*.md and the
-# inline mode sections are gone from SKILL.md (the Step 0 / Step 1.5 dispatch loads them).
+# (MX-1) Mode-extraction: unikit-plan's five mode bodies live in references/mode-*.md and
+# the inline mode sections are gone from SKILL.md (the Step 0 / Step 1.5 dispatch loads them).
 MX_PLAN_WHY=""
-for m in list add full fast; do
+for m in list add full fast ultra; do
     [[ -s "$PLAN_REFS/mode-$m.md" ]] || MX_PLAN_WHY+=" mode-$m.md-missing"
 done
 ! grep -qF '## List Mode' "$UNIKIT_PLAN_SKILL"        || MX_PLAN_WHY+=" list-still-inline"
@@ -2440,6 +2440,67 @@ if [[ -z "$MX_PLAN_WHY" ]]; then
     pass "unikit-plan — mode bodies extracted to references/mode-*.md (bodies not inline)"
 else
     fail "unikit-plan — mode-extraction incomplete:$MX_PLAN_WHY"
+fi
+
+# (UX-1) argument-hint ↔ mode-*.md set equality. Until this guard, the two sets
+# matched by coincidence: `argument-hint` is checked nowhere for unikit-plan (the
+# only argument-hint asserts in this suite are unikit-memory's and CK-1's), so a
+# mode could be added to one and forgotten in the other in either direction —
+# a hint that offers a mode with no body, or a body no one can reach.
+# The FIRST `[...]` group of the hint is the mode group; `--base <branch>` is a
+# separate group and never reaches the parser. Leading dashes are STRIPPED rather
+# than filtered: the hint writes `--list` while the body is `mode-list.md`, so
+# dropping dashed tokens would discard `list` and make the sets differ by
+# construction. Both sides degenerate to `fail` when empty (NN-4 / RT-7
+# convention) — an empty side means the parse broke, not that the sets agree.
+# A duplicated token is checked SEPARATELY, before the sets are compared: `sort -u` on
+# both sides makes `[fast | fast | full …]` compare equal to the body list, so set
+# equality alone cannot see it. The dedup assert is what turns that into a red run.
+UX1_HINT="$(grep -m1 '^argument-hint:' "$UNIKIT_PLAN_SKILL")"
+UX1_RAW="$(printf '%s' "$UX1_HINT" | sed -n 's/^[^[]*\[\([^]]*\)\].*/\1/p' | tr '|' '\n' \
+    | sed 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^--*//' | grep -v '^$' | sort)"
+UX1_TOKENS="$(printf '%s' "$UX1_RAW" | sort -u)"
+UX1_BODIES="$(cd "$PLAN_REFS" && ls mode-*.md 2>/dev/null | sed 's/^mode-//; s/\.md$//' | sort -u)"
+UX1_WHY=""
+[[ -n "$UX1_TOKENS" ]] || UX1_WHY+=" hint-parse-empty"
+[[ -n "$UX1_BODIES" ]] || UX1_WHY+=" no-mode-bodies"
+if [[ -z "$UX1_WHY" ]] && [[ "$UX1_RAW" != "$UX1_TOKENS" ]]; then
+    UX1_WHY+=" duplicate-token-in-hint"
+fi
+if [[ -z "$UX1_WHY" ]] && [[ "$UX1_TOKENS" != "$UX1_BODIES" ]]; then
+    UX1_WHY+=" hint≠bodies"
+fi
+if [[ -z "$UX1_WHY" ]]; then
+    pass "UX-1 unikit-plan argument-hint modes == references/mode-*.md bodies ($(echo "$UX1_TOKENS" | tr '\n' ' '))"
+else
+    fail "UX-1 unikit-plan argument-hint ↔ mode bodies:$UX1_WHY"
+    echo "      hint tokens: $(echo "$UX1_RAW" | tr '\n' ' ')"
+    echo "      mode bodies: $(echo "$UX1_BODIES" | tr '\n' ' ')"
+fi
+
+# (UX-2) A mode must stay REACHABLE, not merely exist. MX-1 checks that a mode body is on
+# disk and UX-1 that the hint offers it; neither notices that the dispatch can still throw
+# the mode away. It did: Step 0.2 carried a second, hand-maintained copy of the mode-keyword
+# set — "**If no mode keyword** (`full`/`fast`/`add`) is found:" — which went stale the
+# moment `ultra` was added, so `/unikit-plan ultra` with no description fell through to the
+# Full/Fast question and silently became a different mode. The fix was to delete the copy,
+# not to extend it, so the guard is anchored on the ABSENCE of a restated set: any backticked
+# token on that line is a second source of truth for the Step 0 parsing rules and will go
+# stale on the next mode exactly as this one did. Degenerates to `fail` when the line is gone
+# (NN-4 / RT-7 convention) — a missing anchor means the guard lost its object, not that the
+# invariant holds.
+UX2_LINE="$(grep -n 'If no mode keyword' "$UNIKIT_PLAN_SKILL" || true)"
+UX2_WHY=""
+if [[ -z "$UX2_LINE" ]]; then
+    UX2_WHY+=" gate-line-missing"
+elif printf '%s' "$UX2_LINE" | grep -q '`'; then
+    UX2_WHY+=" gate-restates-the-mode-keyword-set"
+fi
+if [[ -z "$UX2_WHY" ]]; then
+    pass "UX-2 unikit-plan Step 0.2 mode gate defers to the Step 0 parsing rules (no second keyword list)"
+else
+    fail "UX-2 unikit-plan Step 0.2 mode gate:$UX2_WHY"
+    [[ -n "$UX2_LINE" ]] && echo "      $UX2_LINE"
 fi
 
 # (MX-2) Mode-extraction: unikit-gd-spec six mode bodies live in references/mode-*.md and

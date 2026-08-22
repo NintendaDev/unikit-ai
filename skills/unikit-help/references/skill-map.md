@@ -72,13 +72,15 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Purpose:** Turn a feature into a dependency-ordered task plan + technical brief.
 - **When:** "plan this feature", "create tasks". The first **required** step of building.
 - **In:** a feature description, or a research brief, or a roadmap milestone. Modes: `fast`
-  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `add` (extend)
-  — each mode body loads on demand from `references/mode-*.md`.
+  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `ultra`
+  (full plus one deeply specified file per phase — explicit keyword only, never inferred),
+  `add` (extend) — each mode body loads on demand from `references/mode-*.md`.
   If a game-design workspace exists, planning resolves **flow-first** (*intent decides the
   door* — a flow-named request grounds on the flow, a system-named one on the system,
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the
   system's `AC-<id>`s.
-- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/PLAN.md`.
+- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/PLAN.md` — or, in
+  ultra, that folder's manifest plus its `phase-NN-*.md` files.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 
 ### unikit-improve

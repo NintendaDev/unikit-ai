@@ -2,15 +2,17 @@
 name: unikit-plan
 description: >-
   Create an implementation plan for a feature — a dependency-ordered, actionable task
-  list for the project. Has three modes: fast (a quick single-pass plan), full (a richer
-  plan that can also create a git branch), and add (extend an existing plan with more
-  tasks). Pick the mode from the user's wording: "full plan" runs full; "quick plan" or
+  list for the project. Has four modes: fast (a quick single-pass plan), full (a richer
+  plan that can also create a git branch), ultra (an opt-in multi-file bundle), and add
+  (extend an existing plan with more tasks). Pick the mode from the user's wording: "full plan" runs full; "quick plan" or
   "fast plan" runs fast; a plain "create a plan" with no qualifier defaults to fast; "add
   to the plan" or "extend the plan" runs add. Use whenever the user wants to plan a
   feature or task, e.g. "create a plan", "create a full plan", "create a quick plan",
   "plan this feature", "just plan this", "add this to the plan", "extend the plan", "add
-  a phase to the plan".
-argument-hint: "[fast | full | add | --list] [--base <branch>] <feature description in free form>"
+  a phase to the plan". The `ultra` keyword — and only that explicit keyword — produces a
+  multi-file bundle (a manifest plus one deeply specified file per phase) for later
+  execution by a smaller model; it is never chosen for you.
+argument-hint: "[fast | full | ultra | add | --list] [--base <branch>] <feature description in free form>"
 allowed-tools:
   - Read
   - Write
@@ -28,7 +30,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "7.3"
+  version: "7.4"
   category: planning
 ---
 
@@ -36,9 +38,10 @@ metadata:
 
 Create a structured feature plan and roadmap for the current {{engine_name}} project.
 
-Three modes:
+Four modes:
 - **Fast** — quick plan, no git branch, saves to `.unikit/code/PLAN.md`
 - **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<dated-folder>/`
+- **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. Reached **only** by the explicit `ultra` keyword — never offered, never inferred
 - **Add** — modify/extend an existing plan without creating a branch
 
 **Output artifacts by mode:**
@@ -49,6 +52,10 @@ Three modes:
 
 **Full mode** → folder `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/`:
 - **`.unikit/code/plans/<folder>/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
+
+**Ultra mode** → the same folder, additively:
+- **`.unikit/code/plans/<folder>/PLAN.md`** — the same manifest, carrying the mode marker plus `## Phase Index` and `## Cross-Phase Dependencies`, with `## Technical Context` reduced to its cross-phase part.
+- **`phase-NN-<slug>.md`** — one file per phase, holding the task-scoped detail. The canonical shape of both is `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`.
 
 When a research is linked (from `/unikit-explore`), the plan references it via `## Based on` using the Research Reference Format below. The research's `RESEARCH_BRIEF.md` is used as **input** for generating the plan's own `## Technical Context`, not as a replacement — the plan's section reflects the actual codebase state at planning time and supersedes the research brief.
 
@@ -95,15 +102,18 @@ alternative.
 
 ## Input
 
-`$ARGUMENTS` — optional keyword `full`, `fast`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language.
+`$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language.
 
 **Parsing rules:**
 1. Extract `--base <branch>` if present anywhere in arguments → store as `base_branch`, remove from text
 2. If `--list` is present → list mode, show all plans and STOP
 3. If the first word (after flag removal) is `full` → full mode, remaining text is the feature description
 4. If the first word is `fast` → fast mode, remaining text is the feature description
-5. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
-6. Otherwise → ask interactively, entire text is the description
+5. If the first word is `ultra` → ultra mode, remaining text is the feature description
+6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
+7. Otherwise → ask interactively, entire text is the description
+
+`ultra` is recognised **only** as the leading mode token. It is never inferred from the description, never offered in Step 0.2, and never selected because the feature looks large.
 
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
@@ -115,6 +125,7 @@ alternative.
 /unikit-plan full Item appraisal system                    → mode: full, base: HEAD, description: "Item appraisal system"
 /unikit-plan full --base master Item appraisal system      → mode: full, base: master, description: "Item appraisal system"
 /unikit-plan fast Item appraisal system                    → mode: fast, description: "Item appraisal system"
+/unikit-plan ultra Item appraisal system                   → mode: ultra, base: HEAD, description: "Item appraisal system"
 /unikit-plan add Add error handling phase                  → mode: add, description: "Add error handling phase"
 /unikit-plan Item appraisal system                         → mode: ?, ask user
 ```
@@ -177,7 +188,7 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
    AskUserQuestion: Describe the feature you want to plan.
    ```
 
-**If no mode keyword** (`full`/`fast`/`add`) is found:
+**If no mode keyword** was found by the Step 0 parsing rules:
 
 If the description was already resolved above → ask only about the mode:
 ```
@@ -200,6 +211,8 @@ AskUserQuestion:
 Based on choice:
 - Full → full mode (the Full-mode additional steps load in Step 1.5)
 - Fast → fast mode (the Fast-mode additional step loads in Step 1.5)
+
+Ultra is deliberately absent from this question — see the parsing rules in Step 0.
 
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
@@ -275,7 +288,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
 **Fast mode** → skip steps 3-5 below. The plan goes to `.unikit/code/PLAN.md` (flat file, no folder).
 
-**Full mode** → continue:
+**Full and ultra modes** → continue:
 
 3. **Get today's date** in `YYYY-MM-DD` format.
 4. Compose the folder name: `{YYYY-MM-DD}_{feature-name}` (e.g. `2026-03-10_item-appraisal-system`)
@@ -291,18 +304,22 @@ ls .unikit/code/plans/
 ### Step 1.5: Load the Mode Body
 
 The shared preamble (Steps 0–1) is done. Load the selected mode's reference body
-on demand — do **not** keep all four mode bodies in context at once:
+on demand — do **not** keep all five mode bodies in context at once:
 
 - **Full mode** → load `{{skills_dir}}/{{self_name}}/references/mode-full.md`, run its
   additional steps (git branch, recon, preferences), then continue to the Shared Steps below.
 - **Fast mode** → load `{{skills_dir}}/{{self_name}}/references/mode-fast.md`, run its
   preferences step, then continue to the Shared Steps below.
+- **Ultra mode** → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md`, run its
+  additional steps A-C (git branch, recon, preferences), then continue to the Shared Steps
+  below. Steps D-H of that body run later — they replace Step 5 and Step 6 of the shared
+  workflow, so do **not** run them here.
 
 (`--list` and `add` modes already dispatched in Step 0 to their own bodies — `mode-list.md` / `mode-add.md` — and STOP; they never reach here.)
 
 ---
 
-## Shared Steps (both modes)
+## Shared Steps (all planning modes)
 
 ### Step 2: Check for Related Researches
 
@@ -492,8 +509,12 @@ Use the canonical templates from `{{skills_dir}}/{{self_name}}/references/TASK-F
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
 - **Full mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
+- **Ultra mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
 
-#### Plan Sections (both modes)
+In ultra, Step 5 is carried out by `mode-ultra.md` Steps D-G — the section list below still
+applies to the manifest, minus the task-level subsections of `## Technical Context`.
+
+#### Plan Sections (all planning modes)
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
@@ -596,6 +617,10 @@ After artifacts are created, show the user:
 7. Remind: "To start implementation, run: `/unikit-implement`"
 8. Ask if they want to adjust anything
 
+**Ultra mode:** the full-mode items above, plus the bundle-specific items in
+`mode-ultra.md` Step H (phase-file count, task count, integrity result, and the
+not-implementation-ready line when blocking open questions exist).
+
 ### Step 7: Context Cleanup
 
 Suggest the user to free up context space if needed: `/clear` (full reset) or `/compact` (compress history).
@@ -659,6 +684,7 @@ Use **Explore tasks** for codebase analysis — not `unikit-devcontext` or `deve
 /unikit-plan fast <description>           → .unikit/code/PLAN.md
 /unikit-plan full <description>           → .unikit/code/plans/YYYY-MM-DD_name/PLAN.md
 /unikit-plan full --base master <desc>    → same, branch from master
+/unikit-plan ultra <description>          → .unikit/code/plans/YYYY-MM-DD_name/ (PLAN.md + phase-NN-*.md)
 /unikit-plan add <what to change>         → modifies existing plan in-place
 /unikit-plan <description>                → asks Full or Fast interactively
 ```
