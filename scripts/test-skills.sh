@@ -5366,6 +5366,30 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7j: ultra plan bundle contract
+# ─────────────────────────────────────────────
+# Two invariants grep cannot express: (a) the canonical manifest template extracted
+# FROM ULTRA-PLAN-FORMAT.md is self-consistent across its three projections of the task
+# set, and (b) every consumer carries the literal mode marker. The template is
+# extracted, never copied — a test holding its own copy validates itself.
+# Placed inside the codebase-integrity block (after 7i, before the Part 8 smoke tests)
+# because it runs no CLI and reads no dist/ — it works on source text alone.
+echo -e "\n${BOLD}Part 7j: ultra plan bundle contract${NC}"
+
+set +e
+ULTRA_CONTRACT_OUTPUT=$(node "$ROOT_DIR/scripts/test-ultra-plan-contract.mjs" 2>&1)
+ULTRA_CONTRACT_EXIT=$?
+set -e
+
+if [[ $ULTRA_CONTRACT_EXIT -eq 0 ]]; then
+    pass "ultra plan bundle contract"
+    echo "$ULTRA_CONTRACT_OUTPUT" | grep '^PASS ' | sed 's/^/    /'
+else
+    fail "ultra plan bundle contract"
+    echo "$ULTRA_CONTRACT_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 8: Update command smoke tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Update command smoke tests ===${NC}\n"

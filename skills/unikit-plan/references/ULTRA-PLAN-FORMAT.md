@@ -95,11 +95,11 @@ not layout.
 ## Roadmap Linkage   (optional)
 
 ## Phase Index
-1. [Phase 1: {name}](phase-01-{slug}.md) — Tasks 1.1-1.4
-2. [Phase 2: {name}](phase-02-{slug}.md) — Tasks 2.1-2.3
+1. [Phase 1: {name}](phase-01-{slug}.md) — Tasks 1.1-1.2
+2. [Phase 2: {name}](phase-02-{slug}.md) — Tasks 2.1-2.2
 
 ## Cross-Phase Dependencies
-- Task 2.1 depends on Tasks 1.3 and 1.4 because …
+- Task 2.1 depends on Tasks 1.1 and 1.2 because …
 
 ## Checklist
 ### Phase 1: {name}
@@ -108,6 +108,21 @@ not layout.
 **Status:** [ ] Not started
 
 - [ ] Task 1.1 — {deliverable} ([details](phase-01-{slug}.md#task-11-deliverable))
+  WHY: …
+  Files: `…`
+- [ ] Task 1.2 — {deliverable} ([details](phase-01-{slug}.md#task-12-deliverable))
+  WHY: …
+  Files: `…`
+
+### Phase 2: {name}
+**Effort:** S
+**Dependencies:** Phase 1
+**Status:** [ ] Not started
+
+- [ ] Task 2.1 — {deliverable} ([details](phase-02-{slug}.md#task-21-deliverable))
+  WHY: …
+  Files: `…`
+- [ ] Task 2.2 — {deliverable} ([details](phase-02-{slug}.md#task-22-deliverable))
   WHY: …
   Files: `…`
 
@@ -134,6 +149,12 @@ Rules:
   heading (`## Task 1.1: Foo` → `#task-11-foo`).
 - The checkbox line stays short and **must** carry its `([details](…))` link. `WHY:` and
   `Files:` are kept from the base format, unchanged.
+- **The example above is deliberately complete, not elided.** Two phases with two tasks each is
+  the smallest example in which the three projections of the task set can disagree, and the
+  bundle contract test validates the template itself: the `## Phase Index` ranges, the checklist
+  checkboxes and the phase numbers inside the `([details](…))` links must cover exactly the same
+  task IDs. Shortening the example by dropping a checkbox breaks the test — which is the point:
+  a template that contradicts itself teaches the contradiction.
 - **`## Technical Context` shrinks to its cross-phase part** in ultra: `CONTEXT`,
   `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE`. The task-scoped subsections —
   `INTERFACES`, `KEY PATTERNS`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS` — are distributed

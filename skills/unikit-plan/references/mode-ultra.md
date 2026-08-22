@@ -82,6 +82,13 @@ names the exact words that count as hiding.
 2. Write the manifest — `.unikit/code/plans/<dated-folder>/PLAN.md` — **last**, once phase
    content has stopped moving, so that `## Phase Index`, the task links, the ranges and the
    dependency references all agree with it.
+   Its **first line** is the mode marker, written verbatim and never localized:
+
+   ```
+   <!-- unikit:plan-mode:ultra -->
+   ```
+
+   The line is declared in `ULTRA-PLAN-FORMAT.md` — quoted here, never redefined.
 3. Run every check in `## Integrity Checks` from `ULTRA-PLAN-FORMAT.md`.
 4. Only then show the plan to the user.
 
