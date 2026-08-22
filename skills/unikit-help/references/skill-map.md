@@ -63,6 +63,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **In:** a topic / question / system name — or, when a design workspace exists, a **flow**
   / player sequence (a *first-class flow input* grounded on the dynamics axis via the shared
   `design-read` contract). `init` rebuilds the researches index.
+- **Modes:** default | `init` | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
+  dependency graph — written into the research folder by relevance, never by checklist).
 - **Out:** `.unikit/code/researches/<date>_<name>/` (`RESEARCH_RESULT.md` + `RESEARCH_BRIEF.md`),
   and `researches/INDEX.md`.
 - **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the brief),

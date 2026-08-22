@@ -3234,6 +3234,75 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# UR: ultra research — the second ultra marker, and the identifier contract.
+# ─────────────────────────────────────────────
+
+# (UR-1) The reference exists, the marker is declared exactly where it belongs, and the
+# two ultra markers are DISTINCT strings. A copy-paste that gives a research folder the
+# plan marker would make /unikit-implement treat a research as a bundle — and the failure
+# would surface as a missing phase file, far from its cause. The two cross negatives are
+# the content of this guard; the positives only give them an object.
+UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+UR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+UR_PLAN_SPEC="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+UR_WHY=""
+[[ -s "$UR_REF" ]] || UR_WHY+=" no-reference"
+grep -qF 'unikit:research-mode:ultra' "$UR_REF"     || UR_WHY+=" no-marker-in-reference"
+grep -qF 'ULTRA-RESEARCH-FORMAT.md'   "$UR_EXPLORE" || UR_WHY+=" no-dispatch"
+if grep -qF 'unikit:plan-mode:ultra' "$UR_REF"; then UR_WHY+=" plan-marker-in-research-reference"; fi
+if grep -qF 'unikit:research-mode:ultra' "$UR_PLAN_SPEC"; then UR_WHY+=" research-marker-in-plan-spec"; fi
+
+# (UR-2) `init` rebuilds the index from RESEARCH_RESULT.md only. Without this rule written
+# down, a folder carrying adaptive artifacts reads as malformed to the next person editing
+# the rebuild loop — and the index silently loses a research.
+grep -qF 'Adaptive artifacts in a folder are neither read nor listed' "$UR_EXPLORE" || UR_WHY+=" init-not-robust"
+
+if [[ -z "$UR_WHY" ]]; then
+    pass "UR-1/UR-2 ultra research reference + dispatch; the plan and research markers stay distinct; init survives extra files"
+else
+    fail "UR-1/UR-2 ultra research contract:$UR_WHY"
+fi
+
+# (UR-3) The identifier contract: a CLOSED vocabulary with a named owner.
+# Practice diverges in both directions when the vocabulary is left open — the prefixes a
+# spec names go unused while the ones actually used go unnamed. Six prefixes, and a seventh
+# is a decision rather than a convenience. The guard checks that the vocabulary is PRESENT
+# and has not shrunk; forbidding an unknown prefix by grep would need an allowlist the size
+# of the corpus, so closure is held by the spec text and by Integrity checks 4-5.
+# The owner assert is load-bearing: without it a `## Traceability` table becomes a second
+# source of truth, and /unikit-plan — which reads the brief and the summary and nothing
+# else — cannot resolve an ID that lives only in the table.
+# The vocabulary greps are scoped TWICE, and both narrowings are load-bearing: to the body
+# of `## Identifiers`, and to the table-row form `| `<prefix>`. Searching the whole file for
+# a bare backticked prefix is what the first version did, and it could not fail: `ADR-`
+# occurs in the adaptive-artifacts table and twice more in prose, `DEC-` in Integrity check 4,
+# so deleting either row from the vocabulary table left the guard green. A guard that cannot
+# go red is worse than no guard — it reports confidence it never earned.
+UR3_WHY=""
+UR3_SECTION=""
+if ! grep -qF '## Identifiers' "$UR_REF"; then
+    UR3_WHY+=" no-section"
+else
+    UR3_SECTION="$(awk '/^## Identifiers$/{f=1;next} /^## /{f=0} f' "$UR_REF")"
+    # Degenerate to fail when the section is empty (NN-4 / RT-7 convention): an object-less
+    # guard must go red rather than pass on nothing.
+    if [[ -z "$UR3_SECTION" ]]; then
+        UR3_WHY+=" empty-section"
+    else
+        for pfx in 'C-' 'REQ-' 'DEC-' 'RISK-' 'OQ-' 'ADR-'; do
+            printf '%s' "$UR3_SECTION" | grep -qF "| \`$pfx" || UR3_WHY+=" vocab-missing:$pfx"
+        done
+    fi
+fi
+grep -qF 'Active Summary owns every ID' "$UR_REF" || UR3_WHY+=" no-owner-rule"
+grep -qF 'never reused'                 "$UR_REF" || UR3_WHY+=" no-stability-rule"
+if [[ -z "$UR3_WHY" ]]; then
+    pass "UR-3 the identifier vocabulary is closed (six prefixes), owned by the Active Summary, and stable"
+else
+    fail "UR-3 identifier contract:$UR3_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # MF: MCP findings are recorded AT THE TASK, not at the end of the run.
 # The table used to be filled once, in the run's closing report — which is precisely the
 # moment a session is most likely to have already ended. These guards pin the two halves
