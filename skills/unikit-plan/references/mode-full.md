@@ -52,7 +52,7 @@ Based on choice:
 Launch 1-3 Explore tasks in parallel to quickly scan the codebase before deep planning. This gives a high-level picture without consuming main context.
 
 ```
-Agent(subagent_type: Explore, prompt:
+recon-agent(prompt:
   "In the current project, find files and modules related to [feature domain keywords].
    Report: key directories, relevant files, existing patterns, integration points.
    Thoroughness: quick. Be concise — return a structured summary, not file contents.")

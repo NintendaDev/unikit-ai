@@ -50,7 +50,7 @@ than a shrug.
 
 ## Delegation
 
-Give the read-only pass to a fresh context: `Agent(subagent_type: Explore)`, handed nothing
+Give the read-only pass to a fresh context: the `check-agent` alias, handed nothing
 but the durable file paths and the criteria above. Fresh context is the point — the session
 that wrote the files is the one that cannot tell what they leave unsaid.
 

@@ -2760,7 +2760,7 @@ else
     # that survives a /clear rather than what the session still remembers.
     (( "$(grep -cE '^[0-9]+\. ' "$CG_REF")" >= 4 )) || CG_WHY+=" CG-2:fewer-than-four-criteria"
     grep -qF 'not evidence' "$CG_REF"                  || CG_WHY+=" CG-2:no-durable-scope-rule"
-    grep -qF 'Agent(subagent_type: Explore)' "$CG_REF" || CG_WHY+=" CG-2:no-fresh-context-pass"
+    grep -qF 'the `check-agent` alias' "$CG_REF"      || CG_WHY+=" CG-2:no-fresh-context-pass"
     grep -qF 'WARN [coherence]' "$CG_REF"              || CG_WHY+=" CG-2:no-inline-fallback"
     grep -qF 'Integrity' "$CG_REF"                     || CG_WHY+=" CG-2:no-boundary-with-integrity"
 fi
