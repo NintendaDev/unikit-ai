@@ -37,11 +37,16 @@ The subagent layer exists for six reasons:
                                             +-----------------------+
 
 +-------------------------------------------------------------+
-|  Delegation aliases (from inside pipeline skills)           |
+|  Delegation aliases (from inside skills)                    |
+|   skill-loading (general-purpose + skills: [...])           |
 |    - develop-agent   (parallel/deep-dive only after         |
 |                       the Bootstrap refactor)               |
 |    - rules-agent     (capture a new project rule)           |
 |    - docs-agent      (update or create documentation)       |
+|   model-carrying (declared behind an agent-filter branch)   |
+|    - recon-agent     (read-only parallel reconnaissance)    |
+|    - check-agent     (fresh-context findings validator)     |
+|    - lens-agent      (adversarial review lens)              |
 +-------------------------------------------------------------+
 ```
 
@@ -50,7 +55,7 @@ The subagent layer exists for six reasons:
 | Coordinator | `unikit-implement-coordinator`, `unikit-plan-coordinator` | `claude --agent <name>` (top-level session) | Yes |
 | Internal worker | `unikit-implement-worker`, `unikit-plan-polisher` | Spawned by coordinator | No |
 | Sidecar (background, read-only) | `unikit-review-sidecar`, `unikit-architecture-sidecar`, `unikit-commit-sidecar`, `unikit-docs-sidecar` | Spawned by coordinator (or explicit `Agent(...)` from a user-launched skill) | No |
-| Delegation alias | `develop-agent`, `rules-agent`, `docs-agent` | `Agent(subagent_type: "general-purpose", skills: [...])` from a workflow skill | Depends on the skill loaded - aliases do not carry the top-level privilege |
+| Delegation alias | `develop-agent`, `rules-agent`, `docs-agent` (skill-loading) · `recon-agent`, `check-agent`, `lens-agent` (model-carrying) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
 
 ## Top-Level Agent Sessions
 
@@ -134,21 +139,24 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Workflow skills expose three named aliases that expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls. They are **not** subagent files on disk - they live inside the skill prompts and point at existing skills.
+Skills expose six named aliases in two families. The **skill-loading** three expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** three expand to a read-only dispatch that names the model on Claude Code and omits it everywhere else. Neither family is a subagent file on disk - they live inside the skill prompts.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
 | `develop-agent` | `Agent(..., skills: ["unikit-devcontext"])` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
 | `rules-agent` | `Agent(..., skills: ["unikit-rules"])` | `/unikit-implement` (and other pipeline skills) | Capture a new project rule without bloating the calling context |
 | `docs-agent` | `Agent(..., skills: ["unikit-docs"])` | Pipeline skills at docs checkpoints | Update or create documentation pages |
+| `recon-agent` | `Agent(subagent_type: Explore, …)` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
+| `check-agent` | `Agent(subagent_type: Explore, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
+| `lens-agent` | `Agent(subagent_type: general-purpose, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
 
-Fallback: if `Agent` is unavailable, `rules-agent` and `docs-agent` invoke their skills inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself.
+Fallback: if `Agent` is unavailable, `rules-agent` and `docs-agent` invoke their skills inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying three fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session.
 
 ## Design Principles
 
 1. **Read-only where possible.** All four sidecars declare only `Read/Glob/Grep`. They exist to observe the codebase after a change, not to mutate it.
 2. **Writers are few.** Only `unikit-implement-coordinator`, `unikit-implement-worker`, and `unikit-plan-polisher` carry `Write/Edit`. `unikit-plan-coordinator` can edit plan artifacts via its polisher, not directly.
-3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` pins `model: sonnet` for consistent message drafting.
+3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` and `unikit-docs-sidecar` pin `model: sonnet`. A subagent definition file is the **right** place for a model name - it is runtime-native and reaches Claude Code only. A skill body is not: it reaches all six runtimes, of which only Claude Code has a dispatch-time model argument at all. That is why the model-carrying aliases declare their model behind an agent-filter branch instead of writing it at the call site, and why the value is always a tier alias (`sonnet`) and never a versioned model id.
 4. **Strict output contracts.** Sidecars return structured JSON or markdown the coordinator can parse. Workers return a single task result block. Coordinators are the only place free-form prose appears.
 5. **English output for parsing, project language for artifacts.** Sidecars and workers return English summaries; plan and documentation artifacts they write follow `language.artifacts` from `.unikit/config.yaml`.
 6. **Rules loaded inside the subagent.** Every subagent with domain concerns (architecture, review, implement, plan) reads its own slice of `RULES_INDEX.md` - there is no implicit inheritance from the caller's context.

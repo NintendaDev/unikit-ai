@@ -582,7 +582,7 @@ INPUT (code → design)            CORE (authoring zones)           OUTPUT (desi
 
 For a project with code but **no GDD yet**. It scans the whole project (engine
 auto-detected — Unity / Godot / Unreal, via generic globs, never assumed) using
-`Agent(subagent_type: Explore)` subagents (inline `Glob`/`Grep`/`Read` fallback) and writes
+`recon-agent` dispatches (inline `Glob`/`Grep`/`Read` fallback) and writes
 one passive `.unikit/gamedesign/RECON.md`: a **system roster + `depends_on` graph** (P0),
 **content-type schemas / resources / entities** (P1), and — crucially — a mandatory
 **`## Intent Gap`** for everything code cannot carry (pillars, the target fantasy, the

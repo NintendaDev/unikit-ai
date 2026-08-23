@@ -273,7 +273,7 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 /unikit-gd-recon we built a match-3 with a meta-map, focus the economy
 ```
 - **Cold-start only** - for a live codebase with **no GDD yet**; reconstructs candidate design facts into one passive `.unikit/gamedesign/RECON.md`
-- Fans out `Agent(subagent_type: Explore)` per subsystem to extract a system roster + `depends_on` graph (P0) and content-type schemas / resources / entities (P1) - flows are excluded, they aren't recoverable from code
+- Fans out one `recon-agent` dispatch per subsystem to extract a system roster + `depends_on` graph (P0) and content-type schemas / resources / entities (P1) - flows are excluded, they aren't recoverable from code
 - Every extracted fact is tagged `provenance: extracted from code`; a mandatory `## Intent Gap` section records what code cannot reveal (pillars, fantasy, the "why")
 - Has no `Skill` tool - only **recommends** `/unikit-gd-spec <RECON.md>` (import) as printed text, never calls it. If a GDD already exists it redirects to the `/unikit-gd-explore` code-grounded lens instead
 
@@ -480,9 +480,9 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 
 ## Agents
 
-UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus three **delegation aliases** (`develop-agent`, `rules-agent`, `docs-agent`) that workflow skills expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls.
+UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus six **delegation aliases** in two families: the skill-loading `develop-agent`, `rules-agent`, `docs-agent`, which expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls, and the model-carrying `recon-agent`, `check-agent`, `lens-agent`, which expand into a read-only dispatch declared in the calling skill's `## Delegation agents`.
 
-After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `rules-agent` and `docs-agent` keep their usual role of capturing rules and documentation.
+After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `rules-agent` and `docs-agent` keep their usual role of capturing rules and documentation. The model-carrying aliases exist so a model name is written once per skill, behind an agent-filter branch, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
 
 For the full reference - frontmatter, launch commands, design principles, sidecar output contracts - see [Subagents](subagents.md).
 
