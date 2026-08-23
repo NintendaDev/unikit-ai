@@ -109,15 +109,47 @@ Recon is **strictly cold-start**. Check the workspace **first**:
   exists. Do not proceed.
 - If neither exists → this is the cold-start case recon is for. Continue.
 
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where the delegate's model is declared — call sites name the alias and never carry a
+model argument of their own.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+
 ## Subagent Delegation — BLOCKING PRE-REQUISITE
 
 The scan is a **map-reduce**: fan out one read-only investigator per candidate subsystem,
-then reduce their reports into `RECON.md`. Use `Agent(subagent_type: Explore)` — **not**
+then reduce their reports into `RECON.md`. Use the `recon-agent` alias — **not**
 `unity-source-parser` (a dev-repo-local agent that will not exist in a user's project; this
 module ships **no new subagents**). Engine is inferred from the cold-start scan, not assumed.
 
 ```
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "In [project root], investigate the [subsystem] code. Seed from the user (a HINT, not
    ground truth — verify every claim against the code, never invent a fact to match it):
    [the game description / notes the user provided, or 'none']. Report, per code-recon.md
@@ -192,7 +224,7 @@ ambiguity) in the RECON.md banner. Never fabricate an engine.
 ### Step 3 — Scan (map-reduce)
 
 Partition the project into candidate subsystems (top-level modules / namespaces / asmdefs /
-source folders), fan out one `Agent(subagent_type: Explore)` per partition (or inline-scan
+source folders), fan out one `recon-agent` per partition (or inline-scan
 on fallback), and collect the per-subsystem fact reports. **Pass the Step 0 seed into every
 investigator prompt as a hint** (it tells them what systems / genre to expect — but each fact
 still needs a code pointer; nothing is emitted just because the description claimed it), and

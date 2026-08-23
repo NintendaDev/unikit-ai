@@ -60,7 +60,7 @@ alternative.
 
 ## Delegation agents
 
-This skill uses a named delegation alias for `Agent(...)` calls. The alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded.
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded; a reconnaissance alias expands to a read-only `Explore` dispatch. Each alias is the single place where its delegate's model is declared — call sites name the alias and never carry a model argument of their own.
 
 - **`develop-agent`** — used ONLY for complex fixes requiring extensive codebase exploration or independent multi-file changes. Default fixes are implemented inline by this skill using rules loaded in Bootstrap. Expands to:
 
@@ -74,6 +74,32 @@ This skill uses a named delegation alias for `Agent(...)` calls. The alias expan
   ```
 
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
 
 ---
 
@@ -280,7 +306,7 @@ Based on choice:
 
 Investigate the codebase enough to understand the problem and create a plan.
 
-**Use the same parallel exploration approach as Step 2** — launch 2-3 Explore tasks (`Agent(subagent_type: Explore, model: sonnet, ...)`) to investigate the problem. Design prompts based on the specific bug context.
+**Use the same parallel exploration approach as Step 2** — launch 2-3 `recon-agent` dispatches to investigate the problem. Design prompts based on the specific bug context.
 
 **Fallback:** If Agent tool is unavailable, investigate directly using Glob/Grep/Read.
 
@@ -366,20 +392,20 @@ Launch 2-3 Explore tasks simultaneously:
 
 ```
 Task 1 — Locate the problem area:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Find code related to [error location / affected functionality].
    Read the relevant classes, trace the data flow.
    Thoroughness: medium.")
 
 Task 2 — Related code & side effects:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Find all callers/consumers of [affected class/method].
    Check Zenject bindings and installers that wire this up.
    Identify what else might break or be affected.
    Thoroughness: medium.")
 
 Task 3 — Similar past patterns (if patches exist):
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Search for similar error patterns or related fixes in the codebase.
    Check git log for recent changes to [affected files].
    Thoroughness: quick.")

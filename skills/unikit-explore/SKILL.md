@@ -64,6 +64,74 @@ alternative.
 
 ---
 
+## Delegation agents
+
+This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
+place where its delegate's model is declared — call sites name the alias and never carry a
+model argument of their own.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+
+<!-- unikit:agents claude -->
+- **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<rendered VALIDATOR.md template>")
+  ```
+
+  `Explore` is read-only **by construction** — its tool set excludes `Edit`/`Write`, so the
+  read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, run the pass yourself, inline — see
+  `references/coherence-gate.md`
+  (`WARN [coherence] fresh-context pass unavailable — running inline`). The gate is never
+  skipped or delayed.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<rendered VALIDATOR.md template>")
+  ```
+
+  `Explore` is read-only **by construction** — its tool set excludes `Edit`/`Write`, so the
+  read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, run the pass yourself, inline — see
+  `references/coherence-gate.md`
+  (`WARN [coherence] fresh-context pass unavailable — running inline`). The gate is never
+  skipped or delayed.
+<!-- unikit:end -->
+
 ## Artifact Ownership
 
 - Primary ownership: `.unikit/code/researches/` directory only
@@ -120,10 +188,10 @@ Depending on what the user brings, you might:
 - Surface hidden complexity and coupling
 - Trace data flow through systems
 
-Use `Agent` tool with `subagent_type: Explore` for parallel codebase investigation. When the exploration topic touches multiple systems or modules, launch 1-5 Explore agents to gather context faster:
+Use the `recon-agent` alias for parallel codebase investigation. When the exploration topic touches multiple systems or modules, launch 1-5 of them to gather context faster:
 
 ```
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "In [project root], find files and modules related to [topic keywords].
    Report: key directories, relevant files, existing patterns, integration points.
    Thoroughness: quick|medium. Be concise — return a structured summary, not file contents.")
@@ -500,7 +568,7 @@ After saving a research, update `.unikit/code/researches/INDEX.md` so other skil
 
 After **all** writing is done — the artifacts, the three canonical files and
 `researches/INDEX.md` — and **before** confirming the save to the user, read
-`{{skills_dir}}/{{self_name}}/references/coherence-gate.md` and run the gate it specifies.
+`{{skills_dir}}/{{self_name}}/references/coherence-gate.md` and run the gate it specifies as a `check-agent` dispatch.
 The read is conditional: this is the only moment the file is needed, so it is not loaded at
 the start of an exploration.
 

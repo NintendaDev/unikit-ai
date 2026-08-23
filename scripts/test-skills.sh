@@ -2777,7 +2777,12 @@ else
     # it would never run on a save.
     CG3_WRITE="$(grep -n '^### Step 4: Update the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
     CG3_INIT="$(grep -n '^## Init: Rebuilding the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
-    CG3_GATE="$(grep -n 'references/coherence-gate.md' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    # Anchored on the invocation formulation, not on the first mention of the reference
+    # path: the `## Delegation agents` block names that path as a POINTER (the alias's
+    # fallback), and a pointer is not a call. `head -1` on the path made the declaration
+    # block — which must sit above its call sites, i.e. above the write step — read as the
+    # gate itself. CG-3 watches the call.
+    CG3_GATE="$(grep -n 'run the gate it specifies' "$CG_SKILL" | head -1 | cut -d: -f1)"
     if [[ -z "$CG3_GATE" ]]; then
         CG_WHY+=" CG-3:gate-never-called"
     elif [[ -z "$CG3_WRITE" ]]; then

@@ -64,7 +64,7 @@ alternative.
 
 ## Delegation agents
 
-This skill uses named delegation aliases for `Agent(...)` calls. Each alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded.
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded; a reconnaissance alias expands to a read-only `Explore` dispatch. Each alias is the single place where its delegate's model is declared — call sites name the alias and never carry a model argument of their own.
 
 - **`develop-agent`** — used ONLY for fixes that span many independent files OR require extensive codebase exploration. Default fixes are applied inline by this skill using rules loaded in Step 0.2 Bootstrap. Expands to:
 
@@ -91,6 +91,32 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   ```
 
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-rules` inline, one rule at a time.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
 
 ---
 
@@ -262,7 +288,7 @@ Save as `CHANGED_FILES` — this list will be used in all subsequent steps.
 
 ## Step 1: Task Completion Audit
 
-**Use `Agent` tool with `subagent_type: Explore, model: sonnet` to verify task completion in parallel.** This keeps the main context clean and allows simultaneous verification of multiple phases.
+**Use the `recon-agent` alias to verify task completion in parallel.** This keeps the main context clean and allows simultaneous verification of multiple phases.
 
 Launch one Explore task per phase from the plan's task list. For each phase, provide:
 - Task descriptions from the roadmap
@@ -707,7 +733,7 @@ Strict mode is recommended before merging to the base branch or creating a PR.
 4. **No false positives** — if unsure, mark as "⚠️ Verify manually"
 5. **Do not modify .unikit/ files** — only report drift and suggest updates. **Single exception:** Step 3.9's all-AC-met writeback to `.unikit/gamedesign/GD-IDS.yaml` (`implemented_version`) — the lone sanctioned code→design write (a single surface; GAME.md's `## System Map [gen]` renders the `implemented` state read-only from it)
 6. **Do not touch engine read-only paths** — see ENGINE_RULES.md for the list of read-only directories; ignore them during checks
-7. **Agent-based delegation** — use `Agent(subagent_type: Explore, model: sonnet, ...)` for read-only investigation. Fixes are applied INLINE by this skill using rules loaded in Step 0.2 Bootstrap. Use `develop-agent` for fixes ONLY when they span many independent files or require extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)`. If Agent tool is unavailable, fall back to inline work for both exploration (Glob/Grep/Read) and fixes (direct Read/Edit/Write/Bash with loaded rules).
+7. **Agent-based delegation** — use the `recon-agent` alias for read-only investigation. Fixes are applied INLINE by this skill using rules loaded in Step 0.2 Bootstrap. Use `develop-agent` for fixes ONLY when they span many independent files or require extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)`. If Agent tool is unavailable, fall back to inline work for both exploration (Glob/Grep/Read) and fixes (direct Read/Edit/Write/Bash with loaded rules).
 
 ---
 

@@ -39,6 +39,44 @@ alternative.
 
 > **`+check` carve-out:** the optional `+check` findings validator (Step 4.5) is **exempt** from the rule above. If its validator agent is unavailable or blocked, render the review as drafted and emit a single `WARN [+check]` line — never ask the user. See `references/CHECK-MODE.md`.
 
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where the delegate's model is declared — call sites name the alias and never carry a
+model argument of their own.
+
+<!-- unikit:agents claude -->
+- **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<rendered VALIDATOR.md template>")
+  ```
+
+  `Explore` is read-only **by construction** — its tool set excludes `Edit`/`Write`, so the
+  read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: the validator is **never** replaced by inline analysis — see
+  `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<rendered VALIDATOR.md template>")
+  ```
+
+  `Explore` is read-only **by construction** — its tool set excludes `Edit`/`Write`, so the
+  read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: the validator is **never** replaced by inline analysis — see
+  `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
+<!-- unikit:end -->
+
 ## Step 1: Load rules
 
 Read (they always apply):
@@ -152,7 +190,7 @@ Always run these checks in addition to project rules. If a finding from the chec
 
 ## Step 4.5: Validate Findings (`+check` only)
 
-Run this step **only** when `check = true` (the `+check` flag was parsed in Step 2). Draft the full review internally first (all sections of Step 5, including the gate-result inputs), then — **before** rendering anything to the user — run the procedure in **`references/CHECK-MODE.md`**. It dispatches one fresh-context `Agent(subagent_type: Explore, model: sonnet)` validator over the **Findings table** rows (one item per row; "Questions", "Positive notes", and per-commit findings are excluded), applies each `keep`/`modify`/`drop` verdict and any severity move across the four levels (🔴 Critical / 🟡 Warning / 🟠 Medium / 🟢 Suggestion), tracks the `hidden` / `adjusted` / `reclassified` counters, and **recomputes** the `unikit-gate-result` block (Step 5 "Machine-readable gate result") from the post-filter table.
+Run this step **only** when `check = true` (the `+check` flag was parsed in Step 2). Draft the full review internally first (all sections of Step 5, including the gate-result inputs), then — **before** rendering anything to the user — run the procedure in **`references/CHECK-MODE.md`**. It dispatches one fresh-context `check-agent` validator over the **Findings table** rows (one item per row; "Questions", "Positive notes", and per-commit findings are excluded), applies each `keep`/`modify`/`drop` verdict and any severity move across the four levels (🔴 Critical / 🟡 Warning / 🟠 Medium / 🟢 Suggestion), tracks the `hidden` / `adjusted` / `reclassified` counters, and **recomputes** the `unikit-gate-result` block (Step 5 "Machine-readable gate result") from the post-filter table.
 
 When `+check` ran successfully, append one line after all review sections and before the `unikit-gate-result` fence:
 
