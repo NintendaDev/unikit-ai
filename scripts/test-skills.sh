@@ -277,6 +277,8 @@ for skill in "${DELEGATION_SKILLS[@]}"; do
 
     if [[ -n "$missing" ]]; then
         fail "$skill — aliases referenced but not declared in '## Delegation agents': ${missing% }"
+        echo "      (if a token above is an ordinary word and not a delegation alias, reword it —"
+        echo "       the guard matches any [a-z][a-z0-9-]*-agent token and cannot tell them apart)"
     elif [[ -z "$defined" ]]; then
         fail "$skill — no aliases declared in '## Delegation agents'"
     else

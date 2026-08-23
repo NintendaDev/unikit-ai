@@ -67,8 +67,9 @@ model argument of their own.
   Agent(subagent_type: Explore, prompt: "<rendered VALIDATOR.md template>")
   ```
 
-  `Explore` is read-only **by construction** — its tool set excludes `Edit`/`Write`, so the
-  read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
+  This runtime may offer no read-only-by-construction agent type, so the read-only
+  contract rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
+  "You do not modify any files. You do not run commands." lines in whatever is sent.
   No model is named: this runtime either has no dispatch-time model argument or offers only
   versioned model ids, and a versioned id goes stale silently. The runtime's own configured
   default applies.

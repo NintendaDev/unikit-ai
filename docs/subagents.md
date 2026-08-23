@@ -139,7 +139,7 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Skills expose six named aliases in two families. The **skill-loading** three expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** three expand to a read-only dispatch that names the model on Claude Code and omits it everywhere else. Neither family is a subagent file on disk - they live inside the skill prompts.
+Skills expose six named aliases in two families. The **skill-loading** three expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** three expand to a dispatch that names the model on Claude Code and omits it everywhere else; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
