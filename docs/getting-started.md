@@ -156,7 +156,7 @@ Background sidecars and coordinators for parallel execution and read-only audits
 | `unikit-review-sidecar` | Read-only code review |
 | `unikit-docs-sidecar` | Documentation drift detection |
 
-Workflow skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing directly. They load rules and engine principles once at the start of execution (Bootstrap) and then implement tasks inline with `Read/Edit/Write/Bash`. The named delegation aliases - `develop-agent`, `rules-agent`, `docs-agent` - still expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls, but `develop-agent` is now reserved for true parallel scopes or deep-dive single tasks, not for every task.
+Workflow skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing directly. They load rules and engine principles once at the start of execution (Bootstrap) and then implement tasks inline with `Read/Edit/Write/Bash`. The skill-loading delegation aliases - `develop-agent`, `rules-agent`, `docs-agent` - still expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls, but `develop-agent` is now reserved for true parallel scopes or deep-dive single tasks, not for every task. Read-only work goes through the `recon-agent` alias instead.
 
 ### Dynamic Memory Rules
 

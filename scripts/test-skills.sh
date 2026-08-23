@@ -222,12 +222,21 @@ done
 # ─────────────────────────────────────────────
 # Part 2a: Validate delegation-alias connectivity
 # ─────────────────────────────────────────────
-# Every `*-agent` token referenced in the body of unikit-{implement,fix,verify}/SKILL.md
-# MUST be defined in its own `## Delegation agents` section. This ensures aliases are
+# Every `*-agent` token referenced in the body of a skill that carries a
+# `## Delegation agents` section MUST be defined in that section. This ensures aliases are
 # not drift-prone — if a narrative mentions `docs-agent`, that alias must be declared.
+#
+# A skill that names an alias only to FORBID it (`unikit-improve`, `unikit-plan` on
+# `develop-agent`) still owes the reader a lookup: the alias is recorded in that skill's
+# section as not-used-here. The guard's contract is "mentioned in the section", which is
+# what the awk already measures — no exemption shape is introduced.
 echo -e "\n${BOLD}=== Validate delegation-alias connectivity ===${NC}\n"
 
-DELEGATION_SKILLS=("unikit-implement" "unikit-fix" "unikit-verify")
+DELEGATION_SKILLS=(
+    "unikit-implement" "unikit-fix" "unikit-verify"
+    "unikit-docs" "unikit-explore" "unikit-improve" "unikit-plan" "unikit-review"
+    "unikit-gd-explore" "unikit-gd-recon" "unikit-gd-review"
+)
 
 for skill in "${DELEGATION_SKILLS[@]}"; do
     skill_path="$ROOT_DIR/skills/$skill/SKILL.md"
@@ -268,6 +277,8 @@ for skill in "${DELEGATION_SKILLS[@]}"; do
 
     if [[ -n "$missing" ]]; then
         fail "$skill — aliases referenced but not declared in '## Delegation agents': ${missing% }"
+        echo "      (if a token above is an ordinary word and not a delegation alias, reword it —"
+        echo "       the guard matches any [a-z][a-z0-9-]*-agent token and cannot tell them apart)"
     elif [[ -z "$defined" ]]; then
         fail "$skill — no aliases declared in '## Delegation agents'"
     else
@@ -2760,7 +2771,7 @@ else
     # that survives a /clear rather than what the session still remembers.
     (( "$(grep -cE '^[0-9]+\. ' "$CG_REF")" >= 4 )) || CG_WHY+=" CG-2:fewer-than-four-criteria"
     grep -qF 'not evidence' "$CG_REF"                  || CG_WHY+=" CG-2:no-durable-scope-rule"
-    grep -qF 'Agent(subagent_type: Explore)' "$CG_REF" || CG_WHY+=" CG-2:no-fresh-context-pass"
+    grep -qF 'the `check-agent` alias' "$CG_REF"      || CG_WHY+=" CG-2:no-fresh-context-pass"
     grep -qF 'WARN [coherence]' "$CG_REF"              || CG_WHY+=" CG-2:no-inline-fallback"
     grep -qF 'Integrity' "$CG_REF"                     || CG_WHY+=" CG-2:no-boundary-with-integrity"
 fi
@@ -2777,7 +2788,12 @@ else
     # it would never run on a save.
     CG3_WRITE="$(grep -n '^### Step 4: Update the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
     CG3_INIT="$(grep -n '^## Init: Rebuilding the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
-    CG3_GATE="$(grep -n 'references/coherence-gate.md' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    # Anchored on the invocation formulation, not on the first mention of the reference
+    # path: the `## Delegation agents` block names that path as a POINTER (the alias's
+    # fallback), and a pointer is not a call. `head -1` on the path made the declaration
+    # block — which must sit above its call sites, i.e. above the write step — read as the
+    # gate itself. CG-3 watches the call.
+    CG3_GATE="$(grep -n 'run the gate it specifies' "$CG_SKILL" | head -1 | cut -d: -f1)"
     if [[ -z "$CG3_GATE" ]]; then
         CG_WHY+=" CG-3:gate-never-called"
     elif [[ -z "$CG3_WRITE" ]]; then
@@ -5838,6 +5854,109 @@ if [[ -z "$MARKER_LEAK_FILES" ]]; then
 else
     fail "agent-filter markers found outside SKILL.md (only SKILL.md may carry guarded blocks)"
     echo "$MARKER_LEAK_FILES" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g3: DM-1…DM-3 — the delegation model policy
+# ─────────────────────────────────────────────
+# A skill body travels to all six runtimes; a dispatch-time `model:` argument works on
+# exactly one of them, and of the five others three have no stable tier alias at all. The
+# policy is therefore not "pick the right model per runtime" but "name the model in ONE
+# declared place per skill, behind an agent-filter branch, and nowhere else". Three guards,
+# each closing a different way that policy rots:
+#
+#   DM-1  counter-pair (MT-1/MT-2 idiom) — every `model:` in skills/** sits inside an
+#         `Agent(subagent_type: …)` expansion. An EQUALITY between two counts, not a search
+#         for a negation, so a prose mention ("use `subagent_type: Explore, model: sonnet`")
+#         is caught with no allowlist: it raises the total and not the in-call count. That
+#         is the exact shape that survived every earlier cleanup.
+#   DM-2  confinement (RT-5 idiom) — the only files that may carry the literal are
+#         `skills/*/SKILL.md`, and inside each one every occurrence sits between
+#         `<!-- unikit:agents claude -->` and its `<!-- unikit:end -->`. A reference file is
+#         never filtered (Part 7g2), so a literal there ships the argument to all six.
+#   DM-3  positive presence — the two rationale sentences exist, one per branch. A guard
+#         does not reach the user (`scripts/` is outside `files` in package.json); the skill
+#         text does. Deleting the reason is the regression that leaves the suite green and
+#         the reader uninformed, and nothing else here would notice.
+#
+# Anchored on FORMULATIONS, never on headings: a heading is rewritten during cosmetics, a
+# formulation only together with its meaning. Zero occurrences is a FAIL and not a silent
+# pass, on the convention MT-1 and RT-1 use — an empty corpus is when a green result is
+# worth the least. That branch only exists if the counters survive an empty grep, which
+# under `set -euo pipefail` they do not by default — hence `{ … || true; }` below.
+echo -e "\n${BOLD}Part 7g3: delegation model policy (DM-1/DM-2/DM-3)${NC}"
+
+DM_SCOPE="$ROOT_DIR/skills"
+DM_CALL_RE='Agent\(subagent_type: [A-Za-z][A-Za-z-]*, model: [a-z]+'
+
+# `|| true` inside the substitution, not after it: the file runs under `set -euo pipefail`
+# (`scripts/test-skills.sh:5`), so a grep that matches NOTHING fails the pipeline and the
+# assignment aborts the whole suite — the `-eq 0` branch below would never be reached and
+# the diagnostic it exists to print would never appear. The braces keep the failure inside
+# the pipeline's first stage; `wc -l` still receives an empty stream and prints `0`.
+DM_MODEL_TOTAL=$( { grep -rhoE 'model: [a-z]+' "$DM_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+DM_IN_CALL=$( { grep -rhoE "$DM_CALL_RE" "$DM_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+
+# (DM-1)
+if [[ "$DM_MODEL_TOTAL" -eq 0 ]]; then
+    fail "DM-1: no model literal in skills/ at all — the scope is wrong, not the corpus"
+elif [[ "$DM_MODEL_TOTAL" -eq "$DM_IN_CALL" ]]; then
+    pass "DM-1: all $DM_MODEL_TOTAL model literals sit inside an Agent(subagent_type: …) expansion"
+else
+    fail "DM-1: $DM_MODEL_TOTAL model literals in skills/, only $DM_IN_CALL inside a dispatch expansion"
+    grep -rnE 'model: [a-z]+' "$DM_SCOPE" --include='*.md' 2>/dev/null \
+      | grep -vE "$DM_CALL_RE" | sed 's/^/      /' | head -10
+fi
+
+# (DM-2) DM-1 proves the literal is inside an expansion; it does not prove that expansion
+# is ever filtered out. A `references/**` file never passes through applyAgentFilter at all
+# (Part 7g2), and an expansion sitting outside a marker — or inside the `!claude` branch —
+# ships a Claude-only argument to five runtimes whose dispatch signature has no such field.
+# Named after RT-5, whose shape this borrows: collect by grep, allow by name, print the
+# offender.
+DM2_HITS="$(grep -rlE 'model: [a-z]+' "$DM_SCOPE" --include='*.md' 2>/dev/null || true)"
+DM2_WHY=""
+while IFS= read -r dm_file; do
+    [[ -n "$dm_file" ]] || continue
+    if [[ "$(basename "$dm_file")" != "SKILL.md" ]]; then
+        DM2_WHY+=" ${dm_file#"$ROOT_DIR/"}:not-a-SKILL.md"
+        continue
+    fi
+    dm_loose="$(awk '
+        /<!-- unikit:agents / { inblock = ($0 ~ /<!-- unikit:agents claude -->/) ? 1 : 0; next }
+        /<!-- unikit:end -->/ { inblock = 0; next }
+        /model: [a-z]/        { if (!inblock) print FNR }
+    ' "$dm_file" | tr "\n" "," )"
+    [[ -z "$dm_loose" ]] || DM2_WHY+=" ${dm_file#"$ROOT_DIR/"}:unguarded-at-${dm_loose%,}"
+done <<< "$DM2_HITS"
+if [[ -z "$DM2_HITS" ]]; then
+    fail "DM-2: no file carries a model literal — the scope is wrong, not the corpus"
+elif [[ -z "$DM2_WHY" ]]; then
+    pass "DM-2: the model literal is confined to SKILL.md, inside a claude-only branch"
+else
+    fail "DM-2 the model literal escaped its declaration block:$DM2_WHY"
+fi
+
+# (DM-3) The rule itself, in the surface that ships. `scripts/` is outside `files` in
+# package.json, so no guard reaches a user's project; the SKILL.md text does. Anchored on
+# the two formulations rather than on the heading above them — a heading gets rewritten
+# during cosmetics, a formulation only together with its meaning. The third assertion is
+# the load-bearing one: as many reasons as there are dispatches means a block cannot be
+# added without its reason, nor a reason kept after its block is gone.
+# Same `|| true` shape as DM-1, and here it is load-bearing rather than defensive: the
+# regression DM-3 exists to catch is the rationale being deleted, which is exactly the case
+# where grep matches nothing. Without the guard that case kills the suite at this line
+# instead of printing `tier-rationale-absent`, and Part 7h onward never runs.
+DM3_TIER=$( { grep -rhoF 'is a tier alias, never a version' "$DM_SCOPE" --include='SKILL.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+DM3_NOMODEL=$( { grep -rhoF 'No model is named' "$DM_SCOPE" --include='SKILL.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+DM3_WHY=""
+[[ "$DM3_TIER" -gt 0 ]]              || DM3_WHY+=" tier-rationale-absent"
+[[ "$DM3_TIER" -eq "$DM3_NOMODEL" ]] || DM3_WHY+=" claude=$DM3_TIER!=non-claude=$DM3_NOMODEL"
+[[ "$DM3_TIER" -eq "$DM_IN_CALL" ]]  || DM3_WHY+=" reasons=$DM3_TIER!=dispatches=$DM_IN_CALL"
+if [[ -z "$DM3_WHY" ]]; then
+    pass "DM-3: $DM3_TIER declaration blocks, each branch carrying its own stated reason"
+else
+    fail "DM-3 the reason drifted from the declaration:$DM3_WHY"
 fi
 
 # ─────────────────────────────────────────────

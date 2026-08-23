@@ -76,9 +76,45 @@ field values stay English. Do not announce the language setting.
 ## Subagent Delegation — BLOCKING PRE-REQUISITE
 
 When the workflow reaches the lens fan-out (`Agent`), the assistant MUST spawn the
-review lenses as parallel sub-agents if agent execution is supported and not
+review lenses as parallel subagents if agent execution is supported and not
 prohibited by higher-priority instructions. Only if agent execution is unavailable
 or blocked does the assistant run the lenses sequentially in the main session.
+<!-- unikit:end -->
+
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where the delegate's model is declared — call sites name the alias and never carry a
+model argument of their own.
+
+<!-- unikit:agents claude -->
+- **`lens-agent`** — one adversarial review lens, read-only, findings only. Expands to:
+
+  ```
+  Agent(subagent_type: general-purpose, model: sonnet, prompt: "<one lens brief>")
+  ```
+
+  `general-purpose` and not `Explore`: the lens carries a written output contract and the
+  configured artifact language, which is a reasoning job rather than a search.
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, run the lenses sequentially in this session.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`lens-agent`** — one adversarial review lens, read-only, findings only. Expands to:
+
+  ```
+  Agent(subagent_type: general-purpose, prompt: "<one lens brief>")
+  ```
+
+  `general-purpose` and not `Explore`: the lens carries a written output contract and the
+  configured artifact language, which is a reasoning job rather than a search.
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, run the lenses sequentially in this session.
 <!-- unikit:end -->
 
 ## Phase 0 — Bootstrap
@@ -161,14 +197,14 @@ When the review **target is a `CONTENT-TYPE.md`** (or the scope is "all"), selec
 `CT-<slug>` / `CU-<ct>-<n>` and the `belongs_to` system / pillar it serves, on the same
 `RF-<date>-n` rubric.
 
-Run them as **2–4 parallel inline `Agent()`** calls, each given one lens, the
+Run them as **2–4 parallel inline `lens-agent`** dispatches, each given one lens, the
 configured **artifact language**, and the adversarial framing *"find what is wrong —
 do NOT validate"*. Each agent is **read-only** and returns findings only; it never
 writes. Fall back to running the lenses sequentially in this session if the Agent
 tool is unavailable.
 
 ```
-Agent(subagent_type: general-purpose, model: sonnet, prompt:
+lens-agent(prompt:
   "Review <doc path> through the <lens> lens. Your job is to FIND PROBLEMS, not
    validate. For each: severity (Critical/Major/Minor/Suggestion per the rubric),
    the document section, and the contradicted fact/pillar/rule as evidence.

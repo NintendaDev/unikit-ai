@@ -1,6 +1,6 @@
 # Plan-refinement item validator — subagent prompt
 
-This file is loaded by `unikit-improve` when the `+check` flag is set. The skill substitutes the placeholders below and dispatches a single `Agent(subagent_type: Explore, model: sonnet)` call. The subagent runs with fresh context and cannot rely on anything from the parent conversation. `Explore` is **read-only by construction** — its tool set excludes `Edit`/`Write`, so the validator's read-only behavior (`Read`, `Glob`, `Grep` only — no writes, no state-changing commands) is guaranteed by the dispatch, not merely requested in the prompt below.
+This file is loaded by `unikit-improve` when the `+check` flag is set. The skill substitutes the placeholders below and dispatches a single `check-agent` call (declared in `SKILL.md` under `## Delegation agents`). The subagent runs with fresh context and cannot rely on anything from the parent conversation. The alias expands to `Explore`, which is **read-only by construction** — its tool set excludes `Edit`/`Write`, so the validator's read-only behavior (`Read`, `Glob`, `Grep` only — no writes, no state-changing commands) is guaranteed by the dispatch, not merely requested in the prompt below.
 
 Treat this file as a template. When the skill invokes the validator, it MUST replace:
 

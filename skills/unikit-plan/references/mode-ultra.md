@@ -38,10 +38,9 @@ it is that file's own limit, and ultra declares its own here. The depth the Requ
 Gate demands is produced here — a thin recon becomes a vague phase file, and the gate then
 rejects a bundle that could have been written correctly the first time.
 
-The dispatch form is the same as `mode-full.md` Step B — `Agent(subagent_type: Explore,
-prompt: …)`, naming no model. Unifying the dispatch form across the repository is the
-subject of a separate research bundle; until it closes, a new dispatch follows the one
-existing model-free template rather than adding another copy of the literal.
+The dispatch form is the same as `mode-full.md` Step B — the `recon-agent` alias,
+declared once in `SKILL.md` under `## Delegation agents`. A call site names the alias
+and never carries a model argument of its own.
 
 When the Explore tasks return, **return here**.
 

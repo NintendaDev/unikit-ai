@@ -61,6 +61,38 @@ including the rule to **translate concepts, not transliterate jargon**.
 field values (e.g. `market_signal: red-ocean`) stay English. Do not announce the
 language setting.
 
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where the delegate's model is declared — call sites name the alias and never carry a
+model argument of their own.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+
 ## Bootstrap Context (MANDATORY)
 
 Before responding — before any analysis — silently load (do not narrate):
@@ -130,11 +162,11 @@ Web research **is allowed** here (market and reference scans — `gd-principles`
 
 ### Parallel investigation
 
-For broad topics, launch **inline `Agent(subagent_type: Explore)`** agents to
+For broad topics, launch **inline `recon-agent`** dispatches to
 gather reference material in parallel (one per game/genre/angle), then synthesize:
 
 ```
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Research <game/genre/mechanic>. Report: core loop, key systems, the standout
    design choices and the trade-offs they make. Cite sources. Be concise — a
    structured summary, not raw dumps.")
@@ -144,7 +176,7 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
 directly. Agents and web fetches are read-only advisors — they never write files.
 **When this skill is itself running as a spawned subagent** (serving a brainstorm
 delegation — see "Serving a brainstorm request"), prefer **direct `WebSearch` /
-`WebFetch`** over a nested `Agent(subagent_type: Explore)`: nested spawning from
+`WebFetch`** over a nested `recon-agent`: nested spawning from
 inside a subagent is unreliable.
 
 ## The Stance
@@ -335,7 +367,7 @@ built / what the asset actually has* — separating it from MDA's "another game"
 
 - **Code-grounded signal present and `GAME.md` exists** → code lens **ON**: load
   `unikit-gd-recon/references/code-recon.md`, scan **only the named slice** with
-  `Agent(subagent_type: Explore)` (fallback: inline `Glob`/`Grep`/`Read`), and fold the
+  `recon-agent` (fallback: inline `Glob`/`Grep`/`Read`), and fold the
   code findings into the brief.
 - **No `GAME.md` yet** → this is the **cold-start** case → **do not** use this lens;
   point at `/unikit-gd-recon` (whole-project reconstruction) instead. Recon owns cold
@@ -387,7 +419,7 @@ internal-design / code-grounded closure passes — a subagent would hang on any 
 run the **market lens** (per-concept `market_signal` + `validation_confidence` +
 evidence), and **return the brief into the session as text — save no file** (skip the
 save step; the calling session owns persistence). Prefer direct `WebSearch` /
-`WebFetch` over a nested `Agent(subagent_type: Explore)` (see "Parallel investigation").
+`WebFetch` over a nested `recon-agent` (see "Parallel investigation").
 
 ## Saving Research Results
 

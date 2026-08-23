@@ -136,6 +136,40 @@ Only if agent execution is unavailable or blocked, the assistant MUST ask the us
 alternative.
 <!-- unikit:end -->
 
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where the delegate's model is declared — call sites name the alias and never carry a
+model argument of their own.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+
+- **`develop-agent`** — **not used by this skill.** It belongs to the code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`); planning reads and analyses code, it does not write it. Recorded here so the alias named in "Code Analysis & Delegation Rules" can be looked up in the one place aliases are documented.
+
 ## Input
 
 `$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language.
@@ -439,7 +473,7 @@ Launch 2-4 Explore tasks in parallel, each with a **specific focus**. Each task 
 
 ```
 Task 1 — Architecture & affected modules:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
    - [core rule paths relevant to architecture — from RULES_INDEX.md Core table]
@@ -448,7 +482,7 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
    key entry points, and how modules interact. Thoroughness: medium.")
 
 Task 2 — Existing patterns & conventions:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
    - [core rule paths relevant to patterns — from RULES_INDEX.md Core table]
@@ -459,7 +493,7 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
    Thoroughness: medium.")
 
 Task 3 — Dependencies & integration points (if needed):
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
    - [core rule paths relevant to dependencies — from RULES_INDEX.md Core table]

@@ -51,6 +51,73 @@ Only if agent execution is unavailable or blocked, the assistant MUST ask the us
 alternative.
 <!-- unikit:end -->
 
+## Delegation agents
+
+This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
+place where its delegate's model is declared — call sites name the alias and never carry a
+model argument of their own.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+
+<!-- unikit:agents claude -->
+- **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<rendered VALIDATOR.md template>")
+  ```
+
+  `Explore` is read-only **by construction** — its tool set excludes `Edit`/`Write`, so the
+  read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: the validator is **never** replaced by inline analysis — see
+  `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<rendered VALIDATOR.md template>")
+  ```
+
+  This runtime may offer no read-only-by-construction agent type, so the read-only
+  contract rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
+  "You do not modify any files. You do not run commands." lines in whatever is sent.
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: the validator is **never** replaced by inline analysis — see
+  `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
+<!-- unikit:end -->
+
+- **`develop-agent`** — **not used by this skill.** It belongs to the code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`); plan refinement reads and analyses code, it does not write it. Recorded here so the alias named in "Code Analysis Rules" can be looked up in the one place aliases are documented.
+
 ## Core Idea
 
 ```
@@ -68,11 +135,11 @@ enhanced plan with better tasks, correct dependencies, more detail
 
 This skill is a **plan refinement orchestrator**, not a code writer. It loads project rules itself (Step 0.5 Bootstrap) and delegates codebase exploration to Explore tasks.
 
-**For deep code analysis, use Explore tasks** (`Agent(subagent_type: Explore, model: sonnet, ...)`):
+**For deep code analysis, use the `recon-agent` alias**:
 - Launch 2-3 tasks in parallel for different aspects of the codebase
 - Each task MUST receive references to project doc files in its prompt — paths to `.unikit/ARCHITECTURE.md` and relevant core/stack rule files loaded in Bootstrap
 
-**Do NOT use `/unikit-devcontext` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`). Plan refinement needs code reading and analysis, not code writing.
+**Do NOT use `/unikit-devcontext` or `develop-agent`** — these are for code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`). Plan refinement needs code reading and analysis, not code writing.
 
 **What you CAN do directly** (without Explore tasks):
 - Read any `.md` documentation files (the plan manifest, `.unikit/*.md`)
@@ -318,7 +385,7 @@ Formulate analysis questions based on the feature plan, then launch Explore task
 
 ```
 Task 1 — Existing code & bindings:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
    - [core rule paths from RULES_INDEX.md Core table]
@@ -329,7 +396,7 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
    Thoroughness: medium.")
 
 Task 2 — Integration points:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
    - [core rule paths from RULES_INDEX.md Core table]
@@ -340,7 +407,7 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
    Thoroughness: medium.")
 
 Task 3 — Save & controller patterns:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
    - [core rule paths from RULES_INDEX.md Core table]
@@ -464,7 +531,7 @@ If Step 1.5 produced `research_improvements` (from updated or newly linked resea
 
 Run this step **only** when `check = true` (the `+check` flag was parsed in Step 0) and Step 3 produced at least one finding in a validated group. Otherwise skip it entirely — no validator lines appear anywhere in the output and the Step 4 / Step 5.8 Summary keeps its default shape.
 
-Follow the full procedure in **`references/CHECK-MODE.md`**: it dispatches one fresh-context `Agent(subagent_type: Explore, model: sonnet)` validator over the four codebase-traceable groups (`missing`, `improvements`, `architectural`, `removals`), applies each `keep`/`modify`/`drop` verdict, recomputes the 🔄 Dependency Fixes group on the filtered list (phase b), and tracks the `hidden` / `adjusted` counters. The **Research-Based Findings** (`research_improvements`) and the 🔄 Dependency Fixes group are **not** validated.
+Follow the full procedure in **`references/CHECK-MODE.md`**: it dispatches one fresh-context `check-agent` validator over the four codebase-traceable groups (`missing`, `improvements`, `architectural`, `removals`), applies each `keep`/`modify`/`drop` verdict, recomputes the 🔄 Dependency Fixes group on the filtered list (phase b), and tracks the `hidden` / `adjusted` counters. The **Research-Based Findings** (`research_improvements`) and the 🔄 Dependency Fixes group are **not** validated.
 
 **Fallback (do NOT inline-analyze):** if the validator agent is unavailable/blocked or the dispatch fails, the procedure keeps **all** findings as-is and emits the single line `WARN [+check]: validator failed (<reason>), all items kept as-is` — it never re-does the validator's work with Glob/Grep/Read. This `+check` path is **exempt** from the `## Subagent Delegation — BLOCKING PRE-REQUISITE` rule: an unavailable validator is silently skipped, the user is never asked.
 

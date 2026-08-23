@@ -60,6 +60,38 @@ Only if agent execution is unavailable or blocked, the assistant MUST ask the us
 alternative.
 <!-- unikit:end -->
 
+## Delegation agents
+
+This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
+place where the delegate's model is declared — call sites name the alias and never carry a
+model argument of their own.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+
 ## Skill-specific rules:
 - Navigation text is translated to the configured language (`[<- Предыдущая]`, `Назад к README`, `Далее ->`, `См. также`)
 - `docs-config.json` is NOT translated — it stays in English (machine-readable config)
@@ -230,7 +262,7 @@ Before generating any documents, systematically explore the codebase to build a 
 
 **This step is mandatory.** Shallow detection produces shallow docs — catalogs of classes without explaining how they work together. The quality of documentation directly depends on the depth of analysis performed here.
 
-Launch multiple exploration tasks in parallel using `Agent(subagent_type: Explore, model: sonnet, ...)` to cover different analysis dimensions. Each substep below (1.6.1–1.6.4) should be a separate Agent call with a focused prompt.
+Launch multiple exploration tasks in parallel using the `recon-agent` alias (declared in `## Delegation agents`) to cover different analysis dimensions. Each substep below (1.6.1–1.6.4) should be a separate `recon-agent` dispatch with a focused prompt.
 
 **Fallback:** If Agent tool is unavailable, perform analysis inline using Glob/Grep/Read.
 
@@ -414,7 +446,7 @@ Navigation text is translated to the project language. For example, with `"langu
 
 **Content generation approach:**
 - Use the deep analysis from Step 1.6 as the primary source — it contains the communication map, dependency chains, and feature flows
-- Supplement with `Agent(subagent_type: Explore, model: sonnet, ...)` for specific details not covered by the analysis. Fallback: If Agent tool is unavailable, use Glob/Grep/Read inline
+- Supplement with a `recon-agent` dispatch for specific details not covered by the analysis. Fallback: If Agent tool is unavailable, use Glob/Grep/Read inline
 - For each document, verify against actual code — don't guess at structures
 - Include real class names, real file paths, real namespace examples
 - Draw ASCII dependency diagrams, sequence diagrams, and interaction matrices
@@ -517,4 +549,4 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 7. **Ownership boundary** — this skill owns `README.md`, the **top-level** `docs/*.md` (the non-design pages), `docs-html/*`, `.unikit/docs-config.json`, and the Documentation section in `AGENTS.md`. It does NOT own `docs/design/**` (the game-design GDD render, owned by `/unikit-gd-docs`), `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, or `.unikit/DESCRIPTION.md`.
 8. **Don't duplicate .unikit/ content** — if `ARCHITECTURE.md` or `DESCRIPTION.md` exist in `.unikit/`, use them as source material and enrich, don't copy verbatim.
 9. **NEVER add `Co-Authored-By`** or any AI attribution trailers to commits.
-10. **Agent-based delegation** — use `Agent(subagent_type: Explore, model: sonnet, ...)` for deep code analysis. If Agent tool is unavailable, fall back to inline work (Glob/Grep/Read). Lightweight Glob/Grep for quick checks is always allowed without delegation.
+10. **Agent-based delegation** — use the `recon-agent` alias for deep code analysis. If Agent tool is unavailable, fall back to inline work (Glob/Grep/Read). Lightweight Glob/Grep for quick checks is always allowed without delegation.
