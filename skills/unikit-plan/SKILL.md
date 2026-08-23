@@ -168,6 +168,8 @@ model argument of their own.
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
 <!-- unikit:end -->
 
+- **`develop-agent`** — **not used by this skill.** It belongs to the code-writing skills (`/unikit-implement`, `/unikit-fix`); planning reads and analyses code, it does not write it. Recorded here so the alias named in "Code Analysis & Delegation Rules" can be looked up in the one place aliases are documented.
+
 ## Input
 
 `$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language.

@@ -115,6 +115,8 @@ model argument of their own.
   `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
 <!-- unikit:end -->
 
+- **`develop-agent`** — **not used by this skill.** It belongs to the code-writing skills (`/unikit-implement`, `/unikit-fix`); plan refinement reads and analyses code, it does not write it. Recorded here so the alias named in "Code Analysis Rules" can be looked up in the one place aliases are documented.
+
 ## Core Idea
 
 ```
