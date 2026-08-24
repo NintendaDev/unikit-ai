@@ -23,8 +23,8 @@ import {
 import { runMigrationChain } from '../migrations/runner.js';
 import type { Migration, MigrationChainResult } from '../migrations/types.js';
 import {
-  PROJECT_PLAN_ARTIFACT_MIGRATIONS, PROJECT_RESEARCH_ARTIFACT_MIGRATIONS,
-  PROJECT_WORKSPACE_MIGRATIONS,
+  PROJECT_PLAN_ARTIFACT_MIGRATIONS, PROJECT_PLAN_TIMESTAMP_MIGRATIONS,
+  PROJECT_RESEARCH_ARTIFACT_MIGRATIONS, PROJECT_WORKSPACE_MIGRATIONS,
 } from '../workspace-migrations/index.js';
 import { PROJECT_MCP_MIGRATIONS } from '../mcp-migrations/index.js';
 
@@ -113,19 +113,25 @@ const codeWrapMigration: Migration<MemoryMigrationContext> = {
 // guard imports it by that name; it now covers memory, workspace, MCP-config,
 // plan-artifact AND research-artifact staleness.
 //
-// Declaration order is documentation, not policy — the runner sorts by `since`
-// (the 1.1.0 layout steps, then the 2.0.0 group: the two MCP steps, the
-// plan-manifest merge and the research-manifest merge, which all ship in the
-// same release). Within that group the sort is stable, so declaration order
-// decides — and it does not need to: both merges walk `.unikit/code/<dir>/*`,
-// which on a pre-modular project does not exist until the 1.1.0 relocation has
-// run, and the anchors alone order them against it correctly.
+// Declaration order is documentation for most of this array — the runner sorts
+// by `since` (the 1.1.0 layout steps, then the 2.0.0 group: the two MCP steps,
+// the two manifest merges and the timestamp backfill, which all ship in the same
+// release), and within that group the sort is stable. For the merges it does not
+// need to decide anything: both walk `.unikit/code/<dir>/*`, which on a
+// pre-modular project does not exist until the 1.1.0 relocation has run, and the
+// anchors alone order them against it correctly.
+//
+// The LAST entry is the exception, and there declaration order IS policy:
+// `plan-2-to-3-timestamps` must run after `plan-1-to-2-manifest-merge`, which
+// may still be renaming `TASKS.md` into the `PLAN.md` the backfill stamps. Equal
+// anchors put nothing but this line between the two orders.
 export const PROJECT_MEMORY_MIGRATIONS: readonly Migration<MemoryMigrationContext>[] = [
   codeWrapMigration,
   ...PROJECT_WORKSPACE_MIGRATIONS,
   ...PROJECT_MCP_MIGRATIONS,
   ...PROJECT_PLAN_ARTIFACT_MIGRATIONS,
   ...PROJECT_RESEARCH_ARTIFACT_MIGRATIONS,
+  ...PROJECT_PLAN_TIMESTAMP_MIGRATIONS,
 ];
 
 /**

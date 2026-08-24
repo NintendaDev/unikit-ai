@@ -98,6 +98,10 @@ export const LEGACY_PLAN_TASKS_FILE = 'TASKS.md';
 /** Pre-merge technical brief, folded into the manifest's Technical Context. */
 export const LEGACY_PLAN_BRIEF_FILE = 'PLAN-BRIEF.md';
 
+/** Manifest header fields carrying the plan's own timestamps (REQ-14). */
+export const PLAN_CREATED_FIELD = 'Created:';
+export const PLAN_UPDATED_FIELD = 'Updated:';
+
 /** The manifest heading the brief body is folded under. */
 export const PLAN_TECHNICAL_CONTEXT_HEADING = '## Technical Context';
 

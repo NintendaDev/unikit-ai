@@ -111,3 +111,4 @@ export const PROJECT_WORKSPACE_MIGRATIONS: readonly Migration<WorkspaceMigration
 // project until the relocation above has run, and 1.1.0 < 2.0.0 guarantees it.
 export { PROJECT_PLAN_ARTIFACT_MIGRATIONS } from './plan-artifact.js';
 export { PROJECT_RESEARCH_ARTIFACT_MIGRATIONS } from './research-artifact.js';
+export { PROJECT_PLAN_TIMESTAMP_MIGRATIONS } from './plan-timestamps.js';

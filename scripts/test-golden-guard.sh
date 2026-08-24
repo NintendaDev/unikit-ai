@@ -349,7 +349,6 @@ WS4_COMPLETED_BRIEF_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_completed/
 #     This is the case the original scenario meant: migrated, left alone.
 printf '# plan\n\n- [ ] Task 1 open\n' \
     > "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md"
-WS4_INFLIGHT_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md")"
 
 # (c) both names present — the refuse-to-overwrite branch. `movePath` is
 #     never called onto an existing destination, so both files survive.
@@ -358,7 +357,6 @@ printf '# tasks\n\n- [ ] Task 1 open\n' \
 printf '# plan\n\n- [ ] Task 1 open\n' \
     > "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md"
 WS4_BOTH_TASKS_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_both/TASKS.md")"
-WS4_BOTH_PLAN_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md")"
 
 echo "# straggler fast plan" > "$WS4/.unikit/PLAN.md"   # the only flat leftover
 
@@ -367,8 +365,15 @@ assert_cmd_exit 0 "update self-heals partial workspace" "$TMPDIR/ws4-update.log"
 assert_exists "$WS4/.unikit/code/PLAN.md" "straggler PLAN.md relocated under code/"
 assert_not_exists "$WS4/.unikit/PLAN.md" "flat PLAN.md straggler removed"
 
-assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" "$WS4_INFLIGHT_SHA" \
-    "already-merged plan left untouched by self-heal"
+# Asserted on what the MERGE would have done, not on a hash. The manifest is no
+# longer byte-identical after an `update` and that is not a regression: the
+# backfill (`plan-2-to-3-timestamps`) stamps every manifest, completed or not,
+# by design. A merge, by contrast, would have appended `## Technical Context`
+# and this body would not have survived intact.
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" '## Technical Context' \
+    "already-merged plan: the merge folded nothing into it a second time"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" '^- \[ \] Task 1 open$' \
+    "already-merged plan: its own body came through the self-heal untouched"
 assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" "$WS4_COMPLETED_TASKS_SHA" \
     "completed plan: TASKS.md never renamed"
 assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md" "$WS4_COMPLETED_BRIEF_SHA" \
@@ -377,8 +382,13 @@ assert_not_exists "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN.md" \
     "completed plan: no manifest created"
 assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_both/TASKS.md" "$WS4_BOTH_TASKS_SHA" \
     "both names present: TASKS.md left in place"
-assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md" "$WS4_BOTH_PLAN_SHA" \
-    "both names present: PLAN.md not overwritten"
+# Same reading as above. The claim is that `movePath` never landed TASKS.md on
+# top of PLAN.md, and the two fixtures differ in their H1 precisely so that the
+# claim can be made without a hash: an overwritten manifest would say `# tasks`.
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md" '^# plan$' \
+    "both names present: PLAN.md not overwritten by TASKS.md"
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md" '## Technical Context' \
+    "both names present: nothing was folded into PLAN.md either"
 
 # Why `detect` is mirrored branch-for-branch against every skip in `apply`:
 # a project carrying these two untouchable folders must not stay pending, or

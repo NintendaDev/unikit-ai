@@ -151,31 +151,31 @@ echo -e "\n${BOLD}=== Migration chain + MCP reconciliation smoke ===${NC}\n"
 echo -e "${BOLD}Section 1: version matrix${NC}"
 
 # Row 1 — 1.0.0, flat memory + array. Every group of steps, in `since` order.
-# The plan merge and the research merge are carried by the version half and
-# apply as no-ops (this project has neither plan nor research folders) — which
-# is the contract every step owes since the runner started ORing the halves,
-# and the reason the row lists them.
+# The two manifest merges and the timestamp backfill are carried by the version
+# half and apply as no-ops (this project has neither plan nor research folders,
+# nor a flat manifest) — which is the contract every step owes since the runner
+# started ORing the halves, and the reason the row lists them.
 M1="$TMPDIR/matrix-1.0.0"; mkdir -p "$M1"
 write_legacy_config "$M1" '"version": "1.0.0",'
 seed_flat_memory "$M1"
 M1_APPLIED=$(plan_chain "$M1" "1.0.0")
-if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge" ]]; then
+if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps" ]]; then
     pass "matrix 1.0.0: every step group applied, ordered by since ($M1_APPLIED)"
 else
-    fail "matrix 1.0.0: expected all six steps in since order, got '$M1_APPLIED'"
+    fail "matrix 1.0.0: expected all seven steps in since order, got '$M1_APPLIED'"
 fi
 
 # Row 2 — 1.1.0, modular memory + array. The 1.1.0 steps are quiet; every 2.0.0
-# step — the two MCP ones, the plan merge and the research merge — is above the
-# stamp.
+# step — the two MCP ones, the two manifest merges and the timestamp backfill —
+# is above the stamp.
 M2="$TMPDIR/matrix-1.1.0"; mkdir -p "$M2"
 write_legacy_config "$M2" '"version": "1.1.0",'
 seed_modular_memory "$M2"
 M2_APPLIED=$(plan_chain "$M2" "1.1.0")
-if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge" ]]; then
+if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge,plan-2-to-3-timestamps" ]]; then
     pass "matrix 1.1.0: only the steps anchored above the stamp applied ($M2_APPLIED)"
 else
-    fail "matrix 1.1.0: expected the MCP steps + both manifest merges, got '$M2_APPLIED'"
+    fail "matrix 1.1.0: expected the MCP steps + both merges + the backfill, got '$M2_APPLIED'"
 fi
 
 # Row 3 — 2.0.0, modular memory + array. The version half is quiet for the whole
@@ -186,8 +186,10 @@ fi
 # finds no plan folder on this project, and with the version half quiet that is
 # the whole signal. The research merge is absent for exactly the same reason and
 # on exactly the same evidence — these fixtures carry no research folder either,
-# so its `detect` answers false honestly. Rows 4 and 5 inherit both absences;
-# stated here once so a later reader does not read a missing step as an omission.
+# so its `detect` answers false honestly. The timestamp backfill is absent on the
+# same evidence a third time: no plan folder and no flat `code/PLAN.md`. Rows 4
+# and 5 inherit all three absences; stated here once so a later reader does not
+# read a missing step as an omission.
 M3="$TMPDIR/matrix-2.0.0"; mkdir -p "$M3"
 write_legacy_config "$M3" '"version": "2.0.0",'
 seed_modular_memory "$M3"
@@ -709,7 +711,6 @@ mkdir -p "$P6_PLANS/selfheal" "$P6_PLANS/completed" "$P6_PLANS/statusonly" \
 # The flat fast plan — a DIFFERENT artifact that shares the manifest's basename.
 # Nothing in this step may reach it (scenario 8).
 printf '# fast plan\n\n- [ ] Task 1 open\n' > "$P6/.unikit/code/PLAN.md"
-P6_FLAT_SHA="$(sha_of "$P6/.unikit/code/PLAN.md")"
 
 # (6) fold self-heal: the rename half already ran, the brief is still on disk.
 printf '# plan\n\n## Checklist\n\n- [ ] Task 1 open\n' \
@@ -753,9 +754,23 @@ assert_contains   "$P6_PLANS/selfheal/PLAN.md" '### CONSTRAINTS' \
 assert_not_exists "$P6_PLANS/selfheal/PLAN-BRIEF.md" \
   "self-heal: the brief is removed once the write is verified"
 
-# 8 — the flat fast plan is a different artifact and is never touched
-assert_file_unchanged "$P6/.unikit/code/PLAN.md" "$P6_FLAT_SHA" \
-  "flat code/PLAN.md untouched by the plan-folder merge"
+# 8 — the flat fast plan is a different artifact and the MERGE never reaches it.
+# It is no longer byte-identical after an `update`, and that is not a regression:
+# `plan-2-to-3-timestamps` stamps it deliberately (it is the second root of that
+# step, and priority #1 in all three plan resolvers). So the claim is asserted on
+# what the merge would have done rather than on a hash — a folded manifest would
+# carry `## Technical Context`, and its own checklist would not survive intact.
+assert_not_contains "$P6/.unikit/code/PLAN.md" '## Technical Context' \
+  "flat code/PLAN.md: nothing was folded into it by the plan-folder merge"
+assert_contains "$P6/.unikit/code/PLAN.md" '^- \[ \] Task 1 open$' \
+  "flat code/PLAN.md: its own body came through the merge untouched"
+
+# 8b — and the timestamp backfill DID reach it, in the same run. This is the one
+# place the two plan steps are proved to act on the same file in the right order.
+assert_contains "$P6/.unikit/code/PLAN.md" '^Created: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "flat code/PLAN.md: the backfill stamped Created:"
+assert_contains "$P6/.unikit/code/PLAN.md" '^Updated: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "flat code/PLAN.md: the backfill stamped Updated:"
 
 # 9 + 10 — selectivity, and a mixed project migrating exactly the live folders
 assert_file_unchanged "$P6_PLANS/completed/TASKS.md" "$P6_DONE_TASKS_SHA" \
@@ -766,6 +781,16 @@ assert_not_exists "$P6_PLANS/completed/PLAN.md" \
   "completed plan: no manifest created"
 assert_exists     "$P6_PLANS/live/PLAN.md" \
   "mixed project: the folder with an open task did migrate"
+
+# 10b — THE ORDER OF THE TWO PLAN STEPS, end to end and nowhere else.
+# `live/` entered this run as TASKS.md and left it as a stamped PLAN.md, so
+# both steps acted on the same file in the same pass. Reverse them and the
+# backfill would walk a folder whose manifest does not exist yet: the stamp
+# would land nowhere and these two asserts would be the only thing to say so.
+assert_contains "$P6_PLANS/live/PLAN.md" '^Created: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "order: the merged manifest was stamped with Created: in the same run"
+assert_contains "$P6_PLANS/live/PLAN.md" '^Updated: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "order: the merged manifest was stamped with Updated: in the same run"
 
 # 11 — a phase status line is not an open task
 assert_file_unchanged "$P6_PLANS/statusonly/TASKS.md" "$P6_STATUS_SHA" \
@@ -1101,6 +1126,102 @@ for R8_I in "${!R8_FILES[@]}"; do
     R8_LABEL="$(basename "$(dirname "${R8_FILES[$R8_I]}")")/$(basename "${R8_FILES[$R8_I]}")"
     assert_file_unchanged "${R8_FILES[$R8_I]}" "${R8_SHAS[$R8_I]}" \
       "idempotence: $R8_LABEL byte-identical on a second update"
+done
+
+# ─────────────────────────────────────────────────────
+# Section 9: plan timestamps backfill
+# ─────────────────────────────────────────────────────
+# Three sources of the date and one absence of selectivity, plus the second root.
+# The flat `.unikit/code/PLAN.md` gets its own assert rather than riding along
+# with the folders: skipping it is the ONE kind of miss that shows up on no
+# folder on disk, and it surfaces two phases later — Phase 04 removes the
+# file-mtime branch that serves it today, so a project with a fast plan would be
+# left with no input at all for "researches newer than the plan".
+
+echo -e "\n${BOLD}Section 9: plan timestamps backfill${NC}"
+
+P9="$TMPDIR/plan-timestamps"; mkdir -p "$P9"
+use_fake_registry "$P9" unity minimal-valid
+P9_PLANS="$P9/.unikit/code/plans"
+mkdir -p "$P9_PLANS/2026-03-08_customers-system" "$P9_PLANS/001-legacy-feature" \
+         "$P9_PLANS/already-stamped"
+
+# (a) dated folder name — the date comes off the name, not off the filesystem
+printf '# Customers system\n\nBranch: feature/customers\nStatus: in-progress\n\n## Checklist\n\n- [ ] Task 1 open\n' \
+    > "$P9_PLANS/2026-03-08_customers-system/PLAN.md"
+
+# (b) legacy `DDD-` name AND zero open tasks — two claims in one fixture: the
+#     date falls back to mtime, and a COMPLETED plan is stamped all the same
+#     (the merge would have skipped it; this step has no selectivity).
+printf '# Legacy feature\n\n## Checklist\n\n- [x] Task 1 shipped\n' \
+    > "$P9_PLANS/001-legacy-feature/PLAN.md"
+
+# (c) already carrying both fields — must not be rewritten
+printf '# Already\n\nCreated: 2025-01-01\nUpdated: 2025-02-02\n\n## Checklist\n\n- [ ] Task 1 open\n' \
+    > "$P9_PLANS/already-stamped/PLAN.md"
+P9_STAMPED_SHA="$(sha_of "$P9_PLANS/already-stamped/PLAN.md")"
+
+# (d) the flat fast plan — no folder, therefore never a dated name. An H1 and
+#     nothing else: the most fragile shape for the insertion point.
+printf '# fast plan\n' > "$P9/.unikit/code/PLAN.md"
+
+run_update "$P9" "$TMPDIR/plan-timestamps-update.log"
+
+# (a) the date came off the folder name, both fields agree
+assert_contains "$P9_PLANS/2026-03-08_customers-system/PLAN.md" '^Created: 2026-03-08$' \
+  "dated folder: Created: taken from the folder name"
+assert_contains "$P9_PLANS/2026-03-08_customers-system/PLAN.md" '^Updated: 2026-03-08$' \
+  "dated folder: Updated: seeded from Created:"
+assert_contains "$P9_PLANS/2026-03-08_customers-system/PLAN.md" '^Status: in-progress$' \
+  "dated folder: the existing header fields are untouched"
+assert_contains "$P9_PLANS/2026-03-08_customers-system/PLAN.md" '^- \[ \] Task 1 open$' \
+  "dated folder: nothing below the header was touched"
+
+# (b) no date in the name → mtime; and a completed plan is stamped regardless
+P9_LEGACY_CREATED=$(grep -E '^Created: ' "$P9_PLANS/001-legacy-feature/PLAN.md" | head -1)
+P9_LEGACY_UPDATED=$(grep -E '^Updated: ' "$P9_PLANS/001-legacy-feature/PLAN.md" | head -1)
+if [[ "$P9_LEGACY_CREATED" =~ ^Created:\ [0-9]{4}-[0-9]{2}-[0-9]{2}$ \
+   && "${P9_LEGACY_CREATED#Created:}" == "${P9_LEGACY_UPDATED#Updated:}" ]]; then
+    pass "legacy name: both fields present and equal, date derived from mtime ($P9_LEGACY_CREATED)"
+else
+    fail "legacy name: expected equal YYYY-MM-DD fields, got '$P9_LEGACY_CREATED' / '$P9_LEGACY_UPDATED'"
+fi
+
+# (c) an already-stamped plan is not rewritten
+assert_file_unchanged "$P9_PLANS/already-stamped/PLAN.md" "$P9_STAMPED_SHA" \
+  "already stamped: byte-identical — the step is a backfill, not a refresher"
+
+# (d) THE SECOND ROOT. Its own assert, because its absence shows on no folder.
+P9_FLAT_CREATED=$(grep -E '^Created: ' "$P9/.unikit/code/PLAN.md" | head -1)
+P9_FLAT_UPDATED=$(grep -E '^Updated: ' "$P9/.unikit/code/PLAN.md" | head -1)
+if [[ "$P9_FLAT_CREATED" =~ ^Created:\ [0-9]{4}-[0-9]{2}-[0-9]{2}$ \
+   && "${P9_FLAT_CREATED#Created:}" == "${P9_FLAT_UPDATED#Updated:}" ]]; then
+    pass "flat code/PLAN.md: both fields present and equal ($P9_FLAT_CREATED)"
+else
+    fail "flat code/PLAN.md: expected equal YYYY-MM-DD fields, got '$P9_FLAT_CREATED' / '$P9_FLAT_UPDATED'"
+fi
+assert_contains "$P9/.unikit/code/PLAN.md" '^# fast plan$' \
+  "flat code/PLAN.md: the H1-only manifest kept its title"
+
+# No folder is ever renamed — dateless naming is for NEW plans only (C-1, C-10)
+assert_exists "$P9_PLANS/2026-03-08_customers-system" "no rename: the dated folder keeps its name"
+assert_exists "$P9_PLANS/001-legacy-feature"          "no rename: the legacy folder keeps its name"
+assert_exists "$P9_PLANS/already-stamped"             "no rename: the dateless folder keeps its name"
+
+# Idempotence
+P9_FILES=()
+P9_SHAS=()
+for P9_F in "$P9_PLANS/2026-03-08_customers-system/PLAN.md" "$P9_PLANS/001-legacy-feature/PLAN.md" \
+            "$P9_PLANS/already-stamped/PLAN.md" "$P9/.unikit/code/PLAN.md"; do
+    P9_FILES+=("$P9_F")
+    P9_SHAS+=("$(sha_of "$P9_F")")
+done
+
+run_update "$P9" "$TMPDIR/plan-timestamps-update-2.log"
+
+for P9_I in "${!P9_FILES[@]}"; do
+    assert_file_unchanged "${P9_FILES[$P9_I]}" "${P9_SHAS[$P9_I]}" \
+      "idempotence: $(basename "$(dirname "${P9_FILES[$P9_I]}")")/PLAN.md byte-identical on a second update"
 done
 
 print_summary_and_exit "Migration + MCP reconciliation Smoke Tests"
