@@ -25,64 +25,23 @@
 // answer exit 8 to `rules sync` forever.
 
 import path from 'path';
-import { fileExists, listDirectories, movePath, readTextFile, removeFile, writeTextFile } from '../../utils/fs.js';
+import { fileExists, movePath, readTextFile, removeFile, writeTextFile } from '../../utils/fs.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
-  CODE_MODULE_ID, LEGACY_PLAN_BRIEF_FILE, LEGACY_PLAN_TASKS_FILE,
-  MIGRATION_SINCE_PLAN_MANIFEST, PLANS_DIR_NAME, PLAN_CONTEXT_SEPARATOR,
+  LEGACY_PLAN_BRIEF_FILE, LEGACY_PLAN_TASKS_FILE,
+  MIGRATION_SINCE_PLAN_MANIFEST, PLAN_CONTEXT_SEPARATOR,
   PLAN_LIFTED_HEADINGS, PLAN_MANIFEST_FILE, PLAN_TECHNICAL_CONTEXT_HEADING,
-  UNIKIT_DIR, workspaceDir,
 } from '../constants.js';
 import type { Migration } from '../migrations/types.js';
 import type { WorkspaceMigrationContext } from './context.js';
+import { demoteHeadings, scanLines, topLevelHeadings } from './markdown.js';
+import { detectableFolders, planFolders } from './plan-folders.js';
 
 const LOG_TAG = 'plan:migrate';
 
 /** True when `heading` is one of the sections that must stay at `##` level. */
 function isLiftedHeading(heading: string): boolean {
   return (PLAN_LIFTED_HEADINGS as readonly string[]).includes(heading);
-}
-
-/** One source line plus whether it sits inside a fenced code block. */
-interface ScannedLine {
-  text: string;
-  fenced: boolean;
-}
-
-/**
- * Split a markdown body into lines, marking the ones inside fenced blocks.
- *
- * The single place the rule "a line inside a fence is NEVER rewritten" is
- * written down — heading demotion, checkbox counting and section lifting all
- * read the same scan, so none of them can drift from the other two. A fence
- * opens on a run of three or more backticks or tildes (any indent) and closes
- * only on a marker of the SAME character that is no shorter, which is what
- * lets a fenced block contain a shorter run of backticks.
- */
-function scanLines(body: string): ScannedLine[] {
-  const scanned: ScannedLine[] = [];
-  let fence: { char: string; length: number } | null = null;
-
-  for (const text of body.split('\n')) {
-    const marker = /^\s*(`{3,}|~{3,})/.exec(text);
-    if (fence === null) {
-      if (marker) {
-        fence = { char: marker[1][0], length: marker[1].length };
-        // The opening fence line itself is "inside" — it is not a heading and
-        // must never be touched either.
-        scanned.push({ text, fenced: true });
-        continue;
-      }
-      scanned.push({ text, fenced: false });
-      continue;
-    }
-    if (marker && marker[1][0] === fence.char && marker[1].length >= fence.length) {
-      fence = null;
-    }
-    scanned.push({ text, fenced: true });
-  }
-
-  return scanned;
 }
 
 /**
@@ -110,26 +69,23 @@ function hasTechnicalContext(manifest: string): boolean {
     .some(line => line.replace(/\r$/, '').trimEnd() === PLAN_TECHNICAL_CONTEXT_HEADING);
 }
 
-/** Titles of the `##`-level headings a body carries, outside fenced blocks. */
-function topLevelHeadings(body: string): string[] {
-  return scanLines(body)
-    .filter(({ fenced }) => !fenced)
-    .map(({ text }) => text.replace(/\r$/, '').trimEnd())
-    .filter(text => /^##\s/.test(text));
-}
-
 /**
  * Turn a `PLAN-BRIEF.md` body into the body of `## Technical Context`.
  *
- * Drops the brief's leading H1 (the manifest supplies the document title) and
- * demotes every heading one level, so a `##` section becomes `###` and a `###`
- * subsection becomes `####` — exactly the shape the merged template declares.
- * Six hashes are the markdown ceiling and stay put; fenced content is never
- * touched, so a comment starting with a hash in a bash or yaml sample keeps it.
+ * Drops the brief's leading H1 — the manifest supplies the document title — and
+ * hands the rest to {@link demoteHeadings}, so a `##` section becomes `###` and
+ * a `###` subsection becomes `####`, exactly the shape the merged template
+ * declares. The H1 step is the only part specific to folding a titled document
+ * into a section, which is why it is the only part that stayed here.
+ *
+ * Leading blank lines are consumed whether or not an H1 follows them, verbatim
+ * as before the extraction: a blank line cannot open a fence, so re-scanning the
+ * remainder yields the same fence states the whole-body scan did.
  *
  * Exported for the migration guards in `scripts/test-migrations.sh`.
  */
 export function foldBrief(briefBody: string): string {
+  const lines = briefBody.split('\n');
   const scanned = scanLines(briefBody);
   let start = 0;
 
@@ -139,14 +95,7 @@ export function foldBrief(briefBody: string): string {
     while (start < scanned.length && scanned[start].text.trim() === '') start += 1;
   }
 
-  const folded: string[] = [];
-  for (let i = start; i < scanned.length; i += 1) {
-    const { text, fenced } = scanned[i];
-    folded.push(fenced ? text : text.replace(/^(#{1,5})(\s)/, '#$1$2'));
-  }
-  while (folded.length > 0 && folded[folded.length - 1].trim() === '') folded.pop();
-
-  return folded.join('\n');
+  return demoteHeadings(lines.slice(start).join('\n'));
 }
 
 /**
@@ -191,46 +140,6 @@ export function liftDesignSections(
   }
 
   return { lifted: lifted.join('\n').replace(/\s*$/, ''), rest: rest.join('\n') };
-}
-
-/** Absolute paths of the subfolders of `root`, sorted so logs read alike everywhere. */
-async function foldersUnder(root: string): Promise<string[]> {
-  const names = await listDirectories(root);
-  return names.sort().map(name => path.join(root, name));
-}
-
-/** Where the plans live once the 1.1.0 relocation has run. */
-function modularPlansRoot(projectDir: string): string {
-  return path.join(workspaceDir(projectDir, CODE_MODULE_ID), PLANS_DIR_NAME);
-}
-
-/** The plan folders `apply` walks — always the modular location. */
-async function planFolders(projectDir: string): Promise<string[]> {
-  return foldersUnder(modularPlansRoot(projectDir));
-}
-
-/**
- * The plan folders `detect` judges — which is NOT always the same set.
- *
- * The runner evaluates `detect` for the WHOLE chain before it applies anything
- * (`migrations/runner.ts`, phases 1 and 3). On a project that still carries the
- * pre-1.1.0 flat workspace, `.unikit/code/plans` therefore does not exist yet
- * at detect time even though the relocation is queued to run in this very pass,
- * and probing only the modular root would report "nothing to merge" while the
- * merge is exactly what the run owes. A version-pending project is carried by
- * the version half regardless; the one this rescues is the project whose stamp
- * says current while its disk says otherwise — the case the runner ORs the two
- * halves for in the first place.
- *
- * The fallback is gated on the modular root being ABSENT, which is verbatim the
- * relocation's own destination guard. When both roots exist the flat copy is a
- * `logWarn` leftover that no step will ever touch, and reporting it as pending
- * would strand the project at exit 8 with nothing able to clear it.
- */
-async function detectableFolders(projectDir: string): Promise<string[]> {
-  const modularRoot = modularPlansRoot(projectDir);
-  if (await fileExists(modularRoot)) return foldersUnder(modularRoot);
-  return foldersUnder(path.join(projectDir, UNIKIT_DIR, PLANS_DIR_NAME));
 }
 
 /**

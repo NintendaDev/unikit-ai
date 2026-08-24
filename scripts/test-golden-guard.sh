@@ -237,8 +237,21 @@ assert_workspace_migrated() {
     assert_exists "$d/.unikit/code/PLAN.md"                        "PLAN.md relocated under code/"
     assert_exists "$d/.unikit/code/FIX_PLAN.md"                    "FIX_PLAN.md relocated under code/"
     assert_exists "$d/.unikit/code/patches/2026-06-12-10.00.md"    "patches/ relocated under code/"
-    assert_exists "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH_RESULT.md" \
-        "researches/ subtree relocated under code/"
+    # `researches/` relocated AND its result file merged into one manifest —
+    # both steps run in the same `update` pass, exactly as for plans above, and
+    # this is the only place the ordering (1.1.0 relocate < 2.0.0 merge) is
+    # proved end to end. The fixture keeps seeding the LEGACY name on purpose:
+    # handing this guard an already-migrated folder would stop it checking the
+    # relocation at all.
+    assert_exists     "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH.md" \
+        "researches/ subtree relocated under code/ and merged into the manifest"
+    assert_not_exists "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH_RESULT.md" \
+        "no RESEARCH_RESULT.md after the manifest merge"
+    if [[ -s "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH.md" ]]; then
+        pass "merged research manifest is non-empty (a merge, not a truncation)"
+    else
+        fail "merged research manifest is empty — content was lost, not folded"
+    fi
     assert_exists "$d/.unikit/code/researches/INDEX.md"            "RESEARCHES_INDEX.md renamed → researches/INDEX.md"
     assert_not_exists "$d/.unikit/plans"            "no flat plans/ after migration"
     assert_not_exists "$d/.unikit/patches"          "no flat patches/ after migration"

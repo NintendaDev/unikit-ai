@@ -151,29 +151,31 @@ echo -e "\n${BOLD}=== Migration chain + MCP reconciliation smoke ===${NC}\n"
 echo -e "${BOLD}Section 1: version matrix${NC}"
 
 # Row 1 — 1.0.0, flat memory + array. Every group of steps, in `since` order.
-# The plan merge is carried by the version half and applies as a no-op (this
-# project has no plan folders) — which is the contract every step owes since
-# the runner started ORing the halves, and the reason the row lists it.
+# The plan merge and the research merge are carried by the version half and
+# apply as no-ops (this project has neither plan nor research folders) — which
+# is the contract every step owes since the runner started ORing the halves,
+# and the reason the row lists them.
 M1="$TMPDIR/matrix-1.0.0"; mkdir -p "$M1"
 write_legacy_config "$M1" '"version": "1.0.0",'
 seed_flat_memory "$M1"
 M1_APPLIED=$(plan_chain "$M1" "1.0.0")
-if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge" ]]; then
+if [[ "$M1_APPLIED" == "memory-1-to-2-code-wrap,workspace-1-to-2-code-relocate,mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge" ]]; then
     pass "matrix 1.0.0: every step group applied, ordered by since ($M1_APPLIED)"
 else
-    fail "matrix 1.0.0: expected all five steps in since order, got '$M1_APPLIED'"
+    fail "matrix 1.0.0: expected all six steps in since order, got '$M1_APPLIED'"
 fi
 
 # Row 2 — 1.1.0, modular memory + array. The 1.1.0 steps are quiet; every 2.0.0
-# step — the two MCP ones and the plan merge — is above the stamp.
+# step — the two MCP ones, the plan merge and the research merge — is above the
+# stamp.
 M2="$TMPDIR/matrix-1.1.0"; mkdir -p "$M2"
 write_legacy_config "$M2" '"version": "1.1.0",'
 seed_modular_memory "$M2"
 M2_APPLIED=$(plan_chain "$M2" "1.1.0")
-if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge" ]]; then
+if [[ "$M2_APPLIED" == "mcp-servers-map,mcp-fileid-rename,plan-1-to-2-manifest-merge,research-1-to-2-manifest-merge" ]]; then
     pass "matrix 1.1.0: only the steps anchored above the stamp applied ($M2_APPLIED)"
 else
-    fail "matrix 1.1.0: expected the MCP steps + the plan merge, got '$M2_APPLIED'"
+    fail "matrix 1.1.0: expected the MCP steps + both manifest merges, got '$M2_APPLIED'"
 fi
 
 # Row 3 — 2.0.0, modular memory + array. The version half is quiet for the whole
@@ -182,7 +184,10 @@ fi
 # matters most: every dev project running `npm link` before publication is
 # stamped this way. The plan merge is absent here on purpose — its `detect`
 # finds no plan folder on this project, and with the version half quiet that is
-# the whole signal.
+# the whole signal. The research merge is absent for exactly the same reason and
+# on exactly the same evidence — these fixtures carry no research folder either,
+# so its `detect` answers false honestly. Rows 4 and 5 inherit both absences;
+# stated here once so a later reader does not read a missing step as an omission.
 M3="$TMPDIR/matrix-2.0.0"; mkdir -p "$M3"
 write_legacy_config "$M3" '"version": "2.0.0",'
 seed_modular_memory "$M3"
@@ -927,5 +932,175 @@ if [[ "$PURE_RESULT" == "ok" ]]; then
 else
     fail "plan-artifact helper contract violated: $PURE_RESULT"
 fi
+
+# ─────────────────────────────────────────────────────
+# Section 7b: markdown + plan-folders pure functions
+# ─────────────────────────────────────────────────────
+# The two helpers the research merge added to the shared markdown layer, plus the
+# folder-name date reader. Same shape as Section 7 and for the same reason: they
+# are the pure half of a step whose impure half destroys data, so they are worth
+# asserting where a failure names the function rather than the folder.
+#
+# Strings are assembled from `String.fromCharCode` rather than written with
+# escapes: the block is a double-quoted bash string, where a backtick opens a
+# command substitution and a backslash is eaten before node ever sees it.
+
+echo -e "\n${BOLD}Section 7b: markdown pure functions${NC}"
+
+MD_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const m = await import('./dist/core/workspace-migrations/markdown.js');
+  const f = await import('./dist/core/workspace-migrations/plan-folders.js');
+  const NL = String.fromCharCode(10);
+  const FENCE = String.fromCharCode(96).repeat(3);
+  const why = [];
+  const eq = (name, actual, expected) => {
+    if (actual !== expected) why.push(name + '=' + JSON.stringify(actual));
+  };
+
+  // sectionBody — exact-line match, level-aware boundary, fence-blind
+  const doc = [
+    '# Brief', '', '## CONTEXT', '', 'needs a cache', '', '### detail', 'kept', '',
+    '## CONSTRAINTS', '- MUST: x', '', '## OUT OF SCOPE', 'N/A', ''
+  ].join(NL);
+  eq('found', m.sectionBody(doc, '## CONTEXT'), ['needs a cache', '', '### detail', 'kept'].join(NL));
+  eq('subsection-kept', m.sectionBody(doc, '## CONTEXT').includes('### detail'), true);
+  eq('next-section-not-swallowed', m.sectionBody(doc, '## CONTEXT').includes('CONSTRAINTS'), false);
+  eq('missing-is-null', m.sectionBody(doc, '## INTERFACES'), null);
+  eq('later-section', m.sectionBody(doc, '## OUT OF SCOPE'), 'N/A');
+
+  // a heading-shaped line inside a fence closes nothing
+  const fenced = [
+    '## CONTEXT', 'before', FENCE + 'md', '## CONSTRAINTS', FENCE, 'after', '', '## REAL', 'x'
+  ].join(NL);
+  eq('fenced-heading-does-not-close', m.sectionBody(fenced, '## CONTEXT'),
+     ['before', FENCE + 'md', '## CONSTRAINTS', FENCE, 'after'].join(NL));
+
+  // demoteHeadings — one level down, six is the ceiling, fences untouched
+  const dem = m.demoteHeadings([
+    '## CONSTRAINTS', 'x', '', '### CREATE', 'y', '', FENCE + 'bash', '# not a heading', FENCE,
+    '', '###### deep', '', ''
+  ].join(NL));
+  eq('h2-to-h3', dem.split(NL)[0], '### CONSTRAINTS');
+  eq('h3-to-h4', dem.includes('#### CREATE'), true);
+  eq('h6-untouched', dem.includes('###### deep'), true);
+  eq('h6-not-h7', dem.includes('####### deep'), false);
+  eq('fence-untouched', dem.includes(NL + '# not a heading' + NL), true);
+  eq('trailing-blanks-trimmed', dem.endsWith('###### deep'), true);
+  eq('no-h1-step', m.demoteHeadings(['# Title', '', 'body'].join(NL)).split(NL)[0], '## Title');
+
+  // folderDatePrefix — the three name formats the resolvers have to tell apart
+  eq('dated', f.folderDatePrefix('2026-03-08_customers'), '2026-03-08');
+  eq('legacy-numbered', f.folderDatePrefix('001-legacy'), null);
+  eq('dateless', f.folderDatePrefix('customers'), null);
+
+  process.stdout.write(why.length ? why.join(' ') : 'ok');
+" 2>/dev/null || echo "markdown-error")
+
+if [[ "$MD_RESULT" == "ok" ]]; then
+    pass "markdown helpers: sectionBody, demoteHeadings and folderDatePrefix hold their contracts"
+else
+    fail "markdown helper contract violated: $MD_RESULT"
+fi
+
+# ─────────────────────────────────────────────────────
+# Section 8b: the research-manifest merge
+# ─────────────────────────────────────────────────────
+# Two folders, and the second one is the whole point of the section. `withbrief`
+# is the ordinary case; `nobrief` carries only RESULT + SOURCE, and it is the
+# only fixture on which it is visible that NEITHER half 3 (`## Sessions`) NOR
+# branch 4b (`## Active Summary`) depends on a brief existing. A folder that
+# reached disk without those markers fails on the first `/unikit-explore` save,
+# three steps away from this cause.
+
+echo -e "\n${BOLD}Section 8b: research-manifest merge${NC}"
+
+R8="$TMPDIR/research-merge"; mkdir -p "$R8"
+use_fake_registry "$R8" unity minimal-valid
+R8_DIR="$R8/.unikit/code/researches"
+mkdir -p "$R8_DIR/2026-06-12_withbrief" "$R8_DIR/nobrief"
+
+printf '# Search cache\n\nDate: 2026-06-12\nStatus: in-progress\n\n## Findings\n\nbody\n' \
+    > "$R8_DIR/2026-06-12_withbrief/RESEARCH_RESULT.md"
+printf '# Brief\n\n## CONTEXT\n\ncache the search\n\n## CONSTRAINTS\n\n- Redis exists\n\n## INTERFACES\n\nCache.get\n\n## DEPENDENCY GRAPH\n\nA to B\n' \
+    > "$R8_DIR/2026-06-12_withbrief/RESEARCH_BRIEF.md"
+printf 'dialogue\n' > "$R8_DIR/2026-06-12_withbrief/RESEARCH_SOURCE.md"
+
+printf '# Flat research\n\nStatus: in-progress\n\n## Findings\n\nbody\n' \
+    > "$R8_DIR/nobrief/RESEARCH_RESULT.md"
+printf 'dialogue\n' > "$R8_DIR/nobrief/RESEARCH_SOURCE.md"
+
+run_update "$R8" "$TMPDIR/research-merge-update.log"
+
+# The rename half, on both folders
+assert_exists     "$R8_DIR/2026-06-12_withbrief/RESEARCH.md" \
+  "with brief: RESEARCH_RESULT.md renamed to the manifest"
+assert_not_exists "$R8_DIR/2026-06-12_withbrief/RESEARCH_RESULT.md" \
+  "with brief: the legacy result name is gone"
+assert_exists     "$R8_DIR/2026-06-12_withbrief/SOURCE.md" \
+  "with brief: the dialogue log kept its own file under the new name"
+assert_not_exists "$R8_DIR/2026-06-12_withbrief/RESEARCH_BRIEF.md" \
+  "with brief: the brief is removed once the write is verified"
+assert_exists     "$R8_DIR/nobrief/RESEARCH.md" \
+  "no brief: RESEARCH_RESULT.md renamed to the manifest"
+assert_exists     "$R8_DIR/nobrief/SOURCE.md" \
+  "no brief: the dialogue log kept its own file under the new name"
+
+# The heavy half — written only where the brief carried it
+assert_exists     "$R8_DIR/2026-06-12_withbrief/CONTRACTS.md" \
+  "with brief: the heavy sections became CONTRACTS.md"
+assert_exists     "$R8_DIR/2026-06-12_withbrief/DEPENDENCY-GRAPH.md" \
+  "with brief: the dependency graph became its own artifact"
+assert_not_exists "$R8_DIR/nobrief/CONTRACTS.md" \
+  "no brief: no adaptive artifact is invented from nothing"
+
+# All four markers, each exactly once, on BOTH folders — symmetrically
+for R8_CASE in 2026-06-12_withbrief nobrief; do
+    R8_MANIFEST="$R8_DIR/$R8_CASE/RESEARCH.md"
+    for R8_MARK in 'unikit:active-summary:start' 'unikit:active-summary:end' \
+                   'unikit:sessions:start' 'unikit:sessions:end'; do
+        R8_N=$(grep -cF "$R8_MARK" "$R8_MANIFEST" 2>/dev/null || echo 0)
+        if [[ "$R8_N" == "1" ]]; then
+            pass "$R8_CASE: $R8_MARK present exactly once"
+        else
+            fail "$R8_CASE: expected 1 occurrence of $R8_MARK, got '$R8_N'"
+        fi
+    done
+    assert_contains "$R8_MANIFEST" 'Topic:' \
+      "$R8_CASE: the Active Summary carries the Topic line the registry reads"
+done
+
+# The header axes: Date became Created, Updated seeded from it, Lifecycle added,
+# and Status left exactly as it was (REQ-5 — renaming it kills a filter silently).
+assert_contains "$R8_DIR/2026-06-12_withbrief/RESEARCH.md" 'Created: 2026-06-12' \
+  "with brief: Date: became Created:"
+assert_contains "$R8_DIR/2026-06-12_withbrief/RESEARCH.md" 'Updated: 2026-06-12' \
+  "with brief: Updated: seeded from Created:"
+assert_contains "$R8_DIR/2026-06-12_withbrief/RESEARCH.md" 'Lifecycle: active' \
+  "with brief: the currency axis was added"
+assert_contains "$R8_DIR/2026-06-12_withbrief/RESEARCH.md" 'Status: in-progress' \
+  "with brief: the completeness axis is untouched"
+
+# Branch 4b, asserted directly: without this the section could be green merely
+# because the migration did not crash.
+assert_contains "$R8_DIR/nobrief/RESEARCH.md" 'Topic: Flat research' \
+  "no brief: the Topic line was seeded from the manifest H1"
+assert_contains "$R8_DIR/nobrief/RESEARCH.md" 'unikit:migrated-summary' \
+  "no brief: the banner naming the missing brief is present"
+
+# Idempotence — the merge is the one step in the chain that destroys a source
+R8_FILES=()
+R8_SHAS=()
+while IFS= read -r R8_FILE; do
+    R8_FILES+=("$R8_FILE")
+    R8_SHAS+=("$(sha_of "$R8_FILE")")
+done < <(find "$R8_DIR" -type f | sort)
+
+run_update "$R8" "$TMPDIR/research-merge-update-2.log"
+
+for R8_I in "${!R8_FILES[@]}"; do
+    R8_LABEL="$(basename "$(dirname "${R8_FILES[$R8_I]}")")/$(basename "${R8_FILES[$R8_I]}")"
+    assert_file_unchanged "${R8_FILES[$R8_I]}" "${R8_SHAS[$R8_I]}" \
+      "idempotence: $R8_LABEL byte-identical on a second update"
+done
 
 print_summary_and_exit "Migration + MCP reconciliation Smoke Tests"

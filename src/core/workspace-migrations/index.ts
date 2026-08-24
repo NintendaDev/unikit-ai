@@ -110,3 +110,4 @@ export const PROJECT_WORKSPACE_MIGRATIONS: readonly Migration<WorkspaceMigration
 // the merge walks `.unikit/code/plans/*`, which does not exist on a pre-modular
 // project until the relocation above has run, and 1.1.0 < 2.0.0 guarantees it.
 export { PROJECT_PLAN_ARTIFACT_MIGRATIONS } from './plan-artifact.js';
+export { PROJECT_RESEARCH_ARTIFACT_MIGRATIONS } from './research-artifact.js';
