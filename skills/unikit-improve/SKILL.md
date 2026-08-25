@@ -19,6 +19,7 @@ allowed-tools:
   - Bash(wc *)
   - Bash(shasum *)
   - Bash(sha256sum *)
+  - Bash(date *)
   - Agent
   - AskUserQuestion
   - Skill
@@ -193,12 +194,10 @@ If `$ARGUMENTS` contains `--list`, run read-only discovery and **STOP**:
 2. Check if .unikit/code/FIX_PLAN.md exists (bugfix plan from /unikit-fix)
 3. Get current branch:
    git branch --show-current
-4. Scan .unikit/code/plans/ for all feature folders (both YYYY-MM-DD_name and legacy DDD-name formats)
+4. Scan .unikit/code/plans/ for all feature folders (all three name formats — see Branch match)
 5. For each, check if its .unikit/code/plans/<folder>/PLAN.md has uncompleted tasks (- [ ])
-6. Mark which folder matches the current git branch (if any):
-   - Extract feature name from branch (e.g. feature/customers-system → customers-system)
-   - Match folder ending with _<feature-name> (new format) or *-<feature-name> (legacy)
-7. Print availability summary (sorted lexicographically descending — newest first):
+6. Mark which folder matches the current git branch (if any), by the three formats of Branch match
+7. Print availability summary (sorted by the manifest's Updated: descending — newest first):
 
 ## Available Feature Plans
 
@@ -207,14 +206,14 @@ Current branch: feature/customers-system
 💾 Fast plan: .unikit/code/PLAN.md (3 tasks remaining)
 🔧 Fix plan:  .unikit/code/FIX_PLAN.md (2 tasks remaining)
 
-  * 🔄 2026-03-08_customers-system        ← matches branch (4 tasks remaining)
+  * 🔄 customers-system                   ← matches branch (4 tasks remaining)
     ✅ 2026-03-10_customers-service-pool   (completed)
-    🔄 2026-03-09_customer-config-refactor (2 tasks remaining)
+    🔄 002-customer-config-refactor        (2 tasks remaining)
 
 Use:
   /unikit-improve                                              # auto-detect (.unikit/code/PLAN.md → branch → latest)
   /unikit-improve customers-system                             # by name
-  /unikit-improve @.unikit/code/plans/2026-03-08_customers-system  # by path
+  /unikit-improve @.unikit/code/plans/customers-system         # by path
 
 8. STOP.
 ```
@@ -253,10 +252,9 @@ If `$ARGUMENTS` is empty (no parameters):
    - Check if `.unikit/code/FIX_PLAN.md` exists (bugfix plan from `/unikit-fix`)
    - Get current git branch: `git branch --show-current`
    - If on a `feature/*` branch → extract the feature name part (e.g., `feature/customers-system` → `customers-system`)
-   - Scan `.unikit/code/plans/` for folders whose name **ends with** `_<feature-name>` (new format)
-     or matches `*-<feature-name>` (legacy `DDD-*` format)
-     - Example: branch `feature/customers-system` matches folder `2026-03-08_customers-system` or `001-customers-system`
-   - If no branch match → sort all folders **lexicographically descending** and note the first one as "latest folder plan"
+   - **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+     - Example: branch `feature/customers-system` matches folder `customers-system`, `2026-03-08_customers-system` or `001-customers-system`
+   - If no branch match → **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite. Note the winner as "latest folder plan"
 
 2. **Resolve ambiguity:**
    - If **no candidates** found (no flat plans, no folder plans) → show "No plans found" message and **STOP**:
@@ -707,7 +705,9 @@ Only when the applied improvements changed the technical picture:
 
 The section always exists — there is no "create it if missing" branch any more.
 
-**5.7: Update Overview section**
+**5.7: Update Overview section and the header timestamp**
+
+Move the header's `Updated:` to today's date (`Bash(date *)`) — unconditionally, because reaching Step 5 at all means the manifest was rewritten, and that field is what every "latest plan" resolver sorts on. `Created:` is never rewritten: it records when the plan was made, not when it was last touched.
 
 If the total number of tasks or phases changed significantly (added a phase, removed multiple tasks):
 1. Update `## Overview` task/phase counts
@@ -837,14 +837,14 @@ Current branch: feature/customers-system
 
   Fix plan:  .unikit/code/FIX_PLAN.md (2 tasks remaining)
 
-  * 2026-03-08_customers-system        ← matches branch (3 tasks remaining)
+  * customers-system                   ← matches branch (3 tasks remaining)
     2026-03-09_customer-config-refactor (completed)
-    2026-03-10_customers-service-pool   (5 tasks remaining)
+    001-customers-service-pool          (5 tasks remaining)
 
 Use:
   /unikit-improve                                              # auto-detect
   /unikit-improve customers-system                             # by name
-  /unikit-improve @.unikit/code/plans/2026-03-08_customers-system  # by path
+  /unikit-improve @.unikit/code/plans/customers-system         # by path
 ```
 
 ### Example 7: Fix plan auto-detected

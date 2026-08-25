@@ -67,7 +67,8 @@ The user may provide:
 
 1. Locate the active plan:
    a. If the user provided an explicit `@<path>`, use that folder.
-   b. Scan `.unikit/code/plans/` for the most recent feature folder (by date prefix or modification time).
+   b. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+      **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
    c. If no plan found — stop and report.
 2. Read the plan folder's `.unikit/code/plans/<folder>/PLAN.md` manifest. Parse all phases and tasks:
    - Phase grouping (Phase 1, Phase 2, ...)

@@ -27,10 +27,26 @@ Two different files carry the name `PLAN.md`: the flat fast plan and the manifes
 
 ## Plan Manifest Template
 
-Placement: Fast → `.unikit/code/PLAN.md`; Full → `.unikit/code/plans/<folder>/PLAN.md`.
+Placement: Fast → `.unikit/code/PLAN.md`; Full → `.unikit/code/plans/<feature-name>/PLAN.md`.
+
+The folder name carries no date. The two header fields below are the only record of when a
+plan was created and when it was last revised, and every resolver that picks "the latest
+plan" sorts on `Updated:` — so a manifest without them is not merely undated, it is
+unfindable by that branch.
+
+`Updated:` moves when the plan's **content** changes — creation, `/unikit-plan add`,
+`/unikit-improve`. Ticking a checkbox during `/unikit-implement` does **not** move it:
+progress is not a revision, and a plan being executed must not outrank a plan just
+written when the resolver picks the latest one.
+
+Both timestamps are `YYYY-MM-DD`, without a time: a plan has no notion of a session, and the
+hour a folder was opened decides nothing.
 
 ```markdown
 # {Feature Name} — Tasks
+
+Created: YYYY-MM-DD
+Updated: YYYY-MM-DD
 
 ## Overview
 What is being built, why, and what goal it serves. 3-5 sentences maximum.

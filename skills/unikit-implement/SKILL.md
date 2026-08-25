@@ -152,11 +152,12 @@ If `$ARGUMENTS` contains `--list`, run read-only plan discovery and stop.
 Available plans in .unikit/code/plans/:
 
   Branch match:
-    2026-03-10_core-loop      (12/40 tasks, 30%)  ← matches current branch
+    core-loop                     (12/40 tasks, 30%)  ← matches current branch
 
-  Other plans:
-    2026-03-08_customers-system   (18/18 tasks, 100% — completed)
-    2026-03-05_inventory-rework   (5/22 tasks, 23%)
+  Other plans:                                        (newest first, by manifest Updated:)
+    customers-system              (18/18 tasks, 100% — completed)
+    2026-03-08_inventory-rework   (5/22 tasks, 23%)
+    003-legacy-shop-rework        (7/9 tasks, 78%)
 
   Fix plan: .unikit/code/FIX_PLAN.md — exists
 
@@ -203,14 +204,10 @@ Use unified plan detection (priority order):
 
 2. **Git branch match** — get current branch via `git branch --show-current`.
    If git is unavailable, skip to the next priority level.
-   If on a `feature/*` branch, extract the feature name (e.g. `feature/core-loop-part1` → `core-loop-part1`).
-   Scan `.unikit/code/plans/` for a folder whose name **ends with** `_<feature-name>` (new format)
-   or matches `*-<feature-name>` (legacy `DDD-*` format).
-   If match found → use it.
 
-3. **Latest by date** (fallback) — sort all folders in `.unikit/code/plans/` **lexicographically descending**
-   and pick the first one. Since new-format folders start with `YYYY-MM-DD`, this gives chronological order.
-   Legacy `DDD-*` folders sort before `2xxx-*`, so new-format plans take natural priority.
+   **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+
+3. **Latest** (fallback) — read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
 
 4. If `.unikit/code/plans/` is empty or doesn't exist (and no `.unikit/code/PLAN.md`):
 

@@ -25,6 +25,7 @@ allowed-tools:
   - Bash(git *)
   - Bash(shasum *)
   - Bash(sha256sum *)
+  - Bash(date *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -42,7 +43,7 @@ Create a structured feature plan and roadmap for the current {{engine_name}} pro
 
 Four modes:
 - **Fast** — quick plan, no git branch, saves to `.unikit/code/PLAN.md`
-- **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<dated-folder>/`
+- **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<feature-name>/`
 - **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. Reached **only** by the explicit `ultra` keyword — never offered, never inferred
 - **Add** — modify/extend an existing plan without creating a branch
 
@@ -52,7 +53,7 @@ Four modes:
 - **`.unikit/code/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
 - Temporary plan for quick work — `/unikit-implement` may offer deletion after completion.
 
-**Full mode** → folder `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/`:
+**Full mode** → folder `.unikit/code/plans/<feature-name>/`:
 - **`.unikit/code/plans/<folder>/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
 
 **Ultra mode** → the same folder, additively:
@@ -369,16 +370,34 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
 **Full and ultra modes** → continue:
 
-3. **Get today's date** in `YYYY-MM-DD` format.
-4. Compose the folder name: `{YYYY-MM-DD}_{feature-name}` (e.g. `2026-03-10_item-appraisal-system`)
+3. **Get today's date** in `YYYY-MM-DD` format — it no longer goes into the folder name; it is the value of the manifest's `Created:` and `Updated:` fields (see the Plan Manifest Template in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`).
+4. The folder name **is** the feature name from step 2 — `<feature-name>`, no date and no separator prefix (e.g. `item-appraisal-system`).
 
 ```
 # Example
 ls .unikit/code/plans/
-# 2026-03-08_mini-games-editor/
-# 2026-03-09_customer-types/
-# → next: 2026-03-10_<new-feature>
+# 2026-03-08_mini-games-editor/    ← earlier format, left exactly as it is
+# customer-types/
+# → next: <new-feature>/
 ```
+
+5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
+
+   - No match → create `plans/<feature-name>/` and continue.
+   - A match → ask, and do not decide it yourself:
+
+   ```
+   AskUserQuestion: A plan named "<name>" already exists (<matched folder>).
+
+   Options:
+   1. Refine the existing plan — hand over to add mode
+   2. Choose another name — I'll enter a different slug
+   ```
+
+   - "Refine the existing plan" → hand control to the `add` body (`{{skills_dir}}/{{self_name}}/references/mode-add.md`) on the matched folder and print `INFO [plan] <name> exists — switching to add mode`.
+   - "Choose another name" → take the user's slug and repeat this check on it. On success print `INFO [plan] creating <new-name>`.
+
+   **Appending an automatic suffix (`-2`, `-v2`, a date) is forbidden.** The date used to be a separator as well as a sort key: two runs at the same feature produced two distinct names on their own. Without it there is one name, and a silently suffixed second folder is how the branch resolver starts finding the wrong plan again — the resolver matches the branch name, and the branch name has no suffix.
 
 ### Step 1.5: Load the Mode Body
 
@@ -630,13 +649,15 @@ That is the entire question. **Not** which tool does it, **not** how it is calle
 
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
-- **Full mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
-- **Ultra mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
+- **Full mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder)
+- **Ultra mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
 
 In ultra, Step 5 is carried out by `mode-ultra.md` Steps D-G — the section list below still
 applies to the manifest, minus the task-level subsections of `## Technical Context`.
 
 #### Plan Sections (all planning modes)
+
+0. **Header timestamps** — write `Created:` and `Updated:` directly under the H1, both set to today's date from Step 1 (`Bash(date *)`). They are the manifest's only record of when the plan was made: the folder name no longer carries one, and every resolver that picks "the latest plan" sorts on `Updated:`. Their shape and the rule for moving `Updated:` live in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → *Plan Manifest Template*; ultra writes the same two lines under its own H1.
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
@@ -732,7 +753,7 @@ After artifacts are created, show the user:
 **Full mode:**
 1. The feature folder path created
 2. The git branch name (only if `branch_created = true`; if `false`, show current branch name instead)
-3. File created: `.unikit/code/plans/<dated-folder>/PLAN.md`, plus research reference if linked
+3. File created: `.unikit/code/plans/<feature-name>/PLAN.md`, plus research reference if linked
 4. A brief summary of phases identified
 5. Total estimated effort
 6. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
@@ -791,7 +812,7 @@ Bad examples:
 9. **Respect module boundaries** — follow the project's Modular Monolith architecture (Modules/ → Game/ allowed, Game/ → Modules/ FORBIDDEN)
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
 11. **Always generate `## Technical Context`** — even when a research's `## Active Summary` exists, the plan generates its own section based on the current codebase state. The research summary is input, not a replacement; the plan's section is the authoritative source for `/unikit-implement`
-12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
+12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder) — the folder name carries no date; the manifest's `Created:` / `Updated:` fields do
 13. **`Editor:` marks serialized editor state, nothing else** — write an `Editor:` line **if and only if** the change touches the editor's **serialized state**; a plain text or config file stays in `Files:` (the same criterion as `.unikit/system/dev-principles.md` → Layer A, **A8 · "Serialized state is the boundary"**). Engine-specific signals live in `references/ENGINE_RULES.md` §3; when that file is absent, the field is not generated at all
 14. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
 15. **A plan is intent, not inventory — no tool name ever reaches it** — the plan says *what has to be true*, never *what to call*. Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else: a name in a plan is a name that will be wrong by the time the plan is executed, and it silently overrides the executor's own discovery. This also settles the reverse: the planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance

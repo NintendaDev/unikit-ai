@@ -63,7 +63,20 @@ they are NOT a reason for more tool calls.
 
 Parse the caller's request here and pick the target plan folder:
 - If the caller provided an explicit `@<path>` → use that folder.
-- Otherwise → create or find the appropriate folder in `.unikit/code/plans/`.
+- Otherwise → the folder name **is** the feature name: 3-4 words, lowercase, hyphenated, **no date and no separator prefix** — `plans/<feature-name>/`, the same slug rule `/unikit-plan` follows.
+- Before creating it, check for a collision **on the name you just chose** — not on the git branch, which you may be running before one exists. Collect every folder in `.unikit/code/plans/` that matches that `<name>` in any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format.
+
+**Collision — you return control, you do not choose.** A match was found and the caller gave no explicit `@<path>` → do **not** create a second folder, do **not** append a suffix, and do **not** silently write into the folder you found. Return:
+
+```text
+plan_path: none
+blocked: plan folder '<name>' already exists (formats matched: <list>)
+next: re-invoke with @.unikit/code/plans/<name> to refine it, or pass a different name
+```
+
+The interactive producer asks the user this question; your `tools:` carries no interactive-question tool at all, so your verb is handing control back rather than asking. The prohibitions are the same one policy: an automatic suffix (`-2`, a date) makes the branch resolver find the wrong plan later, and silently adopting the folder you found is worse than refusing — you **write** into it. Deciding which of two folders is this feature is a person's call.
+
+On success print `INFO [plan] polisher: creating <name>`.
 
 **Ultra bundle check.** When a manifest already exists in the target folder, read its first
 line. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow
@@ -77,6 +90,8 @@ continue unchanged.
 Write the plan manifest — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan,
 `.unikit/code/PLAN.md` for a fast plan — following the `/unikit-plan` template.
 You MUST reach this phase.
+
+**The header carries `Created:` and `Updated:`**, both today's date in `YYYY-MM-DD`, written directly under the H1 — stated here explicitly rather than left to "follow the template", because inheriting an obligation by reference is the first thing that gets lost, and losing this one is not visible as a missing field: every resolver that picks the latest plan excludes a manifest without `Updated:`, so the plan you just wrote reads to the user as "no plan found".
 
 **Branch 1 — no manifest yet (creating a plan).** `Write` is allowed. For an ultra bundle the
 write order is: every phase file first, the manifest last, then the integrity checks

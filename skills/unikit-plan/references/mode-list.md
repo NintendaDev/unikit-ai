@@ -21,12 +21,15 @@ Listing never opens a plan folder — a folder is a plan whatever its manifest c
 For each found plan:
 - **Name** — folder name (for full plans), `.unikit/code/PLAN.md` (fast), `.unikit/code/FIX_PLAN.md` (fix)
 - **Progress** — count completed (`- [x]`) and total (`- [ ]` + `- [x]`) task checkboxes
-- **Branch match** — compare plan name with current git branch (`git branch --show-current`). If on `<configured branch prefix><name>` and a plan folder ends with `_<name>` → mark as `← current branch`
+- **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Mark **every** match as `← current branch`.
+
+  This is the one resolver where several matches do **not** raise a question: List mode only labels, it never selects, so there is nothing to choose between. Every other resolver asks.
+- **Sort key** — the manifest's `Updated:`, newest first. A manifest that has none sorts **last** and its row is marked `(no Updated:)`. List mode never drops a plan — unlike the choosing resolvers, which exclude such a manifest and say so — but an unexplained position at the bottom of a list is the same silent omission in a smaller costume.
 
 ### List Step 3: Display
 
 ```
-Available plans:
+Available plans (sorted by the manifest's `Updated:`, newest first):
 
   Plan                                    Progress       Branch
   ──────────────────────────────────────────────────────────────

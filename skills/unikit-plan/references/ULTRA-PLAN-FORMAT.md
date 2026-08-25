@@ -23,7 +23,7 @@ only reader — do not split or relocate it to make edits cheaper.
 ## Bundle Layout
 
 ```text
-.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/
+.unikit/code/plans/<feature-name>/
 ├── PLAN.md                 ← the manifest (same name as a full plan)
 ├── phase-01-<slug>.md
 ├── phase-02-<slug>.md
@@ -78,13 +78,22 @@ Rules:
 
 ## Manifest Template
 
-Placement: `.unikit/code/plans/<folder>/PLAN.md` — the same path a full plan uses. The
+Placement: `.unikit/code/plans/<feature-name>/PLAN.md` — the same path a full plan uses. The
 section order below is the `TASK-FORMAT.md` order plus two new sections; it is a contract,
 not layout.
+
+The header carries the same two timestamp fields a full manifest carries, in the same form.
+The rule for when `Updated:` moves has **one** owner — `TASK-FORMAT.md` → *Plan Manifest
+Template* — and is not restated here. An ultra manifest written without these fields is
+excluded from "the latest plan" by every resolver, which would make this mode's own artifact
+unfindable by the branch this change introduces.
 
 ```markdown
 <!-- unikit:plan-mode:ultra -->
 # {Feature Name} — Tasks
+
+Created: YYYY-MM-DD
+Updated: YYYY-MM-DD
 
 ## Overview
 ## Based on

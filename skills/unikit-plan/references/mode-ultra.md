@@ -91,7 +91,7 @@ names the exact words that count as hiding.
 ## Step F: Write order
 
 1. Write **all** phase files.
-2. Write the manifest — `.unikit/code/plans/<dated-folder>/PLAN.md` — **last**, once phase
+2. Write the manifest — `.unikit/code/plans/<feature-name>/PLAN.md` — **last**, once phase
    content has stopped moving, so that `## Phase Index`, the task links, the ranges and the
    dependency references all agree with it.
    Its **first line** is the mode marker, written verbatim and never localized:
@@ -140,8 +140,10 @@ Then **STOP**.
 
 ## Not part of ultra
 
-- Sequential plan numbering is not introduced — the date prefix already gives both order
-  and uniqueness.
+- Sequential plan numbering is not introduced. Uniqueness comes from the collision policy
+  (a slug that already exists routes to `add` or asks for another name — never a silent
+  suffix), and ordering comes from the manifest's `Updated:`. Neither is a property of the
+  folder name any more.
 - There is no model layer.
 - The design axis (`unikit-gd-*`) is untouched.
 - `--list` is unchanged.

@@ -3730,6 +3730,134 @@ else
     fail "RD-E machine-input contract broken:$RDE_WHY"
 fi
 
+# =============================================
+# NM: dateless naming - the date left the folder name and became two header fields.
+# Scope of this family is `skills/** + subagents/**`, and the second half is the point: the
+# measurement that preceded this change looked at `src/**/*.ts` and `skills/**` only, and both
+# files it missed live under `subagents/` - `unikit-implement-coordinator.md` RESOLVES a plan
+# folder, `unikit-plan-polisher.md` PRODUCES one. One of each, missed for the same reason.
+# Placed AFTER the RD family and reusing the path vars declared there - `set -u` makes a
+# forward reference fatal.
+# Negatives bind to a FORM (`{YYYY-MM-DD}_`, `<dated-folder>`, `the date prefix already
+# gives`, `lexicographically descending`), never to the words `date` or `sort`, which are
+# legitimate dozens of times in these same files.
+# =============================================
+NM_MODE_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+NM_MODE_LIST="$ROOT_DIR/skills/unikit-plan/references/mode-list.md"
+NM_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+NM_MODE_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+NM_ULTRA_PLAN="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+NM_IMPL_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+NM_PLAN_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+NM_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+# UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL / UNIKIT_IMPLEMENT_SKILL / UNIKIT_VERIFY_SKILL come
+# from the RD family above; CK_TASKFMT is the TASK-FORMAT.md path declared with the CK family.
+NM_WHY=""
+
+# (NM-1) No producer assembles a date into a folder name.
+# Four tokens, and the last two are the measured ones. A file can assert datedness WITHOUT
+# showing the format - `plans/<dated-folder>/PLAN.md` did exactly that in mode-ultra.md, and a
+# two-token negative passed over it green. The fourth token catches the other way of asserting
+# it: not as a name format but as a WORKING MECHANISM - "the date prefix already gives both
+# order and uniqueness" stood in the same file, invisible to the first three tokens and to
+# NM-4 as well, while both guards held that file in scope.
+NM_PRODUCERS=("$UNIKIT_PLAN_SKILL" "$NM_MODE_FULL" "$NM_MODE_ULTRA" "$NM_ULTRA_PLAN" "$CK_TASKFMT")
+for f in "${NM_PRODUCERS[@]}"; do
+    n="$(basename "$f")"
+    if [[ ! -s "$f" ]]; then NM_WHY+=" NM-1:$n-missing"; continue; fi
+    for tok in '{YYYY-MM-DD}_' '<date>_' '<dated-folder>' 'the date prefix already gives'; do
+        if grep -qF "$tok" "$f"; then NM_WHY+=" NM-1:$n-dated[$tok]"; fi
+    done
+done
+# A negative with no positive is satisfied by an empty file. Three producers must still say
+# what the name IS.
+for f in "$UNIKIT_PLAN_SKILL" "$NM_ULTRA_PLAN" "$NM_MODE_ULTRA"; do
+    grep -qF 'plans/<feature-name>/' "$f" || NM_WHY+=" NM-1:$(basename "$f")-no-dateless-form"
+done
+
+# (NM-2) The header carries both marks and the rule, in BOTH templates.
+# The rule is asserted apart from the fields on purpose: fields without it start moving on
+# every checkbox tick within a release, and "latest" quietly stops answering its question.
+grep -qF 'Created:'             "$CK_TASKFMT" || NM_WHY+=" NM-2:taskfmt-no-created"
+grep -qF 'Updated:'             "$CK_TASKFMT" || NM_WHY+=" NM-2:taskfmt-no-updated"
+grep -qF 'does **not** move it' "$CK_TASKFMT" || NM_WHY+=" NM-2:taskfmt-no-tick-rule"
+# The ultra half, checked by SECTION WINDOW rather than by file: a grep over the whole file
+# would pass on the fields being discussed in prose, and what must exist is the template.
+NM_ULTRA_TPL="$(awk '/^## Manifest Template/{f=1;next} /^## /{f=0} f' "$NM_ULTRA_PLAN")"
+if [[ -z "$NM_ULTRA_TPL" ]]; then NM_WHY+=" NM-2:no-ultra-manifest-template"; fi
+printf '%s' "$NM_ULTRA_TPL" | grep -qF 'Created:' || NM_WHY+=" NM-2:ultra-template-no-created"
+printf '%s' "$NM_ULTRA_TPL" | grep -qF 'Updated:' || NM_WHY+=" NM-2:ultra-template-no-updated"
+# Two negatives on both templates: the H1 form is unchanged and no third owner of the branch
+# name was introduced (after the identity rule, folder name == branch name).
+for f in "$CK_TASKFMT" "$NM_ULTRA_PLAN"; do
+    n="$(basename "$f")"
+    if grep -qF '# Plan:' "$f"; then NM_WHY+=" NM-2:$n-h1-form-changed"; fi
+    if grep -qE '^Branch:' "$f"; then NM_WHY+=" NM-2:$n-branch-field-introduced"; fi
+done
+
+# (NM-3) All SEVEN places know three name formats.
+# Six resolvers plus the non-interactive producer, which checks a collision with the same
+# triple. The fragment is chosen so it cannot occur by accident and so its disappearance means
+# exactly one thing: the third format was forgotten.
+NM_THREE_FORMAT=("$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_VERIFY_SKILL" "$NM_MODE_LIST" "$NM_MODE_ADD" "$NM_IMPL_COORD" "$NM_PLAN_POLISHER")
+for f in "${NM_THREE_FORMAT[@]}"; do
+    n="$(basename "$(dirname "$f")")/$(basename "$f")"
+    if [[ ! -s "$f" ]]; then NM_WHY+=" NM-3:$n-missing"; continue; fi
+    grep -qF 'beginning with three digits' "$f" || NM_WHY+=" NM-3:$n-two-formats-only"
+done
+
+# (NM-4) Lexicographic sorting is gone, and its replacement is named.
+# Ordering used to live in the folder name; it now lives in the manifest. The negative alone
+# would be satisfied by a resolver that sorts by nothing at all, so the positive names the key.
+NM_RESOLVERS=("$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_VERIFY_SKILL" "$NM_MODE_LIST" "$NM_MODE_ADD" "$NM_IMPL_COORD")
+for f in "${NM_RESOLVERS[@]}"; do
+    n="$(basename "$(dirname "$f")")/$(basename "$f")"
+    if grep -qF 'lexicographically descending' "$f"; then NM_WHY+=" NM-4:$n-still-sorts-by-name"; fi
+done
+# The mtime fallback existed in exactly ONE file, and removing the date turns it from a second
+# branch into the only one - which is why its absence is asserted there and nowhere else.
+if grep -qF 'modification time' "$NM_IMPL_COORD"; then NM_WHY+=" NM-4:coordinator-mtime-fallback-survives"; fi
+# The positive covers the five CHOOSING resolvers. `mode-list.md` is deliberately excluded: it
+# labels and never selects, so it has no "latest" to compute. Recorded here because the next
+# reader will otherwise add a sixth file and get a false red.
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_VERIFY_SKILL" "$NM_MODE_ADD" "$NM_IMPL_COORD"; do
+    n="$(basename "$(dirname "$f")")/$(basename "$f")"
+    grep -qF 'manifest has no Updated:' "$f" || NM_WHY+=" NM-4:$n-no-updated-exclusion"
+done
+
+# (NM-5) The grant follows the rule, into all THREE writers.
+# Direct transfer of RD-B, motivation included: a rule the skill cannot carry out degrades
+# SILENTLY, because the degraded branch is itself a legitimate state. The third file is the
+# one this whole change started from, and the only one whose date feeds the sort key of an
+# entire registry plus the age filter of both registry readers - bounding the guard at two
+# would pin the invariant everywhere except where it is worth most.
+# `unikit-plan-polisher` is NOT in this list: its grant is an unnarrowed `Bash`, and demanding
+# an exact string of it would check a form that file does not have. Recorded so the next
+# reader does not add a fourth path and get a false red.
+for f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$NM_EXPLORE_SKILL"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Bash(date *)' "$f" || NM_WHY+=" NM-5:$n-no-date-grant"
+done
+
+# (NM-6) The non-interactive producer does not choose silently either.
+# Same policy as the interactive branch, different verb: it hands control back instead of
+# asking. The suffix ban is pinned to the literal both producers share.
+if [[ ! -s "$NM_PLAN_POLISHER" ]]; then NM_WHY+=" NM-6:polisher-missing"; fi
+grep -qF 'automatic suffix' "$NM_PLAN_POLISHER" || NM_WHY+=" NM-6:no-suffix-ban"
+grep -qF 'automatic suffix' "$UNIKIT_PLAN_SKILL" || NM_WHY+=" NM-6:interactive-branch-no-suffix-ban"
+grep -qF 'plan_path: none'  "$NM_PLAN_POLISHER" || NM_WHY+=" NM-6:no-hand-back-branch"
+grep -qF 'Created:'         "$NM_PLAN_POLISHER" || NM_WHY+=" NM-6:no-created-instruction"
+grep -qF 'Updated:'         "$NM_PLAN_POLISHER" || NM_WHY+=" NM-6:no-updated-instruction"
+# The negative half: an instruction to ask is an instruction this executor cannot follow -
+# the tool is absent from its `tools:`. Same failure class NM-5 catches from the other side.
+if grep -qF 'AskUserQuestion' "$NM_PLAN_POLISHER"; then NM_WHY+=" NM-6:polisher-told-to-ask"; fi
+
+if [[ -z "$NM_WHY" ]]; then
+    pass "NM-1..NM-6 dateless folder names; both manifests carry Created/Updated; seven places know three formats; latest sorts on Updated; the date grant reaches all three writers"
+else
+    fail "NM dateless-naming contract broken:$NM_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # UR: ultra research — the second ultra marker, and the identifier contract.
 # ─────────────────────────────────────────────
