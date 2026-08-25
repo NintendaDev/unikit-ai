@@ -996,10 +996,14 @@ fi
 # ─────────────────────────────────────────────────────
 # Section 7b: markdown + workspace-folders pure functions
 # ─────────────────────────────────────────────────────
-# The two helpers the research merge added to the shared markdown layer, plus the
-# folder-name date reader. Same shape as Section 7 and for the same reason: they
-# are the pure half of a step whose impure half destroys data, so they are worth
-# asserting where a failure names the function rather than the folder.
+# The helper the research merge added to the shared markdown layer, plus the
+# folder-name date reader. Same shape as Section 7: they are the pure half of a
+# step whose impure half rewrites files, so they are worth asserting where a
+# failure names the function rather than the folder.
+#
+# The step's impure half no longer DESTROYS anything — it renames two files and
+# leaves the brief alone — which is why `sectionBody` is not asserted here any
+# more: it was removed with the split it existed for.
 #
 # Strings are assembled from `String.fromCharCode` rather than written with
 # escapes: the block is a double-quoted bash string, where a backtick opens a
@@ -1017,23 +1021,10 @@ MD_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
     if (actual !== expected) why.push(name + '=' + JSON.stringify(actual));
   };
 
-  // sectionBody — exact-line match, level-aware boundary, fence-blind
-  const doc = [
-    '# Brief', '', '## CONTEXT', '', 'needs a cache', '', '### detail', 'kept', '',
-    '## CONSTRAINTS', '- MUST: x', '', '## OUT OF SCOPE', 'N/A', ''
-  ].join(NL);
-  eq('found', m.sectionBody(doc, '## CONTEXT'), ['needs a cache', '', '### detail', 'kept'].join(NL));
-  eq('subsection-kept', m.sectionBody(doc, '## CONTEXT').includes('### detail'), true);
-  eq('next-section-not-swallowed', m.sectionBody(doc, '## CONTEXT').includes('CONSTRAINTS'), false);
-  eq('missing-is-null', m.sectionBody(doc, '## INTERFACES'), null);
-  eq('later-section', m.sectionBody(doc, '## OUT OF SCOPE'), 'N/A');
-
-  // a heading-shaped line inside a fence closes nothing
-  const fenced = [
-    '## CONTEXT', 'before', FENCE + 'md', '## CONSTRAINTS', FENCE, 'after', '', '## REAL', 'x'
-  ].join(NL);
-  eq('fenced-heading-does-not-close', m.sectionBody(fenced, '## CONTEXT'),
-     ['before', FENCE + 'md', '## CONSTRAINTS', FENCE, 'after'].join(NL));
+  // sectionBody used to be asserted here. It was removed together with its only
+  // caller — the brief split the research merge no longer performs — so there is
+  // nothing left to assert. The fence rule it shared with demoteHeadings is still
+  // covered below, on the helper that survives.
 
   // demoteHeadings — one level down, six is the ceiling, fences untouched
   const dem = m.demoteHeadings([
@@ -1078,7 +1069,7 @@ MD_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
 " 2>/dev/null || echo "markdown-error")
 
 if [[ "$MD_RESULT" == "ok" ]]; then
-    pass "markdown helpers: sectionBody, demoteHeadings, the header primitives and folderDatePrefix hold their contracts"
+    pass "markdown helpers: demoteHeadings, the header primitives and folderDatePrefix hold their contracts"
 else
     fail "markdown helper contract violated: $MD_RESULT"
 fi
@@ -1119,20 +1110,35 @@ assert_not_exists "$R8_DIR/2026-06-12_withbrief/RESEARCH_RESULT.md" \
   "with brief: the legacy result name is gone"
 assert_exists     "$R8_DIR/2026-06-12_withbrief/SOURCE.md" \
   "with brief: the dialogue log kept its own file under the new name"
-assert_not_exists "$R8_DIR/2026-06-12_withbrief/RESEARCH_BRIEF.md" \
-  "with brief: the brief is removed once the write is verified"
+assert_exists     "$R8_DIR/2026-06-12_withbrief/RESEARCH_BRIEF.md" \
+  "with brief: the brief is LEFT ON DISK — the migration never deletes it"
 assert_exists     "$R8_DIR/nobrief/RESEARCH.md" \
   "no brief: RESEARCH_RESULT.md renamed to the manifest"
 assert_exists     "$R8_DIR/nobrief/SOURCE.md" \
   "no brief: the dialogue log kept its own file under the new name"
 
-# The heavy half — written only where the brief carried it
-assert_exists     "$R8_DIR/2026-06-12_withbrief/CONTRACTS.md" \
-  "with brief: the heavy sections became CONTRACTS.md"
-assert_exists     "$R8_DIR/2026-06-12_withbrief/DEPENDENCY-GRAPH.md" \
-  "with brief: the dependency graph became its own artifact"
+# The brief is not interpreted: no artifact is derived from it, and its own bytes
+# are untouched. Both halves matter and neither implies the other — a step could
+# leave the file in place while still having rewritten it, and a step could copy
+# sections out without deleting anything.
+assert_not_exists "$R8_DIR/2026-06-12_withbrief/CONTRACTS.md" \
+  "with brief: nothing is derived from the brief — no CONTRACTS.md is written"
+assert_not_exists "$R8_DIR/2026-06-12_withbrief/DEPENDENCY-GRAPH.md" \
+  "with brief: nothing is derived from the brief — no DEPENDENCY-GRAPH.md is written"
 assert_not_exists "$R8_DIR/nobrief/CONTRACTS.md" \
   "no brief: no adaptive artifact is invented from nothing"
+
+R8_BRIEF="$R8_DIR/2026-06-12_withbrief/RESEARCH_BRIEF.md"
+R8_BRIEF_SHA="$(sha_of "$R8_BRIEF")"
+
+# The content did not silently move into the summary either. `Cache.get` is the
+# one token unique to the brief's heavy half: if the split ever comes back, the
+# manifest starts carrying it and this assert names the return.
+if grep -qF 'Cache.get' "$R8_DIR/2026-06-12_withbrief/RESEARCH.md"; then
+    fail "with brief: brief content leaked into the manifest — the split has returned"
+else
+    pass "with brief: no brief content was copied into the manifest"
+fi
 
 # All four markers, each exactly once, on BOTH folders — symmetrically
 for R8_CASE in 2026-06-12_withbrief nobrief; do
@@ -1168,7 +1174,17 @@ assert_contains "$R8_DIR/nobrief/RESEARCH.md" 'Topic: Flat research' \
 assert_contains "$R8_DIR/nobrief/RESEARCH.md" 'unikit:migrated-summary' \
   "no brief: the banner naming the missing brief is present"
 
-# Idempotence — the merge is the one step in the chain that destroys a source
+# The two banners differ by the one thing that changes what the reader must DO,
+# so each is asserted on its own case. A shared wording would send a reader
+# looking for a brief that is not there, or leave one sitting unnoticed.
+assert_contains "$R8_DIR/2026-06-12_withbrief/RESEARCH.md" 'left untouched in this folder' \
+  "with brief: the banner says the brief was kept and NOT copied"
+assert_contains "$R8_DIR/nobrief/RESEARCH.md" 'migrated without RESEARCH_BRIEF.md' \
+  "no brief: the banner names the real reason rather than the generic one"
+
+# Idempotence. The merge used to be the one step in the chain that destroyed a
+# source; it no longer destroys anything, and the brief's byte-identity is
+# asserted explicitly below rather than left to the generic sweep.
 R8_FILES=()
 R8_SHAS=()
 while IFS= read -r R8_FILE; do
@@ -1183,6 +1199,9 @@ for R8_I in "${!R8_FILES[@]}"; do
     assert_file_unchanged "${R8_FILES[$R8_I]}" "${R8_SHAS[$R8_I]}" \
       "idempotence: $R8_LABEL byte-identical on a second update"
 done
+
+assert_file_unchanged "$R8_BRIEF" "$R8_BRIEF_SHA" \
+  "with brief: the brief is byte-identical to what the project had before the migration"
 
 # ─────────────────────────────────────────────────────
 # Section 9: plan timestamps backfill
@@ -1305,7 +1324,11 @@ printf '# Locked research\n\nStatus: in-progress\n\n## Findings\n\nbody\n' \
 run_update "$R8C" "$TMPDIR/research-unreadable-update.log"
 
 # The section is owed whatever the brief's state: it is the hashed object and the
-# registry generator's input, not a derivative of the brief.
+# registry generator's input, not a derivative of the brief. "Unreadable" stopped
+# being a branch of its own when the step stopped opening the brief at all — the
+# fixture is kept because a directory named like a file is still the shape most
+# likely to make a careless `readTextFile` throw, and the claim below (no
+# permanent pending) is what it actually guards.
 for R8C_MARK in 'unikit:active-summary:start' 'unikit:active-summary:end' \
                 'unikit:sessions:start' 'unikit:sessions:end'; do
     R8C_N=$(grep -cF "$R8C_MARK" "$R8C_DIR/RESEARCH.md" 2>/dev/null || true)
@@ -1364,11 +1387,12 @@ assert_cmd_exit 0 "flat straggler: rules sync exits 0 right after one clean upda
 # ─────────────────────────────────────────────────────
 # Section 8d: research merge — the branches that refuse
 # ─────────────────────────────────────────────────────
-# Three shapes `apply` walks past without folding. Each one is a place where the
-# step could lose a brief, and none of them had a test: the guard that protects
-# against data loss is exactly the guard nothing was exercising. All three live
-# in ONE project so that `apply` walks every folder — a folder whose own `detect`
-# is false is still visited when a sibling carries the run.
+# Three shapes `apply` walks past. Each one is a place where the step could once
+# have lost a brief; it can no longer lose one anywhere, so what these now assert
+# is that an odd shape does not cost the folder its other files and does not
+# strand the project. All three live in ONE project so that `apply` walks every
+# folder — a folder whose own `detect` is false is still visited when a sibling
+# carries the run.
 
 echo -e "\n${BOLD}Section 8d: research merge — refusing branches keep the brief${NC}"
 
@@ -1377,18 +1401,20 @@ use_fake_registry "$R8D" unity minimal-valid
 R8D_DIR="$R8D/.unikit/code/researches"
 mkdir -p "$R8D_DIR/stray-end" "$R8D_DIR/already-folded" "$R8D_DIR/both-dates"
 
-# (a) a manifest carrying a STRAY end-marker. The summary write then produces a
-#     second `end`, `manifestVerified` refuses the result, and the brief must
-#     survive — this is the verify-then-delete guard, and the only reason an
-#     interrupted or malformed write does not cost the brief's content.
+# (a) a manifest carrying a STRAY end-marker. This used to defeat the write
+#     verifier and was the one guard standing between a malformed manifest and a
+#     deleted brief. There is no deletion left to guard, so the assert is now the
+#     plain one: a malformed source costs the brief nothing, because nothing in
+#     this step is allowed to cost it anything.
 printf '# Stray end\n\nStatus: in-progress\n\n## Findings\n\nbody\n<!-- unikit:active-summary:end -->\n' \
     > "$R8D_DIR/stray-end/RESEARCH_RESULT.md"
 printf '# Brief\n\n## CONTEXT\n\nreal content worth keeping\n' \
     > "$R8D_DIR/stray-end/RESEARCH_BRIEF.md"
 R8D_STRAY_BRIEF_SHA="$(sha_of "$R8D_DIR/stray-end/RESEARCH_BRIEF.md")"
 
-# (b) already folded, with a brief still beside it. The manifest wins; the brief
-#     is never folded twice and never deleted unread.
+# (b) a manifest that already carries a summary, with a brief still beside it.
+#     The manifest wins: a hand-written summary is never overwritten, and the
+#     brief beside it is left exactly as it is.
 printf '# Already folded\n\nStatus: in-progress\nLifecycle: active\n\n## Active Summary\n<!-- unikit:active-summary:start -->\nTopic: hand-written\n<!-- unikit:active-summary:end -->\n\n## Sessions\n<!-- unikit:sessions:start -->\n\n### seeded\n\n<!-- unikit:sessions:end -->\n' \
     > "$R8D_DIR/already-folded/RESEARCH.md"
 printf '# Brief\n\n## CONTEXT\n\nstale copy\n' \
@@ -1405,13 +1431,13 @@ run_update "$R8D" "$TMPDIR/research-refusals-update.log"
 
 # (a) the write was refused and the brief is byte-identical
 assert_file_unchanged "$R8D_DIR/stray-end/RESEARCH_BRIEF.md" "$R8D_STRAY_BRIEF_SHA" \
-  "stray end-marker: the unverified write cost the brief nothing"
+  "stray end-marker: a malformed manifest costs the brief nothing"
 
 # (b) the manifest's own summary is untouched and the brief survives
 assert_file_unchanged "$R8D_DIR/already-folded/RESEARCH.md" "$R8D_FOLDED_SUMMARY_SHA" \
   "already folded: the hand-written summary is not overwritten"
 assert_file_unchanged "$R8D_DIR/already-folded/RESEARCH_BRIEF.md" "$R8D_FOLDED_BRIEF_SHA" \
-  "already folded: the brief is left for a human, never deleted unread"
+  "already folded: the brief is left exactly as it is"
 
 # (c) one date axis survives, and it is the one under the new name
 assert_not_contains "$R8D_DIR/both-dates/RESEARCH.md" '^Date: ' \
@@ -1550,41 +1576,10 @@ assert_file_unchanged "$P9E_FOLDER/TASKS.md" "$P9E_SHA" \
 assert_cmd_exit 0 "completed plan: rules sync exits 0 after the upgrade" \
   "$TMPDIR/plan-completed-sync.log" -- env -C "$P9E" node "$CLI" rules sync
 
-# ─────────────────────────────────────────────────────
-# Section 8e: the dependency-graph fold is entered twice
-# ─────────────────────────────────────────────────────
-# The adaptive artifacts are written BEFORE the manifest, and the manifest write
-# is the one that can throw — `apply` catches per folder and the run completes,
-# so the next `update` re-enters the same branch with `DEPENDENCY-GRAPH.md`
-# already on disk. An append with no idempotence check then files the graph a
-# second time under a second copy of its own source heading.
-#
-# The fixture IS that post-crash state, seeded directly rather than produced by
-# forcing a write to fail: the manifest never got its `## Active Summary`, while
-# the artifacts of the interrupted run are already there.
-
-echo -e "\n${BOLD}Section 8e: research merge — a retried dependency-graph fold${NC}"
-
-R8E="$TMPDIR/research-graph-retry"; mkdir -p "$R8E"
-use_fake_registry "$R8E" unity minimal-valid
-R8E_FOLDER="$R8E/.unikit/code/researches/retried"
-mkdir -p "$R8E_FOLDER"
-printf '# Retried\n\nStatus: in-progress\n\n## Findings\n\nbody\n' > "$R8E_FOLDER/RESEARCH.md"
-printf '# Brief\n\n## CONTEXT\n\ncache the search\n\n## DEPENDENCY GRAPH\n\nA to B\n' \
-    > "$R8E_FOLDER/RESEARCH_BRIEF.md"
-printf '## From RESEARCH_BRIEF.md\n\nA to B\n' > "$R8E_FOLDER/DEPENDENCY-GRAPH.md"
-
-run_update "$R8E" "$TMPDIR/research-graph-retry-update.log"
-
-R8E_BLOCKS=$(grep -cF '## From RESEARCH_BRIEF.md' "$R8E_FOLDER/DEPENDENCY-GRAPH.md" 2>/dev/null || echo 0)
-if [[ "$R8E_BLOCKS" == "1" ]]; then
-    pass "retried fold: the graph carries exactly one source block, not two"
-else
-    fail "retried fold: expected 1 source block in DEPENDENCY-GRAPH.md, got '$R8E_BLOCKS'"
-fi
-assert_contains "$R8E_FOLDER/DEPENDENCY-GRAPH.md" '^A to B$' \
-  "retried fold: the graph the interrupted run wrote is still there"
-assert_cmd_exit 0 "retried fold: rules sync exits 0 once the folder converges" \
-  "$TMPDIR/research-graph-retry-sync.log" -- env -C "$R8E" node "$CLI" rules sync
+# The dependency-graph fold used to have a section of its own here (8e): the
+# artifacts were written before the manifest, the manifest write was the one that
+# could throw, and a re-entered run appended the graph a second time. The step
+# writes no artifacts at all any more — it renames two files and leaves the brief
+# closed — so the retry it guarded against has no code left to happen in.
 
 print_summary_and_exit "Migration + MCP reconciliation Smoke Tests"

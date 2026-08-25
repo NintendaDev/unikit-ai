@@ -150,9 +150,6 @@ export const LEGACY_RESEARCH_BRIEF_FILE = 'RESEARCH_BRIEF.md';
 export const LEGACY_RESEARCH_SOURCE_FILE = 'RESEARCH_SOURCE.md';
 export const RESEARCH_SOURCE_FILE = 'SOURCE.md';
 
-/** Adaptive artifacts the fold half writes the brief's heavy sections into. */
-export const RESEARCH_CONTRACTS_FILE = 'CONTRACTS.md';
-export const RESEARCH_DEPENDENCY_GRAPH_FILE = 'DEPENDENCY-GRAPH.md';
 
 /**
  * Header fields the research manifest carries beyond the shared timestamps.

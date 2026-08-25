@@ -1,11 +1,17 @@
 // Markdown primitives shared by the content-merging migrations.
 //
 // This module exists so that ONE RULE — a line inside a fenced block is NEVER
-// rewritten — lives in one place. Heading demotion, checkbox counting, section
-// lifting and section extraction all read the same scan, so none of them can
-// drift from the others. All three artifact steps read it: `plan-artifact.ts`
-// (TASKS.md + PLAN-BRIEF.md -> PLAN.md), `research-artifact.ts` (RESULT +
-// BRIEF + SOURCE -> RESEARCH.md) and `plan-timestamps.ts` (the header backfill).
+// rewritten — lives in one place. Heading demotion, checkbox counting and
+// section lifting all read the same scan, so none of them can drift from the
+// others. All three artifact steps read it: `plan-artifact.ts` (TASKS.md +
+// PLAN-BRIEF.md -> PLAN.md), `research-artifact.ts` (RESULT and SOURCE renamed,
+// the brief left alone) and `plan-timestamps.ts` (the header backfill).
+//
+// `sectionBody` used to live here. It read one section out of a document by an
+// exact heading match, and its only caller was the brief split the research
+// step no longer performs — a split that matched English headings against
+// briefs whose headings the writing skill had translated. The function went
+// with the caller rather than waiting for a second one.
 //
 // The header-block primitives (`headerEnd`, `findField`, `fieldValue`,
 // `insertPoint`) live here for the same reason and were extracted for a
@@ -166,54 +172,4 @@ export function demoteHeadings(body: string): string {
   while (demoted.length > 0 && demoted[demoted.length - 1].trim() === '') demoted.pop();
 
   return demoted.join('\n');
-}
-
-/**
- * The body of the section opened by the exact line `heading`, or `null`.
- *
- * The section runs to the next UNFENCED heading of the same or a higher level,
- * so `sectionBody(body, '## CONSTRAINTS')` keeps its `###` subsections and stops
- * at the next `##`. A heading-shaped line inside a fence closes nothing.
- *
- * `heading` is compared as a WHOLE LINE, never as a substring: one section's
- * body may quote another section's title, and a substring test would then eat
- * the boundary (the same argument as `plan-artifact.ts` makes when it compares
- * lifted headings rather than searching for them).
- *
- * Blank lines are trimmed off both ends of the result — the blank line that
- * conventionally follows a heading is punctuation, not content. Indentation
- * inside a line and the order of the lines are preserved exactly.
- */
-export function sectionBody(body: string, heading: string): string | null {
-  const wanted = heading.replace(/\r$/, '').trimEnd();
-  const level = /^(#{1,6})\s/.exec(wanted)?.[1].length ?? 0;
-  if (level === 0) return null;
-
-  const scanned = scanLines(body);
-  let start = -1;
-
-  for (let i = 0; i < scanned.length; i += 1) {
-    const { text, fenced } = scanned[i];
-    if (fenced) continue;
-    if (text.replace(/\r$/, '').trimEnd() === wanted) {
-      start = i + 1;
-      break;
-    }
-  }
-  if (start === -1) return null;
-
-  const collected: string[] = [];
-  for (let i = start; i < scanned.length; i += 1) {
-    const { text, fenced } = scanned[i];
-    if (!fenced) {
-      const opened = /^(#{1,6})\s/.exec(text.replace(/\r$/, '').trimEnd());
-      if (opened && opened[1].length <= level) break;
-    }
-    collected.push(text);
-  }
-
-  while (collected.length > 0 && collected[0].trim() === '') collected.shift();
-  while (collected.length > 0 && collected[collected.length - 1].trim() === '') collected.pop();
-
-  return collected.join('\n');
 }

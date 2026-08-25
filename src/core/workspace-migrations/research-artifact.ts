@@ -1,17 +1,23 @@
 // Research-artifact migration — the three-file research folder becomes one manifest.
 //
-// The same three rules govern it that govern `plan-artifact.ts`, and they are
-// repeated here rather than referenced because each one is a way to lose data:
+// It RENAMES rather than interprets. `RESEARCH_RESULT.md` becomes `RESEARCH.md`
+// and `RESEARCH_SOURCE.md` becomes `SOURCE.md`, because a rename cannot lose a
+// byte. `RESEARCH_BRIEF.md` is left exactly where it is: an earlier revision
+// took it apart by matching section headings against a fixed English list, and
+// the skill that wrote those briefs required the headings to be translated
+// whenever `language.artifacts` was not English — so in a non-English project
+// nothing matched, nothing was carried across, and the brief was deleted all
+// the same. This step now deletes nothing at all, and the one destructive
+// operation it used to own is gone with it.
 //
-//   1. It MERGES CONTENT rather than relocating a path. A whole brief is taken
-//      apart into an `## Active Summary` section and two adaptive artifacts.
-//   2. `apply` can be entered at `detect === false` (the runner ORs the version
+// Two rules still govern it, and both are ways to lose data:
+//
+//   1. `apply` can be entered at `detect === false` (the runner ORs the version
 //      half with `detect` — see `migrations/runner.ts`), so every half below
 //      re-checks the SHAPE of the folder itself and returns without writing
 //      when there is nothing to do.
-//   3. Deletion of the brief happens ONLY after the manifest write has been
-//      read back and verified. Reverse those two and an interrupted process is
-//      the one way to lose the brief's content for good.
+//   2. A rename happens only into a name that is free. Both halves check, and
+//      a collision is a `logWarn` skip rather than an overwrite.
 //
 // TWO THINGS DIFFER from the plan step, and both are deliberate:
 //
@@ -27,19 +33,16 @@
 //     shows up as a nameless row in the `/unikit-plan` question — three failures
 //     far away from this one cause.
 //
-// The fold half — what becomes of the brief — lives in `research-artifact-fold.ts`.
+// The `## Active Summary` half lives in `research-artifact-summary.ts`.
 
 import path from 'path';
-import {
-  fileExists, movePath, readTextFile, removeFile, writeTextFile,
-} from '../../utils/fs.js';
+import { fileExists, movePath, readTextFile, writeTextFile } from '../../utils/fs.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   LEGACY_RESEARCH_BRIEF_FILE, LEGACY_RESEARCH_RESULT_FILE,
   LEGACY_RESEARCH_SOURCE_FILE, MANIFEST_CREATED_FIELD, MANIFEST_UPDATED_FIELD,
-  MIGRATION_SINCE_RESEARCH_MANIFEST, RESEARCH_ACTIVE_SUMMARY_END,
-  RESEARCH_ACTIVE_SUMMARY_START, RESEARCH_CONTRACTS_FILE, RESEARCH_DATE_FIELD,
-  RESEARCH_DEPENDENCY_GRAPH_FILE, RESEARCH_LIFECYCLE_ACTIVE, RESEARCH_LIFECYCLE_FIELD,
+  MIGRATION_SINCE_RESEARCH_MANIFEST, RESEARCH_ACTIVE_SUMMARY_START, RESEARCH_DATE_FIELD,
+  RESEARCH_LIFECYCLE_ACTIVE, RESEARCH_LIFECYCLE_FIELD,
   RESEARCH_MANIFEST_FILE, RESEARCH_SESSIONS_END, RESEARCH_SESSIONS_HEADING,
   RESEARCH_SESSIONS_START, RESEARCH_SOURCE_FILE, RESEARCH_STATUS_FIELD,
 } from '../constants.js';
@@ -50,40 +53,32 @@ import {
   detectableResearchFolders, folderDatePrefix, researchFolders,
 } from './workspace-folders.js';
 import {
-  buildActiveSummary, foldDependencyGraph, insertSummary, summaryBlock, writeContracts,
-} from './research-artifact-fold.js';
+  buildActiveSummary, insertSummary, summaryBlock,
+} from './research-artifact-summary.js';
 
 const LOG_TAG = 'research:migrate';
 
-// The two banners deliberately do NOT share a wording. Each names the state its
-// own branch produced, because "assembled mechanically" over a folder that never
-// had a brief would send a reader looking for a file that does not exist.
+// The two banners deliberately do NOT share a wording, and the split is by the
+// one thing that changes what the reader should DO: whether a brief is sitting
+// in the folder holding the content this stub is missing. Telling someone the
+// folder "was migrated without a brief" while the file is right there sends
+// them looking for something that is not lost; telling someone to fold in a
+// brief that never existed sends them looking for a file that never was.
 //
 // English, like every other string in `src/` — the project keeps source text
 // English-only (`test-skills.sh` Part 14) even where the artifact it lands in is
 // authored in another language.
 
-/** Banner for a summary assembled out of a brief — it needs a human pass, not repair. */
-const BANNER_FROM_BRIEF = '> This section was assembled mechanically from RESEARCH_BRIEF.md.\n'
-  + '> Bring it in line with REQ-1 (one fact, one owning section) on the next\n'
-  + '> /unikit-explore session.';
+/** Banner for a folder whose brief is still on disk, unread and uncopied. */
+const BANNER_BRIEF_KEPT = '> Only `Topic:` is filled in, taken from the title. RESEARCH_BRIEF.md was\n'
+  + '> left untouched in this folder and its content was NOT copied here — carry\n'
+  + '> it over by hand, or rewrite this section on the next /unikit-explore\n'
+  + '> session, and delete the brief yourself once you have.';
 
 /** Banner for a folder that had no brief — it names the real reason, not the generic one. */
 const BANNER_NO_BRIEF = '> This folder was migrated without RESEARCH_BRIEF.md — only `Topic:`, taken\n'
   + '> from the title, is filled in. Bring the section in line with REQ-1 on the\n'
   + '> next /unikit-explore session.';
-
-/**
- * Banner for a brief that exists but could not be read.
- *
- * Its own wording, not a reuse of {@link BANNER_NO_BRIEF}: the file IS on disk
- * and still holds the content this section should have carried. Telling the
- * reader the folder "was migrated without a brief" would send them looking for
- * a file that is sitting right there.
- */
-const BANNER_UNREADABLE_BRIEF = '> RESEARCH_BRIEF.md could not be read during migration — `Topic:` was taken\n'
-  + '> from the title instead. The brief is still on disk: fold it in by hand, or\n'
-  + '> rewrite this section on the next /unikit-explore session.';
 
 /** The manifest's H1 text — the only title every folder is guaranteed to have. */
 function manifestTitle(body: string): string {
@@ -171,29 +166,14 @@ function sessionsBlock(created: string): string {
   const stamp = created === '' ? '' : `${created} — `;
   return `${RESEARCH_SESSIONS_HEADING}\n${RESEARCH_SESSIONS_START}\n\n`
     + `### ${stamp}migrated from the three-file format\n`
-    + `- What changed: RESULT + BRIEF merged into this manifest by \`research-1-to-2-manifest-merge\`.\n`
-    + '- Gate: not run — the merge is mechanical, not a research session.\n\n'
+    + '- What changed: RESULT was renamed to RESEARCH.md and SOURCE to SOURCE.md by\n'
+    + '  `research-1-to-2-manifest-merge`. RESEARCH_BRIEF.md, if the folder had one, was\n'
+    + '  left untouched and its content was NOT copied into `## Active Summary`.\n'
+    + '- Gate: not run — a rename is mechanical, not a research session.\n\n'
     + `${RESEARCH_SESSIONS_END}\n`;
 }
 
-/** Occurrences of `marker` in `body` — both pairs must appear exactly once. */
-function markerCount(body: string, marker: string): number {
-  return body.split(marker).length - 1;
-}
-
-/** True when the manifest carries both marker pairs once and a non-empty summary. */
-function manifestVerified(body: string): boolean {
-  for (const marker of [
-    RESEARCH_ACTIVE_SUMMARY_START, RESEARCH_ACTIVE_SUMMARY_END,
-    RESEARCH_SESSIONS_START, RESEARCH_SESSIONS_END,
-  ]) {
-    if (markerCount(body, marker) !== 1) return false;
-  }
-  const start = body.indexOf(RESEARCH_ACTIVE_SUMMARY_START) + RESEARCH_ACTIVE_SUMMARY_START.length;
-  return body.slice(start, body.indexOf(RESEARCH_ACTIVE_SUMMARY_END)).trim() !== '';
-}
-
-/** Merge one research folder: rename, header, sessions, summary, verify-then-delete. */
+/** Merge one research folder: rename the two files it can, header, sessions, summary. */
 async function mergeOneResearch(folder: string): Promise<void> {
   const base = path.basename(folder);
   const manifest = path.join(folder, RESEARCH_MANIFEST_FILE);
@@ -236,84 +216,34 @@ async function mergeOneResearch(folder: string): Promise<void> {
     changed = true;
   }
 
-  // (4) summary half — branching on WHERE THE BODY COMES FROM, not on whether a
-  // brief exists. Both branches write the section; only 4a can delete anything.
+  // (4) summary half. The brief is NOT opened here — not to be split, not to be
+  // measured, not to be deleted. It is a document this step cannot parse safely
+  // (see `research-artifact-summary.ts` for the measurement that settled it), and
+  // the section below is owed to every folder whether or not one exists.
   const briefPresent = await fileExists(brief);
-  const briefBody = briefPresent ? await readTextFile(brief) : null;
-  const fromBrief = briefBody !== null;
-  // A brief that is present but unreadable is its OWN case, and it must not be
-  // allowed to refuse the section. `detect` reports a folder without the Active
-  // Summary marker as pending — so a branch that returns here without writing it
-  // never converges, and `rules sync` answers exit 8 that no `update` can clear.
-  // That is the exact failure the `detect` mirror below promises cannot happen.
-  const briefUnreadable = briefPresent && !fromBrief;
-  let contracts = 0;
-  let graphWritten = false;
 
-  if (body.includes(RESEARCH_ACTIVE_SUMMARY_START)) {
-    if (fromBrief) {
-      logWarn(LOG_TAG, `skip ${base}: manifest already folded — fold `
-        + `${LEGACY_RESEARCH_BRIEF_FILE} by hand`);
-      if (changed) await writeTextFile(manifest, body);
-      return;
-    }
-  } else {
-    if (fromBrief) {
-      contracts = await writeContracts(folder, briefBody);
-      if (contracts > 0) {
-        logInfo(LOG_TAG, `${base}: heavy sections -> ${RESEARCH_CONTRACTS_FILE} (${contracts} sections)`);
-      }
-      graphWritten = await foldDependencyGraph(folder, briefBody);
-      if (graphWritten) {
-        logInfo(LOG_TAG, `${base}: dependency graph -> ${RESEARCH_DEPENDENCY_GRAPH_FILE}`);
-      }
-    } else if (briefUnreadable) {
-      // Falls THROUGH to the seeding below rather than returning: the section is
-      // owed whatever the brief's state. Only the deletion is withheld.
-      logWarn(LOG_TAG, `${base}: ${LEGACY_RESEARCH_BRIEF_FILE} could not be read `
-        + '— Active Summary seeded from the title, brief left in place');
-    } else {
-      logWarn(LOG_TAG, `${base}: no ${LEGACY_RESEARCH_BRIEF_FILE} `
-        + '— Active Summary seeded from the title only');
-    }
-
-    const inner = buildActiveSummary(briefBody, manifestTitle(body));
-    const banner = fromBrief ? BANNER_FROM_BRIEF
-      : briefUnreadable ? BANNER_UNREADABLE_BRIEF : BANNER_NO_BRIEF;
-    body = insertSummary(body, summaryBlock(inner, banner));
+  if (!body.includes(RESEARCH_ACTIVE_SUMMARY_START)) {
+    body = insertSummary(body, summaryBlock(
+      buildActiveSummary(manifestTitle(body)),
+      briefPresent ? BANNER_BRIEF_KEPT : BANNER_NO_BRIEF,
+    ));
     changed = true;
-    if (fromBrief) logInfo(LOG_TAG, `${base}: brief folded into ## Active Summary`);
+    logInfo(LOG_TAG, `${base}: ## Active Summary seeded from the title`);
+  }
+
+  // Printed on the run that migrates the folder — and ONLY on that run. Once the
+  // version is stamped `detect` answers false and this step is skipped entirely,
+  // so a log line cannot be what reminds anyone later. The durable notice is the
+  // banner written into the manifest above: it stays in the file until a human
+  // rewrites the section, which is precisely the event that makes it untrue.
+  if (briefPresent) {
+    logWarn(LOG_TAG, `${base}: ${LEGACY_RESEARCH_BRIEF_FILE} kept as-is — its content was `
+      + 'NOT copied into ## Active Summary. Carry it over by hand or on the next '
+      + '/unikit-explore session, then delete the brief yourself');
   }
 
   if (!changed) return;
   await writeTextFile(manifest, body);
-
-  // (5) verify-then-delete — never the other way round.
-  const readback = await readTextFile(manifest);
-  if (readback === null || !manifestVerified(readback)) {
-    // The wording follows what is actually on disk, and does not generalize: a
-    // message about a brief left in place, where no brief exists, is a logging
-    // failure rather than a diagnosis. An unreadable brief is still A brief.
-    logWarn(LOG_TAG, briefPresent
-      ? `skip ${base}: manifest write not verified — ${LEGACY_RESEARCH_BRIEF_FILE} left in place`
-      : `skip ${base}: manifest write not verified`);
-    return;
-  }
-  for (const [written, file] of [
-    [contracts > 0, RESEARCH_CONTRACTS_FILE], [graphWritten, RESEARCH_DEPENDENCY_GRAPH_FILE],
-  ] as const) {
-    if (!written) continue;
-    const artifact = await readTextFile(path.join(folder, file));
-    if (artifact === null || artifact.trim() === '') {
-      logWarn(LOG_TAG, `skip ${base}: ${file} write not verified — `
-        + `${LEGACY_RESEARCH_BRIEF_FILE} left in place`);
-      return;
-    }
-  }
-
-  if (!fromBrief) return;
-  await removeFile(brief);
-  logInfo(LOG_TAG, `${base}: ${LEGACY_RESEARCH_BRIEF_FILE} folded and removed`);
 }
 
 /**

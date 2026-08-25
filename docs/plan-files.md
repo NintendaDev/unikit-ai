@@ -384,7 +384,26 @@ Explore saves a research to `.unikit/code/researches/<slug>/` as a single `RESEA
 
 Each `## Based on` entry records a **`Summary SHA256`** — the SHA256 of the bytes between the `## Active Summary` markers as they stood at linking time, computed over normalized text (extracted between the markers, BOM stripped, LF endings, trailing spaces trimmed, exactly one final newline, nothing reformatted). Only that region is hashed: the header's `Updated:` moves on every session and `## Sessions` grows on every save, so hashing the whole file would report drift on every append that changed no requirement. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute the hash and report a mismatch as `WARN [research-drift]`. An entry with **no** `Summary SHA256` means drift is *unknown*, not absent — either the plan predates the field, or it carries a `Brief SHA256` recorded against the retired brief field, which describes a different object and is never recomputed against the summary. `/unikit-improve` records one when you accept the re-link it offers, and that is the only way the state clears — no migration backfills it and no consumer writes it while merely reading. Drift never blocks: work continues against the plan, which is the authoritative snapshot, and a rebase onto the newer research happens only when the user asks `/unikit-improve` for one.
 
-**After upgrading a project, run `/unikit-explore` once before planning.** The migration folds each research folder into its manifest but does not touch `researches/INDEX.md`, because that file is generated — it is rebuilt from the folders on every save. Until the first save the index still carries pre-2.0.0 rows, which have no `Updated:` field, so `/unikit-plan` excludes every one of them and says so per row: `WARN [research] <folder>: index row has no Updated — excluded; run /unikit-explore to redraw the index`. Nothing is lost and nothing fails silently; one `/unikit-explore` save regenerates the index whole and the researches become visible to planning again.
+**What `unikit-ai update` does to an old research folder.** It renames `RESEARCH_RESULT.md` to
+`RESEARCH.md` and `RESEARCH_SOURCE.md` to `SOURCE.md`, normalizes the header, and seeds an
+`## Active Summary` carrying `Topic:` and nothing else. **`RESEARCH_BRIEF.md` is left exactly where it
+is, byte for byte** — it is not read, not split across the new artifacts, and not deleted. The manifest
+carries a banner saying so, and the content is yours to carry over by hand or to rewrite on the next
+`/unikit-explore` session; delete the brief yourself once you have.
+
+That is deliberate, and it replaces an earlier behaviour that was not. The migration used to take the
+brief apart by matching section headings against a fixed English list — while the skill that wrote those
+briefs required their headings to be translated whenever `language.artifacts` was not English. In a
+non-English project not one heading matched, nothing was carried across, and the brief was deleted all
+the same. A document this step cannot parse safely is not a document for it to delete.
+
+**Run `/unikit-explore` once before planning after the upgrade.** The migration does not touch
+`researches/INDEX.md` either, because that file is generated — it is rebuilt from the folders on every
+save. Until the first save the index still carries pre-2.0.0 rows, which have no `Updated:` field, so
+`/unikit-plan` excludes every one of them and says so per row: `WARN [research] <folder>: index row has
+no Updated — excluded; run /unikit-explore to redraw the index`. Nothing is lost and nothing fails
+silently; one `/unikit-explore` save regenerates the index whole and the researches become visible to
+planning again.
 
 ### Why a plan folder has no date and a patch file does
 
