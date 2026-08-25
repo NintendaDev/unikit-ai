@@ -13,7 +13,7 @@ description: >-
   GAME-DESIGN, GDD, mechanics, or balance research (no code) use /unikit-gd-explore. The
   explicit `ultra` token adds adaptive artifacts (C4 view, ADRs, dependency graph) to the
   research folder; it is never inferred.
-argument-hint: "init | ultra | [topic, system name, or question]"
+argument-hint: "ultra | [topic, system name, or question]"
 allowed-tools:
   - Read
   - Glob
@@ -24,6 +24,7 @@ allowed-tools:
   - Bash(find *)
   - Bash(wc *)
   - Bash(mkdir *)
+  - Bash(date *)
   - Agent
   - AskUserQuestion
   - WebSearch
@@ -141,8 +142,8 @@ model argument of their own.
 
 ### Insight routing table
 
-During exploration you'll discover different types of insights. All of them go into RESEARCH_RESULT.md,
-but tag them mentally so that **Next Steps** contains concrete follow-up actions:
+During exploration you'll discover different types of insights. All of them go into `RESEARCH.md`,
+but tag them mentally so that `Next step:` carries a concrete follow-up action:
 
 | Insight type | Follow-up skill |
 |--------------|-----------------|
@@ -154,8 +155,8 @@ but tag them mentally so that **Next Steps** contains concrete follow-up actions
 | Bug / broken behavior found | `/unikit-fix` |
 | Game-design idea / GDD gap | `/unikit-gd-brainstorm`, `/unikit-gd-explore`, `/unikit-gd-spec`, or `/unikit-gd-system` |
 
-When writing the `## Next Steps` section of a research, use this table to generate specific
-follow-up suggestions instead of generic "update other files". Example:
+When writing the `Next step:` field of `## Active Summary`, use this table to generate a
+specific follow-up instead of a generic "update other files". Example:
 - "Architecture decision: use Addressables pooling → run `/unikit-architecture` to formalize"
 - "New convention: all factories return UniTask → run `/unikit-rules` to codify"
 
@@ -241,7 +242,11 @@ recon-agent(prompt:
 
 Before responding to the user — before any exploration, questions, or analysis — you MUST load the project context. This is not optional. Do it silently (don't narrate the loading process to the user), but do it completely.
 
-> **Exception**: `init` mode skips this step entirely — it only rebuilds the researches index and does not need project context.
+This step has **no exceptions**. It used to have exactly one — `init` rebuilt the researches
+index and needed no project context — and that mode no longer exists: the registry is
+re-rendered as part of every save. The absence is recorded here rather than left silent,
+because a MANDATORY step that once had a hole reads like an oversight when the hole simply
+closes.
 
 ### Required reads (always, every time)
 
@@ -303,7 +308,9 @@ Without this context you'll give generic {{engine_name}} advice instead of advic
 ### Input handling
 
 The argument after `/unikit-explore` can be:
-- **`init`** — a special command that rebuilds `researches/INDEX.md` (see [Init: Rebuilding the Researches Index](#init-rebuilding-the-researches-index))
+- **The slug of an existing research folder** in `.unikit/code/researches/` — this is an
+  **entry into the continuation cycle**, not a new topic. Read the manifest and continue that
+  research (see [Continuing a research](#continuing-a-research)).
 - **`ultra`** — the leading token switches on adaptive research artifacts. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` and follow it when saving. Everything before saving — the stance, the exploration itself — is unchanged. `ultra` is recognised **only** as the leading token; it is never inferred from the size or difficulty of the topic.
 - A vague idea: "object pooling system"
 - A specific problem: "the save system is getting unwieldy"
@@ -314,7 +321,9 @@ The argument after `/unikit-explore` can be:
 - A question: "how does the DI container handle scene transitions?"
 - Nothing: just enter explore mode
 
-If the argument is exactly `init`, skip all exploration logic and execute the init workflow below. Then stop — do not enter explore mode.
+If the argument matches the name of an existing folder in `.unikit/code/researches/`, treat it
+as a continuation rather than a new subject, and follow
+[Continuing a research](#continuing-a-research).
 
 If the leading token is `ultra`, strip it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. `ultra` with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
 
@@ -326,7 +335,7 @@ Determine the exploration mode based on user input:
 
 - **Prompt-based exploration**: The user's request is a topic, question, idea, or problem statement WITHOUT references to specific documentation files. Examples: "explore object pooling", "how should we refactor the save system?", "compare UniTask vs Coroutines". The primary source is the interactive dialogue with the user.
 
-Remember this mode — it determines whether `RESEARCH_SOURCE.md` is generated when saving (see [RESEARCH_SOURCE.md for prompt-based explorations](#research_sourcemd-for-prompt-based-explorations)).
+Remember this mode — it determines whether `SOURCE.md` is generated when saving (see [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)).
 
 ### When a plan exists
 
@@ -346,26 +355,29 @@ When the conversation crystallizes — insights have emerged, decisions were mad
 
 All researches live in `.unikit/code/researches/`. Each research gets its own folder:
 
-```
-.unikit/code/researches/
-├── 2026-03-09_customers-pool-system/
-│   ├── RESEARCH_RESULT.md           # Full research with all diagrams and descriptions
-│   ├── RESEARCH_BRIEF.md            # Structured brief for implementation agents
-│   └── RESEARCH_SOURCE.md           # Dialogue log (prompt-based explorations only)
-├── 2026-03-10_save-system-refactor/
-│   ├── RESEARCH_RESULT.md
-│   ├── RESEARCH_BRIEF.md
-│   └── RESEARCH_SOURCE.md
-└── 2026-03-10_zenject-signal-patterns/
-    ├── RESEARCH_RESULT.md
-    └── RESEARCH_BRIEF.md
+```text
+.unikit/code/researches/<slug>/
+├── RESEARCH.md            ← the manifest
+├── SOURCE.md              ← dialogue log (prompt-based explorations only)
+└── [adaptive artifacts]   ← ultra only
+    ├── CONTRACTS.md
+    ├── C4-CONTEXT.md
+    ├── C4-CONTAINER.md
+    ├── C4-COMPONENT-<scope>.md
+    ├── DEPENDENCY-GRAPH.md
+    └── ADR-NNNN-<slug>.md
 ```
 
 ### Naming convention
 
-- **Date**: `YYYY-MM-DD` — the date the research was created
-- **Name**: 4-5 words max, kebab-case, derived from the research topic
-- **Format**: `<date>_<research-name>` → `2026-03-09_customers-pool-system`
+- **Name**: the folder is named `<slug>` — 4-5 words max, kebab-case, derived from the
+  research topic. **No date.**
+- The date lives in the `Created:` and `Updated:` fields of the manifest header, which is
+  also where every age filter and all sorting read it from.
+- The reason the date left the name is structural, not cosmetic: a dated folder makes the
+  continuation cycle impossible to express. `<date>-<slug>` cannot be *continued* tomorrow
+  without the name becoming a lie, so the format would quietly push every follow-up into a
+  second folder — which is exactly the duplication this format exists to remove.
 
 ### How to save
 
@@ -382,81 +394,105 @@ Options:
 ```
 
 Based on choice:
-- Yes → save research to `.unikit/code/researches/<folder-name>/`, update `researches/INDEX.md`
+- Yes → save the research to `.unikit/code/researches/<slug>/`, then re-render `researches/INDEX.md`
 - No → skip saving → **STOP**
 
 If the user agrees:
 
-1. Determine the folder name:
-   - **Date**: use today's date in `YYYY-MM-DD` format
-   - **Name**: generate from research topic (4-5 words, kebab-case)
-   - Format: `<date>_<name>` (e.g. `2026-03-10_save-system-refactor`)
+1. Determine the folder name: generate `<slug>` from the research topic (4-5 words,
+   kebab-case, no date).
+
+   **If that slug already names a folder in `.unikit/code/researches/`**, do not resolve it
+   silently. Ask:
+
+   ```
+   AskUserQuestion: A research named <slug> already exists. What should happen?
+
+   Options:
+   1. Continue the existing research — append a session to it
+   2. Use another name — you type the slug
+   ```
+
+   - *Continue* → enter [Continuing a research](#continuing-a-research); print
+     `WARN [research] <slug> exists — continuing it`.
+   - *Another name* → save under the slug the user gave; print
+     `WARN [research] <slug> exists — saving under <new-slug>`.
+
+   Both lines are printed **after** the answer, never instead of the question. An automatic
+   suffix (`-2`) is **forbidden**: the date used to be a separator as well as a sort key, and
+   a silently appended suffix is what makes addressing-by-meaning start finding the wrong
+   folder again. Refusing outright is not an option either — a continuation verb exists here,
+   and offering it costs less than a refusal.
 
 2. Create the research directory:
    ```
-   mkdir -p .unikit/code/researches/<generated-folder-name>
+   mkdir -p .unikit/code/researches/<slug>
    ```
 
-   **In ultra mode**, follow the write order in `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md`: the adaptive artifacts first, `RESEARCH_RESULT.md` second. Writing the index of artifacts before the artifacts would point its links at files that do not exist yet.
+   The order of writing is owned by `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` → `## Write order`, and it is not restated here. **In a standard research, items 1 and 5 — the adaptive artifacts and the Integrity checks — simply do not apply**; the rest of the order holds unchanged, including that the registry is re-rendered before the gate runs.
 
-3. Write `RESEARCH_RESULT.md` — the complete research with ALL diagrams, detailed descriptions, analysis, comparisons, and everything that was discussed and presented to the user during the exploration:
+   **In ultra mode** the artifacts are written first and `RESEARCH.md` second. Writing the index of artifacts before the artifacts would point its links at files that do not exist yet.
+
+3. Write `RESEARCH.md` — the manifest. One file carries the whole research: the machine-read header, the planner's input between the `## Active Summary` markers, the evidence in `## Findings`, and the append-only `## Sessions` log.
 
    **In ultra mode**, the very first line of the file is the research mode marker `<!-- unikit:research-mode:ultra -->`, and a `## Artifact Index` section follows immediately after `## Table of Contents`. Both are specified in `references/ULTRA-RESEARCH-FORMAT.md`; neither is restated here.
+
+   Take `Created:` and `Updated:` from `date`, never from memory. Both feed the registry and `Updated:` is the sort key every reader uses, so a remembered date fails **silently** — it surfaces to the user as "no researches found", not as an error.
 
 ```markdown
 # <Research Title>
 
-Date: YYYY-MM-DD HH:MM
+Created: YYYY-MM-DD HH:MM
 Updated: YYYY-MM-DD HH:MM
 Status: completed | in-progress | needs-follow-up
-Research: <folder-name>
+Lifecycle: active | paused | superseded
+Research: <slug>
+Target: SYS-<slug> | FLOW-<slug> | CONTENT-<slug>    (optional)
+Kind: feature | improvement                          (optional)
+Supersedes: <slug>                                   (optional)
 
 ## Table of Contents
 - [Artifact Index](#artifact-index) — ultra mode only; omit this line in a standard research
-- [Topic](#topic)
-- [Context](#context)
-- [Exploration](#exploration)
+- [Active Summary](#active-summary)
+- [Findings](#findings)
   - [Sub-section 1](#sub-section-1)
   - [Sub-section 2](#sub-section-2)
-- [Conclusions](#conclusions)
-- [Decisions](#decisions)
-- [Open Questions](#open-questions)
-- [Next Steps](#next-steps)
+- [Sessions](#sessions)
 - [References](#references)
 
-## Topic
-<1-2 sentences: what was explored>
+## Active Summary
+<!-- unikit:active-summary:start -->
+Topic: <1-2 sentences: what was explored>
+Goal: <what this research is for — the decision it has to enable>
+Scope: <in / out — the out-half carries the stop condition>
+Constraints: <`C-<n>` — what the subject imposes>
+Requirements: <`REQ-<n>` — established by evidence>
+Decisions: <`DEC-<n>` — taken, each with its reason in one line>
+Risks: <`RISK-<n>` — material, not hypothetical>
+Open questions: <`OQ-<n>` — unresolved; say which ones block>
+Success signals: <how we will know the work landed>
+Next step: <the one action that follows>
+<!-- unikit:active-summary:end -->
 
-## Context
-<Full context of the research: why it was started, what prompted it>
-
-## Exploration
-
-<The full content of the research as it was presented to the user.
-Include ALL:
+## Findings
+<Everything presented to the user during the exploration. This is the EVIDENCE and the
+reasoning, never the requirement. Include ALL:
 - ASCII diagrams and visualizations
 - Detailed descriptions of systems and components
 - Code examples and patterns found
 - Comparison tables
 - Architecture analysis
 - Data flow descriptions
-- Risk analysis
-- Performance considerations
-- Everything discussed during the exploration>
+- Risk analysis and performance considerations>
 
-## Conclusions
-<Final conclusions and recommendations>
-
-## Decisions
-<Decisions made with rationale>
-
-## Open Questions
-<Unresolved questions for future research>
-
-## Next Steps
-<!-- Use the Insight routing table from Artifact Ownership to generate specific follow-ups -->
-- <Action per insight type> (e.g., "Architecture decision: X → /unikit-architecture")
-- <Action per insight type> (e.g., "New feature idea: Y → /unikit-plan")
+## Sessions
+<!-- unikit:sessions:start -->
+### <YYYY-MM-DD HH:MM> — <session title>
+- **What changed**: <what this session altered in the summary above>
+- **Key notes**: <what was learned>
+- **Gate**: <the coherence gate result>
+- **Links (paths)**: <files read or written>
+<!-- unikit:sessions:end -->
 
 ## References
 <Relevant files, documentation, external resources.
@@ -465,27 +501,55 @@ and specific topics that were queried — this helps reproduce or update the res
 Example: "R3 (context7: Observable.CombineLatest usage patterns)", "DOTween (web: sequence API)">
 ```
 
-The `RESEARCH_RESULT.md` should be a comprehensive document that anyone can read later and fully understand what was explored, analyzed, and decided — without needing to re-read the conversation.
+**The two state axes are separate.** `Status` is completeness, and its three values never
+change — the `/unikit-plan` registry filter greps this field by name and answers "no
+researches" rather than an error when it is renamed. `Lifecycle` is currency. Neither is
+derivable from the other.
 
-**Table of Contents is mandatory.** Place it immediately after the metadata block (Date/Status/Research) and before `## Topic`. The TOC must reflect the actual sections and sub-sections of the document — not a copy of the template above. Build it from the real structure: if `## Exploration` contains sub-sections like `### Architecture Overview`, `### Data Flow`, `### Risk Analysis`, list them as nested items. This matters because research documents can be long, and a TOC lets readers (both human and agent) quickly navigate to the relevant section.
+**Table of Contents is mandatory.** Place it immediately after the header block and before
+`## Artifact Index` / `## Active Summary`. It must reflect the document's actual sections and
+sub-sections — not a copy of the template above. Research documents get long, and the TOC is
+how both humans and agents reach the section they need.
 
-4. **Generate `RESEARCH_BRIEF.md`** — a structured brief for implementation agents.
+**`## Active Summary` is the planner's input and the only hashed region.** Write it to be read
+cold, by someone who never saw the conversation. `## Findings` holds the reasoning that
+produced it; the summary holds the conclusion. A fact belongs to exactly one of the two — the
+other refers to it by ID, never by retelling it.
 
-   **This step reads the template and prompt — they are NOT loaded during exploration, only at save time.**
+**Language Awareness for `RESEARCH.md`**: the manifest follows the same language rules as
+every other artifact. When the configured language is not English, translate section headings
+and prose into the target language. Field **names** in the header (`Created:`, `Status:`,
+`Lifecycle:`, …), the marker comments, ID prefixes, code identifiers, code blocks and file
+paths stay in English — they are read by machines.
 
-   a. Read the template from `{{skills_dir}}/{{self_name}}/references/explore-brief-template.md`
-   b. Read the filling rules from `{{skills_dir}}/{{self_name}}/references/explore-brief-prompt.md`
-   c. Fill the template using the research findings from `RESEARCH_RESULT.md`, following the filling rules.
-      **In ultra** the source is `RESEARCH_RESULT.md` **and** the adaptive artifacts that were created — in the part of them that changes requirements, constraints, interfaces or patterns. Lifting those conclusions into the brief is mandatory before the folder is handed to `/unikit-plan` (`references/ULTRA-RESEARCH-FORMAT.md`); the artifact keeps the reasoning, the brief carries the requirement.
-   d. Write the result to `.unikit/code/researches/<folder-name>/RESEARCH_BRIEF.md`
+**Where the previous sections went.** The retired three-file format put seven owning sections
+in its result document. They are gone *as owners* and their content is redistributed; recorded
+here so the next edit does not restore them "for completeness":
 
-   **Language Awareness for RESEARCH_BRIEF.md**: The `RESEARCH_BRIEF.md` follows the same language rules as other artifacts. When the configured language is not English, translate ALL section headings and ALL prose/comment content into the target language. Only code identifiers, code blocks, file paths, and table data (paths, types) stay in English.
+| Previous section | New owner |
+|------------------|-----------|
+| `## Topic` | `## Active Summary` → `Topic:` |
+| `## Context` | `## Active Summary` → `Goal:` / `Scope:` |
+| `## Exploration` | `## Findings` |
+| `## Conclusions` | `## Findings` for the reasoning; `## Active Summary` → `Requirements:` / `Risks:` for the requirement |
+| `## Decisions` | `## Active Summary` → `Decisions:` (`DEC-<n>`) |
+| `## Open Questions` | `## Active Summary` → `Open questions:` (`OQ-<n>`) |
+| `## Next Steps` | `## Active Summary` → `Next step:` |
+| `## References` | stays its own section, at the end |
 
-   If the research has insufficient technical detail to fill some sections meaningfully (e.g., no specific interfaces were discussed, no files identified), fill those sections with `N/A` — do not invent content that wasn't part of the exploration.
+`## References` stays standalone rather than folding into `## Findings` on purpose: `## Findings`
+is the section that grows without bound, and a reference list buried inside it stops being
+findable.
 
-### RESEARCH_SOURCE.md for prompt-based explorations
+### SOURCE.md for prompt-based explorations
 
-If the exploration was **prompt-based** (see [Exploration mode detection](#exploration-mode-detection)), generate an additional artifact `RESEARCH_SOURCE.md` in the same research directory. This file captures the full dialogue context so that the exploration can be reproduced or continued later without losing any context.
+If the exploration was **prompt-based** (see [Exploration mode detection](#exploration-mode-detection)), generate an additional artifact `SOURCE.md` in the same research directory. This file captures the full dialogue context so that the exploration can be reproduced or continued later without losing any context.
+
+`SOURCE.md` is a **log, not a derived representation of the research.** Two consequences,
+both deliberate: it is **not** part of the hashed region (only `## Active Summary` inside
+`RESEARCH.md` is), and it is **not** in the coherence gate's durable scope. A log is allowed
+to be redundant with the manifest — that is what a log is for, and admitting it to the gate
+would hand back exactly the job of reconciling two differently-written texts.
 
 **When to generate**: Only for prompt-based explorations (user gave a topic/question/idea without referencing specific documentation files). Do NOT generate for file-based explorations (user referenced specific files/folders as input documentation).
 
@@ -512,70 +576,100 @@ If the exploration was **prompt-based** (see [Exploration mode detection](#explo
 <All additional details, corrections, and clarifications the user provided during the exploration that were not direct answers to questions. If none — write "None">
 
 ## Conclusion
-<The final result of the exploration: what was decided, what approach was chosen, what understanding was reached. This should be a concise summary of the outcome, not a copy of RESEARCH_RESULT.md>
+<The final result of the exploration: what was decided, what approach was chosen, what understanding was reached. This should be a concise summary of the outcome, not a copy of RESEARCH.md>
 ```
+
+**On a continuation, append — never rewrite.** A new session adds a fresh block
+`## Session <YYYY-MM-DD HH:MM>` at the end of the file, carrying that session's questions,
+answers and clarifications. Everything already in the file stays exactly as it is. The point
+of a dialogue log is that it records what was actually said at the time, and an edited log
+records only what the last session believed.
 
 **Language Awareness**: Follow the same language rules as other artifacts. Translate section headings and prose into the configured language. Keep code identifiers and file paths in English.
 
 **Important**: Capture the actual dialogue content faithfully. The value of this artifact is in preserving the exact questions, answers, and clarifications — not in summarizing or rephrasing them.
 
-### Step 4: Update the Researches Index
+### Step 4: Re-render the Researches Index
 
-After saving a research, update `.unikit/code/researches/INDEX.md` so other skills (like `/unikit-plan`) can discover it.
+`.unikit/code/researches/INDEX.md` is a **generated** registry. It is not edited and it is not
+appended to: on every save it is re-rendered whole from the folders on disk, so it cannot fall
+behind them.
 
-1. Read `.unikit/code/researches/INDEX.md`
-   - If the file doesn't exist, create it with the header:
-     ```markdown
-     # Researches Index
+1. List the subfolders of `.unikit/code/researches/`.
+2. For each, read its `RESEARCH.md` and take: the **first line** (the mode marker — present
+   means `ultra`, absent means `standard`), the H1 title, the header fields `Created` /
+   `Updated` / `Status` / `Lifecycle` / `Target`, and the `Topic:` line from
+   `## Active Summary` — that line **is** the `Summary`.
+3. A folder with no readable `RESEARCH.md` is skipped, and the skip is **printed**:
 
-     > Auto-maintained by /unikit-explore. Do not edit manually.
-     ```
+   ```
+   WARN [research] skipped <folder> — no readable RESEARCH.md
+   ```
 
-2. **Prepend** (not append) the new entry right after the header block. Newer entries always go first — the index is sorted from most recent to oldest.
+   Skipping in silence is forbidden. An unreadable manifest and an honestly empty registry
+   look identical from the outside, so an unannounced skip reports "no researches" for a
+   research that is sitting right there on disk.
 
-3. Entry format — use this exact structure:
+4. Overwrite the file whole. The header is always:
+
+   ```markdown
+   # Researches Index
+
+   > Generated by /unikit-explore on every save. Do not edit manually — edits are overwritten.
+   ```
+
+5. Each record:
+
    ```markdown
    ---
 
    ### <Research Title>
-   - **Date**: YYYY-MM-DD HH:MM
+   - **Created**: YYYY-MM-DD HH:MM
    - **Updated**: YYYY-MM-DD HH:MM
    - **Status**: completed | in-progress | needs-follow-up
-   - **Summary**: <1-2 sentences from RESEARCH_RESULT.md → ## Topic>
-   - **Path**: `<folder-name>/`
+   - **Lifecycle**: active | paused | superseded
+   - **Mode**: standard | ultra
+   - **Summary**: <1-2 sentences, from `Topic:`>
+   - **Path**: `<slug>/`
+   - **Target**: SYS-<slug>   (optional, omit the line when absent)
    ```
 
-   When creating a new research, `Updated` equals `Date`. When an existing research is revised, only `Updated` changes (both in RESEARCH_RESULT.md and in this index entry).
+6. Sort by `Updated` descending; ties broken by `Created` descending; then by folder name.
+   `Updated` is the key on purpose — in a research with a continuation cycle, freshness means
+   "when this was last confirmed", not "when the folder was opened".
 
-   Example:
-   ```markdown
-   ---
+7. After the re-render, print the reconciliation summary — the same three lines the retired
+   `init` command printed:
 
-   ### CustomersService Pool Design
-   - **Date**: 2026-03-09 14:30
-   - **Updated**: 2026-03-09 14:30
-   - **Status**: completed
-   - **Summary**: Universal customer spawning service with Addressables pooling, reference counting, reactive lifecycle, single-active-customer invariant
-   - **Path**: `2026-03-09_customers-service-pool-design/`
+   ```
+   researches/INDEX.md re-rendered:
+   - Kept: N
+   - Added: N (list names)
+   - Removed: N (list names)
    ```
 
-4. The **Summary** field is taken from the `## Topic` section of `RESEARCH_RESULT.md` (1-2 sentences).
+**Reconciliation is no longer a separate verb.** There used to be an `init` argument whose
+whole job was to rebuild this file from disk; it is gone, and its work is now part of every
+save — the same pattern as `syncRulesState` Phase 1 and the `## System Map [gen]` re-render in
+game-design. It stopped being a separate command, but it did **not** stop being **visible**,
+which is what step 7 is for.
 
-5. The **Status** field matches the `Status:` line in `RESEARCH_RESULT.md`.
-
-6. The top-level index does **not** record the research mode. A consumer that needs it reads the first line of `RESEARCH_RESULT.md`; `/unikit-plan` does not need it at all — it reads `RESEARCH_BRIEF.md`.
+The cost is worth naming: the registry can no longer be repaired by a dedicated command. In
+exchange it can no longer fall behind, because it is rebuilt from the folders — the actual
+source of truth — before the coherence gate reads the same files from disk.
 
 ### Research Coherence Gate
 
-After **all** writing is done — the artifacts, the three canonical files and
+After **all** writing is done — the artifacts, `RESEARCH.md`, `SOURCE.md` and the re-rendered
 `researches/INDEX.md` — and **before** confirming the save to the user, read
 `{{skills_dir}}/{{self_name}}/references/coherence-gate.md` and run the gate it specifies as a `check-agent` dispatch.
 The read is conditional: this is the only moment the file is needed, so it is not loaded at
 the start of an exploration.
 
-The order matters in both directions. The gate re-reads the durable files from disk, so
-running it before the write has nothing to read; and confirming before it runs tells the
-user the research is safe while it may still be incoherent.
+Its position is fixed: **after Step 4, before Step 5.** The order matters in both directions.
+The gate re-reads the durable files from disk, so running it before the write has nothing to
+read; and confirming before it runs tells the user the research is safe while it may still be
+incoherent.
 
 In ultra the gate runs **after** the bundle integrity checks, not instead of them.
 
@@ -584,67 +678,61 @@ If `references/coherence-gate.md` cannot be read, print one line
 same trade as the ultra reference above: the research has already been done and written, and
 losing it over a missing reference file is not acceptable.
 
+### Step 5: Confirm the save
+
+Only once the gate has passed, tell the user what was written: the folder, the manifest, any
+adaptive artifacts, and the registry line. Until then the save is not confirmed — a gate that
+runs after the confirmation is a gate that reports on a decision already announced.
+
 ### Important rules for saving
 
 - **Don't auto-save** — Always offer and let the user decide
 - **Generate the name** from the research context — don't ask the user to name it
-- **Keep RESEARCH_RESULT.md complete** — include everything: every diagram, every analysis, every comparison that was presented to the user
-- **Generate RESEARCH_BRIEF.md** — always create the structured brief alongside RESEARCH_RESULT.md
-- **Generate RESEARCH_SOURCE.md** — for prompt-based explorations only (see [RESEARCH_SOURCE.md for prompt-based explorations](#research_sourcemd-for-prompt-based-explorations))
-- **Always update researches/INDEX.md** — this is how other skills discover researches
+- **One manifest** — `RESEARCH.md` carries the research. There is no second canonical file and
+  no brief: `## Active Summary` *is* the machine input, and `## Findings` holds the evidence
+  that produced it
+- **`SOURCE.md` only for prompt-based explorations** (see [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)), appended to on a continuation, never rewritten
+- **The registry is re-rendered whole on every save** — never edited, never appended to; this
+  is how other skills discover researches, and how it stays in step with the folders
 - **Run the coherence gate** — it is part of saving, not an option. It runs *after* the user has agreed to save, so it neither replaces the question nor weakens `Don't auto-save`
 - The user may edit the suggested name before you save
 
 ---
 
-## Init: Rebuilding the Researches Index
+## Continuing a research
 
-When the argument is exactly `init`, synchronize `.unikit/code/researches/INDEX.md` with the actual contents of `.unikit/code/researches/`. This is a maintenance command — no exploration, no questions, just sync and report.
+A research is not finished when it is saved — it is **continued**. This is the reason the
+folder name carries no date.
 
-Rebuilding reads `RESEARCH_RESULT.md` only. Adaptive artifacts in a folder are neither read nor listed by `init` — the top-level index registers researches, not the files inside one. A folder carrying extra `.md` files is normal and must **not** be reported as malformed.
+**Entry.** Either the argument named an existing folder in `.unikit/code/researches/`, or the
+user chose *Continue the existing research* in the collision dialogue during a save.
 
-### Algorithm
+**Procedure.**
 
-1. **Scan researches directory** — list all subdirectories in `.unikit/code/researches/`. Each subdirectory is a research (e.g., `2026-03-09_customers-pool-design`).
+1. Read the folder's `RESEARCH.md` in full — the header, `## Active Summary`, `## Findings`
+   and every past `## Sessions` entry. In ultra, read the files in `## Artifact Index` too.
+2. Explore further, exactly as in a fresh session.
+3. When saving:
+   - **Append** a new entry to `## Sessions`, immediately **before** the closing marker.
+     Past entries are reproduced verbatim — the section is append-only.
+   - Move `Updated:` to now (from `date`). `Created:` never changes.
+   - **Revise `## Active Summary` in place.** New IDs continue the existing numbering; an ID
+     is never reused; a superseded item **keeps its number**, is marked superseded, and names
+     what replaced it. Revising the summary is the point of a continuation — a session that
+     only appends to `## Findings` has recorded evidence without ever updating the conclusion.
+   - Reconsider `Status` and `Lifecycle` **explicitly**, and say what they became. Neither
+     carries over by default; a research that has quietly stayed `in-progress` across four
+     sessions is telling the registry something nobody decided.
+   - Append the session's dialogue to `SOURCE.md` if the exploration is prompt-based.
+   - Re-render the registry and run the coherence gate, exactly as on a first save.
 
-2. **Read existing index** — if `.unikit/code/researches/INDEX.md` exists, parse it to extract the list of currently indexed research paths (from the `**Path**` field of each entry).
-
-3. **Determine changes**:
-   - **Keep**: entries already in the index whose research directory still exists on disk — do NOT modify these entries (preserve their date, status, summary, title exactly as-is)
-   - **Remove**: entries in the index whose research directory no longer exists on disk — delete them from the index
-   - **Add**: research directories on disk that have no matching entry in the index — create new entries for them
-
-4. **For each new entry** (directories not yet in the index):
-   - Read `RESEARCH_RESULT.md` from the research directory to extract: title (from `# heading`), status (from `Status:` line), topic (from `## Topic` section)
-   - Get the date from the `Date:` line in `RESEARCH_RESULT.md`, or parse from the folder name prefix (`YYYY-MM-DD`)
-   - Get `Updated` from the `Updated:` line in `RESEARCH_RESULT.md`. If missing (legacy research without `Updated`), use the same value as `Date`
-   - If `RESEARCH_RESULT.md` doesn't exist, skip this research and warn: "⚠️ Skipped `<dir>` — no RESEARCH_RESULT.md found"
-
-5. **Write the updated index** — rebuild `.unikit/code/researches/INDEX.md`:
-   - Header is always:
-     ```markdown
-     # Researches Index
-
-     > Auto-maintained by /unikit-explore. Do not edit manually.
-     ```
-   - Entries are sorted by date descending (newest first); for same date, alphabetically by folder name
-   - Entry format matches the standard (see [Step 4: Update the Researches Index](#step-4-update-the-researches-index))
-
-6. **Report** — print a summary of what changed:
-   ```
-   researches/INDEX.md synchronized:
-   - Kept: N entries
-   - Added: N entries (list names)
-   - Removed: N entries (list names)
-   ```
-
-### Edge cases
-
-- If `.unikit/code/researches/` doesn't exist or is empty, create an index with just the header and report "No researches found"
-- If the index doesn't exist yet, treat all found researches as new additions
-- If a research directory has no `RESEARCH_RESULT.md`, skip it and warn: "⚠️ Skipped `<dir>` — no RESEARCH_RESULT.md found"
+**Superseding a whole research.** When a new research replaces an old one rather than
+continuing it, the new one carries `Supersedes: <slug>` in its header and the old one is set
+to `Lifecycle: superseded`. The superseded folder is **not deleted** — it is the trace of the
+reasoning, and removing it makes the replacement look unmotivated.
 
 ---
+
 
 ## What You Don't Have To Do
 
@@ -756,7 +844,7 @@ You: [reads plan from .unikit/code/plans/]
 There's no required ending. Discovery might:
 
 - **Flow into action**: "Ready to plan? Run `/unikit-plan`"
-- **Result in saved research**: "Saved to `.unikit/code/researches/2026-03-10_inventory-decoupling/`"
+- **Result in saved research**: "Saved to `.unikit/code/researches/inventory-decoupling/`"
 - **Just provide clarity**: User has what they need, moves on
 - **Continue later**: "We can pick this up anytime"
 

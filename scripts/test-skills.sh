@@ -2771,6 +2771,10 @@ else
     # that survives a /clear rather than what the session still remembers.
     (( "$(grep -cE '^[0-9]+\. ' "$CG_REF")" >= 4 )) || CG_WHY+=" CG-2:fewer-than-four-criteria"
     grep -qF 'not evidence' "$CG_REF"                  || CG_WHY+=" CG-2:no-durable-scope-rule"
+    # The durable scope must NAME the manifest section it judges. The gate's object moved
+    # from two prose documents to one hashed section, and a scope that forgot to say so
+    # would send the pass looking for files that no longer exist.
+    grep -qF '## Active Summary' "$CG_REF"             || CG_WHY+=" CG-2:no-active-summary-in-scope"
     grep -qF 'the `check-agent` alias' "$CG_REF"      || CG_WHY+=" CG-2:no-fresh-context-pass"
     grep -qF 'WARN [coherence]' "$CG_REF"              || CG_WHY+=" CG-2:no-inline-fallback"
     grep -qF 'Integrity' "$CG_REF"                     || CG_WHY+=" CG-2:no-boundary-with-integrity"
@@ -2783,27 +2787,35 @@ else
     # placed before the write re-reads files that do not exist yet, and a call placed after
     # the confirmation tells the user the save succeeded while it may still be incoherent.
     # Both landmarks are structural and both degenerate to `fail` when missing: the write
-    # step it must follow, and the `## Init` maintenance command it must precede — that
-    # command rebuilds the index and saves no research at all, so a gate that drifted into
-    # it would never run on a save.
-    CG3_WRITE="$(grep -n '^### Step 4: Update the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
-    CG3_INIT="$(grep -n '^## Init: Rebuilding the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    # step it must follow, and the confirmation step it must precede.
+    #
+    # The lower landmark used to be the `## Init` maintenance command. That command is gone —
+    # the registry is re-rendered on every save — and an explicit `### Step 5: Confirm the
+    # save` heading took its place. It is the better bound in any case: it names the thing
+    # the gate must not run *after*, where `## Init` only happened to sit below it.
+    #
+    # `|| true` on all three is load-bearing under `set -euo pipefail`: a non-matching grep
+    # inside a command substitution fails the assignment and aborts the WHOLE suite, which
+    # makes the "degenerate to fail" ladder below unreachable. Renaming a landmark used to
+    # kill the run 150 checks early instead of failing this guard with a named reason.
+    CG3_WRITE="$(grep -n '^### Step 4: Re-render the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1 || true)"
+    CG3_CONFIRM="$(grep -n '^### Step 5: Confirm the save' "$CG_SKILL" | head -1 | cut -d: -f1 || true)"
     # Anchored on the invocation formulation, not on the first mention of the reference
     # path: the `## Delegation agents` block names that path as a POINTER (the alias's
     # fallback), and a pointer is not a call. `head -1` on the path made the declaration
     # block — which must sit above its call sites, i.e. above the write step — read as the
     # gate itself. CG-3 watches the call.
-    CG3_GATE="$(grep -n 'run the gate it specifies' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    CG3_GATE="$(grep -n 'run the gate it specifies' "$CG_SKILL" | head -1 | cut -d: -f1 || true)"
     if [[ -z "$CG3_GATE" ]]; then
         CG_WHY+=" CG-3:gate-never-called"
     elif [[ -z "$CG3_WRITE" ]]; then
-        CG_WHY+=" CG-3:index-write-step-missing"
-    elif [[ -z "$CG3_INIT" ]]; then
-        CG_WHY+=" CG-3:init-section-missing"
+        CG_WHY+=" CG-3:index-rerender-step-missing"
+    elif [[ -z "$CG3_CONFIRM" ]]; then
+        CG_WHY+=" CG-3:confirm-step-missing"
     elif (( CG3_GATE < CG3_WRITE )); then
         CG_WHY+=" CG-3:gate-called-before-the-write($CG3_GATE-before-$CG3_WRITE)"
-    elif (( CG3_GATE > CG3_INIT )); then
-        CG_WHY+=" CG-3:gate-drifted-into-the-init-command($CG3_GATE-after-$CG3_INIT)"
+    elif (( CG3_GATE > CG3_CONFIRM )); then
+        CG_WHY+=" CG-3:gate-runs-after-the-confirmation($CG3_GATE-after-$CG3_CONFIRM)"
     fi
 
     # (CG-4) A missing reference must not lose an exploration that already happened — the
@@ -2817,18 +2829,32 @@ else
     if grep -qF '/unikit-plan [fast|full] <' "$CG_SKILL"; then CG_WHY+=" CG-5:next-steps-omit-ultra"; fi
 fi
 
-# (CG-6) The research spec must not take back the containers the port brought with it.
+# (CG-6) The research spec must carry the manifest contract and must not take back the one
+# container this repository still does not have.
 # Overlaps UR-3 deliberately: UR-3 watches the vocabulary and the owner rule, CG-6 watches
-# the absence of the retired names and the count of the checks. An overlap is cheaper here
-# than a gap.
+# the lift obligation and the count of the checks. An overlap is cheaper here than a gap.
+#
+# `Active Summary` INVERTED — it used to be a negative assert here and in UR-3, on the
+# grounds that the container "was never ported". It is now the machine input itself, so the
+# assert flips to a positive: its absence, not its presence, is the defect. `Traceability`
+# stays negative for the original reason — its work is done by Integrity checks 5 and 6, and
+# the next edit copied from the source format is what would bring it back.
+#
+# The lift obligation keeps its own assert, and it is anchored on the FORMULATION rather than
+# on the container name. Asserting it as `## Active Summary` — the obvious translation of the
+# retired `RESEARCH_BRIEF.md` assert — would have been a second assert that cannot fail
+# independently of the positive above it: the string occurs a dozen times in a file whose
+# whole subject is that section. This file's own rule (see UR-3) is that a guard which cannot
+# go red is worse than no guard, so the anchor sits on the sentence that states the duty. The
+# landing site changed; the duty did not.
 if [[ ! -f "$CG_RESEARCH_SPEC" ]]; then
     CG_WHY+=" CG-6:research-spec-missing"
 else
-    if grep -qF 'Active Summary' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-6:active-summary-returned"; fi
-    if grep -qF 'Traceability' "$CG_RESEARCH_SPEC";   then CG_WHY+=" CG-6:traceability-returned"; fi
-    grep -qF 'RESEARCH_BRIEF.md' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-6:no-lift-obligation"
-    CG6_CHECKS="$(awk '/^## Integrity/{f=1;next} /^## /{f=0} f' "$CG_RESEARCH_SPEC" | grep -cE '^[0-9]+\. ')"
-    (( CG6_CHECKS == 5 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-5)"
+    grep -qF 'Active Summary' "$CG_RESEARCH_SPEC"   || CG_WHY+=" CG-6:active-summary-missing"
+    if grep -qF 'Traceability' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-6:traceability-returned"; fi
+    grep -qF 'the lift as an obligation' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-6:no-lift-obligation"
+    CG6_CHECKS="$(awk '/^## Integrity/{f=1;next} /^## /{f=0} f' "$CG_RESEARCH_SPEC" | grep -cE '^[0-9]+\. ' || true)"
+    (( CG6_CHECKS == 7 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-7)"
 fi
 
 if [[ -z "$CG_WHY" ]]; then
@@ -3631,13 +3657,19 @@ grep -qF 'ULTRA-RESEARCH-FORMAT.md'   "$UR_EXPLORE" || UR_WHY+=" no-dispatch"
 if grep -qF 'unikit:plan-mode:ultra' "$UR_REF"; then UR_WHY+=" plan-marker-in-research-reference"; fi
 if grep -qF 'unikit:research-mode:ultra' "$UR_PLAN_SPEC"; then UR_WHY+=" research-marker-in-plan-spec"; fi
 
-# (UR-2) `init` rebuilds the index from RESEARCH_RESULT.md only. Without this rule written
-# down, a folder carrying adaptive artifacts reads as malformed to the next person editing
-# the rebuild loop — and the index silently loses a research.
-grep -qF 'Adaptive artifacts in a folder are neither read nor listed' "$UR_EXPLORE" || UR_WHY+=" init-not-robust"
+# (UR-2) The re-render must not treat an extra file as a defect.
+#
+# What was REMOVED and why: this used to assert the sentence "Adaptive artifacts in a folder
+# are neither read nor listed", which belonged to the `init` command — and `init` is gone,
+# dissolved into the re-render that now runs on every save (DEC-6). Deleting the assert
+# without replacing it would have read as lost coverage, so the same PROPERTY is asserted
+# through the surviving mechanism: a folder is skipped for a missing manifest and for nothing
+# else. That is what keeps a folder full of adaptive artifacts from silently dropping out of
+# the registry, which is the failure the retired assert existed to prevent.
+grep -qF 'no readable RESEARCH.md' "$UR_EXPLORE" || UR_WHY+=" rerender-skips-on-anything-but-a-missing-manifest"
 
 if [[ -z "$UR_WHY" ]]; then
-    pass "UR-1/UR-2 ultra research reference + dispatch; the plan and research markers stay distinct; init survives extra files"
+    pass "UR-1/UR-2 ultra research reference + dispatch; the plan and research markers stay distinct; the re-render skips only a missing manifest"
 else
     fail "UR-1/UR-2 ultra research contract:$UR_WHY"
 fi
@@ -3648,16 +3680,21 @@ fi
 # is a decision rather than a convenience. The guard checks that the vocabulary is PRESENT
 # and has not shrunk; forbidding an unknown prefix by grep would need an allowlist the size
 # of the corpus, so closure is held by the spec text and by Integrity checks 4-5.
-# The owner assert is load-bearing, and it names the BRIEF: `RESEARCH_BRIEF.md` is the one
-# file /unikit-plan takes as input and hashes, so a requirement-bearing ID living anywhere
-# else is invisible to the planner and its change produces no drift. The anchor sits on the
-# FORMULATION, not on a heading — a heading is rewritten during cosmetics, a formulation only
-# together with its meaning (the RT-6 / DEGRADATION_TOKEN convention).
-# Two NEGATIVE asserts sit beside it: `Active Summary` and `Traceability` are containers this
-# repository does not have — the first was never ported, the second lives in the original's
-# bundle INDEX.md, a file UniKit deliberately does not have. Both arrived with the port and
-# both read as authoritative; the negative half is what stops the next edit from the original
-# bringing them back.
+# The owner assert is load-bearing, and it names the MACHINE INPUT: `## Active Summary` of
+# `RESEARCH.md` is the one region /unikit-plan takes as input and hashes, so a
+# requirement-bearing ID living anywhere else is invisible to the planner and its change
+# produces no drift. The anchor sits on the FORMULATION, not on a heading — a heading is
+# rewritten during cosmetics, a formulation only together with its meaning (the RT-6 /
+# DEGRADATION_TOKEN convention). It must stay on ONE line: `grep -F` is line-based, and
+# wrapping the sentence across two lines silently disarms this assert.
+#
+# `Active Summary` INVERTED from a negative to a positive. It was asserted ABSENT here on the
+# grounds that the container "was never ported"; the manifest format makes it the machine
+# input, so absence is now the defect. `Traceability` stays NEGATIVE for its original reason:
+# it lives in the source format's bundle INDEX.md, a file UniKit deliberately does not have,
+# and its work is done by Integrity checks 5 and 6. The two asserts arrived together and
+# looked alike, which is exactly why the inversion of one is written down rather than left
+# for the next reader to infer from a diff.
 # The vocabulary greps are scoped TWICE, and both narrowings are load-bearing: to the body
 # of `## Identifiers`, and to the table-row form `| `<prefix>`. Searching the whole file for
 # a bare backticked prefix is what the first version did, and it could not fail: `ADR-`
@@ -3680,15 +3717,109 @@ else
         done
     fi
 fi
-grep -qF "must exist in \`RESEARCH_BRIEF.md\`" "$UR_REF" || UR3_WHY+=" no-owner-rule"
+grep -qF "must exist in \`## Active Summary\` of \`RESEARCH.md\`" "$UR_REF" || UR3_WHY+=" no-owner-rule"
 grep -qF 'never reused'                 "$UR_REF" || UR3_WHY+=" no-stability-rule"
-if grep -qF 'Active Summary' "$UR_REF"; then UR3_WHY+=" active-summary-returned"; fi
+grep -qF 'Active Summary'               "$UR_REF" || UR3_WHY+=" active-summary-missing"
 if grep -qF 'Traceability'   "$UR_REF"; then UR3_WHY+=" traceability-returned";   fi
 if [[ -z "$UR3_WHY" ]]; then
-    pass "UR-3 the identifier vocabulary is closed (six prefixes), homed in the brief and the result, and stable"
+    pass "UR-3 the identifier vocabulary is closed (six prefixes), homed in the manifest's Active Summary, and stable"
 else
     fail "UR-3 identifier contract:$UR3_WHY"
 fi
+
+# ─────────────────────────────────────────────
+# RM: the research MANIFEST — one file, two state axes, a retired brief and a dateless name.
+# The format moved from three prose files to one manifest whose `## Active Summary` is the
+# machine input. Four of these five guards exist because the corresponding failure is SILENT:
+# it surfaces to a user as "no researches found", never as an error.
+RM_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+RM_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+RM_CONTRACTS="$ROOT_DIR/skills/unikit-explore/references/contracts-artifact.md"
+RM_RETIRED_TPL="$ROOT_DIR/skills/unikit-explore/references/explore-brief-template.md"
+RM_RETIRED_PROMPT="$ROOT_DIR/skills/unikit-explore/references/explore-brief-prompt.md"
+RM_WHY=""
+
+if [[ ! -s "$RM_SPEC" ]]; then
+    RM_WHY+=" RM-0:spec-missing"
+elif [[ ! -s "$RM_SKILL" ]]; then
+    RM_WHY+=" RM-0:skill-missing"
+else
+    # (RM-1) Both marker pairs are DECLARED in the spec and USED by the producer. The region
+    # between the active-summary markers is the hashed object of the whole drift mechanism —
+    # without the markers there is nothing to hash, and the plan-side drift field of Phase 04
+    # has no object to be computed from. Asserted in both files because a marker declared and
+    # never emitted is exactly as useless as one emitted and never specified.
+    for RM_MARK in 'unikit:active-summary:start' 'unikit:active-summary:end' \
+                   'unikit:sessions:start' 'unikit:sessions:end'; do
+        grep -qF "$RM_MARK" "$RM_SPEC"  || RM_WHY+=" RM-1:marker-undeclared:$RM_MARK"
+        grep -qF "$RM_MARK" "$RM_SKILL" || RM_WHY+=" RM-1:marker-unused:$RM_MARK"
+    done
+
+    # (RM-2) The two state axes stay two. `Status` is completeness, `Lifecycle` is currency,
+    # and the name `Status` stays with the EXISTING axis whose three values /unikit-plan
+    # greps for by name. This guard is the direct detector of the first draft of REQ-5, which
+    # gave the name `Status` to the new axis: that rename kills the registry filter without a
+    # single error message — the skill answers "no researches", which is indistinguishable
+    # from an honestly empty registry. Hence a negative on each axis carrying the other's
+    # value, not merely a positive on both being present.
+    grep -qE '^Status: completed \| in-progress \| needs-follow-up' "$RM_SPEC" \
+        || RM_WHY+=" RM-2:status-axis-missing-or-reworded"
+    grep -qE '^Lifecycle: active \| paused \| superseded' "$RM_SPEC" \
+        || RM_WHY+=" RM-2:lifecycle-axis-missing-or-reworded"
+    if grep -qE 'Lifecycle:.*completed' "$RM_SPEC"; then RM_WHY+=" RM-2:lifecycle-carries-completed"; fi
+    if grep -qE 'Status:.*active'       "$RM_SPEC"; then RM_WHY+=" RM-2:status-carries-active"; fi
+
+    # (RM-3) The brief retired WHOLE. A half-retirement — the artifact added while the old
+    # template survives — is the shape that leaves two formats documented at once.
+    [[ -s "$RM_CONTRACTS" ]]     || RM_WHY+=" RM-3:contracts-artifact-missing-or-empty"
+    [[ ! -e "$RM_RETIRED_TPL" ]]    || RM_WHY+=" RM-3:retired-template-still-present"
+    [[ ! -e "$RM_RETIRED_PROMPT" ]] || RM_WHY+=" RM-3:retired-prompt-still-present"
+    # This file is excluded from its own scan, and the exclusion is not a convenience: the
+    # guard has to NAME the two retired files in order to assert they are gone, so it is the
+    # one legitimate carrier of the token. Without the exclusion RM-3 reports itself and can
+    # never go green — a guard that always fails is discarded, not fixed. The cost is that a
+    # reference reintroduced INSIDE this script goes unseen; that is the correct trade,
+    # because the token is only dangling when it names a file a skill tries to READ.
+    RM3_REFS="$(cd "$ROOT_DIR" && grep -rlF 'explore-brief' skills scripts docs src \
+        --exclude=test-skills.sh 2>/dev/null || true)"
+    [[ -z "$RM3_REFS" ]] || RM_WHY+=" RM-3:dangling-refs($(printf '%s' "$RM3_REFS" | tr '\n' ','))"
+
+    # (RM-4) `init` dissolved rather than disappeared. The negative half alone would be
+    # satisfied by deleting the feature, so the positive half asserts the reconciliation
+    # SURVIVED: the three counters `init` used to print are printed by the re-render. Scope is
+    # deliberately only `unikit-explore` — `unikit-gd-explore` keeps its own `init` (DEC-7).
+    if grep -q '^## Init' "$RM_SKILL"; then RM_WHY+=" RM-4:init-section-returned"; fi
+    if grep -n 'argument-hint' "$RM_SKILL" | grep -q 'init'; then RM_WHY+=" RM-4:init-in-argument-hint"; fi
+    for RM_COUNT in 'Kept:' 'Added:' 'Removed:'; do
+        grep -qF "$RM_COUNT" "$RM_SKILL" || RM_WHY+=" RM-4:reconciliation-counter-lost:$RM_COUNT"
+    done
+
+    # (RM-5) The research folder name is built WITHOUT a date, in both files that decide it.
+    #
+    # Two files, and the second is here for a measured reason. The producer (`SKILL.md`)
+    # ASSEMBLES the name; the spec (`ULTRA-RESEARCH-FORMAT.md`) PRESCRIBES it — and the
+    # prescription lived in the spec's preamble, which sits outside every section the rewrite
+    # touched by name. A guard scoped to the producer alone would have left the last surviving
+    # instruction to use a dated name inside the file that calls itself the source of the
+    # format. Same class as `mode-ultra.md:94` on the plan side: a claim that outlives the
+    # task editing around it.
+    #
+    # The positive sits beside the negatives so the guard cannot pass on an emptied file —
+    # zero occurrences of a forbidden token is also what a truncated file looks like.
+    for RM_FILE in "$RM_SPEC" "$RM_SKILL"; do
+        RM_NAME="$(basename "$RM_FILE")"
+        if grep -qF '<date>_' "$RM_FILE";       then RM_WHY+=" RM-5:dated-name-token($RM_NAME)"; fi
+        if grep -qF '{YYYY-MM-DD}_' "$RM_FILE"; then RM_WHY+=" RM-5:dated-name-convention($RM_NAME)"; fi
+        grep -qF 'researches/<slug>' "$RM_FILE" || RM_WHY+=" RM-5:no-dateless-form($RM_NAME)"
+    done
+fi
+
+if [[ -z "$RM_WHY" ]]; then
+    pass "RM-1..RM-5 research manifest: markers declared and emitted, Status/Lifecycle stay two axes, the brief retired whole, init dissolved into the re-render, folder names dateless in both deciding files"
+else
+    fail "RM research manifest:$RM_WHY"
+fi
+
 
 # ─────────────────────────────────────────────
 # MF: MCP findings are recorded AT THE TASK, not at the end of the run.
