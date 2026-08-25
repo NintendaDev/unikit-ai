@@ -3507,15 +3507,21 @@ fi
 # RD: research drift is a CONTENT signal, and one procedure computes it in four files.
 # `## Based on` used to carry a link timestamp compared against a research index
 # timestamp — two clocks written by the same class of agent with the same care. The
-# field is now the SHA256 of the linked `RESEARCH_BRIEF.md`, and three consumers
-# recompute it. Three guards close the three ways that goes wrong: the procedure
-# diverges, the grant that makes it runnable is missing, or the label and the
-# writer/reader split drift apart.
+# field is now the SHA256 of a REGION — the bytes between the `## Active Summary`
+# markers of the linked `RESEARCH.md` — and three consumers recompute it. Four guards
+# close the four ways that goes wrong: the procedure diverges, the grant that makes it
+# runnable is missing, the label and the writer/reader split drift apart, or the
+# machine input silently reverts from a region back to a file.
 # Placed next to the PL family and reusing UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
 # UNIKIT_VERIFY_SKILL declared above; UNIKIT_IMPLEMENT_SKILL has no earlier declaration
 # (the MF block below takes its own path var locally), so it is declared here — `set -u`
 # makes a forward reference fatal.
 UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+# RD-E asserts the marker pair is DECLARED by its owner, so it needs the path to the
+# research-format spec. That path belongs to the UR family below; it is declared here
+# instead of copied, because `set -u` makes a forward reference fatal and a second
+# literal of the same path is exactly the drift these guards exist to catch.
+UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 
 # (RD-A) The recorded field and the normalization procedure, in all FOUR files.
 # unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
@@ -3524,9 +3530,13 @@ UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 # missing". The tokens are chosen, not sampled: `UTF-8 BOM` and `one final newline` are
 # the two rules whose divergence produces a FALSE drift on byte-identical content (and
 # the BOM rule exists because this project's primary platform is Windows);
-# `never a temp file` is the stdin rule; `RESEARCH_BRIEF.md` is the hashed object — a
-# file that hashes RESEARCH_RESULT.md instead would hash its volatile `Updated:` line,
-# and RESEARCH_SOURCE.md is a growing dialogue log. The negative half is load-bearing:
+# `never a temp file` is the stdin rule; `RESEARCH.md` is the file the hashed region
+# lives in, and `unikit:active-summary:start` is rule 0 — the rule that makes the object
+# a REGION rather than the whole file. Rule 0 is asserted separately from the other five
+# for one measured reason: it is the only one that can vanish alone. Drop it and the five
+# survivors still describe a coherent procedure, over the wrong object — the whole
+# manifest, whose `## Sessions` grows on every save, so every append would report drift
+# that did not happen. The negative half is load-bearing:
 # without it a half-applied replacement leaves both mechanisms standing and a consumer
 # reads a field /unikit-plan no longer writes. That half is anchored on the FIELD form
 # `**Attached**`, never on the bare word: `Attached` is ordinary English and a sentence
@@ -3535,23 +3545,39 @@ UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 RDA_READERS=("$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
 RDA_ALL=("$UNIKIT_PLAN_SKILL" "${RDA_READERS[@]}")
 RDA_ATTACHED_ALLOW='(the retired link-timestamp field)'
+RDA_BRIEF_ALLOW='the retired brief field'
 RDA_WHY=""
 for f in "${RDA_ALL[@]}"; do
     n="$(basename "$(dirname "$f")")"
-    grep -qF 'Brief SHA256'      "$f" || RDA_WHY+=" $n-no-field"
+    grep -qF 'Summary SHA256'    "$f" || RDA_WHY+=" $n-no-field"
     grep -qF 'UTF-8 BOM'         "$f" || RDA_WHY+=" $n-no-bom-rule"
     grep -qF 'one final newline' "$f" || RDA_WHY+=" $n-no-final-newline-rule"
     grep -qF 'never a temp file' "$f" || RDA_WHY+=" $n-no-stdin-rule"
-    grep -qF 'RESEARCH_BRIEF.md' "$f" || RDA_WHY+=" $n-no-hashed-object"
+    grep -qF 'RESEARCH.md'       "$f" || RDA_WHY+=" $n-no-hashed-object"
+    grep -qF 'unikit:active-summary:start' "$f" || RDA_WHY+=" $n-no-rule-0"
     # ONE measured allowlist entry, on the PL-2 precedent and for the same reason: the
     # /unikit-improve branch that REMOVES the retired field has to name it, and a branch that
     # DESCRIBES the old shape instead of naming it cannot be executed reliably. Pinned to the
     # marker on that same line, never to the file — exempting the file would re-open every
     # occurrence the replacement removed from it.
     if grep -F '**Attached**' "$f" | grep -vF "$RDA_ATTACHED_ALLOW" | grep -q .; then RDA_WHY+=" $n-attached-survives"; fi
+    # Second allowlisted negative, same shape and same reason as `**Attached**` above: the
+    # retired field name survives ONLY where a branch has to name it — the writer's legacy
+    # note, branch 5 of the three readers, and the Step 5.5 line that DELETES it. Pinned to
+    # the turn of phrase on that same physical line, never to the file: exempting a file
+    # would re-open every occurrence the replacement removed from it.
+    #
+    # The allowlist literal is deliberately WITHOUT parentheses, and that is measured, not
+    # stylistic. The sanctioned occurrences carry it in two different wrappings — the writer
+    # inside `(the retired brief field)`, the readers inside
+    # `(recorded against the retired brief field)`. Only the bracketless form is a substring
+    # of both: after the opening parenthesis the readers have `recorded`, so a parenthesized
+    # allowlist would match none of their lines and would turn three files out of four red
+    # inside the one commit this phase declares indivisible.
+    if grep -F 'Brief SHA256' "$f" | grep -vF "$RDA_BRIEF_ALLOW" | grep -q .; then RDA_WHY+=" $n-retired-field-survives"; fi
 done
 if [[ -z "$RDA_WHY" ]]; then
-    pass "RD-A Brief SHA256 + the one normalization procedure present in all four files (old timestamp field gone)"
+    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in all four files (retired fields gone)"
 else
     fail "RD-A research-drift procedure diverged:$RDA_WHY"
 fi
@@ -3561,6 +3587,9 @@ fi
 # to the WARN branch on every single plan — silently, because that WARN branch is a
 # legitimate state. Both names are required: `shasum` ships with perl (macOS, Git Bash),
 # `sha256sum` with GNU coreutils (Linux, Git Bash).
+# Rule 0 (extract the region between the markers) adds nothing here: it is performed on
+# text the skill has already read, not by a shell command, so the list of two names stays
+# complete and no `awk`/`sed` grant joins it.
 RDB_WHY=""
 for f in "${RDA_ALL[@]}"; do
     n="$(basename "$(dirname "$f")")"
@@ -3592,13 +3621,14 @@ for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     n="$(basename "$(dirname "$f")")"
     # The negative half binds to the ADJACENCY, not to the word and not to the line. Two
     # earlier shapes were measured and both are wrong: `grep -qF 'instead'` over lines naming
-    # the brief condemns the correct sentence ("read the plan's `## Technical Context` instead
-    # of `RESEARCH_BRIEF.md`"), and ordering the two tokens across the whole line does not fix
-    # it either — the repaired sentence names the brief TWICE, so the first occurrence and a
-    # later `instead` still match. What is banned is the brief immediately followed by
+    # the source condemns the correct sentence ("read the plan's `## Technical Context` instead
+    # of `RESEARCH.md`"), and ordering the two tokens across the whole line does not fix
+    # it either — the repaired sentence names the source TWICE, so the first occurrence and a
+    # later `instead` still match. What is banned is the source immediately followed by
     # `instead`; anything else is prose. Same class as the RD-A anchor above: a negative assert
-    # binds to a form, never to a word (patch 2026-08-22-12.40).
-    if grep -qE 'RESEARCH_BRIEF\.md`?[[:space:]]+instead' "$f"; then RDC_WHY+=" $n-still-reads-instead"; fi
+    # binds to a form, never to a word (patch 2026-08-22-12.40). Only the file name moved when
+    # the brief was folded into the manifest — the form of the assert did not.
+    if grep -qE 'RESEARCH\.md`?[[:space:]]+instead' "$f"; then RDC_WHY+=" $n-still-reads-instead"; fi
     # The positive counterpart, and the durable half: a positive assert cannot false-positive,
     # so it — not the negative — is what survives a rewrite of the sentence.
     grep -qF 'as a substitute for the plan' "$f" || RDC_WHY+=" $n-no-substitute-ban"
@@ -3610,7 +3640,7 @@ else
 fi
 
 # (RD-D) The field has a writer for an entry that does not carry it.
-# RD-A proves three consumers READ `Brief SHA256` and that /unikit-plan writes it on create.
+# RD-A proves three consumers READ `Summary SHA256` and that /unikit-plan writes it on create.
 # Nothing proved anything can write one into an entry created BEFORE the field existed — and
 # the on-disk plan migration rewrites the manifest without touching `## Based on`. Measured:
 # every plan that predates the field reported `drift unknown` on every run, /unikit-verify
@@ -3627,7 +3657,11 @@ RDD_WHY=""
 # Degenerate to fail when the section is gone (NN-4 / RT-7 convention).
 [[ -n "$RDD_STEP55" ]] || RDD_WHY+=" no-step-5.5-body"
 printf '%s' "$RDD_STEP55" | grep -qF 'records the field on an entry that has none' || RDD_WHY+=" no-relink-writer"
-printf '%s' "$RDD_STEP55" | grep -qF 'Brief SHA256' || RDD_WHY+=" writer-does-not-name-the-field"
+# Doubled, not replaced. The branch does two things now — it WRITES `Summary SHA256` and it
+# DELETES a legacy `Brief SHA256` line — and replacing the assert instead of splitting it
+# would have dropped half the contract without a single test turning red.
+printf '%s' "$RDD_STEP55" | grep -qF 'Summary SHA256' || RDD_WHY+=" writer-does-not-name-the-field"
+printf '%s' "$RDD_STEP55" | grep -qF 'Brief SHA256'   || RDD_WHY+=" writer-does-not-drop-the-retired-field"
 grep -qF 'the write is Step 5.5 item 3' "$UNIKIT_IMPROVE_SKILL" || RDD_WHY+=" offer-not-wired-to-writer"
 # The write is gated on the user's answer: hashing a brief nobody was asked about would claim
 # "no drift" over a period that was never examined.
@@ -3636,6 +3670,64 @@ if [[ -z "$RDD_WHY" ]]; then
     pass "RD-D a hashless \`## Based on\` entry has a writer, and the Step 1.5 offer is wired to it"
 else
     fail "RD-D the drift-unknown state has no exit:$RDD_WHY"
+fi
+
+# (RD-E) The machine input is a REGION, and it stays one.
+# RD-A asserts the tokens of the procedure; nothing asserted the shape of its object. The
+# regression this closes is narrow and quiet: the hashed object reverts from "the bytes
+# between two markers" to "the whole file", every appended session reports drift, and the
+# consumer prints "the research changed" about a research nobody touched — RISK-1 exactly,
+# a failure that reads as a finding.
+# Four assertions, and the negative is the point of the guard.
+RDE_WHY=""
+# 1. The marker pair is DECLARED by its owner. The overlap with RM-1 is deliberate and not
+#    redundant: RM-1 looks at the PRODUCER (does /unikit-explore write the markers), RD-E at
+#    the CONSUMERS (do the four readers name the region those markers delimit). Either can
+#    go red alone, and they fail for different reasons.
+[[ -s "$UR_REF" ]] || RDE_WHY+=" no-format-spec"
+grep -qF 'unikit:active-summary:start' "$UR_REF" || RDE_WHY+=" markers-not-declared-by-owner"
+grep -qF 'unikit:active-summary:end'   "$UR_REF" || RDE_WHY+=" end-marker-not-declared"
+# 2. All four skills name the REGION, not the file. One -qF literal applied to four files, so
+#    a rephrasing in any one of them turns the guard red — which is the only mechanism holding
+#    four verbatim copies of one procedure together.
+for f in "${RDA_ALL[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'between the `## Active Summary` markers' "$f" || RDE_WHY+=" $n-names-a-file-not-a-region"
+done
+# 3. The NEGATIVE: the reversed decision has not come back. `/unikit-plan` used to carry a
+#    written refusal of markers — "The file split is the marker" — and that sentence is the
+#    direct detector, because a revert would restore the sentence together with the behaviour.
+for f in "${RDA_ALL[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    if grep -qF 'The file split is the marker' "$f"; then RDE_WHY+=" $n-file-split-refusal-returned"; fi
+done
+# 4. The legacy branch exists exactly where it is owed. The three READERS meet entries written
+#    before the field was renamed and must report `drift unknown` rather than recompute; the
+#    WRITER never does — it creates new entries, it does not read old ones. Asserting the
+#    absence in unikit-plan is what keeps the branch from being pasted into all four out of
+#    symmetry, which would put a reader's contract in a file that has no reader.
+for f in "${RDA_READERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'recorded against the retired brief' "$f" || RDE_WHY+=" $n-no-legacy-branch"
+done
+if grep -qF 'recorded against the retired brief' "$UNIKIT_PLAN_SKILL"; then RDE_WHY+=" plan-carries-a-reader-branch"; fi
+# 5. The legacy branch is REACHABLE, not merely present. Measured in review: with the branches
+#    read in order, an entry carrying only the retired field fell through the mismatch branch
+#    first — because that branch said "Recomputed ≠ recorded" without naming which field
+#    `recorded` meant — and reported `WARN [research-drift] … no longer byte-identical` about a
+#    research nobody had touched. Presence is not reachability, the same distinction RD-D draws
+#    for the writer, and no token-presence assert above can see it. Two literals hold the two
+#    halves: the precondition that gates the recompute, and the named field that makes the
+#    comparison unambiguous once it runs.
+for f in "${RDA_READERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Only when the entry carries a'   "$f" || RDE_WHY+=" $n-recompute-not-gated"
+    grep -qF 'the recorded `Summary SHA256`'   "$f" || RDE_WHY+=" $n-comparison-does-not-name-the-field"
+done
+if [[ -z "$RDE_WHY" ]]; then
+    pass "RD-E the hashed object is the Active Summary region in all four files; the file-split refusal is gone"
+else
+    fail "RD-E machine-input contract broken:$RDE_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -3647,7 +3739,8 @@ fi
 # plan marker would make /unikit-implement treat a research as a bundle — and the failure
 # would surface as a missing phase file, far from its cause. The two cross negatives are
 # the content of this guard; the positives only give them an object.
-UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+# UR_REF is declared above the RD family — RD-E reads it and `set -u` forbids the
+# forward reference.
 UR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 UR_PLAN_SPEC="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
 UR_WHY=""
