@@ -98,9 +98,18 @@ export const LEGACY_PLAN_TASKS_FILE = 'TASKS.md';
 /** Pre-merge technical brief, folded into the manifest's Technical Context. */
 export const LEGACY_PLAN_BRIEF_FILE = 'PLAN-BRIEF.md';
 
-/** Manifest header fields carrying the plan's own timestamps (REQ-14). */
-export const PLAN_CREATED_FIELD = 'Created:';
-export const PLAN_UPDATED_FIELD = 'Updated:';
+/**
+ * Manifest header fields carrying an artifact's own timestamps (REQ-14).
+ *
+ * Deliberately NOT prefixed `PLAN_`, and declared here in the plan block rather
+ * than twice: the plan manifest and the research manifest carry the SAME two
+ * fields, and the research merge used to spell them as bare literals while the
+ * plan backfill spelled them as constants. One value with two spellings in two
+ * files is the shape every drift in this repository has taken; the prefix went
+ * because it would have been a lie the moment the second reader arrived.
+ */
+export const MANIFEST_CREATED_FIELD = 'Created:';
+export const MANIFEST_UPDATED_FIELD = 'Updated:';
 
 /** The manifest heading the brief body is folded under. */
 export const PLAN_TECHNICAL_CONTEXT_HEADING = '## Technical Context';
@@ -144,6 +153,32 @@ export const RESEARCH_SOURCE_FILE = 'SOURCE.md';
 /** Adaptive artifacts the fold half writes the brief's heavy sections into. */
 export const RESEARCH_CONTRACTS_FILE = 'CONTRACTS.md';
 export const RESEARCH_DEPENDENCY_GRAPH_FILE = 'DEPENDENCY-GRAPH.md';
+
+/**
+ * Header fields the research manifest carries beyond the shared timestamps.
+ *
+ * `Date:` is the legacy name the merge renames to {@link MANIFEST_CREATED_FIELD};
+ * `Status:` (completeness) and `Lifecycle:` (currency) are two SEPARATE axes and
+ * the merge must never conflate them — renaming `Status:` would silently kill
+ * the `/unikit-plan` registry filter, which answers "no researches" rather than
+ * an error when the field it greps for is gone (REQ-5, D-6).
+ */
+export const RESEARCH_DATE_FIELD = 'Date:';
+export const RESEARCH_STATUS_FIELD = 'Status:';
+export const RESEARCH_LIFECYCLE_FIELD = 'Lifecycle:';
+
+/** The value {@link RESEARCH_LIFECYCLE_FIELD} is seeded with on migration. */
+export const RESEARCH_LIFECYCLE_ACTIVE = 'active';
+
+/**
+ * Marker above a migrated `## Active Summary`, introducing its banner.
+ *
+ * Sits OUTSIDE the hashed region together with the banner it introduces, so
+ * removing either later never reads as drift. It is a unikit marker like the
+ * four below and belongs beside them: as an inline literal it was the only one
+ * a rename could not reach, while `test-migrations.sh` greps it by hand.
+ */
+export const RESEARCH_MIGRATED_SUMMARY_MARKER = '<!-- unikit:migrated-summary -->';
 
 /** The hashed region of the manifest. Bytes BETWEEN the two markers are the object. */
 export const RESEARCH_ACTIVE_SUMMARY_HEADING = '## Active Summary';

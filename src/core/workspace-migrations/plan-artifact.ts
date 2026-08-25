@@ -35,7 +35,7 @@ import {
 import type { Migration } from '../migrations/types.js';
 import type { WorkspaceMigrationContext } from './context.js';
 import { demoteHeadings, scanLines, topLevelHeadings } from './markdown.js';
-import { detectableFolders, planFolders } from './plan-folders.js';
+import { detectableFolders, planFolders } from './workspace-folders.js';
 
 const LOG_TAG = 'plan:migrate';
 

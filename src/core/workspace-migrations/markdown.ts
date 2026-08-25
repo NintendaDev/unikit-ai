@@ -3,13 +3,21 @@
 // This module exists so that ONE RULE — a line inside a fenced block is NEVER
 // rewritten — lives in one place. Heading demotion, checkbox counting, section
 // lifting and section extraction all read the same scan, so none of them can
-// drift from the others. Both content-merging steps read it:
-// `plan-artifact.ts` (TASKS.md + PLAN-BRIEF.md -> PLAN.md) and
-// `research-artifact.ts` (RESULT + BRIEF + SOURCE -> RESEARCH.md).
+// drift from the others. All three artifact steps read it: `plan-artifact.ts`
+// (TASKS.md + PLAN-BRIEF.md -> PLAN.md), `research-artifact.ts` (RESULT +
+// BRIEF + SOURCE -> RESEARCH.md) and `plan-timestamps.ts` (the header backfill).
+//
+// The header-block primitives (`headerEnd`, `findField`, `fieldValue`,
+// `insertPoint`) live here for the same reason and were extracted for a
+// measured one: the research merge and the timestamp backfill each carried a
+// private copy, `headerEnd` and the insertion point byte-identical and
+// `findField` differing only in which side of the call the colon sat on. Two
+// steps that write into the same header must agree on where the header ENDS,
+// and agreement between copies is a thing you notice only once it is gone.
 //
 // The boundary is a LAYER, not a size: nothing here touches the disk. Walking
-// directories belongs to `plan-folders.ts`, and putting it here would give this
-// file two subjects instead of one.
+// directories belongs to `workspace-folders.ts`, and putting it here would
+// give this file two subjects instead of one.
 
 /** One source line plus whether it sits inside a fenced code block. */
 export interface ScannedLine {
@@ -51,6 +59,83 @@ export function scanLines(body: string): ScannedLine[] {
   }
 
   return scanned;
+}
+
+/** A `Key: value` header line — the shape both manifest headers are built of. */
+const HEADER_FIELD_LINE = /^[A-Za-z][^:]*:/;
+
+/**
+ * Index of the first line PAST the manifest's header block.
+ *
+ * The block ends at the first unfenced `##` heading, or at the first blank line
+ * that FOLLOWS a header field, whichever comes first. The second half is the
+ * load-bearing one and it is not decoration: a manifest with no `##` heading at
+ * all — a fast plan is often exactly that — would otherwise make the whole
+ * document its own header, and a new field would be inserted next to the last
+ * colon-shaped line in the BODY. Worse, the read-back check that is supposed to
+ * catch a misplaced write computes the boundary the same way, so it would
+ * confirm the field as present and the write would succeed silently.
+ *
+ * A blank line before any field has been seen does NOT close the block: the
+ * blank line conventionally separating an H1 from the fields under it is
+ * punctuation, not a boundary.
+ */
+export function headerEnd(body: string): number {
+  const scanned = scanLines(body);
+  let sawField = false;
+
+  for (let i = 0; i < scanned.length; i += 1) {
+    const { text, fenced } = scanned[i];
+    if (fenced) continue;
+    const line = text.replace(/\r$/, '');
+    if (/^##\s/.test(line)) return i;
+    if (line.trim() === '') {
+      if (sawField) return i;
+      continue;
+    }
+    if (HEADER_FIELD_LINE.test(line)) sawField = true;
+  }
+
+  return scanned.length;
+}
+
+/**
+ * Line index of the header line opening with `field`, or `-1`.
+ *
+ * `field` carries its own colon (`'Created:'`), which is what makes a constant
+ * usable verbatim as both the probe and the text written back — the two used to
+ * be spelled differently in the two steps, and a colon added on one side only
+ * matches `CreatedX:` as readily as `Created:`.
+ */
+export function findField(lines: string[], end: number, field: string): number {
+  for (let i = 0; i < end && i < lines.length; i += 1) {
+    if (lines[i].replace(/\r$/, '').startsWith(field)) return i;
+  }
+  return -1;
+}
+
+/** The value carried by a `Key: value` line, given the key. */
+export function fieldValue(line: string, field: string): string {
+  return line.replace(/\r$/, '').slice(field.length).trim();
+}
+
+/**
+ * Where a newly created header field goes: after the last existing one, else
+ * after the H1, else at the very top.
+ *
+ * The fragile branch is the middle one — a manifest that is nothing but an H1
+ * is the shape most likely to receive the insert in the wrong place, which is
+ * why the golden-guard fixture (`# fast plan`) exercises exactly it through a
+ * real `update`.
+ */
+export function insertPoint(lines: string[], end: number): number {
+  for (let i = Math.min(end, lines.length) - 1; i >= 0; i -= 1) {
+    if (HEADER_FIELD_LINE.test(lines[i].replace(/\r$/, ''))) return i + 1;
+  }
+  for (let i = 0; i < end && i < lines.length; i += 1) {
+    if (/^#\s/.test(lines[i])) return i + 1;
+  }
+  return 0;
 }
 
 /** Titles of the `##`-level headings a body carries, outside fenced blocks. */

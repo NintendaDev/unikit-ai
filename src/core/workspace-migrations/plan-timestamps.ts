@@ -15,6 +15,13 @@
 //     enumerate completed plans, and a plan without the field would sort
 //     unpredictably rather than sort last. Named here because a missing gate
 //     reads like a forgotten check.
+//
+//     What that costs, and why `planFile` below exists: a completed folder is
+//     left in the PRE-MERGE shape forever, so its plan file is still named
+//     `TASKS.md` and a `PLAN.md` never appears there. A step that knew only one
+//     file name would therefore skip exactly the folders this bullet promises
+//     to stamp — and warn about an unreadable manifest for each of them on
+//     every run, `logWarn` not being behind the verbose gate.
 //   - It walks TWO ROOTS, not one. `planFolders` returns the subfolders of
 //     `plans/`, and the flat `.unikit/code/PLAN.md` is not one of them — it is
 //     priority #1 in all three plan resolvers, and Phase 04 removes the file-
@@ -30,54 +37,19 @@ import path from 'path';
 import { fileExists, readTextFile, writeTextFile } from '../../utils/fs.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
-  CODE_MODULE_ID, MIGRATION_SINCE_PLAN_TIMESTAMPS, PLAN_CREATED_FIELD,
-  PLAN_MANIFEST_FILE, PLAN_UPDATED_FIELD, UNIKIT_DIR, workspaceDir,
+  CODE_MODULE_ID, LEGACY_PLAN_TASKS_FILE, MANIFEST_CREATED_FIELD,
+  MANIFEST_UPDATED_FIELD, MIGRATION_SINCE_PLAN_TIMESTAMPS, PLAN_MANIFEST_FILE,
+  UNIKIT_DIR, workspaceDir,
 } from '../constants.js';
 import type { Migration } from '../migrations/types.js';
 import type { WorkspaceMigrationContext } from './context.js';
-import { scanLines } from './markdown.js';
-import { detectableFolders, folderDatePrefix, planFolders } from './plan-folders.js';
+import { fieldValue, findField, headerEnd, insertPoint } from './markdown.js';
+import { detectableFolders, folderDatePrefix, planFolders } from './workspace-folders.js';
 
 const LOG_TAG = 'plan:timestamps';
 
 /** How the flat manifest names itself in a log line — it has no folder to be named by. */
 const FLAT_LABEL = `${CODE_MODULE_ID}/${PLAN_MANIFEST_FILE}`;
-
-/** Index of the first unfenced `##` heading — where the header block ends. */
-function headerEnd(body: string): number {
-  const scanned = scanLines(body);
-  for (let i = 0; i < scanned.length; i += 1) {
-    if (!scanned[i].fenced && /^##\s/.test(scanned[i].text)) return i;
-  }
-  return scanned.length;
-}
-
-/** Line index of the `<field>` header line, or `-1`. `field` carries its colon. */
-function findField(lines: string[], end: number, field: string): number {
-  for (let i = 0; i < end && i < lines.length; i += 1) {
-    if (lines[i].replace(/\r$/, '').startsWith(field)) return i;
-  }
-  return -1;
-}
-
-/**
- * Where the missing header lines go: after the LAST `Key: value` line of the
- * header, and after the H1 when the manifest carries no fields at all.
- *
- * The fragile half is the second one — a manifest that is nothing but an H1 is
- * the shape most likely to receive the insert in the wrong place, which is why
- * the golden-guard fixture (`# fast plan`) exercises exactly it through a real
- * `update`.
- */
-function insertPoint(lines: string[], end: number): number {
-  for (let i = Math.min(end, lines.length) - 1; i >= 0; i -= 1) {
-    if (/^[A-Za-z][^:]*:/.test(lines[i].replace(/\r$/, ''))) return i + 1;
-  }
-  for (let i = 0; i < end && i < lines.length; i += 1) {
-    if (/^#\s/.test(lines[i])) return i + 1;
-  }
-  return 0;
-}
 
 /** `YYYY-MM-DD` of a file's modification time — the fallback source of a date. */
 async function mtimeDate(file: string): Promise<string> {
@@ -85,14 +57,52 @@ async function mtimeDate(file: string): Promise<string> {
   return (await stat(file)).mtime.toISOString().slice(0, 10);
 }
 
-/** True when the manifest at `file` is missing either header field. */
+/**
+ * The file inside `folder` that IS this plan — `PLAN.md`, else `TASKS.md`,
+ * else `null`.
+ *
+ * ONE resolver, called by `detect` and by `apply`, and the reason it is one is
+ * that the two run at different MOMENTS of the same pass. The runner evaluates
+ * `detect` for the whole chain before it applies anything, so a folder that
+ * `plan-1-to-2-manifest-merge` is about to rename still shows `TASKS.md` when
+ * `detect` looks and `PLAN.md` by the time `apply` arrives. Judging one name
+ * only would leave the merged manifest unstamped after a run that reported
+ * success, with the NEXT `detect` declaring work pending — `rules sync` then
+ * answers exit 8 straight after a clean `update`, and on a project stamped at
+ * the current version the version half is quiet, so nothing clears it but a
+ * second `update`.
+ *
+ * The ladder is the same one `isCompletedPlan` walks in `plan-artifact.ts`, and
+ * for the same reason: a folder caught mid-migration must be judged on the same
+ * content either way. It also settles the completed-plan case named in the
+ * header — the merge leaves that folder at `TASKS.md` forever, and this is the
+ * name under which it gets its stamp.
+ *
+ * Both names present is the merge's own refuse-to-overwrite branch; `PLAN.md`
+ * wins there, exactly as every plan resolver reads it.
+ */
+async function planFile(folder: string): Promise<string | null> {
+  const manifest = path.join(folder, PLAN_MANIFEST_FILE);
+  if (await fileExists(manifest)) return manifest;
+  const tasks = path.join(folder, LEGACY_PLAN_TASKS_FILE);
+  if (await fileExists(tasks)) return tasks;
+  return null;
+}
+
+/** True when the file at `file` is missing either header field. */
 async function needsStamp(file: string): Promise<boolean> {
   const body = await readTextFile(file);
   if (body === null) return false;
   const lines = body.split('\n');
   const end = headerEnd(body);
-  return findField(lines, end, PLAN_CREATED_FIELD) === -1
-    || findField(lines, end, PLAN_UPDATED_FIELD) === -1;
+  return findField(lines, end, MANIFEST_CREATED_FIELD) === -1
+    || findField(lines, end, MANIFEST_UPDATED_FIELD) === -1;
+}
+
+/** True when the plan inside `folder` still owes its two header fields. */
+async function folderNeedsStamp(folder: string): Promise<boolean> {
+  const file = await planFile(folder);
+  return file === null ? false : needsStamp(file);
 }
 
 /**
@@ -102,14 +112,17 @@ async function needsStamp(file: string): Promise<boolean> {
 async function stampOneManifest(file: string, label: string, dated: string | null): Promise<void> {
   const body = await readTextFile(file);
   if (body === null) {
-    logWarn(LOG_TAG, `skip ${label}: no readable manifest`);
+    // `file` was resolved by `planFile` (or is the flat manifest, checked to
+    // exist), so this is a genuine read failure and not the ordinary shape of a
+    // folder that never had a `PLAN.md` — that one no longer reaches here.
+    logWarn(LOG_TAG, `skip ${label}: no readable plan file`);
     return;
   }
 
   const lines = body.split('\n');
   const end = headerEnd(body);
-  const hasCreated = findField(lines, end, PLAN_CREATED_FIELD);
-  const hasUpdated = findField(lines, end, PLAN_UPDATED_FIELD);
+  const hasCreated = findField(lines, end, MANIFEST_CREATED_FIELD);
+  const hasUpdated = findField(lines, end, MANIFEST_UPDATED_FIELD);
   if (hasCreated !== -1 && hasUpdated !== -1) {
     logInfo(LOG_TAG, `${label}: already stamped — skipped`);
     return;
@@ -117,7 +130,7 @@ async function stampOneManifest(file: string, label: string, dated: string | nul
 
   let created: string;
   if (hasCreated !== -1) {
-    created = lines[hasCreated].replace(/\r$/, '').slice(PLAN_CREATED_FIELD.length).trim();
+    created = fieldValue(lines[hasCreated], MANIFEST_CREATED_FIELD);
   } else if (dated !== null) {
     created = dated;
   } else {
@@ -126,13 +139,13 @@ async function stampOneManifest(file: string, label: string, dated: string | nul
     // fresh clone rewrite it. Read once here, the value lands in the file and
     // survives both.
     created = await mtimeDate(file);
-    logWarn(LOG_TAG, `${label}: ${PLAN_CREATED_FIELD} derived from file mtime `
+    logWarn(LOG_TAG, `${label}: ${MANIFEST_CREATED_FIELD} derived from file mtime `
       + '— folder name carries no date');
   }
 
   const pending: string[] = [];
-  if (hasCreated === -1) pending.push(`${PLAN_CREATED_FIELD} ${created}`);
-  if (hasUpdated === -1) pending.push(`${PLAN_UPDATED_FIELD} ${created}`);
+  if (hasCreated === -1) pending.push(`${MANIFEST_CREATED_FIELD} ${created}`);
+  if (hasUpdated === -1) pending.push(`${MANIFEST_UPDATED_FIELD} ${created}`);
 
   const at = insertPoint(lines, end);
   // A manifest with no header fields gets its block separated from whatever
@@ -148,12 +161,12 @@ async function stampOneManifest(file: string, label: string, dated: string | nul
   }
   const back = readback.split('\n');
   const backEnd = headerEnd(readback);
-  if (findField(back, backEnd, PLAN_CREATED_FIELD) === -1
-    || findField(back, backEnd, PLAN_UPDATED_FIELD) === -1) {
+  if (findField(back, backEnd, MANIFEST_CREATED_FIELD) === -1
+    || findField(back, backEnd, MANIFEST_UPDATED_FIELD) === -1) {
     logWarn(LOG_TAG, `skip ${label}: header write could not be verified`);
     return;
   }
-  logInfo(LOG_TAG, `${label}: stamped ${PLAN_CREATED_FIELD} ${created} / ${PLAN_UPDATED_FIELD} ${created}`);
+  logInfo(LOG_TAG, `${label}: stamped ${MANIFEST_CREATED_FIELD} ${created} / ${MANIFEST_UPDATED_FIELD} ${created}`);
 }
 
 /** The flat fast-mode manifest — the second root, and the one easily lost. */
@@ -164,36 +177,54 @@ function flatManifest(projectDir: string): string {
 /**
  * The flat manifest `detect` judges — which is NOT always the one `apply` writes.
  *
- * The dual root of `detectableFolders`, owed for exactly the same reason and
- * easy to forget because this half is a single FILE rather than a directory of
- * them: the runner evaluates `detect` for the WHOLE chain before it applies
+ * The dual root of `detectableFolders`, owed for the same reason and easy to get
+ * subtly wrong because this half is a single FILE rather than a directory of
+ * them. The runner evaluates `detect` for the WHOLE chain before it applies
  * anything, so on a project still carrying the pre-1.1.0 flat workspace the
- * manifest is still at `.unikit/PLAN.md` and `.unikit/code/PLAN.md` does not
- * exist yet. Probing only the modular path there answers "nothing to stamp",
- * `apply` is never entered — and on a project already stamped at the current
- * version, where the version half is quiet too, the file comes out of `update`
- * unstamped while the NEXT `detect` (now seeing the relocated path) reports
- * pending. `rules sync` then answers exit 8 immediately after a clean `update`.
+ * manifest is at `.unikit/PLAN.md` and the modular one does not exist yet.
  *
- * Gated on the modular workspace being ABSENT, verbatim as the folder half is.
+ * The gate is the modular MANIFEST, not the modular workspace DIRECTORY, and the
+ * difference is the whole point:
+ *
+ *  - Gating on the directory misses the partially-migrated shape — modular root
+ *    already created, fast plan still flat, not one plan FOLDER to carry the
+ *    detect. There `detect` answers false, `apply` never runs, and the
+ *    relocation moves the file in that very pass; on a project stamped at the
+ *    current version the version half is quiet too, so the manifest leaves
+ *    `update` unstamped and `rules sync` answers exit 8 right after a clean run.
+ *  - Probing BOTH unconditionally would be worse in the other direction. When
+ *    both files exist the relocation refuses to overwrite and the flat copy is a
+ *    leftover no step will ever touch, so reporting it pending would strand the
+ *    project at exit 8 with nothing able to clear it — verbatim the trap
+ *    `detectableFolders` documents.
+ *
+ * Modular file present → judge it alone. Absent → judge the flat one, which the
+ * relocation will move into place before `apply` reaches it.
  */
 async function detectableFlatManifest(projectDir: string): Promise<string> {
-  const modularRoot = workspaceDir(projectDir, CODE_MODULE_ID);
-  if (await fileExists(modularRoot)) return path.join(modularRoot, PLAN_MANIFEST_FILE);
+  const modular = path.join(workspaceDir(projectDir, CODE_MODULE_ID), PLAN_MANIFEST_FILE);
+  if (await fileExists(modular)) return modular;
   return path.join(projectDir, UNIKIT_DIR, PLAN_MANIFEST_FILE);
 }
 
 /**
- * Backfill `Created:` / `Updated:` into every plan manifest — the ones inside
- * `plans/<folder>/` and the flat fast-mode one alike.
+ * Backfill `Created:` / `Updated:` into every plan on disk — the manifest
+ * inside each `plans/<folder>/` (under whichever of the two names that folder
+ * currently carries, see {@link planFile}) and the flat fast-mode one alike.
  */
 const planTimestampsMigration: Migration<WorkspaceMigrationContext> = {
   id: 'plan-2-to-3-timestamps',
   since: MIGRATION_SINCE_PLAN_TIMESTAMPS,
 
+  // Both halves ask `planFile` which file a folder's plan IS, rather than
+  // assuming the merged name. Assume it in `detect` and the folder the merge
+  // renames LATER IN THIS PASS is never reported; assume it in `apply` and the
+  // completed folder the merge never renames is never stamped. The two
+  // assumptions fail in opposite directions from one shared cause, which is why
+  // there is one resolver and not two conditions.
   async detect({ projectDir }) {
     for (const folder of await detectableFolders(projectDir)) {
-      if (await needsStamp(path.join(folder, PLAN_MANIFEST_FILE))) return true;
+      if (await folderNeedsStamp(folder)) return true;
     }
     return needsStamp(await detectableFlatManifest(projectDir));
   },
@@ -206,7 +237,16 @@ const planTimestampsMigration: Migration<WorkspaceMigrationContext> = {
       // run with a raw EPERM and skip the version stamp.
       try {
         const base = path.basename(folder);
-        await stampOneManifest(path.join(folder, PLAN_MANIFEST_FILE), base, folderDatePrefix(base));
+        const file = await planFile(folder);
+        // A folder carrying no plan file at all is not a failure to report: it
+        // is a directory that is not a plan. Warning here put a line on stderr
+        // for every completed folder on every run, indistinguishable from a
+        // real read error.
+        if (file === null) {
+          logInfo(LOG_TAG, `${base}: no plan file — skipped`);
+          continue;
+        }
+        await stampOneManifest(file, base, folderDatePrefix(base));
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         logWarn(LOG_TAG, `skip ${path.basename(folder)}: ${reason}`);

@@ -31,21 +31,24 @@
 
 import path from 'path';
 import {
-  fileExists, listDirectories, movePath, readTextFile, removeFile, writeTextFile,
+  fileExists, movePath, readTextFile, removeFile, writeTextFile,
 } from '../../utils/fs.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
-  CODE_MODULE_ID, LEGACY_RESEARCH_BRIEF_FILE, LEGACY_RESEARCH_RESULT_FILE,
-  LEGACY_RESEARCH_SOURCE_FILE, MIGRATION_SINCE_RESEARCH_MANIFEST,
-  RESEARCHES_DIR_NAME, RESEARCH_ACTIVE_SUMMARY_END, RESEARCH_ACTIVE_SUMMARY_START,
-  RESEARCH_CONTRACTS_FILE, RESEARCH_DEPENDENCY_GRAPH_FILE, RESEARCH_MANIFEST_FILE,
-  RESEARCH_SESSIONS_END, RESEARCH_SESSIONS_HEADING, RESEARCH_SESSIONS_START,
-  RESEARCH_SOURCE_FILE, UNIKIT_DIR, researchesDir,
+  LEGACY_RESEARCH_BRIEF_FILE, LEGACY_RESEARCH_RESULT_FILE,
+  LEGACY_RESEARCH_SOURCE_FILE, MANIFEST_CREATED_FIELD, MANIFEST_UPDATED_FIELD,
+  MIGRATION_SINCE_RESEARCH_MANIFEST, RESEARCH_ACTIVE_SUMMARY_END,
+  RESEARCH_ACTIVE_SUMMARY_START, RESEARCH_CONTRACTS_FILE, RESEARCH_DATE_FIELD,
+  RESEARCH_DEPENDENCY_GRAPH_FILE, RESEARCH_LIFECYCLE_ACTIVE, RESEARCH_LIFECYCLE_FIELD,
+  RESEARCH_MANIFEST_FILE, RESEARCH_SESSIONS_END, RESEARCH_SESSIONS_HEADING,
+  RESEARCH_SESSIONS_START, RESEARCH_SOURCE_FILE, RESEARCH_STATUS_FIELD,
 } from '../constants.js';
 import type { Migration } from '../migrations/types.js';
 import type { WorkspaceMigrationContext } from './context.js';
-import { scanLines } from './markdown.js';
-import { folderDatePrefix } from './plan-folders.js';
+import { fieldValue, findField, headerEnd, insertPoint, scanLines } from './markdown.js';
+import {
+  detectableResearchFolders, folderDatePrefix, researchFolders,
+} from './workspace-folders.js';
 import {
   buildActiveSummary, foldDependencyGraph, insertSummary, summaryBlock, writeContracts,
 } from './research-artifact-fold.js';
@@ -70,66 +73,17 @@ const BANNER_NO_BRIEF = '> This folder was migrated without RESEARCH_BRIEF.md �
   + '> from the title, is filled in. Bring the section in line with REQ-1 on the\n'
   + '> next /unikit-explore session.';
 
-/** Absolute paths of the subfolders of `root`, sorted so logs read alike everywhere. */
-async function foldersUnder(root: string): Promise<string[]> {
-  const names = await listDirectories(root);
-  return names.sort().map(name => path.join(root, name));
-}
-
-/** The research folders `apply` walks — always the modular location. */
-async function researchFolders(projectDir: string): Promise<string[]> {
-  return foldersUnder(researchesDir(projectDir, CODE_MODULE_ID));
-}
-
 /**
- * The research folders `detect` judges — which is NOT always the same set.
+ * Banner for a brief that exists but could not be read.
  *
- * Verbatim the dual root of `plan-artifact.ts`, for verbatim the same reason:
- * the runner evaluates `detect` for the WHOLE chain before it applies anything,
- * so on a project still carrying the pre-1.1.0 flat workspace
- * `.unikit/code/researches` does not exist yet at detect time even though the
- * relocation is queued to run in this very pass. The fallback is gated on the
- * modular root being ABSENT — when both exist the flat copy is a leftover no
- * step will touch, and reporting it would strand the project at exit 8.
+ * Its own wording, not a reuse of {@link BANNER_NO_BRIEF}: the file IS on disk
+ * and still holds the content this section should have carried. Telling the
+ * reader the folder "was migrated without a brief" would send them looking for
+ * a file that is sitting right there.
  */
-async function detectableResearchFolders(projectDir: string): Promise<string[]> {
-  const modularRoot = researchesDir(projectDir, CODE_MODULE_ID);
-  if (await fileExists(modularRoot)) return foldersUnder(modularRoot);
-  return foldersUnder(path.join(projectDir, UNIKIT_DIR, RESEARCHES_DIR_NAME));
-}
-
-/** Index of the first unfenced `##` heading — where the header block ends. */
-function headerEnd(body: string): number {
-  const scanned = scanLines(body);
-  for (let i = 0; i < scanned.length; i += 1) {
-    if (!scanned[i].fenced && /^##\s/.test(scanned[i].text)) return i;
-  }
-  return scanned.length;
-}
-
-/** Line index of the `<key>:` header field, or `-1`. */
-function findField(lines: string[], end: number, key: string): number {
-  for (let i = 0; i < end && i < lines.length; i += 1) {
-    if (lines[i].replace(/\r$/, '').startsWith(`${key}:`)) return i;
-  }
-  return -1;
-}
-
-/** The value carried by a `Key: value` line. */
-function fieldValue(line: string): string {
-  return line.replace(/\r$/, '').replace(/^[^:]*:\s*/, '').trim();
-}
-
-/** Where a newly created header field goes: after the last one, else after the H1. */
-function headerInsertPoint(lines: string[], end: number): number {
-  for (let i = Math.min(end, lines.length) - 1; i >= 0; i -= 1) {
-    if (/^[A-Za-z][^:]*:/.test(lines[i].replace(/\r$/, ''))) return i + 1;
-  }
-  for (let i = 0; i < end && i < lines.length; i += 1) {
-    if (/^#\s/.test(lines[i])) return i + 1;
-  }
-  return 0;
-}
+const BANNER_UNREADABLE_BRIEF = '> RESEARCH_BRIEF.md could not be read during migration — `Topic:` was taken\n'
+  + '> from the title instead. The brief is still on disk: fold it in by hand, or\n'
+  + '> rewrite this section on the next /unikit-explore session.';
 
 /** The manifest's H1 text — the only title every folder is guaranteed to have. */
 function manifestTitle(body: string): string {
@@ -155,41 +109,48 @@ function normalizeHeader(body: string, base: string): { body: string; changed: b
 
   // (a) `Date:` → `Created:` — or dropped when `Created:` already carries it.
   let end = rescan();
-  const dateAt = findField(lines, end, 'Date');
-  if (dateAt !== -1 && findField(lines, end, 'Created') !== -1) {
-    logWarn(LOG_TAG, `${base}: both Date: and Created: present — Date: dropped`);
+  const dateAt = findField(lines, end, RESEARCH_DATE_FIELD);
+  if (dateAt !== -1 && findField(lines, end, MANIFEST_CREATED_FIELD) !== -1) {
+    logWarn(LOG_TAG, `${base}: both ${RESEARCH_DATE_FIELD} and `
+      + `${MANIFEST_CREATED_FIELD} present — ${RESEARCH_DATE_FIELD} dropped`);
     lines.splice(dateAt, 1);
     changed = true;
   } else if (dateAt !== -1) {
-    lines[dateAt] = lines[dateAt].replace(/^Date:/, 'Created:');
+    // Sliced by the key's own length rather than matched by a regex built from
+    // it: the constants carry their colon, and re-deriving a pattern from a
+    // constant is one more place the two spellings could part ways.
+    lines[dateAt] = MANIFEST_CREATED_FIELD + lines[dateAt].slice(RESEARCH_DATE_FIELD.length);
     changed = true;
   }
 
   // (b) neither present — the folder name is the last record of when this began.
   end = rescan();
-  if (findField(lines, end, 'Created') === -1) {
+  if (findField(lines, end, MANIFEST_CREATED_FIELD) === -1) {
     const fromName = folderDatePrefix(base);
     if (fromName === null) {
-      logWarn(LOG_TAG, `${base}: creation date not recoverable — Created: omitted`);
+      logWarn(LOG_TAG, `${base}: creation date not recoverable `
+        + `— ${MANIFEST_CREATED_FIELD} omitted`);
     } else {
-      lines.splice(headerInsertPoint(lines, end), 0, `Created: ${fromName}`);
+      lines.splice(insertPoint(lines, end), 0, `${MANIFEST_CREATED_FIELD} ${fromName}`);
       changed = true;
     }
   }
 
   // (c) `Updated:` seeds from `Created:` — freshness means "last confirmed".
   end = rescan();
-  const created = findField(lines, end, 'Created');
-  if (created !== -1 && findField(lines, end, 'Updated') === -1) {
-    lines.splice(created + 1, 0, `Updated: ${fieldValue(lines[created])}`);
+  const created = findField(lines, end, MANIFEST_CREATED_FIELD);
+  if (created !== -1 && findField(lines, end, MANIFEST_UPDATED_FIELD) === -1) {
+    lines.splice(created + 1, 0,
+      `${MANIFEST_UPDATED_FIELD} ${fieldValue(lines[created], MANIFEST_CREATED_FIELD)}`);
     changed = true;
   }
 
   // (d) `Lifecycle:` — the new axis, seeded active, right below `Status:`.
   end = rescan();
-  if (findField(lines, end, 'Lifecycle') === -1) {
-    const status = findField(lines, end, 'Status');
-    lines.splice(status === -1 ? headerInsertPoint(lines, end) : status + 1, 0, 'Lifecycle: active');
+  if (findField(lines, end, RESEARCH_LIFECYCLE_FIELD) === -1) {
+    const status = findField(lines, end, RESEARCH_STATUS_FIELD);
+    lines.splice(status === -1 ? insertPoint(lines, end) : status + 1, 0,
+      `${RESEARCH_LIFECYCLE_FIELD} ${RESEARCH_LIFECYCLE_ACTIVE}`);
     changed = true;
   }
 
@@ -268,17 +229,24 @@ async function mergeOneResearch(folder: string): Promise<void> {
 
   // (3) sessions half — every folder, whether or not it ever had a brief.
   if (!body.includes(RESEARCH_SESSIONS_START)) {
-    const end = headerEnd(body);
-    const created = findField(body.split('\n'), end, 'Created');
-    const stamp = created === -1 ? '' : fieldValue(body.split('\n')[created]);
+    const headerLines = body.split('\n');
+    const created = findField(headerLines, headerEnd(body), MANIFEST_CREATED_FIELD);
+    const stamp = created === -1 ? '' : fieldValue(headerLines[created], MANIFEST_CREATED_FIELD);
     body = `${body.replace(/\s*$/, '')}\n\n${sessionsBlock(stamp)}`;
     changed = true;
   }
 
   // (4) summary half — branching on WHERE THE BODY COMES FROM, not on whether a
   // brief exists. Both branches write the section; only 4a can delete anything.
-  const briefBody = (await fileExists(brief)) ? await readTextFile(brief) : null;
+  const briefPresent = await fileExists(brief);
+  const briefBody = briefPresent ? await readTextFile(brief) : null;
   const fromBrief = briefBody !== null;
+  // A brief that is present but unreadable is its OWN case, and it must not be
+  // allowed to refuse the section. `detect` reports a folder without the Active
+  // Summary marker as pending — so a branch that returns here without writing it
+  // never converges, and `rules sync` answers exit 8 that no `update` can clear.
+  // That is the exact failure the `detect` mirror below promises cannot happen.
+  const briefUnreadable = briefPresent && !fromBrief;
   let contracts = 0;
   let graphWritten = false;
 
@@ -299,17 +267,20 @@ async function mergeOneResearch(folder: string): Promise<void> {
       if (graphWritten) {
         logInfo(LOG_TAG, `${base}: dependency graph -> ${RESEARCH_DEPENDENCY_GRAPH_FILE}`);
       }
-    } else if (await fileExists(brief)) {
-      logWarn(LOG_TAG, `skip ${base}: ${LEGACY_RESEARCH_BRIEF_FILE} could not be read — left in place`);
-      if (changed) await writeTextFile(manifest, body);
-      return;
+    } else if (briefUnreadable) {
+      // Falls THROUGH to the seeding below rather than returning: the section is
+      // owed whatever the brief's state. Only the deletion is withheld.
+      logWarn(LOG_TAG, `${base}: ${LEGACY_RESEARCH_BRIEF_FILE} could not be read `
+        + '— Active Summary seeded from the title, brief left in place');
     } else {
       logWarn(LOG_TAG, `${base}: no ${LEGACY_RESEARCH_BRIEF_FILE} `
         + '— Active Summary seeded from the title only');
     }
 
     const inner = buildActiveSummary(briefBody, manifestTitle(body));
-    body = insertSummary(body, summaryBlock(inner, fromBrief ? BANNER_FROM_BRIEF : BANNER_NO_BRIEF));
+    const banner = fromBrief ? BANNER_FROM_BRIEF
+      : briefUnreadable ? BANNER_UNREADABLE_BRIEF : BANNER_NO_BRIEF;
+    body = insertSummary(body, summaryBlock(inner, banner));
     changed = true;
     if (fromBrief) logInfo(LOG_TAG, `${base}: brief folded into ## Active Summary`);
   }
@@ -320,7 +291,10 @@ async function mergeOneResearch(folder: string): Promise<void> {
   // (5) verify-then-delete — never the other way round.
   const readback = await readTextFile(manifest);
   if (readback === null || !manifestVerified(readback)) {
-    logWarn(LOG_TAG, fromBrief
+    // The wording follows what is actually on disk, and does not generalize: a
+    // message about a brief left in place, where no brief exists, is a logging
+    // failure rather than a diagnosis. An unreadable brief is still A brief.
+    logWarn(LOG_TAG, briefPresent
       ? `skip ${base}: manifest write not verified — ${LEGACY_RESEARCH_BRIEF_FILE} left in place`
       : `skip ${base}: manifest write not verified`);
     return;

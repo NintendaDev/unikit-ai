@@ -60,6 +60,26 @@ run_update() {
     (cd "$project" && node "$CLI" update > "$log" 2>&1)
 }
 
+# Rewrite the version stamp of an existing `.unikit.json`.
+#
+# `use_fake_registry` always stamps the CURRENT version, which silences the
+# version half of the runner — the right default for a fixture whose subject is
+# `detect`. A fixture whose subject is what a real 1.x UPGRADE prints needs the
+# opposite, and it still needs the fake registry that `rules sync` reads, so the
+# two cannot be swapped for `write_legacy_config`. Rewriting the one field after
+# the fact is the only way to have both.
+stamp_config_version() {
+    local project="$1"
+    local version="$2"
+    node -e "
+      const fs = require('fs');
+      const file = process.argv[1] + '/.unikit.json';
+      const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+      config.version = process.argv[2];
+      fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n');
+    " "$project" "$version"
+}
+
 # Run the project chain against a directory and print the applied step ids, in
 # apply order, one per line. Drives the exported function rather than the CLI so
 # a row of the matrix is a statement about the CHAIN and not about everything
@@ -721,7 +741,6 @@ printf '# Brief\n\n## CONSTRAINTS\n- MUST: resume\n' \
 # (9) completed: zero `- [ ]` lines. Untouched forever, both files.
 printf '# tasks\n\n- [x] Task 1 shipped\n' > "$P6_PLANS/completed/TASKS.md"
 printf '# Brief\n\n## CONSTRAINTS\n- MUST: archived\n' > "$P6_PLANS/completed/PLAN-BRIEF.md"
-P6_DONE_TASKS_SHA="$(sha_of "$P6_PLANS/completed/TASKS.md")"
 P6_DONE_BRIEF_SHA="$(sha_of "$P6_PLANS/completed/PLAN-BRIEF.md")"
 
 # (11) the counter must not read a phase status line as an open task: the only
@@ -729,7 +748,6 @@ P6_DONE_BRIEF_SHA="$(sha_of "$P6_PLANS/completed/PLAN-BRIEF.md")"
 #      completed. Count it and every finished plan in existence would migrate.
 printf '# tasks\n\n**Status:** [ ] Not started\n\n- [x] Task 1 shipped\n' \
     > "$P6_PLANS/statusonly/TASKS.md"
-P6_STATUS_SHA="$(sha_of "$P6_PLANS/statusonly/TASKS.md")"
 
 # (12) lift: `## Design` in the brief must land at `##` level ABOVE the
 #      separator, never demoted into `### Design` inside Technical Context.
@@ -772,9 +790,16 @@ assert_contains "$P6/.unikit/code/PLAN.md" '^Created: [0-9]{4}-[0-9]{2}-[0-9]{2}
 assert_contains "$P6/.unikit/code/PLAN.md" '^Updated: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
   "flat code/PLAN.md: the backfill stamped Updated:"
 
-# 9 + 10 — selectivity, and a mixed project migrating exactly the live folders
-assert_file_unchanged "$P6_PLANS/completed/TASKS.md" "$P6_DONE_TASKS_SHA" \
-  "completed plan: TASKS.md byte-identical"
+# 9 + 10 — selectivity, and a mixed project migrating exactly the live folders.
+# The claim about `TASKS.md` is asserted on what the MERGE would have done, not
+# on a hash: `plan-2-to-3-timestamps` stamps a completed plan under its own file
+# name by design (it is the only name that folder will ever have), so the file
+# is not byte-identical after an `update` and that is not a regression. A merge,
+# by contrast, would have appended `## Technical Context` and deleted the brief.
+assert_not_contains "$P6_PLANS/completed/TASKS.md" '## Technical Context' \
+  "completed plan: the merge folded nothing into TASKS.md"
+assert_contains "$P6_PLANS/completed/TASKS.md" '^- \[x\] Task 1 shipped$' \
+  "completed plan: its own checklist came through the run untouched"
 assert_file_unchanged "$P6_PLANS/completed/PLAN-BRIEF.md" "$P6_DONE_BRIEF_SHA" \
   "completed plan: PLAN-BRIEF.md byte-identical"
 assert_not_exists "$P6_PLANS/completed/PLAN.md" \
@@ -792,9 +817,14 @@ assert_contains "$P6_PLANS/live/PLAN.md" '^Created: [0-9]{4}-[0-9]{2}-[0-9]{2}$'
 assert_contains "$P6_PLANS/live/PLAN.md" '^Updated: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
   "order: the merged manifest was stamped with Updated: in the same run"
 
-# 11 — a phase status line is not an open task
-assert_file_unchanged "$P6_PLANS/statusonly/TASKS.md" "$P6_STATUS_SHA" \
-  "status line is not a checkbox: the folder counts as completed"
+# 11 — a phase status line is not an open task. Same reading as 9 above: the
+#      claim is that the COUNTER did not read `**Status:** [ ] Not started` as
+#      an open task, so the folder was judged completed and never merged. The
+#      backfill still stamps it, which is why this is not a hash either.
+assert_not_exists "$P6_PLANS/statusonly/PLAN.md" \
+  "status line is not a checkbox: the folder counts as completed (no manifest created)"
+assert_contains "$P6_PLANS/statusonly/TASKS.md" '^\*\*Status:\*\* \[ \] Not started$' \
+  "status line is not a checkbox: the line itself survived the run verbatim"
 
 # 12 — the lift, asserted from both sides
 assert_contains     "$P6_PLANS/live/PLAN.md" '^## Design$' \
@@ -847,10 +877,15 @@ mkdir -p "$P14/.unikit/code/plans/done-a" "$P14/.unikit/code/plans/done-b"
 printf '# tasks\n\n- [x] Task 1 shipped\n' > "$P14/.unikit/code/plans/done-a/TASKS.md"
 printf '# Brief\n\n## CONSTRAINTS\n- MUST: a\n' > "$P14/.unikit/code/plans/done-a/PLAN-BRIEF.md"
 printf '# tasks\n\n- [x] Task 1 shipped\n' > "$P14/.unikit/code/plans/done-b/TASKS.md"
-P14_A_SHA="$(sha_of "$P14/.unikit/code/plans/done-a/TASKS.md")"
+P14_A_BRIEF_SHA="$(sha_of "$P14/.unikit/code/plans/done-a/PLAN-BRIEF.md")"
 run_update "$P14" "$TMPDIR/plan-all-completed-update.log"
-assert_file_unchanged "$P14/.unikit/code/plans/done-a/TASKS.md" "$P14_A_SHA" \
-  "all-completed project: nothing was migrated"
+# "Nothing was MIGRATED" — asserted on the merge's own two traces, since the
+# backfill stamps a completed plan deliberately and a hash could no longer tell
+# the two steps apart.
+assert_not_exists "$P14/.unikit/code/plans/done-a/PLAN.md" \
+  "all-completed project: no manifest was created"
+assert_file_unchanged "$P14/.unikit/code/plans/done-a/PLAN-BRIEF.md" "$P14_A_BRIEF_SHA" \
+  "all-completed project: the brief was neither folded nor removed"
 assert_cmd_exit 0 "all-completed project: rules sync exits 0 (the gate creates no pending work)" \
   "$TMPDIR/plan-all-completed-sync.log" -- env -C "$P14" node "$CLI" rules sync
 
@@ -959,7 +994,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────
-# Section 7b: markdown + plan-folders pure functions
+# Section 7b: markdown + workspace-folders pure functions
 # ─────────────────────────────────────────────────────
 # The two helpers the research merge added to the shared markdown layer, plus the
 # folder-name date reader. Same shape as Section 7 and for the same reason: they
@@ -974,7 +1009,7 @@ echo -e "\n${BOLD}Section 7b: markdown pure functions${NC}"
 
 MD_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
   const m = await import('./dist/core/workspace-migrations/markdown.js');
-  const f = await import('./dist/core/workspace-migrations/plan-folders.js');
+  const f = await import('./dist/core/workspace-migrations/workspace-folders.js');
   const NL = String.fromCharCode(10);
   const FENCE = String.fromCharCode(96).repeat(3);
   const why = [];
@@ -1018,11 +1053,32 @@ MD_RESULT=$(cd "$ROOT_DIR" && node --input-type=module -e "
   eq('legacy-numbered', f.folderDatePrefix('001-legacy'), null);
   eq('dateless', f.folderDatePrefix('customers'), null);
 
+
+  // headerEnd — the header block is BOUNDED. The shape that breaks an
+  // unbounded scan is a manifest with no '##' at all: the whole document then
+  // counts as header, and the new fields land next to the last colon-shaped
+  // line in the BODY, wherever that happens to be.
+  const hdr = ['# Plan', '', 'Branch: x', 'Status: y', '', '## Checklist', '- [ ] t'].join(NL);
+  eq('header-ends-at-blank-after-fields', m.headerEnd(hdr), 4);
+  eq('header-ends-at-h2', m.headerEnd(['# Plan', 'Branch: x', '## Checklist'].join(NL)), 2);
+  const noH2 = ['# Plan', '', 'Branch: x', '', 'body', 'Owner: bob'].join(NL);
+  eq('no-h2-header-still-bounded', m.headerEnd(noH2), 3);
+  const bare = ['# fast plan', ''].join(NL);
+  eq('h1-only-runs-to-eof', m.headerEnd(bare), 2);
+
+  // findField / insertPoint / fieldValue — the header primitives BOTH manifest
+  // steps read, declared once so the two cannot drift apart
+  eq('field-found', m.findField(hdr.split(NL), m.headerEnd(hdr), 'Status:'), 3);
+  eq('field-absent', m.findField(hdr.split(NL), m.headerEnd(hdr), 'Created:'), -1);
+  eq('field-beyond-header-not-found', m.findField(noH2.split(NL), m.headerEnd(noH2), 'Owner:'), -1);
+  eq('insert-after-last-field', m.insertPoint(hdr.split(NL), m.headerEnd(hdr)), 4);
+  eq('insert-after-h1', m.insertPoint(bare.split(NL), m.headerEnd(bare)), 1);
+  eq('field-value', m.fieldValue('Created: 2026-03-08', 'Created:'), '2026-03-08');
   process.stdout.write(why.length ? why.join(' ') : 'ok');
 " 2>/dev/null || echo "markdown-error")
 
 if [[ "$MD_RESULT" == "ok" ]]; then
-    pass "markdown helpers: sectionBody, demoteHeadings and folderDatePrefix hold their contracts"
+    pass "markdown helpers: sectionBody, demoteHeadings, the header primitives and folderDatePrefix hold their contracts"
 else
     fail "markdown helper contract violated: $MD_RESULT"
 fi
@@ -1083,7 +1139,7 @@ for R8_CASE in 2026-06-12_withbrief nobrief; do
     R8_MANIFEST="$R8_DIR/$R8_CASE/RESEARCH.md"
     for R8_MARK in 'unikit:active-summary:start' 'unikit:active-summary:end' \
                    'unikit:sessions:start' 'unikit:sessions:end'; do
-        R8_N=$(grep -cF "$R8_MARK" "$R8_MANIFEST" 2>/dev/null || echo 0)
+        R8_N=$(grep -cF "$R8_MARK" "$R8_MANIFEST" 2>/dev/null || true)
         if [[ "$R8_N" == "1" ]]; then
             pass "$R8_CASE: $R8_MARK present exactly once"
         else
@@ -1223,5 +1279,312 @@ for P9_I in "${!P9_FILES[@]}"; do
     assert_file_unchanged "${P9_FILES[$P9_I]}" "${P9_SHAS[$P9_I]}" \
       "idempotence: $(basename "$(dirname "${P9_FILES[$P9_I]}")")/PLAN.md byte-identical on a second update"
 done
+
+# ─────────────────────────────────────────────────────
+# Section 8c: an unreadable brief must not strand the project
+# ─────────────────────────────────────────────────────
+# The regression that closes the widest hole in this step: `detect` reported the
+# folder pending because `## Active Summary` was absent, while `apply` refused it
+# because the brief could not be read — a disagreement that never converges, so
+# `rules sync` answers exit 8 that NO `update` can clear. Verbatim the failure
+# the step's own `detect` comment promises cannot happen.
+#
+# The brief is seeded as a DIRECTORY rather than a permission-stripped file:
+# `fileExists` answers true and `readTextFile` answers null on every platform,
+# with no chmod that Windows would ignore.
+
+echo -e "\n${BOLD}Section 8c: research merge — unreadable brief${NC}"
+
+R8C="$TMPDIR/research-unreadable"; mkdir -p "$R8C"
+use_fake_registry "$R8C" unity minimal-valid
+R8C_DIR="$R8C/.unikit/code/researches/locked"
+mkdir -p "$R8C_DIR/RESEARCH_BRIEF.md"
+printf '# Locked research\n\nStatus: in-progress\n\n## Findings\n\nbody\n' \
+    > "$R8C_DIR/RESEARCH_RESULT.md"
+
+run_update "$R8C" "$TMPDIR/research-unreadable-update.log"
+
+# The section is owed whatever the brief's state: it is the hashed object and the
+# registry generator's input, not a derivative of the brief.
+for R8C_MARK in 'unikit:active-summary:start' 'unikit:active-summary:end' \
+                'unikit:sessions:start' 'unikit:sessions:end'; do
+    R8C_N=$(grep -cF "$R8C_MARK" "$R8C_DIR/RESEARCH.md" 2>/dev/null || true)
+    if [[ "$R8C_N" == "1" ]]; then
+        pass "unreadable brief: $R8C_MARK present exactly once"
+    else
+        fail "unreadable brief: expected 1 occurrence of $R8C_MARK, got '$R8C_N'"
+    fi
+done
+assert_contains "$R8C_DIR/RESEARCH.md" '^Topic: Locked research$' \
+  "unreadable brief: Topic seeded from the manifest H1, as with no brief at all"
+
+# Nothing is destroyed: the unreadable source stays for a human to sort out.
+assert_exists "$R8C_DIR/RESEARCH_BRIEF.md" \
+  "unreadable brief: the source is left in place, never removed unread"
+
+# THE claim. A shape `apply` refuses must not be reported pending, or the project
+# is stranded at exit 8 forever.
+assert_cmd_exit 0 "unreadable brief: no permanent pending — rules sync exits 0" \
+  "$TMPDIR/research-unreadable-sync.log" -- env -C "$R8C" node "$CLI" rules sync
+
+# ─────────────────────────────────────────────────────
+# Section 9b: a flat straggler with no plan folders beside it
+# ─────────────────────────────────────────────────────
+# The partially-migrated shape: the modular workspace root already exists, the
+# fast plan is still flat, and there is not a single plan FOLDER to carry the
+# detect. The runner evaluates `detect` for the whole chain before any `apply`
+# (phase 1), so a backfill that probes only one of the two possible manifest
+# locations answers false, never runs, and leaves the manifest unstamped even
+# though the relocation moved it in that very pass. On a project stamped at the
+# current version the version half is quiet too, so nothing rescues it — and
+# `rules sync` answers exit 8 straight after a clean `update`.
+#
+# `use_fake_registry` stamps the CURRENT version, which is exactly the condition
+# that silences the version half. That is the point of the fixture, not an
+# accident of it.
+
+echo -e "\n${BOLD}Section 9b: plan timestamps — flat straggler, no plan folders${NC}"
+
+P9B="$TMPDIR/plan-straggler"; mkdir -p "$P9B"
+use_fake_registry "$P9B" unity minimal-valid
+mkdir -p "$P9B/.unikit/code"
+printf '# fast plan\n\n- [ ] Task 1 open\n' > "$P9B/.unikit/PLAN.md"
+
+run_update "$P9B" "$TMPDIR/plan-straggler-update.log"
+
+assert_exists "$P9B/.unikit/code/PLAN.md" \
+  "flat straggler: relocated under code/ by the same run"
+assert_contains "$P9B/.unikit/code/PLAN.md" '^Created: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "flat straggler: stamped with Created: by the SAME update that relocated it"
+assert_contains "$P9B/.unikit/code/PLAN.md" '^Updated: [0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+  "flat straggler: stamped with Updated: by the SAME update that relocated it"
+assert_cmd_exit 0 "flat straggler: rules sync exits 0 right after one clean update" \
+  "$TMPDIR/plan-straggler-sync.log" -- env -C "$P9B" node "$CLI" rules sync
+
+# ─────────────────────────────────────────────────────
+# Section 8d: research merge — the branches that refuse
+# ─────────────────────────────────────────────────────
+# Three shapes `apply` walks past without folding. Each one is a place where the
+# step could lose a brief, and none of them had a test: the guard that protects
+# against data loss is exactly the guard nothing was exercising. All three live
+# in ONE project so that `apply` walks every folder — a folder whose own `detect`
+# is false is still visited when a sibling carries the run.
+
+echo -e "\n${BOLD}Section 8d: research merge — refusing branches keep the brief${NC}"
+
+R8D="$TMPDIR/research-refusals"; mkdir -p "$R8D"
+use_fake_registry "$R8D" unity minimal-valid
+R8D_DIR="$R8D/.unikit/code/researches"
+mkdir -p "$R8D_DIR/stray-end" "$R8D_DIR/already-folded" "$R8D_DIR/both-dates"
+
+# (a) a manifest carrying a STRAY end-marker. The summary write then produces a
+#     second `end`, `manifestVerified` refuses the result, and the brief must
+#     survive — this is the verify-then-delete guard, and the only reason an
+#     interrupted or malformed write does not cost the brief's content.
+printf '# Stray end\n\nStatus: in-progress\n\n## Findings\n\nbody\n<!-- unikit:active-summary:end -->\n' \
+    > "$R8D_DIR/stray-end/RESEARCH_RESULT.md"
+printf '# Brief\n\n## CONTEXT\n\nreal content worth keeping\n' \
+    > "$R8D_DIR/stray-end/RESEARCH_BRIEF.md"
+R8D_STRAY_BRIEF_SHA="$(sha_of "$R8D_DIR/stray-end/RESEARCH_BRIEF.md")"
+
+# (b) already folded, with a brief still beside it. The manifest wins; the brief
+#     is never folded twice and never deleted unread.
+printf '# Already folded\n\nStatus: in-progress\nLifecycle: active\n\n## Active Summary\n<!-- unikit:active-summary:start -->\nTopic: hand-written\n<!-- unikit:active-summary:end -->\n\n## Sessions\n<!-- unikit:sessions:start -->\n\n### seeded\n\n<!-- unikit:sessions:end -->\n' \
+    > "$R8D_DIR/already-folded/RESEARCH.md"
+printf '# Brief\n\n## CONTEXT\n\nstale copy\n' \
+    > "$R8D_DIR/already-folded/RESEARCH_BRIEF.md"
+R8D_FOLDED_BRIEF_SHA="$(sha_of "$R8D_DIR/already-folded/RESEARCH_BRIEF.md")"
+R8D_FOLDED_SUMMARY_SHA="$(sha_of "$R8D_DIR/already-folded/RESEARCH.md")"
+
+# (c) both `Date:` and `Created:` present — the legacy line is dropped, and the
+#     value already recorded under the new name is the one that survives.
+printf '# Both dates\n\nDate: 2020-01-01\nCreated: 2026-06-12\nStatus: in-progress\n\n## Findings\n\nbody\n' \
+    > "$R8D_DIR/both-dates/RESEARCH_RESULT.md"
+
+run_update "$R8D" "$TMPDIR/research-refusals-update.log"
+
+# (a) the write was refused and the brief is byte-identical
+assert_file_unchanged "$R8D_DIR/stray-end/RESEARCH_BRIEF.md" "$R8D_STRAY_BRIEF_SHA" \
+  "stray end-marker: the unverified write cost the brief nothing"
+
+# (b) the manifest's own summary is untouched and the brief survives
+assert_file_unchanged "$R8D_DIR/already-folded/RESEARCH.md" "$R8D_FOLDED_SUMMARY_SHA" \
+  "already folded: the hand-written summary is not overwritten"
+assert_file_unchanged "$R8D_DIR/already-folded/RESEARCH_BRIEF.md" "$R8D_FOLDED_BRIEF_SHA" \
+  "already folded: the brief is left for a human, never deleted unread"
+
+# (c) one date axis survives, and it is the one under the new name
+assert_not_contains "$R8D_DIR/both-dates/RESEARCH.md" '^Date: ' \
+  "both dates: the legacy Date: line is dropped"
+assert_contains "$R8D_DIR/both-dates/RESEARCH.md" '^Created: 2026-06-12$' \
+  "both dates: the value already under Created: is the one kept"
+
+# None of the three may leave the project pending — a refused shape reported as
+# work is the exit-8 trap this whole family of branches has to avoid.
+assert_cmd_exit 0 "refusing branches: no permanent pending — rules sync exits 0" \
+  "$TMPDIR/research-refusals-sync.log" -- env -C "$R8D" node "$CLI" rules sync
+
+# ─────────────────────────────────────────────────────
+# Section 9c: a leftover flat manifest beside a modular one
+# ─────────────────────────────────────────────────────
+# The other direction of the same resolver. When both manifests exist the
+# relocation refuses to overwrite and the flat copy becomes a leftover no step
+# will ever touch — so `detect` must NOT judge it. Probing both paths
+# unconditionally would report it pending forever and strand the project at
+# exit 8 with nothing able to clear it, which is why the gate is the modular
+# MANIFEST rather than "either file that needs a stamp".
+
+echo -e "\n${BOLD}Section 9c: plan timestamps — leftover flat manifest${NC}"
+
+P9C="$TMPDIR/plan-leftover"; mkdir -p "$P9C"
+use_fake_registry "$P9C" unity minimal-valid
+mkdir -p "$P9C/.unikit/code"
+printf '# modular fast plan\n\nCreated: 2026-01-01\nUpdated: 2026-01-01\n\n- [ ] Task 1 open\n' \
+    > "$P9C/.unikit/code/PLAN.md"
+printf '# leftover flat plan\n\n- [ ] Task 1 open\n' > "$P9C/.unikit/PLAN.md"
+P9C_MODULAR_SHA="$(sha_of "$P9C/.unikit/code/PLAN.md")"
+P9C_LEFTOVER_SHA="$(sha_of "$P9C/.unikit/PLAN.md")"
+
+run_update "$P9C" "$TMPDIR/plan-leftover-update.log"
+
+assert_file_unchanged "$P9C/.unikit/code/PLAN.md" "$P9C_MODULAR_SHA" \
+  "leftover: the stamped modular manifest is not re-stamped"
+assert_file_unchanged "$P9C/.unikit/PLAN.md" "$P9C_LEFTOVER_SHA" \
+  "leftover: the flat copy is left exactly as it is"
+assert_cmd_exit 0 "leftover: an untouchable flat copy never strands the project" \
+  "$TMPDIR/plan-leftover-sync.log" -- env -C "$P9C" node "$CLI" rules sync
+
+# ─────────────────────────────────────────────────────
+# Section 9d: a folder the merge renames in this very pass
+# ─────────────────────────────────────────────────────
+# The third shape of the same asymmetry, and the one no fixture covered: the
+# manifest the backfill stamps DOES NOT EXIST YET when `detect` runs. The runner
+# evaluates `detect` for the whole chain before any `apply` (phase 1), so on a
+# folder still carrying `TASKS.md` the backfill probes a path that
+# `plan-1-to-2-manifest-merge` is about to create, answers false, and is left
+# out of `pendingIds` entirely. The merge then renames the file, `update`
+# reports success, and the NEXT `detect` — now seeing a `PLAN.md` without the
+# fields — declares work pending: `rules sync` answers exit 8 straight after a
+# clean run, with nothing able to clear it but a second `update`.
+#
+# `use_fake_registry` stamps the CURRENT version, which silences the version
+# half. That is the condition the defect needs, not an accident of the fixture:
+# on a version-pending project the backfill runs regardless and the asymmetry is
+# invisible. Every dev project running `npm link` before publication is stamped
+# this way, and so is any project whose earlier merge skipped one folder on a
+# per-folder error while the chain as a whole completed and stamped the version.
+
+echo -e "\n${BOLD}Section 9d: plan timestamps — a manifest created by the merge in the same pass${NC}"
+
+P9D="$TMPDIR/plan-unmerged"; mkdir -p "$P9D"
+use_fake_registry "$P9D" unity minimal-valid
+P9D_FOLDER="$P9D/.unikit/code/plans/2026-03-08_live"
+mkdir -p "$P9D_FOLDER"
+printf '# tasks\n\n## Checklist\n\n- [ ] Task 1 open\n' > "$P9D_FOLDER/TASKS.md"
+
+run_update "$P9D" "$TMPDIR/plan-unmerged-update.log"
+
+# The merge half really did run — without this the section could go green on a
+# project where nothing happened at all.
+assert_exists     "$P9D_FOLDER/PLAN.md"  "unmerged folder: TASKS.md was renamed to the manifest"
+assert_not_exists "$P9D_FOLDER/TASKS.md" "unmerged folder: the legacy checklist name is gone"
+
+# And the backfill reached the file the merge had just created.
+assert_contains "$P9D_FOLDER/PLAN.md" '^Created: 2026-03-08$' \
+  "unmerged folder: stamped with Created: by the SAME update that merged it"
+assert_contains "$P9D_FOLDER/PLAN.md" '^Updated: 2026-03-08$' \
+  "unmerged folder: stamped with Updated: by the SAME update that merged it"
+
+assert_cmd_exit 0 "unmerged folder: rules sync exits 0 right after one clean update" \
+  "$TMPDIR/plan-unmerged-sync.log" -- env -C "$P9D" node "$CLI" rules sync
+
+# ─────────────────────────────────────────────────────
+# Section 9e: a completed plan, which the merge never renames
+# ─────────────────────────────────────────────────────
+# The other half of the same resolver. `plan-1-to-2-manifest-merge` is selective
+# and leaves a folder with zero open tasks exactly as it is — FOREVER — so its
+# plan file keeps the name `TASKS.md` and a `PLAN.md` never appears there. A
+# backfill that knows only one file name therefore skips the very folders its
+# own contract singles out (no selectivity: completed plans are stamped too,
+# because `--list` and latest-by-Updated enumerate them), and prints a warning
+# about an unreadable manifest for each of them on every upgrade — `logWarn` is
+# not behind the verbose gate, so the noise is permanent and reads like an I/O
+# error rather than a shape the migration chose to leave alone.
+#
+# Version-pending on purpose: this is what a real 1.x upgrade prints, and it is
+# the only state in which the step runs over a folder its own `detect` would not
+# have reported.
+
+echo -e "\n${BOLD}Section 9e: plan timestamps — a completed plan keeps its own file name${NC}"
+
+P9E="$TMPDIR/plan-completed-stamp"; mkdir -p "$P9E"
+use_fake_registry "$P9E" unity minimal-valid
+stamp_config_version "$P9E" "1.1.0"
+P9E_FOLDER="$P9E/.unikit/code/plans/2026-06-12_completed"
+mkdir -p "$P9E_FOLDER"
+printf '# tasks\n\n## Checklist\n\n- [x] Task 1 shipped\n' > "$P9E_FOLDER/TASKS.md"
+
+run_update "$P9E" "$TMPDIR/plan-completed-update.log"
+
+# Selectivity is untouched: the merge still refuses to rename a completed plan.
+assert_not_exists "$P9E_FOLDER/PLAN.md" \
+  "completed plan: the merge created no manifest (selectivity intact)"
+
+# But the backfill did stamp the file that IS this folder's plan.
+assert_contains "$P9E_FOLDER/TASKS.md" '^Created: 2026-06-12$' \
+  "completed plan: stamped with Created: under its own file name"
+assert_contains "$P9E_FOLDER/TASKS.md" '^Updated: 2026-06-12$' \
+  "completed plan: stamped with Updated: under its own file name"
+assert_contains "$P9E_FOLDER/TASKS.md" '^- \[x\] Task 1 shipped$' \
+  "completed plan: nothing below the header was touched"
+
+# And it said nothing about an unreadable manifest — the folder is a shape the
+# chain understands, not a failure to read a file.
+assert_not_contains "$TMPDIR/plan-completed-update.log" 'no readable manifest' \
+  "completed plan: no WARN about a manifest that was never supposed to exist"
+
+P9E_SHA="$(sha_of "$P9E_FOLDER/TASKS.md")"
+run_update "$P9E" "$TMPDIR/plan-completed-update-2.log"
+assert_file_unchanged "$P9E_FOLDER/TASKS.md" "$P9E_SHA" \
+  "completed plan: byte-identical on a second update"
+assert_cmd_exit 0 "completed plan: rules sync exits 0 after the upgrade" \
+  "$TMPDIR/plan-completed-sync.log" -- env -C "$P9E" node "$CLI" rules sync
+
+# ─────────────────────────────────────────────────────
+# Section 8e: the dependency-graph fold is entered twice
+# ─────────────────────────────────────────────────────
+# The adaptive artifacts are written BEFORE the manifest, and the manifest write
+# is the one that can throw — `apply` catches per folder and the run completes,
+# so the next `update` re-enters the same branch with `DEPENDENCY-GRAPH.md`
+# already on disk. An append with no idempotence check then files the graph a
+# second time under a second copy of its own source heading.
+#
+# The fixture IS that post-crash state, seeded directly rather than produced by
+# forcing a write to fail: the manifest never got its `## Active Summary`, while
+# the artifacts of the interrupted run are already there.
+
+echo -e "\n${BOLD}Section 8e: research merge — a retried dependency-graph fold${NC}"
+
+R8E="$TMPDIR/research-graph-retry"; mkdir -p "$R8E"
+use_fake_registry "$R8E" unity minimal-valid
+R8E_FOLDER="$R8E/.unikit/code/researches/retried"
+mkdir -p "$R8E_FOLDER"
+printf '# Retried\n\nStatus: in-progress\n\n## Findings\n\nbody\n' > "$R8E_FOLDER/RESEARCH.md"
+printf '# Brief\n\n## CONTEXT\n\ncache the search\n\n## DEPENDENCY GRAPH\n\nA to B\n' \
+    > "$R8E_FOLDER/RESEARCH_BRIEF.md"
+printf '## From RESEARCH_BRIEF.md\n\nA to B\n' > "$R8E_FOLDER/DEPENDENCY-GRAPH.md"
+
+run_update "$R8E" "$TMPDIR/research-graph-retry-update.log"
+
+R8E_BLOCKS=$(grep -cF '## From RESEARCH_BRIEF.md' "$R8E_FOLDER/DEPENDENCY-GRAPH.md" 2>/dev/null || echo 0)
+if [[ "$R8E_BLOCKS" == "1" ]]; then
+    pass "retried fold: the graph carries exactly one source block, not two"
+else
+    fail "retried fold: expected 1 source block in DEPENDENCY-GRAPH.md, got '$R8E_BLOCKS'"
+fi
+assert_contains "$R8E_FOLDER/DEPENDENCY-GRAPH.md" '^A to B$' \
+  "retried fold: the graph the interrupted run wrote is still there"
+assert_cmd_exit 0 "retried fold: rules sync exits 0 once the folder converges" \
+  "$TMPDIR/research-graph-retry-sync.log" -- env -C "$R8E" node "$CLI" rules sync
 
 print_summary_and_exit "Migration + MCP reconciliation Smoke Tests"

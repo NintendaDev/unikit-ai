@@ -397,20 +397,14 @@ export function workspaceDir(projectDir: string, module: string): string {
 //
 // `export *` re-exports the names but does NOT bind them locally: a helper in
 // THIS file that referenced one would get `TS2304`, not working code. Anything
-// the helpers below need is therefore also imported by name, right here.
-import { RESEARCHES_DIR_NAME } from './constants-artifacts.js';
+// a helper here needs is therefore also imported by name, right here.
+//
+// There is no such helper at the moment. A `researchesDir(projectDir, module)`
+// briefly lived below this line; it went when the folder walk was generalised
+// over a DIRECTORY NAME in `workspace-migrations/workspace-folders.ts`, which
+// composes `workspaceDir` with `RESEARCHES_DIR_NAME` itself and left this one
+// without a caller. Restoring it means restoring the `import` line too.
 export * from './constants-artifacts.js';
-
-/**
- * `<projectDir>/.unikit/<module>/researches` — where one module's researches live.
- *
- * Stays in THIS file rather than joining the name inventory next door: it builds
- * on {@link workspaceDir}, and moving it over would turn a one-way import into a
- * module cycle.
- */
-export function researchesDir(projectDir: string, module: string): string {
-  return path.join(workspaceDir(projectDir, module), RESEARCHES_DIR_NAME);
-}
 
 // --- Migration version anchors (`Migration.since`) ---
 //

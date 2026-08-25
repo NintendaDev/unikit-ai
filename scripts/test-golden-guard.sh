@@ -342,7 +342,6 @@ printf '# tasks\n\n- [x] Task 1 shipped\n' \
     > "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md"
 printf '# Brief\n\n## CONSTRAINTS\n- MUST: archived\n' \
     > "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md"
-WS4_COMPLETED_TASKS_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md")"
 WS4_COMPLETED_BRIEF_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md")"
 
 # (b) in-flight and ALREADY merged — open task, manifest present, no brief.
@@ -374,8 +373,18 @@ assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" '## Te
     "already-merged plan: the merge folded nothing into it a second time"
 assert_contains "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" '^- \[ \] Task 1 open$' \
     "already-merged plan: its own body came through the self-heal untouched"
-assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" "$WS4_COMPLETED_TASKS_SHA" \
-    "completed plan: TASKS.md never renamed"
+# "Never renamed" asserted on the merge's traces rather than a hash, for the
+# third time in this family and for the same reason: `plan-2-to-3-timestamps`
+# stamps a completed plan under `TASKS.md` on purpose — that is the only name
+# the folder will ever have, and skipping it would be the selectivity of the
+# MERGE leaking into a step that declares it has none. A rename would have left
+# a `PLAN.md` (asserted below) and a fold would have appended a section.
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '## Technical Context' \
+    "completed plan: nothing was folded into TASKS.md"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '^- \[x\] Task 1 shipped$' \
+    "completed plan: TASKS.md kept its own checklist"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '^Created: 2026-06-12$' \
+    "completed plan: the backfill reached it under the legacy file name"
 assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md" "$WS4_COMPLETED_BRIEF_SHA" \
     "completed plan: PLAN-BRIEF.md never folded"
 assert_not_exists "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN.md" \

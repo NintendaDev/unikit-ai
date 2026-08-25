@@ -16,7 +16,8 @@ import { readTextFile, writeTextFile } from '../../utils/fs.js';
 import {
   RESEARCH_ACTIVE_SUMMARY_END, RESEARCH_ACTIVE_SUMMARY_HEADING,
   RESEARCH_ACTIVE_SUMMARY_START, RESEARCH_CONTRACTS_FILE,
-  RESEARCH_DEPENDENCY_GRAPH_FILE, LEGACY_RESEARCH_BRIEF_FILE,
+  RESEARCH_DEPENDENCY_GRAPH_FILE, RESEARCH_MIGRATED_SUMMARY_MARKER,
+  LEGACY_RESEARCH_BRIEF_FILE,
 } from '../constants.js';
 import { scanLines, sectionBody } from './markdown.js';
 
@@ -82,7 +83,7 @@ export function buildActiveSummary(briefBody: string | null, title: string): str
  * removing it later must never read as drift.
  */
 export function summaryBlock(inner: string, banner: string): string {
-  return `<!-- unikit:migrated-summary -->\n${banner}\n\n`
+  return `${RESEARCH_MIGRATED_SUMMARY_MARKER}\n${banner}\n\n`
     + `${RESEARCH_ACTIVE_SUMMARY_HEADING}\n${RESEARCH_ACTIVE_SUMMARY_START}\n`
     + `${inner}\n${RESEARCH_ACTIVE_SUMMARY_END}\n`;
 }
@@ -130,6 +131,17 @@ export async function writeContracts(folder: string, briefBody: string): Promise
  * research may have written one of its own, and overwriting it would lose the
  * half that was reasoned about rather than lifted. Returns `false` when the
  * brief carried no graph.
+ *
+ * The append is GATED ON ITS OWN HEADING, and that guard is the one thing here
+ * that is not obvious. This function runs BEFORE the manifest write, and the
+ * manifest write is the one that can throw: `apply` catches per folder and the
+ * run completes, so the next `update` re-enters this branch with the artifact
+ * already on disk. Ungated, the brief's graph would be filed a second time
+ * under a second copy of the heading — an append is idempotent only against a
+ * caller that runs once, and the whole chain is built on the opposite
+ * assumption ("`apply` can be entered at `detect === false`, so re-check the
+ * SHAPE of the state"). Returning `true` on the skip is deliberate: the caller
+ * asks whether the graph IS folded, not whether this call did the folding.
  */
 export async function foldDependencyGraph(folder: string, briefBody: string): Promise<boolean> {
   const body = usableSection(briefBody, '## DEPENDENCY GRAPH');
@@ -137,8 +149,9 @@ export async function foldDependencyGraph(folder: string, briefBody: string): Pr
 
   const target = path.join(folder, RESEARCH_DEPENDENCY_GRAPH_FILE);
   const existing = await readTextFile(target);
-  const block = `${DEPENDENCY_GRAPH_SOURCE_HEADING}\n\n${body}\n`;
+  if (existing !== null && existing.includes(DEPENDENCY_GRAPH_SOURCE_HEADING)) return true;
 
+  const block = `${DEPENDENCY_GRAPH_SOURCE_HEADING}\n\n${body}\n`;
   await writeTextFile(target, existing === null ? block : `${existing.replace(/\s*$/, '')}\n\n${block}`);
   return true;
 }
