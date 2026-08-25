@@ -14,7 +14,7 @@ from code (one-way boundary).
 
 1. **Read the source.** A local path → Read it. A URL → WebFetch it.
 2. **Preserve it verbatim.** Write the original, unchanged, to
-   `.unikit/gamedesign/researches/<date>_import-<slug>/SOURCE.md`. This is the
+   `.unikit/gamedesign/researches/import-<slug>/SOURCE.md`. This is the
    provenance record `unikit-gd-system` later pulls section content from.
 3. **Extract GAME.md** (Create Mode Phase A structure — `mode-create.md` § Phase A) from
    the source — *extract, do not regenerate*. Pull the premise, core fantasy, pillars,
@@ -32,7 +32,7 @@ from code (one-way boundary).
    mark them inferred. Build the `GD-IDS.yaml` roster + GAME.md Design Order / Risks and
    re-render `## System Map [gen]`.
 5. **Provenance:** fill the GAME.md header `> **Based on**:` line with
-   `researches/<date>_import-<slug>/SOURCE.md` — the single provenance record,
+   `researches/import-<slug>/SOURCE.md` — the single provenance record,
    identical in shape to the concept-seeded case (Create Mode Phase A). Do **not**
    add a separate `## Based on` section.
 

@@ -139,12 +139,18 @@ Gather the facts the system must stay consistent with (read-only):
 - **Recent `unikit-gd-verify` reports** for this system, if any
   (`.unikit/gamedesign/reviews/`).
 - **Import source** — if `GD-IDS`/GAME mention an import, or a
-  `researches/<date>_import-*/SOURCE.md` covers this system, read it: section
+  `researches/import-*/SOURCE.md` covers this system, read it: section
   content is **extracted** from it, not regenerated. Mark provenance per
   `gd-provenance` → Provenance: place `<!-- provenance: extracted from SOURCE.md -->`
   under each section lifted from the source and `<!-- provenance: generated -->`
   under each section inferred to complete the skeleton; untagged sections are
-  normal authored content.
+  normal authored content. Import folders created before dateless naming are named
+  `YYYY-MM-DD_import-<slug>`, and no folder was renamed, so the two formats coexist
+  permanently. The legacy glob `researches/*import-*/SOURCE.md` **subsumes** the
+  current one — a leading `*` matches zero characters — so one pattern would find
+  both eras; both are named here for legibility, not necessity, because the coexistence
+  is a fact a reader should not have to infer from glob semantics. Zero matches is not
+  a failure: a project with no import is the normal case and the branch stays silent.
 - **Explore research (internal design lens)** — if this system was grafted from an
   `unikit-gd-explore` brief, discover the research **deterministically** (survives a
   `/clear`): read the system's `GD-IDS` `research:` pointer (authoritative), falling

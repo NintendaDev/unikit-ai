@@ -317,7 +317,7 @@ brief machinery (that is found only by a `research:` / `Target:` pointer; a stan
 > `GD-IDS` `research:` pointer. `/unikit-gd-recon` leaves this empty (or omits it);
 > `/unikit-gd-explore` (RECON-input mode) appends one line per research it works out of
 > the Intent Gap. Recon never writes here.
-- research: `researches/<date>_<slug>/` — <1-line topic>  (Target: <SYS-slug | Intent-Gap item>)
+- research: `researches/<slug>/` — <1-line topic>  (Target: <SYS-slug | Intent-Gap item>)
 ```
 
 The `## Intent Gap` is the load-bearing section: it is what stops a confident-looking but

@@ -13,9 +13,10 @@ maintenance command, no exploration:
 2. Parse the existing index for indexed `**Path**`s.
 3. **Keep** entries whose directory still exists (unchanged); **Remove** entries
    whose directory is gone; **Add** directories with no entry — read their
-   `RESEARCH_RESULT.md` for title/status/topic (date from the `Date:` line or the
-   folder prefix; `Updated` falls back to `Date`), and **when the header carries a
-   `Target:` line, carry it into the entry's `**Target**` field** (internal-design
+   `RESEARCH_RESULT.md` for title/status/topic (date from the `Date:` line — the only
+   source, now that the folder name carries none; `Updated` falls back to `Date`), and
+   **when the header carries a `Target:` line, carry it into the entry's `**Target**`
+   field** (internal-design
    lens researches — see "Research tags"; omit the field when the header has none).
    Skip and warn on a missing `RESEARCH_RESULT.md`.
 4. Rewrite the index (header + entries, newest-date first; same-date alphabetical).

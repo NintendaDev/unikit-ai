@@ -12,14 +12,31 @@ When the conversation crystallizes, **offer** to save (never auto-save):
 
 ```
 AskUserQuestion: Save this research to .unikit/gamedesign/researches/?
-Research name: <date>_<kebab-slug>
+Research name: <kebab-slug>
 Options: 1. 💾 Yes — save   2. 🚫 No
 ```
 
-On yes:
+On yes, **before creating anything**, check for a collision — the check has to precede the
+folder, or it observes a directory it just made and fires every time.
+
+**Collision — the slug already exists.** A folder `researches/<slug>/` is already there → ask, never decide it yourself:
+
+```
+AskUserQuestion: A research named "<slug>" already exists.
+
+Options:
+1. Update it — rewrite in place; `Updated:` moves, `Date:` is left alone
+2. Save under another name — I'll enter a different slug
+```
+
+Then print `INFO [gd-research] <slug> exists — updating it` or `INFO [gd-research] saving as <new-slug>`.
+
+**Appending an automatic suffix is forbidden.** The date used to separate two runs at one topic on its own; without it there is a single name, and a silently suffixed second folder splits one research into two that no reader knows to join.
+
+Then create the folder (a no-op when option 1 resolved to an existing one):
 
 ```bash
-mkdir -p .unikit/gamedesign/researches/<date>_<slug>
+mkdir -p .unikit/gamedesign/researches/<slug>
 ```
 
 1. **`RESEARCH_RESULT.md`** — the complete research: every dissection, comparison

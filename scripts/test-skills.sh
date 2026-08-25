@@ -3858,6 +3858,82 @@ else
     fail "NM dateless-naming contract broken:$NM_WHY"
 fi
 
+# =============================================
+# GN: the ADR-0003 boundary - a date in a NAME is allowed exactly when the artifact is an
+# entry in an event log. Half of this family is ordinary (the date is gone from the two
+# addressable gamedesign artifacts); the other half is unusual and is the reason the family
+# exists: it asserts POSITIVELY that three event logs still carry theirs. A later "let's
+# finish the unification" would otherwise break a cursor and make repeated reviews overwrite
+# each other, and both failures surface far from their cause.
+# Placed after the NM family; reuses the GD_* path vars declared with the gamedesign block
+# far above, and `set -u` forbids the other direction.
+# =============================================
+GN_SAVE_RESEARCH="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+GN_RECON_INPUT="$ROOT_DIR/skills/unikit-gd-explore/references/mode-recon-input.md"
+GN_INIT_INDEX="$ROOT_DIR/skills/unikit-gd-explore/references/init-index.md"
+GN_RECON_SKILL="$ROOT_DIR/skills/unikit-gd-recon/SKILL.md"
+GN_MODE_IMPORT="$ROOT_DIR/skills/unikit-gd-spec/references/mode-import.md"
+GN_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
+GN_EVOLVE_SKILL="$ROOT_DIR/skills/unikit-evolve/SKILL.md"
+GN_WHY=""
+
+# (GN-1) The date is gone from the two ADDRESSABLE gamedesign artifacts.
+# Scope is these eight files by name, deliberately NOT `skills/**`: `unikit-gd-review` and
+# `unikit-fix` are REQUIRED to carry `<date>_`, so a directory-wide negative would contradict
+# GN-2 below.
+GN_ADDRESSABLE=("$GD_EXPLORE_SKILL" "$GN_SAVE_RESEARCH" "$GN_RECON_INPUT" "$GN_RECON_SKILL" "$GN_MODE_IMPORT" "$GD_SYSTEM_SKILL" "$GD_BRAINSTORM_SKILL" "$GD_GAME_TPL")
+for f in "${GN_ADDRESSABLE[@]}"; do
+    n="$(basename "$f")"
+    if [[ ! -s "$f" ]]; then GN_WHY+=" GN-1:$n-missing"; continue; fi
+    for tok in '<date>_' '{YYYY-MM-DD}_'; do
+        if grep -qF "$tok" "$f"; then GN_WHY+=" GN-1:$n-dated[$tok]"; fi
+    done
+done
+# The positive, without which an emptied file passes: the dateless forms are actually named.
+grep -qF 'researches/<slug>/'  "$GN_SAVE_RESEARCH"    || GN_WHY+=" GN-1:save-research-no-dateless-form"
+grep -qF 'concepts/<slug>/'    "$GD_BRAINSTORM_SKILL" || GN_WHY+=" GN-1:brainstorm-no-dateless-form"
+
+# (GN-2) The three EVENT LOGS kept their date. A positive guard on the presence of a date is
+# rare in this suite, and each of the three lines has a mechanism behind it, not a habit:
+#   - `/unikit-evolve` stores `last_processed_patch` in `patch-cursor.json` and compares
+#     patch names as STRINGS, so lexicographic order of names IS the cursor;
+#   - `/unikit-fix` reads the last 10 patches by filename descending, which is the same
+#     ordering read a second way;
+#   - a review report without a date collides by construction - one scope is reviewed many
+#     times, and finding ids `RF-<YYYY-MM-DD>-<n>` already carry the date and are cited from
+#     changelog entries.
+grep -qF 'reviews/<date>_review-<scope>.md' "$GD_REVIEW_SKILL" || GN_WHY+=" GN-2:review-report-lost-its-date"
+grep -qF 'YYYY-MM-DD-HH.mm.md'   "$GN_FIX_SKILL"    || GN_WHY+=" GN-2:patch-name-format-gone-from-fix"
+grep -qF 'by filename descending' "$GN_FIX_SKILL"   || GN_WHY+=" GN-2:patch-ordering-rule-gone"
+grep -qF 'patch-cursor.json'      "$GN_EVOLVE_SKILL" || GN_WHY+=" GN-2:cursor-file-gone"
+grep -qF 'last_processed_patch'   "$GN_EVOLVE_SKILL" || GN_WHY+=" GN-2:cursor-key-gone"
+grep -qF 'YYYY-MM-DD-HH.mm.md'    "$GN_EVOLVE_SKILL" || GN_WHY+=" GN-2:patch-name-format-gone-from-evolve"
+
+# (GN-3) The import reader knows BOTH globs, because no folder was renamed.
+# A producer edited without its reader is how `researches/<date>_import-*/` would quietly stop
+# finding anything; listing only the NEW glob would break the opposite half just as quietly.
+grep -qF 'researches/import-*/SOURCE.md'  "$GD_SYSTEM_SKILL" || GN_WHY+=" GN-3:no-current-import-glob"
+grep -qF 'researches/*import-*/SOURCE.md' "$GD_SYSTEM_SKILL" || GN_WHY+=" GN-3:no-legacy-import-glob"
+# And the reason the other three readers needed no edit at all: discovery runs on the `Target:`
+# tag, which does not depend on a folder name. Asserted so that a future rewrite onto names
+# has to delete this line first.
+grep -qF 'Target:' "$GD_SYSTEM_SKILL" || GN_WHY+=" GN-3:target-tag-mechanism-unnamed"
+
+# (GN-4) The collision policy is stated on both gamedesign producers.
+# Same one -qF literal over two files that NM-6 uses over the code side, and for the same
+# reason: without the date a repeated run yields the SAME name, so a silent suffix is the
+# default failure rather than an exotic one.
+for f in "$GN_SAVE_RESEARCH" "$GD_BRAINSTORM_SKILL"; do
+    n="$(basename "$f")"
+    grep -qF 'automatic suffix' "$f" || GN_WHY+=" GN-4:$n-no-suffix-ban"
+done
+
+if [[ -z "$GN_WHY" ]]; then
+    pass "GN-1..GN-4 gamedesign researches and concepts are dateless; the three event logs keep their date; the import reader knows both globs"
+else
+    fail "GN dated-name boundary broken:$GN_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # UR: ultra research — the second ultra marker, and the identifier contract.
 # ─────────────────────────────────────────────

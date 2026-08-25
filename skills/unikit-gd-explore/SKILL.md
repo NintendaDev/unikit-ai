@@ -473,7 +473,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
   report belongs to `unikit-gd-review`. It writes **nothing else** — not the GDD, not
   `researches/` (this review-file mode never opens a `researches/` folder).
 - **RECON-input mode (research + backlink).** Developing a `unikit-gd-recon` `RECON.md`
-  (the pre-GDD carve-out) saves the research the **normal** way (`researches/<date>_<slug>/`)
+  (the pre-GDD carve-out) saves the research the **normal** way (`researches/<slug>/`)
   and appends a `research:` **backlink** into RECON.md's `## Explorations` section — a
   **sanctioned write into a file this skill does not own** (`RECON.md` belongs to
   `unikit-gd-recon`), limited to that section. It then recommends `/unikit-gd-spec
