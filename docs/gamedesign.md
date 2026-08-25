@@ -281,7 +281,7 @@ command.
 
 | Lens | Reads | Used for | Output |
 |---|---|---|---|
-| **Reference & market** | external references, market signals (`references/market-scan.md`) | dissecting a reference game's mechanics → dynamics → aesthetics, checking a genre/mechanic's market fit | `.unikit/gamedesign/researches/<date>_<slug>/` |
+| **Reference & market** | external references, market signals (`references/market-scan.md`) | dissecting a reference game's mechanics → dynamics → aesthetics, checking a genre/mechanic's market fit | `.unikit/gamedesign/researches/<slug>/` |
 | **Internal design** | the GDD workspace, read-only | improving an existing system, inventing a new mechanic, or working out a flow — for *this* game | a research brief + a routed next command |
 | **Code-grounded** | the named code slice, read-only, post-GDD | "how is our X actually built?" | a brief tagged `provenance: extracted from code` — see **Brownfield adoption** below |
 
@@ -315,7 +315,7 @@ self-register, so there is no spec add-flow / add-content step to route through.
 Two research artifacts behave differently on re-entry: a **review file**
 (`reviews/*_review-*.md`) is mutated **in place** — the research bucket develops into an
 apply-ready fix, closing with one `/unikit-gd-apply reviews/X.md` — while a fresh topic
-gets its own `researches/<date>_<slug>/` folder, and a `RECON.md` keeps the reconstruction
+gets its own `researches/<slug>/` folder, and a `RECON.md` keeps the reconstruction
 and gains a `## Explorations` backlink.
 
 ---

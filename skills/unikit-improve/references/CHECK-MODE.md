@@ -28,7 +28,7 @@ This file describes the optional findings-validation pass that runs when `unikit
 Two finding classes are **not** sent to the validator:
 
 - **🔄 Dependency Fixes** — recomputed in phase (b) against the post-(a) plan state, exactly as in `aif-improve`. Not validated, not counted.
-- **Research-Based Findings** (`research_improvements`, produced by Step 1.5) — **EXCLUDED from `+check` entirely**. Rationale: these are research-derived deltas (constraint/interface/contradiction findings traced to a `RESEARCH_BRIEF.md`), not codebase-traceable claims the fresh-context validator can verify against the repository. They render in their own Step 4 "Research-Based Findings" section unchanged, and the `+check` counters never include them.
+- **Research-Based Findings** (`research_improvements`, produced by Step 1.5) — **EXCLUDED from `+check` entirely**. Rationale: these are research-derived deltas (constraint/interface/contradiction findings traced to a research's `## Active Summary`), not codebase-traceable claims the fresh-context validator can verify against the repository. They render in their own Step 4 "Research-Based Findings" section unchanged, and the `+check` counters never include them.
 
 ## Procedure
 

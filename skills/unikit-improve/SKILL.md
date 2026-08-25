@@ -19,6 +19,7 @@ allowed-tools:
   - Bash(wc *)
   - Bash(shasum *)
   - Bash(sha256sum *)
+  - Bash(date *)
   - Agent
   - AskUserQuestion
   - Skill
@@ -193,12 +194,10 @@ If `$ARGUMENTS` contains `--list`, run read-only discovery and **STOP**:
 2. Check if .unikit/code/FIX_PLAN.md exists (bugfix plan from /unikit-fix)
 3. Get current branch:
    git branch --show-current
-4. Scan .unikit/code/plans/ for all feature folders (both YYYY-MM-DD_name and legacy DDD-name formats)
+4. Scan .unikit/code/plans/ for all feature folders (all three name formats — see Branch match)
 5. For each, check if its .unikit/code/plans/<folder>/PLAN.md has uncompleted tasks (- [ ])
-6. Mark which folder matches the current git branch (if any):
-   - Extract feature name from branch (e.g. feature/customers-system → customers-system)
-   - Match folder ending with _<feature-name> (new format) or *-<feature-name> (legacy)
-7. Print availability summary (sorted lexicographically descending — newest first):
+6. Mark which folder matches the current git branch (if any), by the three formats of Branch match
+7. Print availability summary (sorted by the manifest's Updated: descending — newest first):
 
 ## Available Feature Plans
 
@@ -207,14 +206,14 @@ Current branch: feature/customers-system
 💾 Fast plan: .unikit/code/PLAN.md (3 tasks remaining)
 🔧 Fix plan:  .unikit/code/FIX_PLAN.md (2 tasks remaining)
 
-  * 🔄 2026-03-08_customers-system        ← matches branch (4 tasks remaining)
+  * 🔄 customers-system                   ← matches branch (4 tasks remaining)
     ✅ 2026-03-10_customers-service-pool   (completed)
-    🔄 2026-03-09_customer-config-refactor (2 tasks remaining)
+    🔄 002-customer-config-refactor        (2 tasks remaining)
 
 Use:
   /unikit-improve                                              # auto-detect (.unikit/code/PLAN.md → branch → latest)
   /unikit-improve customers-system                             # by name
-  /unikit-improve @.unikit/code/plans/2026-03-08_customers-system  # by path
+  /unikit-improve @.unikit/code/plans/customers-system         # by path
 
 8. STOP.
 ```
@@ -253,10 +252,9 @@ If `$ARGUMENTS` is empty (no parameters):
    - Check if `.unikit/code/FIX_PLAN.md` exists (bugfix plan from `/unikit-fix`)
    - Get current git branch: `git branch --show-current`
    - If on a `feature/*` branch → extract the feature name part (e.g., `feature/customers-system` → `customers-system`)
-   - Scan `.unikit/code/plans/` for folders whose name **ends with** `_<feature-name>` (new format)
-     or matches `*-<feature-name>` (legacy `DDD-*` format)
-     - Example: branch `feature/customers-system` matches folder `2026-03-08_customers-system` or `001-customers-system`
-   - If no branch match → sort all folders **lexicographically descending** and note the first one as "latest folder plan"
+   - **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+     - Example: branch `feature/customers-system` matches folder `customers-system`, `2026-03-08_customers-system` or `001-customers-system`
+   - If no branch match → **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite. Note the winner as "latest folder plan"
 
 2. **Resolve ambiguity:**
    - If **no candidates** found (no flat plans, no folder plans) → show "No plans found" message and **STOP**:
@@ -298,7 +296,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 ### Step 1: Load Feature Plan
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
-- If the manifest has a `## Based on` section → parse all linked research entries (folder name + `Brief SHA256` for each — the field may be absent, see Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH_BRIEF.md` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
+- If the manifest has a `## Based on` section → parse all linked research entries (folder name + the recorded hash field for each — it may be absent, or it may be a legacy digest recorded against the retired brief field, see Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH.md` — `## Active Summary` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
 
 Understand:
 - Feature scope and goals
@@ -306,7 +304,7 @@ Understand:
 - Dependencies between tasks
 - Which tasks are already completed (checkboxes `- [x]`)
 - Architecture decisions made
-- Which researches are linked, and the `Brief SHA256` recorded for each
+- Which researches are linked, and the `Summary SHA256` recorded for each
 
 ### Step 1.5: Research Check
 
@@ -315,25 +313,28 @@ Check whether research context has changed since the plan was created or if new 
 #### Case A: Plan has linked researches (`## Based on` exists with entries)
 
 1. For each entry in `linked_researches`:
-   - Recompute the SHA256 of that research's `RESEARCH_BRIEF.md` using the same five normalization rules as `/unikit-plan`: strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, and no reformatting (line order and leading whitespace preserved). Feed the normalized text through **stdin, never a temp file** — `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`.
-   - Recomputed ≠ recorded → emit `WARN [research-drift]: <folder> — linked brief is no longer byte-identical to the one this plan was built from` and mark `research_updated = true`. Say it that way and not "the research changed": the brief is regenerated wholesale on every save, so the honest claim is about identity of the input, not about the intent of its author.
-   - Recomputed == recorded → unchanged, whatever any timestamp says.
-   - No `Brief SHA256` recorded (an older plan, or the hash tool was unavailable at planning time) → drift is **unknown**, not false. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)` and offer the user a re-link, which records a hash from now on. This branch only **asks** — the write is Step 5.5 item 3, and an offer whose write step does not exist is worse than no offer: it leaves the user believing the state was cleared.
-     **Do NOT fall back to any older timestamp field.** A reader that still parses a field nothing writes any more is a mechanism that rots silently and cannot be told apart from a working one — and it would make the negative half of guard RD-A impossible to assert, which is the only thing standing between this change and a half-applied replacement.
-   - `RESEARCH_BRIEF.md` missing or unreadable → emit `WARN [research-drift]: <folder> source missing`.
+   - **Only when the entry carries a `Summary SHA256`**, recompute the SHA256 of the region between the `## Active Summary` markers of that research's `RESEARCH.md`, using the same procedure as `/unikit-plan`. An entry that carries no `Summary SHA256` is resolved by the legacy bullet or the no-hash bullet below and **nothing is recomputed for it** — settling that first is what keeps a pre-manifest entry from being reported as drifted instead of unknown. **Rule 0** — extract the text between `<!-- unikit:active-summary:start -->` and `<!-- unikit:active-summary:end -->`, excluding the marker lines themselves; both markers are matched as whole lines. Then the five normalization rules: strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, and no reformatting (line order and leading whitespace preserved). Feed the normalized text through **stdin, never a temp file** — `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`. Rule 0 runs on text already read; it needs no grant of its own.
+   - Recomputed ≠ the recorded `Summary SHA256` → emit `WARN [research-drift]: <folder> — the linked Active Summary is no longer byte-identical to the one this plan was built from` and mark `research_updated = true`. Say it that way and not "the research changed": the summary is rewritten wholesale whenever the research is saved, so the honest claim is about identity of the input, not about the intent of its author.
+   - Recomputed == the recorded `Summary SHA256` → unchanged, whatever any timestamp says.
+   - The entry carries a `Brief SHA256` and no `Summary SHA256` → drift is **unknown**, and nothing is recomputed: the recorded digest describes the retired brief field, a different object, so comparing it against the summary would report "the research changed" where the honest answer is "there is no mechanism here". Emit `WARN [research-drift]: <folder> drift unknown (recorded against the retired brief field)` and offer the user a re-link, which replaces the dead line. This branch only **asks** — the write is Step 5.5 item 3.
+   - No hash field of either name recorded (an older plan, or the hash tool was unavailable at planning time) → drift is **unknown**, not false. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)` and offer the user a re-link, which records a hash from now on. This branch only **asks** — the write is Step 5.5 item 3, and an offer whose write step does not exist is worse than no offer: it leaves the user believing the state was cleared.
+     **Do NOT fall back to any older timestamp field.** A reader that still parses a field nothing writes any more is a mechanism that rots silently and cannot be told apart from a working one — and it would make the negative half of guard RD-A impossible to assert, which is the only thing standing between this change and a half-applied replacement. **The fallback is forbidden in the other direction too:** never read a digest recorded against the retired brief field as if it were a `Summary SHA256`. The two name different objects, and comparing across them reports a change nobody made.
+   - `RESEARCH.md` missing or unreadable, or its `## Active Summary` markers absent or duplicated → emit `WARN [research-drift]: <folder> source missing`.
    - Neither `shasum` nor `sha256sum` available → emit `WARN [research-drift]: no SHA256 tool available — drift checks skipped` **once** for the whole run, and continue.
 
-   The label `WARN [research-drift]` is canonical and shared with `/unikit-implement` and `/unikit-verify`; per-branch labels would make the outcomes indistinguishable when a log is grepped for drift.
+   The label `WARN [research-drift]` is canonical and shared with `/unikit-implement` and `/unikit-verify`; per-branch labels would make the outcomes indistinguishable when a log is grepped for drift. The two "unknown" branches are worded apart on purpose: one needs a re-link that replaces a dead line, the other one that records a first hash, and the log is the only place that difference is visible.
 
 2. If any `research_updated = true`:
-   - Re-read the updated research's `RESEARCH_BRIEF.md`
+   - Re-read the updated research's `## Active Summary`, and `CONTRACTS.md` when it exists
    - Compare new constraints, interfaces, and decisions against the current manifest — its `## Technical Context` and its `## Checklist`
    - Collect differences as `research_improvements` (these will appear in the report under a dedicated section)
 
 3. After processing linked researches → check for **new** researches:
    - Read `.unikit/code/researches/INDEX.md`
-   - The boundary for "researches newer than this plan" is the **plan's own date**, not a per-research field: a folder plan uses the `YYYY-MM-DD` prefix of its folder name; the flat `.unikit/code/PLAN.md` uses the file's modification time. The plan folder's date is the moment the plan was created, which is exactly the question this filter asks — per-research link timestamps answered it only by coincidence, because all of them were written in the same session.
-   - Filter index for researches with `Date` **newer** than that boundary
+   - The boundary for "researches newer than this plan" is the manifest's own `Created:` field — the header field the on-disk migration backfilled into every plan. It is **not** read from the folder name and **not** from the file's modification time: the folder name is losing its date prefix, and mtime is rewritten by `git checkout` and by a fresh clone, so both answer this question only by luck. The flat `.unikit/code/PLAN.md` uses the same field.
+   - A manifest carrying no `Created:` is a plan the migration has not reached. Say so and skip this sub-step rather than guess a boundary: `WARN [plan] <plan>: manifest has no Created — cannot bound "researches newer than this plan"; run unikit-ai update`.
+   - Filter the index for records whose `Updated` is **newer** than that boundary and whose `Lifecycle` is not `superseded` (a record carrying no `Lifecycle` line counts as `active`)
+   - **Log the drop**, always, in the form `/unikit-plan` uses: `INFO [research] index: <N> entries, <K> shown (<a> not newer than the plan, <b> superseded)`. A record with no `Updated` is excluded and **named** — `WARN [research] <folder>: index row has no Updated — excluded; run /unikit-explore to redraw the index` — never guessed at from another field.
    - Take up to 5 entries, check relevance against the plan's feature scope (compare Summary against plan Overview)
    - If relevant entries found → ask user:
      ```
@@ -349,7 +350,7 @@ Check whether research context has changed since the plan was created or if new 
      2. Let me pick (specify numbers)
      3. Skip — improve without new researches
      ```
-   - If user selects researches → read their `RESEARCH_BRIEF.md`, add findings to `research_improvements`, and prepare to attach them to `## Based on` in Step 5
+   - If user selects researches → read their `RESEARCH.md` (`## Active Summary` first, then `CONTRACTS.md` when it exists), add findings to `research_improvements`, and prepare to attach them to `## Based on` in Step 5
 
 4. If no updates and no new relevant researches → proceed to Step 2 silently.
 
@@ -359,10 +360,11 @@ Check whether research context has changed since the plan was created or if new 
 
 2. **Check index** — if no session context:
    - Read `.unikit/code/researches/INDEX.md`
-   - Take the **last 5 entries** (index is sorted newest-first)
+   - Drop records whose `Lifecycle` is `superseded` (a record carrying no `Lifecycle` line counts as `active`), then take up to 5 entries — the **first 5**, because the index is sorted newest-first, so these are the most recent
+   - **Log the drop**, always, in the same form as Case A: `INFO [research] index: <N> entries, <K> shown (<c> superseded)`
    - Check relevance against the plan's feature scope
    - If relevant entries found → ask user (same question format as Case A step 3)
-   - If user selects → read their `RESEARCH_BRIEF.md`, add to `research_improvements`, prepare to attach in Step 5
+   - If user selects → read their `RESEARCH.md` (`## Active Summary` first, then `CONTRACTS.md` when it exists), add to `research_improvements`, prepare to attach in Step 5
 
 3. If nothing found or user skips → proceed to Step 2 silently.
 
@@ -521,7 +523,7 @@ If the user provided improvement instructions beyond just a feature name:
 **3.8: Research consistency (only when `research_improvements` is non-empty)**
 
 If Step 1.5 produced `research_improvements` (from updated or newly linked researches):
-- Compare research `RESEARCH_BRIEF.md` constraints against the manifest's `### CONSTRAINTS` — find mismatches
+- Compare the research's `## Active Summary` → `Constraints:` against the manifest's `### CONSTRAINTS` — find mismatches
 - Find interfaces defined in research but missing from plan tasks
 - Find decisions in research that contradict plan tasks
 - Flag research open questions that the plan resolved without justification
@@ -680,9 +682,9 @@ For each task flagged for improvement:
 
 Only when `research_improvements` is non-empty (Step 1.5 found updates):
 
-1. **Newly attached researches** — for each new research the user selected in Step 1.5: add a new entry to `## Based on` using the Research Reference Format from `/unikit-plan` (folder name, a freshly computed `Brief SHA256`, file links). If `## Based on` section doesn't exist yet, create it after `## Overview`.
+1. **Newly attached researches** — for each new research the user selected in Step 1.5: add a new entry to `## Based on` using the Research Reference Format from `/unikit-plan` (folder name, a freshly computed `Summary SHA256`, file links). If `## Based on` section doesn't exist yet, create it after `## Overview`.
 
-2. **Re-linked researches** — for an entry already in `## Based on` that carries **no** `Brief SHA256` and whose re-link the user accepted in Step 1.5: compute the hash of the current `RESEARCH_BRIEF.md` by the procedure above and write a `- **Brief SHA256**: <64 hex chars>` line into that entry, dropping the dead `- **Attached**: …` line (the retired link-timestamp field) if the plan still carries one. This is the only writer that **records the field on an entry that has none**: the on-disk plan migration rewrites the manifest but never touches `## Based on`, so without this branch a plan created before the field reports `drift unknown` on every run forever, and `/unikit-verify` holds its gate at `warn` with no command able to clear it. The recorded hash describes what the brief is **now**, and that is honest only because the user was asked: an accepted re-link writes the earlier drift off as unknowable, it does not measure it. Never perform this write without that answer — silently hashing at read time would claim "no drift" about a period nobody looked at.
+2. **Re-linked researches** — for an entry already in `## Based on` that carries **no** `Summary SHA256` and whose re-link the user accepted in Step 1.5: compute the hash of that research's current `## Active Summary` region by the procedure above and write a `- **Summary SHA256**: <64 hex chars>` line into that entry. "No field" covers **two** shapes and the branch handles both — an entry with no hash line at all, and an entry still carrying a legacy `- **Brief SHA256**: …` line, which is deleted as the new line is written, dropping the dead `- **Brief SHA256**: …` line (the retired brief field) exactly the way the dead `- **Attached**: …` line (the retired link-timestamp field) is dropped if the plan still carries one. This is the only writer that **records the field on an entry that has none**: the on-disk plan migration rewrites the manifest but never touches `## Based on`, so without this branch a plan created before the field reports `drift unknown` on every run forever, and `/unikit-verify` holds its gate at `warn` with no command able to clear it. The recorded hash describes what the summary is **now**, and that is honest only because the user was asked: an accepted re-link writes the earlier drift off as unknowable, it does not measure it. Never perform this write without that answer — silently hashing at read time would claim "no drift" about a period nobody looked at.
 
 3. **Drifted researches** — do **NOT** rewrite the hash automatically. A stale hash is the record of what the plan was built against; overwriting it silently erases the only evidence that the plan and its source have diverged, at the exact moment that evidence is needed. Rewrite it **only** when the user explicitly asks for a rebase onto the new research, and only together with the corresponding updates to the tasks and to `## Technical Context`.
 
@@ -703,7 +705,9 @@ Only when the applied improvements changed the technical picture:
 
 The section always exists — there is no "create it if missing" branch any more.
 
-**5.7: Update Overview section**
+**5.7: Update Overview section and the header timestamp**
+
+Move the header's `Updated:` to today's date (`Bash(date *)`) — unconditionally, because reaching Step 5 at all means the manifest was rewritten, and that field is what every "latest plan" resolver sorts on. `Created:` is never rewritten: it records when the plan was made, not when it was last touched.
 
 If the total number of tasks or phases changed significantly (added a phase, removed multiple tasks):
 1. Update `## Overview` task/phase counts
@@ -715,7 +719,7 @@ If the total number of tasks or phases changed significantly (added a phase, rem
 ## Plan Improved
 
 Research updates: (only if research_improvements was non-empty)
-- Researches: N linked, M drifted, K rebased, R re-linked (list names) — drift is shown even when no rebase was requested; `re-linked` counts entries that had no `Brief SHA256` and now do
+- Researches: N linked, M drifted, K rebased, R re-linked (list names) — drift is shown even when no rebase was requested; `re-linked` counts entries that had no `Summary SHA256` — including those that carried the retired brief field's `Brief SHA256` — and now do
 - New researches attached: N (list names)
 - Constraints/interfaces updated from research: N
 
@@ -833,14 +837,14 @@ Current branch: feature/customers-system
 
   Fix plan:  .unikit/code/FIX_PLAN.md (2 tasks remaining)
 
-  * 2026-03-08_customers-system        ← matches branch (3 tasks remaining)
+  * customers-system                   ← matches branch (3 tasks remaining)
     2026-03-09_customer-config-refactor (completed)
-    2026-03-10_customers-service-pool   (5 tasks remaining)
+    001-customers-service-pool          (5 tasks remaining)
 
 Use:
   /unikit-improve                                              # auto-detect
   /unikit-improve customers-system                             # by name
-  /unikit-improve @.unikit/code/plans/2026-03-08_customers-system  # by path
+  /unikit-improve @.unikit/code/plans/customers-system         # by path
 ```
 
 ### Example 7: Fix plan auto-detected

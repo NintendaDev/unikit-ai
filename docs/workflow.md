@@ -163,10 +163,10 @@ In ultra the same box additionally holds `phase-NN-*.md` files.
 |---------|----------|-----------------|--------|
 | `/unikit-roadmap` | Strategic planning, milestones, long-term vision | No | `.unikit/ROADMAP.md` |
 | `/unikit-roadmap check` | Automated progress scan | No | Reads existing roadmap |
-| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<date>_<name>/` (optional - output can be used directly in the current session for fast planning) |
+| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` (optional - output can be used directly in the current session for fast planning) |
 | `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
-| `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/{date}_{name}/` |
-| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Yes | `.unikit/code/plans/{date}_{name}/` (`PLAN.md` + `phase-NN-*.md`) |
+| `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/<name>/` |
+| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Yes | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
 | `/unikit-implement` | Execute plan tasks one by one | No | Updates the plan manifest status |
@@ -236,23 +236,23 @@ High-level project planning with milestone tracking (5-15 milestones). Recommend
 
 Creates `.unikit/ROADMAP.md` - a strategic checklist of major milestones (not granular tasks). First run: explores codebase, asks for goals, generates roadmap. Subsequent runs: review progress, add/reprioritize/mark milestones done. `check` mode automatically scans the codebase and git history for evidence of completed milestones. `/unikit-implement` also checks the roadmap after completing plan tasks.
 
-### `/unikit-explore [init | topic]` - discovery before planning
+### `/unikit-explore [ultra | topic]` - discovery before planning
 
 ```
 /unikit-explore real-time multiplayer sync
 /unikit-explore the inventory system is getting complex
-/unikit-explore init
+/unikit-explore real-time-multiplayer-sync   # the slug of the first example → continues it
 ```
 
-Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/YYYY-MM-DD_name/` with three files:
+Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/<slug>/` with a single `RESEARCH.md` manifest:
 
-- `RESEARCH_RESULT.md` - structured research output with comparison tables, ASCII diagrams, and trade-off analysis
-- `RESEARCH_BRIEF.md` - agent-optimized summary designed for downstream workflow skills to consume efficiently
-- `RESEARCH_SOURCE.md` - aggregation of original prompts, agent questions, and all user answers that drove the research
+- `RESEARCH.md` - the whole research in one file: a header carrying `Created:` / `Updated:` / `Status:` / `Lifecycle:`, an `## Active Summary` between two markers (the declared input for planning), the measured `## Findings`, and an append-only `## Sessions` log
+- `SOURCE.md` - the original prompts, agent questions and user answers that drove the research; kept separate because it is a log that grows on its own and is read for its first forty lines
+- adaptive artifacts in `ultra` - a C4 view, ADRs, a dependency graph, a `CONTRACTS.md`, each written only when the subject actually produced one, and each *named with its reason* when it was not
 
-All three files are automatically picked up by `/unikit-plan` - the planner reads them, incorporates context from all angles (structured analysis, agent-readable brief, raw decision history), and links the research as a source in the generated plan. Saving artifacts is the recommended approach for maximum code quality, but not mandatory. For quick, straightforward solutions you can skip saving and call `/unikit-plan` directly in the current explore session - the planner will use the conversation context instead.
+`/unikit-plan` picks the research up from `researches/INDEX.md` and reads the `## Active Summary` as its declared input, using `## Findings` and the adaptive artifacts for rationale. Saving is the recommended approach for maximum code quality, but not mandatory. For quick, straightforward solutions you can skip saving and call `/unikit-plan` directly in the current explore session - the planner will use the conversation context instead.
 
-Maintains `researches/INDEX.md`; use `init` to rebuild the index from disk. When direction is clear, transition to `/unikit-plan`. Uses parallel Explore agents for deep codebase investigation.
+Re-running `/unikit-explore` on an existing slug **continues** that research rather than opening a second folder: `## Sessions` gains an entry, `Updated:` moves, and the summary above it is rewritten to say what is now true. `researches/INDEX.md` is regenerated from the folders on every save, so it cannot fall behind them - there is no separate rebuild command. When direction is clear, transition to `/unikit-plan`. Uses parallel Explore agents for deep codebase investigation.
 
 When a linked `gamedesign` workspace exists, it also grounds first-class on the design registry - systems, `flows:`, and `content_types:` in `GD-IDS.yaml` - resolving whichever axis the request actually names, so research stays consistent with the GDD (read-only; never edits it).
 
@@ -270,7 +270,7 @@ When a linked `gamedesign` workspace exists, it also grounds first-class on the 
 Four planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
-- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/YYYY-MM-DD_name/` with a single `PLAN.md` manifest
+- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/<name>/` with a single `PLAN.md` manifest. The folder name matches the branch name character for character; the date lives in the manifest's `Created:` / `Updated:` fields ([why](plan-files.md#why-a-plan-folder-has-no-date-and-a-patch-file-does))
 - **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: type `ultra`, or you get Full. Two mechanisms hold that, and both had to be repaired: the opt-in itself is the first-token parse in Step 0, and the **shape of what you get** is held by the redirect in `TASK-FORMAT.md` and by the `ULTRA-PLAN-FORMAT.md` specification. Without the second one, typing `ultra` still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
 - **Add** - extends an existing plan with new tasks
 

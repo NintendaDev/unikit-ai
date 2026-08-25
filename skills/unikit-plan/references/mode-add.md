@@ -11,7 +11,11 @@ Modifies an existing plan in-place. Never creates a new branch.
 ### Add Step 1: Find & Load Plan
 
 Use unified plan detection:
-1. Check both locations: `.unikit/code/PLAN.md` (fast plan) and `.unikit/code/plans/` (full plans — match by git branch `<configured branch prefix>*` → folder ending with `_<feature-name>`, or latest folder sorted lexicographically descending)
+1. Check both locations: `.unikit/code/PLAN.md` (fast plan) and `.unikit/code/plans/` (full plans, resolved as follows).
+
+   **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+
+   **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
 2. Both exist → ask user which to modify
 3. Only one exists → use it
 4. No plan found → tell user to create one first, **STOP**
@@ -44,6 +48,7 @@ Apply changes with Edit tool, preserving unaffected content (this list applies t
   - Add mode does **not** introduce a `## Settings` section and does not re-ask the editor-mode question — it extends an existing plan and inherits its settings.
 - Update the manifest's `## Total Estimated Effort`, `## Commit Plan` and `## Dependency Graph` as needed
 - Update the `## Technical Context` section if changes affect constraints, interfaces, or patterns
+- Move the header's `Updated:` to today's date (`Bash(date *)`). Add mode changes the plan's **content**, which is exactly what that field tracks; leaving it stale drops the plan behind untouched plans in every "latest" resolver. `Created:` is never rewritten.
 
 ### Add Step 3: Confirm
 

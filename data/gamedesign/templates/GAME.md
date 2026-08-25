@@ -3,7 +3,7 @@
 > **Status**: drafted | approved
 > **Version**: 1
 > **Last Updated**: [YYYY-MM-DD]
-> **Based on**: [concepts/<slug>.md (v<N>) | researches/<date>_import-*/SOURCE.md | —]
+> **Based on**: [concepts/<slug>/CONCEPT.md (v<N>) | researches/import-<slug>/SOURCE.md | —]
 
 <!-- Resolved genre profile (set by unikit-gd-spec). The canonical id of the bundled
      genre profile spec best-fit the CONCEPT `genre:` hint to and installed (e.g.

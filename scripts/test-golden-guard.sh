@@ -237,8 +237,21 @@ assert_workspace_migrated() {
     assert_exists "$d/.unikit/code/PLAN.md"                        "PLAN.md relocated under code/"
     assert_exists "$d/.unikit/code/FIX_PLAN.md"                    "FIX_PLAN.md relocated under code/"
     assert_exists "$d/.unikit/code/patches/2026-06-12-10.00.md"    "patches/ relocated under code/"
-    assert_exists "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH_RESULT.md" \
-        "researches/ subtree relocated under code/"
+    # `researches/` relocated AND its result file merged into one manifest —
+    # both steps run in the same `update` pass, exactly as for plans above, and
+    # this is the only place the ordering (1.1.0 relocate < 2.0.0 merge) is
+    # proved end to end. The fixture keeps seeding the LEGACY name on purpose:
+    # handing this guard an already-migrated folder would stop it checking the
+    # relocation at all.
+    assert_exists     "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH.md" \
+        "researches/ subtree relocated under code/ and merged into the manifest"
+    assert_not_exists "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH_RESULT.md" \
+        "no RESEARCH_RESULT.md after the manifest merge"
+    if [[ -s "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH.md" ]]; then
+        pass "merged research manifest is non-empty (a merge, not a truncation)"
+    else
+        fail "merged research manifest is empty — content was lost, not folded"
+    fi
     assert_exists "$d/.unikit/code/researches/INDEX.md"            "RESEARCHES_INDEX.md renamed → researches/INDEX.md"
     assert_not_exists "$d/.unikit/plans"            "no flat plans/ after migration"
     assert_not_exists "$d/.unikit/patches"          "no flat patches/ after migration"
@@ -329,14 +342,12 @@ printf '# tasks\n\n- [x] Task 1 shipped\n' \
     > "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md"
 printf '# Brief\n\n## CONSTRAINTS\n- MUST: archived\n' \
     > "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md"
-WS4_COMPLETED_TASKS_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md")"
 WS4_COMPLETED_BRIEF_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md")"
 
 # (b) in-flight and ALREADY merged — open task, manifest present, no brief.
 #     This is the case the original scenario meant: migrated, left alone.
 printf '# plan\n\n- [ ] Task 1 open\n' \
     > "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md"
-WS4_INFLIGHT_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md")"
 
 # (c) both names present — the refuse-to-overwrite branch. `movePath` is
 #     never called onto an existing destination, so both files survive.
@@ -345,7 +356,6 @@ printf '# tasks\n\n- [ ] Task 1 open\n' \
 printf '# plan\n\n- [ ] Task 1 open\n' \
     > "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md"
 WS4_BOTH_TASKS_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_both/TASKS.md")"
-WS4_BOTH_PLAN_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md")"
 
 echo "# straggler fast plan" > "$WS4/.unikit/PLAN.md"   # the only flat leftover
 
@@ -354,18 +364,40 @@ assert_cmd_exit 0 "update self-heals partial workspace" "$TMPDIR/ws4-update.log"
 assert_exists "$WS4/.unikit/code/PLAN.md" "straggler PLAN.md relocated under code/"
 assert_not_exists "$WS4/.unikit/PLAN.md" "flat PLAN.md straggler removed"
 
-assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" "$WS4_INFLIGHT_SHA" \
-    "already-merged plan left untouched by self-heal"
-assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" "$WS4_COMPLETED_TASKS_SHA" \
-    "completed plan: TASKS.md never renamed"
+# Asserted on what the MERGE would have done, not on a hash. The manifest is no
+# longer byte-identical after an `update` and that is not a regression: the
+# backfill (`plan-2-to-3-timestamps`) stamps every manifest, completed or not,
+# by design. A merge, by contrast, would have appended `## Technical Context`
+# and this body would not have survived intact.
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" '## Technical Context' \
+    "already-merged plan: the merge folded nothing into it a second time"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" '^- \[ \] Task 1 open$' \
+    "already-merged plan: its own body came through the self-heal untouched"
+# "Never renamed" asserted on the merge's traces rather than a hash, for the
+# third time in this family and for the same reason: `plan-2-to-3-timestamps`
+# stamps a completed plan under `TASKS.md` on purpose — that is the only name
+# the folder will ever have, and skipping it would be the selectivity of the
+# MERGE leaking into a step that declares it has none. A rename would have left
+# a `PLAN.md` (asserted below) and a fold would have appended a section.
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '## Technical Context' \
+    "completed plan: nothing was folded into TASKS.md"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '^- \[x\] Task 1 shipped$' \
+    "completed plan: TASKS.md kept its own checklist"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '^Created: 2026-06-12$' \
+    "completed plan: the backfill reached it under the legacy file name"
 assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md" "$WS4_COMPLETED_BRIEF_SHA" \
     "completed plan: PLAN-BRIEF.md never folded"
 assert_not_exists "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN.md" \
     "completed plan: no manifest created"
 assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_both/TASKS.md" "$WS4_BOTH_TASKS_SHA" \
     "both names present: TASKS.md left in place"
-assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md" "$WS4_BOTH_PLAN_SHA" \
-    "both names present: PLAN.md not overwritten"
+# Same reading as above. The claim is that `movePath` never landed TASKS.md on
+# top of PLAN.md, and the two fixtures differ in their H1 precisely so that the
+# claim can be made without a hash: an overwritten manifest would say `# tasks`.
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md" '^# plan$' \
+    "both names present: PLAN.md not overwritten by TASKS.md"
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md" '## Technical Context' \
+    "both names present: nothing was folded into PLAN.md either"
 
 # Why `detect` is mirrored branch-for-branch against every skip in `apply`:
 # a project carrying these two untouchable folders must not stay pending, or

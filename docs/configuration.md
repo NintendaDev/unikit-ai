@@ -118,7 +118,7 @@ git:
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `research_relevance_days` | Maximum age (in days) for research notes to be considered fresh by `/unikit-plan`. Older research is flagged as stale and a refresh is suggested. | `30` |
+| `research_relevance_days` | Maximum age (in days) for a research to be considered fresh by `/unikit-plan`, measured on the manifest's `Updated:`. Research older than this is **filtered out** of the planning question, not flagged. Since 2.0.0 the filtering is announced: `/unikit-plan` and `/unikit-improve` each print one `INFO [research] index: …` line naming how many entries were dropped and why. | `7` |
 
 ### `git` section
 

@@ -138,11 +138,11 @@ This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading
 
 Search logic — same as `/unikit-implement` (unified plan detection):
 
-1. If `$ARGUMENTS` specifies a folder name (e.g. `2026-03-10_core-loop` or legacy `NNN-feature-name`) → use it
+1. If `$ARGUMENTS` specifies a folder name (e.g. `core-loop`, `2026-03-10_core-loop`, or legacy `NNN-feature-name`) → use it
 2. Otherwise → auto-detect:
    a. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan)
-   b. **Git branch match** — if on `feature/*` branch, find folder ending with `_<feature-name>` (new format) or `*-<feature-name>` (legacy)
-   c. **Latest by date** (fallback) — sort all folders lexicographically descending, pick first (YYYY-MM-DD gives chronological order; legacy `DDD-*` sorts before `2xxx-*`)
+   b. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+   c. **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
 3. If no plan found (no `.unikit/code/PLAN.md` and `.unikit/code/plans/` is empty or doesn't exist):
 
 ```
@@ -170,25 +170,26 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 ### 0.2 Read Plan & Context
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases, dependencies and completion status, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
-- If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH_BRIEF.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research brief (`/unikit-plan`: it was synthesized from the research and then verified against the code). The research is read for **one** purpose only — the drift check below.
+- If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research summary (`/unikit-plan`: it was synthesized from the research and then verified against the code). The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, dependency rules, modules, namespace conventions
 - Read **`.unikit/ROADMAP.md`** (if present) — strategic milestones for alignment checks
 
-**Research drift check.** For each entry in `## Based on` that carries a `Brief SHA256` field:
+**Research drift check.** For each entry in `## Based on`:
 
-1. Recompute the SHA256 of that research's `RESEARCH_BRIEF.md` with the canonical five-rule normalization — strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, no reformatting (line order and leading whitespace preserved) — fed through **stdin, never a temp file**: `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`.
-2. Recomputed == recorded → say nothing and continue.
-3. Recomputed ≠ recorded → emit
-   `WARN [research-drift]: <folder> — linked brief is no longer byte-identical to the one this plan was built from`
-   and continue **against the plan**, not against the research. Do not expand scope, do not add tasks, do not rewrite the hash. A rebase is `/unikit-improve`'s job and happens only when the user explicitly asks for it. The wording is deliberate: the brief is regenerated wholesale on every save, so a mismatch proves the input is not the same bytes — not that the author changed their mind. Claiming the latter would make the warning read as a finding.
-4. `RESEARCH_BRIEF.md` missing or unreadable → emit `WARN [research-drift]: <folder> source missing` and continue against the plan.
-5. No `Brief SHA256` recorded (a plan predating this field) → drift is **unknown**, not absent. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)`.
-6. Neither `shasum` nor `sha256sum` available → emit `WARN [research-drift]: no SHA256 tool available — drift checks skipped` **once** for the whole run, and continue.
+1. **Only when the entry carries a `Summary SHA256`**, recompute the SHA256 of the region between the `## Active Summary` markers of that research's `RESEARCH.md`, by the canonical procedure. An entry that carries no `Summary SHA256` is resolved by branch 5 or branch 6 and **nothing is recomputed for it** — the branches are read in order, so this precondition is settled before the first comparison, and skipping it is how a pre-manifest entry gets reported as drifted instead of unknown. **Rule 0** — extract the text between `<!-- unikit:active-summary:start -->` and `<!-- unikit:active-summary:end -->`, excluding the marker lines themselves; both markers are matched as whole lines. Then the five normalization rules — strip a leading **UTF-8 BOM**, LF line endings, trailing spaces trimmed from every line, exactly **one final newline**, no reformatting (line order and leading whitespace preserved) — fed through **stdin, never a temp file**: `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum`. Rule 0 runs on text already read; it needs no grant of its own.
+2. Recomputed == the recorded `Summary SHA256` → say nothing and continue.
+3. Recomputed ≠ the recorded `Summary SHA256` → emit
+   `WARN [research-drift]: <folder> — the linked Active Summary is no longer byte-identical to the one this plan was built from`
+   and continue **against the plan**, not against the research. Do not expand scope, do not add tasks, do not rewrite the hash. A rebase is `/unikit-improve`'s job and happens only when the user explicitly asks for it. The wording is deliberate: the summary is the declared input and is rewritten wholesale whenever the research is saved, so a mismatch proves the input is not the same bytes — not that the author changed their mind. Claiming the latter would make the warning read as a finding.
+4. `RESEARCH.md` missing or unreadable, or its `## Active Summary` markers absent or duplicated → emit `WARN [research-drift]: <folder> source missing` and continue against the plan.
+5. The entry carries a `Brief SHA256` and no `Summary SHA256` → emit `WARN [research-drift]: <folder> drift unknown (recorded against the retired brief field)`. Nothing is recomputed: the recorded digest describes a different object, and comparing it against the summary would print "the research changed" where the honest answer is "there is no mechanism here". The repair is the standard re-link in `/unikit-improve` Step 5.5.
+6. No hash field of either name recorded (a plan predating both) → drift is **unknown**, not absent. Emit `WARN [research-drift]: <folder> drift unknown (no hash recorded)`.
+7. Neither `shasum` nor `sha256sum` available → emit `WARN [research-drift]: no SHA256 tool available — drift checks skipped` **once** for the whole run, and continue.
 
-The label `WARN [research-drift]` is canonical and the same for every outcome; per-branch labels would make them indistinguishable when a log is grepped for drift.
+The label `WARN [research-drift]` is canonical and the same for every outcome; per-branch labels would make them indistinguishable when a log is grepped for drift. Branches 5 and 6 both report "unknown" and are worded apart on purpose: one needs a re-link, the other is merely older than the field, and the log line is the only place that difference is visible.
 
-There is no bundle-validation branch here. `## Based on` always names a folder under `.unikit/code/researches/`, and the hashed file is always `RESEARCH_BRIEF.md` — one shape, one filename. A source path that varies between a single configured file and a bundle entry point would need such a branch; UniKit's does not.
+There is no bundle-validation branch here. `## Based on` always names a folder under `.unikit/code/researches/`, and the hashed object is always one fixed section in one fixed file — one shape, one region. A source path that varies between a single configured file and a bundle entry point would need such a branch; UniKit's does not.
 
 **Skipping this drift check is a verification bug.** A verification that passed while the plan and its source had diverged is the one failure this check exists to prevent.
 

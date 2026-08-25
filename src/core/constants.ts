@@ -389,72 +389,22 @@ export function workspaceDir(projectDir: string, module: string): string {
   return path.join(projectDir, UNIKIT_DIR, module);
 }
 
-// --- Workspace artifacts (module-scoped project working files) ---
+// Workspace- and plan-artifact names live in `constants-artifacts.ts` (Part 7i
+// ceiling). Re-exported here rather than imported at each call site: this module
+// is the declared single point of the no-hardcode rule, and golden-guard #1 Part C
+// excludes it BY FILE NAME (`grep -vE 'constants\.ts|modules\.ts'`) — a name the
+// sibling does not match, so no literal Part C bans may live over there.
 //
-// Single source of truth for the flat→module relocation: pre-modular projects
-// keep these directly under `.unikit/`; the workspace migration moves each one
-// under `.unikit/<code-module>/`. The same inventory backs (a) the migration
-// (`workspace-migrations`), (b) the skill-layer path references that now carry
-// the `code/` segment, and (c) the golden-guard #3 regex that forbids the bare
-// form from reappearing in tracked content.
-
-/**
- * Plans directory inside a module workspace. Declared here rather than in the
- * plan-artifact block below because {@link WORKSPACE_ARTIFACT_DIRS} consumes it
- * at module-evaluation time — a `const` referenced before its own declaration
- * is a temporal-dead-zone error, not a hoisted read.
- */
-export const PLANS_DIR_NAME = 'plans';
-
-/** Directory artifacts that relocate 1:1 (same basename under the module dir). */
-export const WORKSPACE_ARTIFACT_DIRS = [PLANS_DIR_NAME, 'patches', 'researches'] as const;
-
-/** File artifacts that relocate 1:1 (same basename under the module dir). */
-export const WORKSPACE_ARTIFACT_FILES = ['PLAN.md', 'FIX_PLAN.md'] as const;
-
-/**
- * Artifacts that relocate AND change name. The legacy top-level researches
- * index (`RESEARCHES_INDEX.md`) becomes the per-directory `researches/INDEX.md`,
- * matching the convention that an index lives inside the directory it indexes.
- */
-export const WORKSPACE_ARTIFACT_RENAMES: readonly { from: string; to: string }[] = [
-  { from: 'RESEARCHES_INDEX.md', to: path.join('researches', 'INDEX.md') },
-];
-
-// --- Plan artifacts (files INSIDE a plan folder) ---
+// `export *` re-exports the names but does NOT bind them locally: a helper in
+// THIS file that referenced one would get `TS2304`, not working code. Anything
+// a helper here needs is therefore also imported by name, right here.
 //
-// Deliberately NOT part of WORKSPACE_ARTIFACT_* above: that inventory means
-// "artifact at the top of the workspace" and is consumed by golden-guard #3.
-// These names live one level deeper — inside every `plans/<folder>/` — and are
-// reachable only by walking that directory (see
-// `workspace-migrations/plan-artifact.ts`). The directory name itself is
-// `PLANS_DIR_NAME`, declared above next to its first consumer.
-
-/** The single manifest a plan folder carries after the merge. */
-export const PLAN_MANIFEST_FILE = 'PLAN.md';
-
-/** Pre-merge checklist file, renamed to {@link PLAN_MANIFEST_FILE}. */
-export const LEGACY_PLAN_TASKS_FILE = 'TASKS.md';
-
-/** Pre-merge technical brief, folded into the manifest's Technical Context. */
-export const LEGACY_PLAN_BRIEF_FILE = 'PLAN-BRIEF.md';
-
-/** The manifest heading the brief body is folded under. */
-export const PLAN_TECHNICAL_CONTEXT_HEADING = '## Technical Context';
-
-/** The horizontal rule that closes the manifest body before its Technical Context. */
-export const PLAN_CONTEXT_SEPARATOR = '---';
-
-/**
- * Cross-axis sections that live at `##` level in the manifest and must never be
- * demoted. `/unikit-verify` step 3.8 resolves `## Design` by its heading and
- * SKIPS THE CHECK SILENTLY when it is absent, so a demoted `### Design` does not
- * fail — it stops the design ACs being checked and stops `implemented_version`
- * being stamped, while the report reads "no ## Design section".
- */
-export const PLAN_LIFTED_HEADINGS = [
-  '## Design', '## Flow Context', '## Content Context',
-] as const;
+// There is no such helper at the moment. A `researchesDir(projectDir, module)`
+// briefly lived below this line; it went when the folder walk was generalised
+// over a DIRECTORY NAME in `workspace-migrations/workspace-folders.ts`, which
+// composes `workspaceDir` with `RESEARCHES_DIR_NAME` itself and left this one
+// without a caller. Restoring it means restoring the `import` line too.
+export * from './constants-artifacts.js';
 
 // --- Migration version anchors (`Migration.since`) ---
 //
@@ -483,3 +433,16 @@ export const MIGRATION_SINCE_MCP_VENDOR_CODES = '2.0.0';
  * would read as a dependency it does not have.
  */
 export const MIGRATION_SINCE_PLAN_MANIFEST = '2.0.0';
+
+/**
+ * Research folder carries one `RESEARCH.md` manifest (RESULT + BRIEF merged).
+ *
+ * Same value as {@link MIGRATION_SINCE_PLAN_MANIFEST} because an anchor names a
+ * RELEASE and 2.0.0 is not published yet (npm knows 1.1.0 as the newest). Its own
+ * constant for the same reason the plan anchor is its own: two independent
+ * changes that happen to share a release.
+ */
+export const MIGRATION_SINCE_RESEARCH_MANIFEST = '2.0.0';
+
+/** Plan manifest carries `Created:` / `Updated:` header fields (REQ-14). */
+export const MIGRATION_SINCE_PLAN_TIMESTAMPS = '2.0.0';

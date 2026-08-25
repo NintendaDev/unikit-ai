@@ -42,8 +42,11 @@ Based on choice:
   Where `<base_branch>` is resolved from: `--base` flag > `git.base_branch` from config > fallback `main`.
   Where `<git.branch_prefix>` defaults to `feature/` if not set in `.unikit/config.yaml`.
 
-  The branch name uses the feature name **without** the date prefix.
-  Example: folder `2026-03-10_item-appraisal-system` → branch `<git.branch_prefix>item-appraisal-system`.
+  The branch name and the plan folder name are now **the same string**:
+  branch `<git.branch_prefix><feature-name>`, folder `plans/<feature-name>/`. Folders
+  created before this change keep their `YYYY-MM-DD_` prefix and are matched by the
+  suffix branch of the resolver.
+  Example: folder `item-appraisal-system` → branch `<git.branch_prefix>item-appraisal-system`.
   If the branch already exists, ask: switch to existing or create with a different name?
 - No → stay on current branch, mark `branch_created = false`, continue to next step
 

@@ -25,6 +25,7 @@ allowed-tools:
   - Bash(git *)
   - Bash(shasum *)
   - Bash(sha256sum *)
+  - Bash(date *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -42,7 +43,7 @@ Create a structured feature plan and roadmap for the current {{engine_name}} pro
 
 Four modes:
 - **Fast** — quick plan, no git branch, saves to `.unikit/code/PLAN.md`
-- **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<dated-folder>/`
+- **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<feature-name>/`
 - **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. Reached **only** by the explicit `ultra` keyword — never offered, never inferred
 - **Add** — modify/extend an existing plan without creating a branch
 
@@ -52,70 +53,77 @@ Four modes:
 - **`.unikit/code/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
 - Temporary plan for quick work — `/unikit-implement` may offer deletion after completion.
 
-**Full mode** → folder `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/`:
+**Full mode** → folder `.unikit/code/plans/<feature-name>/`:
 - **`.unikit/code/plans/<folder>/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
 
 **Ultra mode** → the same folder, additively:
 - **`.unikit/code/plans/<folder>/PLAN.md`** — the same manifest, carrying the mode marker plus `## Phase Index` and `## Cross-Phase Dependencies`, with `## Technical Context` reduced to its cross-phase part.
 - **`phase-NN-<slug>.md`** — one file per phase, holding the task-scoped detail. The canonical shape of both is `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`.
 
-When a research is linked (from `/unikit-explore`), the plan references it via `## Based on` using the Research Reference Format below. The research's `RESEARCH_BRIEF.md` is used as **input** for generating the plan's own `## Technical Context`, not as a replacement — the plan's section reflects the actual codebase state at planning time and supersedes the research brief.
+When a research is linked (from `/unikit-explore`), the plan references it via `## Based on` using the Research Reference Format below. The research's `## Active Summary` is used as **input** for generating the plan's own `## Technical Context`, not as a replacement — the plan's section reflects the actual codebase state at planning time and supersedes the research summary.
 
 ### Research Reference Format
 
-Standard block for `## Based on` when linking to a research. Each entry records the SHA256 of the research's `RESEARCH_BRIEF.md` as it was at linking time. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute it to detect that the research actually changed — a content signal, not a clock comparison. The plan does **not** copy the brief: the plan's own `## Technical Context` is already a snapshot, and it is a better one because it was checked against the current code.
+Standard block for `## Based on` when linking to a research. Each entry records the SHA256 of the region between the `## Active Summary` markers of the research's `RESEARCH.md`, as it was at linking time. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute it to detect that the research actually changed — a content signal, not a clock comparison. The plan does **not** copy the summary: the plan's own `## Technical Context` is already a snapshot, and it is a better one because it was checked against the current code.
 
 ```
-### YYYY-MM-DD_name
-- **Brief SHA256**: <64 hex chars>
-- `RESEARCH_BRIEF.md` — structured technical context
-- `RESEARCH_RESULT.md` — full research (consult when brief is unclear)
-- `RESEARCH_SOURCE.md` — original exploration dialogue (only include if file exists)
+### <slug>
+- **Summary SHA256**: <64 hex chars>
+- `RESEARCH.md` — the manifest; its `## Active Summary` is the declared input
+- `CONTRACTS.md` — interfaces, patterns, files, DI bindings (include only if the file exists)
+- `SOURCE.md` — original exploration dialogue (include only if the file exists)
 ```
 
-Full paths are resolved from `.unikit/code/researches/<folder-name>/`. Example:
+Full paths are resolved from `.unikit/code/researches/<slug>/`. Example:
 
 ```
-### 2026-03-15_customer-items-on-scene
-- **Brief SHA256**: 9f2c1d4e7a05b83c6e1f0a94d27b5c38ea6417d9b0c25f83a1e46d7c92b0f5a1
-- `RESEARCH_BRIEF.md` — structured technical context
-- `RESEARCH_RESULT.md` — full research (consult when brief is unclear)
-- `RESEARCH_SOURCE.md` — original exploration dialogue
+### customer-items-on-scene
+- **Summary SHA256**: 9f2c1d4e7a05b83c6e1f0a94d27b5c38ea6417d9b0c25f83a1e46d7c92b0f5a1
+- `RESEARCH.md` — the manifest; its `## Active Summary` is the declared input
+- `CONTRACTS.md` — interfaces, patterns, files, DI bindings
+- `SOURCE.md` — original exploration dialogue
 ```
 
-**What is hashed: `RESEARCH_BRIEF.md`, whole, and nothing else.**
+The heading is the folder name, whatever that name is. Folders created before dateless naming keep the form `YYYY-MM-DD_name` — the on-disk migration merges a folder's contents but never renames it — so an entry reading `### 2026-03-15_customer-items-on-scene` is exactly as valid as the example above.
 
-The rule is: hash the requirements, never the log. A research file that mixes declared requirements with an append-only session log has to be hashed section by section, behind start/end markers, or every append reports drift that did not happen. UniKit already separates the two **by file**, so the same decision needs no markers here:
+An entry carrying `- **Brief SHA256**: …` predates the manifest: it hashed `RESEARCH_BRIEF.md`, the retired brief field, and it is never recomputed against the summary — the three readers report `drift unknown` and `/unikit-improve` Step 5.5 replaces it on an accepted re-link.
 
-| File | Role | Hashed |
-|------|------|--------|
-| `RESEARCH_BRIEF.md` | the planner's declared input — constraints, interfaces, patterns, files | **yes, whole** |
-| `RESEARCH_RESULT.md` | the full research; carries an `Updated:` line that changes on every revision | no — a record, and its timestamp is exactly the volatile field a hash must not see |
-| `RESEARCH_SOURCE.md` | the dialogue log (prompt-based explorations only) | no — a log. This skill reads it for context, and that is **not** a reason to hash it: any appended clarification would fire drift with the requirements unchanged |
+**What is hashed: the bytes between the `## Active Summary` markers of `RESEARCH.md`, and nothing else.**
 
-Do not add start/end markers to the brief to "match" some other format. The file split is the marker.
+The rule is unchanged — hash the requirements, never the log. What changed is where the requirements live. A manifest mixes declared requirements with an append-only session log, so it is hashed section by section, behind start/end markers. The earlier revision of this section rejected markers on the grounds that the file split already was one; the file split has been retired, because the split is what created the obligation to keep two documents in sync, and that cost was paid on every save.
+
+| Region / file | Role | Hashed |
+|---------------|------|--------|
+| `RESEARCH.md` → between the `## Active Summary` markers | the planner's declared input — constraints, requirements, decisions | **yes** |
+| `RESEARCH.md` → `## Findings`, `## Sessions`, the header | evidence and log; `Updated:` moves on every session | no — appending a session must **not** report drift |
+| `SOURCE.md`, `CONTRACTS.md`, ADR, C4, the dependency graph | log and rationale | no — this skill reads them for context, and that is **not** a reason to hash them: any appended clarification would fire drift with the requirements unchanged |
 
 **Computing the hash.** Normalize, then hash — never hash the raw bytes:
 
+0. **Extract the text between `<!-- unikit:active-summary:start -->` and `<!-- unikit:active-summary:end -->`, excluding the marker lines themselves.** Both markers are matched as whole lines. If either is missing, or either occurs more than once, the region is undefined: omit the `Summary SHA256` line and print `WARN [research] <folder>: Active Summary markers missing or duplicated — drift detection disabled for this link`.
 1. Strip a leading **UTF-8 BOM** if present.
 2. LF line endings — strip every carriage return (`CR`, byte `0x0D`).
 3. Trim trailing spaces from every line.
 4. Exactly **one final newline**.
-5. **Preserve line order and leading whitespace.** This is a prohibition, not a transformation: the brief carries fenced code blocks and an indented `## DEPENDENCY GRAPH`, and any well-meaning re-indentation breaks every hash that was ever recorded.
+5. **Preserve line order and leading whitespace.** This is a prohibition, not a transformation: the summary carries fenced code blocks and indented list structure, and any well-meaning re-indentation breaks every hash that was ever recorded.
 
 Feed the normalized text through **stdin, never a temp file**: `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum` when `shasum` is unavailable.
 
-HTML comments are **kept** in the hashed text. There is no pasted copy of the brief anywhere in the plan, so there is nothing to align the digest with. The brief's template comments are stable text: the template ships via `unikit-ai update`, existing briefs are project files and are never re-delivered, so a template edit cannot retroactively flip an already-recorded hash.
+Rule 0 is carried out on text this skill has **already read**, not by a separate shell command. It adds no grant: `allowed-tools` is unchanged by the move from a file to a region.
 
-Rejected alternative: `git hash-object` would reuse the existing `Bash(git *)` grant instead of adding two, and `.unikit/` is not gitignored so the brief is normally tracked. It is SHA-1 with a blob header — the field says SHA256 — and it would make the check depend on git while this skill explicitly supports `git.enabled: false`.
+HTML comments **inside** the region are kept in the hashed text; only the two marker lines are excluded, by rule 0. There is no pasted copy of the summary anywhere in the plan, so there is nothing to align the digest with. The manifest's template comments are stable text: the template ships via `unikit-ai update`, existing manifests are project files and are never re-delivered, so a template edit cannot retroactively flip an already-recorded hash.
 
-**When no hash tool is available.** If neither `shasum` nor `sha256sum` runs, **omit the `Brief SHA256` line entirely** and print one line to the user:
+Rejected alternative: `git hash-object` would reuse the existing `Bash(git *)` grant instead of adding two, and `.unikit/` is not gitignored so the manifest is normally tracked. It is SHA-1 with a blob header — the field says SHA256 — and it would make the check depend on git while this skill explicitly supports `git.enabled: false`.
+
+**When no hash tool is available.** If neither `shasum` nor `sha256sum` runs, **omit the `Summary SHA256` line entirely** and print one line to the user:
 
 ```
 WARN [research] no SHA256 tool available — drift detection disabled for this link
 ```
 
-Do not write a placeholder and do not substitute a timestamp: an absent field is honester than a field that looks like a hash and is not one. The same applies when a linked research has no `RESEARCH_BRIEF.md` — omit the line and print `WARN [research] <folder>: no RESEARCH_BRIEF.md`. Neither branch blocks plan creation: drift detection is a convenience, not a gate.
+Do not write a placeholder and do not substitute a timestamp: an absent field is honester than a field that looks like a hash and is not one.
+
+The same applies when the object itself is absent. A linked research with no `RESEARCH.md` — omit the line and print `WARN [research] <folder>: no RESEARCH.md`. A `RESEARCH.md` whose `## Active Summary` markers are missing or duplicated — omit the line and print the rule-0 warning above. None of these branches blocks plan creation: drift detection is a convenience, not a gate.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -240,9 +248,9 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
 
 1. **Check session context** — look in the current conversation history for results of `/unikit-explore`. If found, use the exploration topic and findings as the feature description and context.
 
-2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md` (if it exists). The index is sorted newest-first. Take the first entry and ask:
+2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md` (if it exists). The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active`, because records written before the field existed do not carry it — and ask:
    ```
-   AskUserQuestion: Found recent research: "<Title>" (<Date>)
+   AskUserQuestion: Found recent research: "<Title>" (<Created>)
    Use as basis for planning?
 
    Options:
@@ -252,6 +260,8 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
    Based on choice:
    - Yes → use research title/summary as description, mark `research_pre_linked = true` (skip research matching in Step 2)
    - No → proceed to ask user for description (step 3 below)
+
+   `<Created>` is the displayed field, and `Updated` is never substituted for it: `Created` exists for display and for breaking ties, `Updated` drives every filter and all sorting. A record with no `Created` is shown as `"<Title>" (date unknown)` — never with empty brackets, because an empty bracket is indistinguishable from normal and hides the gap in the dialogue the same way an unlogged filter hides it in Step 2.
 
 3. **No context available** — if neither session context nor researches exist, ask the user for a description:
    ```
@@ -360,16 +370,34 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
 **Full and ultra modes** → continue:
 
-3. **Get today's date** in `YYYY-MM-DD` format.
-4. Compose the folder name: `{YYYY-MM-DD}_{feature-name}` (e.g. `2026-03-10_item-appraisal-system`)
+3. **Get today's date** in `YYYY-MM-DD` format — it no longer goes into the folder name; it is the value of the manifest's `Created:` and `Updated:` fields (see the Plan Manifest Template in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`).
+4. The folder name **is** the feature name from step 2 — `<feature-name>`, no date and no separator prefix (e.g. `item-appraisal-system`).
 
 ```
 # Example
 ls .unikit/code/plans/
-# 2026-03-08_mini-games-editor/
-# 2026-03-09_customer-types/
-# → next: 2026-03-10_<new-feature>
+# 2026-03-08_mini-games-editor/    ← earlier format, left exactly as it is
+# customer-types/
+# → next: <new-feature>/
 ```
+
+5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
+
+   - No match → create `plans/<feature-name>/` and continue.
+   - A match → ask, and do not decide it yourself:
+
+   ```
+   AskUserQuestion: A plan named "<name>" already exists (<matched folder>).
+
+   Options:
+   1. Refine the existing plan — hand over to add mode
+   2. Choose another name — I'll enter a different slug
+   ```
+
+   - "Refine the existing plan" → hand control to the `add` body (`{{skills_dir}}/{{self_name}}/references/mode-add.md`) on the matched folder and print `INFO [plan] <name> exists — switching to add mode`.
+   - "Choose another name" → take the user's slug and repeat this check on it. On success print `INFO [plan] creating <new-name>`.
+
+   **Appending an automatic suffix (`-2`, `-v2`, a date) is forbidden.** The date used to be a separator as well as a sort key: two runs at the same feature produced two distinct names on their own. Without it there is one name, and a silently suffixed second folder is how the branch resolver starts finding the wrong plan again — the resolver matches the branch name, and the branch name has no suffix.
 
 ### Step 1.5: Load the Mode Body
 
@@ -393,7 +421,7 @@ on demand — do **not** keep all five mode bodies in context at once:
 
 ### Step 2: Check for Related Researches
 
-**If `research_pre_linked = true`** (user already confirmed a research in Step 0.2) → read that research's `RESEARCH_BRIEF.md` and `RESEARCH_SOURCE.md` (if exists), mark `research_linked = true`, store research path for `## Based on`, and skip to Step 3.
+**If `research_pre_linked = true`** (user already confirmed a research in Step 0.2) → read that research's `RESEARCH.md` — `## Active Summary` as the declared input, `## Findings` and the adaptive artifacts for the rationale — plus `CONTRACTS.md` and `SOURCE.md` when they exist, mark `research_linked = true`, store research path for `## Based on`, and skip to Step 3.
 
 Before exploring code, check if `/unikit-explore` has produced relevant researches.
 
@@ -402,9 +430,24 @@ Before exploring code, check if `/unikit-explore` has produced relevant research
 
 2. Read `workflow.research_relevance_days` from `.unikit/config.yaml` (default: `7`).
 
-3. **Filter** entries by two criteria:
-   - `Date` is within `research_relevance_days` from today
-   - `Status` is `completed` (skip `in-progress` and `needs-follow-up`)
+3. **Filter** entries by three criteria:
+   - `Updated` is within `research_relevance_days` from today. The age key is `Updated`, never `Created`: with a continuation cycle, freshness means "when this was last confirmed", not "when the folder was opened".
+   - `Status` is `completed` (skip `in-progress` and `needs-follow-up`). The field name and its three values are **fixed** — renaming either makes this filter match nothing and report "no researches found" instead of an error, which is a failure nobody can see.
+   - `Lifecycle` is not `superseded`. A record carrying no `Lifecycle` line counts as `active`.
+
+   **Log the drop.** After filtering, print exactly one line — **always**, including when nothing was dropped, because a line that appears only on a drop is a line nobody learns to expect:
+
+   ```
+   INFO [research] index: <N> entries, <K> shown (<a> older than <days>d, <b> not completed, <c> superseded)
+   ```
+
+   A record with no `Updated` is **not** guessed at from another field. It is excluded, and it is named:
+
+   ```
+   WARN [research] <folder>: index row has no Updated — excluded; run /unikit-explore to redraw the index
+   ```
+
+   The repair exists and is named in the line: any save re-renders the index whole.
 
 4. **Match**: compare each surviving entry's `Summary` against the feature description. Select entries that are contextually relevant to the feature being planned.
 
@@ -432,10 +475,10 @@ Based on choice:
 Highlight the most relevant entries in the question text (e.g., "Recommended: #1, #3").
 
 7. For each selected research:
-   - Read its `RESEARCH_BRIEF.md` and `RESEARCH_SOURCE.md` (if exists) for technical context
+   - Read its `RESEARCH.md` — `## Active Summary` as the declared input, `## Findings` and the adaptive artifacts for the rationale; read `CONTRACTS.md` when it exists, and `SOURCE.md` for the dialogue
    - Use as planning context and as **starting point** for Phase B deep-dive — reduces scope of Explore tasks in Step 4
    - Mark `research_linked = true` and store research path for `## Based on` (uses Research Reference Format)
-   - The plan's `## Technical Context` is still generated in Step 5 — research brief is used as input, not replacement (the section reflects the actual codebase state at planning time)
+   - The plan's `## Technical Context` is still generated in Step 5 — the research's `## Active Summary` is used as input, not replacement (the section reflects the actual codebase state at planning time)
 
 ### Step 3: Analyze Requirements
 
@@ -514,7 +557,7 @@ recon-agent(prompt:
 
 **Always runs** — produces the plan's `## Technical Context` content based on the current codebase state.
 
-When `research_linked = true`: use `RESEARCH_BRIEF.md` as a **starting point** for the deep-dive. The research brief provides initial constraints, interfaces, and patterns — but Phase B verifies them against the actual code and updates/extends as needed. This ensures the plan's brief is fresh and accurate even if the codebase changed since the research was conducted.
+When `research_linked = true`: use the research's `## Active Summary` — and `CONTRACTS.md` when it exists — as a **starting point** for the deep-dive. They provide initial constraints, interfaces, and patterns; Phase B verifies them against the actual code and updates/extends as needed. This ensures the plan's own context is fresh and accurate even if the codebase changed since the research was conducted.
 
 When `research_linked = false`: perform full technical analysis from scratch.
 
@@ -606,17 +649,19 @@ That is the entire question. **Not** which tool does it, **not** how it is calle
 
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
-- **Full mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
-- **Ultra mode** → `.unikit/code/plans/<dated-folder>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
+- **Full mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder)
+- **Ultra mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
 
 In ultra, Step 5 is carried out by `mode-ultra.md` Steps D-G — the section list below still
 applies to the manifest, minus the task-level subsections of `## Technical Context`.
 
 #### Plan Sections (all planning modes)
 
+0. **Header timestamps** — write `Created:` and `Updated:` directly under the H1, both set to today's date from Step 1 (`Bash(date *)`). They are the manifest's only record of when the plan was made: the folder name no longer carries one, and every resolver that picks "the latest plan" sorts on `Updated:`. Their shape and the rule for moving `Updated:` live in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → *Plan Manifest Template*; ultra writes the same two lines under its own H1.
+
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
-2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Compute `Brief SHA256` for each linked research per the procedure above. After all research entries, add "see the `## Technical Context` section below".
+2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Compute `Summary SHA256` for each linked research per the procedure above. After all research entries, add "see the `## Technical Context` section below".
    If no research: "see the `## Technical Context` section below".
 
    **`## Design`** (game-design module — only when `design_linked = true`) — insert the
@@ -679,7 +724,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 10. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **fast and full** all nine live in the one plan file. In **ultra** the section shrinks to its cross-phase part — `CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE` — and the remaining five are distributed into the phase files by the one rule that decides every case: **cross-phase goes in the manifest, task-scoped goes in the phase** (`{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`). Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
-   When `research_linked = true`: use `RESEARCH_BRIEF.md` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `## Technical Context` is the authoritative source for `/unikit-implement` — it supersedes the research brief.
+   When `research_linked = true`: use the research's `## Active Summary` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `## Technical Context` is the authoritative source for `/unikit-implement` — it supersedes the research summary.
 
    **Quality checklist:**
    1. CONSTRAINTS — non-obvious decisions with rationale (MUST / FORBIDDEN)
@@ -708,7 +753,7 @@ After artifacts are created, show the user:
 **Full mode:**
 1. The feature folder path created
 2. The git branch name (only if `branch_created = true`; if `false`, show current branch name instead)
-3. File created: `.unikit/code/plans/<dated-folder>/PLAN.md`, plus research reference if linked
+3. File created: `.unikit/code/plans/<feature-name>/PLAN.md`, plus research reference if linked
 4. A brief summary of phases identified
 5. Total estimated effort
 6. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
@@ -766,8 +811,8 @@ Bad examples:
 8. **Actionable tasks** — each task must have a clear, concrete deliverable
 9. **Respect module boundaries** — follow the project's Modular Monolith architecture (Modules/ → Game/ allowed, Game/ → Modules/ FORBIDDEN)
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
-11. **Always generate `## Technical Context`** — even when a research's `RESEARCH_BRIEF.md` exists, the plan generates its own section based on the current codebase state. The research brief is input, not a replacement; the plan's section is the authoritative source for `/unikit-implement`
-12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<dated-folder>/PLAN.md` (single manifest in a folder)
+11. **Always generate `## Technical Context`** — even when a research's `## Active Summary` exists, the plan generates its own section based on the current codebase state. The research summary is input, not a replacement; the plan's section is the authoritative source for `/unikit-implement`
+12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder) — the folder name carries no date; the manifest's `Created:` / `Updated:` fields do
 13. **`Editor:` marks serialized editor state, nothing else** — write an `Editor:` line **if and only if** the change touches the editor's **serialized state**; a plain text or config file stays in `Files:` (the same criterion as `.unikit/system/dev-principles.md` → Layer A, **A8 · "Serialized state is the boundary"**). Engine-specific signals live in `references/ENGINE_RULES.md` §3; when that file is absent, the field is not generated at all
 14. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
 15. **A plan is intent, not inventory — no tool name ever reaches it** — the plan says *what has to be true*, never *what to call*. Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else: a name in a plan is a name that will be wrong by the time the plan is executed, and it silently overrides the executor's own discovery. This also settles the reverse: the planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance

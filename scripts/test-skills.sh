@@ -2771,6 +2771,10 @@ else
     # that survives a /clear rather than what the session still remembers.
     (( "$(grep -cE '^[0-9]+\. ' "$CG_REF")" >= 4 )) || CG_WHY+=" CG-2:fewer-than-four-criteria"
     grep -qF 'not evidence' "$CG_REF"                  || CG_WHY+=" CG-2:no-durable-scope-rule"
+    # The durable scope must NAME the manifest section it judges. The gate's object moved
+    # from two prose documents to one hashed section, and a scope that forgot to say so
+    # would send the pass looking for files that no longer exist.
+    grep -qF '## Active Summary' "$CG_REF"             || CG_WHY+=" CG-2:no-active-summary-in-scope"
     grep -qF 'the `check-agent` alias' "$CG_REF"      || CG_WHY+=" CG-2:no-fresh-context-pass"
     grep -qF 'WARN [coherence]' "$CG_REF"              || CG_WHY+=" CG-2:no-inline-fallback"
     grep -qF 'Integrity' "$CG_REF"                     || CG_WHY+=" CG-2:no-boundary-with-integrity"
@@ -2783,27 +2787,35 @@ else
     # placed before the write re-reads files that do not exist yet, and a call placed after
     # the confirmation tells the user the save succeeded while it may still be incoherent.
     # Both landmarks are structural and both degenerate to `fail` when missing: the write
-    # step it must follow, and the `## Init` maintenance command it must precede — that
-    # command rebuilds the index and saves no research at all, so a gate that drifted into
-    # it would never run on a save.
-    CG3_WRITE="$(grep -n '^### Step 4: Update the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
-    CG3_INIT="$(grep -n '^## Init: Rebuilding the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    # step it must follow, and the confirmation step it must precede.
+    #
+    # The lower landmark used to be the `## Init` maintenance command. That command is gone —
+    # the registry is re-rendered on every save — and an explicit `### Step 5: Confirm the
+    # save` heading took its place. It is the better bound in any case: it names the thing
+    # the gate must not run *after*, where `## Init` only happened to sit below it.
+    #
+    # `|| true` on all three is load-bearing under `set -euo pipefail`: a non-matching grep
+    # inside a command substitution fails the assignment and aborts the WHOLE suite, which
+    # makes the "degenerate to fail" ladder below unreachable. Renaming a landmark used to
+    # kill the run 150 checks early instead of failing this guard with a named reason.
+    CG3_WRITE="$(grep -n '^### Step 4: Re-render the Researches Index' "$CG_SKILL" | head -1 | cut -d: -f1 || true)"
+    CG3_CONFIRM="$(grep -n '^### Step 5: Confirm the save' "$CG_SKILL" | head -1 | cut -d: -f1 || true)"
     # Anchored on the invocation formulation, not on the first mention of the reference
     # path: the `## Delegation agents` block names that path as a POINTER (the alias's
     # fallback), and a pointer is not a call. `head -1` on the path made the declaration
     # block — which must sit above its call sites, i.e. above the write step — read as the
     # gate itself. CG-3 watches the call.
-    CG3_GATE="$(grep -n 'run the gate it specifies' "$CG_SKILL" | head -1 | cut -d: -f1)"
+    CG3_GATE="$(grep -n 'run the gate it specifies' "$CG_SKILL" | head -1 | cut -d: -f1 || true)"
     if [[ -z "$CG3_GATE" ]]; then
         CG_WHY+=" CG-3:gate-never-called"
     elif [[ -z "$CG3_WRITE" ]]; then
-        CG_WHY+=" CG-3:index-write-step-missing"
-    elif [[ -z "$CG3_INIT" ]]; then
-        CG_WHY+=" CG-3:init-section-missing"
+        CG_WHY+=" CG-3:index-rerender-step-missing"
+    elif [[ -z "$CG3_CONFIRM" ]]; then
+        CG_WHY+=" CG-3:confirm-step-missing"
     elif (( CG3_GATE < CG3_WRITE )); then
         CG_WHY+=" CG-3:gate-called-before-the-write($CG3_GATE-before-$CG3_WRITE)"
-    elif (( CG3_GATE > CG3_INIT )); then
-        CG_WHY+=" CG-3:gate-drifted-into-the-init-command($CG3_GATE-after-$CG3_INIT)"
+    elif (( CG3_GATE > CG3_CONFIRM )); then
+        CG_WHY+=" CG-3:gate-runs-after-the-confirmation($CG3_GATE-after-$CG3_CONFIRM)"
     fi
 
     # (CG-4) A missing reference must not lose an exploration that already happened — the
@@ -2817,18 +2829,32 @@ else
     if grep -qF '/unikit-plan [fast|full] <' "$CG_SKILL"; then CG_WHY+=" CG-5:next-steps-omit-ultra"; fi
 fi
 
-# (CG-6) The research spec must not take back the containers the port brought with it.
+# (CG-6) The research spec must carry the manifest contract and must not take back the one
+# container this repository still does not have.
 # Overlaps UR-3 deliberately: UR-3 watches the vocabulary and the owner rule, CG-6 watches
-# the absence of the retired names and the count of the checks. An overlap is cheaper here
-# than a gap.
+# the lift obligation and the count of the checks. An overlap is cheaper here than a gap.
+#
+# `Active Summary` INVERTED — it used to be a negative assert here and in UR-3, on the
+# grounds that the container "was never ported". It is now the machine input itself, so the
+# assert flips to a positive: its absence, not its presence, is the defect. `Traceability`
+# stays negative for the original reason — its work is done by Integrity checks 5 and 6, and
+# the next edit copied from the source format is what would bring it back.
+#
+# The lift obligation keeps its own assert, and it is anchored on the FORMULATION rather than
+# on the container name. Asserting it as `## Active Summary` — the obvious translation of the
+# retired `RESEARCH_BRIEF.md` assert — would have been a second assert that cannot fail
+# independently of the positive above it: the string occurs a dozen times in a file whose
+# whole subject is that section. This file's own rule (see UR-3) is that a guard which cannot
+# go red is worse than no guard, so the anchor sits on the sentence that states the duty. The
+# landing site changed; the duty did not.
 if [[ ! -f "$CG_RESEARCH_SPEC" ]]; then
     CG_WHY+=" CG-6:research-spec-missing"
 else
-    if grep -qF 'Active Summary' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-6:active-summary-returned"; fi
-    if grep -qF 'Traceability' "$CG_RESEARCH_SPEC";   then CG_WHY+=" CG-6:traceability-returned"; fi
-    grep -qF 'RESEARCH_BRIEF.md' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-6:no-lift-obligation"
-    CG6_CHECKS="$(awk '/^## Integrity/{f=1;next} /^## /{f=0} f' "$CG_RESEARCH_SPEC" | grep -cE '^[0-9]+\. ')"
-    (( CG6_CHECKS == 5 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-5)"
+    grep -qF 'Active Summary' "$CG_RESEARCH_SPEC"   || CG_WHY+=" CG-6:active-summary-missing"
+    if grep -qF 'Traceability' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-6:traceability-returned"; fi
+    grep -qF 'the lift as an obligation' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-6:no-lift-obligation"
+    CG6_CHECKS="$(awk '/^## Integrity/{f=1;next} /^## /{f=0} f' "$CG_RESEARCH_SPEC" | grep -cE '^[0-9]+\. ' || true)"
+    (( CG6_CHECKS == 7 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-7)"
 fi
 
 if [[ -z "$CG_WHY" ]]; then
@@ -3481,15 +3507,21 @@ fi
 # RD: research drift is a CONTENT signal, and one procedure computes it in four files.
 # `## Based on` used to carry a link timestamp compared against a research index
 # timestamp — two clocks written by the same class of agent with the same care. The
-# field is now the SHA256 of the linked `RESEARCH_BRIEF.md`, and three consumers
-# recompute it. Three guards close the three ways that goes wrong: the procedure
-# diverges, the grant that makes it runnable is missing, or the label and the
-# writer/reader split drift apart.
+# field is now the SHA256 of a REGION — the bytes between the `## Active Summary`
+# markers of the linked `RESEARCH.md` — and three consumers recompute it. Four guards
+# close the four ways that goes wrong: the procedure diverges, the grant that makes it
+# runnable is missing, the label and the writer/reader split drift apart, or the
+# machine input silently reverts from a region back to a file.
 # Placed next to the PL family and reusing UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
 # UNIKIT_VERIFY_SKILL declared above; UNIKIT_IMPLEMENT_SKILL has no earlier declaration
 # (the MF block below takes its own path var locally), so it is declared here — `set -u`
 # makes a forward reference fatal.
 UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+# RD-E asserts the marker pair is DECLARED by its owner, so it needs the path to the
+# research-format spec. That path belongs to the UR family below; it is declared here
+# instead of copied, because `set -u` makes a forward reference fatal and a second
+# literal of the same path is exactly the drift these guards exist to catch.
+UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 
 # (RD-A) The recorded field and the normalization procedure, in all FOUR files.
 # unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
@@ -3498,9 +3530,13 @@ UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 # missing". The tokens are chosen, not sampled: `UTF-8 BOM` and `one final newline` are
 # the two rules whose divergence produces a FALSE drift on byte-identical content (and
 # the BOM rule exists because this project's primary platform is Windows);
-# `never a temp file` is the stdin rule; `RESEARCH_BRIEF.md` is the hashed object — a
-# file that hashes RESEARCH_RESULT.md instead would hash its volatile `Updated:` line,
-# and RESEARCH_SOURCE.md is a growing dialogue log. The negative half is load-bearing:
+# `never a temp file` is the stdin rule; `RESEARCH.md` is the file the hashed region
+# lives in, and `unikit:active-summary:start` is rule 0 — the rule that makes the object
+# a REGION rather than the whole file. Rule 0 is asserted separately from the other five
+# for one measured reason: it is the only one that can vanish alone. Drop it and the five
+# survivors still describe a coherent procedure, over the wrong object — the whole
+# manifest, whose `## Sessions` grows on every save, so every append would report drift
+# that did not happen. The negative half is load-bearing:
 # without it a half-applied replacement leaves both mechanisms standing and a consumer
 # reads a field /unikit-plan no longer writes. That half is anchored on the FIELD form
 # `**Attached**`, never on the bare word: `Attached` is ordinary English and a sentence
@@ -3509,23 +3545,39 @@ UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 RDA_READERS=("$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
 RDA_ALL=("$UNIKIT_PLAN_SKILL" "${RDA_READERS[@]}")
 RDA_ATTACHED_ALLOW='(the retired link-timestamp field)'
+RDA_BRIEF_ALLOW='the retired brief field'
 RDA_WHY=""
 for f in "${RDA_ALL[@]}"; do
     n="$(basename "$(dirname "$f")")"
-    grep -qF 'Brief SHA256'      "$f" || RDA_WHY+=" $n-no-field"
+    grep -qF 'Summary SHA256'    "$f" || RDA_WHY+=" $n-no-field"
     grep -qF 'UTF-8 BOM'         "$f" || RDA_WHY+=" $n-no-bom-rule"
     grep -qF 'one final newline' "$f" || RDA_WHY+=" $n-no-final-newline-rule"
     grep -qF 'never a temp file' "$f" || RDA_WHY+=" $n-no-stdin-rule"
-    grep -qF 'RESEARCH_BRIEF.md' "$f" || RDA_WHY+=" $n-no-hashed-object"
+    grep -qF 'RESEARCH.md'       "$f" || RDA_WHY+=" $n-no-hashed-object"
+    grep -qF 'unikit:active-summary:start' "$f" || RDA_WHY+=" $n-no-rule-0"
     # ONE measured allowlist entry, on the PL-2 precedent and for the same reason: the
     # /unikit-improve branch that REMOVES the retired field has to name it, and a branch that
     # DESCRIBES the old shape instead of naming it cannot be executed reliably. Pinned to the
     # marker on that same line, never to the file — exempting the file would re-open every
     # occurrence the replacement removed from it.
     if grep -F '**Attached**' "$f" | grep -vF "$RDA_ATTACHED_ALLOW" | grep -q .; then RDA_WHY+=" $n-attached-survives"; fi
+    # Second allowlisted negative, same shape and same reason as `**Attached**` above: the
+    # retired field name survives ONLY where a branch has to name it — the writer's legacy
+    # note, branch 5 of the three readers, and the Step 5.5 line that DELETES it. Pinned to
+    # the turn of phrase on that same physical line, never to the file: exempting a file
+    # would re-open every occurrence the replacement removed from it.
+    #
+    # The allowlist literal is deliberately WITHOUT parentheses, and that is measured, not
+    # stylistic. The sanctioned occurrences carry it in two different wrappings — the writer
+    # inside `(the retired brief field)`, the readers inside
+    # `(recorded against the retired brief field)`. Only the bracketless form is a substring
+    # of both: after the opening parenthesis the readers have `recorded`, so a parenthesized
+    # allowlist would match none of their lines and would turn three files out of four red
+    # inside the one commit this phase declares indivisible.
+    if grep -F 'Brief SHA256' "$f" | grep -vF "$RDA_BRIEF_ALLOW" | grep -q .; then RDA_WHY+=" $n-retired-field-survives"; fi
 done
 if [[ -z "$RDA_WHY" ]]; then
-    pass "RD-A Brief SHA256 + the one normalization procedure present in all four files (old timestamp field gone)"
+    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in all four files (retired fields gone)"
 else
     fail "RD-A research-drift procedure diverged:$RDA_WHY"
 fi
@@ -3535,6 +3587,9 @@ fi
 # to the WARN branch on every single plan — silently, because that WARN branch is a
 # legitimate state. Both names are required: `shasum` ships with perl (macOS, Git Bash),
 # `sha256sum` with GNU coreutils (Linux, Git Bash).
+# Rule 0 (extract the region between the markers) adds nothing here: it is performed on
+# text the skill has already read, not by a shell command, so the list of two names stays
+# complete and no `awk`/`sed` grant joins it.
 RDB_WHY=""
 for f in "${RDA_ALL[@]}"; do
     n="$(basename "$(dirname "$f")")"
@@ -3566,13 +3621,14 @@ for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     n="$(basename "$(dirname "$f")")"
     # The negative half binds to the ADJACENCY, not to the word and not to the line. Two
     # earlier shapes were measured and both are wrong: `grep -qF 'instead'` over lines naming
-    # the brief condemns the correct sentence ("read the plan's `## Technical Context` instead
-    # of `RESEARCH_BRIEF.md`"), and ordering the two tokens across the whole line does not fix
-    # it either — the repaired sentence names the brief TWICE, so the first occurrence and a
-    # later `instead` still match. What is banned is the brief immediately followed by
+    # the source condemns the correct sentence ("read the plan's `## Technical Context` instead
+    # of `RESEARCH.md`"), and ordering the two tokens across the whole line does not fix
+    # it either — the repaired sentence names the source TWICE, so the first occurrence and a
+    # later `instead` still match. What is banned is the source immediately followed by
     # `instead`; anything else is prose. Same class as the RD-A anchor above: a negative assert
-    # binds to a form, never to a word (patch 2026-08-22-12.40).
-    if grep -qE 'RESEARCH_BRIEF\.md`?[[:space:]]+instead' "$f"; then RDC_WHY+=" $n-still-reads-instead"; fi
+    # binds to a form, never to a word (patch 2026-08-22-12.40). Only the file name moved when
+    # the brief was folded into the manifest — the form of the assert did not.
+    if grep -qE 'RESEARCH\.md`?[[:space:]]+instead' "$f"; then RDC_WHY+=" $n-still-reads-instead"; fi
     # The positive counterpart, and the durable half: a positive assert cannot false-positive,
     # so it — not the negative — is what survives a rewrite of the sentence.
     grep -qF 'as a substitute for the plan' "$f" || RDC_WHY+=" $n-no-substitute-ban"
@@ -3584,7 +3640,7 @@ else
 fi
 
 # (RD-D) The field has a writer for an entry that does not carry it.
-# RD-A proves three consumers READ `Brief SHA256` and that /unikit-plan writes it on create.
+# RD-A proves three consumers READ `Summary SHA256` and that /unikit-plan writes it on create.
 # Nothing proved anything can write one into an entry created BEFORE the field existed — and
 # the on-disk plan migration rewrites the manifest without touching `## Based on`. Measured:
 # every plan that predates the field reported `drift unknown` on every run, /unikit-verify
@@ -3601,7 +3657,11 @@ RDD_WHY=""
 # Degenerate to fail when the section is gone (NN-4 / RT-7 convention).
 [[ -n "$RDD_STEP55" ]] || RDD_WHY+=" no-step-5.5-body"
 printf '%s' "$RDD_STEP55" | grep -qF 'records the field on an entry that has none' || RDD_WHY+=" no-relink-writer"
-printf '%s' "$RDD_STEP55" | grep -qF 'Brief SHA256' || RDD_WHY+=" writer-does-not-name-the-field"
+# Doubled, not replaced. The branch does two things now — it WRITES `Summary SHA256` and it
+# DELETES a legacy `Brief SHA256` line — and replacing the assert instead of splitting it
+# would have dropped half the contract without a single test turning red.
+printf '%s' "$RDD_STEP55" | grep -qF 'Summary SHA256' || RDD_WHY+=" writer-does-not-name-the-field"
+printf '%s' "$RDD_STEP55" | grep -qF 'Brief SHA256'   || RDD_WHY+=" writer-does-not-drop-the-retired-field"
 grep -qF 'the write is Step 5.5 item 3' "$UNIKIT_IMPROVE_SKILL" || RDD_WHY+=" offer-not-wired-to-writer"
 # The write is gated on the user's answer: hashing a brief nobody was asked about would claim
 # "no drift" over a period that was never examined.
@@ -3610,6 +3670,268 @@ if [[ -z "$RDD_WHY" ]]; then
     pass "RD-D a hashless \`## Based on\` entry has a writer, and the Step 1.5 offer is wired to it"
 else
     fail "RD-D the drift-unknown state has no exit:$RDD_WHY"
+fi
+
+# (RD-E) The machine input is a REGION, and it stays one.
+# RD-A asserts the tokens of the procedure; nothing asserted the shape of its object. The
+# regression this closes is narrow and quiet: the hashed object reverts from "the bytes
+# between two markers" to "the whole file", every appended session reports drift, and the
+# consumer prints "the research changed" about a research nobody touched — RISK-1 exactly,
+# a failure that reads as a finding.
+# Four assertions, and the negative is the point of the guard.
+RDE_WHY=""
+# 1. The marker pair is DECLARED by its owner. The overlap with RM-1 is deliberate and not
+#    redundant: RM-1 looks at the PRODUCER (does /unikit-explore write the markers), RD-E at
+#    the CONSUMERS (do the four readers name the region those markers delimit). Either can
+#    go red alone, and they fail for different reasons.
+[[ -s "$UR_REF" ]] || RDE_WHY+=" no-format-spec"
+grep -qF 'unikit:active-summary:start' "$UR_REF" || RDE_WHY+=" markers-not-declared-by-owner"
+grep -qF 'unikit:active-summary:end'   "$UR_REF" || RDE_WHY+=" end-marker-not-declared"
+# 2. All four skills name the REGION, not the file. One -qF literal applied to four files, so
+#    a rephrasing in any one of them turns the guard red — which is the only mechanism holding
+#    four verbatim copies of one procedure together.
+for f in "${RDA_ALL[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'between the `## Active Summary` markers' "$f" || RDE_WHY+=" $n-names-a-file-not-a-region"
+done
+# 3. The NEGATIVE: the reversed decision has not come back. `/unikit-plan` used to carry a
+#    written refusal of markers — "The file split is the marker" — and that sentence is the
+#    direct detector, because a revert would restore the sentence together with the behaviour.
+for f in "${RDA_ALL[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    if grep -qF 'The file split is the marker' "$f"; then RDE_WHY+=" $n-file-split-refusal-returned"; fi
+done
+# 4. The legacy branch exists exactly where it is owed. The three READERS meet entries written
+#    before the field was renamed and must report `drift unknown` rather than recompute; the
+#    WRITER never does — it creates new entries, it does not read old ones. Asserting the
+#    absence in unikit-plan is what keeps the branch from being pasted into all four out of
+#    symmetry, which would put a reader's contract in a file that has no reader.
+for f in "${RDA_READERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'recorded against the retired brief' "$f" || RDE_WHY+=" $n-no-legacy-branch"
+done
+if grep -qF 'recorded against the retired brief' "$UNIKIT_PLAN_SKILL"; then RDE_WHY+=" plan-carries-a-reader-branch"; fi
+# 5. The legacy branch is REACHABLE, not merely present. Measured in review: with the branches
+#    read in order, an entry carrying only the retired field fell through the mismatch branch
+#    first — because that branch said "Recomputed ≠ recorded" without naming which field
+#    `recorded` meant — and reported `WARN [research-drift] … no longer byte-identical` about a
+#    research nobody had touched. Presence is not reachability, the same distinction RD-D draws
+#    for the writer, and no token-presence assert above can see it. Two literals hold the two
+#    halves: the precondition that gates the recompute, and the named field that makes the
+#    comparison unambiguous once it runs.
+for f in "${RDA_READERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Only when the entry carries a'   "$f" || RDE_WHY+=" $n-recompute-not-gated"
+    grep -qF 'the recorded `Summary SHA256`'   "$f" || RDE_WHY+=" $n-comparison-does-not-name-the-field"
+done
+if [[ -z "$RDE_WHY" ]]; then
+    pass "RD-E the hashed object is the Active Summary region in all four files; the file-split refusal is gone"
+else
+    fail "RD-E machine-input contract broken:$RDE_WHY"
+fi
+
+# =============================================
+# NM: dateless naming - the date left the folder name and became two header fields.
+# Scope of this family is `skills/** + subagents/**`, and the second half is the point: the
+# measurement that preceded this change looked at `src/**/*.ts` and `skills/**` only, and both
+# files it missed live under `subagents/` - `unikit-implement-coordinator.md` RESOLVES a plan
+# folder, `unikit-plan-polisher.md` PRODUCES one. One of each, missed for the same reason.
+# Placed AFTER the RD family and reusing the path vars declared there - `set -u` makes a
+# forward reference fatal.
+# Negatives bind to a FORM (`{YYYY-MM-DD}_`, `<dated-folder>`, `the date prefix already
+# gives`, `lexicographically descending`), never to the words `date` or `sort`, which are
+# legitimate dozens of times in these same files.
+# =============================================
+NM_MODE_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+NM_MODE_LIST="$ROOT_DIR/skills/unikit-plan/references/mode-list.md"
+NM_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+NM_MODE_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+NM_ULTRA_PLAN="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+NM_IMPL_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+NM_PLAN_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+NM_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+# UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL / UNIKIT_IMPLEMENT_SKILL / UNIKIT_VERIFY_SKILL come
+# from the RD family above; CK_TASKFMT is the TASK-FORMAT.md path declared with the CK family.
+NM_WHY=""
+
+# (NM-1) No producer assembles a date into a folder name.
+# Four tokens, and the last two are the measured ones. A file can assert datedness WITHOUT
+# showing the format - `plans/<dated-folder>/PLAN.md` did exactly that in mode-ultra.md, and a
+# two-token negative passed over it green. The fourth token catches the other way of asserting
+# it: not as a name format but as a WORKING MECHANISM - "the date prefix already gives both
+# order and uniqueness" stood in the same file, invisible to the first three tokens and to
+# NM-4 as well, while both guards held that file in scope.
+NM_PRODUCERS=("$UNIKIT_PLAN_SKILL" "$NM_MODE_FULL" "$NM_MODE_ULTRA" "$NM_ULTRA_PLAN" "$CK_TASKFMT")
+for f in "${NM_PRODUCERS[@]}"; do
+    n="$(basename "$f")"
+    if [[ ! -s "$f" ]]; then NM_WHY+=" NM-1:$n-missing"; continue; fi
+    for tok in '{YYYY-MM-DD}_' '<date>_' '<dated-folder>' 'the date prefix already gives'; do
+        if grep -qF "$tok" "$f"; then NM_WHY+=" NM-1:$n-dated[$tok]"; fi
+    done
+done
+# A negative with no positive is satisfied by an empty file. Three producers must still say
+# what the name IS.
+for f in "$UNIKIT_PLAN_SKILL" "$NM_ULTRA_PLAN" "$NM_MODE_ULTRA"; do
+    grep -qF 'plans/<feature-name>/' "$f" || NM_WHY+=" NM-1:$(basename "$f")-no-dateless-form"
+done
+
+# (NM-2) The header carries both marks and the rule, in BOTH templates.
+# The rule is asserted apart from the fields on purpose: fields without it start moving on
+# every checkbox tick within a release, and "latest" quietly stops answering its question.
+grep -qF 'Created:'             "$CK_TASKFMT" || NM_WHY+=" NM-2:taskfmt-no-created"
+grep -qF 'Updated:'             "$CK_TASKFMT" || NM_WHY+=" NM-2:taskfmt-no-updated"
+grep -qF 'does **not** move it' "$CK_TASKFMT" || NM_WHY+=" NM-2:taskfmt-no-tick-rule"
+# The ultra half, checked by SECTION WINDOW rather than by file: a grep over the whole file
+# would pass on the fields being discussed in prose, and what must exist is the template.
+NM_ULTRA_TPL="$(awk '/^## Manifest Template/{f=1;next} /^## /{f=0} f' "$NM_ULTRA_PLAN")"
+if [[ -z "$NM_ULTRA_TPL" ]]; then NM_WHY+=" NM-2:no-ultra-manifest-template"; fi
+printf '%s' "$NM_ULTRA_TPL" | grep -qF 'Created:' || NM_WHY+=" NM-2:ultra-template-no-created"
+printf '%s' "$NM_ULTRA_TPL" | grep -qF 'Updated:' || NM_WHY+=" NM-2:ultra-template-no-updated"
+# Two negatives on both templates: the H1 form is unchanged and no third owner of the branch
+# name was introduced (after the identity rule, folder name == branch name).
+for f in "$CK_TASKFMT" "$NM_ULTRA_PLAN"; do
+    n="$(basename "$f")"
+    if grep -qF '# Plan:' "$f"; then NM_WHY+=" NM-2:$n-h1-form-changed"; fi
+    if grep -qE '^Branch:' "$f"; then NM_WHY+=" NM-2:$n-branch-field-introduced"; fi
+done
+
+# (NM-3) All SEVEN places know three name formats.
+# Six resolvers plus the non-interactive producer, which checks a collision with the same
+# triple. The fragment is chosen so it cannot occur by accident and so its disappearance means
+# exactly one thing: the third format was forgotten.
+NM_THREE_FORMAT=("$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_VERIFY_SKILL" "$NM_MODE_LIST" "$NM_MODE_ADD" "$NM_IMPL_COORD" "$NM_PLAN_POLISHER")
+for f in "${NM_THREE_FORMAT[@]}"; do
+    n="$(basename "$(dirname "$f")")/$(basename "$f")"
+    if [[ ! -s "$f" ]]; then NM_WHY+=" NM-3:$n-missing"; continue; fi
+    grep -qF 'beginning with three digits' "$f" || NM_WHY+=" NM-3:$n-two-formats-only"
+done
+
+# (NM-4) Lexicographic sorting is gone, and its replacement is named.
+# Ordering used to live in the folder name; it now lives in the manifest. The negative alone
+# would be satisfied by a resolver that sorts by nothing at all, so the positive names the key.
+NM_RESOLVERS=("$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_VERIFY_SKILL" "$NM_MODE_LIST" "$NM_MODE_ADD" "$NM_IMPL_COORD")
+for f in "${NM_RESOLVERS[@]}"; do
+    n="$(basename "$(dirname "$f")")/$(basename "$f")"
+    if grep -qF 'lexicographically descending' "$f"; then NM_WHY+=" NM-4:$n-still-sorts-by-name"; fi
+done
+# The mtime fallback existed in exactly ONE file, and removing the date turns it from a second
+# branch into the only one - which is why its absence is asserted there and nowhere else.
+if grep -qF 'modification time' "$NM_IMPL_COORD"; then NM_WHY+=" NM-4:coordinator-mtime-fallback-survives"; fi
+# The positive covers the five CHOOSING resolvers. `mode-list.md` is deliberately excluded: it
+# labels and never selects, so it has no "latest" to compute. Recorded here because the next
+# reader will otherwise add a sixth file and get a false red.
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_VERIFY_SKILL" "$NM_MODE_ADD" "$NM_IMPL_COORD"; do
+    n="$(basename "$(dirname "$f")")/$(basename "$f")"
+    grep -qF 'manifest has no Updated:' "$f" || NM_WHY+=" NM-4:$n-no-updated-exclusion"
+done
+
+# (NM-5) The grant follows the rule, into all THREE writers.
+# Direct transfer of RD-B, motivation included: a rule the skill cannot carry out degrades
+# SILENTLY, because the degraded branch is itself a legitimate state. The third file is the
+# one this whole change started from, and the only one whose date feeds the sort key of an
+# entire registry plus the age filter of both registry readers - bounding the guard at two
+# would pin the invariant everywhere except where it is worth most.
+# `unikit-plan-polisher` is NOT in this list: its grant is an unnarrowed `Bash`, and demanding
+# an exact string of it would check a form that file does not have. Recorded so the next
+# reader does not add a fourth path and get a false red.
+for f in "$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$NM_EXPLORE_SKILL"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF 'Bash(date *)' "$f" || NM_WHY+=" NM-5:$n-no-date-grant"
+done
+
+# (NM-6) The non-interactive producer does not choose silently either.
+# Same policy as the interactive branch, different verb: it hands control back instead of
+# asking. The suffix ban is pinned to the literal both producers share.
+if [[ ! -s "$NM_PLAN_POLISHER" ]]; then NM_WHY+=" NM-6:polisher-missing"; fi
+grep -qF 'automatic suffix' "$NM_PLAN_POLISHER" || NM_WHY+=" NM-6:no-suffix-ban"
+grep -qF 'automatic suffix' "$UNIKIT_PLAN_SKILL" || NM_WHY+=" NM-6:interactive-branch-no-suffix-ban"
+grep -qF 'plan_path: none'  "$NM_PLAN_POLISHER" || NM_WHY+=" NM-6:no-hand-back-branch"
+grep -qF 'Created:'         "$NM_PLAN_POLISHER" || NM_WHY+=" NM-6:no-created-instruction"
+grep -qF 'Updated:'         "$NM_PLAN_POLISHER" || NM_WHY+=" NM-6:no-updated-instruction"
+# The negative half: an instruction to ask is an instruction this executor cannot follow -
+# the tool is absent from its `tools:`. Same failure class NM-5 catches from the other side.
+if grep -qF 'AskUserQuestion' "$NM_PLAN_POLISHER"; then NM_WHY+=" NM-6:polisher-told-to-ask"; fi
+
+if [[ -z "$NM_WHY" ]]; then
+    pass "NM-1..NM-6 dateless folder names; both manifests carry Created/Updated; seven places know three formats; latest sorts on Updated; the date grant reaches all three writers"
+else
+    fail "NM dateless-naming contract broken:$NM_WHY"
+fi
+
+# =============================================
+# GN: the ADR-0003 boundary - a date in a NAME is allowed exactly when the artifact is an
+# entry in an event log. Half of this family is ordinary (the date is gone from the two
+# addressable gamedesign artifacts); the other half is unusual and is the reason the family
+# exists: it asserts POSITIVELY that three event logs still carry theirs. A later "let's
+# finish the unification" would otherwise break a cursor and make repeated reviews overwrite
+# each other, and both failures surface far from their cause.
+# Placed after the NM family; reuses the GD_* path vars declared with the gamedesign block
+# far above, and `set -u` forbids the other direction.
+# =============================================
+GN_SAVE_RESEARCH="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+GN_RECON_INPUT="$ROOT_DIR/skills/unikit-gd-explore/references/mode-recon-input.md"
+GN_INIT_INDEX="$ROOT_DIR/skills/unikit-gd-explore/references/init-index.md"
+GN_RECON_SKILL="$ROOT_DIR/skills/unikit-gd-recon/SKILL.md"
+GN_MODE_IMPORT="$ROOT_DIR/skills/unikit-gd-spec/references/mode-import.md"
+GN_FIX_SKILL="$ROOT_DIR/skills/unikit-fix/SKILL.md"
+GN_EVOLVE_SKILL="$ROOT_DIR/skills/unikit-evolve/SKILL.md"
+GN_WHY=""
+
+# (GN-1) The date is gone from the two ADDRESSABLE gamedesign artifacts.
+# Scope is these eight files by name, deliberately NOT `skills/**`: `unikit-gd-review` and
+# `unikit-fix` are REQUIRED to carry `<date>_`, so a directory-wide negative would contradict
+# GN-2 below.
+GN_ADDRESSABLE=("$GD_EXPLORE_SKILL" "$GN_SAVE_RESEARCH" "$GN_RECON_INPUT" "$GN_RECON_SKILL" "$GN_MODE_IMPORT" "$GD_SYSTEM_SKILL" "$GD_BRAINSTORM_SKILL" "$GD_GAME_TPL")
+for f in "${GN_ADDRESSABLE[@]}"; do
+    n="$(basename "$f")"
+    if [[ ! -s "$f" ]]; then GN_WHY+=" GN-1:$n-missing"; continue; fi
+    for tok in '<date>_' '{YYYY-MM-DD}_'; do
+        if grep -qF "$tok" "$f"; then GN_WHY+=" GN-1:$n-dated[$tok]"; fi
+    done
+done
+# The positive, without which an emptied file passes: the dateless forms are actually named.
+grep -qF 'researches/<slug>/'  "$GN_SAVE_RESEARCH"    || GN_WHY+=" GN-1:save-research-no-dateless-form"
+grep -qF 'concepts/<slug>/'    "$GD_BRAINSTORM_SKILL" || GN_WHY+=" GN-1:brainstorm-no-dateless-form"
+
+# (GN-2) The three EVENT LOGS kept their date. A positive guard on the presence of a date is
+# rare in this suite, and each of the three lines has a mechanism behind it, not a habit:
+#   - `/unikit-evolve` stores `last_processed_patch` in `patch-cursor.json` and compares
+#     patch names as STRINGS, so lexicographic order of names IS the cursor;
+#   - `/unikit-fix` reads the last 10 patches by filename descending, which is the same
+#     ordering read a second way;
+#   - a review report without a date collides by construction - one scope is reviewed many
+#     times, and finding ids `RF-<YYYY-MM-DD>-<n>` already carry the date and are cited from
+#     changelog entries.
+grep -qF 'reviews/<date>_review-<scope>.md' "$GD_REVIEW_SKILL" || GN_WHY+=" GN-2:review-report-lost-its-date"
+grep -qF 'YYYY-MM-DD-HH.mm.md'   "$GN_FIX_SKILL"    || GN_WHY+=" GN-2:patch-name-format-gone-from-fix"
+grep -qF 'by filename descending' "$GN_FIX_SKILL"   || GN_WHY+=" GN-2:patch-ordering-rule-gone"
+grep -qF 'patch-cursor.json'      "$GN_EVOLVE_SKILL" || GN_WHY+=" GN-2:cursor-file-gone"
+grep -qF 'last_processed_patch'   "$GN_EVOLVE_SKILL" || GN_WHY+=" GN-2:cursor-key-gone"
+grep -qF 'YYYY-MM-DD-HH.mm.md'    "$GN_EVOLVE_SKILL" || GN_WHY+=" GN-2:patch-name-format-gone-from-evolve"
+
+# (GN-3) The import reader knows BOTH globs, because no folder was renamed.
+# A producer edited without its reader is how `researches/<date>_import-*/` would quietly stop
+# finding anything; listing only the NEW glob would break the opposite half just as quietly.
+grep -qF 'researches/import-*/SOURCE.md'  "$GD_SYSTEM_SKILL" || GN_WHY+=" GN-3:no-current-import-glob"
+grep -qF 'researches/*import-*/SOURCE.md' "$GD_SYSTEM_SKILL" || GN_WHY+=" GN-3:no-legacy-import-glob"
+# And the reason the other three readers needed no edit at all: discovery runs on the `Target:`
+# tag, which does not depend on a folder name. Asserted so that a future rewrite onto names
+# has to delete this line first.
+grep -qF 'Target:' "$GD_SYSTEM_SKILL" || GN_WHY+=" GN-3:target-tag-mechanism-unnamed"
+
+# (GN-4) The collision policy is stated on both gamedesign producers.
+# Same one -qF literal over two files that NM-6 uses over the code side, and for the same
+# reason: without the date a repeated run yields the SAME name, so a silent suffix is the
+# default failure rather than an exotic one.
+for f in "$GN_SAVE_RESEARCH" "$GD_BRAINSTORM_SKILL"; do
+    n="$(basename "$f")"
+    grep -qF 'automatic suffix' "$f" || GN_WHY+=" GN-4:$n-no-suffix-ban"
+done
+
+if [[ -z "$GN_WHY" ]]; then
+    pass "GN-1..GN-4 gamedesign researches and concepts are dateless; the three event logs keep their date; the import reader knows both globs"
+else
+    fail "GN dated-name boundary broken:$GN_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -3621,7 +3943,8 @@ fi
 # plan marker would make /unikit-implement treat a research as a bundle — and the failure
 # would surface as a missing phase file, far from its cause. The two cross negatives are
 # the content of this guard; the positives only give them an object.
-UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+# UR_REF is declared above the RD family — RD-E reads it and `set -u` forbids the
+# forward reference.
 UR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 UR_PLAN_SPEC="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
 UR_WHY=""
@@ -3631,13 +3954,19 @@ grep -qF 'ULTRA-RESEARCH-FORMAT.md'   "$UR_EXPLORE" || UR_WHY+=" no-dispatch"
 if grep -qF 'unikit:plan-mode:ultra' "$UR_REF"; then UR_WHY+=" plan-marker-in-research-reference"; fi
 if grep -qF 'unikit:research-mode:ultra' "$UR_PLAN_SPEC"; then UR_WHY+=" research-marker-in-plan-spec"; fi
 
-# (UR-2) `init` rebuilds the index from RESEARCH_RESULT.md only. Without this rule written
-# down, a folder carrying adaptive artifacts reads as malformed to the next person editing
-# the rebuild loop — and the index silently loses a research.
-grep -qF 'Adaptive artifacts in a folder are neither read nor listed' "$UR_EXPLORE" || UR_WHY+=" init-not-robust"
+# (UR-2) The re-render must not treat an extra file as a defect.
+#
+# What was REMOVED and why: this used to assert the sentence "Adaptive artifacts in a folder
+# are neither read nor listed", which belonged to the `init` command — and `init` is gone,
+# dissolved into the re-render that now runs on every save (DEC-6). Deleting the assert
+# without replacing it would have read as lost coverage, so the same PROPERTY is asserted
+# through the surviving mechanism: a folder is skipped for a missing manifest and for nothing
+# else. That is what keeps a folder full of adaptive artifacts from silently dropping out of
+# the registry, which is the failure the retired assert existed to prevent.
+grep -qF 'no readable RESEARCH.md' "$UR_EXPLORE" || UR_WHY+=" rerender-skips-on-anything-but-a-missing-manifest"
 
 if [[ -z "$UR_WHY" ]]; then
-    pass "UR-1/UR-2 ultra research reference + dispatch; the plan and research markers stay distinct; init survives extra files"
+    pass "UR-1/UR-2 ultra research reference + dispatch; the plan and research markers stay distinct; the re-render skips only a missing manifest"
 else
     fail "UR-1/UR-2 ultra research contract:$UR_WHY"
 fi
@@ -3648,16 +3977,21 @@ fi
 # is a decision rather than a convenience. The guard checks that the vocabulary is PRESENT
 # and has not shrunk; forbidding an unknown prefix by grep would need an allowlist the size
 # of the corpus, so closure is held by the spec text and by Integrity checks 4-5.
-# The owner assert is load-bearing, and it names the BRIEF: `RESEARCH_BRIEF.md` is the one
-# file /unikit-plan takes as input and hashes, so a requirement-bearing ID living anywhere
-# else is invisible to the planner and its change produces no drift. The anchor sits on the
-# FORMULATION, not on a heading — a heading is rewritten during cosmetics, a formulation only
-# together with its meaning (the RT-6 / DEGRADATION_TOKEN convention).
-# Two NEGATIVE asserts sit beside it: `Active Summary` and `Traceability` are containers this
-# repository does not have — the first was never ported, the second lives in the original's
-# bundle INDEX.md, a file UniKit deliberately does not have. Both arrived with the port and
-# both read as authoritative; the negative half is what stops the next edit from the original
-# bringing them back.
+# The owner assert is load-bearing, and it names the MACHINE INPUT: `## Active Summary` of
+# `RESEARCH.md` is the one region /unikit-plan takes as input and hashes, so a
+# requirement-bearing ID living anywhere else is invisible to the planner and its change
+# produces no drift. The anchor sits on the FORMULATION, not on a heading — a heading is
+# rewritten during cosmetics, a formulation only together with its meaning (the RT-6 /
+# DEGRADATION_TOKEN convention). It must stay on ONE line: `grep -F` is line-based, and
+# wrapping the sentence across two lines silently disarms this assert.
+#
+# `Active Summary` INVERTED from a negative to a positive. It was asserted ABSENT here on the
+# grounds that the container "was never ported"; the manifest format makes it the machine
+# input, so absence is now the defect. `Traceability` stays NEGATIVE for its original reason:
+# it lives in the source format's bundle INDEX.md, a file UniKit deliberately does not have,
+# and its work is done by Integrity checks 5 and 6. The two asserts arrived together and
+# looked alike, which is exactly why the inversion of one is written down rather than left
+# for the next reader to infer from a diff.
 # The vocabulary greps are scoped TWICE, and both narrowings are load-bearing: to the body
 # of `## Identifiers`, and to the table-row form `| `<prefix>`. Searching the whole file for
 # a bare backticked prefix is what the first version did, and it could not fail: `ADR-`
@@ -3680,15 +4014,116 @@ else
         done
     fi
 fi
-grep -qF "must exist in \`RESEARCH_BRIEF.md\`" "$UR_REF" || UR3_WHY+=" no-owner-rule"
+grep -qF "must exist in \`## Active Summary\` of \`RESEARCH.md\`" "$UR_REF" || UR3_WHY+=" no-owner-rule"
 grep -qF 'never reused'                 "$UR_REF" || UR3_WHY+=" no-stability-rule"
-if grep -qF 'Active Summary' "$UR_REF"; then UR3_WHY+=" active-summary-returned"; fi
+grep -qF 'Active Summary'               "$UR_REF" || UR3_WHY+=" active-summary-missing"
 if grep -qF 'Traceability'   "$UR_REF"; then UR3_WHY+=" traceability-returned";   fi
 if [[ -z "$UR3_WHY" ]]; then
-    pass "UR-3 the identifier vocabulary is closed (six prefixes), homed in the brief and the result, and stable"
+    pass "UR-3 the identifier vocabulary is closed (six prefixes), homed in the manifest's Active Summary, and stable"
 else
     fail "UR-3 identifier contract:$UR3_WHY"
 fi
+
+# ─────────────────────────────────────────────
+# RM: the research MANIFEST — one file, two state axes, a retired brief and a dateless name.
+# The format moved from three prose files to one manifest whose `## Active Summary` is the
+# machine input. Four of these five guards exist because the corresponding failure is SILENT:
+# it surfaces to a user as "no researches found", never as an error.
+RM_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+RM_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+RM_CONTRACTS="$ROOT_DIR/skills/unikit-explore/references/contracts-artifact.md"
+RM_RETIRED_TPL="$ROOT_DIR/skills/unikit-explore/references/explore-brief-template.md"
+RM_RETIRED_PROMPT="$ROOT_DIR/skills/unikit-explore/references/explore-brief-prompt.md"
+RM_WHY=""
+
+if [[ ! -s "$RM_SPEC" ]]; then
+    RM_WHY+=" RM-0:spec-missing"
+elif [[ ! -s "$RM_SKILL" ]]; then
+    RM_WHY+=" RM-0:skill-missing"
+else
+    # (RM-1) Both marker pairs are DECLARED in the spec and USED by the producer. The region
+    # between the active-summary markers is the hashed object of the whole drift mechanism —
+    # without the markers there is nothing to hash, and the plan-side drift field of Phase 04
+    # has no object to be computed from. Asserted in both files because a marker declared and
+    # never emitted is exactly as useless as one emitted and never specified.
+    for RM_MARK in 'unikit:active-summary:start' 'unikit:active-summary:end' \
+                   'unikit:sessions:start' 'unikit:sessions:end'; do
+        grep -qF "$RM_MARK" "$RM_SPEC"  || RM_WHY+=" RM-1:marker-undeclared:$RM_MARK"
+        grep -qF "$RM_MARK" "$RM_SKILL" || RM_WHY+=" RM-1:marker-unused:$RM_MARK"
+    done
+
+    # (RM-2) The two state axes stay two. `Status` is completeness, `Lifecycle` is currency,
+    # and the name `Status` stays with the EXISTING axis whose three values /unikit-plan
+    # greps for by name. This guard is the direct detector of the first draft of REQ-5, which
+    # gave the name `Status` to the new axis: that rename kills the registry filter without a
+    # single error message — the skill answers "no researches", which is indistinguishable
+    # from an honestly empty registry. Hence a negative on each axis carrying the other's
+    # value, not merely a positive on both being present.
+    grep -qE '^Status: completed \| in-progress \| needs-follow-up' "$RM_SPEC" \
+        || RM_WHY+=" RM-2:status-axis-missing-or-reworded"
+    grep -qE '^Lifecycle: active \| paused \| superseded' "$RM_SPEC" \
+        || RM_WHY+=" RM-2:lifecycle-axis-missing-or-reworded"
+    if grep -qE 'Lifecycle:.*completed' "$RM_SPEC"; then RM_WHY+=" RM-2:lifecycle-carries-completed"; fi
+    if grep -qE 'Status:.*active'       "$RM_SPEC"; then RM_WHY+=" RM-2:status-carries-active"; fi
+
+    # (RM-3) The brief retired WHOLE. A half-retirement — the artifact added while the old
+    # template survives — is the shape that leaves two formats documented at once.
+    [[ -s "$RM_CONTRACTS" ]]     || RM_WHY+=" RM-3:contracts-artifact-missing-or-empty"
+    [[ ! -e "$RM_RETIRED_TPL" ]]    || RM_WHY+=" RM-3:retired-template-still-present"
+    [[ ! -e "$RM_RETIRED_PROMPT" ]] || RM_WHY+=" RM-3:retired-prompt-still-present"
+    # This file is excluded from its own scan, and the exclusion is not a convenience: the
+    # guard has to NAME the two retired files in order to assert they are gone, so it is the
+    # one legitimate carrier of the token. Without the exclusion RM-3 reports itself and can
+    # never go green — a guard that always fails is discarded, not fixed. The cost is that a
+    # reference reintroduced INSIDE this script goes unseen; that is the correct trade,
+    # because the token is only dangling when it names a file a skill tries to READ.
+    RM3_REFS="$(cd "$ROOT_DIR" && grep -rlF 'explore-brief' skills scripts docs src \
+        --exclude=test-skills.sh 2>/dev/null || true)"
+    [[ -z "$RM3_REFS" ]] || RM_WHY+=" RM-3:dangling-refs($(printf '%s' "$RM3_REFS" | tr '\n' ','))"
+
+    # (RM-4) `init` dissolved rather than disappeared. The negative half alone would be
+    # satisfied by deleting the feature, so the positive half asserts the reconciliation
+    # SURVIVED: the three counters `init` used to print are printed by the re-render. Scope is
+    # deliberately only `unikit-explore` — `unikit-gd-explore` keeps its own `init` (DEC-7).
+    if grep -q '^## Init' "$RM_SKILL"; then RM_WHY+=" RM-4:init-section-returned"; fi
+    if grep -n 'argument-hint' "$RM_SKILL" | grep -q 'init'; then RM_WHY+=" RM-4:init-in-argument-hint"; fi
+    for RM_COUNT in 'Kept:' 'Added:' 'Removed:'; do
+        grep -qF "$RM_COUNT" "$RM_SKILL" || RM_WHY+=" RM-4:reconciliation-counter-lost:$RM_COUNT"
+    done
+    # The skill body is not the only place the argument was promised. `unikit-help` is read by
+    # an agent choosing a route, so a retired argument surviving THERE is worse than in prose a
+    # human skims — it gets invoked. The literal carries the skill name so the game-design
+    # `init`, which stays, cannot match it.
+    RM4_INIT_REFS="$(cd "$ROOT_DIR" && grep -rlF 'unikit-explore init' skills docs 2>/dev/null || true)"
+    [[ -z "$RM4_INIT_REFS" ]] || RM_WHY+=" RM-4:init-still-offered($(printf '%s' "$RM4_INIT_REFS" | tr '
+' ','))"
+
+    # (RM-5) The research folder name is built WITHOUT a date, in both files that decide it.
+    #
+    # Two files, and the second is here for a measured reason. The producer (`SKILL.md`)
+    # ASSEMBLES the name; the spec (`ULTRA-RESEARCH-FORMAT.md`) PRESCRIBES it — and the
+    # prescription lived in the spec's preamble, which sits outside every section the rewrite
+    # touched by name. A guard scoped to the producer alone would have left the last surviving
+    # instruction to use a dated name inside the file that calls itself the source of the
+    # format. Same class as `mode-ultra.md:94` on the plan side: a claim that outlives the
+    # task editing around it.
+    #
+    # The positive sits beside the negatives so the guard cannot pass on an emptied file —
+    # zero occurrences of a forbidden token is also what a truncated file looks like.
+    for RM_FILE in "$RM_SPEC" "$RM_SKILL"; do
+        RM_NAME="$(basename "$RM_FILE")"
+        if grep -qF '<date>_' "$RM_FILE";       then RM_WHY+=" RM-5:dated-name-token($RM_NAME)"; fi
+        if grep -qF '{YYYY-MM-DD}_' "$RM_FILE"; then RM_WHY+=" RM-5:dated-name-convention($RM_NAME)"; fi
+        grep -qF 'researches/<slug>' "$RM_FILE" || RM_WHY+=" RM-5:no-dateless-form($RM_NAME)"
+    done
+fi
+
+if [[ -z "$RM_WHY" ]]; then
+    pass "RM-1..RM-5 research manifest: markers declared and emitted, Status/Lifecycle stay two axes, the brief retired whole, init dissolved into the re-render, folder names dateless in both deciding files"
+else
+    fail "RM research manifest:$RM_WHY"
+fi
+
 
 # ─────────────────────────────────────────────
 # MF: MCP findings are recorded AT THE TASK, not at the end of the run.
