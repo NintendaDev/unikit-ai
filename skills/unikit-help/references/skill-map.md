@@ -62,13 +62,13 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   bug happen". Use before planning when you don't yet have technical direction.
 - **In:** a topic / question / system name — or, when a design workspace exists, a **flow**
   / player sequence (a *first-class flow input* grounded on the dynamics axis via the shared
-  `design-read` contract). `init` rebuilds the researches index.
-- **Modes:** default | `init` | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
+  `design-read` contract). The researches index is regenerated on every save.
+- **Modes:** default | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
   dependency graph — written into the research folder by relevance, never by checklist).
-- **Out:** `.unikit/code/researches/<date>_<name>/` (`RESEARCH_RESULT.md` + `RESEARCH_BRIEF.md`),
-  and `researches/INDEX.md`.
-- **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the brief),
-  `/unikit-fix` (if a bug was found).
+- **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`
+  and adaptive artifacts in ultra), and a regenerated `researches/INDEX.md`.
+- **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the manifest's
+  `## Active Summary`), `/unikit-fix` (if a bug was found).
 
 ### unikit-plan
 - **Purpose:** Turn a feature into a dependency-ordered task plan + technical brief.
@@ -81,7 +81,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   door* — a flow-named request grounds on the flow, a system-named one on the system,
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the
   system's `AC-<id>`s.
-- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/PLAN.md` — or, in
+- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<feature>/PLAN.md` — or, in
   ultra, that folder's manifest plus its `phase-NN-*.md` files.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 
@@ -183,7 +183,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   loops, motivation, pre-mortem — into a CONCEPT card. Includes delegated market validation.
 - **When:** "I don't know what game to make", "let's come up with a game", "a roguelike idea".
 - **In:** an optional theme/hint. Auto-resumes an in-progress concept.
-- **Out:** `.unikit/gamedesign/concepts/<date>_<slug>/CONCEPT.md` (+ rejected-idea backlog). Also
+- **Out:** `.unikit/gamedesign/concepts/<slug>/CONCEPT.md` (+ rejected-idea backlog). Also
   writes a **descriptive `genre:` hint** into the card (a human genre name; CLI-free — `/unikit-gd-spec`
   resolves it to a bundled genre profile downstream).
 - **Optional (entry of the design track).** After: `/unikit-gd-spec <slug>`.
@@ -196,8 +196,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   "how could we improve our economy".
 - **In:** a topic / game reference / URL / design question; a `reviews/*_review-*.md` report
   (develop its research bucket); or a `RECON.md` (work a pre-GDD reconstruction). `init`
-  rebuilds the researches index.
-- **Out:** a research + brief in `.unikit/gamedesign/researches/<date>_<slug>/`, then a routed
+  rebuilds the researches index — the game-design side keeps `init` until its own manifest
+  port, which is why the code-side `/unikit-explore` no longer has one.
+- **Out:** a research + brief in `.unikit/gamedesign/researches/<slug>/`, then a routed
   next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
   skeleton/detailed → `/unikit-gd-system`. **Two file modes differ:** a review
   file is mutated **in place** (research → apply-ready) → one `/unikit-gd-apply reviews/X.md`

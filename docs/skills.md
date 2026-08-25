@@ -49,18 +49,19 @@ Generates architecture guidelines:
 
 These skills form the core development loop. See [Development Workflow](workflow.md) for the full diagram and how they connect.
 
-### `/unikit-explore [init | ultra | topic]` - discovery before planning
+### `/unikit-explore [ultra | topic]` - discovery before planning
 
 ```
 /unikit-explore real-time multiplayer sync
 /unikit-explore the inventory system is getting complex
-/unikit-explore init                                     # Rebuild researches index
+/unikit-explore real-time-multiplayer-sync               # The first example's slug → continues it
 /unikit-explore ultra save-system trade-offs              # Adds adaptive artifacts
 ```
 - Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code
 - Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the knowledge base
-- Saves results to `.unikit/code/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
-- Maintains `researches/INDEX.md`; use `init` to rebuild the index
+- Saves results to `.unikit/code/researches/<slug>/` with `RESEARCH.md` (the manifest — header, `## Active Summary` between markers, `## Findings`, an append-only `## Sessions`), plus `SOURCE.md` for prompt-based explorations and adaptive artifacts in ultra
+- Re-running on an existing slug **continues** that research instead of opening a second folder; `researches/INDEX.md` is regenerated from disk on every save, so there is no separate rebuild command
+- Retired reference files stay on disk in projects installed before this change — the skill installer copies additively and never prunes. They are inert: nothing reads them
 - The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised only as the leading token, never inferred
 - Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and holds the confirmation until the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The read-only pass goes to a fresh context and falls back to inline; if the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
 - When direction is clear, transition to `/unikit-plan`
@@ -298,7 +299,7 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 ```
 - Read-only research partner - studies references, market fit, or the existing GDD/code; **never authors** the design itself
 - Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
-- Saves to `.unikit/gamedesign/researches/<date>_<slug>/`; a review file is mutated in place instead of getting a new folder
+- Saves to `.unikit/gamedesign/researches/<slug>/`; a review file is mutated in place instead of getting a new folder
 - Routes onward without asking based on the target's `doc_status` (no doc → spec add-system; `skeleton` → system; `detailed`+ → system as a delta)
 
 ### `/unikit-gd-spec [path-to-existing-GDD | URL | free-form description]` - the master GDD + registry

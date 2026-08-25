@@ -20,7 +20,7 @@ one-time:   /unikit                 setup: scans stack, writes context + memory 
               │
 strategy:   /unikit-roadmap         (optional) break the project into milestones
               │
-research:   /unikit-explore         (optional) work out the technical approach → RESEARCH_BRIEF
+research:   /unikit-explore         (optional) work out the technical approach → RESEARCH.md manifest
               │
 plan:       /unikit-plan            REQUIRED  turn a feature into an ordered task plan
               │

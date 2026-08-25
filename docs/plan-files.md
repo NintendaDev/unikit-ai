@@ -11,8 +11,8 @@ Plans are stored in two locations depending on mode:
 | Source | Plan Location | Contents |
 |--------|--------------|----------|
 | `/unikit-plan fast` | `.unikit/code/PLAN.md` | Single flat file: overview, settings, checklist, commit plan, and `## Technical Context` inline |
-| `/unikit-plan full` | `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/` | One manifest — `PLAN.md` — carrying the same sections |
-| `/unikit-plan ultra` | `.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/` | `PLAN.md` + `phase-NN-<slug>.md` |
+| `/unikit-plan full` | `.unikit/code/plans/<feature-name>/` | One manifest — `PLAN.md` — carrying the same sections |
+| `/unikit-plan ultra` | `.unikit/code/plans/<feature-name>/` | `PLAN.md` + `phase-NN-<slug>.md` |
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
 | `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
 
@@ -150,7 +150,7 @@ commands) is simply too long to live inside `## Checklist`.
 never inferred from how big the feature looks. You type it or you do not get it.
 
 ```text
-.unikit/code/plans/{YYYY-MM-DD}_{feature-name}/
+.unikit/code/plans/<feature-name>/
 ├── PLAN.md                 ← the manifest (same name as a full plan)
 └── phase-NN-<slug>.md      ← one file per phase
 ```
@@ -263,8 +263,8 @@ The boundary against the rules registry is exact: **the registry says HOW to wri
 
 `/unikit-implement` finds plans in this order:
 1. **Fast plan** → `.unikit/code/PLAN.md` (if exists, used directly)
-2. **Git branch match** → `.unikit/code/plans/` directory matching current `feature/*` branch name
-3. **Latest by date** → most recent `{YYYY-MM-DD}_{name}/` directory (lexicographic sort)
+2. **Git branch match** → from branch `<prefix><name>`, every folder matching one of the three name formats that coexist on disk: exactly `<name>`, ending in `_<name>` (the `YYYY-MM-DD_` era), or ending in `-<name>` after three digits (the older `DDD-` era). More than one match is a question, never a silent pick
+3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying neither is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime
 4. **Fix plan fallback** → `.unikit/code/FIX_PLAN.md` → redirects to `/unikit-fix`
 
 If both `.unikit/code/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
@@ -380,9 +380,17 @@ Plan files are the shared state between exploration, planning, implementation, a
 
 ### /unikit-explore → /unikit-plan
 
-Explore saves research artifacts to `.unikit/code/researches/<date>_<name>/` (three files: `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, `RESEARCH_SOURCE.md`). When planning begins, `/unikit-plan` reads `researches/INDEX.md` and offers to link relevant researches. If linked, the plan reads `RESEARCH_BRIEF.md` as a starting point for its own `## Technical Context` - verifying and extending the research against the current codebase state. The plan references linked research via a `## Based on` section.
+Explore saves a research to `.unikit/code/researches/<slug>/` as a single `RESEARCH.md` manifest, plus `SOURCE.md` for prompt-based explorations and, in ultra, whichever adaptive artifacts the subject actually needed. The manifest's `## Active Summary` — the region between its two markers — is the declared input for planning; the rest of the file is evidence and an append-only session log. When planning begins, `/unikit-plan` reads `researches/INDEX.md` and offers to link relevant researches. If linked, the plan uses that summary as a starting point for its own `## Technical Context` - verifying and extending it against the current codebase state. The plan references linked research via a `## Based on` section.
 
-Each `## Based on` entry records a **`Brief SHA256`** — the SHA256 of that research's `RESEARCH_BRIEF.md` as it stood at linking time, computed over normalized text (BOM stripped, LF endings, trailing spaces trimmed, exactly one final newline, nothing reformatted). Only the brief is hashed: `RESEARCH_RESULT.md` carries a volatile `Updated:` line and `RESEARCH_SOURCE.md` is an append-only dialogue log, so hashing either would report drift on every edit that changed no requirement. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute the hash and report a mismatch as `WARN [research-drift]`. An entry with **no** `Brief SHA256` means drift is *unknown*, not absent — the plan predates the field, or no hash tool was available when it was written. `/unikit-improve` records one when you accept the re-link it offers, and that is the only way the state clears — no migration backfills it and no consumer writes it while merely reading. Drift never blocks: work continues against the plan, which is the authoritative snapshot, and a rebase onto the newer research happens only when the user asks `/unikit-improve` for one.
+Each `## Based on` entry records a **`Summary SHA256`** — the SHA256 of the bytes between the `## Active Summary` markers as they stood at linking time, computed over normalized text (extracted between the markers, BOM stripped, LF endings, trailing spaces trimmed, exactly one final newline, nothing reformatted). Only that region is hashed: the header's `Updated:` moves on every session and `## Sessions` grows on every save, so hashing the whole file would report drift on every append that changed no requirement. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute the hash and report a mismatch as `WARN [research-drift]`. An entry with **no** `Summary SHA256` means drift is *unknown*, not absent — either the plan predates the field, or it carries a `Brief SHA256` recorded against the retired brief field, which describes a different object and is never recomputed against the summary. `/unikit-improve` records one when you accept the re-link it offers, and that is the only way the state clears — no migration backfills it and no consumer writes it while merely reading. Drift never blocks: work continues against the plan, which is the authoritative snapshot, and a rebase onto the newer research happens only when the user asks `/unikit-improve` for one.
+
+**After upgrading a project, run `/unikit-explore` once before planning.** The migration folds each research folder into its manifest but does not touch `researches/INDEX.md`, because that file is generated — it is rebuilt from the folders on every save. Until the first save the index still carries pre-2.0.0 rows, which have no `Updated:` field, so `/unikit-plan` excludes every one of them and says so per row: `WARN [research] <folder>: index row has no Updated — excluded; run /unikit-explore to redraw the index`. Nothing is lost and nothing fails silently; one `/unikit-explore` save regenerates the index whole and the researches become visible to planning again.
+
+### Why a plan folder has no date and a patch file does
+
+`plans/customers-system/` sits next to `patches/2026-03-09-14.30.md`, and the difference is not an inconsistency. A date in a **name** is allowed exactly when the artifact is an entry in an event log: nobody returns to a single entry, the stream is read in order, and `/unikit-evolve` additionally stores the name of the last patch it processed and compares names as strings — so lexicographic order of names *is* the mechanism there. Plans, researches and concepts are the opposite: you come back to them, you address them by what they are about, and a date in the name only gets in the way of that. The date did not disappear from them — it moved inside, into the `Created:` and `Updated:` fields of the artifact itself.
+
+The rule is about the **class** of artifact, not a list of exceptions: a list would be wrong the first time a new artifact is added.
 
 ### /unikit-plan → /unikit-implement
 

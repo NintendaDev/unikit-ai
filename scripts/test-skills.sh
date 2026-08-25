@@ -4090,6 +4090,13 @@ else
     for RM_COUNT in 'Kept:' 'Added:' 'Removed:'; do
         grep -qF "$RM_COUNT" "$RM_SKILL" || RM_WHY+=" RM-4:reconciliation-counter-lost:$RM_COUNT"
     done
+    # The skill body is not the only place the argument was promised. `unikit-help` is read by
+    # an agent choosing a route, so a retired argument surviving THERE is worse than in prose a
+    # human skims — it gets invoked. The literal carries the skill name so the game-design
+    # `init`, which stays, cannot match it.
+    RM4_INIT_REFS="$(cd "$ROOT_DIR" && grep -rlF 'unikit-explore init' skills docs 2>/dev/null || true)"
+    [[ -z "$RM4_INIT_REFS" ]] || RM_WHY+=" RM-4:init-still-offered($(printf '%s' "$RM4_INIT_REFS" | tr '
+' ','))"
 
     # (RM-5) The research folder name is built WITHOUT a date, in both files that decide it.
     #
