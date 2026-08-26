@@ -8,6 +8,7 @@
     "context7": "/coplaydev/unity-mcp",
     "repo": "https://github.com/CoplayDev/unity-mcp"
   },
+  "rules": "rules/coplay-unity-mcp/",
   "config": {
     "type": "http",
     "url": "http://127.0.0.1:8085/mcp"
