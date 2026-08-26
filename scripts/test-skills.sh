@@ -4957,19 +4957,18 @@ else
     fail "EM-3 GATE LIFTED override MISSING in:$EM3_WHY"
 fi
 
-# (EM-4) Dead-name sweep on the two repaired configs. ChiR24 cut over to a single `unreal`
+# (EM-4) Dead-name sweep on the repaired config. ChiR24 cut over to a single `unreal`
 # tool, so every old parent name is a guaranteed DIRECT_TOOL_CALL_REMOVED; UE_PROJECT_PATH
-# passed fs.existsSync and then failed every call with NOT_CONNECTED. coplay's 8085 never
-# existed in their repository at all.
+# passed fs.existsSync and then failed every call with NOT_CONNECTED.
+# The coplay half was removed with the port change: `8085` is what the Unity plugin passes on
+# the launch line, so a guard forbidding it forbade the measured value.
 EM_CHIR24_JSON="$ROOT_DIR/mcp/unreal-engine-5/chir24-unreal-mcp.json"
-EM_COPLAY_JSON="$ROOT_DIR/mcp/unity/coplay-unity-mcp.json"
 EM4_WHY=""
 for dead in manage_pipeline manage_performance manage_game_framework manage_behavior_tree manage_navigation UE_PROJECT_PATH; do
     grep -qF "$dead" "$EM_CHIR24_JSON" && EM4_WHY+=" chir24:$dead"
 done
-grep -qF '8085' "$EM_COPLAY_JSON" && EM4_WHY+=" coplay:8085"
 if [[ -z "$EM4_WHY" ]]; then
-    pass "EM-4 dead-name sweep: no removed tool names / UE_PROJECT_PATH / port 8085 survive"
+    pass "EM-4 dead-name sweep: no removed tool names / UE_PROJECT_PATH survive"
 else
     fail "EM-4 DEAD names still present:$EM4_WHY"
 fi

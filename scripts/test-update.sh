@@ -1596,8 +1596,8 @@ MCPHASH_OUT1="$TMPDIR/update-mcp-hash-1.log"
 
 MCPHASH_SKILL="$MCPHASH_DIR/.claude/skills/unikit-implement/SKILL.md"
 assert_exists "$MCPHASH_SKILL" "unikit-implement must be installed for the MCP source-hash test"
-assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__read_console' \
-    "coplay-only tool id injected on the first update"
+assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__\*' \
+    "coplay wildcard grant injected on the first update"
 
 # Plant an orphan reference file: the package does not ship it, so a clean replace
 # must remove it. Under the old `force &&` guard it would survive forever.
@@ -1616,8 +1616,12 @@ CONFIG="$MCPHASH_CONFIG" node -e "
 MCPHASH_OUT2="$TMPDIR/update-mcp-hash-2.log"
 (cd "$MCPHASH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCPHASH_OUT2" 2>&1)
 
-if grep -q 'mcp__UnityMCP__read_console' "$MCPHASH_SKILL"; then
-    echo "Assertion failed: swapping the MCP selection did NOT drop the coplay-only tool id"
+# The negative probe is the bare prefix, NOT the escaped-wildcard form of the positive
+# assert above: after the swap NOTHING from this family may survive, and `mcp__UnityMCP__`
+# is coplay-exclusive because biome's code is `unity-biome-mcp`. Strictly sharper than the
+# single name it replaces — that one caught one id, this one catches any.
+if grep -q 'mcp__UnityMCP__' "$MCPHASH_SKILL"; then
+    echo "Assertion failed: swapping the MCP selection did NOT drop coplay's grants"
     echo "  (the MCP selection is missing from the skill source hash)"
     exit 1
 fi

@@ -918,8 +918,8 @@ assert_contains "$CODEX_TOML" 'url = "https://mcp.context7.com/mcp"' \
   "codex http server context7 should have url = \"https://mcp.context7.com/mcp\""
 assert_contains "$CODEX_TOML" '^\[mcp_servers\.UnityMCP\]$' \
   "codex toml should contain [mcp_servers.UnityMCP] section"
-assert_contains "$CODEX_TOML" 'url = "http://127.0.0.1:8080/mcp"' \
-  "codex http server should have url = \"http://127.0.0.1:8080/mcp\""
+assert_contains "$CODEX_TOML" 'url = "http://127.0.0.1:8085/mcp"' \
+  "codex http server should have url = \"http://127.0.0.1:8085/mcp\""
 assert_not_contains "$CODEX_TOML" 'mcpServers' \
   "codex toml must not contain camelCase mcpServers token"
 
@@ -1108,8 +1108,8 @@ node -e "
   if (!unity) errors.push('HTTP UnityMCP must be written as remote, not skipped');
   else {
     if (unity.type !== 'remote') errors.push('UnityMCP.type expected remote, got ' + JSON.stringify(unity.type));
-    if (unity.url !== 'http://127.0.0.1:8080/mcp')
-      errors.push('UnityMCP.url expected http://127.0.0.1:8080/mcp, got ' + JSON.stringify(unity.url));
+    if (unity.url !== 'http://127.0.0.1:8085/mcp')
+      errors.push('UnityMCP.url expected http://127.0.0.1:8085/mcp, got ' + JSON.stringify(unity.url));
     if ('command' in unity)
       errors.push('UnityMCP.command must be absent — HTTP must not degrade into a local entry, got ' + JSON.stringify(unity.command));
   }
@@ -1194,7 +1194,7 @@ node -e "
   const unity = c.mcpServers && c.mcpServers.UnityMCP;
   if (!unity) errors.push('UnityMCP server missing');
   else {
-    if (unity.serverUrl !== 'http://127.0.0.1:8080/mcp')
+    if (unity.serverUrl !== 'http://127.0.0.1:8085/mcp')
       errors.push('UnityMCP.serverUrl wrong: ' + JSON.stringify(unity.serverUrl));
     if ('type' in unity) errors.push('UnityMCP.type must be stripped');
     if ('url' in unity) errors.push('UnityMCP.url must be renamed to serverUrl, not left in place');
