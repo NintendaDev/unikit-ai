@@ -481,6 +481,38 @@ fake_registry_path() {
     normalize_path_for_json "$ROOT_DIR/scripts/test-fixtures/$name"
 }
 
+fake_mcp_catalog_path() {
+    local name="$1"
+    normalize_path_for_json "$ROOT_DIR/scripts/test-fixtures/mcp/$name"
+}
+
+# use_fake_mcp_catalog <fixture_name>
+#
+# Exports UNIKIT_MCP_DIR at the fixture catalog so the installer discovers fixture
+# servers rather than the shipped ones. Behaviour tests of the installer use this;
+# the STRUCTURE of the shipped catalog stays the object of Part 5 / 5b / 7e3, which
+# read `mcp/` directly. Callers that need the shipped catalog back call
+# `unuse_fake_mcp_catalog` — the variable is process-wide, not per-project.
+#
+# Deliberately NOT exported suite-wide, unlike UNIKIT_OFFICIAL_REGISTRY_URL: that one
+# is redirected everywhere because no test wants a live network round-trip, while the
+# MCP catalog is wanted REAL by almost every test. This one switches on for a named
+# scenario and off again immediately after. Do not add a suite-wide export by analogy.
+use_fake_mcp_catalog() {
+    local fixture_name="$1"
+    local fixture_path
+    fixture_path="$(fake_mcp_catalog_path "$fixture_name")"
+    if [[ ! -d "$fixture_path" ]]; then
+        echo "use_fake_mcp_catalog: fixture '$fixture_name' missing at $fixture_path" >&2
+        exit 1
+    fi
+    export UNIKIT_MCP_DIR="$fixture_path"
+}
+
+unuse_fake_mcp_catalog() {
+    unset UNIKIT_MCP_DIR
+}
+
 # use_fake_registry <project_dir> <engine> <fixture_name> [agents_override]
 #
 # Creates a minimal .unikit.json inside <project_dir> with:

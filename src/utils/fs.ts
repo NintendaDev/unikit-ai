@@ -2,6 +2,8 @@ import fs from 'fs-extra';
 import path from 'path';
 import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
+import { MCP_DIR_ENV_VAR } from '../core/constants.js';
+import { logInfo } from './log.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +25,11 @@ export function getBundledRegistryDir(): string {
 }
 
 export function getMcpDir(): string {
+  const override = process.env[MCP_DIR_ENV_VAR];
+  if (override) {
+    logInfo('getMcpDir', `MCP catalog overridden via ${MCP_DIR_ENV_VAR}=${override}`);
+    return override;
+  }
   return path.join(getPackageRoot(), 'mcp');
 }
 
