@@ -182,18 +182,21 @@ It is the first server to ship a **rules tree**: see [Engine-MCP rules tree](#en
 ```json
 {
   "type": "http",
-  "url": "http://127.0.0.1:8080/mcp"
+  "url": "http://127.0.0.1:8085/mcp"
 }
 ```
 
-Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires **Unity 2021.3 LTS → 6.x**, the package installed in your Unity project, and the Unity Editor running. Its catalog arrives grouped, with only part of it active up front, so an agent asks it what is reachable rather than assuming. Broadly it covers console reading, domain reload / asset refresh, EditMode and PlayMode test runs, and Editor authoring across scenes, components, prefabs, assets, UI documents, materials, animation and project settings.
+Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires **Unity 2021.3 LTS → 6.x**, the package installed in your Unity project, and the Unity Editor running. Its catalog arrives grouped. The grouping is presentational: what your client lists is what you can call, and a name missing from that list may still be reachable — or may be switched off in the editor by the person sitting at it. The rules tree tells an agent how to tell those two apart. Broadly it covers console reading, domain reload / asset refresh, EditMode and PlayMode test runs, and Editor authoring across scenes, components, prefabs, assets, UI documents, materials, animation and project settings.
 
-It ships no rules tree yet. That means UniKit AI knows of no exceptions for it — not that it can do less, and never a reason to skip an editor task. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
+The port above is the one the Unity plugin passes to the server on its launch line, not a vendor default. If yours differs, it is edited in both places — the editor and your agent config.
 
-Two caveats worth knowing before you rely on it:
+It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
 
-- **The HTTP server does not start on its own.** Start it manually via `Window > MCP for Unity > Start Server`. Until it is running, every tool call fails to connect.
-- **The Unity package manages MCP client configs itself.** On editor load it rewrites (and can remove) MCP entries written by other tools, including the ones UniKit AI installs. Disable that behavior with the EditorPref `MCPForUnity.AutoRegisterEnabled=false` if you want UniKit AI to stay the owner of your agent config.
+Three caveats worth knowing before you rely on it:
+
+- **The HTTP server does not start on its own.** Open the plugin window (`Window > MCP for Unity > Toggle MCP Window`) and start the server from its connection section. Until it is running, every tool call fails to connect.
+- **The Unity package registers itself on editor load.** It shares its settings key with UniKit AI, so when it detects a transport or version mismatch it clears that key from every scope it can see — including the entry UniKit AI wrote. Turn that off with the EditorPref `MCPForUnity.AutoRegisterEnabled=false`, edited via `Window > MCP for Unity > Edit EditorPrefs`, if you want UniKit AI to stay the owner of your agent config.
+- **The plugin can install an agent skill of its own, and it lands in your home directory.** A button in the plugin window writes a skill package outside the project, so it triggers in every project you open, not just this one. It does not collide with the `unikit-*` skills by path or name, but it competes with them for triggering. If you would rather it did not, do not press that button — or remove the package afterwards.
 
 ### Godot
 
@@ -293,9 +296,9 @@ The remaining half went with the last consumer that read it. Once the version wa
 An MCP JSON may name the skills and subagents that receive its tools; the names are injected into the installed frontmatter as `mcp__<code>__<tool>` (or `mcp__<code>__*`) — the **vendor code**, which is what the running server publishes its tools under. Injection is keyed on your **selection**, so changing which MCP you use reinstalls all skills and subagents and clears the old entries; a server whose code changes while your selection stays put has its dead names removed too.
 
 - **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
-- **The planner is the one exception**, and receives two discovery names only. The discovery protocol is the single layer that does not rot, and a planner physically cannot mutate anything — so a narrow grant costs nothing and documents the boundary.
+- **The planner is the one exception**, and receives discovery names only — as few as the server needs to resolve a target. The discovery protocol is the single layer that does not rot, and a planner physically cannot mutate anything, so a narrow grant costs nothing and documents the boundary. A meta-tool that reports which parts of a catalog are switched on is **not** granted where its state field has been measured to lie.
 - `/unikit-mcp-audit` gets a wildcard because replaying a finding means re-issuing the exact call recorded in its `evidence:` field. Its restraint lives in a six-step envelope gated on one informed confirmation from you, not in the size of its grant.
-- **`/unikit-mcp-trap` receives no grants at all** — it makes zero MCP calls by construction. This cannot be recorded in the JSON itself: the format has no comments, and an empty array would create a recipient with no tools, which the test suite rejects. So it is written down here.
+- **`/unikit-mcp-trap` receives no grants at all** — it makes zero MCP calls by construction. This cannot be recorded in the JSON itself: the format has no comments, and an empty array would say something different — that the skill is a recipient whose grant list happens to be empty, which is a state nothing distinguishes from an editing mistake. So it is written down here.
 - The wildcard on the read-only review sidecar is a **deliberate deferral** — narrowing read-only consumers is a separate question — not an oversight to be tidied away.
 
 #### Per-platform configs
