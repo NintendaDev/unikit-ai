@@ -143,17 +143,6 @@ export const MCP_TOOL_ENTRY_PREFIX = 'mcp__';
 export const MCP_RULES_INDEX_FILE = 'INDEX.md';
 
 /**
- * Dev/test-only override for the packaged MCP catalog directory. Behaviour tests of the
- * installer point this at a fixture so they never read — or edit — the shipped configs;
- * the STRUCTURE of the shipped catalog stays the object of Part 5 / 5b / 7e3, which read
- * `mcp/` directly. Same shape as UNIKIT_OFFICIAL_REGISTRY_URL, and unrelated to it.
- *
- * Read in exactly one place ({@link getMcpDir}) — one point of read, one point of failure,
- * the same rule the notes path is held to.
- */
-export const MCP_DIR_ENV_VAR = 'UNIKIT_MCP_DIR';
-
-/**
  * The literal a server config carries where a pinned version belongs, until
  * something fills it in.
  *
