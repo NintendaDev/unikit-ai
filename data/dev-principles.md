@@ -71,6 +71,8 @@ A phase is entered only after the previous one is CONFIRMED. Working out of orde
 
 **One executor per editor instance.** Two executors touching one editor produce a corrupted state, not a race you can retry.
 
+**The unit is the executor, not the call, and a live run session is narrower than either.** Concurrent calls issued inside one lane are governed by the server's own contract and never lift the lane; one server has been measured carrying three at once with no corruption, and that says nothing about a second executor. A run session, where one exists, is single across the machine — hold it as such, and establish what a second attempt does by trying rather than by assuming.
+
 Asynchronous job calls **do not hold the lane**: a call that returns a handle and completes later frees the lane immediately, and its result is a separate claim closed by its own read-back.
 
 ### A7. Stop-conditions
