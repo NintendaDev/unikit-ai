@@ -1917,6 +1917,13 @@ echo "  ✓ recheck notes: parked under the outgoing server, restored on the way
 # overwrites that stamp. Read it after, and the "previous" server is the new one,
 # the swap no-ops, and biome's findings sit active under fennara looking like
 # evidence about fennara.
+#
+# Three steps, not two. Step 2 (biome to fennara) is about the notes: they follow the
+# server, and whether the incoming server has a tree is irrelevant to that. Step 3
+# (fennara to gdai) is about the sweep, and for that the incoming server MUST be
+# treeless -- otherwise "empty" stops being the correct end state and the orphan-delete
+# branch is never executed at all. Folding them into one step holds both assertions
+# hostage to whether one particular server happened to grow a tree.
 
 NOTES_CLI_DIR="$TMPDIR/update-notes-engine-switch"
 mkdir -p "$NOTES_CLI_DIR"
@@ -1953,7 +1960,7 @@ CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
     c.engine = 'godot';
-    c.engineMcpKey = 'GodotMCP';
+    c.engineMcpKey = 'fennara';
     c.mcp = { servers: ['fennara-godot-mcp'] };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
@@ -1974,17 +1981,29 @@ assert_exists "$NOTES_CLI_ARCHIVE" \
 assert_contains "$NOTES_CLI_ARCHIVE" 'BIOME_FINDING' \
     "parking is a rename — the installer never rewrites note content"
 
-# The same switch must also take the outgoing server's RULES with it. fennara ships no
-# rules tree, so the correct end state is an empty tree — biome's files swept, nothing
-# put back. Leaving them would be the worse half of the same bug the parked notes guard
-# against: a project reading one server's exceptions while talking to another.
+# Step 3 - the sweep. Deliberately separated from step 2: there the assertion is that
+# the notes follow the server, here that the outgoing server's tree leaves with it.
+# The incoming server MUST be treeless, otherwise "empty" stops being the correct end
+# state and with it goes the only branch on which orphan-delete runs at all. Fennara no
+# longer qualifies - it grows a tree; gdai is an engine server, real, and by decision D3
+# will not get one.
+CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
+    const fs=require('fs'); const f=process.env.CONFIG;
+    const c=JSON.parse(fs.readFileSync(f,'utf8'));
+    c.engineMcpKey = 'godot-mcp';
+    c.mcp = { servers: ['gdai-godot-mcp'] };
+    fs.writeFileSync(f, JSON.stringify(c,null,2));
+"
+NOTES_CLI_OUT3="$TMPDIR/update-notes-cli-3.log"
+(cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT3" 2>&1)
+
 NOTES_CLI_RULES="$NOTES_CLI_DIR/.unikit/system/engine-mcp"
 assert_not_exists "$NOTES_CLI_RULES/INDEX.md" \
-    "a server switch sweeps the outgoing server's rules tree (INDEX.md does not survive)"
+    "a switch to a treeless server sweeps the outgoing server's rules tree (INDEX.md does not survive)"
 assert_not_exists "$NOTES_CLI_RULES/verification.md" \
     "the sweep covers the whole tree, not just its entry point"
 
-echo "  ✓ recheck notes: an engine switch through update parks the log and sweeps the old rules tree"
+echo "  ✓ recheck notes: an engine switch parks the log; a switch to a treeless server sweeps the tree"
 
 # ─────────────────────────────────────────────
 # Test 30k: ultra-plan-read.md is delivered on update — the ONLY mechanical guard for
