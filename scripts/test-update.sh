@@ -1981,6 +1981,18 @@ assert_exists "$NOTES_CLI_ARCHIVE" \
 assert_contains "$NOTES_CLI_ARCHIVE" 'BIOME_FINDING' \
     "parking is a rename — the installer never rewrites note content"
 
+# Tree -> tree. Both trees name their files the same way, so orphan-delete does not
+# fire here at all and "empty" is not the correct end state: the replacement is proved
+# by the stamp. Before fennara this path was untestable -- there was no second tree on
+# one engine.
+NOTES_CLI_RULES="$NOTES_CLI_DIR/.unikit/system/engine-mcp"
+assert_exists "$NOTES_CLI_RULES/INDEX.md" \
+    "the incoming server's own rules tree is delivered in place of the outgoing one"
+assert_contains "$NOTES_CLI_RULES/INDEX.md" '^server: fennara-godot-mcp$' \
+    "the delivered tree is stamped with the server that replaced the previous one"
+assert_not_contains "$NOTES_CLI_RULES/INDEX.md" 'unity-biome-mcp' \
+    "nothing of the outgoing server's tree survives the replacement"
+
 # Step 3 - the sweep. Deliberately separated from step 2: there the assertion is that
 # the notes follow the server, here that the outgoing server's tree leaves with it.
 # The incoming server MUST be treeless, otherwise "empty" stops being the correct end
@@ -1997,7 +2009,6 @@ CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
 NOTES_CLI_OUT3="$TMPDIR/update-notes-cli-3.log"
 (cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT3" 2>&1)
 
-NOTES_CLI_RULES="$NOTES_CLI_DIR/.unikit/system/engine-mcp"
 assert_not_exists "$NOTES_CLI_RULES/INDEX.md" \
     "a switch to a treeless server sweeps the outgoing server's rules tree (INDEX.md does not survive)"
 assert_not_exists "$NOTES_CLI_RULES/verification.md" \
