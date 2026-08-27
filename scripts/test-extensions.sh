@@ -1756,9 +1756,13 @@ inject_fake_registry "$MCP_INJECT_PROJECT"
 # Install base skills + MCP injection
 (cd "$MCP_INJECT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
 
-# Verify base unikit-fix has MCP tools
+# Verify base unikit-fix has MCP tools.
+# Coplay grants executors a wildcard, so the probe is the wildcard entry itself — there is
+# no coplay-only tool NAME left to look for. The escape is load-bearing: assert_contains
+# feeds the pattern to `grep -qE`, and a bare `*` would read as "zero or more `_`" and match
+# any member of the family, passing vacuously.
 assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
-  "mcp__UnityMCP__read_console" \
+  "mcp__UnityMCP__\*" \
   "base unikit-fix must have MCP tools before replacement"
 
 # Add replace extension
@@ -1766,7 +1770,7 @@ assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
 
 # Replaced skill must have MCP tools injected
 assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
-  "mcp__UnityMCP__read_console" \
+  "mcp__UnityMCP__\*" \
   "replaced skill must have MCP tools after ext add"
 
 assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
@@ -1783,7 +1787,7 @@ echo "  ✓ MCP injection: replacement skill gets MCP tools after ext add"
 
 # Restored base skill must have MCP tools
 assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
-  "mcp__UnityMCP__read_console" \
+  "mcp__UnityMCP__\*" \
   "restored base skill must have MCP tools after ext remove"
 
 assert_not_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \

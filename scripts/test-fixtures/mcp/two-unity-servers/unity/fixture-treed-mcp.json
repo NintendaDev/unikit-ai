@@ -1,0 +1,17 @@
+{
+  "key": "fixture-treed-mcp",
+  "code": "FixtureTreed",
+  "is_engine": true,
+  "order": 1,
+  "displayName": "Fixture MCP with a rules tree",
+  "docs": {
+    "context7": "/fixture/treed",
+    "repo": "https://example.invalid/fixture-treed"
+  },
+  "rules": "rules/fixture-treed-mcp/",
+  "config": { "type": "http", "url": "http://127.0.0.1:9101/mcp" },
+  "allowed-tools": {
+    "agents": { "unikit-implement-coordinator": ["*"] },
+    "skills": { "unikit-implement": ["*"], "unikit-verify": ["*"] }
+  }
+}

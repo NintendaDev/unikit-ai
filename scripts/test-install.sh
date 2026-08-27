@@ -918,8 +918,8 @@ assert_contains "$CODEX_TOML" 'url = "https://mcp.context7.com/mcp"' \
   "codex http server context7 should have url = \"https://mcp.context7.com/mcp\""
 assert_contains "$CODEX_TOML" '^\[mcp_servers\.UnityMCP\]$' \
   "codex toml should contain [mcp_servers.UnityMCP] section"
-assert_contains "$CODEX_TOML" 'url = "http://127.0.0.1:8080/mcp"' \
-  "codex http server should have url = \"http://127.0.0.1:8080/mcp\""
+assert_contains "$CODEX_TOML" 'url = "http://127.0.0.1:8085/mcp"' \
+  "codex http server should have url = \"http://127.0.0.1:8085/mcp\""
 assert_not_contains "$CODEX_TOML" 'mcpServers' \
   "codex toml must not contain camelCase mcpServers token"
 
@@ -1108,8 +1108,8 @@ node -e "
   if (!unity) errors.push('HTTP UnityMCP must be written as remote, not skipped');
   else {
     if (unity.type !== 'remote') errors.push('UnityMCP.type expected remote, got ' + JSON.stringify(unity.type));
-    if (unity.url !== 'http://127.0.0.1:8080/mcp')
-      errors.push('UnityMCP.url expected http://127.0.0.1:8080/mcp, got ' + JSON.stringify(unity.url));
+    if (unity.url !== 'http://127.0.0.1:8085/mcp')
+      errors.push('UnityMCP.url expected http://127.0.0.1:8085/mcp, got ' + JSON.stringify(unity.url));
     if ('command' in unity)
       errors.push('UnityMCP.command must be absent — HTTP must not degrade into a local entry, got ' + JSON.stringify(unity.command));
   }
@@ -1194,7 +1194,7 @@ node -e "
   const unity = c.mcpServers && c.mcpServers.UnityMCP;
   if (!unity) errors.push('UnityMCP server missing');
   else {
-    if (unity.serverUrl !== 'http://127.0.0.1:8080/mcp')
+    if (unity.serverUrl !== 'http://127.0.0.1:8085/mcp')
       errors.push('UnityMCP.serverUrl wrong: ' + JSON.stringify(unity.serverUrl));
     if ('type' in unity) errors.push('UnityMCP.type must be stripped');
     if ('url' in unity) errors.push('UnityMCP.url must be renamed to serverUrl, not left in place');
@@ -1397,16 +1397,21 @@ echo "  ✓ engine-mcp: biome rules tree delivered (INDEX + verification), stamp
 # ─────────────────────────────────────────────────────
 # Test 13c: an engine MCP that ships NO rules tree — nothing degrades
 # ─────────────────────────────────────────────────────
-# Invariant 3 at the install layer: no rules ≠ no rights. Exactly one of the six engine
-# servers carries a rules tree today, so this is the MAJORITY case and not an edge one,
-# and its whole contract is to be indistinguishable from a well-behaved install except
-# for one absent directory. The failure it guards is a plausible one: a delivery step
-# that reads "no tree" as "misconfigured server" and drops the MCP config, the grants, or
-# both. That would look like a clean install and silently disable editor work on five of
-# the six servers — the exact shape of degradation the rules architecture forbids.
+# Invariant 3 at the install layer: no rules ≠ no rights. A server without a tree has to
+# be indistinguishable from a well-behaved install except for one absent directory. The
+# failure it guards is a plausible one: a delivery step that reads "no tree" as
+# "misconfigured server" and drops the MCP config, the grants, or both. That would look
+# like a clean install and silently disable editor work — the exact shape of degradation
+# the rules architecture forbids.
 #
-# coplay-unity-mcp is the fixture because it is the same ENGINE as biome: an assertion
-# that passed only because the engine had no MCP at all would prove nothing.
+# It runs against a FIXTURE catalog whose engine carries BOTH kinds of server, one with a
+# tree and one without, and the treeless one is selected here. That is what gives the
+# claim its force: an assertion that passed merely because the engine has no MCP at all
+# would prove nothing. Reading it off the shipped catalog instead would tie the test to
+# which servers happen to ship a tree today, and it would go quietly weaker — or quietly
+# vacuous — the next time that changes.
+
+use_fake_mcp_catalog two-unity-servers
 
 MCP_NOTREE_DIR="$TMPDIR/test-mcp-no-rules-tree"
 mkdir -p "$MCP_NOTREE_DIR"
@@ -1415,8 +1420,8 @@ cat > "$MCP_NOTREE_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "coplay-unity-mcp": "UnityMCP" } },
+  "engineMcpKey": "FixtureTreeless",
+  "mcp": { "servers": { "fixture-treeless-mcp": "FixtureTreeless" } },
   "agents": [
     {
       "id": "claude",
@@ -1447,9 +1452,9 @@ assert_not_exists "$MCP_NOTREE_DIR/.unikit/system/engine-mcp" \
 # frontmatter injection from `mcp.servers` on every run. A server the delivery step had
 # written off would inject nothing, and its tools would be unreachable no matter what
 # .mcp.json still said.
-assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__UnityMCP__' \
+assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-implement/SKILL.md" 'mcp__FixtureTreeless__' \
   "tool grants are injected for a server that ships no rules tree"
-assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-verify/SKILL.md" 'mcp__UnityMCP__' \
+assert_contains "$MCP_NOTREE_DIR/.claude/skills/unikit-verify/SKILL.md" 'mcp__FixtureTreeless__' \
   "the verify skill keeps its grants too (both sides of the pipeline stay live)"
 
 # ...layer A still arrives, and it is what carries the obligations when a tree does not:
@@ -1462,6 +1467,33 @@ assert_exists "$MCP_NOTREE_DIR/.unikit/system/dev-principles.md" \
 assert_exists "$MCP_NOTREE_DIR/.claude/skills/unikit-memory/scripts/material-prep.py" \
   "the scripts/ subdir still ships (the rules-tree cutover did not touch skill assets)"
 
+# The strong form, and the reason this test uses a fixture catalog rather than the shipped
+# one. The invariant is "no rules tree ≠ no rights", and it is only worth anything when the
+# same ENGINE also has a server that DOES ship a tree: an assertion that passed merely
+# because the engine has no MCP at all would prove nothing. The fixture holds both, so the
+# claim survives the shipped catalog changing under it.
+#
+# Asserted through the `rules` POINTER, not by the existence of a tree directory. Measured:
+# with `rules` deleted from fixture-treed-mcp.json the engine carries zero treed servers,
+# yet a bare `assert_exists` on .../rules/fixture-treed-mcp/INDEX.md still passed — the
+# orphaned directory outlives the pointer, so the guard would keep confirming an invariant
+# the fixture had stopped satisfying. Same shape Part 5b uses on the shipped configs.
+MCP_NOTREE_TREED_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
+if ! MCP_NOTREE_TREED_JSON="$MCP_NOTREE_TREED_JSON" node -e "
+    const fs = require('fs'), path = require('path');
+    const p = process.env.MCP_NOTREE_TREED_JSON;
+    const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!m.rules) process.exit(1);
+    process.exit(fs.existsSync(path.join(path.dirname(p), m.rules, 'INDEX.md')) ? 0 : 1);
+"; then
+  echo "Assertion failed: the fixture engine no longer carries a server WITH a rules tree"
+  echo "  (a treeless server whose engine-mcp dir is absent proves nothing unless a sibling"
+  echo "   server in the SAME engine ships a tree — that contrast is the whole test)"
+  echo "  File: $MCP_NOTREE_TREED_JSON"
+  exit 1
+fi
+
+unuse_fake_mcp_catalog
 echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"
 
 # ─────────────────────────────────────────────────────

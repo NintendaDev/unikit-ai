@@ -28,18 +28,21 @@ source "$SCRIPT_DIR/test-fixtures.sh"
 
 TMPDIR=$(mktemp -d)
 
-# Test 30h swaps a package MCP config in place; BIOME_JSON_BACKUP names the copy it
-# has to be restored from. Restoring it belongs in the trap and not next to the test:
-# `set -e` aborts on the first failed assertion, and a run that leaves a doctored
-# config behind in the working tree poisons every later run and the repo besides.
-BIOME_JSON="$ROOT_DIR/mcp/unity/unity-biome-mcp.json"
-BIOME_JSON_BACKUP=""
+# Test 30h doctors a fixture MCP config in place; FIXTURE_JSON names it and
+# FIXTURE_JSON_BACKUP the copy it has to be restored from. Restoring it belongs in the
+# trap and not only next to the test: `set -e` aborts on the first failed assertion, and
+# TWO assertions sit between the doctoring and the inline restore. The fixture is a
+# git-tracked file, so an abort in that window leaves the working tree dirty — and the
+# next run copies the doctored file as its own "pristine" backup, so the failure comes
+# back one run later wearing the mask of a removal-branch bug.
+FIXTURE_JSON=""
+FIXTURE_JSON_BACKUP=""
 restore_package_state() {
     # First statement, so it captures the status that triggered the trap rather than the
     # status of anything this function does.
     local exit_code=$?
-    if [[ -n "$BIOME_JSON_BACKUP" && -f "$BIOME_JSON_BACKUP" ]]; then
-        cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
+    if [[ -n "$FIXTURE_JSON" && -n "$FIXTURE_JSON_BACKUP" && -f "$FIXTURE_JSON_BACKUP" ]]; then
+        cp "$FIXTURE_JSON_BACKUP" "$FIXTURE_JSON"
     fi
     # A failing run gets the engine-mcp evidence dumped before the temp tree goes: the
     # assertion that aborted printed one path and nothing about the state around it.
@@ -48,9 +51,10 @@ restore_package_state() {
     fi
     rm -rf "$TMPDIR"
 }
-# INT/TERM as well as EXIT: an interrupted run that skipped the restore would
-# leave a doctored config in the WORKING TREE, not in a temp dir — it would
-# poison every later run and the repository besides.
+# INT/TERM as well as EXIT: an interrupted run that skipped this would leave a doctored
+# fixture in the WORKING TREE and `$TMPDIR` behind, and on a failure would take the
+# engine-mcp evidence with it — the dump is the only state the aborting assertion does
+# not print. The restore runs before the `rm -rf`: the backup lives inside `$TMPDIR`.
 trap restore_package_state EXIT INT TERM
 
 PROJECT_DIR="$TMPDIR/update-smoke"
@@ -1596,8 +1600,8 @@ MCPHASH_OUT1="$TMPDIR/update-mcp-hash-1.log"
 
 MCPHASH_SKILL="$MCPHASH_DIR/.claude/skills/unikit-implement/SKILL.md"
 assert_exists "$MCPHASH_SKILL" "unikit-implement must be installed for the MCP source-hash test"
-assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__read_console' \
-    "coplay-only tool id injected on the first update"
+assert_contains "$MCPHASH_SKILL" 'mcp__UnityMCP__\*' \
+    "coplay wildcard grant injected on the first update"
 
 # Plant an orphan reference file: the package does not ship it, so a clean replace
 # must remove it. Under the old `force &&` guard it would survive forever.
@@ -1616,8 +1620,12 @@ CONFIG="$MCPHASH_CONFIG" node -e "
 MCPHASH_OUT2="$TMPDIR/update-mcp-hash-2.log"
 (cd "$MCPHASH_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MCPHASH_OUT2" 2>&1)
 
-if grep -q 'mcp__UnityMCP__read_console' "$MCPHASH_SKILL"; then
-    echo "Assertion failed: swapping the MCP selection did NOT drop the coplay-only tool id"
+# The negative probe is the bare prefix, NOT the escaped-wildcard form of the positive
+# assert above: after the swap NOTHING from this family may survive, and `mcp__UnityMCP__`
+# is coplay-exclusive because biome's code is `unity-biome-mcp`. Strictly sharper than the
+# single name it replaces — that one caught one id, this one catches any.
+if grep -q 'mcp__UnityMCP__' "$MCPHASH_SKILL"; then
+    echo "Assertion failed: swapping the MCP selection did NOT drop coplay's grants"
     echo "  (the MCP selection is missing from the skill source hash)"
     exit 1
 fi
@@ -1728,6 +1736,14 @@ echo "  ✓ engine switch: unity+biome -> godot+none reinstalls skills and clear
 # elsewhere in this branch (which shifts their hash and hides the defect), while
 # `unikit-implement-coordinator` is not touched by any of that work. Its hash never
 # moves, so it is the artifact where a missing removal branch stays visible.
+#
+# It runs against a FIXTURE catalog, not the shipped one: the test has to doctor a
+# server's JSON in place, and doing that to `mcp/` edits the working tree of the repo
+# under test. Boundary D8 — the STRUCTURE of the shipped catalog stays the object of
+# Part 5 / 5b / 7e3, which read `mcp/` directly; installer BEHAVIOUR is checked only on
+# fixtures. Not one assertion below changed in the move; only whose file gets doctored.
+
+use_fake_mcp_catalog two-unity-servers
 
 NARROW_DIR="$TMPDIR/update-narrowed-grants"
 mkdir -p "$NARROW_DIR"
@@ -1735,8 +1751,8 @@ cat > "$NARROW_DIR/.unikit.json" << 'EOF'
 {
   "version": "1.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP" } },
+  "engineMcpKey": "FixtureTreed",
+  "mcp": { "servers": { "fixture-treed-mcp": "FixtureTreed" } },
   "agents": [
     {
       "id": "claude",
@@ -1752,15 +1768,23 @@ EOF
 inject_fake_registry "$NARROW_DIR"
 
 # Stand in the shoes of a project installed BEFORE the cutover: same key, same file id,
-# a named grant list. Only `allowed-tools` differs from what the package ships today.
-BIOME_JSON_BACKUP="$TMPDIR/unity-biome-mcp.json.orig"
-cp "$BIOME_JSON" "$BIOME_JSON_BACKUP"
+# a named grant list. Only `allowed-tools` differs from what the fixture carries today.
+#
+# The fixture ships `agents['unikit-implement-coordinator'] = ["*"]` and the doctoring
+# below NARROWS it to two names. Both halves are load-bearing and the widened one is the
+# easy one to lose: the restore step re-runs `update` against the fixture as shipped, and
+# if the recipient were absent there rather than wildcarded, run 2 would inject nothing,
+# the removal branch would never be exercised, and the dead names would survive a test
+# that reads as if it had proved they do not.
+FIXTURE_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
+FIXTURE_JSON_BACKUP="$TMPDIR/fixture-treed-mcp.json.orig"
+cp "$FIXTURE_JSON" "$FIXTURE_JSON_BACKUP"
 
-BIOME_JSON="$BIOME_JSON" BIOME_SRC="$BIOME_JSON_BACKUP" node -e "
+FIXTURE_JSON="$FIXTURE_JSON" FIXTURE_SRC="$FIXTURE_JSON_BACKUP" node -e "
     const fs=require('fs');
-    const m=JSON.parse(fs.readFileSync(process.env.BIOME_SRC,'utf8'));
-    m['allowed-tools'].agents['unikit-implement-coordinator'] = ['scene_change_plan','get_console'];
-    fs.writeFileSync(process.env.BIOME_JSON, JSON.stringify(m,null,2));
+    const m=JSON.parse(fs.readFileSync(process.env.FIXTURE_SRC,'utf8'));
+    m['allowed-tools'].agents = { 'unikit-implement-coordinator': ['scene_change_plan','get_console'] };
+    fs.writeFileSync(process.env.FIXTURE_JSON, JSON.stringify(m,null,2));
 "
 
 NARROW_OUT1="$TMPDIR/update-narrowed-1.log"
@@ -1768,31 +1792,33 @@ NARROW_OUT1="$TMPDIR/update-narrowed-1.log"
 
 NARROW_AGENT="$NARROW_DIR/.claude/agents/unikit-implement-coordinator.md"
 assert_exists "$NARROW_AGENT" "unikit-implement-coordinator must be installed for the narrowed-grants test"
-assert_contains "$NARROW_AGENT" 'mcp__unity-biome-mcp__scene_change_plan' \
+assert_contains "$NARROW_AGENT" 'mcp__FixtureTreed__scene_change_plan' \
     "the pre-cutover named grant is injected on the first update"
 
-# Restore the shipped config: same engine, same selection, wildcard grants.
-cp "$BIOME_JSON_BACKUP" "$BIOME_JSON"
+# Restore the fixture config: same engine, same selection, wildcard grants.
+cp "$FIXTURE_JSON_BACKUP" "$FIXTURE_JSON"
 
 NARROW_OUT2="$TMPDIR/update-narrowed-2.log"
 (cd "$NARROW_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NARROW_OUT2" 2>&1)
 
-if grep -q 'mcp__unity-biome-mcp__scene_change_plan' "$NARROW_AGENT"; then
+if grep -q 'mcp__FixtureTreed__scene_change_plan' "$NARROW_AGENT"; then
     echo "Assertion failed: narrowing the grants did NOT drop the dead name from the frontmatter"
     echo "  (injectMcpRules appended instead of syncing: nothing reinstalls this subagent,"
     echo "   so its own removal branch is the only thing that can clear the entry)"
     echo "  File: $NARROW_AGENT"
     echo "--- surviving frontmatter entries ---"
-    grep -n 'mcp__unity-biome-mcp__' "$NARROW_AGENT" | head -10
+    grep -n 'mcp__FixtureTreed__' "$NARROW_AGENT" | head -10
     echo "-------------------------------------"
     exit 1
 fi
-assert_contains "$NARROW_AGENT" 'mcp__unity-biome-mcp__\*' \
+assert_contains "$NARROW_AGENT" 'mcp__FixtureTreed__\*' \
     "the wildcard grant replaces the names it superseded"
 assert_contains "$NARROW_AGENT" '^  - Read$' \
     "hand-authored (non-mcp__) entries survive the sync untouched"
 
-BIOME_JSON_BACKUP=""
+# The fixture is pristine again (restored above), so release the trap's claim on it.
+FIXTURE_JSON_BACKUP=""
+unuse_fake_mcp_catalog
 echo "  ✓ narrowed grants: dead mcp__ names removed without a reinstall, hand-authored entries kept"
 
 # ─────────────────────────────────────────────

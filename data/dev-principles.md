@@ -168,7 +168,7 @@ Read this section **unconditionally** the first time a session touches editor st
 |---|---|---|
 | `false success` | the call reports done, the state is unchanged | read back the changed field |
 | `eaten parameter` | the call succeeds, one argument was ignored | read back the **consequence of the parameter**, not the operation |
-| `catalog phantom` | the catalog lists what is not actually callable | the catalog is a hypothesis; the first call **is** the test |
+| `catalog phantom` | the catalog lists what is not actually callable — or is silent about what is | the catalog is a hypothesis; the first call **is** the test. It runs both ways: absence from the catalog is not absence of the capability, and the same call settles that direction too |
 | `lying validator` | a checker reports clean over a broken state | a validator is not evidence; close the claim with an independent gate |
 | `fake rollback` | undo reports done, the state stays | read back **after** the undo; for anything that reached disk, only version control is a rollback |
 | `transport ambiguity` | the answer says nothing about the world | re-read; **never** retry a non-idempotent call |
@@ -224,3 +224,19 @@ the server's own half of the rule is the `batch-1` row of the check table in the
 - **A group is a list, not a script.** There are no references between its elements. Order does not carry a result from one element to the next, and an element that needs the outcome of another is a second call, not a later line in the same one.
 - **Runs, frames and waits go as separate calls.** Each has an execution discipline of its own — a duration, a lane, a result read on its own terms — and a group flattens all three into a single summary.
 - **Validation and mutation are two calls.** Merged into one they give either a mutation nothing checked or a check that executed nothing, and the report cannot tell you which of the two you got.
+
+### D5. Derived handles
+
+An index, a cursor or an identifier you were handed **before** a change does not survive
+that change. After a mutation it may address a different thing, a thing that no longer
+exists, or a thing of a different kind altogether — and none of those three announce
+themselves: the handle is still well-formed, and the call that uses it still returns.
+
+- **Re-derive, do not carry.** A handle is valid for the state it was read from. Once you
+  have written, read the handle again from the new state before you use it.
+- **A handle handed back by a creating call is not exempt.** It names what the call decided
+  to name, which is not always the thing you asked to be created; confirm what it addresses
+  before you build the next step on it.
+- **Positional handles are the least durable of all.** An offset into an ordered collection
+  moves when anything before it is added or removed, and nothing in the answer reports that
+  the collection was reordered.
