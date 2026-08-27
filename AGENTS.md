@@ -17,6 +17,7 @@ This is the main navigation. Lists and details live in the source of truth — n
 | Product overview, features, NFRs | `.ai-factory/DESCRIPTION.md` | prose |
 | Layers, dependency rules, patterns | `.ai-factory/ARCHITECTURE.md` | prose |
 | Deep conventions and operations | `CLAUDE.md` | prose |
+| User-facing documentation | `README.md` (landing) + `docs/*.md` | prose |
 | CLI contract (commands, exit codes) | `data/cli-contract.md` | machine-readable |
 | Engine principles (with `{{vars}}`) | `data/dev-principles.md` | template |
 | Skill list + descriptions | `skills/unikit-*/SKILL.md` (frontmatter) | filesystem |
@@ -58,9 +59,9 @@ What `unikit-ai init` / `update` produces in the user's project root. Detailed w
 | `.unikit.json` | `init` | Persistent config (agents, engine, `rulesRegistry`, `managedSkills`) |
 | `.unikit/system/cli-contract.md` | `init`/`update` (flat-rewrite) | CLI contract for AI skills |
 | `.unikit/system/dev-principles.md` | `init`/`update` (flat-rewrite) | Engine principles with `{{engine_*}}` substituted |
-| `.unikit/system/engine-mcp/**` | `init`/`update` (recursive copy + orphan-delete over the whole subtree) | Rules tree of the *selected* engine MCP server — **exceptions, not capabilities**; source is the `rules` pointer of the MCP JSON, not `data/`. Every `.md` carries a `server:`/`version:`/`delivered:` provenance stamp |
+| `.unikit/system/engine-mcp/**` | `init`/`update` (recursive copy + orphan-delete over the whole subtree) | Rules tree of the *selected* engine MCP server — **exceptions, not capabilities**; source is the `rules` pointer of the MCP JSON, not `data/`. Every `.md` carries a `server:` provenance stamp — the server id alone, so a delivered file is byte-identical between runs while the tree and the server are unchanged |
 | `.unikit/MCP-RECHECK-NOTES.md` | `/unikit-mcp-trap` (writes) · `/unikit-mcp-audit` (curates) · installer **renames only** | This project's findings about the server it actually runs. The installer never touches the content: switching servers parks it as `MCP-RECHECK-NOTES.archive.<fileId>.md` and switching back restores it. Invariant: one file per server — active **or** archived, never both. Lives outside `system/` so the flat-rewrite cannot reach it |
-| `.unikit/memory/{core,stack}/*.md` | `rules install`/`sync` | Knowledge-base rules pulled from registry |
+| `.unikit/memory/<module>/<tier>/*.md` | `rules install`/`sync` | Knowledge-base rules pulled from registry — `code/{core,stack}`, `gamedesign/{core,library}` |
 | `.unikit/memory/RULES_INDEX.md` | `rules sync` (regenerated) | Compact rules index — never hand-edit |
 | `<agent-config>/skills/` | `init`/`update` | Installed skills (path varies per agent) |
 | `<agent-config>/agents/` | `init`/`update` | Installed subagents |
