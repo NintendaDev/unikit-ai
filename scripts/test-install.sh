@@ -1472,8 +1472,26 @@ assert_exists "$MCP_NOTREE_DIR/.claude/skills/unikit-memory/scripts/material-pre
 # same ENGINE also has a server that DOES ship a tree: an assertion that passed merely
 # because the engine has no MCP at all would prove nothing. The fixture holds both, so the
 # claim survives the shipped catalog changing under it.
-assert_exists "$ROOT_DIR/scripts/test-fixtures/mcp/two-unity-servers/unity/rules/fixture-treed-mcp/INDEX.md" \
-  "the fixture engine also carries a server WITH a rules tree (the invariant needs both)"
+#
+# Asserted through the `rules` POINTER, not by the existence of a tree directory. Measured:
+# with `rules` deleted from fixture-treed-mcp.json the engine carries zero treed servers,
+# yet a bare `assert_exists` on .../rules/fixture-treed-mcp/INDEX.md still passed — the
+# orphaned directory outlives the pointer, so the guard would keep confirming an invariant
+# the fixture had stopped satisfying. Same shape Part 5b uses on the shipped configs.
+MCP_NOTREE_TREED_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
+if ! MCP_NOTREE_TREED_JSON="$MCP_NOTREE_TREED_JSON" node -e "
+    const fs = require('fs'), path = require('path');
+    const p = process.env.MCP_NOTREE_TREED_JSON;
+    const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!m.rules) process.exit(1);
+    process.exit(fs.existsSync(path.join(path.dirname(p), m.rules, 'INDEX.md')) ? 0 : 1);
+"; then
+  echo "Assertion failed: the fixture engine no longer carries a server WITH a rules tree"
+  echo "  (a treeless server whose engine-mcp dir is absent proves nothing unless a sibling"
+  echo "   server in the SAME engine ships a tree — that contrast is the whole test)"
+  echo "  File: $MCP_NOTREE_TREED_JSON"
+  exit 1
+fi
 
 unuse_fake_mcp_catalog
 echo "  ✓ engine-mcp: a server with no rules tree degrades nothing (grants, layer A, skill assets)"

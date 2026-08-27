@@ -28,10 +28,22 @@ source "$SCRIPT_DIR/test-fixtures.sh"
 
 TMPDIR=$(mktemp -d)
 
+# Test 30h doctors a fixture MCP config in place; FIXTURE_JSON names it and
+# FIXTURE_JSON_BACKUP the copy it has to be restored from. Restoring it belongs in the
+# trap and not only next to the test: `set -e` aborts on the first failed assertion, and
+# TWO assertions sit between the doctoring and the inline restore. The fixture is a
+# git-tracked file, so an abort in that window leaves the working tree dirty — and the
+# next run copies the doctored file as its own "pristine" backup, so the failure comes
+# back one run later wearing the mask of a removal-branch bug.
+FIXTURE_JSON=""
+FIXTURE_JSON_BACKUP=""
 restore_package_state() {
     # First statement, so it captures the status that triggered the trap rather than the
     # status of anything this function does.
     local exit_code=$?
+    if [[ -n "$FIXTURE_JSON" && -n "$FIXTURE_JSON_BACKUP" && -f "$FIXTURE_JSON_BACKUP" ]]; then
+        cp "$FIXTURE_JSON_BACKUP" "$FIXTURE_JSON"
+    fi
     # A failing run gets the engine-mcp evidence dumped before the temp tree goes: the
     # assertion that aborted printed one path and nothing about the state around it.
     if [[ $exit_code -ne 0 ]]; then
@@ -39,9 +51,10 @@ restore_package_state() {
     fi
     rm -rf "$TMPDIR"
 }
-# INT/TERM as well as EXIT: an interrupted run that skipped this would leave `$TMPDIR`
-# behind and, on a failure, take the engine-mcp evidence with it — the dump is the only
-# state the aborting assertion does not print.
+# INT/TERM as well as EXIT: an interrupted run that skipped this would leave a doctored
+# fixture in the WORKING TREE and `$TMPDIR` behind, and on a failure would take the
+# engine-mcp evidence with it — the dump is the only state the aborting assertion does
+# not print. The restore runs before the `rm -rf`: the backup lives inside `$TMPDIR`.
 trap restore_package_state EXIT INT TERM
 
 PROJECT_DIR="$TMPDIR/update-smoke"
@@ -1763,7 +1776,7 @@ inject_fake_registry "$NARROW_DIR"
 # if the recipient were absent there rather than wildcarded, run 2 would inject nothing,
 # the removal branch would never be exercised, and the dead names would survive a test
 # that reads as if it had proved they do not.
-FIXTURE_JSON="$ROOT_DIR/scripts/test-fixtures/mcp/two-unity-servers/unity/fixture-treed-mcp.json"
+FIXTURE_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
 FIXTURE_JSON_BACKUP="$TMPDIR/fixture-treed-mcp.json.orig"
 cp "$FIXTURE_JSON" "$FIXTURE_JSON_BACKUP"
 
@@ -1803,6 +1816,8 @@ assert_contains "$NARROW_AGENT" 'mcp__FixtureTreed__\*' \
 assert_contains "$NARROW_AGENT" '^  - Read$' \
     "hand-authored (non-mcp__) entries survive the sync untouched"
 
+# The fixture is pristine again (restored above), so release the trap's claim on it.
+FIXTURE_JSON_BACKUP=""
 unuse_fake_mcp_catalog
 echo "  ✓ narrowed grants: dead mcp__ names removed without a reinstall, hand-authored entries kept"
 

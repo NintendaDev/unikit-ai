@@ -188,7 +188,7 @@ It is the first server to ship a **rules tree**: see [Engine-MCP rules tree](#en
 
 Backed by the [MCP for Unity](https://github.com/CoplayDev/unity-mcp) package (Coplay). Requires **Unity 2021.3 LTS → 6.x**, the package installed in your Unity project, and the Unity Editor running. Its catalog arrives grouped. The grouping is presentational: what your client lists is what you can call, and a name missing from that list may still be reachable — or may be switched off in the editor by the person sitting at it. The rules tree tells an agent how to tell those two apart. Broadly it covers console reading, domain reload / asset refresh, EditMode and PlayMode test runs, and Editor authoring across scenes, components, prefabs, assets, UI documents, materials, animation and project settings.
 
-The port above is the one the Unity plugin passes to the server on its launch line, not a vendor default. If yours differs, it is edited in both places — the editor and your agent config.
+The port above is the one measured on the installation this was written against: the Unity plugin passed it to the server on its launch line rather than letting the vendor default apply. Whether the plugin always picks that number is not established, so if yours differs, edit it in both places — the editor and your agent config.
 
 It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
 
