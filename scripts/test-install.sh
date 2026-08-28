@@ -1318,8 +1318,8 @@ echo "  ✓ codex MCP rules: context7 tool ids injected into .codex/skills/uniki
 # Test 13b: engine-mcp rules-tree delivery (populated selection)
 # ─────────────────────────────────────────────────────
 # The two smoke fixtures above both pin mcp.servers = {}, so they only exercise the
-# no-selection branch (Test 1b-mcp). This fixture selects unity-biome-mcp — the one
-# server carrying a `rules` pointer — and asserts the whole delivery contract: the
+# no-selection branch (Test 1b-mcp). This fixture selects unity-biome-mcp — one of
+# the servers carrying a `rules` pointer — and asserts the whole delivery contract: the
 # tree arrives, every file carries the provenance stamp, and nothing about the
 # server's capabilities rides along with it.
 #

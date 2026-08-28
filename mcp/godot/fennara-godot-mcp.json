@@ -8,6 +8,7 @@
     "context7": "/fennaraofficial/fennara-godot-ai",
     "repo": "https://github.com/fennaraOfficial/fennara-godot-ai"
   },
+  "rules": "rules/fennara-godot-mcp/",
   "configByPlatform": {
     "win32": {
       "command": "{{localappdata}}\\Fennara\\bin\\fennara-mcp.exe",
@@ -27,104 +28,16 @@
   },
   "allowed-tools": {
     "agents": {
-      "unikit-implement-coordinator": [
-        "fennara_status",
-        "get_scene_tree",
-        "get_node_properties",
-        "get_class_info",
-        "write_or_update_file",
-        "run_scene_edit_script",
-        "run_asset_import_script",
-        "project_settings",
-        "script_diagnostics",
-        "validate_scene",
-        "screenshot_scene",
-        "runtime_session",
-        "runtime_script",
-        "scrape_editor"
-      ],
-      "unikit-implement-worker": [
-        "fennara_status",
-        "get_scene_tree",
-        "get_node_properties",
-        "get_class_info",
-        "write_or_update_file",
-        "run_scene_edit_script",
-        "run_asset_import_script",
-        "project_settings",
-        "script_diagnostics",
-        "validate_scene",
-        "screenshot_scene",
-        "runtime_session",
-        "runtime_script",
-        "scrape_editor"
-      ],
-      "unikit-review-sidecar": [
-        "fennara_status",
-        "get_scene_tree",
-        "get_node_properties",
-        "get_class_info",
-        "script_diagnostics"
-      ]
+      "unikit-implement-coordinator": ["*"],
+      "unikit-implement-worker": ["*"],
+      "unikit-review-sidecar": ["*"]
     },
     "skills": {
-      "unikit-devcontext": [
-        "fennara_status",
-        "get_scene_tree",
-        "get_node_properties",
-        "get_class_info",
-        "write_or_update_file",
-        "run_scene_edit_script",
-        "run_asset_import_script",
-        "project_settings",
-        "script_diagnostics",
-        "validate_scene",
-        "screenshot_scene",
-        "runtime_session",
-        "runtime_script",
-        "scrape_editor"
-      ],
-      "unikit-implement": [
-        "fennara_status",
-        "get_scene_tree",
-        "get_node_properties",
-        "get_class_info",
-        "write_or_update_file",
-        "run_scene_edit_script",
-        "run_asset_import_script",
-        "project_settings",
-        "script_diagnostics",
-        "validate_scene",
-        "screenshot_scene",
-        "runtime_session",
-        "runtime_script",
-        "scrape_editor"
-      ],
-      "unikit-fix": [
-        "fennara_status",
-        "get_scene_tree",
-        "get_node_properties",
-        "get_class_info",
-        "write_or_update_file",
-        "run_scene_edit_script",
-        "run_asset_import_script",
-        "project_settings",
-        "script_diagnostics",
-        "validate_scene",
-        "screenshot_scene",
-        "runtime_session",
-        "runtime_script",
-        "scrape_editor"
-      ],
-      "unikit-verify": [
-        "fennara_status",
-        "script_diagnostics",
-        "validate_scene",
-        "get_scene_tree",
-        "get_node_properties",
-        "runtime_session",
-        "screenshot_scene"
-      ]
+      "unikit-devcontext": ["*"],
+      "unikit-implement": ["*"],
+      "unikit-fix": ["*"],
+      "unikit-verify": ["*"],
+      "unikit-mcp-audit": ["*"]
     }
   }
 }

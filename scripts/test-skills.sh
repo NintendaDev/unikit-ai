@@ -5758,6 +5758,60 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Stack-rendering contract guards (SR-1 … SR-2)
+#
+# Step 7 of `/unikit` is the ONE place in the suite where a skill is told to echo
+# content out of a template into its own chat output verbatim: line 322 reads
+# "Never truncate or summarize option lists — show every row from the table exactly
+# as written". That instruction says WHAT to print and was silent on HOW, so the model
+# filled the gap with GitHub-flavoured collapsibles (details / summary / b) around the
+# longer Godot .NET category list. Claude Code's terminal renderer draws the pipe table
+# and prints the raw tags — the user sees markup, not a question.
+#
+# Only the Godot templates declare an additional-sections block (Part 4a2), so only they
+# reach the long-output path; the leak was therefore engine-shaped and intermittent,
+# which is exactly the class of defect a static guard has to hold, since no executable
+# test can reproduce "the model chose a wrapper this time".
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}=== Validate /unikit stack-rendering contract ===${NC}\n"
+
+SR_UNIKIT_SKILL="$ROOT_DIR/skills/unikit/SKILL.md"
+
+# (SR-1) the rendering contract is DECLARED in the skill. Anchored on the formulation
+#        ("Plain markdown only") rather than a heading — a heading is rewritten during
+#        cosmetics, a formulation only together with its meaning (RT-6 / LA-7 precedent).
+#        The second half asserts the contract names the tag it forbids: a bare "plain
+#        markdown" line reads as style advice, and it is the explicit ban that makes it
+#        a rule. Both halves are needed — either alone survives the regression.
+SR1_WHY=""
+grep -qF 'Plain markdown only' "$SR_UNIKIT_SKILL" || SR1_WHY+=" no-contract-line"
+grep -qF '`<details>`' "$SR_UNIKIT_SKILL"         || SR1_WHY+=" no-forbidden-tag"
+if [[ -z "$SR1_WHY" ]]; then
+    pass "SR-1 unikit Step 7 declares the plain-markdown rendering contract"
+else
+    fail "SR-1 unikit Step 7 rendering contract missing or unanchored:$SR1_WHY"
+fi
+
+# (SR-2) the NEGATIVE half, and the load-bearing one. The templates are the source the
+#        skill is told to reproduce "exactly as written", so an HTML rendering tag added
+#        to a template would be echoed into the terminal no matter what SR-1's contract
+#        says. The `unikit-additional-sections` comments are legitimate and stay out of
+#        scope: they are a parser marker the skill consumes, never content it prints.
+#        Degrades to a fail when it finds no template at all (NN-4 / RT-7 convention).
+SR2_TEMPLATES=("$TEMPLATES_DIR/unikit"/*.md)
+if [[ ! -e "${SR2_TEMPLATES[0]}" ]]; then
+    fail "SR-2 no data/engine-templates/skills/unikit/*.md found — the guard has no object left"
+else
+    SR2_HITS="$({ grep -rnE '</?(details|summary|b|br|div|span)( [^>]*)?>' "${SR2_TEMPLATES[@]}" 2>/dev/null || true; })"
+    if [[ -z "$SR2_HITS" ]]; then
+        pass "SR-2 unikit engine templates carry no HTML rendering tags (${#SR2_TEMPLATES[@]} template(s) scanned)"
+    else
+        fail "SR-2 an HTML rendering tag in a unikit engine template — it would be echoed verbatim into the terminal:"
+        echo "$SR2_HITS" | head -5
+    fi
+fi
+
+# ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Codebase integrity checks ===${NC}\n"
