@@ -488,9 +488,11 @@ reasoning, never the requirement. Include ALL:
 ## Sessions
 <!-- unikit:sessions:start -->
 ### <YYYY-MM-DD HH:MM> — <session title>
-- **What changed**: <what this session altered in the summary above>
+- **What changed**: <one line per changed item, as `<ID> <name>: <old> → <new>`, with the
+  literal values and the tokens that carry them elsewhere. This line is the input to the
+  coherence gate's value sweep on the next save — prose here is paid for later in gate passes>
 - **Key notes**: <what was learned>
-- **Gate**: <the coherence gate result>
+- **Gate**: <`passed (N passes)` | `stopped at budget: <k> unresolved — OQ-…`>
 - **Links (paths)**: <files read or written>
 <!-- unikit:sessions:end -->
 
@@ -499,6 +501,13 @@ reasoning, never the requirement. Include ALL:
 If context7 or web search was used during exploration, include the library names
 and specific topics that were queried — this helps reproduce or update the research later.
 Example: "R3 (context7: Observable.CombineLatest usage patterns)", "DOTween (web: sequence API)">
+```
+
+Filling the `What changed` line — one item per line, values and their carriers named:
+
+```markdown
+- **What changed**: `DEC-51` direction_count: base 3 → 5 (carriers: `direction_count`, "base 3")
+                    `DEC-49` card catalogue: 12 → 13 (carriers: `DEC-49`, "13", "thirteen")
 ```
 
 **The two state axes are separate.** `Status` is completeness, and its three values never
@@ -680,9 +689,14 @@ losing it over a missing reference file is not acceptable.
 
 ### Step 5: Confirm the save
 
-Only once the gate has passed, tell the user what was written: the folder, the manifest, any
-adaptive artifacts, and the registry line. Until then the save is not confirmed — a gate that
-runs after the confirmation is a gate that reports on a decision already announced.
+Only once the gate has **finished** — passed, or stopped at its budget with the user's answer
+in hand — tell the user what was written: the folder, the manifest, any adaptive artifacts,
+and the registry line. Until then the save is not confirmed — a gate that runs after the
+confirmation is a gate that reports on a decision already announced.
+
+A save the user authorised over surviving findings is confirmed like any other; its session
+entry then reads `stopped at budget: <k> unresolved`, not `passed`. That record is where the
+override lives — not a withheld confirmation.
 
 ### Important rules for saving
 
@@ -725,6 +739,17 @@ user chose *Continue the existing research* in the collision dialogue during a s
      sessions is telling the registry something nobody decided.
    - Append the session's dialogue to `SOURCE.md` if the exploration is prompt-based.
    - Re-render the registry and run the coherence gate, exactly as on a first save.
+4. **Say it out loud when the folder has outgrown its question.** From the fourth session, or
+   past fifteen artifacts, print one line and continue — a note, never a gate:
+
+   ```
+   NOTE: 4th session, 17 artifacts — a research that keeps growing past its original question
+         is cheaper to close and restart with `Supersedes:` than to extend.
+   ```
+
+   The threshold counts **sessions**, not artifacts: repeated passes are what multiply the
+   carriers of one value. A large folder written in one sitting is not the problem this note
+   is about.
 
 **Superseding a whole research.** When a new research replaces an old one rather than
 continuing it, the new one carries `Supersedes: <slug>` in its header and the old one is set

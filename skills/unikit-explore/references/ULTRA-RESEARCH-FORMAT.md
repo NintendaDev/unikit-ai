@@ -166,11 +166,35 @@ that lives anywhere else is invisible to the planner and its change produces no 
 that live only in `## Findings` trace the reasoning rather than state a requirement — that is
 allowed, and it is said out loud here so the split is a choice and not an oversight.
 
-**One fact is stated in exactly one owning section.** Any other mention is a reference by ID,
-never a retelling. `## Findings` holds the evidence and the reasoning; `## Active Summary`
-holds the requirement; an artifact holds the rationale. This is the rule that makes the
-coherence gate decidable: a fact stated twice is a discrepancy even when the two statements
-agree, because the second one is a copy that has to be kept true by hand.
+**One value is stated in exactly one owning section.** A number, a threshold, a set of
+parameters, an enumeration, a path, a signature, the membership of a list — written once, and
+referenced by ID everywhere else. `## Findings` holds the evidence and the reasoning;
+`## Active Summary` holds the requirement; an artifact holds the rationale.
+
+**Characterizing a referenced item in your own words is not a duplicate.** A table cell, a
+diagram label, a consequence line and an ADR `## Context` are read where they stand, by
+someone who has not opened the owning section, and they are obliged to remain readable there.
+The obligation is to not repeat the **value** — `overwrites the zone size (RISK-1)` is
+correct; `overwrites the zone size to 356.4 × 356.4 (RISK-1)` is a second copy of a number
+that now has to be kept true by hand.
+
+This is what makes the coherence gate decidable: whether a value appears in a second place is
+grepped, whereas whether two sentences are "the same fact" is a judgement that lands
+differently every time it is made.
+
+**A value that lives in an artifact carries a revision marker in `## Active Summary`.**
+`/unikit-plan` hashes the summary region and nothing else, so a number changed inside an ADR
+raises no drift and a plan standing on it never learns that its ground moved. The summary line
+carries the marker instead of the value:
+
+```
+Decisions: `DEC-9` — MoverConfig holds the reference, not a copy (rev.2 · parameters in `ADR-0003`)
+```
+
+Change a value in the artifact and raise `rev.<n>` in the same save. One token, no copy of the
+value, and the hashed region moves — which is the whole purpose. The raised markers are also
+the input to the next save's value sweep: they name exactly which decisions have carriers
+worth grepping.
 
 **An ID is stable and is never reused.** A withdrawn question keeps its number out of
 circulation; the next one takes the following number. Reuse silently rewrites the history of
@@ -219,6 +243,16 @@ Each check is **blocking**; saving stops until it passes:
    region between them is non-empty** — and the same for `## Sessions`. Without this the
    hashed object does not exist, and the drift field of every plan built on this research has
    nothing to be filled from.
+8. **Every artifact that WAS created names its concrete inclusion signal in
+   `## Artifact Index`.** The rule that an artifact which was *not* created is named with its
+   reason already lives in `## Adaptive artifacts`, and it is checked; the created half is
+   not. The asymmetry runs the wrong way — creating a file is cheaper than deciding against
+   one, so the unchecked half is the one that fills a folder.
+9. **The research is about its subject.** A passage explaining how this folder complies with
+   a gate, or listing what to implement, is not a finding about the subject. Gate outcomes
+   live in the `Gate:` field of the session entry; implementation belongs to a plan. A
+   research that starts documenting its own process hands the next pass an assertion to
+   check, and the check is about the process too.
 
 ## What ultra research does not change
 

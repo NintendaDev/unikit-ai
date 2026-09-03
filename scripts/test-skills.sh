@@ -2757,6 +2757,10 @@ fi
 CG_REF="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
 CG_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 CG_RESEARCH_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+# Declared here rather than borrowed from RM-3's `RM_CONTRACTS`, which is the same file: that
+# variable is assigned ~1200 lines BELOW this block, and under `set -u` a forward reference
+# aborts the whole suite instead of failing one guard.
+CG_CONTRACTS="$ROOT_DIR/skills/unikit-explore/references/contracts-artifact.md"
 
 CG_WHY=""
 # (CG-1) It must exist, be non-empty, and NOT carry frontmatter — a reference with `name:`
@@ -2854,11 +2858,80 @@ else
     if grep -qF 'Traceability' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-6:traceability-returned"; fi
     grep -qF 'the lift as an obligation' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-6:no-lift-obligation"
     CG6_CHECKS="$(awk '/^## Integrity/{f=1;next} /^## /{f=0} f' "$CG_RESEARCH_SPEC" | grep -cE '^[0-9]+\. ' || true)"
-    (( CG6_CHECKS == 7 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-7)"
+    (( CG6_CHECKS == 9 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-9)"
+fi
+
+# (CG-7) The predicate itself, in every file that carries it and in both directions. There
+# are THREE carriers, not the two the rewrite set out to change: criterion 5 of the gate, its
+# writer-side twin in the research spec, and a closing line in the contracts note that credits
+# the retired wording with making the gate converge. A half-applied edit — one that fixes the
+# gate and leaves the promise standing somewhere else — is exactly what the negative halves
+# catch and the positive halves cannot: every file would still contain a rule, just not the
+# same one. The third carrier is the reason the negatives are not scoped to the two files the
+# edit touched: it was found by reading, after a green suite, and nothing here would have.
+grep -qF 'One value, one owning section' "$CG_REF"                              || CG_WHY+=" CG-7:criterion-5-not-a-value-predicate"
+if grep -qF 'One fact, one owning section' "$CG_REF"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-gate"; fi
+grep -qF 'One value is stated in exactly one owning section' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-7:spec-not-a-value-predicate"
+if grep -qF 'One fact is stated in exactly one owning section' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-spec"; fi
+# The contracts note states the predicate in lower case, mid-sentence. Its existence is
+# asserted here too: a negative grep against a file that is not there reads as a pass, and
+# RM-3's own existence check sits in a block this one must not depend on.
+if [[ ! -s "$CG_CONTRACTS" ]]; then
+    CG_WHY+=" CG-7:contracts-note-missing-or-empty"
+elif grep -qF 'one fact, one owning section' "$CG_CONTRACTS"; then
+    CG_WHY+=" CG-7:fact-predicate-returned-in-the-contracts-note"
+fi
+
+# (CG-8) The two properties that make the gate terminate: a budget it cannot exceed on its
+# own judgement, and a scope it cannot widen. The negative is the load-bearing half —
+# `do not confirm until it passes` IS the unbounded loop written as one sentence, and it
+# reads perfectly reasonable sitting next to a budget it silently overrides.
+grep -qF 'at most **two passes**' "$CG_REF" || CG_WHY+=" CG-8:no-pass-budget"
+grep -qF 'and nothing else' "$CG_REF"       || CG_WHY+=" CG-8:gate-scope-not-closed"
+if grep -qF 'do not confirm until it passes' "$CG_REF"; then CG_WHY+=" CG-8:unbounded-loop-returned"; fi
+
+# (CG-9) A bounded gate still fails to converge if a repair may add prose: the sentence
+# written to close one finding becomes the second copy the next pass reports. Three
+# formulations, one per contract — the contractive repair, the floor under it (a cell left
+# holding nothing but an ID), and the ledger that stops a fresh context from re-adjudicating
+# what this same save already decided.
+#
+# The bare-ID anchor stops at `an` because the shipped sentence wraps between `an` and `ID.`
+# — the phrase is unique in the file, and there is nothing shorter that still names the rule.
+grep -qF 'A repair is **contractive**' "$CG_REF"                   || CG_WHY+=" CG-9:repair-not-contractive"
+grep -qF 'whose entire content is an' "$CG_REF"                    || CG_WHY+=" CG-9:bare-id-cell-allowed"
+grep -qF 'the findings already adjudicated in this save' "$CG_REF" || CG_WHY+=" CG-9:no-adjudication-ledger"
+
+# (CG-10) Both ends of the `Gate:` field, on the RM-1 precedent: a contract that is declared
+# and never emitted is exactly as useless as one that is emitted and never declared. The gate
+# names the budget outcome, the manifest template offers the slot to write it into, and the
+# revision marker is what carries a value changed inside an artifact into the hashed region.
+grep -qF 'stopped at budget' "$CG_REF"   || CG_WHY+=" CG-10:budget-outcome-not-declared"
+grep -qF 'stopped at budget' "$CG_SKILL" || CG_WHY+=" CG-10:budget-outcome-not-emitted"
+grep -qF 'rev.<n>' "$CG_RESEARCH_SPEC"   || CG_WHY+=" CG-10:no-revision-marker"
+
+# (CG-11) The confirmation step must admit the verdict the budget branch produces. The gate
+# stopped being a pass/no-pass switch the moment it acquired a budget: `stopped at budget` is
+# a FINISHED gate whose save the user may authorise, and Step 5 is the one consumer of that
+# verdict. It read `Only once the gate has passed` — a precondition the budget branch cannot
+# satisfy — and so re-closed the escape hatch the budget exists to open. A contract that grew
+# a second outcome and a consumer that knows only the first is the shape this guard watches.
+#
+# The window over Step 5 is load-bearing, not tidiness: `stopped at budget` also appears in
+# the `## Sessions` template some 200 lines above (CG-10 asserts it exactly there), so a
+# file-wide grep would go green while Step 5 said the opposite. Same technique as MG-3 and
+# MH-8. `|| true` for the CG-3 reason — under `set -euo pipefail` a failing substitution
+# aborts the whole suite instead of failing this guard with a named cause.
+CG11_STEP5="$(awk '/^### Step 5: Confirm the save/{f=1;next} /^### /{f=0} f' "$CG_SKILL" || true)"
+if [[ -z "$CG11_STEP5" ]]; then
+    CG_WHY+=" CG-11:confirm-step-section-missing-or-empty"
+else
+    grep -qF 'stopped at budget' <<< "$CG11_STEP5" || CG_WHY+=" CG-11:confirm-step-ignores-the-budget-verdict"
+    if grep -qF 'Only once the gate has passed' <<< "$CG11_STEP5"; then CG_WHY+=" CG-11:pass-only-precondition-returned"; fi
 fi
 
 if [[ -z "$CG_WHY" ]]; then
-    pass "CG-1..CG-6 the coherence gate exists, is called after the write, degrades without losing work, and the research spec keeps no container it does not have"
+    pass "CG-1..CG-11 the coherence gate exists, is called after the write, degrades without losing work, terminates on a budget its confirmation step honours, keeps a closed scope and a contractive repair, and the research spec keeps a value predicate and no container it does not have"
 else
     fail "CG research coherence gate:$CG_WHY"
 fi

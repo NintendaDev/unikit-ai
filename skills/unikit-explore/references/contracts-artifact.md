@@ -122,5 +122,5 @@ reader does not go looking through history for a section that moved:
 
 The last row is the one that mattered. The retired format instructed the writer to restate
 the stop condition in a second section — "**duplicate explicitly**" — which is the only place
-in this repository where a format ordered a fact to be written twice. Its removal is half the
-reason the coherence gate can now converge: one fact, one owning section.
+in this repository where a format ordered a value to be written twice. Its removal is half the
+reason the coherence gate can now converge: one value, one owning section.
