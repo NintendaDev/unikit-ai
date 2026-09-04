@@ -8,51 +8,23 @@
     "context7": "/3ddelano/gdai-mcp-plugin-godot",
     "repo": "https://github.com/3ddelano/gdai-mcp-plugin-godot"
   },
+  "rules": "rules/gdai-godot-mcp/",
   "config": {
-	  "command": "uv",
-      "args": ["run", "./addons/gdai-mcp-plugin-godot/gdai_mcp_server.py"]
+    "command": "uv",
+    "args": ["run", "./addons/gdai-mcp-plugin-godot/gdai_mcp_server.py"]
   },
   "allowed-tools": {
     "agents": {
-      "unikit-implement-coordinator": [
-	    "get_godot_errors",
-		"get_project_info",
-		"clear_output_logs",
-		"view_script",
-		"search_files"
-      ],
-	  "unikit-implement-worker": [
-	    "get_godot_errors",
-		"get_project_info",
-		"clear_output_logs",
-		"view_script",
-		"search_files"
-      ],
-	  "unikit-review-sidecar": [
-        "get_godot_errors"
-      ]
+      "unikit-implement-coordinator": ["*"],
+      "unikit-implement-worker": ["*"],
+      "unikit-review-sidecar": ["*"]
     },
     "skills": {
-      "unikit-implement": [
-	    "get_godot_errors",
-		"get_project_info",
-		"clear_output_logs",
-		"view_script",
-		"search_files"
-      ],
-      "unikit-fix": [
-	    "get_godot_errors",
-		"get_project_info",
-		"clear_output_logs",
-		"view_script",
-		"search_files"
-      ],
-      "unikit-verify": [
-        "get_godot_errors",
-        "get_project_info",
-        "view_script",
-        "search_files"
-      ]
+      "unikit-devcontext": ["*"],
+      "unikit-implement": ["*"],
+      "unikit-fix": ["*"],
+      "unikit-verify": ["*"],
+      "unikit-mcp-audit": ["*"]
     }
   }
 }
