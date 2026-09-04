@@ -155,7 +155,7 @@ Creates conventional commits with Unity-specific checks:
 - Suggests commit splitting for unrelated changes
 - Offers to push after commit
 
-### `/unikit-evolve` - improve skills from experience
+### `/unikit-evolve` - learn project rules from past fixes
 
 ```
 /unikit-evolve
@@ -165,7 +165,8 @@ Creates conventional commits with Unity-specific checks:
 - Classifies: code/architecture rules → `RULES.md`; skill workflow issues → `skill-context/`
 - Cross-checks against existing rules and knowledge base to avoid duplicates
 - Proposes targeted improvements with user approval
-- Closes the learning loop: **fix → patch → evolve → better skills → fewer bugs**
+- Never edits a built-in skill: coding rules land in `RULES.md` via `/unikit-rules`, workflow rules in `skill-context/`
+- Closes the learning loop: **fix → patch → evolve → better rules → fewer bugs**
 
 ### `/unikit-roadmap [check | vision]` - strategic planning
 
