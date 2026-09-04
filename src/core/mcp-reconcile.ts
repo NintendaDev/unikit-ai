@@ -26,6 +26,7 @@ import { logInfo, logWarn } from '../utils/log.js';
 import type { DiscoveredServers } from './mcp.js';
 import { resolvePlatformConfig } from './mcp-platform.js';
 import { getMcpWriter } from './mcp-writers/index.js';
+import type { McpWriter } from './mcp-writers/index.js';
 
 /**
  * The settings-file keys that belong to extensions and are therefore off limits
@@ -49,6 +50,70 @@ async function collectReservedKeys(projectDir: string, config: UniKitConfig | nu
 }
 
 /**
+ * Remove the settings entries of servers that were registered last run and are
+ * not in the current selection.
+ *
+ * The counterpart of the swap branch inside {@link configureMcp}'s loop, and the
+ * half that was missing. A selection changes in TWO ways — a server keeps its
+ * place while its `code` moves, or the server is DROPPED — and only the first is
+ * reachable from a loop that runs over the NEW selection. A deselected `fileId`
+ * is visited by nothing, so its entry survived every re-init and the incoming
+ * server was registered BESIDE it instead of in its place: two engine servers
+ * declared at once, both advertising the same tools, and the grants of the one
+ * nobody selected still live in the settings file.
+ *
+ * Two entries are deliberately spared:
+ *
+ *  - a key an EXTENSION owns. `findKey` already refuses to return one, which is
+ *    why the lookup goes through it instead of removing the stored code
+ *    directly — extensions write into the same container.
+ *  - a code a STILL-SELECTED server also carries. Removing it would either
+ *    delete a live registration or force the loop below to rewrite the entry
+ *    from the package config, discarding what the user or the vendor's plugin
+ *    put there — exactly what the "present → keep" rule exists to prevent. Two
+ *    engine servers of ONE engine cannot collide (`mcp.ts` requires distinct
+ *    codes), but nothing forbids it across engines, and an engine switch is
+ *    precisely when this pass has work to do.
+ *
+ * Silent no-op on the `update` path by construction: `update` derives both
+ * arguments from the same `config.mcp.servers`, so no `fileId` can be stored
+ * and unselected at once. The selection only ever shrinks in the wizard.
+ */
+function removeDeselectedServers(
+  settings: Record<string, unknown>,
+  writer: McpWriter,
+  discoveredServers: DiscoveredServers,
+  enabledFileIds: string[],
+  reserved: Set<string>,
+  storedCodes: Record<string, string>,
+): void {
+  const enabled = new Set(enabledFileIds);
+  const liveCodes = new Set(
+    enabledFileIds
+      .map(fileId => discoveredServers.get(fileId)?.code)
+      .filter((code): code is string => typeof code === 'string'),
+  );
+
+  for (const [fileId, storedCode] of Object.entries(storedCodes)) {
+    if (enabled.has(fileId)) continue;
+
+    if (liveCodes.has(storedCode)) {
+      logInfo('mcp', `deselected ${fileId}: code ${storedCode} is still claimed by the selection, kept`);
+      continue;
+    }
+
+    const existingKey = writer.findKey(settings, storedCode, reserved);
+    if (existingKey === null) {
+      logInfo('mcp', `deselected ${fileId}: nothing registered under ${storedCode}`);
+      continue;
+    }
+
+    writer.remove(settings, existingKey);
+    logInfo('mcp', `deselected ${fileId}: removed entry ${existingKey}`);
+  }
+}
+
+/**
  * Write the selected servers into ONE agent's settings file.
  *
  * Three rules, and the middle one is the reason this function is not a plain
@@ -67,10 +132,15 @@ async function collectReservedKeys(projectDir: string, config: UniKitConfig | nu
  * In both "present" branches the `env` overlay is applied — the single field we
  * impose on an entry we did not write (see {@link McpWriter.mergeEnv}).
  *
- * A server whose code CHANGED since the last write is a fourth case, and the
- * only one that removes anything: the entry standing under the stored code is an
- * orphan — nothing is listening on it, while its grants stay live in every
- * skill's frontmatter. See {@link storedCodes}.
+ * Removal is not one of those three, and there are TWO ways to earn it, both
+ * driven by {@link storedCodes} — what UniKit registered LAST run:
+ *
+ *  - the server kept its place and its `code` MOVED. The entry standing under
+ *    the stored code is an orphan: nothing is listening on it, while its grants
+ *    stay live in every skill's frontmatter. Handled in the loop below, since
+ *    the fileId is still selected and the loop still visits it.
+ *  - the server was DESELECTED. The loop below cannot reach it — it runs over
+ *    the new selection — so {@link removeDeselectedServers} clears it first.
  *
  * @param enabledFileIds the selection, by file id — the keys of
  *                       `config.mcp.servers`, or the wizard's answer on `init`.
@@ -110,6 +180,11 @@ export async function configureMcp(
   // whitespace the file happened to carry.
   const before = writer.serialize(settings);
   const placeholderCandidates: string[] = [];
+
+  // Everything that LEFT the selection goes first, so the loop below writes into
+  // a file that no longer declares a server nobody chose. See
+  // {@link removeDeselectedServers} for why this cannot live inside that loop.
+  removeDeselectedServers(settings, writer, discoveredServers, enabledFileIds, reserved, storedCodes);
 
   for (const fileId of enabledFileIds) {
     const server = discoveredServers.get(fileId);
@@ -178,40 +253,42 @@ export async function configureMcp(
     configuredFileIds.push(fileId);
   }
 
-  if (configuredFileIds.length > 0) {
-    // Idempotence is checked on the SERIALIZED result, not on a flag set along
-    // the way. `update` runs this pass on every invocation, and a pass that
-    // rewrites an identical settings file each time churns the mtime of a file
-    // users have open in an editor and makes "the last run changed my config"
-    // impossible to read off the disk. Comparing the output to what is already
-    // there is the only check that cannot drift from what is actually written.
-    const serialized = writer.serialize(settings);
+  // No gate on "did we configure anything". The pass has a second product now —
+  // the entries `removeDeselectedServers` cleared — and a run that deselects the
+  // LAST server configures nothing at all, so a `configuredFileIds.length > 0`
+  // guard would have thrown that removal away without writing it. Idempotence is
+  // what keeps this cheap, and idempotence is already checked below, on the
+  // SERIALIZED result rather than on a flag set along the way: `update` runs this
+  // pass every invocation, and rewriting an identical settings file each time
+  // churns the mtime of a file users have open and makes "the last run changed my
+  // config" impossible to read off the disk. Comparing the output to what is
+  // already there is the only check that cannot drift from what is written.
+  const serialized = writer.serialize(settings);
 
-    // The version-placeholder detector. It reads the SETTINGS FILE, not the
-    // package config, which is what makes it useful: a user who pinned the
-    // version by hand — or whose Unity editor wrote the pin for them — has no
-    // placeholder left on disk and hears nothing, while an entry still carrying
-    // it gets a loud line every run until it is filled in. Living inside this
-    // pass rather than in `init` is deliberate: `init` runs once, and the pin is
-    // exactly the thing that goes stale afterwards.
-    if (serialized.includes(MCP_VERSION_PLACEHOLDER)) {
-      for (const code of placeholderCandidates) {
-        logWarn(
-          'mcp',
-          `server ${code}: version placeholder not filled — open Unity or set the version manually `
-          + '(the server version must match the version of the Unity package)',
-        );
-      }
-    } else if (placeholderCandidates.length > 0) {
-      logInfo('mcp', `version pin filled for: ${placeholderCandidates.join(', ')}`);
+  // The version-placeholder detector. It reads the SETTINGS FILE, not the
+  // package config, which is what makes it useful: a user who pinned the
+  // version by hand — or whose Unity editor wrote the pin for them — has no
+  // placeholder left on disk and hears nothing, while an entry still carrying
+  // it gets a loud line every run until it is filled in. Living inside this
+  // pass rather than in `init` is deliberate: `init` runs once, and the pin is
+  // exactly the thing that goes stale afterwards.
+  if (serialized.includes(MCP_VERSION_PLACEHOLDER)) {
+    for (const code of placeholderCandidates) {
+      logWarn(
+        'mcp',
+        `server ${code}: version placeholder not filled — open Unity or set the version manually `
+        + '(the server version must match the version of the Unity package)',
+      );
     }
+  } else if (placeholderCandidates.length > 0) {
+    logInfo('mcp', `version pin filled for: ${placeholderCandidates.join(', ')}`);
+  }
 
-    if (serialized === before) {
-      logInfo('mcp', `${agentId}: settings unchanged, not rewritten`);
-    } else {
-      await writeTextFile(settingsPath, serialized);
-      console.log(`[mcp] ${agentId} -> ${settingsPath} (${configuredFileIds.length} servers)`);
-    }
+  if (serialized === before) {
+    logInfo('mcp', `${agentId}: settings unchanged, not rewritten`);
+  } else {
+    await writeTextFile(settingsPath, serialized);
+    console.log(`[mcp] ${agentId} -> ${settingsPath} (${configuredFileIds.length} servers)`);
   }
 
   return configuredFileIds;

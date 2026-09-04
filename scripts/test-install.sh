@@ -1270,6 +1270,125 @@ node -e "
 echo "  ✓ antigravity MCP config: env passthrough (no key renaming) for the godot server"
 
 # ─────────────────────────────────────────────────────
+# Test 12e: a DESELECTED MCP server loses its settings entry
+# ─────────────────────────────────────────────────────
+# The re-init path, and the one shape of selection change `configureMcp` could
+# not see. Its loop runs over the NEW selection, so the only removal it could
+# ever reach was "same fileId, moved code". A server DROPPED from the selection
+# is visited by nothing: its entry survived, the incoming server was registered
+# beside it, and the project ended up declaring two engine MCPs at once — both
+# advertising the same tools, with the grants of the one nobody selected still
+# live in the settings file.
+#
+# Driven through configureMcp directly, like Tests 12–12d: the wizard is
+# interactive and has no non-TTY driver, and `update` cannot express this case at
+# all (it derives both the selection and `storedCodes` from one
+# `config.mcp.servers`, so no fileId can be stored and unselected in the same
+# run). The shipped catalog is read, never doctored — that is the Test 30h
+# distinction, not this one.
+#
+# Four assertions over two defects that shipped together:
+#   1-3. the deselected entry is gone, the incoming one is present, and a server
+#        the USER added by hand is untouched — the sweep must not become a
+#        "delete everything we did not write" pass.
+#   4.   deselecting the LAST server still reaches the disk. The write used to be
+#        gated on `configuredFileIds.length > 0`, so an empty selection wrote
+#        nothing and threw the removal away — a removal that only persists while
+#        some other server happens to survive is not a removal.
+
+MCP_DESELECT_DIR="$TMPDIR/test-mcp-deselect"
+mkdir -p "$MCP_DESELECT_DIR"
+MCP_DESELECT_JSON="$MCP_DESELECT_DIR/.mcp.json"
+
+# Run 1 — the user picks biome. `storedCodes` is empty: nothing registered yet.
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
+  const servers = await discoverMcpServers('unity');
+  await configureMcp(target, servers, ['context7', 'unity-biome-mcp'], 'claude', new Set(), {});
+" "$MCP_DESELECT_DIR" > /dev/null 2>&1)
+
+assert_exists "$MCP_DESELECT_JSON" ".mcp.json must exist after the first configureMcp"
+assert_contains "$MCP_DESELECT_JSON" '"unity-biome-mcp"' \
+  "run 1 registers the selected engine server"
+
+# A server the user added themselves. It is in no catalog and in no stored map,
+# so nothing may touch it — this is what separates the sweep from a wipe.
+node -e "
+  const fs = require('fs'); const p = process.argv[1];
+  const c = JSON.parse(fs.readFileSync(p, 'utf8'));
+  c.mcpServers['my-own-server'] = { command: 'node', args: ['server.js'] };
+  fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
+" "$MCP_DESELECT_JSON"
+
+# Run 2 — re-init, the user switches to coplay. `storedCodes` is the map as it
+# stands on disk BEFORE this run, exactly what init hands over from
+# `existingConfig.mcp.servers` (saveConfig runs after the reconcile, not before).
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
+  const servers = await discoverMcpServers('unity');
+  await configureMcp(target, servers, ['context7', 'coplay-unity-mcp'], 'claude', new Set(), {
+    'context7': 'context7',
+    'unity-biome-mcp': 'unity-biome-mcp',
+  });
+" "$MCP_DESELECT_DIR" > /dev/null 2>&1)
+
+node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const keys = Object.keys(c.mcpServers || {});
+  const errors = [];
+
+  if (keys.includes('unity-biome-mcp'))
+    errors.push('the deselected server is still registered — the new selection was added BESIDE it, not in its place');
+  if (!keys.includes('UnityMCP'))
+    errors.push('the newly selected server (coplay, code UnityMCP) is missing');
+  if (!keys.includes('context7'))
+    errors.push('a server that stayed selected was dropped');
+  if (!keys.includes('my-own-server'))
+    errors.push('a server the user added by hand was removed — the sweep must only clear what UniKit itself registered');
+
+  if (errors.length > 0) {
+    console.error('mcp deselect assertion failed (keys: ' + JSON.stringify(keys) + '):');
+    errors.forEach(e => console.error('  - ' + e));
+    process.exit(1);
+  }
+" "$MCP_DESELECT_JSON"
+
+# Run 3 — deselect everything. The write gate, not the sweep, is the object here.
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const target = process.argv[1];
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
+  const servers = await discoverMcpServers('unity');
+  await configureMcp(target, servers, [], 'claude', new Set(), {
+    'context7': 'context7',
+    'coplay-unity-mcp': 'UnityMCP',
+  });
+" "$MCP_DESELECT_DIR" > /dev/null 2>&1)
+
+node -e "
+  const c = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const keys = Object.keys(c.mcpServers || {});
+  const errors = [];
+
+  if (keys.includes('UnityMCP') || keys.includes('context7'))
+    errors.push('deselecting the LAST server never reached the disk — the write is still gated on having configured something');
+  if (!keys.includes('my-own-server'))
+    errors.push('the user-added server did not survive the empty selection');
+
+  if (errors.length > 0) {
+    console.error('mcp deselect-all assertion failed (keys: ' + JSON.stringify(keys) + '):');
+    errors.forEach(e => console.error('  - ' + e));
+    process.exit(1);
+  }
+" "$MCP_DESELECT_JSON"
+
+echo "  ✓ mcp deselect: dropped servers lose their entry (incl. the last one), selected and user-added servers survive"
+
+# ─────────────────────────────────────────────────────
 # Test 13: Codex MCP rules injection (skill frontmatter)
 # ─────────────────────────────────────────────────────
 # Uses a dedicated project dir (NOT the Test 3 CODEX_DIR, which is pinned
