@@ -1997,13 +1997,14 @@ assert_not_contains "$NOTES_CLI_RULES/INDEX.md" 'unity-biome-mcp' \
 # the notes follow the server, here that the outgoing server's tree leaves with it.
 # The incoming server MUST be treeless, otherwise "empty" stops being the correct end
 # state and with it goes the only branch on which orphan-delete runs at all. Fennara no
-# longer qualifies - it grows a tree; gdai is an engine server, real, and by decision D3
-# will not get one.
+# longer qualifies - it grows a tree; GDAI no longer qualifies either as of its own
+# conformance run (2026-09-04) - it grows a tree too. coding-solo-godot-mcp is the
+# remaining real, treeless Godot server.
 CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.engineMcpKey = 'godot-mcp';
-    c.mcp = { servers: ['gdai-godot-mcp'] };
+    c.engineMcpKey = 'godot';
+    c.mcp = { servers: ['coding-solo-godot-mcp'] };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 NOTES_CLI_OUT3="$TMPDIR/update-notes-cli-3.log"

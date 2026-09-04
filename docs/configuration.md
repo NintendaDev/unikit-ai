@@ -230,13 +230,34 @@ Relatedly, the tool listing is not a permission boundary. While a project is ope
 
 This is the only config using [`configByPlatform`](#per-platform-configs) — its binary is an absolute path that differs on each OS. Its `env` objects are empty on purpose: the catalog arrives whole at connect time with full schemas, so there is no gating to lift and no variable this integration needs — the asymmetry with the flag Biome carries is a difference between the two servers, not an omission here.
 
-#### GDAI Godot MCP (`order: 2`, paid) · Coding-Solo Godot MCP (`order: 3`, free)
+#### GDAI Godot MCP (`order: 2`, paid)
 
-**GDAI requires Godot 4.1+.** Coding-Solo declares no version threshold at all — its prerequisites say only "Godot Engine installed" — which is why it is the one entry in the Godot radio with no version in brackets. An undeclared threshold, not a forgotten one: a bracketed "Godot 4.x" there would be our inference rather than the vendor claim.
+```json
+{
+  "config": {
+    "command": "uv",
+    "args": ["run", "./addons/gdai-mcp-plugin-godot/gdai_mcp_server.py"]
+  }
+}
+```
 
-Both are stdio servers and both work. Neither ships a rules tree yet: UniKit AI knows of no exceptions for either, which is not the same as knowing they can do less — and the generic development principles apply to them exactly as they do to every other server.
+Backed by [gdai-mcp-plugin-godot](https://github.com/3ddelano/gdai-mcp-plugin-godot). Requires **Godot 4.1+**. A paid plugin — the vendor's own site is the source for pricing and installation. Before the first run: install the addon under `res://addons/gdai-mcp-plugin-godot/` and enable it in the project's plugin settings; the MCP client launches the Python server itself via the `uv run` command above, there is no separate manual start step.
 
-What an agent may attempt against them is decided by what their live catalog offers. `⏸️ MANUAL` is reached by trying and finding no route, with the evidence of that absence to show — never by the absence of a rules tree. See [Editor tasks](plan-files.md#editor-tasks).
+- **The editor must be open** — there is no headless mode, and there is no daemon outside the editor process the way Fennara runs one.
+- All 35 tools are visible immediately (no bootstrap). Its shape is an operation catalog rather than a code executor: granular, single-purpose tools cover scene, node, script, and editor-inspection work individually — the opposite of Fennara's one script-execution hatch.
+- **No approval mode or permission gate is documented anywhere for this server** — not in its configuration guide, its installation guide, or any other page checked. There is nothing to look for and nothing to disable; the only boundary is the host OS and the process's own permissions — the same conclusion as Fennara's, reached for the opposite reason (Fennara documents an approval setting that turns out not to gate MCP calls; this server never describes one in the first place).
+
+It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog — several of its mutations do not behave the way a synchronous success response implies, even though the catalog itself is honest and complete. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
+
+This is a flat `config`, not [`configByPlatform`](#per-platform-configs) — the launch command has the same shape on every OS, and it carries neither an `env` block nor a `{{home}}`/`{{localappdata}}` token today.
+
+#### Coding-Solo Godot MCP (`order: 3`, free)
+
+Coding-Solo declares no version threshold at all — its prerequisites say only "Godot Engine installed" — which is why it is the one entry in the Godot radio with no version in brackets. An undeclared threshold, not a forgotten one: a bracketed "Godot 4.x" there would be our inference rather than the vendor claim.
+
+It is a stdio server and it works. It ships no rules tree: UniKit AI knows of no exceptions for it, which is not the same as knowing it can do less — the generic development principles apply to it exactly as they do to every other server.
+
+What an agent may attempt against it is decided by what its live catalog offers. `⏸️ MANUAL` is reached by trying and finding no route, with the evidence of that absence to show — never by the absence of a rules tree. See [Editor tasks](plan-files.md#editor-tasks).
 
 ### Engine-MCP rules tree
 

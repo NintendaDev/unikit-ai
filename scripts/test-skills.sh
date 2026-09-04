@@ -2757,6 +2757,10 @@ fi
 CG_REF="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
 CG_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 CG_RESEARCH_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+# Declared here rather than borrowed from RM-3's `RM_CONTRACTS`, which is the same file: that
+# variable is assigned ~1200 lines BELOW this block, and under `set -u` a forward reference
+# aborts the whole suite instead of failing one guard.
+CG_CONTRACTS="$ROOT_DIR/skills/unikit-explore/references/contracts-artifact.md"
 
 CG_WHY=""
 # (CG-1) It must exist, be non-empty, and NOT carry frontmatter — a reference with `name:`
@@ -2854,11 +2858,80 @@ else
     if grep -qF 'Traceability' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-6:traceability-returned"; fi
     grep -qF 'the lift as an obligation' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-6:no-lift-obligation"
     CG6_CHECKS="$(awk '/^## Integrity/{f=1;next} /^## /{f=0} f' "$CG_RESEARCH_SPEC" | grep -cE '^[0-9]+\. ' || true)"
-    (( CG6_CHECKS == 7 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-7)"
+    (( CG6_CHECKS == 9 )) || CG_WHY+=" CG-6:integrity-checks($CG6_CHECKS-expected-9)"
+fi
+
+# (CG-7) The predicate itself, in every file that carries it and in both directions. There
+# are THREE carriers, not the two the rewrite set out to change: criterion 5 of the gate, its
+# writer-side twin in the research spec, and a closing line in the contracts note that credits
+# the retired wording with making the gate converge. A half-applied edit — one that fixes the
+# gate and leaves the promise standing somewhere else — is exactly what the negative halves
+# catch and the positive halves cannot: every file would still contain a rule, just not the
+# same one. The third carrier is the reason the negatives are not scoped to the two files the
+# edit touched: it was found by reading, after a green suite, and nothing here would have.
+grep -qF 'One value, one owning section' "$CG_REF"                              || CG_WHY+=" CG-7:criterion-5-not-a-value-predicate"
+if grep -qF 'One fact, one owning section' "$CG_REF"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-gate"; fi
+grep -qF 'One value is stated in exactly one owning section' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-7:spec-not-a-value-predicate"
+if grep -qF 'One fact is stated in exactly one owning section' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-spec"; fi
+# The contracts note states the predicate in lower case, mid-sentence. Its existence is
+# asserted here too: a negative grep against a file that is not there reads as a pass, and
+# RM-3's own existence check sits in a block this one must not depend on.
+if [[ ! -s "$CG_CONTRACTS" ]]; then
+    CG_WHY+=" CG-7:contracts-note-missing-or-empty"
+elif grep -qF 'one fact, one owning section' "$CG_CONTRACTS"; then
+    CG_WHY+=" CG-7:fact-predicate-returned-in-the-contracts-note"
+fi
+
+# (CG-8) The two properties that make the gate terminate: a budget it cannot exceed on its
+# own judgement, and a scope it cannot widen. The negative is the load-bearing half —
+# `do not confirm until it passes` IS the unbounded loop written as one sentence, and it
+# reads perfectly reasonable sitting next to a budget it silently overrides.
+grep -qF 'at most **two passes**' "$CG_REF" || CG_WHY+=" CG-8:no-pass-budget"
+grep -qF 'and nothing else' "$CG_REF"       || CG_WHY+=" CG-8:gate-scope-not-closed"
+if grep -qF 'do not confirm until it passes' "$CG_REF"; then CG_WHY+=" CG-8:unbounded-loop-returned"; fi
+
+# (CG-9) A bounded gate still fails to converge if a repair may add prose: the sentence
+# written to close one finding becomes the second copy the next pass reports. Three
+# formulations, one per contract — the contractive repair, the floor under it (a cell left
+# holding nothing but an ID), and the ledger that stops a fresh context from re-adjudicating
+# what this same save already decided.
+#
+# The bare-ID anchor stops at `an` because the shipped sentence wraps between `an` and `ID.`
+# — the phrase is unique in the file, and there is nothing shorter that still names the rule.
+grep -qF 'A repair is **contractive**' "$CG_REF"                   || CG_WHY+=" CG-9:repair-not-contractive"
+grep -qF 'whose entire content is an' "$CG_REF"                    || CG_WHY+=" CG-9:bare-id-cell-allowed"
+grep -qF 'the findings already adjudicated in this save' "$CG_REF" || CG_WHY+=" CG-9:no-adjudication-ledger"
+
+# (CG-10) Both ends of the `Gate:` field, on the RM-1 precedent: a contract that is declared
+# and never emitted is exactly as useless as one that is emitted and never declared. The gate
+# names the budget outcome, the manifest template offers the slot to write it into, and the
+# revision marker is what carries a value changed inside an artifact into the hashed region.
+grep -qF 'stopped at budget' "$CG_REF"   || CG_WHY+=" CG-10:budget-outcome-not-declared"
+grep -qF 'stopped at budget' "$CG_SKILL" || CG_WHY+=" CG-10:budget-outcome-not-emitted"
+grep -qF 'rev.<n>' "$CG_RESEARCH_SPEC"   || CG_WHY+=" CG-10:no-revision-marker"
+
+# (CG-11) The confirmation step must admit the verdict the budget branch produces. The gate
+# stopped being a pass/no-pass switch the moment it acquired a budget: `stopped at budget` is
+# a FINISHED gate whose save the user may authorise, and Step 5 is the one consumer of that
+# verdict. It read `Only once the gate has passed` — a precondition the budget branch cannot
+# satisfy — and so re-closed the escape hatch the budget exists to open. A contract that grew
+# a second outcome and a consumer that knows only the first is the shape this guard watches.
+#
+# The window over Step 5 is load-bearing, not tidiness: `stopped at budget` also appears in
+# the `## Sessions` template some 200 lines above (CG-10 asserts it exactly there), so a
+# file-wide grep would go green while Step 5 said the opposite. Same technique as MG-3 and
+# MH-8. `|| true` for the CG-3 reason — under `set -euo pipefail` a failing substitution
+# aborts the whole suite instead of failing this guard with a named cause.
+CG11_STEP5="$(awk '/^### Step 5: Confirm the save/{f=1;next} /^### /{f=0} f' "$CG_SKILL" || true)"
+if [[ -z "$CG11_STEP5" ]]; then
+    CG_WHY+=" CG-11:confirm-step-section-missing-or-empty"
+else
+    grep -qF 'stopped at budget' <<< "$CG11_STEP5" || CG_WHY+=" CG-11:confirm-step-ignores-the-budget-verdict"
+    if grep -qF 'Only once the gate has passed' <<< "$CG11_STEP5"; then CG_WHY+=" CG-11:pass-only-precondition-returned"; fi
 fi
 
 if [[ -z "$CG_WHY" ]]; then
-    pass "CG-1..CG-6 the coherence gate exists, is called after the write, degrades without losing work, and the research spec keeps no container it does not have"
+    pass "CG-1..CG-11 the coherence gate exists, is called after the write, degrades without losing work, terminates on a budget its confirmation step honours, keeps a closed scope and a contractive repair, and the research spec keeps a value predicate and no container it does not have"
 else
     fail "CG research coherence gate:$CG_WHY"
 fi
@@ -5809,6 +5882,169 @@ else
         fail "SR-2 an HTML rendering tag in a unikit engine template — it would be echoed verbatim into the terminal:"
         echo "$SR2_HITS" | head -5
     fi
+fi
+
+# ─────────────────────────────────────────────
+# Write-boundary + batch-delegation guards (EV-1 … EV-5, UR-1 … UR-3)
+#
+# `/unikit-evolve` never had a mechanical boundary. Its ownership rule was item 10 of a
+# ten-item list, 230 lines BELOW the step that writes, while its frontmatter carried `Agent`
+# with no call site anywhere in the file — and a general-purpose subagent inherits
+# Write/Edit over the whole tree while reading none of that prose. EV-* pins the boundary in
+# the one layer that is enforceable, and names the two surfaces a residual "everything else"
+# clause never protected: `.unikit/system/**` (installer-owned, flat-rewritten every run) and
+# `{{skills_dir}}/unikit-*/**` (the built-in skills, whose overrides belong in skill-context).
+#
+# UR-* pins the other half. `.unikit/RULES.md` is now written ONLY through `/unikit-rules`,
+# which turns the dispatch from a convenience into the whole channel for half this skill's
+# output, and makes the delegate's per-rule report the thing Step 7.2's cursor branch reads.
+# `skills/unikit-rules/SKILL.md` carried no guard of any kind before this family — it is the
+# first on that file.
+#
+# UR-3 is the load-bearing one: ONE -qF string per shared sentence, applied to BOTH files, so
+# drift in either half fails. The writer (`unikit-rules`) and the reader (`unikit-evolve`)
+# describe the same report, and a report contract that agrees with nobody is how a cursor
+# starts advancing over rules that were never written. Same shape as HG-5 and the CK
+# graceful-degradation pair.
+#
+# Anchored on FORMULATIONS, never on headings (RT-6 / LA-7 / DM-3 convention): a heading is
+# rewritten during cosmetics, a formulation only together with its meaning.
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}=== Validate evolve write boundary + batch delegation ===${NC}\n"
+
+EV_EVOLVE_SKILL="$ROOT_DIR/skills/unikit-evolve/SKILL.md"
+EV_RULES_SKILL="$ROOT_DIR/skills/unikit-rules/SKILL.md"
+
+# (EV-1) The frontmatter — the only layer prose cannot be talked out of. The positive half is
+# load-bearing on the GA-5 / RD-1 precedent: an emptied allowed-tools block satisfies the
+# negative on its own, and `Write`/`Edit`/`Skill` are exactly what the boundary still allows.
+EV_EVOLVE_TOOLS=$(awk '/^allowed-tools:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f' "$EV_EVOLVE_SKILL")
+EV1_WHY=""
+grep -qE '^  - Agent$' <<< "$EV_EVOLVE_TOOLS" && EV1_WHY+=" Agent-back-in-allowed-tools"
+grep -qE '^  - Write$' <<< "$EV_EVOLVE_TOOLS" || EV1_WHY+=" missing:Write"
+grep -qE '^  - Edit$'  <<< "$EV_EVOLVE_TOOLS" || EV1_WHY+=" missing:Edit"
+grep -qE '^  - Skill$' <<< "$EV_EVOLVE_TOOLS" || EV1_WHY+=" missing:Skill"
+if [[ -z "$EV1_WHY" ]]; then
+    pass "EV-1 unikit-evolve allowed-tools — no Agent, Write+Edit+Skill present"
+else
+    fail "EV-1 unikit-evolve allowed-tools invariant violated:$EV1_WHY"
+fi
+
+# (EV-2) The boundary section AND the two read-site reminders. The section alone is not
+# enough: it sits 100+ lines above Step 4 / Step 6, which are precisely where the model is
+# told to open a base SKILL.md and judge it while holding `Edit`. The sibling running the
+# same cross-check keeps its ban in the body (`unikit-skills-context` "Never Edit Built-in
+# Skills Directly"), and this counter is that ban's equivalent — two sites, both named.
+EV2_WHY=""
+grep -qF '## Critical: Write Boundary' "$EV_EVOLVE_SKILL" || EV2_WHY+=" no-boundary-section"
+grep -qF '.unikit/system/**'           "$EV_EVOLVE_SKILL" || EV2_WHY+=" system-not-named"
+grep -qF '{{skills_dir}}/unikit-*/**'  "$EV_EVOLVE_SKILL" || EV2_WHY+=" skills-dir-not-named"
+EV2_SITES=$( { grep -cF 'Never edit the base skill' "$EV_EVOLVE_SKILL" 2>/dev/null || true; } )
+[[ "$EV2_SITES" -ge 2 ]] || EV2_WHY+=" read-site-reminders=$EV2_SITES(<2)"
+if [[ -z "$EV2_WHY" ]]; then
+    pass "EV-2 unikit-evolve write boundary names system/ + skills_dir, $EV2_SITES read-site reminders"
+else
+    fail "EV-2 unikit-evolve write boundary incomplete:$EV2_WHY"
+fi
+
+# (EV-3) The Skill allow-list, as a POSITIVE anchor. A blanket negative ("no other /unikit-*
+# named in this file") would be WRONG: the `description` legitimately points at
+# `/unikit-memory migrate-rules`, and `## Core Idea` names the skill-context route. Positive
+# statements only — the same asymmetry the SI-* family is built on. The second assert is the
+# delegation-only clause for RULES.md, without which the allow-list still permits a direct
+# `Edit` of the file it is meant to route around.
+EV3_WHY=""
+grep -qF 'only skill this command may invoke is'  "$EV_EVOLVE_SKILL" || EV3_WHY+=" no-allow-list-sentence"
+grep -qF 'This skill has no direct write path to' "$EV_EVOLVE_SKILL" || EV3_WHY+=" rules-md-not-delegation-only"
+if [[ -z "$EV3_WHY" ]]; then
+    pass "EV-3 unikit-evolve names its single callee and routes RULES.md through it"
+else
+    fail "EV-3 unikit-evolve delegation contract weakened:$EV3_WHY"
+fi
+
+# (EV-4) The dispatch. With RULES.md delegation-only this is load-bearing, and a bare prose
+# sentence is not a dispatch: `Skill(...)` is never rewritten by the installer and non-Claude
+# agents have no such tool, so Tier 2 is what keeps the channel alive on 5 of 6 agents. The
+# "real call" clause is the gd-apply formulation for the known failure mode — printing the
+# command instead of executing it.
+EV4_WHY=""
+grep -qF 'in **one** call'                        "$EV_EVOLVE_SKILL" || EV4_WHY+=" not-batched"
+grep -qF 'Skill(skill: "unikit-rules"'            "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-tier1"
+grep -qF 'invoke `/unikit-rules <batch>` inline'  "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-tier2"
+grep -qF 'not text wrapped in backticks'          "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-real-call-clause"
+grep -qF '<!-- unikit:agents codex -->'           "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-codex-nudge"
+if [[ -z "$EV4_WHY" ]]; then
+    pass "EV-4 unikit-evolve Step 6 — one batched call, 3 dispatch tiers, codex auto-invoke nudge"
+else
+    fail "EV-4 unikit-evolve rules dispatch degraded:$EV4_WHY"
+fi
+
+# (EV-5) The cursor. This is the silent-loss branch: an approved rule whose dispatch never
+# reached the delegate used to look like a finished run — cursor advanced, patch marked
+# processed, and the tail-5 overlap window bought five patches before the prevention point
+# was gone for good. The pre-existing "execution fails" rule does not cover it, because
+# nothing fails; the delegation just returns something other than a report. The third assert
+# binds the evolution log to the same source, so "Rules added: N" stops being a guess.
+EV5_WHY=""
+grep -qF 'do **NOT** advance'                     "$EV_EVOLVE_SKILL" || EV5_WHY+=" no-hold-branch"
+grep -qF 'or no report came back at all'          "$EV_EVOLVE_SKILL" || EV5_WHY+=" no-missing-report-trigger"
+grep -qF 'counted **from the Step 6 batch-report' "$EV_EVOLVE_SKILL" || EV5_WHY+=" log-count-not-bound-to-report"
+if [[ -z "$EV5_WHY" ]]; then
+    pass "EV-5 unikit-evolve cursor holds on an unconfirmed rule; the log counts from the report"
+else
+    fail "EV-5 unikit-evolve cursor may advance over unwritten rules:$EV5_WHY"
+fi
+
+# (UR-1) The batch on the way in. The marker rule is the whole of it: Step 4 allows a rule to
+# span lines, so a newline does not separate two rules, and `- ` is the element format of
+# RULES.md itself and appears INSIDE a rule. `^\d+\. ` at column zero is the one anchor that
+# cannot collide with content — asserted as the literal the skill spells out, so a rewrite
+# onto a different delimiter has to delete this line first.
+UR1_WHY=""
+grep -qF 'argument-hint: "[rule text or topic | numbered batch]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
+grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
+if [[ -z "$UR1_WHY" ]]; then
+    pass "UR-1 unikit-rules accepts a numbered batch and names its delimiter"
+else
+    fail "UR-1 unikit-rules batch input contract missing:$UR1_WHY"
+fi
+
+# (UR-2) The report on the way out. `unikit-rules` already placed multiple rules correctly
+# (Step 4) but confirmed as if there had been one — one section, one rule, one verdict. A
+# batch of five across three sections does not fit that shape, and the `Section` column is
+# not cosmetic: the caller's evolution log records where each rule landed and in a batch has
+# nowhere else to read it from.
+UR2_WHY=""
+grep -qF '## Batch result'      "$EV_RULES_SKILL" || UR2_WHY+=" no-report-heading"
+grep -qF '| Section |'          "$EV_RULES_SKILL" || UR2_WHY+=" no-section-column"
+grep -qF '| added |'            "$EV_RULES_SKILL" || UR2_WHY+=" outcome:added"
+grep -qF '`already-covered`'    "$EV_RULES_SKILL" || UR2_WHY+=" outcome:already-covered"
+grep -qF '`skipped-duplicate`'  "$EV_RULES_SKILL" || UR2_WHY+=" outcome:skipped-duplicate"
+if [[ -z "$UR2_WHY" ]]; then
+    pass "UR-2 unikit-rules reports one row per input rule, all three outcomes + Section named"
+else
+    fail "UR-2 unikit-rules batch report contract incomplete:$UR2_WHY"
+fi
+
+# (UR-3) SHARED — the writer/reader symmetry, one -qF per sentence applied to BOTH files.
+# The fourth outcome is expressed by ABSENCE (no row = not processed), which is exactly the
+# kind of rule that survives in one file and quietly evaporates from the other; and
+# non-atomicity is what stops a caller treating a partial batch as a failed one. Guarded as
+# formulations rather than headings, and jointly rather than per-file, because a contract
+# that only one side still states is not a contract.
+UR3_SHARED_A='A rule with no row in the report was not processed.'
+UR3_SHARED_B='a partial write is a normal outcome, and the report is the only'
+UR3_WHY=""
+for ur3_f in "$EV_RULES_SKILL" "$EV_EVOLVE_SKILL"; do
+    ur3_n="${ur3_f##*/skills/}"
+    grep -qF "$UR3_SHARED_A" "$ur3_f" || UR3_WHY+=" ${ur3_n}:no-missing-row-rule"
+    grep -qF "$UR3_SHARED_B" "$ur3_f" || UR3_WHY+=" ${ur3_n}:no-non-atomic-rule"
+done
+if [[ -z "$UR3_WHY" ]]; then
+    pass "UR-3 the batch-report contract reads identically in unikit-rules and unikit-evolve"
+else
+    fail "UR-3 writer/reader drift in the batch-report contract:$UR3_WHY"
 fi
 
 # ─────────────────────────────────────────────

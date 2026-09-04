@@ -63,7 +63,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 - Re-running on an existing slug **continues** that research instead of opening a second folder; `researches/INDEX.md` is regenerated from disk on every save, so there is no separate rebuild command
 - Retired reference files stay on disk in projects installed before this change — the skill installer copies additively and never prunes. They are inert: nothing reads them
 - The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised only as the leading token, never inferred
-- Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and holds the confirmation until the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The read-only pass goes to a fresh context and falls back to inline; if the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
+- Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and checks that the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The gate runs **at most two passes**: zero blocking findings is a pass, a material or cosmetic remainder is recorded rather than held against the save, and blocking findings surviving the second pass stop the gate and ask the user instead of starting a third. The read-only pass goes to a fresh context and falls back to inline; if the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
 - When direction is clear, transition to `/unikit-plan`
 
 ### `/unikit-plan [fast|full|ultra|add|--list] [--base <branch>] <description>` - plan the work
@@ -155,7 +155,7 @@ Creates conventional commits with Unity-specific checks:
 - Suggests commit splitting for unrelated changes
 - Offers to push after commit
 
-### `/unikit-evolve` - improve skills from experience
+### `/unikit-evolve` - learn project rules from past fixes
 
 ```
 /unikit-evolve
@@ -165,7 +165,8 @@ Creates conventional commits with Unity-specific checks:
 - Classifies: code/architecture rules → `RULES.md`; skill workflow issues → `skill-context/`
 - Cross-checks against existing rules and knowledge base to avoid duplicates
 - Proposes targeted improvements with user approval
-- Closes the learning loop: **fix → patch → evolve → better skills → fewer bugs**
+- Never edits a built-in skill: coding rules land in `RULES.md` via `/unikit-rules`, workflow rules in `skill-context/`
+- Closes the learning loop: **fix → patch → evolve → better rules → fewer bugs**
 
 ### `/unikit-roadmap [check | vision]` - strategic planning
 
