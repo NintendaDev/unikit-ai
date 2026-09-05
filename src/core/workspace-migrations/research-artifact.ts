@@ -231,15 +231,24 @@ async function mergeOneResearch(folder: string): Promise<void> {
     logInfo(LOG_TAG, `${base}: ## Active Summary seeded from the title`);
   }
 
-  // Printed on the run that migrates the folder — and ONLY on that run. Once the
-  // version is stamped `detect` answers false and this step is skipped entirely,
-  // so a log line cannot be what reminds anyone later. The durable notice is the
-  // banner written into the manifest above: it stays in the file until a human
-  // rewrites the section, which is precisely the event that makes it untrue.
+  // NOT a warning, and never was one: keeping the brief is what this step is
+  // DESIGNED to do, while `logWarn` means a skip or a failure everywhere else in
+  // the chain — so the line reported a deliberate success as a problem, on stderr,
+  // in the middle of an otherwise clean `init`. It was also never the notice it
+  // claimed to be. The reasoning ran "printed on the migrating run and only on
+  // that run", which holds only while the version stamp lands: `init` writes
+  // `.unikit.json` LAST, so a wizard the user backs out of leaves the old number
+  // on disk and the whole chain — this line with it — reruns on the next `init`,
+  // against a folder that has nothing left to migrate.
+  //
+  // The durable notice is the banner written into the manifest above. It sits in
+  // the file until a human rewrites the section, which is precisely the event
+  // that makes it untrue — something no console line can manage. What is left
+  // here is a verbose-only trace, in the same register as the two `logInfo` lines
+  // above it: a record of what the step did, for whoever is debugging the chain.
   if (briefPresent) {
-    logWarn(LOG_TAG, `${base}: ${LEGACY_RESEARCH_BRIEF_FILE} kept as-is — its content was `
-      + 'NOT copied into ## Active Summary. Carry it over by hand or on the next '
-      + '/unikit-explore session, then delete the brief yourself');
+    logInfo(LOG_TAG, `${base}: ${LEGACY_RESEARCH_BRIEF_FILE} left in place — `
+      + 'its content was not copied into ## Active Summary (see the banner)');
   }
 
   if (!changed) return;

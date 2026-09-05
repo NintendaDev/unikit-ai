@@ -1182,6 +1182,18 @@ assert_contains "$R8_DIR/2026-06-12_withbrief/RESEARCH.md" 'left untouched in th
 assert_contains "$R8_DIR/nobrief/RESEARCH.md" 'migrated without RESEARCH_BRIEF.md' \
   "no brief: the banner names the real reason rather than the generic one"
 
+# ...and the banner is the ONLY notice. Leaving the brief in place is what this
+# step is DESIGNED to do, so it is not a warning: it is neither a skip nor a
+# failure, the two things `logWarn` means everywhere else in the chain. The
+# console line it used to print was noise on the one run that migrates, and on
+# any re-run whose version stamp never landed (an aborted `init` wizard writes
+# `.unikit.json` last) it came back — reporting a successful, deliberate outcome
+# as a problem. The durable record is the banner asserted above, which stays in
+# the file until a human rewrites the section.
+assert_not_contains "$TMPDIR/research-merge-update.log" 'RESEARCH_BRIEF\.md kept as-is' \
+  "with brief: keeping the brief is not warned about on the console"
+pass "with brief: the kept brief is announced by the banner alone, not by a WARN"
+
 # Idempotence. The merge used to be the one step in the chain that destroyed a
 # source; it no longer destroys anything, and the brief's byte-identity is
 # asserted explicitly below rather than left to the generic sweep.
@@ -1449,6 +1461,67 @@ assert_contains "$R8D_DIR/both-dates/RESEARCH.md" '^Created: 2026-06-12$' \
 # work is the exit-8 trap this whole family of branches has to avoid.
 assert_cmd_exit 0 "refusing branches: no permanent pending — rules sync exits 0" \
   "$TMPDIR/research-refusals-sync.log" -- env -C "$R8D" node "$CLI" rules sync
+
+# ─────────────────────────────────────────────────────
+# Section 8e: research merge — apply re-entered on an aborted upgrade
+# ─────────────────────────────────────────────────────
+# The shape the console noise actually came from. `apply` is reachable at
+# `detect === false` whenever the version half fires on its own, and the version
+# stamp is the half that lies: `init` writes `.unikit.json` LAST, so a wizard the
+# user backs out of leaves the old number on disk over fully migrated folders.
+# Every later `init` then re-enters this step against a folder with nothing left
+# to do — which is why "printed once, on the migrating run" was never a property
+# this step had, and why the notice belongs in the manifest rather than on stderr.
+#
+# Section 8b's own second `run_update` cannot reach this: `use_fake_registry`
+# stamps the CURRENT version, so there `detect` is the only signal and the step
+# is skipped outright. Rolling the stamp back is the only way into `apply` with
+# the work already done.
+
+echo -e "\n${BOLD}Section 8e: research merge — apply re-entered on an aborted upgrade${NC}"
+
+R8E="$TMPDIR/research-reentry"; mkdir -p "$R8E"
+use_fake_registry "$R8E" unity minimal-valid
+R8E_DIR="$R8E/.unikit/code/researches/2026-06-12_reentry"
+mkdir -p "$R8E_DIR"
+
+printf '# Twin-stick input\n\nDate: 2026-06-12\nStatus: completed\n\n## Findings\n\nbody\n' \
+    > "$R8E_DIR/RESEARCH_RESULT.md"
+printf '# Brief\n\n## CONTEXT\n\ncontent the user still has to carry over\n' \
+    > "$R8E_DIR/RESEARCH_BRIEF.md"
+
+run_update "$R8E" "$TMPDIR/research-reentry-update-1.log"
+assert_exists "$R8E_DIR/RESEARCH.md" \
+  "re-entry: the first update migrated the folder"
+assert_exists "$R8E_DIR/RESEARCH_BRIEF.md" \
+  "re-entry: the brief is still on disk, which is what keeps the branch reachable"
+
+R8E_FILES=()
+R8E_SHAS=()
+while IFS= read -r R8E_FILE; do
+    R8E_FILES+=("$R8E_FILE")
+    R8E_SHAS+=("$(sha_of "$R8E_FILE")")
+done < <(find "$R8E/.unikit/code/researches" -type f | sort)
+
+# The aborted wizard: migrated disk, pre-2.0.0 stamp. The two signals now
+# disagree in the direction the runner ORs them for, and `apply` runs on settled
+# state — the branch that used to print.
+stamp_config_version "$R8E" "1.0.0"
+run_update "$R8E" "$TMPDIR/research-reentry-update-2.log"
+
+assert_not_contains "$TMPDIR/research-reentry-update-2.log" 'RESEARCH_BRIEF\.md kept as-is' \
+  "re-entry: no console warning on the re-entered run"
+pass "re-entry: an aborted-init upgrade prints nothing about the kept brief"
+
+for R8E_I in "${!R8E_FILES[@]}"; do
+    R8E_LABEL="$(basename "${R8E_FILES[$R8E_I]}")"
+    assert_file_unchanged "${R8E_FILES[$R8E_I]}" "${R8E_SHAS[$R8E_I]}" \
+      "re-entry: $R8E_LABEL byte-identical after apply ran with nothing to do"
+done
+
+# And the notice the user is actually owed is still where it belongs.
+assert_contains "$R8E_DIR/RESEARCH.md" 'left untouched in this folder' \
+  "re-entry: the banner in the manifest still carries the notice"
 
 # ─────────────────────────────────────────────────────
 # Section 9c: a leftover flat manifest beside a modular one
