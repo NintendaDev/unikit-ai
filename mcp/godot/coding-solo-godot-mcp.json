@@ -16,42 +16,19 @@
       "DEBUG": "true"
     }
   },
+  "rules": "rules/coding-solo-godot-mcp/",
   "allowed-tools": {
     "agents": {
-      "unikit-implement-coordinator": [
-        "execute_in_editor",
-        "read_output",
-        "run_scene",
-        "get_project_info"
-      ],
-	  "unikit-implement-worker": [
-        "execute_in_editor",
-        "read_output",
-        "run_scene",
-        "get_project_info"
-      ],
-	  "unikit-review-sidecar": [
-        "read_output"
-      ]
+      "unikit-implement-coordinator": ["*"],
+      "unikit-implement-worker": ["*"],
+      "unikit-review-sidecar": ["*"]
     },
     "skills": {
-      "unikit-implement": [
-        "execute_in_editor",
-        "read_output",
-        "run_scene",
-        "get_project_info"
-      ],
-      "unikit-fix": [
-        "execute_in_editor",
-        "read_output",
-        "run_scene",
-        "get_project_info"
-      ],
-      "unikit-verify": [
-        "read_output",
-        "run_scene",
-        "get_project_info"
-      ]
+      "unikit-devcontext": ["*"],
+      "unikit-implement": ["*"],
+      "unikit-fix": ["*"],
+      "unikit-verify": ["*"],
+      "unikit-mcp-audit": ["*"]
     }
   }
 }
