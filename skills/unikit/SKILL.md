@@ -67,6 +67,7 @@ This skill must be executed as a strict workflow, not as guidance.
 3. Do not substitute a recommendation, summary, or "seems fine" confirmation for a required question. A generic approval ("yes", "ok", "go ahead") only answers the immediately pending question — it does not retroactively authorize skipped selections or unanswered follow-ups.
 4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4).
 5. If the environment prevents a required step (tool unavailable, file missing, subagent unreachable), stop and print `BLOCKED at Step N: <reason>`. Do not silently substitute an approximation.
+6. Every user-facing output of this skill is plain markdown — no HTML tags, in any step. Step 7 states the contract in full.
 
 ---
 
@@ -319,7 +320,9 @@ Read the **"Stack Selection Options"** section of `{{skills_dir}}/{{self_name}}/
 
 Based on the project description and scan results, recommend a tech stack. Show recommendations with reasoning tailored to the project type. Explain *why* each recommendation fits.
 
-Present ALL options from ENGINE_RULES.md for each category in order. Never truncate or summarize option lists — show every row from the table exactly as written, so the user sees the complete set of choices:
+Present ALL options from ENGINE_RULES.md for each category in order. Never truncate or summarize option lists — show every row from the table exactly as written, so the user sees the complete set of choices.
+
+**Plain markdown only.** That "exactly as written" governs the *rows* — it is not licence to invent a wrapper around them. Render every option list as a plain markdown table or a plain `1.` / `2.` numbered list, and nothing else. Never wrap a category, a table, or a progress summary in HTML: `<details>`, `<summary>`, `<b>`, `<br>` and friends are GitHub-flavoured markup that a terminal renderer does not interpret, so the tags print literally and the user reads markup instead of a question. The same ban covers decorative unicode (circled glyphs ①②③, 🅰), which smudge in terminals. Bold, short cells and plain headings carry all the structure a category list needs. This matters most where the list is long — a `numbered-multi-select` subsection has to be printed in full because `AskUserQuestion` cannot hold it, and length is exactly when a collapsible wrapper looks tempting. (Same contract as `unikit-gd-brainstorm` — see its "Readable plain markdown only".)
 
 **1. Architecture** — present options from the "Architecture" table.
 

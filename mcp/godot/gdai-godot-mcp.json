@@ -1,0 +1,30 @@
+{
+  "key": "gdai-godot-mcp",
+  "code": "godot-mcp",
+  "is_engine": true,
+  "order": 2,
+  "displayName": "GDAI Godot MCP [Paid] (Godot 4.1+)",
+  "docs": {
+    "context7": "/3ddelano/gdai-mcp-plugin-godot",
+    "repo": "https://github.com/3ddelano/gdai-mcp-plugin-godot"
+  },
+  "rules": "rules/gdai-godot-mcp/",
+  "config": {
+    "command": "uv",
+    "args": ["run", "./addons/gdai-mcp-plugin-godot/gdai_mcp_server.py"]
+  },
+  "allowed-tools": {
+    "agents": {
+      "unikit-implement-coordinator": ["*"],
+      "unikit-implement-worker": ["*"],
+      "unikit-review-sidecar": ["*"]
+    },
+    "skills": {
+      "unikit-devcontext": ["*"],
+      "unikit-implement": ["*"],
+      "unikit-fix": ["*"],
+      "unikit-verify": ["*"],
+      "unikit-mcp-audit": ["*"]
+    }
+  }
+}

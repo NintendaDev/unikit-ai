@@ -62,23 +62,27 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   bug happen". Use before planning when you don't yet have technical direction.
 - **In:** a topic / question / system name — or, when a design workspace exists, a **flow**
   / player sequence (a *first-class flow input* grounded on the dynamics axis via the shared
-  `design-read` contract). `init` rebuilds the researches index.
-- **Out:** `.unikit/code/researches/<date>_<name>/` (`RESEARCH_RESULT.md` + `RESEARCH_BRIEF.md`),
-  and `researches/INDEX.md`.
-- **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the brief),
-  `/unikit-fix` (if a bug was found).
+  `design-read` contract). The researches index is regenerated on every save.
+- **Modes:** default | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
+  dependency graph — written into the research folder by relevance, never by checklist).
+- **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`
+  and adaptive artifacts in ultra), and a regenerated `researches/INDEX.md`.
+- **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the manifest's
+  `## Active Summary`), `/unikit-fix` (if a bug was found).
 
 ### unikit-plan
 - **Purpose:** Turn a feature into a dependency-ordered task plan + technical brief.
 - **When:** "plan this feature", "create tasks". The first **required** step of building.
 - **In:** a feature description, or a research brief, or a roadmap milestone. Modes: `fast`
-  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `add` (extend)
-  — each mode body loads on demand from `references/mode-*.md`.
+  (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `ultra`
+  (full plus one deeply specified file per phase — explicit keyword only, never inferred),
+  `add` (extend) — each mode body loads on demand from `references/mode-*.md`.
   If a game-design workspace exists, planning resolves **flow-first** (*intent decides the
   door* — a flow-named request grounds on the flow, a system-named one on the system,
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the
   system's `AC-<id>`s.
-- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<date>_<feature>/{TASKS.md,PLAN-BRIEF.md}`.
+- **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<feature>/PLAN.md` — or, in
+  ultra, that folder's manifest plus its `phase-NN-*.md` files.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 
 ### unikit-improve
@@ -95,7 +99,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
 - **In:** the latest plan, or `@<folder>`, or a phase/task selector. Bootstraps rules once, then
   codes inline.
-- **Out:** project source code; updates `TASKS.md` checkboxes.
+- **Out:** project source code; updates the plan manifest's checkboxes.
 - **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
   `/unikit-verify` / `/unikit-commit`.
 
@@ -179,7 +183,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   loops, motivation, pre-mortem — into a CONCEPT card. Includes delegated market validation.
 - **When:** "I don't know what game to make", "let's come up with a game", "a roguelike idea".
 - **In:** an optional theme/hint. Auto-resumes an in-progress concept.
-- **Out:** `.unikit/gamedesign/concepts/<date>_<slug>/CONCEPT.md` (+ rejected-idea backlog). Also
+- **Out:** `.unikit/gamedesign/concepts/<slug>/CONCEPT.md` (+ rejected-idea backlog). Also
   writes a **descriptive `genre:` hint** into the card (a human genre name; CLI-free — `/unikit-gd-spec`
   resolves it to a bundled genre profile downstream).
 - **Optional (entry of the design track).** After: `/unikit-gd-spec <slug>`.
@@ -192,8 +196,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   "how could we improve our economy".
 - **In:** a topic / game reference / URL / design question; a `reviews/*_review-*.md` report
   (develop its research bucket); or a `RECON.md` (work a pre-GDD reconstruction). `init`
-  rebuilds the researches index.
-- **Out:** a research + brief in `.unikit/gamedesign/researches/<date>_<slug>/`, then a routed
+  rebuilds the researches index — the game-design side keeps `init` until its own manifest
+  port, which is why the code-side `/unikit-explore` no longer has one.
+- **Out:** a research + brief in `.unikit/gamedesign/researches/<slug>/`, then a routed
   next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
   skeleton/detailed → `/unikit-gd-system`. **Two file modes differ:** a review
   file is mutated **in place** (research → apply-ready) → one `/unikit-gd-apply reviews/X.md`
@@ -388,6 +393,32 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **In:** a task / `complete <desc>` / `list` / `purge`.
 - **Out:** `.unikit/TODO.md`.
 - **Optional.** Implement/fix auto-close matching items.
+
+### unikit-mcp-trap
+- **Purpose:** Record a finding about the configured engine MCP server into
+  `.unikit/MCP-RECHECK-NOTES.md` — the project's log of what has to be re-checked here.
+  Zero MCP calls, no editor needed. Writes in one genre only: a check to perform, never a
+  lifted gate and never a named workaround.
+- **When:** right after a call reported success while changing nothing, ate an argument, or
+  validated a broken state — "write this down", "record this MCP finding", "add a recheck note".
+- **In:** three forms — the finding in one line; a path to a plan file (harvests that plan's
+  `## MCP Findings` table only, the session is not touched); or nothing, which harvests the
+  session first and then offers to scan the tables of plans touched since the last audit.
+- **Out:** `.unikit/MCP-RECHECK-NOTES.md`.
+- **Optional.** Pairs with `/unikit-mcp-audit`, which curates what this writes.
+
+### unikit-mcp-audit
+- **Purpose:** Curate those notes — re-stamp on a change of server, replay `replay: safe`
+  findings inside a disposable sandbox, offer to retire what was fixed or went upstream, and
+  print a ready diff for the packaged rules tree.
+- **When:** "audit the MCP notes", "are these findings still true", "the server was updated —
+  revisit the notes".
+- **In:** nothing, a note id (`R2`), or one of `stamp` / `replay` / `retire` / `upstream`.
+- **Out:** an updated `.unikit/MCP-RECHECK-NOTES.md` (+ an upstream diff, printed).
+- **Optional.** Mutates a live editor when replaying. It takes no pre-flight measurements: it
+  tells you how to prepare the editor, names everything it will create, and asks once — that
+  confirmation is the whole gate. Works only inside a `UNIKIT_AUDIT_<runid>` sandbox and never
+  saves the scene.
 
 ### unikit-help
 - **Purpose:** This navigator. Diagnoses what the user is trying to do and points to the right skill

@@ -7,7 +7,7 @@
 UniKit AI is an **AI-powered game code development toolkit**. It bootstraps an AI coding agent for your game project by:
 
 1. **Detecting the engine** - Unity, Godot 4, Godot 4 .NET, or Unreal Engine 5
-2. **Installing skills and subagents** - 31 skills (20 code-pipeline + 11 game-design) + 8 background agents (sidecars, coordinators, workers) tailored to the selected engine, grouped by category so you only install what you need
+2. **Installing skills and subagents** - 33 skills (22 code-pipeline + 11 game-design) + 8 background agents (sidecars, coordinators, workers) tailored to the selected engine, grouped by category so you only install what you need
 3. **Wiring the knowledge base** - a remote rules registry feeds dynamic memory, module-aware (`code` and, if you install the game-design skills, `gamedesign`), with core rules always loaded and stack/library rules loaded by task context
 4. **Configuring MCP servers** - engine MCP (real-time console / tests) + Context7 (up-to-date library docs) for agents that support MCP
 5. **Providing a spec-driven workflow** - explore → plan → improve → implement → review → verify → commit, with self-learning patches feeding back into the rules. A parallel `gamedesign` pipeline (brainstorm → spec → system/flow/content → review/verify) authors the GDD that code plans read from
@@ -95,7 +95,7 @@ unikit-ai update --force       # Clean reinstall of skills and force-refresh eve
 
 `update` uses SHA-256 hashes on every skill directory + engine template to detect drift, and reconciles `.unikit/memory/` against the configured registry (pulling newer versions of rules already marked `source: registry` and regenerating `RULES_INDEX.md`). It never contacts `registry.npmjs.org`.
 
-When a package upgrade adds new skills, an interactive `update` (on a TTY, no flag) lists them and asks which to install — defaulting to **none**, so pressing Enter never reinstalls a skill you deliberately de-selected. `--install-new` installs them all non-interactively, `--skip-new` always skips, and a non-TTY `update` skips them silently (CI-safe). Installing the first skill of a module (for example a `unikit-gd-*` game-design skill) also bootstraps that module's rules, so opting into a new module's skills delivers its rules too.
+When a package upgrade adds new skills, an interactive `update` (on a TTY, no flag) lists them as a checkbox prompt with every entry **pre-checked** — new skills are opt-out, so pressing Enter installs all of them and you uncheck the ones you want to skip. `--install-new` installs them all non-interactively, `--skip-new` always skips, and a non-TTY `update` skips them silently (CI-safe). Installing the first skill of a module (for example a `unikit-gd-*` game-design skill) also bootstraps that module's rules, so opting into a new module's skills delivers its rules too.
 
 `self-update` is a separate command dedicated to upgrading the `unikit-ai` binary itself. It detects the active package manager (`npm`/`pnpm`/`yarn`/`bun`/`mise`/`volta`) from the binary path and runs the matching global install. Interactive by design - in non-TTY environments it prints a "skipping" notice and exits 0. No flags. Run it before `unikit-ai update` whenever you want to pick up a newer package.
 
@@ -106,12 +106,13 @@ Rules are first-class and have their own subcommand group. Full reference lives 
 ```bash
 unikit-ai rules list                     # List available rules (all modules; scope with --module)
 unikit-ai rules show <id>                # Preview a rule (searches all modules; scope with --module)
-unikit-ai rules install                  # Install the core bootstrap (no args)
+unikit-ai rules install                  # Prints help - installs nothing
+unikit-ai rules install defaults         # Bootstrap rules for every installed module
 unikit-ai rules install <id> [<id>...]   # Install specific rules
 unikit-ai rules sync                     # Reconcile disk ↔ state, regenerate RULES_INDEX.md
 unikit-ai rules sync --replace --prune   # Overwrite local edits and drop obsolete stack rules
 unikit-ai rules status                   # Show installed rules and their sources
-unikit-ai rules registry [show|set|reset|init]  # Manage the registry URL
+unikit-ai rules registry [show|set|reset|init|migrate|status]  # Manage and inspect the registry
 ```
 
 ### Extensions
@@ -127,7 +128,7 @@ See [Extensions](extensions.md) for authoring guidelines.
 
 ## What Gets Installed
 
-### Skills (31)
+### Skills (33)
 
 All skills use the `unikit-` prefix and are installed to the agent's skills directory. The install wizard groups them into the same five categories shown in the Step 3 picker above:
 
@@ -137,9 +138,9 @@ All skills use the `unikit-` prefix and are installed to the agent's skills dire
 | **Memory and rules** | `unikit-memory`, `unikit-rules`, `unikit-rules-registry`, `unikit-skills-context` |
 | **Code** | `unikit-architecture`, `unikit-commit`, `unikit-devcontext`, `unikit-evolve`, `unikit-explore`, `unikit-fix`, `unikit-implement`, `unikit-improve`, `unikit-plan`, `unikit-review`, `unikit-roadmap`, `unikit-verify` |
 | **Game Design** | 11 `unikit-gd-*` skills - GDD authoring (brainstorm, spec, system, flow, content), research (explore, recon), quality (review, verify), dispatch (apply), and export (docs). See [Game-Design Module](gamedesign.md) |
-| **Tools** | `unikit-docs`, `unikit-todo` |
+| **Tools** | `unikit-docs`, `unikit-mcp-audit`, `unikit-mcp-trap`, `unikit-todo` |
 
-20 skills form the code pipeline (Core + Memory and rules + Code + Tools); the 11 Game Design skills are a separate, optional module - see [Skills Reference](skills.md) for the full per-skill breakdown.
+22 skills form the code pipeline (Core + Memory and rules + Code + Tools); the 11 Game Design skills are a separate, optional module - see [Skills Reference](skills.md) for the full per-skill breakdown.
 
 ### Subagents (8)
 
@@ -156,7 +157,7 @@ Background sidecars and coordinators for parallel execution and read-only audits
 | `unikit-review-sidecar` | Read-only code review |
 | `unikit-docs-sidecar` | Documentation drift detection |
 
-Workflow skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing directly. They load rules and engine principles once at the start of execution (Bootstrap) and then implement tasks inline with `Read/Edit/Write/Bash`. The named delegation aliases - `develop-agent`, `rules-agent`, `docs-agent` - still expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls, but `develop-agent` is now reserved for true parallel scopes or deep-dive single tasks, not for every task.
+Workflow skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing directly. They load rules and engine principles once at the start of execution (Bootstrap) and then implement tasks inline with `Read/Edit/Write/Bash`. The skill-loading delegation aliases - `develop-agent`, `rules-agent`, `docs-agent` - still expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls, but `develop-agent` is now reserved for true parallel scopes or deep-dive single tasks, not for every task. Read-only work goes through the `recon-agent` alias instead.
 
 ### Dynamic Memory Rules
 
@@ -175,11 +176,13 @@ A `RULES_INDEX.md` file is auto-generated with descriptions and "Load when" trig
 
 For agents with MCP support, the wizard configures:
 
-| Engine | Engine MCP | General |
-|--------|-----------|---------|
-| Unity | [UnityMCP](https://github.com/CoplayDev/unity-mcp) | [Context7](https://github.com/upstash/context7) |
-| Godot 4 / Godot 4 .NET | [Godot MCP](https://github.com/Coding-Solo/godot-mcp) | [Context7](https://github.com/upstash/context7) |
-| Unreal Engine 5 | [Unreal MCP](https://github.com/ChiR24/Unreal_mcp) | [Context7](https://github.com/upstash/context7) |
+| Engine | Engine MCP (you pick one) | General |
+|--------|---------------------------|---------|
+| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+) | [Context7](https://github.com/upstash/context7) |
+| Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (default, Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum) | [Context7](https://github.com/upstash/context7) |
+| Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+) | [Context7](https://github.com/upstash/context7) |
+
+The versions are each vendor's own **floor**, and the default is not the most permissive choice: on Godot the default (Fennara) has the highest floor of the three, so a 4.3 project wants GDAI or Coding-Solo instead. UniKit AI does not detect your engine version — the bracket in the wizard is the whole warning you get.
 
 Engine MCP servers give the agent real-time feedback - compilation errors, tests, logs - so it can fix issues without developer involvement. Context7 is used by `/unikit-memory` and other skills for up-to-date library documentation lookup.
 
@@ -190,10 +193,13 @@ Example for a Unity project with Claude Code (full schema in [Configuration](con
 ```
 your-game-project/
 ├── .claude/                      # Agent config dir (varies by agent)
-│   ├── skills/                   # 31 skills (or fewer, per your Step 3 selection)
+│   ├── skills/                   # 33 skills (or fewer, per your Step 3 selection)
 │   └── agents/                   # 8 subagents (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git) - written by /unikit
+│   ├── system/                   # Flat-rewritten on every init/update - never hand-edit
+│   │   └── engine-mcp/           # Rules tree of the selected engine MCP - exceptions, not capabilities
+│   ├── MCP-RECHECK-NOTES.md      # Your findings about that server - /unikit-mcp-trap writes, the installer only renames
 │   ├── DESCRIPTION.md            # Project spec - generated by /unikit
 │   ├── ARCHITECTURE.md           # Architecture guidelines - generated by /unikit-architecture
 │   ├── RULES.md                  # Project-specific rules - managed by /unikit-rules

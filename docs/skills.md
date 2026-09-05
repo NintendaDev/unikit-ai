@@ -23,12 +23,14 @@ Not sure what to do next, or which skill to use? Start here.
 
 ### `/unikit` - project setup
 
-Scans your Unity project and sets up AI context:
+Scans your game project and sets up AI context:
 ```
 /unikit
 ```
-- Scans `Packages/manifest.json`, `Assets/Plugins/`, `Assets/Third-Party Assets/`, `Assets/Modules/`, `.asmdef` files, and `ProjectSettings/`
+- Scans the real tech stack from **engine-specific** sources - the scan list is not hardcoded, it comes from the installed `references/ENGINE_RULES.md` (package manifest, plugin directories, third-party asset folders, project settings). Your own project code is deliberately excluded: on Unity, `Assets/Modules/*/` is *not* treated as a framework
+- Bootstraps `.unikit/config.yaml` - the user-editable source of truth for language, git, and workflow
 - Generates `.unikit/DESCRIPTION.md` (project specification) and `AGENTS.md`
+- Bootstraps the knowledge base under `.unikit/memory/` via the rules registry - the `code` module always, plus the `gamedesign` design library when its skills are installed
 - Invokes `/unikit-architecture` for architecture guidelines
 - **Does NOT implement** - only sets up context
 
@@ -49,20 +51,24 @@ Generates architecture guidelines:
 
 These skills form the core development loop. See [Development Workflow](workflow.md) for the full diagram and how they connect.
 
-### `/unikit-explore [init | topic]` - discovery before planning
+### `/unikit-explore [ultra | topic]` - discovery before planning
 
 ```
 /unikit-explore real-time multiplayer sync
 /unikit-explore the inventory system is getting complex
-/unikit-explore init                                     # Rebuild researches index
+/unikit-explore real-time-multiplayer-sync               # The first example's slug → continues it
+/unikit-explore ultra save-system trade-offs              # Adds adaptive artifacts
 ```
 - Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code
 - Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the knowledge base
-- Saves results to `.unikit/code/researches/<date>_<name>/` with `RESEARCH_RESULT.md`, `RESEARCH_BRIEF.md`, and optionally `RESEARCH_SOURCE.md`
-- Maintains `researches/INDEX.md`; use `init` to rebuild the index
+- Saves results to `.unikit/code/researches/<slug>/` with `RESEARCH.md` (the manifest — header, `## Active Summary` between markers, `## Findings`, an append-only `## Sessions`), plus `SOURCE.md` for prompt-based explorations and adaptive artifacts in ultra
+- Re-running on an existing slug **continues** that research instead of opening a second folder; `researches/INDEX.md` is regenerated from disk on every save, so there is no separate rebuild command
+- Retired reference files stay on disk in projects installed before this change — the skill installer copies additively and never prunes. They are inert: nothing reads them
+- The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised only as the leading token, never inferred
+- Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and checks that the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The gate runs **at most two passes**: zero blocking findings is a pass, a material or cosmetic remainder is recorded rather than held against the save, and blocking findings surviving the second pass stop the gate and ask the user instead of starting a third. The read-only pass goes to a fresh context and falls back to inline; if the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
 - When direction is clear, transition to `/unikit-plan`
 
-### `/unikit-plan [fast|full|add|--list] [--base <branch>] <description>` - plan the work
+### `/unikit-plan [fast|full|ultra|add|--list] [--base <branch>] <description>` - plan the work
 
 ```
 /unikit-plan Add item rarity system              # Asks which mode
@@ -73,25 +79,28 @@ These skills form the core development loop. See [Development Workflow](workflow
 /unikit-plan full --base main Add new feature     # Specify base branch for full mode
 ```
 
-Three modes:
+Four modes:
 - **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - creates git branch, asks about testing/logging, saves plan
+- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
 - **Add** - extends an existing plan with new tasks
 
-Fast and Full modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates `TASKS.md` (checklist) and `PLAN-BRIEF.md` (technical context). Add mode extends an existing plan folder without re-exploring.
+Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan folder without re-exploring.
 
-### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
+### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
 ```
-/unikit-improve                                          # Improve latest plan
+/unikit-improve                                          # Resolve + announce the plan, then improve
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
-/unikit-improve @.unikit/code/plans/2026-03-10_core-loop      # Improve specific plan
+/unikit-improve @.unikit/code/plans/core-loop            # Improve specific plan
+/unikit-improve +check                                   # Validate refinements before applying
 ```
 - Second-pass analysis: finds missing tasks, fixes dependencies, removes redundant work
 - Performs deeper codebase analysis than initial `/unikit-plan`
 - Shows diff-like report before applying changes
 - `--list` shows available plans; `@<path>` targets a specific plan folder
+- `+check` runs the refinements past a **fresh-context validator** before they are applied - a read-only subagent that drops, modifies, or reclassifies findings it cannot substantiate. If the validator fails to launch, the pass is skipped: every finding is kept and a single `WARN [+check]` line is printed
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
@@ -103,9 +112,9 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
 /unikit-implement core-loop          # Find plan by name
-/unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
+/unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
-- Reads skill-context rules first, then plan TASKS.md
+- Reads skill-context rules first, then the plan manifest
 - Executes tasks one by one with commit checkpoints
 - Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and implements tasks inline with `Read/Edit/Write/Bash`. The `develop-agent` alias is used only for true parallel scopes or deep-dive single tasks
 - Supports selective execution by phase, task numbers, or feature name
@@ -127,7 +136,7 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 ```
 /unikit-verify                           # Verify implementation against plan
 /unikit-verify --strict                  # Strict mode - zero tolerance for gaps
-/unikit-verify 2026-03-08_customers      # Verify specific feature
+/unikit-verify customers-system          # Verify specific feature
 ```
 - Goes through every task in the plan and verifies the code actually implements it
 - Checks build, tests, looks for leftover TODOs, plan-vs-code drift
@@ -141,16 +150,16 @@ Fast and Full modes explore your codebase for patterns, create dependency-ordere
 /unikit-commit
 /unikit-commit inventory
 ```
-Creates conventional commits with Unity-specific checks:
+Creates conventional commits with engine-aware checks:
 - Analyzes staged changes (`git status` + `git diff --cached`)
-- Verifies `.meta` file pairing
-- Checks for binary assets, secrets, Unity-ignored directories
+- Verifies companion/metadata file pairing where the engine requires it (Unity `.meta` files and their equivalents)
+- Checks for binary assets, secrets, engine-ignored directories
 - References plan tasks in commit message when applicable
 - Follows conventional commits format (feat, fix, refactor, etc.)
 - Suggests commit splitting for unrelated changes
 - Offers to push after commit
 
-### `/unikit-evolve` - improve skills from experience
+### `/unikit-evolve` - learn project rules from past fixes
 
 ```
 /unikit-evolve
@@ -160,7 +169,8 @@ Creates conventional commits with Unity-specific checks:
 - Classifies: code/architecture rules → `RULES.md`; skill workflow issues → `skill-context/`
 - Cross-checks against existing rules and knowledge base to avoid duplicates
 - Proposes targeted improvements with user approval
-- Closes the learning loop: **fix → patch → evolve → better skills → fewer bugs**
+- Never edits a built-in skill: coding rules land in `RULES.md` via `/unikit-rules`, workflow rules in `skill-context/`
+- Closes the learning loop: **fix → patch → evolve → better rules → fewer bugs**
 
 ### `/unikit-roadmap [check | vision]` - strategic planning
 
@@ -175,20 +185,23 @@ Creates conventional commits with Unity-specific checks:
 - Subsequent runs: review progress, add/reprioritize/mark milestones done
 - `check` mode: automated progress scan without interactive prompts
 
-### `/unikit-review` - code review
+### `/unikit-review [+check]` - code review
 
 Reviews code against the project's rule hierarchy. Four modes:
 ```
 /unikit-review                         # Staged changes (default)
 /unikit-review PlayerController.cs     # Specific file(s)
-/unikit-review @Assets/Scripts/Player  # Folder (all .cs files)
+/unikit-review @Assets/Scripts/Player  # Folder (all source files)
 /unikit-review 123                     # PR by number (#42 or URL also work)
 /unikit-review master                  # Commits vs branch/tag
+/unikit-review +check                  # Validate findings before reporting
 ```
 - Checks against: `RULES.md` (highest priority) → `.unikit/memory/code/core/` → `.unikit/memory/code/stack/`
 - Loads stack rules selectively based on frameworks detected in target code
 - Severity scale: Critical, Warning, Medium, Suggestion
 - Reports include concrete code fixes for Critical/Warning items
+- `+check` runs the findings past a **fresh-context validator** before they are presented - a read-only subagent that drops, modifies, or reclassifies findings it cannot substantiate. If the validator fails to launch, the pass is skipped: every finding is kept and a single `WARN [+check]` line is printed
+- Ends with a machine-readable ` ```unikit-gate-result ` block (gate `review`) as the **last** fence of the report, recomputed from the post-filter findings under `+check`. Its schema is `.unikit/system/gate-result-contract.md`
 
 ---
 
@@ -212,16 +225,24 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 /unikit-memory add stack rule for DOTween           # Add rule from description
 /unikit-memory https://docs.example.com/guide       # Research from URL
 /unikit-memory Assets/Plugins/MyLib/README.md        # Research from file
+/unikit-memory ~/books/game-feel.pdf                 # Research from a PDF, EPUB, FB2 or folder
 /unikit-memory migrate-rules                         # Migrate RULES.md to memory
 /unikit-memory validate                              # Sync RULES_INDEX.md with actual files
+/unikit-memory optimise                              # Retroactively extract bulky sections into references
+/unikit-memory --module gamedesign add loop rule     # Target the gamedesign module
 /unikit-memory --skip-registry add rule for DOTween  # Skip registry lookup, generate directly
 ```
-- Four branches: Add Rule (direct), Research (URL/file + Context7 enrichment), Migrate (`migrate-rules`), Validate (`validate` - syncs index with actual files)
+- Five branches: Add Rule (direct), Research (URL/file/folder/book + Context7 enrichment), Migrate (`migrate-rules`), Validate (`validate` - syncs index with actual files), and Optimise (`optimise`)
+- **Module-aware** - `--module code` (default) or `--module gamedesign`. Without the flag the module is inferred from prompt context; on genuine ambiguity the skill asks rather than guessing. See [Dynamic Memory](dynamic-memory.md)
 - **Registry-first lookup** - before generating a rule, checks the remote registry catalog for an existing match; offers to install the vetted version instead of generating a local copy
 - `--skip-registry` - bypass the registry lookup (used by higher-level callers that already queried the catalog)
-- Add or update rules in `.unikit/memory/` (core and stack)
+- Add or update rules in `.unikit/memory/<module>/` (core and stack for `code`; core and library for `gamedesign`)
 - Cross-checks against existing rules to detect duplicates and contradictions
 - Maintains `RULES_INDEX.md` after changes
+
+**Distillation, not transcription.** Research builds an explicit Source Inventory first, then distills rather than copies: examples are driven by what the source actually contains, an update to an existing rule is gap-listed before it is merged, and sources are recorded in a `## Source Map` section (written only when sources exist). Large inputs - a folder, a PDF, an oversized document - go through a dedicated pipeline backed by the bundled `scripts/material-prep.py` helper.
+
+**`optimise` (Branch E)** is the retroactive half of the same idea: it re-reads rules already in the knowledge base, runs the **Candidate Analyzer** over them (size, optionality, lookup shape → **Tier 1** and **Tier 2** confidence buckets), and offers to move bulky sections out into `references/` - available for *every* tier, not just stack. It is **non-destructive**: content is moved, never deleted, and nothing is written before you confirm. The pass ends with a `rules sync`.
 
 ### `/unikit-rules` - project-specific rules
 
@@ -229,6 +250,8 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 /unikit-rules Always use UniTask instead of coroutines
 /unikit-rules
 ```
+Also accepts a **numbered batch** - a prompt whose lines start `1. `, `2. `, … adds several rules in one call and returns a per-rule report. The batch is deliberately *not* atomic: a rule that fails is reported as failed while the rest still land.
+
 - Saves rules to `.unikit/RULES.md` (highest priority in rule hierarchy)
 - Cross-checks against knowledge base in `memory/` via `RULES_INDEX.md`
 - Rules loaded automatically by `/unikit-implement` before task execution
@@ -239,14 +262,19 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 /unikit-rules-registry create   # Scaffold a new local registry seeded from .unikit/memory/
 /unikit-rules-registry update   # Push changes from .unikit/memory/ into the local registry
 /unikit-rules-registry sync     # Pull registry updates back into .unikit/memory/
+/unikit-rules-registry update --module gamedesign   # Scope the operation to one module
 /unikit-rules-registry          # Interactive mode selector
 ```
+
+Like `/unikit-memory`, this skill is **module-aware**: `--module <id>` scopes id validation and the CLI calls it makes to a single knowledge module.
 
 Three modes (direction matters):
 
 - **`create`** - scaffolds a new local registry repository and seeds it with rules from `.unikit/memory/` (memory → registry). Injects `version: 1.0.0` into rule frontmatter. Optionally switches the project to use the new registry via `unikit-ai rules registry set` + `rules sync --replace --prune`
 - **`update`** - diffs `.unikit/memory/` against the currently configured local registry, computes automatic semver bumps (major/minor/patch), writes changed rules back to the registry, cleans up orphaned reference files via reference-graph check, regenerates `manifest.json`, and reconciles `.unikit.json` state via `rules install --force` (memory → registry)
 - **`sync`** - pulls registry-side updates into `.unikit/memory/` via `unikit-ai rules sync` with a choice of intensity: Safe (version-changed only), Replace (also overwrites local modifications), Mirror (replace + prune obsolete stack rules) (registry → memory)
+
+**Write gate.** Before `create` or `update` - never before `sync`, which only reads - the skill calls `unikit-ai rules registry status --json` and reads back `{ target, kind, schema, isLatestSchema, readable, writable }`. A local registry still on schema:1 gets an offer to run `unikit-ai rules registry migrate`; an unreachable or outdated remote registry is refused rather than written, because writing a schema:2 layout into a schema:1 registry would corrupt it.
 
 This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the full registry lifecycle. See [Rules Registry](rules-registry.md) for the underlying CLI commands.
 
@@ -269,7 +297,7 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 /unikit-gd-recon we built a match-3 with a meta-map, focus the economy
 ```
 - **Cold-start only** - for a live codebase with **no GDD yet**; reconstructs candidate design facts into one passive `.unikit/gamedesign/RECON.md`
-- Fans out `Agent(subagent_type: Explore)` per subsystem to extract a system roster + `depends_on` graph (P0) and content-type schemas / resources / entities (P1) - flows are excluded, they aren't recoverable from code
+- Fans out one `recon-agent` dispatch per subsystem to extract a system roster + `depends_on` graph (P0) and content-type schemas / resources / entities (P1) - flows are excluded, they aren't recoverable from code
 - Every extracted fact is tagged `provenance: extracted from code`; a mandatory `## Intent Gap` section records what code cannot reveal (pillars, fantasy, the "why")
 - Has no `Skill` tool - only **recommends** `/unikit-gd-spec <RECON.md>` (import) as printed text, never calls it. If a GDD already exists it redirects to the `/unikit-gd-explore` code-grounded lens instead
 
@@ -294,7 +322,7 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 ```
 - Read-only research partner - studies references, market fit, or the existing GDD/code; **never authors** the design itself
 - Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
-- Saves to `.unikit/gamedesign/researches/<date>_<slug>/`; a review file is mutated in place instead of getting a new folder
+- Saves to `.unikit/gamedesign/researches/<slug>/`; a review file is mutated in place instead of getting a new folder
 - Routes onward without asking based on the target's `doc_status` (no doc → spec add-system; `skeleton` → system; `detailed`+ → system as a delta)
 
 ### `/unikit-gd-spec [path-to-existing-GDD | URL | free-form description]` - the master GDD + registry
@@ -360,12 +388,14 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - Fully read-only - no report file, no changelog, no `doc_status` bump; prints an inline conflict report and hands apply-ready fixes to `/unikit-gd-apply`
 - Unlike review, a conflict is a fact, not a finding - you only choose *how* to fix it, not whether
 
-### `/unikit-gd-apply ["<changes>"] | <reviews/*_review-*.md>` - multi-zone edit dispatcher
+### `/unikit-gd-apply [bare | "<changes>" | <reviews/*_review-*.md>]` - multi-zone edit dispatcher
 
 ```
+/unikit-gd-apply                                        # verify handoff: apply the last /unikit-gd-verify deltas
 /unikit-gd-apply "buff combat 10%, add a loot rarity field, retune onboarding pacing"   # one multi-zone edit
 /unikit-gd-apply reviews/2026-07-01_review-crafting.md   # apply-ready bucket from a review
 ```
+- Three input shapes. The **bare** form is verify's handoff path: it reads the last `/unikit-gd-verify` output in the session and applies its deltas
 - Carries out an explicit, **multi-zone** GDD edit you have already decided - it owns nothing and writes nothing (only `Skill` in its tool list)
 - Resolves each delta to its `(target, zone)` and dispatches **system-before-sinks** (`/unikit-gd-spec` → `/unikit-gd-system` → `/unikit-gd-content` → `/unikit-gd-flow`), then closes with one bare `/unikit-gd-verify`
 - A **single-zone** edit goes straight to the owner; an open question to research goes to `/unikit-gd-explore` first
@@ -404,7 +434,7 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 /unikit-docs --web    # Also generate HTML version
 ```
 - Analyzes codebase and creates README + `docs/` directory with topic pages
-- Auto-detects Unity tech stack (DI, async, event systems, UI frameworks)
+- Auto-detects the project's tech stack for the configured engine (DI, async, event systems, UI frameworks)
 - Reads language setting from `.unikit/config.yaml` (`language.ui` / `language.artifacts`) - documentation generated in the configured language
 - Supports `docs-config.json` for path and document customization
 - Generates HTML documentation site with `--web` flag
@@ -443,13 +473,42 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 - Add tasks (deduplicates, refines verbose descriptions), mark complete, view status
 - Also triggered by "remind me to...", "don't forget to...", "we need to..."
 
+### `/unikit-mcp-trap [finding | plan path]` - record an MCP finding
+
+```
+/unikit-mcp-trap                                 # Harvest findings from the current session
+/unikit-mcp-trap the snapshot reported ready with zero files
+/unikit-mcp-trap .unikit/code/plans/2026-08-18_ui/PLAN.md   # Take this plan's table, nothing else
+```
+- Writes `.unikit/MCP-RECHECK-NOTES.md` - the project's log of what has to be re-checked about the **engine MCP server it actually talks to**
+- Zero MCP calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing
+- Three input forms. **A finding in one line** is recorded directly. **A path to a plan file** harvests that plan's `## MCP Findings` table and nothing else — the session is not consulted at all, which matters because the caller is usually the run that just produced those rows. **No argument** takes findings from the session first, then offers to scan the tables of plans touched since the last audit
+- Reads **the table only**, never the plan body: a window from the heading to the next `##`, with a 30-line cap that applies only to the multi-plan scan — and a table outgrowing it is announced, not truncated in silence
+- `/unikit-implement` offers the transfer at the end of a run (Step 5.5), passing the plan path, so findings recorded per task reach the durable log while the context is still there
+- Every note is written in one genre - **a check to perform**. A lifted gate or a "use Y instead of X" is refused: a stale check costs one call and fails safe, a lifted obligation never comes back
+- The executor that hit the trap does not write here - one observation is a bad sample, and a bad line lives for months, so the durable surface passes through a human
+
+### `/unikit-mcp-audit [R2 | stamp | replay | retire | upstream]` - curate the MCP notes
+
+```
+/unikit-mcp-audit                                # Full pass: stamp, replay, retire, upstream
+/unikit-mcp-audit R2                             # One note
+/unikit-mcp-audit upstream                       # Only print the diff for the packaged rules tree
+```
+- Four jobs: **re-stamp** (the server moved → every entry is suspect, and offered first), **replay** (`replay: safe` rows reproduced in a disposable sandbox), **retire** (offer to drop what was fixed or went upstream), **upstream** (print a ready diff for the packaged `INDEX.md`)
+- Replaying mutates a live editor, so it runs behind a six-step envelope whose only gate is **you**: it opens by telling you how to prepare the editor (save your scene, open an empty one, no compile and no Play Mode), names every object it will create, and asks once. It works only inside a `UNIKIT_AUDIT_<runid>` sandbox, deletes it in one action, and **never saves the scene** - so even a failed sweep leaves nothing on disk
+- **It takes no pre-flight measurements, on purpose.** The previous gate refused on a dirty scene - and a fresh empty untitled scene, the one safe place to run this, is dirty by default, so the gate rejected the only correct state every time while a configured production scene passed. Such a check is not portable either: across the catalog, one server reports no scene-dirty state, one does not document editor state, and one runs an engine with no concept of compiling
+- The sweep is proved, not announced: a prefix search returning zero plus a clean console delta, or a loud `ERROR` listing what remains - never a blind repeat of the deletion
+- Deletes only what it created in this run. Leftovers from an aborted earlier run are recognisable by their `<runid>` and swept only under a separate confirmation
+- A **project** tool, not a release tool: it never edits the packaged rules tree (`init`/`update` rewrite it), it prints a PR diff instead
+
 ---
 
 ## Agents
 
-UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus three **delegation aliases** (`develop-agent`, `rules-agent`, `docs-agent`) that workflow skills expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls.
+UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus six **delegation aliases** in two families: the skill-loading `develop-agent`, `rules-agent`, `docs-agent`, which expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls, and the model-carrying `recon-agent`, `check-agent`, `lens-agent`, which expand into a read-only dispatch declared in the calling skill's `## Delegation agents`.
 
-After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `rules-agent` and `docs-agent` keep their usual role of capturing rules and documentation.
+After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `rules-agent` and `docs-agent` keep their usual role of capturing rules and documentation. The model-carrying aliases exist so a model name is written once per skill, behind an agent-filter branch, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
 
 For the full reference - frontmatter, launch commands, design principles, sidecar output contracts - see [Subagents](subagents.md).
 

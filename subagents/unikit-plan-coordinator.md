@@ -32,14 +32,14 @@ Do not announce, confirm, or mention the language setting.
 **Internal communication is always English:**
 - All prompts to `unikit-plan-polisher` — English only
 - Plan-polisher always returns results in English
-- Plan artifacts (TASKS.md, PLAN-BRIEF.md) are written in the project language
+- The plan manifest (`.unikit/code/plans/<folder>/PLAN.md`) is written in the project language
 
 ## Input
 
 The user provides a planning request. Examples:
 - `"implement day/night cycle with customer scheduling"`
 - `"refactor inventory system to use new categories"`
-- `"@.unikit/code/plans/2026-03-10_core-loop"` (polish an existing plan)
+- `"@.unikit/code/plans/2026-03-10_core-loop"` (polish an existing plan — when that plan is an ultra bundle the polisher refines it with `Edit` and touches its phase files too, never regenerating the manifest)
 
 ## Configuration
 
@@ -69,7 +69,7 @@ while needs_further_refinement == yes AND iteration < max_iterations:
     parse polisher-report block (see Result Parsing below)
 
 # Done
-read final plan files (TASKS.md + PLAN-BRIEF.md)
+read the final plan manifest
 report summary
 ```
 
@@ -84,10 +84,24 @@ signal, not an inconvenience.
 
 1. Scan the polisher's response for a fenced block opened with `polisher-report`.
 2. If the block is present, extract these keys by literal name:
-   `plan_path`, `plan_created`, `files_written`, `tasks_count`,
+   `plan_path`, `plan_created`, `plan_mode`, `files_written`, `tasks_count`,
    `needs_further_refinement`, `issues`, `summary`.
 3. Validate:
    - `plan_created: yes` → `plan_path` must exist on disk as a directory.
+   - `plan_created: yes` **and** `plan_mode: ultra` → also verify, in this order:
+     1. the folder's manifest `plans/*/PLAN.md` exists and its first line equals `<!-- unikit:plan-mode:ultra -->`;
+     2. the manifest contains a `## Phase Index` section;
+     3. every `phase-*.md` file in the folder is named in `## Phase Index` (no orphans).
+     These three are a deliberate **subset** of the bundle integrity checks — the cheapest
+     three, and exactly the ones that catch a regenerating write over the manifest. The full
+     set stays with the producer (`unikit-plan/references/ULTRA-PLAN-FORMAT.md`) and with
+     `/unikit-verify`; do not grow this list here.
+     **If any of the three fails → report which check failed and STOP.** Do NOT enter the
+     refinement loop: it launches the same polisher on the same path, and a flattened bundle
+     is not repaired by another pass — it is rewritten again, losing the phase files.
+   - `plan_mode` absent → treat as `standard`, and print a warning saying so. Silently reading
+     a missing key as "an ordinary plan" is exactly the path on which an ultra bundle goes
+     invisible again.
    - `plan_created: no` → inspect `summary` for the reason; do NOT proceed
      to the refinement loop.
    - `needs_further_refinement` must be `yes` or `no`.
@@ -104,7 +118,7 @@ Do NOT run any more exploration tool calls.
 If plan files already exist at <expected plan_path>, re-read them and emit
 the block now describing what is on disk.
 
-If no plan files exist yet, write minimal TASKS.md + PLAN-BRIEF.md based on
+If no plan file exists yet, write a minimal manifest based on
 the original request using what you already know — partial is fine — then
 emit the block.
 

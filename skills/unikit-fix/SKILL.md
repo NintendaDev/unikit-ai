@@ -21,6 +21,7 @@ allowed-tools:
   - Bash(git *)
   - Bash(rm *)
   - Bash(mkdir *)
+  - Bash(date *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -59,7 +60,7 @@ alternative.
 
 ## Delegation agents
 
-This skill uses a named delegation alias for `Agent(...)` calls. The alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded.
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded; a reconnaissance alias expands to a read-only `Explore` dispatch. Each alias is the single place where its delegate's model is declared — call sites name the alias and never carry a model argument of their own.
 
 - **`develop-agent`** — used ONLY for complex fixes requiring extensive codebase exploration or independent multi-file changes. Default fixes are implemented inline by this skill using rules loaded in Bootstrap. Expands to:
 
@@ -73,6 +74,32 @@ This skill uses a named delegation alias for `Agent(...)` calls. The alias expan
   ```
 
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
+
+<!-- unikit:agents claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  ```
+
+  `sonnet` is a tier alias, never a version — the one model value that may be written into
+  UniKit. A versioned model id goes stale silently and must never replace it.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
+<!-- unikit:agents !claude -->
+- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
+
+  ```
+  Agent(subagent_type: Explore, prompt: "<focused question>")
+  ```
+
+  No model is named: this runtime either has no dispatch-time model argument or offers only
+  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
+  default applies.
+
+  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+<!-- unikit:end -->
 
 ---
 
@@ -155,6 +182,32 @@ Bootstrap loads coding rules and principles ONCE upfront so the fix can be imple
 
 Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask).
 
+**Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
+
+5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3).
+6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
+
+   ```
+   WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
+   ```
+
+   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`, never to this skill.
+
+**Either file absent → skip it, print one line, and continue with every right you had:**
+
+```
+MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
+```
+
+No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
+
+**Lifted gates come from a verdict, not from a server profile.**
+
+`GATE LIFTED` is a **runtime verdict of `/unikit-verify`** — reached by trying, finding no affordance, and producing the evidence of that absence. This skill has no direct channel to the per-gate calibration and will not grow one: that calibration is verify's, and splitting it across two readers is how two skills come to disagree about what is lifted. Read the **verdict** instead — the last ```unikit-gate-result``` fenced block of the most recent `/unikit-verify` run, per `.unikit/system/gate-result-contract.md`.
+
+- A verdict exists → honour exactly what it lifted, and nothing beyond it.
+- **No verdict** (verify has not run) → **nothing is lifted.** Do not infer a lifted gate from an indirect signal, and do not report success on the strength of one. The obligation stands until a real run lifts it — that is what monotonicity means here.
+
 **Read `.unikit/skill-context/unikit-fix/SKILL.md`** — MANDATORY if the file exists.
 
 This file contains project-specific rules accumulated by `/unikit-evolve` from patches,
@@ -195,6 +248,44 @@ To fix this efficiently, I need more context:
 4. When did this start happening?
 ```
 
+### When the symptom lives in the editor, not in the source
+
+Investigation splits by where the symptom actually lives. The code-research delegates read the
+**source** — their tools are enough there. The editor rungs below are walked by **the skill body
+itself**: every one of them is a call to the engine MCP, and those grants are held by this skill,
+not by whatever it delegates to. Both modes pass through here, so the ladder is available on the
+planning path and on the immediate-fix path alike.
+
+Take the rungs in order — cheapest deterministic signal first, most expensive probe last — and
+stop at the first one that names a cause. Each rung is a **class of signal**, never a tool; the
+vocabulary is the one `.unikit/system/dev-principles.md` → **D2** uses. D2 answers *is there such
+a signal at all*; this ladder answers *in which order to take them*.
+
+1. **Console delta from a marker** — place the marker, reproduce, read only what appeared after it.
+2. **Compilation diagnostics with coordinates** — a build that does not pass explains most symptoms before any state is worth reading.
+3. **A narrow structural read** — the one object or component the symptom points at, not the tree around it.
+4. **A targeted probe chosen by the symptom** — read the state the symptom claims is wrong, directly.
+5. **A deterministic behaviour run** — a test with a readable result, or a scripted run.
+6. **A frame** — **only** when the symptom is visual.
+
+Three rules hold across the whole ladder:
+
+- **Reproduce once.** One reproduction, and only where reproducing is safe. A symptom that damages state on the way is described from what you already have, not re-triggered.
+- **No identical call twice without new evidence.** The same call with the same arguments against the same state is not a second observation; it is the first one, paid for twice.
+- **A visual symptom directs the diagnosis, it does not close it.** A frame tells you where to look. The evidence is the state you read afterwards.
+
+**Report every rung you walk.** One line per rung, in the order you took them:
+
+```
+rung <N> — <signal class> → <raw observation>
+```
+
+A rung skipped on purpose is named with its reason (`rung 6 — frame → skipped, the symptom is not
+visual`). Without these lines the ladder is indistinguishable from prose: nobody can check that the
+expensive probe came *after* the cheap one rather than *instead of* it.
+
+---
+
 **After understanding the problem, ask the user to choose a mode:**
 
 ```
@@ -215,14 +306,22 @@ Based on choice:
 
 Investigate the codebase enough to understand the problem and create a plan.
 
-**Use the same parallel exploration approach as Step 2** — launch 2-3 Explore tasks (`Agent(subagent_type: Explore, model: sonnet, ...)`) to investigate the problem. Design prompts based on the specific bug context.
+**Use the same parallel exploration approach as Step 2** — launch 2-3 `recon-agent` dispatches to investigate the problem. Design prompts based on the specific bug context.
 
 **Fallback:** If Agent tool is unavailable, investigate directly using Glob/Grep/Read.
+
+For a symptom that lives in the editor rather than in the source, walk the rungs from Step 1 yourself — the delegates cover the source half only.
 
 After tasks return, synthesize findings to:
 1. Identify the root cause (or most likely candidates)
 2. Map affected files and functions
 3. Assess impact scope
+
+The synthesis is written in the **diagnosis contract** below — six fields, `## Analysis` in the plan file.
+`.unikit/system/dev-principles.md` → **A1** covers a different moment: `CLAIM / EVIDENCE / VERDICT` reports
+**finished** work and ends in a binary verdict. A diagnosis is **unfinished** work — it has no verdict to give,
+so it carries a boundary and a named list of what is still a guess instead. The two do not compete and neither
+replaces the other.
 
 Then create `.unikit/code/FIX_PLAN.md`:
 
@@ -234,11 +333,14 @@ Then create `.unikit/code/FIX_PLAN.md`:
 
 ## Analysis
 
-What was found during investigation:
-- Root cause (or suspected root cause)
-- Affected files and classes
-- Impact scope
-- Related {{engine_name}} systems (if applicable)
+The diagnosis contract — six fields, and every one of them is filled:
+
+- **Symptom:** what is observably wrong, in the terms it actually presents in.
+- **Evidence:** the raw observations the diagnosis rests on — a console line, a diagnostic with coordinates, a value read back. A retelling is not evidence: write down what you saw, not what it meant to you.
+- **Boundary:** how far the investigation actually reached, and therefore what it does not cover.
+- **Probable cause:** the mechanism that explains the symptom, stated as the candidate it still is.
+- **Next action:** the single step the fix starts with.
+- **Unverified:** what remained a hypothesis. **This field is never empty.** When everything was verified it reads `nothing` — a deliberate statement, not an omission. A hypothesis that goes unnamed here is read as established by whoever implements the fix.
 
 ## Fix Steps
 
@@ -290,20 +392,20 @@ Launch 2-3 Explore tasks simultaneously:
 
 ```
 Task 1 — Locate the problem area:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Find code related to [error location / affected functionality].
    Read the relevant classes, trace the data flow.
    Thoroughness: medium.")
 
 Task 2 — Related code & side effects:
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Find all callers/consumers of [affected class/method].
    Check Zenject bindings and installers that wire this up.
    Identify what else might break or be affected.
    Thoroughness: medium.")
 
 Task 3 — Similar past patterns (if patches exist):
-Agent(subagent_type: Explore, model: sonnet, prompt:
+recon-agent(prompt:
   "Search for similar error patterns or related fixes in the codebase.
    Check git log for recent changes to [affected files].
    Thoroughness: quick.")
@@ -317,6 +419,13 @@ Agent(subagent_type: Explore, model: sonnet, prompt:
 - Whether the issue is in a Module or Game script (affects where the fix goes)
 
 **Fallback:** If Agent tool is unavailable, investigate directly using Glob/Grep/Read — find relevant files, read the code around the issue, trace the data flow, check for similar patterns.
+
+For a symptom that lives in the editor rather than in the source, walk the rungs from Step 1 yourself — the delegates cover the source half only.
+
+**Report the synthesis in the diagnosis contract** — the same six fields Step 1.1 writes into `## Analysis`
+(symptom · evidence · boundary · probable cause · next action · unverified). On this path there is no plan file,
+so the contract goes into the session output; **Unverified** is filled here too, and reads `nothing` only when
+nothing was left to guess. Step 3 fixes what this contract established, not what it merely suspected.
 
 ---
 
@@ -336,6 +445,44 @@ When implementing inline, apply:
 
 **Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline. Implement directly with the loaded rules — Bootstrap already covers everything needed.
 
+**When the fix touches the editor's serialized state** — a scene, a prefab, a component, an asset, UI, VFX, animation, project settings — rather than source text, carry it out through the engine MCP in this order:
+
+1. **Candidates from the live catalog, by intent.** Pick 3-5 candidate affordances from the tool list you actually hold. That list is the only place a name may come from — not this file, not a rules file, not memory. A name recalled instead of read is a `catalog phantom` you invented.
+2. **Ask the server for the schema** of those 3-5 before calling any of them. A one-line or empty declaration does not mean "no parameters".
+3. **Grep by area.** Read the `## Check` table of `.unikit/system/engine-mcp/INDEX.md` and of `.unikit/MCP-RECHECK-NOTES.md`, filtered to the area this change belongs to **plus every cross-cutting area**: `rollback · console · batch · compile · transport · visual`. The cross-cutting six are read **always**; the lines are short, and the moment one becomes applicable is not knowable in advance.
+4. **Execute, then read the changed state back.** Close the claim with the evidence class its claim class requires (`dev-principles.md` → A2). A response code is not evidence.
+
+**No rules file, or no check line for this area → nothing changes.** Every right you had, you keep: an absent exception is not an absent capability, and it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
+
+**A call that misled you is a finding — and it goes in two places, neither of them the notes file.** Put it in the fix report as a candidate line (the `area`, what has to be confirmed, the raw call with the raw answer), and — when this fix is running against a plan — into that plan's `## MCP Findings` table.
+
+**When: on finishing the step that produced it, not in the fix report at the end.** A finding held until the report is lost to every `/clear` and every session that stops early, which is the whole reason the table exists. `F<n>` is one more than the highest id already in the table — read the table before appending, so a re-run does not restart the numbering; `observed` is the date you observed it (`Bash(date *)`), because `/unikit-mcp-trap` copies that column into the notes verbatim and an empty one turns into the date of the transfer; dedup is semantic — drop a candidate saying the same thing about the same `area` as an existing row, judging by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
+
+**Never write `.unikit/MCP-RECHECK-NOTES.md` from here:** one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
+
+**The library reference — two triggers, and never on Bootstrap.**
+
+Reach for it on exactly two occasions:
+
+1. **an unfamiliar area** — what approaches the authors propose; once per area per session;
+2. **a dead end** — you hold the schema and the capability still is not there.
+
+**Never routinely, and never at Bootstrap.** It is a network dependency inside the editor lane, a few thousand tokens per query, and it makes the run irreproducible — two runs of the same plan diverge. It also mixes a source with a systematic bias toward confidence into the hot path: retrieval returns what is most relevant, and a caveat is almost never the most relevant answer to "how do I do this".
+
+**The identifier is already known.** It is carried in the header of `.unikit/system/engine-mcp/INDEX.md`, which names the reference for the configured server — so nothing has to be resolved at run time.
+
+**Say when you reached for it, and why.** One line into the run report, at the moment of the call — the network was touched and the report has to show it:
+
+```
+Reference: trigger <1|2> — <the area, or the dead end>
+```
+
+Without it the run reads as if everything came from observation, which is exactly the confusion a source biased toward confidence should not get for free.
+
+**How the answer is treated.** The reference describes **intent, not behaviour**. Anything taken from it carries the same evidence obligations as anything else, and with heightened attention: it has been caught presenting a structurally broken path as an exemplary example. It never closes a claim — only an observation does (`dev-principles.md` → A2).
+
+**The reference is optional in the wizard.** If it was not configured, trigger 2 simply has no fallback: descend the degradation ladder (`dev-principles.md` → D3) and reach `⏸️ MANUAL` at its proper rung only — by absence of a route, established by trying. An unconfigured reference is not itself a missing capability.
+
 After the fix is implemented, you MUST continue through ALL remaining steps (4 → 5 → 6 → 7).
 
 ---
@@ -344,20 +491,20 @@ After the fix is implemented, you MUST continue through ALL remaining steps (4 �
 
 ### 4.1 {{engine_name}} Compile Check
 
-Use {{engine_mcp_tool}} to check that the project compiles after the fix:
-- Refresh/recompile the project through {{engine_mcp_tool}}
+Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after the fix:
+- Refresh/recompile the project through MCP server `{{engine_mcp_tool}}`
 - Check the {{engine_name}} console for compilation errors
 - If errors found — display them with `file:line` references and fix them
-- If {{engine_mcp_tool}} is unavailable — skip and note: `Compilation check: {{engine_mcp_tool}} unavailable, skipped`
+- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Compilation check: engine MCP unavailable, skipped`
 
 ### 4.2 {{engine_name}} Test Run
 
-Use {{engine_mcp_tool}} to run tests for the affected module:
+Use MCP server `{{engine_mcp_tool}}` to run tests for the affected module:
 - Determine which test assembly covers the modified module (check CLAUDE.md for the list of test assemblies)
-- Run the relevant test assembly through {{engine_mcp_tool}}
+- Run the relevant test assembly through MCP server `{{engine_mcp_tool}}`
 - Wait for results and display them — highlight any failures
 - If tests fail because of the fix — investigate and fix the regression
-- If {{engine_mcp_tool}} is unavailable — skip and note: `Test run: {{engine_mcp_tool}} unavailable, skipped`
+- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
 
 ### 4.3 Engine Companion Files
 

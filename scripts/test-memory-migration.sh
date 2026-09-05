@@ -79,7 +79,7 @@ cat > "$MIG_DIR/.unikit.json" << EOF
   "version": "1.0.0",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     { "id": "claude", "skillsDir": ".claude/skills", "subagentsDir": ".claude/agents", "installedSkills": ["unikit"], "installedSubagents": [] }
   ],

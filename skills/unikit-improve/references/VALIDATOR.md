@@ -1,6 +1,6 @@
 # Plan-refinement item validator — subagent prompt
 
-This file is loaded by `unikit-improve` when the `+check` flag is set. The skill substitutes the placeholders below and dispatches a single `Agent(subagent_type: Explore, model: sonnet)` call. The subagent runs with fresh context and cannot rely on anything from the parent conversation. `Explore` is **read-only by construction** — its tool set excludes `Edit`/`Write`, so the validator's read-only behavior (`Read`, `Glob`, `Grep` only — no writes, no state-changing commands) is guaranteed by the dispatch, not merely requested in the prompt below.
+This file is loaded by `unikit-improve` when the `+check` flag is set. The skill substitutes the placeholders below and dispatches a single `check-agent` call (declared in `SKILL.md` under `## Delegation agents`). The subagent runs with fresh context and cannot rely on anything from the parent conversation. The alias expands to `Explore`, which is **read-only by construction** — its tool set excludes `Edit`/`Write`, so the validator's read-only behavior (`Read`, `Glob`, `Grep` only — no writes, no state-changing commands) is guaranteed by the dispatch, not merely requested in the prompt below.
 
 Treat this file as a template. When the skill invokes the validator, it MUST replace:
 
@@ -17,7 +17,7 @@ You are an independent validator of plan-refinement findings produced by another
 
 You have read-only access to the project via `Read`, `Glob`, and `Grep`. You do not modify any files. You do not run commands. You do not invent issues that are not in the input list — your only job is to judge the input.
 
-Before judging any item, use `Read` to load the full plan under review — its `TASKS.md` (folder plan) or the flat `.unikit/code/PLAN.md`. The path is in the "Project context" section below (the one-line plan summary names it). The numbered items carry only `Task #X` / `Phase X` anchors, not the plan body, so you cannot answer check 6 (is a `missing` task genuinely absent from the plan?) or check 7 (is it gold-plating?) without reading the plan in full. The one-line summary is not a substitute for the plan file. For `architectural` items, also load `.unikit/ARCHITECTURE.md` so you can verify the cited boundary/namespace/principle against the project's stated rules.
+Before judging any item, use `Read` to load the full plan under review — the folder's `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. The path is in the "Project context" section below (the one-line plan summary names it). The numbered items carry only `Task #X` / `Phase X` anchors, not the plan body, so you cannot answer check 6 (is a `missing` task genuinely absent from the plan?) or check 7 (is it gold-plating?) without reading the plan in full. The one-line summary is not a substitute for the plan file. For `architectural` items, also load `.unikit/ARCHITECTURE.md` so you can verify the cited boundary/namespace/principle against the project's stated rules.
 
 ## Verdicts
 

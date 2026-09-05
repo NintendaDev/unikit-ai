@@ -180,10 +180,10 @@ write_unikit_config_genres() {
     mkdir -p "$project_dir"
     cat > "$project_dir/.unikit.json" <<JSON
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "$engine",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
   "rules": {
     "installed": {
@@ -229,6 +229,42 @@ assert_not_contains() {
         echo "----------------------"
         exit 1
     fi
+}
+
+# ─────────────────────────────────────────────
+# Failure diagnostics for the engine-MCP surface
+# ─────────────────────────────────────────────
+# Dumps the two states no assertion message can carry: what the engine-mcp tree actually
+# holds, and which findings-log files exist. `Missing path: .../INDEX.md` cannot tell an
+# empty tree from a partially delivered one from a file delivered under another name, and
+# the temp projects are removed by the very next line of the trap that calls this — so a
+# failing run has exactly one moment in which the evidence still exists.
+#
+# Driven by what is on disk rather than by a variable each test has to remember to set:
+# bookkeeping that must be kept in sync is bookkeeping that goes stale without failing.
+# The ABSENCE branches print too — half the diagnoses here are "the directory was never
+# created", and a silent dump would be indistinguishable from a dump that found nothing
+# because it looked in the wrong place.
+dump_mcp_state() {
+    local root="$1" found entry
+    [[ -d "$root" ]] || return 0
+
+    found=0
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] || continue
+        found=1
+        echo "--- engine-mcp tree: ${entry#"$root"/} ---"
+        ls -la "$entry" 2>&1 || true
+    done < <(find "$root" -type d -name engine-mcp 2>/dev/null || true)
+    [[ $found -eq 1 ]] || echo "--- engine-mcp tree: none under the test root (absence is half the diagnosis) ---"
+
+    found=0
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] || continue
+        found=1
+        echo "--- findings log: ${entry#"$root"/} ---"
+    done < <(find "$root" -name 'MCP-RECHECK-NOTES*' 2>/dev/null || true)
+    [[ $found -eq 1 ]] || echo "--- findings log: no MCP-RECHECK-NOTES* file under the test root ---"
 }
 
 assert_exists() {
@@ -390,15 +426,91 @@ normalize_path_for_json() {
     fi
 }
 
+# ─────────────────────────────────────────────
+# Hermetic `official` registry level
+# ─────────────────────────────────────────────
+# Every CLI invocation builds a registry chain whose `official` level is a
+# GitRegistry pointed at raw.githubusercontent.com, so an un-redirected `update`
+# or `rules *` makes a live HTTP round-trip — ~0.8s each on a good link and up
+# to the 10s fetch timeout on a bad one. A full run makes hundreds of those
+# calls: the network was by far the largest single cost in `npm test`, and a
+# green run silently depended on GitHub being reachable.
+#
+# Point the level at `test-fixtures/offline-official/` — a manifest that is
+# VALID but carries no modules. The official level then resolves instantly and
+# contributes nothing, so every chain falls through to the bundled snapshot,
+# which is the offline path every fixture-based expectation is already written
+# against. (The per-scenario `DEAD_OFFICIAL` overrides scattered through the
+# rules tests are the same trick applied one call at a time; they still set
+# their own value and still win.) A valid-but-empty manifest is used rather
+# than a non-existent path on purpose: a missing manifest makes FsRegistry emit
+# `[WARN] manifest not found` on stderr, and `assert_cmd_exit` folds stderr into
+# the same log the `--json` asserts parse — the warning would break them.
+#
+# An externally exported value also wins, so a deliberate live-network run stays
+# one variable away:
+#   UNIKIT_OFFICIAL_REGISTRY_URL=https://raw.githubusercontent.com/NintendaDev/unikit-ai-rules/main npm test
+if [[ -z "${UNIKIT_OFFICIAL_REGISTRY_URL:-}" ]]; then
+    _UNIKIT_FIXTURES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/test-fixtures"
+    UNIKIT_OFFICIAL_REGISTRY_URL="$(normalize_path_for_json "$_UNIKIT_FIXTURES_DIR/offline-official")"
+    export UNIKIT_OFFICIAL_REGISTRY_URL
+    unset _UNIKIT_FIXTURES_DIR
+fi
+
 # Resolve a fake-registry fixture name to its absolute path. The fixture
 # tree lives under `scripts/test-fixtures/<name>/` and ships a root
 # manifest.json plus at least one engine subdirectory.
 #
 #   fake_registry_path minimal-valid
 #   → <ROOT_DIR>/scripts/test-fixtures/minimal-valid (Node-resolvable form)
+# The `version` a fixture stamps when it means "a current, fully migrated
+# project". Read from package.json rather than pinned to a literal: the
+# migration chain's version half compares this against each step's `since`, so
+# a hardcoded number silently turns every release that ships a migration into a
+# project that "never ran update" — and every `rules sync` / `rules install`
+# fixture into an exit 8. Fixtures that must look OLD (use_unmigrated_registry)
+# keep an explicit old literal; that is the one place a number belongs.
+current_project_version() {
+    # `cd` first: $ROOT_DIR is an MSYS path under Git Bash, and Windows node
+    # cannot `require` it verbatim.
+    (cd "$ROOT_DIR" && node -p "require('./package.json').version" 2>/dev/null) || echo "1.1.0"
+}
+
 fake_registry_path() {
     local name="$1"
     normalize_path_for_json "$ROOT_DIR/scripts/test-fixtures/$name"
+}
+
+fake_mcp_catalog_path() {
+    local name="$1"
+    normalize_path_for_json "$ROOT_DIR/scripts/test-fixtures/mcp/$name"
+}
+
+# use_fake_mcp_catalog <fixture_name>
+#
+# Exports UNIKIT_MCP_DIR at the fixture catalog so the installer discovers fixture
+# servers rather than the shipped ones. Behaviour tests of the installer use this;
+# the STRUCTURE of the shipped catalog stays the object of Part 5 / 5b / 7e3, which
+# read `mcp/` directly. Callers that need the shipped catalog back call
+# `unuse_fake_mcp_catalog` — the variable is process-wide, not per-project.
+#
+# Deliberately NOT exported suite-wide, unlike UNIKIT_OFFICIAL_REGISTRY_URL: that one
+# is redirected everywhere because no test wants a live network round-trip, while the
+# MCP catalog is wanted REAL by almost every test. This one switches on for a named
+# scenario and off again immediately after. Do not add a suite-wide export by analogy.
+use_fake_mcp_catalog() {
+    local fixture_name="$1"
+    local fixture_path
+    fixture_path="$(fake_mcp_catalog_path "$fixture_name")"
+    if [[ ! -d "$fixture_path" ]]; then
+        echo "use_fake_mcp_catalog: fixture '$fixture_name' missing at $fixture_path" >&2
+        exit 1
+    fi
+    export UNIKIT_MCP_DIR="$fixture_path"
+}
+
+unuse_fake_mcp_catalog() {
+    unset UNIKIT_MCP_DIR
 }
 
 # use_fake_registry <project_dir> <engine> <fixture_name> [agents_override]
@@ -436,10 +548,10 @@ use_fake_registry() {
     mkdir -p "$project_dir/.unikit/memory/code/core" "$project_dir/.unikit/memory/code/stack"
     cat > "$project_dir/.unikit.json" <<JSON
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "$engine",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": $agents_json,
   "rulesRegistry": "$fixture_path",
   "rules": {
@@ -499,7 +611,7 @@ MD
   "version": "1.0.1",
   "engine": "$engine",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":[],"installedSubagents":[]}],
   "rulesRegistry": "$fixture_path",
   "rules": {

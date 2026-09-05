@@ -12,7 +12,7 @@ description: >-
   behavior and wants it remembered. If the user points to a source (file, folder, URL,
   PDF, article, book) or wants to research/document framework usage, use /unikit-memory;
   for architecture decisions use ARCHITECTURE.md.
-argument-hint: "[rule text or topic]"
+argument-hint: "[rule text or topic | numbered batch]"
 allowed-tools:
   - Read
   - Write
@@ -48,8 +48,9 @@ Read `.unikit/skill-context/unikit-rules/SKILL.md` if it exists. Treat it as pro
 
 ```
 Check $ARGUMENTS:
-├── Has text? → Mode A: Direct add
-└── No arguments? → Mode B: Interactive
+├── Numbered batch? → Mode A: Direct add, N rules
+├── Has text?       → Mode A: Direct add, 1 rule
+└── No arguments?   → Mode B: Interactive
 ```
 
 **Mode A** — user provided rule text:
@@ -57,6 +58,25 @@ Check $ARGUMENTS:
 /unikit-rules Never use var, always explicit types
 ```
 → Proceed to Step 2 with the provided text.
+
+**Mode A, batch form** — the argument carries several rules at once. It is a **numbered
+batch** when two or more lines begin with `^\d+\. ` at column zero. Each rule starts at
+such a marker and runs to the next one, or to the end of the input:
+
+```
+/unikit-rules 1. Constructor null checks MUST be symmetric across injected dependencies.
+2. Event subscriptions go before any fallible operation in OnInit; unsubscribe in OnExit
+   even when OnInit threw.
+3. Never call DiResolver.Resolve<T>() without a null guard — throw, do not warn.
+```
+
+Why the numeral and not a newline or a `- ` bullet: Step 4 allows a single rule to span
+multiple lines (a table, a code block), so a bare line break does not separate two rules,
+and `- ` is the element format of `RULES.md` itself and appears **inside** a rule. A
+numbered element never does, so `^\d+\. ` at column zero cannot collide with content.
+
+Run Steps 2-5 per rule and report all of them together in Step 6. One rule and N rules
+differ only in how many rows the report carries.
 
 **Mode B** — no arguments:
 → Ask the user what rule to add. Offer examples relevant to {{engine_name}}/{{engine_code_language}}:
@@ -135,17 +155,41 @@ Before writing, verify the new rule doesn't duplicate something already in RULES
 
 ### Step 6: Write and Confirm
 
-Use `Edit` to add the rule(s). Then confirm:
+Use `Edit` to add the rule(s). Then report — **one row per input rule, skipped ones
+included**:
 
+```markdown
+## Batch result — N rules
+
+| # | Outcome | Section | Cross-check |
+|---|---------|---------|-------------|
+| 1 | added | Async Patterns | no overlap |
+| 2 | already-covered | — | core/reactive-async.md |
+| 3 | added | Zenject DI | extends code-style.md |
+| 4 | skipped-duplicate | Conditions | same meaning as existing entry |
 ```
-✅ Added to .unikit/RULES.md (section: {Section Name}):
 
-- {the rule}
+Outcomes, and nothing else:
 
-Cross-check: ✅ no overlap found
-Cross-check: ⚠️ extends code-style.md rule on X
-Cross-check: ⚠️ overrides reactive-async.md default for Y
-```
+- `added` — written into `.unikit/RULES.md`, `Section` names where
+- `already-covered` — the knowledge base already carries it (Step 2); `Cross-check` names the file
+- `skipped-duplicate` — `RULES.md` already carries the same meaning (Step 5)
+
+**A rule with no row in the report was not processed.** That is the fourth outcome, and it
+is expressed by absence rather than by a token because absence is how it actually happens —
+a run that ends early leaves no row to write.
+
+**A batch is not atomic: a partial write is a normal outcome, and the report is the only
+way to learn which part landed.** Do not roll back written rules because a later one
+failed, and do not suppress the table when only some rules were processed.
+
+A single-rule call renders the same table with one row. There is no second format.
+
+The `Section` column is not decoration: a caller writing its own log records which section
+each rule landed in, and in a batch there is nowhere else to read it from.
+
+If the input looked like a numbered batch but parsed as one rule, say so in the report
+instead of silently writing the whole text as a single `RULES.md` entry.
 
 ## Priority Reminder
 

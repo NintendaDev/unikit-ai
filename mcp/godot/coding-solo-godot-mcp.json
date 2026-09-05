@@ -1,0 +1,34 @@
+{
+  "key": "coding-solo-godot-mcp",
+  "code": "godot",
+  "is_engine": true,
+  "order": 3,
+  "displayName": "Coding-Solo Godot MCP [Free]",
+  "docs": {
+    "context7": "/coding-solo/godot-mcp",
+    "repo": "https://github.com/Coding-Solo/godot-mcp"
+  },
+  "config": {
+    "command": "npx",
+    "args": ["@coding-solo/godot-mcp"],
+    "env": {
+      "GODOT_PATH": "/path/to/godot",
+      "DEBUG": "true"
+    }
+  },
+  "rules": "rules/coding-solo-godot-mcp/",
+  "allowed-tools": {
+    "agents": {
+      "unikit-implement-coordinator": ["*"],
+      "unikit-implement-worker": ["*"],
+      "unikit-review-sidecar": ["*"]
+    },
+    "skills": {
+      "unikit-devcontext": ["*"],
+      "unikit-implement": ["*"],
+      "unikit-fix": ["*"],
+      "unikit-verify": ["*"],
+      "unikit-mcp-audit": ["*"]
+    }
+  }
+}

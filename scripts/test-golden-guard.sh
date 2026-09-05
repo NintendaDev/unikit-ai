@@ -77,6 +77,12 @@ echo -e "\n${BOLD}Part B: no residual flat memory literals in source${NC}"
 # migrated forms carry `code/` after `memory/`, so `memory/code/core` and
 # `memory/code/RULES_INDEX.md` do NOT match. Bare `RULES_INDEX.md` (no path) is
 # intentionally not matched.
+#
+# The three excluded files are the ones whose JOB is the flat layout: this guard
+# (it names the pattern), and the two migration smokes, which have to CREATE the
+# pre-modular shape before they can assert it is gone. Excluding them by name
+# keeps that need visible; assembling the path from variables to slip past the
+# grep would hide it.
 FLAT_PATTERN='\.unikit/memory/(core|stack)/|memory/RULES_INDEX\.md'
 
 set +e
@@ -84,6 +90,7 @@ OFFENDERS=$(grep -rnE "$FLAT_PATTERN" \
     "$ROOT_DIR/src" "$ROOT_DIR/scripts" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" \
     --exclude=test-golden-guard.sh \
     --exclude=test-memory-migration.sh \
+    --exclude=test-migrations.sh \
     --exclude=test-fixtures.sh)
 set -e
 
@@ -192,7 +199,16 @@ seed_flat_workspace() {
     local d="$1"
     mkdir -p "$d/.unikit/plans/2026-06-12_demo" "$d/.unikit/patches" \
              "$d/.unikit/researches/2026-06-12_topic"
-    echo "# tasks"             > "$d/.unikit/plans/2026-06-12_demo/TASKS.md"
+    # An OPEN task, not a bare title: the plan-manifest merge is SELECTIVE
+    # and skips a folder with zero `- [ ]` lines as a completed plan. Seeded
+    # as `echo "# tasks"` this folder would migrate nothing, and every
+    # assertion below would fail for the right reason on the wrong fixture.
+    printf '# tasks\n\n## Checklist\n\n- [ ] Task 1.1 demo\n' \
+        > "$d/.unikit/plans/2026-06-12_demo/TASKS.md"
+    # The brief the merge folds in. The fenced comment is the regression a
+    # hash inside a code block must NOT be demoted with the real headings.
+    printf '# Demo\n\n## CONSTRAINTS\n- MUST: demo\n\n### CREATE\nsrc/demo.ts\n\n```bash\n# not a heading\n```\n' \
+        > "$d/.unikit/plans/2026-06-12_demo/PLAN-BRIEF.md"
     echo "# fast plan"         > "$d/.unikit/PLAN.md"
     echo "# fix plan"          > "$d/.unikit/FIX_PLAN.md"
     echo "# patch"             > "$d/.unikit/patches/2026-06-12-10.00.md"
@@ -203,12 +219,39 @@ seed_flat_workspace() {
 # Assert the full flat workspace relocated under code/ and the flat copies are gone.
 assert_workspace_migrated() {
     local d="$1"
-    assert_exists "$d/.unikit/code/plans/2026-06-12_demo/TASKS.md" "plans/ relocated under code/"
+    # `plans/` relocated AND its two-file plan merged into one manifest — both
+    # steps run in the same `update` pass, so the post-state is the merged one.
+    # Each assertion below names one clause of that contract.
+    assert_exists     "$d/.unikit/code/plans/2026-06-12_demo/PLAN.md" \
+        "plans/ relocated AND manifest merged"
+    assert_not_exists "$d/.unikit/code/plans/2026-06-12_demo/TASKS.md" \
+        "no TASKS.md after the manifest merge"
+    assert_not_exists "$d/.unikit/code/plans/2026-06-12_demo/PLAN-BRIEF.md" \
+        "no PLAN-BRIEF.md after the manifest merge"
+    assert_contains   "$d/.unikit/code/plans/2026-06-12_demo/PLAN.md" '## Technical Context' \
+        "brief folded under Technical Context"
+    assert_contains   "$d/.unikit/code/plans/2026-06-12_demo/PLAN.md" '### CONSTRAINTS' \
+        "brief headings demoted one level"
+    assert_contains   "$d/.unikit/code/plans/2026-06-12_demo/PLAN.md" '^# not a heading$' \
+        "fenced content left untouched"
     assert_exists "$d/.unikit/code/PLAN.md"                        "PLAN.md relocated under code/"
     assert_exists "$d/.unikit/code/FIX_PLAN.md"                    "FIX_PLAN.md relocated under code/"
     assert_exists "$d/.unikit/code/patches/2026-06-12-10.00.md"    "patches/ relocated under code/"
-    assert_exists "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH_RESULT.md" \
-        "researches/ subtree relocated under code/"
+    # `researches/` relocated AND its result file merged into one manifest —
+    # both steps run in the same `update` pass, exactly as for plans above, and
+    # this is the only place the ordering (1.1.0 relocate < 2.0.0 merge) is
+    # proved end to end. The fixture keeps seeding the LEGACY name on purpose:
+    # handing this guard an already-migrated folder would stop it checking the
+    # relocation at all.
+    assert_exists     "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH.md" \
+        "researches/ subtree relocated under code/ and merged into the manifest"
+    assert_not_exists "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH_RESULT.md" \
+        "no RESEARCH_RESULT.md after the manifest merge"
+    if [[ -s "$d/.unikit/code/researches/2026-06-12_topic/RESEARCH.md" ]]; then
+        pass "merged research manifest is non-empty (a merge, not a truncation)"
+    else
+        fail "merged research manifest is empty — content was lost, not folded"
+    fi
     assert_exists "$d/.unikit/code/researches/INDEX.md"            "RESEARCHES_INDEX.md renamed → researches/INDEX.md"
     assert_not_exists "$d/.unikit/plans"            "no flat plans/ after migration"
     assert_not_exists "$d/.unikit/patches"          "no flat patches/ after migration"
@@ -239,24 +282,30 @@ assert_json_field "$WS1/.unikit.json" "version" "$PKG_VERSION" "config.version s
 echo -e "\n${BOLD}B2: second update is idempotent${NC}"
 WS_SHA_PLAN="$(sha_of "$WS1/.unikit/code/PLAN.md")"
 WS_SHA_IDX="$(sha_of "$WS1/.unikit/code/researches/INDEX.md")"
+# The merged manifest too: the merge rewrites a file BODY rather than moving
+# a path, so "idempotent" has to mean byte-identical, not "did not crash".
+WS_SHA_MANIFEST="$(sha_of "$WS1/.unikit/code/plans/2026-06-12_demo/PLAN.md")"
 
 assert_cmd_exit 0 "second update exits 0" "$TMPDIR/ws1-update2.log" -- \
     env -C "$WS1" node "$CLI" update
 
 assert_file_unchanged "$WS1/.unikit/code/PLAN.md" "$WS_SHA_PLAN" "code/PLAN.md sha-stable on 2nd update"
 assert_file_unchanged "$WS1/.unikit/code/researches/INDEX.md" "$WS_SHA_IDX" "code/researches/INDEX.md sha-stable on 2nd update"
+assert_file_unchanged "$WS1/.unikit/code/plans/2026-06-12_demo/PLAN.md" "$WS_SHA_MANIFEST" \
+    "merged plan manifest sha-stable on 2nd update"
 assert_not_exists "$WS1/.unikit/plans" "no flat plans/ resurrected on 2nd update"
 assert_not_exists "$WS1/.unikit/PLAN.md" "no flat PLAN.md resurrected on 2nd update"
 
 # ── Scenario B3 — exit-8 gate is driven by diskPending, NOT versionStale ──
-# The project is at version 1.1.0 (already-modular memory via use_fake_registry,
-# so `versionStale` is false) but carries a flat workspace. `rules sync` must
+# The project is at the current package version (`use_fake_registry` stamps
+# `current_project_version`, and the memory it seeds is already modular, so
+# `versionStale` is false) but carries a flat workspace. `rules sync` must
 # still refuse with exit 8 purely on the workspace step's diskPending signal,
 # proving the gate needs no version bump.
-echo -e "\n${BOLD}B3: rules sync exits 8 on flat workspace at version 1.1.0 (diskPending)${NC}"
+echo -e "\n${BOLD}B3: rules sync exits 8 on flat workspace at the current version (diskPending)${NC}"
 WS3="$TMPDIR/ws-gate"
 mkdir -p "$WS3"
-use_fake_registry "$WS3" unity minimal-valid   # version 1.1.0, modular memory/code
+use_fake_registry "$WS3" unity minimal-valid   # current_project_version, modular memory/code
 seed_flat_workspace "$WS3"
 WS3_CONFIG_SHA="$(sha_of "$WS3/.unikit.json")"
 
@@ -279,16 +328,81 @@ echo -e "\n${BOLD}B4: partial migration self-heals${NC}"
 WS4="$TMPDIR/ws-selfheal"
 mkdir -p "$WS4"
 use_fake_registry "$WS4" unity minimal-valid
-mkdir -p "$WS4/.unikit/code/plans/2026-06-12_done"
-echo "# already" > "$WS4/.unikit/code/plans/2026-06-12_done/TASKS.md"
-WS4_DONE_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_done/TASKS.md")"
+# Three plan folders, each naming a different reason the merge must NOT
+# write. They used to be one, and that one was `_done` holding a bare
+# `# already` TASKS.md: once the merge became selective, that file passed as
+# a completed plan and the assertion stayed green for a reason nobody wrote
+# down. Split so each reason is stated and can fail on its own.
+mkdir -p "$WS4/.unikit/code/plans/2026-06-12_completed" \
+         "$WS4/.unikit/code/plans/2026-06-12_inflight" \
+         "$WS4/.unikit/code/plans/2026-06-12_both"
+
+# (a) completed — zero `- [ ]` lines. Never migrated, on any run, ever.
+printf '# tasks\n\n- [x] Task 1 shipped\n' \
+    > "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md"
+printf '# Brief\n\n## CONSTRAINTS\n- MUST: archived\n' \
+    > "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md"
+WS4_COMPLETED_BRIEF_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md")"
+
+# (b) in-flight and ALREADY merged — open task, manifest present, no brief.
+#     This is the case the original scenario meant: migrated, left alone.
+printf '# plan\n\n- [ ] Task 1 open\n' \
+    > "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md"
+
+# (c) both names present — the refuse-to-overwrite branch. `movePath` is
+#     never called onto an existing destination, so both files survive.
+printf '# tasks\n\n- [ ] Task 1 open\n' \
+    > "$WS4/.unikit/code/plans/2026-06-12_both/TASKS.md"
+printf '# plan\n\n- [ ] Task 1 open\n' \
+    > "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md"
+WS4_BOTH_TASKS_SHA="$(sha_of "$WS4/.unikit/code/plans/2026-06-12_both/TASKS.md")"
+
 echo "# straggler fast plan" > "$WS4/.unikit/PLAN.md"   # the only flat leftover
 
 assert_cmd_exit 0 "update self-heals partial workspace" "$TMPDIR/ws4-update.log" -- \
     env -C "$WS4" node "$CLI" update
 assert_exists "$WS4/.unikit/code/PLAN.md" "straggler PLAN.md relocated under code/"
 assert_not_exists "$WS4/.unikit/PLAN.md" "flat PLAN.md straggler removed"
-assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_done/TASKS.md" "$WS4_DONE_SHA" \
-    "already-migrated plan left untouched by self-heal"
+
+# Asserted on what the MERGE would have done, not on a hash. The manifest is no
+# longer byte-identical after an `update` and that is not a regression: the
+# backfill (`plan-2-to-3-timestamps`) stamps every manifest, completed or not,
+# by design. A merge, by contrast, would have appended `## Technical Context`
+# and this body would not have survived intact.
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" '## Technical Context' \
+    "already-merged plan: the merge folded nothing into it a second time"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_inflight/PLAN.md" '^- \[ \] Task 1 open$' \
+    "already-merged plan: its own body came through the self-heal untouched"
+# "Never renamed" asserted on the merge's traces rather than a hash, for the
+# third time in this family and for the same reason: `plan-2-to-3-timestamps`
+# stamps a completed plan under `TASKS.md` on purpose — that is the only name
+# the folder will ever have, and skipping it would be the selectivity of the
+# MERGE leaking into a step that declares it has none. A rename would have left
+# a `PLAN.md` (asserted below) and a fold would have appended a section.
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '## Technical Context' \
+    "completed plan: nothing was folded into TASKS.md"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '^- \[x\] Task 1 shipped$' \
+    "completed plan: TASKS.md kept its own checklist"
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_completed/TASKS.md" '^Created: 2026-06-12$' \
+    "completed plan: the backfill reached it under the legacy file name"
+assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN-BRIEF.md" "$WS4_COMPLETED_BRIEF_SHA" \
+    "completed plan: PLAN-BRIEF.md never folded"
+assert_not_exists "$WS4/.unikit/code/plans/2026-06-12_completed/PLAN.md" \
+    "completed plan: no manifest created"
+assert_file_unchanged "$WS4/.unikit/code/plans/2026-06-12_both/TASKS.md" "$WS4_BOTH_TASKS_SHA" \
+    "both names present: TASKS.md left in place"
+# Same reading as above. The claim is that `movePath` never landed TASKS.md on
+# top of PLAN.md, and the two fixtures differ in their H1 precisely so that the
+# claim can be made without a hash: an overwritten manifest would say `# tasks`.
+assert_contains "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md" '^# plan$' \
+    "both names present: PLAN.md not overwritten by TASKS.md"
+assert_not_contains "$WS4/.unikit/code/plans/2026-06-12_both/PLAN.md" '## Technical Context' \
+    "both names present: nothing was folded into PLAN.md either"
+
+# Why `detect` is mirrored branch-for-branch against every skip in `apply`:
+# a project carrying these two untouchable folders must not stay pending, or
+# `rules sync` answers exit 8 with nothing able to clear it.
+assert_cmd_exit 0 "rules sync exits 0 with completed + refused plan folders on disk" \
+    "$TMPDIR/ws4-sync.log" -- env -C "$WS4" node "$CLI" rules sync
 
 print_summary_and_exit "golden-guard #1 + #3"

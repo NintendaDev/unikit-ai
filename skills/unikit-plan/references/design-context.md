@@ -41,12 +41,16 @@ rule to pick which axis to resolve first (do not re-author the ladder — it liv
   option.
 - **Ambiguous** (reads as more than one axis, or names several) → `AskUserQuestion` listing the
   candidate axes; **never guess** (per design-read). This mirrors the `/unikit-gd-explore` routing stance.
+  Print the candidate axes to the screen as plain markdown first — the question mechanism
+  carries the options and nothing else.
 
 **Flow door — resolve the flow first.** When intent points at a flow:
 
 1. Read `.unikit/gamedesign/GD-IDS.yaml` `flows` (the registry, not the `## Flow Map [gen]` render).
    Match the request against each flow's name / `FLOW-<slug>` id. One confident match → use it;
    several plausible matches, or none → `AskUserQuestion` listing candidate flows; **never guess**.
+   Print the candidate flows to the screen as plain markdown first — the question
+   mechanism carries the options and nothing else.
    An empty `flows: []` (or no `flows` key yet) against a flow-shaped request → tell the user no flow
    exists and point at `/unikit-gd-flow`; if they instead name a system, fall back to the System door.
 2. Read the resolved flow's `FLOW.md` (`source` path) and build the **primary** `## Flow Context`
@@ -105,9 +109,15 @@ Prompts like "plan the new version of Combat" or "bring combat up to the design"
    all-AC-met). A **non-empty** `implemented_version` is the authoritative implemented
    baseline. When the field is **absent or empty (`""`)** — e.g. a system implemented
    before this field existed — fall back (migration grace) to scanning prior `## Design`
-   blocks for this `SYS-id` across `.unikit/code/plans/*/PLAN-BRIEF.md` (and
+   blocks for this `SYS-id` across `.unikit/code/plans/*/*.md` (and the flat
    `.unikit/code/PLAN.md`); the highest version in a completed plan is the inferred
-   baseline. Neither source → ask: "no implementation found — plan the full system?".
+   baseline. The glob is **file-name-agnostic on purpose**: a completed plan folder is
+   never rewritten by a migration, so its `## Design` block stays in whichever file the
+   plan was originally written into — the block is located by its heading, not by the
+   name of the file around it. The glob is also load-bearing — one that misses returns
+   *no prior plan* rather than an error. Neither source → ask: "no implementation found
+   — plan the full system?" — no match is **not** an error condition, and the question
+   goes to the user rather than being answered silently.
 3. **Delta** — collect the system GDD's changelog blocks (section K) over the interval
    `(implemented, current]`. Multiple edits → multiple blocks.
 4. **Tasks** — new/changed `AC` → implementation tasks; **removed `AC` → tasks to rip out
@@ -116,8 +126,8 @@ Prompts like "plan the new version of Combat" or "bring combat up to the design"
 
 #### 4.5.4 — Produce the `## Design` snapshot
 
-Prepare a `## Design` block for the plan (written in Step 5 — in `PLAN-BRIEF.md` for full
-mode, in the `## Technical Context` area for fast mode). It is a **snapshot at planning
+Prepare a `## Design` block for the plan (written in Step 5 into the plan manifest,
+directly after `## Based on`). It is a **snapshot at planning
 time**: cite AC text by reference to the live doc (do not fork it), and record the version.
 Checklist tasks reference the `AC-<id>`s.
 

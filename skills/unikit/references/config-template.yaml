@@ -57,8 +57,9 @@ language:
 workflow:
   # Maximum age (in days) for research notes to be considered "fresh"
   # by /unikit-plan when reusing existing research.
-  # Older research is flagged as stale and a refresh is suggested.
-  # Default: 30
+  # Research older than this is filtered OUT of the planning question, not
+  # flagged; the filtering is announced by an `INFO [research] index: ...` line.
+  # Default: 7
   research_relevance_days: 7
 
 # =============================================================================

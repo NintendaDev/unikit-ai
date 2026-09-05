@@ -33,14 +33,14 @@ does **not** bounce to brainstorm/spec.
    designer's own decisions worked out on top stay **untagged**.
 4. **Save the research AS USUAL — then backlink it (the asymmetry with review-file mode).**
    Unlike a review file (mutated in place, no `researches/`), RECON.md is a **durable
-   seed**: save the research the normal way (`researches/<date>_<slug>/` via "Saving
+   seed**: save the research the normal way (`researches/<slug>/` via "Saving
    Research Results"), then write a `research:` **backlink** into RECON.md's
    **`## Explorations`** section — an accumulating registry of pointers, the cold-start
    mirror of the `GD-IDS` `research:` pointer. Append (create the section if absent), one
    line per research:
 
    ```
-   - research: `researches/<date>_<slug>/` — <1-line topic>  (Target: <SYS-slug | Intent-Gap item>)
+   - research: `researches/<slug>/` — <1-line topic>  (Target: <SYS-slug | Intent-Gap item>)
    ```
 
    This is a **sanctioned write into RECON.md** (owned by `unikit-gd-recon`) — recorded in

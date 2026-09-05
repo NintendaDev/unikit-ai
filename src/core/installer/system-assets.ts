@@ -9,7 +9,7 @@
 import path from 'path';
 import {
   getDataDir, getEngineTemplatesDir,
-  fileExists, readTextFile, writeTextFile, listFiles, removeFile,
+  fileExists, readTextFile, writeTextFile, listFiles, listFilesRecursive, removeFile,
 } from '../../utils/fs.js';
 import { getInstalledGenres, type AgentInstallation, type UniKitConfig } from '../config.js';
 import { getAgentConfig } from '../agents.js';
@@ -19,10 +19,12 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, GAMEDESIGN_MODULE_ID,
-  GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE,
-  systemDir, systemGamedesignDir, systemGamedesignGenresDir,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, GAMEDESIGN_MODULE_ID,
+  GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
+  MCP_STAMP_SERVER_KEY,
+  systemDir, systemGamedesignDir, systemGamedesignGenresDir, systemEngineMcpDir,
 } from '../constants.js';
+import type { SelectedEngineServer } from '../mcp-rules.js';
 import { listModules } from '../modules.js';
 import { buildSubagentTemplateVars } from './shared.js';
 
@@ -106,6 +108,31 @@ export async function installGateResultContract(projectDir: string): Promise<voi
 
   await writeTextFile(destPath, content);
   logInfo('installGateResultContract', 'installed .unikit/system/gate-result-contract.md');
+}
+
+// --- Ultra plan bundle reader contract ---
+
+/**
+ * Reader contract for an ultra plan bundle — a flat copy from
+ * `data/ultra-plan-read.md` with NO substitution (engine- and agent-agnostic).
+ * NOT hash-tracked — every init/update rewrites it. It is a system asset rather
+ * than a skill reference because FOUR skills read it (/unikit-implement,
+ * /unikit-verify, /unikit-improve, /unikit-commit) and `references/` is
+ * per-skill: the alternative is four copies, and a copied contract drifts.
+ */
+export async function installUltraPlanReadContract(projectDir: string): Promise<void> {
+  const srcPath = path.join(getDataDir(), ULTRA_PLAN_READ_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, ULTRA_PLAN_READ_FILE);
+
+  const content = await readTextFile(srcPath);
+  if (!content) {
+    logWarn('installUltraPlanReadContract', 'ultra-plan-read.md not found in data/, skipping');
+    return;
+  }
+
+  await writeTextFile(destPath, content);
+  logInfo('installUltraPlanReadContract', 'installed .unikit/system/ultra-plan-read.md');
 }
 
 // --- Dev Principles installation ---
@@ -216,6 +243,167 @@ export async function installGenreProfiles(projectDir: string, config: UniKitCon
       logInfo('installGenreProfiles', `removed orphan genre profile ${name}`);
     }
   }
+}
+
+// --- Engine-MCP rules-tree installation ---
+
+/** Markdown files get the provenance stamp; everything else is copied verbatim. */
+const STAMPABLE_EXTENSION = '.md';
+
+/** Key of the stamp line naming the server a delivered file came from. */
+const STAMP_SERVER_KEY = `${MCP_STAMP_SERVER_KEY} `;
+
+/**
+ * Provenance stamp prepended to every delivered markdown file.
+ *
+ * It records **where this copy came from**, and nothing else. It is deliberately
+ * not a statement about the server: no tool names, no counters, no list of what
+ * is missing — those are the three genres the rules architecture bans, and a
+ * header that ships into every project is the easiest place for them to creep
+ * back in.
+ *
+ * The stamp is also the reference point for the notes header: skills compare the
+ * `server:` recorded here against the one in `.unikit/MCP-RECHECK-NOTES.md` to
+ * tell a finding about the configured server from a finding inherited from
+ * another one.
+ *
+ * It carries the server id alone. A `version:` line used to sit here, but both
+ * sides of the comparison it fed — this stamp and the notes header written from
+ * it — came from the same package constant, so a mismatch could only ever be
+ * produced by a UniKit release and never by the user's server moving. A
+ * `delivered:` date sat here too, and it was the one field that changed on every
+ * run: each `update` produced a diff on every file of the tree consisting of one
+ * date, and nothing read it.
+ *
+ * What that buys is worth stating, because it is the reason to prefer the short
+ * stamp over the informative one: a delivered file is now byte-identical between
+ * runs for as long as the tree and the server are unchanged, so an unexpected
+ * diff is a signal rather than noise to scroll past.
+ */
+function renderEngineMcpRulesStamp(fileId: string): string {
+  return [
+    '<!-- Delivered by unikit-ai from the rules tree of the selected engine MCP server. -->',
+    '<!-- Fix it at the source (the package\'s `mcp/<engine>/rules/<server>/`), not here: -->',
+    '<!-- every init / update rewrites this folder. -->',
+    '',
+    `${STAMP_SERVER_KEY}${fileId}`,
+    '',
+    '---',
+    '',
+  ].join('\n');
+}
+
+/**
+ * Which server the rules tree currently on disk was delivered from, read back
+ * out of its own provenance stamp.
+ *
+ * This is the `update` path's only record of the PREVIOUS selection. `init`
+ * reads it from the config it is about to overwrite; `update` has no such
+ * before-state — `config.mcp.servers` is already the current answer by the time
+ * anything runs. The stamp fills that gap without introducing new state, which
+ * is what it was put there for.
+ *
+ * @returns the recorded file id, or `null` when nothing is installed or the
+ *          installed copy predates the stamp.
+ */
+export async function readDeliveredEngineMcpServer(projectDir: string): Promise<string | null> {
+  const indexPath = path.join(systemEngineMcpDir(projectDir), MCP_RULES_INDEX_FILE);
+  const content = await readTextFile(indexPath);
+  if (!content) return null;
+
+  for (const line of content.split('\n')) {
+    if (line.startsWith(STAMP_SERVER_KEY)) {
+      const fileId = line.slice(STAMP_SERVER_KEY.length).trim();
+      return fileId.length > 0 ? fileId : null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Deliver the selected engine MCP server's rules tree into
+ * `.unikit/system/engine-mcp/`.
+ *
+ * A copy, not a merge: one engine takes one engine server, so there is nothing
+ * to concatenate and no per-contributor heading to attribute. Subdirectories are
+ * copied as they are — the tree is free to grow past its two starting files.
+ *
+ * NOT hash-tracked; every init/update rewrites the folder. Orphan-delete runs
+ * over the **whole subtree**, not just `*.md`, because it is the only thing
+ * standing between a project that switched engine (or swapped its MCP server)
+ * and a stale profile — system assets have no migration chain.
+ *
+ * A `null` selection, or a server that ships no `rules` pointer, sweeps the
+ * folder and leaves it absent. That is a normal state, not a degraded one: no
+ * rules means no known exceptions, never no capabilities, and skills read a
+ * missing file as a silent skip.
+ */
+export async function installEngineMcpRules(
+  projectDir: string,
+  selected: SelectedEngineServer | null,
+): Promise<void> {
+  const destDir = systemEngineMcpDir(projectDir);
+  const sourceDir = selected?.entry.rulesDir ?? null;
+  const wanted = new Set<string>();
+
+  if (sourceDir) {
+    const sourceFiles = await listFilesRecursive(sourceDir);
+    if (sourceFiles.length === 0) {
+      logWarn('installEngineMcpRules', `rules tree is empty or unreadable: ${sourceDir}`);
+    }
+
+    for (const absSource of sourceFiles) {
+      const relPath = path.relative(sourceDir, absSource);
+      const content = await readTextFile(absSource);
+      if (content === null) {
+        logWarn('installEngineMcpRules', `unreadable rules file, skipped: ${absSource}`);
+        continue;
+      }
+
+      const stamped = relPath.endsWith(STAMPABLE_EXTENSION)
+        ? renderEngineMcpRulesStamp(selected!.fileId) + content.trim() + '\n'
+        : content;
+
+      await writeTextFile(path.join(destDir, relPath), stamped);
+      wanted.add(relPath);
+      logInfo('installEngineMcpRules', `stamped ${relPath} with server=${selected!.fileId}`);
+    }
+  }
+
+  // Orphan-delete the whole subtree, not just markdown: the tree may have grown
+  // subdirectories, and anything the current selection did not contribute is by
+  // definition left over from a previous one.
+  for (const absInstalled of await listFilesRecursive(destDir)) {
+    const relPath = path.relative(destDir, absInstalled);
+    if (wanted.has(relPath)) continue;
+    await removeFile(absInstalled);
+    logInfo('installEngineMcpRules', `removed orphan ${relPath}`);
+  }
+
+  if (wanted.size === 0) {
+    logInfo(
+      'installEngineMcpRules',
+      `no rules tree for the selected server, swept .unikit/system/${ENGINE_MCP_DIR_NAME}/`,
+    );
+    return;
+  }
+
+  // A tree without an entry point is a data defect worth naming: every skill
+  // that reads the profile enters through INDEX.md, so the rest of the tree is
+  // delivered but unreachable. Still a warn, not an abort — the run degrades to
+  // "no known exceptions", which is a supported state.
+  if (!wanted.has(MCP_RULES_INDEX_FILE)) {
+    logWarn(
+      'installEngineMcpRules',
+      `rules tree of ${selected?.fileId} has no ${MCP_RULES_INDEX_FILE} — skills enter through it`,
+    );
+  }
+
+  logInfo(
+    'installEngineMcpRules',
+    `installed ${wanted.size} rules file(s) into .unikit/system/${ENGINE_MCP_DIR_NAME}/`,
+  );
 }
 
 // --- Module registry snapshot installation ---

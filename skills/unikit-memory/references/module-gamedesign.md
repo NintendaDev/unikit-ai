@@ -254,7 +254,8 @@ Follow the `code` module's **Candidate Analyzer** unchanged (`module-code.md` �
 piecemeal lookup catalog (e.g. a motivation taxonomy table or an accessibility
 checklist) is a candidate; conceptual guidance stays in the main rule. Present the
 candidates grouped by Tier 1 / Tier 2 and confirm with `AskUserQuestion` before
-creating files; the main rule lists approved references in its `> **References**:`
+creating files (print the Tier 1 / Tier 2 groups to the screen as plain markdown first —
+the question mechanism carries the options and nothing else); the main rule lists approved references in its `> **References**:`
 line. This includes **stable filenames / anti-fragmentation** — reuse an existing
 reference's filename when extending its topic instead of forking a near-duplicate,
 and run the `research-pipeline.md` B.3.5 merge guard (check existing files, update

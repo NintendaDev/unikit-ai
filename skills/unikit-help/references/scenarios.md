@@ -46,7 +46,7 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 |--------------------------|--------------------|-------|--------------------|
 | "where do I start", "I'm new" | onboard | `.unikit/config.yaml` present? no→`/unikit`; yes→ask idea/GDD | framework installed? |
 | "how do I start coding" | begin a feature | have a plan? yes→`/unikit-implement`; no→`/unikit-plan` | is there a plan / research? |
-| "how do I plan a feature" | plan | `/unikit-plan [fast\|full] <feature>` | fast vs full (throwaway vs real) |
+| "how do I plan a feature" | plan | `/unikit-plan [fast\|full\|ultra] <feature>` | fast vs full vs ultra (throwaway / real / delegated to a smaller model) |
 | "the plan looks rough / wrong" | refine plan | `/unikit-improve` (run 1-3x) | — |
 | "how do I test my code" | verify/test | `/unikit-verify`; tests come from `/unikit-implement` test phase; failures→`/unikit-fix` | unit vs vs-plan vs manual (see QA note) |
 | "fix this bug" / error pasted | bug | `/unikit-fix <bug>`; deep→`/unikit-explore` first | is it deep/unknown-location? |
@@ -66,6 +66,10 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "add a rule" / "always do X" | capture convention | `/unikit-rules <rule>` | — |
 | "make rules from this book/article/docs/PDF" | distil sources | `/unikit-memory <source(s)>` (`--module gamedesign` for design) | code or design knowledge? |
 | "share my rules across projects" | registry | `/unikit-rules-registry create\|update\|sync` | local folder registry? |
+| "the MCP said ok but nothing changed" / "the server lied" | record an MCP finding | `/unikit-mcp-trap [finding]`; curate later with `/unikit-mcp-audit` | is the observation already in this session? |
+| "are these MCP findings still true" / "the server was updated" | curate MCP findings | `/unikit-mcp-audit [id\|stamp\|replay\|retire\|upstream]` | replay needs a live editor |
+| "write the docs" / "update the README" | project documentation | `/unikit-docs` | code docs or GDD export (`/unikit-gd-docs`)? |
+| "keep a task list" / "what was I doing" | task checklist | `/unikit-todo` | — |
 | "customize how a skill behaves" | skill override | `/unikit-skills-context <skill> "<rule>"` | — |
 | "which skill do I use for X" | navigation | answer from `skill-map.md` | — |
 | "how does code relate to game design" | architecture of the framework | explain the one-way boundary (`pipelines.md` §3) | — |

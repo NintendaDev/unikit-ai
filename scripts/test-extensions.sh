@@ -171,7 +171,7 @@ cat > "$EXT_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -315,7 +315,7 @@ cat > "$REPLACE_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -403,7 +403,7 @@ cat > "$MCP_EXT_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -452,7 +452,7 @@ cat > "$MCP_EXT_CODEX_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "codex",
@@ -509,7 +509,7 @@ cat > "$IDEMP_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -610,7 +610,7 @@ COMPAT_EXT_RESULT=$(node --input-type=module -e "
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ext-compat-'));
   fs.writeFileSync(path.join(tmpDir, '.unikit.json'), JSON.stringify({
     version: '1.0.0', language: 'en', engine: 'unity', engineMcpKey: null,
-    mcp: { servers: [] },
+    mcp: { servers: {} },
     agents: [{ id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents',
                installedSkills: [], installedSubagents: [] }],
     rules: { installed: { version: '1.0.0', core: [], stack: [] }, declined: [] }
@@ -645,7 +645,7 @@ cat > "$REMOVE_NX_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -699,7 +699,7 @@ cat > "$MINIMAL_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -760,7 +760,7 @@ cat > "$LIST_EMPTY_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -817,7 +817,7 @@ cat > "$INJ_NF_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -885,7 +885,7 @@ cat > "$MULTI_EXT_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -951,7 +951,7 @@ cat > "$CORRUPT_EXT_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1027,7 +1027,7 @@ cat > "$UPDATE_EMPTY_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1066,7 +1066,7 @@ cat > "$UPDATE_UTD_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1123,7 +1123,7 @@ cat > "$UPDATE_VER_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1194,7 +1194,7 @@ cat > "$UPDATE_FAIL_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1268,7 +1268,7 @@ cat > "$LIST_REPL_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1311,7 +1311,7 @@ cat > "$NOSUB_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "codex",
@@ -1374,7 +1374,7 @@ cat > "$PREPEND_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1514,7 +1514,7 @@ cat > "$CMD_MISSING_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1564,7 +1564,7 @@ cat > "$CMD_INSTALL_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1636,7 +1636,7 @@ cat > "$DEDUP_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [
     {
       "id": "claude",
@@ -1735,7 +1735,7 @@ cat > "$MCP_INJECT_PROJECT/.unikit.json" << 'EOF'
   "language": "en",
   "engine": "unity",
   "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": ["unity-mcp-coplay"] },
+  "mcp": { "servers": { "coplay-unity-mcp": "UnityMCP" } },
   "agents": [
     {
       "id": "claude",
@@ -1756,9 +1756,13 @@ inject_fake_registry "$MCP_INJECT_PROJECT"
 # Install base skills + MCP injection
 (cd "$MCP_INJECT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
 
-# Verify base unikit-fix has MCP tools
+# Verify base unikit-fix has MCP tools.
+# Coplay grants executors a wildcard, so the probe is the wildcard entry itself — there is
+# no coplay-only tool NAME left to look for. The escape is load-bearing: assert_contains
+# feeds the pattern to `grep -qE`, and a bare `*` would read as "zero or more `_`" and match
+# any member of the family, passing vacuously.
 assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
-  "mcp__UnityMCP__read_console" \
+  "mcp__UnityMCP__\*" \
   "base unikit-fix must have MCP tools before replacement"
 
 # Add replace extension
@@ -1766,7 +1770,7 @@ assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
 
 # Replaced skill must have MCP tools injected
 assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
-  "mcp__UnityMCP__read_console" \
+  "mcp__UnityMCP__\*" \
   "replaced skill must have MCP tools after ext add"
 
 assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
@@ -1783,7 +1787,7 @@ echo "  ✓ MCP injection: replacement skill gets MCP tools after ext add"
 
 # Restored base skill must have MCP tools
 assert_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
-  "mcp__UnityMCP__read_console" \
+  "mcp__UnityMCP__\*" \
   "restored base skill must have MCP tools after ext remove"
 
 assert_not_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \

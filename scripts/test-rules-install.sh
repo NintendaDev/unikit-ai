@@ -69,6 +69,29 @@ shopt -u nullglob
 GD_BOOTSTRAP_COUNT=$(( ${#_gd_core_files[@]} + ${#_gd_lib_files[@]} ))
 BOOTSTRAP_TOTAL=$((1 + GD_BOOTSTRAP_COUNT))
 
+# ─────────────────────────────────────────────
+# Offline pin for the official registry level
+# ─────────────────────────────────────────────
+# The counts above are derived from the BUNDLED snapshot, but nothing forced the
+# resolver to use it. `gamedesign` core is `coreResolution: 'per-id-merge'`, so a
+# non-overridden id backfills through official -> bundled, and the official level
+# defaults to the LIVE https://raw.githubusercontent.com/... URL. That made every
+# bootstrap scenario depend on the network in two ways:
+#
+#   - counts: a live catalog with a different id set breaks BOOTSTRAP_TOTAL;
+#   - idempotency: run 1 reaching GitHub records the live content's hash, run 2
+#     falling back to bundled computes a different hash, so `installed_hash ===
+#     newHash` fails and the rule reinstalls. The re-run scenario then sees
+#     `N installed` where it asserted `0 installed, N already-installed`.
+#
+# The second mode was observed intermittently under full-suite load (GitHub rate
+# limiting), which is exactly when it is hardest to diagnose. Scenario 20 already
+# solved this locally (see its comment); this hoists the same trick to every
+# scenario. An empty dir has no manifest.json, so `FsRegistry.fetchManifest()`
+# returns null and the backfill deterministically falls through to bundled.
+DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/dead-official")"
+mkdir -p "$TMPDIR/dead-official"
+
 # `rules install defaults` bootstraps a module only when its SKILLS are
 # installed (invariant: bootstrap = f(installed skills)). The fake-registry
 # fixtures default to empty installedSkills, so the bootstrap scenarios pass an
@@ -93,7 +116,7 @@ mkdir -p "$S1_DIR"
 use_fake_registry "$S1_DIR" unity minimal-valid "$SKILLS_CODE_GD"
 
 assert_cmd_exit 0 "rules install defaults exits 0" "$TMPDIR/s1.log" -- \
-    env -C "$S1_DIR" node "$CLI" rules install defaults
+    env -C "$S1_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s1.log" "installed core/code-style v1.0.0" \
     "fresh install line for code-style"
@@ -118,7 +141,7 @@ assert_exists "$S1_DIR/.unikit/memory/gamedesign/RULES_INDEX.md" \
 echo -e "\n${BOLD}Scenario 2: bootstrap idempotent re-run${NC}"
 
 assert_cmd_exit 0 "second rules install defaults run exits 0" "$TMPDIR/s2.log" -- \
-    env -C "$S1_DIR" node "$CLI" rules install defaults
+    env -C "$S1_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s2.log" "already installed core/code-style" \
     "re-run reports already-installed"
@@ -148,7 +171,7 @@ node -e "
 " "$S3_DIR/.unikit.json"
 
 assert_cmd_exit 0 "bootstrap with drift exits 0" "$TMPDIR/s3.log" -- \
-    env -C "$S3_DIR" node "$CLI" rules install defaults
+    env -C "$S3_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s3.log" "installed core/code-style v1.0.0" \
     "drift triggers re-install (not already-installed)"
@@ -366,10 +389,10 @@ S15_DIR="$TMPDIR/s15-engine-missing"
 mkdir -p "$S15_DIR/.unikit/memory/code/core" "$S15_DIR/.unikit/memory/code/stack"
 cat > "$S15_DIR/.unikit.json" <<EOF
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "unreal-engine-6",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [],
   "rulesRegistry": "$(fake_registry_path minimal-valid)",
   "rules": {
@@ -428,10 +451,10 @@ S16_DIR="$TMPDIR/s16-empty-core"
 mkdir -p "$S16_DIR/.unikit/memory/code/core" "$S16_DIR/.unikit/memory/code/stack"
 cat > "$S16_DIR/.unikit.json" <<EOF
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": [{"id":"claude","installedSkills":["unikit","unikit-gd-spec"],"installedSubagents":[]}],
   "rulesRegistry": "$(normalize_path_for_json "$S16_FIXTURE")",
   "rules": {
@@ -441,7 +464,7 @@ cat > "$S16_DIR/.unikit.json" <<EOF
 EOF
 
 assert_cmd_exit 0 "bootstrap with empty code core still exits 0 via gamedesign" "$TMPDIR/s16.log" -- \
-    env -C "$S16_DIR" node "$CLI" rules install defaults
+    env -C "$S16_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s16.log" "installed gamedesign/core/balance" \
     "gamedesign catalog backfilled despite the empty code core tier"
@@ -489,7 +512,7 @@ S18_SHA="$(sha_of "$S18_DIR/.unikit.json")"
 # Defaults bootstrap path (bare `rules install` now prints help BEFORE the
 # migration gate, so the exit-8 refusal is exercised via `defaults`).
 assert_cmd_exit 8 "rules install defaults on un-migrated project exits 8" "$TMPDIR/s18a.log" -- \
-    env -C "$S18_DIR" node "$CLI" rules install defaults
+    env -C "$S18_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 assert_stdout_contains "$TMPDIR/s18a.log" "out of date" "row18a explains the project is out of date"
 
 # Variadic path.
@@ -524,16 +547,14 @@ echo -e "\n${BOLD}Scenario 20: B-merge per-id override + bundled backfill${NC}"
 S20_DIR="$TMPDIR/s20-bmerge"
 use_fake_registry "$S20_DIR" unity gamedesign-override "$SKILLS_CODE_GD"
 
-# The live official registry now carries `gamedesign` too (schema:2), so the
-# canonical per-id backfill for a non-overridden id like `economy` can resolve
-# from official instead of bundled — official ranks above bundled in the
-# chain. Point the official level at an empty local dir (no manifest.json) so
-# `FsRegistry.fetchManifest()` returns null and the backfill is deterministic.
-S20_DEAD_OFFICIAL="$(normalize_path_for_json "$TMPDIR/dead-official-s20")"
-mkdir -p "$TMPDIR/dead-official-s20"
+# Uses the shared $DEAD_OFFICIAL pin (see the top of this file). This scenario is
+# where the hazard was first understood: the live official registry carries
+# `gamedesign` too, so a non-overridden canonical id like `economy` can resolve
+# from official instead of bundled — official ranks above bundled in the chain.
+# The pin is now applied to every scenario, not just this one.
 
 assert_cmd_exit 0 "bootstrap on override fixture exits 0" "$TMPDIR/s20.log" -- \
-    env -C "$S20_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S20_DEAD_OFFICIAL" node "$CLI" rules install defaults
+    env -C "$S20_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 
 assert_stdout_contains "$TMPDIR/s20.log" "installed gamedesign/core/balance v9.9.9" \
     "override id installs the custom version (9.9.9), not the bundled 1.0.0"
@@ -546,7 +567,7 @@ assert_stdout_contains "$S20_DIR/.unikit/memory/gamedesign/RULES_INDEX.md" "| Fi
 
 # Per-rule origin (robust to install ordering): override → primary, backfill → bundled.
 assert_cmd_exit 0 "status --module gamedesign on override exits 0" "$TMPDIR/s20-status.log" -- \
-    env -C "$S20_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$S20_DEAD_OFFICIAL" node "$CLI" rules status --module gamedesign
+    env -C "$S20_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules status --module gamedesign
 if grep -qE "balance[[:space:]].*registry:primary" "$TMPDIR/s20-status.log"; then
     pass "override 'balance' carries per-rule origin registry:primary"
 else
@@ -595,7 +616,7 @@ mkdir -p "$S22_DIR"
 use_fake_registry "$S22_DIR" unity minimal-valid "$SKILLS_CODE_ONLY"
 
 assert_cmd_exit 0 "defaults (code-only skills) exits 0" "$TMPDIR/s22.log" -- \
-    env -C "$S22_DIR" node "$CLI" rules install defaults
+    env -C "$S22_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 assert_stdout_contains "$TMPDIR/s22.log" "installed core/code-style v1.0.0" \
     "code rules bootstrapped (code skills installed)"
 if grep -q "gamedesign/" "$TMPDIR/s22.log"; then
@@ -616,7 +637,7 @@ mkdir -p "$S23_DIR"
 use_fake_registry "$S23_DIR" unity minimal-valid "$SKILLS_CODE_GD"
 
 assert_cmd_exit 3 "rules install defaults code-style exits 3" "$TMPDIR/s23.log" -- \
-    env -C "$S23_DIR" node "$CLI" rules install defaults code-style
+    env -C "$S23_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults code-style
 assert_stdout_contains "$TMPDIR/s23.log" "does not take rule ids" \
     "exit-3 message explains defaults cannot combine with ids"
 
@@ -632,7 +653,7 @@ mkdir -p "$S24_DIR"
 use_fake_registry "$S24_DIR" unity minimal-valid   # default agents: empty installedSkills
 
 assert_cmd_exit 5 "defaults with no installed skills exits 5" "$TMPDIR/s24.log" -- \
-    env -C "$S24_DIR" node "$CLI" rules install defaults
+    env -C "$S24_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 assert_stdout_contains "$TMPDIR/s24.log" "No bootstrap rules found" \
     "empty bootstrap explains no module has installed skills"
 
@@ -672,10 +693,10 @@ S25_DIR="$TMPDIR/s25-all-failed"
 mkdir -p "$S25_DIR/.unikit/memory/code/core" "$S25_DIR/.unikit/memory/code/stack"
 cat > "$S25_DIR/.unikit.json" <<EOF
 {
-  "version": "1.1.0",
+  "version": "$(current_project_version)",
   "engine": "unity",
   "engineMcpKey": null,
-  "mcp": { "servers": [] },
+  "mcp": { "servers": {} },
   "agents": $SKILLS_CODE_ONLY,
   "rulesRegistry": "$(normalize_path_for_json "$S25_FIXTURE")",
   "rules": {
@@ -685,7 +706,7 @@ cat > "$S25_DIR/.unikit.json" <<EOF
 EOF
 
 assert_cmd_exit 1 "defaults all-failed exits 1" "$TMPDIR/s25.log" -- \
-    env -C "$S25_DIR" node "$CLI" rules install defaults
+    env -C "$S25_DIR" UNIKIT_OFFICIAL_REGISTRY_URL="$DEAD_OFFICIAL" node "$CLI" rules install defaults
 assert_stdout_contains "$TMPDIR/s25.log" "Rules: 0 installed, 0 already-installed, 1 failed" \
     "all-failed bootstrap report counts the failure"
 

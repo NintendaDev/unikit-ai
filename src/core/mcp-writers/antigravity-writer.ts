@@ -1,4 +1,5 @@
 import type { McpWriter } from './index.js';
+import { findKeyInContainer } from './shared.js';
 import { fileExists, readTextFile } from '../../utils/fs.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -66,6 +67,21 @@ export class AntigravityMcpWriter implements McpWriter {
     }
     delete servers[key];
     return true;
+  }
+
+  findKey(settings: Record<string, unknown>, code: string, reserved: Set<string>): string | null {
+    return findKeyInContainer(settings, 'mcpServers', code, reserved);
+  }
+
+  mergeEnv(settings: Record<string, unknown>, key: string, env: Record<string, unknown>): void {
+    const servers = settings['mcpServers'];
+    if (!isRecord(servers)) return;
+    const entry = servers[key];
+    if (!isRecord(entry)) return;
+
+    // Antigravity strips `type` and renames `url`, but leaves `env` verbatim —
+    // the same passthrough the JSON writer uses.
+    entry['env'] = { ...(isRecord(entry['env']) ? entry['env'] : {}), ...env };
   }
 
   serialize(settings: Record<string, unknown>): string {

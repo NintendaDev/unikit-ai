@@ -39,7 +39,7 @@ metadata:
 # Game Design — Concept Brainstorming
 
 Generate game ideas with the user and crystallize the chosen one into a
-**CONCEPT card** at `.unikit/gamedesign/concepts/<date>_<slug>/CONCEPT.md`, with
+**CONCEPT card** at `.unikit/gamedesign/concepts/<slug>/CONCEPT.md`, with
 the rejected ideas parked in `IDEAS.md`. This is the **ideation** front of the
 design pipeline — it produces concepts; `unikit-gd-spec` turns a concept into
 `GAME.md` and a system map.
@@ -119,11 +119,16 @@ and the last phase reached. Semantically match the user's hint against the rows:
   3. List all concepts
   ```
 
-- No match, or the user chooses fresh → start a new concept (new dated slug).
+- No match → start a new concept at `concepts/<slug>/`.
+- A match exists but the user chooses to start fresh → **ask for a different slug**, then
+  create `concepts/<new-slug>/` and print `INFO [concept] creating <new-slug>`.
 
 `promoted` and `abandoned` concepts are **never offered for resume**, but their
 `IDEAS.md` is read so the session does not re-pitch a killed idea. Repeated
-brainstorms always create new slug directories.
+brainstorms need a **different** slug — the user is asked for one; the date no longer
+supplies the difference. **Appending an automatic suffix is forbidden**: the slug is
+derived from the topic, so a second run at one topic produces the same name, and a
+silently suffixed folder is one the auto-resume above will never offer again.
 
 On resume, jump to the saved phase — including the **fractional phases 3.5, 7.5, and
 8.5** (a session interrupted mid-scan, mid-flow-seeds, or mid-validation resumes there,
@@ -512,7 +517,7 @@ Set the INDEX row status to `complete`. Then recommend the follow-up (do not aut
 ## Writing the Artifacts
 
 ```bash
-mkdir -p .unikit/gamedesign/concepts/<date>_<slug>
+mkdir -p .unikit/gamedesign/concepts/<slug>
 ```
 
 - **`CONCEPT.md`** — the nine-field card with a `## Notes` section for the reasoning
@@ -541,7 +546,7 @@ The terminal plaque (TIER A — `gd-principles` → Language: names lead, status
 phrase; the pillar ids live in GAME.md / GD-IDS):
 
 ```
-Concept: <title>  (.unikit/gamedesign/concepts/<date>_<slug>/)
+Concept: <title>  (.unikit/gamedesign/concepts/<slug>/)
 Status: <still a draft | approved>  ·  reached phase 9
 Pillars: <name>, <name>, …   Anti: <n>   MDA: <primary>/<secondary>
 Find-the-fun: <the prototype that proves the core>

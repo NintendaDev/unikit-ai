@@ -28,7 +28,7 @@ This file describes the optional findings-validation pass that runs when `unikit
 Two finding classes are **not** sent to the validator:
 
 - **🔄 Dependency Fixes** — recomputed in phase (b) against the post-(a) plan state, exactly as in `aif-improve`. Not validated, not counted.
-- **Research-Based Findings** (`research_improvements`, produced by Step 1.5) — **EXCLUDED from `+check` entirely**. Rationale: these are research-derived deltas (constraint/interface/contradiction findings traced to a `RESEARCH_BRIEF.md`), not codebase-traceable claims the fresh-context validator can verify against the repository. They render in their own Step 4 "Research-Based Findings" section unchanged, and the `+check` counters never include them.
+- **Research-Based Findings** (`research_improvements`, produced by Step 1.5) — **EXCLUDED from `+check` entirely**. Rationale: these are research-derived deltas (constraint/interface/contradiction findings traced to a research's `## Active Summary`), not codebase-traceable claims the fresh-context validator can verify against the repository. They render in their own Step 4 "Research-Based Findings" section unchanged, and the `+check` counters never include them.
 
 ## Procedure
 
@@ -37,9 +37,9 @@ The validation pass has two sequential phases.
 ### Phase (a) — validate the four findings groups
 
 1. Collect items from the four validated groups built in Step 3 (`missing`, `improvements`, `architectural`, `removals`). Number them across all four groups in display order — the group label is carried alongside each item. **If the combined list is empty, skip steps 2–5 of phase (a) entirely**: do not dispatch the validator, treat phase (a) as successful with `hidden = 0`, `adjusted = 0`, and proceed directly to phase (b) (Dependency Fixes still get recomputed normally).
-2. Build the project context block: working directory path, optional excerpt from `.unikit/DESCRIPTION.md`, a one-line summary of the plan being refined (plan path — the folder's `TASKS.md` or the flat `.unikit/code/PLAN.md` — plus task count), and the user's improvement prompt parsed in Step 0 — verbatim when the run had one, or the literal marker `none — bare auto-review` when `$ARGUMENTS` carried no prompt text. The validator needs the prompt to tell a user-requested task apart from agent-invented gold-plating.
+2. Build the project context block: working directory path, optional excerpt from `.unikit/DESCRIPTION.md`, a one-line summary of the plan being refined (plan path — the folder's `.unikit/code/plans/<folder>/PLAN.md` or the flat `.unikit/code/PLAN.md` — plus task count), and the user's improvement prompt parsed in Step 0 — verbatim when the run had one, or the literal marker `none — bare auto-review` when `$ARGUMENTS` carried no prompt text. The validator needs the prompt to tell a user-requested task apart from agent-invented gold-plating.
 3. Read `references/VALIDATOR.md`. The reference declares two substitution slots at the top of the file — one for the project context block from step 2 and one for the items list from step 1 (each under its own `### Item N (group: …)` heading). Replace both before dispatch; the exact placeholder tokens are listed in the VALIDATOR.md header.
-4. Dispatch one call: `Agent(subagent_type: Explore, model: sonnet, prompt: <rendered template>)`. The subagent runs with fresh context. `Explore` is **read-only by construction** (its tool set excludes Edit/Write), so the validator cannot modify files or run state-changing commands — the read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
+4. Dispatch one `check-agent` call with the rendered template as its prompt. The alias is declared in `SKILL.md` under `## Delegation agents`, which is also the only place its model is named. The subagent runs with fresh context. The alias expands to `Explore`, which is **read-only by construction** (its tool set excludes Edit/Write), so the validator cannot modify files or run state-changing commands — the read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
 5. Parse the response by `### Item N` headings. The group of each item is always its **original** group from step 1 — the validator is forbidden by `references/VALIDATOR.md` from changing it. The `Group:` line in the response is an integrity check, not a control field: if its value differs from the original group, treat the whole item block as malformed (see failure modes below). For each well-formed item:
    - `Verdict: keep` → keep the item unchanged in its original group.
    - `Verdict: modify` → replace the item text with `Modified-text`, put it back in its original group. Increment `adjusted`.
@@ -49,7 +49,7 @@ The validation pass has two sequential phases.
 
 After phase (a) finishes, the main skill (not the validator) recomputes the 🔄 Dependency Fixes group against the **post-(a) plan state**:
 
-- start from the original plan tasks (TASKS.md, or the flat PLAN.md checklist),
+- start from the original plan tasks (the manifest's `## Checklist`),
 - add tasks introduced by `missing.keep` and `missing.modify` (these are confirmed new tasks),
 - remove tasks targeted by `removals.keep` and `removals.modify` (the validator confirmed the proposal to drop the task from the plan),
 - tasks rescued by `removals.drop` stay in the plan — the validator overruled the proposal — and remain valid dependency targets,

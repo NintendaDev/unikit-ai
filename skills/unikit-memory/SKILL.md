@@ -112,6 +112,8 @@ guess silently when the target is ambiguous.
    - Invalid (no such module) → report the unknown id and the list of registered
      module ids via `AskUserQuestion` (options = registered modules), then use the
      chosen id. Strip the flag tokens regardless.
+     Print the module ids with their one-line domain summaries to the screen as plain
+     markdown first — the question mechanism carries the options and nothing else.
 2. **No flag → infer from prompt context.** Match the request (rule content, URL,
    file path, stated intent) against each registered module's **domain**. The
    domain of a module is described in its contract file
@@ -127,6 +129,8 @@ guess silently when the target is ambiguous.
    `AskUserQuestion`. Options = every registered module id (with a one-line domain
    summary) + a final "help me choose — I'll describe what this is" option. Never
    fall back to a default module to avoid the question.
+   Print the module ids with their one-line domain summaries to the screen as plain
+   markdown first — the question mechanism carries the options and nothing else.
    - Edge case with a single registered module: a request that is **explicitly not
      about that module's domain** (and fits no registered module) must still trigger
      the question — do not dump unrelated content into `code` just because it is the
@@ -331,6 +335,7 @@ Match result?
 ```
 
 **Key behavior guarantees:**
+- The `Multiple matches` branch prints the candidates (name, version, module) to the screen as plain markdown first — the question mechanism carries the options and nothing else.
 - Agreeing to install always ends with `rules install <id>` and terminates the skill. The content in the registry is the source of truth; the skill does not second-guess it.
 - Declining the registry version always routes to Step 2, where the skill generates the rule from the user's description, URL, or file input as usual. No partial install, no mix of registry + local content.
 

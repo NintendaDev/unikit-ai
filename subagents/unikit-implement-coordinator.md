@@ -19,6 +19,7 @@ skills:
   - unikit-commit
   - unikit-review
   - unikit-docs
+  - unikit-mcp-trap
 ---
 
 You are the implementation coordinator for a {{engine_name}} project.
@@ -66,14 +67,22 @@ The user may provide:
 
 1. Locate the active plan:
    a. If the user provided an explicit `@<path>`, use that folder.
-   b. Scan `.unikit/code/plans/` for the most recent feature folder (by date prefix or modification time).
+   b. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+      **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
    c. If no plan found — stop and report.
-2. Read `TASKS.md` from the plan folder. Parse all phases and tasks:
+2. Read the plan folder's `.unikit/code/plans/<folder>/PLAN.md` manifest. Parse all phases and tasks:
    - Phase grouping (Phase 1, Phase 2, ...)
    - Phase dependencies from the dependencies line (supports both English and localized headers, see "Dependency Parsing" below)
    - Task number and description
    - Completion status (`[ ]`, `[x]`, `[~]`, `[!]`)
-3. Read `PLAN-BRIEF.md` for context.
+   **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged.
+
+   **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
+
+   A phase file named in `## Phase Index` that is missing on disk is a blocking integrity violation: stop and report it, and do **not** dispatch that phase. A task ticked `[x]` is no reason to continue — a checkbox is weaker than a specification.
+3. Read the manifest's `## Technical Context` for context.
+   - **Ordinary plan** — it is a section of the file you already read, so reading it again buys nothing.
+   - **Ultra bundle** — the manifest carries only the cross-phase part (`CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE`); the task-scoped subsections live in the phase files. Your reading depth is the manifest **plus the phase files of the phases you are dispatching in the current layer** — layers execute one at a time, so future layers' phases have no business in your context. The depth is stated in the reading-depth table of `.unikit/system/ultra-plan-read.md`, not decided here.
 4. Build a **phase dependency graph** (see "Dependency Parsing" below).
 5. Compute **execution layers** — groups of phases whose dependencies are all satisfied:
    - Layer 0: all phases with no dependencies
@@ -126,7 +135,7 @@ Note: annotations use English regardless of the plan language. The phase headers
 - **After success**: mark task as complete `[x]`
 - **After failure**: mark task as `[!]` with `<!-- failed: reason -->`
 
-Update TASKS.md immediately before and after each layer to ensure crash-visible state.
+Update the manifest immediately before and after each layer to ensure crash-visible state.
 
 ## Execution Algorithm
 
@@ -162,12 +171,16 @@ report final summary
 When only one phase is ready, execute it directly within the coordinator (no worker overhead).
 
 For each task in the phase, sequentially:
-1. Mark `[~]` in TASKS.md
+1. Mark `[~]` in the manifest
 2. Implement using direct tool calls (Read, Write, Edit, Glob, Grep, Bash)
 3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
+
+   `dev-principles.md` is read on **two** levels. Everything **above** the LAZY-READ BOUNDARY is read here, on every run — the evidence contract, the claim-class → evidence-class lattice, the nine failure-class names, phase order, the lane, and the `kind` / area vocabularies. The section **below** it — the nine detectors in full and the catalog checklist — is read **once per session, on the first task that touches editor state**, and **unconditionally**: never gated on which rules happen to be installed. Pulling the whole file up here spends the Bootstrap budget the split exists to save; never reading the lower half spends the safety net instead.
 4. Run verification pass scoped to changed files
 5. If material issues found, fix and re-verify (max 2 rounds)
-6. Mark `[x]` or `[!]` in TASKS.md
+6. Mark `[x]` or `[!]` in the manifest. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
+
+   **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task — `F<n>` is one more than the highest id already there (read the table first, so a re-run does not restart the numbering), `observed` is today's date, and dedup is semantic: drop a candidate saying the same thing about the same `area` as an existing row, by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — one observation is a bad sample, and the durable surface passes through a human running `/unikit-mcp-trap`.
 7. If any task fails, stop the phase
 
 ## Parallel Phase Dispatch
@@ -179,21 +192,52 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
 - Launch ALL workers in a single message for true concurrency.
 - Pass each worker:
   - the phase number and all its tasks
+  - **in an ultra bundle, the full `## Task N.M:` section of every task of that phase**, copied from the phase file: `### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`. The manifest's checklist line is a **pointer**; what the worker executes is the task's own section in its phase file. The hand-off is closed — whatever is not in the prompt, the worker does not see.
   - the plan folder path
   - `commit_policy: skip` (coordinator handles commits centrally)
+  - **any `Editor:` lines of those tasks, verbatim** — a worker that receives only the description implements an editor target as pure code
+  - **`editor_mode:`** — the `Editor tasks` value from the plan's `## Settings`. Absent from the plan → pass `manual`, never `direct`
 - Maximum **3 parallel workers** per layer. If more phases are ready, split into sub-batches.
+- **Ultra, blocking:** a task present in the manifest's checklist whose `## Task N.M:` section exists in no phase file, or exists in more than one, is an integrity violation. Stop and report it; do not dispatch that phase with a one-line description standing in for the missing specification.
 
 ### Example dispatch (Phase 1 and Phase 4 are independent)
 
 ```
 Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 1.1 (description), 1.2 (description), ...
-  commit_policy: skip. Return list of modified files."
+    Task 1.2 Editor: [ui] <container> → <target> : <action>
+  editor_mode: mcp
+  commit_policy: skip. Return list of modified files and manual_targets."
 
 Agent(unikit-implement-worker): "Execute Phase 4 from plan at .unikit/code/plans/2026-03-10_core-loop.
   Tasks: 4.1 (description), 4.2 (description), ...
-  commit_policy: skip. Return list of modified files."
+  editor_mode: mcp
+  commit_policy: skip. Return list of modified files and manual_targets."
+
+For an ultra bundle the `Tasks:` line is replaced by the task specifications themselves —
+one block per task, every subsection passed **in full** (elided here only for length):
+
+Agent(unikit-implement-worker): "Execute Phase 1 from plan at .unikit/code/plans/2026-03-10_core-loop.
+  ## Task 1.1: Add the session store
+  ### Intent
+  <full text>
+  ### Implementation Steps
+  <full text>
+  ### Required Interfaces and Contracts
+  <full text — in ultra this is where the task's editor targets live>
+  ### Error Handling and Logging
+  <full text>
+  ### Tests
+  <full text>
+  ### Acceptance Criteria
+  <full text>
+  ### Verification
+  <full text>
+  editor_mode: mcp
+  commit_policy: skip. Return list of modified files and manual_targets."
 ```
+
+Include the `Editor:` line only for tasks that carry one; a phase of pure code tasks passes `editor_mode` and nothing else new.
 
 ### Conflict detection after parallel execution
 
@@ -206,7 +250,7 @@ After all workers in a layer complete:
 ### Worker failure handling
 
 - If any worker fails, stop the entire layer.
-- Mark failed phase tasks as `[!]` in TASKS.md.
+- Mark failed phase tasks as `[!]` in the manifest.
 - Do not advance to next layer.
 - Report which phases succeeded and which failed.
 
@@ -287,7 +331,13 @@ Layers executed: N (M parallel, K sequential)
 Commits created: N
 Status: complete | partial | failed
 Remaining tasks: [list if any]
+MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them into
+  .unikit/MCP-RECHECK-NOTES.md
 
 ⏎ This agent session is complete. Please close it (Ctrl+C or /exit)
   and return to your main Claude Code session to continue working.
 ```
+
+The `MCP findings:` line appears **only when the plan's `## MCP Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
+
+**Why this one is printed rather than invoked.** `/unikit-implement` Step 5.5 offers the same handoff as a real `Skill(...)` call, and that is the right shape there. Here it is not: this agent ends by telling the user to close the session, and `/unikit-mcp-trap` is interactive — it presents candidates and asks which to record. Started here it would be cut off mid-question. This is the legitimate degenerate tier of the dispatch, chosen because the session boundary makes the inline call impossible, not to avoid making it.

@@ -1,0 +1,57 @@
+{
+  "key": "unity-biome-mcp",
+  "code": "unity-biome-mcp",
+  "is_engine": true,
+  "order": 1,
+  "displayName": "Unity Biome MCP (Unity 6000.0+)",
+  "docs": {
+    "context7": "/german-krasnikov/unity-biome-mcp",
+    "repo": "https://github.com/german-krasnikov/unity-biome-mcp"
+  },
+  "rules": "rules/unity-biome-mcp/",
+  "config": {
+    "command": "uvx",
+    "args": [
+      "--from",
+      "git+https://github.com/german-krasnikov/unity-biome-mcp.git@v{{ VERSION }}#subdirectory=server",
+      "unity-biome-mcp"
+    ],
+    "env": {
+      "UNITY_MCP_NO_GATING": "1"
+    }
+  },
+  "allowed-tools": {
+    "agents": {
+      "unikit-implement-coordinator": [
+        "*"
+      ],
+      "unikit-implement-worker": [
+        "*"
+      ],
+      "unikit-review-sidecar": [
+        "*"
+      ]
+    },
+    "skills": {
+      "unikit-plan": [
+        "discover_tools",
+        "mcp_status"
+      ],
+      "unikit-devcontext": [
+        "*"
+      ],
+      "unikit-implement": [
+        "*"
+      ],
+      "unikit-fix": [
+        "*"
+      ],
+      "unikit-verify": [
+        "*"
+      ],
+      "unikit-mcp-audit": [
+        "*"
+      ]
+    }
+  }
+}

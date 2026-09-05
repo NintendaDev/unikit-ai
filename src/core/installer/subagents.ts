@@ -36,6 +36,13 @@ export interface UpdateSubagentsOptions {
   force?: boolean;
   engineId?: string;
   engineMcpKey?: string | null;
+  /**
+   * The project's MCP selection as `key → code` (`config.mcp.servers`). Folded
+   * into every source hash so a changed selection — or a changed vendor code
+   * under an unchanged selection — reinstalls the subagents; MCP tool injection
+   * is additive and would otherwise accumulate dead ids.
+   */
+  mcpServers?: Record<string, string>;
 }
 
 // --- Agent installation ---
@@ -88,18 +95,26 @@ export async function installSubagents(
 
 // --- Managed subagent state ---
 
+/**
+ * Snapshot the managed subagent state written into `.unikit.json`. Like
+ * {@link import('./skills.js').buildManagedSkillsState}, this MUST use the same
+ * hash formula as {@link updateSubagents} — a divergence reinstalls every
+ * subagent on every run, invisibly to the type-checker and knip.
+ */
 export async function buildManagedSubagentsState(
   projectDir: string,
   agent: AgentInstallation,
   baseSubagents: string[],
   engineId: string,
+  engineMcpKey: string | null | undefined,
+  mcpServers: Record<string, string>,
 ): Promise<Record<string, ManagedSkillState>> {
   const state: Record<string, ManagedSkillState> = {};
   const packageSubagentsDir = getSubagentsDir();
 
   for (const subagentName of baseSubagents) {
     const sourcePath = path.join(packageSubagentsDir, subagentName + '.md');
-    const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id);
+    const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id, engineMcpKey, mcpServers);
     if (!sourceHash) continue;
 
     const targetPath = path.join(projectDir, agent.subagentsDir, subagentName + '.md');
@@ -119,7 +134,7 @@ export async function updateSubagents(
   projectDir: string,
   options: UpdateSubagentsOptions = {},
 ): Promise<UpdateSubagentsResult> {
-  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey } = options;
+  const { force = false, engineId = DEFAULT_ENGINE_ID, engineMcpKey, mcpServers = {} } = options;
 
   const packageSubagentsDir = getSubagentsDir();
   const availableFiles = await listFiles(packageSubagentsDir);
@@ -153,7 +168,7 @@ export async function updateSubagents(
 
   for (const sa of updatableSubagents) {
     const sourcePath = path.join(packageSubagentsDir, sa + '.md');
-    const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id);
+    const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id, engineMcpKey, mcpServers);
     const targetPath = path.join(projectDir, agent.subagentsDir, sa + '.md');
     const installedHash = await hashFile(targetPath);
     const previousState = previousManaged[sa];

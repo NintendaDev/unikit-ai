@@ -1,0 +1,43 @@
+{
+  "key": "fennara-godot-mcp",
+  "code": "fennara",
+  "is_engine": true,
+  "order": 1,
+  "displayName": "Fennara Godot AI [Free] (Godot 4.5+)",
+  "docs": {
+    "context7": "/fennaraofficial/fennara-godot-ai",
+    "repo": "https://github.com/fennaraOfficial/fennara-godot-ai"
+  },
+  "rules": "rules/fennara-godot-mcp/",
+  "configByPlatform": {
+    "win32": {
+      "command": "{{localappdata}}\\Fennara\\bin\\fennara-mcp.exe",
+      "args": [],
+      "env": {}
+    },
+    "darwin": {
+      "command": "{{home}}/Library/Application Support/Fennara/bin/fennara-mcp",
+      "args": [],
+      "env": {}
+    },
+    "linux": {
+      "command": "{{home}}/.local/share/fennara/bin/fennara-mcp",
+      "args": [],
+      "env": {}
+    }
+  },
+  "allowed-tools": {
+    "agents": {
+      "unikit-implement-coordinator": ["*"],
+      "unikit-implement-worker": ["*"],
+      "unikit-review-sidecar": ["*"]
+    },
+    "skills": {
+      "unikit-devcontext": ["*"],
+      "unikit-implement": ["*"],
+      "unikit-fix": ["*"],
+      "unikit-verify": ["*"],
+      "unikit-mcp-audit": ["*"]
+    }
+  }
+}

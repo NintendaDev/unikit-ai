@@ -2,9 +2,25 @@ import fs from 'fs-extra';
 import path from 'path';
 import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
+import { logInfo } from './log.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Dev/test-only override for the packaged MCP catalog directory. Behaviour tests of the
+ * installer point this at a fixture so they never read — or edit — the shipped configs;
+ * the STRUCTURE of the shipped catalog stays the object of Part 5 / 5b / 7e3, which read
+ * `mcp/` directly. Same shape as UNIKIT_OFFICIAL_REGISTRY_URL, and unrelated to it.
+ *
+ * It lives HERE and not in `core/constants.ts` because `utils/` is the leaf layer and must
+ * not import upward (ARCHITECTURE.md, Dependency Rules). The no-hardcode rule is satisfied
+ * by a named constant in either home; the layer rule is satisfied only by this one.
+ *
+ * Read in exactly one place ({@link getMcpDir}) — one point of read, one point of failure,
+ * the same rule the notes path is held to.
+ */
+export const MCP_DIR_ENV_VAR = 'UNIKIT_MCP_DIR';
 
 function getPackageRoot(): string {
   return path.resolve(__dirname, '..', '..');
@@ -23,6 +39,11 @@ export function getBundledRegistryDir(): string {
 }
 
 export function getMcpDir(): string {
+  const override = process.env[MCP_DIR_ENV_VAR];
+  if (override) {
+    logInfo('getMcpDir', `MCP catalog overridden via ${MCP_DIR_ENV_VAR}=${override}`);
+    return override;
+  }
   return path.join(getPackageRoot(), 'mcp');
 }
 
@@ -89,12 +110,18 @@ export async function listDirectories(dirPath: string): Promise<string[]> {
   }
 }
 
+// Sorted, not raw readdir order: callers turn this list into user-visible order
+// (the MCP wizard pre-selects the first entry) and into concatenated content
+// (engine-MCP shards, gamedesign system assets). readdir order is filesystem
+// dependent, so without the sort the same repo produces different output on
+// different machines.
 export async function listFiles(dirPath: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
     return entries
       .filter(entry => entry.isFile())
-      .map(entry => entry.name);
+      .map(entry => entry.name)
+      .sort();
   } catch {
     return [];
   }

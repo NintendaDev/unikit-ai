@@ -1,12 +1,27 @@
-import inquirer from 'inquirer';
+import type inquirer from 'inquirer';
 import chalk from 'chalk';
 import { getAgentChoices } from '../../core/agents.js';
-import { getEngineChoices, getAllEngineIds } from '../../core/engines.js';
+import { getEngineChoices, getAllEngineIds, getEngineConfig } from '../../core/engines.js';
 import { discoverMcpServers } from '../../core/mcp.js';
 import { getAvailableSkills } from '../../core/installer/skills.js';
 import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
 import { normalizeRegistryUrl, validateRegistry, manifestEngineIds } from '../../core/registry/validator.js';
 import { OFFICIAL_REGISTRY_URL } from '../../core/registry/index.js';
+import { logInfo } from '../../utils/log.js';
+
+// `inquirer` is ~240ms of module graph, and only the interactive prompts below
+// ever touch it -- a non-interactive `unikit-ai update` or `rules *` used to pay
+// that cost on every invocation just because this module sits on the static
+// import chain from `cli/index.ts`. The import above is type-only (erased at
+// compile time); the value is pulled in on first prompt and cached for the
+// rest of the process, so each consuming function opens with a local
+// `const inquirer = await loadInquirer()` and its call sites read unchanged.
+let inquirerModule: typeof inquirer | null = null;
+
+async function loadInquirer(): Promise<typeof inquirer> {
+  inquirerModule ??= (await import('inquirer')).default;
+  return inquirerModule;
+}
 
 export interface AgentWizardSelection {
   id: string;
@@ -49,6 +64,60 @@ export function resolveExistingEngine(existingEngine: string | null): EngineReso
   };
 }
 
+/** One row of the MCP picker — enough to render a choice and to order it. */
+export interface McpChoiceEntry {
+  fileId: string;
+  displayName: string;
+  isEngine: boolean;
+  order?: number;
+}
+
+// Pure helper -- orders MCP choices deterministically: ascending `order`,
+// entries without one last, ties broken by fileId. Since the shard corpus was
+// retired this is the ONLY thing `order` still drives: one engine takes one
+// engine server, so there is no longer any content to concatenate in a defined
+// order. It matters more than cosmetics: inquirer's `type: 'list'` pre-selects
+// the FIRST choice, so without a stable order the wizard's default MCP would
+// vary with filesystem readdir order.
+export function sortMcpChoices(entries: McpChoiceEntry[]): McpChoiceEntry[] {
+  return [...entries].sort((a, b) => {
+    const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) return orderA - orderB;
+
+    return a.fileId.localeCompare(b.fileId);
+  });
+}
+
+// Pure helper -- checkbox pre-selection for a unique-key MCP server.
+// `null` = fresh install (check everything, the historical default); an array =
+// re-init, where we mirror what .unikit.json says is installed. Same semantics
+// as existingInstalledSkills for the skill picker. An empty array is NOT
+// "fresh": it means nothing was selected before, so nothing is pre-checked.
+export function isMcpPreselected(fileId: string, existingMcpServers: string[] | null): boolean {
+  return existingMcpServers ? existingMcpServers.includes(fileId) : true;
+}
+
+// Pure helper -- radio `default` for one duplicate-key group, as an INDEX into
+// the already-sorted entries (inquirer accepts either the value or the index;
+// the index keeps this independent of the choice-value encoding).
+// `undefined` = do not pass a default, which lets inquirer pre-select the first
+// choice, i.e. the `order: 1` recommendation. Returned both for a fresh install
+// and when nothing from this group was previously installed -- "the user skipped
+// this group last time" and "there was no choice to make last time" are
+// indistinguishable on disk, and silently pre-selecting Skip (thereby disabling
+// an MCP on a blind Enter) is worse than re-offering the recommended server.
+export function resolveMcpGroupDefault(
+  sortedEntries: McpChoiceEntry[],
+  existingMcpServers: string[] | null,
+): number | undefined {
+  if (!existingMcpServers) return undefined;
+
+  const index = sortedEntries.findIndex(entry => existingMcpServers.includes(entry.fileId));
+
+  return index === -1 ? undefined : index;
+}
+
 function isCustomRegistry(stored: string | null | undefined): boolean {
   if (!stored) return false;
   const trimmed = stored.trim();
@@ -65,6 +134,7 @@ function isCustomRegistry(stored: string | null | undefined): boolean {
 // `resolveRegistryUrl()` maps them to the official URL at runtime; no
 // migration is needed.
 async function promptRulesRegistry(engineId: string, existingRegistry: string | null): Promise<string> {
+  const inquirer = await loadInquirer();
   const isCustom = isCustomRegistry(existingRegistry);
 
   const { useCustom } = await inquirer.prompt([
@@ -134,7 +204,9 @@ export async function runWizard(
   existingRulesRegistry: string | null = null,
   existingEngine: string | null = null,
   existingInstalledSkills: string[] | null = null,
+  existingMcpServers: string[] | null = null,
 ): Promise<WizardAnswers> {
+  const inquirer = await loadInquirer();
   console.log(chalk.dim('\n\u{1F4A1} Run /unikit after setup to analyze your project and generate project-relevant skills.\n'));
 
   const selectedByDefault = new Set(defaultAgentIds);
@@ -273,28 +345,60 @@ export async function runWizard(
   let engineMcpKey: string | null = null;
 
   if (discoveredServers.size > 0) {
-    // Group servers by server.key (duplicate keys = alternative implementations)
-    const groupedByKey = new Map<string, Array<{ fileId: string; displayName: string; isEngine: boolean }>>();
+    // The picker has exactly two shapes, and the split is `is_engine` + the
+    // catalog directory the server was scanned out of:
+    //
+    //   - ENGINE servers of one directory are alternatives — a project takes one
+    //     of them — so they render as a radio with a Skip. `mcp/godot/` holds
+    //     three, and `godot` / `godot-net` share that directory, which is why the
+    //     grouping is by directory and not by engine id.
+    //   - everything else is additive and renders as a checkbox.
+    //
+    // Before 2.0.0 the axis was `server.key`, which worked only while the
+    // alternatives of one engine were made to share a key by hand. Since `key`
+    // became each JSON's own basename that is no longer true of any of them, and
+    // grouping on it would put every engine server in its own group of one — a
+    // checkbox offering three mutually exclusive Godot servers at once.
+    const engineGroups = new Map<string, McpChoiceEntry[]>();
+    const standaloneEntries: McpChoiceEntry[] = [];
+
     for (const [fileId, server] of discoveredServers) {
-      const group = groupedByKey.get(server.key);
+      const entry: McpChoiceEntry = {
+        fileId,
+        displayName: server.displayName,
+        isEngine: server.isEngine,
+        ...(server.order === undefined ? {} : { order: server.order }),
+      };
+
+      if (!server.isEngine || server.originDir === null) {
+        standaloneEntries.push(entry);
+        continue;
+      }
+
+      const group = engineGroups.get(server.originDir);
       if (group) {
-        group.push({ fileId, displayName: server.displayName, isEngine: server.isEngine });
+        group.push(entry);
       } else {
-        groupedByKey.set(server.key, [{ fileId, displayName: server.displayName, isEngine: server.isEngine }]);
+        engineGroups.set(server.originDir, [entry]);
       }
     }
 
-    // Separate unique keys (checkbox) from duplicate keys (radio groups)
-    const uniqueKeyEntries: Array<{ fileId: string; displayName: string }> = [];
-    const duplicateKeyGroups: Array<{ key: string; entries: Array<{ fileId: string; displayName: string }> }> = [];
+    // A directory holding exactly one engine server has no choice to offer:
+    // fold it into the checkbox rather than rendering a one-option radio.
+    const uniqueKeyEntries: McpChoiceEntry[] = [...standaloneEntries];
+    const duplicateKeyGroups: Array<{ entries: McpChoiceEntry[] }> = [];
 
-    for (const [key, entries] of groupedByKey) {
+    for (const [dir, entries] of engineGroups) {
+      logInfo('wizard:mcp', `engine group "${dir}": ${entries.map(e => e.fileId).join(', ')}`);
       if (entries.length === 1) {
         uniqueKeyEntries.push(entries[0]);
       } else {
-        duplicateKeyGroups.push({ key, entries });
+        // Sorted here, once: the radio's `default` (Task 23) is an INDEX into
+        // this array, so ordering must be settled before it is computed.
+        duplicateKeyGroups.push({ entries: sortMcpChoices(entries) });
       }
     }
+    logInfo('wizard:mcp', `checkbox group: ${uniqueKeyEntries.map(e => e.fileId).join(', ') || '(empty)'}`);
 
     // Unique keys: checkbox (multi-select), all checked by default
     if (uniqueKeyEntries.length > 0) {
@@ -303,10 +407,10 @@ export async function runWizard(
           type: 'checkbox',
           name: 'selected',
           message: 'Configure MCP servers:',
-          choices: uniqueKeyEntries.map(entry => ({
+          choices: sortMcpChoices(uniqueKeyEntries).map(entry => ({
             name: entry.displayName,
             value: entry.fileId,
-            checked: true,
+            checked: isMcpPreselected(entry.fileId, existingMcpServers),
           })),
         },
       ]);
@@ -314,13 +418,23 @@ export async function runWizard(
       mcpServers.push(...(selected as string[]));
     }
 
-    // Duplicate keys: radio per group + Skip
+    // Engine alternatives: radio per group + Skip
     for (const group of duplicateKeyGroups) {
+      // `default` is omitted (not set to undefined explicitly) when there is
+      // nothing to restore, so inquirer falls back to the first choice -- the
+      // `order: 1` recommendation.
+      const groupDefault = resolveMcpGroupDefault(group.entries, existingMcpServers);
       const { selected } = await inquirer.prompt([
         {
           type: 'list',
           name: 'selected',
-          message: `Select MCP server for "${group.key}":`,
+          // The label is the ENGINE's display name, assigned rather than
+          // derived. It used to be the shared `key` ("UnityMCP"), which no
+          // longer exists as a concept; the directory that replaced it as the
+          // grouping axis is a package-layout detail ("mcp/unity") and printing
+          // it would leak our folder names at the user. `engine` is the id the
+          // user just picked, so this is the one name in play they already know.
+          message: `Select MCP server for "${getEngineConfig(engine).displayName}":`,
           choices: [
             ...group.entries.map(entry => ({
               name: entry.displayName,
@@ -328,6 +442,7 @@ export async function runWizard(
             })),
             { name: chalk.dim('Skip'), value: '__skip__' },
           ],
+          ...(groupDefault === undefined ? {} : { default: groupDefault }),
         },
       ]);
 
@@ -340,7 +455,7 @@ export async function runWizard(
     for (const fileId of mcpServers) {
       const server = discoveredServers.get(fileId);
       if (server?.isEngine) {
-        engineMcpKey = server.key;
+        engineMcpKey = server.code;
         break;
       }
     }

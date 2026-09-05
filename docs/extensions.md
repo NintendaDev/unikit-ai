@@ -42,49 +42,47 @@ unikit-ai extension remove unikit-ext-example
 
 ### What Happens on Install
 
-1. Extension source is resolved (local path, git clone, or GitHub API)
+1. Extension source is resolved (local path, or a shallow `git clone` for both git and GitHub sources)
 2. Manifest (`extension.json`) is validated
 3. Command module files are verified to exist (if `commands` is defined)
 4. Extension files are copied to `.unikit/extensions/<name>/`
-5. Extension is recorded in `.unikit.json` under `extensions`
-6. Skills are installed into all configured agents (applying agent-specific transformers)
-7. Subagents are installed into agents that support them
-8. Injections are applied to matching skill/subagent files
-9. MCP servers are merged into each agent's settings file
+5. Skills are installed into all configured agents (applying agent-specific transformers)
+6. Subagents are installed into agents that support them
+7. Injections are applied to matching skill/subagent files
+8. MCP servers are merged into each agent's settings file
+9. Extension is recorded in `.unikit.json` under `extensions` - **last**, only once every asset above is on disk, so an interrupted install never leaves a recorded extension whose files never arrived
 10. Command modules are available on next CLI invocation
 
 ### What Happens on Update
 
 Running `unikit-ai update`:
 
-1. **Self-update check** - prompts to update the CLI if a newer version exists
+1. **Extension refresh** - every installed extension is re-resolved from its source and compared by manifest `version`; changed ones are re-committed
 2. **Base skill update** - updates installed base skills (hash-based change detection)
-3. **Extension refresh** - checks installed extensions for updates from their sources:
-   - GitHub repos: fetches `extension.json` via GitHub API (faster than cloning)
-   - Git repos: requires `--force` to refresh
-   - Local paths: requires `--force` to refresh
-   - Extensions with unchanged versions are skipped
-4. **Re-apply injections** - all extension injections are re-applied automatically
+3. **Re-apply injections** - all extension injections are re-applied automatically
 
-`unikit-ai update --force` forces a clean reinstall of base skills AND forces extension refresh regardless of version changes.
+The extension refresh runs **before** the base-skill update, so a skill an extension replaces is already in place when the base pass walks the skill list.
+
+`unikit-ai update` does **not** check whether a newer CLI version is on npm. Updating the CLI package itself is a separate, explicitly-invoked command:
+
+```bash
+unikit-ai self-update   # update the CLI package from npm
+unikit-ai update        # update this project's installed content
+```
+
+`unikit-ai update --force` forces a clean reinstall of base skills AND re-commits every extension regardless of whether its version changed.
 
 #### Extension Update Behavior
 
+All three source types are treated **identically**: the source is always re-resolved, and the freshly-read manifest `version` is compared against the recorded one. `--force` only controls whether an *unchanged* version is re-committed anyway.
+
 | Source Type | Version Check | `--force` Behavior |
 |-------------|---------------|-------------------|
-| GitHub | API fetch of `extension.json`, skip if unchanged | Always re-clone |
-| Git (non-GitHub) | Requires `--force` | Always re-clone |
-| Local path | Requires `--force` | Re-copy from source |
+| GitHub | Shallow clone, compare manifest `version`, skip if unchanged | Re-commit even when unchanged |
+| Git (non-GitHub) | Shallow clone, compare manifest `version`, skip if unchanged | Re-commit even when unchanged |
+| Local path | Re-read manifest, compare `version`, skip if unchanged | Re-copy from source |
 
-#### GitHub API Rate Limits
-
-GitHub API requests use `GITHUB_TOKEN` if present (5,000 req/hr). Without a token, you're limited to 60 req/hr. If rate-limited, the extension refresh is skipped with a warning - the broader `update` continues.
-
-```bash
-# Set GITHUB_TOKEN for higher rate limits
-export GITHUB_TOKEN=ghp_xxxx
-unikit-ai update
-```
+There is no GitHub-API fast path and no `GITHUB_TOKEN` handling in the refresh flow - a GitHub source is cloned like any other git source, so GitHub API rate limits never apply to `unikit-ai update`.
 
 ### Updating Extensions Separately
 
@@ -171,7 +169,7 @@ Only `name` and `version` are required. All other fields are optional.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `string` | Yes | Unique extension name. Must match `unikit-ext-<lowercase-alphanumeric-hyphens>` |
+| `name` | `string` | Yes | Unique extension name. Must match `^[a-zA-Z0-9_@][\w.@/-]*$` - see [Name Validation](#name-validation) |
 | `version` | `string` | Yes | SemVer version (e.g., `1.0.0`) |
 | `description` | `string` | No | Human-readable description |
 | `commands` | `ExtensionCommand[]` | No | CLI commands registered at startup (see [Commands](#commands)) |
@@ -183,10 +181,12 @@ Only `name` and `version` are required. All other fields are optional.
 
 ### Name Validation
 
-Extension names must match the pattern: `^unikit-ext-[a-z][a-z0-9-]*$`
+Extension names must match the pattern: `^[a-zA-Z0-9_@][\w.@/-]*$` - start with an alphanumeric, `_` or `@`, then word characters, dots, `@`, `/` or `-`.
 
-Valid: `unikit-ext-hello`, `unikit-ext-custom-commit`, `unikit-ext-v2`
-Invalid: `my-extension`, `unikit-ext-`, `unikit-ext-Hello`, `unikit-ext-hello_world`
+Valid: `unikit-ext-hello`, `my-extension`, `@scope/my-ext`, `unikit-ext-v2`, `Custom_Ext`
+Invalid: `-leading-hyphen`, `.dotfile`, `../traversal`, `name with spaces`
+
+The `unikit-ext-` prefix used throughout this page is a **naming convention**, not a requirement - it keeps third-party extensions visually distinct from bundled UniKit content. The validator does not enforce it, and lowercase is not enforced either.
 
 ---
 
@@ -233,8 +233,9 @@ The replacement skill is installed **under the base skill name**. For example, `
 2. The replacement is recorded in `.unikit.json`
 
 **On update** (`unikit-ai update`):
-1. Extension replacement skills are re-installed from `.unikit/extensions/`
-2. If the extension manifest is missing or broken, the base skill is restored automatically
+1. The base-skill pass **skips** every skill an extension replaces, so the replacement survives the update untouched rather than being overwritten by the packaged original
+2. The extension's own `skills` and `subagents` are reinstalled from `.unikit/extensions/`. A `replaces` entry is not itself reinstalled - it is protected by the skip above
+3. If an extension's manifest is missing or unreadable, that extension is skipped with a warning and the update continues. The base skill is **not** restored - restoring an original is exclusively the job of `unikit-ai extension remove`
 
 **On remove** (`extension remove`):
 1. The replacement skill is removed (by its base name)
@@ -365,25 +366,15 @@ Extensions can provide MCP (Model Context Protocol) server configurations that a
 
 #### MCP Template Format
 
-The template must contain either a `command` or `url` field, and may optionally declare tool permissions that are injected into installed skills and subagents:
+The template file is the **server config itself** — the object that lands under your key in the agent's settings file. It is written through verbatim, so it holds exactly what your MCP client expects and nothing more: no `key` (that comes from the manifest entry), no wrapper `config` object, no metadata fields.
+
+Validation is one rule: the template must carry a top-level `command` **or** `url`. A template that carries neither is rejected with a warning and that server is skipped — the rest of the install continues.
 
 ```json
 {
-  "key": "context7",
-  "displayName": "Context7 (library documentation)",
-  "instruction": "Context7: No additional configuration needed.",
-  "config": {
-    "command": "npx",
-    "args": ["-y", "@upstash/context7-mcp@latest"]
-  },
-  "allowed-tools": {
-    "agents": {
-      "my-subagent": ["resolve-library-id", "query-docs"]
-    },
-    "skills": {
-      "my-skill": ["resolve-library-id", "query-docs"]
-    }
-  }
+  "command": "npx",
+  "args": ["-y", "<your-mcp-package>"],
+  "env": { "MY_SERVER_TOKEN": "..." }
 }
 ```
 
@@ -391,14 +382,14 @@ Or for HTTP-based servers:
 
 ```json
 {
-  "config": {
-    "type": "http",
-    "url": "http://localhost:9090/mcp"
-  }
+  "type": "http",
+  "url": "http://localhost:9090/mcp"
 }
 ```
 
-The `config` object is merged into each agent's settings file under `mcpServers.<key>`. All agents with MCP support receive the server entry:
+> The richer per-server schema used by the servers UniKit **ships** — `key`, `displayName`, `docs`, `rules`, `order`, `configByPlatform`, `allowed-tools` — is a different format, read from the package's own `mcp/` directory. It does not apply to extension templates. See [MCP JSON schema fields](configuration.md#mcp-json-schema-fields).
+
+The template is written into each agent's settings file under `mcpServers.<key>` (the exact container and field names vary per agent — the writer handles that). All agents with MCP support receive the server entry:
 
 | Agent | MCP Settings File |
 |-------|------------------|
@@ -407,19 +398,24 @@ The `config` object is merged into each agent's settings file under `mcpServers.
 | Cursor | `.cursor/mcp.json` |
 | Qwen Code | `.qwen/settings.json` |
 | OpenCode | `opencode.json` |
+| Antigravity | `.agents/mcp_config.json` |
 
 On `extension remove`, the key is deleted from the settings file.
 
-#### Tool Permission Injection (`allowed-tools`)
+#### Tool permissions for an extension MCP server
 
-The optional `allowed-tools` block declares which MCP tools each skill or subagent is allowed to call. At install time the tool names are expanded into the fully qualified MCP form (`mcp__<server-key>__<tool>`) and injected into the target skill/subagent frontmatter. The frontmatter field differs per agent:
+**An extension MCP server does not grant tools to skills.** Installing the extension writes the server into the agent's settings file, and that is the whole of it — an `allowed-tools` block placed in a template is not read by anything. Grant declarations are a feature of the servers UniKit ships, not of extension templates.
 
-- Claude Code uses `allowed-tools:` (comma-separated list appended to the existing value)
-- All other agents use `tools:` in the same shape
+What the extension installer does do, right after writing the server config, is **re-inject the grants of the packaged servers** into the skills and subagents those servers name as recipients. That step exists so a replacement skill delivered by your extension still receives the MCP tools it is entitled to; it never widens anything on your extension's behalf.
 
-Injection is idempotent: re-running install, update, or extension refresh merges new entries and deduplicates existing ones, never duplicating a tool already present. Removing the extension also strips the injected tool names back out of the frontmatter lists, preserving any tools that were declared manually or by other sources.
+If a skill in your extension must call your server, add the qualified name — `mcp__<your-key>__<tool>`, or `mcp__<your-key>__*` for the whole server — to that skill's own `allowed-tools:` frontmatter, which your extension ships. Whether that entry survives an `update` depends on one thing:
 
-Use `allowed-tools` when a skill must reach a specific MCP server (for example `/unikit-explore` calling Context7 for library docs), while keeping unrelated skills in the project unaffected.
+- **A skill under its own name survives.** The re-injection pass opens only the skills and subagents that a packaged server actually names as a recipient. Your own skill is not one of them, so nothing ever rewrites its frontmatter.
+- **A skill that *replaces* a packaged one may not.** If the skill you replace is a recipient of a packaged grant, the pass opens it — and it is a sync: every `mcp__`-prefixed entry the packaged servers do not currently grant is removed, yours included. Entries without that prefix (`Read`, `Bash`, `Agent`, …) are never touched.
+
+So for a replacement skill, treat the frontmatter grant as non-durable and reach your server from a skill that carries its own name instead.
+
+For how the packaged servers declare grants — wildcards for executors, a narrow list only where narrowing is the point — see [Tool grants](configuration.md#tool-grants-allowed-tools).
 
 ---
 
@@ -536,7 +532,7 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{skills_cli_agent_flag}}` | `--agent claude-code` | CLI agent flag |
 | `{{engine_name}}` | `Unity` | Game engine name |
 | `{{engine_code_language}}` | `CSharp` | Engine's programming language |
-| `{{engine_mcp_tool}}` | `UnityMCP` | Engine MCP server key |
+| `{{engine_mcp_tool}}` | `unity-biome-mcp` | Vendor code of the engine MCP server — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. Not the server's file id. |
 
 Use these in SKILL.md files to write agent-agnostic skills:
 
@@ -639,7 +635,7 @@ This ensures the project stays in a consistent state even if installation fails 
 
 ## Security Considerations
 
-- **Extension names are validated** - names must match `unikit-ext-<lowercase-alphanumeric-hyphens>`, preventing path traversal
+- **Extension names are validated** - the name must start with an alphanumeric, `_` or `@` and contain only word characters, dots, `@`, `/` and `-`, so a name can never begin with `.` or `-` and cannot express a `../` traversal segment
 - **Git clones use shallow depth** - `git clone --depth 1` for minimal download
 - **Manifest validation** - all manifest fields are strictly validated before installation
 - **Replacement conflicts** - no two extensions can replace the same base skill

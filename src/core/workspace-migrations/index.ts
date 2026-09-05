@@ -18,17 +18,16 @@ import path from 'path';
 import { fileExists, movePath } from '../../utils/fs.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
-  CODE_MODULE_ID, UNIKIT_DIR,
+  CODE_MODULE_ID, MIGRATION_SINCE_MODULAR_LAYOUT, UNIKIT_DIR,
   WORKSPACE_ARTIFACT_DIRS, WORKSPACE_ARTIFACT_FILES, WORKSPACE_ARTIFACT_RENAMES,
   workspaceDir,
 } from '../constants.js';
 import type { Migration } from '../migrations/types.js';
+import type { WorkspaceMigrationContext } from './context.js';
 
 const LOG_TAG = 'workspace:migrate';
 
-interface WorkspaceMigrationContext {
-  projectDir: string;
-}
+export type { WorkspaceMigrationContext } from './context.js';
 
 /** One relocation: `<flatRoot>/<from>` → `<codeRoot>/<to>` (basenames may differ). */
 interface Relocation {
@@ -57,6 +56,11 @@ function relocations(): Relocation[] {
  */
 const workspaceCodeRelocationMigration: Migration<WorkspaceMigrationContext> = {
   id: 'workspace-1-to-2-code-relocate',
+  // Same anchor as the memory wrap: both belong to the modular layout. It is
+  // deliberately inert for the projects this step actually targets — they sit
+  // at 1.1.0 already, and `lt('1.1.0','1.1.0')` is false — so `detect` carries
+  // this step alone, exactly as it did before anchors existed.
+  since: MIGRATION_SINCE_MODULAR_LAYOUT,
 
   async detect({ projectDir }) {
     const flatRoot = path.join(projectDir, UNIKIT_DIR);
@@ -95,3 +99,16 @@ const workspaceCodeRelocationMigration: Migration<WorkspaceMigrationContext> = {
 export const PROJECT_WORKSPACE_MIGRATIONS: readonly Migration<WorkspaceMigrationContext>[] = [
   workspaceCodeRelocationMigration,
 ];
+
+// The plan-manifest merge lives one level deeper — inside the plan folders this
+// step relocates — and is a separate concern with a separate anchor, so it is
+// its own set rather than a third entry above. `PROJECT_MEMORY_MIGRATIONS`
+// declares the sets in release order and Part 7e4 reads that declaration as a
+// timeline, which is the reason a step never joins a set anchored below it.
+//
+// The ordering that actually matters is not declaration order but the anchor:
+// the merge walks `.unikit/code/plans/*`, which does not exist on a pre-modular
+// project until the relocation above has run, and 1.1.0 < 2.0.0 guarantees it.
+export { PROJECT_PLAN_ARTIFACT_MIGRATIONS } from './plan-artifact.js';
+export { PROJECT_RESEARCH_ARTIFACT_MIGRATIONS } from './research-artifact.js';
+export { PROJECT_PLAN_TIMESTAMP_MIGRATIONS } from './plan-timestamps.js';

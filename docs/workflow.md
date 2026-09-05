@@ -47,26 +47,35 @@ Run once per project. Sets up context files that all workflow skills depend on.
  │              │     │    claude    │     │          /unikit             │
  │  unikit-ai   │ ──▶ │  (or any AI  │ ──▶ │                             │
  │    init      │     │    agent)    │     │  Scan stack, generate:      │
- │              │     │              │     │    DESCRIPTION.md           │
- └──────────────┘     └──────────────┘     │    AGENTS.md               │
-                                           │    ARCHITECTURE.md         │
+ │              │     │              │     │    config.yaml              │
+ └──────────────┘     └──────────────┘     │    DESCRIPTION.md           │
+                                           │    AGENTS.md               │
                                            │    Stack rules for memory  │
+                                           │                             │
+                                           │  then, as its LAST step,    │
+                                           │  delegates to:              │
+                                           │  ┌───────────────────────┐  │
+                                           │  │ /unikit-architecture  │  │
+                                           │  │  → ARCHITECTURE.md    │  │
+                                           │  └───────────────────────┘  │
                                            └──────────────┬──────────────┘
                                                           │
-                          ┌───────────────────────────────┼────────────────────┐
-                          │                               │                    │
-                          ▼                               ▼                    ▼
-             ┌──────────────────────┐      ┌──────────────────┐  ┌──────────────────┐
-             │ /unikit-architecture │      │  /unikit-memory  │  │  /unikit-rules   │
-             │   (refine arch.)     │      │   (add rules)    │  │   (optional)     │
-             └──────────┬───────────┘      └────────┬─────────┘  └──────────────────┘
-                        │                           │
-                        ▼                           ▼
-             ┌──────────────────┐        ┌──────────────────┐
-             │  /unikit-roadmap │        │   /unikit-docs   │
-             │  (recommended)   │        │   (optional)     │
-             └──────────────────┘        └──────────────────┘
+                                    ┌─────────────────────┼─────────────────┐
+                                    │                     │                 │
+                                    ▼                     ▼                 ▼
+                        ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+                        │  /unikit-roadmap │  │  /unikit-memory  │  │  /unikit-rules   │
+                        │  (recommended)   │  │   (add rules)    │  │   (optional)     │
+                        └──────────────────┘  └──────────────────┘  └──────────────────┘
+                                    │
+                                    ▼
+                        ┌──────────────────┐
+                        │   /unikit-docs   │
+                        │   (optional)     │
+                        └──────────────────┘
 ```
+
+`ARCHITECTURE.md` is **not** written by `/unikit` itself — `/unikit` delegates to `/unikit-architecture` as its own mandatory final step, so the setup summary can honestly list the file alongside the others. `/unikit-architecture` is also runnable standalone later, to refresh the guidelines after the architecture has moved.
 
 ## Development Workflow
 
@@ -95,9 +104,9 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
  │      /unikit-plan        │                │    /unikit-fix     │
  │                          │                │                    │
  │  fast → no branch,       │                │   Bug fixes        │
- │         TASKS.md         │                │   With patches     │
+ │         PLAN.md          │                │   With patches     │
  │  full → git branch,      │                │                    │
- │         TASKS.md         │                └─────────┬──────────┘
+ │         PLAN.md          │                └─────────┬──────────┘
  │  add  → extend plan      │                          │
  └─────────────┬────────────┘                          ▼
                │                          ┌────────────────────┐
@@ -155,18 +164,21 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
           └──────────────────────┘
 ```
 
+In ultra the same box additionally holds `phase-NN-*.md` files.
+
 ## When to Use What?
 
 | Command | Use Case | Creates Branch? | Output |
 |---------|----------|-----------------|--------|
 | `/unikit-roadmap` | Strategic planning, milestones, long-term vision | No | `.unikit/ROADMAP.md` |
 | `/unikit-roadmap check` | Automated progress scan | No | Reads existing roadmap |
-| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<date>_<name>/` (optional - output can be used directly in the current session for fast planning) |
+| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` (optional - output can be used directly in the current session for fast planning) |
 | `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
-| `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/{date}_{name}/` |
+| `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/<name>/` |
+| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Yes | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
-| `/unikit-implement` | Execute plan tasks one by one | No | Updates `TASKS.md` status |
+| `/unikit-implement` | Execute plan tasks one by one | No | Updates the plan manifest status |
 | `/unikit-fix` | Bug fixes, errors, hotfixes | No | Optional `.unikit/code/FIX_PLAN.md` |
 | `/unikit-verify` | Post-implementation quality check | No | Verification report |
 | `/unikit-review` | Code review against rules | No | Review report |
@@ -204,13 +216,13 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit-architecture` | `.unikit/ARCHITECTURE.md` | Architecture guidelines |
 | `/unikit-roadmap` | `.unikit/ROADMAP.md` | Milestone tracking |
 | `/unikit-rules` | `.unikit/RULES.md` | Append/update rules only |
-| `/unikit-plan` | `.unikit/code/plans/*/TASKS.md`, `PLAN-BRIEF.md` | `/unikit-improve` refines |
+| `/unikit-plan` | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-improve` refines |
 | `/unikit-explore` | `.unikit/code/researches/` | Exploration artifacts |
 | `/unikit-fix` | `.unikit/code/FIX_PLAN.md`, `.unikit/code/patches/*.md` | Bug-fix learning loop |
 | `/unikit-evolve` | `.unikit/evolutions/*`, `.unikit/skill-context/*` | Evolution logs + skill overrides |
 | `/unikit-memory` | `.unikit/memory/code/{core,stack}/`, `RULES_INDEX.md` | Dynamic memory management (module-aware; see [Dynamic Memory](dynamic-memory.md)) |
 | `/unikit-skills-context` | `.unikit/skill-context/<skill>/SKILL.md` | Skill workflow overrides |
-| `/unikit-implement` | `.unikit/code/plans/*/TASKS.md` (status updates) | Marks tasks complete |
+| `/unikit-implement` | `.unikit/code/plans/*/PLAN.md` (status updates) | Marks tasks complete |
 | `/unikit-todo` | `.unikit/TODO.md` | Lightweight task list |
 | `/unikit-docs` | `README.md`, `docs/*.md`, `AGENTS.md` | Documentation generation |
 | `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report, no writes |
@@ -233,53 +245,56 @@ High-level project planning with milestone tracking (5-15 milestones). Recommend
 
 Creates `.unikit/ROADMAP.md` - a strategic checklist of major milestones (not granular tasks). First run: explores codebase, asks for goals, generates roadmap. Subsequent runs: review progress, add/reprioritize/mark milestones done. `check` mode automatically scans the codebase and git history for evidence of completed milestones. `/unikit-implement` also checks the roadmap after completing plan tasks.
 
-### `/unikit-explore [init | topic]` - discovery before planning
+### `/unikit-explore [ultra | topic]` - discovery before planning
 
 ```
 /unikit-explore real-time multiplayer sync
 /unikit-explore the inventory system is getting complex
-/unikit-explore init
+/unikit-explore real-time-multiplayer-sync   # the slug of the first example → continues it
 ```
 
-Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/YYYY-MM-DD_name/` with three files:
+Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/<slug>/` with a single `RESEARCH.md` manifest:
 
-- `RESEARCH_RESULT.md` - structured research output with comparison tables, ASCII diagrams, and trade-off analysis
-- `RESEARCH_BRIEF.md` - agent-optimized summary designed for downstream workflow skills to consume efficiently
-- `RESEARCH_SOURCE.md` - aggregation of original prompts, agent questions, and all user answers that drove the research
+- `RESEARCH.md` - the whole research in one file: a header carrying `Created:` / `Updated:` / `Status:` / `Lifecycle:`, an `## Active Summary` between two markers (the declared input for planning), the measured `## Findings`, and an append-only `## Sessions` log
+- `SOURCE.md` - the original prompts, agent questions and user answers that drove the research; kept separate because it is a log that grows on its own and is read for its first forty lines
+- adaptive artifacts in `ultra` - a C4 view, ADRs, a dependency graph, a `CONTRACTS.md`, each written only when the subject actually produced one, and each *named with its reason* when it was not
 
-All three files are automatically picked up by `/unikit-plan` - the planner reads them, incorporates context from all angles (structured analysis, agent-readable brief, raw decision history), and links the research as a source in the generated plan. Saving artifacts is the recommended approach for maximum code quality, but not mandatory. For quick, straightforward solutions you can skip saving and call `/unikit-plan` directly in the current explore session - the planner will use the conversation context instead.
+`/unikit-plan` picks the research up from `researches/INDEX.md` and reads the `## Active Summary` as its declared input, using `## Findings` and the adaptive artifacts for rationale. Saving is the recommended approach for maximum code quality, but not mandatory. For quick, straightforward solutions you can skip saving and call `/unikit-plan` directly in the current explore session - the planner will use the conversation context instead.
 
-Maintains `researches/INDEX.md`; use `init` to rebuild the index from disk. When direction is clear, transition to `/unikit-plan`. Uses parallel Explore agents for deep codebase investigation.
+Re-running `/unikit-explore` on an existing slug **continues** that research rather than opening a second folder: `## Sessions` gains an entry, `Updated:` moves, and the summary above it is rewritten to say what is now true. `researches/INDEX.md` is regenerated from the folders on every save, so it cannot fall behind them - there is no separate rebuild command. When direction is clear, transition to `/unikit-plan`. Uses parallel Explore agents for deep codebase investigation.
 
 When a linked `gamedesign` workspace exists, it also grounds first-class on the design registry - systems, `flows:`, and `content_types:` in `GD-IDS.yaml` - resolving whichever axis the request actually names, so research stays consistent with the GDD (read-only; never edits it).
 
-### `/unikit-plan [fast|full|add|--list] <description>` - plan the work
+### `/unikit-plan [fast|full|ultra|add|--list] <description>` - plan the work
 
 ```
 /unikit-plan Add item rarity system              # Asks which mode
 /unikit-plan fast Add sound effects manager       # Quick plan, no branch
 /unikit-plan full Add item rarity system          # Git branch + full plan
+/unikit-plan ultra Add item appraisal system       # Git branch + plan bundle
 /unikit-plan add Add visual effects to rarity     # Extend existing plan
 /unikit-plan --list                               # Show available plans
 ```
 
-Three planning modes plus list:
+Four planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
-- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/YYYY-MM-DD_name/` with `TASKS.md` + `PLAN-BRIEF.md`
+- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/<name>/` with a single `PLAN.md` manifest. The folder name matches the branch name character for character; the date lives in the manifest's `Created:` / `Updated:` fields ([why](plan-files.md#why-a-plan-folder-has-no-date-and-a-patch-file-does))
+- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: ask for it, or you get Full. Ultra is **user-named, never model-inferred** — it is recognised wherever the request sits in the sentence and in any language ("ultra plan", "ultraplan", "ультраплан", "make an ultra plan for the inventory"), but it must be an actual request. Size is not a request, and wording that only asks for care — "a deep plan", "plan this thoroughly" — is deliberately *not* ultra: the skill falls through and asks instead, because an unwanted bundle leaves you a folder of phase files you never asked for while a missed one costs you one word. The **shape of what you get** is held separately, by the redirect in `TASK-FORMAT.md` and the `ULTRA-PLAN-FORMAT.md` specification; without that second mechanism, asking for ultra still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
 - **Add** - extends an existing plan with new tasks
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
 
 When a linked `gamedesign` workspace exists, the plan also pulls a `## Design` brief from `GD-IDS.yaml` (citing the relevant system's acceptance criteria and version), plus optional `## Flow Context` (the `GOAL`-steps and wiring mode) and `## Content Context` (the `CT.fields` schema, `scale`, `belongs_to`) briefs when the feature touches those axes. The pull is read-only - the plan never edits the GDD.
 
-### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
+### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
 ```
-/unikit-improve                                          # Improve latest plan
+/unikit-improve                                          # Resolve + announce the plan, then improve
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
-/unikit-improve @.unikit/code/plans/2026-03-10_core-loop      # Improve specific plan
+/unikit-improve @.unikit/code/plans/core-loop            # Improve specific plan
+/unikit-improve +check                                   # Validate refinements first
 ```
 
 Optional but recommended step. For complex tasks the agent rarely produces a complete plan on the first attempt - edge cases, risks, and dependencies get missed. Improve lets the agent review the finished plan from multiple angles and refine it. Recommended to run at least once after planning; for complex tasks - 2-3 times.
@@ -291,7 +306,7 @@ Second-pass analysis. Runs 2-3 deep Explore agents to:
 - Remove redundant work
 - Check architectural consistency
 
-Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Updates both TASKS.md and PLAN-BRIEF.md in sync.
+Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date — and the resolved plan is announced on an `INFO [plan] resolved:` line before anything else runs. A branch that matches no plan makes *latest* a guess, so the candidates are shown and the choice is put to the user instead of being taken silently. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Edits the manifest in place; `Write` over it is forbidden.
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
@@ -302,22 +317,27 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 /unikit-implement Phase 3            # Execute only Phase 3
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
-/unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
+/unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
 
-Reads skill-context rules first, then plan TASKS.md. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
+Reads skill-context rules first, then the plan manifest. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
+
+Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text after a mandatory git commit. See [Editor tasks](plan-files.md#editor-tasks).
 
 After phase completion:
 
-- Runs compilation check (UnityMCP)
+- Runs compilation check (through the engine MCP server)
 - Runs tests if `Testing: yes`
 - Creates commit checkpoint
 
-Post-completion:
+Post-completion, in order:
 
 - Checks TODO.md for resolved tasks
 - Proposes new rules via background agents
 - Triggers documentation checkpoint if `Docs: yes`
+- Decides what to do with the plan file
+- **Offers to move MCP findings to the durable log** - if the plan's `## MCP Findings` table has rows, hands the plan path to `/unikit-mcp-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
+- Offers `/unikit-review` then `/unikit-commit` - **invoked as skills, in your session**, not delegated to a subagent. That distinction is real: a subagent carries findings into a context you cannot see, `file:line` references stop being clickable, and you cannot ask a follow-up question about a finding. The two steps above it *are* delegated, because their output is a file rather than a conversation
 
 ### `/unikit-fix [bug description]` - fix and learn
 
@@ -350,17 +370,18 @@ Mature rules from `RULES.md` can be migrated into permanent dynamic memory (`cor
 
 Closes the learning loop: **fix -> patch -> evolve -> better skills -> fewer bugs**.
 
-### `/unikit-review [target]` - code review
+### `/unikit-review [+check] [target]` - code review
 
 ```
 /unikit-review                         # Staged changes (default)
 /unikit-review PlayerController.cs     # Specific file(s)
-/unikit-review @Assets/Scripts/Player  # Folder (all .cs files)
+/unikit-review @Assets/Scripts/Player  # Folder (all source files)
 /unikit-review 123                     # PR by number (#42 or URL also work)
 /unikit-review master                  # Commits vs branch/tag
+/unikit-review +check                  # Validate findings before reporting
 ```
 
-Reviews Unity C# code against the project's full rule hierarchy. Four modes: staged changes, file/folder, PR, commits.
+Reviews code against the project's full rule hierarchy. Four modes: staged changes, file/folder, PR, commits.
 
 Loads rules in priority order: RULES.md (highest) -> skill-context -> core rules -> stack rules (loaded selectively based on frameworks detected in target code). Severity scale:
 
@@ -371,18 +392,26 @@ Loads rules in priority order: RULES.md (highest) -> skill-context -> core rules
 
 Reports include concrete code fixes for Critical/Warning items. Commits mode also checks message accuracy and atomicity. After review, run `/unikit-fix` to address found issues - it automatically picks up the review results and offers to fix everything or select specific problems. Then proceeds as usual: fix now or plan first.
 
+#### The two gates: `+check` and `unikit-gate-result`
+
+`/unikit-review` and `/unikit-verify` are the pipeline's two quality gates, and they share two mechanisms:
+
+- **`+check`** is an opt-in flag (also available on `/unikit-improve`) that sends the findings to a **fresh-context validator** before they reach you - a read-only subagent with no memory of how the findings were produced, which drops, modifies, or reclassifies anything it cannot substantiate from the code. It never prompts. If the validator cannot be launched, the pass is skipped rather than faked: every finding is kept and one `WARN [+check]` line is printed.
+- **`unikit-gate-result`** is a machine-readable fenced JSON block emitted as the **last** fence of the report - gate `verify` from `/unikit-verify` (projecting its task audit and context gates), gate `review` from `/unikit-review` (projecting its findings table, recomputed from the post-filter findings under `+check`). It is what lets a coordinator, a CI step, or another skill read the gate's verdict without parsing prose. The schema is installed at `.unikit/system/gate-result-contract.md`.
+
 ### `/unikit-verify [--strict] [feature-name]` - check completeness
 
 ```
 /unikit-verify                           # Verify implementation against plan
 /unikit-verify --strict                  # Strict mode - zero tolerance for gaps
-/unikit-verify 2026-03-08_customers      # Verify specific feature
+/unikit-verify customers-system          # Verify specific feature
 ```
 
 Goes through every task in the plan and verifies the code actually implements it. Runs per-phase Explore agents for completion audit. Checks:
 
-- Unity compilation (UnityMCP)
+- Engine compilation (through the engine MCP server)
 - Tests
+- Editor targets — read back through the engine MCP, not Glob/Grep (a task with an `Editor:` line has no implementing source to find)
 - `.meta` file pairing
 - Asmdef boundaries (Modules -> Game FORBIDDEN)
 - Leftover TODOs/FIXMEs
@@ -392,7 +421,7 @@ Goes through every task in the plan and verifies the code actually implements it
 
 When the plan cited a design system's acceptance criteria and all of them are met, stamps `implemented_version` back into `GD-IDS.yaml` - the one sanctioned code -> design write, checked against the AC snapshotted in the plan rather than the live GDD.
 
-Strict mode raises the bar: partial completion is a failure, compilation and tests are required, leftover TODOs are blocking. If gaps are found, suggests `/unikit-fix`.
+Strict mode raises the bar: partial completion is a failure, compilation and tests are required, leftover TODOs are blocking. Two carve-outs survive strict mode, because failing them would fail correctly completed work: an editor target the configured server cannot read back, and one marked `⏸️ MANUAL` because you took it on yourself. If gaps are found, suggests `/unikit-fix`.
 
 ### `/unikit-commit [scope]` - conventional commits
 
@@ -401,11 +430,11 @@ Strict mode raises the bar: partial completion is a failure, compilation and tes
 /unikit-commit inventory
 ```
 
-Creates conventional commits with Unity-specific safety checks. Analyzes staged changes and verifies:
+Creates conventional commits with engine-aware safety checks. Analyzes staged changes and verifies:
 
-- `.meta` file pairing
+- Companion/metadata file pairing where the engine requires it (Unity `.meta` files and their equivalents)
 - Binary assets and secrets
-- Unity-ignored directories (Library, Temp, Logs)
+- Engine-ignored directories, read from the project's own `.gitignore` (on Unity: `Library`, `Temp`, `Logs`)
 
 Runs read-only context gates against ARCHITECTURE.md and RULES.md. References plan task numbers in commit message when an active plan exists. Suggests commit splitting for unrelated staged changes. Offers to push after commit. Conventional prefix is always in English; description uses the configured language.
 

@@ -1,5 +1,8 @@
 import type { McpWriter } from './index.js';
+import { findKeyInContainer } from './shared.js';
+import { MCP_COMMENT_KEY } from '../constants.js';
 import { fileExists, readTextFile } from '../../utils/fs.js';
+import { logInfo } from '../../utils/log.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -29,32 +32,65 @@ function sanitizeEnv(env: Record<string, unknown>, serverKey: string): Record<st
 
 function toOpenCodeServerConfig(rawConfig: Record<string, unknown>, serverKey: string): Record<string, unknown> | null {
   const cmd = rawConfig['command'];
+  const url = rawConfig['url'];
   const args = rawConfig['args'];
   const env = rawConfig['env'];
 
-  if (typeof cmd !== 'string') {
+  let out: Record<string, unknown>;
+
+  if (typeof cmd === 'string') {
+    const commandArray: unknown[] = [cmd];
+    if (Array.isArray(args)) {
+      commandArray.push(...args);
+    } else if (args !== undefined) {
+      console.warn(`[mcp] opencode: server "${serverKey}" has non-array args field, ignoring`);
+    }
+
+    out = {
+      type: 'local',
+      command: commandArray,
+    };
+
+    if (isRecord(env)) {
+      const sanitized = sanitizeEnv(env, serverKey);
+      if (Object.keys(sanitized).length > 0) {
+        out['environment'] = sanitized;
+      }
+    }
+
+    logInfo('mcp', `opencode: ${serverKey} -> local`);
+  } else if (typeof url === 'string') {
+    out = {
+      type: 'remote',
+      url,
+    };
+
+    logInfo('mcp', `opencode: ${serverKey} -> remote (${url})`);
+
+    const headers = rawConfig['headers'];
+    if (isRecord(headers)) {
+      out['headers'] = headers;
+      // Count only, never the values — a header is where a bearer token sits.
+      logInfo('mcp', `opencode: ${serverKey} — ${Object.keys(headers).length} header(s) carried through`);
+    }
+  } else {
     const type = typeof rawConfig['type'] === 'string' ? ` (type="${rawConfig['type'] as string}")` : '';
-    console.warn(`[mcp] opencode: skipping server "${serverKey}"${type} — OpenCode writer supports only stdio servers with a string "command" field`);
+    console.warn(`[mcp] opencode: skipping server "${serverKey}"${type} — OpenCode writer needs either a string "command" (local transport) or a string "url" (remote transport)`);
     return null;
   }
 
-  const commandArray: unknown[] = [cmd];
-  if (Array.isArray(args)) {
-    commandArray.push(...args);
-  } else if (args !== undefined) {
-    console.warn(`[mcp] opencode: server "${serverKey}" has non-array args field, ignoring`);
-  }
-
-  const out: Record<string, unknown> = {
-    type: 'local',
-    command: commandArray,
-  };
-
-  if (isRecord(env)) {
-    const sanitized = sanitizeEnv(env, serverKey);
-    if (Object.keys(sanitized).length > 0) {
-      out['environment'] = sanitized;
-    }
+  // One point, deliberately AFTER the fork rather than inside the remote branch:
+  // carrying the hint only on remote would reproduce the very asymmetry this
+  // writer just lost, along a different axis — a future stdio server shipping a
+  // hint would lose it on OpenCode and nowhere else.
+  //
+  // Named passthrough of ONE key, not a general passthrough of unknown fields.
+  // A general one would defeat the point of this writer: it deliberately does
+  // not let `type: "http"`, `args` or `env` through in their source form.
+  // The value is carried verbatim — it is a single line a human reads.
+  if (rawConfig[MCP_COMMENT_KEY] !== undefined) {
+    out[MCP_COMMENT_KEY] = rawConfig[MCP_COMMENT_KEY];
+    logInfo('mcp', `opencode: ${serverKey} — hint field carried through`);
   }
 
   return out;
@@ -98,6 +134,52 @@ export class OpenCodeMcpWriter implements McpWriter {
     }
     delete servers[key];
     return true;
+  }
+
+  findKey(settings: Record<string, unknown>, code: string, reserved: Set<string>): string | null {
+    return findKeyInContainer(settings, 'mcp', code, reserved);
+  }
+
+  mergeEnv(settings: Record<string, unknown>, key: string, env: Record<string, unknown>): void {
+    const servers = settings['mcp'];
+    if (!isRecord(servers)) return;
+    const entry = servers[key];
+    if (!isRecord(entry)) return;
+
+    // A remote entry has no spawned process, so it has no `environment` to
+    // configure. The call site (`mcp-reconcile.ts`) decides to overlay purely on
+    // whether the PACKAGE config carries `env` — the transport is not part of
+    // that condition — so the guard has to live here, where the shape actually
+    // written to disk can be read.
+    //
+    // The check is negative (`type === 'remote'` → leave) rather than positive
+    // ("write only when there is a command array"): the negative form fixes the
+    // one new shape and changes nothing for hand-written entries that carry no
+    // `type` at all.
+    //
+    // No live case today — all seven catalog servers were checked: the three
+    // HTTP ones carry no `env` at all, and every `env` that does exist (two
+    // non-empty, fennara's empty `{}`) belongs to a local server. That is the
+    // load-bearing half: nothing reaches this guard as things stand today.
+    // So it is prophylaxis, and saying so keeps the next reader from
+    // reading it as a fix for a bug that was actually happening. It matters
+    // because OpenCode is the one agent that declares a `$schema`, where a field
+    // that does not belong can invalidate the whole file rather than one entry.
+    if (entry['type'] === 'remote') {
+      logInfo('mcp', `opencode: ${key} is remote — env overlay skipped (no process to configure)`);
+      return;
+    }
+
+    // The field is `environment`, NOT `env` — OpenCode's own schema. Writing
+    // `env` here by analogy with the JSON writer would leave the client
+    // ignoring it, and `UNITY_MCP_NO_GATING=1` would silently fail to arrive on
+    // exactly one agent out of four: the surface this whole exception exists
+    // for, unclosed. Empty values are dropped, as in `upsert`.
+    const merged = { ...(isRecord(entry['environment']) ? entry['environment'] : {}), ...env };
+    const sanitized = sanitizeEnv(merged, key);
+    if (Object.keys(sanitized).length > 0) {
+      entry['environment'] = sanitized;
+    }
   }
 
   serialize(settings: Record<string, unknown>): string {

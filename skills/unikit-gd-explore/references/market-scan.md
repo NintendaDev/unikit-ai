@@ -311,8 +311,8 @@ In this mode, **deterministically**:
   subagent is non-interactive; a prompt would hang it.
 - **Do not write any file** — `researches/` is owned by the calling session, which
   decides what to persist. "Do not save" means *skip the save step*, not *answer no*.
-- **Prefer direct `WebSearch`/`WebFetch`** over a nested `Agent(subagent_type:
-  Explore)` — nested spawning from inside a subagent is unreliable; lean on the
+- **Prefer direct `WebSearch`/`WebFetch`** over a nested `recon-agent` — nested
+  spawning from inside a subagent is unreliable; lean on the
   SKILL's documented fallback.
 - **Return** the brainstorm-delegation brief above, one block per shortlisted concept.
 

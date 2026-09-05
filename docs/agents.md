@@ -30,7 +30,7 @@ Codex CLI is the only supported agent that blocks automatic subagent launches at
 
 ### Cursor
 
-Subagents work well, but there is no Skill Tool available to them. To run a subagent against a skill, the subagent's instruction includes an explicit step to read the target skill's `SKILL.md` and follow it. Overall this works acceptably.
+Skills install and work normally. **Subagents are not installed** - `AGENT_REGISTRY.cursor` carries `supportsSubagents: false`, so `unikit-ai init` writes nothing into a `.cursor/agents/` directory. Claude Code is the only agent that currently receives the bundled subagents; on Cursor, and on every other agent in the table, a skill that would normally delegate to a coordinator, worker, or sidecar does the work inline instead.
 
 ### OpenCode and Qwen Code
 
@@ -41,6 +41,8 @@ When launching some skills, the agent may pause at the very start and do nothing
 Antigravity (the IDE and CLI share one `.agents/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agents/skills/<name>/` directory triggered by its `description`, like Claude Code. There is no `/unikit-*` slash command and no `Skill` tool, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) degrades to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.
 
 MCP is configured automatically into `.agents/mcp_config.json`, same as other agents; a separate global `~/.gemini/config/mcp_config.json` remains available for user-wide servers, untouched by UniKit.
+
+Antigravity is also the one agent with an install-time side effect outside the skills directory: a `postInstall` step writes UniKit guardrails to `.agents/rules/unikit.md`, and the matching `cleanup` removes that file again when UniKit is uninstalled. No other agent writes a rules file of its own.
 
 ## See Also
 

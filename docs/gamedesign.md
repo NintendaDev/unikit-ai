@@ -281,7 +281,7 @@ command.
 
 | Lens | Reads | Used for | Output |
 |---|---|---|---|
-| **Reference & market** | external references, market signals (`references/market-scan.md`) | dissecting a reference game's mechanics → dynamics → aesthetics, checking a genre/mechanic's market fit | `.unikit/gamedesign/researches/<date>_<slug>/` |
+| **Reference & market** | external references, market signals (`references/market-scan.md`) | dissecting a reference game's mechanics → dynamics → aesthetics, checking a genre/mechanic's market fit | `.unikit/gamedesign/researches/<slug>/` |
 | **Internal design** | the GDD workspace, read-only | improving an existing system, inventing a new mechanic, or working out a flow — for *this* game | a research brief + a routed next command |
 | **Code-grounded** | the named code slice, read-only, post-GDD | "how is our X actually built?" | a brief tagged `provenance: extracted from code` — see **Brownfield adoption** below |
 
@@ -315,7 +315,7 @@ self-register, so there is no spec add-flow / add-content step to route through.
 Two research artifacts behave differently on re-entry: a **review file**
 (`reviews/*_review-*.md`) is mutated **in place** — the research bucket develops into an
 apply-ready fix, closing with one `/unikit-gd-apply reviews/X.md` — while a fresh topic
-gets its own `researches/<date>_<slug>/` folder, and a `RECON.md` keeps the reconstruction
+gets its own `researches/<slug>/` folder, and a `RECON.md` keeps the reconstruction
 and gains a `## Explorations` backlink.
 
 ---
@@ -515,7 +515,11 @@ The relationship between the two modules is deliberately asymmetric: **design wr
 code only reads.** The mechanics of that read are formalized in one shared contract,
 `design-read.md` (installed to `.unikit/system/gamedesign/design-read.md`), loaded by
 both `/unikit-plan` and `/unikit-explore` once a linked design workspace exists (a
-`version: 2` `GD-IDS.yaml` — an older workspace surfaces as `ERROR [design]` instead).
+`version: 2` `GD-IDS.yaml`). The two consumers treat an older workspace differently, by
+design: `/unikit-plan` emits a loud `ERROR [design]` and stops, because a plan built on a
+pre-v2 registry would silently target the wrong ids, while `/unikit-explore` emits a
+`WARN [design]` and simply continues without design grounding — research degrades, it
+does not fail.
 
 **Read the registry, not the render.** `GD-IDS.yaml` is the machine-readable source of
 truth for ids, `status`/`doc_status`, `version`, `implemented_version`, `depends_on`, and
@@ -582,7 +586,7 @@ INPUT (code → design)            CORE (authoring zones)           OUTPUT (desi
 
 For a project with code but **no GDD yet**. It scans the whole project (engine
 auto-detected — Unity / Godot / Unreal, via generic globs, never assumed) using
-`Agent(subagent_type: Explore)` subagents (inline `Glob`/`Grep`/`Read` fallback) and writes
+`recon-agent` dispatches (inline `Glob`/`Grep`/`Read` fallback) and writes
 one passive `.unikit/gamedesign/RECON.md`: a **system roster + `depends_on` graph** (P0),
 **content-type schemas / resources / entities** (P1), and — crucially — a mandatory
 **`## Intent Gap`** for everything code cannot carry (pillars, the target fantasy, the
