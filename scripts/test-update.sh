@@ -2000,19 +2000,23 @@ assert_not_contains "$NOTES_CLI_RULES/INDEX.md" 'unity-biome-mcp' \
 # longer qualifies - it grows a tree; GDAI no longer qualifies either as of its own
 # conformance run (2026-09-04) - it grows a tree too; neither does Coding-Solo as of
 # its own conformance run (2026-09-05) - all three Godot servers now carry a tree.
-# chir24-unreal-mcp (Unreal Engine 5) is the one remaining real, treeless is_engine
-# server in the whole shipped mcp/ catalog - this step now crosses engines, not just
-# servers within Godot, to keep exercising a genuinely treeless target.
+# chir24-unreal-mcp (Unreal Engine 5) no longer qualifies either as of its own
+# conformance run - it now carries a tree too, closing out every real is_engine server
+# in the shipped mcp/ catalog. There is no real treeless is_engine server left to target,
+# so this step falls back to the fixture catalog (the same one test-install.sh Test 13c
+# uses) for its one genuinely treeless is_engine server.
+use_fake_mcp_catalog "two-unity-servers"
 CONFIG="$NOTES_CLI_DIR/.unikit.json" node -e "
     const fs=require('fs'); const f=process.env.CONFIG;
     const c=JSON.parse(fs.readFileSync(f,'utf8'));
-    c.engine = 'unreal-engine-5';
-    c.engineMcpKey = 'unreal-engine';
-    c.mcp = { servers: ['chir24-unreal-mcp'] };
+    c.engine = 'unity';
+    c.engineMcpKey = 'FixtureTreeless';
+    c.mcp = { servers: ['fixture-treeless-mcp'] };
     fs.writeFileSync(f, JSON.stringify(c,null,2));
 "
 NOTES_CLI_OUT3="$TMPDIR/update-notes-cli-3.log"
 (cd "$NOTES_CLI_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$NOTES_CLI_OUT3" 2>&1)
+unuse_fake_mcp_catalog
 
 assert_not_exists "$NOTES_CLI_RULES/INDEX.md" \
     "a switch to a treeless server sweeps the outgoing server's rules tree (INDEX.md does not survive)"
