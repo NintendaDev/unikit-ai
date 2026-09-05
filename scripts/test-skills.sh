@@ -3434,6 +3434,176 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# VQ / PR / IR: a question never carries the content, and a resolver never resolves
+# in silence.
+# Reported from the field: in Cursor `/unikit-improve` asked its question without showing
+# either the plans it had found or what it proposed to change. Two independent causes, plus
+# a structural one in Step 4:
+#   (1) 13 sites described the option payload in prose ("listing all candidates",
+#       "options = registered module ids") and built it only inside the interactive
+#       question — invisible on a runtime that has none, unscrollable on one that does;
+#   (2) all four plan resolvers picked a plan without naming it, and on a branch miss fell
+#       through to *latest* in silence — on a fresh branch that improves the plan of a
+#       different feature;
+#   (3) in `unikit-improve` Step 4 the decision question sat INSIDE the report template
+#       fenced block, so an agent routing the tail through a question mechanism never
+#       emitted the body.
+#
+# Anchors are FORMULATIONS, never headings — a heading is rewritten during cosmetics, a
+# formulation only together with its meaning.
+#
+# These are the suite first WRAP-INSENSITIVE guards. The anchors are sentences, and a
+# sentence pasted into a skill wraps: `…that mechanism carries` ⏎ `the options and nothing
+# else…` is what the K1 clause actually looks like on disk, and a plain `grep -qF` does not
+# find it. The alternative — picking an anchor short enough never to wrap — is a bet on the
+# future width of a paragraph and breaks silently at the first reflow. So each file is read
+# as one whitespace-normalized stream. `-F` without `-i` is kept (MSYS `grep -iF` aborts).
+#
+# Self-contained by design: the block declares its own VQ_* paths instead of reusing
+# UNIKIT_*_SKILL, because `set -u` makes a forward reference fatal and two of the files it
+# needs (implement, improve) are declared on opposite sides of this point in the file.
+
+# Whitespace-normalized occurrence count. `set -euo pipefail` is on and `grep -oF` exits 1
+# when it matches nothing, which would abort the run instead of reporting a zero — hence the
+# fallback assignment.
+vq_count() {
+    local n
+    n="$(tr '\n' ' ' < "$1" | tr -s ' ' | grep -oF -- "$2" | wc -l | tr -d ' ')" || n=0
+    printf '%s' "$n"
+}
+
+VQ_K1='carries the options and nothing else'
+VQ_K2='INFO [plan] resolved:'
+VQ_K3='is a guess, not a resolution'
+
+VQ_GD_CONTENT="$ROOT_DIR/skills/unikit-gd-content/SKILL.md"
+VQ_GD_FLOW="$ROOT_DIR/skills/unikit-gd-flow/SKILL.md"
+VQ_GD_SYSTEM="$ROOT_DIR/skills/unikit-gd-system/SKILL.md"
+VQ_GD_REVIEW="$ROOT_DIR/skills/unikit-gd-review/SKILL.md"
+VQ_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+VQ_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+VQ_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+VQ_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
+VQ_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+VQ_MODE_LIST="$ROOT_DIR/skills/unikit-plan/references/mode-list.md"
+VQ_MEMORY="$ROOT_DIR/skills/unikit-memory/SKILL.md"
+VQ_MODULE_GD="$ROOT_DIR/skills/unikit-memory/references/module-gamedesign.md"
+VQ_RULES_REG="$ROOT_DIR/skills/unikit-rules-registry/SKILL.md"
+
+# Counts, not presence. design-context / rules-registry / memory each carry more than one
+# ask site, and a presence check stays green after one of them is deleted.
+vq_expect() {  # $1=label  $2=file  $3=anchor  $4=expected
+    local got
+    got="$(vq_count "$2" "$3")"
+    if [[ "$got" == "$4" ]]; then
+        pass "$1 ($got)"
+    else
+        fail "$1 — expected $4 occurrence(s), found $got"
+    fi
+}
+
+# (AQ-1) family A — "listing candidates. Never guess the target." in the three zone skills.
+vq_expect "AQ-1 unikit-gd-content — question payload printed first"  "$VQ_GD_CONTENT" "$VQ_K1" 1
+vq_expect "AQ-1 unikit-gd-flow — question payload printed first"     "$VQ_GD_FLOW"    "$VQ_K1" 1
+vq_expect "AQ-1 unikit-gd-system — question payload printed first"   "$VQ_GD_SYSTEM"  "$VQ_K1" 1
+
+# (AQ-2) family B — design-context carries TWO ask sites (axis door, flow door). The third
+#        family-B site lives in unikit-improve and is asserted by IR-1 with its own total.
+vq_expect "AQ-2 mode-add — both plan paths printed first" "$VQ_MODE_ADD" "$VQ_K1" 1
+vq_expect "AQ-2 design-context — both ask sites print their candidates" "$VQ_DESIGN_CTX" "$VQ_K1" 2
+
+# (AQ-3) family C — the two module-resolution asks in the registry router.
+vq_expect "AQ-3 unikit-rules-registry — module ids printed first" "$VQ_RULES_REG" "$VQ_K1" 2
+
+# (AQ-4) families C + D share one file: two module-resolution asks plus the
+#        "Multiple matches" branch of the rule-lookup tree.
+vq_expect "AQ-4 unikit-memory — module ids + rule candidates printed first" "$VQ_MEMORY" "$VQ_K1" 3
+
+# (AQ-5) family E — Tier 1 / Tier 2 reference-extraction candidates.
+vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_MODULE_GD" "$VQ_K1" 1
+
+# (AQ-6) family F — the review interview batches findings; a finding the user cannot read
+#        cannot be classified.
+vq_expect "AQ-6 unikit-gd-review — interview findings printed first" "$VQ_GD_REVIEW" "$VQ_K1" 1
+
+# (PR-1…PR-4) every resolver announces what it resolved, and says that *latest* is a guess.
+for vq_pair in \
+    "unikit-improve:$VQ_IMPROVE" \
+    "unikit-implement:$VQ_IMPLEMENT" \
+    "unikit-verify:$VQ_VERIFY" \
+    "unikit-plan/mode-add:$VQ_MODE_ADD"
+do
+    vq_name="${vq_pair%%:*}"
+    vq_file="${vq_pair#*:}"
+    vq_why=""
+    [[ "$(vq_count "$vq_file" "$VQ_K2")" == "1" ]] || vq_why+=" announce"
+    [[ "$(vq_count "$vq_file" "$VQ_K3")" == "1" ]] || vq_why+=" latest-is-a-guess"
+    if [[ -z "$vq_why" ]]; then
+        pass "PR $vq_name — resolution announced, latest fallback is not silent"
+    else
+        fail "PR $vq_name — resolver contract missing:$vq_why"
+    fi
+done
+
+# (PR-5) the sweep, and the half that survives a fifth resolver being added by copy-paste:
+#        anywhere the old "fall through to *latest*" prose appears, the guess clause must
+#        appear with it. Degrades to a fail when it finds no object at all — a guard that
+#        has lost what it watches is not a pass (convention: ED-14 / RT-1).
+vq_sweep_seen=0
+vq_sweep_bad=""
+while IFS= read -r vq_f; do
+    [[ -n "$vq_f" ]] || continue
+    vq_sweep_seen=$((vq_sweep_seen + 1))
+    [[ "$(vq_count "$vq_f" "$VQ_K3")" != "0" ]] || vq_sweep_bad+=" ${vq_f#"$ROOT_DIR/"}"
+done < <(grep -rlF 'fall through to *latest*' "$ROOT_DIR/skills" --include='*.md' || true)
+if [[ "$vq_sweep_seen" -eq 0 ]]; then
+    fail "PR-5 — nothing mentions the *latest* fallback; the guard has lost its object"
+elif [[ -n "$vq_sweep_bad" ]]; then
+    fail "PR-5 — *latest* fallback without the guess clause:$vq_sweep_bad"
+else
+    pass "PR-5 — every *latest* fallback is named as a guess ($vq_sweep_seen file(s) scanned)"
+fi
+
+# (PR-6) the carve-out, asserted rather than left to memory. List mode only labels plans, it
+#        never selects one, so it owes neither an announcement nor a question — and a future
+#        sweep that "fixes" it would be the regression.
+vq_why=""
+[[ "$(vq_count "$VQ_MODE_LIST" "$VQ_K2")" == "0" ]] || vq_why+=" announce"
+[[ "$(vq_count "$VQ_MODE_LIST" "$VQ_K3")" == "0" ]] || vq_why+=" latest-is-a-guess"
+if [[ -z "$vq_why" ]]; then
+    pass "PR-6 unikit-plan/mode-list — labels only, carries no resolver contract"
+else
+    fail "PR-6 unikit-plan/mode-list — must not carry the resolver contract:$vq_why"
+fi
+
+# (IR-1) unikit-improve carries the clause exactly twice: Step 0 Priority 4 (which plan) and
+#        the Step 4 gate (which findings). An exact number catches both the loss of one and
+#        an accidental duplicate.
+vq_expect "IR-1 unikit-improve — print-first clause at both decision points" "$VQ_IMPROVE" "$VQ_K1" 2
+
+# (IR-2) the structural half IR-1 cannot express. A grep pair stays green through the exact
+#        regression this fixes: both strings present, report template and question welded
+#        back into ONE fenced block. So the fences are walked and the two block indices
+#        compared. Degrades to a fail when either object is gone.
+VQ_FENCE_STATE="$(awk '
+    /^```/ { infence = !infence; if (infence) blk++; next }
+    infence && index($0, "## Plan Improvement Report") { rep = blk }
+    infence && index($0, "Apply improvements?")        { ask = blk }
+    END {
+        if (rep == 0)   { print "report-block-absent"; exit }
+        if (ask == 0)   { print "question-absent";     exit }
+        if (rep == ask) { print "welded-into-report-template"; exit }
+        print "separate"
+    }
+' "$VQ_IMPROVE")"
+if [[ "$VQ_FENCE_STATE" == "separate" ]]; then
+    pass "IR-2 unikit-improve Step 4 — decision question is its own block, not the report tail"
+else
+    fail "IR-2 unikit-improve Step 4 — question/report block check: $VQ_FENCE_STATE"
+fi
+
+
+# ─────────────────────────────────────────────
 # PL: the plan manifest is ONE file, and it stays one.
 # RISK-007 in the plan bundle stated the gap in full: the suite could not detect a
 # half-applied rename. Zero asserts existed on the names of the files inside a plan

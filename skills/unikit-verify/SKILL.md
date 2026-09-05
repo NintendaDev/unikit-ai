@@ -143,6 +143,20 @@ Search logic — same as `/unikit-implement` (unified plan detection):
    a. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan)
    b. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
    c. **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
+      **`latest fallback` is a guess, not a resolution:** the branch named no plan. With two
+      or more plans present, print the candidate table (folder, `Updated:`, tasks remaining)
+      and ask — never auto-select. With exactly one plan present there is nothing to choose
+      between: announce it with the branch miss named in the reason and continue.
+
+**Announce the resolution.** Print exactly one visible line before any other output:
+
+```
+INFO [plan] resolved: <path> (<reason>)
+```
+
+`<reason>` is exactly one of: `explicit path` · `feature name` · `fast plan` · `fix plan` ·
+`branch match: <branch>` · `latest fallback`. This is plain output, never the payload of an
+interactive question.
 3. If no plan found (no `.unikit/code/PLAN.md` and `.unikit/code/plans/` is empty or doesn't exist):
 
 ```

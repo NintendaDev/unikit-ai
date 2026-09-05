@@ -109,11 +109,15 @@ never to derive registry paths.
 1. **Explicit `--module <id>`** in `$ARGUMENTS` → validate against the parsed ids.
    Valid → operate on that single module; strip the flag. Invalid → ask via
    `AskUserQuestion` (options = registered module ids), then use the chosen id.
+   Print the module ids with their one-line domain summaries to the screen as plain
+   markdown first — the question mechanism carries the options and nothing else.
 2. **No flag, neutral operation** (a plain create/update/sync) → operate on **all**
    registered modules. Today that is just `code`.
 3. **Context narrows to one module ambiguously** (e.g. the prompt clearly targets
    one module but another is plausible) → ask via `AskUserQuestion` (options =
    registered module ids + "all modules"). Never guess.
+   Print the module ids with their one-line domain summaries to the screen as plain
+   markdown first — the question mechanism carries the options and nothing else.
 
 Everywhere below, "for each module" means "for each resolved target module", and
 "for each tier" means "for each tier of that module from `modules.yml`".

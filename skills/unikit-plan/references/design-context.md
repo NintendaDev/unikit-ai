@@ -41,12 +41,16 @@ rule to pick which axis to resolve first (do not re-author the ladder — it liv
   option.
 - **Ambiguous** (reads as more than one axis, or names several) → `AskUserQuestion` listing the
   candidate axes; **never guess** (per design-read). This mirrors the `/unikit-gd-explore` routing stance.
+  Print the candidate axes to the screen as plain markdown first — the question mechanism
+  carries the options and nothing else.
 
 **Flow door — resolve the flow first.** When intent points at a flow:
 
 1. Read `.unikit/gamedesign/GD-IDS.yaml` `flows` (the registry, not the `## Flow Map [gen]` render).
    Match the request against each flow's name / `FLOW-<slug>` id. One confident match → use it;
    several plausible matches, or none → `AskUserQuestion` listing candidate flows; **never guess**.
+   Print the candidate flows to the screen as plain markdown first — the question
+   mechanism carries the options and nothing else.
    An empty `flows: []` (or no `flows` key yet) against a flow-shaped request → tell the user no flow
    exists and point at `/unikit-gd-flow`; if they instead name a system, fall back to the System door.
 2. Read the resolved flow's `FLOW.md` (`source` path) and build the **primary** `## Flow Context`

@@ -90,7 +90,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
 ```
-/unikit-improve                                          # Improve latest plan
+/unikit-improve                                          # Resolve + announce the plan, then improve
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
 /unikit-improve @.unikit/code/plans/core-loop            # Improve specific plan

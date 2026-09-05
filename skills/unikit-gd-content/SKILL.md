@@ -184,7 +184,8 @@ prompt:
    Offer review / verify (Handoff) and stop.
 
 If the type name is ambiguous (matches several entries, or none) → `AskUserQuestion`
-listing candidates. Never guess the target.
+listing candidates. Never guess the target. Print the candidates to the screen as plain
+markdown first — the question mechanism carries the options and nothing else.
 
 > **Catalog churn is not an Edit here.** Adding, removing, or editing the individual
 > content **units** — a `curated` row's field values, a `bulk` type's `count` — is

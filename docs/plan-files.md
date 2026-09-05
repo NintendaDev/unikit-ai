@@ -286,10 +286,17 @@ The boundary against the rules registry is exact: **the registry says HOW to wri
 `/unikit-implement` finds plans in this order:
 1. **Fast plan** → `.unikit/code/PLAN.md` (if exists, used directly)
 2. **Git branch match** → from branch `<prefix><name>`, every folder matching one of the three name formats that coexist on disk: exactly `<name>`, ending in `_<name>` (the `YYYY-MM-DD_` era), or ending in `-<name>` after three digits (the older `DDD-` era). More than one match is a question, never a silent pick
-3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying neither is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime
+3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying neither is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime. Reaching this step at all means the branch named no plan, so *latest* is a guess rather than a resolution: with two or more plans present the candidates are printed and the choice is put to the user, never auto-selected. With exactly one plan there is nothing to choose between — it is announced with the branch miss named, and work continues
 4. **Fix plan fallback** → `.unikit/code/FIX_PLAN.md` → redirects to `/unikit-fix`
 
 If both `.unikit/code/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
+
+Whichever branch of that order resolves, the plan is **named before any other output** — a single
+`INFO [plan] resolved: <path> (<reason>)` line, where the reason is the branch of discovery that
+produced it (`explicit path`, `feature name`, `fast plan`, `fix plan`, `branch match: <branch>` or
+`latest fallback`). The same contract holds for `/unikit-improve`, `/unikit-verify` and
+`/unikit-plan add`. Silence here is what allowed a resolver to work on the plan of a different
+feature without ever saying so.
 
 Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
 

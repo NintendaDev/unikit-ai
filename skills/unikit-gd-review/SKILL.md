@@ -281,7 +281,8 @@ criterion:
 Then run the **interview** (Braintrust — the user decides). Offer one **per-run**
 choice up front — **[Run the interview]** or **[Send everything to research]** —
 then, when interviewing, batch the pool through `AskUserQuestion` (**≤ 4 findings
-per call**). Per finding: **[I decide: <fix>]** → apply-ready · **[To research]** →
+per call**). Print the findings in this batch to the screen as plain markdown first —
+the question mechanism carries the options and nothing else. Per finding: **[I decide: <fix>]** → apply-ready · **[To research]** →
 research · **[Decline]** → dropped. The interview **only classifies** and records
 the decision text; it **writes nothing** to the GDD (review stays non-authoring). A
 finding whose fix the user already holds in their head lands in apply-ready directly

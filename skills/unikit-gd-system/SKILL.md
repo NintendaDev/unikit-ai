@@ -186,7 +186,8 @@ Check `.unikit/gamedesign/systems/SYS-<slug>.md` and read the intent in the prom
    Offer review / verify (Phase 6) and stop.
 
 If the system name is ambiguous (matches several entries, or none) →
-`AskUserQuestion` listing candidates. Never guess the target.
+`AskUserQuestion` listing candidates. Never guess the target. Print the candidates to the screen as plain
+markdown first — the question mechanism carries the options and nothing else.
 
 **Depth gate (Create / Fill only).** Once the mode is Create or Fill, present **one**
 depth picker — the named tiers `core/standard/full`, each with what it adds, not bare

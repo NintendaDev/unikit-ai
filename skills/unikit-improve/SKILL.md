@@ -254,7 +254,11 @@ If `$ARGUMENTS` is empty (no parameters):
    - If on a `feature/*` branch → extract the feature name part (e.g., `feature/customers-system` → `customers-system`)
    - **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
      - Example: branch `feature/customers-system` matches folder `customers-system`, `2026-03-08_customers-system` or `001-customers-system`
-   - If no branch match → **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite. Note the winner as "latest folder plan"
+   - If no branch match → **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite. Note the winner as "latest folder plan".
+     **`latest fallback` is a guess, not a resolution:** the branch named no plan. With two
+     or more plans present, print the candidate table (folder, `Updated:`, tasks remaining)
+     and ask — never auto-select. With exactly one plan present there is nothing to choose
+     between: announce it with the branch miss named in the reason and continue.
 
 2. **Resolve ambiguity:**
    - If **no candidates** found (no flat plans, no folder plans) → show "No plans found" message and **STOP**:
@@ -266,9 +270,22 @@ If `$ARGUMENTS` is empty (no parameters):
      - /unikit-fix <bug description> — for a bugfix plan
      ```
    - If **exactly one candidate** → use it
-   - If **multiple candidates** (e.g., PLAN.md + FIX_PLAN.md, or a flat plan + folder plans, or multiple flat plans + branch-matching folder) → **ask the user** which plan to improve via `AskUserQuestion`, listing all candidates
+   - If **multiple candidates** (e.g., PLAN.md + FIX_PLAN.md, or a flat plan + folder plans, or multiple flat plans + branch-matching folder) → **ask the user** which plan to improve via `AskUserQuestion`, listing all candidates. Print the candidate plans, each with its `Updated:` and tasks remaining, to the screen as plain markdown first — the question mechanism carries the options and nothing else
 
 3. **Use the resolved plan.**
+
+**Announce the resolution.** Whichever priority resolved the plan — `@<path>`, a feature
+name, the fast plan, the fix plan, a branch match or the latest fallback — print exactly
+one visible line, before Step 0.5 and before any other output:
+
+```
+INFO [plan] resolved: <path> (<reason>)
+```
+
+`<reason>` is exactly one of: `explicit path` · `feature name` · `fast plan` · `fix plan` ·
+`branch match: <branch>` · `latest fallback`. This is plain output, never the payload of an
+interactive question. Without it the skill's first visible event is a question: Step 0.5
+forbids narrating the Bootstrap, so nothing else here speaks.
 
 **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
 
@@ -543,6 +560,15 @@ The filtered findings (and recomputed dependencies) are what Step 4 renders.
 
 Show the user what you found. When `research_improvements` is non-empty, the report has two sections: research-based findings first, then codebase analysis findings. When empty, only the standard section appears.
 
+**BLOCKING PRE-REQUISITE — the report reaches the screen before the question is asked.**
+Render every group below in full as visible output — the findings themselves, not a count
+of them — and only then ask the decision question. **Never ask about improvements the user
+has not seen:** a bare "Apply improvements?" with nothing above it is the failure this rule
+exists to prevent. Print the findings to the screen as plain markdown first — the question
+mechanism carries the options and nothing else. The same holds for the `Choose which`
+follow-up below: its `#N` labels mean something only because the numbered report is already
+on screen.
+
 ```
 ## Plan Improvement Report
 
@@ -612,7 +638,13 @@ Source: [research folder name(s)]
 - Tasks to remove: N
 - Hidden by +check: N      (only when +check ran successfully — see Step 3.5)
 - Adjusted by +check: M    (only when +check ran successfully — see Step 3.5)
+```
 
+The decision question is asked **after** that report is on screen, as its own block.
+When it goes through an interactive question mechanism, that is a separate call issued
+once the report text has been emitted — never a replacement for it:
+
+```
 Apply improvements?
 1. Yes, apply all
 2. Choose which to apply

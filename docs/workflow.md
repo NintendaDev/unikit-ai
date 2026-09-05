@@ -290,7 +290,7 @@ When a linked `gamedesign` workspace exists, the plan also pulls a `## Design` b
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
 ```
-/unikit-improve                                          # Improve latest plan
+/unikit-improve                                          # Resolve + announce the plan, then improve
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
 /unikit-improve @.unikit/code/plans/core-loop            # Improve specific plan
@@ -306,7 +306,7 @@ Second-pass analysis. Runs 2-3 deep Explore agents to:
 - Remove redundant work
 - Check architectural consistency
 
-Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Edits the manifest in place; `Write` over it is forbidden.
+Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date — and the resolved plan is announced on an `INFO [plan] resolved:` line before anything else runs. A branch that matches no plan makes *latest* a guess, so the candidates are shown and the choice is put to the user instead of being taken silently. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Edits the manifest in place; `Write` over it is forbidden.
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
