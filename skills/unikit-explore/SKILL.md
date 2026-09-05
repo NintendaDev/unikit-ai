@@ -5,14 +5,14 @@ description: >-
   architecture, and implementation decisions before you write any code. Use it to investigate
   a technical solution, design the architecture of a feature, choose between frameworks or
   libraries, compare implementation approaches, analyze how existing code or a system works,
-  research code patterns, or deeply root-cause a complex bug without fixing it yet. Trigger on
+  or deeply root-cause a complex bug without fixing it yet. The ultra mode adds adaptive
+  artifacts (a C4 view, ADRs, a dependency graph) to the research folder — run it on "ultra
+  research", "ultra explore" or "ultraresearch"; otherwise run the default. Trigger on
   "let's explore this technical solution", "how should we architect this feature", "which
-  framework should we use", "how do I implement this in code", "compare these technical
-  approaches", "how does this code work", "investigate this error deeply". Research and
-  analysis only — it never writes code. This is the CODE / engineering explorer — for
-  GAME-DESIGN, GDD, mechanics, or balance research (no code) use /unikit-gd-explore. The
-  explicit `ultra` token adds adaptive artifacts (C4 view, ADRs, dependency graph) to the
-  research folder; it is never inferred.
+  framework should we use", "run an ultra research on the save system", "investigate this
+  error deeply". Research and analysis only — it never writes code. This is the CODE /
+  engineering explorer — for GAME-DESIGN, GDD, mechanics, or balance research (no code)
+  use /unikit-gd-explore.
 argument-hint: "ultra | [topic, system name, or question]"
 allowed-tools:
   - Read
@@ -311,7 +311,7 @@ The argument after `/unikit-explore` can be:
 - **The slug of an existing research folder** in `.unikit/code/researches/` — this is an
   **entry into the continuation cycle**, not a new topic. Read the manifest and continue that
   research (see [Continuing a research](#continuing-a-research)).
-- **`ultra`** — the leading token switches on adaptive research artifacts. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` and follow it when saving. Everything before saving — the stance, the exploration itself — is unchanged. `ultra` is recognised **only** as the leading token; it is never inferred from the size or difficulty of the topic.
+- **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` and follow it when saving. Everything before saving — the stance, the exploration itself — is unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
 - A vague idea: "object pooling system"
 - A specific problem: "the save system is getting unwieldy"
 - A system name: to explore its architecture
@@ -325,7 +325,7 @@ If the argument matches the name of an existing folder in `.unikit/code/research
 as a continuation rather than a new subject, and follow
 [Continuing a research](#continuing-a-research).
 
-If the leading token is `ultra`, strip it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. `ultra` with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
+On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
 
 ### Exploration mode detection
 

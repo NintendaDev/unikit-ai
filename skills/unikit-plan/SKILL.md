@@ -3,15 +3,16 @@ name: unikit-plan
 description: >-
   Create an implementation plan for a feature — a dependency-ordered, actionable task
   list for the project. Has four modes: fast (a quick single-pass plan), full (a richer
-  plan that can also create a git branch), ultra (an opt-in multi-file bundle), and add
-  (extend an existing plan with more tasks). Pick the mode from the user's wording: "full plan" runs full; "quick plan" or
-  "fast plan" runs fast; a plain "create a plan" with no qualifier defaults to fast; "add
-  to the plan" or "extend the plan" runs add. Use whenever the user wants to plan a
+  plan that can also create a git branch), ultra (a multi-file bundle — a manifest plus
+  one deeply specified file per phase — for execution by a smaller model), and add
+  (extend an existing plan with more tasks). Pick the mode from the user's wording: "full
+  plan" runs full; "quick plan" or "fast plan" runs fast; "ultra plan", "ultraplan" or
+  "ultra-plan" runs ultra; a plain "create a plan" with no qualifier defaults to fast;
+  "add to the plan" or "extend the plan" runs add. Use whenever the user wants to plan a
   feature or task, e.g. "create a plan", "create a full plan", "create a quick plan",
-  "plan this feature", "just plan this", "add this to the plan", "extend the plan", "add
-  a phase to the plan". The `ultra` keyword — and only that explicit keyword — produces a
-  multi-file bundle (a manifest plus one deeply specified file per phase) for later
-  execution by a smaller model; it is never chosen for you.
+  "run an ultra plan for the inventory system", "plan this feature", "add this to the
+  plan", "extend the plan", "add a phase to the plan". Ultra runs only when the user
+  names it — never because the feature looks large.
 argument-hint: "[fast | full | ultra | add | --list] [--base <branch>] <feature description in free form>"
 allowed-tools:
   - Read
@@ -44,7 +45,7 @@ Create a structured feature plan and roadmap for the current {{engine_name}} pro
 Four modes:
 - **Fast** — quick plan, no git branch, saves to `.unikit/code/PLAN.md`
 - **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<feature-name>/`
-- **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. Reached **only** by the explicit `ultra` keyword — never offered, never inferred
+- **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. **User-named, never model-inferred**: it runs because the user asked for an ultra plan, never because the feature looks big
 - **Add** — modify/extend an existing plan without creating a branch
 
 **Output artifacts by mode:**
@@ -180,18 +181,18 @@ model argument of their own.
 
 ## Input
 
-`$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language.
+`$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language. The mode may also be named inside that free-form text rather than as a leading token — the user is talking, not typing a CLI.
 
 **Parsing rules:**
 1. Extract `--base <branch>` if present anywhere in arguments → store as `base_branch`, remove from text
 2. If `--list` is present → list mode, show all plans and STOP
 3. If the first word (after flag removal) is `full` → full mode, remaining text is the feature description
 4. If the first word is `fast` → fast mode, remaining text is the feature description
-5. If the first word is `ultra` → ultra mode, remaining text is the feature description
+5. If the first word is `ultra`, **or** the text asks for an ultra plan in any phrasing or language — "ultra plan", "ultraplan", "ultra-plan", "ультраплан", "make an ultra plan for the inventory" → ultra mode; strip the ultra wording and the verb that carried it, the remainder is the feature description
 6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
 7. Otherwise → ask interactively, entire text is the description
 
-`ultra` is recognised **only** as the leading mode token. It is never inferred from the description, never offered in Step 0.2, and never selected because the feature looks large.
+Ultra is **user-named, never model-inferred**. Rule 5 recognises the request wherever it sits in the sentence, but it must be a request: ultra is never offered in Step 0.2 and never chosen because the feature looks large, spans many files, or seems hard — size is not a request. Wording that only asks for care — "a deep plan", "plan this thoroughly", "a detailed plan" — is **not** ultra; fall through to rule 7 and ask, because an unwanted bundle leaves the user a folder of phase files they never asked for, while a missed one costs them one word.
 
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 

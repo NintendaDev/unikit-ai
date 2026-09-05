@@ -1,9 +1,10 @@
 # unikit-plan — Ultra Mode (Additional Steps)
 
 > Loaded on demand by `unikit-plan` Step 1.5 dispatch when the mode is `ultra`.
-> Ultra is **strictly opt-in**: it is reached only by the explicit leading `ultra`
-> token, never offered in the interactive mode question and never inferred from
-> the complexity of the task.
+> Ultra is **user-named, never model-inferred**: it is reached because the user asked
+> for an ultra plan — as the leading `ultra` token or in their own wording — never
+> offered in the interactive mode question and never inferred from the complexity of
+> the task.
 >
 > Steps A-C run before the Shared Steps in `SKILL.md`; Steps D-H **refine** Step 5 and
 > Step 6 of the shared workflow — they decide the phase partition, the write order, the
