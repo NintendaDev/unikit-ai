@@ -253,11 +253,24 @@ This is a flat `config`, not [`configByPlatform`](#per-platform-configs) — the
 
 #### Coding-Solo Godot MCP (`order: 3`, free)
 
-Coding-Solo declares no version threshold at all — its prerequisites say only "Godot Engine installed" — which is why it is the one entry in the Godot radio with no version in brackets. An undeclared threshold, not a forgotten one: a bracketed "Godot 4.x" there would be our inference rather than the vendor claim.
+```json
+{
+  "env": {
+    "GODOT_PATH": "/path/to/godot",
+    "DEBUG": "true"
+  }
+}
+```
 
-It is a stdio server and it works. It ships no rules tree: UniKit AI knows of no exceptions for it, which is not the same as knowing it can do less — the generic development principles apply to it exactly as they do to every other server.
+Backed by [godot-mcp](https://github.com/Coding-Solo/godot-mcp). Coding-Solo declares no version threshold at all — its prerequisites say only "Godot Engine installed" — which is why it is the one entry in the Godot radio with no version in brackets. An undeclared threshold, not a forgotten one: a bracketed "Godot 4.x" there would be our inference rather than the vendor claim.
 
-What an agent may attempt against it is decided by what its live catalog offers. `⏸️ MANUAL` is reached by trying and finding no route, with the evidence of that absence to show — never by the absence of a rules tree. See [Editor tasks](plan-files.md#editor-tasks).
+- **`GODOT_PATH` is a literal, untokenized path to your own Godot executable** — the one field of its kind among the three Godot servers. Fennara's and GDAI's install locations are predictable enough to expand from `{{home}}`/`{{localappdata}}`; a Godot install is not, so this one is written in by hand.
+- All 14 tools are visible immediately (no bootstrap), and the vendor's own published tool list matches the live catalog exactly — the first of the three Godot servers measured with zero discrepancy in either direction.
+- **Creating a brand-new scene fails unconditionally on Godot 4.6.x** — a version regression in the vendor's own bundled script, not a project-specific defect, thrown before any file is written. It fails loudly and immediately on the very first attempt, so widening the grant to `["*"]` does not hide this: it just means that one specific operation reliably fails on this engine version, while adding a node to an *existing* scene remains the reliable path.
+
+It ships a rules tree: what UniKit AI has measured about this server and could not learn from the live catalog — most of its calls report success or failure independently of what actually happened on disk. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
+
+This is a flat `config`, not [`configByPlatform`](#per-platform-configs) — the launch command (`npx @coding-solo/godot-mcp`) is the same on every OS; only the `env` block above varies by your own machine.
 
 ### Engine-MCP rules tree
 
