@@ -47,26 +47,35 @@ Run once per project. Sets up context files that all workflow skills depend on.
  │              │     │    claude    │     │          /unikit             │
  │  unikit-ai   │ ──▶ │  (or any AI  │ ──▶ │                             │
  │    init      │     │    agent)    │     │  Scan stack, generate:      │
- │              │     │              │     │    DESCRIPTION.md           │
- └──────────────┘     └──────────────┘     │    AGENTS.md               │
-                                           │    ARCHITECTURE.md         │
+ │              │     │              │     │    config.yaml              │
+ └──────────────┘     └──────────────┘     │    DESCRIPTION.md           │
+                                           │    AGENTS.md               │
                                            │    Stack rules for memory  │
+                                           │                             │
+                                           │  then, as its LAST step,    │
+                                           │  delegates to:              │
+                                           │  ┌───────────────────────┐  │
+                                           │  │ /unikit-architecture  │  │
+                                           │  │  → ARCHITECTURE.md    │  │
+                                           │  └───────────────────────┘  │
                                            └──────────────┬──────────────┘
                                                           │
-                          ┌───────────────────────────────┼────────────────────┐
-                          │                               │                    │
-                          ▼                               ▼                    ▼
-             ┌──────────────────────┐      ┌──────────────────┐  ┌──────────────────┐
-             │ /unikit-architecture │      │  /unikit-memory  │  │  /unikit-rules   │
-             │   (refine arch.)     │      │   (add rules)    │  │   (optional)     │
-             └──────────┬───────────┘      └────────┬─────────┘  └──────────────────┘
-                        │                           │
-                        ▼                           ▼
-             ┌──────────────────┐        ┌──────────────────┐
-             │  /unikit-roadmap │        │   /unikit-docs   │
-             │  (recommended)   │        │   (optional)     │
-             └──────────────────┘        └──────────────────┘
+                                    ┌─────────────────────┼─────────────────┐
+                                    │                     │                 │
+                                    ▼                     ▼                 ▼
+                        ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+                        │  /unikit-roadmap │  │  /unikit-memory  │  │  /unikit-rules   │
+                        │  (recommended)   │  │   (add rules)    │  │   (optional)     │
+                        └──────────────────┘  └──────────────────┘  └──────────────────┘
+                                    │
+                                    ▼
+                        ┌──────────────────┐
+                        │   /unikit-docs   │
+                        │   (optional)     │
+                        └──────────────────┘
 ```
+
+`ARCHITECTURE.md` is **not** written by `/unikit` itself — `/unikit` delegates to `/unikit-architecture` as its own mandatory final step, so the setup summary can honestly list the file alongside the others. `/unikit-architecture` is also runnable standalone later, to refresh the guidelines after the architecture has moved.
 
 ## Development Workflow
 
@@ -271,20 +280,21 @@ Four planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/<name>/` with a single `PLAN.md` manifest. The folder name matches the branch name character for character; the date lives in the manifest's `Created:` / `Updated:` fields ([why](plan-files.md#why-a-plan-folder-has-no-date-and-a-patch-file-does))
-- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: type `ultra`, or you get Full. Two mechanisms hold that, and both had to be repaired: the opt-in itself is the first-token parse in Step 0, and the **shape of what you get** is held by the redirect in `TASK-FORMAT.md` and by the `ULTRA-PLAN-FORMAT.md` specification. Without the second one, typing `ultra` still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
+- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: ask for it, or you get Full. Ultra is **user-named, never model-inferred** — it is recognised wherever the request sits in the sentence and in any language ("ultra plan", "ultraplan", "ультраплан", "make an ultra plan for the inventory"), but it must be an actual request. Size is not a request, and wording that only asks for care — "a deep plan", "plan this thoroughly" — is deliberately *not* ultra: the skill falls through and asks instead, because an unwanted bundle leaves you a folder of phase files you never asked for while a missed one costs you one word. The **shape of what you get** is held separately, by the redirect in `TASK-FORMAT.md` and the `ULTRA-PLAN-FORMAT.md` specification; without that second mechanism, asking for ultra still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
 - **Add** - extends an existing plan with new tasks
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
 
 When a linked `gamedesign` workspace exists, the plan also pulls a `## Design` brief from `GD-IDS.yaml` (citing the relevant system's acceptance criteria and version), plus optional `## Flow Context` (the `GOAL`-steps and wiring mode) and `## Content Context` (the `CT.fields` schema, `scale`, `belongs_to`) briefs when the feature touches those axes. The pull is read-only - the plan never edits the GDD.
 
-### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
+### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
 ```
 /unikit-improve                                          # Improve latest plan
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
-/unikit-improve @.unikit/code/plans/2026-03-10_core-loop      # Improve specific plan
+/unikit-improve @.unikit/code/plans/core-loop            # Improve specific plan
+/unikit-improve +check                                   # Validate refinements first
 ```
 
 Optional but recommended step. For complex tasks the agent rarely produces a complete plan on the first attempt - edge cases, risks, and dependencies get missed. Improve lets the agent review the finished plan from multiple angles and refine it. Recommended to run at least once after planning; for complex tasks - 2-3 times.
@@ -307,7 +317,7 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 /unikit-implement Phase 3            # Execute only Phase 3
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
-/unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
+/unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
 
 Reads skill-context rules first, then the plan manifest. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
@@ -360,17 +370,18 @@ Mature rules from `RULES.md` can be migrated into permanent dynamic memory (`cor
 
 Closes the learning loop: **fix -> patch -> evolve -> better skills -> fewer bugs**.
 
-### `/unikit-review [target]` - code review
+### `/unikit-review [+check] [target]` - code review
 
 ```
 /unikit-review                         # Staged changes (default)
 /unikit-review PlayerController.cs     # Specific file(s)
-/unikit-review @Assets/Scripts/Player  # Folder (all .cs files)
+/unikit-review @Assets/Scripts/Player  # Folder (all source files)
 /unikit-review 123                     # PR by number (#42 or URL also work)
 /unikit-review master                  # Commits vs branch/tag
+/unikit-review +check                  # Validate findings before reporting
 ```
 
-Reviews Unity C# code against the project's full rule hierarchy. Four modes: staged changes, file/folder, PR, commits.
+Reviews code against the project's full rule hierarchy. Four modes: staged changes, file/folder, PR, commits.
 
 Loads rules in priority order: RULES.md (highest) -> skill-context -> core rules -> stack rules (loaded selectively based on frameworks detected in target code). Severity scale:
 
@@ -381,12 +392,19 @@ Loads rules in priority order: RULES.md (highest) -> skill-context -> core rules
 
 Reports include concrete code fixes for Critical/Warning items. Commits mode also checks message accuracy and atomicity. After review, run `/unikit-fix` to address found issues - it automatically picks up the review results and offers to fix everything or select specific problems. Then proceeds as usual: fix now or plan first.
 
+#### The two gates: `+check` and `unikit-gate-result`
+
+`/unikit-review` and `/unikit-verify` are the pipeline's two quality gates, and they share two mechanisms:
+
+- **`+check`** is an opt-in flag (also available on `/unikit-improve`) that sends the findings to a **fresh-context validator** before they reach you - a read-only subagent with no memory of how the findings were produced, which drops, modifies, or reclassifies anything it cannot substantiate from the code. It never prompts. If the validator cannot be launched, the pass is skipped rather than faked: every finding is kept and one `WARN [+check]` line is printed.
+- **`unikit-gate-result`** is a machine-readable fenced JSON block emitted as the **last** fence of the report - gate `verify` from `/unikit-verify` (projecting its task audit and context gates), gate `review` from `/unikit-review` (projecting its findings table, recomputed from the post-filter findings under `+check`). It is what lets a coordinator, a CI step, or another skill read the gate's verdict without parsing prose. The schema is installed at `.unikit/system/gate-result-contract.md`.
+
 ### `/unikit-verify [--strict] [feature-name]` - check completeness
 
 ```
 /unikit-verify                           # Verify implementation against plan
 /unikit-verify --strict                  # Strict mode - zero tolerance for gaps
-/unikit-verify 2026-03-08_customers      # Verify specific feature
+/unikit-verify customers-system          # Verify specific feature
 ```
 
 Goes through every task in the plan and verifies the code actually implements it. Runs per-phase Explore agents for completion audit. Checks:
@@ -412,11 +430,11 @@ Strict mode raises the bar: partial completion is a failure, compilation and tes
 /unikit-commit inventory
 ```
 
-Creates conventional commits with Unity-specific safety checks. Analyzes staged changes and verifies:
+Creates conventional commits with engine-aware safety checks. Analyzes staged changes and verifies:
 
-- `.meta` file pairing
+- Companion/metadata file pairing where the engine requires it (Unity `.meta` files and their equivalents)
 - Binary assets and secrets
-- Unity-ignored directories (Library, Temp, Logs)
+- Engine-ignored directories, read from the project's own `.gitignore` (on Unity: `Library`, `Temp`, `Logs`)
 
 Runs read-only context gates against ARCHITECTURE.md and RULES.md. References plan task numbers in commit message when an active plan exists. Suggests commit splitting for unrelated staged changes. Offers to push after commit. Conventional prefix is always in English; description uses the configured language.
 

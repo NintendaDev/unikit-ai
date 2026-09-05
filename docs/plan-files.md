@@ -29,42 +29,58 @@ A folder plan stays a folder even with a single file in it — discovery looks f
 One file per folder plan: overview, settings, the dependency-ordered checklist with WHY context, effort estimates and file paths, the commit plan, and the technical context that does not belong in the checklist. In fast mode the very same sections live in the flat `.unikit/code/PLAN.md`.
 
 ```markdown
-# Tasks: Item Rarity System
+# Item Rarity System — Tasks
 
 Created: 2026-03-15
-Branch: feature/item-rarity
+Updated: 2026-03-18
+
+## Overview
+Adds a five-tier rarity classification to items, surfaced in the inventory grid.
+Rarity drives filtering, drop weighting and the badge tint on the item widget.
+Goal: make an item's value readable at a glance without opening its tooltip.
 
 ## Settings
 - Testing: no
 - Docs: no
 - Editor tasks: mcp
 
+## Checklist
+
+### Phase 1: Data Model
+**Effort:** S
+**Dependencies:** None
+**Status:** [ ] Not started
+
+- [ ] Task 1.1 — Create the RarityType enum
+  WHY: a typed rarity classification has to exist before any visual or gameplay logic
+  Files: `<content-root>/Gameplay/Core/Items/RarityType.<ext>`
+- [ ] Task 1.2 — Add the rarity field to ItemDefinition
+  WHY: items need a rarity property for filtering and display
+  Files: `<content-root>/Inventory/ItemDefinition.<ext>`
+
+### Phase 2: Presentation
+**Effort:** S
+**Dependencies:** Phase 1
+**Status:** [ ] Not started
+
+- [ ] Task 2.1 — Tint the rarity badge in the item widget
+  WHY: the rarity has to be readable at a glance in the inventory grid
+  Files: `<content-root>/UI/ItemWidget.<ext>`
+  Editor: [ui] ItemWidget → RarityBadge : bind tint to Rarity
+<!-- Commit checkpoint: tasks 1.1-2.1 -->
+
 ## Commit Plan
-- **Commit 1** (tasks 1-3): "feat(items): add rarity enum and data model"
-- **Commit 2** (tasks 4-6): "feat(items): implement rarity visual effects"
 
-## Phase 1: Data Model
+### Commit 1: after tasks 1.1-1.2
+feat(items): add rarity enum and data model
 
-### Task 1: Create RarityType enum
-**WHY:** Need a typed rarity classification before any visual or gameplay logic
-**Effort:** S
-**Files:** `<content-root>/Gameplay/Core/Items/RarityType.<ext>`
-- [ ] Create enum: Common, Uncommon, Rare, Epic, Legendary
-- [ ] Add the serialization attribute for inspector support
+### Commit 2: after tasks 2.1-2.4
+feat(items): implement rarity visual effects
 
-### Task 2: Add rarity field to ItemDefinition
-**WHY:** Items need a rarity property for filtering and display
-**Effort:** S
-**Files:** `<content-root>/Inventory/ItemDefinition.<ext>`
-- [ ] Add a serialized rarity field
-- [ ] Add public RarityType Rarity property
+## MCP Findings
 
-### Task 3: Tint the rarity badge in the item widget
-**WHY:** The rarity has to be readable at a glance in the inventory grid
-**Effort:** S
-**Files:** `<content-root>/UI/ItemWidget.<ext>`
-**Editor:** `[ui] ItemWidget → RarityBadge : bind tint to Rarity`
-- [ ] Add the badge colour lookup
+| id | area | confirm that | observed | evidence | from |
+|---|---|---|---|---|---|
 
 ---
 
@@ -146,8 +162,14 @@ later by a smaller one, and a feature whose per-task specification (exact paths 
 symbols, ordered edits, interfaces, error handling, acceptance criteria, verification
 commands) is simply too long to live inside `## Checklist`.
 
-**Ultra is strictly opt-in.** It is never offered in the interactive mode question and
-never inferred from how big the feature looks. You type it or you do not get it.
+**Ultra is strictly opt-in — user-named, never model-inferred.** It is never offered in
+the interactive mode question and never chosen because a feature looks big. You do have to
+ask for it, but you can ask in your own words and in any language ("ultra plan",
+"ультраплан", "make an ultra plan for the inventory") — the request is recognised wherever
+it sits in the sentence. What is *not* a request is wording that only asks for care: "plan
+this thoroughly" or "a detailed plan" falls through to the interactive question instead,
+because an unwanted bundle leaves you a folder of phase files you never asked for, while a
+missed one costs you one word.
 
 ```text
 .unikit/code/plans/<feature-name>/

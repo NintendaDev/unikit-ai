@@ -23,12 +23,14 @@ Not sure what to do next, or which skill to use? Start here.
 
 ### `/unikit` - project setup
 
-Scans your Unity project and sets up AI context:
+Scans your game project and sets up AI context:
 ```
 /unikit
 ```
-- Scans `Packages/manifest.json`, `Assets/Plugins/`, `Assets/Third-Party Assets/`, `Assets/Modules/`, `.asmdef` files, and `ProjectSettings/`
+- Scans the real tech stack from **engine-specific** sources - the scan list is not hardcoded, it comes from the installed `references/ENGINE_RULES.md` (package manifest, plugin directories, third-party asset folders, project settings). Your own project code is deliberately excluded: on Unity, `Assets/Modules/*/` is *not* treated as a framework
+- Bootstraps `.unikit/config.yaml` - the user-editable source of truth for language, git, and workflow
 - Generates `.unikit/DESCRIPTION.md` (project specification) and `AGENTS.md`
+- Bootstraps the knowledge base under `.unikit/memory/` via the rules registry - the `code` module always, plus the `gamedesign` design library when its skills are installed
 - Invokes `/unikit-architecture` for architecture guidelines
 - **Does NOT implement** - only sets up context
 
@@ -80,23 +82,25 @@ These skills form the core development loop. See [Development Workflow](workflow
 Four modes:
 - **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - creates git branch, asks about testing/logging, saves plan
-- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: reached only by typing `ultra`, never offered and never inferred
+- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
 - **Add** - extends an existing plan with new tasks
 
 Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan folder without re-exploring.
 
-### `/unikit-improve [--list] [@plan-folder] [prompt]` - refine the plan
+### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
 ```
 /unikit-improve                                          # Improve latest plan
 /unikit-improve add validation and error handling        # Improve with specific focus
 /unikit-improve --list                                   # List available plans
-/unikit-improve @.unikit/code/plans/2026-03-10_core-loop      # Improve specific plan
+/unikit-improve @.unikit/code/plans/core-loop            # Improve specific plan
+/unikit-improve +check                                   # Validate refinements before applying
 ```
 - Second-pass analysis: finds missing tasks, fixes dependencies, removes redundant work
 - Performs deeper codebase analysis than initial `/unikit-plan`
 - Shows diff-like report before applying changes
 - `--list` shows available plans; `@<path>` targets a specific plan folder
+- `+check` runs the refinements past a **fresh-context validator** before they are applied - a read-only subagent that drops, modifies, or reclassifies findings it cannot substantiate. If the validator fails to launch, the pass is skipped: every finding is kept and a single `WARN [+check]` line is printed
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
@@ -108,7 +112,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
 /unikit-implement core-loop          # Find plan by name
-/unikit-implement @.unikit/code/plans/2026-03-10_core-loop  # Explicit plan path
+/unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
 - Reads skill-context rules first, then the plan manifest
 - Executes tasks one by one with commit checkpoints
@@ -132,7 +136,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 ```
 /unikit-verify                           # Verify implementation against plan
 /unikit-verify --strict                  # Strict mode - zero tolerance for gaps
-/unikit-verify 2026-03-08_customers      # Verify specific feature
+/unikit-verify customers-system          # Verify specific feature
 ```
 - Goes through every task in the plan and verifies the code actually implements it
 - Checks build, tests, looks for leftover TODOs, plan-vs-code drift
@@ -146,10 +150,10 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 /unikit-commit
 /unikit-commit inventory
 ```
-Creates conventional commits with Unity-specific checks:
+Creates conventional commits with engine-aware checks:
 - Analyzes staged changes (`git status` + `git diff --cached`)
-- Verifies `.meta` file pairing
-- Checks for binary assets, secrets, Unity-ignored directories
+- Verifies companion/metadata file pairing where the engine requires it (Unity `.meta` files and their equivalents)
+- Checks for binary assets, secrets, engine-ignored directories
 - References plan tasks in commit message when applicable
 - Follows conventional commits format (feat, fix, refactor, etc.)
 - Suggests commit splitting for unrelated changes
@@ -181,20 +185,23 @@ Creates conventional commits with Unity-specific checks:
 - Subsequent runs: review progress, add/reprioritize/mark milestones done
 - `check` mode: automated progress scan without interactive prompts
 
-### `/unikit-review` - code review
+### `/unikit-review [+check]` - code review
 
 Reviews code against the project's rule hierarchy. Four modes:
 ```
 /unikit-review                         # Staged changes (default)
 /unikit-review PlayerController.cs     # Specific file(s)
-/unikit-review @Assets/Scripts/Player  # Folder (all .cs files)
+/unikit-review @Assets/Scripts/Player  # Folder (all source files)
 /unikit-review 123                     # PR by number (#42 or URL also work)
 /unikit-review master                  # Commits vs branch/tag
+/unikit-review +check                  # Validate findings before reporting
 ```
 - Checks against: `RULES.md` (highest priority) → `.unikit/memory/code/core/` → `.unikit/memory/code/stack/`
 - Loads stack rules selectively based on frameworks detected in target code
 - Severity scale: Critical, Warning, Medium, Suggestion
 - Reports include concrete code fixes for Critical/Warning items
+- `+check` runs the findings past a **fresh-context validator** before they are presented - a read-only subagent that drops, modifies, or reclassifies findings it cannot substantiate. If the validator fails to launch, the pass is skipped: every finding is kept and a single `WARN [+check]` line is printed
+- Ends with a machine-readable ` ```unikit-gate-result ` block (gate `review`) as the **last** fence of the report, recomputed from the post-filter findings under `+check`. Its schema is `.unikit/system/gate-result-contract.md`
 
 ---
 
@@ -218,16 +225,24 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 /unikit-memory add stack rule for DOTween           # Add rule from description
 /unikit-memory https://docs.example.com/guide       # Research from URL
 /unikit-memory Assets/Plugins/MyLib/README.md        # Research from file
+/unikit-memory ~/books/game-feel.pdf                 # Research from a PDF, EPUB, FB2 or folder
 /unikit-memory migrate-rules                         # Migrate RULES.md to memory
 /unikit-memory validate                              # Sync RULES_INDEX.md with actual files
+/unikit-memory optimise                              # Retroactively extract bulky sections into references
+/unikit-memory --module gamedesign add loop rule     # Target the gamedesign module
 /unikit-memory --skip-registry add rule for DOTween  # Skip registry lookup, generate directly
 ```
-- Four branches: Add Rule (direct), Research (URL/file + Context7 enrichment), Migrate (`migrate-rules`), Validate (`validate` - syncs index with actual files)
+- Five branches: Add Rule (direct), Research (URL/file/folder/book + Context7 enrichment), Migrate (`migrate-rules`), Validate (`validate` - syncs index with actual files), and Optimise (`optimise`)
+- **Module-aware** - `--module code` (default) or `--module gamedesign`. Without the flag the module is inferred from prompt context; on genuine ambiguity the skill asks rather than guessing. See [Dynamic Memory](dynamic-memory.md)
 - **Registry-first lookup** - before generating a rule, checks the remote registry catalog for an existing match; offers to install the vetted version instead of generating a local copy
 - `--skip-registry` - bypass the registry lookup (used by higher-level callers that already queried the catalog)
-- Add or update rules in `.unikit/memory/` (core and stack)
+- Add or update rules in `.unikit/memory/<module>/` (core and stack for `code`; core and library for `gamedesign`)
 - Cross-checks against existing rules to detect duplicates and contradictions
 - Maintains `RULES_INDEX.md` after changes
+
+**Distillation, not transcription.** Research builds an explicit Source Inventory first, then distills rather than copies: examples are driven by what the source actually contains, an update to an existing rule is gap-listed before it is merged, and sources are recorded in a `## Source Map` section (written only when sources exist). Large inputs - a folder, a PDF, an oversized document - go through a dedicated pipeline backed by the bundled `scripts/material-prep.py` helper.
+
+**`optimise` (Branch E)** is the retroactive half of the same idea: it re-reads rules already in the knowledge base, runs the **Candidate Analyzer** over them (size, optionality, lookup shape → **Tier 1** and **Tier 2** confidence buckets), and offers to move bulky sections out into `references/` - available for *every* tier, not just stack. It is **non-destructive**: content is moved, never deleted, and nothing is written before you confirm. The pass ends with a `rules sync`.
 
 ### `/unikit-rules` - project-specific rules
 
@@ -235,6 +250,8 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 /unikit-rules Always use UniTask instead of coroutines
 /unikit-rules
 ```
+Also accepts a **numbered batch** - a prompt whose lines start `1. `, `2. `, … adds several rules in one call and returns a per-rule report. The batch is deliberately *not* atomic: a rule that fails is reported as failed while the rest still land.
+
 - Saves rules to `.unikit/RULES.md` (highest priority in rule hierarchy)
 - Cross-checks against knowledge base in `memory/` via `RULES_INDEX.md`
 - Rules loaded automatically by `/unikit-implement` before task execution
@@ -245,14 +262,19 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 /unikit-rules-registry create   # Scaffold a new local registry seeded from .unikit/memory/
 /unikit-rules-registry update   # Push changes from .unikit/memory/ into the local registry
 /unikit-rules-registry sync     # Pull registry updates back into .unikit/memory/
+/unikit-rules-registry update --module gamedesign   # Scope the operation to one module
 /unikit-rules-registry          # Interactive mode selector
 ```
+
+Like `/unikit-memory`, this skill is **module-aware**: `--module <id>` scopes id validation and the CLI calls it makes to a single knowledge module.
 
 Three modes (direction matters):
 
 - **`create`** - scaffolds a new local registry repository and seeds it with rules from `.unikit/memory/` (memory → registry). Injects `version: 1.0.0` into rule frontmatter. Optionally switches the project to use the new registry via `unikit-ai rules registry set` + `rules sync --replace --prune`
 - **`update`** - diffs `.unikit/memory/` against the currently configured local registry, computes automatic semver bumps (major/minor/patch), writes changed rules back to the registry, cleans up orphaned reference files via reference-graph check, regenerates `manifest.json`, and reconciles `.unikit.json` state via `rules install --force` (memory → registry)
 - **`sync`** - pulls registry-side updates into `.unikit/memory/` via `unikit-ai rules sync` with a choice of intensity: Safe (version-changed only), Replace (also overwrites local modifications), Mirror (replace + prune obsolete stack rules) (registry → memory)
+
+**Write gate.** Before `create` or `update` - never before `sync`, which only reads - the skill calls `unikit-ai rules registry status --json` and reads back `{ target, kind, schema, isLatestSchema, readable, writable }`. A local registry still on schema:1 gets an offer to run `unikit-ai rules registry migrate`; an unreachable or outdated remote registry is refused rather than written, because writing a schema:2 layout into a schema:1 registry would corrupt it.
 
 This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the full registry lifecycle. See [Rules Registry](rules-registry.md) for the underlying CLI commands.
 
@@ -366,12 +388,14 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - Fully read-only - no report file, no changelog, no `doc_status` bump; prints an inline conflict report and hands apply-ready fixes to `/unikit-gd-apply`
 - Unlike review, a conflict is a fact, not a finding - you only choose *how* to fix it, not whether
 
-### `/unikit-gd-apply ["<changes>"] | <reviews/*_review-*.md>` - multi-zone edit dispatcher
+### `/unikit-gd-apply [bare | "<changes>" | <reviews/*_review-*.md>]` - multi-zone edit dispatcher
 
 ```
+/unikit-gd-apply                                        # verify handoff: apply the last /unikit-gd-verify deltas
 /unikit-gd-apply "buff combat 10%, add a loot rarity field, retune onboarding pacing"   # one multi-zone edit
 /unikit-gd-apply reviews/2026-07-01_review-crafting.md   # apply-ready bucket from a review
 ```
+- Three input shapes. The **bare** form is verify's handoff path: it reads the last `/unikit-gd-verify` output in the session and applies its deltas
 - Carries out an explicit, **multi-zone** GDD edit you have already decided - it owns nothing and writes nothing (only `Skill` in its tool list)
 - Resolves each delta to its `(target, zone)` and dispatches **system-before-sinks** (`/unikit-gd-spec` → `/unikit-gd-system` → `/unikit-gd-content` → `/unikit-gd-flow`), then closes with one bare `/unikit-gd-verify`
 - A **single-zone** edit goes straight to the owner; an open question to research goes to `/unikit-gd-explore` first
@@ -410,7 +434,7 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 /unikit-docs --web    # Also generate HTML version
 ```
 - Analyzes codebase and creates README + `docs/` directory with topic pages
-- Auto-detects Unity tech stack (DI, async, event systems, UI frameworks)
+- Auto-detects the project's tech stack for the configured engine (DI, async, event systems, UI frameworks)
 - Reads language setting from `.unikit/config.yaml` (`language.ui` / `language.artifacts`) - documentation generated in the configured language
 - Supports `docs-config.json` for path and document customization
 - Generates HTML documentation site with `--web` flag

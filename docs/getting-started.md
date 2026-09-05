@@ -95,7 +95,7 @@ unikit-ai update --force       # Clean reinstall of skills and force-refresh eve
 
 `update` uses SHA-256 hashes on every skill directory + engine template to detect drift, and reconciles `.unikit/memory/` against the configured registry (pulling newer versions of rules already marked `source: registry` and regenerating `RULES_INDEX.md`). It never contacts `registry.npmjs.org`.
 
-When a package upgrade adds new skills, an interactive `update` (on a TTY, no flag) lists them and asks which to install — defaulting to **none**, so pressing Enter never reinstalls a skill you deliberately de-selected. `--install-new` installs them all non-interactively, `--skip-new` always skips, and a non-TTY `update` skips them silently (CI-safe). Installing the first skill of a module (for example a `unikit-gd-*` game-design skill) also bootstraps that module's rules, so opting into a new module's skills delivers its rules too.
+When a package upgrade adds new skills, an interactive `update` (on a TTY, no flag) lists them as a checkbox prompt with every entry **pre-checked** — new skills are opt-out, so pressing Enter installs all of them and you uncheck the ones you want to skip. `--install-new` installs them all non-interactively, `--skip-new` always skips, and a non-TTY `update` skips them silently (CI-safe). Installing the first skill of a module (for example a `unikit-gd-*` game-design skill) also bootstraps that module's rules, so opting into a new module's skills delivers its rules too.
 
 `self-update` is a separate command dedicated to upgrading the `unikit-ai` binary itself. It detects the active package manager (`npm`/`pnpm`/`yarn`/`bun`/`mise`/`volta`) from the binary path and runs the matching global install. Interactive by design - in non-TTY environments it prints a "skipping" notice and exits 0. No flags. Run it before `unikit-ai update` whenever you want to pick up a newer package.
 
@@ -106,12 +106,13 @@ Rules are first-class and have their own subcommand group. Full reference lives 
 ```bash
 unikit-ai rules list                     # List available rules (all modules; scope with --module)
 unikit-ai rules show <id>                # Preview a rule (searches all modules; scope with --module)
-unikit-ai rules install                  # Install the core bootstrap (no args)
+unikit-ai rules install                  # Prints help - installs nothing
+unikit-ai rules install defaults         # Bootstrap rules for every installed module
 unikit-ai rules install <id> [<id>...]   # Install specific rules
 unikit-ai rules sync                     # Reconcile disk ↔ state, regenerate RULES_INDEX.md
 unikit-ai rules sync --replace --prune   # Overwrite local edits and drop obsolete stack rules
 unikit-ai rules status                   # Show installed rules and their sources
-unikit-ai rules registry [show|set|reset|init]  # Manage the registry URL
+unikit-ai rules registry [show|set|reset|init|migrate|status]  # Manage and inspect the registry
 ```
 
 ### Extensions
@@ -137,7 +138,7 @@ All skills use the `unikit-` prefix and are installed to the agent's skills dire
 | **Memory and rules** | `unikit-memory`, `unikit-rules`, `unikit-rules-registry`, `unikit-skills-context` |
 | **Code** | `unikit-architecture`, `unikit-commit`, `unikit-devcontext`, `unikit-evolve`, `unikit-explore`, `unikit-fix`, `unikit-implement`, `unikit-improve`, `unikit-plan`, `unikit-review`, `unikit-roadmap`, `unikit-verify` |
 | **Game Design** | 11 `unikit-gd-*` skills - GDD authoring (brainstorm, spec, system, flow, content), research (explore, recon), quality (review, verify), dispatch (apply), and export (docs). See [Game-Design Module](gamedesign.md) |
-| **Tools** | `unikit-docs`, `unikit-mcp-trap`, `unikit-mcp-audit`, `unikit-todo` |
+| **Tools** | `unikit-docs`, `unikit-mcp-audit`, `unikit-mcp-trap`, `unikit-todo` |
 
 22 skills form the code pipeline (Core + Memory and rules + Code + Tools); the 11 Game Design skills are a separate, optional module - see [Skills Reference](skills.md) for the full per-skill breakdown.
 
@@ -177,7 +178,7 @@ For agents with MCP support, the wizard configures:
 
 | Engine | Engine MCP (you pick one) | General |
 |--------|---------------------------|---------|
-| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS → 6.x) | [Context7](https://github.com/upstash/context7) |
+| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+) | [Context7](https://github.com/upstash/context7) |
 | Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (default, Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum) | [Context7](https://github.com/upstash/context7) |
 | Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+) | [Context7](https://github.com/upstash/context7) |
 

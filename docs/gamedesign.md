@@ -515,7 +515,11 @@ The relationship between the two modules is deliberately asymmetric: **design wr
 code only reads.** The mechanics of that read are formalized in one shared contract,
 `design-read.md` (installed to `.unikit/system/gamedesign/design-read.md`), loaded by
 both `/unikit-plan` and `/unikit-explore` once a linked design workspace exists (a
-`version: 2` `GD-IDS.yaml` — an older workspace surfaces as `ERROR [design]` instead).
+`version: 2` `GD-IDS.yaml`). The two consumers treat an older workspace differently, by
+design: `/unikit-plan` emits a loud `ERROR [design]` and stops, because a plan built on a
+pre-v2 registry would silently target the wrong ids, while `/unikit-explore` emits a
+`WARN [design]` and simply continues without design grounding — research degrades, it
+does not fail.
 
 **Read the registry, not the render.** `GD-IDS.yaml` is the machine-readable source of
 truth for ids, `status`/`doc_status`, `version`, `implemented_version`, `depends_on`, and

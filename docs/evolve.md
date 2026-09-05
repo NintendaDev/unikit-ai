@@ -145,7 +145,17 @@ Reads all new patches incrementally and proposes rules across all skills.
 
 ### Code rules - delegation to /unikit-rules
 
-Accepted code rules are not written to `RULES.md` directly. Instead, `/unikit-evolve` invokes `/unikit-rules` for each one. The skill handles the full verification pipeline:
+Accepted code rules are not written to `RULES.md` directly. Instead, `/unikit-evolve` hands **all** of them to `/unikit-rules` in a **single call**, as a numbered batch:
+
+```
+1. Always pass a CancellationToken to UniTask.Delay
+2. Never call GetComponent in Update - cache it in Awake
+3. Dispose event subscriptions in OnDestroy
+```
+
+`/unikit-rules` answers with one `## Batch result` table carrying a row per input rule and one of three outcomes - `added`, `already-covered`, or `skipped-duplicate`. The batch is deliberately **not** atomic: a rule that turns out to be a duplicate is reported as such while the others still land.
+
+For each rule in the batch, `/unikit-rules` runs the full verification pipeline:
 
 1. Reads `RULES_INDEX.md` and identifies knowledge base files that overlap with the rule's topic
 2. Reads the relevant knowledge base files (not all - only those matching the topic)

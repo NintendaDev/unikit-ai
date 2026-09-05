@@ -42,49 +42,47 @@ unikit-ai extension remove unikit-ext-example
 
 ### What Happens on Install
 
-1. Extension source is resolved (local path, git clone, or GitHub API)
+1. Extension source is resolved (local path, or a shallow `git clone` for both git and GitHub sources)
 2. Manifest (`extension.json`) is validated
 3. Command module files are verified to exist (if `commands` is defined)
 4. Extension files are copied to `.unikit/extensions/<name>/`
-5. Extension is recorded in `.unikit.json` under `extensions`
-6. Skills are installed into all configured agents (applying agent-specific transformers)
-7. Subagents are installed into agents that support them
-8. Injections are applied to matching skill/subagent files
-9. MCP servers are merged into each agent's settings file
+5. Skills are installed into all configured agents (applying agent-specific transformers)
+6. Subagents are installed into agents that support them
+7. Injections are applied to matching skill/subagent files
+8. MCP servers are merged into each agent's settings file
+9. Extension is recorded in `.unikit.json` under `extensions` - **last**, only once every asset above is on disk, so an interrupted install never leaves a recorded extension whose files never arrived
 10. Command modules are available on next CLI invocation
 
 ### What Happens on Update
 
 Running `unikit-ai update`:
 
-1. **Self-update check** - prompts to update the CLI if a newer version exists
+1. **Extension refresh** - every installed extension is re-resolved from its source and compared by manifest `version`; changed ones are re-committed
 2. **Base skill update** - updates installed base skills (hash-based change detection)
-3. **Extension refresh** - checks installed extensions for updates from their sources:
-   - GitHub repos: fetches `extension.json` via GitHub API (faster than cloning)
-   - Git repos: requires `--force` to refresh
-   - Local paths: requires `--force` to refresh
-   - Extensions with unchanged versions are skipped
-4. **Re-apply injections** - all extension injections are re-applied automatically
+3. **Re-apply injections** - all extension injections are re-applied automatically
 
-`unikit-ai update --force` forces a clean reinstall of base skills AND forces extension refresh regardless of version changes.
+The extension refresh runs **before** the base-skill update, so a skill an extension replaces is already in place when the base pass walks the skill list.
+
+`unikit-ai update` does **not** check whether a newer CLI version is on npm. Updating the CLI package itself is a separate, explicitly-invoked command:
+
+```bash
+unikit-ai self-update   # update the CLI package from npm
+unikit-ai update        # update this project's installed content
+```
+
+`unikit-ai update --force` forces a clean reinstall of base skills AND re-commits every extension regardless of whether its version changed.
 
 #### Extension Update Behavior
 
+All three source types are treated **identically**: the source is always re-resolved, and the freshly-read manifest `version` is compared against the recorded one. `--force` only controls whether an *unchanged* version is re-committed anyway.
+
 | Source Type | Version Check | `--force` Behavior |
 |-------------|---------------|-------------------|
-| GitHub | API fetch of `extension.json`, skip if unchanged | Always re-clone |
-| Git (non-GitHub) | Requires `--force` | Always re-clone |
-| Local path | Requires `--force` | Re-copy from source |
+| GitHub | Shallow clone, compare manifest `version`, skip if unchanged | Re-commit even when unchanged |
+| Git (non-GitHub) | Shallow clone, compare manifest `version`, skip if unchanged | Re-commit even when unchanged |
+| Local path | Re-read manifest, compare `version`, skip if unchanged | Re-copy from source |
 
-#### GitHub API Rate Limits
-
-GitHub API requests use `GITHUB_TOKEN` if present (5,000 req/hr). Without a token, you're limited to 60 req/hr. If rate-limited, the extension refresh is skipped with a warning - the broader `update` continues.
-
-```bash
-# Set GITHUB_TOKEN for higher rate limits
-export GITHUB_TOKEN=ghp_xxxx
-unikit-ai update
-```
+There is no GitHub-API fast path and no `GITHUB_TOKEN` handling in the refresh flow - a GitHub source is cloned like any other git source, so GitHub API rate limits never apply to `unikit-ai update`.
 
 ### Updating Extensions Separately
 
@@ -171,7 +169,7 @@ Only `name` and `version` are required. All other fields are optional.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | `string` | Yes | Unique extension name. Must match `unikit-ext-<lowercase-alphanumeric-hyphens>` |
+| `name` | `string` | Yes | Unique extension name. Must match `^[a-zA-Z0-9_@][\w.@/-]*$` - see [Name Validation](#name-validation) |
 | `version` | `string` | Yes | SemVer version (e.g., `1.0.0`) |
 | `description` | `string` | No | Human-readable description |
 | `commands` | `ExtensionCommand[]` | No | CLI commands registered at startup (see [Commands](#commands)) |
@@ -183,10 +181,12 @@ Only `name` and `version` are required. All other fields are optional.
 
 ### Name Validation
 
-Extension names must match the pattern: `^unikit-ext-[a-z][a-z0-9-]*$`
+Extension names must match the pattern: `^[a-zA-Z0-9_@][\w.@/-]*$` - start with an alphanumeric, `_` or `@`, then word characters, dots, `@`, `/` or `-`.
 
-Valid: `unikit-ext-hello`, `unikit-ext-custom-commit`, `unikit-ext-v2`
-Invalid: `my-extension`, `unikit-ext-`, `unikit-ext-Hello`, `unikit-ext-hello_world`
+Valid: `unikit-ext-hello`, `my-extension`, `@scope/my-ext`, `unikit-ext-v2`, `Custom_Ext`
+Invalid: `-leading-hyphen`, `.dotfile`, `../traversal`, `name with spaces`
+
+The `unikit-ext-` prefix used throughout this page is a **naming convention**, not a requirement - it keeps third-party extensions visually distinct from bundled UniKit content. The validator does not enforce it, and lowercase is not enforced either.
 
 ---
 
@@ -233,8 +233,9 @@ The replacement skill is installed **under the base skill name**. For example, `
 2. The replacement is recorded in `.unikit.json`
 
 **On update** (`unikit-ai update`):
-1. Extension replacement skills are re-installed from `.unikit/extensions/`
-2. If the extension manifest is missing or broken, the base skill is restored automatically
+1. The base-skill pass **skips** every skill an extension replaces, so the replacement survives the update untouched rather than being overwritten by the packaged original
+2. The extension's own `skills` and `subagents` are reinstalled from `.unikit/extensions/`. A `replaces` entry is not itself reinstalled - it is protected by the skip above
+3. If an extension's manifest is missing or unreadable, that extension is skipped with a warning and the update continues. The base skill is **not** restored - restoring an original is exclusively the job of `unikit-ai extension remove`
 
 **On remove** (`extension remove`):
 1. The replacement skill is removed (by its base name)
@@ -397,6 +398,7 @@ The template is written into each agent's settings file under `mcpServers.<key>`
 | Cursor | `.cursor/mcp.json` |
 | Qwen Code | `.qwen/settings.json` |
 | OpenCode | `opencode.json` |
+| Antigravity | `.agents/mcp_config.json` |
 
 On `extension remove`, the key is deleted from the settings file.
 
@@ -633,7 +635,7 @@ This ensures the project stays in a consistent state even if installation fails 
 
 ## Security Considerations
 
-- **Extension names are validated** - names must match `unikit-ext-<lowercase-alphanumeric-hyphens>`, preventing path traversal
+- **Extension names are validated** - the name must start with an alphanumeric, `_` or `@` and contain only word characters, dots, `@`, `/` and `-`, so a name can never begin with `.` or `-` and cannot express a `../` traversal segment
 - **Git clones use shallow depth** - `git clone --depth 1` for minimal download
 - **Manifest validation** - all manifest fields are strictly validated before installation
 - **Replacement conflicts** - no two extensions can replace the same base skill

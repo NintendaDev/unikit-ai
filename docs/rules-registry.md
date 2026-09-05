@@ -39,18 +39,18 @@ See [Game-Design Module](gamedesign.md#domain-knowledge-rules) for the full doma
 
 #### Core rules (`code` module)
 
-There are exactly **6 core rules** with fixed IDs. A custom registry may override any of them, but cannot add or remove entries from this set:
+Core membership is **not** a hardcoded whitelist - a rule is core for an engine because that engine's section of the registry `manifest.json` marks it `always: true`. The official registry currently ships five core rules for Unity and both Godot variants, and a sixth for Unreal Engine 5:
 
-| Rule ID | Purpose |
-|---------|---------|
-| `code-style` | Naming conventions, access modifiers, member ordering, class structure |
-| `design-principles` | SOLID, GRASP, KISS/DRY, SRP decision framework |
-| `folders-structure` | Project folder layout, file placement conventions |
-| `performance` | Pooling, caching, ZLinq, hot path optimization, mobile constraints |
-| `testing` | NUnit, AAA pattern, test doubles, boundary conditions |
-| `pipeline` | Spec-driven workflow contract shared across all pipeline skills |
+| Rule ID | Purpose | Engines |
+|---------|---------|---------|
+| `code-style` | Naming conventions, access modifiers, member ordering, class structure | all |
+| `design-principles` | SOLID, GRASP, KISS/DRY, SRP decision framework | all |
+| `folders-structure` | Project folder layout, file placement conventions | all |
+| `performance` | Pooling, caching, ZLinq, hot path optimization, mobile constraints | all |
+| `testing` | NUnit, AAA pattern, test doubles, boundary conditions | all |
+| `pipeline` | Spec-driven workflow contract shared across all pipeline skills | Unreal Engine 5 |
 
-These rules are fully customizable - you can rewrite any of them in your own registry to reflect your team's pipeline, naming conventions, or architectural constraints. If a rule is missing from the custom registry, it falls back to the official version automatically. This means you only need to provide the rules you actually want to override; the rest are inherited from the official registry.
+These rules are fully customizable - you can rewrite any of them in your own registry to reflect your team's pipeline, naming conventions, or architectural constraints. If a rule is missing from the custom registry, it falls back to the official version automatically. This means you only need to provide the rules you actually want to override; the rest are inherited from the official registry. A custom registry may also mark *additional* rules `always: true` for an engine - the set is per-engine registry data, not a fixed list.
 
 ### Transport Chain
 
@@ -235,7 +235,7 @@ unikit-ai rules show aspid-mvvm --references
 
 Rule IDs use canonical lowercase-hyphen form. The CLI matches IDs case-insensitively, so `CODE-STYLE` resolves to the same file as `code-style`. An id that resolves in **more than one** module is ambiguous and exits `3` (pass `--module` to disambiguate); an id found in none exits `1`.
 
-### `unikit-ai rules install [defaults | ids...] [--force]`
+### `unikit-ai rules install [defaults | ids...] [--force] [--module <module>]`
 
 Install rules from the registry. Three contracts:
 
@@ -269,22 +269,28 @@ unikit-ai rules sync --replace --prune      # Full mirror (old --force equivalen
 
 Sync runs in three phases (shared with `unikit-ai update`):
 
-1. **Phase 1 - disk/state reconciliation.** Untracked `.md` files found in `.unikit/memory/{core,stack}/` are tagged `source: local`; entries missing from disk are dropped from state. IDs are compared case-insensitively so legacy `CODE-STYLE` and canonical `code-style` never double-register.
+1. **Phase 1 - disk/state reconciliation.** Untracked `.md` files found under `.unikit/memory/<module>/<tier>/` are tagged `source: local`; entries missing from disk are dropped from state. IDs are compared case-insensitively so legacy `CODE-STYLE` and canonical `code-style` never double-register.
 2. **Phase 2 - registry sync.** Each rule with `source: "registry"` is compared to the manifest version. Newer registry versions replace the installed file; equal versions and locally-modified files are skipped unless `--replace` is set. If the registry version is LOWER than the installed version, sync emits a `phase2:downgrade` log line and still applies the change under `--replace` - so accidental rollbacks are never silent.
+
+   **Override retention.** In a `per-id-merge` module (`gamedesign`), a rule installed with `origin: primary` - a deliberate studio override - is **never** auto-updated back to the canonical official or bundled version, even when the versions differ. Sync logs `phase2:override-retained` and leaves the file alone. Only an explicit `--replace` overwrites it. Overrides do not silently expire.
 3. **Phase 3 - index regeneration.** `.unikit/memory/RULES_INDEX.md` is rebuilt from registry metadata with a disk fallback for user-added rules. Runs on every sync, regardless of flags.
 
-### `unikit-ai rules status [--json]`
+### `unikit-ai rules status [--json] [--check-updates] [--module <module>]`
 
-Show installed rules with their sources, origins, and versions.
+Show installed rules with their sources, origins, and versions. Covers every registered module by default (`code` first, then `gamedesign`); `--module` narrows it to one.
 
 ```bash
 unikit-ai rules status
-unikit-ai rules status --json   # Machine-readable for AI skills
+unikit-ai rules status --json              # Machine-readable for AI skills
+unikit-ai rules status --check-updates     # Also report which installed rules have a newer registry version
+unikit-ai rules status --module gamedesign # Scope to one module
 ```
 
-### `unikit-ai rules registry [show | set <url> | reset | init [path]]`
+Note the split of responsibility: `rules status` describes **the rules installed in your project**. To ask what a *registry* is capable of - its physical schema and whether the CLI may write to it - use `rules registry status` below.
 
-Nested command group. The bare form (`rules registry` with no subcommand) is an alias for `rules registry show`. None of the write subcommands trigger a sync - switching the URL and pulling content are two explicit steps.
+### `unikit-ai rules registry [show | set <url> | reset | init [path] | migrate [path] | status [target]]`
+
+Nested command group with six subcommands. The bare form (`rules registry` with no subcommand) is an alias for `rules registry show`. None of `set` / `reset` / `init` / `migrate` trigger a sync - switching the registry and pulling content are two explicit steps.
 
 ```bash
 unikit-ai rules registry                                        # → rules registry show
@@ -297,9 +303,23 @@ unikit-ai rules registry reset                                  # Revert to offi
 
 unikit-ai rules registry init ./rules-registry                  # Scaffold a new local registry
 unikit-ai rules registry init ../shared/org-rules               # Custom path
+
+unikit-ai rules registry migrate ./rules-registry               # Relocate schema:1 → schema:2 on disk
+unikit-ai rules registry status                                 # Can the CLI write/migrate this registry?
+unikit-ai rules registry status ../shared/org-rules --json      # Inspect another target, machine-readable
 ```
 
 After `set` or `reset`, the CLI prints a hint block with suggested `rules sync` variants. Run the appropriate sync when ready to pull content from the newly configured registry.
+
+#### `rules registry migrate [path]`
+
+Maintainer command. Migrates a **local** registry on disk from schema:1 (flat `<engine>/<tier>/`) to schema:2 (`code/<engine>/<tier>/`), relocating rule files and rewriting `manifest.json`. Idempotent by sha - a second run is a no-op. Targets the given path, or the configured `rulesRegistry` when that is local; a remote registry cannot be migrated in place (clone it, migrate the clone, open a PR upstream). Exit codes: `0` migrated or already latest, `1` target manifest missing, `3` no local target, `5` resulting manifest invalid or schema unsupported.
+
+#### `rules registry status [target] [--json]`
+
+Reports a registry's **physical** schema and whether the CLI can migrate or write it. Reads the raw schema from a single source - no fallback chain - so it describes the registry you named, not the one the chain would resolve to. Defaults to the configured registry.
+
+The `--json` form returns six facts: `{ target, kind, schema, isLatestSchema, readable, writable }`. This is the gate `/unikit-rules-registry` consults before every write operation. Exit codes: `0` reachable and schema ≤ latest, `2` unreachable, `5` schema newer than this CLI supports.
 
 ---
 
@@ -329,19 +349,29 @@ Tracks every rule installed into `.unikit/memory/`:
 {
   "rules": {
     "installed": {
-      "version": "1.2.3",
-      "core": [
-        { "name": "code-style",        "source": "registry", "origin": "official", "version": "1.2.0", "installed_hash": "sha256:..." },
-        { "name": "folders-structure", "source": "registry", "origin": "primary",  "version": "2.0.0", "installed_hash": "sha256:..." }
-      ],
-      "stack": [
-        { "name": "dotween",   "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "sha256:..." },
-        { "name": "my-custom", "source": "local" }
-      ]
+      "version": "2.0.0",
+      "modules": {
+        "code": {
+          "core": [
+            { "name": "code-style",        "source": "registry", "origin": "official", "version": "1.2.0", "installed_hash": "sha256:..." },
+            { "name": "folders-structure", "source": "registry", "origin": "primary",  "version": "2.0.0", "installed_hash": "sha256:..." }
+          ],
+          "stack": [
+            { "name": "dotween",   "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "my-custom", "source": "local" }
+          ]
+        },
+        "gamedesign": {
+          "core":    [ { "name": "economy", "source": "registry", "origin": "primary", "version": "2.1.0", "installed_hash": "sha256:..." } ],
+          "library": [ { "name": "our-meta-loop", "source": "local" } ]
+        }
+      }
     }
   }
 }
 ```
+
+Entries are keyed **by module, then by tier** — `modules.code.{core,stack}` and `modules.gamedesign.{core,library}`. A pre-2.0.0 config carrying the flat `installed.core` / `installed.stack` form is still read and wrapped under the `code` module on load.
 
 **Fields per rule entry:**
 
@@ -395,7 +425,7 @@ unikit-ai rules registry reset
 unikit-ai rules sync --replace --prune
 ```
 
-> **Re-init warning:** `unikit-ai init` on an already-configured project does **not** pre-fill the previous `rulesRegistry` value - the wizard always starts from scratch. Use `unikit-ai rules registry set <url>` to change the registry without re-running `init`.
+> **Re-init note:** `unikit-ai init` on an already-configured project **pre-fills** the previous `rulesRegistry` value - the "Use a custom rules registry?" confirm defaults to yes when the project already points at a non-official registry, and the URL input is pre-filled with the current value. Press Enter to keep it. To change the registry without re-running the whole wizard, use `unikit-ai rules registry set <url>`.
 
 ---
 
@@ -408,11 +438,14 @@ All `unikit-ai rules *` commands share a unified exit-code set:
 | 0 | Success |
 | 1 | Not found (rule ID, config file, etc.) |
 | 2 | Network error / registry unreachable |
-| 3 | Invalid arguments (bad ID format, relative path) |
-| 4 | Operation not permitted (file-exists guards) |
-| 5 | Registry validation failed (bad manifest, schema mismatch, engine missing, empty core whitelist) |
+| 3 | Invalid arguments (bad ID format, relative path, unknown `--module`, ambiguous `rules show` id, `install defaults` combined with ids) |
+| 4 | Operation not permitted (file-exists guards outside variadic install) |
+| 5 | Registry validation failed (bad manifest, schema mismatch, engine missing, empty `install defaults` bootstrap set) |
 | 6 | Registry already initialized at target path (`rules registry init`) |
 | 7 | Target path occupied by non-registry files (`rules registry init`) |
+| 8 | Project out of date - the migration chain still has pending work. Run `unikit-ai update` before `rules sync` / `rules install` |
+
+`unikit-ai genres *` uses a strict **subset** of this set - `0`, `1` and `3` only. It reads a bundled catalog, so it has no network and no migration gate.
 
 ---
 
@@ -426,25 +459,38 @@ The `unikit-ai rules *` surface has dedicated smoke tests under `scripts/test-ru
 scripts/
 ├── test-fixtures.sh                     # Shared helpers (assertions, fake registries, counters)
 ├── test-fixtures/
-│   ├── minimal-valid/                   # 1 core + 1 stack rule with references (unity + godot)
+│   ├── minimal-valid/                   # schema:1 - 1 core + 1 stack rule with references (unity + godot)
 │   ├── multi-version/
 │   │   ├── v1/                          # unitask v1.0.0 baseline
 │   │   └── v2/                          # unitask v2.0.0 upgraded (bumped hash + sentinel)
-│   └── corrupted-manifest/              # Invalid JSON → exit 5 on `rules registry set`
+│   ├── corrupted-manifest/              # Invalid JSON → exit 5 on `rules registry set`
+│   ├── schema2-valid/                   # The canonical schema:2 shape
+│   ├── unsupported-schema/              # Schema newer than the CLI → exit 5 guard
+│   ├── gamedesign-override/             # schema:2 B-merge - a studio core rule overriding the canonical one
+│   ├── gamedesign/                      # Game-design module fixtures (incl. the defective-gdd corpus)
+│   ├── cross-module-collision/          # One id present in two modules → ambiguous `rules show`
+│   ├── offline-official/                # Valid but module-less manifest - keeps the official level offline
+│   └── mcp/                             # Fake MCP catalogs for installer behaviour tests (UNIKIT_MCP_DIR)
 ├── test-rules-list.sh                   # `rules list` - all-modules blocks, flat-all/flat-single JSON, exit codes, --engine override
 ├── test-rules-show.sh                   # `rules show` - module-agnostic lookup, id normalization, --references expansion
 ├── test-rules-status.sh                 # `rules status` - populated state, registryKind, --check-updates guard
 ├── test-rules-install.sh                # `rules install` - bare help, defaults bootstrap, variadic, --force, drift recovery
-├── test-rules-sync.sh                   # `rules sync` - 4 modes × 4 states + 4 regression guards
-├── test-rules-registry.sh               # `rules registry` - show/set/reset, no-auto-sync guards, origin fold
+├── test-rules-sync.sh                   # `rules sync` - 4 modes × 4 states + regression guards
+├── test-rules-registry.sh               # `rules registry` - show/set/reset/alias, no-auto-sync guards, origin fold
 ├── test-rules-registry-init.sh          # `rules registry init` - scaffold smoke tests
-├── test-rules.sh                        # Runner: Parts 1-9 CLI contract + Parts 11-17 per-command tests
+├── test-rules-migrate.sh                # `rules registry migrate` - schema:1→2 relocation, idempotency, exit 5
+├── test-rules-registry-status.sh        # `rules registry status` - 6-row matrix, --json fields, exit 0/2/5
+├── test-registry-format.sh              # schema:2 bundled snapshot + build-manifest.js output
+├── test-memory-migration.sh             # Modular memory migration smoke
+├── test-golden-guard.sh                 # Golden-guard #1 - modular memory layout, no hardcoded tier paths
+├── test-module-contract.sh              # Guard #2 - per-module completeness across MODULE_REGISTRY
+├── test-rules.sh                        # Runner: Parts 1-9 CLI contract + Parts 11-23 per-command tests
 └── test-exit-codes.sh                   # Guard matrix: every documented exit code must be exercised
 ```
 
 ### Runner chain
 
-`npm test` → `scripts/test-skills.sh` (main runner) → Part 13 runs `scripts/test-rules.sh`, which in turn chains Parts 11-17 through the per-command files and the exit-code matrix guard. The chain is:
+`npm test` → `scripts/test-skills.sh` (main runner) → Part 13 runs `scripts/test-rules.sh`, which in turn chains Parts 11-23 through the per-command files, the guard suites, and the exit-code matrix. The chain is:
 
 ```
 npm test
@@ -452,16 +498,24 @@ npm test
     ├── Parts 1-7   skill / subagent / data / code validation
     ├── Part 8      test-update.sh
     ├── Part 9      test-install.sh
+    ├── Part 9b     test-migrations.sh
     ├── Part 10     test-extensions.sh
-    └── Part 13     test-rules.sh
-        ├── Parts 1-9   registry module, CLI contract, manifest, bundled snapshot
-        ├── Part 11     test-rules-list.sh
-        ├── Part 12     test-rules-show.sh
-        ├── Part 13     test-rules-status.sh
-        ├── Part 14     test-rules-install.sh
-        ├── Part 15     test-rules-sync.sh
-        ├── Part 16     test-rules-registry.sh
-        └── Part 17     test-exit-codes.sh   ← matrix guard
+    ├── Part 13     test-rules.sh
+    │   ├── Parts 1-9   registry module, CLI contract, manifest, bundled snapshot, registry init
+    │   ├── Part 11     test-rules-list.sh
+    │   ├── Part 12     test-rules-show.sh
+    │   ├── Part 13     test-rules-status.sh
+    │   ├── Part 14     test-rules-install.sh
+    │   ├── Part 15     test-rules-sync.sh
+    │   ├── Part 16     test-rules-registry.sh
+    │   ├── Part 17     test-rules-migrate.sh
+    │   ├── Part 18     test-rules-registry-status.sh
+    │   ├── Part 19     test-registry-format.sh
+    │   ├── Part 20     test-memory-migration.sh
+    │   ├── Part 21     test-golden-guard.sh
+    │   ├── Part 22     test-module-contract.sh
+    │   └── Part 23     test-exit-codes.sh   ← matrix guard (must run last)
+    └── Part 13b    test-genres*.sh
 ```
 
 ### Running tests in isolation

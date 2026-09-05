@@ -48,6 +48,8 @@ The agent is a powerful tool, but the architectural vision and quality bar remai
 
 UniKit automates code writing, but a quality project requires quality documentation. Ideally you should create a game design document describing the MVP - written in plain language, explaining how the game will function. This document can then be broken down into strategic parts using `/unikit-roadmap`.
 
+You do not have to write that GDD by hand. The `gamedesign` module exists for exactly this: `/unikit-gd-brainstorm` to work out the concept and pillars, then `/unikit-gd-spec` to turn it into a one-page `GAME.md` plus the `GD-IDS.yaml` registry that code plans read from. A GDD authored this way is machine-readable, so `/unikit-plan` can pull a design brief straight into its planning context instead of you re-explaining the design in every prompt. See [Game-Design Module](gamedesign.md).
+
 Each roadmap item may require research. `/unikit-explore` can help, but only partially. Sometimes you as the architect need to decide which frameworks and technologies to use, whether they'll work well together, and what combination fits best. This can be done in other AI tools as well - Claude, Gemini, and others. The important thing is to develop a clear project vision and have a description of the core gameplay loop in hand.
 
 With these documents ready, you can start working with UniKit on solid ground. That's the ideal starting point.
@@ -68,7 +70,7 @@ After review you can run `/unikit-fix` - it will pick up the review results and 
 
 ### Run evolve regularly
 
-Run `/unikit-evolve` when you accumulate more than 10 patches. This is essential for the framework's self-learning - evolve distills fix patterns into permanent rules, so the agent doesn't repeat the same mistakes across sessions.
+Run `/unikit-evolve` once you have accumulated 5-10 patches - enough for a pattern to be distinguishable from a one-off. This is essential for the framework's self-learning: evolve distills fix patterns into permanent rules, so the agent doesn't repeat the same mistakes across sessions.
 
 ## See Also
 

@@ -122,7 +122,7 @@ Single refinement pass over a plan, then hand back.
 - Carries `skills: [unikit-plan, unikit-improve]`
 - Returns the summary in English (structured output), while the plan manifest (`PLAN.md`) itself stays in the configured project language
 
-Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 12`.
+Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 20`.
 
 ### Sidecars (background, read-only)
 
@@ -133,7 +133,7 @@ Sidecars share the same shape: read-only tools (`Read`, `Glob`, `Grep`), `backgr
 | `unikit-review-sidecar` | Surfaces correctness, regression, and performance risks in the diff - only material findings, no cosmetic nits | `ARCHITECTURE.md`, `RULES.md`, core rules, relevant stack rules |
 | `unikit-architecture-sidecar` | Checks module boundaries and dependency directions | `ARCHITECTURE.md`, `RULES.md`, core rules |
 | `unikit-commit-sidecar` | Inspects the diff, drafts the safest next commit action (message + readiness) without touching git state | `RULES.md`, recent `git log` |
-| `unikit-docs-sidecar` | Classifies documentation drift as `no_action` / `safe_update` / `needs_user_choice` | `RULES.md`, `RULES_INDEX.md`, skill-context for `unikit-docs` |
+| `unikit-docs-sidecar` | Classifies documentation drift as `no_action` / `safe_update_existing` / `needs_new_docs` / `needs_user_choice` | `RULES.md`, `RULES_INDEX.md`, skill-context for `unikit-docs` |
 
 All sidecars return their findings in English so the coordinator can parse them consistently across projects.
 

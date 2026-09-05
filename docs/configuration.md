@@ -8,10 +8,10 @@ Main configuration file, created by `unikit-ai init`:
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "engine": "unity",
-  "engineMcpKey": "UnityMCP",
-  "mcp": { "servers": { "unity-biome-mcp": "UnityMCP", "context7": "context7" } },
+  "engineMcpKey": "unity-biome-mcp",
+  "mcp": { "servers": { "unity-biome-mcp": "unity-biome-mcp", "context7": "context7" } },
   "agents": [
     {
       "id": "claude",
@@ -20,9 +20,10 @@ Main configuration file, created by `unikit-ai init`:
       "installedSkills": [
         "unikit", "unikit-architecture", "unikit-commit", "unikit-devcontext",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
-        "unikit-implement", "unikit-improve", "unikit-memory", "unikit-plan",
-        "unikit-review", "unikit-roadmap", "unikit-rules", "unikit-rules-registry",
-        "unikit-skills-context", "unikit-todo", "unikit-verify"
+        "unikit-implement", "unikit-improve", "unikit-mcp-audit", "unikit-mcp-trap",
+        "unikit-memory", "unikit-plan", "unikit-review", "unikit-roadmap",
+        "unikit-rules", "unikit-rules-registry", "unikit-skills-context",
+        "unikit-todo", "unikit-verify"
       ],
       "installedSubagents": [
         "unikit-architecture-sidecar", "unikit-commit-sidecar",
@@ -41,25 +42,46 @@ Main configuration file, created by `unikit-ai init`:
   "rulesRegistry": "https://raw.githubusercontent.com/NintendaDev/unikit-ai-rules/main",
   "rules": {
     "installed": {
-      "version": "1.0.0",
-      "core": [
-        { "name": "code-style",        "source": "registry", "origin": "official", "version": "1.2.0", "installed_hash": "sha256:..." },
-        { "name": "design-principles", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-        { "name": "folders-structure", "source": "registry", "origin": "official", "version": "1.1.0", "installed_hash": "sha256:..." },
-        { "name": "performance",       "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-        { "name": "testing",           "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." }
-      ],
-      "stack": [
-        { "name": "aspid-mvvm", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-        { "name": "node-canvas", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-        { "name": "odin",        "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-        { "name": "r3",          "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-        { "name": "unitask",     "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." }
-      ]
+      "version": "2.0.0",
+      "modules": {
+        "code": {
+          "core": [
+            { "name": "code-style",        "source": "registry", "origin": "official", "version": "1.2.0", "installed_hash": "sha256:..." },
+            { "name": "design-principles", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "folders-structure", "source": "registry", "origin": "official", "version": "1.1.0", "installed_hash": "sha256:..." },
+            { "name": "performance",       "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "testing",           "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." }
+          ],
+          "stack": [
+            { "name": "aspid-mvvm",  "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "node-canvas", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "odin",        "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "r3",          "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "unitask",     "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." }
+          ]
+        },
+        "gamedesign": {
+          "core": [
+            { "name": "core-loops", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "economy",    "source": "registry", "origin": "primary",  "version": "2.1.0", "installed_hash": "sha256:..." }
+          ],
+          "library": []
+        }
+      }
     }
+  },
+  "genres": {
+    "installed": [
+      { "id": "tycoon", "version": 1 }
+    ]
   }
 }
 ```
+
+Two shapes worth calling out:
+
+- **`rules.installed` is module-keyed.** Entries live under `modules.<moduleId>.<tier>` - `modules.code.{core,stack}` and `modules.gamedesign.{core,library}`. The pre-2.0.0 flat form (`installed.core` / `installed.stack` at the top level) is still *read* and wrapped under the `code` module on load, so old projects keep working, but it is no longer the shape that gets written.
+- **`genres.installed` is deliberately flat**, not a knowledge module - a plain list of `{ id, version }` keyed by profile id. Its `version` is a provenance record of which bundled revision was delivered; it does not gate refresh, because the installer rewrites installed profiles unconditionally on every `update`.
 
 ### Fields
 
@@ -79,7 +101,8 @@ Main configuration file, created by `unikit-ai init`:
 | `agents[].managedSkills` | SHA-256 hash-based change tracking for skill updates |
 | `agents[].managedSubagents` | SHA-256 hash-based change tracking for subagent updates |
 | `extensions` | Array of installed extension records (optional) |
-| `rules.installed` | Currently installed dynamic memory (core + stack). Each entry is an object `{ name, source, origin?, version?, installed_hash? }`. See [Rules Registry](rules-registry.md#unikitjson-registry-fields) for field descriptions. Legacy `string[]` entries are normalized to `{ name, source: "installer" }` on load. |
+| `rules.installed` | Currently installed dynamic memory, keyed by module then tier (`modules.code.{core,stack}`, `modules.gamedesign.{core,library}`). Each entry is an object `{ name, source, origin?, version?, installed_hash? }`. See [Rules Registry](rules-registry.md#unikitjson-registry-fields) for field descriptions. Legacy `string[]` entries are normalized to `{ name, source: "installer" }` on load, and the pre-2.0.0 flat `{ core, stack }` form is wrapped under the `code` module. |
+| `genres.installed` | Installed genre profiles as a flat list of `{ id, version }` (optional). Written by `unikit-ai genres install` and by `/unikit-gd-spec`'s best-fit resolve; drives which profiles `installGenreProfiles` delivers into `.unikit/system/gamedesign/genres/`. Orthogonal to `rules.installed` - genres are a seed catalog, not a knowledge module. |
 
 ## `.unikit/config.yaml`
 
@@ -164,7 +187,7 @@ Two engine servers compete here. The wizard lists them in `order`, so **Unity Bi
 ```json
 {
   "command": "uvx",
-  "args": ["--from", "git+https://github.com/german-krasnikov/unity-biome-mcp.git#subdirectory=server", "unity-biome-mcp"],
+  "args": ["--from", "git+https://github.com/german-krasnikov/unity-biome-mcp.git@v{{ VERSION }}#subdirectory=server", "unity-biome-mcp"],
   "env": { "UNITY_MCP_NO_GATING": "1" }
 }
 ```
@@ -255,9 +278,13 @@ This is a flat `config`, not [`configByPlatform`](#per-platform-configs) — the
 
 ```json
 {
-  "env": {
-    "GODOT_PATH": "/path/to/godot",
-    "DEBUG": "true"
+  "config": {
+    "command": "npx",
+    "args": ["@coding-solo/godot-mcp"],
+    "env": {
+      "GODOT_PATH": "/path/to/godot",
+      "DEBUG": "true"
+    }
   }
 }
 ```
@@ -337,7 +364,14 @@ An MCP JSON may name the skills and subagents that receive its tools; the names 
 
 - **Executors get a wildcard.** `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext` and the implement coordinator / worker / review sidecar are granted `["*"]` rather than a list of names. A stored list is a second catalog that nothing keeps in sync: it goes stale silently, and then it removes a right the agent was supposed to have. The wildcard also removes the last reason for a tool name to be written down anywhere but the live catalog.
 - **The planner is the one exception**, and receives discovery names only — as few as the server needs to resolve a target. The discovery protocol is the single layer that does not rot, and a planner physically cannot mutate anything, so a narrow grant costs nothing and documents the boundary. A meta-tool that reports which parts of a catalog are switched on is **not** granted where its state field has been measured to lie.
-- **On one server the planner receives nothing at all, and that is the rule above being applied rather than an oversight.** Fennara's only discovery-shaped candidate is a self-report, and its tool listing was measured naming an affordance the protocol path then refuses to run — a state field that disagrees with what is callable. Granting it would hand the planner a catalog that lies in the direction that costs most: naming what does not work. So the key is absent from `mcp/godot/fennara-godot-mcp.json`, and since the format has no comments, the asymmetry with the two Unity servers is recorded here.
+- **On the three Godot servers the planner receives nothing at all, and that is the rule above being applied rather than an oversight.** None of `fennara-godot-mcp.json`, `gdai-godot-mcp.json` or `coding-solo-godot-mcp.json` carries a `unikit-plan` key. Fennara's only discovery-shaped candidate is a self-report, and its tool listing was measured naming an affordance the protocol path then refuses to run — a state field that disagrees with what is callable. Granting it would hand the planner a catalog that lies in the direction that costs most: naming what does not work. The other two Godot servers offer no discovery-shaped tool at all, so there is nothing to grant. Since the format has no comments, the asymmetry with the servers that *do* grant the planner is recorded here:
+
+  | Server | Planner grant |
+  |--------|---------------|
+  | Unity Biome MCP | `discover_tools`, `mcp_status` |
+  | Coplay Unity MCP | `find_gameobjects` |
+  | ChiR24 Unreal MCP | `manage_tools` |
+  | All three Godot servers | *(no `unikit-plan` key)* |
 - `/unikit-mcp-audit` gets a wildcard because replaying a finding means re-issuing the exact call recorded in its `evidence:` field. Its restraint lives in a six-step envelope gated on one informed confirmation from you, not in the size of its grant.
 - **`/unikit-mcp-trap` receives no grants at all** — it makes zero MCP calls by construction. This cannot be recorded in the JSON itself: the format has no comments, and an empty array would say something different — that the skill is a recipient whose grant list happens to be empty, which is a state nothing distinguishes from an editing mistake. So it is written down here.
 - The wildcard on the read-only review sidecar is a **deliberate deferral** — narrowing read-only consumers is a separate question — not an oversight to be tidied away.
@@ -502,6 +536,20 @@ your-unity-project/
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git)
 │   ├── system/                   # Flat-rewritten on every init/update - never hand-edit
+│   │   ├── cli-contract.md        # CLI exit codes + command contract, for the skills to read
+│   │   ├── dev-principles.md      # Engine principles (the one asset with {{engine_*}} substituted)
+│   │   ├── modules.yml            # Generated snapshot of MODULE_REGISTRY
+│   │   ├── gate-result-contract.md # Schema of the `unikit-gate-result` fenced JSON block
+│   │   ├── gamedesign/            # only if the Game Design skills are installed
+│   │   │   ├── gd-principles.md    # The design working contract - slim core
+│   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it
+│   │   │   ├── gd-lifecycle.md
+│   │   │   ├── gd-flow-axis.md
+│   │   │   ├── gd-content-axis.md
+│   │   │   ├── gd-provenance.md
+│   │   │   ├── gd-critique.md
+│   │   │   ├── design-read.md      # The code-reads-design contract
+│   │   │   └── genres/             # Only the profiles in .unikit.json genres.installed
 │   │   └── engine-mcp/            # Rules tree of the selected engine MCP (INDEX.md, verification.md)
 │   ├── MCP-RECHECK-NOTES.md      # Your findings about that server - /unikit-mcp-trap writes, the installer only renames
 │   ├── memory/                   # Dynamic memory, partitioned per knowledge module

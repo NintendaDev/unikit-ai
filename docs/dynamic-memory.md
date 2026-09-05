@@ -132,7 +132,7 @@ A compact auto-generated index that tells pipeline skills (and `/unikit-devconte
 
 The column scheme is module-specific: the `code` module's `core` table carries a **Required By** column (which pipeline skills need that rule loaded - see `data/rules-manifest.json`), because its core rules are mandatory-gated. The `gamedesign` module's `core` table carries an **Origin** column instead (`primary` / `official` / `bundled`), because its core tier resolves per rule id (see the `per-id-merge` row above) and there is no mandatory-gate concept there. Non-core tiers (`stack`, `library`) never carry an extra column - they're load-on-demand either way.
 
-Generated automatically by `unikit-ai init`, `unikit-ai update`, `unikit-ai rules sync`, and `/unikit-memory`. Never edit it manually.
+Generated automatically by `unikit-ai init`, `unikit-ai update`, `unikit-ai rules sync`, `unikit-ai rules install` (every invocation, both the `defaults` bootstrap and the variadic id form), and `/unikit-memory`. Never edit it manually.
 
 ## Dynamic Loading
 
@@ -237,6 +237,8 @@ Five workflows, selected from phrasing or input shape:
 
 **The Research pipeline** builds a **Source Inventory** (one row per URL/file/folder/Context7 library, with what it covers and any coverage gaps) before synthesizing, so multi-source research stays honest about what it actually read. Folders, PDFs, and EPUB/FB2 books are not read naively - they route through a dedicated large-source workflow (TOC-first → topic map → chunk → cleanup) backed by a self-contained, probe-gated Python 3 helper (`scripts/material-prep.py`) when a Python interpreter is available. The synthesized rule keeps a `## Source Map` section mapping each source to what it informed - conditional, and only when the rule was actually built from external material.
 
+**Updating an existing rule is gap-listed by default.** When Add Rule or Research targets a file that already exists, the skill does not rewrite it and does not blindly append. It first reports what the new material adds that the file is missing - the gap list - and merges only that. This is the merge guard that keeps a second research pass from duplicating the first one's content under slightly different headings.
+
 **The Candidate Analyzer** decides what belongs in the main rule versus a reference file - it runs both after synthesis (on-add) and during a later `optimise` pass, so the two paths are judged identically. Each content block is scored on size (≳ 40 lines), optionality, and lookup-shape, and sorted into **Tier 1** (clear wins - large lookup tables, independently-used subsystems, exhaustive variant indexes) and **Tier 2** (borderline calls). The user picks Tier 1 only, Tier 1 + Tier 2, or leaves everything inline; before proposing a new reference file, the analyzer checks for an existing one covering the same topic and extends it instead of forking a near-duplicate.
 
 **A Quality Gate** runs automatically before the skill's final report (for Add Rule and Research; a structural-only pass for Optimise) - it confirms the `Scope`/`Load when` header is prose (not an identifier dump), no template placeholders leaked into the file, `RULES_INDEX.md` has a row for it, and - for freshly synthesized content - that every major topic the rule raises is illustrated by an example and that guidance was distilled rather than copied verbatim.
@@ -275,13 +277,19 @@ The skill checks for conflicts with existing rules in `RULES.md` and permanent m
 
 ### Stage 2: Auto-extraction from Patches
 
-`/unikit-evolve` analyzes patches created by `/unikit-fix`, extracts recurring patterns, and adds new rules to `RULES.md` for validation:
+`/unikit-evolve` analyzes patches created by `/unikit-fix`, extracts recurring patterns, and routes each extracted rule to **one of two destinations** based on what kind of rule it is:
 
 ```
 patches/fix-async-leak.patch
     ↓ classify
-RULES.md (new rule: "Always pass CancellationToken to UniTask.Delay")
+    ├── coding convention  → RULES.md
+    │     ("Always pass CancellationToken to UniTask.Delay")
+    └── workflow override  → .unikit/skill-context/<skill>/SKILL.md
+          ("run a compile check before marking a task done")
 ```
+
+- **`RULES.md`** - coding conventions: *how to write code* (patterns, naming, null-checks, async, serialization). These continue down the pipeline into `memory/` via `/unikit-memory migrate-rules`.
+- **`.unikit/skill-context/<skill>/SKILL.md`** - workflow overrides: *how a skill should behave* (delegation strategy, commit frequency, compilation checks, parallelism). These are read directly by the target skill and never migrate into `memory/`.
 
 ### Stage 3: Migration to Permanent Memory
 
@@ -319,16 +327,23 @@ The same migration runs for the `gamedesign` module (`/unikit-memory migrate-rul
 ┌──────────────────┐                ┌──────────────────┐
 │ Find bug         │                │ Read new patches │
 │ Fix it           │ ──patches──▶  │ Extract patterns  │
-│ Create patch     │                │  → RULES.md      │
+│ Create patch     │                │ Classify each    │
 │                  │                │                   │
-└──────────────────┘                └────────┬─────────┘
-                                             │
-                                    ┌────────▼─────────┐
-                                    │ /unikit-memory   │
-                                    │ Migrate mature   │
-                                    │ rules to .unikit/│
-                                    │ memory/code/     │
-                                    └──────────────────┘
+└──────────────────┘                └────┬────────┬────┘
+                                         │        │
+                       coding convention │        │ workflow override
+                                         │        │
+                            ┌────────────▼──┐  ┌──▼─────────────────┐
+                            │ RULES.md      │  │ .unikit/           │
+                            │               │  │ skill-context/     │
+                            └───────┬───────┘  │ <skill>/SKILL.md   │
+                                    │          └────────────────────┘
+                           ┌────────▼─────────┐   (read directly by
+                           │ /unikit-memory   │    the target skill -
+                           │ Migrate mature   │    never migrated)
+                           │ rules to .unikit/│
+                           │ memory/code/     │
+                           └──────────────────┘
 ```
 
 ## See Also
