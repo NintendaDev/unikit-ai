@@ -8,35 +8,24 @@
     "context7": "/chir24/unreal_mcp",
     "repo": "https://github.com/ChiR24/Unreal_mcp"
   },
+  "rules": "rules/chir24-unreal-mcp/",
   "config": {
     "type": "http",
     "url": "http://localhost:3000/mcp"
   },
   "allowed-tools": {
     "agents": {
-      "unikit-implement-coordinator": [
-        "unreal"
-      ],
-      "unikit-implement-worker": [
-        "unreal"
-      ],
-      "unikit-review-sidecar": [
-        "unreal"
-      ]
+      "unikit-implement-coordinator": ["*"],
+      "unikit-implement-worker": ["*"],
+      "unikit-review-sidecar": ["*"]
     },
     "skills": {
-      "unikit-devcontext": [
-        "unreal"
-      ],
-      "unikit-implement": [
-        "unreal"
-      ],
-      "unikit-fix": [
-        "unreal"
-      ],
-      "unikit-verify": [
-        "unreal"
-      ]
+      "unikit-plan": ["manage_tools"],
+      "unikit-devcontext": ["*"],
+      "unikit-implement": ["*"],
+      "unikit-fix": ["*"],
+      "unikit-verify": ["*"],
+      "unikit-mcp-audit": ["*"]
     }
   }
 }

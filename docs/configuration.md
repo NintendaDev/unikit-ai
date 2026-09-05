@@ -403,7 +403,9 @@ Setup:
 - Enable `PythonScriptPlugin`, `EditorScriptingUtilities`, `Niagara`, `GameplayAbilities` and `SmartObjects`.
 - The Unreal Editor must be running.
 
-The server exposes exactly **one** tool, which dispatches to every underlying action. There is no per-action granularity, so `allowed-tools` cannot narrow what an agent may do here — granting it grants everything the plugin implements. It ships no rules tree yet.
+The server exposes 23 distinct top-level tools rather than a single gateway — each is its own catalog entry with its own JSON Schema, and enabling or disabling one for the calling agent through the `manage_tools` tool is real and immediate in both directions, confirmed by a live round trip. Per-tool grants are possible for the first time on this engine; no per-action granularity exists within a single tool, and none of the 23 is purely read-only.
+
+It ships a rules tree: a handful of calls silently drop an argument or report success over a state that did not change. A tree adds **checks**, never removes a right. See [Engine-MCP rules tree](#engine-mcp-rules-tree).
 
 ### Context7
 
