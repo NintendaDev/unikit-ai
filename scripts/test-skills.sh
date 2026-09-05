@@ -6069,6 +6069,55 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# SC-1 / SC-2: the skill count in README.md follows skills/
+# ─────────────────────────────────────────────
+# README carries the number of skills on TWO surfaces — the header badge and the
+# Documentation table's skills-reference row — and until this guard nothing in the
+# suite read either. A new skill lands in skills/ and both go stale silently, which
+# is the one failure a counter guard exists for.
+#
+# Each half fails when it finds no object at all, on the RT-1 / ED-14 convention: a
+# reworded README must not pass by making its own surface invisible to the detector.
+# The two are checked separately because they are worded nothing alike — a single
+# pattern over both would have to be loose enough to match neither precisely.
+
+SC_TOTAL=0
+SC_GD=0
+for sc_dir in "$ROOT_DIR"/skills/*/; do
+    [[ -d "$sc_dir" ]] || continue
+    SC_TOTAL=$((SC_TOTAL + 1))
+    case "$(basename "$sc_dir")" in
+        unikit-gd-*) SC_GD=$((SC_GD + 1)) ;;
+    esac
+done
+SC_CODE=$((SC_TOTAL - SC_GD))
+SC_README="$ROOT_DIR/README.md"
+
+# SC-1 — the shields.io header badge
+SC1_BADGE="$(grep -oE 'badge/skills-[0-9]+-' "$SC_README" 2>/dev/null | head -1 | tr -dc '0-9' || true)"
+if [[ -z "$SC1_BADGE" ]]; then
+    fail "SC-1 README.md carries no shields.io skills badge to check (expected skills-${SC_TOTAL}-)"
+elif [[ "$SC1_BADGE" -eq "$SC_TOTAL" ]]; then
+    pass "SC-1 README skills badge matches skills/ ($SC_TOTAL)"
+else
+    fail "SC-1 README skills badge says $SC1_BADGE, skills/ holds $SC_TOTAL"
+fi
+
+# SC-2 — the Documentation table's skills-reference row
+# The row is compared whole against the string skills/ implies, rather than parsed
+# into three numbers: it costs nothing and it also catches the arithmetic going
+# wrong (a total that stops equalling code + gd) which three separate compares miss.
+SC2_EXPECT="All $SC_TOTAL skills - $SC_CODE code-pipeline + $SC_GD game-design"
+SC2_ROW="$(grep -oE 'All [0-9]+ skills - [0-9]+ code-pipeline [+] [0-9]+ game-design' "$SC_README" 2>/dev/null | head -1 || true)"
+if [[ -z "$SC2_ROW" ]]; then
+    fail "SC-2 README.md carries no 'All N skills - N code-pipeline + N game-design' row (expected: $SC2_EXPECT)"
+elif [[ "$SC2_ROW" == "$SC2_EXPECT" ]]; then
+    pass "SC-2 README skills-reference row matches skills/ ($SC2_EXPECT)"
+else
+    fail "SC-2 README says '$SC2_ROW', skills/ implies '$SC2_EXPECT'"
+fi
+
+# ─────────────────────────────────────────────
 # Part 7a2: self_name validation in RULES_INDEX directives
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== self_name validation ===${NC}\n"
