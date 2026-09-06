@@ -86,6 +86,30 @@ If single-project: defer to `.unikit/ARCHITECTURE.md`.
 
 Godot's native scene tree has no compile-time boundary enforcement beyond `.csproj` references.
 
+## Editor Target Checks
+
+Applies to plan tasks carrying an `Editor:` line. These targets changed the editor's **serialized state**, so there is nothing in the sources to grep — each is confirmed by **reading the state back through the MCP**, one signal per `kind`.
+
+The right column names the **class of evidence** the signal requires, never the call that produces it. A class survives a server change; a name does not, and a name that has gone stale reads as an instruction to do the wrong thing. Resolve the affordance from the live catalog by intent.
+
+Before you resolve it, read the project's rules for this server: grep the check table in `.unikit/system/engine-mcp/INDEX.md` for your task's `kind` area plus every cross-cutting area, and read `.unikit/system/engine-mcp/verification.md` in full — that file is read by this skill and no other. Both are optional. Their absence means there are no known exceptions for this server, never that there are no capabilities, and it never turns a target into `⏸️ MANUAL`. Report `⏭️ SKIPPED (editor target, MCP unavailable)` only when the affordance is absent and you established that by trying; never substitute a lookalike.
+
+| kind | signal to confirm | what closes it (`dev-principles.md` → A2) |
+|------|-------------------|-------------------------------------------|
+| `scene` | the node exists at the stated path | *the thing exists in the project* — read it from the project, not from a catalog and not from memory |
+| `scene` | the script is attached and the node is of the expected type | *the thing exists in the project* — read the node's own property set back |
+| `scene` / `asset` | the exported property holds the intended value | *a field or property changed* — read that field back after the write |
+| `scene` / `ui` | the wired node path or resource reference **resolves** | *a field or property changed* — read the reference field back off the object itself. A structural checker that answers "clean" is a `lying validator` candidate: it may corroborate, never close |
+| `ui` / `vfx` / `anim` | the node is present in the scene and carries the change | both classes, in that order — *exists in the project*, then *a field or property changed* on it |
+| `asset` | the resource exists at the stated path and is of the expected type | *the thing exists in the project* — read it back from the project by its path. A typed resource is backed by a class marked `[GlobalClass]`, so the type is carried by the script path the resource points at: compare that path, not a display name |
+| `settings` | the layer, autoload, or input action is registered | *the thing exists in the project* — read the setting back out of the project's own settings state |
+
+Three rules that keep this honest:
+
+1. **A `success` response is not evidence.** Every one of these is a *read*, taken after the write, precisely because success codes are unreliable (`false success`). Do not accept the writing call's own answer.
+2. **A field left at its default is indistinguishable from a field never set.** When the intended value equals the type default, confirm through a second signal (the node's presence, or a neighbouring property) rather than reporting a pass on an ambiguous read.
+3. **A read-back reflects the editor's state, not the disk.** If the file was written behind the editor's back, the editor may not have re-read it, and its diagnostics then describe the previous contents. Read a contradiction between diagnostics and a file you just wrote as a missing reload, not as a defect in the change — that is a stale read wearing the mask of a `lying validator` (`dev-principles.md`, the false-success entry and D1). On this engine that read costs a full project rebuild — seconds per call — so **batch it**: make all the edits, then take one diagnostic pass at the end, never one per target.
+
 ## Read-Only Paths
 
 These directories must NOT be modified. Ignore them during checks and flag any changes as errors:

@@ -730,20 +730,105 @@ assert_exists "$GODOT_DIR/.claude/skills/unikit-architecture/references/ENGINE_R
 assert_contains "$GODOT_DIR/.claude/skills/unikit/references/ENGINE_RULES.md" \
   "Engine Rules: Godot" "Godot ENGINE_RULES.md should have Godot header"
 
-# The graceful-degradation half: no Godot planning vocabulary ships until phases 3-4, so
-# installEngineTemplates must fall through its `continue` branch and stay silent.
+# The planning vocabulary now ships for godot too, and it arrives even though the fixture
+# above lists only unikit + unikit-architecture in installedSkills.
 #
-# DO NOT DELETE AS "checking the absence of something that was never there". The fixture
-# above lists only unikit + unikit-architecture in installedSkills, so this looks vacuous —
-# it is not. installEngineTemplates iterates engineConfig.skillTemplates from engines.ts and
+# DO NOT DELETE AS "asserting what installedSkills already promises" — it promises the
+# opposite. installEngineTemplates iterates engineConfig.skillTemplates from engines.ts and
 # NEVER consults installedSkills; it creates the skill directory itself. The unikit-plan slot
-# IS declared for godot, so the moment GODOT_RULES.md lands in
-# data/engine-templates/skills/unikit-plan/ this assertion fires — even in this fixture.
-# That is the point: phase 3 must flip it deliberately rather than discover it already green.
-assert_not_exists "$GODOT_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
-  "unikit-plan ENGINE_RULES.md must NOT exist for godot (no vocabulary until phases 3-4)"
+# IS declared for godot, so the delivery is driven by the slot alone. This assertion is what
+# notices if that ever changes, or if GODOT_RULES.md is removed from
+# data/engine-templates/skills/unikit-plan/.
+assert_exists "$GODOT_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "unikit-plan ENGINE_RULES.md should be installed for godot"
+assert_contains "$GODOT_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "Engine Rules: Godot" "unikit-plan ENGINE_RULES.md should carry the Godot planning header"
 
-echo "  ✓ ENGINE_RULES.md: installed for godot engine (both skills), unikit-plan absent as expected"
+echo "  ✓ ENGINE_RULES.md: installed for godot engine (unikit, unikit-architecture, unikit-plan)"
+
+# ─────────────────────────────────────────────────────
+# Test 8b: engine-template delivery on godot-net and unreal-engine-5
+# ─────────────────────────────────────────────────────
+# The two engines installEngineTemplates had no coverage for at all — and godot-net is the
+# ONE engine whose slots diverge per skill (engines.ts: plan → GODOT_NET_RULES.md, docs →
+# the shared GODOT_RULES.md). A mix-up there hands the user another engine's file and
+# nothing else in the suite would notice.
+#
+# Asserted by EXACT HEADERS, one per file, because the headers are set per skill and there
+# is no shared template: only the header distinguishes "godot-net got its own vocabulary"
+# from "godot-net got godot's".
+#
+# seed_rule is deliberately NOT called: neither engine exists in the minimal-valid fixture.
+# That is fine and measured — `update` exits 0, prints "Rules up to date", and still
+# delivers every declared engine template. It matters because run_update swallows output
+# and `set -euo pipefail` would take the whole script down on a non-zero code.
+#
+# assert_contains is grep -qE, so the patterns are ERE: the dot in ".NET" is escaped.
+
+GODOT_NET_DIR="$TMPDIR/test-godot-net"
+mkdir -p "$GODOT_NET_DIR"
+cat > "$GODOT_NET_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "godot-net",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$GODOT_NET_DIR"
+run_update "$GODOT_NET_DIR"
+
+assert_contains "$GODOT_NET_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "Engine Rules: Godot 4 \.NET" "godot-net unikit-plan must get GODOT_NET_RULES.md"
+assert_contains "$GODOT_NET_DIR/.claude/skills/unikit-verify/references/ENGINE_RULES.md" \
+  "Engine Rules: Godot 4 \.NET" "godot-net unikit-verify must get GODOT_NET_RULES.md"
+# The divergence itself: docs has no .NET variant, so godot-net falls back to the shared one.
+assert_contains "$GODOT_NET_DIR/.claude/skills/unikit-docs/references/ENGINE_RULES.md" \
+  "Godot 4 Documentation Rules" "godot-net unikit-docs must get the shared GODOT_RULES.md"
+
+UE5_DIR="$TMPDIR/test-unreal"
+mkdir -p "$UE5_DIR"
+cat > "$UE5_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unreal-engine-5",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$UE5_DIR"
+run_update "$UE5_DIR"
+
+assert_contains "$UE5_DIR/.claude/skills/unikit-plan/references/ENGINE_RULES.md" \
+  "Engine Rules: Unreal Engine 5" "unreal-engine-5 unikit-plan must get UNREAL_ENGINE_5_RULES.md"
+assert_contains "$UE5_DIR/.claude/skills/unikit-verify/references/ENGINE_RULES.md" \
+  "Engine Rules: Unreal Engine 5" "unreal-engine-5 unikit-verify must get UNREAL_ENGINE_5_RULES.md"
+
+echo "  ✓ engine templates: godot-net (plan/verify .NET, docs shared) and unreal-engine-5 delivered"
 
 # ─────────────────────────────────────────────────────
 # Test 9: Engine-specific rules paths
