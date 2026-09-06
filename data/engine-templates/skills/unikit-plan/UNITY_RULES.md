@@ -69,7 +69,7 @@ Seven Unity-specific traps that must be resolved **at planning time**, not disco
 
 This file does **not** carry code-writing rules. The boundary is exact:
 
-- **The rules registry** (`.unikit/memory/code/unity/{core,stack}`) = **HOW to write code** for this engine — naming, patterns, APIs, anti-patterns.
+- **The rules registry** (`.unikit/memory/code/{core,stack}`) = **HOW to write code** for this engine — naming, patterns, APIs, anti-patterns.
 - **This file** = **HOW to write a PLAN** for this engine — vocabulary, placeholders, what belongs in `Editor:`, planning-time traps.
 
 If a rule tells the implementer what the code should look like, it belongs in the registry, not here. Do not duplicate registry content into this file — a second source diverges from the first on its next edit.

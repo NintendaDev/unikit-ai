@@ -254,7 +254,9 @@ The naming of `<container>` and `<target>` is engine-specific and comes from the
 
 - **`mcp`** — through the engine MCP server. Chosen **silently** when an engine MCP is configured; you are not asked.
 - **`manual`** — nothing is touched. The task is marked `⏸️ MANUAL` and you get the exact instruction in `[kind] container → target : action` form. `/unikit-verify` reports these but never treats them as blockers.
-- **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always commits to git first.
+- **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always commits to git first. On Unreal Engine 5 the format tolerates it nowhere except `Config/Default*.ini` — every level and asset is binary — so `direct` is effectively an `.ini`-only route there.
+
+  `/unikit-implement` reads the feasibility ratings out of §6 of the **`/unikit-plan` skill's** installed `ENGINE_RULES.md`, since it has no engine template of its own. If that file is not there — you installed a subset of skills without `/unikit-plan`, or a future engine's slot has no template written for it yet — the gate **fails closed**: every format is treated as 🔴, `direct` is refused, and the task goes back to `manual` with the reason stated. This is the one place an absent file removes a right rather than leaving it untouched, and deliberately so: what is missing is permission for an irreversible text edit of a possibly-binary format, not a rule that would grant a capability. The `mcp` route is unaffected.
 
 When no engine MCP is configured, `/unikit-plan` asks which of `manual` / `direct` you want.
 
@@ -275,11 +277,22 @@ Each engine can ship a planning vocabulary that `/unikit-plan` loads at bootstra
 - **Source:** `data/engine-templates/skills/unikit-plan/<ENGINE>_RULES.md`
 - **Installed to:** `<agent-skills-dir>/unikit-plan/references/ENGINE_RULES.md`
 
-It carries six sections: kind → engine concept, language & layout placeholders, when a change counts as editor state, engine planning pitfalls, the scope boundary, and direct-edit feasibility.
+It carries six sections: kind → engine concept, language & layout placeholders, when a change counts as editor state, engine planning pitfalls, the scope boundary, and direct-edit feasibility. Six on every engine — the pitfalls section fills up as rules are validated against a real project, so on the newer engines it is a placeholder rather than a gap in the structure.
 
 The boundary against the rules registry is exact: **the registry says HOW to write code for the engine; this file says HOW to write a plan for it.**
 
-**Current coverage: Unity only.** On Godot and Unreal Engine 5 no vocabulary ships yet, so `/unikit-plan` generates no `Editor:` fields at all, omits the `Editor tasks` setting, and tells you so at confirmation: `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`. That is a normal path, not an error.
+**Coverage — all four engines:**
+
+| Engine | Vocabulary | Notes |
+|--------|-----------|-------|
+| Unity | ✅ | including seven validated §4 pitfalls |
+| Godot 4 | ✅ | §4 is a stub (`pending real-project validation`) |
+| Godot 4 .NET | ✅ | §4 is a stub; §2 differs from Godot (C# sources, `.csproj`) |
+| Unreal Engine 5 | ✅ | §4 is a stub; §6 rates every level and asset 🔴, so `direct` is offered for `settings` targets in `.ini` only |
+
+This table is about **the vocabularies this project writes**, not about what an engine MCP server can do — that distinction is the whole reason [What `mcp` does not promise](#what-mcp-does-not-promise) above refuses to carry a per-server capability table, and it is what keeps this one from turning into that one.
+
+**If a future engine gets a slot before its vocabulary is written**, the degradation is normal, not an error: `/unikit-plan` generates no `Editor:` fields at all, omits the `Editor tasks` setting, and tells you so at confirmation — `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`.
 
 ## Plan Discovery
 

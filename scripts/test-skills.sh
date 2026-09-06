@@ -382,11 +382,10 @@ for tpl in "UNITY_RULES.md" "GODOT_RULES.md" "GODOT_NET_RULES.md" "UNREAL_ENGINE
 done
 
 # Check unikit-plan templates
-# DELIBERATELY Unity-only: the Godot / UE5 planning vocabularies land in
-# phases 3-4. Listing all four here would fail immediately and for the wrong
-# reason. Precedent: unikit-docs above checks 3 of 4 (no GODOT_NET_RULES.md).
-# Their ABSENCE is asserted in test-install.sh Test 8 — see the note there.
-for tpl in "UNITY_RULES.md"; do
+# All four engines carry a planning vocabulary. unikit-docs above is the only
+# 3-of-4 list left, and deliberately so: engines.ts sends godot-net to the shared
+# GODOT_RULES.md for docs, so no GODOT_NET_RULES.md exists for that skill.
+for tpl in "UNITY_RULES.md" "GODOT_RULES.md" "GODOT_NET_RULES.md" "UNREAL_ENGINE_5_RULES.md"; do
     tpl_path="$TEMPLATES_DIR/unikit-plan/$tpl"
     if [[ -f "$tpl_path" && -s "$tpl_path" ]]; then
         pass "engine-templates/skills/unikit-plan/$tpl"
@@ -5284,6 +5283,15 @@ fi
 ED_MODE_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
 ED_MODE_FAST="$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
 ED_PLAN_TPL="$ROOT_DIR/data/engine-templates/skills/unikit-plan/UNITY_RULES.md"
+# The four-engine list is a SECOND variable, not a widened ED_PLAN_TPL: ED-15 reads the
+# scalar and is Unity-only by design (see its block), so turning this name into an array
+# would take it down under `set -u`.
+ED_PLAN_TPLS=(
+    "$ROOT_DIR/data/engine-templates/skills/unikit-plan/UNITY_RULES.md"
+    "$ROOT_DIR/data/engine-templates/skills/unikit-plan/GODOT_RULES.md"
+    "$ROOT_DIR/data/engine-templates/skills/unikit-plan/GODOT_NET_RULES.md"
+    "$ROOT_DIR/data/engine-templates/skills/unikit-plan/UNREAL_ENGINE_5_RULES.md"
+)
 ED_IMPLEMENT_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
 
 # Shared by ED-14 and by RT-2 / RT-4 below, and deliberately OUT of any numbered guard:
@@ -5389,31 +5397,62 @@ fi
 
 # (ED-7) The two-sided contract: a setting written by the planner and read by nobody
 # is lost silently, which is the failure this whole block exists to prevent.
+#
+# The third assert is the `direct` gate's other half. unikit-implement has NO engine
+# template slot in engines.ts, so `references/ENGINE_RULES.md` under its own directory
+# does not exist on any engine — the gate used to cite a file that could never be read.
+# It now names unikit-plan as §6's owner. Anchored on the FORMULATION, not on the path
+# `unikit-plan/references/ENGINE_RULES.md`: this greps the SOURCE, the per-agent rewrite
+# happens in the installed copy, and a path assert would stay green in exactly the case
+# it is meant to catch.
 ED7_WHY=""
 grep -qF 'Editor tasks' "$EM_IMPLEMENT_SKILL"       || ED7_WHY+=" implement-missing-Editor-tasks"
 grep -qF 'Visual regression' "$UNIKIT_VERIFY_SKILL" && ED7_WHY+=" verify-Visual-regression-resurrected"
+grep -qF '§6 is owned by the `unikit-plan` skill' "$EM_IMPLEMENT_SKILL" \
+    || ED7_WHY+=" implement-§6-owner-unnamed"
 if [[ -z "$ED7_WHY" ]]; then
-    pass "ED-7 Editor tasks has its reader (→implement); Visual regression has no reader left"
+    pass "ED-7 Editor tasks has its reader (→implement); §6 owner named; Visual regression has no reader left"
 else
     fail "ED-7 setting/reader drift:$ED7_WHY"
 fi
 
-# (ED-8) The engine vocabulary itself. `{{` must be ZERO: installEngineTemplates
-# writes engine templates VERBATIM (no processTemplate), so a variable would ship
-# to users as literal `{{engine_name}}`.
+# (ED-8) The engine vocabulary itself, on all four engines. A section that goes missing
+# breaks unikit-plan's contract SILENTLY — the skill reads the file and does not find what
+# it announced it would read, which looks like a thin template rather than a broken one.
+#
+# The `{{` check that used to live here moved OUT to the whole-directory sweep in Part 9:
+# that one covers the verify templates too, and two guards on one defect produce two
+# failures and the question of which is canonical.
+#
+# The Affordance assert is not cosmetic. That column is the planner's only entry into the
+# live catalog at Step 4.6; a template missing it looks correct and silently removes the
+# check. The stub-banner assert is two-sided on purpose — the three new engines MUST carry
+# it (their §4 is a placeholder awaiting real-project validation), and Unity MUST NOT: its
+# §4 holds seven measured traps, and without the negative half they could be replaced by
+# the placeholder with the suite still green.
+ED8_STUB_BANNER='pending real-project validation'
+ED8_AFFORDANCE='Affordance the editor must offer'
 ED8_WHY=""
-if [[ -f "$ED_PLAN_TPL" && -s "$ED_PLAN_TPL" ]]; then
+for ed8_tpl in "${ED_PLAN_TPLS[@]}"; do
+    ed8_name="$(basename "$ed8_tpl")"
+    if [[ ! -f "$ed8_tpl" || ! -s "$ed8_tpl" ]]; then
+        ED8_WHY+=" $ed8_name:missing-or-empty"
+        continue
+    fi
     for marker in '§1' '§2' '§3' '§4' '§5' '§6'; do
-        grep -qF "$marker" "$ED_PLAN_TPL" || ED8_WHY+=" missing:$marker"
+        grep -qF "$marker" "$ed8_tpl" || ED8_WHY+=" $ed8_name:missing:$marker"
     done
-    grep -qF '{{' "$ED_PLAN_TPL" && ED8_WHY+=" has-template-vars"
-else
-    ED8_WHY+=" missing-or-empty"
-fi
+    grep -qF "$ED8_AFFORDANCE" "$ed8_tpl" || ED8_WHY+=" $ed8_name:no-affordance-column"
+    if [[ "$ed8_name" == "UNITY_RULES.md" ]]; then
+        grep -qF "$ED8_STUB_BANNER" "$ed8_tpl" && ED8_WHY+=" $ed8_name:§4-replaced-by-stub"
+    else
+        grep -qF "$ED8_STUB_BANNER" "$ed8_tpl" || ED8_WHY+=" $ed8_name:no-stub-banner"
+    fi
+done
 if [[ -z "$ED8_WHY" ]]; then
-    pass "ED-8 unikit-plan/UNITY_RULES.md present, §1…§6 markers, zero {{ }} vars"
+    pass "ED-8 all ${#ED_PLAN_TPLS[@]} unikit-plan templates: §1…§6 markers, Affordance column, §4 stub banner where it belongs"
 else
-    fail "ED-8 unikit-plan/UNITY_RULES.md drift:$ED8_WHY"
+    fail "ED-8 unikit-plan template drift:$ED8_WHY"
 fi
 
 # (ED-9) A status that is written but never declared reads as a typo — and a verify
@@ -5483,9 +5522,10 @@ fi
 # Content guards on the layer A and layer C additions (LA-7, LA-8, ED-15)
 # ─────────────────────────────────────────────
 # These three sit here rather than inside their own families for one mechanical reason:
-# they read path vars declared with the EM and ED families above (EM_FIX_SKILL, ED_PLAN_TPL),
+# they read path vars declared with the EM and ED families above (EM_FIX_SKILL for LA-8,
+# ED_PLAN_TPL for ED-15 — LA-7 reads LA_DEV_PRINCIPLES / LA_BOUNDARY and never touches it),
 # and `set -u` makes forward references fatal. The prefix names what a guard watches, not
-# where it lives.
+# where it lives. ED_PLAN_TPL has exactly two consumers: ED-8 and ED-15.
 #
 # What they watch: the texts Phase 2 added live in files nothing parses. A renamed heading
 # is not an error — it silently returns nothing, and a reader that finds nothing carries on
@@ -5546,6 +5586,12 @@ fi
 # failure that has no detector at all today. The intro numeral, the number of numbered
 # rules and the numeral in "All … rules above pass" must be the same, and the ordinal that
 # follows it exactly one greater.
+#
+# STAYS UNITY-ONLY — it reads the scalar ED_PLAN_TPL, not the four-engine ED_PLAN_TPLS, and
+# must NOT be generalised the way ED-8 was. The other three §4 sections are stub banners with
+# zero numbered rules, so all three counters are undefined there and the guard would fail on
+# `no-numbered-rules-in-§4`. When one of those engines earns real pitfalls, widening this is
+# a deliberate edit, not a sweep.
 ed15_word_to_num() {
     case "$1" in
         one|One|first|First)             echo 1 ;;
@@ -5591,6 +5637,103 @@ if [[ -z "$ED15_WHY" ]]; then
     pass "ED-15 both new §4 rules present; intro / body / closing counters coherent ($ED15_COUNT rules)"
 else
     fail "ED-15 §4 drift in UNITY_RULES.md:$ED15_WHY"
+fi
+
+# (ED-16) The `## Editor Target Checks` contract. One node pass (the ED-14 precedent —
+# comparing two files cannot be expressed as a single-file assert), four families, and the
+# only mechanical cover any of them has: nothing else in the suite greps that heading.
+#
+#   (a) presence  — the section exists in all four unikit-verify templates. Its absence is
+#       exactly the silent break of unikit-verify/SKILL.md: the skill reads ENGINE_RULES.md,
+#       does not find what it announced, and improvises the behaviour.
+#   (b) the gate, in two DELIBERATELY OPPOSITE directions:
+#         `GATE LIFTED`  — by ABSENCE, over the WHOLE FILE (Read-Only Paths and Strict Mode
+#           Items are just as good a place for the mistake). Lifting is a runtime verdict
+#           reached by trying; a line written in advance is a pre-declared one. RT-8 does
+#           exactly this for the rules trees' INDEX.md.
+#         `⏸️ MANUAL`   — by PRESENCE of the NEGATING SENTENCE. Not "zero occurrences of
+#           the token": Unity carries it inside the very sentence that forbids it, all four
+#           sections mirror that paragraph, and such an assert would go red on the first run
+#           with the obvious "fix" being to delete the protection this phase exists to add.
+#           It would also contradict ED-9 / ED-11, which require the token's PRESENCE in
+#           unikit-implement, unikit-verify and the worker. What is banned is a pre-declared
+#           verdict, never the status vocabulary. RT-6 is the precedent, and its own comment
+#           says why: absence is also what an empty file has.
+#   (c) shape anchors on FORMULATIONS, not headings — a heading is rewritten during
+#       cosmetics, a formulation only together with its meaning.
+#   (d) the cross-file `kind` invariant: the set the planner can emit for an engine and the
+#       set its verifier can close must be identical, and both inside the six of A8. A kind
+#       in one and not the other is a target that gets planned and never verified — silent,
+#       and invisible to every single-file check.
+#
+# For template authors: the `kind` cells in the FIRST column of both tables are bare
+# backticked tokens, because that column is what the two files are compared on. The ban on
+# a seventh kind is scoped to that COLUMN, not to the file — every §1 legitimately carries
+# the sentence dissolving it, and ED-1 sets the precedent by grepping a table cell.
+ED16_RESULT=$(node -e '
+  const fs=require("fs"), path=require("path");
+  const planDir=process.argv[1], verifyDir=process.argv[2];
+  const TPLS=["UNITY_RULES.md","GODOT_RULES.md","GODOT_NET_RULES.md","UNREAL_ENGINE_5_RULES.md"];
+  const KINDS=new Set(["scene","ui","vfx","anim","asset","settings"]);
+  const SECTION="## Editor Target Checks";
+  const PLAN_S1="## §1 ";
+  const MANUAL_NEGATION="never turns a target into `⏸️ MANUAL`";
+  const ANCHORS=["A2",".unikit/system/engine-mcp/"];
+  const why=[]; let sections=0;
+
+  const sectionOf=(text,prefix)=>{
+    const lines=text.split("\n");
+    const start=lines.findIndex(l=>l.startsWith(prefix));
+    if (start===-1) return null;
+    let end=lines.length;
+    for (let i=start+1;i<lines.length;i++) if (/^## /.test(lines[i])) { end=i; break; }
+    return lines.slice(start,end).join("\n");
+  };
+  const columnOneTokens=(text)=>{
+    const out=new Set();
+    for (const line of text.split("\n")) {
+      const t=line.trim();
+      if (!t.startsWith("|")) continue;
+      const col=t.split("|")[1];
+      if (col===undefined) continue;
+      for (const m of col.matchAll(/`([^`]+)`/g)) out.add(m[1]);
+    }
+    return out;
+  };
+
+  for (const tpl of TPLS) {
+    const engine=tpl.replace(/_RULES\.md$/,"");
+    const vPath=path.join(verifyDir,tpl), pPath=path.join(planDir,tpl);
+    if (!fs.existsSync(vPath)) { why.push("missing-file:verify/"+tpl); continue; }
+    if (!fs.existsSync(pPath)) { why.push("missing-file:plan/"+tpl); continue; }
+    const vText=fs.readFileSync(vPath,"utf8"), pText=fs.readFileSync(pPath,"utf8");
+
+    vText.split("\n").forEach((l,i)=>{ if (l.includes("GATE LIFTED")) why.push("pre-lifted:"+tpl+":"+(i+1)); });
+
+    const vSection=sectionOf(vText,SECTION);
+    if (vSection===null) { why.push("missing-section:"+tpl); continue; }
+    sections++;
+
+    if (!vSection.includes(MANUAL_NEGATION)) why.push("no-manual-negation:"+tpl);
+    for (const a of ANCHORS) if (!vSection.includes(a)) why.push("no-anchor:"+tpl+":"+a);
+
+    const pSection=sectionOf(pText,PLAN_S1);
+    if (pSection===null) { why.push("no-s1-section:"+tpl); continue; }
+    const vKinds=columnOneTokens(vSection), pKinds=columnOneTokens(pSection);
+    if (vKinds.size===0) why.push("no-kind-column:verify/"+tpl);
+    if (pKinds.size===0) why.push("no-kind-column:plan/"+tpl);
+    for (const k of vKinds) if (!KINDS.has(k) || !pKinds.has(k)) why.push("kind-mismatch:"+engine+":"+k);
+    for (const k of pKinds) if (!KINDS.has(k) || !vKinds.has(k)) why.push("kind-mismatch:"+engine+":"+k);
+  }
+  if (sections!==4) why.push("sections:"+sections+"/4");
+  console.log(why.length ? why.join(" ") : "ok");
+' "$ROOT_DIR/data/engine-templates/skills/unikit-plan" \
+  "$ROOT_DIR/data/engine-templates/skills/unikit-verify" 2>/dev/null || echo "node-error")
+
+if [[ "$ED16_RESULT" == "ok" ]]; then
+    pass "ED-16 Editor Target Checks in all 4 verify templates: no pre-lifted gate, ⏸️ MANUAL negation stated, A2 + engine-mcp anchors, kind sets match their plan template"
+else
+    fail "ED-16 editor-target-check contract drift: $ED16_RESULT"
 fi
 
 # ─────────────────────────────────────────────
@@ -6573,7 +6716,8 @@ done
 # silently, and looking exactly like a project that has no MCP.
 #
 # Scope: skills/**/*.md, subagents/*.md, data/dev-principles.md.
-# `data/engine-templates/**` is excluded — ED-8 already bans `{{` there outright.
+# `data/engine-templates/**` is excluded — the Part 9 engine-template sweep bans
+# `{{` across that whole directory outright (ED-8 only ever saw one file of it).
 echo -e "\n${BOLD}Part 7e2: {{engine_mcp_tool}} substitution form (MT-1/MT-2)${NC}"
 
 MT_SCOPE=("$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data/dev-principles.md")
@@ -7066,6 +7210,7 @@ echo -e "\n${BOLD}=== Validate language rules setup (no legacy settings.json) ==
 
 LEGACY_PATTERN='\.unikit/settings\.json'
 LEGACY_ERRORS=0
+TPLVAR_ERRORS=0
 
 # All skills must NOT reference legacy settings.json
 for skill_dir in "$ROOT_DIR"/skills/*/; do
@@ -7100,14 +7245,26 @@ for agent_file in "$ROOT_DIR"/subagents/*.md; do
     fi
 done
 
-# Engine templates must NOT reference legacy settings.json
+# Engine templates must NOT reference legacy settings.json, and must NOT carry a
+# {{ }} template variable: `installEngineTemplates` is readTextFile → writeTextFile,
+# so `processTemplate` never runs over them and an unsubstituted variable does not
+# expand — it travels to the user's project as literal text. The whole-directory
+# sweep is the only guard the verify templates have; ED-8 covers one plan template.
 while IFS= read -r -d '' tpl_file; do
     rel_path="${tpl_file#$ROOT_DIR/}"
     if grep -qE "$LEGACY_PATTERN" "$tpl_file" 2>/dev/null; then
         fail "$rel_path — still references legacy .unikit/settings.json"
         LEGACY_ERRORS=$((LEGACY_ERRORS + 1))
     fi
+    if grep -qF '{{' "$tpl_file" 2>/dev/null; then
+        fail "$rel_path — carries a {{ }} template variable (installEngineTemplates writes verbatim; it would reach the user as literal text)"
+        TPLVAR_ERRORS=$((TPLVAR_ERRORS + 1))
+    fi
 done < <(find "$ROOT_DIR/data/engine-templates" -type f -name '*.md' -print0 2>/dev/null)
+
+if [[ $TPLVAR_ERRORS -eq 0 ]]; then
+    pass "no {{ }} template variables in data/engine-templates (installEngineTemplates writes verbatim)"
+fi
 
 # LANGUAGE_RULES_TEMPLATE.md must exist in skills/unikit/references/
 LANG_RULES_TPL="$ROOT_DIR/skills/unikit/references/LANGUAGE_RULES_TEMPLATE.md"
