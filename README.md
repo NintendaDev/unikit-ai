@@ -59,7 +59,7 @@ Editor work is a **first-class part of a plan**, not an afterthought. `/unikit-p
 
 `/unikit-verify` then reads editor targets back **through the MCP** rather than looking for source files that do not exist. See [Editor tasks](docs/plan-files.md#editor-tasks) for the full grammar.
 
-**Editor targets are planned on Unity today.** The planning vocabulary that turns a `kind` into an engine concept ships for Unity; on Godot and Unreal Engine 5 `/unikit-plan` generates no `Editor:` fields and says so at confirmation - plans degrade to code-only, which is a normal path, not an error. The engine MCP itself is used on every engine - for compilation and run feedback during `/unikit-implement` and `/unikit-verify`, and for whatever else that particular server's live catalog turns out to offer.
+**Editor targets are planned on all four engines.** The planning vocabulary that turns a `kind` into an engine concept ships for each of them - Unity, Godot 4, Godot 4 .NET, Unreal Engine 5. On the three newer ones its pitfalls section is still a placeholder awaiting validation against a real project, and on Unreal Engine 5 `direct` is never offered for a level or asset - those formats are binary - leaving it available only for `settings` targets in `Config/Default*.ini`. The engine MCP itself is used on every engine - for compilation and run feedback during `/unikit-implement` and `/unikit-verify`, and for whatever else that particular server's live catalog turns out to offer.
 
 Art production, audio authoring, and store/build pipelines are **not** covered.
 
