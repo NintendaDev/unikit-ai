@@ -56,12 +56,17 @@ const FORBIDDEN_DELEGATION_WORDS = ['handle', 'support', 'wire up', 'as needed',
 const INTEGRITY_REASON = 'the committed specification is incomplete';
 
 const DETAIL_GATE_POINTS = 7;
-// 9 = the 7 checks the port carried over, plus the 2 restored from the format ultra was
+// 11 = the 7 checks the port carried over, plus the 2 restored from the format ultra was
 // ported from: "no checkbox in a phase file" (which existed here as a rule with no check)
 // and "commit-plan ranges agree with the index and the checklist" (which existed nowhere,
-// while `/unikit-commit` resolves a group through `## Phase Index` and so breaks on drift).
+// while `/unikit-commit` resolves a group through `## Phase Index` and so breaks on drift),
+// plus the 2 added with the test-run placement policy: check 10 — no run command in a
+// per-task `### Tests` or `### Verification` under `Test checkpoints: phase | plan`, the
+// defect being a run that `/unikit-verify` then executes a second time — and check 11 —
+// under `Testing: yes` the last checklist task is a test-checkpoint task carrying
+// `Test checkpoint: plan`, because the final full run has no off switch.
 // Changing this number requires naming, here, which check was added or removed and why.
-const INTEGRITY_POINTS = 9;
+const INTEGRITY_POINTS = 11;
 
 // Every file here must carry the literal marker. The list IS the contract:
 // a consumer that "forgets" ultra degrades silently to full-plan behaviour, and

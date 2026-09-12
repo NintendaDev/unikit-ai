@@ -59,6 +59,7 @@ If no research — technical context is in the `## Technical Context` section be
 
 ## Settings
 - Testing: yes/no
+- Test checkpoints: task | phase | plan
 - Docs: yes/no (full mode only)
 - Editor tasks: mcp | manual | direct
 
@@ -128,6 +129,25 @@ the header row and stops there; the executor appends a row when an engine MCP ca
 | id | area | confirm that | observed | evidence | from |
 |---|---|---|---|---|---|
 | F1 | rollback | the snapshot captured more than zero files | 2026-08-18 | `<call>(paths="...")` → `state=ready files=0` | task 2.3 |
+
+## Rule Candidates
+
+(Always emitted by the planner — the heading and the header row. The executor appends a row
+the moment a candidate is noticed.)
+
+| id | rule | full formulation | from | status |
+|---|---|---|---|---|
+| R1 | Never resolve a DI type without a null guard | ...the long version, with its rationale... | task 2.3 | open |
+
+## Test Runs
+
+(Only when `Testing: yes`. The planner emits the heading; everything under it is written by
+the executor.)
+
+- 2026-09-12 · phases 1-2 · 4 test suites · passed 128/128 · tree-sha256 `a1b2c3d4…`
+- 2026-09-12 · plan · all tests · passed 3363/3363 · tree-sha256 `e5f6a7b8…`
+
+Full run: 2026-09-12 · all tests · passed 3363/3363 · tree-sha256 `e5f6a7b8…`
 
 ## Dependency Graph
 
@@ -211,6 +231,8 @@ Placed last, **after** `## Technical Context`, so it never falls inside the
 `## MCP Findings` window (which runs from that heading to the next `##`).
 ```
 
+> **`Test checkpoints:` is omitted entirely when `Testing: no`** — there are no runs, so there is nowhere to place them. When `Testing: yes` the line is mandatory: a plan without it is legacy, and its executor is left inferring run placement from the prose of the tasks.
+
 ### Editor task grammar
 
 Some tasks change the engine editor's **serialized state** (scenes, UI, VFX, animation, assets, input maps, project settings) rather than source files. Such a task carries one or more `Editor:` lines:
@@ -233,6 +255,26 @@ Rules:
 
 The targets are aggregated into the `### EDITOR TARGETS` table inside `## Technical Context`. It is omitted entirely when the plan carries no `Editor:` task.
 
+### Test checkpoint task grammar
+
+A test run is a **separate task** in `## Checklist`, never a command buried inside another task. Such a task carries one `Test checkpoint:` line:
+
+```
+Test checkpoint: <coverage>
+coverage ∈ task N.M | phase N | phases N-M | plan
+```
+
+Rules:
+
+- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task creates nothing, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — the only form of task in this format without that line.
+- **The width of a run follows from its coverage and is not configurable:** `task N.M` → the fixtures and classes that task names; `phase N` / `phases N-M` → the test suites of the modules those phases touch, plus the suites that depend on them; `plan` → every test in the project.
+- **The planner writes no list of suites.** The executor computes the set at run time, from the files actually changed. The planner neither reads nor builds a module graph, so planning time does not grow.
+- `task N.M` exists **only in an ultra bundle**: fast and full have no per-task surface to put it on.
+- **When `Testing: yes`, the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch, and it is never merged away nor deferred.
+- A checkpoint goes **where the change is worth one, not into every phase**: `Test checkpoints:` is a ceiling, not an obligation. The criterion: a check is needed when the phase changes executable code, or a contract other modules rely on; it is not needed when executable code is untouched — documentation, assets and their service files, data no test covers. What counts as an asset or a service file is engine-specific, and the answer lives where the signals for `Editor:` come from: `references/ENGINE_RULES.md` §3.
+- A phase without a check **does not lose its goals**: they pass to the next test-checkpoint task, whose coverage then names both phases (`Test checkpoint: phases 1-2`), and the phase text says so in one line.
+- **Repeats are forbidden:** the phase completion checklist does not restate the run, and a test-checkpoint task never follows another when nothing changed between them.
+
 ### MCP findings section
 
 `## MCP Findings` lives in the manifest at `##` level, next to `## Commit Plan` and **above** `## Technical Context`. `/unikit-mcp-trap` reads the heading down to the next `##`; a findings table demoted to `###`, or placed inside `## Technical Context`, is invisible to it.
@@ -254,7 +296,35 @@ Three rows never belong here: a pre-declared `GATE LIFTED`, a list of what the s
 
 The window carries a 30-line cap **only when trap is scanning many plans at once** (called with no arguments). Handed one plan by path — which is what `/unikit-implement` Step 5.5 does — it reads to the next `##` with no cap, because there is one named file and nothing to ration. When the cap does close a window, trap says so and names how many rows it did not read; the table growing past it is a warning, not a silent loss.
 
+### Rule candidates section
+
+`## Rule Candidates` lives in the manifest at `##` level, directly under `## MCP Findings`. The planner emits the heading and the header row in **every** plan: a candidate can arise in any plan, and an executor left to invent a place for the section puts it somewhere new each time. One empty table per plan is the cheaper mistake.
+
+| column | what goes in it |
+|--------|-----------------|
+| `id` | `R<n>`, allocated in order within this plan and never reused |
+| `rule` | the rule **exactly as it will be written into `.unikit/RULES.md`** — one line, one directive |
+| `full formulation` | the long version, with its rationale. Nothing constrains the length here — this column is the reason the short form is allowed to stay short |
+| `from` | the task that produced the candidate (`task 2.3`) |
+| `status` | `open` \| `added` \| `declined` |
+
+- A row is written **the moment the candidate is noticed**, by the same `Edit` that ticks the task's checkbox — never in the closing report: that is the one moment at which the session has most likely already ended.
+- `declined` is durable: a candidate the user turned down is **not offered again**, in this run or in a later one.
+- `added` is set once `/unikit-rules` has returned the outcome `added` for that rule.
+- Nothing in this table reaches `.unikit/RULES.md` by the hand of the skill that wrote the row. Rules are written by `/unikit-rules` alone, and only in the set the user selected.
+
+### Test runs section
+
+`## Test Runs` lives in the manifest at `##` level, under `## Rule Candidates`, and only when `Testing: yes`. The planner emits the heading; every line under it is written by the executor.
+
+- **One bullet per run, append-only:**
+  `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`
+- **One `Full run:` anchor line**, rewritten in place after each full run, in that same form. This is the machine anchor `/unikit-verify` greps; the bullets are the log for a human. The duplication is deliberate: a verifier made to hunt for "the last bullet whose coverage is `plan`" would depend on the bullet order surviving every future edit.
+- `tree-sha256` is the digest of **a short text**, not of the project: the output of `git rev-parse HEAD` followed by the output of `git status --porcelain`, normalized and hashed by the same procedure as the plan's `Summary SHA256`. No project file is read.
+- Git unavailable → the run is still recorded, and the field reads `tree-sha256 unavailable`. A verifier that reads that value does not reuse the run.
+
 ### Fast mode differences
 
 - Title: `# {Feature Name} — Plan` (instead of `— Tasks`)
 - Settings: no `Docs` line
+- Settings: the `Test checkpoints:` line is present here too — the only meaningful values are `phase` and `plan`
