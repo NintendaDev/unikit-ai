@@ -183,6 +183,8 @@ For each task in the phase, sequentially:
    **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task — `F<n>` is one more than the highest id already there (read the table first, so a re-run does not restart the numbering), `observed` is today's date, and dedup is semantic: drop a candidate saying the same thing about the same `area` as an existing row, by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — one observation is a bad sample, and the durable surface passes through a human running `/unikit-mcp-trap`.
 
    **Fifth branch — a test-checkpoint task.** In this branch you are the executor, so there is nobody to withhold it from: execute it in the ordinary order, by the `Test checkpoint:` branch of `/unikit-implement` Step 3.2, and write the result into the manifest's `## Test Runs` in the same pass that marks the task.
+
+   **Sixth branch — the task produced a rule candidate.** Here too you are the executor, so you are the writer: append the row to the plan's `## Rule Candidates` in the same pass that marks the task — `R<n>` one more than the highest already there (read the table first), `from` the task, `status` `open`, dedup semantic. **Never write `.unikit/RULES.md` yourself**, and never ask about the candidates here: this agent's session usually ends before a question could be answered, so it records them and reports the count.
 7. If any task fails, stop the phase
 
 ## Parallel Phase Dispatch
@@ -336,6 +338,7 @@ Commits created: N
 Status: complete | partial | failed
 Remaining tasks: [list if any]
 Test runs: <n> performed · <m> merged
+Rule candidates: <n> recorded — /unikit-implement will propose them at the end of the call
 MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them into
   .unikit/MCP-RECHECK-NOTES.md
 
@@ -346,5 +349,7 @@ MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them int
 The `MCP findings:` line appears **only when the plan's `## MCP Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
 
 The `Test runs:` line follows the same rule: it is omitted entirely under `Testing: no`, and omitted when no run was performed in this session. Same reasoning — a line printed every time stops being read.
+
+The `Rule candidates:` line follows it as well, omitted entirely when nothing was recorded. It is a report and not a question on purpose: this agent ends by telling the user to close the session, so a choice offered here would be cut off mid-answer — `/unikit-implement` Step 5.2 is where the candidates are actually put to the user.
 
 **Why this one is printed rather than invoked.** `/unikit-implement` Step 5.5 offers the same handoff as a real `Skill(...)` call, and that is the right shape there. Here it is not: this agent ends by telling the user to close the session, and `/unikit-mcp-trap` is interactive — it presents candidates and asks which to record. Started here it would be cut off mid-question. This is the legitimate degenerate tier of the dispatch, chosen because the session boundary makes the inline call impossible, not to avoid making it.

@@ -312,6 +312,7 @@ The window carries a 30-line cap **only when trap is scanning many plans at once
 - `declined` is durable: a candidate the user turned down is **not offered again**, in this run or in a later one.
 - `added` is set once `/unikit-rules` has returned the outcome `added` for that rule.
 - Nothing in this table reaches `.unikit/RULES.md` by the hand of the skill that wrote the row. Rules are written by `/unikit-rules` alone, and only in the set the user selected.
+- **Four writers, and no others:** `/unikit-implement`, `unikit-implement-worker`, `unikit-implement-coordinator` and `/unikit-verify`. All four append the row to the manifest; none of them writes `.unikit/RULES.md`. The safety of a worker writing here rests on the same single-writer invariant that carries `## MCP Findings` — see `### Editor task grammar` above: the phase that can produce a candidate is alone in its execution layer.
 
 ### Test runs section
 

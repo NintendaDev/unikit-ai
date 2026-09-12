@@ -78,19 +78,6 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
 
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
 
-- **`rules-agent`** — capture a new project rule. Expands to:
-
-  ```
-  Agent(
-    subagent_type: "general-purpose",
-    prompt: "/unikit-rules Add rule: <rule text>",
-    description: "Record project rule",
-    skills: ["unikit-rules"]
-  )
-  ```
-
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-rules` inline, one rule at a time.
-
 - **`docs-agent`** — update or create documentation. Expands to:
 
   ```
@@ -655,6 +642,14 @@ After successful implementation, update the manifest:
 
 **A test-checkpoint task (Step 3.2)** — the checkbox is ticked by the same `Edit` that writes the entry into `## Test Runs`, and that same `Edit` closes the tasks merged into it. One write surface, one `Edit` — the very rule by which `## MCP Findings` is written in this step.
 
+**The task produced a rule candidate** — a further outcome, recorded in the same pass:
+- Append a row to `## Rule Candidates`: `id | rule | full formulation | from | status`, with `status = open` and `from = task <N.M>`.
+- **Id:** `R<n>`, one more than the highest already in the table. Read the table before appending — a re-run of the same task must not restart the numbering and collide with rows written earlier.
+- `rule` carries **one line, one directive** — exactly what would go into `.unikit/RULES.md`. `full formulation` carries the long version with its rationale, under no length limit; that column is the reason the short form is allowed to stay short.
+- **Dedup is semantic:** a candidate saying the same thing as a row already present — of any status, `declined` included — is not added.
+- **Nothing here reaches `.unikit/RULES.md`.** Step 5.2 proposes the candidates to the user; only `/unikit-rules`, invoked with the batch the user selected, writes that file.
+- The plan carries no `## Rule Candidates` section (a legacy plan) → create it at `##` level under `## MCP Findings`, or above `## Dependency Graph` when that one is absent too, and print `INFO [rules] section ## Rule Candidates created`.
+
 Use the Edit tool to make these changes surgically.
 
 **3.5: Progress report**
@@ -779,7 +774,7 @@ The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with
 
 After all tasks in the current scope are done, perform the following actions.
 
-**IMPORTANT:** Steps 5.1–5.3 delegate work to Agent calls and do NOT wait for user input. This ensures the pipeline runs to completion without interruption. Steps 5.4–5.8 are sequential and may involve user interaction.
+**IMPORTANT:** Steps 5.1 and 5.3 delegate work to Agent calls and do NOT wait for user input. **Step 5.2 is the exception and blocks on the user** — it never writes a rule without an answer. Steps 5.4–5.8 are sequential and may involve user interaction.
 
 **5.1: Check TODO.md**
 
@@ -793,18 +788,30 @@ After implementation, check if any open tasks in the project TODO list were reso
 
 **5.2: Propose New Rules**
 
-If during implementation you noticed repeating conventions or pitfalls (e.g. a pattern that had to be applied consistently across multiple tasks, or a mistake that came up more than once):
+The candidates are already collected: the rows whose status is `open` in the manifest's `## Rule Candidates` (Step 3.4). This step formulates nothing anew — it proposes what is written down, and records the choice.
 
-1. Formulate up to 3 candidate rules with clear, actionable text.
-2. Delegate to `rules-agent` (1 agent per rule, up to 3 agents). Pass each rule text as the agent's prompt — e.g. `Add rule: All factory classes use CreateDefault() instead of parameterless Create()`. Do NOT wait for agents to finish — proceed to Step 5.3 immediately.
+1. **No `open` candidate → silence.** Not a line, not a "no rules found". A run without candidates is the ordinary case, and a line about it on every run turns the signal into wallpaper — the same rule the empty findings table follows in Step 5.5.
+2. **Select at most three** `open` candidates. The filter: a general convention for future code; not about one task; not a description of the current code; absent from `.unikit/RULES.md` and from `RULES_INDEX.md`; one line, one directive.
+3. **Print the candidates as plain markdown, in a block of their own** — before the question:
 
-**Fallback** (if the `Agent` tool is unavailable in the current environment): you MUST invoke `/unikit-rules` yourself, one candidate at a time. Do NOT print the list of pending invocations to the user as a recommendation — that is a known failure mode where LLMs render the list instead of executing it. For every candidate rule, in order:
+   ```
+   Project rule candidates:
 
-1. Invoke the `/unikit-rules` skill directly using whatever skill-invocation mechanism is available, passing the rule text as the argument. The slash-command invocation must be a real call, not printed text.
-2. Wait for the invocation to return control before starting the next iteration.
-3. Move to the next candidate. Do not stop after the first one. Do not ask the user to confirm between iterations. Do not wrap `/unikit-rules ...` lines in triple backticks.
+   1. <the rule text, as it will be written>
+      from: task 2.3
+   2. <the rule text>
+      from: task 4.1
+   ```
 
-Only after every candidate has been processed, proceed to Step 5.3.
+   **Print first, ask second: the question mechanism carries the options and nothing else.** A question that also holds the payload is invisible on a runtime that has no such mechanism — that is a measured failure, not a supposition.
+4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"**. Three candidates and a refusal are exactly four options, the tool's limit — which is the reason the count is capped at three. Keep the option label short; the full rule text goes in the option's `description`, and that is why the one-line rule form is a condition of readability here rather than decoration.
+5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
+6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
+7. **What was selected goes to `/unikit-rules` as one numbered batch**, through the same three-tier dispatch as Step 5.6: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline; Tier 2 the inline slash form `/unikit-rules <batch>`, rewritten per agent by the installer; Tier 3 printing the command, only where no inline mechanism exists at all. This is **a real call, not text in backticks**.
+8. **Show the user the `## Batch result` table** the delegate returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
+9. Only then proceed to Step 5.3.
+
+**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed — the one line explaining why fewer were proposed than recorded. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added`: the rule was not written, and marking otherwise would be a lie — print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the same holds: the statuses stand, and `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`.
 
 **5.3: Documentation Checkpoint**
 
@@ -883,9 +890,9 @@ Based on choice:
 
 The invocation must be **a real call, not printed text**, and must not be wrapped in triple backticks.
 
-**Review is NOT delegated here — unlike Steps 5.2 and 5.3.** State it plainly, because the shape of this file argues the other way: two steps above say "Delegate to `rules-agent`" and "Delegate to `docs-agent`", a `Subagent Delegation — BLOCKING PRE-REQUISITE` block sits at the top, and generalising from the neighbours is exactly how this step came to be read as a delegation.
+**Review is NOT delegated here — unlike Step 5.3.** State it plainly, because the shape of this file argues the other way: a step above says "Delegate to `docs-agent`", a `Subagent Delegation — BLOCKING PRE-REQUISITE` block sits at the top, and generalising from the neighbours is exactly how this step came to be read as a delegation.
 
-Why the distinction is real and not stylistic: a subagent carries the findings into a context you cannot see, so `file:line` references stop being clickable, no follow-up question can be asked about a finding, and — since `unikit-review` holds `Agent` in `allowed-tools` for its `+check` validator — the validator would run as an agent inside an agent. `rules-agent` and `docs-agent` are delegated precisely because their output is *not* a conversation: they write a file and finish.
+Why the distinction is real and not stylistic: a subagent carries the findings into a context you cannot see, so `file:line` references stop being clickable, no follow-up question can be asked about a finding, and — since `unikit-review` holds `Agent` in `allowed-tools` for its `+check` validator — the validator would run as an agent inside an agent. `docs-agent` is delegated precisely because its output is *not* a conversation: it writes a file and finishes. Step 5.2 is delegated to nobody at all — it blocks on the user, and only the answer decides what is written.
 
 **5.7: Context Cleanup**
 
@@ -953,7 +960,7 @@ Based on choice:
 2. **Read before implementing** — always read the plan manifest in full, checklist **and** `## Technical Context`, before starting any work (or the linked research's brief when `## Based on` points to one)
 3. **Respect task order** — within a phase, execute tasks sequentially (1.1 → 1.2 → 1.3); across phases, respect dependency graph
 4. **Mark progress** — update the manifest's checkboxes after each completed task so progress is preserved across sessions
-5. **Code-writing is owned by this skill** — sequential and fallback-parallel tasks are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 1.5 Bootstrap and Step 3.0 Phase Rules Refresh. Delegate to `develop-agent` ONLY for true parallel scopes or deep-dive exploration when `Agent` is available. Never invoke `/unikit-devcontext` via `Skill(...)` from this workflow — that defeats the rules-loading optimization. `rules-agent` (`/unikit-rules`) and `docs-agent` (`/unikit-docs`) keep their existing inline fallback because those workflows are not implemented inline by this skill.
+5. **Code-writing is owned by this skill** — sequential and fallback-parallel tasks are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 1.5 Bootstrap and Step 3.0 Phase Rules Refresh. Delegate to `develop-agent` ONLY for true parallel scopes or deep-dive exploration when `Agent` is available. Never invoke `/unikit-devcontext` via `Skill(...)` from this workflow — that defeats the rules-loading optimization. `docs-agent` (`/unikit-docs`) keeps its existing inline fallback because that workflow is not implemented inline by this skill. Rule capture is delegated to nobody at all: Step 5.2 blocks on the user and calls `/unikit-rules` only with the batch the user selected.
 6. **Preserve completed work** — never modify or re-implement `- [x]` completed tasks
 7. **Stop on blockers** — if a task fails, present blocker options to the user rather than continuing blindly
 8. **Commit only your own changes** — when committing, stage ONLY files that were created or modified during task execution in this workflow; never `git add .` or `git add -A`

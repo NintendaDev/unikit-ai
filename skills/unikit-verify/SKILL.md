@@ -79,19 +79,6 @@ This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading
 
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
 
-- **`rules-agent`** — capture a new project rule spotted during verification. Expands to:
-
-  ```
-  Agent(
-    subagent_type: "general-purpose",
-    prompt: "/unikit-rules Add rule: <rule text>",
-    description: "Record project rule",
-    skills: ["unikit-rules"]
-  )
-  ```
-
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-rules` inline, one rule at a time.
-
 <!-- unikit:agents claude -->
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -708,15 +695,38 @@ After verification completes, suggest next steps based on results:
 - If unresolved issues remain (accepted or deferred), suggest `/unikit-fix` first
 - If all green, suggest review/commit flow
 
-If recurring convention violations were found during verification (e.g. the same naming pattern was wrong in multiple places, or a DI convention was consistently missed), formulate up to 3 candidate rules and delegate to `rules-agent` (1 agent per rule, up to 3 agents), passing each rule text as the agent's prompt — e.g. `Add rule: Factory methods use CreateDefault() naming`. Do NOT wait for agents to finish — proceed to the next step immediately.
+**Propose new rules — ask, never write.**
 
-**Fallback** (if the `Agent` tool is unavailable in the current environment): you MUST invoke `/unikit-rules` yourself, one candidate at a time. Do NOT print the list of pending invocations to the user as a recommendation — that is a known failure mode where LLMs render the list instead of executing it. For every candidate rule, in order:
+Candidates come from two places, and they are unified before anything is proposed:
 
-1. Invoke the `/unikit-rules` skill directly using whatever skill-invocation mechanism is available, passing the rule text as the argument. The slash-command invocation must be a real call, not printed text.
-2. Wait for the invocation to return control before starting the next iteration.
-3. Move to the next candidate. Do not stop after the first one. Do not ask the user to confirm between iterations. Do not wrap `/unikit-rules ...` lines in triple backticks.
+- the rows whose status is `open` in the manifest's `## Rule Candidates`;
+- the recurring convention violations this verification just found — the same naming pattern wrong in several places, a DI convention consistently missed.
 
-Only after every candidate has been processed, proceed to the next step.
+**What this verification found is written into `## Rule Candidates` first, and only then proposed** — the same columns, with `from: verify`. The order is the point: a candidate that was proposed but never recorded disappears with the session.
+
+1. **No `open` candidate → silence.** Not a line, not a "no rules found". A run without candidates is the ordinary case, and a line about it on every run turns the signal into wallpaper.
+2. **Select at most three** `open` candidates. The filter: a general convention for future code; not about one task; not a description of the current code; absent from `.unikit/RULES.md` and from `RULES_INDEX.md`; one line, one directive.
+3. **Print the candidates as plain markdown, in a block of their own** — before the question:
+
+   ```
+   Project rule candidates:
+
+   1. <the rule text, as it will be written>
+      from: verify
+   2. <the rule text>
+      from: task 4.1
+   ```
+
+   **Print first, ask second: the question mechanism carries the options and nothing else.** A question that also holds the payload is invisible on a runtime that has no such mechanism — that is a measured failure, not a supposition.
+4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"**. Three candidates and a refusal are exactly four options, the tool's limit — which is the reason the count is capped at three. Keep the option label short; the full rule text goes in the option's `description`.
+5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
+6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
+7. **What was selected goes to `/unikit-rules` as one numbered batch**, through the three-tier dispatch: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline; Tier 2 the inline slash form `/unikit-rules <batch>`, rewritten per agent by the installer; Tier 3 printing the command, only where no inline mechanism exists at all. This is **a real call, not text in backticks**.
+8. **Show the user the `## Batch result` table** the delegate returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
+
+**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed — the one line explaining why fewer were proposed than recorded. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added`: the rule was not written, and marking otherwise would be a lie — print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the same holds: the statuses stand, and `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`. **No manifest at all** — verify was called outside a plan — → the candidates cannot be recorded: propose them in the report as text and print `WARN [rules] no plan — candidates were not saved, proposed in the report only`. Losing a candidate silently is not allowed, and inventing a file is not either.
+
+This block runs **before** the "What's next?" question below, and the two are never merged: they are different questions, and folding them into one would take away the option of adding nothing independently of choosing the next step.
 
 ```
 Verification complete. What's next?
