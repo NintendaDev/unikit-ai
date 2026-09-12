@@ -276,9 +276,13 @@ reserved for the single case where no inline invocation mechanism exists at all.
 <!-- unikit:end -->
 
 The delegate handles everything: cross-check against the knowledge base, dedup against
-existing RULES.md entries, section placement, and the report. It returns a
-`## Batch result` table with **one row per input rule** and three outcomes — `added`,
-`already-covered`, `skipped-duplicate`.
+existing RULES.md entries, and the report. It returns a `## Batch result` table with **one
+row per input rule** and three outcomes — `added`, `already-covered`, `skipped-duplicate`.
+
+Read that table **by column name, never by column count.** Skill versions in a user's project
+do not update in step, so an older `unikit-rules` may still return a table carrying a
+`Section` column; reading by name survives both shapes. Introduce no fourth outcome — Step 7
+counts from exactly these three.
 
 **A rule with no row in the report was not processed.**
 

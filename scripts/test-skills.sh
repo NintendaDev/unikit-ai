@@ -6314,7 +6314,7 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -6324,18 +6324,23 @@ else
 fi
 
 # (UR-2) The report on the way out. `unikit-rules` already placed multiple rules correctly
-# (Step 4) but confirmed as if there had been one — one section, one rule, one verdict. A
-# batch of five across three sections does not fit that shape, and the `Section` column is
-# not cosmetic: the caller's evolution log records where each rule landed and in a batch has
-# nowhere else to read it from.
+# but confirmed as if there had been one — one rule, one verdict. A batch of five does not
+# fit that shape, so the report carries one row per input rule and names all three outcomes.
+#
+# The `Section` column is GONE and this guard now forbids its RETURN — the assert is
+# inverted, not deleted. `RULES.md` became a flat list, so a rule has no landing place to
+# record, and a column whose every value would be `—` is the mandatory empty cell these
+# formats forbid. Inverted rather than dropped because the column's own rationale used to
+# stand here and read convincingly: a copy-paste from an older revision would otherwise
+# bring both the column and its justification straight back.
 UR2_WHY=""
 grep -qF '## Batch result'      "$EV_RULES_SKILL" || UR2_WHY+=" no-report-heading"
-grep -qF '| Section |'          "$EV_RULES_SKILL" || UR2_WHY+=" no-section-column"
+grep -qF '| Section |'          "$EV_RULES_SKILL" && UR2_WHY+=" section-column-came-back"
 grep -qF '| added |'            "$EV_RULES_SKILL" || UR2_WHY+=" outcome:added"
 grep -qF '`already-covered`'    "$EV_RULES_SKILL" || UR2_WHY+=" outcome:already-covered"
 grep -qF '`skipped-duplicate`'  "$EV_RULES_SKILL" || UR2_WHY+=" outcome:skipped-duplicate"
 if [[ -z "$UR2_WHY" ]]; then
-    pass "UR-2 unikit-rules reports one row per input rule, all three outcomes + Section named"
+    pass "UR-2 unikit-rules reports one row per input rule, all three outcomes, no Section column"
 else
     fail "UR-2 unikit-rules batch report contract incomplete:$UR2_WHY"
 fi
