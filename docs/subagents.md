@@ -41,7 +41,6 @@ The subagent layer exists for six reasons:
 |   skill-loading (general-purpose + skills: [...])           |
 |    - develop-agent   (parallel/deep-dive only after         |
 |                       the Bootstrap refactor)               |
-|    - rules-agent     (capture a new project rule)           |
 |    - docs-agent      (update or create documentation)       |
 |   model-carrying (declared behind an agent-filter branch)   |
 |    - recon-agent     (read-only parallel reconnaissance)    |
@@ -55,7 +54,7 @@ The subagent layer exists for six reasons:
 | Coordinator | `unikit-implement-coordinator`, `unikit-plan-coordinator` | `claude --agent <name>` (top-level session) | Yes |
 | Internal worker | `unikit-implement-worker`, `unikit-plan-polisher` | Spawned by coordinator | No |
 | Sidecar (background, read-only) | `unikit-review-sidecar`, `unikit-architecture-sidecar`, `unikit-commit-sidecar`, `unikit-docs-sidecar` | Spawned by coordinator (or explicit `Agent(...)` from a user-launched skill) | No |
-| Delegation alias | `develop-agent`, `rules-agent`, `docs-agent` (skill-loading) · `recon-agent`, `check-agent`, `lens-agent` (model-carrying) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
+| Delegation alias | `develop-agent`, `docs-agent` (skill-loading) · `recon-agent`, `check-agent`, `lens-agent` (model-carrying) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
 
 ## Top-Level Agent Sessions
 
@@ -139,18 +138,19 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Skills expose six named aliases in two families. The **skill-loading** three expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** three expand to a dispatch that names the model on Claude Code and omits it everywhere else; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts.
+Skills expose five named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** three expand to a dispatch that names the model on Claude Code and omits it everywhere else; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
 | `develop-agent` | `Agent(..., skills: ["unikit-devcontext"])` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
-| `rules-agent` | `Agent(..., skills: ["unikit-rules"])` | `/unikit-implement` (and other pipeline skills) | Capture a new project rule without bloating the calling context |
 | `docs-agent` | `Agent(..., skills: ["unikit-docs"])` | Pipeline skills at docs checkpoints | Update or create documentation pages |
 | `recon-agent` | `Agent(subagent_type: Explore, …)` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
 | `check-agent` | `Agent(subagent_type: Explore, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
 | `lens-agent` | `Agent(subagent_type: general-purpose, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
 
-Fallback: if `Agent` is unavailable, `rules-agent` and `docs-agent` invoke their skills inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying three fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session.
+Rule capture has no alias: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to the user in the calling session and invoke `/unikit-rules` only with the batch the user selected — a background agent could not have asked.
+
+Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying three fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session.
 
 ## Design Principles
 

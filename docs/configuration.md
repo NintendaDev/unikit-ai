@@ -143,6 +143,23 @@ git:
 |-----|-------------|---------|
 | `research_relevance_days` | Maximum age (in days) for a research to be considered fresh by `/unikit-plan`, measured on the manifest's `Updated:`. Research older than this is **filtered out** of the planning question, not flagged. Since 2.0.0 the filtering is announced: `/unikit-plan` and `/unikit-improve` each print one `INFO [research] index: …` line naming how many entries were dropped and why. | `7` |
 
+### `testing` section
+
+Where **test runs** are placed in a plan, and whether the executor merges them. Neither key affects **writing** tests: tests are written in any task of any phase, exactly as before.
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `testing.plan.checkpoints.ultra` | Where `/unikit-plan` places a test-checkpoint task in an ultra bundle. Domain `task \| phase \| plan`; `task` is admissible only here, because only ultra has a per-task surface to put a run on. | `phase` |
+| `testing.plan.checkpoints.full` | The same for a full plan. Domain `phase \| plan`. | `phase` |
+| `testing.plan.checkpoints.fast` | The same for a fast plan. Domain `phase \| plan`. The default differs from full deliberately: a fast plan is short, and one full run at its end covers it whole. | `plan` |
+| `testing.implement.merge_checkpoints.<mode>` | Whether `/unikit-implement` collapses every checkpoint inside the invocation scope into a single run at the last one. Opt-in, per plan mode. Meaningful only when `plan.checkpoints` is `phase` or `task` — under `plan` there is nothing to merge, and the plan's final full run is never merged. | `false` |
+
+**Why two keys and not one.** They have different owners and different moments. `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written. `merge_checkpoints` is read by the executor **at execution time**; recording it into the plan instead would freeze the executor's decision and make it irreversible.
+
+**There is no width key, and there will not be one.** How wide a run is follows from where the checkpoint sits — a task runs its own fixtures, a phase runs the test suites of the modules it touched and those depending on them, the end of a plan runs everything. Making it configurable would let a plan declare a checkpoint whose coverage contradicts its own position.
+
+Existing projects receive these keys from `/unikit` merge mode, which appends only the keys a config is missing. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
+
 ### `git` section
 
 | Key | Description | Default |

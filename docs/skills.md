@@ -255,6 +255,8 @@ Also accepts a **numbered batch** - a prompt whose lines start `1. `, `2. `, …
 - Saves rules to `.unikit/RULES.md` (highest priority in rule hierarchy)
 - Cross-checks against knowledge base in `memory/` via `RULES_INDEX.md`
 - Rules loaded automatically by `/unikit-implement` before task execution
+- **Form, not length:** `RULES.md` is a flat list — one line and one directive per rule, no sections. There is no character limit; a rule that cannot be reduced without losing knowledge is written as it stands and is not flagged
+- **`compact`** — `/unikit-rules compact` retro-fits an existing file: it shortens what reduces, keeps what does not, and flattens away the old sections. Non-destructive and confirmed first — no rule is ever deleted, and the order you chose is preserved
 
 ### `/unikit-rules-registry` - external registry orchestrator
 
@@ -506,9 +508,9 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 
 ## Agents
 
-UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus six **delegation aliases** in two families: the skill-loading `develop-agent`, `rules-agent`, `docs-agent`, which expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls, and the model-carrying `recon-agent`, `check-agent`, `lens-agent`, which expand into a read-only dispatch declared in the calling skill's `## Delegation agents`.
+UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus five **delegation aliases** in two families: the skill-loading `develop-agent` and `docs-agent`, which expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls, and the model-carrying `recon-agent`, `check-agent`, `lens-agent`, which expand into a read-only dispatch declared in the calling skill's `## Delegation agents`.
 
-After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `rules-agent` and `docs-agent` keep their usual role of capturing rules and documentation. The model-carrying aliases exist so a model name is written once per skill, behind an agent-filter branch, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
+After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `docs-agent` keeps its usual role of updating documentation. Rule capture is delegated to nobody at all: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to you and call `/unikit-rules` only with the batch you selected. The model-carrying aliases exist so a model name is written once per skill, behind an agent-filter branch, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
 
 For the full reference - frontmatter, launch commands, design principles, sidecar output contracts - see [Subagents](subagents.md).
 
