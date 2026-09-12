@@ -359,13 +359,32 @@ These rules change how this skill orchestrates work (priorities, delegation, com
 Read the `## Settings` section from the plan manifest:
 - `Testing: yes` → after completing each phase, write tests inline (default) for the code created in that phase, or via `develop-agent` for parallel/deep-dive (same execution-mode logic as Step 3.2)
 - `Testing: no` → skip test creation entirely
+- `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand in the plan. Affects Step 2.5 (what may be merged) and Step 3.2 (the width of a run). **Line absent → the plan is legacy:** its placement was never declared. Run points in such a plan are run commands sitting in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line.
 - `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.3)
 - `Docs: no` → skip documentation checkpoint, emit warning
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
 If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
 
-Store the parsed settings — they affect behavior in Step 3.2 (editor targets), Step 3.8 (tests), Step 3.9 (commit), and Step 5.3 (documentation).
+**Resolve the merge mode (read from the config, not from the plan):**
+
+Read `.unikit/config.yaml` → `testing.implement.merge_checkpoints.<plan mode>`. The plan's mode is already known from detection (`.unikit/system/ultra-plan-read.md` → `## Detection`): a manifest carrying the marker → `ultra`; a folder plan without it → `full`; the flat `.unikit/code/PLAN.md` → `fast`.
+
+- **File, key or value absent → `false`.** Merging is only ever enabled explicitly.
+- The value is meaningful only under `Test checkpoints: phase` or `task`. Under `plan` there is nothing to merge: take `false` and print nothing — that is a normal combination, not a misconfiguration.
+- This is the **only** config key this skill reads. The planner's placement key is never read here: the placement is already recorded in the plan, and reading that key again would reinterpret a plan that has already been written.
+
+Store it as `merge_checkpoints` — Step 2.5 reads it.
+
+**Log the resolved policy once, naming both halves:**
+
+```
+INFO [testing] checkpoints=<value from the plan|legacy> · merge=<true|false>
+```
+
+Both halves must appear: it is precisely their divergence that explains why a run performed fewer test runs than the plan has checkpoints. A missing config or key resolves to `false` **silently** — a project without a config is a normal case, and a line on every run would turn the warning into wallpaper. A value that is neither `true` nor `false` (`yes`, `1`, an empty string) resolves to `false` plus `WARN [testing] merge_checkpoints=<value read> is not true|false; took false`. A legacy plan — no `Test checkpoints:` line — adds one line to the Step 4 report: `Test checkpoints: legacy — placement not declared, runs found from the task text`.
+
+Store the parsed settings — they affect behavior in Step 2.5 (merging the test-run checkpoints), Step 3.2 (editor targets, and the width of a test run), Step 3.8 (tests), Step 3.9 (commit), and Step 5.3 (documentation).
 
 Understand:
 - Which tasks are completed (`- [x]`) and which are pending (`- [ ]`)
@@ -422,6 +441,8 @@ STOP here.
 
 **Counting rule for `⏸️ MANUAL`.** A task marked `- [x] … ⏸️ MANUAL` (Step 3.4) counts as **out of scope**, not as pending: it does not block "all tasks are completed" and it is never picked up again by a later run. It is also not counted as implemented — Step 4 reports it on its own line.
 
+A merged test-checkpoint task is the other third outcome, and it counts differently — see the counting rule in Step 2.5.
+
 **If `$ARGUMENTS` contains phase/task selectors:**
 
 - **`Phase N`** (e.g. `Phase 3`): collect all pending tasks from Phase N
@@ -436,6 +457,27 @@ Collect all pending tasks across all phases, respecting dependency order:
 1. Start with phases that have no unmet dependencies
 2. Within a phase, execute tasks in order (1.1, 1.2, 1.3...)
 3. After completing a phase, check if any new phases are now unblocked
+
+### Step 2.5: Resolve test-run checkpoints in scope
+
+Runs **before** the first task, and only when `Testing: yes`.
+
+1. **Collect the scope's run points.** Read the manifest's checklist and select the tasks carrying a `Test checkpoint:` line that fall inside this invocation's scope. **Only the manifest's checklist is read** — no phase file is opened for this.
+2. **Pick up what earlier calls deferred.** A test-checkpoint task that is `- [ ]` and carries the marker `⏭️ MERGED → task N.M` whose target `N.M` is also `- [ ]` is an unclosed obligation: its coverage joins this invocation's scope. This is not a new run — it was planned, and merely merged.
+3. **`merge_checkpoints: false`** → mark nothing. Every point runs where it is written (the one exception is a parallel layer — Step 3.2 and the coordinator). Go to Step 3.
+4. **`merge_checkpoints: true`** → take the scope's **last** run point and mark **all the others** merged into it, in a single `Edit` over the manifest:
+   - append `⏭️ MERGED → task <N.M>` to the text of each merged task, leaving its checkbox `- [ ]`;
+   - the surviving point's coverage at run time is the **union** of the coverage of everything merged into it (Step 3.2).
+
+   **The final full run (`Test checkpoint: plan`) is never merged and never moved.** If it falls inside the scope it stays a point of its own and stands last.
+5. **The scope holds no run point at all**, but something was deferred → the deferred work runs at the **end of the scope**, after the last task.
+6. A merge touches no phase file: the marker is the text of a task in the manifest's checklist, on the model of `⏸️ MANUAL`.
+
+**Counting rule for `⏭️ MERGED`.** A test-checkpoint task carrying the marker and still `- [ ]` **does not count as pending for its own run**: its obligation is carried by the marker's target. It stops blocking "all tasks are completed" only once that target is `- [x]`; until then it is a visible obligation, and the next invocation picks it up (point 2).
+
+**The order is part of the contract: mark first, then execute.** A mark written after the first task no longer survives an interruption *during* that task — which is the whole reason this decision is written into the manifest instead of being held in memory.
+
+**Verbose.** A non-empty merge prints one line — `INFO [testing] merged <n> point(s) into task <N.M> (scope: <scope>)`; picking up deferred work prints `INFO [testing] deferred points picked up: <n>`. If the mark cannot be written (the `Edit` failed) → **do not perform the merge**: fall back to the `merge_checkpoints: false` behaviour and print `WARN [testing] merge mark not recorded — points run as written`. A merge that was never recorded is exactly the shape this design rejects.
 
 ### Step 3: Execute Tasks
 
@@ -505,6 +547,41 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
   **§6 is owned by the `unikit-plan` skill** — read it from `references/ENGINE_RULES.md` inside that skill's own directory under `{{skills_dir}}`. This skill has no engine template of its own, so there is no local copy of §6 to read and none to keep in sync.
 
   **If that file is not there**, treat every format as 🔴: refuse `direct`, put the task back on `manual`, and state the reason in one line. Continuing silently is not an option here — a binary serialized format edited as text is not reversible by review, and this gate is the only thing standing in front of that. This is **not** the A9 case: what is missing is not a rule that would grant a right, it is the permission for an irreversible text edit, and withholding it changes nothing about the `mcp` route.
+
+**A task carrying a `Test checkpoint: <coverage>` line** is a test-checkpoint task. It changes no files; its work is one test run.
+
+1. **Merged?** It carries the marker `⏭️ MERGED → task N.M` (Step 2.5) → **the run is not performed.** The task stays `- [ ]`; move on. Its coverage is already counted into the target task's run.
+2. **Derive the run's target from the coverage** — the width is not configurable (REQ-006):
+   - `task N.M` → the fixtures and classes named by that task's `### Tests`;
+   - `phase N` / `phases N-M` → the test suites of the modules those phases touched and of the modules that depend on them (algorithm below), plus the coverage of everything merged into this point;
+   - `plan` → **every test in the project**, unfiltered.
+3. **Dependent modules are found by name search, without building a graph.** The policy is engine-neutral and lives here; the mechanism is engine-specific and lives in the core rule `testing.md` loaded at Bootstrap (Step 1.5): what declares a module, where references live, how a test suite is recognised.
+   1. Changed files: `git status --porcelain` plus the list of files this run has accumulated.
+   2. Walk up the directories to the nearest module manifest → the set of changed modules.
+   3. Find the referrers: search the module manifests for the names in that set. Repeat while the set keeps growing — in practice one or two iterations.
+   4. Keep only the test suites from the result.
+   5. **Safety valve: when what remains is ≥ 70% of all the project's test suites, run everything.** A filter of twenty names costs more than one full run, and assembling it is the more error-prone half. **This threshold is assigned, not measured**, and the text must admit it rather than let the next reader take it for a measurement.
+   6. **Degenerate cases → full run:** the engine has no module graph; the change landed in a default suite almost everything depends on; `testing.md` describes no mechanism for this engine. Failing to narrow means widening — that is fail-safe, not refusal.
+
+   **Reading every module manifest is forbidden.** The search returns paths, not contents; reading the whole graph costs thousands of tokens and buys no accuracy.
+4. **Start the run** by the engine's own means, exactly as any other check in this step does (through the engine MCP when one is configured). Wait for the result.
+5. **A red run goes to the blocker loop (Step 3.3).** After the fix the run is repeated. A red run is never ticked `[x]`, and never quietly demoted to a warning.
+6. **A green run is recorded in the manifest**, by the same `Edit` that ticks the checkbox (Step 3.4):
+   - append a bullet to `## Test Runs`: `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`;
+   - **for `Test checkpoint: plan`, additionally** rewrite the anchor line `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`;
+   - `<date>` comes from `Bash(date *)`; `<hash>` from the procedure below.
+
+   The plan carries no `## Test Runs` section (a legacy plan) → create it at `##` level, under `## Rule Candidates`, or above `## Dependency Graph` when that one is absent too.
+7. **`tree-sha256` is computed over a short text**, not over the project, and by the same procedure as `Summary SHA256` (Step 1) — through stdin, no temp file. That procedure is named here, never restated:
+
+   ```
+   { git rev-parse HEAD; git status --porcelain; } | shasum -a 256 | awk '{print $1}'
+   ```
+
+   No `shasum` → `sha256sum`. Git unavailable → the field is written as `tree-sha256 unavailable`; the run is still recorded, and `/unikit-verify` does not reuse such a run.
+8. **Close the merged tasks.** After a green run, tick `- [x]` every task whose marker points at this run point, keeping the marker in its text: it explains why that task has no line of its own in `## Test Runs`.
+
+**Verbose.** `INFO [testing] run <coverage>: <n> test suite(s)` before starting; `INFO [testing] safety valve: <n>/<total> ≥ 70% — full run` when it fires; `INFO [testing] no module graph — full run` on a degenerate case; `WARN [testing] git unavailable — tree-sha256 unavailable`. A red run is reported by the Step 3.3 blocker and not by a second line here: two places printing one failure drift apart. A run that never started — the runner is busy, or it timed out — is a Step 3.3 blocker and **not** a lifted gate: lifting is `/unikit-verify`'s decision, and the executor does not take it.
 
 **A call that misled you is a finding — and it goes in two places, neither of them the notes file.**
 
@@ -576,6 +653,8 @@ After successful implementation, update the manifest:
 - **`observed`:** the date you observed it, `Bash(date *)`.
 - **Dedup is semantic, not mechanical.** Drop a candidate that says the same thing about the same `area` as a row already there, judging by meaning rather than by string match; only the id allocation is mechanical. Being loose here is deliberate — the error is cheap in both directions. A duplicate that slips through costs one extra line, which `/unikit-mcp-trap` or `/unikit-mcp-audit` drops later; merging two observations that were not the same thing destroys the `evidence` of one of them, and evidence is the half that cannot be reconstructed.
 
+**A test-checkpoint task (Step 3.2)** — the checkbox is ticked by the same `Edit` that writes the entry into `## Test Runs`, and that same `Edit` closes the tasks merged into it. One write surface, one `Edit` — the very rule by which `## MCP Findings` is written in this step.
+
 Use the Edit tool to make these changes surgically.
 
 **3.5: Progress report**
@@ -615,6 +694,8 @@ After completing a phase, check whether the implementation introduced structural
 Skip this step if the phase only modified existing files without structural changes.
 
 **3.8: Tests (after completing a phase, if Testing: yes)**
+
+**This step only WRITES tests and never runs them** (REQ-002). A run is a separate test-checkpoint task in the checklist (Step 3.2). Writing tests is not constrained by the `Test checkpoints` policy: tests are written in any task of any phase, exactly as before.
 
 If Settings specify `Testing: yes`, after all tasks in a phase are completed, write tests for the code created/modified in that phase inline (default) or via `develop-agent` (parallel/deep-dive only) — same choice logic as Step 3.2.
 
