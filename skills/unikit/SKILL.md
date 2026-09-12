@@ -175,7 +175,9 @@ Materialize the collected values into `.unikit/config.yaml`.
 
   > Reusing existing `.unikit/config.yaml` (found `language.ui = <value>`, `git.enabled = <value>`).
 
-- If the file is missing one of the recently-added keys (e.g. `workflow.research_relevance_days`, `git.branch_prefix`, `git.skip_push_after_commit`), tell the user which keys are missing and offer to append them with their template defaults (do not touch the rest of the file). Use `Edit` for the targeted append, never a full rewrite.
+- If the file is missing one of the recently-added keys (e.g. `workflow.research_relevance_days`, `git.branch_prefix`, `git.skip_push_after_commit`, `testing.plan.checkpoints`, `testing.implement.merge_checkpoints`), tell the user which keys are missing and offer to append them with their template defaults (do not touch the rest of the file). Use `Edit` for the targeted append, never a full rewrite.
+
+  > A key from a nested block is appended **together with its parent when the parent is absent**: if the whole `testing:` block is missing, append the entire block from the template; if only the `testing.implement.merge_checkpoints` group is missing, append just that group under the existing `testing:`. Always a targeted `Edit`, never a rewrite of the file (Rule 7).
 
 After Step 3, treat `.unikit/config.yaml` as the source of truth for all subsequent language / git references in this run.
 
