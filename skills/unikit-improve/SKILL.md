@@ -514,6 +514,17 @@ Each finding goes into the 🔄 Dependency Fixes group in the format below — i
    Fix: add `Phase <Y>` to Phase <X>'s **Dependencies:** (or the reverse, if <X> must run first)
 ```
 
+**3.3b: Run policy — check the plan against its own `Test checkpoints:` line**
+
+Read the setting from the plan's `## Settings` and check the plan against it. Each of these is a finding with a proposed fix, never an automatic change:
+
+- under `phase` or `plan` — a test-run command sitting in a per-task `### Tests` or `### Verification` (Integrity Check 10: in that mode a run lives only in a test-checkpoint task, and a command left here is executed a second time by `/unikit-verify`);
+- under `Testing: yes` — no final task carrying `Test checkpoint: plan` (Integrity Check 11: the final full run has no off switch);
+- a test-checkpoint task standing immediately after another with nothing changed between them;
+- a `## Phase Completion Checklist` that restates the run instead of leaving it to the task's own checkbox.
+
+**A plan with no `Test checkpoints:` line is legacy and is exempt from this check** — its placement was never declared, and criticising a plan for lacking a policy that did not exist when it was written produces a finding nobody can close.
+
 **3.4: Redundant or duplicate tasks**
 - Two tasks doing the same thing
 - Task unnecessary because code already exists
@@ -675,6 +686,8 @@ Based on user's choice, apply changes sequentially.
 
 Use `Edit` for every change. **`Write` over a plan manifest is forbidden** — the file carries `## Technical Context` (and, in an ultra bundle, `## Phase Index`), and a regenerating write silently drops whatever the current pass did not reconstruct. When a change is too large for a single `Edit`, split it into several `Edit` calls; do not fall back to `Write`.
 
+**Executor data is preserved whole.** `## MCP Findings`, `## Rule Candidates` and `## Test Runs` are carried over with all their content — rows, candidate statuses and the run log alike. They are not a draft of the plan: they are what execution recorded, and this skill has no authority to edit or drop them. That is one more reason the `Write` ban above is absolute rather than a preference.
+
 **Editing an ultra bundle.** The manifest and every affected phase file are edited **together** — never regenerate the manifest alone when phase detail changed, and never write a checkbox into a phase file. After the write, re-run the bundle integrity checks named in `.unikit/system/ultra-plan-read.md`; a bundle left inconsistent by an improvement blocks the next consumer that opens it.
 
 **5.1: Add missing tasks to the manifest's `## Checklist`**
@@ -686,6 +699,15 @@ For each new task from the report:
 4. If the task has dependencies, note them inline (e.g., `(after Phase 1)`)
 5. Add an `Editor:` line — one per editor target, placed after `Files:`, in the form `Editor: [kind] <container> → <target> : <action>` — **only** when the change touches the editor's **serialized state**. A pure code task omits the field, and when `engine_rules_loaded = false` (no `ENGINE_RULES.md` for this engine) it is not generated at all. Match the form already used by the surrounding tasks in the plan.
 6. **Ultra bundle only** — the checklist line is a pointer, so create what it points at: a `## Task N.M:` section in the phase file of that phase, with all seven subsections (`### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`), and append the `([details](phase-NN-<slug>.md#task-nm-<slug>))` link to the checkbox line — the anchor is the GitHub slug of the task heading, per `unikit-plan/references/ULTRA-PLAN-FORMAT.md`. When the task needs a **new** phase, create `phase-NN-<slug>.md` and register it in the manifest's `## Phase Index` with its task range; an unregistered file is an orphan and blocks every consumer.
+
+**Test-checkpoint tasks.** When adding tasks, honour the policy the plan itself records — the `Test checkpoints:` line in `## Settings`. The grammar and how a run's width is derived are canonical in `unikit-plan/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate them here**.
+
+- **New tasks are inserted ABOVE the final full run** (`Test checkpoint: plan`). A task that ends up after it will be run by nothing at all: the final full run being last is exactly what REQ-007 rests on.
+- **No `Test checkpoints:` line in the plan (legacy) → add no test-checkpoint tasks.** The placement was never declared, and guessing it while editing someone else's plan is not this skill's call. Say so as a finding, and print `WARN [testing] plan carries no Test checkpoints: line — no test-checkpoint tasks were added`. The refusal has to be loud: silently adding nothing is indistinguishable from a run not being needed.
+- A new phase that changes executable code, under `Test checkpoints: phase` → give it a checkpoint by the same trigger the planner uses; if the phase does not meet that trigger, its goals pass to the next checkpoint, and the phase text says so in one line.
+- Under `Testing: no`, no test-checkpoint task is added at all.
+
+At the start of the edit print one line — `INFO [testing] plan policy: checkpoints=<value|legacy>` — so the decision to insert tasks, or not to, is explainable from the output.
 
 **5.2: Improve existing task descriptions in the manifest**
 
