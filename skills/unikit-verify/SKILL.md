@@ -211,6 +211,7 @@ Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit
 
 **Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
 - `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
+- `Test checkpoints: task | phase | plan` — the run placement the planner recorded. Context for Step 2.2: under `phase` and `plan` there are no runs among the `### Verification` commands — they live in test-checkpoint tasks. **Line absent → the plan is legacy:** placement was never declared, and runs may sit anywhere in the task text.
 
 Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can be applied inline without re-loading on each delegation.
 
@@ -379,10 +380,34 @@ Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after im
 
 ### 2.2 {{engine_name}} Test Check
 
+**First — do not repeat what has already been done.** Read the manifest's `## Test Runs` and find the `Full run:` anchor line.
+
+1. **No anchor** — no section, no line, or its `tree-sha256` reads `unavailable` → run your own, by the points below.
+2. **An anchor is there** → compute the current tree hash **by the same procedure as `Summary SHA256`** (`unikit-implement/SKILL.md` Step 1) — normalized and fed through stdin, no temp file:
+
+   ```
+   { git rev-parse HEAD; git status --porcelain; } | shasum -a 256 | awk '{print $1}'
+   ```
+
+   No `shasum` → `sha256sum`. Not one project file is read: the size of the project does not affect the cost.
+3. **The hash matches the one recorded in the anchor** → **the run is reused.** Do not start your own. One line into the report, quoting the other run:
+
+   ```
+   Test run: reused — <anchor date> · <coverage> · passed N/N · tree unchanged
+   ```
+
+   This is **not** a lifted gate and **not** a skip: the gate is closed, and closed by the very class of evidence `verification.md` names for it — the evidence was simply produced earlier, and by another skill. The report must name whose run it was, or verify claims someone else's result as its own.
+4. **The hash does not match** → the tree changed after that full run: run your own by the points below, and say why in one line — `Test run: re-run — the tree changed since the full run of <date>`.
+5. **Git is unavailable, or either command does not answer** → the hash cannot be computed: run your own, and print `WARN [testing] git unavailable — the Full run: anchor was not checked, the run was performed again`. Unavailable git never means "reuse": an unknown tree state resolves in favour of running.
+
+A broken anchor — no `tree-sha256`, an unreadable date — is treated as branch 1 plus `WARN [testing] the Full run: line could not be parsed — the run was performed again`. Acting on a half-parsed anchor is forbidden: half a mark is worse than none.
+
+**Reuse never lowers the bar.** It applies to the `Full run:` anchor alone, that is to a **full** run. A partial run of the executor's — the modules of one phase — is not verify's to reuse: it does not cover what verify checks.
+
 Use MCP server `{{engine_mcp_tool}}` to run tests for affected modules:
-- Determine which test assemblies cover the modified modules (check CLAUDE.md for the list of test assemblies)
-- If changed files include modules with test assemblies — run those assemblies specifically
-- Otherwise run all EditMode tests as a baseline check
+- Determine which test suites cover the modified modules — by the same name-search algorithm the executor uses (`/unikit-implement` Step 3.2), whose engine-specific mechanism lives in the core rule `testing.md` loaded at Bootstrap. Verify builds no module graph and reads no module manifests
+- If changed files include modules with test suites — run those suites specifically
+- Otherwise a full run as a baseline check
 - Wait for results and display them — highlight any failures
 - If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
 - If the tests gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`. `verification.md` also names what the gate must require of a passing run (a readable result, and a test count above zero); a run that reports success over zero tests has not closed it
@@ -649,6 +674,8 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
   - `verify-editor-<task-id>` covers an editor target that was read back and found **unimplemented or wrong**. The two benign outcomes never enter `blockers`: `⏸️ MANUAL` (the user took the target on) and `⏭️ SKIPPED (editor target, …)` (it could not be read back). Both belong in the human summary.
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
 - **Research drift.** Every `WARN [research-drift]` line from Step 0.2 raises `status` to at least `warn` and is named in the human summary. It is **never** a blocker and never enters `blockers`: source drift makes the work debatable, not wrong, and the call is the user's.
+- **A reused run.** A test gate closed by someone else's full run (Step 2.2, the `reused` branch) is a `Gate closed`: it does **not** affect `status`, and it never enters `blockers`. The human summary must name it in one line — `Test run: reused — …` — because "the gate was closed by evidence obtained earlier" and "the gate was not checked" are different statements, and in JSON they look identical.
+- **`WARN [testing]`** of any origin — git unavailable, an anchor line that would not parse, an inadmissible `checkpoints` value — raises `status` to at least `warn` and is named in the summary. It is never a blocker: not knowing the state of the tree makes the work debatable rather than wrong, which is the same logic research drift follows.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
 
 **Ultra bundle — verification commands outside the grant.** Commands under a task's `### Verification` are executed within the grant this skill already holds. Anything outside it is printed with the `⏸️ MANUAL` status in the report **and** must reach this block, or it is lost in silence: an unrun verification command is an accepted skip, so `status` is at least `warn` and the human summary names the command and the task. It is not a blocker and it never enters `blockers`. **`allowed-tools` is not widened for this** — the `⏸️ MANUAL` idiom already exists for editor targets.
