@@ -38,6 +38,9 @@ const SECTION_MCP_FINDINGS = '## MCP Findings';
 const SECTION_TECHNICAL_CONTEXT = '## Technical Context';
 const SECTION_OPEN_QUESTIONS = '## Open Questions';
 const SECTION_FILES_IN_PHASE = '## Files in This Phase';
+const SECTION_RULE_CANDIDATES = '## Rule Candidates';
+const SECTION_TEST_RUNS = '## Test Runs';
+const TASK_RUN_MARKER = 'Test checkpoint:';
 
 const PHASE_BACKLINK = 'Plan: [PLAN.md](PLAN.md)';
 
@@ -349,6 +352,40 @@ if (manifest) {
     });
     assertTrue('T13 task-phase-matches-phase-file', taskToFile.size > 0 && misfiled.length === 0,
         `task/file phase mismatch: ${JSON.stringify(misfiled)}`);
+
+    // --- T21..T24: the run-placement surfaces ---
+    // INTEGRITY_POINTS already counts the two new checks, but a number proves nothing about
+    // the template itself. A template that loses its test-checkpoint task goes straight back
+    // to teaching a run inside every task, and T11 would not notice: the three projections
+    // stay perfectly consistent with each other while all of them are wrong.
+    assertTrue('T21 manifest-has-rule-candidates',
+        mLines.some((l) => l.startsWith(SECTION_RULE_CANDIDATES)),
+        `no ${SECTION_RULE_CANDIDATES} in the manifest template`);
+
+    assertTrue('T22 manifest-has-test-runs',
+        mLines.some((l) => l.startsWith(SECTION_TEST_RUNS)),
+        `no ${SECTION_TEST_RUNS} in the manifest template`);
+
+    // A checklist task owns the lines between its own checkbox and the next one, so a run
+    // task is recognised by its block rather than by the checkbox line alone.
+    const taskStarts = [];
+    mLines.forEach((l, i) => { if (/^\s*-\s\[ \]\s+Task\s+\d+\.\d+/.test(l)) taskStarts.push(i); });
+    const blockAt = (n) => mLines.slice(taskStarts[n], n + 1 < taskStarts.length ? taskStarts[n + 1] : mLines.length);
+    const runBlocks = taskStarts.map((_, n) => blockAt(n)).filter((b) => b.some((l) => l.includes(TASK_RUN_MARKER)));
+    const runBlocksWithFiles = runBlocks.filter((b) => b.some((l) => /^\s*Files:/.test(l)));
+
+    assertTrue('T23 manifest-has-run-task',
+        runBlocks.length > 0 && runBlocksWithFiles.length === 0,
+        runBlocks.length === 0
+            ? `no checklist task carries "${TASK_RUN_MARKER}" — the template teaches a run inside every task`
+            : `${runBlocksWithFiles.length} run task(s) carry a Files: line — a run task creates nothing`);
+
+    // The machine form of REQ-007. A template whose full run is not last teaches the very
+    // violation Integrity Check 11 then forbids.
+    const lastBlock = taskStarts.length ? blockAt(taskStarts.length - 1) : [];
+    assertTrue('T24 last-checklist-task-is-full-run',
+        lastBlock.some((l) => l.includes(`${TASK_RUN_MARKER} plan`)),
+        `the last checklist task does not carry "${TASK_RUN_MARKER} plan"`);
 }
 
 // --- T7..T10: the phase file template ---
