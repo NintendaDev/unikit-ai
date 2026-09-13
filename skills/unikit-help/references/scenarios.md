@@ -23,6 +23,8 @@ Then narrow with **at most one** follow-up:
 - **1 Start** → Is the framework installed yet (`.unikit/config.yaml` present)?
   - no  → `/unikit` (one-time setup)
   - yes → "Do you have a game idea / GDD?" → no → `/unikit-gd-brainstorm`; yes → `/unikit-plan`
+  - yes, but the ask is about the config itself ("update the config", "add missing settings")
+    → `/unikit` again — Step 0 dispatches to config actualization, not to a re-bootstrap
 - **2 Code** → "Plan/implement a feature · test existing code · fix a bug?"
   - feature → `/unikit-explore` (if direction unclear) → `/unikit-plan` → `/unikit-implement`
   - test    → `/unikit-verify` (vs plan) and/or the test phase in `/unikit-implement`
@@ -45,6 +47,7 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | User says (any language) | Interpreted intent | Route | Clarify only if... |
 |--------------------------|--------------------|-------|--------------------|
 | "where do I start", "I'm new" | onboard | `.unikit/config.yaml` present? no→`/unikit`; yes→ask idea/GDD | framework installed? |
+| "update the config", "add missing settings", "actualize configuration", "fix my config" | actualize config | `/unikit` — Step 0 dispatches to config actualization (Steps 1-11 do not run) | — |
 | "how do I start coding" | begin a feature | have a plan? yes→`/unikit-implement`; no→`/unikit-plan` | is there a plan / research? |
 | "how do I plan a feature" | plan | `/unikit-plan [fast\|full\|ultra] <feature>` | fast vs full vs ultra (throwaway / real / delegated to a smaller model) |
 | "the plan looks rough / wrong" | refine plan | `/unikit-improve` (run 1-3x) | — |

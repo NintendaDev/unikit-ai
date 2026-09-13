@@ -29,6 +29,7 @@ Scans your game project and sets up AI context:
 ```
 - Scans the real tech stack from **engine-specific** sources - the scan list is not hardcoded, it comes from the installed `references/ENGINE_RULES.md` (package manifest, plugin directories, third-party asset folders, project settings). Your own project code is deliberately excluded: on Unity, `Assets/Modules/*/` is *not* treated as a framework
 - Bootstraps `.unikit/config.yaml` - the user-editable source of truth for language, git, and workflow
+- **Also actualizes an existing config.** On a project that is already set up, ask to "update the config", "add missing settings" or "fix my config" and Step 0 dispatches to a config actualization mode instead of bootstrapping: it compares the file against the current template, appends template literals silently, asks about placeholders and out-of-domain values, reports keys it does not recognise without deleting them, and never touches `language.rules` / `language.technical_terms`. Steps 1-11 do not run - see [Configuration](configuration.md#how-new-keys-reach-an-existing-project)
 - Generates `.unikit/DESCRIPTION.md` (project specification) and `AGENTS.md`
 - Bootstraps the knowledge base under `.unikit/memory/` via the rules registry - the `code` module always, plus the `gamedesign` design library when its skills are installed
 - Invokes `/unikit-architecture` for architecture guidelines
