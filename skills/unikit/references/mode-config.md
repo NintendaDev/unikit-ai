@@ -60,17 +60,19 @@ Assign every paired key to exactly one bucket. Write nothing and ask nothing in 
    rather than inventing its own.
 3. **Present but empty** → treat exactly as absent (literal → append the value; placeholder →
    ask). An empty value is a normal state, not an anomaly: Step 0 itself distinguishes
-   "missing **or empty**", and Step 2 deliberately leaves `git.base_branch` empty in no-git
-   mode.
-4. **Present, value outside a declared domain** → ask. A domain counts as declared only when
-   the template states it, either as an `Options:` enumeration or as an inline `# a | b`
-   comment beside the key. **When the template declares no domain, do not check one and do
-   not invent one** — `workflow.research_relevance_days`, `git.create_branches`,
-   `git.branch_prefix` and `git.skip_push_after_commit` have no enumeration, and
-   `git.base_branch` lists *examples*, which is not a domain.
-   **Carve-out:** the language keys' domain is **not** checked in this mode. The template
-   offers a short list while the repository carries a much larger ISO code set, and which one
-   governs is an open question — checking either would produce a confident wrong answer.
+   "missing **or empty**", and the bootstrap deliberately leaves a placeholder-backed key
+   empty when the run has nothing to resolve it from — the no-git case, for instance.
+4. **Present, value outside a declared domain** → ask. A domain is declared by exactly one
+   thing: an inline `# a | b` comment standing beside the value on the same line. Nothing
+   else declares one — an `Options:` or `Examples:` list inside a comment block is prose for
+   the reader, not a domain, however much it looks like an enumeration. **When no inline
+   domain stands beside the value, do not check one and do not invent one.**
+   This bucket names no key on purpose. The template is the only place a domain is declared,
+   so a key gains or loses one by being edited there and nowhere else; a list of key names
+   repeated here would be a second owner of that fact, and it would drift silently the first
+   time the template grows a key. The earlier form of this rule also counted an `Options:`
+   list, which forced three hand-written exceptions to keep it honest — the exceptions were
+   the symptom, the over-broad rule was the defect.
 5. **Present in the project, absent from the template** → report it, **never delete it**. This
    is an expected outcome, not a fault: it is usually a key the user added deliberately.
 6. **`language.rules` and `language.technical_terms`** → do not touch at all. The template is
@@ -94,14 +96,19 @@ while that rationale was already in the file, and a rationale is not an instruct
 
 | Key | Current state | Bucket | What will happen |
 |-----|---------------|--------|------------------|
-| `workflow.research_relevance_days` | absent | 1 — literal | append `7` |
-| `git.base_branch` | empty | 3 → 2 — placeholder | ask |
-| `testing.plan.checkpoints.full` | `weekly` | 4 — outside domain | ask |
-| `git.my_own_key` | `true` | 5 — not in template | keep, reported only |
+| `some.literal.key` | absent | 1 — literal | append the template value |
+| `some.placeholder.key` | empty | 3 → 2 — placeholder | ask |
+| `some.domained.key` | `weekly` | 4 — outside domain | ask |
+| `your.own.key` | `true` | 5 — not in template | keep, reported only |
 | `language.rules` | `en` | 6 — never touched | skipped by invariant |
 
 The bucket-6 row is **printed even though nothing happens to it**. Omitting it would let its
 absence read as "checked, all fine", when in fact it was never examined.
+
+The key names above are stand-ins showing the shape of a row; the real ones come out of the
+Phase A comparison. Only the bucket-6 row names actual keys, and it is the sole place in this
+file that does — that pair is the one fact the template does not encode positionally, so it
+has to be written down, while every other classification is derived and needs no list.
 
 If every bucket is empty, say the configuration already matches the template and **STOP**
 without writing.

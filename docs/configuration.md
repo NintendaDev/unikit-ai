@@ -186,9 +186,11 @@ The actualization mode sorts every leaf key of the template into one of six buck
 1. Absent, template value is a literal → appended **silently**.
 2. Absent, template value is a `{{PLACEHOLDER}}` → **asked**.
 3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode.
-4. Present but outside a **declared** domain → asked. A domain counts only where the template states one, as an `Options:` list or an inline `# a | b` comment. `git.base_branch` lists *examples*, which is not a domain, and the language keys' domain is deliberately not checked.
+4. Present but outside a **declared** domain → asked. A domain is declared by exactly one thing: an inline `# a | b` comment standing beside the value. An `Options:` or `Examples:` list inside a comment block is prose for the reader, not a domain. Which keys carry one is settled by the template alone — this page deliberately does not list them, so the two cannot drift apart.
 5. Present in your file but absent from the template → **reported, never deleted**. This is usually a key you added on purpose.
 6. `language.rules` and `language.technical_terms` → **not touched at all**.
+
+**The template is the single place these facts are declared.** Whether a key is defaulted silently or asked about follows from the template itself: a `{{PLACEHOLDER}}` value means "needs a human", a literal means "safe to default", and an inline `# a | b` declares a domain. Nothing about any specific key is written down a second time in the skill, so adding a key to the template is the whole change. Should a fact ever appear that this encoding cannot express — "ask even though it is a literal", or "deprecated: report but never append" — that is the moment to extend the template with a marker class, and not before: markers would have to be stripped out again when the config is written, and the comments are precisely what makes a setting discoverable.
 
 **Two keys are never written and never asked about.** `language.rules` and `language.technical_terms` are hand-edited only, on both paths. Switching either on a live project leaves a half-translated rule corpus that agents then grep, which is why the ban covers the offer as much as the write.
 
