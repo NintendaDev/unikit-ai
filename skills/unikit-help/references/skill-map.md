@@ -344,7 +344,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   highest-priority rule file, auto-loaded by `/unikit-implement`).
 - **When:** "always do X", "never use Y", "remember this", correcting the agent for next time.
 - **In:** a rule typed as a prompt (no files/URLs).
-- **Out:** appends to `.unikit/RULES.md`.
+- **Out:** appends to `.unikit/RULES.md` as a flat list — one line, one directive, no sections.
+- **`compact` mode:** `/unikit-rules compact` retro-fits an already bloated `RULES.md` — shortens
+  what reduces, keeps what does not, flattens the sections. Non-destructive, asks before writing.
 - **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).
 
 ### unikit-memory

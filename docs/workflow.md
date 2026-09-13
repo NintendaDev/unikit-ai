@@ -327,13 +327,14 @@ Tasks carrying an `Editor:` line target the editor's serialized state rather tha
 After phase completion:
 
 - Runs compilation check (through the engine MCP server)
-- Runs tests if `Testing: yes`
+- Writes tests if `Testing: yes` — inside the tasks that introduce them
+- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; with `testing.implement.merge_checkpoints` the checkpoints inside the invocation scope collapse into one. Under `Testing: yes` the plan's last task is a full run
 - Creates commit checkpoint
 
 Post-completion, in order:
 
 - Checks TODO.md for resolved tasks
-- Proposes new rules via background agents
+- Proposes candidate rules **as a question** and records only the ones you pick. No skill appends to `.unikit/RULES.md` on its own; candidates live in the plan's `## Rule Candidates` section and survive a `/clear`
 - Triggers documentation checkpoint if `Docs: yes`
 - Decides what to do with the plan file
 - **Offers to move MCP findings to the durable log** - if the plan's `## MCP Findings` table has rows, hands the plan path to `/unikit-mcp-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"

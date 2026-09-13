@@ -71,6 +71,8 @@ Before writing code:
    **If it is not there and the plan is an ultra bundle** — the first line of the manifest equals `<!-- unikit:plan-mode:ultra -->` — do not invent the missing detail and do not go read the phase file yourself: you have no phase graph, and a second route to the specification is a second source of truth that drifts from the first. Return the task to the coordinator stating that the specification was not passed.
 
    **`phase-*.md` files are read-only while you execute.** Everything you change lives in the manifest. This holds even when the fix looks trivial — a wrong path in a phase file is reported in your run report, never edited.
+
+   **You never run tests.** `### Tests` is executed only in the part that *writes* tests. Starting a test run is not yours to do — not even when a run command sits inside the section you were handed, which happens in a legacy plan. Hand such a command back to the coordinator through `test_run_deferred:` in your `## Output`, unexecuted. The reason is measured: the test runner is one per editor, and two workers of the same layer starting a run at the same moment get a refusal rather than two results.
 2. Load rules (see above).
 3. Implement the target task using direct tool calls.
 
@@ -81,6 +83,7 @@ Before writing code:
    - **A call that misled you is a finding**: append the row to the plan **manifest**'s `## MCP Findings` table **yourself** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`, never a phase file — in the same pass that marks the task, and put the same candidate line in your run report. `F<n>` is one more than the highest id already in the table — read the table before appending; `observed` is today's date; dedup is semantic (a candidate saying the same thing about the same `area` as an existing row is dropped, judged by meaning, not by string match). Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`. Do **not** write `.unikit/MCP-RECHECK-NOTES.md` yourself; one observation is a bad sample, and the durable surface passes through a human running `/unikit-mcp-trap`.
 
      **Why you write it and not the coordinator.** You have no worktree isolation — the manifest you edit is the one file everyone edits, and that stays true for a multi-file plan too, because everything mutable at execution time lives in the manifest while phase files are read-only during execution — and a phase carrying an `Editor:` line is alone in its execution layer (`TASK-FORMAT.md` → `### Editor task grammar`), so there is never a second writer at the same moment. Handing the row back instead would defer the write to the end of the layer, which brings back exactly the defect this arrangement removes: a finding held in a return value dies with the coordinator, and one held until the end of a run dies with the session.
+   - **A repeating convention you had to apply is a rule candidate**, and you write it yourself for the same reason and by the same rules as a finding: append the row to the plan **manifest**'s `## Rule Candidates` — `id` is `R<n>`, one more than the highest already there (read the table first); `from` is your task; `status` is `open`; dedup is semantic. **Never write `.unikit/RULES.md`** — you do not decide what becomes a project rule. `/unikit-implement` Step 5.2 puts the candidates to the user at the end of the call, and only the answer decides what is written.
    - **No mode passed → degrade to `manual`, never to `direct`.** `direct` is irreversible and requires a git commit taken *before* the edit, which you cannot make (see Rules: do not create commits). Returning the target unimplemented is always recoverable; a bad direct edit is not.
 4. Run one verification pass scoped to the changed files:
    - Check for compilation by reading the MCP server `{{engine_mcp_tool}}` console (if available)
@@ -107,6 +110,7 @@ Return a concise summary:
 - Quality check findings (material issues only)
 - List of files modified
 - `manual_targets:` — editor targets NOT carried out, each as `[kind] container → target : action`; omit the field when there are none. The coordinator must not mark a phase complete on the strength of a task whose editor targets are still listed here
+- `test_run_deferred:` — the coverage, or the run command, that you did not execute and are handing to the scope owner; omit the field when there is none. **Absent → the coordinator reads it as nothing deferred**, never as a run already done — the same explicit-degradation rule `editor_mode:` carries in the dispatch contract
 - `docs_recommended: yes/no`
 - `commit_recommended: yes/no`
 - `next_task: <task description or "phase complete" or "plan complete">`

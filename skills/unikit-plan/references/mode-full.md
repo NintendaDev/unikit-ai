@@ -74,7 +74,7 @@ recon-agent(prompt:
 AskUserQuestion: Before planning:
 
 1. Include tests in the plan?
-   a. Yes, add a testing phase
+   a. Yes, include tests
    b. No, skip tests
 
 2. Documentation policy after implementation?
@@ -89,12 +89,41 @@ AskUserQuestion: Before planning:
 ```
 
 Based on choice:
-- Tests: Yes → add a testing phase after each implementation phase in the plan
-- Tests: No → no test tasks in the plan
+- Tests: Yes → tests are written inside the tasks that introduce them; **no separate testing
+  phase is created**. Runs are placed as separate test-checkpoint tasks, under the policy
+  resolved below.
+- Tests: No → no test tasks in the plan, and no `Test checkpoints:` line is written
 - Docs: Yes → add `Docs: yes` to Settings, `/unikit-implement` will show documentation checkpoint
 - Docs: No → add `Docs: no` to Settings
 - Roadmap: Link → proceed to milestone selection (see below)
 - Roadmap: Skip → add `Milestone: "none"` to Roadmap Linkage
+
+#### Test run placement (`Test checkpoints`)
+
+**There is no question here.** The value is project policy: read it from `.unikit/config.yaml`
+→ `testing.plan.checkpoints.full`. Asking it on every plan is the same noise already removed
+from the editor mode.
+
+1. `Testing: no` → the `Test checkpoints:` line is not written at all. Do not go further
+   through this subsection.
+2. Read `testing.plan.checkpoints.full`. The domain in full is `phase | plan`.
+   **Key or file missing, or the value empty → `phase`**, silently: a project without a config
+   is a normal case, and a line on every plan would turn the warning into wallpaper. The value
+   `task` is not admissible in full — there is no per-task surface here. On meeting it, take
+   `phase` and print one line:
+
+   ```
+   WARN [testing] checkpoints=task is unavailable in full; took phase
+   ```
+
+   Any other value outside the domain (a typo, the wrong case) is treated the same way: take
+   `phase` and print that same `WARN [testing]` line, naming the value actually read.
+3. Write the resolved value into `## Settings` as `Test checkpoints: <value>` (Step 5 item 3).
+   The plan is self-describing: changing the key in the config afterwards never reinterprets a
+   plan that has already been written.
+
+The executor's own merge policy is resolved at execution time and is **never read here**: a
+planner that recorded it into the plan would make the executor's decision irreversible.
 
 #### Editor mode (`Editor tasks`)
 
@@ -117,7 +146,7 @@ No engine MCP is configured. How should those tasks be carried out?
 
    Offer **`direct` only** when `references/ENGINE_RULES.md` §6 rates the engine's serialized formats 🟢 or 🟡. Where §6 rates them 🔴 (binary or dense generated formats), drop the option entirely rather than showing it and refusing later.
 
-Store the preferences — they affect the `## Settings` section in `.unikit/code/plans/<folder>/PLAN.md`, whether a testing phase is added, whether `/unikit-implement` shows a documentation checkpoint, and how `/unikit-implement` executes `Editor:` tasks.
+Store the preferences — they affect the `## Settings` section in `.unikit/code/plans/<folder>/PLAN.md`, whether test tasks are written at all, the resolved `Test checkpoints:` placement, whether `/unikit-implement` shows a documentation checkpoint, and how `/unikit-implement` executes `Editor:` tasks.
 
 **If `.unikit/ROADMAP.md` exists and the user chose milestone linkage:**
 - Read `.unikit/ROADMAP.md` and list candidate milestones (prefer unchecked items)

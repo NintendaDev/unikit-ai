@@ -329,6 +329,8 @@ Before any exploration or planning — silently load the project knowledge base.
 
    Absence never switches a task to `⏸️ MANUAL`, never suppresses an `Editor:` field, and never disables the engine MCP (`.unikit/system/dev-principles.md` → **A9 · no rules ≠ no rights**).
 
+7. **`.unikit/config.yaml` → `testing.plan.checkpoints`** — the test-run placement policy. The value for the current mode is resolved by `mode-full.md` / `mode-fast.md` / `mode-ultra.md`; here it is only read. **File or key absent → the defaults** (`phase` for ultra and full, `plan` for fast), silently: a project without a config is a normal case, and a line on every plan would turn the warning into wallpaper. The executor's own merge policy is **not read here** — it belongs to `/unikit-implement` and is resolved at execution time.
+
 #### Patches (learning from past fixes)
 
 If `.unikit/code/patches/` exists:
@@ -687,7 +689,8 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    `Realized`).
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
-   - `Testing: yes/no` — whether to generate tests after each phase
+   - `Testing: yes/no` — whether tests are written at all
+   - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand. Resolved in the mode file from `testing.plan.checkpoints.<mode>`. **Omitted entirely when `Testing: no`.** The value `task` is admissible only in ultra.
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
    - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`** — no `Editor:` field is generated for that engine, so the setting would have no consumer.
 
@@ -701,11 +704,24 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    **When to write `Editor:`** — the criterion is neutral: the change touches the **serialized state of the editor**, not source text. Editing a plain text or config file stays in `Files:`. The concrete signals for the active engine are listed in `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` §3 — read them from there, **do not restate them here**: they are engine facts (a scene, a prefab, a blueprint are not the same concept across engines), and a second inline copy diverges from §3 on its first edit.
    Form: `Editor: [kind] <container> → <target> : <action>`, one line per target, placed after `Files:` (grammar and the 6 kinds: `references/TASK-FORMAT.md` → `### Editor task grammar`). Pure code tasks omit the field. When `engine_rules_loaded = false` the field is **not generated at all**.
 
+   **Test-checkpoint task.** A run point is a **separate** checklist task carrying the line `Test checkpoint: <coverage>`, in the position `Files:` occupies. The grammar, the coverage domain and how the run's width is derived live in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test checkpoint task grammar` — **do not restate them here**.
+
+   - A test-checkpoint task **carries no `Files:`**: it creates nothing.
+   - A checkpoint is placed **where the change is worth one, not in every phase**. The criterion: the phase changes executable code, or a contract other modules rely on. It is not placed when executable code is untouched — documentation, assets and their service files, data no test covers; the signals for the active engine are in `references/ENGINE_RULES.md` §3.
+   - A phase left without a check passes its goals to the next test-checkpoint task, whose coverage then names both phases; the phase text says so in one line.
+   - **Under `Testing: yes` the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch.
+   - No list of test suites is written: the executor computes it at run time from the files actually changed. The planner neither reads nor builds a module graph.
+   - Under `Test checkpoints: phase | plan`, run commands exist **only** inside a test-checkpoint task.
+
 6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks. For each `### Commit N: after tasks X-Y` heading, also emit a decorative `<!-- Commit checkpoint: tasks X-Y -->` HTML comment at the matching boundary inside the `## Checklist` (right after the last task of that range). The marker range mirrors the Commit Plan heading (single source of truth) and is **decorative only** — `/unikit-implement` does not parse it. See `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
 7. **`## MCP Findings`** — emitted **empty** by the planner, filled by the executor. Include it whenever the plan carries at least one `Editor:` task (the same condition as `## EDITOR TARGETS`); omit it otherwise. The planner writes the heading and the table header, and nothing else — this is the executor's handoff surface to `/unikit-mcp-trap`, which reads it through a window (the heading down to the next `##`; a 30-line cap applies only when trap is scanning many plans at once) and opens no other part of the plan. Shape and column contract: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### MCP findings section`.
 
-8. **`## Dependency Graph`** — phase dependencies in ASCII.
+8. **`## Rule Candidates`** — emitted **always, and empty**: the heading and the header row, nothing more. A candidate can arise in any plan, and the executor needs a table that is already there rather than a place it chooses for itself each time. Column contract: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Rule candidates section`.
+
+9. **`## Test Runs`** — emitted **empty under `Testing: yes`** (the heading alone); omitted entirely under `Testing: no`. Everything below the heading is written by the executor. Contract: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test runs section`.
+
+10. **`## Dependency Graph`** — phase dependencies in ASCII.
 
    **Guard B — a phase carrying an `Editor:` task is serialized alone in its execution layer.**
 
@@ -721,9 +737,9 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    Then check the graph you actually wrote, not the intent: walk the layers the way the coordinator does and confirm that every layer holding an editor phase has exactly one member. If serialization makes the plan awkward, move the editor work into a phase of its own rather than relaxing the rule.
 
-9. **`## Total Estimated Effort`** — sum of all phases.
+11. **`## Total Estimated Effort`** — sum of all phases.
 
-10. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **fast and full** all nine live in the one plan file. In **ultra** the section shrinks to its cross-phase part — `CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE` — and the remaining five are distributed into the phase files by the one rule that decides every case: **cross-phase goes in the manifest, task-scoped goes in the phase** (`{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`). Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
+12. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **fast and full** all nine live in the one plan file. In **ultra** the section shrinks to its cross-phase part — `CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE` — and the remaining five are distributed into the phase files by the one rule that decides every case: **cross-phase goes in the manifest, task-scoped goes in the phase** (`{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`). Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
    When `research_linked = true`: use the research's `## Active Summary` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `## Technical Context` is the authoritative source for `/unikit-implement` — it supersedes the research summary.
 
@@ -737,7 +753,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    Self-check: if an interface appears in the tasks but not in `### INTERFACES` — add it; likewise for an `Editor:` target missing from `### EDITOR TARGETS`. In **fast and full** both subsections sit in the plan file and the check runs inside that one file. In **ultra** both live in the phase file of the task that owns them, and the check runs between the manifest checklist and that phase file. Do **not** pull either subsection back into the manifest to make the check easier — that is the distribution rule reversed.
 
-11. **`## Open Questions`** (optional, last section of the manifest) — uncertainties the planning pass could not close, one line each. Written **after** `## Technical Context` so it stays outside the `## MCP Findings` window (which runs from that heading to the next `##`). `unikit-plan-polisher` writes its leftovers here; omit the section entirely when there are none.
+13. **`## Open Questions`** (optional, last section of the manifest) — uncertainties the planning pass could not close, one line each. Written **after** `## Technical Context` so it stays outside the `## MCP Findings` window (which runs from that heading to the next `##`). `unikit-plan-polisher` writes its leftovers here; omit the section entirely when there are none.
 
 ### Step 6: Confirm with User
 

@@ -5737,6 +5737,392 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# TC: test-run placement policy (TC-1…TC-51)
+# ─────────────────────────────────────────────
+# The policy lives in ten files and none of them had a guard. Either half of it can roll
+# back invisibly: the format stops forbidding a run inside a task, or the executor stops
+# merging, and the suite stays green either way. Every anchor here is a FORMULATION, never
+# a heading — a heading is rewritten during cosmetics, a formulation only together with its
+# meaning. Grouped by file, one pass/fail per group, because "TC failed" is useless at 51
+# asserts; each group names the file and the literal it could not find.
+#
+# Placed after ED and before RT: `set -u` makes a forward reference fatal, and every reused
+# variable is declared above this point. EV_RULES_SKILL (6229) is NOT — which is why the
+# rule-form family sits at the far end of the file instead of here.
+TC_CONFIG_TPL="$ROOT_DIR/skills/unikit/references/config-template.yaml"
+TC_UNIKIT_SKILL="$ROOT_DIR/skills/unikit/SKILL.md"
+TC_READER="$ROOT_DIR/data/ultra-plan-read.md"
+TC_MODE_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+TC_MODE_FAST="$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
+TC_MODE_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+TC_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+TC_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+TC_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
+TC_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+
+# --- group 1: the config keys and how they reach an existing project (tasks 1.1, 1.2) ---
+TC_G1_WHY=""
+for f in "$TC_CONFIG_TPL" "$TC_UNIKIT_SKILL"; do
+    [[ -s "$f" ]] || TC_G1_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G1_WHY" ]]; then
+    # (TC-1) both key groups, all three modes in each — a block carrying one mode is how a
+    # per-mode policy quietly becomes a global one.
+    for tok in 'testing:' 'checkpoints:' 'merge_checkpoints:' 'ultra:' 'full:' 'fast:'; do
+        grep -qF "$tok" "$TC_CONFIG_TPL" || TC_G1_WHY+=" TC-1:no-$tok"
+    done
+    # (TC-2) NEGATIVE — REQ-006: the width of a run follows from its coverage and is never
+    # configurable. A width key in the config is the whole requirement reversed.
+    grep -qF 'run_width' "$TC_CONFIG_TPL" && TC_G1_WHY+=" TC-2:width-key-returned"
+    # (TC-3) merge mode is the ONLY path by which these keys reach a project that already
+    # has a config; unnamed there, an existing project never learns they exist.
+    grep -qF 'testing.plan.checkpoints'         "$TC_UNIKIT_SKILL" || TC_G1_WHY+=" TC-3:no-plan-key"
+    grep -qF 'testing.implement.merge_checkpoints' "$TC_UNIKIT_SKILL" || TC_G1_WHY+=" TC-3:no-implement-key"
+fi
+if [[ -z "$TC_G1_WHY" ]]; then
+    pass "TC-1…TC-3 config template declares both key groups (no width key) and merge mode names them"
+else
+    fail "TC-1…TC-3 test-run config contract:$TC_G1_WHY"
+fi
+
+# --- group 2: the plan-artifact contract (tasks 2.1, 2.2, 2.3) ---
+TC_G2_WHY=""
+for f in "$CK_TASKFMT" "$NM_ULTRA_PLAN" "$TC_READER"; do
+    [[ -s "$f" ]] || TC_G2_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G2_WHY" ]]; then
+    # (TC-4) the setting line the planner records into the plan.
+    grep -qF 'Test checkpoints:' "$CK_TASKFMT" || TC_G2_WHY+=" TC-4:no-setting-line"
+    # (TC-5) the grammar subsection every other file points at instead of restating.
+    grep -qF '### Test checkpoint task grammar' "$CK_TASKFMT" || TC_G2_WHY+=" TC-5:no-grammar-section"
+    # (TC-6) all four coverage forms — a dropped form is a plan shape nobody can express.
+    grep -qF 'coverage ∈ task N.M | phase N | phases N-M | plan' "$CK_TASKFMT" || TC_G2_WHY+=" TC-6:coverage-domain"
+    # (TC-7) the one task form without `Files:`. Asserted as the RULE, not by re-deriving
+    # the template's structure — the contract test's T23 owns the structural half.
+    grep -qF 'carries no `Files:`' "$CK_TASKFMT" || TC_G2_WHY+=" TC-7:no-files-rule"
+    # (TC-8) the machine anchor verify greps, and the digest it compares.
+    grep -qF 'Full run:'   "$CK_TASKFMT" || TC_G2_WHY+=" TC-8:no-full-run-anchor"
+    grep -qF 'tree-sha256' "$CK_TASKFMT" || TC_G2_WHY+=" TC-8:no-tree-sha256"
+    # (TC-9…TC-11) the ultra template: run commands leave the per-task sections, and the
+    # phase gate stops restating a run it does not own.
+    grep -qF 'No run command' "$NM_ULTRA_PLAN"                     || TC_G2_WHY+=" TC-9:tests-branch"
+    grep -qF 'only non-run checks' "$NM_ULTRA_PLAN"                || TC_G2_WHY+=" TC-10:verification-restriction"
+    grep -qF 'The phase gate never restates the run' "$NM_ULTRA_PLAN" || TC_G2_WHY+=" TC-11:phase-gate"
+    # (TC-12) the literal a run task puts in its own `### Tests` — without it the seven
+    # subsections force a run task to invent test cases it does not have.
+    grep -qF 'Not applicable — this task runs tests, it writes none' "$NM_ULTRA_PLAN" || TC_G2_WHY+=" TC-12:run-task-tests-literal"
+    # (TC-13) the reader contract: both new sections mutable, and the merge marker declared.
+    grep -qF '## Rule Candidates' "$TC_READER" || TC_G2_WHY+=" TC-13:reader-no-rule-candidates"
+    grep -qF '## Test Runs'       "$TC_READER" || TC_G2_WHY+=" TC-13:reader-no-test-runs"
+    grep -qF '⏭️ MERGED'          "$TC_READER" || TC_G2_WHY+=" TC-13:reader-no-merge-marker"
+fi
+if [[ -z "$TC_G2_WHY" ]]; then
+    pass "TC-4…TC-13 plan format + reader contract: setting line, run-task grammar, no Files:, Full run: anchor, merge marker"
+else
+    fail "TC-4…TC-13 plan artifact contract:$TC_G2_WHY"
+fi
+
+# --- group 3: the planner resolves and records the policy (tasks 3.1-3.4) ---
+TC_G3_WHY=""
+for f in "$TC_MODE_FULL" "$TC_MODE_FAST" "$TC_MODE_ULTRA" "$TC_MODE_ADD" "$UNIKIT_PLAN_SKILL"; do
+    [[ -s "$f" ]] || TC_G3_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G3_WHY" ]]; then
+    # (TC-14) full resolves its own key and degrades out loud.
+    grep -qF 'testing.plan.checkpoints.full' "$TC_MODE_FULL" || TC_G3_WHY+=" TC-14:no-full-key"
+    grep -qF 'WARN [testing]'                "$TC_MODE_FULL" || TC_G3_WHY+=" TC-14:no-warn-line"
+    # (TC-15) NEGATIVE — RC-3. This sentence is what taught a testing phase after every
+    # implementation phase, and it contradicts REQ-002 and REQ-008 outright.
+    grep -qF 'testing phase after each implementation phase' "$TC_MODE_FULL" && TC_G3_WHY+=" TC-15:rc3-wording-returned"
+    # (TC-16) fast: its own key, and the same retired wording gone in its own words.
+    grep -qF 'testing.plan.checkpoints.fast' "$TC_MODE_FAST" || TC_G3_WHY+=" TC-16:no-fast-key"
+    grep -qF 'add a testing phase in the plan' "$TC_MODE_FAST" && TC_G3_WHY+=" TC-16:rc3-wording-returned-fast"
+    # (TC-17) ultra owns the only mode where `task` is expressible, and Step G lists both
+    # new manifest-only sections.
+    grep -qF 'testing.plan.checkpoints.ultra' "$TC_MODE_ULTRA" || TC_G3_WHY+=" TC-17:no-ultra-key"
+    grep -qF 'exists **only here**'           "$TC_MODE_ULTRA" || TC_G3_WHY+=" TC-17:task-not-scoped-to-ultra"
+    grep -qF '## Rule Candidates'             "$TC_MODE_ULTRA" || TC_G3_WHY+=" TC-17:step-g-no-rule-candidates"
+    grep -qF '## Test Runs'                   "$TC_MODE_ULTRA" || TC_G3_WHY+=" TC-17:step-g-no-test-runs"
+    # (TC-18…TC-21) the writer of the plan: the setting line, the run-task rules, and the
+    # two sections with their emission conditions.
+    grep -qF 'Test checkpoints: task | phase | plan' "$UNIKIT_PLAN_SKILL" || TC_G3_WHY+=" TC-18:no-setting-in-item-3"
+    grep -qF '**Test-checkpoint task.**'             "$UNIKIT_PLAN_SKILL" || TC_G3_WHY+=" TC-19:no-run-task-rules"
+    grep -qF '### Test checkpoint task grammar'      "$UNIKIT_PLAN_SKILL" || TC_G3_WHY+=" TC-19:grammar-restated-not-referenced"
+    grep -qF '## Rule Candidates'                    "$UNIKIT_PLAN_SKILL" || TC_G3_WHY+=" TC-20:no-rule-candidates-item"
+    grep -qF '## Test Runs'                          "$UNIKIT_PLAN_SKILL" || TC_G3_WHY+=" TC-20:no-test-runs-item"
+    grep -qF 'testing.plan.checkpoints'              "$UNIKIT_PLAN_SKILL" || TC_G3_WHY+=" TC-21:step-0.5-does-not-read-config"
+    # (TC-22) NEGATIVE — the executor's key is not the planner's to read. Recording it into
+    # a plan would make the executor's decision irreversible (DEC-003).
+    if grep -rqF 'merge_checkpoints' "$ROOT_DIR/skills/unikit-plan/"; then
+        TC_G3_WHY+=" TC-22:planner-reads-executor-key"
+    fi
+    # add mode inherits the policy and never re-resolves it.
+    grep -qF 'Test checkpoints:' "$TC_MODE_ADD" || TC_G3_WHY+=" TC-22:add-mode-silent-on-policy"
+fi
+if [[ -z "$TC_G3_WHY" ]]; then
+    pass "TC-14…TC-22 planner resolves the policy per mode, records it, and never reads the executor's key"
+else
+    fail "TC-14…TC-22 planner run-policy contract:$TC_G3_WHY"
+fi
+
+# --- group 4: verify reuses the executor's run (tasks 5.1, 5.2) ---
+TC_G4_WHY=""
+for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL"; do
+    [[ -s "$f" ]] || TC_G4_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G4_WHY" ]]; then
+    # (TC-23) the four halves of the reuse branch.
+    grep -qF 'Full run:'              "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-anchor-read"
+    grep -qF 'Test run: reused'       "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-reused-outcome"
+    grep -qF 'git rev-parse HEAD'     "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-head-command"
+    grep -qF 'git status --porcelain' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-porcelain-command"
+    # (TC-24) SHARED — ONE string applied to BOTH files. The digest must be produced by one
+    # procedure named in two places, never by two procedures that merely agree today: drift
+    # in either half makes the anchor stop matching for no visible reason.
+    TC24_SHARED='the same procedure as `Summary SHA256`'
+    for tc24_f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+        grep -qF "$TC24_SHARED" "$tc24_f" || TC_G4_WHY+=" TC-24:${tc24_f##*/skills/}-restates-hash-procedure"
+    done
+    # (TC-25) NEGATIVE — two dead references the reuse branch replaced: a CLAUDE.md list
+    # this project never had, and an engine-specific test set in an engine-neutral file.
+    grep -qF 'check CLAUDE.md for the list of test assemblies' "$UNIKIT_VERIFY_SKILL" && TC_G4_WHY+=" TC-25:claude-md-reference-returned"
+    grep -qF 'all EditMode tests as a baseline'                "$UNIKIT_VERIFY_SKILL" && TC_G4_WHY+=" TC-25:engine-set-returned"
+    # (TC-26) the machine block must distinguish "closed by earlier evidence" from "not
+    # checked" — in JSON those two look identical, so the human summary carries the word.
+    grep -qF 'is a `Gate closed`' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-26:reuse-not-projected-as-gate-closed"
+fi
+if [[ -z "$TC_G4_WHY" ]]; then
+    pass "TC-23…TC-26 verify reuses a full run by anchor, shares one hash procedure with implement, projects it as Gate closed"
+else
+    fail "TC-23…TC-26 verify reuse contract:$TC_G4_WHY"
+fi
+
+# --- group 5: the executor, the coordinator and the worker (tasks 4.1-4.4) ---
+TC_G5_WHY=""
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD" "$TC_WORKER"; do
+    [[ -s "$f" ]] || TC_G5_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G5_WHY" ]]; then
+    # (TC-27) the executor's own key, the line that explains a run count, and the legacy branch.
+    grep -qF 'testing.implement.merge_checkpoints' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-executor-key"
+    grep -qF 'INFO [testing]'                      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-info-line"
+    grep -qF 'the plan is legacy'                  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-legacy-branch"
+    # (TC-28) NEGATIVE — symmetric to TC-22 from the other side: the executor never reads
+    # the placement key, because the placement is already recorded in the plan.
+    grep -qF 'testing.plan.checkpoints' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-28:executor-reads-planner-key"
+    # (TC-29…TC-32) Step 2.5: the merge is marked BEFORE execution, or an interrupted run
+    # leaves a ticked box with no run behind it.
+    grep -qF '### Step 2.5' "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-29:no-step-2.5"
+    grep -qF '⏭️ MERGED'    "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-30:no-merge-marker"
+    grep -qF 'does not count as pending for its own run' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-31:no-counting-rule"
+    grep -qF 'never merged and never moved' "$UNIKIT_IMPLEMENT_SKILL"       || TC_G5_WHY+=" TC-31:final-run-mergeable"
+    grep -qF 'mark first, then execute'     "$UNIKIT_IMPLEMENT_SKILL"       || TC_G5_WHY+=" TC-32:no-order-contract"
+    # (TC-33) one marker form across two files — a second spelling is a marker nobody reads.
+    grep -qF '⏭️ MERGED → task' "$TC_READER" || TC_G5_WHY+=" TC-33:marker-form-drifted-in-reader"
+    # (TC-34…TC-40) Step 3.2: the run task, its three widths, the graph-free algorithm, the
+    # assigned threshold, the manifest-reading ban and the two git commands.
+    grep -qF 'Test checkpoint: <coverage>'  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-34:no-run-task-branch"
+    grep -qF 'every test in the project'    "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-35:no-plan-width"
+    grep -qF 'without building a graph'     "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
+    grep -qF 'Safety valve'                 "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-37:no-safety-valve"
+    grep -qF 'assigned, not measured'       "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
+    grep -qF 'Reading every module manifest is forbidden' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
+    grep -qF 'git rev-parse HEAD; git status --porcelain' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-39:no-hash-commands"
+    grep -qF 'only WRITES tests and never runs them'      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
+    # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
+    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-41:engine-names-leaked"
+    # (TC-42…TC-44) POSITIVE half: the runner is one per editor, so the scope owner runs.
+    grep -qF 'never handed to a worker'    "$TC_COORD"  || TC_G5_WHY+=" TC-42:coordinator-does-not-withhold"
+    grep -qF 'once the layer has finished' "$TC_COORD"  || TC_G5_WHY+=" TC-43:no-run-after-layer"
+    grep -qF 'test_run_deferred:'          "$TC_WORKER" || TC_G5_WHY+=" TC-44:worker-cannot-hand-back"
+    # (TC-45) NEGATIVE half, and the load-bearing one: without it a half-applied edit leaves
+    # a prohibition and a permission standing side by side, and the worker picks the handier.
+    grep -qF 'You never run tests.' "$TC_WORKER" || TC_G5_WHY+=" TC-45:worker-prohibition-missing"
+fi
+if [[ -z "$TC_G5_WHY" ]]; then
+    pass "TC-27…TC-45 executor marks merges before running, derives width from coverage without a graph; workers never run tests"
+else
+    fail "TC-27…TC-45 executor run contract:$TC_G5_WHY"
+fi
+
+# --- group 6: the two plan editors (tasks 8.1, 8.2) ---
+TC_G6_WHY=""
+for f in "$UNIKIT_IMPROVE_SKILL" "$TC_POLISHER"; do
+    [[ -s "$f" ]] || TC_G6_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G6_WHY" ]]; then
+    # (TC-46…TC-49) improve is the third writer of tasks: one /unikit-improve is enough to
+    # put work after the final full run and retire REQ-007 without anything turning red.
+    grep -qF '**Test-checkpoint tasks.**' "$UNIKIT_IMPROVE_SKILL"                  || TC_G6_WHY+=" TC-46:no-run-task-paragraph"
+    grep -qF 'inserted ABOVE the final full run' "$UNIKIT_IMPROVE_SKILL"           || TC_G6_WHY+=" TC-47:tasks-may-land-after-final-run"
+    grep -qF 'no test-checkpoint tasks were added' "$UNIKIT_IMPROVE_SKILL"         || TC_G6_WHY+=" TC-48:legacy-refusal-silent"
+    grep -qF 'Run policy' "$UNIKIT_IMPROVE_SKILL"                                  || TC_G6_WHY+=" TC-48:no-policy-finding"
+    grep -qF 'Executor data is preserved whole' "$UNIKIT_IMPROVE_SKILL"            || TC_G6_WHY+=" TC-49:sections-may-be-dropped"
+    # (TC-50) NEGATIVE — improve points at the grammar, it does not carry a copy of it.
+    grep -qF 'coverage ∈' "$UNIKIT_IMPROVE_SKILL" && TC_G6_WHY+=" TC-50:grammar-restated-in-improve"
+    # (TC-51) the polisher: the critique knows the policy, and — the load-bearing half —
+    # is told that a run task without `Files:` is normal. A rubric demanding `Files:`
+    # everywhere would raise a finding on every run task and teach the editor to "fix" it.
+    grep -qF 'Test checkpoints:' "$TC_POLISHER"                       || TC_G6_WHY+=" TC-51:polisher-blind-to-policy"
+    grep -qF 'Never raise a finding asking for one' "$TC_POLISHER"    || TC_G6_WHY+=" TC-51:no-files-permission-missing"
+    grep -qF 'Executor data survives every edit' "$TC_POLISHER"       || TC_G6_WHY+=" TC-51:polisher-may-drop-sections"
+fi
+if [[ -z "$TC_G6_WHY" ]]; then
+    pass "TC-46…TC-51 both plan editors honour the recorded policy, keep executor data, and treat a run task without Files: as normal"
+else
+    fail "TC-46…TC-51 plan-editor run-policy contract:$TC_G6_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# RCA: rule capture — ask, never write (RCA-1…RCA-19)
+# ─────────────────────────────────────────────
+# The auto-write path existed from the repository's first commit and never turned anything
+# red: a background agent was handed up to three rule texts and wrote them into the user's
+# `.unikit/RULES.md` without a question, while the ownership contract in the same repo
+# claimed no command edits that file at all. Nothing detected either half.
+#
+# What this family locks is the SHAPE of the replacement: a candidate is recorded where it
+# is noticed, proposed once, and written only by the skill that owns the file, with the set
+# the user picked. The three `rules-agent` / `No command edits` negatives are kept as
+# SEPARATE asserts on purpose — merging them would hide which half of the removal rolled
+# back, and the halves live in three different files.
+RCA_G1_WHY=""
+for f in "$CK_TASKFMT" "$NM_ULTRA_PLAN"; do
+    [[ -s "$f" ]] || RCA_G1_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$RCA_G1_WHY" ]]; then
+    # (RCA-1) the section and every one of its five columns. A column lost here is a column
+    # the executor stops writing, and nothing downstream would notice a five-column table
+    # quietly taking four-column rows.
+    grep -qF '## Rule Candidates' "$CK_TASKFMT" || RCA_G1_WHY+=" RCA-1:no-section"
+    grep -qF '| id | rule | full formulation | from | status |' "$CK_TASKFMT" || RCA_G1_WHY+=" RCA-1:column-contract"
+    # (RCA-2) the id form and all three statuses. `declined` is the one that must survive:
+    # it is what stops a rejected rule being offered again on every later run.
+    grep -qF '`R<n>`'   "$CK_TASKFMT" || RCA_G1_WHY+=" RCA-2:no-id-form"
+    for st in 'open' 'added' 'declined'; do
+        grep -qF "\`$st\`" "$CK_TASKFMT" || RCA_G1_WHY+=" RCA-2:no-status-$st"
+    done
+    grep -qF '## Rule Candidates' "$NM_ULTRA_PLAN" || RCA_G1_WHY+=" RCA-2:ultra-template-missing-section"
+fi
+if [[ -z "$RCA_G1_WHY" ]]; then
+    pass "RCA-1…RCA-2 the candidate section, its five columns, the R<n> id form and all three statuses"
+else
+    fail "RCA-1…RCA-2 candidate section contract:$RCA_G1_WHY"
+fi
+
+RCA_G2_WHY=""
+if [[ ! -s "$UNIKIT_IMPLEMENT_SKILL" ]]; then
+    RCA_G2_WHY+=" missing:unikit-implement/SKILL.md"
+else
+    # (RCA-3) the step proposes what is RECORDED; it no longer formulates rules at the end
+    # of a run, which is the one moment the session has most likely already ended.
+    grep -qF 'The candidates are already collected' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-3:not-sourced-from-manifest"
+    # (RCA-4) EXACT count, on the AQ convention (vq_count): the payload is printed before
+    # the question, because a question that carries the payload is invisible on a runtime
+    # with no such mechanism — measured, not assumed.
+    [[ "$(vq_count "$UNIKIT_IMPLEMENT_SKILL" 'carries the options and nothing else')" == "1" ]] \
+        || RCA_G2_WHY+=" RCA-4:print-before-ask-anchor-count"
+    # (RCA-5…RCA-6) the question itself, and the exit that makes refusing a first-class answer.
+    grep -qF 'multiSelect'   "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-5:no-multiselect"
+    grep -qF '"Add nothing"' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-6:no-refusal-option"
+    # (RCA-7) the blocking sentence. Without it every other assert here describes a flow
+    # that may still write before the user has spoken.
+    grep -qF 'Do NOT add any rules until the user answers' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-7:not-blocking"
+    # (RCA-8) a real call, and a durable refusal.
+    grep -qF 'Skill(skill: "unikit-rules"' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-8:no-tier-1-dispatch"
+    grep -qF 'is durable'                  "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-8:declined-not-durable"
+    # (RCA-9) NEGATIVE, its own assert: the alias is what gave a general-purpose subagent
+    # Write/Edit over the whole tree for this.
+    grep -qF 'rules-agent' "$UNIKIT_IMPLEMENT_SKILL" && RCA_G2_WHY+=" RCA-9:alias-returned-in-implement"
+    # (RCA-10) MH-2's literal is the ONE mechanical trace that the Step 5 renumbering was
+    # ever finished; the preamble rewrite runs straight past it.
+    grep -qF 'Steps 5.4–5.8 are sequential' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-10:MH-2-literal-lost"
+fi
+if [[ -z "$RCA_G2_WHY" ]]; then
+    pass "RCA-3…RCA-10 implement proposes recorded candidates, prints before asking, blocks on the answer; alias gone, MH-2 intact"
+else
+    fail "RCA-3…RCA-10 implement rule-capture contract:$RCA_G2_WHY"
+fi
+
+RCA_G3_WHY=""
+if [[ ! -s "$UNIKIT_VERIFY_SKILL" ]]; then
+    RCA_G3_WHY+=" missing:unikit-verify/SKILL.md"
+else
+    # (RCA-11) SHARED — one string per formulation applied to BOTH skills in one loop. The
+    # two questions must read identically; a contract only one side still states is not one.
+    for rca11 in 'the question mechanism carries the options and nothing else' \
+                 'Do NOT add any rules until the user answers' \
+                 'presents the same options as plain text'; do
+        grep -qF "$rca11" "$UNIKIT_IMPLEMENT_SKILL" || RCA_G3_WHY+=" RCA-11:implement-drifted"
+        grep -qF "$rca11" "$UNIKIT_VERIFY_SKILL"    || RCA_G3_WHY+=" RCA-11:verify-drifted"
+    done
+    # verify has no Step 3.4 of its own, so what it finds must be RECORDED before it is
+    # proposed — a candidate proposed and not recorded dies with the session.
+    grep -qF 'first, and only then proposed' "$UNIKIT_VERIFY_SKILL" || RCA_G3_WHY+=" RCA-11:verify-proposes-before-recording"
+    # (RCA-12) NEGATIVE, separate from RCA-9: the alias lived in two files and could return
+    # to either one alone.
+    grep -qF 'rules-agent' "$UNIKIT_VERIFY_SKILL" && RCA_G3_WHY+=" RCA-12:alias-returned-in-verify"
+fi
+if [[ -z "$RCA_G3_WHY" ]]; then
+    pass "RCA-11…RCA-12 verify asks the same question in the same words, records before proposing; alias gone"
+else
+    fail "RCA-11…RCA-12 verify rule-capture contract:$RCA_G3_WHY"
+fi
+
+RCA_G4_WHY=""
+for f in "$TC_WORKER" "$TC_COORD" "$CK_TASKFMT"; do
+    [[ -s "$f" ]] || RCA_G4_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$RCA_G4_WHY" ]]; then
+    # (RCA-13) WINDOW over Step 3.4, the MF-2 form. A short literal is safe precisely
+    # because the window is narrow: what matters is that the candidate is written by the
+    # same Edit that ticks the box, not merely somewhere in the file.
+    awk '/^\*\*3\.4: Mark task as completed\*\*/{f=1} f&&/^\*\*3\.5/{exit} f' "$UNIKIT_IMPLEMENT_SKILL" \
+        | grep -qF 'Rule Candidates' || RCA_G4_WHY+=" RCA-13:not-written-at-the-task"
+    # (RCA-14) the numbering survives a re-run of the same task.
+    grep -qF 'must not restart the numbering' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G4_WHY+=" RCA-14:numbering-may-restart"
+    # (RCA-15) variant B in the worker, the executor branch in the coordinator, and the
+    # coordinator's report line — it records and reports, it never asks, because its session
+    # is usually closed before an answer could arrive.
+    grep -qF 'is a rule candidate'   "$TC_WORKER" || RCA_G4_WHY+=" RCA-15:worker-not-a-writer"
+    grep -qF 'Sixth branch'          "$TC_COORD"  || RCA_G4_WHY+=" RCA-15:coordinator-not-a-writer"
+    grep -qF 'Rule candidates: <n> recorded' "$TC_COORD" || RCA_G4_WHY+=" RCA-15:coordinator-does-not-report"
+    grep -qF 'never ask about the candidates here' "$TC_COORD" || RCA_G4_WHY+=" RCA-15:coordinator-asks"
+    # (RCA-16) four writers named in one place, and none of them writes the rules file.
+    grep -qF 'Four writers, and no others' "$CK_TASKFMT" || RCA_G4_WHY+=" RCA-16:writer-list-missing"
+    grep -qF 'Never write `.unikit/RULES.md`' "$TC_WORKER" || RCA_G4_WHY+=" RCA-16:worker-may-write-rules"
+fi
+if [[ -z "$RCA_G4_WHY" ]]; then
+    pass "RCA-13…RCA-16 the candidate is written at the task by all four writers, and none of them touches RULES.md"
+else
+    fail "RCA-13…RCA-16 write-at-discovery contract:$RCA_G4_WHY"
+fi
+
+RCA_G5_WHY=""
+if [[ ! -s "$UNIKIT_VERIFY_CONTRACT" ]]; then
+    RCA_G5_WHY+=" missing:CONTEXT-GATES-AND-OWNERSHIP.md"
+else
+    # (RCA-17) NEGATIVE, its own assert. The retired sentence claimed no command edits
+    # RULES.md while /unikit-rules wrote it, /unikit-evolve called that, and /unikit-memory
+    # removed from it — a contract contradicted by three of its own skills.
+    grep -qF 'No command edits' "$UNIKIT_VERIFY_CONTRACT" && RCA_G5_WHY+=" RCA-17:retired-wording-returned"
+    # (RCA-18) the replacement names ONE writer and ONE remover, and separates recording a
+    # candidate in a plan from writing a rule. An unnamed "commands may" is the exact shape
+    # the divergence grew out of.
+    grep -qF 'written **only** by `/unikit-rules`' "$UNIKIT_VERIFY_CONTRACT" || RCA_G5_WHY+=" RCA-18:no-named-writer"
+    grep -qF 'removal only'                        "$UNIKIT_VERIFY_CONTRACT" || RCA_G5_WHY+=" RCA-18:no-named-remover"
+    grep -qF '## Rule Candidates'                  "$UNIKIT_VERIFY_CONTRACT" || RCA_G5_WHY+=" RCA-18:candidate-not-distinguished"
+    # (RCA-19) collateral-damage guard: rewriting the three ownership lines could easily
+    # take the design writeback exception with them, and no other assert watches that.
+    grep -qF 'implemented_version' "$UNIKIT_VERIFY_CONTRACT" || RCA_G5_WHY+=" RCA-19:implemented-exception-lost"
+fi
+if [[ -z "$RCA_G5_WHY" ]]; then
+    pass "RCA-17…RCA-19 the ownership contract names one writer and one remover; the implemented_version exception survived"
+else
+    fail "RCA-17…RCA-19 ownership contract:$RCA_G5_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # RT: rules-tree + recheck-notes form (RT-1…RT-6)
 # ─────────────────────────────────────────────
 # The rules tree and the notes file of a project are read by grep, section by section, by
@@ -6314,7 +6700,7 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -6324,18 +6710,23 @@ else
 fi
 
 # (UR-2) The report on the way out. `unikit-rules` already placed multiple rules correctly
-# (Step 4) but confirmed as if there had been one — one section, one rule, one verdict. A
-# batch of five across three sections does not fit that shape, and the `Section` column is
-# not cosmetic: the caller's evolution log records where each rule landed and in a batch has
-# nowhere else to read it from.
+# but confirmed as if there had been one — one rule, one verdict. A batch of five does not
+# fit that shape, so the report carries one row per input rule and names all three outcomes.
+#
+# The `Section` column is GONE and this guard now forbids its RETURN — the assert is
+# inverted, not deleted. `RULES.md` became a flat list, so a rule has no landing place to
+# record, and a column whose every value would be `—` is the mandatory empty cell these
+# formats forbid. Inverted rather than dropped because the column's own rationale used to
+# stand here and read convincingly: a copy-paste from an older revision would otherwise
+# bring both the column and its justification straight back.
 UR2_WHY=""
 grep -qF '## Batch result'      "$EV_RULES_SKILL" || UR2_WHY+=" no-report-heading"
-grep -qF '| Section |'          "$EV_RULES_SKILL" || UR2_WHY+=" no-section-column"
+grep -qF '| Section |'          "$EV_RULES_SKILL" && UR2_WHY+=" section-column-came-back"
 grep -qF '| added |'            "$EV_RULES_SKILL" || UR2_WHY+=" outcome:added"
 grep -qF '`already-covered`'    "$EV_RULES_SKILL" || UR2_WHY+=" outcome:already-covered"
 grep -qF '`skipped-duplicate`'  "$EV_RULES_SKILL" || UR2_WHY+=" outcome:skipped-duplicate"
 if [[ -z "$UR2_WHY" ]]; then
-    pass "UR-2 unikit-rules reports one row per input rule, all three outcomes + Section named"
+    pass "UR-2 unikit-rules reports one row per input rule, all three outcomes, no Section column"
 else
     fail "UR-2 unikit-rules batch report contract incomplete:$UR2_WHY"
 fi
@@ -6358,6 +6749,66 @@ if [[ -z "$UR3_WHY" ]]; then
     pass "UR-3 the batch-report contract reads identically in unikit-rules and unikit-evolve"
 else
     fail "UR-3 writer/reader drift in the batch-report contract:$UR3_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# RFM: rule FORM — one line, flat list, compact (RFM-1…RFM-8)
+# ─────────────────────────────────────────────
+# Named RFM and not RF on purpose. `RF-` is already the gd-review finding-id convention
+# (`RF-<date>-n`), and two fixture literals in this very file make a `RF-[0-9]` grep match
+# before a single guard exists — a family sharing that prefix could never be greppable on
+# its own.
+#
+# Placed beside UR/EV because it guards the same file and reuses EV_RULES_SKILL (6229);
+# under `set -u` it could not live with TC/RCA, which sit above that declaration.
+#
+# UR closed the batch on the way in and the report on the way out; it never guarded the
+# FORM of a rule. Without this family "can span multiple lines" returns on the first
+# cosmetic pass and RULES.md goes back to costing 87 KB of Bootstrap on every run.
+#
+# TWO counters are deliberately NOT asserted as zero, and the reason belongs here or the
+# next reader will "tidy" them: `unikit-memory` still appears twice in the frontmatter,
+# where it is dispatch routing that tells an agent to use the other skill for files and
+# URLs — deleting it to satisfy a grep would break triggering; and `characters` appears
+# only inside the two sentences that FORBID counting characters. Both are anchored by the
+# prohibition, never by absence.
+RFM_WHY=""
+if [[ ! -s "$EV_RULES_SKILL" ]]; then
+    RFM_WHY+=" missing:unikit-rules/SKILL.md"
+else
+    # (RFM-1) the form itself: shape, not a number. A guard on a character count would be
+    # exactly the thing the user rejected.
+    grep -qF 'is a **flat list**'        "$EV_RULES_SKILL" || RFM_WHY+=" RFM-1:no-flat-list"
+    grep -qF '**One line. One directive.**' "$EV_RULES_SKILL" || RFM_WHY+=" RFM-1:no-one-line-rule"
+    grep -qF 'written as it stands'      "$EV_RULES_SKILL" || RFM_WHY+=" RFM-1:no-keep-as-is-carve-out"
+    # (RFM-2) NEGATIVE — the sentence that licensed multi-line rules.
+    grep -qF 'can span multiple lines'   "$EV_RULES_SKILL" && RFM_WHY+=" RFM-2:multiline-licence-returned"
+    # (RFM-3) NEGATIVE — the section-selection logic the flat list retired.
+    grep -qF 'matching section exists'   "$EV_RULES_SKILL" && RFM_WHY+=" RFM-3:section-selection-returned"
+    grep -qF '## General'                "$EV_RULES_SKILL" && RFM_WHY+=" RFM-3:section-template-returned"
+    # (RFM-4) the skill neither refuses nor redirects. Anchored on the prohibition, because
+    # the skill's own frontmatter legitimately names the other skill as a routing target.
+    grep -qF 'does not recommend moving the rule into the knowledge base' "$EV_RULES_SKILL" || RFM_WHY+=" RFM-4:no-redirect-ban"
+    # (RFM-5…RFM-6) the retro mode exists and is reachable by an exact argument — a rule
+    # that merely contains the word "compact" must stay a rule.
+    grep -qF 'numbered batch | compact'  "$EV_RULES_SKILL" || RFM_WHY+=" RFM-5:hint-missing-compact"
+    grep -qF '## Mode C'                 "$EV_RULES_SKILL" || RFM_WHY+=" RFM-6:no-mode-c"
+    grep -qF 'exact argument, never on containment' "$EV_RULES_SKILL" || RFM_WHY+=" RFM-6:mode-matched-by-containment"
+    # (RFM-7) the three outcomes, and the two properties that make the mode safe to run on
+    # a file inside someone else's project.
+    for o in 'shorten' 'keep' 'flatten-only'; do
+        grep -qF "\`$o\`" "$EV_RULES_SKILL" || RFM_WHY+=" RFM-7:no-outcome-$o"
+    done
+    grep -qF '**No rule is deleted**'    "$EV_RULES_SKILL" || RFM_WHY+=" RFM-7:destructive"
+    grep -qF '**only on confirmation**'  "$EV_RULES_SKILL" || RFM_WHY+=" RFM-7:unconfirmed"
+    # (RFM-8) no service line about length, in either the add path or the compact report.
+    grep -qF 'prints no service line about length' "$EV_RULES_SKILL" || RFM_WHY+=" RFM-8:add-path-may-print-length"
+    grep -qF 'Not one line about length in characters' "$EV_RULES_SKILL" || RFM_WHY+=" RFM-8:compact-report-may-print-length"
+fi
+if [[ -z "$RFM_WHY" ]]; then
+    pass "RFM-1…RFM-8 rule form is a flat one-line list; compact is exact-matched, confirmed, non-destructive; no length counters"
+else
+    fail "RFM-1…RFM-8 rule form contract:$RFM_WHY"
 fi
 
 # ─────────────────────────────────────────────

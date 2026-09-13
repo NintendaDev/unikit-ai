@@ -79,19 +79,6 @@ This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading
 
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
 
-- **`rules-agent`** — capture a new project rule spotted during verification. Expands to:
-
-  ```
-  Agent(
-    subagent_type: "general-purpose",
-    prompt: "/unikit-rules Add rule: <rule text>",
-    description: "Record project rule",
-    skills: ["unikit-rules"]
-  )
-  ```
-
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-rules` inline, one rule at a time.
-
 <!-- unikit:agents claude -->
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -211,6 +198,7 @@ Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit
 
 **Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
 - `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
+- `Test checkpoints: task | phase | plan` — the run placement the planner recorded. Context for Step 2.2: under `phase` and `plan` there are no runs among the `### Verification` commands — they live in test-checkpoint tasks. **Line absent → the plan is legacy:** placement was never declared, and runs may sit anywhere in the task text.
 
 Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can be applied inline without re-loading on each delegation.
 
@@ -379,10 +367,34 @@ Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after im
 
 ### 2.2 {{engine_name}} Test Check
 
+**First — do not repeat what has already been done.** Read the manifest's `## Test Runs` and find the `Full run:` anchor line.
+
+1. **No anchor** — no section, no line, or its `tree-sha256` reads `unavailable` → run your own, by the points below.
+2. **An anchor is there** → compute the current tree hash **by the same procedure as `Summary SHA256`** (`unikit-implement/SKILL.md` Step 1) — normalized and fed through stdin, no temp file:
+
+   ```
+   { git rev-parse HEAD; git status --porcelain; } | shasum -a 256 | awk '{print $1}'
+   ```
+
+   No `shasum` → `sha256sum`. Not one project file is read: the size of the project does not affect the cost.
+3. **The hash matches the one recorded in the anchor** → **the run is reused.** Do not start your own. One line into the report, quoting the other run:
+
+   ```
+   Test run: reused — <anchor date> · <coverage> · passed N/N · tree unchanged
+   ```
+
+   This is **not** a lifted gate and **not** a skip: the gate is closed, and closed by the very class of evidence `verification.md` names for it — the evidence was simply produced earlier, and by another skill. The report must name whose run it was, or verify claims someone else's result as its own.
+4. **The hash does not match** → the tree changed after that full run: run your own by the points below, and say why in one line — `Test run: re-run — the tree changed since the full run of <date>`.
+5. **Git is unavailable, or either command does not answer** → the hash cannot be computed: run your own, and print `WARN [testing] git unavailable — the Full run: anchor was not checked, the run was performed again`. Unavailable git never means "reuse": an unknown tree state resolves in favour of running.
+
+A broken anchor — no `tree-sha256`, an unreadable date — is treated as branch 1 plus `WARN [testing] the Full run: line could not be parsed — the run was performed again`. Acting on a half-parsed anchor is forbidden: half a mark is worse than none.
+
+**Reuse never lowers the bar.** It applies to the `Full run:` anchor alone, that is to a **full** run. A partial run of the executor's — the modules of one phase — is not verify's to reuse: it does not cover what verify checks.
+
 Use MCP server `{{engine_mcp_tool}}` to run tests for affected modules:
-- Determine which test assemblies cover the modified modules (check CLAUDE.md for the list of test assemblies)
-- If changed files include modules with test assemblies — run those assemblies specifically
-- Otherwise run all EditMode tests as a baseline check
+- Determine which test suites cover the modified modules — by the same name-search algorithm the executor uses (`/unikit-implement` Step 3.2), whose engine-specific mechanism lives in the core rule `testing.md` loaded at Bootstrap. Verify builds no module graph and reads no module manifests
+- If changed files include modules with test suites — run those suites specifically
+- Otherwise a full run as a baseline check
 - Wait for results and display them — highlight any failures
 - If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
 - If the tests gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`. `verification.md` also names what the gate must require of a passing run (a readable result, and a test count above zero); a run that reports success over zero tests has not closed it
@@ -649,6 +661,8 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
   - `verify-editor-<task-id>` covers an editor target that was read back and found **unimplemented or wrong**. The two benign outcomes never enter `blockers`: `⏸️ MANUAL` (the user took the target on) and `⏭️ SKIPPED (editor target, …)` (it could not be read back). Both belong in the human summary.
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
 - **Research drift.** Every `WARN [research-drift]` line from Step 0.2 raises `status` to at least `warn` and is named in the human summary. It is **never** a blocker and never enters `blockers`: source drift makes the work debatable, not wrong, and the call is the user's.
+- **A reused run.** A test gate closed by someone else's full run (Step 2.2, the `reused` branch) is a `Gate closed`: it does **not** affect `status`, and it never enters `blockers`. The human summary must name it in one line — `Test run: reused — …` — because "the gate was closed by evidence obtained earlier" and "the gate was not checked" are different statements, and in JSON they look identical.
+- **`WARN [testing]`** of any origin — git unavailable, an anchor line that would not parse, an inadmissible `checkpoints` value — raises `status` to at least `warn` and is named in the summary. It is never a blocker: not knowing the state of the tree makes the work debatable rather than wrong, which is the same logic research drift follows.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
 
 **Ultra bundle — verification commands outside the grant.** Commands under a task's `### Verification` are executed within the grant this skill already holds. Anything outside it is printed with the `⏸️ MANUAL` status in the report **and** must reach this block, or it is lost in silence: an unrun verification command is an accepted skip, so `status` is at least `warn` and the human summary names the command and the task. It is not a blocker and it never enters `blockers`. **`allowed-tools` is not widened for this** — the `⏸️ MANUAL` idiom already exists for editor targets.
@@ -681,15 +695,38 @@ After verification completes, suggest next steps based on results:
 - If unresolved issues remain (accepted or deferred), suggest `/unikit-fix` first
 - If all green, suggest review/commit flow
 
-If recurring convention violations were found during verification (e.g. the same naming pattern was wrong in multiple places, or a DI convention was consistently missed), formulate up to 3 candidate rules and delegate to `rules-agent` (1 agent per rule, up to 3 agents), passing each rule text as the agent's prompt — e.g. `Add rule: Factory methods use CreateDefault() naming`. Do NOT wait for agents to finish — proceed to the next step immediately.
+**Propose new rules — ask, never write.**
 
-**Fallback** (if the `Agent` tool is unavailable in the current environment): you MUST invoke `/unikit-rules` yourself, one candidate at a time. Do NOT print the list of pending invocations to the user as a recommendation — that is a known failure mode where LLMs render the list instead of executing it. For every candidate rule, in order:
+Candidates come from two places, and they are unified before anything is proposed:
 
-1. Invoke the `/unikit-rules` skill directly using whatever skill-invocation mechanism is available, passing the rule text as the argument. The slash-command invocation must be a real call, not printed text.
-2. Wait for the invocation to return control before starting the next iteration.
-3. Move to the next candidate. Do not stop after the first one. Do not ask the user to confirm between iterations. Do not wrap `/unikit-rules ...` lines in triple backticks.
+- the rows whose status is `open` in the manifest's `## Rule Candidates`;
+- the recurring convention violations this verification just found — the same naming pattern wrong in several places, a DI convention consistently missed.
 
-Only after every candidate has been processed, proceed to the next step.
+**What this verification found is written into `## Rule Candidates` first, and only then proposed** — the same columns, with `from: verify`. The order is the point: a candidate that was proposed but never recorded disappears with the session.
+
+1. **No `open` candidate → silence.** Not a line, not a "no rules found". A run without candidates is the ordinary case, and a line about it on every run turns the signal into wallpaper.
+2. **Select at most three** `open` candidates. The filter: a general convention for future code; not about one task; not a description of the current code; absent from `.unikit/RULES.md` and from `RULES_INDEX.md`; one line, one directive.
+3. **Print the candidates as plain markdown, in a block of their own** — before the question:
+
+   ```
+   Project rule candidates:
+
+   1. <the rule text, as it will be written>
+      from: verify
+   2. <the rule text>
+      from: task 4.1
+   ```
+
+   **Print first, ask second: the question mechanism carries the options and nothing else.** A question that also holds the payload is invisible on a runtime that has no such mechanism — that is a measured failure, not a supposition.
+4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"**. Three candidates and a refusal are exactly four options, the tool's limit — which is the reason the count is capped at three. Keep the option label short; the full rule text goes in the option's `description`.
+5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
+6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
+7. **What was selected goes to `/unikit-rules` as one numbered batch**, through the three-tier dispatch: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline; Tier 2 the inline slash form `/unikit-rules <batch>`, rewritten per agent by the installer; Tier 3 printing the command, only where no inline mechanism exists at all. This is **a real call, not text in backticks**.
+8. **Show the user the `## Batch result` table** the delegate returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
+
+**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed — the one line explaining why fewer were proposed than recorded. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added`: the rule was not written, and marking otherwise would be a lie — print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the same holds: the statuses stand, and `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`. **No manifest at all** — verify was called outside a plan — → the candidates cannot be recorded: propose them in the report as text and print `WARN [rules] no plan — candidates were not saved, proposed in the report only`. Losing a candidate silently is not allowed, and inventing a file is not either.
+
+This block runs **before** the "What's next?" question below, and the two are never merged: they are different questions, and folding them into one would take away the option of adding nothing independently of choosing the next step.
 
 ```
 Verification complete. What's next?

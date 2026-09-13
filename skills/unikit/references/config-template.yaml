@@ -63,6 +63,41 @@ workflow:
   research_relevance_days: 7
 
 # =============================================================================
+# Testing Settings
+# =============================================================================
+# Where test RUNS are placed in a plan, and whether the executor merges them.
+# These keys never affect WRITING tests: tests are written in any task of any
+# phase, exactly as they are today.
+
+testing:
+  # Planner (/unikit-plan): what gets written into the plan.
+  plan:
+    # Where the planner places a test-run checkpoint.
+    #   task   — one checkpoint per task (ultra only)
+    #   phase  — one checkpoint at the end of a phase
+    #   plan   — one checkpoint at the end of the plan
+    # The value is a CEILING, not an obligation: a checkpoint is placed only
+    # where the change is worth one. The chosen value is recorded into the
+    # plan's `## Settings` as a `Test checkpoints:` line, so changing it here
+    # never reinterprets an already-written plan.
+    checkpoints:
+      ultra: phase        # task | phase | plan
+      full: phase         # phase | plan
+      fast: plan          # phase | plan
+
+  # Executor (/unikit-implement): what it does with what was written.
+  implement:
+    # Merge every test-run checkpoint inside the invocation scope into a single
+    # run, at the last checkpoint of that scope. Opt-in: the default is false
+    # everywhere. Meaningful only when `plan.checkpoints` is `phase` or `task`:
+    # with `plan` there is nothing to merge. The plan's final full run is never
+    # merged.
+    merge_checkpoints:
+      ultra: false        # true | false
+      full: false         # true | false
+      fast: false         # true | false
+
+# =============================================================================
 # Git Settings
 # =============================================================================
 
