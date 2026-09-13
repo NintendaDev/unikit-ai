@@ -85,6 +85,13 @@ Print the full table **before asking anything**. The interactive question mechan
 options and does not carry the body they refer to, so a question asked before the report
 leaves the user deciding without the subject of the decision in front of them.
 
+**The table and the question are two separate emissions, in that order.** Where the choice is
+offered through an interactive question mechanism, that is a separate call made **after** the
+report text is already on screen — never in place of it, and never bundled into the same turn
+as the only visible output. Emit the table, then ask. This is stated as its own rule because
+the paragraph above was not enough on its own: the bundling was observed on a real project
+while that rationale was already in the file, and a rationale is not an instruction.
+
 | Key | Current state | Bucket | What will happen |
 |-----|---------------|--------|------------------|
 | `workflow.research_relevance_days` | absent | 1 — literal | append `7` |
