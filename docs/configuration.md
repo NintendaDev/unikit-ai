@@ -158,7 +158,7 @@ Where **test runs** are placed in a plan, and whether the executor merges them. 
 
 **There is no width key, and there will not be one.** How wide a run is follows from where the checkpoint sits — a task runs its own fixtures, a phase runs the test suites of the modules it touched and those depending on them, the end of a plan runs everything. Making it configurable would let a plan declare a checkpoint whose coverage contradicts its own position.
 
-Existing projects receive these keys from `/unikit` merge mode, which appends only the keys a config is missing. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
+Existing projects receive these keys by either of the two paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers them, or the config actualization mode, which appends a template literal silently. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
 
 ### `git` section
 
@@ -169,6 +169,30 @@ Existing projects receive these keys from `/unikit` merge mode, which appends on
 | `create_branches` | Automatically create feature branches for plans. Applies only when `git.enabled = true`. | `true` |
 | `branch_prefix` | Branch name prefix for new features. Applies only when `create_branches = true`. | `feature/` |
 | `skip_push_after_commit` | If `true`, `/unikit-commit` ends after a successful local commit with no push prompt. | `false` |
+
+### How new keys reach an existing project
+
+A key added to this template after your project was bootstrapped does not arrive on its own: `unikit-ai init` only prints a hint about the file and `unikit-ai update` never touches it. `.unikit/config.yaml` is written by the `/unikit` skill and by nothing else, so there are exactly **two** paths, and the difference between them is deliberate.
+
+| Path | Entered by | What it does with a missing key |
+|------|-----------|--------------------------------|
+| merge mode | a full `/unikit` bootstrap run on a project that already has a config | names the missing keys and **offers** to append them |
+| config actualization mode | asking `/unikit` to update / actualize / repair the config on a project already set up | appends a template **literal** silently; **asks** only where the template carries a placeholder, or the current value falls outside a declared domain |
+
+Both derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so neither is more thorough than the other. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
+
+The actualization mode sorts every leaf key of the template into one of six buckets:
+
+1. Absent, template value is a literal → appended **silently**.
+2. Absent, template value is a `{{PLACEHOLDER}}` → **asked**.
+3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode.
+4. Present but outside a **declared** domain → asked. A domain counts only where the template states one, as an `Options:` list or an inline `# a | b` comment. `git.base_branch` lists *examples*, which is not a domain, and the language keys' domain is deliberately not checked.
+5. Present in your file but absent from the template → **reported, never deleted**. This is usually a key you added on purpose.
+6. `language.rules` and `language.technical_terms` → **not touched at all**.
+
+**Two keys are never written and never asked about.** `language.rules` and `language.technical_terms` are hand-edited only, on both paths. Switching either on a live project leaves a half-translated rule corpus that agents then grep, which is why the ban covers the offer as much as the write.
+
+**There is no mechanical backfill on `init` or `update`, and this is a decision rather than a gap.** A default written into the file stops being a default: the project would be pinned to today's value forever, and nothing afterwards could distinguish "the user chose this" from "we filled it in". Leaving the key absent keeps the built-in default live, and a missing key is behaviourally harmless — every reader carries its own.
 
 ## MCP Configuration
 

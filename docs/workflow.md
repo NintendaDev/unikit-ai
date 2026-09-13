@@ -36,7 +36,7 @@ If a project has no linked `gamedesign` workspace (no `.unikit/gamedesign/GD-IDS
 
 ## Project Configuration
 
-Run once per project. Sets up context files that all workflow skills depend on.
+Run once per project. Sets up context files that all workflow skills depend on. The bootstrap below is the one-time part; on a project that already has a `.unikit/config.yaml`, `/unikit` can also be asked to actualize that file against the current template, which stops before the bootstrap steps and changes nothing else - see [Configuration](configuration.md#how-new-keys-reach-an-existing-project).
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
