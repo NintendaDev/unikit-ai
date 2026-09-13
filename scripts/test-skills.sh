@@ -5774,13 +5774,25 @@ if [[ -z "$TC_G1_WHY" ]]; then
     # (TC-2) NEGATIVE — REQ-006: the width of a run follows from its coverage and is never
     # configurable. A width key in the config is the whole requirement reversed.
     grep -qF 'run_width' "$TC_CONFIG_TPL" && TC_G1_WHY+=" TC-2:width-key-returned"
-    # (TC-3) merge mode is the ONLY path by which these keys reach a project that already
-    # has a config; unnamed there, an existing project never learns they exist.
-    grep -qF 'testing.plan.checkpoints'         "$TC_UNIKIT_SKILL" || TC_G1_WHY+=" TC-3:no-plan-key"
-    grep -qF 'testing.implement.merge_checkpoints' "$TC_UNIKIT_SKILL" || TC_G1_WHY+=" TC-3:no-implement-key"
+    # (TC-3) merge mode is the ONLY path by which a template key reaches a project that
+    # already has a config; unnamed there, an existing project never learns it exists.
+    # The claim is the METHOD, not two literals. The previous form pinned
+    # `testing.plan.checkpoints` and `testing.implement.merge_checkpoints` by name, which
+    # made the guard true of exactly the keys that existed when it was written: the next
+    # key added to the template reached no existing project and nothing turned red. Merge
+    # mode now derives the missing set from the template, so the durable assert is that it
+    # says HOW to derive it. The third assert is not decoration — a derived list sweeps in
+    # the two keys skills must never write, so the carve-out is load-bearing exactly
+    # because the comparison replaced the list.
+    grep -qF 'compare `.unikit/config.yaml` against' "$TC_UNIKIT_SKILL" \
+        || TC_G1_WHY+=" TC-3:no-template-comparison"
+    grep -qF 'every leaf key the config does not carry' "$TC_UNIKIT_SKILL" \
+        || TC_G1_WHY+=" TC-3:no-leaf-key-derivation"
+    grep -qF 'language.technical_terms' "$TC_UNIKIT_SKILL" \
+        || TC_G1_WHY+=" TC-3:no-never-touch-carveout"
 fi
 if [[ -z "$TC_G1_WHY" ]]; then
-    pass "TC-1…TC-3 config template declares both key groups (no width key) and merge mode names them"
+    pass "TC-1…TC-3 config template declares both key groups (no width key); merge mode derives the missing set from the template and carves out the never-touch keys"
 else
     fail "TC-1…TC-3 test-run config contract:$TC_G1_WHY"
 fi
