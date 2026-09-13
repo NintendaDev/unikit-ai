@@ -41,6 +41,7 @@ Goal: make an item's value readable at a glance without opening its tooltip.
 
 ## Settings
 - Testing: no
+- Test checkpoints: phase
 - Docs: no
 - Editor tasks: mcp
 
@@ -81,6 +82,15 @@ feat(items): implement rarity visual effects
 
 | id | area | confirm that | observed | evidence | from |
 |---|---|---|---|---|---|
+
+## Rule Candidates
+
+| id | rule | full formulation | from | status |
+|---|---|---|---|---|
+
+## Test Runs
+
+Full run: 2026-09-12 · all tests · passed 3363/3363 · tree-sha256 `e5f6a7b8…`
 
 ---
 
@@ -152,6 +162,38 @@ Three rules make this work:
 - **The table is read through a window.** `/unikit-mcp-trap` reads from the heading to the next `##` and opens no other part of the plan — so keep the heading at `##`, keep it above `## Technical Context`, and never nest the table inside another section.
 
 At the end of a run `/unikit-implement` offers to hand the plan to `/unikit-mcp-trap`, which turns accepted rows into entries in `.unikit/MCP-RECHECK-NOTES.md`. See [Engine-MCP rules tree](configuration.md#engine-mcp-rules-tree).
+
+#### `## Rule Candidates` — a rule proposed, never written behind your back
+
+`/unikit-plan` emits this section — heading and header row — in **every** plan, even when no candidate ever appears. A candidate can arise in any plan, and an executor left to invent a place for the table puts it somewhere new each time; one empty table per plan is the cheaper mistake.
+
+| column | what goes in it |
+|--------|-----------------|
+| `id` | `R<n>`, allocated in order within this plan, never reused |
+| `rule` | the rule **exactly as it would be written into `.unikit/RULES.md`** — one line, one directive |
+| `full formulation` | the long version with its rationale, under no length limit. This column is why the short form is allowed to stay short |
+| `from` | the task that produced it (`task 2.3`), or `verify` |
+| `status` | `open` \| `added` \| `declined` |
+
+Four skills write rows here — `/unikit-implement`, `/unikit-verify`, `unikit-implement-worker` and `unikit-implement-coordinator` — and **none of them writes `.unikit/RULES.md`**. A row is written the moment the candidate is noticed, by the same edit that ticks the checkbox, so it survives a `/clear`. At the end of the call the open candidates are printed as plain markdown and then put to you as a single question; only the set you pick is passed to `/unikit-rules`, which is the one skill that writes the file. `declined` is durable — a candidate you turned down is not offered again on a later run.
+
+#### `## Test Runs` — what actually ran, and when
+
+Emitted under `Testing: yes` only. `/unikit-plan` writes the heading; everything beneath it is the executor's.
+
+- **One bullet per run, append-only:** `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`.
+- **One `Full run:` anchor line**, rewritten in place after each full run. The bullets are the log for a human; the anchor is the machine surface `/unikit-verify` greps.
+- `tree-sha256` digests a **short text**, not the project: the output of `git rev-parse HEAD` followed by `git status --porcelain`. No project file is read, so a large repository costs no more than a small one. Git unavailable → the field reads `tree-sha256 unavailable`, and a verifier will not reuse that run.
+
+This is what lets `/unikit-verify` quote the executor's full run instead of repeating it when the tree has not changed — a closed gate on evidence obtained earlier, not a skipped one.
+
+#### Test-checkpoint tasks — a run is a task, not a command
+
+A test run is its own checklist task carrying a `Test checkpoint:` line, and it is the one task form that carries **no `Files:`**: it creates nothing. Under `Testing: yes` the plan's last task is always a full run. Where such tasks are placed comes from `testing.plan.checkpoints` (see [Configuration](configuration.md)), which the planner resolves once and records into `## Settings` — so changing the key later never reinterprets a plan already written. The grammar and how a run's width follows from its coverage are canonical in the plan format reference; this page names them rather than repeating them.
+
+**A plan written before this existed has no `Test checkpoints:` line.** That is a legacy plan, and nothing breaks: the executor falls back to finding runs in the prose of the tasks, with lower confidence, and says so in its report. `/unikit-improve` will not add test-checkpoint tasks to such a plan — the placement was never declared, and guessing it while editing your plan is not its call.
+
+**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`.
 
 ### Ultra bundle — a manifest plus one file per phase
 

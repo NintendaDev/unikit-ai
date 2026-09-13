@@ -39,10 +39,14 @@ human, never a branch condition for a skill — read the marker.
 | `/unikit-commit` | the manifest plus the phase files of the **current commit group** | staged paths are mapped onto groups; the rest of the bundle is not needed |
 | `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the **current layer** | layers execute one at a time, so the phases of future layers have no business in the context; the hand-off to a worker is closed, so what it does not read, it cannot pass on |
 
+The merge pre-pass (`/unikit-implement` Step 2.5) reads **only the manifest's checklist**: every
+test-checkpoint task in scope is listed there. It opens no phase file — reading depth does not
+grow by this step.
+
 ## What is mutable
 
-- Checkboxes, `## MCP Findings`, `## Commit Plan` and `## Settings` are edited **only in the
-  manifest**.
+- Checkboxes, `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Commit Plan` and
+  `## Settings` are edited **only in the manifest**.
 - **Phase files are read-only during execution.** A skill executing a plan writes into
   `phase-*.md` under no circumstance.
 - **`Write` over the manifest is forbidden** — use `Edit`. A regenerating write drops
@@ -50,6 +54,9 @@ human, never a branch condition for a skill — read the marker.
 - The consequence worth naming, because it is what the single write surface buys: `F<n>`
   numbering in `## MCP Findings` never branches across phases, so the `/unikit-mcp-trap`
   window stays single-file.
+- The merge marker of a test-checkpoint task (`⏭️ MERGED → task N.M`) is **the text of the
+  task in the manifest's checklist**, on the model of `⏸️ MANUAL`. A merge changes no phase
+  file, and no other place for that mark exists.
 
 ## Integrity is blocking
 
@@ -80,6 +87,12 @@ before the bundle is saved, and a consumer resolves tasks through the checklist 
 through the ranges, so a stale range misleads a human and no machine. If that stops being true,
 the check belongs in the list above — not in one consumer.
 
+The two run-placement checks are write-time-only in exactly the same way — points 10 and 11 of
+`## Integrity Checks` in `unikit-plan/references/ULTRA-PLAN-FORMAT.md`. The planner secures them
+before the bundle is saved, and a consumer resolves runs through the checklist rather than by
+searching the phase files for commands. If that stops being true, they move into the list
+above — and not into one consumer.
+
 ## Verification commands
 
 For `/unikit-verify`:
@@ -91,6 +104,12 @@ For `/unikit-verify`:
 - Grants are not widened for this: the `⏸️ MANUAL` idiom already exists for editor targets.
 - Verify the implementation against the detailed per-task interfaces, edge cases, logging,
   acceptance criteria, and commands — **not only the short checkbox text**.
+- Under `Test checkpoints: phase | plan` there are **no test runs among these commands**: a
+  run is a task of the plan, and verify meets it as a test-checkpoint task, never as a
+  command.
+- Verify does not repeat a run of its own when the `Full run:` anchor line in `## Test Runs`
+  matches the current state of the tree. The comparison procedure lives in `unikit-verify`
+  Step 2.2.
 
 ## Editing a bundle
 

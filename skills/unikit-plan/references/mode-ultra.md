@@ -54,6 +54,11 @@ That file ends Step C with `continue to the Shared Steps (Step 2) in SKILL.md`. 
 run that line does **not** terminate this file: the Shared Steps are indeed next, and
 Steps D-H below run afterwards, refining Step 5 and Step 6 in the sense stated at the top.
 
+The **Test run placement** subsection is inherited with one difference: the key is
+`testing.plan.checkpoints.ultra`, and its domain is **wider** — `task | phase | plan`. `task`
+exists **only here**: a phase file's per-task `### Tests` is the only surface a per-task run
+can be written to. The default is `phase`.
+
 ## Step D: Partition the work into phases
 
 - A phase is a **coherent implementation checkpoint**, not a rubric: it ends in a state
@@ -67,6 +72,12 @@ Steps D-H below run afterwards, refining Step 5 and Step 6 in the sense stated a
   two `Editor:` tasks inside one phase are already sequential.
 - Give each phase a slug (kebab-case, 2-4 words) → the file name `phase-NN-<slug>.md`,
   zero-padded.
+- **A test-checkpoint task belongs to the phase it closes** and stands last in it. A phase
+  without one is normal, not an oversight (`Test checkpoints` is a ceiling): its goals pass to
+  the next test-checkpoint task, whose coverage then names both phases. Say so in one line of
+  the phase text, so the hand-over does not read as a loss.
+- **The final full run is the last task of the plan's last phase** under `Testing: yes`. No
+  separate phase is created for it.
 
 ## Step E: Resolve every cross-cutting decision
 
@@ -123,8 +134,8 @@ phase.**
 | `EDITOR TARGETS` | the phase, `### Required Interfaces and Contracts` of the task carrying the `Editor:` line |
 | `DI BINDINGS` | the phase, the task that creates the binding |
 
-`## MCP Findings`, `## Commit Plan`, `## Settings` and the checkboxes live **only** in the
-manifest. Phase files are read-only during execution.
+`## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Commit Plan`, `## Settings` and
+the checkboxes live **only** in the manifest. Phase files are read-only during execution.
 
 ## Step H: Confirm with the user
 

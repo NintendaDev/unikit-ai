@@ -33,6 +33,7 @@ Purpose:
 - You are a normal subagent. Never invoke nested subagents or agent teams.
 - When injected `/unikit-plan` or `/unikit-improve` instructions mention `Agent(...)` or other delegated exploration, replace that with direct `Read`, `Glob`, `Grep`, and `Bash` work.
 - Do not implement code. Your write scope is limited to `.unikit/code/plans/` plan files: the `plans/<folder>/PLAN.md` manifest and, when the plan is an ultra bundle, its phase files `phase-NN-<slug>.md` in the same folder.
+- **Executor data survives every edit.** When you touch the manifest, `## MCP Findings`, `## Rule Candidates` and `## Test Runs` are preserved whole — rows, candidate statuses and the run log. They are not a draft of the plan but what execution recorded, and nothing in your scope authorises editing or dropping them. You also never write or change the `Test checkpoints:` line: the planner sets the policy when the plan is created.
 - Respect `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`.
 
 ## Workflow — phased with hard budget
@@ -131,6 +132,8 @@ Re-read your own plan and apply this rubric:
   - Build system integration (assembly definitions, modules, build configs)
   - Asset pipeline considerations (if applicable)
   - Editor tooling needs (if applicable)
+- Run placement: does the plan match its own `Test checkpoints:` line — no run commands in per-task `### Tests` or `### Verification` under `phase` / `plan`, a final `Test checkpoint: plan` present under `Testing: yes`, no repeated checkpoints, and no phase gate restating the run. **A plan carrying no such line is legacy, and this point does not apply to it:** criticising a plan for lacking a policy that did not exist when it was written produces a finding nobody can close.
+- A test-checkpoint task with no `Files:` line is **normal, not an oversight** — it creates nothing. Never raise a finding asking for one.
 - No redundant or gold-plated tasks
 - Plan follows architecture and rules from `.unikit/`
 

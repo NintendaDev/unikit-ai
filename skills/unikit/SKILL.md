@@ -8,8 +8,8 @@ description: >-
   run before any other unikit skill. Use whenever the user wants to initialize, set up,
   or onboard the framework, e.g. "initialize unikit", "init the framework", "set up
   unikit", "set up the project", "configure AI context", "scan my project and set it
-  up", "bootstrap the project". This handles the initial full bootstrap — to edit one
-  document later, use that document's dedicated skill.
+  up", "bootstrap the project". It also actualizes the config of a project already set up —
+  say "update the config", "add missing settings", "actualize configuration", "fix my config".
 argument-hint: "[project description] (optional)"
 allowed-tools:
   - Read
@@ -62,10 +62,10 @@ alternative.
 
 This skill must be executed as a strict workflow, not as guidance.
 
-1. Steps are numbered 0-11; execute in order. Do not skip, merge, reorder, or compress steps unless the step explicitly says it may be skipped.
+1. Steps are numbered 0-11; execute in order. Do not skip, merge, reorder, or compress steps unless the step explicitly says it may be skipped. **Carve-out for a mode declared in Step 0:** such a mode is entitled to finish with a STOP before Step 1, and Steps 1-11 then do not run for it at all.
 2. Do not infer user answers from context when the workflow requires an AskUserQuestion step.
 3. Do not substitute a recommendation, summary, or "seems fine" confirmation for a required question. A generic approval ("yes", "ok", "go ahead") only answers the immediately pending question — it does not retroactively authorize skipped selections or unanswered follow-ups.
-4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4).
+4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4). **Narrowed for the config actualization mode:** its single writable artifact is `.unikit/config.yaml`, and `.unikit/system/LANGUAGE_RULES.md` is excluded from it explicitly — Step 3.1 is marked "Both bootstrap and merge mode" and must not be read as permission for that mode.
 5. If the environment prevents a required step (tool unavailable, file missing, subagent unreachable), stop and print `BLOCKED at Step N: <reason>`. Do not silently substitute an approximation.
 6. Every user-facing output of this skill is plain markdown — no HTML tags, in any step. Step 7 states the contract in full.
 
@@ -73,14 +73,20 @@ This skill must be executed as a strict workflow, not as guidance.
 
 ## Workflow
 
-**Fixed order — always.** Regardless of whether `/unikit` is invoked with or without arguments, the first three user-facing decisions are always language → git → write config. Only after `.unikit/config.yaml` exists on disk do we ask the user for a project description, load engine rules, scan, or do anything else. This guarantees that every subsequent prompt and artifact respects the user's language choice.
+**Fixed order — always.** Regardless of whether `/unikit` is invoked with or without arguments, the first three user-facing decisions are always language → git → write config. Only after `.unikit/config.yaml` exists on disk do we ask the user for a project description, load engine rules, scan, or do anything else. This guarantees that every subsequent prompt and artifact respects the user's language choice. **This fixed order describes the bootstrap flow only.** A mode declared in Step 0 stops before Step 1 and is therefore not governed by it — the Step 0 dispatch is reached before the first user-facing decision, and treating this preamble as a second gate in front of it is what makes a declared mode unreachable.
 
 ### Step 0: Load Existing Config (if any)
 
-Check whether `.unikit/config.yaml` already exists. This step is a pure file read — no user interaction, no arguments parsing.
+Check whether `.unikit/config.yaml` already exists. This step performs **no user interaction** and parses **no arguments**. The one thing it reads besides the file is the **intent** of the prompt, and only to select the mode below: classifying intent picks a branch and never a value, so item 2 of `## Execution Contract` holds literally.
 
 - **If it exists** — Read it. Treat its values as the source of truth for `language.*`, `git.*`, `workflow.*`. Mark Steps 1 / 2 / 3 as "merge mode": prefer existing values, prompt only when a critical field is missing or empty.
 - **If it does not exist** — set "bootstrap mode": Steps 1 / 2 / 3 will collect values from the user / git and write a fresh `config.yaml`.
+
+**Mode dispatch — config actualization.** If `.unikit/config.yaml` **exists** and the intent of the prompt is to actualize / update / repair the configuration (for example "update the config", "add missing settings", "actualize configuration", "fix my config"), load `{{skills_dir}}/{{self_name}}/references/mode-config.md` and follow it (it STOPs; Steps 1-11 do not run). On entering the mode print one line, so that skipping nine steps reads as a decision rather than as work breaking off:
+
+`INFO [config] actualization mode — Steps 1-11 skipped`
+
+There is no keyword and no argument for this mode; it is chosen by intent alone, which is why `argument-hint` does not mention it. If `.unikit/config.yaml` does **not** exist the mode never applies — there is nothing to actualize, and the ordinary bootstrap is the correct route.
 
 All unikit artifacts live under fixed default paths (`.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`, `.unikit/memory/`, `.unikit/code/plans/`, etc.) — see `{{skills_dir}}/{{self_name}}/references/config-template.yaml` for the canonical `language` / `workflow` / `git` schema.
 
@@ -175,7 +181,11 @@ Materialize the collected values into `.unikit/config.yaml`.
 
   > Reusing existing `.unikit/config.yaml` (found `language.ui = <value>`, `git.enabled = <value>`).
 
-- If the file is missing one of the recently-added keys (e.g. `workflow.research_relevance_days`, `git.branch_prefix`, `git.skip_push_after_commit`), tell the user which keys are missing and offer to append them with their template defaults (do not touch the rest of the file). Use `Edit` for the targeted append, never a full rewrite.
+- To find what the file is missing, **compare `.unikit/config.yaml` against `{{skills_dir}}/{{self_name}}/references/config-template.yaml` and name every leaf key the config does not carry**. Do not work from a hand-written list of "recently-added keys": such a list names a subset of the template and falls behind silently every time the template grows. Then tell the user which keys are missing and offer to append them with their template defaults (do not touch the rest of the file). Use `Edit` for the targeted append, never a full rewrite.
+
+  > A key from a nested block is appended **together with its parent when the parent is absent**: if the whole `testing:` block is missing, append the entire block from the template; if only the `testing.implement.merge_checkpoints` group is missing, append just that group under the existing `testing:`. Always a targeted `Edit`, never a rewrite of the file (Rule 7).
+
+- **Never `language.rules`, never `language.technical_terms`.** A comparison against the template surfaces these two like any other key, so the exclusion has to be stated here: do not append them and do not offer them. The template is explicit — "SKILLS NEVER TOUCH THIS KEY… never write to it, never prompt for it" — and the ban covers the offer as much as the write. While the missing set came from a hand-written list this invariant held only by accident, because neither key happened to be on it.
 
 After Step 3, treat `.unikit/config.yaml` as the source of truth for all subsequent language / git references in this run.
 

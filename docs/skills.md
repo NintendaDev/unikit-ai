@@ -29,6 +29,7 @@ Scans your game project and sets up AI context:
 ```
 - Scans the real tech stack from **engine-specific** sources - the scan list is not hardcoded, it comes from the installed `references/ENGINE_RULES.md` (package manifest, plugin directories, third-party asset folders, project settings). Your own project code is deliberately excluded: on Unity, `Assets/Modules/*/` is *not* treated as a framework
 - Bootstraps `.unikit/config.yaml` - the user-editable source of truth for language, git, and workflow
+- **Also actualizes an existing config.** On a project that is already set up, ask to "update the config", "add missing settings" or "fix my config" and Step 0 dispatches to a config actualization mode instead of bootstrapping: it compares the file against the current template, appends template literals silently, asks about placeholders and out-of-domain values, reports keys it does not recognise without deleting them, and never touches `language.rules` / `language.technical_terms`. Steps 1-11 do not run - see [Configuration](configuration.md#how-new-keys-reach-an-existing-project)
 - Generates `.unikit/DESCRIPTION.md` (project specification) and `AGENTS.md`
 - Bootstraps the knowledge base under `.unikit/memory/` via the rules registry - the `code` module always, plus the `gamedesign` design library when its skills are installed
 - Invokes `/unikit-architecture` for architecture guidelines
@@ -255,6 +256,8 @@ Also accepts a **numbered batch** - a prompt whose lines start `1. `, `2. `, …
 - Saves rules to `.unikit/RULES.md` (highest priority in rule hierarchy)
 - Cross-checks against knowledge base in `memory/` via `RULES_INDEX.md`
 - Rules loaded automatically by `/unikit-implement` before task execution
+- **Form, not length:** `RULES.md` is a flat list — one line and one directive per rule, no sections. There is no character limit; a rule that cannot be reduced without losing knowledge is written as it stands and is not flagged
+- **`compact`** — `/unikit-rules compact` retro-fits an existing file: it shortens what reduces, keeps what does not, and flattens away the old sections. Non-destructive and confirmed first — no rule is ever deleted, and the order you chose is preserved
 
 ### `/unikit-rules-registry` - external registry orchestrator
 
@@ -506,9 +509,9 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 
 ## Agents
 
-UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus six **delegation aliases** in two families: the skill-loading `develop-agent`, `rules-agent`, `docs-agent`, which expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls, and the model-carrying `recon-agent`, `check-agent`, `lens-agent`, which expand into a read-only dispatch declared in the calling skill's `## Delegation agents`.
+UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus five **delegation aliases** in two families: the skill-loading `develop-agent` and `docs-agent`, which expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls, and the model-carrying `recon-agent`, `check-agent`, `lens-agent`, which expand into a read-only dispatch declared in the calling skill's `## Delegation agents`.
 
-After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `rules-agent` and `docs-agent` keep their usual role of capturing rules and documentation. The model-carrying aliases exist so a model name is written once per skill, behind an agent-filter branch, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
+After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `docs-agent` keeps its usual role of updating documentation. Rule capture is delegated to nobody at all: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to you and call `/unikit-rules` only with the batch you selected. The model-carrying aliases exist so a model name is written once per skill, behind an agent-filter branch, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
 
 For the full reference - frontmatter, launch commands, design principles, sidecar output contracts - see [Subagents](subagents.md).
 

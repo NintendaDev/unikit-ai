@@ -71,7 +71,8 @@ Rules:
   `## Phase Index`, a checkbox in `## Checklist`, and a `## Task N.M:` section in exactly
   one phase file.
 - **Everything mutable during execution lives in the manifest**: checkboxes,
-  `## MCP Findings`, `## Commit Plan`, `## Settings`. Phase files are **read-only during
+  `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Commit Plan`,
+  `## Settings`. Phase files are **read-only during
   execution**. The consequence has to be stated, because it is what the split buys: the
   executor has one write surface, `F<n>` numbering in the findings table never branches
   across phases, and the `/unikit-mcp-trap` window stays single-file (`plans/*/PLAN.md`).
@@ -108,7 +109,7 @@ Updated: YYYY-MM-DD
 
 ## Phase Index
 1. [Phase 1: {name}](phase-01-{slug}.md) — Tasks 1.1-1.2
-2. [Phase 2: {name}](phase-02-{slug}.md) — Tasks 2.1-2.2
+2. [Phase 2: {name}](phase-02-{slug}.md) — Tasks 2.1-2.4
 
 ## Cross-Phase Dependencies
 - Task 2.1 depends on Tasks 1.1 and 1.2 because …
@@ -137,9 +138,17 @@ Updated: YYYY-MM-DD
 - [ ] Task 2.2 — {deliverable} ([details](phase-02-{slug}.md#task-22-deliverable))
   WHY: …
   Files: `…`
+- [ ] Task 2.3 — test checkpoint for phases 1-2 ([details](phase-02-{slug}.md#task-23-test-checkpoint-for-phases-1-2))
+  WHY: …
+  Test checkpoint: phases 1-2
+- [ ] Task 2.4 — full test run ([details](phase-02-{slug}.md#task-24-full-test-run))
+  WHY: …
+  Test checkpoint: plan
 
 ## Commit Plan
 ## MCP Findings
+## Rule Candidates
+## Test Runs
 ## Dependency Graph
 ## Total Estimated Effort
 
@@ -172,6 +181,12 @@ Rules:
   checkboxes and the phase numbers inside the `([details](…))` links must cover exactly the same
   task IDs. Shortening the example by dropping a checkbox breaks the test — which is the point:
   a template that contradicts itself teaches the contradiction.
+- **Phase 1 carries no test-checkpoint task in the example, and that is deliberate.**
+  `Test checkpoints: phase` is a ceiling, not an obligation: phase 1 did not earn a check of
+  its own, so its goals pass to `Task 2.3`, whose coverage therefore names both phases. Task
+  `2.4` is the mandatory full run at the end of the plan (`Testing: yes`), and it is last in
+  the checklist. A template that puts a run in every phase teaches exactly what this format
+  forbids.
 - **`## Technical Context` shrinks to its cross-phase part** in ultra: `CONTEXT`,
   `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE`. The task-scoped subsections —
   `INTERFACES`, `KEY PATTERNS`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS` — are distributed
@@ -230,8 +245,13 @@ Depends on: none | Phase {K}
 - Follow the plan's `Logging:` setting.
 
 ### Tests
-- When `Testing: yes`: exact cases, fixtures, test files and commands.
 - When `Testing: no`: the literal `Not planned by user preference`; no test tasks are added.
+- When `Testing: yes` and `Test checkpoints: phase | plan`: exact cases, fixtures and test
+  files — and **the name of the test-checkpoint task** that will run them. **No run command
+  here.**
+- When `Testing: yes` and `Test checkpoints: task`: the same, plus the command when this task
+  is itself the checkpoint.
+- For a test-checkpoint task: the literal `Not applicable — this task runs tests, it writes none`.
 
 ### Acceptance Criteria
 - [Observable, independently verifiable result.]
@@ -239,6 +259,10 @@ Depends on: none | Phase {K}
 ### Verification
 - `{exact command or manual check}`
 - Expected result: [...]
+- Under `Test checkpoints: phase | plan`, **only non-run checks** belong here: compilation,
+  grep, read-back. In that mode a run lives solely in the test-checkpoint task, and a run
+  command that lands here is executed a second time — `/unikit-verify` executes the commands
+  of `### Verification`.
 
 ## Phase Risks and Mitigations
 - Risk: [what can go wrong in this phase]
@@ -246,7 +270,7 @@ Depends on: none | Phase {K}
 
 ## Phase Completion Checklist
 - Every task in this phase satisfies its acceptance criteria.
-- The required verification commands pass.
+- The non-run checks of this phase's tasks pass. **The phase gate never restates the run:** if the phase has a test-checkpoint task, its result is that task's checkbox and not a separate item here; if it has none, the phase was not meant to run anything.
 - The manifest's task checkboxes are ticked immediately after verified completion, not at the end of the phase.
 ```
 
@@ -264,6 +288,15 @@ Rules:
   holds. Anything outside that grant is printed with the `⏸️ MANUAL` status and reaches
   both the report and the `unikit-gate-result` block — otherwise it is lost in silence.
   Grants are not widened for this: the `⏸️ MANUAL` idiom already exists for editor targets.
+- **A test-checkpoint task is described by the same seven subsections** — the set is fixed by
+  `scripts/test-ultra-plan-contract.mjs` and does not change. Its `### Tests` carries the
+  literal `Not applicable — this task runs tests, it writes none`; its
+  `### Implementation Steps` describe how to compute the run's target and start it; its
+  `### Verification` names the entry written into the manifest's `## Test Runs`, and for
+  `Test checkpoint: plan` the rewriting of the `Full run:` anchor line as well.
+- The `Test checkpoint:` line itself stays **in the manifest checkbox**, exactly as the
+  `Editor:` marker does: the executor and the coordinator read it, and what they read is the
+  manifest.
 
 ## Required Detail Gate
 
@@ -274,8 +307,10 @@ Verify every task against all seven points **before** the bundle is saved:
 2. Ordered edits, detailed enough to implement without choosing an architecture.
 3. Inputs, outputs, contracts, data flow, and the effects on dependencies.
 4. Error handling, edge cases, and logging under the plan's selected policy.
-5. Tests and commands under `Testing: yes`; an explicit statement of their absence under
-   `Testing: no`.
+5. Under `Testing: yes` — cases, fixtures and files for every task that introduces them, and
+   **commands only where the run placement admits them** (a test-checkpoint task always; an
+   ordinary task only under `Test checkpoints: task`). Under `Testing: no` — an explicit
+   statement of their absence.
 6. Observable acceptance criteria, and verification commands or checks.
 7. **No unresolved implementation choice hidden behind words** such as `handle`, `support`,
    `wire up`, `as needed`, `etc.`, "по необходимости", "при необходимости". A decision that
@@ -328,6 +363,13 @@ Each check is **blocking**:
    the ranges stays within the checklist's task set. `/unikit-commit` resolves a commit group by
    taking its range, locating those tasks through `## Phase Index` and reading only the phase
    files that hold them, so a range naming a task nobody has sends it to the wrong files.
+10. Under `Test checkpoints: phase` or `plan`, no per-task `### Tests` and no per-task
+    `### Verification` in the phase files carries a test-run command. In that mode the run
+    command exists only in the test-checkpoint task; one that reaches `### Verification` is
+    executed a second time by `/unikit-verify`.
+11. Under `Testing: yes` the last task of `## Checklist` is a test-checkpoint task carrying
+    `Test checkpoint: plan`. A missing final full run is not a matter of style — REQ-007 has
+    no off switch.
 
 The reason, kept in the words the original used: a broken or missing link means **the
 committed specification is incomplete** — verify the plan, do not verify it partially.

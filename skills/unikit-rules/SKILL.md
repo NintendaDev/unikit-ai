@@ -12,7 +12,7 @@ description: >-
   behavior and wants it remembered. If the user points to a source (file, folder, URL,
   PDF, article, book) or wants to research/document framework usage, use /unikit-memory;
   for architecture decisions use ARCHITECTURE.md.
-argument-hint: "[rule text or topic | numbered batch]"
+argument-hint: "[rule text or topic | numbered batch | compact]"
 allowed-tools:
   - Read
   - Write
@@ -48,10 +48,15 @@ Read `.unikit/skill-context/unikit-rules/SKILL.md` if it exists. Treat it as pro
 
 ```
 Check $ARGUMENTS:
-├── Numbered batch? → Mode A: Direct add, N rules
-├── Has text?       → Mode A: Direct add, 1 rule
-└── No arguments?   → Mode B: Interactive
+├── Exactly `compact`? → Mode C: retro-compaction
+├── Numbered batch?    → Mode A: Direct add, N rules
+├── Has text?          → Mode A: Direct add, 1 rule
+└── No arguments?      → Mode B: Interactive
 ```
+
+**Mode C is matched on an exact argument, never on containment.** A rule that happens to
+contain the word "compact" is still a rule, and only the bare argument `compact` selects the
+retro mode.
 
 **Mode A** — user provided rule text:
 ```
@@ -70,10 +75,10 @@ such a marker and runs to the next one, or to the end of the input:
 3. Never call DiResolver.Resolve<T>() without a null guard — throw, do not warn.
 ```
 
-Why the numeral and not a newline or a `- ` bullet: Step 4 allows a single rule to span
-multiple lines (a table, a code block), so a bare line break does not separate two rules,
-and `- ` is the element format of `RULES.md` itself and appears **inside** a rule. A
-numbered element never does, so `^\d+\. ` at column zero cannot collide with content.
+Why the numeral and not a newline or a `- ` bullet: a rule that cannot be reduced to one
+directive is written as it stands (Step 4), so a bare line break does not reliably separate
+two rules, and `- ` is the element format of `RULES.md` itself and appears **inside** a rule.
+A numbered element never does, so `^\d+\. ` at column zero cannot collide with content.
 
 Run Steps 2-5 per rule and report all of them together in Step 6. One rule and N rules
 differ only in how many rows the report carries.
@@ -100,7 +105,7 @@ This step prevents duplication and helps maintain a clean separation between pro
 2. **Identify potentially overlapping rule files** — based on the topic of the new rule, find rule files from the index that cover the same area. For example:
    - Rule about naming → check `code-style.md`
    - Rule about async/UniTask → check `reactive-async.md`
-   - Rule about Zenject → likely already in `RULES.md` (Zenject DI section) or `design-principles.md`
+   - Rule about Zenject → likely already in `RULES.md` or `design-principles.md`
    - Rule about Odin attributes → check `odin.md`
 
 3. **Read the relevant rule file(s)** — only the ones that might overlap (not all of them).
@@ -124,30 +129,29 @@ Check if `.unikit/RULES.md` exists.
 # Project Rules
 
 Project-specific rules that override or extend the base knowledge rules in `.unikit/memory/`.
-For base code style see `rules/core/code-style.md`.
+One rule per line, one directive per rule. No sections.
 
 ---
-
-## General
 
 - [new rule here]
 ```
 
-**If it exists** → read it, find the appropriate section for the new rule.
+**If it exists** → read it and append to the end of the list.
 
-### Step 4: Place Rule in the Right Section
+### Step 4: Append the Rule
 
-RULES.md is organized by topic sections (e.g., `## Type Declarations`, `## Conditions`, `## Zenject DI`). Place the new rule under the section that best matches its topic.
+`.unikit/RULES.md` is a **flat list**. There are no sections: the rule is appended to the end of the list as a `- ` item. Choosing or creating a `## Section` is no longer part of this skill, and existing sections are never recreated.
 
-**If a matching section exists** → append the rule at the end of that section as a `- ` list item.
+**The rule's form is constrained by shape, not by a number:**
 
-**If no matching section exists** → create a new `## Section` before the last section in the file, then add the rule there. Choose a clear, short section name that describes the topic (e.g., `## Async Patterns`, `## UI Conventions`, `## Testing`).
+- **One line. One directive.** A short "why" may share that same line where it earns its place.
+- Directive language — "Never…", "Always…", "Use…".
+- **There is no numeric limit.** This skill does not count characters and **prints no service line about length**, neither in the rule nor in the report.
+- **What never goes into a rule:** its origin ("Found in Task 14.3"), the story of the incident, a description of how the code is currently built, a task or phase number. History lives in git and in the patches; the current shape of the code lives in `ARCHITECTURE.md`.
+- A duplicate by meaning is skipped, exactly as before.
+- **A rule that cannot be reduced to one directive without losing knowledge is written as it stands**, and is marked in no way at all. This skill does not refuse, does not truncate, and **does not recommend moving the rule into the knowledge base** — that transfer is something the user starts, and offering it on every rule would be precisely the service noise this form exists to remove.
 
-**Formatting rules:**
-- Each rule is a `- ` list item (can span multiple lines for tables/code blocks if needed)
-- Keep rules short and actionable — directive language ("Never...", "Always...", "Use...")
-- No duplicates — if a rule with the same meaning already exists in RULES.md, tell user and skip
-- If user provides multiple rules at once, add each to its appropriate section
+**When the existing file already has sections**, the rule is appended at the end of the file and those sections are left untouched and unreformatted. Silently restructuring the user's own file during an ordinary add is not allowed: flattening belongs to Mode C, and it happens only on confirmation.
 
 ### Step 5: Also Check Existing RULES.md
 
@@ -161,17 +165,17 @@ included**:
 ```markdown
 ## Batch result — N rules
 
-| # | Outcome | Section | Cross-check |
-|---|---------|---------|-------------|
-| 1 | added | Async Patterns | no overlap |
-| 2 | already-covered | — | core/reactive-async.md |
-| 3 | added | Zenject DI | extends code-style.md |
-| 4 | skipped-duplicate | Conditions | same meaning as existing entry |
+| # | Outcome | Cross-check |
+|---|---------|-------------|
+| 1 | added | no overlap |
+| 2 | already-covered | core/reactive-async.md |
+| 3 | added | extends code-style.md |
+| 4 | skipped-duplicate | same meaning as existing entry |
 ```
 
 Outcomes, and nothing else:
 
-- `added` — written into `.unikit/RULES.md`, `Section` names where
+- `added` — written into `.unikit/RULES.md`
 - `already-covered` — the knowledge base already carries it (Step 2); `Cross-check` names the file
 - `skipped-duplicate` — `RULES.md` already carries the same meaning (Step 5)
 
@@ -185,11 +189,31 @@ failed, and do not suppress the table when only some rules were processed.
 
 A single-rule call renders the same table with one row. There is no second format.
 
-The `Section` column is not decoration: a caller writing its own log records which section
-each rule landed in, and in a batch there is nowhere else to read it from.
+There is no `Section` column any more: the list is flat, so there is no landing place left to
+record, and a column whose every value would be `—` is exactly the mandatory empty cell the
+formats of this repository forbid.
 
 If the input looked like a numbered batch but parsed as one rule, say so in the report
 instead of silently writing the whole text as a single `RULES.md` entry.
+
+## Mode C: Compact an existing RULES.md
+
+A retro mode. It edits a file inside the user's project, so it runs **only on confirmation** and is non-destructive: content is moved, never dropped.
+
+1. Read `.unikit/RULES.md`. No file → say so and stop.
+2. Parse it into `- ` items, preserving their order. A section (`## …`) is not an item: its heading goes away, and the items beneath it join the single list in the same order they had.
+3. Decide an outcome per rule:
+   - **`shorten`** — it reduces to one directive without losing knowledge: prepare the short wording;
+   - **`keep`** — it does not reduce: it stays exactly as it stands. That is not a defect, and it is not marked;
+   - **`flatten-only`** — the rule is already one line; only its place changes, because the section around it is going away.
+4. **Print the preview as plain markdown, in a block of its own** — before the question: one line per rule, in the form `before → after` for `shorten`, a single line for the rest. The question mechanism carries the options and nothing else.
+5. Ask once: **apply everything / apply only the `shorten` set / cancel**. Without an answer the file is not touched.
+6. Write it with `Edit`: a flat list, the order of the rules preserved, section headings removed. **No rule is deleted** — under any outcome. The order is kept by stripping headings rather than by re-sorting: re-sorting would shuffle rules whose sequence the user chose.
+7. Report how many `shorten`, how many `keep`, how many `flatten-only`. **Not one line about length in characters**, and no suggestion to move anything into the knowledge base.
+
+This mode touches exactly one file: it never edits `RULES_INDEX.md` and nothing under `.unikit/memory/`.
+
+**Verbose.** One summary line — `INFO [rules] compact: shorten=<a> keep=<b> flatten-only=<c>`; the preview is the detailed output. Cancelled by the user → the file is untouched, and `compact: cancelled, file unchanged` is printed. The file will not parse — not a markdown list, nested structures → write **nothing**, name the places that did not parse, and stop: `WARN [rules] compact: <n> items did not parse — file unchanged`. A half-compacted file belonging to someone else is worse than an uncompacted one.
 
 ## Priority Reminder
 

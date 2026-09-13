@@ -81,7 +81,9 @@ Relevant to the dev pipeline:
 ## Turning a rule into the knowledge base (the everyday flow)
 
 1. **Quick capture** — `/unikit-rules <one-liner>` appends to `.unikit/RULES.md`. Use it as a
-   testing ground / inbox; it's auto-loaded by `/unikit-implement`.
+   testing ground / inbox; it's auto-loaded by `/unikit-implement`. The file is a flat list:
+   one line, one directive. If it has already grown bloated, `/unikit-rules compact` shortens
+   and flattens it in place — non-destructively, and only after you confirm.
 2. **Promote** — `/unikit-memory migrate-rules` moves a matured `RULES.md` entry into the proper
    `core`/`stack`/`library` rule file (with conflict handling and a `no-migrate` tag option).
 3. **Generate / research** — `/unikit-memory <description or source>` creates a full rule. It
@@ -151,7 +153,8 @@ upgrades an old schema:1 local registry in place.
 
 - **Use `/unikit-memory`** for anything source-backed (a link, file, folder, book, PDF) or a
   researched rule — it does the research, distillation, reference extraction, and index update.
-- **Use `/unikit-rules`** for a quick one-line convention typed as a prompt.
+- **Use `/unikit-rules`** for a quick one-line convention typed as a prompt, or `compact` to slim
+  a `RULES.md` that has already grown too big to read on every Bootstrap.
 - **Use `/unikit-rules-registry`** to publish/pull rules between projects (handles seeding,
   diffing, semver, manifest, and state in one go).
 - **Use the raw `unikit-ai rules ...` CLI** for direct, scriptable ops: install a specific rule,
