@@ -8,8 +8,8 @@ description: >-
   run before any other unikit skill. Use whenever the user wants to initialize, set up,
   or onboard the framework, e.g. "initialize unikit", "init the framework", "set up
   unikit", "set up the project", "configure AI context", "scan my project and set it
-  up", "bootstrap the project". This handles the initial full bootstrap — to edit one
-  document later, use that document's dedicated skill.
+  up", "bootstrap the project". It also actualizes the config of a project already set up —
+  say "update the config", "add missing settings", "actualize configuration", "fix my config".
 argument-hint: "[project description] (optional)"
 allowed-tools:
   - Read

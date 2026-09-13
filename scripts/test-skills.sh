@@ -5986,6 +5986,105 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# MC: the /unikit config actualization mode (MC-1…MC-6)
+# ─────────────────────────────────────────────
+# `.unikit/config.yaml` is written by this skill and by nothing else — `init` only prints a
+# hint about the file and `update` never names it — so a key added to the template after a
+# project was bootstrapped reaches that project by exactly one route: a mode of /unikit.
+# The mode is entered by INTENT, with no keyword and no argument, so the usual mode guard
+# (UX-1, comparing an argument-hint's mode set against the mode files) has no object here
+# and cannot be reused; these asserts are what stands in for it.
+#
+# Reachability is an invariant separate from existence (patch 2026-08-22-09.18): a branch
+# can be completely written and still be unreachable because a gate above it forbids what
+# it does. That is why MC-3 is structural rather than a pair of greps, and why MC-4 asserts
+# THREE carve-outs — the `## Workflow` preamble is the second gate, and it is the one that
+# would strand the branch while every other assert stayed green.
+#
+# Reuses TC_UNIKIT_SKILL, declared with the TC family above: `set -u` makes a forward
+# reference fatal, so the variable has to already exist at this point.
+MC_MODE_CONFIG="$ROOT_DIR/skills/unikit/references/mode-config.md"
+MC_WHY=""
+for f in "$TC_UNIKIT_SKILL" "$MC_MODE_CONFIG"; do
+    [[ -s "$f" ]] || MC_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$MC_WHY" ]]; then
+    # (MC-1) The trigger surface, scoped to the frontmatter `description:` block and NOT to
+    # the whole file. Step 0's dispatch names the very same example phrases, so a file-wide
+    # grep would stay green with every trigger stripped out of the description — the UR-3
+    # failure (searching the file for something that must be in one section). The negative
+    # half is the load-bearing one: while the old closing sentence stood it actively routed
+    # config-shaped prompts away to another skill, and no trigger could outweigh it.
+    MC_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-zA-Z][a-zA-Z0-9_-]*:/{exit} f' \
+        "$TC_UNIKIT_SKILL")"
+    if [[ -z "$MC_DESC" ]]; then
+        MC_WHY+=" MC-1:no-description-block"
+    else
+        printf '%s' "$MC_DESC" | grep -qF 'update the config' \
+            || MC_WHY+=" MC-1:no-update-trigger"
+        printf '%s' "$MC_DESC" | grep -qF 'actualize configuration' \
+            || MC_WHY+=" MC-1:no-actualize-trigger"
+        printf '%s' "$MC_DESC" | grep -qF 'This handles the initial full bootstrap' \
+            && MC_WHY+=" MC-1:repelling-sentence-returned"
+    fi
+
+    # (MC-2) the mode body exists and carries something.
+    [[ -s "$MC_MODE_CONFIG" ]] || MC_WHY+=" MC-2:mode-body-empty"
+
+    # (MC-3) STRUCTURAL, not a pair of greps. The invariant is "the dispatch lives inside
+    # Step 0, above its closing ---", and greps cannot express it: both lines can be present
+    # in the file while the dispatch has drifted into another step, which is exactly the
+    # regression that makes a declared mode unreachable. Window by awk over Step 0 (MF-2
+    # precedent). An empty window is a fail, never a pass (ED-14 / RT-1 convention).
+    MC_STEP0="$(awk '/^### Step 0: Load Existing Config/{f=1;next} f&&/^---$/{exit} f' \
+        "$TC_UNIKIT_SKILL")"
+    if [[ -z "$MC_STEP0" ]]; then
+        MC_WHY+=" MC-3:step-0-window-empty"
+    else
+        printf '%s' "$MC_STEP0" | grep -qF 'references/mode-config.md' \
+            || MC_WHY+=" MC-3:dispatch-outside-step-0"
+        printf '%s' "$MC_STEP0" | grep -qF 'Steps 1-11 do not run' \
+            || MC_WHY+=" MC-3:no-stop-semantics"
+    fi
+
+    # (MC-4) all THREE contract surfaces, anchored on formulations rather than headings.
+    # The third is the only one that goes red if the "fixed order" preamble starts
+    # contradicting the dispatch again; existence and reachability are separate invariants.
+    grep -qF 'Carve-out for a mode declared in Step 0' "$TC_UNIKIT_SKILL" \
+        || MC_WHY+=" MC-4:item-1-no-carveout"
+    grep -qF 'Narrowed for the config actualization mode' "$TC_UNIKIT_SKILL" \
+        || MC_WHY+=" MC-4:item-4-not-narrowed"
+    grep -qF 'This fixed order describes the bootstrap flow only' "$TC_UNIKIT_SKILL" \
+        || MC_WHY+=" MC-4:workflow-preamble-still-absolute"
+
+    # (MC-5) the capability contract in the mode body, on the formulation.
+    grep -qF 'writes only `.unikit/config.yaml`' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-5:no-capability-anchor"
+    grep -qF 'never `Write`' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-5:no-write-prohibition"
+
+    # (MC-6) NEGATIVE, deliberately narrowed to CALL FORMS. The naive version of this guard
+    # goes red on a CORRECT file: MC-5 requires a capability contract whose own text contains
+    # `Write`, and the behavioural layer names `.unikit/system/LANGUAGE_RULES.md` as the
+    # example of damage the mode reports instead of repairing. Banning those tokens would
+    # contradict MC-5, and a false red on a negative assert is worse than a miss — it teaches
+    # the next reader to delete the check (patches 2026-08-22-12.40 / 2026-08-22-14.05).
+    # So the object is `Agent(` / `Skill(` / `Bash(`, which prose forbidding them never
+    # produces, and the two remaining prohibitions are asserted POSITIVELY as negating
+    # sentences instead (RT-6 / ED-16 direction). Violators are printed, as NN-4 does.
+    MC6_HITS="$({ grep -nE '(Agent|Skill|Bash)\(' "$MC_MODE_CONFIG" 2>/dev/null || true; })"
+    [[ -n "$MC6_HITS" ]] && MC_WHY+=" MC-6:call-form-in-mode-body"
+    grep -qF 'is explicitly **not** written' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-6:no-language-rules-negation"
+fi
+if [[ -z "$MC_WHY" ]]; then
+    pass "MC-1…MC-6 /unikit config actualization mode — triggered in the description, dispatched inside Step 0, three contract carve-outs, capability-bounded body"
+else
+    fail "MC-1…MC-6 config actualization mode contract:$MC_WHY"
+    [[ -n "${MC6_HITS:-}" ]] && echo "$MC6_HITS" | head -5
+fi
+
+# ─────────────────────────────────────────────
 # RCA: rule capture — ask, never write (RCA-1…RCA-19)
 # ─────────────────────────────────────────────
 # The auto-write path existed from the repository's first commit and never turned anything
