@@ -3079,11 +3079,50 @@ grep -qF 'WARN [readback]' "$SF_SKILL" || SF_WHY+=" SF-10:no-unconfirmed-warning
 grep -qF 'write out both readings' "$SF_SKILL"  || SF_WHY+=" SF-11:no-two-readings-rule"
 grep -qF 'structure, layout, order' "$SF_SKILL" || SF_WHY+=" SF-11:no-trigger-list"
 
+# (SF-12) The reference no longer claims to be ultra-only. It is one third shared: the manifest
+# layout, the identifier contract and the write order are the format of ANY research, and the
+# skill has always sent a standard research here for the last of them.
+if grep -qF 'when the leading token is `ultra`' "$SF_SPEC"; then SF_WHY+=" SF-12:ultra-only-claim-returned"; fi
+grep -qF 'a standard research reads the sections marked' "$SF_SPEC" || SF_WHY+=" SF-12:no-shared-load-statement"
+# Same file, same subject, so it rides SF-12 rather than a fifteenth ID: `## Write order` item 3
+# must no longer call SOURCE.md a step OF the save, phase 1 having moved the first write into the
+# conversation, and this file is exactly where both modes are sent for the order. A negative on
+# the retired FORM plus a positive on its replacement — the pair, never either half: without the
+# negative the old line survives beside the new one, without the positive the item is deleted
+# outright and the save stops describing its own last write.
+if grep -qF '3. `SOURCE.md` (prompt-based explorations only).' "$SF_SPEC"; then SF_WHY+=" SF-12:write-order-still-creates-the-log-at-save"; fi
+grep -qF 'already on disk before the save begins' "$SF_SPEC" || SF_WHY+=" SF-12:no-pinned-log-in-write-order"
+
+# (SF-13) Every real section carries an applicability line, and the vocabulary stays at two
+# values. Fence-aware is not optional here: the templates inside this file carry their own
+# '## ' headings, so a naive `grep -c '^## '` sees twenty where there are nine — a counter built
+# on it would be red always, and the obvious "fix" would be to delete it.
+# Adjacency, not equal counters: equal counters pass when a section is added unmarked while an
+# `Applies to:` line is written somewhere else. Adjacency catches what actually happens.
+SF13_BAD="$(awk 'BEGIN{inf=0;want=0}
+    /^````/{inf=!inf;next}
+    /^```/{inf=!inf;next}
+    inf{next}
+    /^## /{sec=$0;want=1;next}
+    want && /^[[:space:]]*$/{next}
+    want{ if ($0 !~ /^Applies to: /) print sec; want=0 }' "$SF_SPEC" || true)"
+SF13_N="$(awk 'BEGIN{inf=0;n=0} /^````/{inf=!inf;next} /^```/{inf=!inf;next} !inf && /^## /{n++} END{print n+0}' "$SF_SPEC" || true)"
+# An object-less guard goes red rather than passing on nothing (the NN-4 / RT-7 convention).
+(( SF13_N > 0 )) || SF_WHY+=" SF-13:no-sections-found"
+[[ -z "$SF13_BAD" ]] || SF_WHY+=" SF-13:section-without-applicability($(printf '%s' "$SF13_BAD" | tr '\n' ','))"
+# Closedness written as a count, because `grep -E` has no look-ahead: a negated-alternation
+# pattern would silently match nothing and leave a guard that looks present without being one.
+SF13_VALS="$(grep -c '^Applies to: ' "$SF_SPEC" || true)"
+SF13_KNOWN="$(grep -cE '^Applies to: (every research|ultra only)$' "$SF_SPEC" || true)"
+(( SF13_VALS == SF13_KNOWN )) || SF_WHY+=" SF-13:unknown-applicability-value"
+
+# (SF-14) The skill names the shared sections BY NAME, not by description. A name is an address;
+# a description has to be reconciled with the marking and drifts from it at the first edit.
+grep -qF '`## Manifest layout`, `## Identifiers` and `## Write order`' "$SF_SKILL" \
+    || SF_WHY+=" SF-14:shared-sections-not-named"
+
 if [[ -z "$SF_WHY" ]]; then
-    pass "SF-1..SF-11 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace, and the gate still has exactly five criteria"
-# NB: Task 23 of phase 6 appends SF-12..SF-14 above this emit and rewrites the range to
-# SF-1..SF-14. This is the one line two phases touch; it is named here so that the second edit
-# reads as planned rather than as drift.
+    pass "SF-1..SF-14 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace, the gate still has exactly five criteria, and the research format marks which of its sections a standard research reads"
 else
     fail "SF source fidelity:$SF_WHY"
 fi

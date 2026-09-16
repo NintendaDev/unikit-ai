@@ -327,6 +327,8 @@ as a continuation rather than a new subject, and follow
 
 On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
 
+**A standard research reads part of that file too, and always has.** Saving *any* research loads its three shared sections — `## Manifest layout`, `## Identifiers` and `## Write order` — which carry the manifest skeleton, the identifier rules the `## Active Summary` template already forces you to use, and the order the save follows. Every section in that file is marked `Applies to:`; the other six are `ultra only` and a standard research skips them. An ultra research still loads the file whole, and that branch is unchanged. If the file is missing, save anyway and print nothing new: the template in this skill is complete on its own, and the same trade the `WARN [ultra]` line above makes applies here — an exploration that has already happened is worth more than its format reference. If the file is there but a named section is not, save from this skill's own template rather than stopping; a renamed section is a defect to report, not a reason to lose the work.
+
 ### Exploration mode detection
 
 Determine the exploration mode based on user input:
@@ -512,7 +514,7 @@ If the user agrees:
    mkdir -p .unikit/code/researches/<slug>
    ```
 
-   The order of writing is owned by `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` → `## Write order`, and it is not restated here. **In a standard research, items 1 and 5 — the adaptive artifacts and the Integrity checks — simply do not apply**; the rest of the order holds unchanged, including that the registry is re-rendered before the gate runs.
+   The order of writing is owned by `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` → `## Write order`, and it is not restated here. That section is marked `Applies to: every research`, so this is not a borrowing from the ultra format — it is the order both modes follow. **In a standard research, items 1 and 5 — the adaptive artifacts and the Integrity checks — simply do not apply**; the rest of the order holds unchanged, including that the registry is re-rendered before the gate runs.
 
    **In ultra mode** the artifacts are written first and `RESEARCH.md` second. Writing the index of artifacts before the artifacts would point its links at files that do not exist yet.
 

@@ -1,6 +1,11 @@
 # unikit-explore — Ultra Research Format
 
-Loaded on demand by `### Input handling` when the leading token is `ultra`.
+Both modes read this file. Every section below is marked `Applies to:`, and
+a standard research reads the sections marked `every research` — `## Manifest layout`,
+`## Identifiers` and `## Write order` — while an ultra research reads all nine, loaded by
+`### Input handling` on the leading token. The vocabulary is closed at those two values:
+a section whose applicability is arguable is marked `every research` and names its exception
+in prose inside itself, because the axis is *read it or not*, never *apply all of it or not*.
 
 Ultra research adds artifacts **inside** the existing research folder. It creates no new
 root and no second registry: the folder `.unikit/code/researches/<slug>/` already exists,
@@ -8,6 +13,10 @@ and `researches/INDEX.md` is regenerated from the folders on every save — by t
 procedure, whatever the mode.
 
 ## Mode marker
+
+Applies to: ultra only
+A standard research writes no marker. That the registry generator READS one says
+nothing about the mode that wrote it.
 
 Written exactly like this, as the **first line** of `RESEARCH.md`, exactly once, and
 **never localized**:
@@ -26,6 +35,11 @@ manifest to fill the `Mode:` field of its record (`## Write order`, step 4), so 
 line of `RESEARCH.md` is read on every re-render, not only when ultra is requested.
 
 ## Manifest layout
+
+Applies to: every research
+The skeleton, the two state axes, the sort key, the append-only session log and the
+hashed region are written by a standard research too; `## Artifact Index` is the one
+ultra-only line in it, and it is named as such where it stands.
 
 One file carries the research. The header fields are machine-read; the sections below them
 are the reasoning, and exactly one of those sections is the planner's input.
@@ -83,6 +97,8 @@ Rules that travel with this layout:
 
 ## Adaptive artifacts
 
+Applies to: ultra only
+
 Adaptivity is the whole point of this mode. The question is never "which four files does
 ultra produce" but "which of these does this subject actually need".
 
@@ -99,6 +115,8 @@ An artifact that is **not** created is named too, with the reason, in the `## Ar
 "Not applicable here" is a finding; silence is indistinguishable from an oversight.
 
 ## Artifact Index
+
+Applies to: ultra only
 
 In ultra mode `RESEARCH.md` carries this section immediately after `## Table of Contents`:
 
@@ -120,6 +138,8 @@ Rules:
   then it reads `Considered and not created: none`.
 
 ## ADR format
+
+Applies to: ultra only
 
 Minimal, and deliberately not invented here:
 
@@ -143,6 +163,10 @@ overrides an older one carries `Supersedes: ADR-NNNN`; the older one gets
 removing it makes the replacement look unmotivated.
 
 ## Identifiers
+
+Applies to: every research
+The `## Active Summary` template makes both modes use these prefixes, so the rules
+about them are owed to both.
 
 IDs are optional. Add one only when something else references it — another artifact or a
 handoff. Do not add IDs to make a short note look formal; an unreferenced ID is noise with a
@@ -209,10 +233,14 @@ because it is a filename and must sort lexically.
 
 **The shape of a `REQ-` line is not specified here.** It carries the user's own words plus an
 anchor into `SOURCE.md` and a provenance marker, and the requirement line contract lives in
-`SKILL.md`, under the `## Active Summary` template — it binds every research, and this file is
-read only when the leading token is `ultra`.
+`SKILL.md`, under the `## Active Summary` template — a rule that binds every research belongs
+next to the template that demands it, not in a section half the modes skip.
 
 ## Write order
+
+Applies to: every research
+`SKILL.md` has always sent a standard research here for the order; only items 1 and 5
+do not apply there.
 
 1. The adaptive artifacts.
 2. `RESEARCH.md` — with the `## Artifact Index` pointing at files already written.
@@ -229,6 +257,8 @@ direction: the gate reads durable files from disk, and would otherwise judge a r
 does not yet describe what was just written.
 
 ## Integrity
+
+Applies to: ultra only
 
 Each check is **blocking**; saving stops until it passes:
 
@@ -263,9 +293,12 @@ Each check is **blocking**; saving stops until it passes:
 
 ## What ultra research does not change
 
+Applies to: ultra only
+
 - The top-level `researches/INDEX.md` **format**, including the `Summary` field, which still
   comes from `Topic:`. The file itself is no longer hand-written: it is regenerated whole on
   every save, and the format is what stayed a contract while the authorship changed.
+
 - **The input to `/unikit-plan`.** The plan reads `## Active Summary`; adaptive artifacts are
   optional reading "for the rationale", never a source of requirements.
 
