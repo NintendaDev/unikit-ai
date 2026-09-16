@@ -3084,7 +3084,7 @@ grep -qF 'structure, layout, order' "$SF_SKILL" || SF_WHY+=" SF-11:no-trigger-li
 # skill has always sent a standard research here for the last of them.
 if grep -qF 'when the leading token is `ultra`' "$SF_SPEC"; then SF_WHY+=" SF-12:ultra-only-claim-returned"; fi
 grep -qF 'a standard research reads the sections marked' "$SF_SPEC" || SF_WHY+=" SF-12:no-shared-load-statement"
-# Same file, same subject, so it rides SF-12 rather than a fifteenth ID: `## Write order` item 3
+# Same file, same subject, so it rides SF-12 rather than an ID of its own: `## Write order` item 3
 # must no longer call SOURCE.md a step OF the save, phase 1 having moved the first write into the
 # conversation, and this file is exactly where both modes are sent for the order. A negative on
 # the retired FORM plus a positive on its replacement — the pair, never either half: without the
@@ -3121,8 +3121,18 @@ SF13_KNOWN="$(grep -cE '^Applies to: (every research|ultra only)$' "$SF_SPEC" ||
 grep -qF '`## Manifest layout`, `## Identifiers` and `## Write order`' "$SF_SKILL" \
     || SF_WHY+=" SF-14:shared-sections-not-named"
 
+# (SF-15) The `Readback` field is never empty. SF-10 holds that the field EXISTS; this holds what
+# it says when there was nothing to show — the one value that tells "nothing to show" apart from
+# "the step was skipped", which is the whole reason the field exists. Two carriers, two asserts:
+# the value lives in the manifest template, the rule in the prose. The literal alone is not
+# enough, and that is measured: in the prose it wraps across two lines, so a line-wise grep finds
+# the TEMPLATE only and would stay green with the rule deleted. `>= 1`, never an exact count — a
+# rewrite that unwraps the prose makes it two.
+grep -qF 'not needed (every requirement was stated)' "$SF_SKILL" || SF_WHY+=" SF-15:no-nothing-to-show-value"
+grep -qF '`Readback` field is never empty' "$SF_SKILL"           || SF_WHY+=" SF-15:empty-readback-allowed"
+
 if [[ -z "$SF_WHY" ]]; then
-    pass "SF-1..SF-14 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace, the gate still has exactly five criteria, and the research format marks which of its sections a standard research reads"
+    pass "SF-1..SF-15 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, and the research format marks which of its sections a standard research reads"
 else
     fail "SF source fidelity:$SF_WHY"
 fi
@@ -5307,8 +5317,8 @@ else
 fi
 
 # (GB-3) The grammar reference carries the rule too: TASK-FORMAT.md is what a plan author
-# reads while writing Dependencies: lines, and it is excluded from the Part 7c scan, so
-# nothing else looks at it.
+# reads while writing Dependencies: lines, and Part 7c looks at it for engine stop words
+# only, so nothing else holds the rule.
 if grep -qF 'serialized alone in its execution layer' "$GB_TASK_FORMAT"; then
     pass "GB-3 guard B present in the Editor task grammar (TASK-FORMAT.md)"
 else
@@ -5546,8 +5556,10 @@ fi
 
 # (ED-4) NEGATIVE — the only mechanical guard on the engine-neutrality cleanup.
 # TWO files, EIGHT assertions.
-#   TASK-FORMAT.md: references/ is EXCLUDED from the Part 7c engine stop-word scan,
+#   TASK-FORMAT.md: references/ WAS excluded from the Part 7c engine stop-word scan,
 #   which is precisely how the Unity specifics accumulated there in the first place.
+#   Part 7c scans references/ now, and this family is still the only cover: none of
+#   the tokens below is a stop word.
 #   Assert `.cs` (not `path/to/file.cs`): the latter misses the `path/to/file1.cs`
 #   line and would go green on a half-done cleanup. After the cleanup no legitimate
 #   `.cs` remains in the file.
@@ -6786,7 +6798,8 @@ fi
 
 # (NN-3) Layer C. The allowlist above is spent almost entirely here: engine templates are
 # the one shipped surface where snake_case is legitimate, because GDScript and the Unity
-# serialized formats use it. `references/` is excluded from the Part 7c stop-word scan and
+# serialized formats use it. Part 7c scans the source `skills/` tree and never reaches
+# `data/engine-templates/` (a template lands in `references/` only at install time), and
 # engine stop-words are ALLOWED in an engine template anyway, so before this guard nothing
 # looked at layer C at all — which is how seven tool names accumulated in one table there.
 NN3_HITS="$(nn_scan "$ROOT_DIR/data/engine-templates")"
@@ -7262,21 +7275,50 @@ echo -e "\n${BOLD}=== Engine stop words enforcement ===${NC}\n"
 
 STOPWORD_ERRORS=0
 
-# Scan skills/*/SKILL.md and subagents/*.md (skip references/)
+# Scan skills/*/SKILL.md, subagents/*.md and skills/*/references/**/*.md.
+# references/ used to be skipped, and that is exactly how Unity specifics accumulated in
+# TASK-FORMAT.md (the ED-4 family exists because of it). A skill that moves a mode body out
+# of SKILL.md must not move it out of this scan as well — without references/ here, a size
+# ceiling on SKILL.md turns into a loophole: "move it into a reference".
 SCAN_FILES=()
+STOPWORD_SKILLS=0
+STOPWORD_AGENTS=0
+STOPWORD_REFS=0
 for skill_dir in "$ROOT_DIR"/skills/*/; do
     sf="$skill_dir/SKILL.md"
-    [[ -f "$sf" ]] && SCAN_FILES+=("$sf")
+    [[ -f "$sf" ]] && SCAN_FILES+=("$sf") && STOPWORD_SKILLS=$((STOPWORD_SKILLS + 1))
 done
 for af in "$ROOT_DIR"/subagents/*.md; do
-    [[ -f "$af" ]] && SCAN_FILES+=("$af")
+    [[ -f "$af" ]] && SCAN_FILES+=("$af") && STOPWORD_AGENTS=$((STOPWORD_AGENTS + 1))
 done
+while IFS= read -r -d '' rf; do
+    SCAN_FILES+=("$rf")
+    STOPWORD_REFS=$((STOPWORD_REFS + 1))
+done < <(find "$ROOT_DIR"/skills/*/references -type f -name '*.md' -print0 2>/dev/null | sort -z)
 
 STOP_PATTERNS='\bUnity\b|\bGodot\b|\bUnreal\b|\bGDScript\b|(^| )C# |(^| )C\+\+ '
+
+# Measured per-file allowlist, on the NN-1 precedent: one entry per file, the number of
+# stop-word LINES measured in it, and why they are allowed. A count, not line numbers — a
+# line number goes stale on every edit above it, a count only when engine text is added or
+# removed, and both of those should make someone look. Equality, not '<=': a file that has
+# lost an allowed line keeps a free slot for an unexplained one otherwise.
+# Extending this list is a signal that engine knowledge is leaking into a skill, not that the
+# scan is too strict. SKILL.md and subagents never get an entry.
+declare -A STOPWORD_ALLOW=(
+    # The engine-detection matrix. REQUIRED, not tolerated: RD-2b (RECON_ENGINE_TOKENS)
+    # fails without these rows — recon cannot reconstruct an engine it cannot detect.
+    ["skills/unikit-gd-recon/references/code-recon.md"]=5
+    # Quotes what a user types to reach unikit-gd-recon ("a GDD from this Unity/Godot/Unreal
+    # project") — a routing example in the help map, not engine guidance.
+    ["skills/unikit-help/references/skill-map.md"]=1
+)
 
 for scan_file in "${SCAN_FILES[@]}"; do
     rel_path="${scan_file#"$ROOT_DIR/"}"
     MATCHES=$(grep -nE "$STOP_PATTERNS" "$scan_file" 2>/dev/null || true)
+    # Allowlisted files are settled below, including the case where the matches are gone.
+    [[ -n "${STOPWORD_ALLOW[$rel_path]:-}" ]] && continue
     if [[ -n "$MATCHES" ]]; then
         while IFS= read -r match_line; do
             fail "$rel_path:$match_line"
@@ -7285,8 +7327,29 @@ for scan_file in "${SCAN_FILES[@]}"; do
     fi
 done
 
+for allowed_path in "${!STOPWORD_ALLOW[@]}"; do
+    allowed_lines="${STOPWORD_ALLOW[$allowed_path]}"
+    if [[ ! -f "$ROOT_DIR/$allowed_path" ]]; then
+        fail "$allowed_path: stop-word allowlist names a file that no longer exists — drop the entry"
+        STOPWORD_ERRORS=$((STOPWORD_ERRORS + 1))
+        continue
+    fi
+    found_lines=$(grep -cE "$STOP_PATTERNS" "$ROOT_DIR/$allowed_path" 2>/dev/null || true)
+    if (( found_lines != allowed_lines )); then
+        fail "$allowed_path: $found_lines stop-word line(s), allowlist measured $allowed_lines — remove the engine text or re-measure the entry and name why:"
+        grep -nE "$STOP_PATTERNS" "$ROOT_DIR/$allowed_path" 2>/dev/null | head -10 || true
+        STOPWORD_ERRORS=$((STOPWORD_ERRORS + 1))
+    fi
+done
+
+# An object-less scan goes red rather than passing on nothing (the NN-4 / RT-7 convention).
+if (( STOPWORD_REFS == 0 )); then
+    fail "no skills/*/references/**/*.md found — the references half of the stop-word scan has no object left"
+    STOPWORD_ERRORS=$((STOPWORD_ERRORS + 1))
+fi
+
 if [[ $STOPWORD_ERRORS -eq 0 ]]; then
-    pass "no engine stop words in skills/*/SKILL.md or subagents/*.md"
+    pass "no engine stop words in skills/*/SKILL.md, subagents/*.md or skills/*/references/ outside ${#STOPWORD_ALLOW[@]} measured allowlist entries ($STOPWORD_SKILLS SKILL.md, $STOPWORD_AGENTS subagent(s), $STOPWORD_REFS reference file(s) scanned)"
 fi
 
 # ─────────────────────────────────────────────
