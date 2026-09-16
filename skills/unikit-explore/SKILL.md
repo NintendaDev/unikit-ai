@@ -98,40 +98,41 @@ model argument of their own.
 <!-- unikit:end -->
 
 <!-- unikit:agents claude -->
-- **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
+- **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
 
   ```
-  Agent(subagent_type: Explore, model: sonnet, prompt: "<the criteria from references/coherence-gate.md>")
+  Agent(subagent_type: Explore, model: sonnet, prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only.")
   ```
 
-  `Explore` is read-only **by construction** — its tool set excludes `Edit`/`Write`, so the
-  read-only contract is guaranteed by the dispatch, not merely requested in the prompt.
+  The path travels, never the text: the file is read in the agent's fresh context and not in
+  the one that is saving. `Explore` is read-only **by construction** — its tool set excludes
+  `Edit`/`Write`, so the read-only contract is guaranteed by the dispatch, not merely requested
+  in the prompt.
   `sonnet` is a tier alias, never a version — the one model value that may be written into
   UniKit. A versioned model id goes stale silently and must never replace it.
 
-  Fallback: if the `Agent` tool is unavailable, run the pass yourself, inline — see
-  `references/coherence-gate.md`
-  (`WARN [coherence] fresh-context pass unavailable — running inline`). The gate is never
-  skipped or delayed.
+  Fallback: if the `Agent` tool is unavailable, read `references/coherence-gate.md` yourself
+  and run the pass inline (`WARN [coherence] fresh-context pass unavailable — running inline`).
+  The gate is never skipped or delayed.
 <!-- unikit:end -->
 <!-- unikit:agents !claude -->
-- **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
+- **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
 
   ```
-  Agent(subagent_type: Explore, prompt: "<the criteria from references/coherence-gate.md>")
+  Agent(subagent_type: Explore, prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
   ```
 
-  This runtime may offer no read-only-by-construction agent type, so the read-only
-  contract rides on the prompt rather than on the dispatch: state it explicitly in the
-  criteria you send from `references/coherence-gate.md`.
+  The path travels, never the text: the file is read in the agent's fresh context and not in
+  the one that is saving. This runtime may offer no read-only-by-construction agent type, so
+  the read-only contract rides on the prompt rather than on the dispatch — the last sentence
+  of the prompt above carries it and is never dropped.
   No model is named: this runtime either has no dispatch-time model argument or offers only
   versioned model ids, and a versioned id goes stale silently. The runtime's own configured
   default applies.
 
-  Fallback: if the `Agent` tool is unavailable, run the pass yourself, inline — see
-  `references/coherence-gate.md`
-  (`WARN [coherence] fresh-context pass unavailable — running inline`). The gate is never
-  skipped or delayed.
+  Fallback: if the `Agent` tool is unavailable, read `references/coherence-gate.md` yourself
+  and run the pass inline (`WARN [coherence] fresh-context pass unavailable — running inline`).
+  The gate is never skipped or delayed.
 <!-- unikit:end -->
 
 ## Artifact Ownership
@@ -306,7 +307,9 @@ as a continuation rather than a new subject, and follow `{{skills_dir}}/{{self_n
 
 On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
 
-**A standard research reads part of that file too, and always has.** Saving *any* research loads its three shared sections — `## Manifest layout`, `## Identifiers` and `## Write order` — which carry the manifest skeleton, the identifier rules the `## Active Summary` template already forces you to use, and the order the save follows. Every section in that file is marked `Applies to:`; the other six are `ultra only` and a standard research skips them. An ultra research still loads the file whole, and that branch is unchanged. If the file is missing, save anyway and print nothing new: the template in this skill is complete on its own, and the same trade the `WARN [ultra]` line above makes applies here — an exploration that has already happened is worth more than its format reference. If the file is there but a named section is not, save from this skill's own template rather than stopping; a renamed section is a defect to report, not a reason to lose the work.
+**A standard research does not read that file.** Everything that binds every research — the
+manifest template, `### Identifiers` and the write order — lives in *Saving Research Results*
+below; the reference holds only what ultra adds.
 
 ### Exploration mode detection
 
@@ -493,9 +496,19 @@ If the user agrees:
    mkdir -p .unikit/code/researches/<slug>
    ```
 
-   The order of writing is owned by `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` → `## Write order`, and it is not restated here. That section is marked `Applies to: every research`, so this is not a borrowing from the ultra format — it is the order both modes follow. **In a standard research, items 1 and 5 — the adaptive artifacts and the Integrity checks — simply do not apply**; the rest of the order holds unchanged, including that the registry is re-rendered before the gate runs.
+   **Write in this order.** A standard research skips items 1 and 5; ultra runs all six.
 
-   **In ultra mode** the artifacts are written first and `RESEARCH.md` second. Writing the index of artifacts before the artifacts would point its links at files that do not exist yet.
+   1. The adaptive artifacts.
+   2. `RESEARCH.md` — with the `## Artifact Index` pointing at files already written.
+   3. `SOURCE.md` (prompt-based explorations only) — pinned as the conversation went on, and so
+      already on disk before the save begins. What happens at this point is the append of
+      whatever the log is still missing, never the writing of the file.
+   4. `researches/INDEX.md` — **re-rendered whole** from the contents of the folders (Step 4).
+   5. The Integrity checks (`references/ULTRA-RESEARCH-FORMAT.md` → `## Integrity`).
+   6. The coherence gate.
+
+   Never write the index of artifacts before the artifacts, and never run the gate before the
+   registry is re-rendered.
 
 3. Write `RESEARCH.md` — the manifest. One file carries the whole research: the machine-read header, the planner's input between the `## Active Summary` markers, the evidence in `## Findings`, and the append-only `## Sessions` log.
 
@@ -602,8 +615,7 @@ how both humans and agents reach the section they need.
 cold, by someone who never saw the conversation. `## Findings` holds the reasoning that
 produced it; the summary holds the conclusion. A fact belongs to exactly one of the two — the
 other refers to it by ID, never by retelling it. The identifier prefixes it uses, and the rules
-they obey, are specified in `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` →
-`## Identifiers`. A requirement pointing at a `## Findings` sub-heading for its layout is that
+they obey, are in `### Identifiers` below. A requirement pointing at a `## Findings` sub-heading for its layout is that
 same reference by ID in another form — ordinary forward resolvability, not a new mechanism.
 
 **A requirement the user stated carries their own words and an anchor into the log.** The line
@@ -653,7 +665,7 @@ backticks, and there are exactly three of them:
 | `diverges` | the requirement departs from what the user actually said | **invalid without a paired `DEC-`** naming why their own proposal was not taken; shown in the readback |
 
 1. **The marker is an attribute of the line, not a prefix.** The identifier vocabulary stays
-   closed at six (`references/ULTRA-RESEARCH-FORMAT.md` → `## Identifiers`). A seventh prefix
+   closed at six (`### Identifiers`). A seventh prefix
    is a decision in its own right, and this is not one.
 2. **`diverges` without its `DEC-` is a defect.** What the pairing prevents is concrete: a
    requirement that quietly overrules what the user proposed, travelling to the plan and into
@@ -744,6 +756,63 @@ here so the next edit does not restore them "for completeness":
 `## References` stays standalone rather than folding into `## Findings` on purpose: `## Findings`
 is the section that grows without bound, and a reference list buried inside it stops being
 findable.
+
+### Identifiers
+
+IDs are optional. Add one only when something else references it — another artifact or a
+handoff. Do not add IDs to make a short note look formal.
+
+The vocabulary is closed. Six prefixes, and adding a seventh is a decision, not a
+convenience:
+
+| Prefix | Means | Lives in |
+|--------|-------|----------|
+| `C-<n>` | a constraint the subject imposes | `RESEARCH.md` → `## Active Summary` → `Constraints:` |
+| `REQ-<n>` | a requirement established by evidence | `## Active Summary` → `Requirements:` |
+| `DEC-<n>` | a decision taken | `## Active Summary` → `Decisions:` |
+| `RISK-<n>` | a material risk | `## Active Summary` → `Risks:` |
+| `OQ-<n>` | an open question | `## Active Summary` → `Open questions:` |
+| `ADR-<nnnn>` | a decision heavy enough to need its own file | its own file; the ID **is** the filename |
+
+**An ID that affects the plan's requirements must exist in `## Active Summary` of `RESEARCH.md`.**
+IDs that live only in `## Findings` trace the reasoning rather than state a requirement, and
+that is allowed.
+
+**One value is stated in exactly one owning section.** A number, a threshold, a set of
+parameters, an enumeration, a path, a signature, the membership of a list — written once, and
+referenced by ID everywhere else. `## Findings` holds the evidence and the reasoning;
+`## Active Summary` holds the requirement; an artifact holds the rationale.
+
+**Characterizing a referenced item in your own words is not a duplicate.** A table cell, a
+diagram label, a consequence line and an ADR `## Context` are read where they stand, by
+someone who has not opened the owning section, and they are obliged to remain readable there.
+The obligation is to not repeat the **value** — `overwrites the zone size (RISK-1)` is
+correct; `overwrites the zone size to 356.4 × 356.4 (RISK-1)` is a second copy of a number
+that now has to be kept true by hand.
+
+This is what makes the coherence gate decidable: whether a value appears in a second place is
+grepped, whereas whether two sentences are "the same fact" is a judgement that lands
+differently every time it is made.
+
+**A value that lives in an artifact carries a revision marker in `## Active Summary`.** The
+summary line carries the marker instead of the value:
+
+```
+Decisions: `DEC-9` — MoverConfig holds the reference, not a copy (rev.2 · parameters in `ADR-0003`)
+```
+
+Change a value in the artifact and raise `rev.<n>` in the same save. The raised markers are
+also the input to the next save's value sweep: they name exactly which decisions have carriers
+worth grepping.
+
+**An ID is stable and is never reused.** A withdrawn question keeps its number out of
+circulation; the next one takes the following number.
+
+**A superseded item keeps its ID.** Mark it superseded, name what replaced it, and leave it
+in place. `ADR-<nnnn>` additionally carries `Supersedes:` / `Status: superseded` per the ADR
+format of `references/ULTRA-RESEARCH-FORMAT.md`.
+
+Numbering is per research folder and starts at 1 — `ADR-` at `0001`, zero-padded to four.
 
 ### SOURCE.md for prompt-based explorations
 
@@ -996,10 +1065,22 @@ source of truth — before the coherence gate reads the same files from disk.
 ### Research Coherence Gate
 
 After **all** writing is done — the artifacts, `RESEARCH.md`, `SOURCE.md` and the re-rendered
-`researches/INDEX.md` — and **before** confirming the save to the user, read
-`{{skills_dir}}/{{self_name}}/references/coherence-gate.md` and run the gate it specifies as a `check-agent` dispatch.
-The read is conditional: this is the only moment the file is needed, so it is not loaded at
-the start of an exploration.
+`researches/INDEX.md` — and **before** confirming the save to the user, hand the path
+`{{skills_dir}}/{{self_name}}/references/coherence-gate.md` to a `check-agent` dispatch, and
+run the gate it specifies through that dispatch. The agent reads the file; this session does
+not, because this is the peak of the session and only the report is needed here.
+
+Act on the report's `Next:` line, and on nothing the report does not carry:
+
+- `pass` → write the `Gate:` value it names, record the remainder it lists, go to Step 5;
+- `repair` → apply the listed repairs as one batch, keeping to the repair rules the report
+  quotes, then dispatch pass 2 with the findings adjudicated so far;
+- `ask` → put the unresolved findings, the count per pass and the four options to the user,
+  and on a save write the `OQ-<n>` entries and the `Gate:` value it names;
+- `hold` → do not confirm; tell the user which durable file could not be read.
+
+Only when the dispatch cannot run does this session read the file itself (the `check-agent`
+fallback).
 
 Its position is fixed: **after Step 4, before Step 5.** The order matters in both directions.
 The gate re-reads the durable files from disk, so running it before the write has nothing to
@@ -1008,8 +1089,9 @@ incoherent.
 
 In ultra the gate runs **after** the bundle integrity checks, not instead of them.
 
-If `references/coherence-gate.md` cannot be read, print one line
-`WARN [coherence] reference missing — saving without the coherence pass` and continue — the
+If `references/coherence-gate.md` does not exist, or the pass reports that it cannot read it,
+print one line `WARN [coherence] reference missing — saving without the coherence pass` and
+continue — the
 same trade as the ultra reference above: the research has already been done and written, and
 losing it over a missing reference file is not acceptable.
 

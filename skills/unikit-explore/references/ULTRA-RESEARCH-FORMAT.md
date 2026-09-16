@@ -1,11 +1,9 @@
 # unikit-explore — Ultra Research Format
 
-Both modes read this file. Every section below is marked `Applies to:`, and
-a standard research reads the sections marked `every research` — `## Manifest layout`,
-`## Identifiers` and `## Write order` — while an ultra research reads all nine, loaded by
-`### Input handling` on the leading token. The vocabulary is closed at those two values:
-a section whose applicability is arguable is marked `every research` and names its exception
-in prose inside itself, because the axis is *read it or not*, never *apply all of it or not*.
+Ultra only. A standard research does not read this file: the manifest template, the identifier
+rules and the write order bind every research, and they live in `SKILL.md`. An ultra research
+loads this file whole, from `### Input handling` on the leading token. Every section below is
+marked `Applies to: ultra only`; a section a standard research would need does not belong here.
 
 Ultra research adds artifacts **inside** the existing research folder. It creates no new
 root and no second registry: the folder `.unikit/code/researches/<slug>/` already exists,
@@ -31,69 +29,8 @@ other: `/unikit-plan` reaches a research through `researches/INDEX.md`, never th
 marker. The line is declared here and nowhere else.
 
 The marker has a second consumer now. The index generator reads the first line of every
-manifest to fill the `Mode:` field of its record (`## Write order`, step 4), so the first
+manifest to fill the `Mode:` field of its record (`SKILL.md` → Step 4), so the first
 line of `RESEARCH.md` is read on every re-render, not only when ultra is requested.
-
-## Manifest layout
-
-Applies to: every research
-The skeleton, the two state axes, the sort key, the append-only session log and the
-hashed region are written by a standard research too; `## Artifact Index` is the one
-ultra-only line in it, and it is named as such where it stands.
-
-One file carries the research. The header fields are machine-read; the sections below them
-are the reasoning, and exactly one of those sections is the planner's input.
-
-```markdown
-<!-- unikit:research-mode:ultra -->   ← ultra only, first line
-# <Research Title>
-
-Created: YYYY-MM-DD HH:MM
-Updated: YYYY-MM-DD HH:MM
-Status: completed | in-progress | needs-follow-up
-Lifecycle: active | paused | superseded
-Research: <slug>
-Target: SYS-<slug> | FLOW-<slug> | CONTENT-<slug>    (optional)
-Kind: feature | improvement                          (optional)
-Supersedes: <slug>                                   (optional)
-
-## Table of Contents
-## Artifact Index          ← ultra only
-## Active Summary
-<!-- unikit:active-summary:start -->
-Topic:
-Goal:
-Scope:
-Constraints:
-Requirements:
-Decisions:
-Risks:
-Open questions:
-Success signals:
-Next step:
-<!-- unikit:active-summary:end -->
-## Findings
-## Sessions
-<!-- unikit:sessions:start -->
-### <YYYY-MM-DD HH:MM> — <session title>
-<!-- unikit:sessions:end -->
-```
-
-Rules that travel with this layout:
-
-- **The two state axes are independent, and neither is the other's synonym.** `Status` is
-  completeness — its three values do not change and the field is never renamed, because the
-  `/unikit-plan` registry filter greps it by name and answers "no researches found" rather
-  than an error when it is gone. `Lifecycle` is currency: whether this research still
-  describes the world. A paused research can be complete; a superseded one usually is.
-- **Every age filter and all sorting run on `Updated:`.** `Created:` exists for display and
-  for breaking ties, and no filter stands on it. In a research with a continuation cycle,
-  freshness means "when this was last confirmed", not "when the folder was opened".
-- **`## Sessions` is append-only.** Past entries are never rewritten; a new one is appended
-  at the end, before the closing marker. The section is the record of how the summary above
-  it came to say what it says.
-- The region between the `## Active Summary` markers is the **hashed object**. Nothing else
-  in the file is hashed, and the markers themselves are excluded from the bytes.
 
 ## Adaptive artifacts
 
@@ -161,100 +98,6 @@ Date: YYYY-MM-DD
 overrides an older one carries `Supersedes: ADR-NNNN`; the older one gets
 `Status: superseded` and is **not deleted** — it remains the trace of the reasoning, and
 removing it makes the replacement look unmotivated.
-
-## Identifiers
-
-Applies to: every research
-The `## Active Summary` template makes both modes use these prefixes, so the rules
-about them are owed to both.
-
-IDs are optional. Add one only when something else references it — another artifact or a
-handoff. Do not add IDs to make a short note look formal; an unreferenced ID is noise with a
-version number.
-
-The vocabulary is closed. Six prefixes, and adding a seventh is a decision, not a
-convenience:
-
-| Prefix | Means | Lives in |
-|--------|-------|----------|
-| `C-<n>` | a constraint the subject imposes | `RESEARCH.md` → `## Active Summary` → `Constraints:` |
-| `REQ-<n>` | a requirement established by evidence | `## Active Summary` → `Requirements:` |
-| `DEC-<n>` | a decision taken | `## Active Summary` → `Decisions:` |
-| `RISK-<n>` | a material risk | `## Active Summary` → `Risks:` |
-| `OQ-<n>` | an open question | `## Active Summary` → `Open questions:` |
-| `ADR-<nnnn>` | a decision heavy enough to need its own file | its own file; the ID **is** the filename |
-
-**An ID that affects the plan's requirements must exist in `## Active Summary` of `RESEARCH.md`.**
-That section is the one input `/unikit-plan` takes and hashes, so a requirement-bearing ID
-that lives anywhere else is invisible to the planner and its change produces no drift. IDs
-that live only in `## Findings` trace the reasoning rather than state a requirement — that is
-allowed, and it is said out loud here so the split is a choice and not an oversight.
-
-**One value is stated in exactly one owning section.** A number, a threshold, a set of
-parameters, an enumeration, a path, a signature, the membership of a list — written once, and
-referenced by ID everywhere else. `## Findings` holds the evidence and the reasoning;
-`## Active Summary` holds the requirement; an artifact holds the rationale.
-
-**Characterizing a referenced item in your own words is not a duplicate.** A table cell, a
-diagram label, a consequence line and an ADR `## Context` are read where they stand, by
-someone who has not opened the owning section, and they are obliged to remain readable there.
-The obligation is to not repeat the **value** — `overwrites the zone size (RISK-1)` is
-correct; `overwrites the zone size to 356.4 × 356.4 (RISK-1)` is a second copy of a number
-that now has to be kept true by hand.
-
-This is what makes the coherence gate decidable: whether a value appears in a second place is
-grepped, whereas whether two sentences are "the same fact" is a judgement that lands
-differently every time it is made.
-
-**A value that lives in an artifact carries a revision marker in `## Active Summary`.**
-`/unikit-plan` hashes the summary region and nothing else, so a number changed inside an ADR
-raises no drift and a plan standing on it never learns that its ground moved. The summary line
-carries the marker instead of the value:
-
-```
-Decisions: `DEC-9` — MoverConfig holds the reference, not a copy (rev.2 · parameters in `ADR-0003`)
-```
-
-Change a value in the artifact and raise `rev.<n>` in the same save. One token, no copy of the
-value, and the hashed region moves — which is the whole purpose. The raised markers are also
-the input to the next save's value sweep: they name exactly which decisions have carriers
-worth grepping.
-
-**An ID is stable and is never reused.** A withdrawn question keeps its number out of
-circulation; the next one takes the following number. Reuse silently rewrites the history of
-anything that already cited it.
-
-**A superseded item keeps its ID.** Mark it superseded, name what replaced it, and leave it
-in place. `ADR-<nnnn>` additionally carries `Supersedes:` / `Status: superseded` per the ADR
-format above.
-
-Numbering is per research folder and starts at 1 — `ADR-` at `0001`, zero-padded to four
-because it is a filename and must sort lexically.
-
-**The shape of a `REQ-` line is not specified here.** It carries the user's own words plus an
-anchor into `SOURCE.md` and a provenance marker, and the requirement line contract lives in
-`SKILL.md`, under the `## Active Summary` template — a rule that binds every research belongs
-next to the template that demands it, not in a section half the modes skip.
-
-## Write order
-
-Applies to: every research
-`SKILL.md` has always sent a standard research here for the order; only items 1 and 5
-do not apply there.
-
-1. The adaptive artifacts.
-2. `RESEARCH.md` — with the `## Artifact Index` pointing at files already written.
-3. `SOURCE.md` (prompt-based explorations only) — pinned as the conversation went on, and so
-   already on disk before the save begins. What happens at this point is the append of
-   whatever the log is still missing, never the writing of the file.
-4. `researches/INDEX.md` — **re-rendered whole** from the contents of the folders.
-5. The Integrity checks.
-6. The coherence gate.
-
-Never write the index of artifacts before the artifacts — the links would point at files that
-do not exist. The registry is re-rendered before the gate for the same reason in the other
-direction: the gate reads durable files from disk, and would otherwise judge a registry that
-does not yet describe what was just written.
 
 ## Integrity
 

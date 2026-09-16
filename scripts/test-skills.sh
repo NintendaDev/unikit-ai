@@ -2862,7 +2862,8 @@ fi
 
 # (CG-7) The predicate itself, in every file that carries it and in both directions. There
 # are THREE carriers, not the two the rewrite set out to change: criterion 5 of the gate, its
-# writer-side twin in the research spec, and a closing line in the contracts note that credits
+# writer-side twin in the skill's `### Identifiers` (moved there from the research spec, which
+# keeps its negative), and a closing line in the contracts note that credits
 # the retired wording with making the gate converge. A half-applied edit — one that fixes the
 # gate and leaves the promise standing somewhere else — is exactly what the negative halves
 # catch and the positive halves cannot: every file would still contain a rule, just not the
@@ -2870,7 +2871,8 @@ fi
 # edit touched: it was found by reading, after a green suite, and nothing here would have.
 grep -qF 'One value, one owning section' "$CG_REF"                              || CG_WHY+=" CG-7:criterion-5-not-a-value-predicate"
 if grep -qF 'One fact, one owning section' "$CG_REF"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-gate"; fi
-grep -qF 'One value is stated in exactly one owning section' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-7:spec-not-a-value-predicate"
+grep -qF 'One value is stated in exactly one owning section' "$CG_SKILL" || CG_WHY+=" CG-7:writer-rule-not-a-value-predicate"
+if grep -qF 'One fact is stated in exactly one owning section' "$CG_SKILL"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-skill"; fi
 if grep -qF 'One fact is stated in exactly one owning section' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-spec"; fi
 # The contracts note states the predicate in lower case, mid-sentence. Its existence is
 # asserted here too: a negative grep against a file that is not there reads as a pass, and
@@ -2907,7 +2909,7 @@ grep -qF 'the findings already adjudicated in this save' "$CG_REF" || CG_WHY+=" 
 # revision marker is what carries a value changed inside an artifact into the hashed region.
 grep -qF 'stopped at budget' "$CG_REF"   || CG_WHY+=" CG-10:budget-outcome-not-declared"
 grep -qF 'stopped at budget' "$CG_SKILL" || CG_WHY+=" CG-10:budget-outcome-not-emitted"
-grep -qF 'rev.<n>' "$CG_RESEARCH_SPEC"   || CG_WHY+=" CG-10:no-revision-marker"
+grep -qF 'rev.<n>' "$CG_SKILL"           || CG_WHY+=" CG-10:no-revision-marker"
 
 # (CG-11) The confirmation step must admit the verdict the budget branch produces. The gate
 # stopped being a pass/no-pass switch the moment it acquired a budget: `stopped at budget` is
@@ -2929,8 +2931,26 @@ else
     if grep -qF 'Only once the gate has passed' <<< "$CG11_STEP5"; then CG_WHY+=" CG-11:pass-only-precondition-returned"; fi
 fi
 
+# (CG-12) The gate travels to its pass BY PATH, and the report carries the procedure back.
+# The save is the peak of a session; the gate file is ~11 KB, and sending its criteria in the
+# prompt made the saving session read all of it at exactly that moment, to build a prompt for
+# a context that could have read the file itself. Three halves, each its own failure:
+#   - the dispatch form: the alias prompt names the path, in BOTH agent variants (count, not
+#     presence — a revert in one variant leaves the other green), and the retired form that
+#     carried the criteria is gone;
+#   - the report contract in the gate file: without it the saving session, which no longer
+#     reads the file, has no procedure to act on — no repair rules, no budget, no remainder;
+#   - the consumer: the call site acts on the report's `Next:` line. A contract declared and
+#     never consumed is the RM-1 failure in another place.
+CG12_PATH_FORMS="$(grep -cF 'Read <path of references/coherence-gate.md>' "$CG_SKILL" || true)"
+(( CG12_PATH_FORMS == 2 )) || CG_WHY+=" CG-12:dispatch-not-by-path-in-both-variants($CG12_PATH_FORMS)"
+if grep -qF 'the criteria from references/coherence-gate.md' "$CG_SKILL"; then CG_WHY+=" CG-12:criteria-sent-in-the-prompt"; fi
+grep -qF '## What the pass returns' "$CG_REF"                   || CG_WHY+=" CG-12:no-report-contract"
+grep -qF 'quotes `### What a repair may do` whole' "$CG_REF"    || CG_WHY+=" CG-12:report-drops-the-repair-rules"
+grep -qF '`repair` → apply the listed repairs' "$CG_SKILL"      || CG_WHY+=" CG-12:call-site-ignores-the-report"
+
 if [[ -z "$CG_WHY" ]]; then
-    pass "CG-1..CG-11 the coherence gate exists, is called after the write, degrades without losing work, terminates on a budget its confirmation step honours, keeps a closed scope and a contractive repair, and the research spec keeps a value predicate and no container it does not have"
+    pass "CG-1..CG-12 the coherence gate exists, is called after the write, degrades without losing work, terminates on a budget its confirmation step honours, keeps a closed scope and a contractive repair, reaches its pass by path with the procedure returned in the report, and the research spec keeps a value predicate and no container it does not have"
 else
     fail "CG research coherence gate:$CG_WHY"
 fi
@@ -3010,9 +3030,10 @@ grep -qF 'SOURCE.md:' "$SF_SKILL" || SF_WHY+=" SF-6:no-anchor-contract"
 # is ENGLISH, so is the literal, and it is a formulation rather than a heading — cosmetics do
 # not move it, a change of meaning does.
 grep -qF 'the line number is a hint' "$SF_SKILL" || SF_WHY+=" SF-6:line-number-still-the-contract"
-# The reference carries a pointer, never a copy — the file's own "one value, one owning
-# section" rule applied to itself.
-grep -qF 'the requirement line contract lives in' "$SF_SPEC" || SF_WHY+=" SF-6:no-pointer-from-spec"
+# The ultra reference carries no copy of the anchor contract. It used to carry a pointer to
+# it; since the identifier rules moved into SKILL.md next to the contract, the reference has
+# nothing to point from, and a `SOURCE.md:` anchor turning up there would be a second owner.
+if grep -qF 'SOURCE.md:' "$SF_SPEC"; then SF_WHY+=" SF-6:anchor-contract-copied-into-the-reference"; fi
 # The window opens on the marker, not on a heading: the markers are already held by RM-1, so
 # the window stands on a guarded anchor rather than on prose.
 SF6_AS="$(awk '/unikit:active-summary:start/{f=1;next} /unikit:active-summary:end/{f=0} f' "$SF_SKILL" || true)"
@@ -3034,11 +3055,13 @@ for SF_MARK in '`stated`' '`inferred`' '`diverges`'; do
 done
 grep -qF 'gd-provenance' "$SF_SKILL" || SF_WHY+=" SF-7:no-vocabulary-link"
 # Exact equality, not '>= 6': UR-3 checks that each of the six is present but cannot notice a
-# SEVENTH, and a seventh prefix is precisely what would make the reference's own claim — "The
+# SEVENTH, and a seventh prefix is precisely what would make the skill's own claim — "The
 # vocabulary is closed. Six prefixes" — false. The unchecked half is the one that fills up.
 # Empty window degrades to a fail (the NN-4 / RT-7 convention), because grep -c returns 0 there
-# and 0 != 6. The count is measured on the current file, not guessed.
-SF7_PREFIXES="$(awk '/^## Identifiers$/{f=1;next} /^## /{f=0} f' "$SF_SPEC" | grep -c '^| `' || true)"
+# and 0 != 6. The count is measured on the current file, not guessed. The window is
+# `### Identifiers` of SKILL.md since the section left the ultra reference, and it closes on a
+# heading of ANY level — the next one below it is a `###`.
+SF7_PREFIXES="$(awk '/^### Identifiers$/{f=1;next} /^##+ /{f=0} f' "$SF_SKILL" | grep -c '^| `' || true)"
 (( SF7_PREFIXES == 6 )) || SF_WHY+=" SF-7:prefix-vocabulary-not-six($SF7_PREFIXES)"
 
 # (SF-8) The gate keeps exactly five criteria. The ADR refuses a sixth because source fidelity
@@ -3079,24 +3102,28 @@ grep -qF 'WARN [readback]' "$SF_SKILL" || SF_WHY+=" SF-10:no-unconfirmed-warning
 grep -qF 'write out both readings' "$SF_SKILL"  || SF_WHY+=" SF-11:no-two-readings-rule"
 grep -qF 'structure, layout, order' "$SF_SKILL" || SF_WHY+=" SF-11:no-trigger-list"
 
-# (SF-12) The reference no longer claims to be ultra-only. It is one third shared: the manifest
-# layout, the identifier contract and the write order are the format of ANY research, and the
-# skill has always sent a standard research here for the last of them.
-if grep -qF 'when the leading token is `ultra`' "$SF_SPEC"; then SF_WHY+=" SF-12:ultra-only-claim-returned"; fi
-grep -qF 'a standard research reads the sections marked' "$SF_SPEC" || SF_WHY+=" SF-12:no-shared-load-statement"
-# Same file, same subject, so it rides SF-12 rather than an ID of its own: `## Write order` item 3
-# must no longer call SOURCE.md a step OF the save, phase 1 having moved the first write into the
-# conversation, and this file is exactly where both modes are sent for the order. A negative on
-# the retired FORM plus a positive on its replacement — the pair, never either half: without the
-# negative the old line survives beside the new one, without the positive the item is deleted
-# outright and the save stops describing its own last write.
-if grep -qF '3. `SOURCE.md` (prompt-based explorations only).' "$SF_SPEC"; then SF_WHY+=" SF-12:write-order-still-creates-the-log-at-save"; fi
-grep -qF 'already on disk before the save begins' "$SF_SPEC" || SF_WHY+=" SF-12:no-pinned-log-in-write-order"
+# (SF-12) The shared contract lives in the skill, and the reference is ultra-only again. It
+# used to be one third shared — a standard research read three of its sections at the moment
+# of saving, the peak of a session — and those three moved into SKILL.md. The pair: a positive
+# on the statement the reference now makes, and a negative on the shared-load claim it made
+# before, which is the form a half-reverted move would bring back.
+grep -qF 'A standard research does not read this file' "$SF_SPEC" || SF_WHY+=" SF-12:no-ultra-only-statement"
+if grep -qF 'a standard research reads the sections marked' "$SF_SPEC"; then SF_WHY+=" SF-12:shared-load-claim-returned"; fi
+# The write order moved with them and keeps the reason its item 3 was guarded: SOURCE.md is
+# not a step OF the save, phase 1 having moved the first write into the conversation. A negative
+# on the retired FORM plus a positive on its replacement — the pair, never either half: without
+# the negative the old line survives beside the new one, without the positive the item is
+# deleted outright and the save stops describing its own last write.
+if grep -qF '3. `SOURCE.md` (prompt-based explorations only).' "$SF_SKILL"; then SF_WHY+=" SF-12:write-order-still-creates-the-log-at-save"; fi
+grep -qF 'already on disk before the save begins' "$SF_SKILL" || SF_WHY+=" SF-12:no-pinned-log-in-write-order"
 
-# (SF-13) Every real section carries an applicability line, and the vocabulary stays at two
-# values. Fence-aware is not optional here: the templates inside this file carry their own
-# '## ' headings, so a naive `grep -c '^## '` sees twenty where there are nine — a counter built
-# on it would be red always, and the obvious "fix" would be to delete it.
+# (SF-13) Every real section carries an applicability line, and the vocabulary is ONE value:
+# `ultra only`. It was two while three sections were shared; with those in SKILL.md, a section
+# marked `every research` coming back is the move SF-12 describes, reversed — so the value
+# itself is the detector, owned here and nowhere else. Fence-aware is not optional: the
+# templates inside this file carry their own '## ' headings, so a naive `grep -c '^## '` sees
+# more sections than there are — a counter built on it would be red always, and the obvious
+# "fix" would be to delete it.
 # Adjacency, not equal counters: equal counters pass when a section is added unmarked while an
 # `Applies to:` line is written somewhere else. Adjacency catches what actually happens.
 SF13_BAD="$(awk 'BEGIN{inf=0;want=0}
@@ -3113,13 +3140,17 @@ SF13_N="$(awk 'BEGIN{inf=0;n=0} /^````/{inf=!inf;next} /^```/{inf=!inf;next} !in
 # Closedness written as a count, because `grep -E` has no look-ahead: a negated-alternation
 # pattern would silently match nothing and leave a guard that looks present without being one.
 SF13_VALS="$(grep -c '^Applies to: ' "$SF_SPEC" || true)"
-SF13_KNOWN="$(grep -cE '^Applies to: (every research|ultra only)$' "$SF_SPEC" || true)"
+SF13_KNOWN="$(grep -cE '^Applies to: ultra only$' "$SF_SPEC" || true)"
 (( SF13_VALS == SF13_KNOWN )) || SF_WHY+=" SF-13:unknown-applicability-value"
 
-# (SF-14) The skill names the shared sections BY NAME, not by description. A name is an address;
-# a description has to be reconciled with the marking and drifts from it at the first edit.
-grep -qF '`## Manifest layout`, `## Identifiers` and `## Write order`' "$SF_SKILL" \
-    || SF_WHY+=" SF-14:shared-sections-not-named"
+# (SF-14) A standard research reads nothing from the reference at the moment of saving. The
+# statement is asserted, and so is the absence of every address that would contradict it: a
+# pointer into the reference for one of the three sections that moved is the reverted form,
+# and it is written as an address (`→` plus the heading), which innocent prose does not produce.
+grep -qF 'A standard research does not read that file.' "$SF_SKILL" || SF_WHY+=" SF-14:no-standard-research-statement"
+for SF14_SEC in '`## Manifest layout`' '`## Identifiers`' '`## Write order`'; do
+    if grep -qF "→ $SF14_SEC" "$SF_SKILL"; then SF_WHY+=" SF-14:points-into-the-reference-for:$SF14_SEC"; fi
+done
 
 # (SF-15) The `Readback` field is never empty. SF-10 holds that the field EXISTS; this holds what
 # it says when there was nothing to show — the one value that tells "nothing to show" apart from
@@ -3132,7 +3163,7 @@ grep -qF 'not needed (every requirement was stated)' "$SF_SKILL" || SF_WHY+=" SF
 grep -qF '`Readback` field is never empty' "$SF_SKILL"           || SF_WHY+=" SF-15:empty-readback-allowed"
 
 if [[ -z "$SF_WHY" ]]; then
-    pass "SF-1..SF-15 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, and the research format marks which of its sections a standard research reads"
+    pass "SF-1..SF-15 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, and a standard research reads nothing from the ultra reference"
 else
     fail "SF source fidelity:$SF_WHY"
 fi
@@ -4004,11 +4035,10 @@ fi
 # (the MF block below takes its own path var locally), so it is declared here — `set -u`
 # makes a forward reference fatal.
 UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
-# RD-E asserts the marker pair is DECLARED by its owner, so it needs the path to the
-# research-format spec. That path belongs to the UR family below; it is declared here
-# instead of copied, because `set -u` makes a forward reference fatal and a second
-# literal of the same path is exactly the drift these guards exist to catch.
-UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+# RD-E asserts the marker pair is DECLARED by its owner. The owner is the manifest template
+# of /unikit-explore since the manifest layout left the ultra reference, so RD-E reads the
+# skill; declared here because `set -u` makes a forward reference fatal.
+RDE_OWNER="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 
 # (RD-A) The recorded field and the normalization procedure, in all FOUR files.
 # unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
@@ -4171,9 +4201,9 @@ RDE_WHY=""
 #    redundant: RM-1 looks at the PRODUCER (does /unikit-explore write the markers), RD-E at
 #    the CONSUMERS (do the four readers name the region those markers delimit). Either can
 #    go red alone, and they fail for different reasons.
-[[ -s "$UR_REF" ]] || RDE_WHY+=" no-format-spec"
-grep -qF 'unikit:active-summary:start' "$UR_REF" || RDE_WHY+=" markers-not-declared-by-owner"
-grep -qF 'unikit:active-summary:end'   "$UR_REF" || RDE_WHY+=" end-marker-not-declared"
+[[ -s "$RDE_OWNER" ]] || RDE_WHY+=" no-format-owner"
+grep -qF 'unikit:active-summary:start' "$RDE_OWNER" || RDE_WHY+=" markers-not-declared-by-owner"
+grep -qF 'unikit:active-summary:end'   "$RDE_OWNER" || RDE_WHY+=" end-marker-not-declared"
 # 2. All four skills name the REGION, not the file. One -qF literal applied to four files, so
 #    a rephrasing in any one of them turns the guard red — which is the only mechanism holding
 #    four verbatim copies of one procedure together.
@@ -4430,8 +4460,7 @@ fi
 # plan marker would make /unikit-implement treat a research as a bundle — and the failure
 # would surface as a missing phase file, far from its cause. The two cross negatives are
 # the content of this guard; the positives only give them an object.
-# UR_REF is declared above the RD family — RD-E reads it and `set -u` forbids the
-# forward reference.
+UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 UR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 UR_PLAN_SPEC="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
 UR_WHY=""
@@ -4487,10 +4516,10 @@ fi
 # go red is worse than no guard — it reports confidence it never earned.
 UR3_WHY=""
 UR3_SECTION=""
-if ! grep -qF '## Identifiers' "$UR_REF"; then
+if ! grep -q '^### Identifiers$' "$UR_EXPLORE"; then
     UR3_WHY+=" no-section"
 else
-    UR3_SECTION="$(awk '/^## Identifiers$/{f=1;next} /^## /{f=0} f' "$UR_REF")"
+    UR3_SECTION="$(awk '/^### Identifiers$/{f=1;next} /^##+ /{f=0} f' "$UR_EXPLORE")"
     # Degenerate to fail when the section is empty (NN-4 / RT-7 convention): an object-less
     # guard must go red rather than pass on nothing.
     if [[ -z "$UR3_SECTION" ]]; then
@@ -4501,10 +4530,14 @@ else
         done
     fi
 fi
-grep -qF "must exist in \`## Active Summary\` of \`RESEARCH.md\`" "$UR_REF" || UR3_WHY+=" no-owner-rule"
-grep -qF 'never reused'                 "$UR_REF" || UR3_WHY+=" no-stability-rule"
-grep -qF 'Active Summary'               "$UR_REF" || UR3_WHY+=" active-summary-missing"
+# The contract moved into SKILL.md → `### Identifiers`; the vocabulary, owner and stability
+# asserts moved with it. `Traceability` stays negative on BOTH files: the ultra reference is
+# where a copy from the source format would land, the skill is where the contract now lives.
+grep -qF "must exist in \`## Active Summary\` of \`RESEARCH.md\`" "$UR_EXPLORE" || UR3_WHY+=" no-owner-rule"
+grep -qF 'never reused'                 "$UR_EXPLORE" || UR3_WHY+=" no-stability-rule"
+grep -qF 'Active Summary'               "$UR_EXPLORE" || UR3_WHY+=" active-summary-missing"
 if grep -qF 'Traceability'   "$UR_REF"; then UR3_WHY+=" traceability-returned";   fi
+if grep -qF 'Traceability'   "$UR_EXPLORE"; then UR3_WHY+=" traceability-returned-in-the-skill"; fi
 if [[ -z "$UR3_WHY" ]]; then
     pass "UR-3 the identifier vocabulary is closed (six prefixes), homed in the manifest's Active Summary, and stable"
 else
@@ -4528,15 +4561,18 @@ if [[ ! -s "$RM_SPEC" ]]; then
 elif [[ ! -s "$RM_SKILL" ]]; then
     RM_WHY+=" RM-0:skill-missing"
 else
-    # (RM-1) Both marker pairs are DECLARED in the spec and USED by the producer. The region
+    # (RM-1) Both marker pairs stand in the manifest TEMPLATE the producer copies. The region
     # between the active-summary markers is the hashed object of the whole drift mechanism —
     # without the markers there is nothing to hash, and the plan-side drift field of Phase 04
-    # has no object to be computed from. Asserted in both files because a marker declared and
-    # never emitted is exactly as useless as one emitted and never specified.
+    # has no object to be computed from. The guard used to read two files, the spec that
+    # declared the markers and the skill that emitted them; the layout left the spec, so the
+    # template is both, and the window is what keeps a marker mentioned only in prose from
+    # passing for one the template writes.
+    RM1_TEMPLATE="$(awk '/^# <Research Title>$/{f=1} f && /^```$/{exit} f' "$RM_SKILL" || true)"
+    [[ -n "$RM1_TEMPLATE" ]] || RM_WHY+=" RM-1:manifest-template-window-empty"
     for RM_MARK in 'unikit:active-summary:start' 'unikit:active-summary:end' \
                    'unikit:sessions:start' 'unikit:sessions:end'; do
-        grep -qF "$RM_MARK" "$RM_SPEC"  || RM_WHY+=" RM-1:marker-undeclared:$RM_MARK"
-        grep -qF "$RM_MARK" "$RM_SKILL" || RM_WHY+=" RM-1:marker-unused:$RM_MARK"
+        grep -qF "$RM_MARK" <<< "$RM1_TEMPLATE" || RM_WHY+=" RM-1:marker-not-in-template:$RM_MARK"
     done
 
     # (RM-2) The two state axes stay two. `Status` is completeness, `Lifecycle` is currency,
@@ -4546,12 +4582,12 @@ else
     # single error message — the skill answers "no researches", which is indistinguishable
     # from an honestly empty registry. Hence a negative on each axis carrying the other's
     # value, not merely a positive on both being present.
-    grep -qE '^Status: completed \| in-progress \| needs-follow-up' "$RM_SPEC" \
+    grep -qE '^Status: completed \| in-progress \| needs-follow-up' "$RM_SKILL" \
         || RM_WHY+=" RM-2:status-axis-missing-or-reworded"
-    grep -qE '^Lifecycle: active \| paused \| superseded' "$RM_SPEC" \
+    grep -qE '^Lifecycle: active \| paused \| superseded' "$RM_SKILL" \
         || RM_WHY+=" RM-2:lifecycle-axis-missing-or-reworded"
-    if grep -qE 'Lifecycle:.*completed' "$RM_SPEC"; then RM_WHY+=" RM-2:lifecycle-carries-completed"; fi
-    if grep -qE 'Status:.*active'       "$RM_SPEC"; then RM_WHY+=" RM-2:status-carries-active"; fi
+    if grep -qE 'Lifecycle:.*completed' "$RM_SKILL"; then RM_WHY+=" RM-2:lifecycle-carries-completed"; fi
+    if grep -qE 'Status:.*active'       "$RM_SKILL"; then RM_WHY+=" RM-2:status-carries-active"; fi
 
     # (RM-3) The brief retired WHOLE. A half-retirement — the artifact added while the old
     # template survives — is the shape that leaves two formats documented at once.

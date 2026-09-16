@@ -225,3 +225,30 @@ number" as already carried by `SKILL.md`, in `## Continuing a research`. Task 10
 section into `references/continuing.md`, which an ordinary save never reads. After task 10 the
 identifier stability rules (R-09, R-10) have no copy in `SKILL.md`, and task 12 has to bring them
 rather than drop them as duplicates.
+
+## Rationale moved out of the skill
+
+The skill keeps every rule below; the reason behind it is recorded here. Grouped by the
+section of `SKILL.md` that now carries the rule.
+
+### `### Identifiers` and the write order
+
+Both came from `references/ULTRA-RESEARCH-FORMAT.md`, where a standard research had to read
+them at the moment of saving. The move brought the rules; these are the reasons it left behind.
+
+- **IDs are optional.** An unreferenced ID is noise with a version number.
+- **A plan-affecting ID lives in `## Active Summary`.** That section is the one input
+  `/unikit-plan` takes and hashes, so a requirement-bearing ID that lives anywhere else is
+  invisible to the planner and its change produces no drift. IDs living only in `## Findings`
+  are allowed out loud, so the split reads as a choice rather than an oversight.
+- **A value in an artifact carries `rev.<n>` in the summary.** `/unikit-plan` hashes the summary
+  region and nothing else, so a number changed inside an ADR raises no drift, and a plan
+  standing on it never learns that its ground moved. One token, no copy of the value, and the
+  hashed region moves — which is the whole purpose.
+- **An ID is never reused.** Reuse silently rewrites the history of anything that already cited
+  it.
+- **`ADR-` is zero-padded to four.** It is a filename and must sort lexically.
+- **Artifacts before the manifest.** Written the other way round, the `## Artifact Index` would
+  point its links at files that do not exist yet.
+- **The registry before the gate.** The gate reads durable files from disk, and would otherwise
+  judge a registry that does not yet describe what was just written.
