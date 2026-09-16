@@ -743,23 +743,17 @@ The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with
 
 After all tasks in the current scope are done, perform the following actions.
 
-**IMPORTANT:** Steps 5.1 and 5.3 delegate work to Agent calls and do NOT wait for user input. **Step 5.2 is the exception and blocks on the user** — it never writes a rule without an answer. Steps 5.4–5.8 are sequential and may involve user interaction.
+**IMPORTANT:** Step 5.3 delegates to `docs-agent` and does NOT wait for it. **Step 5.2 blocks on the user** — it never writes a rule without an answer. Steps 5.4–5.8 are sequential and may involve user interaction.
 
 **5.1: Check TODO.md**
 
-After implementation, check if any open tasks in the project TODO list were resolved:
-
-1. Check if `.unikit/TODO.md` exists. If not — skip this step.
-2. Read `.unikit/TODO.md` and collect all unchecked tasks (`- [ ]`).
-3. Compare each unchecked task against the work just completed — match by semantic similarity to modified files, classes, methods, or feature descriptions from the plan.
-4. If matching tasks found — change `- [ ]` to `- [x]` directly in `.unikit/TODO.md` using the Edit tool. No agents or skills needed.
-5. If no matching tasks found — skip silently.
+If `.unikit/TODO.md` exists, tick every open task (`- [ ]` → `- [x]`, with `Edit`) that the completed work resolves — matched by meaning against the modified files, classes, methods and the plan's feature descriptions. No file, or no match → skip silently.
 
 **5.2: Propose New Rules**
 
 The candidates are already collected: the rows whose status is `open` in the manifest's `## Rule Candidates` (Step 3.4). This step formulates nothing anew — it proposes what is written down, and records the choice.
 
-1. **No `open` candidate → silence.** Not a line, not a "no rules found". A run without candidates is the ordinary case, and a line about it on every run turns the signal into wallpaper — the same rule the empty findings table follows in Step 5.5.
+1. **No `open` candidate → silence** — not even a "no rules found" line.
 2. **Select at most three** `open` candidates. The filter: a general convention for future code; not about one task; not a description of the current code; absent from `.unikit/RULES.md` and from `RULES_INDEX.md`; one line, one directive.
 3. **Print the candidates as plain markdown, in a block of their own** — before the question:
 
@@ -772,15 +766,15 @@ The candidates are already collected: the rows whose status is `open` in the man
       from: task 4.1
    ```
 
-   **Print first, ask second: the question mechanism carries the options and nothing else.** A question that also holds the payload is invisible on a runtime that has no such mechanism — that is a measured failure, not a supposition.
-4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"**. Three candidates and a refusal are exactly four options, the tool's limit — which is the reason the count is capped at three. Keep the option label short; the full rule text goes in the option's `description`, and that is why the one-line rule form is a condition of readability here rather than decoration.
+   **Print first, ask second: the question mechanism carries the options and nothing else.**
+4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"** — four options at most, the tool's limit. Keep the option label short; the full rule text goes in the option's `description`.
 5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
 6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
 7. **What was selected goes to `/unikit-rules` as one numbered batch**, through the same three-tier dispatch as Step 5.6: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline; Tier 2 the inline slash form `/unikit-rules <batch>`, rewritten per agent by the installer; Tier 3 printing the command, only where no inline mechanism exists at all. This is **a real call, not text in backticks**.
 8. **Show the user the `## Batch result` table** the delegate returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
 9. Only then proceed to Step 5.3.
 
-**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed — the one line explaining why fewer were proposed than recorded. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added`: the rule was not written, and marking otherwise would be a lie — print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the same holds: the statuses stand, and `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`.
+**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added` — the rule was not written; print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the statuses stand as well: `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`.
 
 **5.3: Documentation Checkpoint**
 
@@ -788,19 +782,11 @@ The candidates are already collected: the rows whose status is `open` in the man
 
 Delegate to `docs-agent` to update or create documentation based on completed work. Do NOT wait for the agent to finish — proceed to Step 5.4 immediately.
 
-**Fallback** (if the `Agent` tool is unavailable in the current environment): you MUST invoke `/unikit-docs` yourself via whatever skill-invocation mechanism is available. This must be a real call, not a printed recommendation to the user, and must not be wrapped in triple backticks. Wait for the invocation to return, then proceed to Step 5.4.
+**Fallback** (no `Agent` tool): invoke `/unikit-docs` yourself — a real call, not a printed recommendation — wait for it to return, then proceed to Step 5.4.
 
-**If `Docs: no` or Settings section is missing:**
+**If `Docs: no` or the Settings section is missing:** do **not** delegate; emit `WARN [docs] Docs policy is no/unset; skipping documentation`.
 
-- Do **not** delegate to `docs-agent`
-- Emit `WARN [docs] Docs policy is no/unset; skipping documentation`
-
-**Always include documentation outcome in the completion output (Step 4):**
-
-Append one of these lines to the Implementation Summary:
-- `Documentation: delegated to docs-agent`
-- `Documentation: updated via /unikit-docs (fallback for docs-agent)`
-- `Documentation: warn-only (Docs: no/unset)`
+The Implementation Summary (Step 4) carries one documentation line: `Documentation: delegated to docs-agent` · `Documentation: updated via /unikit-docs (fallback for docs-agent)` · `Documentation: warn-only (Docs: no/unset)`.
 
 **5.4: Handle plan file after completion**
 
@@ -814,28 +800,22 @@ Options:
 2. No, keep it
 ```
 
-Based on choice:
-- Yes → delete `.unikit/code/PLAN.md`
-- No → leave as is
+Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
-**If using a folder plan** (`.unikit/code/plans/<folder>/`, e.g. `.unikit/code/plans/2026-03-10_core-loop/`):
-- Keep it — a folder plan is a durable record of what was done; the user may delete it before merging if desired
-- **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** It shares a name with the flat fast plan and differs from it only by path, so the prompt above must always spell out the full path it is about to remove.
+**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`** — it shares its name with the flat fast plan, so the prompt above always spells out the full path it removes.
 
 **5.5: MCP Findings handoff**
 
 Read the plan's `## MCP Findings` table.
 
-- **No rows** (or no such heading) → say nothing at all and go to 5.6. Not a note, not a "no findings this run" line. A run with no findings is the ordinary case, and a line announcing it every time is how a signal becomes wallpaper.
+- **No rows** (or no such heading) → say nothing at all — not even a "no findings this run" line — and go to 5.6.
 - **Rows present** → offer to move them to the durable surface:
 
 ```
 <n> MCP findings recorded in this plan. Transfer them to .unikit/MCP-RECHECK-NOTES.md?
 ```
 
-  On agreement, invoke `Skill(skill: "unikit-mcp-trap", args: "<path to the plan file>")`. The explicit path is what makes it read *this* plan and nothing else — see that skill's `## Input`.
-
-**Why here, before review and commit.** The findings are part of the result of this run, and they are the part with no other keeper: the code is in git, the tasks are in the plan, and a finding lives only in a table nobody has read yet. Put this after review and it competes with a discussion of code quality for the user's attention — and loses, every time, ending up "later", which is where it was before this step existed.
+  On agreement, invoke `Skill(skill: "unikit-mcp-trap", args: "<path to the plan file>")` — the explicit path makes it read this plan and nothing else.
 
 **5.6: Verify or Commit**
 
@@ -854,14 +834,12 @@ Based on choice:
 **These are skill invocations, in this session — not delegations.** Three tiers, in order:
 
 - **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit")`, inline, waiting for each to return before starting the next. This is the path on Claude Code.
-- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, one at a time, waiting for each. The slash form is rewritten per agent by the installer (Codex `$unikit-review`, Qwen `/skills unikit-review`); `Skill(...)` is **not** rewritten and non-Claude agents have no `Skill` tool, so without this tier the step is dead on 5 of 6 agents. This must be a **real call**, not a printed recommendation.
+- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, then `/unikit-commit`, one at a time, waiting for each. The slash form is rewritten per agent by the installer; `Skill(...)` is not.
 - **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at all, print the ordered `Run: /unikit-…` list for the user to execute by hand. Last resort, never the default.
 
 The invocation must be **a real call, not printed text**, and must not be wrapped in triple backticks.
 
-**Review is NOT delegated here — unlike Step 5.3.** State it plainly, because the shape of this file argues the other way: a step above says "Delegate to `docs-agent`", a `Subagent Delegation — BLOCKING PRE-REQUISITE` block sits at the top, and generalising from the neighbours is exactly how this step came to be read as a delegation.
-
-Why the distinction is real and not stylistic: a subagent carries the findings into a context you cannot see, so `file:line` references stop being clickable, no follow-up question can be asked about a finding, and — since `unikit-review` holds `Agent` in `allowed-tools` for its `+check` validator — the validator would run as an agent inside an agent. `docs-agent` is delegated precisely because its output is *not* a conversation: it writes a file and finishes. Step 5.2 is delegated to nobody at all — it blocks on the user, and only the answer decides what is written.
+**Review is NOT delegated here — unlike Step 5.3.** A review is a conversation: in a subagent its `file:line` references stop being clickable, no follow-up question can be asked about a finding, and its `+check` validator would run as an agent inside an agent. `docs-agent` is delegated because it writes a file and finishes.
 
 **5.7: Context Cleanup**
 

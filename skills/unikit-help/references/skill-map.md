@@ -67,12 +67,15 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   bug happen". Use before planning when you don't yet have technical direction.
 - **In:** a topic / question / system name — or, when a design workspace exists, a **flow**
   / player sequence (a *first-class flow input* grounded on the dynamics axis via the shared
-  `design-read` contract). The researches index is regenerated on every save.
+  `design-read` contract) — or the slug of an existing research, which continues that research
+  instead of opening a second folder. The researches index is regenerated on every save.
 - **Modes:** default | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
   dependency graph — written into the research folder by relevance, never by checklist).
 - **During:** the dialogue log is pinned as you talk, not written at save time, so the folder
   exists before the save; before the save is confirmed the agent reads back the requirements it
-  inferred, the ones that depart from what you said, and the ones open to two readings.
+  inferred, the ones that depart from what you said, and the ones open to two readings. Every
+  save ends with a coherence gate run in a fresh context: it re-reads the written files, and
+  after two passes asks you instead of looping.
 - **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`,
   the verbatim dialogue log, and adaptive artifacts in ultra), and a regenerated
   `researches/INDEX.md`.
@@ -107,7 +110,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   commit at checkpoints. Resumable across sessions.
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
 - **In:** the latest plan, or `@<folder>`, or a phase/task selector. Bootstraps rules once, then
-  codes inline.
+  codes inline. `--list` lists the available plans and `status` shows progress — both stop
+  without implementing anything.
 - **Out:** project source code; updates the plan manifest's checkboxes.
 - **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
   `/unikit-verify` / `/unikit-commit`.
