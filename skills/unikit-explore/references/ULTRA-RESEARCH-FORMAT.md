@@ -207,6 +207,11 @@ format above.
 Numbering is per research folder and starts at 1 — `ADR-` at `0001`, zero-padded to four
 because it is a filename and must sort lexically.
 
+**The shape of a `REQ-` line is not specified here.** It carries the user's own words plus an
+anchor into `SOURCE.md` and a provenance marker, and the requirement line contract lives in
+`SKILL.md`, under the `## Active Summary` template — it binds every research, and this file is
+read only when the leading token is `ultra`.
+
 ## Write order
 
 1. The adaptive artifacts.

@@ -549,8 +549,12 @@ Topic: <1-2 sentences: what was explored>
 Goal: <what this research is for — the decision it has to enable>
 Scope: <in / out — the out-half carries the stop condition>
 Constraints: <`C-<n>` — what the subject imposes>
-Requirements: <`REQ-<n>` — established by evidence>
-Decisions: <`DEC-<n>` — taken, each with its reason in one line>
+Requirements: <`REQ-<n>` — "<the user's own words>" (`SOURCE.md:<from>-<to>`): <gloss>.
+              A requirement not sourced from the user carries `inferred` in place of a
+              quotation; one that departs from what they said carries `diverges`.>
+Decisions: <`DEC-<n>` — taken, each with its reason in one line. A requirement marked
+            `diverges` is invalid without a `DEC-` here naming why the user's own proposal
+            was not taken.>
 Risks: <`RISK-<n>` — material, not hypothetical>
 Open questions: <`OQ-<n>` — unresolved; say which ones block>
 Success signals: <how we will know the work landed>
@@ -606,7 +610,79 @@ how both humans and agents reach the section they need.
 **`## Active Summary` is the planner's input and the only hashed region.** Write it to be read
 cold, by someone who never saw the conversation. `## Findings` holds the reasoning that
 produced it; the summary holds the conclusion. A fact belongs to exactly one of the two — the
-other refers to it by ID, never by retelling it.
+other refers to it by ID, never by retelling it. The identifier prefixes it uses, and the rules
+they obey, are specified in `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` →
+`## Identifiers`.
+
+**A requirement the user stated carries their own words and an anchor into the log.** The line
+has three parts, and they do not substitute for one another:
+
+```
+`REQ-<n>` — "<the user's own words>" (`SOURCE.md:<from>-<to>`): <your gloss>
+```
+
+| Part | Role | Required |
+|------|------|----------|
+| the quotation | **normative** — it *is* the requirement, and it doubles as the anchor | whenever the source is something the user said |
+| `` `SOURCE.md:<from>-<to>` `` | a hint for the eye, not a contract | written alongside the quotation; never checked |
+| the gloss | your own formulation, in the project's terms | always; **subordinate** to the quotation, never a substitute for it |
+
+1. **Quote the words that distinguish, not only the noun.** A speaker's nouns are often
+   interchangeable — "block" and "section" can name one thing inside a single sentence — and
+   what tells two designs apart are the modifiers next to the noun: "a *separate* block *of the
+   same kind*". A quotation with the modifiers cut out of it does the requirement no good.
+2. **What gets checked is that the phrase is present, not that the line range exists** — a grep
+   over `SOURCE.md`, resolved the way every other reference is. That is already the gate's
+   criterion 2, so **no sixth criterion and no tenth `## Integrity` check are introduced for
+   it**: a quotation that resolves to nothing is an ordinary criterion-2 finding, blocking like
+   any other unresolved reference.
+3. **The anchor is the quotation, and the line number is a hint.** Anchoring on the number
+   would need the log to be stable, and nothing can promise that: `.unikit/` sits under the
+   project's `.gitignore` in the ordinary case, so a silent rewrite of a log is invisible to
+   version control in every such project. A quotation survives any rewrite that kept the words
+   and fails exactly when the words changed, which is the behaviour wanted. Numbers that have
+   drifted are not a finding — repair them next time you touch the requirement.
+4. **A requirement with no user source carries no anchor.** That is not an omission but a
+   different class, and it is marked as one below.
+5. A requirement may rest on up to three places in the log, joined by `·`. More than three is a
+   sign that it is not one requirement; split it.
+
+The order is not a convenience: the anchor points at whatever was the source of the wording at
+the moment of writing, so the log has to be verbatim **before** an anchor is put onto it. An
+anchor onto a digest is the same defect wearing a reference.
+
+**Every requirement carries where it came from.** The marker is written inline in the line, in
+backticks, and there are exactly three of them:
+
+| Marker | Means | Rights |
+|--------|-------|--------|
+| `stated` | the source is something the user said; the line carries the quotation and the anchor above | trusted; not put back to them |
+| `inferred` | your own conclusion — from the code, from documentation, from a defect you found | **carries none of the user's authority**; shown in the readback before it becomes the planner's input |
+| `diverges` | the requirement departs from what the user actually said | **invalid without a paired `DEC-`** naming why their own proposal was not taken; shown in the readback |
+
+1. **The marker is an attribute of the line, not a prefix.** The identifier vocabulary stays
+   closed at six (`references/ULTRA-RESEARCH-FORMAT.md` → `## Identifiers`). A seventh prefix
+   is a decision in its own right, and this is not one.
+2. **`diverges` without its `DEC-` is a defect.** What the pairing prevents is concrete: a
+   requirement that quietly overrules what the user proposed, travelling to the plan and into
+   the implementation with no record that the proposal was ever weighed.
+3. **An unmarked requirement is read as `stated`** — which is what makes forgetting the marker
+   safe. An unmarked line owes a quotation and an anchor, so the omission surfaces as a missing
+   anchor instead of passing in silence.
+4. The vocabulary is the design side's, one layer over: `data/gamedesign/gd-provenance.md`
+   splits `extracted from SOURCE.md` (trusted, author-sourced) from `generated` (carrying no
+   author authority). `stated` is the first of those, `inferred` the second. Saying so is what
+   keeps the two vocabularies from drifting apart when either one is next edited.
+
+Two cases worth settling in advance:
+
+- **Partly the user's, partly yours** — they named the goal and you worked out the mechanism.
+  Their half stays `stated` with the quotation on it, and the worked-out half becomes its own
+  `REQ-` marked `inferred`. There is no mixed marker: a mixed marker would restore the exact
+  blur these markers exist to remove.
+- **They agreed to something you proposed** ("yes, let's do that"). That is `stated`, and what
+  you quote is their agreement *together with* the proposal it accepted. Quote the "yes" on its
+  own and the anchor resolves to a word that decides nothing.
 
 **Language Awareness for `RESEARCH.md`**: the manifest follows the same language rules as
 every other artifact. When the configured language is not English, translate section headings

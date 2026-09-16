@@ -40,6 +40,18 @@ even when you wrote them minutes ago — what you meant to write is not what is 
    artifact is present in `## Active Summary`. A superseded item is named superseded
    explicitly and keeps its own number.
 4. Claims distinguish source evidence from inference and from what remains unknown.
+
+   Where a requirement carries a provenance marker — `stated` / `inferred` / `diverges`, as
+   specified in the skill — the distinction is **read**, not judged: what you check is that the
+   marker is present and that a `diverges` has its paired `DEC-`. That makes this criterion
+   mechanical in the same way 2, 3 and 5 are. Where the markers are absent — an older research,
+   a summary written before they existed — it works exactly as it did before, on the prose. A
+   research with some requirements marked and some not is checked in both modes at once, and an
+   unmarked requirement is not a finding for being unmarked.
+
+   None of this widens the gate: there are still five criteria, `SOURCE.md` is still outside
+   the durable scope, and the manifest is still never compared against the log.
+
 5. **One value, one owning section.** A **value** — a number, a threshold, a set of
    parameters, an enumeration, a path, a signature, the membership of a list — is written
    in exactly one section. Everywhere else it is a reference by ID.
