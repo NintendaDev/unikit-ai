@@ -172,7 +172,7 @@ In ultra the same box additionally holds `phase-NN-*.md` files.
 |---------|----------|-----------------|--------|
 | `/unikit-roadmap` | Strategic planning, milestones, long-term vision | No | `.unikit/ROADMAP.md` |
 | `/unikit-roadmap check` | Automated progress scan | No | Reads existing roadmap |
-| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` (optional - output can be used directly in the current session for fast planning) |
+| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` - the dialogue log is written verbatim as you talk; saving the research is the part that needs your agreement (optional - output can be used directly in the current session for fast planning) |
 | `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
 | `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/<name>/` |
 | `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Yes | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
@@ -256,8 +256,12 @@ Creates `.unikit/ROADMAP.md` - a strategic checklist of major milestones (not gr
 Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/<slug>/` with a single `RESEARCH.md` manifest:
 
 - `RESEARCH.md` - the whole research in one file: a header carrying `Created:` / `Updated:` / `Status:` / `Lifecycle:`, an `## Active Summary` between two markers (the declared input for planning), the measured `## Findings`, and an append-only `## Sessions` log
-- `SOURCE.md` - the original prompts, agent questions and user answers that drove the research; kept separate because it is a log that grows on its own and is read for its first forty lines
+- `SOURCE.md` - the original prompts, agent questions and user answers that drove the research, quoted verbatim rather than summarised; kept separate because it is a log that grows on its own
 - adaptive artifacts in `ultra` - a C4 view, ADRs, a dependency graph, a `CONTRACTS.md`, each written only when the subject actually produced one, and each *named with its reason* when it was not
+
+`SOURCE.md` is written as the conversation happens rather than at the end: the folder appears on disk from the moment the conversation has become a research - a requirement stated, a decision taken, a correction made - and each reply appends what has been said since. A one-off question never reaches that point and leaves nothing behind. Writing the log is not saving the research: it creates no manifest, touches no registry, runs no gate and asks nothing, and the research is still saved only when you agree to it. A folder carrying a log and no manifest is an unfinished research - it stays out of `researches/INDEX.md`, is announced there by name, and resumes with `/unikit-explore <folder>`.
+
+Before the save is confirmed the agent reads back the requirements you have not actually seen: the ones it inferred itself, the ones that depart from what you said, and the ones whose wording admits two different implementations. What you stated unambiguously is not shown. Anything left unconfirmed becomes an open question instead of the planner's input.
 
 `/unikit-plan` picks the research up from `researches/INDEX.md` and reads the `## Active Summary` as its declared input, using `## Findings` and the adaptive artifacts for rationale. Saving is the recommended approach for maximum code quality, but not mandatory. For quick, straightforward solutions you can skip saving and call `/unikit-plan` directly in the current explore session - the planner will use the conversation context instead.
 

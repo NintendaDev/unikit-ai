@@ -70,8 +70,12 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   `design-read` contract). The researches index is regenerated on every save.
 - **Modes:** default | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
   dependency graph — written into the research folder by relevance, never by checklist).
-- **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`
-  and adaptive artifacts in ultra), and a regenerated `researches/INDEX.md`.
+- **During:** the dialogue log is pinned as you talk, not written at save time, so the folder
+  exists before the save; before the save is confirmed the agent reads back the requirements it
+  inferred, the ones that depart from what you said, and the ones open to two readings.
+- **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`,
+  the verbatim dialogue log, and adaptive artifacts in ultra), and a regenerated
+  `researches/INDEX.md`.
 - **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the manifest's
   `## Active Summary`), `/unikit-fix` (if a bug was found).
 
