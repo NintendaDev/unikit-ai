@@ -211,7 +211,9 @@ because it is a filename and must sort lexically.
 
 1. The adaptive artifacts.
 2. `RESEARCH.md` — with the `## Artifact Index` pointing at files already written.
-3. `SOURCE.md` (prompt-based explorations only).
+3. `SOURCE.md` (prompt-based explorations only) — pinned as the conversation went on, and so
+   already on disk before the save begins. What happens at this point is the append of
+   whatever the log is still missing, never the writing of the file.
 4. `researches/INDEX.md` — **re-rendered whole** from the contents of the folders.
 5. The Integrity checks.
 6. The coherence gate.
