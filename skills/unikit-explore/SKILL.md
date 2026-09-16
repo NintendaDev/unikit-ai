@@ -580,6 +580,8 @@ reasoning, never the requirement. Include ALL:
   coherence gate's value sweep on the next save — prose here is paid for later in gate passes>
 - **Key notes**: <what was learned>
 - **Gate**: <`passed (N passes)` | `stopped at budget: <k> unresolved — OQ-…`>
+- **Readback**: <`<N> shown · <M> corrected · <K> demoted to OQ`, or
+  `not needed (every requirement was stated)`>
 - **Links (paths)**: <files read or written>
 <!-- unikit:sessions:end -->
 
@@ -597,6 +599,14 @@ Filling the `What changed` line — one item per line, values and their carriers
                     `DEC-49` card catalogue: 12 → 13 (carriers: `DEC-49`, "13", "thirteen")
 ```
 
+**The `Readback` field is never empty.** Where there was nothing to show it reads `not needed
+(every requirement was stated)`: an empty field is indistinguishable from a step that was
+skipped, and telling those two apart is the whole reason the field exists. `K > 0` names the
+unconfirmed remainder — those requirements are already sitting in `Open questions:`, and the
+field only makes them countable. The three numbers are counters and never a second home for the
+requirements themselves, and they are not obliged to add up: `M + K` can be less than `N`,
+because the rest were confirmed as they stood.
+
 **The two state axes are separate.** `Status` is completeness, and its three values never
 change — the `/unikit-plan` registry filter greps this field by name and answers "no
 researches" rather than an error when it is renamed. `Lifecycle` is currency. Neither is
@@ -612,7 +622,8 @@ cold, by someone who never saw the conversation. `## Findings` holds the reasoni
 produced it; the summary holds the conclusion. A fact belongs to exactly one of the two — the
 other refers to it by ID, never by retelling it. The identifier prefixes it uses, and the rules
 they obey, are specified in `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` →
-`## Identifiers`.
+`## Identifiers`. A requirement pointing at a `## Findings` sub-heading for its layout is that
+same reference by ID in another form — ordinary forward resolvability, not a new mechanism.
 
 **A requirement the user stated carries their own words and an anchor into the log.** The line
 has three parts, and they do not substitute for one another:
@@ -683,6 +694,50 @@ Two cases worth settling in advance:
 - **They agreed to something you proposed** ("yes, let's do that"). That is `stated`, and what
   you quote is their agreement *together with* the proposal it accepted. Quote the "yes" on its
   own and the anchor resolves to a word that decides nothing.
+
+**A requirement about structure is tested for two readings before it is written down.** The
+trigger is a closed list: a requirement about structure, layout, order or quantity. Not the
+ones that feel suspicious, and not all of them — in a summary of twenty this catches three to
+five.
+
+The operation is to **write out both readings**, two lines, and look at what you got:
+
+```
+REQ-6  "the payload is shown as five sections"
+  A) five sibling frames; no "payload" container at all
+  B) one "payload" frame, five subsections inside it
+  both buildable, the code differs → FAIL
+```
+
+If the second reading **does not write** — you try and there is nothing to put on the B line —
+the test has passed. That is what makes it terminate, the property criteria 2 and 3 of the gate
+also have.
+
+On a failure, resolve from cheapest to dearest:
+
+1. **Put the distinguishing word from the source into the requirement.** What tells two such
+   requirements apart are the modifiers next to the noun, not the noun.
+2. **The source does not distinguish → separate the readings with a diagram.** The diagram
+   lives in `## Findings`, which already holds the ASCII drawings, and the requirement carries
+   a reference to its sub-heading:
+   `` `REQ-<n>` — "<quote>" (`SOURCE.md:…`): <gloss> (layout: `## Findings` → "<sub-heading>") ``.
+   Nothing new is checked for this — the gate's criterion 2 already requires everything the
+   summary cites to be defined below. The diagram is **normative, not an illustration**: where
+   it and the gloss disagree, the diagram is the one that is right. And where the layout cannot
+   be drawn in ASCII at all — three-dimensional, animated, data-dependent — this rung is
+   skipped rather than forced, and the requirement goes to the next one.
+3. **Still two readings after that → it is not a requirement but an `OQ-<n>`**, and it goes to
+   the readback below.
+
+Three notes on the trigger. More than two readings fails the same way, and the readback then
+gets the list rather than a pair — two is the minimum sign of failure, not a ceiling. A
+structural requirement the user never dictated (`inferred`) is tested all the same, because it
+is ambiguous in exactly the same way. And where you cannot tell whether a requirement is
+structural, treat it as structural: a false positive costs two written lines, a miss costs a
+replanned phase.
+
+This is a discipline of writing, not a sixth criterion of the gate. The gate's scope is closed
+at five, and one of its passes costs minutes where this costs a line.
 
 **Language Awareness for `RESEARCH.md`**: the manifest follows the same language rules as
 every other artifact. When the configured language is not English, translate section headings
@@ -805,6 +860,72 @@ records only what the last session believed.
 **Language Awareness**: Follow the same language rules as other artifacts. Translate section headings and prose into the configured language. Keep code identifiers and file paths in English.
 
 **Important**: Capture the actual dialogue content faithfully — and "faithfully" here names two mechanics, not a disposition: every answer the user gave is a quotation, and every cut you make inside one is marked. The value of this artifact is in preserving the exact questions, answers, and clarifications, not in summarizing or rephrasing them.
+
+### Step 3.5: Readback
+
+Before the registry is re-rendered and before the gate runs, put back to the user the
+requirements they have not actually seen. This is the only check in the whole mechanism that
+asks the source of truth instead of the disk, and it costs one turn.
+
+**What goes in — three classes, and only these:**
+
+| Class | Where it comes from |
+|-------|---------------------|
+| `inferred` | the provenance marker |
+| `diverges` | the provenance marker |
+| failed the two-readings test | the third rung of the resolution ladder |
+
+A requirement marked `stated` that passed the test is **not shown**. That is what keeps the
+list short, and a short list is the only defence against this step turning into something that
+gets clicked through: out of twenty-two requirements it typically prints three.
+
+**It is a printed block, not `AskUserQuestion`.** The answers are free-form and per line ("not
+A but B, because…"), a four-option modal does not carry that, and the number of options needed
+is the number of lines shown. The tool is in `allowed-tools` and is deliberately not used here.
+
+The block is written here in English; the Language Awareness prerequisite renders it in the
+configured language at runtime, exactly as it does every other printed block in this skill.
+
+```
+Before saving — <N> requirements out of <M>. The rest go as they are.
+
+<ID>  <CLASS>
+  I wrote:   "<your formulation>"
+  You said:  "<the quotation>"                       <anchor>
+  <two readings: A) … B) … → A or B?>
+  <diverges:   my reason: …  → take mine / restore yours / make it an open question?>
+  <inferred:   grounds: …    → a requirement or a finding?>
+```
+
+**What the answers do:**
+
+- **A correction** → `Edit` the `RESEARCH.md` already on disk: rewrite the requirement, change
+  its marker to `stated`, and anchor it to the user's words from this very exchange — they are
+  in the log already, pinned as they were said.
+- **A confirmation** → the marker stays and nothing is rewritten.
+- **"That is not a requirement"** → the line leaves `Requirements:` and its content moves to
+  `## Findings`. Its `REQ-<n>` is **not reused**; the next requirement takes the following
+  number.
+- **A correction that turns out to be a new requirement** → open a new `REQ-` with the next
+  number, marked `stated`. That is a normal outcome of asking, not an error.
+
+**Where this stands is a property, not a compromise.** The corrections land on disk before the
+registry is re-rendered and before the gate reads the files, so the gate checks the corrected
+text rather than the text that was shown.
+
+**Nobody answered** — the user left, or interrupted. The save is **not** cancelled. Every
+requirement of the three classes that went unconfirmed is demoted to an `OQ-<n>` and leaves
+`Requirements:`, and one line is printed:
+
+```
+WARN [readback] <k> requirements went unconfirmed — demoted to OQ
+```
+
+A requirement the source of truth never saw has no business being declared the planner's input.
+The discipline is the gate's own: the remainder is written down, never dropped.
+
+**Nothing to show** — every requirement is `stated` and every test passed. Skip the step in
+silence: no block, no line. An empty ritual is precisely how a check stops being read.
 
 ### Step 4: Re-render the Researches Index
 
