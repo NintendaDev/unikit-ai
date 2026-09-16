@@ -32,7 +32,7 @@ allowed-tools:
 user-invocable: true
 metadata:
   author: unikit
-  version: "2.2"
+  version: "2.3"
   category: research
 ---
 

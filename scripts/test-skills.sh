@@ -2935,6 +2935,159 @@ else
     fail "CG research coherence gate:$CG_WHY"
 fi
 
+# ─────────────────────────────────────────────
+# SF: source fidelity — the requirement that reaches the plan is the one that was said.
+# CG watches the GATE (its call, its budget, its scope, its predicate); SF watches the path a
+# requirement travels (the log, the anchor, the provenance marker, the readback). The one
+# deliberate overlap is SF-8, and its comment names why CG-2 does not cover it.
+# The family exists because of a measurement: before it, every content guard on this skill
+# addressed the two surfaces that had not rotted, and the SOURCE.md template — the one that
+# had — was watched by nothing at all, which is why it survived in first-release form.
+SF_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+SF_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+SF_GATE="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+# Declared per family rather than borrowed from CG_*: the variable name says which family reads
+# it, so moving a family leaves no dangling reference. Declared above first use — `set -u`
+# makes a forward reference abort the suite instead of failing one guard.
+
+SF_WHY=""
+# (SF-1) The SOURCE.md answer is a quotation, not a digest. Two halves, and neither alone is
+# enough: the negative catches the inline form COMING BACK (a rule added while the old sample
+# stays beside it), the positive catches the rule being DELETED (samples left untouched).
+if grep -qF '**Answer**: <' "$SF_SKILL"; then SF_WHY+=" SF-1:inline-answer-form-returned"; fi
+grep -qF 'An answer is a quotation, never a digest.' "$SF_SKILL" || SF_WHY+=" SF-1:no-quotation-rule"
+grep -qF 'Offered:' "$SF_SKILL" || SF_WHY+=" SF-1:no-offered-options-block"
+
+# (SF-2) The elision convention exists and forbids cutting inside a naming noun phrase — the
+# cut that removed "separate … of the same kind" and left the noun that decided nothing.
+grep -qF '[…]' "$SF_SKILL"         || SF_WHY+=" SF-2:no-elision-marker"
+grep -qF 'noun phrase' "$SF_SKILL" || SF_WHY+=" SF-2:no-noun-phrase-ban"
+
+# (SF-3) Pinning is declared, declared EARLY, targets the research folder itself, announces an
+# unfinished exploration as resumable, keeps its floor, and never brings back the hidden
+# scratch file A1 rejected. Positional by the CG-3 precedent: pinning declared after the saving
+# section is read too late, and the first exchange — the one carrying the original request — is
+# exactly the one that would go unpinned.
+SF3_PIN="$(grep -n '^## Pinning' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
+SF3_SAVE="$(grep -n '^## Saving Research Results' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
+if [[ -z "$SF3_PIN" ]]; then
+    SF_WHY+=" SF-3:no-pinning-section"
+elif [[ -z "$SF3_SAVE" ]]; then
+    SF_WHY+=" SF-3:no-save-section"
+elif (( SF3_PIN > SF3_SAVE )); then
+    SF_WHY+=" SF-3:pinning-declared-after-saving($SF3_PIN-after-$SF3_SAVE)"
+fi
+grep -qF '<slug>/SOURCE.md' "$SF_SKILL" || SF_WHY+=" SF-3:no-folder-target"
+# The re-render literal `no readable RESEARCH.md` is NOT asserted here on purpose: UR-2 already
+# owns it, in this same file. Two guards on one defect give two failures and the question of
+# which is canonical — the ED-8 precedent. Do not re-add.
+grep -qF 'NOTE [research]' "$SF_SKILL" || SF_WHY+=" SF-3:no-unfinished-branch"
+if grep -qF '.pin.' "$SF_SKILL"; then SF_WHY+=" SF-3:scratch-file-returned"; fi
+# The floor is the half that keeps "the agent decides when" from becoming "the agent defers".
+grep -qF 'When the conversation crystallizes' "$SF_SKILL" || SF_WHY+=" SF-3:no-floor-anchor"
+
+# (SF-4) A pin that cannot be written degrades loudly and does not take the conversation with
+# it. One WARN, not two: the two folder states are NOTE-level and belong to SF-3 — an
+# unfinished exploration is resumable work, not a failure.
+grep -qF 'WARN [pin]' "$SF_SKILL" || SF_WHY+=" SF-4:no-write-failure-degradation"
+
+# (SF-5) The auto-save prohibition survives in both places and keeps naming its object.
+# Count the RULE, not the word: `auto-save` occurs three times, one of them a mention inside
+# the gate rule, so a '>= 2' counter on the bare word survives the deletion of one of the two
+# rules. Measured, not supposed.
+(( "$(grep -cF "**Don't auto-save**" "$SF_SKILL")" == 2 )) || SF_WHY+=" SF-5:auto-save-rule-weakened"
+grep -qF 'Always offer and let the user decide' "$SF_SKILL" || SF_WHY+=" SF-5:offer-rule-lost"
+
+# (SF-6) The anchor contract is declared AND presented in the manifest template. Two carriers:
+# a fix to one of them leaves the other stale in silence.
+# It is asserted on SKILL.md, not on the reference, and that is the point of the guard: the
+# reference is loaded only when the leading token is `ultra`, so a guard pointed there would
+# pass while the rule stayed invisible to a standard research — the failure this family exists
+# to prevent.
+grep -qF 'SOURCE.md:' "$SF_SKILL" || SF_WHY+=" SF-6:no-anchor-contract"
+# The anchor is the quotation; the line number is a hint. A skill that makes the line number
+# the contract has silently reverted the finding that took the numbers' ground away. The file
+# is ENGLISH, so is the literal, and it is a formulation rather than a heading — cosmetics do
+# not move it, a change of meaning does.
+grep -qF 'the line number is a hint' "$SF_SKILL" || SF_WHY+=" SF-6:line-number-still-the-contract"
+# The reference carries a pointer, never a copy — the file's own "one value, one owning
+# section" rule applied to itself.
+grep -qF 'the requirement line contract lives in' "$SF_SPEC" || SF_WHY+=" SF-6:no-pointer-from-spec"
+# The window opens on the marker, not on a heading: the markers are already held by RM-1, so
+# the window stands on a guarded anchor rather than on prose.
+SF6_AS="$(awk '/unikit:active-summary:start/{f=1;next} /unikit:active-summary:end/{f=0} f' "$SF_SKILL" || true)"
+if [[ -z "$SF6_AS" ]]; then
+    SF_WHY+=" SF-6:active-summary-template-window-empty"
+else
+    grep -qF 'SOURCE.md:' <<< "$SF6_AS" || SF_WHY+=" SF-6:no-anchor-in-template"
+fi
+
+# (SF-7) Three provenance markers, the ported vocabulary named, and the prefix vocabulary still
+# closed at six — the marker is an attribute of the line, never a seventh prefix.
+# The BACKTICKED form, never the bare word, and that is measured rather than stylistic: on the
+# unedited file `stated` occurs twice as a substring of `restated` and `inferred` once inside
+# `model-inferred`, so two of the three bare-word asserts would be GREEN before the rule was
+# written at all — half the guard dead at birth. Backticks are the form innocent prose does not
+# produce, the same device UR-3 uses on the prefix rows.
+for SF_MARK in '`stated`' '`inferred`' '`diverges`'; do
+    grep -qF "$SF_MARK" "$SF_SKILL" || SF_WHY+=" SF-7:marker-missing:$SF_MARK"
+done
+grep -qF 'gd-provenance' "$SF_SKILL" || SF_WHY+=" SF-7:no-vocabulary-link"
+# Exact equality, not '>= 6': UR-3 checks that each of the six is present but cannot notice a
+# SEVENTH, and a seventh prefix is precisely what would make the reference's own claim — "The
+# vocabulary is closed. Six prefixes" — false. The unchecked half is the one that fills up.
+# Empty window degrades to a fail (the NN-4 / RT-7 convention), because grep -c returns 0 there
+# and 0 != 6. The count is measured on the current file, not guessed.
+SF7_PREFIXES="$(awk '/^## Identifiers$/{f=1;next} /^## /{f=0} f' "$SF_SPEC" | grep -c '^| `' || true)"
+(( SF7_PREFIXES == 6 )) || SF_WHY+=" SF-7:prefix-vocabulary-not-six($SF7_PREFIXES)"
+
+# (SF-8) The gate keeps exactly five criteria. The ADR refuses a sixth because source fidelity
+# as a gate criterion reopens the non-termination the previous research closed; until now that
+# refusal was prose, holding only for as long as the next editor read the ADR. CG-2 does not
+# hold it: it counts '>= 4' file-wide (twelve today), so a sixth criterion would pass unseen.
+# Window count, and an empty window degrades to a fail with the number in the slug.
+SF8_CRIT="$(awk '/^## The criteria$/{f=1;next} /^## /{f=0} f' "$SF_GATE" | grep -cE '^[0-9]+\. ' || true)"
+(( SF8_CRIT == 5 )) || SF_WHY+=" SF-8:gate-criteria-not-five($SF8_CRIT)"
+# No third assert on "SOURCE.md stays out of the durable scope" is written, and that is a
+# decision rather than an omission: the gate file names `SOURCE.md` precisely in order to put
+# it out of scope, so any grep for that literal catches its own negation. The boundary is held
+# by SF-8 (the count) and by CG-8 (`and nothing else`), which this family does not restate.
+
+# (SF-9) The readback step exists and precedes the index re-render. Three distinguished causes
+# by the CG-3 precedent: a merged check would report "readback broken" where someone in fact
+# renamed a neighbouring heading.
+SF9_RB="$(grep -n '^### Step 3.5' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
+SF9_STEP4="$(grep -n '^### Step 4: Re-render the Researches Index' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
+if [[ -z "$SF9_RB" ]]; then
+    SF_WHY+=" SF-9:no-readback-step"
+elif [[ -z "$SF9_STEP4" ]]; then
+    SF_WHY+=" SF-9:step4-heading-missing"
+elif (( SF9_RB > SF9_STEP4 )); then
+    SF_WHY+=" SF-9:readback-after-the-rerender($SF9_RB-after-$SF9_STEP4)"
+fi
+
+# (SF-10) The readback leaves a trace in the artifact, and its unconfirmed remainder is
+# announced — the discipline the gate already carries for its own budget overrun.
+grep -qF '**Readback**' "$SF_SKILL"    || SF_WHY+=" SF-10:no-readback-field"
+grep -qF 'WARN [readback]' "$SF_SKILL" || SF_WHY+=" SF-10:no-unconfirmed-warning"
+
+# (SF-11) The two-readings test exists as a rule of writing. It is the load-bearing half of the
+# mechanism: the quotation preserves the material, this test and the readback resolve the
+# ambiguity. SF-8 does not cover it — that one counts gate criteria and never opens the skill —
+# so without this assert the rule would ship unguarded, which is the exact state that let the
+# SOURCE.md template rot in the first place.
+grep -qF 'write out both readings' "$SF_SKILL"  || SF_WHY+=" SF-11:no-two-readings-rule"
+grep -qF 'structure, layout, order' "$SF_SKILL" || SF_WHY+=" SF-11:no-trigger-list"
+
+if [[ -z "$SF_WHY" ]]; then
+    pass "SF-1..SF-11 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace, and the gate still has exactly five criteria"
+# NB: Task 23 of phase 6 appends SF-12..SF-14 above this emit and rewrites the range to
+# SF-1..SF-14. This is the one line two phases touch; it is named here so that the second edit
+# reads as planned rather than as drift.
+else
+    fail "SF source fidelity:$SF_WHY"
+fi
+
 # (MX-2) Mode-extraction: unikit-gd-spec six mode bodies live in references/mode-*.md and
 # the inline mode sections are gone from SKILL.md (Step 2 dispatch loads them). The shared
 # Regen-on-Write contract stays in SKILL.md.
