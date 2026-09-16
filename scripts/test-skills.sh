@@ -8023,6 +8023,52 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7k: SKILL.md size ceiling
+# ─────────────────────────────────────────────
+# A skill body is loaded whole on every invocation, so its size is paid in context on every
+# run — and the pipeline skills grew until three of them passed 60 KB. The reduction that
+# brought them down is one-off; this ceiling is what stops it from growing back.
+# BYTES, not lines: a skill costs its text, and a line count lies in both directions — a body
+# of long unwrapped lines and one hard-wrapped at 95 columns differ by hundreds of lines at
+# the same size. The value sits above the largest file as measured when the ceiling was set
+# (unikit-implement, 67 049 B).
+# A body that crosses it is compressed, or split by the gate that loads it — a mode, a flag,
+# an argument that fires on the first turn. It is never moved out because it happens to be
+# large: a block read at the end of a long session costs more from a reference, not less, and
+# that judgement stays with review. Part 7c scans references/ too, so a moved body does not
+# leave the engine-neutrality check behind.
+echo -e "\n${BOLD}Part 7k: SKILL.md size ceiling${NC}"
+
+SKILL_SIZE_LIMIT=70000
+SKILL_SIZE_VIOLATIONS=""
+SKILL_SIZE_SEEN=0
+SKILL_SIZE_LARGEST=0
+SKILL_SIZE_LARGEST_NAME=""
+for f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    [[ -f "$f" ]] || continue
+    SKILL_SIZE_SEEN=$((SKILL_SIZE_SEEN + 1))
+    bytes=$(wc -c < "$f" | tr -d ' ')
+    name="$(basename "$(dirname "$f")")"
+    if (( bytes > SKILL_SIZE_LARGEST )); then
+        SKILL_SIZE_LARGEST=$bytes
+        SKILL_SIZE_LARGEST_NAME=$name
+    fi
+    if (( bytes > SKILL_SIZE_LIMIT )); then
+        SKILL_SIZE_VIOLATIONS+="    $name/SKILL.md: $bytes bytes (> $SKILL_SIZE_LIMIT)\n"
+    fi
+done
+
+# An object-less guard goes red rather than passing on nothing (the NN-4 / RT-7 convention).
+if (( SKILL_SIZE_SEEN == 0 )); then
+    fail "Part 7k found no skills/*/SKILL.md — the ceiling has no object"
+elif [[ -z "$SKILL_SIZE_VIOLATIONS" ]]; then
+    pass "skills/*/SKILL.md within the $SKILL_SIZE_LIMIT-byte ceiling ($SKILL_SIZE_SEEN scanned; largest $SKILL_SIZE_LARGEST_NAME at $SKILL_SIZE_LARGEST bytes)"
+else
+    fail "skills/*/SKILL.md over the $SKILL_SIZE_LIMIT-byte ceiling"
+    echo -e "$SKILL_SIZE_VIOLATIONS"
+fi
+
+# ─────────────────────────────────────────────
 # Part 8: Update command smoke tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Update command smoke tests ===${NC}\n"
