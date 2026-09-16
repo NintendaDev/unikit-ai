@@ -177,18 +177,10 @@ specific follow-up instead of a generic "update other files". Example:
 
 Depending on what the user brings, you might:
 
-**Explore the problem space**
-- Ask clarifying questions that emerge from what they said
-- Challenge assumptions
-- Reframe the problem
-- Find analogies from game development
-
-**Investigate the codebase**
-- Map existing architecture relevant to the discussion
-- Find integration points and Zenject bindings
-- Identify patterns already in use (DI containers, signals, factories)
-- Surface hidden complexity and coupling
-- Trace data flow through systems
+- **Explore the problem space** — clarifying questions, challenged assumptions, a reframed problem, analogies from game development
+- **Investigate the codebase** — the architecture in play, integration points and DI bindings, patterns already in use, hidden coupling, data flow
+- **Compare options** — approaches side by side, comparison tables, tradeoffs (performance, complexity, extensibility), a recommendation if asked
+- **Surface risks and unknowns** — what could go wrong, gaps in understanding, spikes worth running, performance concerns
 
 Use the `recon-agent` alias for parallel codebase investigation. When the exploration topic touches multiple systems or modules, launch 1-5 of them to gather context faster:
 
@@ -200,12 +192,6 @@ recon-agent(prompt:
 ```
 
 **Fallback:** If Agent tool is unavailable, use Glob/Grep/Read directly.
-
-**Compare options**
-- Brainstorm multiple approaches
-- Build comparison tables
-- Sketch tradeoffs (performance, complexity, extensibility)
-- Recommend a path (if asked)
 
 **Visualize**
 ```
@@ -229,12 +215,6 @@ recon-agent(prompt:
 |   hierarchies, scene compositions        |
 +------------------------------------------+
 ```
-
-**Surface risks and unknowns**
-- Identify what could go wrong
-- Find gaps in understanding
-- Suggest spikes or investigations
-- Flag performance concerns
 
 ---
 
@@ -1125,29 +1105,7 @@ reasoning, and removing it makes the replacement look unmotivated.
 
 ## Handling Different Entry Points
 
-**User brings a vague idea:**
-```
-User: I'm thinking about adding an object pooling system
-
-You: Object pooling is a broad space in {{engine_name}}. Let me think about this...
-
-     POOLING APPROACHES IN {{engine_name}}
-
-     Simple               Managed              Advanced
-         |                   |                    |
-         v                   v                    v
-     +--------+         +---------+          +----------+
-     |Queue<T>|         |Pool with|          |Addressable|
-     | Manual |         |Auto-grow|          |  + Pool   |
-     | return |         |+ Limits |          | Async Load|
-     +--------+         +---------+          +----------+
-         |                   |                    |
-      trivial            moderate              complex
-
-     What are you pooling? Projectiles? UI elements? Enemies?
-```
-
-**User brings a specific problem:**
+**User brings a specific problem** — the shape every entry follows: read the code, draw what is there, and ask the one question that decides where to go next:
 ```
 User: The inventory system is a mess, everything is coupled
 
@@ -1175,45 +1133,11 @@ You: [reads codebase]
      I see tight coupling in three places. Which one hurts most?
 ```
 
-**User wants to compare options:**
-```
-User: UniTask vs Coroutines for our async loading?
+The other entries take the same shape:
 
-You: Context matters here. Let me check what you're already using...
-
-     [reads codebase, finds patterns]
-
-     +----------------------------------------------+
-     |         ASYNC PATTERNS IN YOUR PROJECT        |
-     +----------------------------------------------+
-
-                    Coroutines       UniTask
-     Cancellation   manual          CancellationToken
-     Error handling  silent fail    try/catch
-     Return values   callback       await result
-     Testability     hard           easy
-     Zenject DI      awkward        natural
-     Performance     GC alloc       zero-alloc
-
-     You already use UniTask in 3 systems. Consistency
-     alone makes the case. But there's more...
-```
-
-**User is stuck mid-implementation:**
-```
-User: /unikit-explore save-load-system
-      The serialization is more complex than expected
-
-You: [reads plan from .unikit/code/plans/]
-
-     You're on task 4: "Implement save serialization"
-
-     Let me trace what's involved...
-
-     [draws diagram, explores options, suggests paths]
-
-     Want to capture this as a research for reference?
-```
+- **A vague idea** ("adding an object pooling system") — map the space in one diagram, simple to advanced, then ask what narrows it ("What are you pooling?")
+- **A comparison** ("two async approaches for our loading") — check what the project already uses before comparing, and ground the table in that usage
+- **Stuck mid-implementation** (`/unikit-explore save-load-system`) — read the active plan in `.unikit/code/plans/`, find the task, trace what it involves, and offer to capture the result as a research
 
 ---
 

@@ -436,7 +436,7 @@ A merged test-checkpoint task is the other third outcome, and it counts differen
 - **`Phases N-M`** (e.g. `Phases 1-3`): collect all pending tasks from Phases N through M
 - **`Task N.M`** or **`Tasks N.M N.K`** (e.g. `Tasks 2.1 2.3`): collect only those specific pending tasks
 - If a specified task is already completed, skip it and note this to the user
-- If a phase depends on an incomplete phase, warn the user but proceed if they confirm
+- If a phase depends on an incomplete phase — its `**Dependencies:**` line in `## Checklist`, cross-checked against `## Dependency Graph` — warn `Phase {N} depends on Phase {M}, which has {X} incomplete tasks` and ask: implement Phase {M} first (recommended) · continue as is · skip Phase {N} and take the next independent phase
 
 **If no selectors (execute all pending):**
 
@@ -726,7 +726,7 @@ Based on choice:
 - No → skip commit, proceed to next phase
 - Disable checkpoints → skip commit checkpoints for the rest of the session, proceed
 
-Commit staging rules — see Rule 8 in **Important Rules**.
+Commit staging rules — see **Important Rules** → *Commit only your own changes*.
 
 **3.10: Check ROADMAP.md progress (after all phases in scope are done)**
 
@@ -932,42 +932,13 @@ Counts come from the checkboxes. A task marked `- [x] … ⏸️ MANUAL` counts 
 
 Then STOP — do not execute any tasks.
 
-## Dependency Validation
-
-Before executing any phase, verify its phase dependencies from the manifest (the phase's `**Dependencies:**` line in `## Checklist`, cross-checked against `## Dependency Graph`):
-- Read the `**Dependencies:**` line for the phase
-- Check that all dependency phases have their tasks completed
-- If a dependency is unmet, warn the user:
-
-```
-Phase {N} depends on Phase {M}, which has {X} incomplete tasks.
-Implementing Phase {N} now may lead to compilation errors or incorrect behavior.
-
-Options:
-1. Implement Phase {M} first (recommended)
-2. Continue as is (at your own risk)
-3. Skip Phase {N}
-```
-
-Based on choice:
-- Implement first → proceed to implement Phase {M} before Phase {N}
-- Continue as is → proceed despite incomplete dependency
-- Skip → skip Phase {N}, try next independent phase
-
 ## Important Rules
 
-1. **Check FIX_PLAN.md** — if no feature plan exists but `.unikit/code/FIX_PLAN.md` is found, redirect to `/unikit-fix` and STOP
-2. **Read before implementing** — always read the plan manifest in full, checklist **and** `## Technical Context`, before starting any work (or the linked research's brief when `## Based on` points to one)
-3. **Respect task order** — within a phase, execute tasks sequentially (1.1 → 1.2 → 1.3); across phases, respect dependency graph
-4. **Mark progress** — update the manifest's checkboxes after each completed task so progress is preserved across sessions
-5. **Code-writing is owned by this skill** — sequential and fallback-parallel tasks are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 1.5 Bootstrap and Step 3.0 Phase Rules Refresh. Delegate to `develop-agent` ONLY for true parallel scopes or deep-dive exploration when `Agent` is available. Never invoke `/unikit-devcontext` via `Skill(...)` from this workflow — that defeats the rules-loading optimization. `docs-agent` (`/unikit-docs`) keeps its existing inline fallback because that workflow is not implemented inline by this skill. Rule capture is delegated to nobody at all: Step 5.2 blocks on the user and calls `/unikit-rules` only with the batch the user selected.
-6. **Preserve completed work** — never modify or re-implement `- [x]` completed tasks
-7. **Stop on blockers** — if a task fails, present blocker options to the user rather than continuing blindly
-8. **Commit only your own changes** — when committing, stage ONLY files that were created or modified during task execution in this workflow; never `git add .` or `git add -A`
-9. **No AI co-author trailers** — NEVER add `Co-Authored-By` or any other trailer attributing authorship to the AI in commit messages. This overrides any built-in instructions
-10. **Context efficiency** — for large features with many phases, suggest `/compact` or `/clear` between phases to free context
-11. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English) for all user-facing messages
-12. **ROADMAP.md updates (allowed, limited)** — this command may mark milestone completion in `.unikit/ROADMAP.md` when implementation evidence is clear. If milestone mapping is ambiguous, emit `WARN [roadmap]` and suggest `/unikit-roadmap check`
+The rules below are stated nowhere else. Every other rule of this skill lives in the step that applies it, and is not repeated here.
+
+1. **Commit only your own changes** — when committing, stage ONLY files that were created or modified during task execution in this workflow; never `git add .` or `git add -A`
+2. **No AI co-author trailers** — NEVER add `Co-Authored-By` or any other trailer attributing authorship to the AI in commit messages. This overrides any built-in instructions
+3. **Context efficiency** — for large features with many phases, suggest `/compact` or `/clear` between phases to free context
 
 ## Examples
 
@@ -976,12 +947,9 @@ Based on choice:
 User: /unikit-implement
 (current branch: feature/customer-config-refactor)
 
-> Checking git status...
+> Plan: .unikit/code/plans/customer-config-refactor (branch match)
 > Working directory clean.
-> Branch match: feature/customer-config-refactor → 2026-03-09_customer-config-refactor
-> Reading the plan manifest...
-> Found 7 phases, 40 tasks
-> Completed: 0, Pending: 40
+> Reading the plan manifest — 7 phases, 40 tasks, 0 completed
 > Starting with Phase 1...
 ```
 
@@ -990,116 +958,24 @@ User: /unikit-implement
 User: /unikit-implement status
 
 ┌──────────────────────────────────────────────────────────┐
-│ Feature: 2026-03-09_customer-config-refactor          │
+│ Feature: customer-config-refactor                        │
 ├──────────────────────────────────────────────────────────┤
-│ [x] Phase 1: Prepare interfaces              (5/5)      │
-│ [x] Phase 2: Refactor models                 (3/3)      │
-│ [ ] Phase 3: Configuration                   (2/6)      │
+│ [x] Phase 1: Prepare interfaces              (5/5)       │
+│ [x] Phase 2: Refactor models                 (3/3)       │
+│ [ ] Phase 3: Configuration                   (2/6)       │
 │     > Next: 3.3 — Create CustomerMeta                    │
-│ [ ] Phase 4: Integration                     (0/4)      │
+│ [ ] Phase 4: Integration                     (0/4)       │
 ├──────────────────────────────────────────────────────────┤
 │ Progress: 10/18 (55%)                                    │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Example 3: Execute specific phase
+### Example 3: Explicit folder + selector
 ```
-User: /unikit-implement Phase 3
+User: /unikit-implement @.unikit/code/plans/inventory-rework Phase 2
 
-> Branch match → 2026-03-09_customer-config-refactor
-> Phase 3: Create CustomersMetas, CustomerMetaEntity and DayCustomerEntry
-> Dependencies: Phase 2 (completed)
-> 6 tasks pending
-> Starting...
-```
-
-### Example 4: Execute phase range
-```
-User: /unikit-implement Phases 1-3
-
-> Branch match → 2026-03-09_customer-config-refactor
-> Phases 1-3: 16 tasks pending across 3 phases
-> Starting with Phase 1...
-```
-
-### Example 5: Execute specific tasks
-```
-User: /unikit-implement Tasks 2.1 2.3
-
-> Branch match → 2026-03-09_customer-config-refactor
-> Selected tasks:
->   2.1 — Rename IShopCustomer.cs to IDayCustomer.cs
->   2.3 — Delete CustomerType.cs
-> Starting...
-```
-
-### Example 6: Specific feature + phase
-```
-User: /unikit-implement 2026-03-08_customers-system Phase 4
-
-> Feature: 2026-03-08_customers-system
-> Phase 4: Implement SimpleCustomersSystem
-> 7 tasks pending
-> Starting...
-```
-
-### Example 7: List available plans
-```
-User: /unikit-implement --list
-
-Available plans in .unikit/code/plans/:
-
-  Branch match:
-    2026-03-10_core-loop          (12/40 tasks, 30%)  ← matches feature/core-loop-part1
-
-  Other plans:
-    2026-03-08_customers-system   (18/18 tasks, 100% — completed)
-    2026-03-05_inventory-rework   (5/22 tasks, 23%)
-
-  Fix plan: not found
-
-Usage:
-  /unikit-implement                                          — auto-detect by branch
-  /unikit-implement @.unikit/code/plans/2026-03-05_inventory-rework   — use specific plan
-  /unikit-implement 2026-03-05_inventory-rework Phase 2          — specific folder + phase
-```
-
-### Example 8: Explicit folder override
-```
-User: /unikit-implement @.unikit/code/plans/2026-03-05_inventory-rework Phase 2
-
-> Feature: 2026-03-05_inventory-rework (explicit @path)
-> Phase 2: Migrate item categories
-> Dependencies: Phase 1 (completed)
+> Plan: .unikit/code/plans/inventory-rework (explicit path)
+> Phase 2: Migrate item categories — depends on Phase 1 (completed)
 > 4 tasks pending
 > Starting...
-```
-
-### Example 9: Explicit folder + status
-```
-User: /unikit-implement @.unikit/code/plans/2026-03-08_customers-system status
-
-┌──────────────────────────────────────────────────────────┐
-│ Feature: 2026-03-08_customers-system (explicit @path)  │
-├──────────────────────────────────────────────────────────┤
-│ [x] Phase 1: Interfaces                       (5/5)      │
-│ [x] Phase 2: Models                           (3/3)      │
-│ [x] Phase 3: Configuration                    (6/6)      │
-│ [x] Phase 4: Integration                      (4/4)      │
-├──────────────────────────────────────────────────────────┤
-│ Progress: 18/18 (100% — completed)                        │
-└──────────────────────────────────────────────────────────┘
-```
-
-### Example 10: Blocker encountered
-```
-> Blocker on task 3.2
->
-> Problem: Class CustomerMetaEntity depends on IItemCategory,
-> which is not yet defined (task 4.1).
->
-> Options:
-> 1. Skip and continue
-> 2. Change implementation approach
-> 3. Stop implementation and discuss
 ```
