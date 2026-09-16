@@ -32,7 +32,7 @@ allowed-tools:
 user-invocable: true
 metadata:
   author: unikit
-  version: "2.2"
+  version: "2.3"
   category: research
 ---
 
@@ -327,6 +327,8 @@ as a continuation rather than a new subject, and follow
 
 On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
 
+**A standard research reads part of that file too, and always has.** Saving *any* research loads its three shared sections — `## Manifest layout`, `## Identifiers` and `## Write order` — which carry the manifest skeleton, the identifier rules the `## Active Summary` template already forces you to use, and the order the save follows. Every section in that file is marked `Applies to:`; the other six are `ultra only` and a standard research skips them. An ultra research still loads the file whole, and that branch is unchanged. If the file is missing, save anyway and print nothing new: the template in this skill is complete on its own, and the same trade the `WARN [ultra]` line above makes applies here — an exploration that has already happened is worth more than its format reference. If the file is there but a named section is not, save from this skill's own template rather than stopping; a renamed section is a defect to report, not a reason to lose the work.
+
 ### Exploration mode detection
 
 Determine the exploration mode based on user input:
@@ -337,6 +339,10 @@ Determine the exploration mode based on user input:
 
 Remember this mode — it determines whether `SOURCE.md` is generated when saving (see [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)).
 
+It also decides when the log starts being written. In a **prompt-based** exploration [pinning](#pinning-the-log-is-written-as-you-talk) is in force from the first exchange — and the first exchange is the one carrying the original request. A **file-based** exploration opens no folder ahead of the save: there the source of truth is the named documents, not the conversation, and pinning left on for it would strand a manifest-less folder after every such run, which the registry then announces on every later save in the project.
+
+**If the mode changes mid-way** — the user opened with a topic and later handed you files — pinning **continues**. The conversation happened, and there is no reason to drop the record of it; at save time `SOURCE.md` is generated under the prompt-based rule.
+
 ### When a plan exists
 
 If the user mentions a plan or you detect one is relevant:
@@ -344,6 +350,78 @@ If the user mentions a plan or you detect one is relevant:
 1. Read the existing plan from `.unikit/code/plans/`
 2. Reference it naturally in conversation
 3. Offer to capture insights in a research when decisions are made
+
+---
+
+## Pinning: the log is written as you talk
+
+In a prompt-based exploration the dialogue log is not assembled at the end — it is **pinned**
+to disk while the conversation is still going, and appended to from there on. Pinning and
+saving are two different operations, and only the second one saves the research.
+
+**When the first write happens is your judgement, with a floor.** Pin as soon as any one of
+these has happened — the list is closed:
+
+- a requirement or a constraint was stated;
+- a decision was made;
+- the user corrected you;
+- a comparison, a table or a diagram was produced that the conversation then leans on.
+
+Any one of them is enough, and nothing outside the list counts: "this feels like it is going
+somewhere" is not a signal. The judgement asked of you here is the coarse one — *is this a
+research yet?* — and you already make it today, one section down, where you decide the
+conversation has crystallized. It is **not** the judgement of which words matter; that one you
+are never allowed to make, and the rules for the log say why.
+
+**The floor.** The first write happens no later than the moment you would offer to save (see
+[Saving Research Results](#saving-research-results)). Later than today's behaviour it cannot
+be; earlier it usually is. Without the floor, "you decide when" turns into "you put it off".
+
+**What goes into the first write:** the whole conversation from its first turn, verbatim, by
+the rules in [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)
+— including the turns that came before the signal. They have been in your context all along,
+so nothing is reconstructed here: what was deferred was the writing, not the memory.
+
+**After that, append.** Each of your replies ends by appending that exchange's user turns to
+the end of the file — one `Edit`, and no judgement involved. The decision "this is a research"
+was taken once.
+
+**Where.** `.unikit/code/researches/<slug>/SOURCE.md`, with `<slug>` generated by the ordinary
+rule (see [Naming convention](#naming-convention)): by the time a requirement or a decision has
+been stated, the topic has a name. If the topic has settled into a different one by the time
+you save, the folder is renamed there — before the manifest is written.
+
+**What pinning is not.** The first write:
+
+- does **not** create `RESEARCH.md` or any adaptive artifact;
+- does **not** re-render the registry;
+- does **not** run the coherence gate or the `## Integrity` checks;
+- does **not** ask for confirmation to save the research — that question stays where it is;
+- does **not** mean the research is finished, and you may not cite the file's existence as a
+  sign that it is.
+
+**A session that never crystallizes leaves nothing behind, and that is the correct outcome.**
+"How does the DI container handle scene transitions?" was a question, not a research, and an
+empty `.unikit/code/researches/` after it is the format working rather than a write that went
+missing.
+
+**Failures.**
+
+- The `Edit` did not go through — no permission, no disk. Print one line and **carry on with
+  the conversation**; the exploration is worth more than its log:
+
+  ```
+  WARN [pin] could not append to SOURCE.md — pinning is off for the rest of this session
+  ```
+
+  This is also the one state in which saving has to pick the log back up, see
+  [Continuing a research](#continuing-a-research).
+
+- `.unikit/code/researches/` does not exist: create it (`mkdir -p`) and continue, silently.
+
+**On a continuation** pinning behaves the same way and writes into the same file — into that
+session's `## Session <YYYY-MM-DD HH:MM>` block, appended, never rewritten. No second mechanism
+is introduced for it.
 
 ---
 
@@ -402,8 +480,15 @@ If the user agrees:
 1. Determine the folder name: generate `<slug>` from the research topic (4-5 words,
    kebab-case, no date).
 
-   **If that slug already names a folder in `.unikit/code/researches/`**, do not resolve it
-   silently. Ask:
+   **If the log was pinned**, the folder already exists under the slug the topic carried at
+   that moment. Recompute the slug from the topic as it has now settled, and when the two
+   differ, rename the folder — **before** the manifest is written. That is the only safe
+   moment for it: until the save nothing points at the folder (the registry renders saved
+   researches, and a continuation addresses a saved one), so the rename has no references to
+   repair. Once the manifest exists, it has.
+
+   **If that slug already names a folder in `.unikit/code/researches/`** — any folder other
+   than this exploration's own pinned one — do not resolve it silently. Ask:
 
    ```
    AskUserQuestion: A research named <slug> already exists. What should happen?
@@ -429,7 +514,7 @@ If the user agrees:
    mkdir -p .unikit/code/researches/<slug>
    ```
 
-   The order of writing is owned by `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` → `## Write order`, and it is not restated here. **In a standard research, items 1 and 5 — the adaptive artifacts and the Integrity checks — simply do not apply**; the rest of the order holds unchanged, including that the registry is re-rendered before the gate runs.
+   The order of writing is owned by `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` → `## Write order`, and it is not restated here. That section is marked `Applies to: every research`, so this is not a borrowing from the ultra format — it is the order both modes follow. **In a standard research, items 1 and 5 — the adaptive artifacts and the Integrity checks — simply do not apply**; the rest of the order holds unchanged, including that the registry is re-rendered before the gate runs.
 
    **In ultra mode** the artifacts are written first and `RESEARCH.md` second. Writing the index of artifacts before the artifacts would point its links at files that do not exist yet.
 
@@ -466,8 +551,12 @@ Topic: <1-2 sentences: what was explored>
 Goal: <what this research is for — the decision it has to enable>
 Scope: <in / out — the out-half carries the stop condition>
 Constraints: <`C-<n>` — what the subject imposes>
-Requirements: <`REQ-<n>` — established by evidence>
-Decisions: <`DEC-<n>` — taken, each with its reason in one line>
+Requirements: <`REQ-<n>` — "<the user's own words>" (`SOURCE.md:<from>-<to>`): <gloss>.
+              A requirement not sourced from the user carries `inferred` in place of a
+              quotation; one that departs from what they said carries `diverges`.>
+Decisions: <`DEC-<n>` — taken, each with its reason in one line. A requirement marked
+            `diverges` is invalid without a `DEC-` here naming why the user's own proposal
+            was not taken.>
 Risks: <`RISK-<n>` — material, not hypothetical>
 Open questions: <`OQ-<n>` — unresolved; say which ones block>
 Success signals: <how we will know the work landed>
@@ -493,6 +582,8 @@ reasoning, never the requirement. Include ALL:
   coherence gate's value sweep on the next save — prose here is paid for later in gate passes>
 - **Key notes**: <what was learned>
 - **Gate**: <`passed (N passes)` | `stopped at budget: <k> unresolved — OQ-…`>
+- **Readback**: <`<N> shown · <M> corrected · <K> demoted to OQ`, or
+  `not needed (every requirement was stated)`>
 - **Links (paths)**: <files read or written>
 <!-- unikit:sessions:end -->
 
@@ -510,6 +601,14 @@ Filling the `What changed` line — one item per line, values and their carriers
                     `DEC-49` card catalogue: 12 → 13 (carriers: `DEC-49`, "13", "thirteen")
 ```
 
+**The `Readback` field is never empty.** Where there was nothing to show it reads `not needed
+(every requirement was stated)`: an empty field is indistinguishable from a step that was
+skipped, and telling those two apart is the whole reason the field exists. `K > 0` names the
+unconfirmed remainder — those requirements are already sitting in `Open questions:`, and the
+field only makes them countable. The three numbers are counters and never a second home for the
+requirements themselves, and they are not obliged to add up: `M + K` can be less than `N`,
+because the rest were confirmed as they stood.
+
 **The two state axes are separate.** `Status` is completeness, and its three values never
 change — the `/unikit-plan` registry filter greps this field by name and answers "no
 researches" rather than an error when it is renamed. `Lifecycle` is currency. Neither is
@@ -523,7 +622,124 @@ how both humans and agents reach the section they need.
 **`## Active Summary` is the planner's input and the only hashed region.** Write it to be read
 cold, by someone who never saw the conversation. `## Findings` holds the reasoning that
 produced it; the summary holds the conclusion. A fact belongs to exactly one of the two — the
-other refers to it by ID, never by retelling it.
+other refers to it by ID, never by retelling it. The identifier prefixes it uses, and the rules
+they obey, are specified in `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` →
+`## Identifiers`. A requirement pointing at a `## Findings` sub-heading for its layout is that
+same reference by ID in another form — ordinary forward resolvability, not a new mechanism.
+
+**A requirement the user stated carries their own words and an anchor into the log.** The line
+has three parts, and they do not substitute for one another:
+
+```
+`REQ-<n>` — "<the user's own words>" (`SOURCE.md:<from>-<to>`): <your gloss>
+```
+
+| Part | Role | Required |
+|------|------|----------|
+| the quotation | **normative** — it *is* the requirement, and it doubles as the anchor | whenever the source is something the user said |
+| `` `SOURCE.md:<from>-<to>` `` | a hint for the eye, not a contract | written alongside the quotation; never checked |
+| the gloss | your own formulation, in the project's terms | always; **subordinate** to the quotation, never a substitute for it |
+
+1. **Quote the words that distinguish, not only the noun.** A speaker's nouns are often
+   interchangeable — "block" and "section" can name one thing inside a single sentence — and
+   what tells two designs apart are the modifiers next to the noun: "a *separate* block *of the
+   same kind*". A quotation with the modifiers cut out of it does the requirement no good.
+2. **What gets checked is that the phrase is present, not that the line range exists** — a grep
+   over `SOURCE.md`, resolved the way every other reference is. That is already the gate's
+   criterion 2, so **no sixth criterion and no tenth `## Integrity` check are introduced for
+   it**: a quotation that resolves to nothing is an ordinary criterion-2 finding, blocking like
+   any other unresolved reference.
+3. **The anchor is the quotation, and the line number is a hint.** Anchoring on the number
+   would need the log to be stable, and nothing can promise that: `.unikit/` sits under the
+   project's `.gitignore` in the ordinary case, so a silent rewrite of a log is invisible to
+   version control in every such project. A quotation survives any rewrite that kept the words
+   and fails exactly when the words changed, which is the behaviour wanted. Numbers that have
+   drifted are not a finding — repair them next time you touch the requirement.
+4. **A requirement with no user source carries no anchor.** That is not an omission but a
+   different class, and it is marked as one below.
+5. A requirement may rest on up to three places in the log, joined by `·`. More than three is a
+   sign that it is not one requirement; split it.
+
+The order is not a convenience: the anchor points at whatever was the source of the wording at
+the moment of writing, so the log has to be verbatim **before** an anchor is put onto it. An
+anchor onto a digest is the same defect wearing a reference.
+
+**Every requirement carries where it came from.** The marker is written inline in the line, in
+backticks, and there are exactly three of them:
+
+| Marker | Means | Rights |
+|--------|-------|--------|
+| `stated` | the source is something the user said; the line carries the quotation and the anchor above | trusted; not put back to them |
+| `inferred` | your own conclusion — from the code, from documentation, from a defect you found | **carries none of the user's authority**; shown in the readback before it becomes the planner's input |
+| `diverges` | the requirement departs from what the user actually said | **invalid without a paired `DEC-`** naming why their own proposal was not taken; shown in the readback |
+
+1. **The marker is an attribute of the line, not a prefix.** The identifier vocabulary stays
+   closed at six (`references/ULTRA-RESEARCH-FORMAT.md` → `## Identifiers`). A seventh prefix
+   is a decision in its own right, and this is not one.
+2. **`diverges` without its `DEC-` is a defect.** What the pairing prevents is concrete: a
+   requirement that quietly overrules what the user proposed, travelling to the plan and into
+   the implementation with no record that the proposal was ever weighed.
+3. **An unmarked requirement is read as `stated`** — which is what makes forgetting the marker
+   safe. An unmarked line owes a quotation and an anchor, so the omission surfaces as a missing
+   anchor instead of passing in silence.
+4. The vocabulary is the design side's, one layer over: `data/gamedesign/gd-provenance.md`
+   splits `extracted from SOURCE.md` (trusted, author-sourced) from `generated` (carrying no
+   author authority). `stated` is the first of those, `inferred` the second. Saying so is what
+   keeps the two vocabularies from drifting apart when either one is next edited.
+
+Two cases worth settling in advance:
+
+- **Partly the user's, partly yours** — they named the goal and you worked out the mechanism.
+  Their half stays `stated` with the quotation on it, and the worked-out half becomes its own
+  `REQ-` marked `inferred`. There is no mixed marker: a mixed marker would restore the exact
+  blur these markers exist to remove.
+- **They agreed to something you proposed** ("yes, let's do that"). That is `stated`, and what
+  you quote is their agreement *together with* the proposal it accepted. Quote the "yes" on its
+  own and the anchor resolves to a word that decides nothing.
+
+**A requirement about structure is tested for two readings before it is written down.** The
+trigger is a closed list: a requirement about structure, layout, order or quantity. Not the
+ones that feel suspicious, and not all of them — in a summary of twenty this catches three to
+five.
+
+The operation is to **write out both readings**, two lines, and look at what you got:
+
+```
+REQ-6  "the payload is shown as five sections"
+  A) five sibling frames; no "payload" container at all
+  B) one "payload" frame, five subsections inside it
+  both buildable, the code differs → FAIL
+```
+
+If the second reading **does not write** — you try and there is nothing to put on the B line —
+the test has passed. That is what makes it terminate, the property criteria 2 and 3 of the gate
+also have.
+
+On a failure, resolve from cheapest to dearest:
+
+1. **Put the distinguishing word from the source into the requirement.** What tells two such
+   requirements apart are the modifiers next to the noun, not the noun.
+2. **The source does not distinguish → separate the readings with a diagram.** The diagram
+   lives in `## Findings`, which already holds the ASCII drawings, and the requirement carries
+   a reference to its sub-heading:
+   `` `REQ-<n>` — "<quote>" (`SOURCE.md:…`): <gloss> (layout: `## Findings` → "<sub-heading>") ``.
+   Nothing new is checked for this — the gate's criterion 2 already requires everything the
+   summary cites to be defined below. The diagram is **normative, not an illustration**: where
+   it and the gloss disagree, the diagram is the one that is right. And where the layout cannot
+   be drawn in ASCII at all — three-dimensional, animated, data-dependent — this rung is
+   skipped rather than forced, and the requirement goes to the next one.
+3. **Still two readings after that → it is not a requirement but an `OQ-<n>`**, and it goes to
+   the readback below.
+
+Three notes on the trigger. More than two readings fails the same way, and the readback then
+gets the list rather than a pair — two is the minimum sign of failure, not a ceiling. A
+structural requirement the user never dictated (`inferred`) is tested all the same, because it
+is ambiguous in exactly the same way. And where you cannot tell whether a requirement is
+structural, treat it as structural: a false positive costs two written lines, a miss costs a
+replanned phase.
+
+This is a discipline of writing, not a sixth criterion of the gate. The gate's scope is closed
+at five, and one of its passes costs minutes where this costs a line.
 
 **Language Awareness for `RESEARCH.md`**: the manifest follows the same language rules as
 every other artifact. When the configured language is not English, translate section headings
@@ -572,21 +788,70 @@ would hand back exactly the job of reconciling two differently-written texts.
 
 ## Questions & Answers
 
+<!-- Every answer below is a blockquote carrying the user's own words. -->
+
 ### Q1: <Exact question text as it was asked>
-**Answer**: <The answer that was given — by user or discovered during exploration>
+Offered:
+  A) <the option exactly as it was put to the user>
+  B) <...>
+<!-- Include "Offered" only when the answer chose among options you presented.
+     Without it the log is not replayable: an answer like "option 1" resolves
+     to nothing, and the reader has to trust the derived document instead. -->
+**Answer**:
+> <The user's own words, verbatim. A blockquote is the only admissible form of an
+> answer the user gave. When the answer was not the user's but was discovered during
+> exploration, say so on the line after the quote block.>
 
 ### Q2: <Exact question text>
-**Answer**: <The answer>
+**Answer**:
+> <verbatim>
 
 <!-- Continue for all questions asked during the exploration -->
 
 ## Additional Clarifications
 
-<All additional details, corrections, and clarifications the user provided during the exploration that were not direct answers to questions. If none — write "None">
+<All additional details, corrections, and clarifications the user provided, each as a
+blockquote in the user's own words. If none — write "None">
 
 ## Conclusion
-<The final result of the exploration: what was decided, what approach was chosen, what understanding was reached. This should be a concise summary of the outcome, not a copy of RESEARCH.md>
+<The final result of the exploration: what was decided, what approach was chosen, what
+understanding was reached. This is the one section written in your own words.>
 ```
+
+**An answer is a quotation, never a digest.** The blockquote is the only admissible form of an
+answer the user gave; a two-word summary of it is not the answer, it is one reading of the
+answer. `## Conclusion` is the single section of this file you write in your own words —
+everything above it is the record, not your account of it.
+
+**A choice with no recorded menu is not an answer.** When the answer picked among options you
+put to the user, write those options down next to it under `Offered:`. Without them a reply
+like "option 1" or "let's go with B" resolves to nothing, and the only surviving way to learn
+what was agreed is the document derived from this log — which leaves the derived document
+certifying itself.
+
+Writing the menu down has a second effect worth naming: it makes an ambiguity visible with no
+check at all. "Five sections" standing next to "five subsections inside X" and "five sibling
+blocks of the same kind" plainly does not choose between them.
+
+**Mark your own cuts, and only your own.** `[…]` means *you* left something out of the
+quotation. A bare `…` means the user spoke that way — trailed off, paused, thought better of a
+sentence. Two different things get two different marks; a log that spends one glyph on both
+cannot be audited afterwards, because nothing in it distinguishes an edited quotation from a
+faithful one.
+
+**Never cut inside a noun phrase that names a structure, an order or a quantity.** What tells
+two such requirements apart is rarely the noun — it is the modifiers standing next to it. "A
+separate block of the same kind" and "a block" carry the same noun and describe different
+designs, and the whole of the difference sits in the words a cut removes first, because they
+are the ones that read as decoration.
+
+**When in doubt, do not cut.** The cost of an extra quoted line is measured and small; the
+cost of a cut modifier is a phase planned against a requirement nobody stated.
+
+The one admissible exception is a secret: a credential, a token or a key quoted by accident is
+cut, marked `[…]`, and the reason is written on its own line under the quote. It is named here
+because it is the only cut the rule above does not cover, and an unnamed exception is the kind
+that gets taken silently.
 
 **On a continuation, append — never rewrite.** A new session adds a fresh block
 `## Session <YYYY-MM-DD HH:MM>` at the end of the file, carrying that session's questions,
@@ -596,7 +861,73 @@ records only what the last session believed.
 
 **Language Awareness**: Follow the same language rules as other artifacts. Translate section headings and prose into the configured language. Keep code identifiers and file paths in English.
 
-**Important**: Capture the actual dialogue content faithfully. The value of this artifact is in preserving the exact questions, answers, and clarifications — not in summarizing or rephrasing them.
+**Important**: Capture the actual dialogue content faithfully — and "faithfully" here names two mechanics, not a disposition: every answer the user gave is a quotation, and every cut you make inside one is marked. The value of this artifact is in preserving the exact questions, answers, and clarifications, not in summarizing or rephrasing them.
+
+### Step 3.5: Readback
+
+Before the registry is re-rendered and before the gate runs, put back to the user the
+requirements they have not actually seen. This is the only check in the whole mechanism that
+asks the source of truth instead of the disk, and it costs one turn.
+
+**What goes in — three classes, and only these:**
+
+| Class | Where it comes from |
+|-------|---------------------|
+| `inferred` | the provenance marker |
+| `diverges` | the provenance marker |
+| failed the two-readings test | the third rung of the resolution ladder |
+
+A requirement marked `stated` that passed the test is **not shown**. That is what keeps the
+list short, and a short list is the only defence against this step turning into something that
+gets clicked through: out of twenty-two requirements it typically prints three.
+
+**It is a printed block, not `AskUserQuestion`.** The answers are free-form and per line ("not
+A but B, because…"), a four-option modal does not carry that, and the number of options needed
+is the number of lines shown. The tool is in `allowed-tools` and is deliberately not used here.
+
+The block is written here in English; the Language Awareness prerequisite renders it in the
+configured language at runtime, exactly as it does every other printed block in this skill.
+
+```
+Before saving — <N> requirements out of <M>. The rest go as they are.
+
+<ID>  <CLASS>
+  I wrote:   "<your formulation>"
+  You said:  "<the quotation>"                       <anchor>
+  <two readings: A) … B) … → A or B?>
+  <diverges:   my reason: …  → take mine / restore yours / make it an open question?>
+  <inferred:   grounds: …    → a requirement or a finding?>
+```
+
+**What the answers do:**
+
+- **A correction** → `Edit` the `RESEARCH.md` already on disk: rewrite the requirement, change
+  its marker to `stated`, and anchor it to the user's words from this very exchange — they are
+  in the log already, pinned as they were said.
+- **A confirmation** → the marker stays and nothing is rewritten.
+- **"That is not a requirement"** → the line leaves `Requirements:` and its content moves to
+  `## Findings`. Its `REQ-<n>` is **not reused**; the next requirement takes the following
+  number.
+- **A correction that turns out to be a new requirement** → open a new `REQ-` with the next
+  number, marked `stated`. That is a normal outcome of asking, not an error.
+
+**Where this stands is a property, not a compromise.** The corrections land on disk before the
+registry is re-rendered and before the gate reads the files, so the gate checks the corrected
+text rather than the text that was shown.
+
+**Nobody answered** — the user left, or interrupted. The save is **not** cancelled. Every
+requirement of the three classes that went unconfirmed is demoted to an `OQ-<n>` and leaves
+`Requirements:`, and one line is printed:
+
+```
+WARN [readback] <k> requirements went unconfirmed — demoted to OQ
+```
+
+A requirement the source of truth never saw has no business being declared the planner's input.
+The discipline is the gate's own: the remainder is written down, never dropped.
+
+**Nothing to show** — every requirement is `stated` and every test passed. Skip the step in
+silence: no block, no line. An empty ritual is precisely how a check stops being read.
 
 ### Step 4: Re-render the Researches Index
 
@@ -609,7 +940,22 @@ behind them.
    means `ultra`, absent means `standard`), the H1 title, the header fields `Created` /
    `Updated` / `Status` / `Lifecycle` / `Target`, and the `Topic:` line from
    `## Active Summary` — that line **is** the `Summary`.
-3. A folder with no readable `RESEARCH.md` is skipped, and the skip is **printed**:
+3. A folder with no readable `RESEARCH.md` is skipped, and the skip is **printed**. Which line
+   gets printed depends on what the folder holds.
+
+   A folder carrying a pinned `SOURCE.md` and no manifest is an **unfinished exploration**, not
+   a broken one — a conversation that crystallized and ended before it was saved. It stays out
+   of the registry all the same, and it is announced by a line that names the way back into it:
+
+   ```
+   NOTE [research] <folder> — unfinished exploration: SOURCE.md is there, the manifest is not.
+                   Continue it with: /unikit-explore <folder>
+   ```
+
+   `NOTE`, not `WARN`: nothing here is damaged, and the work resumes through
+   [Continuing a research](#continuing-a-research).
+
+   Every other folder without a manifest keeps the line it has always had:
 
    ```
    WARN [research] skipped <folder> — no readable RESEARCH.md
@@ -617,7 +963,8 @@ behind them.
 
    Skipping in silence is forbidden. An unreadable manifest and an honestly empty registry
    look identical from the outside, so an unannounced skip reports "no researches" for a
-   research that is sitting right there on disk.
+   research that is sitting right there on disk. What skips a folder is unchanged — the
+   missing manifest, and nothing else; only the message now tells the two cases apart.
 
 4. Overwrite the file whole. The header is always:
 
@@ -700,12 +1047,13 @@ override lives — not a withheld confirmation.
 
 ### Important rules for saving
 
-- **Don't auto-save** — Always offer and let the user decide
+- **Don't auto-save** — Always offer and let the user decide. What the ban covers is saving the **research**: the manifest, the adaptive artifacts, the re-rendered registry, the gate and the confirmation. Pinning falls outside it — appending a turn to `SOURCE.md` is not a save, and neither is creating `<slug>/` to hold it, however much a new folder looks like one
 - **Generate the name** from the research context — don't ask the user to name it
 - **One manifest** — `RESEARCH.md` carries the research. There is no second canonical file and
   no brief: `## Active Summary` *is* the machine input, and `## Findings` holds the evidence
   that produced it
-- **`SOURCE.md` only for prompt-based explorations** (see [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)), appended to on a continuation, never rewritten
+- **`SOURCE.md` only for prompt-based explorations** (see [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)), appended to as the conversation happens (see [Pinning](#pinning-the-log-is-written-as-you-talk)) and again on a continuation, never rewritten
+- **The folder may already exist when you get here** — a pinned log creates it before the save. `<slug>/` holding a `SOURCE.md` and no manifest is this exploration's own log, not a collision with someone else's research; step 1 recomputes the slug and renames the folder if the topic has moved since
 - **The registry is re-rendered whole on every save** — never edited, never appended to; this
   is how other skills discover researches, and how it stays in step with the folders
 - **Run the coherence gate** — it is part of saving, not an option. It runs *after* the user has agreed to save, so it neither replaces the question nor weakens `Don't auto-save`
@@ -737,7 +1085,12 @@ user chose *Continue the existing research* in the collision dialogue during a s
    - Reconsider `Status` and `Lifecycle` **explicitly**, and say what they became. Neither
      carries over by default; a research that has quietly stayed `in-progress` across four
      sessions is telling the registry something nobody decided.
-   - Append the session's dialogue to `SOURCE.md` if the exploration is prompt-based.
+   - **The log is already on disk.** [Pinning](#pinning-the-log-is-written-as-you-talk) owns
+     `SOURCE.md` and has been appending this session's dialogue to it as you talked. Append
+     the remainder here only where pinning did not run: it was switched off for the session
+     (`WARN [pin]`), or the session started before it was in effect. Appending unconditionally
+     writes the same dialogue into the file twice, and a doubled log is indistinguishable from
+     a session that said everything twice.
    - Re-render the registry and run the coherence gate, exactly as on a first save.
 4. **Say it out loud when the folder has outgrown its question.** From the fourth session, or
    past fifteen artifacts, print one line and continue — a note, never a gate:
@@ -900,7 +1253,7 @@ But this summary is optional. Sometimes the thinking IS the value.
 - **Don't fake understanding** — If something is unclear, dig deeper
 - **Don't rush** — Discovery is thinking time, not task time
 - **Don't force structure** — Let patterns emerge naturally
-- **Don't auto-save** — Offer to save research, don't just do it
+- **Don't auto-save** — Offer to save research, don't just do it. The thing that may not happen unasked is the research being saved: manifest, artifacts, registry, gate, confirmation. Writing the dialogue log while you talk — the folder that holds it included — is not that, and asks nothing
 - **Do visualize** — A good diagram is worth many paragraphs
 - **Do explore the codebase** — Ground discussions in reality
 - **Do question assumptions** — Including the user's and your own
