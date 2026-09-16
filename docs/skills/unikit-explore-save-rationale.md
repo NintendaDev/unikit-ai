@@ -252,3 +252,139 @@ them at the moment of saving. The move brought the rules; these are the reasons 
   point its links at files that do not exist yet.
 - **The registry before the gate.** The gate reads durable files from disk, and would otherwise
   judge a registry that does not yet describe what was just written.
+
+### Naming and saving
+
+**Why the folder name carries no date** — moved whole by task 13:
+
+The reason the date left the name is structural, not cosmetic: a dated folder makes the
+continuation cycle impossible to express. `<date>-<slug>` cannot be *continued* tomorrow
+without the name becoming a lie, so the format would quietly push every follow-up into a
+second folder — which is exactly the duplication this format exists to remove.
+
+- **No automatic suffix on a slug collision.** The date used to be a separator as well as a sort
+  key, and a silently appended suffix is what makes addressing-by-meaning start finding the wrong
+  folder again. Refusing outright is not an option either: a continuation verb exists, and
+  offering it costs less than a refusal.
+- **A pinned folder is renamed only before the manifest is written.** Until the save nothing
+  points at the folder — the registry renders saved researches, and a continuation addresses a
+  saved one — so the rename has no references to repair.
+- **The date lives in the header.** Every age filter and all sorting read it from there.
+
+### The manifest
+
+**Where the previous sections went** — moved whole by task 13:
+
+**Where the previous sections went.** The retired three-file format put seven owning sections
+in its result document. They are gone *as owners* and their content is redistributed; recorded
+here so the next edit does not restore them "for completeness":
+
+| Previous section | New owner |
+|------------------|-----------|
+| `## Topic` | `## Active Summary` → `Topic:` |
+| `## Context` | `## Active Summary` → `Goal:` / `Scope:` |
+| `## Exploration` | `## Findings` |
+| `## Conclusions` | `## Findings` for the reasoning; `## Active Summary` → `Requirements:` / `Risks:` for the requirement |
+| `## Decisions` | `## Active Summary` → `Decisions:` (`DEC-<n>`) |
+| `## Open Questions` | `## Active Summary` → `Open questions:` (`OQ-<n>`) |
+| `## Next Steps` | `## Active Summary` → `Next step:` |
+| `## References` | stays its own section, at the end |
+
+`## References` stays standalone rather than folding into `## Findings` on purpose: `## Findings`
+is the section that grows without bound, and a reference list buried inside it stops being
+findable.
+
+- **`Readback` is never empty.** An empty field is indistinguishable from a step that was
+  skipped, and telling those two apart is the whole reason the field exists.
+- **The table of contents is mandatory.** Research documents get long, and the TOC is how both
+  humans and agents reach the section they need.
+
+### Requirements and provenance
+
+- **What is checked is that the phrase is present.** That is already the gate's criterion 2, so
+  no sixth criterion and no tenth `## Integrity` check are introduced for it.
+- **The anchor is the quotation, not the line number.** Anchoring on the number would need the
+  log to be stable, and nothing can promise that: `.unikit/` sits under the project's
+  `.gitignore` in the ordinary case, so a silent rewrite of a log is invisible to version control
+  in every such project. A quotation survives any rewrite that kept the words and fails exactly
+  when the words changed, which is the behaviour wanted.
+- **`diverges` needs its `DEC-`.** What the pairing prevents is concrete: a requirement that
+  quietly overrules what the user proposed, travelling to the plan and into the implementation
+  with no record that the proposal was ever weighed.
+- **An unmarked requirement is read as `stated`**, which is what makes forgetting the marker safe.
+- **The markers mirror the design side's vocabulary.** `data/gamedesign/gd-provenance.md` splits
+  `extracted from SOURCE.md` (trusted, author-sourced) from `generated` (carrying no author
+  authority). Saying so is what keeps the two vocabularies from drifting apart when either one is
+  next edited.
+- **There is no mixed marker.** A mixed marker would restore the exact blur these markers exist to
+  remove.
+- **The two-readings test terminates.** A second reading that does not write ends it — the
+  property criteria 2 and 3 of the gate also have.
+- **The diagram rung checks nothing new.** The gate's criterion 2 already requires everything the
+  summary cites to be defined below it.
+- **A structural `inferred` requirement is tested too**, because it is ambiguous in exactly the
+  same way.
+
+### `SOURCE.md`
+
+- **Why the log exists.** It captures the full dialogue context, so the exploration can be
+  reproduced or continued later without losing any of it.
+- **Why the log stays outside the gate.** A log may be redundant with the manifest — that is what
+  a log is for — and admitting it to the gate would hand back exactly the job of reconciling two
+  differently-written texts.
+- **The menu's second effect.** Writing the menu down makes an ambiguity visible with no check at
+  all. "Five sections" standing next to "five subsections inside X" and "five sibling blocks of
+  the same kind" plainly does not choose between them.
+- **Two marks for two kinds of cut.** A log that spends one glyph on both cannot be audited
+  afterwards, because nothing in it distinguishes an edited quotation from a faithful one.
+- **The secret is named as an exception** because it is the only cut the rule does not cover, and
+  an unnamed exception is the kind that gets taken silently.
+- **Append, never rewrite.** The point of a dialogue log is that it records what was actually said
+  at the time; an edited log records only what the last session believed.
+
+### Readback
+
+- **Why it exists.** It is the only check in the whole mechanism that asks the source of truth
+  instead of the disk, and it costs one turn.
+- **Why a `stated` requirement that passed is not shown.** A short list is the only defence
+  against this step turning into something that gets clicked through.
+- **Why a printed block and not a question tool.** The answers are free-form and per line ("not A
+  but B, because…"), a four-option modal does not carry that, and the number of options needed is
+  the number of lines shown. The tool is granted to the skill and deliberately unused here.
+- **A correction that becomes a new requirement** is a normal outcome of asking, not an error.
+- **Its position is a property, not a compromise.** The corrections land on disk before the
+  registry is re-rendered and before the gate reads the files, so the gate checks the corrected
+  text rather than the text that was shown.
+- **Why the unconfirmed are demoted.** A requirement the source of truth never saw has no business
+  being declared the planner's input. The discipline is the gate's own: the remainder is written
+  down, never dropped.
+- **Why "nothing to show" is silent.** An empty ritual is precisely how a check stops being read.
+
+### The registry and the gate
+
+- **The registry is generated** so that it cannot fall behind the folders.
+- **An unfinished exploration is a `NOTE`**, not a `WARN`: nothing in it is damaged.
+- **The skip rule did not change when the unfinished-exploration line arrived** — only the message
+  now tells the two cases apart.
+- **The reconciliation summary** is the same three lines the retired `init` command printed.
+
+**Reconciliation is no longer a separate verb** — moved whole by task 13:
+
+**Reconciliation is no longer a separate verb.** There used to be an `init` argument whose
+whole job was to rebuild this file from disk; it is gone, and its work is now part of every
+save — the same pattern as `syncRulesState` Phase 1 and the `## System Map [gen]` re-render in
+game-design. It stopped being a separate command, but it did **not** stop being **visible**,
+which is what step 7 is for.
+
+The cost is worth naming: the registry can no longer be repaired by a dedicated command. In
+exchange it can no longer fall behind, because it is rebuilt from the folders — the actual
+source of truth — before the coherence gate reads the same files from disk.
+
+- **The gate's position works in both directions.** The gate re-reads the durable files from
+  disk, so running it before the write has nothing to read; and confirming before it runs tells
+  the user the research is safe while it may still be incoherent.
+- **A missing gate reference does not lose the research** — the same trade as a missing ultra
+  reference: the research has already been done and written.
+- **Confirmation waits for the gate.** A gate that runs after the confirmation is a gate that
+  reports on a decision already announced.
+- **Pinning is outside the auto-save ban**, however much a new folder looks like a save.

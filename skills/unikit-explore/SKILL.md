@@ -432,12 +432,9 @@ All researches live in `.unikit/code/researches/`. Each research gets its own fo
 
 - **Name**: the folder is named `<slug>` — 4-5 words max, kebab-case, derived from the
   research topic. **No date.**
-- The date lives in the `Created:` and `Updated:` fields of the manifest header, which is
-  also where every age filter and all sorting read it from.
-- The reason the date left the name is structural, not cosmetic: a dated folder makes the
-  continuation cycle impossible to express. `<date>-<slug>` cannot be *continued* tomorrow
-  without the name becoming a lie, so the format would quietly push every follow-up into a
-  second folder — which is exactly the duplication this format exists to remove.
+- The date lives in the `Created:` and `Updated:` fields of the manifest header.
+
+<!-- Why the folder name carries no date: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
 ### How to save
 
@@ -462,12 +459,9 @@ If the user agrees:
 1. Determine the folder name: generate `<slug>` from the research topic (4-5 words,
    kebab-case, no date).
 
-   **If the log was pinned**, the folder already exists under the slug the topic carried at
-   that moment. Recompute the slug from the topic as it has now settled, and when the two
-   differ, rename the folder — **before** the manifest is written. That is the only safe
-   moment for it: until the save nothing points at the folder (the registry renders saved
-   researches, and a continuation addresses a saved one), so the rename has no references to
-   repair. Once the manifest exists, it has.
+   **If the log was pinned**, the folder already exists under the slug the topic carried at that
+   moment. Recompute the slug from the topic as it has now settled, and when the two differ,
+   rename the folder — **before** the manifest is written. A saved research is never renamed.
 
    **If that slug already names a folder in `.unikit/code/researches/`** — any folder other
    than this exploration's own pinned one — do not resolve it silently. Ask:
@@ -486,10 +480,7 @@ If the user agrees:
      `WARN [research] <slug> exists — saving under <new-slug>`.
 
    Both lines are printed **after** the answer, never instead of the question. An automatic
-   suffix (`-2`) is **forbidden**: the date used to be a separator as well as a sort key, and
-   a silently appended suffix is what makes addressing-by-meaning start finding the wrong
-   folder again. Refusing outright is not an option either — a continuation verb exists here,
-   and offering it costs less than a refusal.
+   suffix (`-2`) is **forbidden**. Refusing outright is not an option either.
 
 2. Create the research directory:
    ```
@@ -593,13 +584,12 @@ Filling the `What changed` line — one item per line, values and their carriers
                     `DEC-49` card catalogue: 12 → 13 (carriers: `DEC-49`, "13", "thirteen")
 ```
 
-**The `Readback` field is never empty.** Where there was nothing to show it reads `not needed
-(every requirement was stated)`: an empty field is indistinguishable from a step that was
-skipped, and telling those two apart is the whole reason the field exists. `K > 0` names the
-unconfirmed remainder — those requirements are already sitting in `Open questions:`, and the
-field only makes them countable. The three numbers are counters and never a second home for the
-requirements themselves, and they are not obliged to add up: `M + K` can be less than `N`,
-because the rest were confirmed as they stood.
+**The `Readback` field is never empty.** Where there was nothing to show it reads
+`not needed (every requirement was stated)`. `K > 0` names the unconfirmed remainder — those
+requirements are already sitting in `Open questions:`, and the field only makes them countable.
+The three numbers are counters and never a second home for the requirements themselves, and they
+are not obliged to add up: `M + K` can be less than `N`, because the rest were confirmed as they
+stood.
 
 **The two state axes are separate.** `Status` is completeness, and its three values never
 change — the `/unikit-plan` registry filter greps this field by name and answers "no
@@ -608,15 +598,15 @@ derivable from the other.
 
 **Table of Contents is mandatory.** Place it immediately after the header block and before
 `## Artifact Index` / `## Active Summary`. It must reflect the document's actual sections and
-sub-sections — not a copy of the template above. Research documents get long, and the TOC is
-how both humans and agents reach the section they need.
+sub-sections — not a copy of the template above.
 
 **`## Active Summary` is the planner's input and the only hashed region.** Write it to be read
 cold, by someone who never saw the conversation. `## Findings` holds the reasoning that
 produced it; the summary holds the conclusion. A fact belongs to exactly one of the two — the
 other refers to it by ID, never by retelling it. The identifier prefixes it uses, and the rules
-they obey, are in `### Identifiers` below. A requirement pointing at a `## Findings` sub-heading for its layout is that
-same reference by ID in another form — ordinary forward resolvability, not a new mechanism.
+they obey, are in `### Identifiers` below. A requirement pointing at a `## Findings`
+sub-heading for its layout is that same reference by ID in another form — ordinary forward
+resolvability, not a new mechanism.
 
 **A requirement the user stated carries their own words and an anchor into the log.** The line
 has three parts, and they do not substitute for one another:
@@ -631,21 +621,12 @@ has three parts, and they do not substitute for one another:
 | `` `SOURCE.md:<from>-<to>` `` | a hint for the eye, not a contract | written alongside the quotation; never checked |
 | the gloss | your own formulation, in the project's terms | always; **subordinate** to the quotation, never a substitute for it |
 
-1. **Quote the words that distinguish, not only the noun.** A speaker's nouns are often
-   interchangeable — "block" and "section" can name one thing inside a single sentence — and
-   what tells two designs apart are the modifiers next to the noun: "a *separate* block *of the
-   same kind*". A quotation with the modifiers cut out of it does the requirement no good.
+1. **Quote the words that distinguish, not only the noun.**
 2. **What gets checked is that the phrase is present, not that the line range exists** — a grep
-   over `SOURCE.md`, resolved the way every other reference is. That is already the gate's
-   criterion 2, so **no sixth criterion and no tenth `## Integrity` check are introduced for
-   it**: a quotation that resolves to nothing is an ordinary criterion-2 finding, blocking like
-   any other unresolved reference.
-3. **The anchor is the quotation, and the line number is a hint.** Anchoring on the number
-   would need the log to be stable, and nothing can promise that: `.unikit/` sits under the
-   project's `.gitignore` in the ordinary case, so a silent rewrite of a log is invisible to
-   version control in every such project. A quotation survives any rewrite that kept the words
-   and fails exactly when the words changed, which is the behaviour wanted. Numbers that have
-   drifted are not a finding — repair them next time you touch the requirement.
+   over `SOURCE.md`, resolved the way every other reference is. A quotation that resolves to
+   nothing is an ordinary criterion-2 finding, blocking like any other unresolved reference.
+3. **The anchor is the quotation, and the line number is a hint.** Numbers that have drifted are
+   not a finding — repair them next time you touch the requirement.
 4. **A requirement with no user source carries no anchor.** That is not an omission but a
    different class, and it is marked as one below.
 5. A requirement may rest on up to three places in the log, joined by `·`. More than three is a
@@ -665,25 +646,17 @@ backticks, and there are exactly three of them:
 | `diverges` | the requirement departs from what the user actually said | **invalid without a paired `DEC-`** naming why their own proposal was not taken; shown in the readback |
 
 1. **The marker is an attribute of the line, not a prefix.** The identifier vocabulary stays
-   closed at six (`### Identifiers`). A seventh prefix
-   is a decision in its own right, and this is not one.
-2. **`diverges` without its `DEC-` is a defect.** What the pairing prevents is concrete: a
-   requirement that quietly overrules what the user proposed, travelling to the plan and into
-   the implementation with no record that the proposal was ever weighed.
-3. **An unmarked requirement is read as `stated`** — which is what makes forgetting the marker
-   safe. An unmarked line owes a quotation and an anchor, so the omission surfaces as a missing
-   anchor instead of passing in silence.
-4. The vocabulary is the design side's, one layer over: `data/gamedesign/gd-provenance.md`
-   splits `extracted from SOURCE.md` (trusted, author-sourced) from `generated` (carrying no
-   author authority). `stated` is the first of those, `inferred` the second. Saying so is what
-   keeps the two vocabularies from drifting apart when either one is next edited.
+   closed at six (`### Identifiers`).
+2. **`diverges` without its `DEC-` is a defect.**
+3. **An unmarked requirement is read as `stated`**. An unmarked line owes a quotation and an
+   anchor, so the omission surfaces as a missing anchor instead of passing in silence.
+4. `stated` and `inferred` mirror `extracted from SOURCE.md` and `generated` in `gd-provenance`.
 
 Two cases worth settling in advance:
 
 - **Partly the user's, partly yours** — they named the goal and you worked out the mechanism.
   Their half stays `stated` with the quotation on it, and the worked-out half becomes its own
-  `REQ-` marked `inferred`. There is no mixed marker: a mixed marker would restore the exact
-  blur these markers exist to remove.
+  `REQ-` marked `inferred`. There is no mixed marker.
 - **They agreed to something you proposed** ("yes, let's do that"). That is `stated`, and what
   you quote is their agreement *together with* the proposal it accepted. Quote the "yes" on its
   own and the anchor resolves to a word that decides nothing.
@@ -703,31 +676,26 @@ REQ-6  "the payload is shown as five sections"
 ```
 
 If the second reading **does not write** — you try and there is nothing to put on the B line —
-the test has passed. That is what makes it terminate, the property criteria 2 and 3 of the gate
-also have.
+the test has passed.
 
 On a failure, resolve from cheapest to dearest:
 
-1. **Put the distinguishing word from the source into the requirement.** What tells two such
-   requirements apart are the modifiers next to the noun, not the noun.
-2. **The source does not distinguish → separate the readings with a diagram.** The diagram
-   lives in `## Findings`, which already holds the ASCII drawings, and the requirement carries
-   a reference to its sub-heading:
+1. **Put the distinguishing word from the source into the requirement.**
+2. **The source does not distinguish → separate the readings with a diagram.** The diagram lives
+   in `## Findings`, which already holds the ASCII drawings, and the requirement carries a
+   reference to its sub-heading:
    `` `REQ-<n>` — "<quote>" (`SOURCE.md:…`): <gloss> (layout: `## Findings` → "<sub-heading>") ``.
-   Nothing new is checked for this — the gate's criterion 2 already requires everything the
-   summary cites to be defined below. The diagram is **normative, not an illustration**: where
-   it and the gloss disagree, the diagram is the one that is right. And where the layout cannot
-   be drawn in ASCII at all — three-dimensional, animated, data-dependent — this rung is
-   skipped rather than forced, and the requirement goes to the next one.
+   The diagram is **normative, not an illustration**: where it and the gloss disagree, the
+   diagram is the one that is right. And where the layout cannot be drawn in ASCII at all —
+   three-dimensional, animated, data-dependent — this rung is skipped rather than forced, and
+   the requirement goes to the next one.
 3. **Still two readings after that → it is not a requirement but an `OQ-<n>`**, and it goes to
    the readback below.
 
 Three notes on the trigger. More than two readings fails the same way, and the readback then
-gets the list rather than a pair — two is the minimum sign of failure, not a ceiling. A
-structural requirement the user never dictated (`inferred`) is tested all the same, because it
-is ambiguous in exactly the same way. And where you cannot tell whether a requirement is
-structural, treat it as structural: a false positive costs two written lines, a miss costs a
-replanned phase.
+gets the list rather than a pair. A structural requirement the user never dictated (`inferred`)
+is tested all the same. And where you cannot tell whether a requirement is structural, treat it
+as structural: a false positive costs two written lines, a miss costs a replanned phase.
 
 This is a discipline of writing, not a sixth criterion of the gate. The gate's scope is closed
 at five, and one of its passes costs minutes where this costs a line.
@@ -738,24 +706,7 @@ and prose into the target language. Field **names** in the header (`Created:`, `
 `Lifecycle:`, …), the marker comments, ID prefixes, code identifiers, code blocks and file
 paths stay in English — they are read by machines.
 
-**Where the previous sections went.** The retired three-file format put seven owning sections
-in its result document. They are gone *as owners* and their content is redistributed; recorded
-here so the next edit does not restore them "for completeness":
-
-| Previous section | New owner |
-|------------------|-----------|
-| `## Topic` | `## Active Summary` → `Topic:` |
-| `## Context` | `## Active Summary` → `Goal:` / `Scope:` |
-| `## Exploration` | `## Findings` |
-| `## Conclusions` | `## Findings` for the reasoning; `## Active Summary` → `Requirements:` / `Risks:` for the requirement |
-| `## Decisions` | `## Active Summary` → `Decisions:` (`DEC-<n>`) |
-| `## Open Questions` | `## Active Summary` → `Open questions:` (`OQ-<n>`) |
-| `## Next Steps` | `## Active Summary` → `Next step:` |
-| `## References` | stays its own section, at the end |
-
-`## References` stays standalone rather than folding into `## Findings` on purpose: `## Findings`
-is the section that grows without bound, and a reference list buried inside it stops being
-findable.
+<!-- Where the sections of the retired three-file format went: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
 ### Identifiers
 
@@ -816,13 +767,12 @@ Numbering is per research folder and starts at 1 — `ADR-` at `0001`, zero-padd
 
 ### SOURCE.md for prompt-based explorations
 
-If the exploration was **prompt-based** (see [Exploration mode detection](#exploration-mode-detection)), generate an additional artifact `SOURCE.md` in the same research directory. This file captures the full dialogue context so that the exploration can be reproduced or continued later without losing any context.
+If the exploration was **prompt-based** (see [Exploration mode detection](#exploration-mode-detection)), generate an additional artifact `SOURCE.md` in the same research directory.
 
-`SOURCE.md` is a **log, not a derived representation of the research.** Two consequences,
-both deliberate: it is **not** part of the hashed region (only `## Active Summary` inside
-`RESEARCH.md` is), and it is **not** in the coherence gate's durable scope. A log is allowed
-to be redundant with the manifest — that is what a log is for, and admitting it to the gate
-would hand back exactly the job of reconciling two differently-written texts.
+`SOURCE.md` is a **log, not a derived representation of the research.** Two consequences, both
+deliberate: it is **not** part of the hashed region (only `## Active Summary` inside
+`RESEARCH.md` is), and it is **not** in the coherence gate's durable scope. A log is allowed to
+be redundant with the manifest.
 
 **When to generate**: Only for prompt-based explorations (user gave a topic/question/idea without referencing specific documentation files). Do NOT generate for file-based explorations (user referenced specific files/folders as input documentation).
 
@@ -842,9 +792,6 @@ would hand back exactly the job of reconciling two differently-written texts.
 Offered:
   A) <the option exactly as it was put to the user>
   B) <...>
-<!-- Include "Offered" only when the answer chose among options you presented.
-     Without it the log is not replayable: an answer like "option 1" resolves
-     to nothing, and the reader has to trust the derived document instead. -->
 **Answer**:
 > <The user's own words, verbatim. A blockquote is the only admissible form of an
 > answer the user gave. When the answer was not the user's but was discovered during
@@ -867,9 +814,7 @@ understanding was reached. This is the one section written in your own words.>
 ```
 
 **An answer is a quotation, never a digest.** The blockquote is the only admissible form of an
-answer the user gave; a two-word summary of it is not the answer, it is one reading of the
-answer. `## Conclusion` is the single section of this file you write in your own words —
-everything above it is the record, not your account of it.
+answer the user gave.
 
 **A choice with no recorded menu is not an answer.** When the answer picked among options you
 put to the user, write those options down next to it under `Offered:`. Without them a reply
@@ -877,15 +822,9 @@ like "option 1" or "let's go with B" resolves to nothing, and the only surviving
 what was agreed is the document derived from this log — which leaves the derived document
 certifying itself.
 
-Writing the menu down has a second effect worth naming: it makes an ambiguity visible with no
-check at all. "Five sections" standing next to "five subsections inside X" and "five sibling
-blocks of the same kind" plainly does not choose between them.
-
 **Mark your own cuts, and only your own.** `[…]` means *you* left something out of the
 quotation. A bare `…` means the user spoke that way — trailed off, paused, thought better of a
-sentence. Two different things get two different marks; a log that spends one glyph on both
-cannot be audited afterwards, because nothing in it distinguishes an edited quotation from a
-faithful one.
+sentence. Two different things get two different marks.
 
 **Never cut inside a noun phrase that names a structure, an order or a quantity.** What tells
 two such requirements apart is rarely the noun — it is the modifiers standing next to it. "A
@@ -897,25 +836,18 @@ are the ones that read as decoration.
 cost of a cut modifier is a phase planned against a requirement nobody stated.
 
 The one admissible exception is a secret: a credential, a token or a key quoted by accident is
-cut, marked `[…]`, and the reason is written on its own line under the quote. It is named here
-because it is the only cut the rule above does not cover, and an unnamed exception is the kind
-that gets taken silently.
+cut, marked `[…]`, and the reason is written on its own line under the quote.
 
 **On a continuation, append — never rewrite.** A new session adds a fresh block
 `## Session <YYYY-MM-DD HH:MM>` at the end of the file, carrying that session's questions,
-answers and clarifications. Everything already in the file stays exactly as it is. The point
-of a dialogue log is that it records what was actually said at the time, and an edited log
-records only what the last session believed.
+answers and clarifications. Everything already in the file stays exactly as it is.
 
 **Language Awareness**: Follow the same language rules as other artifacts. Translate section headings and prose into the configured language. Keep code identifiers and file paths in English.
-
-**Important**: Capture the actual dialogue content faithfully — and "faithfully" here names two mechanics, not a disposition: every answer the user gave is a quotation, and every cut you make inside one is marked. The value of this artifact is in preserving the exact questions, answers, and clarifications, not in summarizing or rephrasing them.
 
 ### Step 3.5: Readback
 
 Before the registry is re-rendered and before the gate runs, put back to the user the
-requirements they have not actually seen. This is the only check in the whole mechanism that
-asks the source of truth instead of the disk, and it costs one turn.
+requirements they have not actually seen.
 
 **What goes in — three classes, and only these:**
 
@@ -925,16 +857,10 @@ asks the source of truth instead of the disk, and it costs one turn.
 | `diverges` | the provenance marker |
 | failed the two-readings test | the third rung of the resolution ladder |
 
-A requirement marked `stated` that passed the test is **not shown**. That is what keeps the
-list short, and a short list is the only defence against this step turning into something that
-gets clicked through: out of twenty-two requirements it typically prints three.
+A requirement marked `stated` that passed the test is **not shown**. Out of twenty-two
+requirements it typically prints three.
 
-**It is a printed block, not `AskUserQuestion`.** The answers are free-form and per line ("not
-A but B, because…"), a four-option modal does not carry that, and the number of options needed
-is the number of lines shown. The tool is in `allowed-tools` and is deliberately not used here.
-
-The block is written here in English; the Language Awareness prerequisite renders it in the
-configured language at runtime, exactly as it does every other printed block in this skill.
+**It is a printed block, not `AskUserQuestion`.**
 
 ```
 Before saving — <N> requirements out of <M>. The rest go as they are.
@@ -957,11 +883,7 @@ Before saving — <N> requirements out of <M>. The rest go as they are.
   `## Findings`. Its `REQ-<n>` is **not reused**; the next requirement takes the following
   number.
 - **A correction that turns out to be a new requirement** → open a new `REQ-` with the next
-  number, marked `stated`. That is a normal outcome of asking, not an error.
-
-**Where this stands is a property, not a compromise.** The corrections land on disk before the
-registry is re-rendered and before the gate reads the files, so the gate checks the corrected
-text rather than the text that was shown.
+  number, marked `stated`.
 
 **Nobody answered** — the user left, or interrupted. The save is **not** cancelled. Every
 requirement of the three classes that went unconfirmed is demoted to an `OQ-<n>` and leaves
@@ -971,17 +893,13 @@ requirement of the three classes that went unconfirmed is demoted to an `OQ-<n>`
 WARN [readback] <k> requirements went unconfirmed — demoted to OQ
 ```
 
-A requirement the source of truth never saw has no business being declared the planner's input.
-The discipline is the gate's own: the remainder is written down, never dropped.
-
 **Nothing to show** — every requirement is `stated` and every test passed. Skip the step in
-silence: no block, no line. An empty ritual is precisely how a check stops being read.
+silence: no block, no line.
 
 ### Step 4: Re-render the Researches Index
 
 `.unikit/code/researches/INDEX.md` is a **generated** registry. It is not edited and it is not
-appended to: on every save it is re-rendered whole from the folders on disk, so it cannot fall
-behind them.
+appended to: on every save it is re-rendered whole from the folders on disk.
 
 1. List the subfolders of `.unikit/code/researches/`.
 2. For each, read its `RESEARCH.md` and take: the **first line** (the mode marker — present
@@ -1000,8 +918,7 @@ behind them.
                    Continue it with: /unikit-explore <folder>
    ```
 
-   `NOTE`, not `WARN`: nothing here is damaged, and the work resumes through
-   `references/continuing.md`.
+   `NOTE`, not `WARN`: the work resumes through `references/continuing.md`.
 
    Every other folder without a manifest keeps the line it has always had:
 
@@ -1009,10 +926,10 @@ behind them.
    WARN [research] skipped <folder> — no readable RESEARCH.md
    ```
 
-   Skipping in silence is forbidden. An unreadable manifest and an honestly empty registry
-   look identical from the outside, so an unannounced skip reports "no researches" for a
-   research that is sitting right there on disk. What skips a folder is unchanged — the
-   missing manifest, and nothing else; only the message now tells the two cases apart.
+   Skipping in silence is forbidden. An unreadable manifest and an honestly empty registry look
+   identical from the outside, so an unannounced skip reports "no researches" for a research
+   that is sitting right there on disk. What skips a folder is the missing manifest, and nothing
+   else.
 
 4. Overwrite the file whole. The header is always:
 
@@ -1042,8 +959,7 @@ behind them.
    `Updated` is the key on purpose — in a research with a continuation cycle, freshness means
    "when this was last confirmed", not "when the folder was opened".
 
-7. After the re-render, print the reconciliation summary — the same three lines the retired
-   `init` command printed:
+7. After the re-render, print the reconciliation summary:
 
    ```
    researches/INDEX.md re-rendered:
@@ -1052,15 +968,7 @@ behind them.
    - Removed: N (list names)
    ```
 
-**Reconciliation is no longer a separate verb.** There used to be an `init` argument whose
-whole job was to rebuild this file from disk; it is gone, and its work is now part of every
-save — the same pattern as `syncRulesState` Phase 1 and the `## System Map [gen]` re-render in
-game-design. It stopped being a separate command, but it did **not** stop being **visible**,
-which is what step 7 is for.
-
-The cost is worth naming: the registry can no longer be repaired by a dedicated command. In
-exchange it can no longer fall behind, because it is rebuilt from the folders — the actual
-source of truth — before the coherence gate reads the same files from disk.
+<!-- Why reconciliation stopped being a separate command: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
 ### Research Coherence Gate
 
@@ -1082,25 +990,19 @@ Act on the report's `Next:` line, and on nothing the report does not carry:
 Only when the dispatch cannot run does this session read the file itself (the `check-agent`
 fallback).
 
-Its position is fixed: **after Step 4, before Step 5.** The order matters in both directions.
-The gate re-reads the durable files from disk, so running it before the write has nothing to
-read; and confirming before it runs tells the user the research is safe while it may still be
-incoherent.
+Its position is fixed: **after Step 4, before Step 5.**
 
 In ultra the gate runs **after** the bundle integrity checks, not instead of them.
 
 If `references/coherence-gate.md` does not exist, or the pass reports that it cannot read it,
 print one line `WARN [coherence] reference missing — saving without the coherence pass` and
-continue — the
-same trade as the ultra reference above: the research has already been done and written, and
-losing it over a missing reference file is not acceptable.
+continue.
 
 ### Step 5: Confirm the save
 
-Only once the gate has **finished** — passed, or stopped at its budget with the user's answer
-in hand — tell the user what was written: the folder, the manifest, any adaptive artifacts,
-and the registry line. Until then the save is not confirmed — a gate that runs after the
-confirmation is a gate that reports on a decision already announced.
+Only once the gate has **finished** — passed, or stopped at its budget with the user's answer in
+hand — tell the user what was written: the folder, the manifest, any adaptive artifacts, and the
+registry line. Until then the save is not confirmed.
 
 A save the user authorised over surviving findings is confirmed like any other; its session
 entry then reads `stopped at budget: <k> unresolved`, not `passed`. That record is where the
@@ -1108,16 +1010,8 @@ override lives — not a withheld confirmation.
 
 ### Important rules for saving
 
-- **Don't auto-save** — Always offer and let the user decide. What the ban covers is saving the **research**: the manifest, the adaptive artifacts, the re-rendered registry, the gate and the confirmation. Pinning falls outside it — appending a turn to `SOURCE.md` is not a save, and neither is creating `<slug>/` to hold it, however much a new folder looks like one
+- **Don't auto-save** — Always offer and let the user decide. What the ban covers is saving the **research**: the manifest, the adaptive artifacts, the re-rendered registry, the gate and the confirmation. Pinning falls outside it — appending a turn to `SOURCE.md` is not a save, and neither is creating `<slug>/` to hold it
 - **Generate the name** from the research context — don't ask the user to name it
-- **One manifest** — `RESEARCH.md` carries the research. There is no second canonical file and
-  no brief: `## Active Summary` *is* the machine input, and `## Findings` holds the evidence
-  that produced it
-- **`SOURCE.md` only for prompt-based explorations** (see [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)), appended to as the conversation happens (see [Pinning](#pinning-the-log-is-written-as-you-talk)) and again on a continuation, never rewritten
-- **The folder may already exist when you get here** — a pinned log creates it before the save. `<slug>/` holding a `SOURCE.md` and no manifest is this exploration's own log, not a collision with someone else's research; step 1 recomputes the slug and renames the folder if the topic has moved since
-- **The registry is re-rendered whole on every save** — never edited, never appended to; this
-  is how other skills discover researches, and how it stays in step with the folders
-- **Run the coherence gate** — it is part of saving, not an option. It runs *after* the user has agreed to save, so it neither replaces the question nor weakens `Don't auto-save`
 - The user may edit the suggested name before you save
 
 ---
