@@ -289,8 +289,8 @@ Without this context you'll give generic {{engine_name}} advice instead of advic
 
 The argument after `/unikit-explore` can be:
 - **The slug of an existing research folder** in `.unikit/code/researches/` — this is an
-  **entry into the continuation cycle**, not a new topic. Read the manifest and continue that
-  research (see [Continuing a research](#continuing-a-research)).
+  **entry into the continuation cycle**, not a new topic. Load `{{skills_dir}}/{{self_name}}/references/continuing.md` and
+  follow it.
 - **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` and follow it when saving. Everything before saving — the stance, the exploration itself — is unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
 - A vague idea: "object pooling system"
 - A specific problem: "the save system is getting unwieldy"
@@ -302,8 +302,7 @@ The argument after `/unikit-explore` can be:
 - Nothing: just enter explore mode
 
 If the argument matches the name of an existing folder in `.unikit/code/researches/`, treat it
-as a continuation rather than a new subject, and follow
-[Continuing a research](#continuing-a-research).
+as a continuation rather than a new subject, and follow `{{skills_dir}}/{{self_name}}/references/continuing.md`.
 
 On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
 
@@ -395,7 +394,7 @@ missing.
   ```
 
   This is also the one state in which saving has to pick the log back up, see
-  [Continuing a research](#continuing-a-research).
+  `references/continuing.md`.
 
 - `.unikit/code/researches/` does not exist: create it (`mkdir -p`) and continue, silently.
 
@@ -478,7 +477,7 @@ If the user agrees:
    2. Use another name — you type the slug
    ```
 
-   - *Continue* → enter [Continuing a research](#continuing-a-research); print
+   - *Continue* → load `{{skills_dir}}/{{self_name}}/references/continuing.md` and follow it; print
      `WARN [research] <slug> exists — continuing it`.
    - *Another name* → save under the slug the user gave; print
      `WARN [research] <slug> exists — saving under <new-slug>`.
@@ -933,7 +932,7 @@ behind them.
    ```
 
    `NOTE`, not `WARN`: nothing here is damaged, and the work resumes through
-   [Continuing a research](#continuing-a-research).
+   `references/continuing.md`.
 
    Every other folder without a manifest keeps the line it has always had:
 
@@ -1041,53 +1040,12 @@ override lives — not a withheld confirmation.
 
 ---
 
-## Continuing a research
+## Superseding a research
 
-A research is not finished when it is saved — it is **continued**. This is the reason the
-folder name carries no date.
-
-**Entry.** Either the argument named an existing folder in `.unikit/code/researches/`, or the
-user chose *Continue the existing research* in the collision dialogue during a save.
-
-**Procedure.**
-
-1. Read the folder's `RESEARCH.md` in full — the header, `## Active Summary`, `## Findings`
-   and every past `## Sessions` entry. In ultra, read the files in `## Artifact Index` too.
-2. Explore further, exactly as in a fresh session.
-3. When saving:
-   - **Append** a new entry to `## Sessions`, immediately **before** the closing marker.
-     Past entries are reproduced verbatim — the section is append-only.
-   - Move `Updated:` to now (from `date`). `Created:` never changes.
-   - **Revise `## Active Summary` in place.** New IDs continue the existing numbering; an ID
-     is never reused; a superseded item **keeps its number**, is marked superseded, and names
-     what replaced it. Revising the summary is the point of a continuation — a session that
-     only appends to `## Findings` has recorded evidence without ever updating the conclusion.
-   - Reconsider `Status` and `Lifecycle` **explicitly**, and say what they became. Neither
-     carries over by default; a research that has quietly stayed `in-progress` across four
-     sessions is telling the registry something nobody decided.
-   - **The log is already on disk.** [Pinning](#pinning-the-log-is-written-as-you-talk) owns
-     `SOURCE.md` and has been appending this session's dialogue to it as you talked. Append
-     the remainder here only where pinning did not run: it was switched off for the session
-     (`WARN [pin]`), or the session started before it was in effect. Appending unconditionally
-     writes the same dialogue into the file twice, and a doubled log is indistinguishable from
-     a session that said everything twice.
-   - Re-render the registry and run the coherence gate, exactly as on a first save.
-4. **Say it out loud when the folder has outgrown its question.** From the fourth session, or
-   past fifteen artifacts, print one line and continue — a note, never a gate:
-
-   ```
-   NOTE: 4th session, 17 artifacts — a research that keeps growing past its original question
-         is cheaper to close and restart with `Supersedes:` than to extend.
-   ```
-
-   The threshold counts **sessions**, not artifacts: repeated passes are what multiply the
-   carriers of one value. A large folder written in one sitting is not the problem this note
-   is about.
-
-**Superseding a whole research.** When a new research replaces an old one rather than
-continuing it, the new one carries `Supersedes: <slug>` in its header and the old one is set
-to `Lifecycle: superseded`. The superseded folder is **not deleted** — it is the trace of the
-reasoning, and removing it makes the replacement look unmotivated.
+When a new research replaces an old one rather than continuing it, the new one carries
+`Supersedes: <slug>` in its header and the old one is set to `Lifecycle: superseded`. The
+superseded folder is **not deleted** — it is the trace of the reasoning, and removing it makes
+the replacement look unmotivated.
 
 ---
 

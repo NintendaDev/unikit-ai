@@ -115,7 +115,7 @@ Mixed input is supported: `@.unikit/code/plans/2026-03-08_customers-system Phase
 
 **Parse `$ARGUMENTS` (priority order):**
 
-1. If `$ARGUMENTS` contains `--list` → skip to **List Available Plans** section
+1. If `$ARGUMENTS` contains `--list` → load `{{skills_dir}}/{{self_name}}/references/mode-list.md` and follow it (it STOPs; Steps 0.2–5 do not run)
 2. If `$ARGUMENTS` contains `@<path>` → extract path after `@`, use as explicit feature folder (skip all auto-detection). See **Explicit Folder Override** below.
 3. If `$ARGUMENTS` is or contains `status` → skip to **Status Display** section (can combine with `@<path>`)
 4. Look for explicit selectors (can combine with `@<path>` or feature name):
@@ -124,37 +124,6 @@ Mixed input is supported: `@.unikit/code/plans/2026-03-08_customers-system Phase
    - `Task N.M` or `Tasks N.M N.K` — specific tasks
 5. If no `@<path>` was found, check remaining args for a **feature name** — a bare string (no `@` prefix) that matches a folder name in `.unikit/code/plans/` by substring (e.g. `core-loop` matches `2026-03-10_core-loop`). This is a convenience shorthand that only searches inside `.unikit/code/plans/`.
 6. Bare numbers without prefix are NOT selectors — they might be part of the feature name. Phases and tasks must be explicitly prefixed.
-
-#### List Available Plans (`--list`)
-
-If `$ARGUMENTS` contains `--list`, run read-only plan discovery and stop.
-
-1. Get current branch: `git branch --show-current` (if git is unavailable, skip branch matching)
-2. Scan `.unikit/code/plans/` for all feature folders
-3. Check existence of `.unikit/code/FIX_PLAN.md`
-4. For each feature folder, read its manifest (`.unikit/code/plans/<folder>/PLAN.md`) and count completed/total tasks
-5. Print plan availability summary:
-
-```
-Available plans in .unikit/code/plans/:
-
-  Branch match:
-    core-loop                     (12/40 tasks, 30%)  ← matches current branch
-
-  Other plans:                                        (newest first, by manifest Updated:)
-    customers-system              (18/18 tasks, 100% — completed)
-    2026-03-08_inventory-rework   (5/22 tasks, 23%)
-    003-legacy-shop-rework        (7/9 tasks, 78%)
-
-  Fix plan: .unikit/code/FIX_PLAN.md — exists
-
-Usage:
-  /unikit-implement                              — auto-detect by branch
-  /unikit-implement @.unikit/code/plans/<folder>      — use specific plan
-  /unikit-implement <folder-name> Phase 3        — specific folder + phase
-```
-
-**Important:** In `--list` mode — do not execute tasks, do not modify files. STOP after displaying the list.
 
 #### Explicit Folder Override (`@<path>`)
 

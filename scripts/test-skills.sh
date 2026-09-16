@@ -3153,6 +3153,49 @@ else
     fail "unikit-gd-spec — mode-extraction incomplete:$MX_SPEC_WHY"
 fi
 
+# (MX-3) Mode-extraction: unikit-implement's `--list` body lives in references/mode-list.md.
+# The gate fires on the first turn and STOPs, so the file is read in an empty context — the
+# one case where moving a body out of SKILL.md does not move its cost to a worse moment.
+# Three halves, not the MX-1 two: present, not inline, and REACHABLE — a body that exists
+# while the dispatch still says "skip to the section below" is a mode no one can enter.
+# The negative is anchored on the output template, not on the heading: a heading is renamed
+# during cosmetics, while the template line only comes back together with the body.
+MX_IMPL_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+MX_IMPL_LIST="$ROOT_DIR/skills/unikit-implement/references/mode-list.md"
+MX_IMPL_WHY=""
+[[ -s "$MX_IMPL_LIST" ]]                                             || MX_IMPL_WHY+=" mode-list.md-missing"
+grep -qF 'Follow these steps and **STOP**' "$MX_IMPL_LIST" 2>/dev/null         || MX_IMPL_WHY+=" no-stop-banner"
+grep -qF 'Available plans in .unikit/code/plans/:' "$MX_IMPL_LIST" 2>/dev/null || MX_IMPL_WHY+=" no-output-template"
+! grep -qF 'Available plans in .unikit/code/plans/:' "$MX_IMPL_SKILL" || MX_IMPL_WHY+=" list-still-inline"
+grep -qF 'references/mode-list.md' "$MX_IMPL_SKILL"                  || MX_IMPL_WHY+=" list-unreachable"
+if [[ -z "$MX_IMPL_WHY" ]]; then
+    pass "MX-3 unikit-implement — --list body extracted to references/mode-list.md (present, not inline, dispatched)"
+else
+    fail "MX-3 unikit-implement — list-mode extraction incomplete:$MX_IMPL_WHY"
+fi
+
+# (MX-4) unikit-explore's continuation body lives in references/continuing.md. Same reasoning
+# and same three halves as MX-3: the gate is "the argument named an existing folder", a first
+# turn in an empty context. The fourth assert is this move's own failure form — the body used
+# to be reached through `#continuing-a-research` anchors, and an anchor left behind points at
+# a section that no longer exists in the file.
+# `## Superseding a research` stays in SKILL.md on purpose: it fires when a NEW research is
+# saved, which is the peak of a session, not the start of one.
+MX_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+MX_EXPLORE_CONT="$ROOT_DIR/skills/unikit-explore/references/continuing.md"
+MX_EXPLORE_WHY=""
+[[ -s "$MX_EXPLORE_CONT" ]]                                           || MX_EXPLORE_WHY+=" continuing.md-missing"
+grep -qF 'outgrown its question' "$MX_EXPLORE_CONT" 2>/dev/null       || MX_EXPLORE_WHY+=" no-continuation-body"
+! grep -qF 'outgrown its question' "$MX_EXPLORE_SKILL"                || MX_EXPLORE_WHY+=" continuing-still-inline"
+grep -qF 'references/continuing.md' "$MX_EXPLORE_SKILL"               || MX_EXPLORE_WHY+=" continuing-unreachable"
+! grep -qF '#continuing-a-research' "$MX_EXPLORE_SKILL"               || MX_EXPLORE_WHY+=" dangling-anchor"
+grep -qF 'superseded folder is **not deleted**' "$MX_EXPLORE_SKILL"   || MX_EXPLORE_WHY+=" superseding-rule-moved-out"
+if [[ -z "$MX_EXPLORE_WHY" ]]; then
+    pass "MX-4 unikit-explore — continuation body extracted to references/continuing.md (present, not inline, dispatched, no dangling anchor)"
+else
+    fail "MX-4 unikit-explore — continuation extraction incomplete:$MX_EXPLORE_WHY"
+fi
+
 # (DC-1) Plan design-context.md: the extracted Step 4.5 body that loads the shared
 # design-read contract, applies Flow-First Resolution, and carries the implemented_version
 # reader (the T8-reader half, asserted at T8-6 above).
