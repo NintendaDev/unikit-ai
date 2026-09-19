@@ -1,3 +1,5 @@
+[Back to README](../../README.md) · [Skills Reference](../skills.md)
+
 # unikit-implement — post-completion steps: the reasons behind the rules
 
 A maintainer page. Nothing under `docs/` is delivered into a project by `unikit-ai init` or
@@ -51,3 +53,8 @@ carries each rule. The same split as the explore save pipeline, on the same crit
   the top; generalising from the neighbours is exactly how this step came to be read as a
   delegation. Step 5.2 is delegated to nobody at all — it blocks on the user, and only the answer
   decides what is written.
+
+## See Also
+
+- [unikit-explore save rationale](unikit-explore-save-rationale.md) — the rule classification behind the split
+- [Skills Reference](../skills.md) — what `/unikit-implement` does, for the people who use it

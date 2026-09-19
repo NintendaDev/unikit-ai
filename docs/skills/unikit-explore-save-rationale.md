@@ -1,3 +1,5 @@
+[Back to README](../../README.md) · [Skills Reference](../skills.md)
+
 # unikit-explore — the save pipeline: rules and their rationale
 
 A maintainer page. Nothing under `docs/` is delivered into a project by `unikit-ai init` or
@@ -388,3 +390,8 @@ source of truth — before the coherence gate reads the same files from disk.
 - **Confirmation waits for the gate.** A gate that runs after the confirmation is a gate that
   reports on a decision already announced.
 - **Pinning is outside the auto-save ban**, however much a new folder looks like a save.
+
+## See Also
+
+- [unikit-implement rationale](unikit-implement-rationale.md) — the same split, for the post-completion steps
+- [Skills Reference](../skills.md) — what `/unikit-explore` does, for the people who use it
