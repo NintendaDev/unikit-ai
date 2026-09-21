@@ -75,6 +75,11 @@ Relevant to the dev pipeline:
   Written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`.
 - `cli-contract.md`, `gate-result-contract.md`, `modules.yml`, `gamedesign/` — contracts read on
   demand by the skills that need them.
+- `ultra-plan-read.md` — the ultra plan bundle reader contract, read by `/unikit-implement`,
+  `/unikit-verify`, `/unikit-improve` and `/unikit-commit` only when the plan is an ultra bundle.
+- `research-link.md` — the `## Based on` contract (entry format, hashing, drift ladder), read by
+  `/unikit-plan`, `/unikit-implement`, `/unikit-verify` and `/unikit-improve` only when a plan
+  links a research.
 
 ---
 
