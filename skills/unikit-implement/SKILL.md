@@ -115,7 +115,7 @@ Mixed input is supported: `@.unikit/code/plans/2026-03-08_customers-system Phase
 
 **Parse `$ARGUMENTS` (priority order):**
 
-1. If `$ARGUMENTS` contains `--list` → skip to **List Available Plans** section
+1. If `$ARGUMENTS` contains `--list` → load `{{skills_dir}}/{{self_name}}/references/mode-list.md` and follow it (it STOPs; Steps 0.2–5 do not run)
 2. If `$ARGUMENTS` contains `@<path>` → extract path after `@`, use as explicit feature folder (skip all auto-detection). See **Explicit Folder Override** below.
 3. If `$ARGUMENTS` is or contains `status` → skip to **Status Display** section (can combine with `@<path>`)
 4. Look for explicit selectors (can combine with `@<path>` or feature name):
@@ -124,37 +124,6 @@ Mixed input is supported: `@.unikit/code/plans/2026-03-08_customers-system Phase
    - `Task N.M` or `Tasks N.M N.K` — specific tasks
 5. If no `@<path>` was found, check remaining args for a **feature name** — a bare string (no `@` prefix) that matches a folder name in `.unikit/code/plans/` by substring (e.g. `core-loop` matches `2026-03-10_core-loop`). This is a convenience shorthand that only searches inside `.unikit/code/plans/`.
 6. Bare numbers without prefix are NOT selectors — they might be part of the feature name. Phases and tasks must be explicitly prefixed.
-
-#### List Available Plans (`--list`)
-
-If `$ARGUMENTS` contains `--list`, run read-only plan discovery and stop.
-
-1. Get current branch: `git branch --show-current` (if git is unavailable, skip branch matching)
-2. Scan `.unikit/code/plans/` for all feature folders
-3. Check existence of `.unikit/code/FIX_PLAN.md`
-4. For each feature folder, read its manifest (`.unikit/code/plans/<folder>/PLAN.md`) and count completed/total tasks
-5. Print plan availability summary:
-
-```
-Available plans in .unikit/code/plans/:
-
-  Branch match:
-    core-loop                     (12/40 tasks, 30%)  ← matches current branch
-
-  Other plans:                                        (newest first, by manifest Updated:)
-    customers-system              (18/18 tasks, 100% — completed)
-    2026-03-08_inventory-rework   (5/22 tasks, 23%)
-    003-legacy-shop-rework        (7/9 tasks, 78%)
-
-  Fix plan: .unikit/code/FIX_PLAN.md — exists
-
-Usage:
-  /unikit-implement                              — auto-detect by branch
-  /unikit-implement @.unikit/code/plans/<folder>      — use specific plan
-  /unikit-implement <folder-name> Phase 3        — specific folder + phase
-```
-
-**Important:** In `--list` mode — do not execute tasks, do not modify files. STOP after displaying the list.
 
 #### Explicit Folder Override (`@<path>`)
 
@@ -436,7 +405,7 @@ A merged test-checkpoint task is the other third outcome, and it counts differen
 - **`Phases N-M`** (e.g. `Phases 1-3`): collect all pending tasks from Phases N through M
 - **`Task N.M`** or **`Tasks N.M N.K`** (e.g. `Tasks 2.1 2.3`): collect only those specific pending tasks
 - If a specified task is already completed, skip it and note this to the user
-- If a phase depends on an incomplete phase, warn the user but proceed if they confirm
+- If a phase depends on an incomplete phase — its `**Dependencies:**` line in `## Checklist`, cross-checked against `## Dependency Graph` — warn `Phase {N} depends on Phase {M}, which has {X} incomplete tasks` and ask: implement Phase {M} first (recommended) · continue as is · skip Phase {N} and take the next independent phase
 
 **If no selectors (execute all pending):**
 
@@ -726,7 +695,7 @@ Based on choice:
 - No → skip commit, proceed to next phase
 - Disable checkpoints → skip commit checkpoints for the rest of the session, proceed
 
-Commit staging rules — see Rule 8 in **Important Rules**.
+Commit staging rules — see **Important Rules** → *Commit only your own changes*.
 
 **3.10: Check ROADMAP.md progress (after all phases in scope are done)**
 
@@ -774,23 +743,17 @@ The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with
 
 After all tasks in the current scope are done, perform the following actions.
 
-**IMPORTANT:** Steps 5.1 and 5.3 delegate work to Agent calls and do NOT wait for user input. **Step 5.2 is the exception and blocks on the user** — it never writes a rule without an answer. Steps 5.4–5.8 are sequential and may involve user interaction.
+**IMPORTANT:** Step 5.3 delegates to `docs-agent` and does NOT wait for it. **Step 5.2 blocks on the user** — it never writes a rule without an answer. Steps 5.4–5.8 are sequential and may involve user interaction.
 
 **5.1: Check TODO.md**
 
-After implementation, check if any open tasks in the project TODO list were resolved:
-
-1. Check if `.unikit/TODO.md` exists. If not — skip this step.
-2. Read `.unikit/TODO.md` and collect all unchecked tasks (`- [ ]`).
-3. Compare each unchecked task against the work just completed — match by semantic similarity to modified files, classes, methods, or feature descriptions from the plan.
-4. If matching tasks found — change `- [ ]` to `- [x]` directly in `.unikit/TODO.md` using the Edit tool. No agents or skills needed.
-5. If no matching tasks found — skip silently.
+If `.unikit/TODO.md` exists, tick every open task (`- [ ]` → `- [x]`, with `Edit`) that the completed work resolves — matched by meaning against the modified files, classes, methods and the plan's feature descriptions. No file, or no match → skip silently.
 
 **5.2: Propose New Rules**
 
 The candidates are already collected: the rows whose status is `open` in the manifest's `## Rule Candidates` (Step 3.4). This step formulates nothing anew — it proposes what is written down, and records the choice.
 
-1. **No `open` candidate → silence.** Not a line, not a "no rules found". A run without candidates is the ordinary case, and a line about it on every run turns the signal into wallpaper — the same rule the empty findings table follows in Step 5.5.
+1. **No `open` candidate → silence** — not even a "no rules found" line.
 2. **Select at most three** `open` candidates. The filter: a general convention for future code; not about one task; not a description of the current code; absent from `.unikit/RULES.md` and from `RULES_INDEX.md`; one line, one directive.
 3. **Print the candidates as plain markdown, in a block of their own** — before the question:
 
@@ -803,15 +766,15 @@ The candidates are already collected: the rows whose status is `open` in the man
       from: task 4.1
    ```
 
-   **Print first, ask second: the question mechanism carries the options and nothing else.** A question that also holds the payload is invisible on a runtime that has no such mechanism — that is a measured failure, not a supposition.
-4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"**. Three candidates and a refusal are exactly four options, the tool's limit — which is the reason the count is capped at three. Keep the option label short; the full rule text goes in the option's `description`, and that is why the one-line rule form is a condition of readability here rather than decoration.
+   **Print first, ask second: the question mechanism carries the options and nothing else.**
+4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"** — four options at most, the tool's limit. Keep the option label short; the full rule text goes in the option's `description`.
 5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
 6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
 7. **What was selected goes to `/unikit-rules` as one numbered batch**, through the same three-tier dispatch as Step 5.6: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline; Tier 2 the inline slash form `/unikit-rules <batch>`, rewritten per agent by the installer; Tier 3 printing the command, only where no inline mechanism exists at all. This is **a real call, not text in backticks**.
 8. **Show the user the `## Batch result` table** the delegate returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
 9. Only then proceed to Step 5.3.
 
-**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed — the one line explaining why fewer were proposed than recorded. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added`: the rule was not written, and marking otherwise would be a lie — print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the same holds: the statuses stand, and `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`.
+**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added` — the rule was not written; print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the statuses stand as well: `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`.
 
 **5.3: Documentation Checkpoint**
 
@@ -819,19 +782,11 @@ The candidates are already collected: the rows whose status is `open` in the man
 
 Delegate to `docs-agent` to update or create documentation based on completed work. Do NOT wait for the agent to finish — proceed to Step 5.4 immediately.
 
-**Fallback** (if the `Agent` tool is unavailable in the current environment): you MUST invoke `/unikit-docs` yourself via whatever skill-invocation mechanism is available. This must be a real call, not a printed recommendation to the user, and must not be wrapped in triple backticks. Wait for the invocation to return, then proceed to Step 5.4.
+**Fallback** (no `Agent` tool): invoke `/unikit-docs` yourself — a real call, not a printed recommendation — wait for it to return, then proceed to Step 5.4.
 
-**If `Docs: no` or Settings section is missing:**
+**If `Docs: no` or the Settings section is missing:** do **not** delegate; emit `WARN [docs] Docs policy is no/unset; skipping documentation`.
 
-- Do **not** delegate to `docs-agent`
-- Emit `WARN [docs] Docs policy is no/unset; skipping documentation`
-
-**Always include documentation outcome in the completion output (Step 4):**
-
-Append one of these lines to the Implementation Summary:
-- `Documentation: delegated to docs-agent`
-- `Documentation: updated via /unikit-docs (fallback for docs-agent)`
-- `Documentation: warn-only (Docs: no/unset)`
+The Implementation Summary (Step 4) carries one documentation line: `Documentation: delegated to docs-agent` · `Documentation: updated via /unikit-docs (fallback for docs-agent)` · `Documentation: warn-only (Docs: no/unset)`.
 
 **5.4: Handle plan file after completion**
 
@@ -845,28 +800,22 @@ Options:
 2. No, keep it
 ```
 
-Based on choice:
-- Yes → delete `.unikit/code/PLAN.md`
-- No → leave as is
+Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
-**If using a folder plan** (`.unikit/code/plans/<folder>/`, e.g. `.unikit/code/plans/2026-03-10_core-loop/`):
-- Keep it — a folder plan is a durable record of what was done; the user may delete it before merging if desired
-- **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** It shares a name with the flat fast plan and differs from it only by path, so the prompt above must always spell out the full path it is about to remove.
+**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`** — it shares its name with the flat fast plan, so the prompt above always spells out the full path it removes.
 
 **5.5: MCP Findings handoff**
 
 Read the plan's `## MCP Findings` table.
 
-- **No rows** (or no such heading) → say nothing at all and go to 5.6. Not a note, not a "no findings this run" line. A run with no findings is the ordinary case, and a line announcing it every time is how a signal becomes wallpaper.
+- **No rows** (or no such heading) → say nothing at all — not even a "no findings this run" line — and go to 5.6.
 - **Rows present** → offer to move them to the durable surface:
 
 ```
 <n> MCP findings recorded in this plan. Transfer them to .unikit/MCP-RECHECK-NOTES.md?
 ```
 
-  On agreement, invoke `Skill(skill: "unikit-mcp-trap", args: "<path to the plan file>")`. The explicit path is what makes it read *this* plan and nothing else — see that skill's `## Input`.
-
-**Why here, before review and commit.** The findings are part of the result of this run, and they are the part with no other keeper: the code is in git, the tasks are in the plan, and a finding lives only in a table nobody has read yet. Put this after review and it competes with a discussion of code quality for the user's attention — and loses, every time, ending up "later", which is where it was before this step existed.
+  On agreement, invoke `Skill(skill: "unikit-mcp-trap", args: "<path to the plan file>")` — the explicit path makes it read this plan and nothing else.
 
 **5.6: Verify or Commit**
 
@@ -885,14 +834,12 @@ Based on choice:
 **These are skill invocations, in this session — not delegations.** Three tiers, in order:
 
 - **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit")`, inline, waiting for each to return before starting the next. This is the path on Claude Code.
-- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, one at a time, waiting for each. The slash form is rewritten per agent by the installer (Codex `$unikit-review`, Qwen `/skills unikit-review`); `Skill(...)` is **not** rewritten and non-Claude agents have no `Skill` tool, so without this tier the step is dead on 5 of 6 agents. This must be a **real call**, not a printed recommendation.
+- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, then `/unikit-commit`, one at a time, waiting for each. The slash form is rewritten per agent by the installer; `Skill(...)` is not.
 - **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at all, print the ordered `Run: /unikit-…` list for the user to execute by hand. Last resort, never the default.
 
 The invocation must be **a real call, not printed text**, and must not be wrapped in triple backticks.
 
-**Review is NOT delegated here — unlike Step 5.3.** State it plainly, because the shape of this file argues the other way: a step above says "Delegate to `docs-agent`", a `Subagent Delegation — BLOCKING PRE-REQUISITE` block sits at the top, and generalising from the neighbours is exactly how this step came to be read as a delegation.
-
-Why the distinction is real and not stylistic: a subagent carries the findings into a context you cannot see, so `file:line` references stop being clickable, no follow-up question can be asked about a finding, and — since `unikit-review` holds `Agent` in `allowed-tools` for its `+check` validator — the validator would run as an agent inside an agent. `docs-agent` is delegated precisely because its output is *not* a conversation: it writes a file and finishes. Step 5.2 is delegated to nobody at all — it blocks on the user, and only the answer decides what is written.
+**Review is NOT delegated here — unlike Step 5.3.** A review is a conversation: in a subagent its `file:line` references stop being clickable, no follow-up question can be asked about a finding, and its `+check` validator would run as an agent inside an agent. `docs-agent` is delegated because it writes a file and finishes.
 
 **5.7: Context Cleanup**
 
@@ -932,42 +879,13 @@ Counts come from the checkboxes. A task marked `- [x] … ⏸️ MANUAL` counts 
 
 Then STOP — do not execute any tasks.
 
-## Dependency Validation
-
-Before executing any phase, verify its phase dependencies from the manifest (the phase's `**Dependencies:**` line in `## Checklist`, cross-checked against `## Dependency Graph`):
-- Read the `**Dependencies:**` line for the phase
-- Check that all dependency phases have their tasks completed
-- If a dependency is unmet, warn the user:
-
-```
-Phase {N} depends on Phase {M}, which has {X} incomplete tasks.
-Implementing Phase {N} now may lead to compilation errors or incorrect behavior.
-
-Options:
-1. Implement Phase {M} first (recommended)
-2. Continue as is (at your own risk)
-3. Skip Phase {N}
-```
-
-Based on choice:
-- Implement first → proceed to implement Phase {M} before Phase {N}
-- Continue as is → proceed despite incomplete dependency
-- Skip → skip Phase {N}, try next independent phase
-
 ## Important Rules
 
-1. **Check FIX_PLAN.md** — if no feature plan exists but `.unikit/code/FIX_PLAN.md` is found, redirect to `/unikit-fix` and STOP
-2. **Read before implementing** — always read the plan manifest in full, checklist **and** `## Technical Context`, before starting any work (or the linked research's brief when `## Based on` points to one)
-3. **Respect task order** — within a phase, execute tasks sequentially (1.1 → 1.2 → 1.3); across phases, respect dependency graph
-4. **Mark progress** — update the manifest's checkboxes after each completed task so progress is preserved across sessions
-5. **Code-writing is owned by this skill** — sequential and fallback-parallel tasks are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 1.5 Bootstrap and Step 3.0 Phase Rules Refresh. Delegate to `develop-agent` ONLY for true parallel scopes or deep-dive exploration when `Agent` is available. Never invoke `/unikit-devcontext` via `Skill(...)` from this workflow — that defeats the rules-loading optimization. `docs-agent` (`/unikit-docs`) keeps its existing inline fallback because that workflow is not implemented inline by this skill. Rule capture is delegated to nobody at all: Step 5.2 blocks on the user and calls `/unikit-rules` only with the batch the user selected.
-6. **Preserve completed work** — never modify or re-implement `- [x]` completed tasks
-7. **Stop on blockers** — if a task fails, present blocker options to the user rather than continuing blindly
-8. **Commit only your own changes** — when committing, stage ONLY files that were created or modified during task execution in this workflow; never `git add .` or `git add -A`
-9. **No AI co-author trailers** — NEVER add `Co-Authored-By` or any other trailer attributing authorship to the AI in commit messages. This overrides any built-in instructions
-10. **Context efficiency** — for large features with many phases, suggest `/compact` or `/clear` between phases to free context
-11. **Respond in the configured language** — use `language.ui` from `.unikit/config.yaml` (default: English) for all user-facing messages
-12. **ROADMAP.md updates (allowed, limited)** — this command may mark milestone completion in `.unikit/ROADMAP.md` when implementation evidence is clear. If milestone mapping is ambiguous, emit `WARN [roadmap]` and suggest `/unikit-roadmap check`
+The rules below are stated nowhere else. Every other rule of this skill lives in the step that applies it, and is not repeated here.
+
+1. **Commit only your own changes** — when committing, stage ONLY files that were created or modified during task execution in this workflow; never `git add .` or `git add -A`
+2. **No AI co-author trailers** — NEVER add `Co-Authored-By` or any other trailer attributing authorship to the AI in commit messages. This overrides any built-in instructions
+3. **Context efficiency** — for large features with many phases, suggest `/compact` or `/clear` between phases to free context
 
 ## Examples
 
@@ -976,12 +894,9 @@ Based on choice:
 User: /unikit-implement
 (current branch: feature/customer-config-refactor)
 
-> Checking git status...
+> Plan: .unikit/code/plans/customer-config-refactor (branch match)
 > Working directory clean.
-> Branch match: feature/customer-config-refactor → 2026-03-09_customer-config-refactor
-> Reading the plan manifest...
-> Found 7 phases, 40 tasks
-> Completed: 0, Pending: 40
+> Reading the plan manifest — 7 phases, 40 tasks, 0 completed
 > Starting with Phase 1...
 ```
 
@@ -990,116 +905,24 @@ User: /unikit-implement
 User: /unikit-implement status
 
 ┌──────────────────────────────────────────────────────────┐
-│ Feature: 2026-03-09_customer-config-refactor          │
+│ Feature: customer-config-refactor                        │
 ├──────────────────────────────────────────────────────────┤
-│ [x] Phase 1: Prepare interfaces              (5/5)      │
-│ [x] Phase 2: Refactor models                 (3/3)      │
-│ [ ] Phase 3: Configuration                   (2/6)      │
+│ [x] Phase 1: Prepare interfaces              (5/5)       │
+│ [x] Phase 2: Refactor models                 (3/3)       │
+│ [ ] Phase 3: Configuration                   (2/6)       │
 │     > Next: 3.3 — Create CustomerMeta                    │
-│ [ ] Phase 4: Integration                     (0/4)      │
+│ [ ] Phase 4: Integration                     (0/4)       │
 ├──────────────────────────────────────────────────────────┤
 │ Progress: 10/18 (55%)                                    │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Example 3: Execute specific phase
+### Example 3: Explicit folder + selector
 ```
-User: /unikit-implement Phase 3
+User: /unikit-implement @.unikit/code/plans/inventory-rework Phase 2
 
-> Branch match → 2026-03-09_customer-config-refactor
-> Phase 3: Create CustomersMetas, CustomerMetaEntity and DayCustomerEntry
-> Dependencies: Phase 2 (completed)
-> 6 tasks pending
-> Starting...
-```
-
-### Example 4: Execute phase range
-```
-User: /unikit-implement Phases 1-3
-
-> Branch match → 2026-03-09_customer-config-refactor
-> Phases 1-3: 16 tasks pending across 3 phases
-> Starting with Phase 1...
-```
-
-### Example 5: Execute specific tasks
-```
-User: /unikit-implement Tasks 2.1 2.3
-
-> Branch match → 2026-03-09_customer-config-refactor
-> Selected tasks:
->   2.1 — Rename IShopCustomer.cs to IDayCustomer.cs
->   2.3 — Delete CustomerType.cs
-> Starting...
-```
-
-### Example 6: Specific feature + phase
-```
-User: /unikit-implement 2026-03-08_customers-system Phase 4
-
-> Feature: 2026-03-08_customers-system
-> Phase 4: Implement SimpleCustomersSystem
-> 7 tasks pending
-> Starting...
-```
-
-### Example 7: List available plans
-```
-User: /unikit-implement --list
-
-Available plans in .unikit/code/plans/:
-
-  Branch match:
-    2026-03-10_core-loop          (12/40 tasks, 30%)  ← matches feature/core-loop-part1
-
-  Other plans:
-    2026-03-08_customers-system   (18/18 tasks, 100% — completed)
-    2026-03-05_inventory-rework   (5/22 tasks, 23%)
-
-  Fix plan: not found
-
-Usage:
-  /unikit-implement                                          — auto-detect by branch
-  /unikit-implement @.unikit/code/plans/2026-03-05_inventory-rework   — use specific plan
-  /unikit-implement 2026-03-05_inventory-rework Phase 2          — specific folder + phase
-```
-
-### Example 8: Explicit folder override
-```
-User: /unikit-implement @.unikit/code/plans/2026-03-05_inventory-rework Phase 2
-
-> Feature: 2026-03-05_inventory-rework (explicit @path)
-> Phase 2: Migrate item categories
-> Dependencies: Phase 1 (completed)
+> Plan: .unikit/code/plans/inventory-rework (explicit path)
+> Phase 2: Migrate item categories — depends on Phase 1 (completed)
 > 4 tasks pending
 > Starting...
-```
-
-### Example 9: Explicit folder + status
-```
-User: /unikit-implement @.unikit/code/plans/2026-03-08_customers-system status
-
-┌──────────────────────────────────────────────────────────┐
-│ Feature: 2026-03-08_customers-system (explicit @path)  │
-├──────────────────────────────────────────────────────────┤
-│ [x] Phase 1: Interfaces                       (5/5)      │
-│ [x] Phase 2: Models                           (3/3)      │
-│ [x] Phase 3: Configuration                    (6/6)      │
-│ [x] Phase 4: Integration                      (4/4)      │
-├──────────────────────────────────────────────────────────┤
-│ Progress: 18/18 (100% — completed)                        │
-└──────────────────────────────────────────────────────────┘
-```
-
-### Example 10: Blocker encountered
-```
-> Blocker on task 3.2
->
-> Problem: Class CustomerMetaEntity depends on IItemCategory,
-> which is not yet defined (task 4.1).
->
-> Options:
-> 1. Skip and continue
-> 2. Change implementation approach
-> 3. Stop implementation and discuss
 ```

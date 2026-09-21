@@ -787,34 +787,12 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 
 ## Task Description Requirements
 
-Every task in the plan manifest MUST include:
-- **Clear deliverable** — what exactly is produced (class, interface, configuration, etc.)
-- **WHY line** — one sentence explaining why this task matters in the context of the feature
-- **File paths** — where changes will be made or files created (use `Files:` line under the task)
-- **Dependency notes** — when the task depends on another task's output (if not obvious from phase ordering)
+Step 5 item 5 sets the base — a description, `WHY:`, `Files:` — and `references/TASK-FORMAT.md` the grammar. Two refinements are stated only here:
 
-Format with WHY and file paths:
-```markdown
-- [ ] Task N.M — {what to do}
-  WHY: {why this task matters — connects to feature goal, constraint, or dependency}
-  Files: `{path/to/file.<ext>}`, `{path/to/other.<ext>}`
-```
+- **Name a dependency on another task's output** when the phase order does not already make it obvious.
+- **A simple task** (rename, delete, move) may carry its paths in the description instead of a `Files:` line.
 
-For simple tasks (rename, delete, move), file paths in the description are sufficient:
-```markdown
-- [ ] Task 1.1 — Rename `IShopCustomer` → `IDayCustomer`
-  WHY: Name alignment with domain terminology — "day customer" reflects the day/night cycle mechanic
-```
-
-Bad examples:
-```markdown
-# Too vague — no deliverable, no files, no WHY
-- [ ] Task 1.1 — Implement appraisal system
-
-# WHY restates the task instead of explaining purpose
-- [ ] Task 1.1 — Create IAppraisalService interface
-  WHY: We need to create this interface
-```
+A task with no deliverable (`Implement appraisal system`) is not a task, and a `WHY:` that restates it (`Create IAppraisalService interface` → `WHY: We need to create this interface`) answers nothing.
 
 ## Important Rules
 
@@ -838,13 +816,3 @@ Bad examples:
 ## Code Analysis & Delegation Rules
 
 Use **Explore tasks** for codebase analysis — not `unikit-devcontext` or `develop-agent` (those are for code-writing). Each Explore task MUST receive doc references (ARCHITECTURE.md + relevant core/stack rules from Bootstrap). Fallback: Glob/Grep/Read.
-
-## Quick Reference
-```
-/unikit-plan fast <description>           → .unikit/code/PLAN.md
-/unikit-plan full <description>           → .unikit/code/plans/YYYY-MM-DD_name/PLAN.md
-/unikit-plan full --base master <desc>    → same, branch from master
-/unikit-plan ultra <description>          → .unikit/code/plans/YYYY-MM-DD_name/ (PLAN.md + phase-NN-*.md)
-/unikit-plan add <what to change>         → modifies existing plan in-place
-/unikit-plan <description>                → asks Full or Fast interactively
-```

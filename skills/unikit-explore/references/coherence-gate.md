@@ -1,8 +1,9 @@
 # unikit-explore — Research Coherence Gate
 
-Read this file at the moment of saving, and only then. It specifies one gate: does the
-research that was just written to disk stand on its own, without the conversation that
-produced it?
+This file is read at the moment of saving, and only then — by the pass that runs the gate: the
+`check-agent` dispatch, which receives this file's path, or the saving session itself when that
+dispatch cannot run. It specifies one gate: does the research that was just written to disk
+stand on its own, without the conversation that produced it?
 
 ## When it runs
 
@@ -174,7 +175,8 @@ point — the session that wrote the files is the one that cannot tell what they
 Hand it four things, and only these:
 
 1. the durable file paths;
-2. the five criteria, **and the statement that they are the entire scope**;
+2. **the path to this file**, never its text — the agent reads the five criteria here, **and
+   the statement that they are the entire scope**, in its own fresh context;
 3. **the findings already adjudicated in this save**, each with what was decided about it.
    Fresh context must not mean a fresh opinion on a question already answered — without this
    ledger every pass re-draws the same boundary in a new place, and the sequence has no end;
@@ -188,6 +190,29 @@ criteria do not change, and **the gate is never skipped or delayed**. Print one 
 ```
 WARN [coherence] fresh-context pass unavailable — running inline
 ```
+
+## What the pass returns
+
+The saving session does not read this file when the pass is delegated — it acts on the report.
+So the report carries what that session needs for its next step, and nothing more:
+
+1. **The findings**, each with its class from `## The procedure` and both sides quoted as
+   `## The criteria` requires.
+2. **The count per pass so far** — `pass 1: 6`, or `pass 1: 6 · pass 2: 4`.
+3. **The `OQ-<n>` entries to add** for evidence that was insufficient to decide.
+4. **One `Next:` line**, with what it requires:
+   - `Next: pass` — zero blocking findings. It names the `Gate:` value for the session entry,
+     `passed (N passes)`, and the material or cosmetic remainder to record there.
+   - `Next: repair` — blocking findings after pass 1. It lists the blocking and material
+     findings to repair as one batch and quotes `### What a repair may do` whole, both lists, so
+     the repair stays contractive in a session that never read it. The batch is followed by
+     pass 2, dispatched with the findings adjudicated so far.
+   - `Next: ask` — blocking findings after pass 2. It carries what `### When the budget is spent`
+     puts to the user — the unresolved findings, the count per pass and the four options — and
+     the remainder to write if the user saves: the `OQ-<n>` entries and the `Gate:` value
+     `stopped at budget: <k> unresolved — OQ-…`.
+   - `Next: hold` — a durable file could not be read. It names the file; the confirmation is
+     held, as `## When it fails` requires.
 
 ## When it fails
 
