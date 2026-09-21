@@ -4022,28 +4022,39 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# RD: research drift is a CONTENT signal, and one procedure computes it in four files.
+# RD: research drift is a CONTENT signal, and one procedure computes it — owned by ONE
+# file, data/research-link.md, installed flat as .unikit/system/research-link.md. Four
+# skills used to restate it; RD-F below is what now FORBIDS that copy from coming back —
+# RD-A used to REQUIRE the four restatements RD-F now bans, and the arrays that enforced
+# the requirement (RDA_ALL, RDA_READERS) are retired with it.
 # `## Based on` used to carry a link timestamp compared against a research index
 # timestamp — two clocks written by the same class of agent with the same care. The
 # field is now the SHA256 of a REGION — the bytes between the `## Active Summary`
-# markers of the linked `RESEARCH.md` — and three consumers recompute it. Four guards
-# close the four ways that goes wrong: the procedure diverges, the grant that makes it
-# runnable is missing, the label and the writer/reader split drift apart, or the
-# machine input silently reverts from a region back to a file.
+# markers of the linked `RESEARCH.md` — and three consumers recompute it. The guards
+# below close the ways that goes wrong: the owner's procedure diverges from what it
+# declares, the grant that makes it runnable is missing from a consumer, the label and
+# the writer/reader split drift apart, the machine input silently reverts from a region
+# back to a file, a consumer restates the contract instead of pointing at it, the one
+# degradation sentence forks into several, or a consumer reads the contract at the wrong
+# time or computes a digest at the wrong step.
 # Placed next to the PL family and reusing UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
 # UNIKIT_VERIFY_SKILL declared above; UNIKIT_IMPLEMENT_SKILL has no earlier declaration
 # (the MF block below takes its own path var locally), so it is declared here — `set -u`
 # makes a forward reference fatal.
 UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+# The research-link contract's one owner, and the "all four consumers" array shared by
+# every guard below.
+RL_CONTRACT="$ROOT_DIR/data/research-link.md"
+RD_CONSUMERS=("$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
 # RD-E asserts the marker pair is DECLARED by its owner. The owner is the manifest template
 # of /unikit-explore since the manifest layout left the ultra reference, so RD-E reads the
 # skill; declared here because `set -u` makes a forward reference fatal.
 RDE_OWNER="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 
-# (RD-A) The recorded field and the normalization procedure, in all FOUR files.
+# (RD-A) The recorded field and the normalization procedure, owned by RL_CONTRACT.
 # unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
-# normalization diverges by a single rule in ONE of them, that skill reports drift that
-# did not happen — and the failure reads as "the research changed", not as "the guard is
+# normalization diverges by a single rule, every consumer reports drift that did not
+# happen — and the failure reads as "the research changed", not as "the guard is
 # missing". The tokens are chosen, not sampled: `UTF-8 BOM` and `one final newline` are
 # the two rules whose divergence produces a FALSE drift on byte-identical content (and
 # the BOM rule exists because this project's primary platform is Windows);
@@ -4053,48 +4064,43 @@ RDE_OWNER="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 # for one measured reason: it is the only one that can vanish alone. Drop it and the five
 # survivors still describe a coherent procedure, over the wrong object — the whole
 # manifest, whose `## Sessions` grows on every save, so every append would report drift
-# that did not happen. The negative half is load-bearing:
-# without it a half-applied replacement leaves both mechanisms standing and a consumer
-# reads a field /unikit-plan no longer writes. That half is anchored on the FIELD form
+# that did not happen.
+# The negative half is load-bearing: without it a half-applied edit leaves the retired
+# field standing somewhere it should not. That half is anchored on the FIELD form
 # `**Attached**`, never on the bare word: `Attached` is ordinary English and a sentence
 # beginning "Attached research folders are…" would turn the guard red with nothing
 # regressed — a false positive on a negative assert teaches people to delete it.
-RDA_READERS=("$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
-RDA_ALL=("$UNIKIT_PLAN_SKILL" "${RDA_READERS[@]}")
 RDA_ATTACHED_ALLOW='(the retired link-timestamp field)'
 RDA_BRIEF_ALLOW='the retired brief field'
 RDA_WHY=""
-for f in "${RDA_ALL[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'Summary SHA256'    "$f" || RDA_WHY+=" $n-no-field"
-    grep -qF 'UTF-8 BOM'         "$f" || RDA_WHY+=" $n-no-bom-rule"
-    grep -qF 'one final newline' "$f" || RDA_WHY+=" $n-no-final-newline-rule"
-    grep -qF 'never a temp file' "$f" || RDA_WHY+=" $n-no-stdin-rule"
-    grep -qF 'RESEARCH.md'       "$f" || RDA_WHY+=" $n-no-hashed-object"
-    grep -qF 'unikit:active-summary:start' "$f" || RDA_WHY+=" $n-no-rule-0"
-    # ONE measured allowlist entry, on the PL-2 precedent and for the same reason: the
-    # /unikit-improve branch that REMOVES the retired field has to name it, and a branch that
-    # DESCRIBES the old shape instead of naming it cannot be executed reliably. Pinned to the
-    # marker on that same line, never to the file — exempting the file would re-open every
-    # occurrence the replacement removed from it.
+# Degenerate to fail when the owner itself is gone (NN-4 / RT-7 convention), rather than
+# let six token checks all fail individually and bury the real cause in noise.
+if [[ ! -s "$RL_CONTRACT" ]]; then
+    RDA_WHY+=" contract-missing"
+else
+    for tok in 'Summary SHA256' 'UTF-8 BOM' 'one final newline' 'never a temp file' 'RESEARCH.md' 'unikit:active-summary:start'; do
+        grep -qF "$tok" "$RL_CONTRACT" || RDA_WHY+=" contract:no-${tok// /-}"
+    done
+    # A spelled-out count next to a list rots the moment the list grows and nothing turns red
+    # (patch 2026-08-22-09.18) — "the five normalization rules" survived exactly one addition
+    # of rule 0. The contract names rules and outcomes; it never counts them.
+    grep -qiE '\b(five|six|seven|eight) (normalization rules|rules|outcomes|branches)\b' "$RL_CONTRACT" && RDA_WHY+=" counter-next-to-list"
+fi
+# The two allowlisted negatives cover RL_CONTRACT + RD_CONSUMERS in one loop: a retired
+# field surviving in the owner is exactly as regressive as one surviving in a consumer.
+for f in "$RL_CONTRACT" "${RD_CONSUMERS[@]}"; do
+    if [[ "$f" == "$RL_CONTRACT" ]]; then n="research-link.md"; else n="$(basename "$(dirname "$f")")"; fi
+    # Pinned to the marker on that same physical line, never to the file — exempting a
+    # whole file would re-open every occurrence a past replacement removed from it. The
+    # allowlist literal is deliberately WITHOUT parentheses (measured, not stylistic): the
+    # sanctioned occurrences carry it in two different wrappings — the writer inside
+    # `(the retired brief field)`, the readers inside `(recorded against the retired brief
+    # field)` — and only the bracketless form is a substring of both.
     if grep -F '**Attached**' "$f" | grep -vF "$RDA_ATTACHED_ALLOW" | grep -q .; then RDA_WHY+=" $n-attached-survives"; fi
-    # Second allowlisted negative, same shape and same reason as `**Attached**` above: the
-    # retired field name survives ONLY where a branch has to name it — the writer's legacy
-    # note, branch 5 of the three readers, and the Step 5.5 line that DELETES it. Pinned to
-    # the turn of phrase on that same physical line, never to the file: exempting a file
-    # would re-open every occurrence the replacement removed from it.
-    #
-    # The allowlist literal is deliberately WITHOUT parentheses, and that is measured, not
-    # stylistic. The sanctioned occurrences carry it in two different wrappings — the writer
-    # inside `(the retired brief field)`, the readers inside
-    # `(recorded against the retired brief field)`. Only the bracketless form is a substring
-    # of both: after the opening parenthesis the readers have `recorded`, so a parenthesized
-    # allowlist would match none of their lines and would turn three files out of four red
-    # inside the one commit this phase declares indivisible.
     if grep -F 'Brief SHA256' "$f" | grep -vF "$RDA_BRIEF_ALLOW" | grep -q .; then RDA_WHY+=" $n-retired-field-survives"; fi
 done
 if [[ -z "$RDA_WHY" ]]; then
-    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in all four files (retired fields gone)"
+    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in the owner (retired fields gone everywhere)"
 else
     fail "RD-A research-drift procedure diverged:$RDA_WHY"
 fi
@@ -4107,8 +4113,11 @@ fi
 # Rule 0 (extract the region between the markers) adds nothing here: it is performed on
 # text the skill has already read, not by a shell command, so the list of two names stays
 # complete and no `awk`/`sed` grant joins it.
+# Loops over RD_CONSUMERS, not RDA_ALL: the grant belongs to each SKILL regardless of
+# whether that skill still restates the procedure or only points at RL_CONTRACT, so this
+# check must keep covering all four after tasks 7-10 shrink RDA_ALL.
 RDB_WHY=""
-for f in "${RDA_ALL[@]}"; do
+for f in "${RD_CONSUMERS[@]}"; do
     n="$(basename "$(dirname "$f")")"
     grep -qF 'Bash(shasum *)'    "$f" || RDB_WHY+=" $n-no-shasum"
     grep -qF 'Bash(sha256sum *)' "$f" || RDB_WHY+=" $n-no-sha256sum"
@@ -4129,10 +4138,6 @@ fi
 # whole contract exists to close, and a drift check standing next to that channel is
 # decoration.
 RDC_WHY=""
-for f in "${RDA_READERS[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'WARN [research-drift]' "$f" || RDC_WHY+=" $n-no-canonical-label"
-done
 grep -qF 'verification bug' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-not-mandatory"
 for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     n="$(basename "$(dirname "$f")")"
@@ -4150,41 +4155,97 @@ for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     # so it — not the negative — is what survives a rewrite of the sentence.
     grep -qF 'as a substitute for the plan' "$f" || RDC_WHY+=" $n-no-substitute-ban"
 done
+# Owner-side: the label and the writer/reader split now live in RL_CONTRACT itself, not only
+# in the four skills that cite it. Windowed by section, not by file, because the same file
+# holds both the writer's vocabulary (`## Writing an entry`) and the reader's ladder
+# (`## Checking an entry`) — a file-level grep cannot tell which section a label sits in.
+RLC_CHECKING="$(awk '/^## Checking an entry/{f=1} f&&/^## Who writes the field/{f=0} f' "$RL_CONTRACT")"
+RLC_WRITING="$(awk '/^## Writing an entry/{f=1} f&&/^## Checking an entry/{f=0} f' "$RL_CONTRACT")"
+if [[ -z "$RLC_CHECKING" ]]; then
+    RDC_WHY+=" contract-no-checking-section"
+else
+    printf '%s' "$RLC_CHECKING" | grep -qF 'WARN [research-drift]' || RDC_WHY+=" contract-checking-no-canonical-label"
+    # Every WARN [research…] in the ladder must be the ONE canonical label — a per-outcome
+    # label would make outcomes indistinguishable when a log is grepped for drift, which is
+    # exactly what RD-C's own pass message promises.
+    while IFS= read -r lbl; do
+        [[ -z "$lbl" || "$lbl" == "WARN [research-drift]" ]] && continue
+        RDC_WHY+=" per-outcome-label:$lbl"
+    done < <(printf '%s' "$RLC_CHECKING" | grep -oE 'WARN \[research[a-zA-Z-]*\]' | sort -u)
+fi
+[[ -n "$RLC_WRITING" ]] || RDC_WHY+=" contract-no-writing-section"
+printf '%s' "$RLC_WRITING" | grep -qF 'WARN [research-drift]' && RDC_WHY+=" writer-section-uses-reader-label"
+# Consumer-side: verify and implement each project the drift result into a SECOND
+# surface (the gate result block / the completion summary) that has no owner in
+# RL_CONTRACT — it is entirely each consumer's own behaviour. Previously the (now
+# retired) RDA_READERS label loop incidentally held both halves together; nothing else
+# in this family checks them.
+grep -qF 'reaches the Step 4 report' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-projection-lost"
+grep -qE '\*\*Research drift\.\*\*.*raises' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-projection-lost"
+RDC_IMPL_S4="$(awk 'index($0,"### Step 4: Completion Summary")==1{f=1;next} index($0,"### Step 5")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$RDC_IMPL_S4" | grep -qF 'Research drifted — consider /unikit-improve' || RDC_WHY+=" implement-summary-line-lost"
 if [[ -z "$RDC_WHY" ]]; then
-    pass "RD-C one canonical WARN [research-drift] label; implement/verify check the hash and never read the brief instead of the plan"
+    pass "RD-C one canonical WARN [research-drift] label in the owner's ladder; implement/verify check the hash, project it forward, and never read the brief instead of the plan"
 else
     fail "RD-C drift label / writer-reader split:$RDC_WHY"
 fi
 
-# (RD-D) The field has a writer for an entry that does not carry it.
+# (RD-D) The field has a writer for an entry that does not carry it, and the Step 1.5
+# proposal actually reaches that writer.
 # RD-A proves three consumers READ `Summary SHA256` and that /unikit-plan writes it on create.
 # Nothing proved anything can write one into an entry created BEFORE the field existed — and
-# the on-disk plan migration rewrites the manifest without touching `## Based on`. Measured:
-# every plan that predates the field reported `drift unknown` on every run, /unikit-verify
-# held its gate at `warn` permanently, and Step 1.5 offered the user a re-link that Step 5.5
-# had no branch to carry out. Reachability is a separate invariant from presence — a guard
-# that an artifact exists says nothing about whether control flow reaches it
-# (patch 2026-08-22-09.18).
-# Both halves are load-bearing and neither substitutes for the other: the WRITE half asserts
-# Step 5.5 carries the branch, the WIRING half asserts the Step 1.5 offer names the step that
-# performs it. An offer pointing nowhere and a branch nobody reaches fail differently and are
-# equally dead. Anchored on formulations, never on the step numbers, which renumber.
+# the on-disk plan migration rewrites the manifest without touching `## Based on`. Measured
+# defect (patch 2026-08-22-12.40): both `drift unknown` branches in Step 1.5 offered the user
+# a re-link, but the write lived in Step 5.5 item 2, gated on `research_improvements` being
+# non-empty — and neither branch put anything into `research_improvements`, so the write was
+# never reached. The pointer naming the write step was ALSO wrong: it named "Step 5.5 item 3",
+# which is the "do NOT rewrite a drifted hash" branch, not the writer. Reachability is a
+# separate invariant from presence — a guard that an artifact exists says nothing about
+# whether control flow reaches it (patch 2026-08-22-09.18); the previous form of this guard
+# checked presence only and missed both halves of the defect.
+# The fix routes the proposal through a `Re-link: <folder>` finding in `research_improvements`,
+# so it is presented, chosen (`Choose which` → `Research-Based`) and applied in Step 5.5 exactly
+# like every other finding. The guard below checks that routing end to end, not just that a
+# writer exists: the finding is raised in the right list (Step 1.5), surfaced in the report
+# (Step 4), selectable (`Choose which`), and the write in Step 5.5 is gated on that Step 4
+# approval — four link in one chain, each checked on its own formulation so a single link
+# breaking cannot hide behind the other three staying green. Anchored on formulations, never
+# on step numbers, which renumber.
+RDD_S15="$(awk '/^### Step 1\.5: Research Check/{f=1} f&&/^### Step 2:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
+RDD_S4="$(awk '/^### Step 4: Present Improvements/{f=1} f&&/^### Step 5:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
 RDD_STEP55="$(awk '/^\*\*5\.5:/{f=1} f&&/^\*\*5\.6:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
 RDD_WHY=""
-# Degenerate to fail when the section is gone (NN-4 / RT-7 convention).
+# Degenerate to fail when a section is gone (NN-4 / RT-7 convention).
+[[ -n "$RDD_S15" ]]    || RDD_WHY+=" no-step-1.5-body"
+[[ -n "$RDD_S4" ]]     || RDD_WHY+=" no-step-4-body"
 [[ -n "$RDD_STEP55" ]] || RDD_WHY+=" no-step-5.5-body"
+# The proposal must be raised AS a finding in `research_improvements` — the pair is checked at
+# line level, not window level: `research_improvements` appears in this window many times for
+# unrelated reasons (Step 5.5 items 2-3, Case B), so a window-level pair would stay green even
+# if the finding stopped landing specifically in `research_improvements`, which is exactly the
+# reachability this guard exists to catch.
+if printf '%s' "$RDD_S15" | grep -qF 'Re-link: <folder>'; then
+    printf '%s' "$RDD_S15" | grep -qE 'Re-link: <folder>.*research_improvements|research_improvements.*Re-link: <folder>' || RDD_WHY+=" finding-not-in-research-improvements"
+else
+    RDD_WHY+=" no-relink-finding"
+fi
+printf '%s' "$RDD_S15" | grep -qF 'the re-link branch of Step 5.5' || RDD_WHY+=" wiring-lost"
+# Negative, whole file: the retired pointer must not come back (rollback detector).
+grep -qF 'the write is Step 5.5 item 3' "$UNIKIT_IMPROVE_SKILL" && RDD_WHY+=" stale-item-3-pointer-returned"
+printf '%s' "$RDD_S4" | grep -qF '#### Re-links (N)' || RDD_WHY+=" report-has-no-relinks-group"
+printf '%s' "$RDD_S4" | grep 'Group options by category' | grep -qF 'Research-Based' || RDD_WHY+=" choose-which-cannot-pick-research"
 printf '%s' "$RDD_STEP55" | grep -qF 'records the field on an entry that has none' || RDD_WHY+=" no-relink-writer"
 # Doubled, not replaced. The branch does two things now — it WRITES `Summary SHA256` and it
 # DELETES a legacy `Brief SHA256` line — and replacing the assert instead of splitting it
 # would have dropped half the contract without a single test turning red.
 printf '%s' "$RDD_STEP55" | grep -qF 'Summary SHA256' || RDD_WHY+=" writer-does-not-name-the-field"
 printf '%s' "$RDD_STEP55" | grep -qF 'Brief SHA256'   || RDD_WHY+=" writer-does-not-drop-the-retired-field"
-grep -qF 'the write is Step 5.5 item 3' "$UNIKIT_IMPROVE_SKILL" || RDD_WHY+=" offer-not-wired-to-writer"
-# The write is gated on the user's answer: hashing a brief nobody was asked about would claim
-# "no drift" over a period that was never examined.
+# The write is gated on the user's answer: hashing a summary nobody was asked about would claim
+# "no drift" over a period that was never examined. The answer now lives in Step 4, not Step 1.5.
 printf '%s' "$RDD_STEP55" | grep -qF 'Never perform this write without that answer' || RDD_WHY+=" write-not-gated-on-consent"
+printf '%s' "$RDD_STEP55" | grep -qF 'approved in Step 4' || RDD_WHY+=" write-not-gated-on-step4-approval"
 if [[ -z "$RDD_WHY" ]]; then
-    pass "RD-D a hashless \`## Based on\` entry has a writer, and the Step 1.5 offer is wired to it"
+    pass "RD-D a hashless \`## Based on\` entry has a writer, the Step 1.5 proposal reaches it through Step 4, and the write is gated on that approval"
 else
     fail "RD-D the drift-unknown state has no exit:$RDD_WHY"
 fi
@@ -4195,56 +4256,215 @@ fi
 # between two markers" to "the whole file", every appended session reports drift, and the
 # consumer prints "the research changed" about a research nobody touched — RISK-1 exactly,
 # a failure that reads as a finding.
-# Four assertions, and the negative is the point of the guard.
 RDE_WHY=""
 # 1. The marker pair is DECLARED by its owner. The overlap with RM-1 is deliberate and not
 #    redundant: RM-1 looks at the PRODUCER (does /unikit-explore write the markers), RD-E at
-#    the CONSUMERS (do the four readers name the region those markers delimit). Either can
-#    go red alone, and they fail for different reasons.
+#    the CONTRACT (does it name the region those markers delimit). Either can go red alone,
+#    and they fail for different reasons.
 [[ -s "$RDE_OWNER" ]] || RDE_WHY+=" no-format-owner"
 grep -qF 'unikit:active-summary:start' "$RDE_OWNER" || RDE_WHY+=" markers-not-declared-by-owner"
 grep -qF 'unikit:active-summary:end'   "$RDE_OWNER" || RDE_WHY+=" end-marker-not-declared"
-# 2. All four skills name the REGION, not the file. One -qF literal applied to four files, so
-#    a rephrasing in any one of them turns the guard red — which is the only mechanism holding
-#    four verbatim copies of one procedure together.
-for f in "${RDA_ALL[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'between the `## Active Summary` markers' "$f" || RDE_WHY+=" $n-names-a-file-not-a-region"
-done
+# 2. RL_CONTRACT itself names the REGION, not the file.
+grep -qF 'between the `## Active Summary` markers' "$RL_CONTRACT" || RDE_WHY+=" contract-names-a-file-not-a-region"
 # 3. The NEGATIVE: the reversed decision has not come back. `/unikit-plan` used to carry a
 #    written refusal of markers — "The file split is the marker" — and that sentence is the
-#    direct detector, because a revert would restore the sentence together with the behaviour.
-for f in "${RDA_ALL[@]}"; do
-    n="$(basename "$(dirname "$f")")"
+#    direct detector, because a revert would restore the sentence together with the
+#    behaviour. Loops over RL_CONTRACT + RD_CONSUMERS: the refusal could come back in the
+#    owner just as easily as in a consumer.
+for f in "$RL_CONTRACT" "${RD_CONSUMERS[@]}"; do
+    if [[ "$f" == "$RL_CONTRACT" ]]; then n="research-link.md"; else n="$(basename "$(dirname "$f")")"; fi
     if grep -qF 'The file split is the marker' "$f"; then RDE_WHY+=" $n-file-split-refusal-returned"; fi
 done
-# 4. The legacy branch exists exactly where it is owed. The three READERS meet entries written
-#    before the field was renamed and must report `drift unknown` rather than recompute; the
-#    WRITER never does — it creates new entries, it does not read old ones. Asserting the
-#    absence in unikit-plan is what keeps the branch from being pasted into all four out of
-#    symmetry, which would put a reader's contract in a file that has no reader.
-for f in "${RDA_READERS[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'recorded against the retired brief' "$f" || RDE_WHY+=" $n-no-legacy-branch"
-done
+# 4. The legacy branch's home: `## Checking an entry` is the reader's ladder, so the
+#    retired-field outcome belongs there and NOWHERE else — in particular not in
+#    `## Writing an entry`, the writer's section, which has no business describing how a
+#    reader resolves an old entry — and never in unikit-plan, which never reads an entry
+#    at all.
+RLE_CHECKING="$(awk '/^## Checking an entry/{f=1} f&&/^## Who writes the field/{f=0} f' "$RL_CONTRACT")"
+RLE_WRITING="$(awk '/^## Writing an entry/{f=1} f&&/^## Checking an entry/{f=0} f' "$RL_CONTRACT")"
+printf '%s' "$RLE_CHECKING" | grep -qF 'recorded against the retired brief' || RDE_WHY+=" contract-no-legacy-branch"
+printf '%s' "$RLE_WRITING"  | grep -qF 'recorded against the retired brief' && RDE_WHY+=" reader-branch-in-writer-section"
 if grep -qF 'recorded against the retired brief' "$UNIKIT_PLAN_SKILL"; then RDE_WHY+=" plan-carries-a-reader-branch"; fi
-# 5. The legacy branch is REACHABLE, not merely present. Measured in review: with the branches
-#    read in order, an entry carrying only the retired field fell through the mismatch branch
-#    first — because that branch said "Recomputed ≠ recorded" without naming which field
-#    `recorded` meant — and reported `WARN [research-drift] … no longer byte-identical` about a
-#    research nobody had touched. Presence is not reachability, the same distinction RD-D draws
-#    for the writer, and no token-presence assert above can see it. Two literals hold the two
-#    halves: the precondition that gates the recompute, and the named field that makes the
-#    comparison unambiguous once it runs.
-for f in "${RDA_READERS[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'Only when the entry carries a'   "$f" || RDE_WHY+=" $n-recompute-not-gated"
-    grep -qF 'the recorded `Summary SHA256`'   "$f" || RDE_WHY+=" $n-comparison-does-not-name-the-field"
-done
+# 5. The marker pair the owner declares (point 1, RDE_OWNER) is the SAME literal pair the
+#    procedure hashes between — pinned to the source constants, not retyped, so a rename of
+#    either marker in code is caught here rather than silently describing a marker that no
+#    longer exists. Empty extraction (the constant itself renamed or restructured) is its own
+#    failure, distinct from the pin missing from the contract.
+RLE_START_CONST="$(sed -n "s/^export const RESEARCH_ACTIVE_SUMMARY_START = '\(.*\)';/\1/p" "$ROOT_DIR/src/core/constants-artifacts.ts")"
+RLE_END_CONST="$(sed -n "s/^export const RESEARCH_ACTIVE_SUMMARY_END = '\(.*\)';/\1/p" "$ROOT_DIR/src/core/constants-artifacts.ts")"
+if [[ -z "$RLE_START_CONST" ]]; then
+    RDE_WHY+=" constant-unreadable:RESEARCH_ACTIVE_SUMMARY_START"
+else
+    grep -qF "$RLE_START_CONST" "$RL_CONTRACT" || RDE_WHY+=" marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_START"
+fi
+if [[ -z "$RLE_END_CONST" ]]; then
+    RDE_WHY+=" constant-unreadable:RESEARCH_ACTIVE_SUMMARY_END"
+else
+    grep -qF "$RLE_END_CONST" "$RL_CONTRACT" || RDE_WHY+=" marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_END"
+fi
 if [[ -z "$RDE_WHY" ]]; then
-    pass "RD-E the hashed object is the Active Summary region in all four files; the file-split refusal is gone"
+    pass "RD-E the hashed object is the Active Summary region in the owner; the file-split refusal is gone"
 else
     fail "RD-E machine-input contract broken:$RDE_WHY"
+fi
+
+# (RD-F) Pointer-only: no consumer restates the contract's wording, in any form.
+# RD-A used to REQUIRE four copies of the procedure; this guard FORBIDS them from coming
+# back. Two extra surfaces join the four skills — unikit-plan/references/TASK-FORMAT.md
+# and ULTRA-PLAN-FORMAT.md — because the planner writes `## Based on` through them too,
+# and a "for completeness" copy would return there first, not in a skill body.
+RDF_SURFACES=(
+    "${RD_CONSUMERS[@]}"
+    "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    "$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+)
+RDF_WHY=""
+# (a) Each of the four skills names the contract — the minimum a pointer has to do.
+for f in "${RD_CONSUMERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF '.unikit/system/research-link.md' "$f" || RDF_WHY+=" $n-no-pointer"
+done
+# (b) No surface restates a fixed procedure token — chosen, not sampled, the same four
+#     RD-A anchors on: `Summary SHA256` and `RESEARCH.md` legitimately appear in ordinary
+#     prose elsewhere; these four do not.
+RDF_FIXED_TOKENS=('UTF-8 BOM' 'one final newline' 'never a temp file' 'unikit:active-summary:start')
+for f in "${RDF_SURFACES[@]}"; do
+    n="$(basename "$f")"
+    for tok in "${RDF_FIXED_TOKENS[@]}"; do
+        grep -qF "$tok" "$f" && RDF_WHY+=" $n-restates:${tok// /-}"
+    done
+done
+# (c) No surface copies a DERIVED template — a `WARN [research…]: <text>` line where text
+#     follows the label. A bare label is never included in the derivation: it is
+#     legitimately named by verify's Step 4.4 projection (RD-C) and by the degradation
+#     sentence itself (RD-G).
+RDF_CHECKING="$(awk '/^## Checking an entry/{f=1} f&&/^## Who writes the field/{f=0} f' "$RL_CONTRACT")"
+RDF_WRITING="$(awk '/^## Writing an entry/{f=1} f&&/^## Checking an entry/{f=0} f' "$RL_CONTRACT")"
+RDF_TEMPLATE_N=0
+while IFS= read -r tmpl; do
+    [[ -z "$tmpl" ]] && continue
+    RDF_TEMPLATE_N=$((RDF_TEMPLATE_N + 1))
+    body="${tmpl#\`}"; body="${body%\`}"
+    for f in "${RDF_SURFACES[@]}"; do
+        n="$(basename "$f")"
+        grep -qF "$body" "$f" && RDF_WHY+=" $n-copies-template:$RDF_TEMPLATE_N"
+    done
+done < <(printf '%s\n%s' "$RDF_CHECKING" "$RDF_WRITING" | grep -oE '`WARN \[research[a-zA-Z-]*\]: [^`]+`')
+[[ "$RDF_TEMPLATE_N" -gt 0 ]] || RDF_WHY+=" derivation-empty:templates"
+# (d) N-word windows, doctrine of T17 (scripts/test-ultra-plan-contract.mjs): a copy that
+#     has already diverged from the contract shares no whole template with it — that is the
+#     worst state (c) cannot see — but it still shares WORD RUNS with its source (patch
+#     2026-08-22-14.05). Measured, not reasoned, exactly like T17: sizes 5-8 false-positive
+#     on short vocabulary this project shares legitimately everywhere — at 5, improve's own
+#     Re-links report template ("recorded against the retired brief") and the literal
+#     `shasum -a 256 | awk '{print $1}'` command (duplicated by implement/verify on purpose,
+#     as the concrete digest step — see `### Digest`) both collide; the shasum command alone
+#     still collides through size 8. Size 9 is the smallest that gives ZERO windows on every
+#     correct surface today, and it still catches a paraphrase with roughly a third of its
+#     words replaced (24-51 shared 9-word runs, measured by inserting the pre-migration
+#     verify ladder verbatim, and separately a reworded copy of it, into a copy of the
+#     migrated file). `## Who writes the field` measured 0 at sizes 8-10 and is included —
+#     no section is excluded.
+RDF_SHINGLE_WORDS=9
+RDF_SHINGLE_SECTIONS=('## The entry' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
+rdf_normalize() { tr '[:upper:]' '[:lower:]' | tr -d '`*_' | tr '\n' ' ' | tr -s '[:space:]' ' '; }
+rdf_shingles() {
+    awk -v n="$1" '{
+        c = split($0, w, " ")
+        for (i = 1; i + n - 1 <= c; i++) {
+            if (w[i] == "") continue
+            s = w[i]; ok = 1
+            for (j = 1; j < n; j++) { if (w[i+j] == "") { ok = 0; break }; s = s " " w[i+j] }
+            if (ok) print s
+        }
+    }'
+}
+RDF_CONTRACT_SHINGLES="$(mktemp)"
+: > "$RDF_CONTRACT_SHINGLES"
+for heading in "${RDF_SHINGLE_SECTIONS[@]}"; do
+    body="$(awk -v h="$heading" 'index($0,h)==1{f=1;next} f&&/^## /{f=0} f' "$RL_CONTRACT")"
+    [[ -n "$body" ]] && printf '%s\n' "$body" | rdf_normalize | rdf_shingles "$RDF_SHINGLE_WORDS" >> "$RDF_CONTRACT_SHINGLES"
+done
+sort -u -o "$RDF_CONTRACT_SHINGLES" "$RDF_CONTRACT_SHINGLES"
+if [[ ! -s "$RDF_CONTRACT_SHINGLES" ]]; then
+    RDF_WHY+=" derivation-empty:shingles"
+else
+    for f in "${RDF_SURFACES[@]}"; do
+        n="$(basename "$f")"
+        RDF_SURFACE_SHINGLES="$(mktemp)"
+        rdf_normalize < "$f" | rdf_shingles "$RDF_SHINGLE_WORDS" | sort -u > "$RDF_SURFACE_SHINGLES"
+        overlap=$(comm -12 "$RDF_CONTRACT_SHINGLES" "$RDF_SURFACE_SHINGLES" | wc -l)
+        [[ "$overlap" -eq 0 ]] || RDF_WHY+=" $n-reproduces-windows:$overlap"
+        rm -f "$RDF_SURFACE_SHINGLES"
+    done
+fi
+rm -f "$RDF_CONTRACT_SHINGLES"
+if [[ -z "$RDF_WHY" ]]; then
+    pass "RD-F pointer-only ($RDF_TEMPLATE_N templates derived, $RDF_SHINGLE_WORDS-word windows): no surface restates the contract"
+else
+    fail "RD-F a surface restates the contract instead of pointing at it:$RDF_WHY"
+fi
+
+# (RD-G) One degradation sentence, verbatim, in all four skills — not four independent
+# wordings of "the contract is missing, don't block." Taken from UNIKIT_IMPLEMENT_SKILL,
+# on the UP_DEGRADATION / US-8 precedent: an arbitrary anchor among equals, chosen because
+# nothing distinguishes the four skills as more canonical than another.
+RDG_LINE="$(grep -F 'research-link.md' "$UNIKIT_IMPLEMENT_SKILL" | grep -F 'is missing or unreadable, do not block' | head -1)"
+if [[ -z "$RDG_LINE" ]]; then
+    fail "RD-G no degradation line found in unikit-implement/SKILL.md — the guard has no object"
+else
+    RDG_WHY=""
+    for f in "${RD_CONSUMERS[@]}"; do
+        n="$(basename "$(dirname "$f")")"
+        cnt=$(grep -cF "$RDG_LINE" "$f" || true)
+        if [[ "$cnt" -eq 0 ]]; then
+            RDG_WHY+=" degradation-drifted:$n"
+        elif [[ "$cnt" -ne 1 ]]; then
+            RDG_WHY+=" degradation-count:$n=$cnt"
+        fi
+    done
+    if [[ -z "$RDG_WHY" ]]; then
+        pass "RD-G the missing-contract degradation is verbatim-identical, once each, in all four skills"
+    else
+        fail "RD-G degradation sentence drifted or miscounted:$RDG_WHY"
+    fi
+fi
+
+# (RD-H) The contract is read at the right STEP, never at Bootstrap — and the digest is
+# computed at the right TIME (decision 2). Mechanical form of a rule with no other
+# detector: nothing else greps for WHERE a line sits relative to two headings.
+RDH_WHY=""
+rdh_location() {
+    local skill="$1" step_start="$2" step_end="$3" boot_start="$4" boot_end="$5" label="$6"
+    local step_win boot_win
+    step_win="$(awk -v s="$step_start" -v e="$step_end" 'index($0,s)==1{f=1;next} index($0,e)==1{f=0} f' "$skill")"
+    boot_win="$(awk -v s="$boot_start" -v e="$boot_end" 'index($0,s)==1{f=1;next} index($0,e)==1{f=0} f' "$skill")"
+    [[ -n "$step_win" ]] || { RDH_WHY+=" $label-no-step-body"; return; }
+    [[ -n "$boot_win" ]] || { RDH_WHY+=" $label-no-bootstrap-body"; return; }
+    printf '%s' "$step_win" | grep -qF '.unikit/system/research-link.md' || RDH_WHY+=" $label-read-outside-research-step"
+    printf '%s' "$boot_win" | grep -qF '.unikit/system/research-link.md' && RDH_WHY+=" $label-reads-at-bootstrap"
+    return 0
+}
+rdh_location "$UNIKIT_PLAN_SKILL"      '### Step 2: Check for Related Researches' '### Step 3'   '### Step 0.5: Bootstrap Context' '### Step 1:' plan
+rdh_location "$UNIKIT_IMPLEMENT_SKILL" '### Step 1: Load Plan Context'            '### Step 1.5' '### Step 1.5: Bootstrap Rules'    '### Step 2:' implement
+rdh_location "$UNIKIT_VERIFY_SKILL"    '### 0.2 Read Plan & Context'              '### 0.3'      '### 0.0 Load Ownership'          '### 0.1'     verify
+rdh_location "$UNIKIT_IMPROVE_SKILL"   '### Step 1.5: Research Check'             '### Step 2:'  '### Step 0.5: Bootstrap Context'  '### Step 1:' improve
+# The second half of decision 2 — WHERE the digest is computed, not just where the
+# contract is read. Returning the old text to Step 5 / Step 5.5 would satisfy the checks
+# above (the contract is still read once, at the right step) while quietly moving the
+# read-time cost back to the peak — exactly the regression decision 2 exists to prevent.
+RDH_PLAN_S2="$(awk 'index($0,"### Step 2: Check for Related Researches")==1{f=1;next} index($0,"### Step 3")==1{f=0} f' "$UNIKIT_PLAN_SKILL")"
+RDH_PLAN_S5="$(awk 'index($0,"### Step 5: Create the Plan")==1{f=1;next} index($0,"### Step 6")==1{f=0} f' "$UNIKIT_PLAN_SKILL")"
+printf '%s' "$RDH_PLAN_S2" | grep -qF 'keep the digest for Step 5' || RDH_WHY+=" plan-no-link-time-digest"
+printf '%s' "$RDH_PLAN_S5" | grep -qF 'Compute `Summary SHA256`' && RDH_WHY+=" plan-computes-at-step-5"
+RDH_IMPROVE_S15="$(awk 'index($0,"### Step 1.5: Research Check")==1{f=1;next} index($0,"### Step 2:")==1{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
+RDH_IMPROVE_S55="$(awk '/^\*\*5\.5:/{f=1} f&&/^\*\*5\.6:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
+printf '%s' "$RDH_IMPROVE_S15" | grep -qF 'over the summary just read' || RDH_WHY+=" improve-no-read-time-digest"
+printf '%s' "$RDH_IMPROVE_S55" | grep -qF 'freshly computed' && RDH_WHY+=" improve-computes-at-step-5.5"
+if [[ -z "$RDH_WHY" ]]; then
+    pass "RD-H the contract is read only at its research step, never at Bootstrap, and the digest is computed at read time, not at write time"
+else
+    fail "RD-H the contract is read or the digest computed at the wrong point:$RDH_WHY"
 fi
 
 # =============================================
@@ -5513,6 +5733,33 @@ if [[ -z "$EM5_WHY" ]]; then
     pass "EM-5 installEngineMcpRules + swapMcpRecheckNotes wired in both init.ts and update.ts"
 else
     fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
+fi
+
+# (SA-1) Every system-asset installer in system-assets.ts is called from BOTH init.ts and
+# update.ts. Derivative, not a name list: a new `export async function installX` is covered
+# by construction, and the overlap with EM-5 above is deliberate — EM-5 pins two specific
+# functions for a stronger reason (silent findings-log corruption on a missed call), SA-1
+# pins the general shape all of today's installers share.
+# Anchored on the call LINE (`await installX(`), not the substring `installX(`: a plain
+# grep -F would count a commented-out `// await installX(` as wiring, missing the most
+# natural way to disable a call. All of today's calls have the form `    await installX(`.
+SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts")"
+if [[ -z "$SA_INSTALLERS" ]]; then
+    fail "SA-1 no install* exports found in system-assets.ts — the guard has no object"
+else
+    SA_WHY=""
+    SA_COUNT=0
+    while IFS= read -r fn; do
+        [[ -n "$fn" ]] || continue
+        SA_COUNT=$((SA_COUNT + 1))
+        grep -qE "^[[:space:]]*await[[:space:]]+${fn}\(" "$ROOT_DIR/src/cli/commands/init.ts"   || SA_WHY+=" init.ts:$fn"
+        grep -qE "^[[:space:]]*await[[:space:]]+${fn}\(" "$ROOT_DIR/src/cli/commands/update.ts" || SA_WHY+=" update.ts:$fn"
+    done <<< "$SA_INSTALLERS"
+    if [[ -z "$SA_WHY" ]]; then
+        pass "SA-1 all $SA_COUNT system-asset installers are called from both init.ts and update.ts"
+    else
+        fail "SA-1 system-asset installer(s) not wired:$SA_WHY"
+    fi
 fi
 
 # (EM-6) No recommendation wording in a Godot displayName. Ranking is expressed by

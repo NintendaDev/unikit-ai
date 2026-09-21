@@ -61,70 +61,7 @@ Four modes:
 - **`.unikit/code/plans/<folder>/PLAN.md`** — the same manifest, carrying the mode marker plus `## Phase Index` and `## Cross-Phase Dependencies`, with `## Technical Context` reduced to its cross-phase part.
 - **`phase-NN-<slug>.md`** — one file per phase, holding the task-scoped detail. The canonical shape of both is `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`.
 
-When a research is linked (from `/unikit-explore`), the plan references it via `## Based on` using the Research Reference Format below. The research's `## Active Summary` is used as **input** for generating the plan's own `## Technical Context`, not as a replacement — the plan's section reflects the actual codebase state at planning time and supersedes the research summary.
-
-### Research Reference Format
-
-Standard block for `## Based on` when linking to a research. Each entry records the SHA256 of the region between the `## Active Summary` markers of the research's `RESEARCH.md`, as it was at linking time. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute it to detect that the research actually changed — a content signal, not a clock comparison. The plan does **not** copy the summary: the plan's own `## Technical Context` is already a snapshot, and it is a better one because it was checked against the current code.
-
-```
-### <slug>
-- **Summary SHA256**: <64 hex chars>
-- `RESEARCH.md` — the manifest; its `## Active Summary` is the declared input
-- `CONTRACTS.md` — interfaces, patterns, files, DI bindings (include only if the file exists)
-- `SOURCE.md` — original exploration dialogue (include only if the file exists)
-```
-
-Full paths are resolved from `.unikit/code/researches/<slug>/`. Example:
-
-```
-### customer-items-on-scene
-- **Summary SHA256**: 9f2c1d4e7a05b83c6e1f0a94d27b5c38ea6417d9b0c25f83a1e46d7c92b0f5a1
-- `RESEARCH.md` — the manifest; its `## Active Summary` is the declared input
-- `CONTRACTS.md` — interfaces, patterns, files, DI bindings
-- `SOURCE.md` — original exploration dialogue
-```
-
-The heading is the folder name, whatever that name is. Folders created before dateless naming keep the form `YYYY-MM-DD_name` — the on-disk migration merges a folder's contents but never renames it — so an entry reading `### 2026-03-15_customer-items-on-scene` is exactly as valid as the example above.
-
-An entry carrying `- **Brief SHA256**: …` predates the manifest: it hashed `RESEARCH_BRIEF.md`, the retired brief field, and it is never recomputed against the summary — the three readers report `drift unknown` and `/unikit-improve` Step 5.5 replaces it on an accepted re-link.
-
-**What is hashed: the bytes between the `## Active Summary` markers of `RESEARCH.md`, and nothing else.**
-
-The rule is unchanged — hash the requirements, never the log. What changed is where the requirements live. A manifest mixes declared requirements with an append-only session log, so it is hashed section by section, behind start/end markers. The earlier revision of this section rejected markers on the grounds that the file split already was one; the file split has been retired, because the split is what created the obligation to keep two documents in sync, and that cost was paid on every save.
-
-| Region / file | Role | Hashed |
-|---------------|------|--------|
-| `RESEARCH.md` → between the `## Active Summary` markers | the planner's declared input — constraints, requirements, decisions | **yes** |
-| `RESEARCH.md` → `## Findings`, `## Sessions`, the header | evidence and log; `Updated:` moves on every session | no — appending a session must **not** report drift |
-| `SOURCE.md`, `CONTRACTS.md`, ADR, C4, the dependency graph | log and rationale | no — this skill reads them for context, and that is **not** a reason to hash them: any appended clarification would fire drift with the requirements unchanged |
-
-**Computing the hash.** Normalize, then hash — never hash the raw bytes:
-
-0. **Extract the text between `<!-- unikit:active-summary:start -->` and `<!-- unikit:active-summary:end -->`, excluding the marker lines themselves.** Both markers are matched as whole lines. If either is missing, or either occurs more than once, the region is undefined: omit the `Summary SHA256` line and print `WARN [research] <folder>: Active Summary markers missing or duplicated — drift detection disabled for this link`.
-1. Strip a leading **UTF-8 BOM** if present.
-2. LF line endings — strip every carriage return (`CR`, byte `0x0D`).
-3. Trim trailing spaces from every line.
-4. Exactly **one final newline**.
-5. **Preserve line order and leading whitespace.** This is a prohibition, not a transformation: the summary carries fenced code blocks and indented list structure, and any well-meaning re-indentation breaks every hash that was ever recorded.
-
-Feed the normalized text through **stdin, never a temp file**: `… | shasum -a 256 | awk '{print $1}'`, falling back to `sha256sum` when `shasum` is unavailable.
-
-Rule 0 is carried out on text this skill has **already read**, not by a separate shell command. It adds no grant: `allowed-tools` is unchanged by the move from a file to a region.
-
-HTML comments **inside** the region are kept in the hashed text; only the two marker lines are excluded, by rule 0. There is no pasted copy of the summary anywhere in the plan, so there is nothing to align the digest with. The manifest's template comments are stable text: the template ships via `unikit-ai update`, existing manifests are project files and are never re-delivered, so a template edit cannot retroactively flip an already-recorded hash.
-
-Rejected alternative: `git hash-object` would reuse the existing `Bash(git *)` grant instead of adding two, and `.unikit/` is not gitignored so the manifest is normally tracked. It is SHA-1 with a blob header — the field says SHA256 — and it would make the check depend on git while this skill explicitly supports `git.enabled: false`.
-
-**When no hash tool is available.** If neither `shasum` nor `sha256sum` runs, **omit the `Summary SHA256` line entirely** and print one line to the user:
-
-```
-WARN [research] no SHA256 tool available — drift detection disabled for this link
-```
-
-Do not write a placeholder and do not substitute a timestamp: an absent field is honester than a field that looks like a hash and is not one.
-
-The same applies when the object itself is absent. A linked research with no `RESEARCH.md` — omit the line and print `WARN [research] <folder>: no RESEARCH.md`. A `RESEARCH.md` whose `## Active Summary` markers are missing or duplicated — omit the line and print the rule-0 warning above. None of these branches blocks plan creation: drift detection is a convenience, not a gate.
+When a research is linked (from `/unikit-explore`), the plan references it via `## Based on`, one entry per research, in the form `.unikit/system/research-link.md` → `## The entry` defines. The research's `## Active Summary` is used as **input** for generating the plan's own `## Technical Context`, not as a replacement — the plan's section reflects the actual codebase state at planning time and supersedes the research summary.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -424,6 +361,10 @@ on demand — do **not** keep all five mode bodies in context at once:
 
 ### Step 2: Check for Related Researches
 
+**The research-link contract — read at the first link, and only then.** The moment this step links its first research — through the `research_pre_linked` shortcut below or through point 7 — read `.unikit/system/research-link.md`. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`). Name it and follow it; never restate it here — one contract, one place.
+
+**If `.unikit/system/research-link.md` is missing or unreadable, do not block:** record no `Summary SHA256` and check none — print `WARN [research-drift]: research-link contract missing — drift detection off for this run; run unikit-ai update` once, and continue.
+
 **If `research_pre_linked = true`** (user already confirmed a research in Step 0.2) → read that research's `RESEARCH.md` — `## Active Summary` as the declared input, `## Findings` and the adaptive artifacts for the rationale — plus `CONTRACTS.md` and `SOURCE.md` when they exist, mark `research_linked = true`, store research path for `## Based on`, and skip to Step 3.
 
 Before exploring code, check if `/unikit-explore` has produced relevant researches.
@@ -480,7 +421,7 @@ Highlight the most relevant entries in the question text (e.g., "Recommended: #1
 7. For each selected research:
    - Read its `RESEARCH.md` — `## Active Summary` as the declared input, `## Findings` and the adaptive artifacts for the rationale; read `CONTRACTS.md` when it exists, and `SOURCE.md` for the dialogue
    - Use as planning context and as **starting point** for Phase B deep-dive — reduces scope of Explore tasks in Step 4
-   - Mark `research_linked = true` and store research path for `## Based on` (uses Research Reference Format)
+   - Mark `research_linked = true` and store research path for `## Based on` (its entry: `research-link.md` → `## The entry`)
    - The plan's `## Technical Context` is still generated in Step 5 — the research's `## Active Summary` is used as input, not replacement (the section reflects the actual codebase state at planning time)
 
 ### Step 3: Analyze Requirements
@@ -664,7 +605,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
-2. **`## Based on`** — if `research_linked = true`, list each linked research using the Research Reference Format (see above). Compute `Summary SHA256` for each linked research per the procedure above. After all research entries, add "see the `## Technical Context` section below".
+2. **`## Based on`** — if `research_linked = true`, one entry per linked research in the form `.unikit/system/research-link.md` → `## The entry`, carrying the `Summary SHA256` computed back in Step 2 (a research whose digest could not be computed there is written without that line — `## Writing an entry`). The contract was already read in Step 2; it is not re-read here. After all research entries, add "see the `## Technical Context` section below".
    If no research: "see the `## Technical Context` section below".
 
    **`## Design`** (game-design module — only when `design_linked = true`) — insert the

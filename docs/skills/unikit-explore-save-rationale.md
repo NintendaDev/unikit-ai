@@ -394,4 +394,5 @@ source of truth — before the coherence gate reads the same files from disk.
 ## See Also
 
 - [unikit-implement rationale](unikit-implement-rationale.md) — the same split, for the post-completion steps
+- [research-link rationale](research-link-rationale.md) — the manifest's own `## Based on` region markers this pipeline's `RESEARCH.md` provides, explained from the reader's side
 - [Skills Reference](../skills.md) — what `/unikit-explore` does, for the people who use it

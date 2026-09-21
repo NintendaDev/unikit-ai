@@ -293,6 +293,8 @@ export const GD_PRINCIPLES_FILE = 'gd-principles.md';
 export const GATE_RESULT_CONTRACT_FILE = 'gate-result-contract.md';
 /** Reader contract for an ultra plan bundle; rationale on `installUltraPlanReadContract`. */
 export const ULTRA_PLAN_READ_FILE = 'ultra-plan-read.md';
+/** The `## Based on` research-link contract; rationale on `installResearchLinkContract`. */
+export const RESEARCH_LINK_FILE = 'research-link.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

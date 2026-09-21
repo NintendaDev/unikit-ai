@@ -53,7 +53,7 @@ What is being built, why, and what goal it serves. 3-5 sentences maximum.
 Answer: WHAT is done, WHY it is needed, WHAT GOAL it pursues.
 
 ## Based on
-(Optional) Use Research Reference Format from the main skill file to link researches.
+(Optional, only when a research is linked) One entry per linked research, in the form `.unikit/system/research-link.md` → `## The entry` defines — read when the research was linked, not here.
 
 If no research — technical context is in the `## Technical Context` section below.
 
@@ -321,7 +321,7 @@ The window carries a 30-line cap **only when trap is scanning many plans at once
 - **One bullet per run, append-only:**
   `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`
 - **One `Full run:` anchor line**, rewritten in place after each full run, in that same form. This is the machine anchor `/unikit-verify` greps; the bullets are the log for a human. The duplication is deliberate: a verifier made to hunt for "the last bullet whose coverage is `plan`" would depend on the bullet order surviving every future edit.
-- `tree-sha256` is the digest of **a short text**, not of the project: the output of `git rev-parse HEAD` followed by the output of `git status --porcelain`, normalized and hashed by the same procedure as the plan's `Summary SHA256`. No project file is read.
+- `tree-sha256` is the digest of **a short text**, not of the project: the output of `git rev-parse HEAD` followed by the output of `git status --porcelain`, normalized and hashed by the digest step of `.unikit/system/research-link.md` (`### Digest`, the one `Summary SHA256` uses). No project file is read.
 - Git unavailable → the run is still recorded, and the field reads `tree-sha256 unavailable`. A verifier that reads that value does not reuse the run.
 
 ### Fast mode differences
