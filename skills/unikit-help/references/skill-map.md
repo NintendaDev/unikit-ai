@@ -102,7 +102,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   rule mismatches. Run it 1-3x; each pass digs into untouched parts.
 - **When:** right after `/unikit-plan`, before implementing.
 - **In:** the latest (or a named) plan. Optional `+check` validates findings in a fresh context.
-- **Out:** edits the plan in place + an improvement report.
+- **Out:** edits the plan in place + an improvement report. A linked research whose drift is
+  unknown is proposed for a re-link in the report; approving it records the hash that clears
+  the `drift unknown` warning.
 - **Optional but strongly recommended.** Before: `/unikit-plan`. After: `/unikit-implement`.
 
 ### unikit-implement

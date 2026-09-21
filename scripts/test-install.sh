@@ -196,6 +196,22 @@ assert_contains "$ULTRA_READ_PATH" 'unikit:plan-mode:ultra' \
   "ultra-plan-read.md carries the bundle marker it tells consumers to look for"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-rl: research-link.md installed as a system asset (flat copy, no vars)
+# Engine- and agent-agnostic, modeled on installUltraPlanReadContract. Read by
+# plan/improve/implement/verify when a plan links a research. This project is set up
+# through run_update (see below), so this is update-path coverage; the init.ts call
+# site is covered by SA-1 (scripts/test-skills.sh) instead.
+# ─────────────────────────────────────────────────────
+RESEARCH_LINK_PATH="$CLAUDE_DIR/.unikit/system/research-link.md"
+assert_exists "$RESEARCH_LINK_PATH" "research-link.md created in .unikit/system/"
+assert_contains "$RESEARCH_LINK_PATH" 'unikit:active-summary:start' \
+  "research-link.md carries the region marker it tells readers to hash between"
+assert_contains "$RESEARCH_LINK_PATH" 'WARN \[research-drift\]' \
+  "research-link.md carries the canonical WARN [research-drift] label"
+assert_not_contains "$RESEARCH_LINK_PATH" '\{\{' \
+  "research-link.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal

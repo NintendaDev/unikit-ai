@@ -583,6 +583,8 @@ your-unity-project/
 │   │   ├── dev-principles.md      # Engine principles (the one asset with {{engine_*}} substituted)
 │   │   ├── modules.yml            # Generated snapshot of MODULE_REGISTRY
 │   │   ├── gate-result-contract.md # Schema of the `unikit-gate-result` fenced JSON block
+│   │   ├── ultra-plan-read.md     # Reader contract for an ultra plan bundle
+│   │   ├── research-link.md       # The `## Based on` contract - entry, hashing, drift ladder
 │   │   ├── gamedesign/            # only if the Game Design skills are installed
 │   │   │   ├── gd-principles.md    # The design working contract - slim core
 │   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it
