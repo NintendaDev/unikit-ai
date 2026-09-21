@@ -44,7 +44,7 @@ The bytes between the `## Active Summary` markers of `RESEARCH.md`, and nothing 
 
 ### Normalization
 
-0. Extract the text between `<!-- unikit:active-summary:start -->` and `<!-- unikit:active-summary:end -->`, excluding the marker lines themselves. Both markers are matched as whole lines. If either is missing, or either occurs more than once, the region is undefined: omit the `Summary SHA256` line and print `WARN [research] <folder>: Active Summary markers missing or duplicated — drift detection disabled for this link`.
+0. Extract the text between `<!-- unikit:active-summary:start -->` and `<!-- unikit:active-summary:end -->`, excluding the marker lines themselves. Both markers are matched as whole lines. If either is missing, or either occurs more than once, the region is undefined: omit the `Summary SHA256` line and print `WARN [research]: <folder> — Active Summary markers missing or duplicated — drift detection disabled for this link`.
 1. Strip a leading **UTF-8 BOM** if present.
 2. LF line endings — strip every carriage return (`CR`, byte `0x0D`).
 3. Trim trailing spaces from every line.
@@ -69,9 +69,9 @@ Compute the digest when the summary is read; write it when the entry is written.
 
 These branches omit the `Summary SHA256` line entirely rather than write a placeholder:
 
-- No SHA256 tool available: print `WARN [research] no SHA256 tool available — drift detection disabled for this link`.
-- No `RESEARCH.md` for the linked research: print `WARN [research] <folder>: no RESEARCH.md`.
-- `## Active Summary` markers missing or duplicated: print `WARN [research] <folder>: Active Summary markers missing or duplicated — drift detection disabled for this link`.
+- No SHA256 tool available: print `WARN [research]: no SHA256 tool available — drift detection disabled for this link`.
+- No `RESEARCH.md` for the linked research: print `WARN [research]: <folder> — no RESEARCH.md`.
+- `## Active Summary` markers missing or duplicated: print `WARN [research]: <folder> — Active Summary markers missing or duplicated — drift detection disabled for this link`.
 
 No placeholder, no timestamp: an absent field is honester than a field that looks like a hash and is not one. Drift detection is a convenience, not a gate — none of these branches blocks the write that carries the rest of the entry.
 
