@@ -38,7 +38,7 @@ metadata:
 
 # {{engine_name}} Feature Implementation
 
-Execute tasks from a feature plan stored in `.unikit/code/plans/`. This skill reads the plan, identifies pending work, and implements tasks inline with `Read/Edit/Write/Bash` after a one-time Bootstrap of rules and principles. The `develop-agent` alias is reserved for true parallel scopes or deep-dive single tasks.
+Execute the tasks of a feature plan stored in `.unikit/code/plans/`, inline, after a one-time Bootstrap of rules and principles.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -61,9 +61,7 @@ alternative.
 
 ## Delegation agents
 
-This skill uses named delegation aliases for `Agent(...)` calls. Each alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded.
-
-- **`develop-agent`** — used ONLY for true parallel scopes or deep-dive single tasks. Sequential tasks are implemented inline by this skill using rules loaded in Bootstrap. Expands to:
+- **`develop-agent`** — only for a true parallel scope or a deep-dive single task. Expands to:
 
   ```
   Agent(
@@ -74,7 +72,7 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   )
   ```
 
-  `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When the task carries `Editor:` lines, they go into the prompt **verbatim**, together with the resolved `Editor tasks` mode and the matching `### EDITOR TARGETS` rows from the manifest's `## Technical Context` (Step 3.2, *Delegated execution*). **In an ultra bundle those rows are not in the manifest** — the task's editor targets live in the `### Required Interfaces and Contracts` of its own section in the phase file, and that is where they are taken from.
+  `<task details>` is a closed hand-off — what it must carry: Step 3.2, *Delegated execution*.
 
 - **`docs-agent`** — update or create documentation. Expands to:
 
@@ -87,24 +85,18 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
   )
   ```
 
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-docs` inline.
-
 ## Input
 
-`$ARGUMENTS` — optional. Can be:
-- **Empty** — execute all pending tasks from the latest feature, in order
-- **`--list`** — list available feature plans in `.unikit/code/plans/` and STOP (no implementation)
-- **`@<path>`** — explicit path to a feature folder, resolved from project root. Bypasses all auto-detection. Use when you need to point to a plan outside `.unikit/code/plans/` or want an unambiguous full path (e.g. `@.unikit/code/plans/2026-03-10_core-loop`, `@/absolute/path/to/plan-folder`)
-- **`status`** — show progress without executing any tasks
-- **`Phase N`** (e.g. `Phase 3`) — execute only tasks from Phase N
-- **`Phases N-M`** (e.g. `Phases 1-3`) — execute tasks from Phases N through M
-- **`Task N.M`** or **`Tasks N.M N.K`** (e.g. `Tasks 2.1 2.3 5.2`) — execute only the specified tasks
-- **Feature name** (e.g. `core-loop`) — shorthand lookup: scans `.unikit/code/plans/` for a folder whose name **contains** this value. Compared to `@<path>`, this is a convenience shorthand that only searches inside `.unikit/code/plans/`
-- **A test-run instruction** (e.g. `tests at the end of phase 6`) — where this call's tests run; it answers the Step 2.5 question in advance
+`$ARGUMENTS` — optional; any mix of:
+- **empty** — every pending task of the resolved plan, in dependency order
+- **`--list`** — list the plans in `.unikit/code/plans/` and STOP
+- **`@<path>`** — an explicit plan folder, resolved from the project root (absolute paths work too), holding the manifest `<path>/PLAN.md`; no searching, highest priority
+- **`status`** — show progress, execute nothing
+- **selectors** — `Phase N`, `Phases N-M`, `Task N.M`, `Tasks N.M N.K`
+- **a feature name** (e.g. `core-loop`) — a substring match against the folder names in `.unikit/code/plans/`
+- **a test-run instruction** (e.g. `tests at the end of phase 6`) — where this call's tests run; it answers the Step 2.5 question in advance
 
-**`@<path>` vs Feature name:** `@` takes an explicit path (relative or absolute) and expects a folder holding a plan manifest — `.unikit/code/plans/<folder>/PLAN.md` — inside; no searching. A bare name without `@` is a fuzzy match inside `.unikit/code/plans/`. When both could apply, `@` wins (highest priority).
-
-Mixed input is supported: `@.unikit/code/plans/2026-03-08_customers-system Phase 3` (explicit path + phase), `core-loop Phase 3` (name search + phase), `Tasks 2.1 2.3` (specific tasks from latest feature).
+Mixed input works: `@.unikit/code/plans/customers-system Phase 3`, `core-loop Phase 3`, `Tasks 2.1 2.3`.
 
 ## Workflow
 
@@ -114,56 +106,34 @@ Mixed input is supported: `@.unikit/code/plans/2026-03-08_customers-system Phase
 
 **Parse `$ARGUMENTS` (priority order):**
 
-1. If `$ARGUMENTS` contains `--list` → load `{{skills_dir}}/{{self_name}}/references/mode-list.md` and follow it (it STOPs; Steps 0.2–5 do not run)
-2. If `$ARGUMENTS` contains `@<path>` → extract path after `@`, use as explicit feature folder (skip all auto-detection). See **Explicit Folder Override** below.
-3. If `$ARGUMENTS` is or contains `status` → skip to **Status Display** section (can combine with `@<path>`)
-4. Look for explicit selectors (can combine with `@<path>` or feature name):
-   - `Phase N` — single phase
-   - `Phases N-M` — phase range
-   - `Task N.M` or `Tasks N.M N.K` — specific tasks
+1. `--list` → load `{{skills_dir}}/{{self_name}}/references/mode-list.md` and follow it (it STOPs; Steps 0.2–5 do not run)
+2. `@<path>` → the explicit feature folder; skip all auto-detection
+3. `status` → skip to **Status Display** (combines with `@<path>`)
+4. Selectors — always explicitly prefixed; bare numbers are never selectors, they may be part of a feature name
 5. **A test-run instruction** — words saying where this call's tests run (`tests at the end of phase 6`, `тесты в конце фазы 6`, `run tests at every point`) → keep it for Step 2.5. It is neither a selector nor a feature name: recognise it **before** the selectors of item 4, because the phase number inside it names a run point and never narrows the scope.
-6. If no `@<path>` was found, check remaining args for a **feature name** — a bare string (no `@` prefix) that matches a folder name in `.unikit/code/plans/` by substring (e.g. `core-loop` matches `2026-03-10_core-loop`). This is a convenience shorthand that only searches inside `.unikit/code/plans/`.
-7. Bare numbers without prefix are NOT selectors — they might be part of the feature name. Phases and tasks must be explicitly prefixed.
+6. What remains, when there is no `@<path>` → a feature name
 
-#### Explicit Folder Override (`@<path>`)
+**An `@<path>` that does not resolve** — no such folder, or no `<path>/PLAN.md` inside it:
 
-If `$ARGUMENTS` contains `@<path>`:
+```
+Feature folder not found or invalid: <path>
+Expected a folder with a PLAN.md manifest inside, for example:
+  /unikit-implement @.unikit/code/plans/2026-03-10_core-loop
 
-1. Extract path after `@` (e.g. `@.unikit/code/plans/2026-03-08_customers-system` → `.unikit/code/plans/2026-03-08_customers-system`)
-2. Resolve relative to project root (absolute paths are also valid)
-3. If folder does not exist or does not contain a plan manifest (`<path>/PLAN.md`):
-   ```
-   Feature folder not found or invalid: <path>
-   Expected a folder with a PLAN.md manifest inside, for example:
-     /unikit-implement @.unikit/code/plans/2026-03-10_core-loop
+If this plan predates the manifest merge, run: unikit-ai update
+```
+→ STOP
 
-   If this plan predates the manifest merge, run: unikit-ai update
-   ```
-   → STOP
-4. Use this folder as the active feature — skip all auto-detection logic
-
-The `@<path>` argument can be combined with selectors: `/unikit-implement @.unikit/code/plans/2026-03-08_customers-system Phase 3`
-
-**Feature folder resolution priority:**
-1. `@<path>` — explicit path, no searching (highest)
-2. **Feature name** — bare string, substring match inside `.unikit/code/plans/`
-3. **Auto-detect** — git branch match or latest by date (lowest, see below)
-
-**If no feature folder specified (no `@<path>`, no feature name in args) — auto-detect:**
-
-Use unified plan detection (priority order):
+**Neither `@<path>` nor a feature name → auto-detect** (priority order):
 
 1. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan).
-   Both plan forms are a single manifest: the flat `.unikit/code/PLAN.md` and the folder's
-   `.unikit/code/plans/<folder>/PLAN.md` carry checklist, settings and `## Technical Context`
-   inline. There is no second file to read.
 
 2. **Git branch match** — get current branch via `git branch --show-current`.
    If git is unavailable, skip to the next priority level.
 
-   **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
+   **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — never by format precedence. No match → fall through to *latest*.
 
-3. **Latest** (fallback) — read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
+3. **Latest** (fallback) — read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name or the file's mtime.
    **`latest fallback` is a guess, not a resolution:** the branch named no plan. With two
    or more plans present, print the candidate table (folder, `Updated:`, tasks remaining)
    and ask — never auto-select. With exactly one plan present there is nothing to choose
@@ -179,81 +149,45 @@ INFO [plan] resolved: <path> (<reason>)
 `branch match: <branch>` · `latest fallback`. This is plain output, never the payload of an
 interactive question.
 
-4. If `.unikit/code/plans/` is empty or doesn't exist (and no `.unikit/code/PLAN.md`):
+4. If `.unikit/code/plans/` is empty or absent and there is no `.unikit/code/PLAN.md`:
+   - **`.unikit/code/FIX_PLAN.md` exists** → it was created by `/unikit-fix` and runs through the fix workflow: print `Fix plan detected (.unikit/code/FIX_PLAN.md) — launching /unikit-fix`, invoke `/unikit-fix` without arguments, and **STOP**.
+   - **No plan at all** → ask, act on the answer, and **STOP**:
 
-**First, check for `.unikit/code/FIX_PLAN.md`:**
+     ```
+     No active plan found. Current branch: <current-branch>.
 
-If `.unikit/code/FIX_PLAN.md` exists — a fix plan was created by `/unikit-fix` in plan mode. Redirect to fix workflow:
+     Options:
+     1. Plan a new feature — /unikit-plan full <description>
+     2. Plan a quick task — /unikit-plan fast <description>
+     3. Fix a bug — /unikit-fix <description>
+     4. Just checking status — show branch info and stop
+     ```
 
-```
-Fix plan detected (.unikit/code/FIX_PLAN.md).
-
-This plan was created via /unikit-fix and should be executed through the fix workflow
-(it creates a patch and automatically cleans up the plan after execution).
-
-Launching /unikit-fix to execute the plan...
-```
-
-→ `/unikit-fix` (without arguments — it will detect FIX_PLAN.md and execute it).
-→ **STOP** — do not continue with implement workflow.
-
-**If no plan found at all:**
-
-Instead of silently stopping, present an interactive menu:
-
-```
-No active plan found. Current branch: <current-branch>.
-
-Options:
-1. Plan a new feature — /unikit-plan full <description>
-2. Plan a quick task — /unikit-plan fast <description>
-3. Fix a bug — /unikit-fix <description>
-4. Just checking status — show branch info and stop
-```
-
-Based on choice:
-- Plan feature → ask for description via AskUserQuestion, run `/unikit-plan full <description>`
-- Quick task → ask for description, run `/unikit-plan fast <description>`
-- Fix bug → ask for description, run `/unikit-fix <description>`
-- Just checking → show `git branch --show-current` + `git log --oneline -5` → **STOP**
-
-STOP here after handling the choice.
+     Options 1-3 ask for the description, then run their command; option 4 shows `git branch --show-current` and `git log --oneline -5`.
 
 **If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to use.
 
-**Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
+**Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged.
 
-**Reading depth:** read the manifest plus the phase file of the **active task** — one task is executed at a time, so holding every phase in context means holding what is not being executed. Re-read the active phase file on resume, even when a previous session already read it.
+**On resume**, re-read the active task's phase file, even when a previous session already read it.
 
 #### 0.2: Check for Uncommitted Changes
 
-**Skip this step for read-only modes (`--list`, `status`) — they already STOPped in Step 0.1.**
-
 Before any implementation work, check `git status`. If git is unavailable (not initialized), skip this step entirely and proceed to plan loading.
 
-```bash
-git status
-```
-
-**If uncommitted changes exist:**
+**If uncommitted changes exist**, the question is:
 
 ```
 Uncommitted changes detected.
 
 Options:
-1. Commit now (recommended)
-2. Stash and continue (git stash)
-3. Continue as is
-4. Cancel — I'll handle it myself
+1. Commit now (recommended) — /unikit-commit, then continue
+2. Stash and continue — git stash push -m "unikit-implement: stash before execution"
+3. Continue as is — leave the working tree untouched
+4. Cancel — "Implementation cancelled." → STOP
 ```
 
 **Ask it right before Step 3, not here** — in one `AskUserQuestion` call together with the Step 2.5 question when Step 2.5 asks one, alone otherwise (numbered text, then end your turn, when the tool is absent). Carry out its answer first: a commit or a stash happens before any mark is written into the manifest. **After a stash, re-read the manifest** and recompute the scope and its run points (Steps 2 and 2.5) before any mark is written: `git stash push` reverts a tracked, uncommitted manifest underneath the scope already counted.
-
-Based on choice:
-- Commit now → run /unikit-commit, then continue
-- Stash → `git stash push -m "unikit-implement: stash before execution"`, then continue
-- Continue as is → leave the working tree untouched and continue
-- Cancel → inform "Implementation cancelled." → **STOP**
 
 #### 0.3: Resume / Recovery (after `/clear` or session break)
 
@@ -274,57 +208,33 @@ Then reconcile plan state with reality:
 
 ### Step 1: Load Plan Context
 
-- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases, dependencies and completion status, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
-- If the manifest has a `## Based on` section pointing to a research, do **NOT** read that research's `RESEARCH.md` as a substitute for the plan's own context. The plan's `## Technical Context` is authoritative and supersedes the research summary (`/unikit-plan`: it was synthesized from the research and then verified against the code). The research is read for **one** purpose only — the drift check below.
+- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Its section list: `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*. In an ultra bundle every task's detail lives in its phase file; the reading depth is set by `.unikit/system/ultra-plan-read.md`.
+- `## Based on` names a research → do **NOT** read its `RESEARCH.md` as a substitute for the plan's own context: the plan's `## Technical Context` supersedes it. The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules
 
-**Research drift check** — only when `## Based on` has at least one entry. Read `.unikit/system/research-link.md` now, and only now, and run its `## Checking an entry` against every entry. Name it and follow it; never restate it here — one contract, one place.
+**Research drift check** — only when `## Based on` has at least one entry. Read `.unikit/system/research-link.md` now, and only now, and run its `## Checking an entry` against every entry.
 
 **If `.unikit/system/research-link.md` is missing or unreadable, do not block:** record no `Summary SHA256` and check none — print `WARN [research-drift]: research-link contract missing — drift detection off for this run; run unikit-ai update` once, and continue.
 
-Drift is printed **once**, here at plan load — not before each task. Execution continues on the scope of the plan; the offer to re-plan goes into the Step 4 completion summary as the single line `Research drifted — consider /unikit-improve <plan> before continuing`.
+Drift is printed **once**, here at plan load — not before each task. Execution continues on the plan's scope; the re-plan offer goes into the Step 4 summary as its `Research drifted` line.
 
-The manifest's `## Overview` tells you WHAT to do and WHY; its `## Technical Context` tells you HOW; DESCRIPTION.md and ARCHITECTURE.md give project-wide context.
+**Read `.unikit/skill-context/unikit-implement/SKILL.md`** — MANDATORY if the file exists. Project-specific overrides: a skill-context rule wins over a general rule of this skill on conflict; otherwise apply both.
 
-**Read `.unikit/skill-context/unikit-implement/SKILL.md`** — MANDATORY if the file exists.
+**Parse Settings** from the manifest's `## Settings`:
+- `Testing: yes | no` — whether tests are written (Step 3.8) and run (test-checkpoint tasks, Steps 2.5 and 3.2)
+- `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand (Steps 2.5 and 3.2). **Line absent under `Testing: yes` → the plan is legacy:** its placement was never declared; its run points are run commands in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line. Under `Testing: no` the line is omitted by design (`unikit-plan/references/TASK-FORMAT.md`), and such a plan is not legacy.
+- `Docs: yes | no` → the documentation checkpoint of Step 5.3
+- `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Line absent:** `mcp` if MCP server `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the Step 3.6 probe), otherwise `manual`. Never default to `direct` — it is irreversible and only ever an explicit choice.
 
-This file contains project-specific workflow rules added by `/unikit-skills-context` or `/unikit-evolve`.
-These rules change how this skill orchestrates work (priorities, delegation, commit behavior, etc.).
-
-**How to apply skill-context rules:**
-- Treat them as **project-level overrides** for this skill's general instructions
-- When a skill-context rule conflicts with a general rule written in this SKILL.md,
-  **the skill-context rule wins** (more specific context takes priority)
-- When there is no conflict, apply both: general rules from SKILL.md + project rules from skill-context
-- Do NOT ignore skill-context rules even if they seem to contradict this skill's defaults —
-  they exist because the project's experience proved the default insufficient
-
-**Parse Settings:**
-
-Read the `## Settings` section from the plan manifest:
-- `Testing: yes` → after completing each phase, write tests inline (default) for the code created in that phase, or via `develop-agent` for parallel/deep-dive (same execution-mode logic as Step 3.2)
-- `Testing: no` → skip test creation entirely
-- `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand in the plan. Affects Step 2.5 (what may be merged) and Step 3.2 (the width of a run). **Line absent under `Testing: yes` → the plan is legacy:** its placement was never declared. Run points in such a plan are run commands sitting in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line. Under `Testing: no` the line is omitted by design (`unikit-plan/references/TASK-FORMAT.md`), and such a plan is not legacy.
-- `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.3)
-- `Docs: no` → skip documentation checkpoint, emit warning
-- `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
-
-If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
-
-Store the parsed settings — they affect behavior in Step 2.5 (merging the test-run checkpoints), Step 3.2 (editor targets, and the width of a test run), Step 3.8 (tests), Step 3.9 (commit), and Step 5.3 (documentation).
-
-Understand:
-- Which tasks are completed (`- [x]`) and which are pending (`- [ ]`)
-- Phase dependencies (a phase can only start when its dependencies are done)
-- The overall architecture and technical decisions from the description
+No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the same probe.
 
 ### Step 1.5: Bootstrap Rules & Principles
 
-Load the project knowledge base ONCE at the start of execution. This replaces per-task delegation to `/unikit-devcontext` for sequential work.
+Load the project knowledge base once, before the first task.
 
 **Read in parallel:**
-1. `.unikit/system/dev-principles.md` — engine development principles (Core Principles + Workflow that used to live in /unikit-devcontext)
+1. `.unikit/system/dev-principles.md` — engine development principles
 2. `.unikit/RULES.md` — project overrides (highest priority)
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-implement` — read that file from `.unikit/memory/code/core/` using the Read tool.
@@ -333,14 +243,14 @@ Stack rules are NOT loaded here — they are loaded lazily per-phase in Step 3.0
 
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
-5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per task, by area (Step 3.2).
+5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) and every section **except** the `## Check` table, which is grepped per task, by area (Step 3.2).
 6. `.unikit/MCP-RECHECK-NOTES.md`, **header only** (`server:` / `audited:`) — this project's own accumulated findings. Compare that header against the delivery stamp from item 5. On a mismatch print exactly one line and **apply the entries anyway**:
 
    ```
    WARN [engine-mcp] notes header ≠ configured server (<notes> ≠ <configured>)
    ```
 
-   The entries are *suspect*, not void, and a suspect check still fails safe. Retiring them belongs to `/unikit-mcp-audit`, never to this skill.
+   The entries are suspect, not void; retiring them belongs to `/unikit-mcp-audit`.
 
 **Either file absent → skip it, print one line, and continue with every right you had:**
 
@@ -373,10 +283,7 @@ A merged test-checkpoint task is the other third outcome, and it counts differen
 
 **If `$ARGUMENTS` contains phase/task selectors:**
 
-- **`Phase N`** (e.g. `Phase 3`): collect all pending tasks from Phase N
-- **`Phases N-M`** (e.g. `Phases 1-3`): collect all pending tasks from Phases N through M
-- **`Task N.M`** or **`Tasks N.M N.K`** (e.g. `Tasks 2.1 2.3`): collect only those specific pending tasks
-- If a specified task is already completed, skip it and note this to the user
+- Collect the pending tasks the selectors name (Step 0.1); a named task that is already completed is skipped, and the user is told.
 - If a phase depends on an incomplete phase — its `**Dependencies:**` line in `## Checklist`, cross-checked against `## Dependency Graph` — warn `Phase {N} depends on Phase {M}, which has {X} incomplete tasks` and ask: implement Phase {M} first (recommended) · continue as is · skip Phase {N} and take the next independent phase
 
 **If no selectors (execute all pending):**
@@ -428,7 +335,7 @@ Keep a running list of files you create, modify, or delete during execution — 
 **3.0: Phase Rules Refresh (before starting each phase)**
 
 Before executing the first task of any phase (including the first phase):
-1. Re-read `.unikit/memory/code/RULES_INDEX.md` (it may have been updated by `/unikit-memory` since Bootstrap).
+1. Re-read `.unikit/memory/code/RULES_INDEX.md`.
 2. Match the phase name and its task descriptions against the Stack table's `Load When` column.
 3. Compute delta: stack rules needed for this phase that are NOT in `loaded_rules`.
 4. Read each delta rule from `.unikit/memory/code/stack/` using the Read tool.
@@ -460,7 +367,7 @@ Dependencies: {met/unmet}
 
 **3.2: Implement the task**
 
-This skill OWNS code-writing for sequential tasks. Use `Read/Edit/Write/Bash` directly with the rules already loaded in Step 1.5 + Step 3.0. Do NOT invoke `/unikit-devcontext` via `Skill(...)` — that defeats the rules-loading optimization.
+This skill writes sequential tasks itself, with `Read/Edit/Write/Bash` and the rules already loaded in Step 1.5 + Step 3.0. Do NOT invoke `/unikit-devcontext` via `Skill(...)`.
 
 Choose execution mode:
 - **Sequential within phase** (default for tasks that depend on each other or share files) → inline implementation. The skill writes code itself.
@@ -559,7 +466,7 @@ Without it the run reads as if everything came from observation, which is exactl
 
 **The reference is optional in the wizard.** If it was not configured, trigger 2 simply has no fallback: descend the degradation ladder (`dev-principles.md` → D3) and reach `⏸️ MANUAL` at its proper rung only — by absence of a route, established by trying. An unconfigured reference is not itself a missing capability.
 
-**Delegated execution.** When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim** and the already-resolved mode. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. **In an ultra bundle the whole task section goes into the prompt**, not just the `Editor:` lines: a delegate that receives only the checklist line loses the implementation steps, the contracts and the acceptance criteria along with the targets. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
+**Delegated execution.** `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim**, the already-resolved mode, and the matching `### EDITOR TARGETS` rows — from the manifest's `## Technical Context`, or in an ultra bundle from the task's own `### Required Interfaces and Contracts` in its phase file. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. **In an ultra bundle the whole task section goes into the prompt**, not just the `Editor:` lines: a delegate that receives only the checklist line loses the implementation steps, the contracts and the acceptance criteria along with the targets. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
 
 **3.3: Handle Blockers**
 
@@ -588,8 +495,7 @@ After successful implementation, update the manifest:
 - If all tasks in a phase are done, update the phase status: `**Status:** [x] Completed`
 
 **Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
-- Write the checkbox as `- [x]` and append the marker `⏸️ MANUAL` to the task text, right after the description: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. The checkbox must be `[x]` so Step 2 does not pick the task up again on every subsequent run; the marker is what keeps it honest, and it sits in the task text so `/unikit-verify` sees it during the task audit.
-- A `⏸️ MANUAL` task **does not block** "all tasks completed" — the user took it on deliberately. It is **not** counted as implemented either: report it separately (Step 4).
+- Write `- [x]` and append the marker `⏸️ MANUAL` to the task text: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. It counts by the `⏸️ MANUAL` rule of Step 2 and is reported separately (Step 4).
 
 **The task produced an MCP finding (Step 3.2)** — a third outcome to record in the same pass:
 - Append the row to the plan's `## MCP Findings` table now, in the same `Edit` that ticks the checkbox. Not at the end of the phase, not at the end of the run.
@@ -601,8 +507,8 @@ After successful implementation, update the manifest:
 
 **The task produced a rule candidate** — a further outcome, recorded in the same pass:
 - Append a row to `## Rule Candidates`: `id | rule | full formulation | from | status`, with `status = open` and `from = task <N.M>`.
-- **Id:** `R<n>`, one more than the highest already in the table. Read the table before appending — a re-run of the same task must not restart the numbering and collide with rows written earlier.
-- `rule` carries **one line, one directive** — exactly what would go into `.unikit/RULES.md`. `full formulation` carries the long version with its rationale, under no length limit; that column is the reason the short form is allowed to stay short.
+- **Id:** `R<n>`, one more than the highest already in the table — read it first: a re-run of the same task must not restart the numbering.
+- `rule` carries **one line, one directive** — exactly what would go into `.unikit/RULES.md`. `full formulation` carries the long version with its rationale, under no length limit.
 - **Dedup is semantic:** a candidate saying the same thing as a row already present — of any status, `declined` included — is not added.
 - **Nothing here reaches `.unikit/RULES.md`.** Step 5.2 proposes the candidates to the user; only `/unikit-rules`, invoked with the batch the user selected, writes that file.
 - The plan carries no `## Rule Candidates` section (a legacy plan) → create it at `##` level under `## MCP Findings`, or above `## Dependency Graph` when that one is absent too, and print `INFO [rules] section ## Rule Candidates created`.
@@ -633,7 +539,7 @@ After all tasks in a phase are done, check {{engine_name}} console for compilati
 3. After fixing, re-read the console log to verify fixes didn't introduce new errors
 4. Repeat the check→fix cycle until no errors from the current phase remain
 
-This step is critical: do NOT proceed to commit (3.9) with compilation errors that belong to the current phase. Future-phase errors are acceptable — they indicate planned work, not broken code.
+**Do NOT proceed to commit (3.9) with compilation errors that belong to the current phase.** Future-phase errors are acceptable.
 
 **3.7: Update context artifacts (if project structure changed)**
 
@@ -664,7 +570,7 @@ If `Testing: no` or Settings section is missing — skip this step entirely.
 
 **3.9: Commit checkpoint (after completing a phase)**
 
-After all tasks in a phase are completed (and tests generated if applicable), offer to commit:
+After all tasks in a phase are completed (and tests written if applicable), ask:
 
 ```
 ✅ Phase {N} complete — {count} tasks done.
@@ -673,17 +579,14 @@ After all tasks in a phase are completed (and tests generated if applicable), of
 Suggested message: "feat({feature}): {phase summary}"
 
 Options:
-1. Yes, commit
+1. Yes, commit — /unikit-commit with this phase's files
 2. No, continue to next phase
-3. Disable checkpoints — don't ask again
+3. Disable checkpoints — no more commit questions this session
 ```
 
-Based on choice:
-- Yes → run /unikit-commit with phase-related files, proceed to next phase
-- No → skip commit, proceed to next phase
-- Disable checkpoints → skip commit checkpoints for the rest of the session, proceed
+Staging: **Important Rules** → *Commit only your own changes*.
 
-Commit staging rules — see **Important Rules** → *Commit only your own changes*.
+A scope of many phases: suggest `/compact` or `/clear` before the next phase.
 
 **3.10: Check ROADMAP.md progress (after all phases in scope are done)**
 
@@ -725,11 +628,11 @@ Test checkpoints: legacy — placement not declared, runs found from the task te
 Research drifted — consider /unikit-improve <plan> before continuing
 ```
 
-The `Research drifted` line appears **only** when the Step 1 drift check emitted at least one `WARN [research-drift]`, and is omitted entirely otherwise. It carries the offer forward past the point where the warning scrolled away; it is not a blocker and never stops the run.
+The `Research drifted` line appears **only** when the Step 1 drift check emitted at least one `WARN [research-drift]`, and is omitted otherwise; it never stops the run.
 
 The `Documentation:` line is the one Step 5.3 names; its value follows from `Docs:` and from whether the `Agent` tool exists, both known at Step 1. The `Test checkpoints: legacy` line appears only for a legacy plan under `Testing: yes` (Step 1) and is omitted otherwise.
 
-The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with its exact instruction, and is **omitted entirely** when there are none. It is **not** the same as "not done": the user chose to carry these out themselves, and `/unikit-verify` does not treat them as blockers.
+The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with its exact instruction, and is **omitted entirely** when there are none.
 
 ### Step 5: Post-Completion Actions
 
@@ -762,7 +665,7 @@ The candidates are already collected: the rows whose status is `open` in the man
 4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"** — four options at most, the tool's limit. Keep the option label short; the full rule text goes in the option's `description`.
 5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
 6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
-7. **What was selected goes to `/unikit-rules` as one numbered batch**, through the same three-tier dispatch as Step 5.6: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline; Tier 2 the inline slash form `/unikit-rules <batch>`, rewritten per agent by the installer; Tier 3 printing the command, only where no inline mechanism exists at all. This is **a real call, not text in backticks**.
+7. **What was selected goes to `/unikit-rules` as one numbered batch**, by the three-tier dispatch of Step 5.6: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline, Tier 2 the inline slash form, Tier 3 printing the command. This is **a real call, not text in backticks**.
 8. **Show the user the `## Batch result` table** the delegate returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
 9. Only then proceed to Step 5.3.
 
@@ -794,7 +697,7 @@ Options:
 
 Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
-**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`** — it shares its name with the flat fast plan, so the prompt above always spells out the full path it removes.
+**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.**
 
 **5.5: MCP Findings handoff**
 
@@ -827,11 +730,11 @@ Based on choice:
 
 - **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit")`, inline, waiting for each to return before starting the next. This is the path on Claude Code.
 - **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, then `/unikit-commit`, one at a time, waiting for each. The slash form is rewritten per agent by the installer; `Skill(...)` is not.
-- **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at all, print the ordered `Run: /unikit-…` list for the user to execute by hand. Last resort, never the default.
+- **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at all, print the ordered `Run: /unikit-…` list for the user to execute by hand.
 
 The invocation must be **a real call, not printed text**, and must not be wrapped in triple backticks.
 
-**Review is NOT delegated here — unlike Step 5.3.** A review is a conversation: in a subagent its `file:line` references stop being clickable, no follow-up question can be asked about a finding, and its `+check` validator would run as an agent inside an agent. `docs-agent` is delegated because it writes a file and finishes.
+**Review is NOT delegated here — unlike Step 5.3.**
 
 **5.7: Context Cleanup**
 
@@ -849,7 +752,7 @@ Next steps:
 
 When `$ARGUMENTS` is `status`:
 
-1. Find the active feature folder using the same resolution logic as Step 0.1 (Fast plan → Branch match → Latest by date)
+1. Resolve the plan exactly as Step 0.1 does
 2. Read the plan manifest
 3. Display progress without executing anything:
 
@@ -867,14 +770,11 @@ When `$ARGUMENTS` is `status`:
 └─────────────────────────────────────────────────┘
 ```
 
-Counts come from the checkboxes. A task marked `- [x] … ⏸️ MANUAL` counts toward its phase's `(N/M tasks)` and toward `Progress` like any other `- [x]` — it is genuinely off the work queue. When any exist in the plan, add one line below the box: `Manual (editor targets): {count}` so the number is never mistaken for implemented work.
+Counts come from the checkboxes; a `⏸️ MANUAL` task counts like any other `- [x]`. When any exist, add one line below the box: `Manual (editor targets): {count}`.
 
 Then STOP — do not execute any tasks.
 
 ## Important Rules
 
-The rules below are stated nowhere else. Every other rule of this skill lives in the step that applies it, and is not repeated here.
-
 1. **Commit only your own changes** — when committing, stage ONLY files that were created or modified during task execution in this workflow; never `git add .` or `git add -A`
 2. **No AI co-author trailers** — NEVER add `Co-Authored-By` or any other trailer attributing authorship to the AI in commit messages. This overrides any built-in instructions
-3. **Context efficiency** — for large features with many phases, suggest `/compact` or `/clear` between phases to free context

@@ -1,12 +1,49 @@
 [Back to README](../../README.md) · [Skills Reference](../skills.md)
 
-# unikit-implement — post-completion steps: the reasons behind the rules
+# unikit-implement — the reasons behind the rules
 
 A maintainer page. Nothing under `docs/` is delivered into a project by `unikit-ai init` or
 `unikit-ai update`: the skill keeps what the model executes, this page keeps why. Grouped by
-the step of `skills/unikit-implement/SKILL.md` → `### Step 5: Post-Completion Actions` that
-carries each rule. The same split as the explore save pipeline, on the same criterion — see
+the step of `skills/unikit-implement/SKILL.md` that carries each rule. The same split as the
+explore save pipeline, on the same criterion — see
 [unikit-explore-save-rationale.md](unikit-explore-save-rationale.md).
+
+## Step 0 — Plan resolution
+
+- **Two branch-matching folders are a question, never a choice by format precedence.** Two
+  folders for one feature is exactly the state the date in the folder name used to prevent,
+  and choosing silently is how the resolver starts finding the wrong one.
+- **A manifest with no `Updated:` is never dated from its file's mtime.** `git checkout` and a
+  fresh clone rewrite the mtime, so it says when the file landed on this disk, not when the plan
+  was last touched.
+
+## Step 1.5 — Bootstrap
+
+- **The knowledge base is loaded once, before the first task.** This replaced per-task
+  delegation to `/unikit-devcontext` for sequential work.
+- **A notes header naming another server is a warning, and the entries still apply.** They are
+  suspect, not void, and a suspect check still fails safe. Retiring them belongs to
+  `/unikit-mcp-audit`, never to this skill.
+
+## Step 3 — Execute
+
+- **Sequential tasks never go through `Skill(unikit-devcontext)`.** Invoking it per task
+  defeats the rules-loading optimization: the rules are already in context from Step 1.5 and
+  Step 3.0.
+- **A `⏸️ MANUAL` task is written `- [x]`.** The checkbox must be `[x]` so Step 2 does not pick
+  the task up again on every subsequent run; the marker is what keeps it honest, and it sits in
+  the task text so `/unikit-verify` sees it during the task audit.
+- **A rule candidate carries a `full formulation` column.** That column is the reason the short
+  `rule` form is allowed to stay short.
+- **Future-phase compilation errors do not block the phase commit.** They indicate planned work,
+  not broken code.
+
+## Step 4 — Completion Summary
+
+- **The `Research drifted` line.** It carries the re-plan offer forward past the point where the
+  Step 1 warning scrolled away; it is not a blocker.
+- **`Manual (editor targets)` is not "not done".** The user chose to carry these targets out
+  themselves, and `/unikit-verify` does not treat them as blockers.
 
 ## 5.2 — Propose New Rules
 
@@ -28,8 +65,9 @@ carries each rule. The same split as the explore save pipeline, on the same crit
 
 - **A folder plan is kept.** It is a durable record of what was done; the user may delete it
   before merging.
-- **The deletion prompt spells out the full path.** The folder manifest shares the name
-  `PLAN.md` with the flat fast plan and differs from it only by path.
+- **The deletion prompt spells out the full path, and a folder manifest is never offered for
+  deletion.** The folder manifest shares the name `PLAN.md` with the flat fast plan and differs
+  from it only by path.
 
 ## 5.5 — MCP Findings handoff
 
@@ -53,6 +91,10 @@ carries each rule. The same split as the explore save pipeline, on the same crit
   the top; generalising from the neighbours is exactly how this step came to be read as a
   delegation. Step 5.2 is delegated to nobody at all — it blocks on the user, and only the answer
   decides what is written.
+- **Why review in particular stays in this session.** A review is a conversation: in a subagent
+  its `file:line` references stop being clickable, no follow-up question can be asked about a
+  finding, and its `+check` validator would run as an agent inside an agent. `docs-agent` is
+  delegated because it writes a file and finishes.
 
 ## See Also
 
