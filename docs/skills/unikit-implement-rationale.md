@@ -57,5 +57,6 @@ carries each rule. The same split as the explore save pipeline, on the same crit
 ## See Also
 
 - [unikit-explore save rationale](unikit-explore-save-rationale.md) — the rule classification behind the split
+- [unikit-plan rationale](unikit-plan-rationale.md) — the same split, for the planner
 - [research-link rationale](research-link-rationale.md) — why the Step 1 drift check and its `Research drifted` line in the Step 4 completion summary both read from the system asset, not a restated procedure
 - [Skills Reference](../skills.md) — what `/unikit-implement` does, for the people who use it
