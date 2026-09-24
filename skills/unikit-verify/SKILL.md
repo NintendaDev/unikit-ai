@@ -141,7 +141,7 @@ Search logic — same as `/unikit-implement` (unified plan detection):
 INFO [plan] resolved: <path> (<reason>)
 ```
 
-`<reason>` is exactly one of: `explicit path` · `feature name` · `fast plan` · `fix plan` ·
+`<reason>` is exactly one of: `explicit path` · `feature name` · `fast plan` ·
 `branch match: <branch>` · `latest fallback`. This is plain output, never the payload of an
 interactive question.
 3. If no plan found (no `.unikit/code/PLAN.md` and `.unikit/code/plans/` is empty or doesn't exist):
@@ -186,7 +186,7 @@ Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit
 
 **Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
 - `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
-- `Test checkpoints: task | phase | plan` — the run placement the planner recorded. Context for Step 2.2: under `phase` and `plan` there are no runs among the `### Verification` commands — they live in test-checkpoint tasks. **Line absent → the plan is legacy:** placement was never declared, and runs may sit anywhere in the task text.
+- `Test checkpoints: task | phase | plan` — the run placement the planner recorded. Context for Step 2.2: under `phase` and `plan` there are no runs among the `### Verification` commands — they live in test-checkpoint tasks. **Line absent under `Testing: yes` → the plan is legacy:** placement was never declared, and runs may sit anywhere in the task text. Under `Testing: no` the line is omitted by design, and there are no runs to place.
 
 Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can be applied inline without re-loading on each delegation.
 

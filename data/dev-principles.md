@@ -126,7 +126,7 @@ The absence of a rules file is not a restriction.
 | `.unikit/system/engine-mcp/verification.md` | `/unikit-verify` **only** | in full |
 | `.unikit/MCP-RECHECK-NOTES.md` | implement · fix · devcontext · verify | by grep, the same areas |
 
-A file that is absent is skipped **silently** — see A9.
+A file that is absent is skipped: its reader prints one line and keeps every right it had — see A9.
 
 ---
 

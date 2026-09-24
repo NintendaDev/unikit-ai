@@ -65,12 +65,22 @@ The user may provide:
 
 ## Plan Parsing
 
-1. Locate the active plan:
-   a. If the user provided an explicit `@<path>`, use that folder.
-   b. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
-      **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
-   c. If no plan found — stop and report.
-2. Read the plan folder's `.unikit/code/plans/<folder>/PLAN.md` manifest. Parse all phases and tasks:
+1. Locate the active plan, in this order:
+   a. **Explicit `@<path>`** → use that folder.
+   b. **Fast plan** — `.unikit/code/PLAN.md` exists → use it (the flat fast-mode plan). If a folder plan also matches the branch (step c), ask the user which one to use — the same rule as `/unikit-implement` Step 0.1.
+   c. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — never by format precedence. No match → fall through to *latest*.
+   d. **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name or the file's mtime.
+      **`latest fallback` is a guess, not a resolution:** the branch named no plan. With two or more plans present, print the candidate table (folder, `Updated:`, tasks remaining) and ask — never auto-select. With exactly one plan present, announce it with the branch miss named in the reason and continue.
+   e. No plan found — stop and report.
+
+   **Announce the resolution** — exactly one visible line before any other output:
+
+   ```
+   INFO [plan] resolved: <path> (<reason>)
+   ```
+
+   `<reason>` is exactly one of: `explicit path` · `fast plan` · `branch match: <branch>` · `latest fallback`.
+2. Read the resolved manifest — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Parse all phases and tasks:
    - Phase grouping (Phase 1, Phase 2, ...)
    - Phase dependencies from the dependencies line (supports both English and localized headers, see "Dependency Parsing" below)
    - Task number and description

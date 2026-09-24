@@ -76,8 +76,6 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
 
   `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When the task carries `Editor:` lines, they go into the prompt **verbatim**, together with the resolved `Editor tasks` mode and the matching `### EDITOR TARGETS` rows from the manifest's `## Technical Context` (Step 3.2, *Delegated execution*). **In an ultra bundle those rows are not in the manifest** — the task's editor targets live in the `### Required Interfaces and Contracts` of its own section in the phase file, and that is where they are taken from.
 
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
-
 - **`docs-agent`** — update or create documentation. Expands to:
 
   ```
@@ -303,7 +301,7 @@ These rules change how this skill orchestrates work (priorities, delegation, com
 Read the `## Settings` section from the plan manifest:
 - `Testing: yes` → after completing each phase, write tests inline (default) for the code created in that phase, or via `develop-agent` for parallel/deep-dive (same execution-mode logic as Step 3.2)
 - `Testing: no` → skip test creation entirely
-- `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand in the plan. Affects Step 2.5 (what may be merged) and Step 3.2 (the width of a run). **Line absent → the plan is legacy:** its placement was never declared. Run points in such a plan are run commands sitting in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line.
+- `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand in the plan. Affects Step 2.5 (what may be merged) and Step 3.2 (the width of a run). **Line absent under `Testing: yes` → the plan is legacy:** its placement was never declared. Run points in such a plan are run commands sitting in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line. Under `Testing: no` the line is omitted by design (`unikit-plan/references/TASK-FORMAT.md`), and such a plan is not legacy.
 - `Docs: yes` → after all tasks are completed, show a mandatory documentation checkpoint (Step 5.3)
 - `Docs: no` → skip documentation checkpoint, emit warning
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
@@ -326,7 +324,7 @@ Store it as `merge_checkpoints` — Step 2.5 reads it.
 INFO [testing] checkpoints=<value from the plan|legacy> · merge=<true|false>
 ```
 
-Both halves must appear: it is precisely their divergence that explains why a run performed fewer test runs than the plan has checkpoints. A missing config or key resolves to `false` **silently** — a project without a config is a normal case, and a line on every run would turn the warning into wallpaper. A value that is neither `true` nor `false` (`yes`, `1`, an empty string) resolves to `false` plus `WARN [testing] merge_checkpoints=<value read> is not true|false; took false`. A legacy plan — no `Test checkpoints:` line — adds one line to the Step 4 report: `Test checkpoints: legacy — placement not declared, runs found from the task text`.
+Both halves must appear: it is precisely their divergence that explains why a run performed fewer test runs than the plan has checkpoints. A missing config or key resolves to `false` **silently** — a project without a config is a normal case, and a line on every run would turn the warning into wallpaper. A value that is neither `true` nor `false` (`yes`, `1`, an empty string) resolves to `false` plus `WARN [testing] merge_checkpoints=<value read> is not true|false; took false`. A legacy plan — `Testing: yes` and no `Test checkpoints:` line — adds one line to the Step 4 report: `Test checkpoints: legacy — placement not declared, runs found from the task text`.
 
 Store the parsed settings — they affect behavior in Step 2.5 (merging the test-run checkpoints), Step 3.2 (editor targets, and the width of a test run), Step 3.8 (tests), Step 3.9 (commit), and Step 5.3 (documentation).
 
@@ -530,7 +528,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 **A call that misled you is a finding — and it goes in two places, neither of them the notes file.**
 
 - the run report for this task, as a candidate line: the `area`, what has to be confirmed, and the raw call with the raw answer it gave;
-- the plan's `## MCP Findings` table — the half that survives the session. Columns and their contract: `references/TASK-FORMAT.md` → `### MCP findings section`.
+- the plan's `## MCP Findings` table — the half that survives the session. Columns and their contract: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
 
 **When it is written: in Step 3.4, by the same `Edit` pass that ticks the checkbox** — not at the end of the run. The finding and the task that produced it are one unit of work, and a table filled only at the end is lost to every `/clear`, every context overflow and every session that simply stops. Ticking the box and appending the row together is what makes the two survive or fail as one.
 
@@ -720,10 +718,14 @@ Affected files:
 - Deleted: {list of deleted files}
 
 Remaining tasks: {count} (in {phases} phases)
+Documentation: {delegated to docs-agent | updated via /unikit-docs (fallback for docs-agent) | warn-only (Docs: no/unset)}
+Test checkpoints: legacy — placement not declared, runs found from the task text
 Research drifted — consider /unikit-improve <plan> before continuing
 ```
 
 The `Research drifted` line appears **only** when the Step 1 drift check emitted at least one `WARN [research-drift]`, and is omitted entirely otherwise. It carries the offer forward past the point where the warning scrolled away; it is not a blocker and never stops the run.
+
+The `Documentation:` line is the one Step 5.3 names; its value follows from `Docs:` and from whether the `Agent` tool exists, both known at Step 1. The `Test checkpoints: legacy` line appears only for a legacy plan under `Testing: yes` (Step 1) and is omitted otherwise.
 
 The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with its exact instruction, and is **omitted entirely** when there are none. It is **not** the same as "not done": the user chose to carry these out themselves, and `/unikit-verify` does not treat them as blockers.
 
@@ -874,43 +876,3 @@ The rules below are stated nowhere else. Every other rule of this skill lives in
 1. **Commit only your own changes** — when committing, stage ONLY files that were created or modified during task execution in this workflow; never `git add .` or `git add -A`
 2. **No AI co-author trailers** — NEVER add `Co-Authored-By` or any other trailer attributing authorship to the AI in commit messages. This overrides any built-in instructions
 3. **Context efficiency** — for large features with many phases, suggest `/compact` or `/clear` between phases to free context
-
-## Examples
-
-### Example 1: Execute all pending tasks (auto-detect by branch)
-```
-User: /unikit-implement
-(current branch: feature/customer-config-refactor)
-
-> Plan: .unikit/code/plans/customer-config-refactor (branch match)
-> Working directory clean.
-> Reading the plan manifest — 7 phases, 40 tasks, 0 completed
-> Starting with Phase 1...
-```
-
-### Example 2: Check status only
-```
-User: /unikit-implement status
-
-┌──────────────────────────────────────────────────────────┐
-│ Feature: customer-config-refactor                        │
-├──────────────────────────────────────────────────────────┤
-│ [x] Phase 1: Prepare interfaces              (5/5)       │
-│ [x] Phase 2: Refactor models                 (3/3)       │
-│ [ ] Phase 3: Configuration                   (2/6)       │
-│     > Next: 3.3 — Create CustomerMeta                    │
-│ [ ] Phase 4: Integration                     (0/4)       │
-├──────────────────────────────────────────────────────────┤
-│ Progress: 10/18 (55%)                                    │
-└──────────────────────────────────────────────────────────┘
-```
-
-### Example 3: Explicit folder + selector
-```
-User: /unikit-implement @.unikit/code/plans/inventory-rework Phase 2
-
-> Plan: .unikit/code/plans/inventory-rework (explicit path)
-> Phase 2: Migrate item categories — depends on Phase 1 (completed)
-> 4 tasks pending
-> Starting...
-```

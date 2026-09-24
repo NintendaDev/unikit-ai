@@ -3758,6 +3758,7 @@ VQ_GD_REVIEW="$ROOT_DIR/skills/unikit-gd-review/SKILL.md"
 VQ_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
 VQ_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 VQ_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+VQ_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
 VQ_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
 VQ_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
 VQ_MODE_LIST="$ROOT_DIR/skills/unikit-plan/references/mode-list.md"
@@ -3802,10 +3803,12 @@ vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_M
 vq_expect "AQ-6 unikit-gd-review — interview findings printed first" "$VQ_GD_REVIEW" "$VQ_K1" 1
 
 # (PR-1…PR-4) every resolver announces what it resolved, and says that *latest* is a guess.
+# (PX-11) the coordinator is a fifth entry point and owes the same announcement.
 for vq_pair in \
     "unikit-improve:$VQ_IMPROVE" \
     "unikit-implement:$VQ_IMPLEMENT" \
     "unikit-verify:$VQ_VERIFY" \
+    "unikit-implement-coordinator:$VQ_COORD" \
     "unikit-plan/mode-add:$VQ_MODE_ADD"
 do
     vq_name="${vq_pair%%:*}"
@@ -3830,7 +3833,7 @@ while IFS= read -r vq_f; do
     [[ -n "$vq_f" ]] || continue
     vq_sweep_seen=$((vq_sweep_seen + 1))
     [[ "$(vq_count "$vq_f" "$VQ_K3")" != "0" ]] || vq_sweep_bad+=" ${vq_f#"$ROOT_DIR/"}"
-done < <(grep -rlF 'fall through to *latest*' "$ROOT_DIR/skills" --include='*.md' || true)
+done < <(grep -rlF 'fall through to *latest*' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' || true)
 if [[ "$vq_sweep_seen" -eq 0 ]]; then
     fail "PR-5 — nothing mentions the *latest* fallback; the guard has lost its object"
 elif [[ -n "$vq_sweep_bad" ]]; then
@@ -6513,6 +6516,55 @@ if [[ -z "$TC_G6_WHY" ]]; then
     pass "TC-46…TC-51 both plan editors honour the recorded policy, keep executor data, and treat a run task without Files: as normal"
 else
     fail "TC-46…TC-51 plan-editor run-policy contract:$TC_G6_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# PX: incidental defects closed by the readback/merge/slimming plan (research section 14).
+# One assert per defect, numbered by the defect. Defect 13 (the dev-principles lazy-read
+# boundary ignored by implement/fix/verify) is closed by LB-1…LB-3, not here.
+PX_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+PX_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+PX_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+PX_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+PX_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
+PX_DYNAMIC_MEMORY="$ROOT_DIR/docs/dynamic-memory.md"
+PX_WHY=""
+# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline".
+grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$PX_IMPLEMENT" && PX_WHY+=" PX-1:devcontext-inline-fallback"
+# (PX-2) the findings column contract lives in the planner's reference, not in implement's own.
+grep -qE '[^/]references/TASK-FORMAT\.md' "$PX_IMPLEMENT" && PX_WHY+=" PX-2:task-format-path-without-owner"
+# (PX-3) Testing: no omits the placement line by design — it is not a legacy plan.
+for px_f in "$PX_IMPLEMENT" "$PX_VERIFY"; do
+    grep -qF 'Line absent under `Testing: yes` → the plan is legacy' "$px_f" || PX_WHY+=" PX-3:legacy-unconditioned:${px_f##*/skills/}"
+done
+# (PX-4) the Step 4 template carries the lines other steps say it carries.
+PX4_WIN="$(awk '/^### Step 4: Completion Summary/{f=1;next} /^### Step 5/{f=0} f' "$PX_IMPLEMENT")"
+printf '%s' "$PX4_WIN" | grep -qF 'Documentation:'           || PX_WHY+=" PX-4:no-documentation-line"
+printf '%s' "$PX4_WIN" | grep -qF 'Test checkpoints: legacy' || PX_WHY+=" PX-4:no-legacy-line"
+# (PX-5) no example teaching the pre-contract announcement format.
+grep -qE '^> Plan:|^## Examples' "$PX_IMPLEMENT" && PX_WHY+=" PX-5:stale-examples"
+# (PX-6) Steps D-H refine Step 5 — the SKILL.md half of UP-5.
+grep -qF 'replace Step 5 and Step 6' "$PX_PLAN" && PX_WHY+=" PX-6:replace-returned"
+grep -qF 'refine Step 5 and Step 6'  "$PX_PLAN" || PX_WHY+=" PX-6:no-refine"
+# (PX-7) no example contradicting --base > git.base_branch > main.
+grep -qF 'base: HEAD' "$PX_PLAN" && PX_WHY+=" PX-7:base-head-example"
+# (PX-8) module boundaries come from the project's ARCHITECTURE.md, not from one pattern.
+grep -qF 'Modular Monolith' "$PX_PLAN" && PX_WHY+=" PX-8:hardcoded-architecture"
+# (PX-9) a v1 registry is an ERROR at the consumer (design-read.md "When this applies").
+grep -qF 'WARN [design] GD-IDS.yaml is version 1'  "$PX_EXPLORE" && PX_WHY+=" PX-9:warn-level"
+grep -qF 'ERROR [design] GD-IDS.yaml is version 1' "$PX_EXPLORE" || PX_WHY+=" PX-9:no-error-level"
+# (PX-10) SOURCE.md is outside the gate's scope, so no gate criterion can catch a bad quote.
+grep -qF 'criterion-2 finding' "$PX_EXPLORE" && PX_WHY+=" PX-10:gate-cannot-see-source"
+# (PX-11) is the coordinator pair in the PR loop and the subagents/ root in PR-5 above.
+# (PX-12) an absent rules file is announced by one line, never skipped in silence.
+grep -qF 'skipped **silently**' "$PX_DEV_PRINCIPLES" && PX_WHY+=" PX-12:dev-principles-silent"
+grep -qF 'skipped silently'     "$PX_DYNAMIC_MEMORY" && PX_WHY+=" PX-12:docs-silent"
+# (PX-14) verify never resolves FIX_PLAN.md, so it never names that reason.
+grep -qF '`fix plan` ·' "$PX_VERIFY" && PX_WHY+=" PX-14:verify-fix-plan-reason"
+if [[ -z "$PX_WHY" ]]; then
+    pass "PX-1…PX-14 incidental defects stay closed (defect 13: LB-1…LB-3)"
+else
+    fail "PX incidental defect returned:$PX_WHY"
 fi
 
 # ─────────────────────────────────────────────

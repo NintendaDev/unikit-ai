@@ -137,15 +137,6 @@ Ultra is **user-named, never model-inferred**. Rule 5 recognises the request whe
 
 ### Step 0: Parse Mode & Select Mode
 
-```
-/unikit-plan full Item appraisal system                    → mode: full, base: HEAD, description: "Item appraisal system"
-/unikit-plan full --base master Item appraisal system      → mode: full, base: master, description: "Item appraisal system"
-/unikit-plan fast Item appraisal system                    → mode: fast, description: "Item appraisal system"
-/unikit-plan ultra Item appraisal system                   → mode: ultra, base: HEAD, description: "Item appraisal system"
-/unikit-plan add Add error handling phase                  → mode: add, description: "Add error handling phase"
-/unikit-plan Item appraisal system                         → mode: ?, ask user
-```
-
 Initialize flags: `research_pre_linked = false`, `research_linked = false`, `design_linked = false`.
 
 **If mode is `--list`** → load `{{skills_dir}}/{{self_name}}/references/mode-list.md` and follow it (it STOPs; Steps 0.1–7 do not run).
@@ -350,7 +341,7 @@ on demand — do **not** keep all five mode bodies in context at once:
   preferences step, then continue to the Shared Steps below.
 - **Ultra mode** → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md`, run its
   additional steps A-C (git branch, recon, preferences), then continue to the Shared Steps
-  below. Steps D-H of that body run later — they replace Step 5 and Step 6 of the shared
+  below. Steps D-H of that body run later — they refine Step 5 and Step 6 of the shared
   workflow, so do **not** run them here.
 
 (`--list` and `add` modes already dispatched in Step 0 to their own bodies — `mode-list.md` / `mode-add.md` — and STOP; they never reach here.)
@@ -745,7 +736,7 @@ A task with no deliverable (`Implement appraisal system`) is not a task, and a `
 6. **Commit checkpoints for large plans** — 5+ tasks need a Commit Plan section with checkpoints every 3-5 tasks
 7. **NO tests if user said no** — don't sneak in test tasks when the user opted out
 8. **Actionable tasks** — each task must have a clear, concrete deliverable
-9. **Respect module boundaries** — follow the project's Modular Monolith architecture (Modules/ → Game/ allowed, Game/ → Modules/ FORBIDDEN)
+9. **Respect module boundaries** — follow the dependency rules of `.unikit/ARCHITECTURE.md`; never invent a direction it does not state
 10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
 11. **Always generate `## Technical Context`** — even when a research's `## Active Summary` exists, the plan generates its own section based on the current codebase state. The research summary is input, not a replacement; the plan's section is the authoritative source for `/unikit-implement`
 12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder) — the folder name carries no date; the manifest's `Created:` / `Updated:` fields do

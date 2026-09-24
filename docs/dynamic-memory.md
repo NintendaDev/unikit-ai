@@ -166,7 +166,7 @@ Step 1 in detail — `dev-principles.md` is **not** read whole on every Bootstra
 
 Step 2 in detail — the engine-MCP rules tree holds **exceptions** for the one server this project is configured against, not capabilities and not knowledge-base rules. At Bootstrap a skill reads the **base section** of `.unikit/system/engine-mcp/INDEX.md` (everything except its `## Check` table) plus the **header** of `.unikit/MCP-RECHECK-NOTES.md`, and compares the two: a mismatch is one `WARN` and the entries still apply, because they are suspect rather than void. The `## Check` table is *not* read here — it is grepped per editor task, by that task's area plus the cross-cutting ones. `/unikit-verify` additionally reads `.unikit/system/engine-mcp/verification.md`, and no other skill does.
 
-A missing file is skipped silently, and that is a supported state: no rules means no known exceptions, never fewer rights. See [configuration.md](configuration.md#engine-mcp-rules-tree).
+A missing file is skipped with one printed line, and that is a supported state: no rules means no known exceptions, never fewer rights. See [configuration.md](configuration.md#engine-mcp-rules-tree).
 
 Steps 6-7 in detail:
 - Examines phase name and task descriptions - files involved, frameworks referenced
