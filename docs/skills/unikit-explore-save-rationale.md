@@ -177,6 +177,8 @@ Two corrections to the estimates this measurement replaces:
 | S-90 | 1059 | Run the coherence gate | rationale | CG-4 (`auto-save` also stands in S-84) | D 180 (canonical: S-78) | 180 |
 | | | | | | **Total** | **7 331** |
 
+S-59, S-61 and S-62 describe the printed readback block that was later replaced by one question per requirement — see ### Readback.
+
 ### `ULTRA-RESEARCH-FORMAT.md` → `## Identifiers`, `## Write order`
 
 The input to task 12. These two sections move into `SKILL.md`, and the bytes below are what the
@@ -350,9 +352,18 @@ findable.
   instead of the disk, and it costs one turn.
 - **Why a `stated` requirement that passed is not shown.** A short list is the only defence
   against this step turning into something that gets clicked through.
-- **Why a printed block and not a question tool.** The answers are free-form and per line ("not A
-  but B, because…"), a four-option modal does not carry that, and the number of options needed is
-  the number of lines shown. The tool is granted to the skill and deliberately unused here.
+- **Why one question per requirement.** The printed block drew one free reply for every
+  line at once, and in practice the user asked for the questions to be put interactively;
+  one menu per line makes each answer attributable to its line, and the free answer the tool
+  adds keeps corrections of the "not A but B, because…" kind possible.
+- **Why the grounds are printed before the question.** A one-line option does not explain the
+  difference between two paths; the comparison has to be readable before the choice
+  (the same "print first, ask second" rule as the rule-candidate question).
+- **Why "Recommended" appears only on two readings.** On `diverges` and `inferred` the
+  marker would push the user toward the agent's own formulation — exactly the click-through
+  this check exists to prevent; on two readings the code or the log can actually decide.
+- **Why the text tier ends the turn.** Printed questions followed by a continued save demote
+  every item to an open question without the user ever having had the chance to answer.
 - **A correction that becomes a new requirement** is a normal outcome of asking, not an error.
 - **Its position is a property, not a compromise.** The corrections land on disk before the
   registry is re-rendered and before the gate reads the files, so the gate checks the corrected

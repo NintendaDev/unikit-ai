@@ -693,8 +693,8 @@ On a failure, resolve from cheapest to dearest:
 3. **Still two readings after that → it is not a requirement but an `OQ-<n>`**, and it goes to
    the readback below.
 
-Three notes on the trigger. More than two readings fails the same way, and the readback then
-gets the list rather than a pair. A structural requirement the user never dictated (`inferred`)
+Three notes on the trigger. More than two readings fails the same way; the readback then
+offers up to three readings as options and, beyond three, prints them without a question. A structural requirement the user never dictated (`inferred`)
 is tested all the same. And where you cannot tell whether a requirement is structural, treat it
 as structural: a false positive costs two written lines, a miss costs a replanned phase.
 
@@ -823,6 +823,8 @@ like "option 1" or "let's go with B" resolves to nothing, and the only surviving
 what was agreed is the document derived from this log — which leaves the derived document
 certifying itself.
 
+The readback menus of Step 3.5 are menus in exactly this sense.
+
 **Mark your own cuts, and only your own.** `[…]` means *you* left something out of the
 quotation. A bare `…` means the user spoke that way — trailed off, paused, thought better of a
 sentence. Two different things get two different marks.
@@ -861,30 +863,56 @@ requirements they have not actually seen.
 A requirement marked `stated` that passed the test is **not shown**. Out of twenty-two
 requirements it typically prints three.
 
-**It is a printed block, not `AskUserQuestion`.**
+**One question per requirement, at most four per `AskUserQuestion` call** — `k` requirements take ⌈k/4⌉ calls, in ID order.
 
-```
-Before saving — <N> requirements out of <M>. The rest go as they are.
+1. **Print the grounds first, then ask.** Before each call, print the grounds of every requirement that call carries, as plain markdown in a block of their own — the question mechanism carries the options and nothing else:
 
-<ID>  <CLASS>
-  I wrote:   "<your formulation>"
-  You said:  "<the quotation>"                       <anchor>
-  <two readings: A) … B) … → A or B?>
-  <diverges:   my reason: …  → take mine / restore yours / make it an open question?>
-  <inferred:   grounds: …    → a requirement or a finding?>
-```
+   ```
+   Before saving — <N> requirements out of <M>. The rest go as they are.
+
+   <ID>  <CLASS>
+     I wrote:     "<your formulation>"
+     You said:    "<the quotation>"                         <anchor>
+     Grounds:     <the code, the log line or the document it rests on>
+     Other path:  <the alternative> — cost: <what it would change>
+   ```
+
+   `You said:` is printed for `diverges` and for two readings — there it is the quotation the readings interpret. For two readings, `Other path:` gives way to the readings themselves — `A) …`, `B) …` (and `C) …`), each with what it would build.
+2. **Ask.** One question per requirement, its options set by the class:
+
+   | Class | Options |
+   |-------|---------|
+   | `diverges` | `Mine (DEC-<n>)` · `Yours` · `Open question` |
+   | `inferred` | `Requirement` · `Finding only` · `Open question` |
+   | two readings | `A` · `B` · `Open question` — three readings: `A` · `B` · `C` · `Open question`; more than three: the readings are printed with the grounds, no question is asked, and the item stays the `OQ-<n>` it already is |
+
+   The free answer ("Other") is added by the tool itself — never list it as an option.
+3. **"Recommended" only on a two-readings question**, and only on the reading your code or log evidence supports — that evidence is its `Grounds:` line. The `diverges` and `inferred` menus stay neutral: no option is marked.
+4. **No `AskUserQuestion` → the same questions as numbered text**, one block per requirement, answered by number (`REQ-8 — 1, OQ-5 — B`). Print them, then **end your turn and wait for the answer** — do not go on with the save:
+
+   ```
+   REQ-8  inferred
+     1) Requirement   2) Finding only   3) Open question
+   ```
 
 **What the answers do:**
 
-- **A correction** → `Edit` the `RESEARCH.md` already on disk: rewrite the requirement, change
-  its marker to `stated`, and anchor it to the user's words from this very exchange — they are
-  in the log already, pinned as they were said.
-- **A confirmation** → the marker stays and nothing is rewritten.
-- **"That is not a requirement"** → the line leaves `Requirements:` and its content moves to
-  `## Findings`. Its `REQ-<n>` is **not reused**; the next requirement takes the following
-  number.
-- **A correction that turns out to be a new requirement** → open a new `REQ-` with the next
-  number, marked `stated`.
+- `Mine (DEC-<n>)` → the requirement keeps its marker and its `DEC-`; nothing is rewritten.
+- `Yours` → rewrite the requirement to the user's original words, mark it `stated`, and keep its anchor on the original quotation — it is in the log already. Its paired `DEC-<n>` is marked superseded by this requirement.
+- `Requirement` → the `inferred` marker stays and nothing is rewritten.
+- `Finding only` → the line leaves `Requirements:` and its content moves to `## Findings`. Its `REQ-<n>` is **not reused**; the next requirement takes the following number.
+- `A` / `B` / `C` → the item is already an `OQ-<n>` (the third rung of the resolution ladder); the chosen reading becomes a `REQ-` with the next number, marked `stated` and anchored on the logged answer, and the `OQ-<n>` keeps its number and is marked superseded by that `REQ-<m>`.
+- `Open question` → the requirement leaves `Requirements:` and becomes an `OQ-<n>` with the next number; a `diverges` item's paired `DEC-<n>` is marked superseded. An item that already is an `OQ-<n>` (two readings) stays as it is — no second number.
+- **"Other" — a correction** → `Edit` the `RESEARCH.md` already on disk: rewrite the requirement, change its marker to `stated`, and anchor it to the user's words from this very exchange — they are in the log already, pinned as they were said. A correction that turns out to be a new requirement opens a new `REQ-` with the next number, marked `stated`.
+- **"Other" — a counter-question** → answer it, then put the same menu for that requirement again.
+
+**Order of writes.** Append the readback exchange — the printed grounds, the question, `Offered:` and the answer — to `SOURCE.md` **before** the `Edit` it causes: the quotation a correction or a chosen reading is anchored on must already be in the log when the requirement is written, because that phrase is grepped at that moment.
+
+**Counting for the `Readback` field of `## Sessions`.** `Yours`, `Finding only`, `Open question`, `A` / `B` / `C` and an "Other" correction count as `corrected`; `Mine` and `Requirement` do not. `<K> demoted to OQ` counts only what **Nobody answered** demoted — never an item that already was an `OQ-<n>`.
+
+**A text-tier question left unanswered** — the next message is about something else — applies **Nobody answered** and continues the save from Step 4: `RESEARCH.md` is already on disk and must not stay unchecked by the registry and the gate.
+
+**Log every readback question in `SOURCE.md`** (prompt-based explorations; a file-based one has no log) like any other menu: the question, `Offered:` with the option labels — for `A` / `B` / `C` each label together with the text of its reading, since a letter alone resolves to nothing — and the chosen label verbatim; a free answer is a blockquote, as every answer is.
 
 **Nobody answered** — the user left, or interrupted. The save is **not** cancelled. Every
 requirement of the three classes that went unconfirmed is demoted to an `OQ-<n>` and leaves
@@ -893,6 +921,8 @@ requirement of the three classes that went unconfirmed is demoted to an `OQ-<n>`
 ```
 WARN [readback] <k> requirements went unconfirmed — demoted to OQ
 ```
+
+An item that already is an `OQ-<n>` (two readings) stays as it is and is not counted in `<k>`.
 
 **Nothing to show** — every requirement is `stated` and every test passed. Skip the step in
 silence: no block, no line.

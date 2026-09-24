@@ -3161,6 +3161,22 @@ done
 # rewrite that unwraps the prose makes it two.
 grep -qF 'not needed (every requirement was stated)' "$SF_SKILL" || SF_WHY+=" SF-15:no-nothing-to-show-value"
 grep -qF '`Readback` field is never empty' "$SF_SKILL"           || SF_WHY+=" SF-15:empty-readback-allowed"
+# (SF-16…SF-19) the readback is one menu per requirement, never a printed block answered by a
+# single free reply (REQ-001). Anchored inside the Step 3.5 window: the same words elsewhere in
+# the file would not prove the readback uses them.
+SF_RB_WIN="$(awk '/^### Step 3\.5/{f=1;next} /^### Step 4/{f=0} f' "$SF_SKILL")"
+[[ -n "$SF_RB_WIN" ]] || SF_WHY+=" SF-16:readback-window-empty"
+# (SF-16) NEGATIVE — the retired contract that forbade the question tool.
+grep -qF 'It is a printed block, not' "$SF_SKILL" && SF_WHY+=" SF-16:printed-block-returned"
+# (SF-17) one question per item, the tool, print-first, the class menus and the recommendation policy.
+for sf17 in 'One question per requirement' 'AskUserQuestion' 'carries the options and nothing else' \
+             'Mine (DEC-<n>)' 'Finding only' 'only on a two-readings question'; do
+    printf '%s' "$SF_RB_WIN" | grep -qF "$sf17" || SF_WHY+=" SF-17:no-${sf17// /-}"
+done
+# (SF-18) the text tier stops the turn — otherwise every item silently demotes to OQ (RISK-004).
+printf '%s' "$SF_RB_WIN" | grep -qF 'end your turn and wait' || SF_WHY+=" SF-18:text-tier-does-not-stop"
+# (SF-19) every readback menu reaches SOURCE.md with its offered options (REQ-006).
+printf '%s' "$SF_RB_WIN" | grep -qF 'with the option labels' || SF_WHY+=" SF-19:menu-not-logged"
 
 if [[ -z "$SF_WHY" ]]; then
     pass "SF-1..SF-15 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, and a standard research reads nothing from the ultra reference"
