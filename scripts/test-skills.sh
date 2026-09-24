@@ -6315,11 +6315,12 @@ for f in "$TC_CONFIG_TPL" "$TC_UNIKIT_SKILL"; do
     [[ -s "$f" ]] || TC_G1_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G1_WHY" ]]; then
-    # (TC-1) both key groups, all three modes in each — a block carrying one mode is how a
-    # per-mode policy quietly becomes a global one.
-    for tok in 'testing:' 'checkpoints:' 'merge_checkpoints:' 'ultra:' 'full:' 'fast:'; do
+    # (TC-1) the placement key, all three modes — a block carrying one mode is how a per-mode policy quietly becomes a global one.
+    for tok in 'testing:' 'checkpoints:' 'ultra:' 'full:' 'fast:'; do
         grep -qF "$tok" "$TC_CONFIG_TPL" || TC_G1_WHY+=" TC-1:no-$tok"
     done
+    # (TC-1) NEGATIVE since DEC-008 — merging is asked per call; a key would silence the question.
+    grep -qF 'merge_checkpoints' "$TC_CONFIG_TPL" && TC_G1_WHY+=" TC-1:executor-key-returned"
     # (TC-2) NEGATIVE — REQ-006: the width of a run follows from its coverage and is never
     # configurable. A width key in the config is the whole requirement reversed.
     grep -qF 'run_width' "$TC_CONFIG_TPL" && TC_G1_WHY+=" TC-2:width-key-returned"
@@ -6341,7 +6342,7 @@ if [[ -z "$TC_G1_WHY" ]]; then
         || TC_G1_WHY+=" TC-3:no-never-touch-carveout"
 fi
 if [[ -z "$TC_G1_WHY" ]]; then
-    pass "TC-1…TC-3 config template declares both key groups (no width key); merge mode derives the missing set from the template and carves out the never-touch keys"
+    pass "TC-1…TC-3 config template declares the placement key (no width key); merge mode derives the missing set from the template and carves out the never-touch keys"
 else
     fail "TC-1…TC-3 test-run config contract:$TC_G1_WHY"
 fi
@@ -6464,8 +6465,8 @@ for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD" "$TC_WORKER"; do
     [[ -s "$f" ]] || TC_G5_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G5_WHY" ]]; then
-    # (TC-27) the executor's own key, the line that explains a run count, and the legacy branch.
-    grep -qF 'testing.implement.merge_checkpoints' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-executor-key"
+    # (TC-27) no executor key any more (DEC-008), the line that explains a run count, and the legacy branch.
+    grep -qF 'merge_checkpoints' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-27:executor-key-returned"
     grep -qF 'INFO [testing]'                      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-info-line"
     grep -qF 'the plan is legacy'                  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-legacy-branch"
     # (TC-28) NEGATIVE — symmetric to TC-22 from the other side: the executor never reads
@@ -6532,6 +6533,47 @@ if [[ -z "$TC_G6_WHY" ]]; then
     pass "TC-46…TC-51 both plan editors honour the recorded policy, keep executor data, and treat a run task without Files: as normal"
 else
     fail "TC-46…TC-51 plan-editor run-policy contract:$TC_G6_WHY"
+fi
+
+# --- group 7: merging is a question per call, not a key (readback/merge plan, DEC-004…DEC-008) ---
+TC_G7_WHY=""
+TC_TASKFMT_Q="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD" "$TC_READER" "$TC_TASKFMT_Q"; do
+    [[ -s "$f" ]] || TC_G7_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G7_WHY" ]]; then
+    # (TC-52) the success signal: the key is gone from everything that ships or documents.
+    TC52_HITS="$(grep -rlF 'merge_checkpoints' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/docs" "$ROOT_DIR/data" 2>/dev/null || true)"
+    [[ -z "$TC52_HITS" ]] || TC_G7_WHY+=" TC-52:key-survives:$(echo "$TC52_HITS" | sed "s|$ROOT_DIR/||" | tr '\n' ',')"
+    # (TC-53) Step 2.5 asks once, prints the points first, stops the turn on the text tier, names the source.
+    TC53_WIN="$(awk '/^### Step 2\.5/{f=1;next} /^### Step 3/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+    for tc53 in 'AskUserQuestion' 'One run at the end' 'end your turn and wait' \
+                '(<asked|arguments|no answer|nothing to merge>)' 'Fewer than two' \
+                'whatever the answer below' 'last one in execution order'; do
+        printf '%s' "$TC53_WIN" | grep -qF "$tc53" || TC_G7_WHY+=" TC-53:no-${tc53// /-}"
+    done
+    # (TC-54) the instruction in the arguments is recognised, and the Step 0.2 question rides the same call.
+    grep -qF 'A test-run instruction' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:no-argument-instruction"
+    grep -qF 'in one `AskUserQuestion` call together with the Step 2.5 question' "$UNIKIT_IMPLEMENT_SKILL" \
+        || TC_G7_WHY+=" TC-54:start-questions-not-combined"
+    grep -qF 'the phase number inside it names a run point' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:instruction-parsed-as-selector"
+    grep -qF 'After a stash, re-read the manifest' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:stash-leaves-stale-scope"
+    # (TC-55) DEC-005 / OQ-3 — a merged point's non-run steps are performed at the survivor, and the format allows them.
+    grep -qF 'non-run steps of every task merged into it' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-55:non-run-steps-lost"
+    grep -qF 'its own non-run steps' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-55:survivor-own-steps-lost"
+    grep -qF 'A temporary probe it creates and removes within its own steps' "$TC_TASKFMT_Q" || TC_G7_WHY+=" TC-55:format-forbids-probe"
+    grep -qF 'their non-run steps are performed there' "$TC_READER" || TC_G7_WHY+=" TC-55:reader-depth-silent"
+    # (TC-56) the coordinator is an entry point too: it asks, and it holds the tool to ask with.
+    awk '/^tools:/{f=1;next} /^[a-z]+:/{f=0} f' "$TC_COORD" | grep -qF 'AskUserQuestion' || TC_G7_WHY+=" TC-56:coordinator-no-question-tool"
+    grep -qF 'Merge question, before the first layer' "$TC_COORD" || TC_G7_WHY+=" TC-56:coordinator-never-asks"
+    grep -qF 'a point of the last layer that holds one' "$TC_COORD" || TC_G7_WHY+=" TC-56:survivor-by-checklist-order"
+    # (TC-57) NEGATIVE — the answer is per call; nothing may re-introduce a stored default.
+    grep -qF 'Merging is only ever enabled explicitly' "$UNIKIT_IMPLEMENT_SKILL" && TC_G7_WHY+=" TC-57:stored-default-returned"
+fi
+if [[ -z "$TC_G7_WHY" ]]; then
+    pass "TC-52…TC-57 merging is one question per call: no key, source named, non-run steps carried, coordinator asks too"
+else
+    fail "TC-52…TC-57 merge-question contract:$TC_G7_WHY"
 fi
 
 # ─────────────────────────────────────────────

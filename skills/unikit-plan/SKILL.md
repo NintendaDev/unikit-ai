@@ -638,7 +638,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **Test-checkpoint task.** A run point is a **separate** checklist task carrying the line `Test checkpoint: <coverage>`, in the position `Files:` occupies. The grammar, the coverage domain and how the run's width is derived live in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test checkpoint task grammar` — **do not restate them here**.
 
-   - A test-checkpoint task **carries no `Files:`**: it creates nothing.
+   - A test-checkpoint task **carries no `Files:`**: it leaves nothing behind.
    - A checkpoint is placed **where the change is worth one, not in every phase**. The criterion: the phase changes executable code, or a contract other modules rely on. It is not placed when executable code is untouched — documentation, assets and their service files, data no test covers; the signals for the active engine are in `references/ENGINE_RULES.md` §3.
    - A phase left without a check passes its goals to the next test-checkpoint task, whose coverage then names both phases; the phase text says so in one line.
    - **Under `Testing: yes` the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch.

@@ -10,6 +10,7 @@ tools:
   - Grep
   - Bash
   - Skill
+  - AskUserQuestion
 model: inherit
 maxTurns: 40
 permissionMode: acceptEdits
@@ -62,6 +63,7 @@ The user may provide:
 - `@<path>` — explicit plan folder (e.g. `@.unikit/code/plans/2026-03-10_core-loop`). Highest priority.
 - A description of what to implement — used only if a plan exists that matches.
 - Nothing — auto-detect the latest plan.
+- A test-run instruction (`tests at the end`, `run tests at every point`) — the answer to the merge question below, given in advance.
 
 ## Plan Parsing
 
@@ -99,6 +101,7 @@ The user may provide:
    - Layer 1: phases that depend only on Layer 0 phases
    - Layer N: phases that depend only on phases in layers 0..N-1
    - If circular dependency detected — stop and report error
+6. **Merge question, before the first layer** — only with `Testing: yes`. Run `/unikit-implement` Step 2.5 over this session's scope, which is every pending phase of the plan: count the mergeable points, take the answer from the input when it gives one, otherwise ask once with `AskUserQuestion` (without the tool: the numbered text question, then end your turn). No answer → the points run as written. Then write the marks exactly as Step 2.5 does, before any task is dispatched. Here the last point is a point of the last layer that holds one — layers, not checklist order, decide what runs last. A merged point is skipped by the `Test checkpoint:` branch; the surviving one runs when its layer has finished.
 
 ## Dependency Parsing
 
@@ -212,7 +215,7 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
   - **any `Editor:` lines of those tasks, verbatim** — a worker that receives only the description implements an editor target as pure code
   - **`editor_mode:`** — the `Editor tasks` value from the plan's `## Settings`. Absent from the plan → pass `manual`, never `direct`
 - **A test-checkpoint task is never handed to a worker.** A task carrying a `Test checkpoint:` line is withheld from the set copied to the worker and stays with the coordinator. The reason is measured: the test runner is one per editor, and two workers of the same layer starting a run at the same moment get a refusal of the "test run already active" kind rather than two results.
-- **The run is performed by the scope owner — the coordinator — once the layer has finished.** The order is: every phase of the layer completes → the coordinator executes that layer's test-checkpoint tasks (`/unikit-implement` Step 3.2, the `Test checkpoint:` branch) → the next layer. This holds under `merge_checkpoints: false` as well: merging has nothing to do with it, the single runner does.
+- **The run is performed by the scope owner — the coordinator — once the layer has finished.** The order is: every phase of the layer completes → the coordinator executes that layer's test-checkpoint tasks (`/unikit-implement` Step 3.2, the `Test checkpoint:` branch) → the next layer. This holds whether or not anything was merged: the single runner decides it, not merging.
 - Maximum **3 parallel workers** per layer. If more phases are ready, split into sub-batches.
 - **Ultra, blocking:** a task present in the manifest's checklist whose `## Task N.M:` section exists in no phase file, or exists in more than one, is an integrity violation. Stop and report it; do not dispatch that phase with a one-line description standing in for the missing specification.
 

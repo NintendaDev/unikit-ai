@@ -100,6 +100,7 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias expa
 - **`Phases N-M`** (e.g. `Phases 1-3`) — execute tasks from Phases N through M
 - **`Task N.M`** or **`Tasks N.M N.K`** (e.g. `Tasks 2.1 2.3 5.2`) — execute only the specified tasks
 - **Feature name** (e.g. `core-loop`) — shorthand lookup: scans `.unikit/code/plans/` for a folder whose name **contains** this value. Compared to `@<path>`, this is a convenience shorthand that only searches inside `.unikit/code/plans/`
+- **A test-run instruction** (e.g. `tests at the end of phase 6`) — where this call's tests run; it answers the Step 2.5 question in advance
 
 **`@<path>` vs Feature name:** `@` takes an explicit path (relative or absolute) and expects a folder holding a plan manifest — `.unikit/code/plans/<folder>/PLAN.md` — inside; no searching. A bare name without `@` is a fuzzy match inside `.unikit/code/plans/`. When both could apply, `@` wins (highest priority).
 
@@ -120,8 +121,9 @@ Mixed input is supported: `@.unikit/code/plans/2026-03-08_customers-system Phase
    - `Phase N` — single phase
    - `Phases N-M` — phase range
    - `Task N.M` or `Tasks N.M N.K` — specific tasks
-5. If no `@<path>` was found, check remaining args for a **feature name** — a bare string (no `@` prefix) that matches a folder name in `.unikit/code/plans/` by substring (e.g. `core-loop` matches `2026-03-10_core-loop`). This is a convenience shorthand that only searches inside `.unikit/code/plans/`.
-6. Bare numbers without prefix are NOT selectors — they might be part of the feature name. Phases and tasks must be explicitly prefixed.
+5. **A test-run instruction** — words saying where this call's tests run (`tests at the end of phase 6`, `тесты в конце фазы 6`, `run tests at every point`) → keep it for Step 2.5. It is neither a selector nor a feature name: recognise it **before** the selectors of item 4, because the phase number inside it names a run point and never narrows the scope.
+6. If no `@<path>` was found, check remaining args for a **feature name** — a bare string (no `@` prefix) that matches a folder name in `.unikit/code/plans/` by substring (e.g. `core-loop` matches `2026-03-10_core-loop`). This is a convenience shorthand that only searches inside `.unikit/code/plans/`.
+7. Bare numbers without prefix are NOT selectors — they might be part of the feature name. Phases and tasks must be explicitly prefixed.
 
 #### Explicit Folder Override (`@<path>`)
 
@@ -245,10 +247,12 @@ Options:
 4. Cancel — I'll handle it myself
 ```
 
+**Ask it right before Step 3, not here** — in one `AskUserQuestion` call together with the Step 2.5 question when Step 2.5 asks one, alone otherwise (numbered text, then end your turn, when the tool is absent). Carry out its answer first: a commit or a stash happens before any mark is written into the manifest. **After a stash, re-read the manifest** and recompute the scope and its run points (Steps 2 and 2.5) before any mark is written: `git stash push` reverts a tracked, uncommitted manifest underneath the scope already counted.
+
 Based on choice:
-- Commit now → run /unikit-commit, then continue to plan discovery
+- Commit now → run /unikit-commit, then continue
 - Stash → `git stash push -m "unikit-implement: stash before execution"`, then continue
-- Continue as is → leave the working tree untouched, continue to plan discovery
+- Continue as is → leave the working tree untouched and continue
 - Cancel → inform "Implementation cancelled." → **STOP**
 
 #### 0.3: Resume / Recovery (after `/clear` or session break)
@@ -307,24 +311,6 @@ Read the `## Settings` section from the plan manifest:
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Default when the line is absent:** `mcp` if the engine MCP is configured (MCP server `{{engine_mcp_tool}}` present in `{{settings_file}}` at the project root — the same probe as Step 3.6), otherwise `manual`. Never default to `direct`: it is irreversible and requires a git commit first, so it is only ever an explicit choice.
 
 If `## Settings` section is missing, default to `Testing: no`, `Docs: no`, and resolve `Editor tasks` by the same probe (`mcp` when the engine MCP is configured, otherwise `manual`).
-
-**Resolve the merge mode (read from the config, not from the plan):**
-
-Read `.unikit/config.yaml` → `testing.implement.merge_checkpoints.<plan mode>`. The plan's mode is already known from detection (`.unikit/system/ultra-plan-read.md` → `## Detection`): a manifest carrying the marker → `ultra`; a folder plan without it → `full`; the flat `.unikit/code/PLAN.md` → `fast`.
-
-- **File, key or value absent → `false`.** Merging is only ever enabled explicitly.
-- The value is meaningful only under `Test checkpoints: phase` or `task`. Under `plan` there is nothing to merge: take `false` and print nothing — that is a normal combination, not a misconfiguration.
-- This is the **only** config key this skill reads. The planner's placement key is never read here: the placement is already recorded in the plan, and reading that key again would reinterpret a plan that has already been written.
-
-Store it as `merge_checkpoints` — Step 2.5 reads it.
-
-**Log the resolved policy once, naming both halves:**
-
-```
-INFO [testing] checkpoints=<value from the plan|legacy> · merge=<true|false>
-```
-
-Both halves must appear: it is precisely their divergence that explains why a run performed fewer test runs than the plan has checkpoints. A missing config or key resolves to `false` **silently** — a project without a config is a normal case, and a line on every run would turn the warning into wallpaper. A value that is neither `true` nor `false` (`yes`, `1`, an empty string) resolves to `false` plus `WARN [testing] merge_checkpoints=<value read> is not true|false; took false`. A legacy plan — `Testing: yes` and no `Test checkpoints:` line — adds one line to the Step 4 report: `Test checkpoints: legacy — placement not declared, runs found from the task text`.
 
 Store the parsed settings — they affect behavior in Step 2.5 (merging the test-run checkpoints), Step 3.2 (editor targets, and the width of a test run), Step 3.8 (tests), Step 3.9 (commit), and Step 5.3 (documentation).
 
@@ -404,22 +390,36 @@ Collect all pending tasks across all phases, respecting dependency order:
 
 Runs **before** the first task, and only when `Testing: yes`.
 
-1. **Collect the scope's run points.** Read the manifest's checklist and select the tasks carrying a `Test checkpoint:` line that fall inside this invocation's scope. **Only the manifest's checklist is read** — no phase file is opened for this.
-2. **Pick up what earlier calls deferred.** A test-checkpoint task that is `- [ ]` and carries the marker `⏭️ MERGED → task N.M` whose target `N.M` is also `- [ ]` is an unclosed obligation: its coverage joins this invocation's scope. This is not a new run — it was planned, and merely merged.
-3. **`merge_checkpoints: false`** → mark nothing. Every point runs where it is written (the one exception is a parallel layer — Step 3.2 and the coordinator). Go to Step 3.
-4. **`merge_checkpoints: true`** → take the scope's **last** run point and mark **all the others** merged into it, in a single `Edit` over the manifest:
-   - append `⏭️ MERGED → task <N.M>` to the text of each merged task, leaving its checkbox `- [ ]`;
-   - the surviving point's coverage at run time is the **union** of the coverage of everything merged into it (Step 3.2).
+1. **Collect the scope's run points** — the checklist tasks inside this invocation's scope that carry a `Test checkpoint:` line. Only the manifest's checklist is read; no phase file is opened for this.
+2. **Pick up what earlier calls deferred.** A test-checkpoint task still `- [ ]` whose marker `⏭️ MERGED → task N.M` points at a target that is also `- [ ]` is an unclosed obligation: its coverage joins this scope.
+3. **Count the mergeable points** — those of item 1 other than `Test checkpoint: plan`. Deferred work (item 2) is not counted: its place is fixed by item 4. **The final full run (`Test checkpoint: plan`) is never merged and never moved:** inside the scope it stays a point of its own and stands last.
+4. **Deferred work runs at the scope's last run point, whatever the answer below** — its coverage joins that point's union; when the scope holds no run point of its own, it runs at the **end of the scope**, after the last task. **The last point** is the last one in execution order: the point of the scope's phase that runs last (in the coordinator, a point of the last layer that holds one), never simply the last line of the checklist.
+5. **Fewer than two → nothing to merge:** mark nothing and ask nothing.
+6. **Two or more → one decision for this call:**
+   - **`$ARGUMENTS` carries a test-run instruction** (Step 0.1) that names the end of the scope, its last point, or every point → it is the answer; nothing is asked. An instruction naming another point is no answer — ask.
+   - **Otherwise ask once**, in the same `AskUserQuestion` call as the Step 0.2 question when there is one. Before the call, print the points as plain markdown in a block of their own:
 
-   **The final full run (`Test checkpoint: plan`) is never merged and never moved.** If it falls inside the scope it stays a point of its own and stands last.
-5. **The scope holds no run point at all**, but something was deferred → the deferred work runs at the **end of the scope**, after the last task.
-6. A merge touches no phase file: the marker is the text of a task in the manifest's checklist, on the model of `⏸️ MANUAL`.
+     ```
+     Test runs in this scope: <k> points
+     - task 5.5 — phase 5
+     - task 6.8 — phase 6
+     ```
 
-**Counting rule for `⏭️ MERGED`.** A test-checkpoint task carrying the marker and still `- [ ]` **does not count as pending for its own run**: its obligation is carried by the marker's target. It stops blocking "all tasks are completed" only once that target is `- [x]`; until then it is a visible obligation, and the next invocation picks it up (point 2).
+     Two options: `One run at the end — task <N.M>` (the last point) · `At every point, as planned`.
+   - **No `AskUserQuestion`** → the same two options as a numbered text question; end your turn and wait for the number.
+   - **No answer** — a non-interactive run, or a reply that picks neither option → the points run as written.
+7. **The answer holds for this call only.** On disk it survives solely as the `⏭️ MERGED` marks.
+8. **One run at the end → mark first, then execute.** Carry out the Step 0.2 answer first (a stash must not take the marks with it; after a stash the manifest was re-read and items 1–5 recounted). Then, in a single `Edit` over the manifest, append `⏭️ MERGED → task <N.M>` to every mergeable point except the last one (item 4), leaving each checkbox `- [ ]`. The last point's coverage at run time is the **union** of everything merged into it (Step 3.2).
 
-**The order is part of the contract: mark first, then execute.** A mark written after the first task no longer survives an interruption *during* that task — which is the whole reason this decision is written into the manifest instead of being held in memory.
+**Counting rule for `⏭️ MERGED`.** A test-checkpoint task carrying the marker and still `- [ ]` **does not count as pending for its own run**: its obligation is carried by the marker's target. It stops blocking "all tasks are completed" only once that target is `- [x]`; until then it is a visible obligation, and the next invocation picks it up (item 2).
 
-**Verbose.** A non-empty merge prints one line — `INFO [testing] merged <n> point(s) into task <N.M> (scope: <scope>)`; picking up deferred work prints `INFO [testing] deferred points picked up: <n>`. If the mark cannot be written (the `Edit` failed) → **do not perform the merge**: fall back to the `merge_checkpoints: false` behaviour and print `WARN [testing] merge mark not recorded — points run as written`. A merge that was never recorded is exactly the shape this design rejects.
+**Verbose.** One line always, naming where the decision came from:
+
+```
+INFO [testing] checkpoints=<value from the plan|legacy> · merge=<true|false> (<asked|arguments|no answer|nothing to merge>)
+```
+
+A merge adds `INFO [testing] merged <n> point(s) into task <N.M> (scope: <scope>)`; picked-up deferred work adds `INFO [testing] deferred points picked up: <n>`. If the marks cannot be written (the `Edit` failed), do not merge: the points run as written, and `WARN [testing] merge mark not recorded — points run as written`.
 
 ### Step 3: Execute Tasks
 
@@ -490,14 +490,15 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
   **If that file is not there**, treat every format as 🔴: refuse `direct`, put the task back on `manual`, and state the reason in one line. Continuing silently is not an option here — a binary serialized format edited as text is not reversible by review, and this gate is the only thing standing in front of that. This is **not** the A9 case: what is missing is not a rule that would grant a right, it is the permission for an irreversible text edit, and withholding it changes nothing about the `mcp` route.
 
-**A task carrying a `Test checkpoint: <coverage>` line** is a test-checkpoint task. It changes no files; its work is one test run.
+**A task carrying a `Test checkpoint: <coverage>` line** is a test-checkpoint task. It leaves no project file changed; its work is one test run, plus the non-run steps of item 3.
 
-1. **Merged?** It carries the marker `⏭️ MERGED → task N.M` (Step 2.5) → **the run is not performed.** The task stays `- [ ]`; move on. Its coverage is already counted into the target task's run.
+1. **Merged?** It carries the marker `⏭️ MERGED → task N.M` (Step 2.5) → **neither its run nor its non-run steps are performed here** — both travel to the target. The task stays `- [ ]`; move on.
 2. **Derive the run's target from the coverage** — the width is not configurable (REQ-006):
    - `task N.M` → the fixtures and classes named by that task's `### Tests`;
    - `phase N` / `phases N-M` → the test suites of the modules those phases touched and of the modules that depend on them (algorithm below), plus the coverage of everything merged into this point;
    - `plan` → **every test in the project**, unfiltered.
-3. **Dependent modules are found by name search, without building a graph.** The policy is engine-neutral and lives here; the mechanism is engine-specific and lives in the core rule `testing.md` loaded at Bootstrap (Step 1.5): what declares a module, where references live, how a test suite is recognised.
+3. **Non-run steps come first.** Before its run, the task performs its own non-run steps and, at a point that others were merged into, the non-run steps of every task merged into it, in checklist order — a negative control (create the temporary probe, see the test go red, remove the probe, see it green) or a manual smoke with the evidence it names. Their text is in each task itself: its checklist line, or in an ultra bundle its `## Task N.M:` section in its phase file, read now. A failed step is a Step 3.3 blocker, exactly like a red run.
+4. **Dependent modules are found by name search, without building a graph.** The policy is engine-neutral and lives here; the mechanism is engine-specific and lives in the core rule `testing.md` loaded at Bootstrap (Step 1.5): what declares a module, where references live, how a test suite is recognised.
    1. Changed files: `git status --porcelain` plus the list of files this run has accumulated.
    2. Walk up the directories to the nearest module manifest → the set of changed modules.
    3. Find the referrers: search the module manifests for the names in that set. Repeat while the set keeps growing — in practice one or two iterations.
@@ -506,22 +507,23 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
    6. **Degenerate cases → full run:** the engine has no module graph; the change landed in a default suite almost everything depends on; `testing.md` describes no mechanism for this engine. Failing to narrow means widening — that is fail-safe, not refusal.
 
    **Reading every module manifest is forbidden.** The search returns paths, not contents; reading the whole graph costs thousands of tokens and buys no accuracy.
-4. **Start the run** by the engine's own means, exactly as any other check in this step does (through the engine MCP when one is configured). Wait for the result.
-5. **A red run goes to the blocker loop (Step 3.3).** After the fix the run is repeated. A red run is never ticked `[x]`, and never quietly demoted to a warning.
-6. **A green run is recorded in the manifest**, by the same `Edit` that ticks the checkbox (Step 3.4):
+5. **Start the run** by the engine's own means, exactly as any other check in this step does (through the engine MCP when one is configured). Wait for the result.
+6. **A red run goes to the blocker loop (Step 3.3).** After the fix the run is repeated. A red run is never ticked `[x]`, and never quietly demoted to a warning.
+7. **A green run is recorded in the manifest**, by the same `Edit` that ticks the checkbox (Step 3.4):
    - append a bullet to `## Test Runs`: `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`;
    - **for `Test checkpoint: plan`, additionally** rewrite the anchor line `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`;
    - `<date>` comes from `Bash(date *)`; `<hash>` from the procedure below.
+   - `<what ran>` names the non-run steps of item 3 as well — e.g. `12 test suites of phases 5-6 + task 5.5: negative control red→green, smoke ✓`.
 
    The plan carries no `## Test Runs` section (a legacy plan) → create it at `##` level, under `## Rule Candidates`, or above `## Dependency Graph` when that one is absent too.
-7. **`tree-sha256` is computed over a short text**, not over the project, and by the same procedure as `Summary SHA256` — its digest step, `.unikit/system/research-link.md` → `### Digest`. The command below is that step in full: nothing is read for it mid-run:
+8. **`tree-sha256` is computed over a short text**, not over the project, and by the same procedure as `Summary SHA256` — its digest step, `.unikit/system/research-link.md` → `### Digest`. The command below is that step in full: nothing is read for it mid-run:
 
    ```
    { git rev-parse HEAD; git status --porcelain; } | shasum -a 256 | awk '{print $1}'
    ```
 
    No `shasum` → `sha256sum`. Git unavailable → the field is written as `tree-sha256 unavailable`; the run is still recorded, and `/unikit-verify` does not reuse such a run.
-8. **Close the merged tasks.** After a green run, tick `- [x]` every task whose marker points at this run point, keeping the marker in its text: it explains why that task has no line of its own in `## Test Runs`.
+9. **Close the merged tasks.** After a green run, tick `- [x]` every task whose marker points at this run point, keeping the marker in its text: it explains why that task has no line of its own in `## Test Runs`.
 
 **Verbose.** `INFO [testing] run <coverage>: <n> test suite(s)` before starting; `INFO [testing] safety valve: <n>/<total> ≥ 70% — full run` when it fires; `INFO [testing] no module graph — full run` on a degenerate case; `WARN [testing] git unavailable — tree-sha256 unavailable`. A red run is reported by the Step 3.3 blocker and not by a second line here: two places printing one failure drift apart. A run that never started — the runner is busy, or it timed out — is a Step 3.3 blocker and **not** a lifted gate: lifting is `/unikit-verify`'s decision, and the executor does not take it.
 

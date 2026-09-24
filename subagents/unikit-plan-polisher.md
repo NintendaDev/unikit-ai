@@ -133,7 +133,7 @@ Re-read your own plan and apply this rubric:
   - Asset pipeline considerations (if applicable)
   - Editor tooling needs (if applicable)
 - Run placement: does the plan match its own `Test checkpoints:` line — no run commands in per-task `### Tests` or `### Verification` under `phase` / `plan`, a final `Test checkpoint: plan` present under `Testing: yes`, no repeated checkpoints, and no phase gate restating the run. **A plan carrying no such line is legacy, and this point does not apply to it:** criticising a plan for lacking a policy that did not exist when it was written produces a finding nobody can close.
-- A test-checkpoint task with no `Files:` line is **normal, not an oversight** — it creates nothing. Never raise a finding asking for one.
+- A test-checkpoint task with no `Files:` line is **normal, not an oversight** — it leaves nothing behind (a temporary probe it removes and a manual smoke are legitimate steps). Never raise a finding asking for one.
 - No redundant or gold-plated tasks
 - Plan follows architecture and rules from `.unikit/`
 

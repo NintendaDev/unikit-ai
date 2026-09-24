@@ -145,20 +145,21 @@ git:
 
 ### `testing` section
 
-Where **test runs** are placed in a plan, and whether the executor merges them. Neither key affects **writing** tests: tests are written in any task of any phase, exactly as before.
+Where **test runs** are placed in a plan. The key does not affect **writing** tests: tests are written in any task of any phase, exactly as before.
 
 | Key | Description | Default |
 |-----|-------------|---------|
 | `testing.plan.checkpoints.ultra` | Where `/unikit-plan` places a test-checkpoint task in an ultra bundle. Domain `task \| phase \| plan`; `task` is admissible only here, because only ultra has a per-task surface to put a run on. | `phase` |
 | `testing.plan.checkpoints.full` | The same for a full plan. Domain `phase \| plan`. | `phase` |
 | `testing.plan.checkpoints.fast` | The same for a fast plan. Domain `phase \| plan`. The default differs from full deliberately: a fast plan is short, and one full run at its end covers it whole. | `plan` |
-| `testing.implement.merge_checkpoints.<mode>` | Whether `/unikit-implement` collapses every checkpoint inside the invocation scope into a single run at the last one. Opt-in, per plan mode. Meaningful only when `plan.checkpoints` is `phase` or `task` — under `plan` there is nothing to merge, and the plan's final full run is never merged. | `false` |
 
-**Why two keys and not one.** They have different owners and different moments. `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written. `merge_checkpoints` is read by the executor **at execution time**; recording it into the plan instead would freeze the executor's decision and make it irreversible.
+**Merging runs is a question, not a key.** When a `/unikit-implement` call covers two or more test-checkpoint tasks that can be merged, it asks once, before the first task, whether to run the tests once at the last of them or at every point as planned; words in the call itself (`Phases 5-6, tests at the end of phase 6`) answer it in advance. The answer holds for that call only — on disk it survives as the `⏭️ MERGED` marks in the plan. The plan's final full run is never merged. A config written by an earlier version may still carry the executor's old merge key; nothing reads it any more.
+
+**The placement key is recorded, not re-read.** `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written.
 
 **There is no width key, and there will not be one.** How wide a run is follows from where the checkpoint sits — a task runs its own fixtures, a phase runs the test suites of the modules it touched and those depending on them, the end of a plan runs everything. Making it configurable would let a plan declare a checkpoint whose coverage contradicts its own position.
 
-Existing projects receive these keys by either of the two paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers them, or the config actualization mode, which appends a template literal silently. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
+Existing projects receive the key by either of the two paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers it, or the config actualization mode, which appends a template literal silently. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
 
 ### `git` section
 

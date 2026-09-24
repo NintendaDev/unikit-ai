@@ -332,7 +332,7 @@ After phase completion:
 
 - Runs compilation check (through the engine MCP server)
 - Writes tests if `Testing: yes` — inside the tasks that introduce them
-- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; with `testing.implement.merge_checkpoints` the checkpoints inside the invocation scope collapse into one. Under `Testing: yes` the plan's last task is a full run
+- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run
 - Creates commit checkpoint
 
 Post-completion, in order:
