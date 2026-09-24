@@ -215,26 +215,9 @@ If `.unikit/code/patches/` exists:
 
 #### Design context (game-design module — optional)
 
-Check whether `.unikit/gamedesign/GD-IDS.yaml` exists.
+`.unikit/gamedesign/GD-IDS.yaml` exists → it MUST be `version: 2`. On `version: 1` do NOT read it: emit `ERROR [design] GD-IDS.yaml is version 1 (pre-v2 layout); design grounding unavailable until the workspace is upgraded via /unikit-gd-spec`, set `design_linked = false`, and plan code-side only. On `version: 2` set `design_linked = true` — Step 4.5 reads the design once the feature scope is clear; nothing is read here. Absent → `design_linked = false`, and every design step is skipped.
 
-- **Exists** → this project carries a game-design workspace. **Schema guard (clean
-  break — no automatic migration):** the registry MUST be `version: 2`. On a pre-v2
-  `version: 1` registry, do NOT read it — emit a loud `ERROR [design] GD-IDS.yaml is
-  version 1 (pre-v2 layout); design grounding unavailable until the workspace is
-  upgraded via /unikit-gd-spec` and set `design_linked = false` (the plan continues
-  purely code-side, never silently misreading the old layout). With a valid
-  `version: 2`, set `design_linked = true` and note it for **Step 4.5**, which reads
-  the relevant system design (and any flow that exercises it, and any content type that feeds
-  it) and produces the plan's `## Design` + optional `## Flow Context` / `## Content Context`
-  snapshots. Do NOT read the design docs here — Step 4.5 owns that, after the feature scope is
-  clear.
-- **Absent** → set `design_linked = false` and skip every design step. The plan is
-  purely code-side, exactly as before — projects without a design module are unaffected.
-
-**One-way boundary:** planning *reads* design (`GD-IDS.yaml`, `systems/*.md`,
-`flows/*.md`, and the read-only `## System Map [gen]` / `## Flow Map [gen]` in
-`GAME.md`); it never writes or edits any `.unikit/gamedesign/` artifact. Design
-changes flow only through the `/unikit-gd-*` skills.
+Planning only *reads* design; it never writes to `.unikit/gamedesign/` — design changes go through the `/unikit-gd-*` skills.
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
@@ -441,17 +424,7 @@ When evidence for a phase cannot be gathered, the decision goes into the manifes
 
 ### Step 4.5: Resolve Design Context (game-design module)
 
-**Runs only when `design_linked = true`** (the gate is resolved inline in Step 0.5). When it is
-true, load `{{skills_dir}}/{{self_name}}/references/design-context.md` and follow it on demand —
-do **not** keep the design-context body in context for pure-code plans. That body reads the shared
-`design-read` contract (`.unikit/system/gamedesign/design-read.md`), applies **Flow-First
-Resolution** (*intent decides the door* — resolve a system, a flow, or a content type first,
-ambiguous → ask), and produces the plan's `## Design` (+ optional `## Flow Context` /
-`## Content Context`) snapshot, then returns here for Step 5. When `design_linked = false`, skip this step entirely (the design-context body is never
-loaded).
-
-This step embodies the **one-way boundary**: it only *reads* design artifacts — never write to
-`.unikit/gamedesign/`.
+**Only when `design_linked = true`:** load `{{skills_dir}}/{{self_name}}/references/design-context.md` and follow it. It reads the shared `design-read` contract, resolves the door (a system, a flow or a content type), produces the `## Design` snapshot plus the optional `## Flow Context` / `## Content Context`, and returns here for Step 5. When `design_linked = false` the body is never loaded. Read only — never write to `.unikit/gamedesign/`.
 
 ### Step 4.6: Read the Catalog Negatively (only when the plan carries editor work)
 
@@ -499,26 +472,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 2. **`## Based on`** — if `research_linked = true`, one entry per linked research in the form `.unikit/system/research-link.md` → `## The entry`, carrying the `Summary SHA256` computed back in Step 2 (a research whose digest could not be computed there is written without that line — `## Writing an entry`). The contract was already read in Step 2; it is not re-read here. After all research entries, add "see the `## Technical Context` section below".
    If no research: "see the `## Technical Context` section below".
 
-   **`## Design`** (game-design module — only when `design_linked = true`) — insert the
-   design snapshot prepared in Step 4.5 directly after `## Based on`: System + `SYS-id`,
-   version, optional delta, and cited Acceptance Criteria. It lives in the plan manifest,
-   directly after `## Based on`. Omit this section entirely for pure-code plans
-   (`design_linked = false`).
-
-   **`## Flow Context`** (game-design module — only when a flow is in scope: the flow door,
-   or a flow that exercises the resolved system; from Step 4.5 / `design-context.md`) — insert
-   the flow brief directly after `## Design`: the `FLOW-id` + wiring-mode, the `GOAL` steps
-   touching the relevant system(s), the code shape implied by the mode, and the derived
-   (read-only) `Realized` state. Same placement as `## Design`, in the plan manifest. Omit when no flow is in scope.
-
-   **`## Content Context`** (game-design module — only when a content type is in scope: the
-   content door, or a content type that feeds the resolved system; from Step 4.5 /
-   `design-context.md` §4.5.6) — insert the content brief directly after `## Flow Context`: the
-   `CT-id` + `scale`, the `CT.fields` schema (the data contract the code reads), the `belongs_to`
-   system, and the code shape implied by `scale` (`bulk` → a data-driven loader; `curated` → named
-   instances). Same placement as `## Design`, in the plan manifest. Omit when no content type is in scope. There is
-   **no** writeback — content has no `implemented_version` (read-only, the same stance as a flow's
-   `Realized`).
+   **`## Design`**, **`## Flow Context`**, **`## Content Context`** (game-design module) — the snapshots Step 4.5 prepared, placed in this order directly after `## Based on`, each omitted when it was not produced (always, for a pure-code plan). What each one carries — the `SYS-id`, its version and the cited Acceptance Criteria; the `FLOW-id`, its wiring mode and `GOAL` steps; the `CT-id`, its `scale` and `CT.fields` schema — is `design-context.md`'s. `## Design` feeds `/unikit-verify`'s `implemented_version` writeback; `## Flow Context` and `## Content Context` have none.
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether tests are written at all
