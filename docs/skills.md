@@ -168,6 +168,22 @@ Creates conventional commits with engine-aware checks:
 - Suggests commit splitting for unrelated changes, and never lets unstaged edits into a split commit
 - Offers to push after commit
 
+### `/unikit-archive [list | --all | <plan-folder>]` - move finished plans out of the active list
+
+```
+/unikit-archive
+/unikit-archive list
+/unikit-archive --all
+/unikit-archive inventory-system
+```
+Moves a completed folder plan from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`:
+- A plan qualifies when every checklist task is `[x]` - an open, in-progress or failed task keeps it in place, and a plan with no tasks is never archived
+- Two stops: MCP findings never transferred to `.unikit/MCP-RECHECK-NOTES.md` (run `/unikit-mcp-trap`), and rule candidates still `open` (run `/unikit-verify`)
+- Uses `git mv` when the folder is tracked by git and plain `mv` otherwise; the folder name never changes, and the manifest gains one `Archived:` line
+- Never deletes, overwrites or commits - commit the move with `/unikit-commit`
+- The fast plan `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md`, researches and patches are never archived
+- Plan lookup, `--list` and the "latest plan" choice stop offering an archived plan; `/unikit-plan` still reads archived plans for the `implemented_version` fallback and will not give a new plan an archived plan's name
+
 ### `/unikit-evolve` - learn project rules from past fixes
 
 ```

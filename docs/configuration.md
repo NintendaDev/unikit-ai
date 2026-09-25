@@ -18,7 +18,7 @@ Main configuration file, created by `unikit-ai init`:
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": [
-        "unikit", "unikit-architecture", "unikit-commit", "unikit-devcontext",
+        "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-devcontext",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
         "unikit-implement", "unikit-improve", "unikit-mcp-audit", "unikit-mcp-trap",
         "unikit-memory", "unikit-plan", "unikit-review", "unikit-roadmap",
@@ -542,10 +542,11 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 22 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 23 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
+│   │   ├── unikit-archive/
 │   │   ├── unikit-commit/
 │   │   ├── unikit-devcontext/
 │   │   ├── unikit-docs/
