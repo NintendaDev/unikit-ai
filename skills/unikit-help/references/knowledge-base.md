@@ -56,7 +56,8 @@ time**. Editing these by hand is pointless. The user does not curate them; the C
 Relevant to the dev pipeline:
 
 - `dev-principles.md` — the canonical engine development principles + workflow. Read on Bootstrap
-  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`.
+  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`,
+  `/unikit-mcp-audit`, and the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
 - `engine-mcp/{INDEX,verification}.md` — the **rules tree of the engine MCP server the project
   actually selected**, delivered verbatim from the package with a provenance stamp. It records
   **exceptions, not capabilities**: no tool names, no inventory of what the server cannot do —

@@ -10,6 +10,7 @@ tools:
   - Grep
   - Bash
   - Skill
+  - AskUserQuestion
 model: inherit
 maxTurns: 40
 permissionMode: acceptEdits
@@ -60,17 +61,28 @@ At the very start of your first turn, before doing anything else:
 
 The user may provide:
 - `@<path>` — explicit plan folder (e.g. `@.unikit/code/plans/2026-03-10_core-loop`). Highest priority.
-- A description of what to implement — used only if a plan exists that matches.
-- Nothing — auto-detect the latest plan.
+- A description of what to implement — context only: it selects no plan (there is no feature-name lookup here).
+- Nothing — the plan is resolved by the ladder in Plan Parsing (fast plan, branch match; the latest is only a guess, asked when several exist).
+- A test-run instruction (`tests at the end`, `run tests at every point`) — the answer to the merge question below, given in advance.
 
 ## Plan Parsing
 
-1. Locate the active plan:
-   a. If the user provided an explicit `@<path>`, use that folder.
-   b. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
-      **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name and never from the file's mtime, which `git checkout` and a fresh clone rewrite.
-   c. If no plan found — stop and report.
-2. Read the plan folder's `.unikit/code/plans/<folder>/PLAN.md` manifest. Parse all phases and tasks:
+1. Locate the active plan, in this order:
+   a. **Explicit `@<path>`** → use that folder.
+   b. **Fast plan** — `.unikit/code/PLAN.md` exists → use it (the flat fast-mode plan). If a folder plan also matches the branch (step c), the branch plan wins while it has any `- [ ]` task in its manifest checklist — use it and print `INFO [plan] fast plan .unikit/code/PLAN.md not used — the branch plan has pending work (all tasks)`. When it has none and the fast plan has some, ask once whether to run the fast plan (`Run the fast plan` · `Stop`); when neither has any, use the branch plan. This is `/unikit-implement` Step 0.1 for a call without selectors — the coordinator takes none.
+   c. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — never by format precedence. No match → fall through to *latest*.
+   d. **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name or the file's mtime.
+      **`latest fallback` is a guess, not a resolution:** the branch named no plan. With two or more plans present, print the candidate table (folder, `Updated:`, tasks remaining) and ask — never auto-select. With exactly one plan present, announce it with the branch miss named in the reason and continue.
+   e. No plan found — stop and report.
+
+   **Announce the resolution** — exactly one visible line before any other output:
+
+   ```
+   INFO [plan] resolved: <path> (<reason>)
+   ```
+
+   `<reason>` is exactly one of: `explicit path` · `fast plan` · `branch match: <branch>` · `latest fallback`.
+2. Read the resolved manifest — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Parse all phases and tasks:
    - Phase grouping (Phase 1, Phase 2, ...)
    - Phase dependencies from the dependencies line (supports both English and localized headers, see "Dependency Parsing" below)
    - Task number and description
@@ -89,6 +101,7 @@ The user may provide:
    - Layer 1: phases that depend only on Layer 0 phases
    - Layer N: phases that depend only on phases in layers 0..N-1
    - If circular dependency detected — stop and report error
+6. **Merge question, before the first layer** — only with `Testing: yes`. Read `unikit-implement`'s test-run reference once — the path is written in `/unikit-implement` Step 1, preloaded above — and run its `## Step 2.5` over this session's scope, which is every pending phase of the plan: count the mergeable points, take the answer from the input when it gives one, otherwise ask once with `AskUserQuestion` (without the tool: the numbered text question, then end your turn). No answer → the points run as written. Then write the marks exactly as Step 2.5 does, before any task is dispatched. Here the last point is a point of the last layer that holds one — layers, not checklist order, decide what runs last. A merged point is skipped by the `Test checkpoint:` branch; the surviving one runs when its layer has finished.
 
 ## Dependency Parsing
 
@@ -173,16 +186,14 @@ When only one phase is ready, execute it directly within the coordinator (no wor
 For each task in the phase, sequentially:
 1. Mark `[~]` in the manifest
 2. Implement using direct tool calls (Read, Write, Edit, Glob, Grep, Bash)
-3. Bootstrap principles + rules: read `.unikit/system/dev-principles.md`, `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and load all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
-
-   `dev-principles.md` is read on **two** levels. Everything **above** the LAZY-READ BOUNDARY is read here, on every run — the evidence contract, the claim-class → evidence-class lattice, the nine failure-class names, phase order, the lane, and the `kind` / area vocabularies. The section **below** it — the nine detectors in full and the catalog checklist — is read **once per session, on the first task that touches editor state**, and **unconditionally**: never gated on which rules happen to be installed. Pulling the whole file up here spends the Bootstrap budget the split exists to save; never reading the lower half spends the safety net instead.
+3. Bootstrap principles + rules: `.unikit/system/dev-principles.md` **up to its lazy-read boundary** (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`, then `Read` with `limit` set to that line); the part **below the marker is read once, at plan load, when the checklist carries an `Editor:` line**. Then `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
 4. Run verification pass scoped to changed files
 5. If material issues found, fix and re-verify (max 2 rounds)
 6. Mark `[x]` or `[!]` in the manifest. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
 
-   **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task — `F<n>` is one more than the highest id already there (read the table first, so a re-run does not restart the numbering), `observed` is today's date, and dedup is semantic: drop a candidate saying the same thing about the same `area` as an existing row, by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — one observation is a bad sample, and the durable surface passes through a human running `/unikit-mcp-trap`.
+   **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task, by `dev-principles.md` → **D7**. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — the durable surface passes through a human running `/unikit-mcp-trap`.
 
-   **Fifth branch — a test-checkpoint task.** In this branch you are the executor, so there is nobody to withhold it from: execute it in the ordinary order, by the `Test checkpoint:` branch of `/unikit-implement` Step 3.2, and write the result into the manifest's `## Test Runs` in the same pass that marks the task.
+   **Fifth branch — a test-checkpoint task.** In this branch you are the executor, so there is nobody to withhold it from: execute it in the ordinary order, by `## Step 3.2` of that test-run reference, and write the result into the manifest's `## Test Runs` in the same pass that marks the task.
 
    **Sixth branch — the task produced a rule candidate.** Here too you are the executor, so you are the writer: append the row to the plan's `## Rule Candidates` in the same pass that marks the task — `R<n>` one more than the highest already there (read the table first), `from` the task, `status` `open`, dedup semantic. **Never write `.unikit/RULES.md` yourself**, and never ask about the candidates here: this agent's session usually ends before a question could be answered, so it records them and reports the count.
 7. If any task fails, stop the phase
@@ -202,7 +213,7 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
   - **any `Editor:` lines of those tasks, verbatim** — a worker that receives only the description implements an editor target as pure code
   - **`editor_mode:`** — the `Editor tasks` value from the plan's `## Settings`. Absent from the plan → pass `manual`, never `direct`
 - **A test-checkpoint task is never handed to a worker.** A task carrying a `Test checkpoint:` line is withheld from the set copied to the worker and stays with the coordinator. The reason is measured: the test runner is one per editor, and two workers of the same layer starting a run at the same moment get a refusal of the "test run already active" kind rather than two results.
-- **The run is performed by the scope owner — the coordinator — once the layer has finished.** The order is: every phase of the layer completes → the coordinator executes that layer's test-checkpoint tasks (`/unikit-implement` Step 3.2, the `Test checkpoint:` branch) → the next layer. This holds under `merge_checkpoints: false` as well: merging has nothing to do with it, the single runner does.
+- **The run is performed by the scope owner — the coordinator — once the layer has finished.** The order is: every phase of the layer completes → the coordinator executes that layer's test-checkpoint tasks (`## Step 3.2` of the test-run reference) → the next layer. This holds whether or not anything was merged: the single runner decides it, not merging.
 - Maximum **3 parallel workers** per layer. If more phases are ready, split into sub-batches.
 - **Ultra, blocking:** a task present in the manifest's checklist whose `## Task N.M:` section exists in no phase file, or exists in more than one, is an integrity violation. Stop and report it; do not dispatch that phase with a one-line description standing in for the missing specification.
 

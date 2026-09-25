@@ -42,8 +42,6 @@ Enter explore mode. Think deeply. Visualize freely. Follow the conversation wher
 
 **IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER implement features or modify project code. If the user asks to implement something, remind them to exit explore mode first (e.g., start with `/unikit-plan`).
 
-**This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
-
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -104,10 +102,7 @@ model argument of their own.
   Agent(subagent_type: Explore, model: sonnet, prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only.")
   ```
 
-  The path travels, never the text: the file is read in the agent's fresh context and not in
-  the one that is saving. `Explore` is read-only **by construction** — its tool set excludes
-  `Edit`/`Write`, so the read-only contract is guaranteed by the dispatch, not merely requested
-  in the prompt.
+  The path travels, never the text. `Explore` is read-only by construction.
   `sonnet` is a tier alias, never a version — the one model value that may be written into
   UniKit. A versioned model id goes stale silently and must never replace it.
 
@@ -122,10 +117,7 @@ model argument of their own.
   Agent(subagent_type: Explore, prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
   ```
 
-  The path travels, never the text: the file is read in the agent's fresh context and not in
-  the one that is saving. This runtime may offer no read-only-by-construction agent type, so
-  the read-only contract rides on the prompt rather than on the dispatch — the last sentence
-  of the prompt above carries it and is never dropped.
+  The path travels, never the text. The read-only contract rides on the last sentence of the prompt above, which is never dropped.
   No model is named: this runtime either has no dispatch-time model argument or offers only
   versioned model ids, and a versioned id goes stale silently. The runtime's own configured
   default applies.
@@ -156,21 +148,21 @@ but tag them mentally so that `Next step:` carries a concrete follow-up action:
 | Bug / broken behavior found | `/unikit-fix` |
 | Game-design idea / GDD gap | `/unikit-gd-brainstorm`, `/unikit-gd-explore`, `/unikit-gd-spec`, or `/unikit-gd-system` |
 
-When writing the `Next step:` field of `## Active Summary`, use this table to generate a
-specific follow-up instead of a generic "update other files". Example:
-- "Architecture decision: use Addressables pooling → run `/unikit-architecture` to formalize"
-- "New convention: all factories return UniTask → run `/unikit-rules` to codify"
+The `Next step:` field of `## Active Summary` names a concrete follow-up from this table, never a generic "update other files".
 
 ---
 
 ## The Stance
 
-- **Curious, not prescriptive** — Ask questions that emerge naturally, don't follow a script
-- **Open threads, not interrogations** — Surface multiple interesting directions and let the user follow what resonates
-- **Visual** — Use ASCII diagrams liberally when they'd help clarify thinking
-- **Adaptive** — Follow interesting threads, pivot when new information emerges
-- **Patient** — Don't rush to conclusions, let the shape of the problem emerge
-- **Grounded** — Explore the actual codebase when relevant, don't just theorize
+A stance, not a workflow: no fixed steps, no required sequence, no mandatory outputs — you are a thinking partner helping the user explore.
+
+- **Curious, not prescriptive** — ask the questions that emerge naturally; follow no script and do not ask the same questions every time
+- **Open threads, not interrogations** — surface several directions and let the user follow what resonates; pivot when new information emerges, and follow a tangent when it is valuable
+- **Visual** — use ASCII diagrams liberally when they help clarify thinking; a good diagram is worth many paragraphs
+- **Patient** — let the shape of the problem emerge; do not rush and do not force structure — you are not obliged to reach a conclusion, or to be brief
+- **Grounded** — explore the actual codebase when relevant, rather than theorize; question assumptions, the user's and your own; when something is unclear, dig deeper instead of faking understanding
+- **Don't implement** — never write feature code. Saving research files is fine, writing application code is not
+- **Don't auto-save** — offer to save the research, don't just do it. The thing that may not happen unasked is the research being saved: manifest, artifacts, registry, gate, confirmation. Writing the dialogue log while you talk — the folder that holds it included — is not that, and asks nothing
 
 ---
 
@@ -191,8 +183,6 @@ recon-agent(prompt:
    Report: key directories, relevant files, existing patterns, integration points.
    Thoroughness: quick|medium. Be concise — return a structured summary, not file contents.")
 ```
-
-**Fallback:** If Agent tool is unavailable, use Glob/Grep/Read directly.
 
 **Visualize**
 ```
@@ -223,12 +213,6 @@ recon-agent(prompt:
 
 Before responding to the user — before any exploration, questions, or analysis — you MUST load the project context. This is not optional. Do it silently (don't narrate the loading process to the user), but do it completely.
 
-This step has **no exceptions**. It used to have exactly one — `init` rebuilt the researches
-index and needed no project context — and that mode no longer exists: the registry is
-re-rendered as part of every save. The absence is recorded here rather than left silent,
-because a MANDATORY step that once had a hole reads like an oversight when the hole simply
-closes.
-
 ### Required reads (always, every time)
 
 Read ALL of these files in parallel before doing anything else:
@@ -243,73 +227,25 @@ Read ALL of these files in parallel before doing anything else:
 
 ### Stack documentation enrichment (context7)
 
-When the exploration topic involves a library or framework from the project's tech stack,
-assess whether the loaded Stack rules provide enough information:
-
-1. **Stack rule loaded and covers the topic** → proceed with available knowledge, no external lookup needed.
-
-2. **Stack rule loaded but doesn't cover the specific question** (user asks about
-   API methods, configuration options, or features not described in the rule) →
-   keep the rule for project conventions, additionally query context7 for the
-   specific API documentation gap.
-
-3. **No matching stack rule exists** but the topic involves a library/framework
-   from the project's tech stack (check `DESCRIPTION.md`) → query context7 as the
-   primary documentation source for that library.
-
-**context7 query flow:**
-1. `mcp__context7__resolve-library-id` — find the library ID.
-2. `mcp__context7__query-docs` — focused query matching the specific aspect the user
-   is exploring (not a broad "everything about X" — target the concrete question).
-
-**Fallback:** If context7 tools are unavailable or the lookup fails — proceed with
-your own training knowledge, but explicitly tell the user that the information was not
-verified against current documentation and may be outdated.
-
-**Priority:** Stack rules (project conventions — "how we use it here") always take
-precedence over context7 / web results (API reference — "what the library offers").
-When both are loaded, use stack rules for coding patterns and project-specific decisions,
-and external docs for API details and feature capabilities.
-
-**Mid-exploration enrichment:** If the topic shifts during exploration and a new library
-becomes relevant — apply the same logic at that point. Don't wait until the next full
-context bootstrap.
+When the topic involves a library or framework from the project's tech stack (`DESCRIPTION.md`) and the loaded Stack rules do not cover the question — no matching rule, or a rule that is silent on the API asked about — query context7 for that gap: `mcp__context7__resolve-library-id`, then one focused `mcp__context7__query-docs` on the concrete question, never "everything about X". Stack rules keep priority for project conventions ("how we use it here"); context7 answers API details ("what the library offers"). Tools unavailable or the lookup failed → use your own knowledge and tell the user explicitly that it was not verified against current documentation and may be outdated. When the topic shifts to a new library mid-exploration, apply this again at that point.
 
 ### Optional reads (check if relevant)
 
-- `.unikit/ROADMAP.md` — strategic milestones (if any). If ROADMAP.md contains a `## References` section with linked documents, and the exploration topic relates to a specific milestone — read the reference documents associated with that milestone (listed in the `Milestones` column of the References table). This provides the original requirements/design context behind the milestone without asking the user for additional input.
+- `.unikit/ROADMAP.md` — strategic milestones (if any). If ROADMAP.md contains a `## References` section with linked documents, and the exploration topic relates to a specific milestone — read the reference documents associated with that milestone (listed in the `Milestones` column of the References table).
 - `.unikit/code/researches/` — prior researches (check for related topics)
 - `.unikit/code/plans/` — active feature plans (if any)
-- **Game-design grounding** (only if a design workspace exists) — check `.unikit/gamedesign/GD-IDS.yaml`. **Schema guard:** it MUST be `version: 2` — on a pre-v2 `version: 1` registry, skip design grounding and emit a loud `WARN [design] GD-IDS.yaml is version 1 (pre-v2 layout); design grounding skipped` rather than silently misreading the old layout. When valid, **load the shared READ contract** `.unikit/system/gamedesign/design-read.md` and apply it: its **read surfaces** (read the registry — system `doc_status`/`version`/`depends_on`, flow `mode`/`goals`/`depends_on`, content `scale`/`belongs_to`/`fields` — and follow each entry's `source` path to `.unikit/gamedesign/systems/*.md` / `.unikit/gamedesign/flows/*.md` / `.unikit/gamedesign/content-types/*.md`; the human-readable views are GAME.md's `## System Map [gen]` / `## Flow Map [gen]` / `## Content Map [gen]`), its **Flow-First Resolution** (*intent decides the door*), and its **one-way boundary**. **First-class flow input:** when the exploration topic names or implies a **flow** (a player-facing sequence, onboarding / progression / pacing, a `FLOW-<slug>` id), ground **first-class on that flow** — not merely as a reactive add-on to a system; a system-shaped topic grounds on the system; ambiguous → ask (per design-read). An empty `flows: []` (or no `flows` key yet) → skip the flow read silently, never an error. **First-class content input:** when the topic names or implies a **content type** (a catalog, "the item types", a `CT-<slug>` id), ground **first-class on that content type** via the content door of the design-read ladder — its `CT.fields` schema, `scale`, and `belongs_to`; an empty `content_types: []` (or no `content_types` key) → skip the content read silently, never an error. **One-way boundary: explore may *read* design for grounding; it never writes or edits design — that flows through the `/unikit-gd-*` skills.**
-
-### Why this matters
-
-Without this context you'll give generic {{engine_name}} advice instead of advice grounded in this project's actual architecture, conventions, and patterns. The quality difference is enormous — this is the foundation that makes explore mode valuable.
+- **Game-design grounding** (only if a design workspace exists) — `.unikit/gamedesign/GD-IDS.yaml` MUST be `version: 2`; on `version: 1` skip design grounding with a loud `ERROR [design] GD-IDS.yaml is version 1 (pre-v2 layout); design grounding skipped`. When valid, load the shared READ contract `.unikit/system/gamedesign/design-read.md` and apply it — its read surfaces, its Flow-First Resolution (*intent decides the door*), its one-way boundary. **First-class flow input:** a topic that names or implies a flow — a player-facing sequence, onboarding, pacing, a `FLOW-<slug>` id — grounds first on that flow; the systems it depends on are the secondary read; ambiguous → ask. **First-class content input:** a topic that names or implies a content type — a catalog, "the item types", a `CT-<slug>` id — grounds on it: its `CT.fields`, `scale`, `belongs_to`. An empty `flows: []` or `content_types: []` (or no such key) → skip that read silently. Explore reads design and never writes it — that flows through the `/unikit-gd-*` skills.
 
 ### Input handling
 
 The argument after `/unikit-explore` can be:
-- **The slug of an existing research folder** in `.unikit/code/researches/` — this is an
-  **entry into the continuation cycle**, not a new topic. Load `{{skills_dir}}/{{self_name}}/references/continuing.md` and
-  follow it.
+- **The slug of an existing research folder** in `.unikit/code/researches/` — an **entry into the continuation cycle**, not a new topic: load `{{skills_dir}}/{{self_name}}/references/continuing.md` and follow it.
 - **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` and follow it when saving. Everything before saving — the stance, the exploration itself — is unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
-- A vague idea: "object pooling system"
-- A specific problem: "the save system is getting unwieldy"
-- A system name: to explore its architecture
-- A flow or player sequence: "the first-session flow", "the onboarding", a `FLOW-<slug>` id — a **first-class flow input** that grounds on the dynamics axis (per the design-read Flow-First Resolution)
-- A content type or catalog: "the item types", "the loot catalog", a `CT-<slug>` id — a **first-class content input** that grounds on the catalog axis (per the design-read Flow-First Resolution)
-- A comparison: "UniTask vs coroutines for this"
-- A question: "how does the DI container handle scene transitions?"
-- Nothing: just enter explore mode
-
-If the argument matches the name of an existing folder in `.unikit/code/researches/`, treat it
-as a continuation rather than a new subject, and follow `{{skills_dir}}/{{self_name}}/references/continuing.md`.
+- **Anything else** — a vague idea, a specific problem, a system name, a comparison, a question, or nothing at all — starts an ordinary exploration. A flow (`FLOW-<slug>`, "the onboarding") or a content type (`CT-<slug>`, "the item types") grounds on the design axes (see *Optional reads*).
 
 On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
 
-**A standard research does not read that file.** Everything that binds every research — the
-manifest template, `### Identifiers` and the write order — lives in *Saving Research Results*
-below; the reference holds only what ultra adds.
+**A standard research does not read that file.**
 
 ### Exploration mode detection
 
@@ -321,9 +257,9 @@ Determine the exploration mode based on user input:
 
 Remember this mode — it determines whether `SOURCE.md` is generated when saving (see [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)).
 
-It also decides when the log starts being written. In a **prompt-based** exploration [pinning](#pinning-the-log-is-written-as-you-talk) is in force from the first exchange — and the first exchange is the one carrying the original request. A **file-based** exploration opens no folder ahead of the save: there the source of truth is the named documents, not the conversation, and pinning left on for it would strand a manifest-less folder after every such run, which the registry then announces on every later save in the project.
+It also decides when the log starts being written: in a **prompt-based** exploration [pinning](#pinning-the-log-is-written-as-you-talk) is in force from the first exchange — the one carrying the original request; a **file-based** exploration opens no folder ahead of the save.
 
-**If the mode changes mid-way** — the user opened with a topic and later handed you files — pinning **continues**. The conversation happened, and there is no reason to drop the record of it; at save time `SOURCE.md` is generated under the prompt-based rule.
+**If the mode changes mid-way** — the user opened with a topic and later handed you files — pinning **continues**, and at save time `SOURCE.md` is generated under the prompt-based rule.
 
 ### When a plan exists
 
@@ -355,23 +291,16 @@ research yet?* — and you already make it today, one section down, where you de
 conversation has crystallized. It is **not** the judgement of which words matter; that one you
 are never allowed to make, and the rules for the log say why.
 
-**The floor.** The first write happens no later than the moment you would offer to save (see
-[Saving Research Results](#saving-research-results)). Later than today's behaviour it cannot
-be; earlier it usually is. Without the floor, "you decide when" turns into "you put it off".
+**The floor.** The first write happens no later than the moment you would offer to save (see [Saving Research Results](#saving-research-results)).
 
 **What goes into the first write:** the whole conversation from its first turn, verbatim, by
 the rules in [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)
-— including the turns that came before the signal. They have been in your context all along,
-so nothing is reconstructed here: what was deferred was the writing, not the memory.
+— including the turns that came before the signal.
 
 **After that, append.** Each of your replies ends by appending that exchange's user turns to
-the end of the file — one `Edit`, and no judgement involved. The decision "this is a research"
-was taken once.
+the end of the file — one `Edit`, and no judgement involved.
 
-**Where.** `.unikit/code/researches/<slug>/SOURCE.md`, with `<slug>` generated by the ordinary
-rule (see [Naming convention](#naming-convention)): by the time a requirement or a decision has
-been stated, the topic has a name. If the topic has settled into a different one by the time
-you save, the folder is renamed there — before the manifest is written.
+**Where.** `.unikit/code/researches/<slug>/SOURCE.md`, with `<slug>` generated by the ordinary rule (see [Naming convention](#naming-convention)); a topic that settles into another name is renamed at save time (*How to save*, step 1).
 
 **What pinning is not.** The first write:
 
@@ -383,14 +312,11 @@ you save, the folder is renamed there — before the manifest is written.
   sign that it is.
 
 **A session that never crystallizes leaves nothing behind, and that is the correct outcome.**
-"How does the DI container handle scene transitions?" was a question, not a research, and an
-empty `.unikit/code/researches/` after it is the format working rather than a write that went
-missing.
 
 **Failures.**
 
 - The `Edit` did not go through — no permission, no disk. Print one line and **carry on with
-  the conversation**; the exploration is worth more than its log:
+  the conversation**:
 
   ```
   WARN [pin] could not append to SOURCE.md — pinning is off for the rest of this session
@@ -401,9 +327,7 @@ missing.
 
 - `.unikit/code/researches/` does not exist: create it (`mkdir -p`) and continue, silently.
 
-**On a continuation** pinning behaves the same way and writes into the same file — into that
-session's `## Session <YYYY-MM-DD HH:MM>` block, appended, never rewritten. No second mechanism
-is introduced for it.
+**On a continuation** pinning writes into the same file, into that session's `## Session <YYYY-MM-DD HH:MM>` block — appended, never rewritten.
 
 ---
 
@@ -419,13 +343,7 @@ All researches live in `.unikit/code/researches/`. Each research gets its own fo
 .unikit/code/researches/<slug>/
 ├── RESEARCH.md            ← the manifest
 ├── SOURCE.md              ← dialogue log (prompt-based explorations only)
-└── [adaptive artifacts]   ← ultra only
-    ├── CONTRACTS.md
-    ├── C4-CONTEXT.md
-    ├── C4-CONTAINER.md
-    ├── C4-COMPONENT-<scope>.md
-    ├── DEPENDENCY-GRAPH.md
-    └── ADR-NNNN-<slug>.md
+└── [adaptive artifacts]   ← ultra only (`references/ULTRA-RESEARCH-FORMAT.md`)
 ```
 
 ### Naming convention
@@ -503,7 +421,7 @@ If the user agrees:
 
 3. Write `RESEARCH.md` — the manifest. One file carries the whole research: the machine-read header, the planner's input between the `## Active Summary` markers, the evidence in `## Findings`, and the append-only `## Sessions` log.
 
-   **In ultra mode**, the very first line of the file is the research mode marker `<!-- unikit:research-mode:ultra -->`, and a `## Artifact Index` section follows immediately after `## Table of Contents`. Both are specified in `references/ULTRA-RESEARCH-FORMAT.md`; neither is restated here.
+   **In ultra mode**, the very first line of the file is the research mode marker `<!-- unikit:research-mode:ultra -->`, and a `## Artifact Index` section follows immediately after `## Table of Contents`. Both are specified in `references/ULTRA-RESEARCH-FORMAT.md`.
 
    Take `Created:` and `Updated:` from `date`, never from memory. Both feed the registry and `Updated:` is the sort key every reader uses, so a remembered date fails **silently** — it surfaces to the user as "no researches found", not as an error.
 
@@ -603,8 +521,7 @@ sub-sections — not a copy of the template above.
 **`## Active Summary` is the planner's input and the only hashed region.** Write it to be read
 cold, by someone who never saw the conversation. `## Findings` holds the reasoning that
 produced it; the summary holds the conclusion. A fact belongs to exactly one of the two — the
-other refers to it by ID, never by retelling it. The identifier prefixes it uses, and the rules
-they obey, are in `### Identifiers` below. A requirement pointing at a `## Findings`
+other refers to it by ID, never by retelling it. A requirement pointing at a `## Findings`
 sub-heading for its layout is that same reference by ID in another form — ordinary forward
 resolvability, not a new mechanism.
 
@@ -623,8 +540,9 @@ has three parts, and they do not substitute for one another:
 
 1. **Quote the words that distinguish, not only the noun.**
 2. **What gets checked is that the phrase is present, not that the line range exists** — a grep
-   over `SOURCE.md`, resolved the way every other reference is. A quotation that resolves to
-   nothing is an ordinary criterion-2 finding, blocking like any other unresolved reference.
+   over `SOURCE.md`, done by you at the moment the requirement is written. A quotation that
+   resolves to nothing blocks the save until it is repaired: the coherence gate does not read
+   `SOURCE.md`, so nobody downstream will catch it.
 3. **The anchor is the quotation, and the line number is a hint.** Numbers that have drifted are
    not a finding — repair them next time you touch the requirement.
 4. **A requirement with no user source carries no anchor.** That is not an omission but a
@@ -692,19 +610,15 @@ On a failure, resolve from cheapest to dearest:
 3. **Still two readings after that → it is not a requirement but an `OQ-<n>`**, and it goes to
    the readback below.
 
-Three notes on the trigger. More than two readings fails the same way, and the readback then
-gets the list rather than a pair. A structural requirement the user never dictated (`inferred`)
+Three notes on the trigger. More than two readings fails the same way; the readback then
+offers up to three readings as options and, beyond three, prints them without a question. A structural requirement the user never dictated (`inferred`)
 is tested all the same. And where you cannot tell whether a requirement is structural, treat it
 as structural: a false positive costs two written lines, a miss costs a replanned phase.
 
 This is a discipline of writing, not a sixth criterion of the gate. The gate's scope is closed
 at five, and one of its passes costs minutes where this costs a line.
 
-**Language Awareness for `RESEARCH.md`**: the manifest follows the same language rules as
-every other artifact. When the configured language is not English, translate section headings
-and prose into the target language. Field **names** in the header (`Created:`, `Status:`,
-`Lifecycle:`, …), the marker comments, ID prefixes, code identifiers, code blocks and file
-paths stay in English — they are read by machines.
+**Language:** translate section headings and prose of `RESEARCH.md` and `SOURCE.md` into the configured language; header field names (`Created:`, `Status:`, `Lifecycle:`, …), marker comments, ID prefixes, code identifiers, code blocks and file paths stay in English — machines read them.
 
 <!-- Where the sections of the retired three-file format went: docs/skills/unikit-explore-save-rationale.md in the UniKit repository. -->
 
@@ -774,8 +688,6 @@ deliberate: it is **not** part of the hashed region (only `## Active Summary` in
 `RESEARCH.md` is), and it is **not** in the coherence gate's durable scope. A log is allowed to
 be redundant with the manifest.
 
-**When to generate**: Only for prompt-based explorations (user gave a topic/question/idea without referencing specific documentation files). Do NOT generate for file-based explorations (user referenced specific files/folders as input documentation).
-
 **Template**:
 
 ```markdown
@@ -822,6 +734,8 @@ like "option 1" or "let's go with B" resolves to nothing, and the only surviving
 what was agreed is the document derived from this log — which leaves the derived document
 certifying itself.
 
+The readback menus of Step 3.5 are menus in exactly this sense.
+
 **Mark your own cuts, and only your own.** `[…]` means *you* left something out of the
 quotation. A bare `…` means the user spoke that way — trailed off, paused, thought better of a
 sentence. Two different things get two different marks.
@@ -842,8 +756,6 @@ cut, marked `[…]`, and the reason is written on its own line under the quote.
 `## Session <YYYY-MM-DD HH:MM>` at the end of the file, carrying that session's questions,
 answers and clarifications. Everything already in the file stays exactly as it is.
 
-**Language Awareness**: Follow the same language rules as other artifacts. Translate section headings and prose into the configured language. Keep code identifiers and file paths in English.
-
 ### Step 3.5: Readback
 
 Before the registry is re-rendered and before the gate runs, put back to the user the
@@ -860,30 +772,56 @@ requirements they have not actually seen.
 A requirement marked `stated` that passed the test is **not shown**. Out of twenty-two
 requirements it typically prints three.
 
-**It is a printed block, not `AskUserQuestion`.**
+**One question per requirement, at most four per `AskUserQuestion` call** — `k` requirements take ⌈k/4⌉ calls, in ID order.
 
-```
-Before saving — <N> requirements out of <M>. The rest go as they are.
+1. **Print the grounds first, then ask.** Before each call, print the grounds of every requirement that call carries, as plain markdown in a block of their own — the question mechanism carries the options and nothing else:
 
-<ID>  <CLASS>
-  I wrote:   "<your formulation>"
-  You said:  "<the quotation>"                       <anchor>
-  <two readings: A) … B) … → A or B?>
-  <diverges:   my reason: …  → take mine / restore yours / make it an open question?>
-  <inferred:   grounds: …    → a requirement or a finding?>
-```
+   ```
+   Before saving — <N> requirements out of <M>. The rest go as they are.
+
+   <ID>  <CLASS>
+     I wrote:     "<your formulation>"
+     You said:    "<the quotation>"                         <anchor>
+     Grounds:     <the code, the log line or the document it rests on>
+     Other path:  <the alternative> — cost: <what it would change>
+   ```
+
+   `You said:` is printed for `diverges` and for two readings — there it is the quotation the readings interpret. For two readings, `Other path:` gives way to the readings themselves — `A) …`, `B) …` (and `C) …`), each with what it would build.
+2. **Ask.** One question per requirement, its options set by the class:
+
+   | Class | Options |
+   |-------|---------|
+   | `diverges` | `Mine (DEC-<n>)` · `Yours` · `Open question` |
+   | `inferred` | `Requirement` · `Finding only` · `Open question` |
+   | two readings | `A` · `B` · `Open question` — three readings: `A` · `B` · `C` · `Open question`; more than three: the readings are printed with the grounds, no question is asked, and the item stays the `OQ-<n>` it already is |
+
+   The free answer ("Other") is added by the tool itself — never list it as an option.
+3. **"Recommended" only on a two-readings question**, and only on the reading your code or log evidence supports — that evidence is its `Grounds:` line. The `diverges` and `inferred` menus stay neutral: no option is marked.
+4. **No `AskUserQuestion` → the same questions as numbered text**, one block per requirement, answered by number (`REQ-8 — 1, OQ-5 — B`). Print them, then **end your turn and wait for the answer** — do not go on with the save:
+
+   ```
+   REQ-8  inferred
+     1) Requirement   2) Finding only   3) Open question
+   ```
 
 **What the answers do:**
 
-- **A correction** → `Edit` the `RESEARCH.md` already on disk: rewrite the requirement, change
-  its marker to `stated`, and anchor it to the user's words from this very exchange — they are
-  in the log already, pinned as they were said.
-- **A confirmation** → the marker stays and nothing is rewritten.
-- **"That is not a requirement"** → the line leaves `Requirements:` and its content moves to
-  `## Findings`. Its `REQ-<n>` is **not reused**; the next requirement takes the following
-  number.
-- **A correction that turns out to be a new requirement** → open a new `REQ-` with the next
-  number, marked `stated`.
+- `Mine (DEC-<n>)` → the requirement keeps its marker and its `DEC-`; nothing is rewritten.
+- `Yours` → rewrite the requirement to the user's original words, mark it `stated`, and keep its anchor on the original quotation — it is in the log already. Its paired `DEC-<n>` is marked superseded by this requirement.
+- `Requirement` → the `inferred` marker stays and nothing is rewritten.
+- `Finding only` → the line leaves `Requirements:` and its content moves to `## Findings`. Its `REQ-<n>` is **not reused**; the next requirement takes the following number.
+- `A` / `B` / `C` → the item is already an `OQ-<n>` (the third rung of the resolution ladder); the chosen reading becomes a `REQ-` with the next number, marked `stated` and anchored on the logged answer, and the `OQ-<n>` keeps its number and is marked superseded by that `REQ-<m>`.
+- `Open question` → the requirement leaves `Requirements:` and becomes an `OQ-<n>` with the next number; a `diverges` item's paired `DEC-<n>` is marked superseded. An item that already is an `OQ-<n>` (two readings) stays as it is — no second number.
+- **"Other" — a correction** → `Edit` the `RESEARCH.md` already on disk: rewrite the requirement, change its marker to `stated`, and anchor it to the user's words from this very exchange — they are in the log already, pinned as they were said. A correction that turns out to be a new requirement opens a new `REQ-` with the next number, marked `stated`.
+- **"Other" — a counter-question** → answer it, then put the same menu for that requirement again.
+
+**Order of writes.** Append the readback exchange — the printed grounds, the question, `Offered:` and the answer — to `SOURCE.md` **before** the `Edit` it causes: the quotation a correction or a chosen reading is anchored on must already be in the log when the requirement is written, because that phrase is grepped at that moment.
+
+**Counting for the `Readback` field of `## Sessions`.** `Yours`, `Finding only`, `Open question` on an item that was not already an `OQ-<n>`, `A` / `B` / `C` and an "Other" correction count as `corrected`; `Mine` and `Requirement` do not. `<K> demoted to OQ` counts only what **Nobody answered** demoted — never an item that already was an `OQ-<n>`.
+
+**A text-tier question left unanswered** — the next message is about something else — applies **Nobody answered** and continues the save from Step 4: `RESEARCH.md` is already on disk and must not stay unchecked by the registry and the gate.
+
+**Log every readback question in `SOURCE.md`** (prompt-based explorations; a file-based one has no log) like any other menu: the question, `Offered:` with the option labels — for `A` / `B` / `C` each label together with the text of its reading, since a letter alone resolves to nothing — and the chosen label verbatim; a free answer is a blockquote, as every answer is.
 
 **Nobody answered** — the user left, or interrupted. The save is **not** cancelled. Every
 requirement of the three classes that went unconfirmed is demoted to an `OQ-<n>` and leaves
@@ -892,6 +830,8 @@ requirement of the three classes that went unconfirmed is demoted to an `OQ-<n>`
 ```
 WARN [readback] <k> requirements went unconfirmed — demoted to OQ
 ```
+
+An item that already is an `OQ-<n>` (two readings) stays as it is and is not counted in `<k>`.
 
 **Nothing to show** — every requirement is `stated` and every test passed. Skip the step in
 silence: no block, no line.
@@ -926,10 +866,7 @@ appended to: on every save it is re-rendered whole from the folders on disk.
    WARN [research] skipped <folder> — no readable RESEARCH.md
    ```
 
-   Skipping in silence is forbidden. An unreadable manifest and an honestly empty registry look
-   identical from the outside, so an unannounced skip reports "no researches" for a research
-   that is sitting right there on disk. What skips a folder is the missing manifest, and nothing
-   else.
+   Skipping in silence is forbidden. What skips a folder is the missing manifest, and nothing else.
 
 4. Overwrite the file whole. The header is always:
 
@@ -990,10 +927,6 @@ Act on the report's `Next:` line, and on nothing the report does not carry:
 Only when the dispatch cannot run does this session read the file itself (the `check-agent`
 fallback).
 
-Its position is fixed: **after Step 4, before Step 5.**
-
-In ultra the gate runs **after** the bundle integrity checks, not instead of them.
-
 If `references/coherence-gate.md` does not exist, or the pass reports that it cannot read it,
 print one line `WARN [coherence] reference missing — saving without the coherence pass` and
 continue.
@@ -1022,18 +955,6 @@ When a new research replaces an old one rather than continuing it, the new one c
 `Supersedes: <slug>` in its header and the old one is set to `Lifecycle: superseded`. The
 superseded folder is **not deleted** — it is the trace of the reasoning, and removing it makes
 the replacement look unmotivated.
-
----
-
-
-## What You Don't Have To Do
-
-- Follow a script
-- Ask the same questions every time
-- Produce a specific artifact
-- Reach a conclusion
-- Stay on topic if a tangent is valuable
-- Be brief (this is thinking time)
 
 ---
 
@@ -1102,16 +1023,3 @@ When it feels like things are crystallizing, you might summarize:
 ```
 
 But this summary is optional. Sometimes the thinking IS the value.
-
----
-
-## Guardrails
-
-- **Don't implement** — Never write feature code. Saving research files is fine, writing application code is not
-- **Don't fake understanding** — If something is unclear, dig deeper
-- **Don't rush** — Discovery is thinking time, not task time
-- **Don't force structure** — Let patterns emerge naturally
-- **Don't auto-save** — Offer to save research, don't just do it. The thing that may not happen unasked is the research being saved: manifest, artifacts, registry, gate, confirmation. Writing the dialogue log while you talk — the folder that holds it included — is not that, and asks nothing
-- **Do visualize** — A good diagram is worth many paragraphs
-- **Do explore the codebase** — Ground discussions in reality
-- **Do question assumptions** — Including the user's and your own

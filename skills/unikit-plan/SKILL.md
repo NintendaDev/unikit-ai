@@ -48,21 +48,6 @@ Four modes:
 - **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. **User-named, never model-inferred**: it runs because the user asked for an ultra plan, never because the feature looks big
 - **Add** — modify/extend an existing plan without creating a branch
 
-**Output artifacts by mode:**
-
-**Fast mode** → single flat file `.unikit/code/PLAN.md`:
-- **`.unikit/code/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
-- Temporary plan for quick work — `/unikit-implement` may offer deletion after completion.
-
-**Full mode** → folder `.unikit/code/plans/<feature-name>/`:
-- **`.unikit/code/plans/<folder>/PLAN.md`** — the single manifest: overview, settings, checklist with WHY context per task, effort estimates, file paths, commit plan, dependency graph, and the `## Technical Context` section (constraints, interfaces, key patterns, files, editor targets, DI bindings) based on the codebase state at planning time.
-
-**Ultra mode** → the same folder, additively:
-- **`.unikit/code/plans/<folder>/PLAN.md`** — the same manifest, carrying the mode marker plus `## Phase Index` and `## Cross-Phase Dependencies`, with `## Technical Context` reduced to its cross-phase part.
-- **`phase-NN-<slug>.md`** — one file per phase, holding the task-scoped detail. The canonical shape of both is `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`.
-
-When a research is linked (from `/unikit-explore`), the plan references it via `## Based on`, one entry per research, in the form `.unikit/system/research-link.md` → `## The entry` defines. The research's `## Active Summary` is used as **input** for generating the plan's own `## Technical Context`, not as a replacement — the plan's section reflects the actual codebase state at planning time and supersedes the research summary.
-
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -114,11 +99,9 @@ model argument of their own.
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
 <!-- unikit:end -->
 
-- **`develop-agent`** — **not used by this skill.** It belongs to the code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`); planning reads and analyses code, it does not write it. Recorded here so the alias named in "Code Analysis & Delegation Rules" can be looked up in the one place aliases are documented.
-
 ## Input
 
-`$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language. The mode may also be named inside that free-form text rather than as a leading token — the user is talking, not typing a CLI.
+`$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language. The mode may also be named inside that free-form text rather than as a leading token.
 
 **Parsing rules:**
 1. Extract `--base <branch>` if present anywhere in arguments → store as `base_branch`, remove from text
@@ -129,22 +112,13 @@ model argument of their own.
 6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
 7. Otherwise → ask interactively, entire text is the description
 
-Ultra is **user-named, never model-inferred**. Rule 5 recognises the request wherever it sits in the sentence, but it must be a request: ultra is never offered in Step 0.2 and never chosen because the feature looks large, spans many files, or seems hard — size is not a request. Wording that only asks for care — "a deep plan", "plan this thoroughly", "a detailed plan" — is **not** ultra; fall through to rule 7 and ask, because an unwanted bundle leaves the user a folder of phase files they never asked for, while a missed one costs them one word.
+Ultra is **user-named, never model-inferred**. Rule 5 recognises the request wherever it sits in the sentence, but it must be a request: ultra is never offered in Step 0.2 and never chosen because the feature looks large, spans many files, or seems hard — size is not a request. Wording that only asks for care — "a deep plan", "plan this thoroughly", "a detailed plan" — is **not** ultra; fall through to rule 7 and ask.
 
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
 ## Workflow
 
 ### Step 0: Parse Mode & Select Mode
-
-```
-/unikit-plan full Item appraisal system                    → mode: full, base: HEAD, description: "Item appraisal system"
-/unikit-plan full --base master Item appraisal system      → mode: full, base: master, description: "Item appraisal system"
-/unikit-plan fast Item appraisal system                    → mode: fast, description: "Item appraisal system"
-/unikit-plan ultra Item appraisal system                   → mode: ultra, base: HEAD, description: "Item appraisal system"
-/unikit-plan add Add error handling phase                  → mode: add, description: "Add error handling phase"
-/unikit-plan Item appraisal system                         → mode: ?, ask user
-```
 
 Initialize flags: `research_pre_linked = false`, `research_linked = false`, `design_linked = false`.
 
@@ -154,29 +128,13 @@ Initialize flags: `research_pre_linked = false`, `research_linked = false`, `des
 
 ### Step 0.1: Resolve Git State
 
-Do **not** auto-run `git init`.
+Do **not** auto-run `git init`. Read the git keys from `.unikit/config.yaml`:
 
-Resolve the current git mode from `.unikit/config.yaml`:
+- `git.enabled: false` → no branch commands; a full-mode plan goes to `.unikit/code/plans/<slug>/`
+- `git.base_branch` → the target branch for diffs and merge guidance (default: the detected branch or `main`)
+- `git.create_branches: false` → full mode still writes the rich plan, on the current branch
 
-- `git.enabled: true` → git-aware workflow is allowed
-- `git.enabled: false` → no-git workflow only
-- `git.base_branch` → target branch for diffs/merge guidance (default: detected
-  branch or `main`)
-- `git.create_branches: true` → full mode may create a branch
-- `git.create_branches: false` → full mode still creates a rich plan, but stays
-  on the current branch
-
-If `git.enabled = false`:
-
-- Skip all branch commands
-- Save full-mode plans under `.unikit/code/plans/<slug>/` (slug-based fallback)
-- Treat the "create feature branch" step as unavailable
-
-If `git.enabled = true` but the repository is not actually inside a git work tree:
-
-- Warn the user that git-aware actions are unavailable until the repository is
-  initialized
-- Fall back to the same no-git behavior as above
+`git.enabled: true` outside a git work tree → warn that git-aware actions are unavailable until the repository is initialized, and continue as with `git.enabled: false`.
 
 ### Step 0.2: Resolve Feature Description
 
@@ -186,7 +144,7 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
 
 1. **Check session context** — look in the current conversation history for results of `/unikit-explore`. If found, use the exploration topic and findings as the feature description and context.
 
-2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md` (if it exists). The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active`, because records written before the field existed do not carry it — and ask:
+2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md` (if it exists). The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active` — and ask:
    ```
    AskUserQuestion: Found recent research: "<Title>" (<Created>)
    Use as basis for planning?
@@ -199,42 +157,27 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
    - Yes → use research title/summary as description, mark `research_pre_linked = true` (skip research matching in Step 2)
    - No → proceed to ask user for description (step 3 below)
 
-   `<Created>` is the displayed field, and `Updated` is never substituted for it: `Created` exists for display and for breaking ties, `Updated` drives every filter and all sorting. A record with no `Created` is shown as `"<Title>" (date unknown)` — never with empty brackets, because an empty bracket is indistinguishable from normal and hides the gap in the dialogue the same way an unlogged filter hides it in Step 2.
+   `<Created>` is the displayed field — never substitute `Updated` for it. A record with no `Created` is shown as `"<Title>" (date unknown)`, never with empty brackets.
 
 3. **No context available** — if neither session context nor researches exist, ask the user for a description:
    ```
    AskUserQuestion: Describe the feature you want to plan.
    ```
 
-**If no mode keyword** was found by the Step 0 parsing rules:
-
-If the description was already resolved above → ask only about the mode:
-```
-AskUserQuestion: Which planning mode?
-
-Options:
-1. Full (recommended) — creates git branch, codebase reconnaissance, full plan
-2. Fast — quick plan without a branch
-```
-
-If the description is ALSO still missing (no session context, no researches chosen) → combine into a single question:
+**If no mode keyword** was found by the Step 0 parsing rules, ask one question, adding the description question when the description is still missing:
 ```
 AskUserQuestion:
-1. Describe the feature you want to plan.
+1. Describe the feature you want to plan.     ← only when the description is still missing
 2. Which planning mode?
    a. Full (recommended) — creates git branch, codebase reconnaissance, full plan
    b. Fast — quick plan without a branch
 ```
 
-Based on choice:
-- Full → full mode (the Full-mode additional steps load in Step 1.5)
-- Fast → fast mode (the Fast-mode additional step loads in Step 1.5)
-
 Ultra is deliberately absent from this question — see the parsing rules in Step 0.
 
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
-Before any exploration or planning — silently load the project knowledge base. Do NOT narrate the loading process to the user. Runs in every mode named by this step's heading.
+Silently load the project knowledge base before any exploration — do not narrate the loading.
 
 #### Required reads (always, every time, in parallel)
 
@@ -247,18 +190,13 @@ Before any exploration or planning — silently load the project knowledge base.
 4. **`.unikit/skill-context/{{self_name}}/SKILL.md`** — project-specific skill overrides (if exists)
 5. **Read `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md`** — engine planning vocabulary: kind → concept (§1), language & layout (§2), when to write `Editor:` (§3), engine planning pitfalls (§4), out of scope (§5), direct-edit feasibility (§6). Set `engine_rules_loaded = true`.
 
-   **If the file is absent** — this is a **normal path**, not an error (an engine whose planning vocabulary has not shipped yet). Set `engine_rules_loaded = false` and:
-   - Do **not** generate the `Editor:` field in any task.
-   - Do **not** write the `Editor tasks` line into `## Settings` and do **not** ask the editor-mode question (Step 5, `mode-full.md` / `mode-fast.md`).
-   - Report it at the confirmation step — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` goes into **all three** confirmation points: Step 6 **Fast mode**, Step 6 **Full mode**, and `Add Step 3: Confirm` in `mode-add.md` (the `add` mode never reaches Step 6).
+   **If the file is absent** — a **normal path**, not an error (an engine whose planning vocabulary has not shipped yet): set `engine_rules_loaded = false`. Every step that writes an `Editor:` field, the `Editor tasks` setting or a confirmation line reads that flag (Step 5, Step 6, `mode-full.md`, `mode-fast.md`, `mode-add.md`). `add` mode runs this step too.
 
-   Step 0.5 runs in **every mode except List** — so `add` mode loads the vocabulary too and may append `Editor:` lines to an existing plan on the same terms as `full` / `fast`.
+6. **Read `.unikit/system/engine-mcp/INDEX.md` — the base section only**: the delivery stamp plus every section **except** the `## Check` table — the exceptions that shape planning: where a commit boundary falls, what may never run in parallel, how the work splits into phases. Set `mcp_index_loaded = true`.
 
-6. **Read `.unikit/system/engine-mcp/INDEX.md` — the base section only.** The delivery stamp plus every section **except** the `## Check` table: access, the live failure classes, shape and cost, what is irreversible here, the lane, and what to do when the file is silent. Those are the exceptions that shape *planning* — an irreversible write decides where a commit boundary falls, the lane decides what may never run in parallel, shape and cost decide how the work splits into phases. Set `mcp_index_loaded = true`.
+   **Do not read the `## Check` table** — it is the executors', grepped per task by area.
 
-   **Do not read the `## Check` table.** It is keyed by area for the executors, which grep their own task's area plus the cross-cutting ones on every editor task. A plan that carries checks forward has started making the executor's decisions with month-old information.
-
-   **If the file is absent** — a **normal path**, not an error (a server that ships no rules tree, or no engine MCP at all). Set `mcp_index_loaded = false`, print exactly one line, and continue with the same rights:
+   **If the file is absent** — a normal path: set `mcp_index_loaded = false`, print exactly one line, and continue with the same rights:
 
    ```
    MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
@@ -266,7 +204,7 @@ Before any exploration or planning — silently load the project knowledge base.
 
    Absence never switches a task to `⏸️ MANUAL`, never suppresses an `Editor:` field, and never disables the engine MCP (`.unikit/system/dev-principles.md` → **A9 · no rules ≠ no rights**).
 
-7. **`.unikit/config.yaml` → `testing.plan.checkpoints`** — the test-run placement policy. The value for the current mode is resolved by `mode-full.md` / `mode-fast.md` / `mode-ultra.md`; here it is only read. **File or key absent → the defaults** (`phase` for ultra and full, `plan` for fast), silently: a project without a config is a normal case, and a line on every plan would turn the warning into wallpaper. The executor's own merge policy is **not read here** — it belongs to `/unikit-implement` and is resolved at execution time.
+7. **`.unikit/config.yaml` → `testing.plan.checkpoints`** — the test-run placement policy, resolved per mode by `mode-full.md` / `mode-fast.md` / `mode-ultra.md`; here it is only read. File or key absent → the mode file's default, silently.
 
 #### Patches (learning from past fixes)
 
@@ -277,26 +215,9 @@ If `.unikit/code/patches/` exists:
 
 #### Design context (game-design module — optional)
 
-Check whether `.unikit/gamedesign/GD-IDS.yaml` exists.
+`.unikit/gamedesign/GD-IDS.yaml` exists → it MUST be `version: 2`. On `version: 1` do NOT read it: emit `ERROR [design] GD-IDS.yaml is version 1 (pre-v2 layout); design grounding unavailable until the workspace is upgraded via /unikit-gd-spec`, set `design_linked = false`, and plan code-side only. On `version: 2` set `design_linked = true` — Step 4.5 reads the design once the feature scope is clear; nothing is read here. Absent → `design_linked = false`, and every design step is skipped.
 
-- **Exists** → this project carries a game-design workspace. **Schema guard (clean
-  break — no automatic migration):** the registry MUST be `version: 2`. On a pre-v2
-  `version: 1` registry, do NOT read it — emit a loud `ERROR [design] GD-IDS.yaml is
-  version 1 (pre-v2 layout); design grounding unavailable until the workspace is
-  upgraded via /unikit-gd-spec` and set `design_linked = false` (the plan continues
-  purely code-side, never silently misreading the old layout). With a valid
-  `version: 2`, set `design_linked = true` and note it for **Step 4.5**, which reads
-  the relevant system design (and any flow that exercises it, and any content type that feeds
-  it) and produces the plan's `## Design` + optional `## Flow Context` / `## Content Context`
-  snapshots. Do NOT read the design docs here — Step 4.5 owns that, after the feature scope is
-  clear.
-- **Absent** → set `design_linked = false` and skip every design step. The plan is
-  purely code-side, exactly as before — projects without a design module are unaffected.
-
-**One-way boundary:** planning *reads* design (`GD-IDS.yaml`, `systems/*.md`,
-`flows/*.md`, and the read-only `## System Map [gen]` / `## Flow Map [gen]` in
-`GAME.md`); it never writes or edits any `.unikit/gamedesign/` artifact. Design
-changes flow only through the `/unikit-gd-*` skills.
+Planning only *reads* design; it never writes to `.unikit/gamedesign/` — design changes go through the `/unikit-gd-*` skills.
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
@@ -310,16 +231,8 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
 **Full and ultra modes** → continue:
 
-3. **Get today's date** in `YYYY-MM-DD` format — it no longer goes into the folder name; it is the value of the manifest's `Created:` and `Updated:` fields (see the Plan Manifest Template in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`).
+3. **Get today's date** (`YYYY-MM-DD`) — the value of the manifest's `Created:` and `Updated:` fields (Plan Manifest Template in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`).
 4. The folder name **is** the feature name from step 2 — `<feature-name>`, no date and no separator prefix (e.g. `item-appraisal-system`).
-
-```
-# Example
-ls .unikit/code/plans/
-# 2026-03-08_mini-games-editor/    ← earlier format, left exactly as it is
-# customer-types/
-# → next: <new-feature>/
-```
 
 5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
 
@@ -337,12 +250,11 @@ ls .unikit/code/plans/
    - "Refine the existing plan" → hand control to the `add` body (`{{skills_dir}}/{{self_name}}/references/mode-add.md`) on the matched folder and print `INFO [plan] <name> exists — switching to add mode`.
    - "Choose another name" → take the user's slug and repeat this check on it. On success print `INFO [plan] creating <new-name>`.
 
-   **Appending an automatic suffix (`-2`, `-v2`, a date) is forbidden.** The date used to be a separator as well as a sort key: two runs at the same feature produced two distinct names on their own. Without it there is one name, and a silently suffixed second folder is how the branch resolver starts finding the wrong plan again — the resolver matches the branch name, and the branch name has no suffix.
+   **Appending an automatic suffix (`-2`, `-v2`, a date) is forbidden.**
 
 ### Step 1.5: Load the Mode Body
 
-The shared preamble (Steps 0–1) is done. Load the selected mode's reference body
-on demand — do **not** keep all five mode bodies in context at once:
+Load only the selected mode's body — never all of them at once:
 
 - **Full mode** → load `{{skills_dir}}/{{self_name}}/references/mode-full.md`, run its
   additional steps (git branch, recon, preferences), then continue to the Shared Steps below.
@@ -350,10 +262,8 @@ on demand — do **not** keep all five mode bodies in context at once:
   preferences step, then continue to the Shared Steps below.
 - **Ultra mode** → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md`, run its
   additional steps A-C (git branch, recon, preferences), then continue to the Shared Steps
-  below. Steps D-H of that body run later — they replace Step 5 and Step 6 of the shared
+  below. Steps D-H of that body run later — they refine Step 5 and Step 6 of the shared
   workflow, so do **not** run them here.
-
-(`--list` and `add` modes already dispatched in Step 0 to their own bodies — `mode-list.md` / `mode-add.md` — and STOP; they never reach here.)
 
 ---
 
@@ -361,11 +271,11 @@ on demand — do **not** keep all five mode bodies in context at once:
 
 ### Step 2: Check for Related Researches
 
-**The research-link contract — read at the first link, and only then.** The moment this step links its first research — through the `research_pre_linked` shortcut below or through point 7 — read `.unikit/system/research-link.md`. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`). Name it and follow it; never restate it here — one contract, one place.
+**The research-link contract — read at the first link, and only then.** The moment this step links its first research — through the `research_pre_linked` shortcut below or through point 7 — read `.unikit/system/research-link.md`. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`).
 
 **If `.unikit/system/research-link.md` is missing or unreadable, do not block:** record no `Summary SHA256` and check none — print `WARN [research-drift]: research-link contract missing — drift detection off for this run; run unikit-ai update` once, and continue.
 
-**If `research_pre_linked = true`** (user already confirmed a research in Step 0.2) → read that research's `RESEARCH.md` — `## Active Summary` as the declared input, `## Findings` and the adaptive artifacts for the rationale — plus `CONTRACTS.md` and `SOURCE.md` when they exist, mark `research_linked = true`, store research path for `## Based on`, and skip to Step 3.
+**If `research_pre_linked = true`** (the user already confirmed a research in Step 0.2) → read it as point 7 below does, mark `research_linked = true`, store its path for `## Based on`, and skip to Step 3.
 
 Before exploring code, check if `/unikit-explore` has produced relevant researches.
 
@@ -375,11 +285,11 @@ Before exploring code, check if `/unikit-explore` has produced relevant research
 2. Read `workflow.research_relevance_days` from `.unikit/config.yaml` (default: `7`).
 
 3. **Filter** entries by three criteria:
-   - `Updated` is within `research_relevance_days` from today. The age key is `Updated`, never `Created`: with a continuation cycle, freshness means "when this was last confirmed", not "when the folder was opened".
-   - `Status` is `completed` (skip `in-progress` and `needs-follow-up`). The field name and its three values are **fixed** — renaming either makes this filter match nothing and report "no researches found" instead of an error, which is a failure nobody can see.
+   - `Updated` is within `research_relevance_days` from today. The age key is `Updated`, never `Created`.
+   - `Status` is `completed` (skip `in-progress` and `needs-follow-up`). The field name and its three values are **fixed**.
    - `Lifecycle` is not `superseded`. A record carrying no `Lifecycle` line counts as `active`.
 
-   **Log the drop.** After filtering, print exactly one line — **always**, including when nothing was dropped, because a line that appears only on a drop is a line nobody learns to expect:
+   **Log the drop** — one line, **always**, including when nothing was dropped:
 
    ```
    INFO [research] index: <N> entries, <K> shown (<a> older than <days>d, <b> not completed, <c> superseded)
@@ -390,8 +300,6 @@ Before exploring code, check if `/unikit-explore` has produced relevant research
    ```
    WARN [research] <folder>: index row has no Updated — excluded; run /unikit-explore to redraw the index
    ```
-
-   The repair exists and is named in the line: any save re-renders the index whole.
 
 4. **Match**: compare each surviving entry's `Summary` against the feature description. Select entries that are contextually relevant to the feature being planned.
 
@@ -421,8 +329,7 @@ Highlight the most relevant entries in the question text (e.g., "Recommended: #1
 7. For each selected research:
    - Read its `RESEARCH.md` — `## Active Summary` as the declared input, `## Findings` and the adaptive artifacts for the rationale; read `CONTRACTS.md` when it exists, and `SOURCE.md` for the dialogue
    - Use as planning context and as **starting point** for Phase B deep-dive — reduces scope of Explore tasks in Step 4
-   - Mark `research_linked = true` and store research path for `## Based on` (its entry: `research-link.md` → `## The entry`)
-   - The plan's `## Technical Context` is still generated in Step 5 — the research's `## Active Summary` is used as input, not replacement (the section reflects the actual codebase state at planning time)
+   - Mark `research_linked = true` and store the research path for `## Based on`
 
 ### Step 3: Analyze Requirements
 
@@ -453,49 +360,23 @@ You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to 
 
 Launch 2-4 Explore tasks in parallel, each with a **specific focus**. Each task MUST receive references to project documentation files so it operates with project knowledge.
 
-**Doc references to include in every Explore task prompt:**
-- `.unikit/ARCHITECTURE.md` — always (module boundaries, dependency rules)
-- Core rule files loaded in Bootstrap — pass the **paths from RULES_INDEX.md** relevant to the task's focus (e.g., design principles for architecture analysis, folder structure for file path verification)
-- Stack rule files loaded in Bootstrap — pass if the task's focus involves that framework
+Every task gets the same prompt shape; only the focus and the rule paths change:
 
 ```
-Task 1 — Architecture & affected modules:
 recon-agent(prompt:
   "Before analysis, read these project docs:
    - .unikit/ARCHITECTURE.md
-   - [core rule paths relevant to architecture — from RULES_INDEX.md Core table]
+   - [core rule paths relevant to <focus> — from the RULES_INDEX.md Core table]
+   - [stack rule paths, when <focus> involves a specific framework]
 
-   Then: find files and modules related to [feature domain]. Map the directory structure,
-   key entry points, and how modules interact. Thoroughness: medium.")
-
-Task 2 — Existing patterns & conventions:
-recon-agent(prompt:
-  "Before analysis, read these project docs:
-   - .unikit/ARCHITECTURE.md
-   - [core rule paths relevant to patterns — from RULES_INDEX.md Core table]
-   - [stack rule paths if task's focus involves a specific framework]
-
-   Then: find examples of similar functionality already implemented in the project.
-   Show patterns for [relevant patterns: services, controllers, models, DI bindings, etc.].
-   Thoroughness: medium.")
-
-Task 3 — Dependencies & integration points (if needed):
-recon-agent(prompt:
-  "Before analysis, read these project docs:
-   - .unikit/ARCHITECTURE.md
-   - [core rule paths relevant to dependencies — from RULES_INDEX.md Core table]
-
-   Then: find all files that import/use [module/service]. Identify integration points
-   and potential side effects of changes. Thoroughness: medium.")
+   Then: <focus>. Thoroughness: medium.")
 ```
 
-**Fallback:** If Agent tool is unavailable, investigate directly using Glob/Grep/Read — search for relevant files, read key source code, and synthesize findings inline.
+Foci: (1) **architecture & affected modules** — the files and modules related to [feature domain], the directory structure, the entry points and how the modules interact; (2) **existing patterns** — similar functionality already implemented, and its patterns (services, controllers, models, DI bindings); (3) **dependencies & integration points**, when needed — everything that imports or uses [module/service], its integration points and side effects. In full mode, name the files and classes Step B found (`mode-full.md`).
 
-**Rules:**
-- Fast mode: launch all 2-4 tasks from scratch.
-- Full mode: Step B already identified key files, directories, and patterns. Use those findings to make Phase A prompts **specific** — include concrete file paths, class names, and module names discovered in Step B. This avoids re-discovery and focuses Phase A on deeper analysis of known areas rather than broad scanning.
-  Example: instead of "find files related to [feature]" → "Read `<content-root>/.../IFeatureService.<ext>` and `<content-root>/.../FeatureController.<ext>` found in recon. Analyze their interfaces, DI bindings, and integration points." (`<content-root>` and `<ext>` resolve from `references/ENGINE_RULES.md` §2)
-- After tasks return, synthesize: files to create/modify, patterns to follow, dependencies, risks.
+After the tasks return, synthesize: files to create/modify, patterns to follow, dependencies, risks.
+
+Code analysis in this skill is read-only: never `/unikit-devcontext`, never a code-writing delegate.
 
 #### Phase B: Technical Deep-Dive (Explore agent)
 
@@ -527,22 +408,15 @@ In ultra, reconnaissance is **not finished** until the plan has code-level evide
 - exact integration and configuration points
 - existing tests, fixtures, commands, logging, migration, and documentation patterns
 
-This is the material the phase file's `## Current-Code Evidence` table and its
-`### Implementation Steps` are written from. Thin reconnaissance does not survive the
-detail floor — it is rejected by `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`
-→ `## Required Detail Gate`.
+It feeds each phase file's `## Current-Code Evidence` table and its `### Implementation Steps`; thin reconnaissance is rejected by `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md` → `## Required Detail Gate`.
 
 **Do not paste entire source files into phase plans.** Cite only the evidence that makes the
-implementation steps deterministic. A file pasted whole goes stale on the first edit made
-against it, and it reads as more authoritative than a path-and-symbol citation while being
-less true.
+implementation steps deterministic.
 
 When evidence for a phase cannot be gathered, the decision goes into the manifest's
 `## Open Questions` as a blocking question — it is never hidden behind a vague step.
 
 #### Phase C: Additional context
-
-Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules, patches, skill-context) were already loaded in Step 0.5 (Bootstrap). This phase handles only remaining optional reads.
 
 **OPTIONAL (recommended):** Read `.unikit/ROADMAP.md` if it exists:
 - Use it to link this plan to a specific milestone (when applicable)
@@ -550,17 +424,7 @@ Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules, patch
 
 ### Step 4.5: Resolve Design Context (game-design module)
 
-**Runs only when `design_linked = true`** (the gate is resolved inline in Step 0.5). When it is
-true, load `{{skills_dir}}/{{self_name}}/references/design-context.md` and follow it on demand —
-do **not** keep the design-context body in context for pure-code plans. That body reads the shared
-`design-read` contract (`.unikit/system/gamedesign/design-read.md`), applies **Flow-First
-Resolution** (*intent decides the door* — resolve a system, a flow, or a content type first,
-ambiguous → ask), and produces the plan's `## Design` (+ optional `## Flow Context` /
-`## Content Context`) snapshot, then returns here for Step 5. When `design_linked = false`, skip this step entirely (the design-context body is never
-loaded).
-
-This step embodies the **one-way boundary**: it only *reads* design artifacts — never write to
-`.unikit/gamedesign/`.
+**Only when `design_linked = true`:** load `{{skills_dir}}/{{self_name}}/references/design-context.md` and follow it. It reads the shared `design-read` contract, resolves the door (a system, a flow or a content type), produces the `## Design` snapshot plus the optional `## Flow Context` / `## Content Context`, and returns here for Step 5. When `design_linked = false` the body is never loaded. Read only — never write to `.unikit/gamedesign/`.
 
 ### Step 4.6: Read the Catalog Negatively (only when the plan carries editor work)
 
@@ -571,16 +435,16 @@ Whatever engine-MCP grants this skill's frontmatter carries are read-only discov
 1. **Which kinds of editor work have no route here at all** — so the plan does not schedule an intent this project cannot carry out. The six-word `kind` vocabulary is in `.unikit/system/dev-principles.md` → A8.
 2. **Which evidence classes are reachable** — so no acceptance criterion is written against evidence nobody can produce. The claim-class → evidence-class lattice is A2 of the same file.
 
-That is the entire question. **Not** which tool does it, **not** how it is called, **not** a strategy. A question of this shape keeps its answer for months ("is there a test run at all"); a question about a name loses it in days — which is why neither the question nor its answer is written into the plan.
+That is the entire question — **not** which tool does it, **not** how it is called, **not** a strategy — and neither the question nor its answer is written into the plan.
 
 **What the outcome may change, and what it may not:**
 
-- a kind of work with no route → do not schedule it as engine-MCP work: express the change in a form that has a route, or keep the task and name the missing capability in its `WHY:`. **Do not pre-write `⏸️ MANUAL` into the task.** That is a runtime verdict, reached by trying and producing the evidence of absence (A9); a planner that writes it in advance has lifted the executor's obligation to try;
+- a kind of work with no route → do not schedule it as engine-MCP work: express the change in a form that has a route, or keep the task and name the missing capability in its `WHY:`. **Do not pre-write `⏸️ MANUAL` into the task** — it is a runtime verdict (A9);
 - an evidence class that is not reachable → rewrite the acceptance criterion against a class that is, or say plainly in `## Overview` that it cannot be closed here. Never silently downgrade it to the cheapest observation available.
 
-**The planner never:** calls anything that changes state, reads the `## Check` table, reads `.unikit/MCP-RECHECK-NOTES.md`, or opens Context7. The reference is the executors' resource — `/unikit-implement` and `/unikit-fix` reach for it on two triggers, and neither of them is "planning".
+**The planner never:** calls anything that changes state, reads the `## Check` table, reads `.unikit/MCP-RECHECK-NOTES.md`, or opens Context7.
 
-**No engine MCP configured, or discovery yields nothing → skip.** Plan against the base principles, unchanged. The absence of an answer is not a restriction (A9).
+**No engine MCP configured, or discovery yields nothing → skip.** Plan against the base principles, unchanged.
 
 ### Step 5: Create the Plan
 
@@ -601,39 +465,20 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 #### Plan Sections (all planning modes)
 
-0. **Header timestamps** — write `Created:` and `Updated:` directly under the H1, both set to today's date from Step 1 (`Bash(date *)`). They are the manifest's only record of when the plan was made: the folder name no longer carries one, and every resolver that picks "the latest plan" sorts on `Updated:`. Their shape and the rule for moving `Updated:` live in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → *Plan Manifest Template*; ultra writes the same two lines under its own H1.
+0. **Header timestamps** — `Created:` and `Updated:` directly under the H1, both today's date from Step 1 (`Bash(date *)`). Their shape and the rule for moving `Updated:`: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → *Plan Manifest Template*; ultra writes the same two lines under its own H1.
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
 2. **`## Based on`** — if `research_linked = true`, one entry per linked research in the form `.unikit/system/research-link.md` → `## The entry`, carrying the `Summary SHA256` computed back in Step 2 (a research whose digest could not be computed there is written without that line — `## Writing an entry`). The contract was already read in Step 2; it is not re-read here. After all research entries, add "see the `## Technical Context` section below".
    If no research: "see the `## Technical Context` section below".
 
-   **`## Design`** (game-design module — only when `design_linked = true`) — insert the
-   design snapshot prepared in Step 4.5 directly after `## Based on`: System + `SYS-id`,
-   version, optional delta, and cited Acceptance Criteria. It lives in the plan manifest,
-   directly after `## Based on`. Omit this section entirely for pure-code plans
-   (`design_linked = false`).
-
-   **`## Flow Context`** (game-design module — only when a flow is in scope: the flow door,
-   or a flow that exercises the resolved system; from Step 4.5 / `design-context.md`) — insert
-   the flow brief directly after `## Design`: the `FLOW-id` + wiring-mode, the `GOAL` steps
-   touching the relevant system(s), the code shape implied by the mode, and the derived
-   (read-only) `Realized` state. Same placement as `## Design`, in the plan manifest. Omit when no flow is in scope.
-
-   **`## Content Context`** (game-design module — only when a content type is in scope: the
-   content door, or a content type that feeds the resolved system; from Step 4.5 /
-   `design-context.md` §4.5.6) — insert the content brief directly after `## Flow Context`: the
-   `CT-id` + `scale`, the `CT.fields` schema (the data contract the code reads), the `belongs_to`
-   system, and the code shape implied by `scale` (`bulk` → a data-driven loader; `curated` → named
-   instances). Same placement as `## Design`, in the plan manifest. Omit when no content type is in scope. There is
-   **no** writeback — content has no `implemented_version` (read-only, the same stance as a flow's
-   `Realized`).
+   **`## Design`**, **`## Flow Context`**, **`## Content Context`** (game-design module) — the snapshots Step 4.5 prepared, placed in this order directly after `## Based on`, each omitted when it was not produced (always, for a pure-code plan). What each one carries — the `SYS-id`, its version and the cited Acceptance Criteria; the `FLOW-id`, its wiring mode and `GOAL` steps; the `CT-id`, its `scale` and `CT.fields` schema — is `design-context.md`'s. `## Design` feeds `/unikit-verify`'s `implemented_version` writeback; `## Flow Context` and `## Content Context` have none.
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether tests are written at all
-   - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand. Resolved in the mode file from `testing.plan.checkpoints.<mode>`. **Omitted entirely when `Testing: no`.** The value `task` is admissible only in ultra.
+   - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
-   - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`** — no `Editor:` field is generated for that engine, so the setting would have no consumer.
+   - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`**.
 
 4. **`## Roadmap Linkage`** (optional, only if `.unikit/ROADMAP.md` exists):
    - If linked: `Milestone: "<name>"` and `Rationale: "<why>"`
@@ -645,22 +490,15 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    **When to write `Editor:`** — the criterion is neutral: the change touches the **serialized state of the editor**, not source text. Editing a plain text or config file stays in `Files:`. The concrete signals for the active engine are listed in `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` §3 — read them from there, **do not restate them here**: they are engine facts (a scene, a prefab, a blueprint are not the same concept across engines), and a second inline copy diverges from §3 on its first edit.
    Form: `Editor: [kind] <container> → <target> : <action>`, one line per target, placed after `Files:` (grammar and the 6 kinds: `references/TASK-FORMAT.md` → `### Editor task grammar`). Pure code tasks omit the field. When `engine_rules_loaded = false` the field is **not generated at all**.
 
-   **Test-checkpoint task.** A run point is a **separate** checklist task carrying the line `Test checkpoint: <coverage>`, in the position `Files:` occupies. The grammar, the coverage domain and how the run's width is derived live in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test checkpoint task grammar` — **do not restate them here**.
+   **Test-checkpoint task.** A run point is a **separate** checklist task carrying the line `Test checkpoint: <coverage>` in the position `Files:` occupies. The rest — no `Files:`, where a checkpoint is worth placing, a phase left without one, the closing `Test checkpoint: plan` under `Testing: yes`, no list of suites, no run commands elsewhere — is `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate it here**.
 
-   - A test-checkpoint task **carries no `Files:`**: it creates nothing.
-   - A checkpoint is placed **where the change is worth one, not in every phase**. The criterion: the phase changes executable code, or a contract other modules rely on. It is not placed when executable code is untouched — documentation, assets and their service files, data no test covers; the signals for the active engine are in `references/ENGINE_RULES.md` §3.
-   - A phase left without a check passes its goals to the next test-checkpoint task, whose coverage then names both phases; the phase text says so in one line.
-   - **Under `Testing: yes` the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch.
-   - No list of test suites is written: the executor computes it at run time from the files actually changed. The planner neither reads nor builds a module graph.
-   - Under `Test checkpoints: phase | plan`, run commands exist **only** inside a test-checkpoint task.
+6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`).
 
-6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks. For each `### Commit N: after tasks X-Y` heading, also emit a decorative `<!-- Commit checkpoint: tasks X-Y -->` HTML comment at the matching boundary inside the `## Checklist` (right after the last task of that range). The marker range mirrors the Commit Plan heading (single source of truth) and is **decorative only** — `/unikit-implement` does not parse it. See `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
+7. **`## MCP Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
 
-7. **`## MCP Findings`** — emitted **empty** by the planner, filled by the executor. Include it whenever the plan carries at least one `Editor:` task (the same condition as `## EDITOR TARGETS`); omit it otherwise. The planner writes the heading and the table header, and nothing else — this is the executor's handoff surface to `/unikit-mcp-trap`, which reads it through a window (the heading down to the next `##`; a 30-line cap applies only when trap is scanning many plans at once) and opens no other part of the plan. Shape and column contract: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### MCP findings section`.
+8. **`## Rule Candidates`** — emitted **always, and empty** (heading and header row). Contract: `TASK-FORMAT.md` → `### Rule candidates section`.
 
-8. **`## Rule Candidates`** — emitted **always, and empty**: the heading and the header row, nothing more. A candidate can arise in any plan, and the executor needs a table that is already there rather than a place it chooses for itself each time. Column contract: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Rule candidates section`.
-
-9. **`## Test Runs`** — emitted **empty under `Testing: yes`** (the heading alone); omitted entirely under `Testing: no`. Everything below the heading is written by the executor. Contract: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test runs section`.
+9. **`## Test Runs`** — emitted **empty under `Testing: yes`** (the heading alone), omitted under `Testing: no`. Contract: `TASK-FORMAT.md` → `### Test runs section`.
 
 10. **`## Dependency Graph`** — phase dependencies in ASCII.
 
@@ -668,9 +506,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    The unit of parallelism downstream is the **phase**. `/unikit-implement` and `unikit-implement-coordinator` build the phase graph from the `**Dependencies:**` lines, compute execution layers (Layer 0 = phases with no dependencies; Layer N = phases whose dependencies all sit in layers 0..N-1) and run **every phase of one layer concurrently**, while the tasks *inside* a phase always run in order.
 
-   So this is a rule about **layers**, never about tasks. Two `Editor:` tasks in the same phase are already sequential and cannot collide; what collides is two phases that happen to share a layer. Splitting a safe pair of editor tasks into two phases to "separate" them creates exactly the collision it was meant to prevent.
-
-   The hazard is wider than editor-versus-editor: a neighbouring **code** phase writes a source file, the editor re-reads it, the domain reloads — total unavailability measured in minutes, landing in the middle of another phase's mutation. Any phase sharing a layer with editor work is the hazard, whatever that phase is doing.
+   So this is a rule about **layers**, never about tasks: two `Editor:` tasks in one phase are already sequential, and splitting them into two phases to "separate" them creates exactly the collision it was meant to prevent.
 
    **How to write it.** When a phase carries at least one `Editor:` line, write the dependency lines so that the phase is the only member of its layer:
    - the editor phase **depends on every phase that must precede it**, so nothing from the earlier layers lands beside it;
@@ -680,47 +516,23 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 11. **`## Total Estimated Effort`** — sum of all phases.
 
-12. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **fast and full** all nine live in the one plan file. In **ultra** the section shrinks to its cross-phase part — `CONTEXT`, `CONSTRAINTS`, `DEPENDENCY GRAPH`, `OUT OF SCOPE` — and the remaining five are distributed into the phase files by the one rule that decides every case: **cross-phase goes in the manifest, task-scoped goes in the phase** (`{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`). Content comes from Step 4 Phase B, synthesized with Bootstrap rules. Do not invent — base on actual codebase patterns. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
+12. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **ultra** the manifest keeps only the cross-phase part and the rest goes into the phase files — the distribution rule is `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`. Content comes from Step 4 Phase B, synthesized with the Bootstrap rules: base it on the actual code, do not invent. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
 
-   When `research_linked = true`: use the research's `## Active Summary` as a starting point — verify constraints, interfaces, and patterns against the current code. Update, extend, or correct as needed. The plan's `## Technical Context` is the authoritative source for `/unikit-implement` — it supersedes the research summary.
+   **Self-check:** every interface the tasks name is in `### INTERFACES` with its full {{engine_code_language}} signature, every `Editor:` target has its `### EDITOR TARGETS` row (Kind / Container / Target / Change), and the DI bindings follow `references/ENGINE_RULES.md` §2. In **fast and full** the check runs inside the one plan file; in **ultra** both subsections live in the phase file of the task that owns them, and the check runs between the manifest checklist and that file — never pull them back into the manifest.
 
-   **Quality checklist:**
-   1. CONSTRAINTS — non-obvious decisions with rationale (MUST / FORBIDDEN)
-   2. INTERFACES — full {{engine_code_language}} signatures for every interface in tasks
-   3. KEY PATTERNS — code examples for patterns the implementer must follow
-   4. FILES — exact paths for files to create/modify
-   5. EDITOR TARGETS — one row per `Editor:` target in the checklist (Kind / Container / Target / Change); the section is omitted entirely when the plan has no `Editor:` task
-   6. DI BINDINGS — DI bindings per `references/ENGINE_RULES.md` §2 for installer(s)
-
-   Self-check: if an interface appears in the tasks but not in `### INTERFACES` — add it; likewise for an `Editor:` target missing from `### EDITOR TARGETS`. In **fast and full** both subsections sit in the plan file and the check runs inside that one file. In **ultra** both live in the phase file of the task that owns them, and the check runs between the manifest checklist and that phase file. Do **not** pull either subsection back into the manifest to make the check easier — that is the distribution rule reversed.
-
-13. **`## Open Questions`** (optional, last section of the manifest) — uncertainties the planning pass could not close, one line each. Written **after** `## Technical Context` so it stays outside the `## MCP Findings` window (which runs from that heading to the next `##`). `unikit-plan-polisher` writes its leftovers here; omit the section entirely when there are none.
+13. **`## Open Questions`** (optional) — uncertainties the planning pass could not close, one line each; the last section of the manifest (`TASK-FORMAT.md`). `unikit-plan-polisher` writes its leftovers here; omit the section when there are none.
 
 ### Step 6: Confirm with User
 
-After artifacts are created, show the user:
-
-**Fast mode:**
-1. Plan file: `.unikit/code/PLAN.md`
-2. A brief summary of phases identified
-3. Total estimated effort
+Show the user:
+1. The plan path — `.unikit/code/PLAN.md` (fast), or `.unikit/code/plans/<feature-name>/PLAN.md` (full, ultra), plus the research reference if linked
+2. Full and ultra: the git branch name when `branch_created = true`, otherwise the current branch name
+3. A brief summary of the phases and the total estimated effort
 4. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
-5. Remind: "To start implementation, run: `/unikit-implement`"
-6. Ask if they want to adjust anything
+5. The reminder: "To start implementation, run: `/unikit-implement`"
+6. Ask whether to adjust anything
 
-**Full mode:**
-1. The feature folder path created
-2. The git branch name (only if `branch_created = true`; if `false`, show current branch name instead)
-3. File created: `.unikit/code/plans/<feature-name>/PLAN.md`, plus research reference if linked
-4. A brief summary of phases identified
-5. Total estimated effort
-6. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
-7. Remind: "To start implementation, run: `/unikit-implement`"
-8. Ask if they want to adjust anything
-
-**Ultra mode:** the full-mode items above, plus the bundle-specific items in
-`mode-ultra.md` Step H (phase-file count, task count, integrity result, and the
-not-implementation-ready line when blocking open questions exist).
+**Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist).
 
 ### Step 7: Context Cleanup
 
@@ -728,32 +540,12 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 
 ## Task Description Requirements
 
-Step 5 item 5 sets the base — a description, `WHY:`, `Files:` — and `references/TASK-FORMAT.md` the grammar. Two refinements are stated only here:
-
-- **Name a dependency on another task's output** when the phase order does not already make it obvious.
-- **A simple task** (rename, delete, move) may carry its paths in the description instead of a `Files:` line.
-
-A task with no deliverable (`Implement appraisal system`) is not a task, and a `WHY:` that restates it (`Create IAppraisalService interface` → `WHY: We need to create this interface`) answers nothing.
+Beyond Step 5 item 5 and `references/TASK-FORMAT.md`: name a dependency on another task's output when the phase order does not make it obvious; a simple task (rename, delete, move) may carry its paths in the description instead of a `Files:` line. A task needs a concrete deliverable, and its `WHY:` must not restate it.
 
 ## Important Rules
 
 1. **NO report tasks** — don't create summary/report tasks at the end of a plan
 2. **Right granularity** — not too big (overwhelming), not too small (noise). A task should be completable in one focused session
 3. **Dependencies matter** — order tasks so they can be done sequentially without blockers
-4. **Include file paths** — help the implementer know exactly where to work
-5. **Every task needs WHY** — the WHY line must explain purpose, not restate the description
-6. **Commit checkpoints for large plans** — 5+ tasks need a Commit Plan section with checkpoints every 3-5 tasks
-7. **NO tests if user said no** — don't sneak in test tasks when the user opted out
-8. **Actionable tasks** — each task must have a clear, concrete deliverable
-9. **Respect module boundaries** — follow the project's Modular Monolith architecture (Modules/ → Game/ allowed, Game/ → Modules/ FORBIDDEN)
-10. **Roadmap linkage (when available)** — If `.unikit/ROADMAP.md` exists, include a `## Roadmap Linkage` section in the plan (or explicitly state it was skipped)
-11. **Always generate `## Technical Context`** — even when a research's `## Active Summary` exists, the plan generates its own section based on the current codebase state. The research summary is input, not a replacement; the plan's section is the authoritative source for `/unikit-implement`
-12. **Plan file location** — Fast mode: `.unikit/code/PLAN.md` (single flat file, temporary). Full mode: `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder) — the folder name carries no date; the manifest's `Created:` / `Updated:` fields do
-13. **`Editor:` marks serialized editor state, nothing else** — write an `Editor:` line **if and only if** the change touches the editor's **serialized state**; a plain text or config file stays in `Files:` (the same criterion as `.unikit/system/dev-principles.md` → Layer A, **A8 · "Serialized state is the boundary"**). Engine-specific signals live in `references/ENGINE_RULES.md` §3; when that file is absent, the field is not generated at all
-14. **Design is read-only and cited, not copied** — when a game-design workspace exists (a `version: 2` `.unikit/gamedesign/GD-IDS.yaml`), ground the plan in it via `## Design` (Step 4.5): cite Acceptance Criteria by `AC-id` referencing the live system doc, snapshot the version, and warn when Status ≠ `detailed`. Never write to `.unikit/gamedesign/` — design changes go through `/unikit-gd-*` (one-way boundary: code reads design, design never knows code)
-15. **A plan is intent, not inventory — no tool name ever reaches it** — the plan says *what has to be true*, never *what to call*. Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else: a name in a plan is a name that will be wrong by the time the plan is executed, and it silently overrides the executor's own discovery. This also settles the reverse: the planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance
-16. **A phase carrying an `Editor:` task is serialized alone in its execution layer** — the unit of parallelism downstream is the **phase**, so the constraint is expressed in `## Dependency Graph` and nowhere else (Step 5, `## Dependency Graph`). It is not a rule about tasks: two `Editor:` tasks inside one phase already run sequentially
-
-## Code Analysis & Delegation Rules
-
-Use **Explore tasks** for codebase analysis — not `unikit-devcontext` or `develop-agent` (those are for code-writing). Each Explore task MUST receive doc references (ARCHITECTURE.md + relevant core/stack rules from Bootstrap). Fallback: Glob/Grep/Read.
+4. **Respect module boundaries** — follow the dependency rules of `.unikit/ARCHITECTURE.md`; never invent a direction it does not state
+5. **A plan is intent, not inventory — no tool name ever reaches it.** Names live in the live catalog and in the `evidence` column of a findings row, and nowhere else. The planner never lifts an obligation on the executor's behalf — no pre-declared gate, no "this server cannot do X", no `⏸️ MANUAL` written in advance

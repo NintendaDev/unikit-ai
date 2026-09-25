@@ -189,9 +189,9 @@ This is what lets `/unikit-verify` quote the executor's full run instead of repe
 
 #### Test-checkpoint tasks — a run is a task, not a command
 
-A test run is its own checklist task carrying a `Test checkpoint:` line, and it is the one task form that carries **no `Files:`**: it creates nothing. Under `Testing: yes` the plan's last task is always a full run. Where such tasks are placed comes from `testing.plan.checkpoints` (see [Configuration](configuration.md)), which the planner resolves once and records into `## Settings` — so changing the key later never reinterprets a plan already written. The grammar and how a run's width follows from its coverage are canonical in the plan format reference; this page names them rather than repeating them.
+A test run is its own checklist task carrying a `Test checkpoint:` line, and it is the one task form that carries **no `Files:`**: it leaves nothing behind — a temporary probe it creates and removes (a negative control) and a manual smoke are legitimate steps, and when the task is merged into a later point they are performed there. Under `Testing: yes` the plan's last task is always a full run. Where such tasks are placed comes from `testing.plan.checkpoints` (see [Configuration](configuration.md)), which the planner resolves once and records into `## Settings` — so changing the key later never reinterprets a plan already written. The grammar and how a run's width follows from its coverage are canonical in the plan format reference; this page names them rather than repeating them.
 
-**A plan written before this existed has no `Test checkpoints:` line.** That is a legacy plan, and nothing breaks: the executor falls back to finding runs in the prose of the tasks, with lower confidence, and says so in its report. `/unikit-improve` will not add test-checkpoint tasks to such a plan — the placement was never declared, and guessing it while editing your plan is not its call.
+**A plan written before this existed has no `Test checkpoints:` line under `Testing: yes`.** That is a legacy plan, and nothing breaks: the executor falls back to finding runs in the prose of the tasks, with lower confidence, and says so in its report. `/unikit-improve` will not add test-checkpoint tasks to such a plan — the placement was never declared, and guessing it while editing your plan is not its call. A plan with `Testing: no` omits the line by design and is not legacy.
 
 **Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`.
 
@@ -344,7 +344,13 @@ This table is about **the vocabularies this project writes**, not about what an 
 3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying neither is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime. Reaching this step at all means the branch named no plan, so *latest* is a guess rather than a resolution: with two or more plans present the candidates are printed and the choice is put to the user, never auto-selected. With exactly one plan there is nothing to choose between — it is announced with the branch miss named, and work continues
 4. **Fix plan fallback** → `.unikit/code/FIX_PLAN.md` → redirects to `/unikit-fix`
 
-If both `.unikit/code/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
+If both `.unikit/code/PLAN.md` and a folder plan matching the branch exist, `/unikit-implement` looks at the work the call asks for — the phases or tasks it names (`Phases 3-5`), or the whole plan when it names none:
+
+- **still pending in the branch's plan** → that plan is used without a question, and an `INFO [plan] fast plan .unikit/code/PLAN.md not used` line names the fast plan left aside;
+- **nothing pending there, but pending in the fast plan** → one yes/no question: run the fast plan, or stop;
+- **pending in neither** → the branch's plan, which then reports that nothing is left.
+
+`unikit-implement-coordinator` follows the same rule for the whole plan (it takes no selectors). `/unikit-verify` asks which plan to verify.
 
 Whichever branch of that order resolves, the plan is **named before any other output** — a single
 `INFO [plan] resolved: <path> (<reason>)` line, where the reason is the branch of discovery that

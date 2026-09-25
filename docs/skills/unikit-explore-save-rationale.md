@@ -177,6 +177,8 @@ Two corrections to the estimates this measurement replaces:
 | S-90 | 1059 | Run the coherence gate | rationale | CG-4 (`auto-save` also stands in S-84) | D 180 (canonical: S-78) | 180 |
 | | | | | | **Total** | **7 331** |
 
+S-59, S-61 and S-62 describe the printed readback block that was later replaced by one question per requirement — see ### Readback.
+
 ### `ULTRA-RESEARCH-FORMAT.md` → `## Identifiers`, `## Write order`
 
 The input to task 12. These two sections move into `SKILL.md`, and the bytes below are what the
@@ -347,12 +349,21 @@ findable.
 ### Readback
 
 - **Why it exists.** It is the only check in the whole mechanism that asks the source of truth
-  instead of the disk, and it costs one turn.
+  instead of the disk, and it costs one question call per four requirements shown.
 - **Why a `stated` requirement that passed is not shown.** A short list is the only defence
   against this step turning into something that gets clicked through.
-- **Why a printed block and not a question tool.** The answers are free-form and per line ("not A
-  but B, because…"), a four-option modal does not carry that, and the number of options needed is
-  the number of lines shown. The tool is granted to the skill and deliberately unused here.
+- **Why one question per requirement.** The printed block drew one free reply for every
+  line at once, and in practice the user asked for the questions to be put interactively;
+  one menu per line makes each answer attributable to its line, and the free answer the tool
+  adds keeps corrections of the "not A but B, because…" kind possible.
+- **Why the grounds are printed before the question.** A one-line option does not explain the
+  difference between two paths; the comparison has to be readable before the choice
+  (the same "print first, ask second" rule as the rule-candidate question).
+- **Why "Recommended" appears only on two readings.** On `diverges` and `inferred` the
+  marker would push the user toward the agent's own formulation — exactly the click-through
+  this check exists to prevent; on two readings the code or the log can actually decide.
+- **Why the text tier ends the turn.** Printed questions followed by a continued save demote
+  every item to an open question without the user ever having had the chance to answer.
 - **A correction that becomes a new requirement** is a normal outcome of asking, not an error.
 - **Its position is a property, not a compromise.** The corrections land on disk before the
   registry is re-rendered and before the gate reads the files, so the gate checks the corrected
@@ -390,9 +401,46 @@ source of truth — before the coherence gate reads the same files from disk.
 - **Confirmation waits for the gate.** A gate that runs after the confirmation is a gate that
   reports on a decision already announced.
 - **Pinning is outside the auto-save ban**, however much a new folder looks like a save.
+- **A skipped folder is always announced.** An unreadable manifest and an honestly empty
+  registry look identical from the outside, so an unannounced skip reports "no researches" for a
+  research that is sitting right there on disk.
+- **`check-agent` is dispatched with the path, never the text.** The file is read in the agent's
+  fresh context and not in the one that is saving. On Claude `Explore` is read-only by
+  construction — its tool set excludes `Edit`/`Write`, so the contract is guaranteed by the
+  dispatch, not merely requested; elsewhere the runtime may offer no such agent type, so the
+  contract rides on the prompt's last sentence.
+
+## Outside the save pipeline
+
+### Bootstrap and input
+
+- **Why the context load matters.** Without it the advice is generic rather than grounded in
+  this project's architecture, conventions and patterns.
+- **A milestone's reference documents are read when the topic touches that milestone.** They give
+  the original requirements behind it without asking the user again.
+- **A file-based exploration opens no folder ahead of the save.** Its source of truth is the
+  named documents, not the conversation, and pinning left on for it would strand a
+  manifest-less folder after every such run, which the registry then announces on every later
+  save in the project.
+- **When the mode changes mid-way, pinning continues.** The conversation still happened, and
+  there is no reason to drop its record.
+
+### Pinning
+
+- **The floor.** The first write happens no later than the moment the save would be offered:
+  later than the old behaviour it cannot be, earlier it usually is. Without the floor, "you
+  decide when" turns into "you put it off".
+- **The first write reconstructs nothing.** The earlier turns were in context all along — what
+  was deferred was the writing, not the memory.
+- **Appending needs no judgement.** The decision "this is a research" was taken once.
+- **The folder is named when the log is pinned.** By the time a requirement or a decision has
+  been stated, the topic has a name.
+- **A failed append does not stop the conversation.** The exploration is worth more than its
+  log.
 
 ## See Also
 
-- [unikit-implement rationale](unikit-implement-rationale.md) — the same split, for the post-completion steps
+- [unikit-implement rationale](unikit-implement-rationale.md) — the same split, for the executor
+- [unikit-plan rationale](unikit-plan-rationale.md) — the same split, for the planner
 - [research-link rationale](research-link-rationale.md) — the manifest's own `## Based on` region markers this pipeline's `RESEARCH.md` provides, explained from the reader's side
 - [Skills Reference](../skills.md) — what `/unikit-explore` does, for the people who use it

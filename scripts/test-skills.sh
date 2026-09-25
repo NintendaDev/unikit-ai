@@ -226,7 +226,7 @@ done
 # `## Delegation agents` section MUST be defined in that section. This ensures aliases are
 # not drift-prone — if a narrative mentions `docs-agent`, that alias must be declared.
 #
-# A skill that names an alias only to FORBID it (`unikit-improve`, `unikit-plan` on
+# A skill that names an alias only to FORBID it (`unikit-improve` on
 # `develop-agent`) still owes the reader a lookup: the alias is recorded in that skill's
 # section as not-used-here. The guard's contract is "mentioned in the section", which is
 # what the awk already measures — no exemption shape is introduced.
@@ -2624,10 +2624,19 @@ if [[ -z "$UP_WHY" ]]; then
         || UP_WHY+=" UP-7:marker-count"
     grep -qF 'unikit-improve' "$UP_MODE_ADD" || UP_WHY+=" UP-7:no-routing"
     grep -qF "$UP_DEGRADATION" "$UP_MODE_ADD" || UP_WHY+=" UP-7:degradation-wording-drifted"
+    # (UP-8) DEC-012 a: the reader contract costs ~8 KB and only a bundle needs it. The marker
+    # is known at Step 0.1, so the Bootstrap read is gated on it. The degradation line below
+    # it is untouched — T16, UP-7 and US-8 hold it verbatim.
+    grep -qF 'Ultra plan bundle reader contract — only for an ultra bundle' "$UP_IMPLEMENT" \
+        || UP_WHY+=" UP-8:reader-contract-unconditional"
+    grep -qF 'Ultra plan bundle reader contract — once, before the first task is executed' "$UP_IMPLEMENT" \
+        && UP_WHY+=" UP-8:old-unconditional-heading"
+    grep -qF 'A plan without the marker never reads this file.' "$UP_IMPLEMENT" \
+        || UP_WHY+=" UP-8:non-ultra-read-not-excluded"
 fi
 
 if [[ -z "$UP_WHY" ]]; then
-    pass "UP-1..UP-7 ultra producer: the redirect holds on both sides, Step 0.5 keeps no mode list, the manifest claims are branched, the depth gate is in place and add refuses a bundle"
+    pass "UP-1..UP-8 ultra producer: the redirect holds on both sides, Step 0.5 keeps no mode list, the manifest claims are branched, the depth gate is in place and add refuses a bundle, and implement reads the reader contract only for a bundle"
 else
     fail "UP ultra producer:$UP_WHY"
 fi
@@ -3161,9 +3170,25 @@ done
 # rewrite that unwraps the prose makes it two.
 grep -qF 'not needed (every requirement was stated)' "$SF_SKILL" || SF_WHY+=" SF-15:no-nothing-to-show-value"
 grep -qF '`Readback` field is never empty' "$SF_SKILL"           || SF_WHY+=" SF-15:empty-readback-allowed"
+# (SF-16…SF-19) the readback is one menu per requirement, never a printed block answered by a
+# single free reply (REQ-001). Anchored inside the Step 3.5 window: the same words elsewhere in
+# the file would not prove the readback uses them.
+SF_RB_WIN="$(awk '/^### Step 3\.5/{f=1;next} /^### Step 4/{f=0} f' "$SF_SKILL")"
+[[ -n "$SF_RB_WIN" ]] || SF_WHY+=" SF-16:readback-window-empty"
+# (SF-16) NEGATIVE — the retired contract that forbade the question tool.
+grep -qF 'It is a printed block, not' "$SF_SKILL" && SF_WHY+=" SF-16:printed-block-returned"
+# (SF-17) one question per item, the tool, print-first, the class menus and the recommendation policy.
+for sf17 in 'One question per requirement' 'AskUserQuestion' 'carries the options and nothing else' \
+             'Mine (DEC-<n>)' 'Finding only' 'only on a two-readings question'; do
+    printf '%s' "$SF_RB_WIN" | grep -qF "$sf17" || SF_WHY+=" SF-17:no-${sf17// /-}"
+done
+# (SF-18) the text tier stops the turn — otherwise every item silently demotes to OQ (RISK-004).
+printf '%s' "$SF_RB_WIN" | grep -qF 'end your turn and wait' || SF_WHY+=" SF-18:text-tier-does-not-stop"
+# (SF-19) every readback menu reaches SOURCE.md with its offered options (REQ-006).
+printf '%s' "$SF_RB_WIN" | grep -qF 'with the option labels' || SF_WHY+=" SF-19:menu-not-logged"
 
 if [[ -z "$SF_WHY" ]]; then
-    pass "SF-1..SF-15 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, and a standard research reads nothing from the ultra reference"
+    pass "SF-1..SF-19 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, a standard research reads nothing from the ultra reference, and the readback asks one question per requirement with a text tier that ends the turn"
 else
     fail "SF source fidelity:$SF_WHY"
 fi
@@ -3758,6 +3783,7 @@ VQ_GD_REVIEW="$ROOT_DIR/skills/unikit-gd-review/SKILL.md"
 VQ_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
 VQ_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 VQ_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+VQ_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
 VQ_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
 VQ_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
 VQ_MODE_LIST="$ROOT_DIR/skills/unikit-plan/references/mode-list.md"
@@ -3802,10 +3828,12 @@ vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_M
 vq_expect "AQ-6 unikit-gd-review — interview findings printed first" "$VQ_GD_REVIEW" "$VQ_K1" 1
 
 # (PR-1…PR-4) every resolver announces what it resolved, and says that *latest* is a guess.
+# (PX-11) the coordinator is a fifth entry point and owes the same announcement.
 for vq_pair in \
     "unikit-improve:$VQ_IMPROVE" \
     "unikit-implement:$VQ_IMPLEMENT" \
     "unikit-verify:$VQ_VERIFY" \
+    "unikit-implement-coordinator:$VQ_COORD" \
     "unikit-plan/mode-add:$VQ_MODE_ADD"
 do
     vq_name="${vq_pair%%:*}"
@@ -3830,7 +3858,7 @@ while IFS= read -r vq_f; do
     [[ -n "$vq_f" ]] || continue
     vq_sweep_seen=$((vq_sweep_seen + 1))
     [[ "$(vq_count "$vq_f" "$VQ_K3")" != "0" ]] || vq_sweep_bad+=" ${vq_f#"$ROOT_DIR/"}"
-done < <(grep -rlF 'fall through to *latest*' "$ROOT_DIR/skills" --include='*.md' || true)
+done < <(grep -rlF 'fall through to *latest*' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' || true)
 if [[ "$vq_sweep_seen" -eq 0 ]]; then
     fail "PR-5 — nothing mentions the *latest* fallback; the guard has lost its object"
 elif [[ -n "$vq_sweep_bad" ]]; then
@@ -3849,6 +3877,28 @@ if [[ -z "$vq_why" ]]; then
     pass "PR-6 unikit-plan/mode-list — labels only, carries no resolver contract"
 else
     fail "PR-6 unikit-plan/mode-list — must not carry the resolver contract:$vq_why"
+fi
+
+# (PR-7) fast plan vs branch plan: the branch plan wins while it has pending work — the selected
+#        tasks, or every task when the call names none — and the fast plan left aside is named.
+#        Only when the branch plan has nothing pending and the fast plan does is there a
+#        question, and it is a yes/no about the fast plan, not "which one". The coordinator runs
+#        every pending phase, i.e. the no-selector case, so it carries the same rule and line.
+#        The negative half is load-bearing: the unconditional "which one" question is what the
+#        user asked to remove, and a half-applied edit would leave it standing next to the rule.
+vq_why=""
+grep -qF 'or every task when there are none' "$VQ_IMPLEMENT"                  || vq_why+=" no-selector-case"
+grep -qF 'use the folder plan without asking' "$VQ_IMPLEMENT"                 || vq_why+=" branch-plan-rule"
+grep -qF 'Run the fast plan .unikit/code/PLAN.md?' "$VQ_IMPLEMENT"            || vq_why+=" fast-plan-question"
+grep -qF 'ask the user which one to use' "$VQ_IMPLEMENT"                      && vq_why+=" which-one-question-survived"
+for vq_f in "$VQ_IMPLEMENT" "$VQ_COORD"; do
+    grep -qF 'INFO [plan] fast plan .unikit/code/PLAN.md not used' "$vq_f"    || vq_why+=" no-left-aside-line:${vq_f##*/}"
+done
+grep -qF 'the branch plan wins while it has any' "$VQ_COORD"                  || vq_why+=" coordinator-rule"
+if [[ -z "$vq_why" ]]; then
+    pass "PR-7 fast vs branch plan — the branch plan wins while it has pending work; the fast plan is offered only when it has none"
+else
+    fail "PR-7 fast-vs-branch plan choice:$vq_why"
 fi
 
 # (IR-1) unikit-improve carries the clause exactly twice: Step 0 Priority 4 (which plan) and
@@ -4932,8 +4982,15 @@ MF5_WHY=""
 grep -qF 'observed' "$MF_IMPLEMENT" || MF5_WHY+=" implement"
 grep -qF 'observed' "$MF_FIX"       || MF5_WHY+=" fix"
 grep -qF 'observed' "$MF_VERIFY"    || MF5_WHY+=" verify"
+# The worker is a writer too (variant B), and the only one that may write a row without
+# having read D7: it reads the lower half only when its own task carries `Editor:`, while
+# the table exists whenever the plan has one anywhere. So it carries the two rules itself.
+# Scoped to the finding line: the rule-candidate line below it says `dedup is semantic` too.
+MF5_WORKER_LINE="$(grep -F 'A call that misled you is a finding' "$MF_WORKER")"
+printf '%s' "$MF5_WORKER_LINE" | grep -qF '`observed` is today' || MF5_WHY+=" worker"
+printf '%s' "$MF5_WORKER_LINE" | grep -qF 'dedup is semantic'   || MF5_WHY+=" worker-dedup"
 if [[ -z "$MF5_WHY" ]]; then
-    pass "MF-5 observed known to all three plan-side findings writers"
+    pass "MF-5 observed known to all four plan-side findings writers (the worker carries its own copy)"
 else
     fail "MF-5 observed column unknown to:$MF5_WHY"
 fi
@@ -6110,6 +6167,86 @@ else
     fail "LA-8 anchor MISSING in skills/unikit-fix/SKILL.md:$LA8_WHY"
 fi
 
+# ─────────────────────────────────────────────
+# LB: the lazy-read boundary is enforced by its readers (DEC-014; closes research defect 13).
+# EW: the editor procedures live below it once, not restated per executor (DEC-015).
+LB_READERS=(
+    "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL"
+    "improve:$ROOT_DIR/skills/unikit-improve/SKILL.md" "devcontext:$EM_DEVCONTEXT_SKILL"
+    "worker:$ROOT_DIR/subagents/unikit-implement-worker.md"
+    "coordinator:$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+)
+LB_MCP_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+LB_PATTERN="^<!-- === LAZY-READ BOUNDARY === -->"
+LB_WHY=""
+for lb_pair in "${LB_READERS[@]}"; do
+    lb_name="${lb_pair%%:*}"; lb_file="${lb_pair#*:}"
+    # (LB-1) every reader names the boundary.
+    grep -qF 'LAZY-READ BOUNDARY' "$lb_file" || LB_WHY+=" LB-1:$lb_name"
+    # (LB-2) and reads up to it with a line limit — the grep pattern is the mechanism.
+    grep -qF -- "$LB_PATTERN" "$lb_file" || LB_WHY+=" LB-2:$lb_name"
+done
+grep -qF 'LAZY-READ BOUNDARY' "$LB_MCP_AUDIT" || LB_WHY+=" LB-1:mcp-audit"
+# (LB-3) the lower half is read at plan load under an Editor: line — one formulation, three plan readers.
+LB3='below the marker is read once, at plan load, when the checklist carries an `Editor:` line'
+for lb3_f in "$EM_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    grep -qF "$LB3" "$lb3_f" || LB_WHY+=" LB-3:${lb3_f##*/}"
+done
+grep -qF 'including the editor rungs of the Step 1 diagnosis ladder' "$EM_FIX_SKILL" || LB_WHY+=" LB-3:fix"
+grep -qF 'before the first `GATE LIFTED` verdict' "$UNIKIT_VERIFY_SKILL" || LB_WHY+=" LB-3:verify-gate-lifted"
+grep -qF 'when a task you were handed carries an `Editor:` line' "$ROOT_DIR/subagents/unikit-implement-worker.md" || LB_WHY+=" LB-3:worker"
+# (LB-4) the file and the docs promise the same moment.
+grep -qF "at plan load when the plan's checklist carries an \`Editor:\` line" "$LA_DEV_PRINCIPLES" || LB_WHY+=" LB-4:dev-principles-moment"
+grep -qF 'pays for the deep half only if it reaches editor state anyway' "$ROOT_DIR/docs/dynamic-memory.md" || LB_WHY+=" LB-4:docs-moment"
+# NEGATIVE — "never pays" is false: verify reads the lower half before its first GATE LIFTED
+# verdict, and fix working from FIX_PLAN.md (no Editor: field) reads it on its first editor step.
+grep -qF 'never pays for the deep half' "$ROOT_DIR/docs/dynamic-memory.md" && LB_WHY+=" LB-4:docs-overclaims"
+if [[ -z "$LB_WHY" ]]; then
+    pass "LB-1…LB-4 lazy-read boundary enforced: 8 readers name it, 7 read up to it, the lower half loads at plan load under Editor:"
+else
+    fail "LB lazy-read boundary not enforced:$LB_WHY"
+fi
+
+EW_WHY=""
+if grep -qF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES"; then
+    EW_BLINE=$(grep -nF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES" | head -1 | cut -d: -f1)
+    EW_ABOVE=$(head -n "$EW_BLINE" "$LA_DEV_PRINCIPLES")
+    EW_BELOW=$(tail -n +"$EW_BLINE" "$LA_DEV_PRINCIPLES")
+    # (EW-4) D8 is scoped to whoever holds the documentation server: every reader of the
+    # lower half reads D8, and only some of them are granted that server. Worded by
+    # capability, never by skill name — the recipient list lives in the server's config.
+    echo "$EW_BELOW" | grep -qF 'Only a reader granted that server reaches for it' || EW_WHY+=" EW-4:d8-unscoped"
+    # (EW-1) the three procedures sit below the boundary, and nothing of them above it.
+    for ew1 in 'Candidates from the live catalog, by intent' 'A call that misled you' 'Reference: trigger <1|2>'; do
+        echo "$EW_BELOW" | grep -qF "$ew1" || EW_WHY+=" EW-1:not-below:${ew1// /-}"
+        echo "$EW_ABOVE" | grep -qF "$ew1" && EW_WHY+=" EW-1:leaked-above:${ew1// /-}"
+    done
+else
+    EW_WHY+=" EW-1:boundary-marker-missing"
+fi
+# (EW-2) NEGATIVE — the executors no longer restate them.
+# All five readers of the lower half, not only the two that carried the full procedure: verify
+# and the worker held shortened retellings, and `candidate affordances` is the phrase both
+# retellings shared — D6 owns it now, so any executor that carries it is restating D6.
+for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL" "$UNIKIT_VERIFY_SKILL" \
+             "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    for ew2 in 'Candidates from the live catalog, by intent' 'Reference: trigger <1|2>' 'network dependency inside the editor lane' 'candidate affordances'; do
+        grep -qF "$ew2" "$ew2_f" && EW_WHY+=" EW-2:restated:${ew2_f#"$ROOT_DIR"/}"
+    done
+done
+# (EW-3) and each points at the owner section it now follows.
+EW3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f' "$EM_IMPLEMENT_SKILL")"
+printf '%s' "$EW3_S32" | grep -qF '→ **D6**' || EW_WHY+=" EW-3:implement-no-D6"
+grep -qF '→ **D6**' "$EM_FIX_SKILL" || EW_WHY+=" EW-3:fix-no-D6"
+for ew3_f in "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    grep -qF '**D7**' "$ew3_f" || EW_WHY+=" EW-3:no-D7:${ew3_f##*/}"
+done
+if [[ -z "$EW_WHY" ]]; then
+    pass "EW-1…EW-4 editor procedures live once below the boundary (D6–D8), every executor points at them, and D8 is scoped to the server's grantees"
+else
+    fail "EW editor-procedure ownership drift:$EW_WHY"
+fi
+
 # (ED-15) Layer C — the two §4 rules Phase 2 added, plus the coherence of the three
 # counters §4 carries. A hard count ("§4 has seven rules") would break on every future
 # edit; coherence breaks only when the numbers disagree with the body, which is the one
@@ -6296,11 +6433,12 @@ for f in "$TC_CONFIG_TPL" "$TC_UNIKIT_SKILL"; do
     [[ -s "$f" ]] || TC_G1_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G1_WHY" ]]; then
-    # (TC-1) both key groups, all three modes in each — a block carrying one mode is how a
-    # per-mode policy quietly becomes a global one.
-    for tok in 'testing:' 'checkpoints:' 'merge_checkpoints:' 'ultra:' 'full:' 'fast:'; do
+    # (TC-1) the placement key, all three modes — a block carrying one mode is how a per-mode policy quietly becomes a global one.
+    for tok in 'testing:' 'checkpoints:' 'ultra:' 'full:' 'fast:'; do
         grep -qF "$tok" "$TC_CONFIG_TPL" || TC_G1_WHY+=" TC-1:no-$tok"
     done
+    # (TC-1) NEGATIVE since DEC-008 — merging is asked per call; a key would silence the question.
+    grep -qF 'merge_checkpoints' "$TC_CONFIG_TPL" && TC_G1_WHY+=" TC-1:executor-key-returned"
     # (TC-2) NEGATIVE — REQ-006: the width of a run follows from its coverage and is never
     # configurable. A width key in the config is the whole requirement reversed.
     grep -qF 'run_width' "$TC_CONFIG_TPL" && TC_G1_WHY+=" TC-2:width-key-returned"
@@ -6322,7 +6460,7 @@ if [[ -z "$TC_G1_WHY" ]]; then
         || TC_G1_WHY+=" TC-3:no-never-touch-carveout"
 fi
 if [[ -z "$TC_G1_WHY" ]]; then
-    pass "TC-1…TC-3 config template declares both key groups (no width key); merge mode derives the missing set from the template and carves out the never-touch keys"
+    pass "TC-1…TC-3 config template declares the placement key (no width key); merge mode derives the missing set from the template and carves out the never-touch keys"
 else
     fail "TC-1…TC-3 test-run config contract:$TC_G1_WHY"
 fi
@@ -6407,9 +6545,13 @@ else
     fail "TC-14…TC-22 planner run-policy contract:$TC_G3_WHY"
 fi
 
+# The test-run block of unikit-implement lives in a reference read only under `Testing: yes`
+# (DEC-012 b); every TC literal that moved with it is asserted against that file.
+TC_TESTRUNS="$ROOT_DIR/skills/unikit-implement/references/test-runs.md"
+
 # --- group 4: verify reuses the executor's run (tasks 5.1, 5.2) ---
 TC_G4_WHY=""
-for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL"; do
+for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS"; do
     [[ -s "$f" ]] || TC_G4_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G4_WHY" ]]; then
@@ -6422,7 +6564,7 @@ if [[ -z "$TC_G4_WHY" ]]; then
     # procedure named in two places, never by two procedures that merely agree today: drift
     # in either half makes the anchor stop matching for no visible reason.
     TC24_SHARED='the same procedure as `Summary SHA256`'
-    for tc24_f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+    for tc24_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
         grep -qF "$TC24_SHARED" "$tc24_f" || TC_G4_WHY+=" TC-24:${tc24_f##*/skills/}-restates-hash-procedure"
     done
     # (TC-25) NEGATIVE — two dead references the reuse branch replaced: a CLAUDE.md list
@@ -6441,13 +6583,13 @@ fi
 
 # --- group 5: the executor, the coordinator and the worker (tasks 4.1-4.4) ---
 TC_G5_WHY=""
-for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD" "$TC_WORKER"; do
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$TC_COORD" "$TC_WORKER"; do
     [[ -s "$f" ]] || TC_G5_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G5_WHY" ]]; then
-    # (TC-27) the executor's own key, the line that explains a run count, and the legacy branch.
-    grep -qF 'testing.implement.merge_checkpoints' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-executor-key"
-    grep -qF 'INFO [testing]'                      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-info-line"
+    # (TC-27) no executor key any more (DEC-008), the line that explains a run count, and the legacy branch.
+    grep -qF 'merge_checkpoints' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-27:executor-key-returned"
+    grep -qF 'INFO [testing]'                      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-27:no-info-line"
     grep -qF 'the plan is legacy'                  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-legacy-branch"
     # (TC-28) NEGATIVE — symmetric to TC-22 from the other side: the executor never reads
     # the placement key, because the placement is already recorded in the plan.
@@ -6455,24 +6597,25 @@ if [[ -z "$TC_G5_WHY" ]]; then
     # (TC-29…TC-32) Step 2.5: the merge is marked BEFORE execution, or an interrupted run
     # leaves a ticked box with no run behind it.
     grep -qF '### Step 2.5' "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-29:no-step-2.5"
-    grep -qF '⏭️ MERGED'    "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-30:no-merge-marker"
-    grep -qF 'does not count as pending for its own run' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-31:no-counting-rule"
-    grep -qF 'never merged and never moved' "$UNIKIT_IMPLEMENT_SKILL"       || TC_G5_WHY+=" TC-31:final-run-mergeable"
-    grep -qF 'mark first, then execute'     "$UNIKIT_IMPLEMENT_SKILL"       || TC_G5_WHY+=" TC-32:no-order-contract"
+    grep -qF '⏭️ MERGED'    "$TC_TESTRUNS"                                  || TC_G5_WHY+=" TC-30:no-merge-marker"
+    grep -qF 'does not count as pending for its own run' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:no-counting-rule"
+    grep -qF 'never merged and never moved' "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-31:final-run-mergeable"
+    grep -qF 'mark first, then execute'     "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-32:no-order-contract"
     # (TC-33) one marker form across two files — a second spelling is a marker nobody reads.
     grep -qF '⏭️ MERGED → task' "$TC_READER" || TC_G5_WHY+=" TC-33:marker-form-drifted-in-reader"
     # (TC-34…TC-40) Step 3.2: the run task, its three widths, the graph-free algorithm, the
-    # assigned threshold, the manifest-reading ban and the two git commands.
+    # assigned threshold, the manifest-reading ban and the two git commands. TC-34 stays on
+    # the skill (the stub that recognises the task); the rest moved to the reference.
     grep -qF 'Test checkpoint: <coverage>'  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-34:no-run-task-branch"
-    grep -qF 'every test in the project'    "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-35:no-plan-width"
-    grep -qF 'without building a graph'     "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
-    grep -qF 'Safety valve'                 "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-37:no-safety-valve"
-    grep -qF 'assigned, not measured'       "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
-    grep -qF 'Reading every module manifest is forbidden' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
-    grep -qF 'git rev-parse HEAD; git status --porcelain' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-39:no-hash-commands"
-    grep -qF 'only WRITES tests and never runs them'      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
+    grep -qF 'every test in the project'    "$TC_TESTRUNS" || TC_G5_WHY+=" TC-35:no-plan-width"
+    grep -qF 'without building a graph'     "$TC_TESTRUNS" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
+    grep -qF 'Safety valve'                 "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:no-safety-valve"
+    grep -qF 'assigned, not measured'       "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
+    grep -qF 'Reading every module manifest is forbidden' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
+    grep -qF 'git rev-parse HEAD; git status --porcelain' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
+    grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
-    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-41:engine-names-leaked"
+    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" && TC_G5_WHY+=" TC-41:engine-names-leaked"
     # (TC-42…TC-44) POSITIVE half: the runner is one per editor, so the scope owner runs.
     grep -qF 'never handed to a worker'    "$TC_COORD"  || TC_G5_WHY+=" TC-42:coordinator-does-not-withhold"
     grep -qF 'once the layer has finished' "$TC_COORD"  || TC_G5_WHY+=" TC-43:no-run-after-layer"
@@ -6513,6 +6656,150 @@ if [[ -z "$TC_G6_WHY" ]]; then
     pass "TC-46…TC-51 both plan editors honour the recorded policy, keep executor data, and treat a run task without Files: as normal"
 else
     fail "TC-46…TC-51 plan-editor run-policy contract:$TC_G6_WHY"
+fi
+
+# --- group 7: merging is a question per call, not a key (readback/merge plan, DEC-004…DEC-008) ---
+TC_G7_WHY=""
+TC_TASKFMT_Q="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$TC_COORD" "$TC_READER" "$TC_TASKFMT_Q"; do
+    [[ -s "$f" ]] || TC_G7_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G7_WHY" ]]; then
+    # (TC-52) the success signal: the key is gone from everything that ships or documents.
+    TC52_HITS="$(grep -rlF 'merge_checkpoints' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/docs" "$ROOT_DIR/data" 2>/dev/null || true)"
+    [[ -z "$TC52_HITS" ]] || TC_G7_WHY+=" TC-52:key-survives:$(echo "$TC52_HITS" | sed "s|$ROOT_DIR/||" | tr '\n' ',')"
+    # (TC-53) Step 2.5 asks once, prints the points first, stops the turn on the text tier, names the source.
+    TC53_WIN="$(awk '/^## Step 2\.5/{f=1;next} /^## Step 3\.2/{f=0} f' "$TC_TESTRUNS")"
+    for tc53 in 'AskUserQuestion' 'One run at the end' 'end your turn and wait' \
+                '(<asked|arguments|no answer|nothing to merge>)' 'Fewer than two' \
+                'whatever the answer below' 'last one in execution order' 'drops the answer'; do
+        printf '%s' "$TC53_WIN" | grep -qF "$tc53" || TC_G7_WHY+=" TC-53:no-${tc53// /-}"
+    done
+    # (TC-54) the instruction in the arguments is recognised, and the Step 0.2 question rides the same call.
+    grep -qF 'A test-run instruction' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:no-argument-instruction"
+    grep -qF 'in one `AskUserQuestion` call together with the Step 2.5 question' "$UNIKIT_IMPLEMENT_SKILL" \
+        || TC_G7_WHY+=" TC-54:start-questions-not-combined"
+    grep -qF 'the phase number inside it names a run point' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:instruction-parsed-as-selector"
+    grep -qF 'After a stash, re-read the manifest' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:stash-leaves-stale-scope"
+    # (TC-55) DEC-005 / OQ-3 — a merged point's non-run steps are performed at the survivor, and the format allows them.
+    grep -qF 'non-run steps of every task merged into it' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-55:non-run-steps-lost"
+    grep -qF 'its own non-run steps' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-55:survivor-own-steps-lost"
+    grep -qF 'A temporary probe it creates and removes within its own steps' "$TC_TASKFMT_Q" || TC_G7_WHY+=" TC-55:format-forbids-probe"
+    grep -qF 'their non-run steps are performed there' "$TC_READER" || TC_G7_WHY+=" TC-55:reader-depth-silent"
+    # (TC-56) the coordinator is an entry point too: it asks, and it holds the tool to ask with.
+    awk '/^tools:/{f=1;next} /^[a-z]+:/{f=0} f' "$TC_COORD" | grep -qF 'AskUserQuestion' || TC_G7_WHY+=" TC-56:coordinator-no-question-tool"
+    grep -qF 'Merge question, before the first layer' "$TC_COORD" || TC_G7_WHY+=" TC-56:coordinator-never-asks"
+    grep -qF 'a point of the last layer that holds one' "$TC_COORD" || TC_G7_WHY+=" TC-56:survivor-by-checklist-order"
+    # (TC-57) NEGATIVE — the answer is per call; nothing may re-introduce a stored default.
+    grep -qF 'Merging is only ever enabled explicitly' "$UNIKIT_IMPLEMENT_SKILL" && TC_G7_WHY+=" TC-57:stored-default-returned"
+    grep -qF 'Merging is only ever enabled explicitly' "$TC_TESTRUNS"           && TC_G7_WHY+=" TC-57:stored-default-returned:test-runs"
+    # (TC-58) deferred work is closed by the run that carried it. Its marker still names the
+    # point it was first merged into, so "tick what points at this run point" never reaches
+    # it, and every later call would pick it up and run its coverage again.
+    grep -qF 'and every deferred task whose coverage this run carried' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:deferred-never-closed"
+    grep -qF 'is recorded like a point' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:end-of-scope-unrecorded"
+    grep -qF 'deferred task(s) closed' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:no-close-log"
+fi
+if [[ -z "$TC_G7_WHY" ]]; then
+    pass "TC-52…TC-58 merging is one question per call: no key, source named, non-run steps carried, coordinator asks too, deferred work closed where it ran"
+else
+    fail "TC-52…TC-58 merge-question contract:$TC_G7_WHY"
+fi
+
+# --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
+# Modelled on MX-3 / RD-H: present, not inline, and read at the right step. A body that exists
+# while no step reads it is a contract no run follows (RISK-010).
+TR_WHY=""
+# (TR-1) present, with its four sections.
+[[ -s "$TC_TESTRUNS" ]] || TR_WHY+=" TR-1:reference-missing"
+for tr1 in '## Step 2.5' '## Step 3.2' '## Step 3.4' '## Step 3.8'; do
+    grep -qF "$tr1" "$TC_TESTRUNS" 2>/dev/null || TR_WHY+=" TR-1:no-${tr1// /-}"
+done
+# (TR-2) not inline — anchored on body formulations, never on headings.
+for tr2 in 'mark first, then execute' 'Reading every module manifest is forbidden' 'only WRITES tests and never runs them'; do
+    grep -qF "$tr2" "$UNIKIT_IMPLEMENT_SKILL" && TR_WHY+=" TR-2:still-inline:${tr2// /-}"
+done
+# (TR-3) read at plan load under Testing: yes, and pointed at from every use site.
+TR3_S1="$(awk 'index($0,"### Step 1: Load Plan Context")==1{f=1;next} index($0,"### Step 1.5")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S1" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:not-read-at-plan-load"
+printf '%s' "$TR3_S1" | grep -qF 'under `Testing: no` never read it' || TR_WHY+=" TR-3:read-unconditionally"
+printf '%s' "$TR3_S1" | grep -qF 'WARN [testing] test-run reference missing' || TR_WHY+=" TR-3:missing-reference-silent"
+TR3_S25="$(awk '/^### Step 2\.5/{f=1;next} /^### Step 3/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S25" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:step-2.5-stub-dangling"
+TR3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S32" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:step-3.2-stub-dangling"
+# (TR-4) the coordinator reads the same reference — it runs checkpoint tasks itself.
+grep -qF 'test-run reference' "$TC_COORD" || TR_WHY+=" TR-4:coordinator-blind"
+# Anchored on the read instruction and its path pointer (PD-10: `{{skills_dir}}` is empty in a
+# subagent, so the path comes from the preloaded implement body). The two later mentions in
+# the fifth branch and the run-owner rule kept the check above green with the read deleted.
+grep -qF "test-run reference once — the path is written in \`/unikit-implement\` Step 1" "$TC_COORD" \
+    || TR_WHY+=" TR-4:coordinator-never-reads"
+if [[ -z "$TR_WHY" ]]; then
+    pass "TR-1…TR-4 test-run block extracted to references/test-runs.md (present, not inline, read only under Testing: yes, coordinator included)"
+else
+    fail "TR test-run reference extraction:$TR_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# PX: incidental defects closed by the readback/merge/slimming plan (research section 14).
+# One assert per defect, numbered by the defect. Defect 13 (the dev-principles lazy-read
+# boundary ignored by implement/fix/verify) is closed by LB-1…LB-4, not here.
+PX_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+PX_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+PX_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+PX_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+PX_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
+PX_DYNAMIC_MEMORY="$ROOT_DIR/docs/dynamic-memory.md"
+PX_WHY=""
+# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline".
+grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$PX_IMPLEMENT" && PX_WHY+=" PX-1:devcontext-inline-fallback"
+# (PX-2) the findings column contract lives in the planner's reference, not in implement's own.
+# Every surface that names the file, D7 included (the defect-2 line moved there). Any path
+# that does not end in `unikit-plan/references/TASK-FORMAT.md` is a miss — including the
+# `{{self_name}}/references/` form, which a `[^/]` prefix test let through. Captured into a
+# variable rather than piped into `grep -q`: under pipefail a SIGPIPE hides the hit.
+for px2_f in "$PX_IMPLEMENT" "$ROOT_DIR/skills/unikit-fix/SKILL.md" "$PX_VERIFY" "$PX_DEV_PRINCIPLES" \
+             "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    PX2_PATHS="$(grep -oE '[^ `(]*references/TASK-FORMAT\.md' "$px2_f" || true)"
+    PX2_BAD="$(printf '%s\n' "$PX2_PATHS" | grep -vE '(^|/)unikit-plan/references/TASK-FORMAT\.md$' | grep -v '^$' || true)"
+    [[ -n "$PX2_BAD" ]] && PX_WHY+=" PX-2:task-format-path-without-owner:${px2_f##*/}"
+done
+# (PX-3) Testing: no omits the placement line by design — it is not a legacy plan.
+for px_f in "$PX_IMPLEMENT" "$PX_VERIFY"; do
+    grep -qF 'Line absent under `Testing: yes` → the plan is legacy' "$px_f" || PX_WHY+=" PX-3:legacy-unconditioned:${px_f##*/skills/}"
+done
+# (PX-4) the Step 4 template carries the lines other steps say it carries. Anchored on the
+# template's line forms: the paragraph below the template names both lines too, and a plain
+# `grep -F` stayed green with the template lines deleted.
+PX4_WIN="$(awk '/^### Step 4: Completion Summary/{f=1;next} /^### Step 5/{f=0} f' "$PX_IMPLEMENT")"
+printf '%s' "$PX4_WIN" | grep -qE '^Documentation: \{delegated'             || PX_WHY+=" PX-4:no-documentation-line"
+printf '%s' "$PX4_WIN" | grep -qE '^Test checkpoints: legacy — placement' || PX_WHY+=" PX-4:no-legacy-line"
+# (PX-5) no example teaching the pre-contract announcement format.
+grep -qE '^> Plan:|^## Examples' "$PX_IMPLEMENT" && PX_WHY+=" PX-5:stale-examples"
+# (PX-6) Steps D-H refine Step 5 — the SKILL.md half of UP-5.
+grep -qF 'replace Step 5 and Step 6' "$PX_PLAN" && PX_WHY+=" PX-6:replace-returned"
+grep -qF 'refine Step 5 and Step 6'  "$PX_PLAN" || PX_WHY+=" PX-6:no-refine"
+# (PX-7) no example contradicting --base > git.base_branch > main.
+grep -qF 'base: HEAD' "$PX_PLAN" && PX_WHY+=" PX-7:base-head-example"
+# (PX-8) module boundaries come from the project's ARCHITECTURE.md, not from one pattern.
+grep -qF 'Modular Monolith' "$PX_PLAN" && PX_WHY+=" PX-8:hardcoded-architecture"
+# (PX-9) a v1 registry is an ERROR at the consumer (design-read.md "When this applies").
+grep -qF 'WARN [design] GD-IDS.yaml is version 1'  "$PX_EXPLORE" && PX_WHY+=" PX-9:warn-level"
+grep -qF 'ERROR [design] GD-IDS.yaml is version 1' "$PX_EXPLORE" || PX_WHY+=" PX-9:no-error-level"
+# (PX-10) SOURCE.md is outside the gate's scope, so no gate criterion can catch a bad quote.
+grep -qF 'criterion-2 finding' "$PX_EXPLORE" && PX_WHY+=" PX-10:gate-cannot-see-source"
+# (PX-11) is the coordinator pair in the PR loop and the subagents/ root in PR-5 above.
+# (PX-12) an absent rules file is announced by one line, never skipped in silence.
+grep -qF 'skipped **silently**' "$PX_DEV_PRINCIPLES" && PX_WHY+=" PX-12:dev-principles-silent"
+grep -qF 'skipped silently'     "$PX_DYNAMIC_MEMORY" && PX_WHY+=" PX-12:docs-silent"
+grep -qF 'as a silent skip'     "$ROOT_DIR/docs/configuration.md" && PX_WHY+=" PX-12:configuration-silent"
+# (PX-14) verify never resolves FIX_PLAN.md, so it never names that reason.
+grep -qF '`fix plan` ·' "$PX_VERIFY" && PX_WHY+=" PX-14:verify-fix-plan-reason"
+if [[ -z "$PX_WHY" ]]; then
+    pass "PX-1…PX-14 incidental defects stay closed (defect 13: LB-1…LB-4)"
+else
+    fail "PX incidental defect returned:$PX_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -6685,17 +6972,19 @@ else
     fail "RCA-3…RCA-10 implement rule-capture contract:$RCA_G2_WHY"
 fi
 
+VR_RULES_REF="$ROOT_DIR/skills/unikit-verify/references/rule-candidates.md"
 RCA_G3_WHY=""
 if [[ ! -s "$UNIKIT_VERIFY_SKILL" ]]; then
     RCA_G3_WHY+=" missing:unikit-verify/SKILL.md"
 else
     # (RCA-11) SHARED — one string per formulation applied to BOTH skills in one loop. The
     # two questions must read identically; a contract only one side still states is not one.
+    # Since DEC-012 d verify's half lives in references/rule-candidates.md — the pair is implement ↔ that reference.
     for rca11 in 'the question mechanism carries the options and nothing else' \
                  'Do NOT add any rules until the user answers' \
                  'presents the same options as plain text'; do
         grep -qF "$rca11" "$UNIKIT_IMPLEMENT_SKILL" || RCA_G3_WHY+=" RCA-11:implement-drifted"
-        grep -qF "$rca11" "$UNIKIT_VERIFY_SKILL"    || RCA_G3_WHY+=" RCA-11:verify-drifted"
+        grep -qF "$rca11" "$VR_RULES_REF" 2>/dev/null || RCA_G3_WHY+=" RCA-11:verify-drifted"
     done
     # verify has no Step 3.4 of its own, so what it finds must be RECORDED before it is
     # proposed — a candidate proposed and not recorded dies with the session.
@@ -6703,11 +6992,34 @@ else
     # (RCA-12) NEGATIVE, separate from RCA-9: the alias lived in two files and could return
     # to either one alone.
     grep -qF 'rules-agent' "$UNIKIT_VERIFY_SKILL" && RCA_G3_WHY+=" RCA-12:alias-returned-in-verify"
+    grep -qF 'rules-agent' "$VR_RULES_REF" 2>/dev/null && RCA_G3_WHY+=" RCA-12:alias-returned-in-verify-reference"
 fi
 if [[ -z "$RCA_G3_WHY" ]]; then
     pass "RCA-11…RCA-12 verify asks the same question in the same words, records before proposing; alias gone"
 else
     fail "RCA-11…RCA-12 verify rule-capture contract:$RCA_G3_WHY"
+fi
+
+# VR: verify's rule proposal lives in a reference read only when an `open` candidate exists (DEC-012 d).
+VR_WHY=""
+# (VR-1) present, carrying the procedure.
+[[ -s "$VR_RULES_REF" ]] || VR_WHY+=" VR-1:reference-missing"
+for vr1 in 'multiSelect' '"Add nothing"' 'Print first, ask second'; do
+    grep -qF "$vr1" "$VR_RULES_REF" 2>/dev/null || VR_WHY+=" VR-1:no-${vr1// /-}"
+done
+# (VR-2) NEGATIVE — not inline in the body any more.
+for vr2 in '"Add nothing"' 'Print first, ask second'; do
+    grep -qF "$vr2" "$UNIKIT_VERIFY_SKILL" && VR_WHY+=" VR-2:still-inline:${vr2// /-}"
+done
+# (VR-3) read at plan load when the manifest already holds an open candidate, and named at Step 5.
+VR3_S02="$(awk 'index($0,"### 0.2 Read Plan & Context")==1{f=1;next} index($0,"### 0.3")==1{f=0} f' "$UNIKIT_VERIFY_SKILL")"
+printf '%s' "$VR3_S02" | grep -qF 'references/rule-candidates.md' || VR_WHY+=" VR-3:not-read-at-plan-load"
+VR3_S5="$(awk 'index($0,"## Step 5: Suggest Follow-Up")==1{f=1;next} index($0,"## Strict Mode")==1{f=0} f' "$UNIKIT_VERIFY_SKILL")"
+printf '%s' "$VR3_S5" | grep -qF 'references/rule-candidates.md' || VR_WHY+=" VR-3:step-5-trigger-dangling"
+if [[ -z "$VR_WHY" ]]; then
+    pass "VR-1…VR-3 verify's rule proposal extracted to references/rule-candidates.md (present, not inline, read only with an open candidate)"
+else
+    fail "VR verify rule-proposal extraction:$VR_WHY"
 fi
 
 RCA_G4_WHY=""

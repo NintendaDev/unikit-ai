@@ -60,9 +60,9 @@ Silently load — do not narrate:
    specification: header fields, the two sections, ids, the genre rejections, and the
    `replay: safe` definition. Mandatory; without it, curate nothing.
 2. **`.unikit/system/dev-principles.md`** — the evidence contract (A1/A2), the failure
-   classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read the
-   deep reference below the boundary too: this skill touches editor state, so it is a
-   first Editor task by definition.
+   classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read it
+   whole — the part below its `LAZY-READ BOUNDARY` marker too: this skill touches editor
+   state, so it is a first Editor task by definition.
 3. **`.unikit/system/engine-mcp/INDEX.md`** — the delivery stamp (`server:`) and the
    base section, including **how a project-relative asset path is written for this
    engine** (see "The asset root is a contract" below). File absent →

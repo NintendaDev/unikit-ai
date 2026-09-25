@@ -1,8 +1,8 @@
 # Engine Development Principles
 
-This file is the canonical source of {{engine_name}} development principles. Installed by `unikit-ai init` / `unikit-ai update` into `.unikit/system/dev-principles.md` with `{{engine_*}}` vars substituted. Loaded by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`.
+This file is the canonical source of {{engine_name}} development principles. Installed by `unikit-ai init` / `unikit-ai update` into `.unikit/system/dev-principles.md` with `{{engine_*}}` vars substituted. Loaded by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`, `/unikit-mcp-audit`, and by the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
 
-**How to read it.** Everything **above** the LAZY-READ BOUNDARY is read on **every** Bootstrap. Everything **below** it is read **once per session**, on the first Editor task — unconditionally, never gated on which rules happen to be installed.
+**How to read it.** Everything **above** the LAZY-READ BOUNDARY marker is read on **every** Bootstrap — a reader finds the marker's line and reads the file only up to it. Everything **below** it is read **once per session**: at plan load when the plan's checklist carries an `Editor:` line, and otherwise at the first task that touches editor state — unconditionally, never gated on which rules happen to be installed.
 
 ---
 
@@ -126,7 +126,7 @@ The absence of a rules file is not a restriction.
 | `.unikit/system/engine-mcp/verification.md` | `/unikit-verify` **only** | in full |
 | `.unikit/MCP-RECHECK-NOTES.md` | implement · fix · devcontext · verify | by grep, the same areas |
 
-A file that is absent is skipped **silently** — see A9.
+A file that is absent is skipped: its reader prints one line and keeps every right it had — see A9.
 
 ---
 
@@ -160,9 +160,9 @@ A file that is absent is skipped **silently** — see A9.
 
 <!-- === LAZY-READ BOUNDARY === -->
 
-## Deep reference — read once, on the first Editor task
+## Deep reference — read once per session, when the work touches editor state
 
-Read this section **unconditionally** the first time a session touches editor state, and do not read it again. It is **never** gated on the installed rules: a profile that marks some classes live only shifts your emphasis, it never narrows what you read here. Otherwise the universal safety net disappears exactly where no rules exist — a direct violation of A9.
+Read this section **unconditionally**, once per session — at plan load when the plan's checklist carries an `Editor:` line, or otherwise the first time the session touches editor state — and do not read it again. It is **never** gated on the installed rules: a profile that marks some classes live only shifts your emphasis, it never narrows what you read here. Otherwise the universal safety net disappears exactly where no rules exist — a direct violation of A9.
 
 ### D1. The nine failure classes — detectors
 
@@ -242,3 +242,51 @@ themselves: the handle is still well-formed, and the call that uses it still ret
 - **Positional handles are the least durable of all.** An offset into an ordered collection
   moves when anything before it is added or removed, and nothing in the answer reports that
   the collection was reordered.
+
+### D6. Carrying out an editor change through the engine MCP
+
+The procedure every executor follows when a change to the editor's serialized state (A8) goes through the engine MCP — an `Editor:` task under `Editor tasks: mcp`, a fix that touches editor state, a target verified by reading the editor back. In this order, on **every** such change:
+
+1. **Candidates from the live catalog, by intent.** Take the change's area — for an `Editor:` task, the one its `kind` names — and its action, and pick 3-5 candidate affordances out of the tool list you actually hold. That list is the only place a name may come from — not this file, not a rules file, not memory. A name recalled instead of read is a `catalog phantom` you invented.
+2. **Ask the server for the schema** of those 3-5 before calling any of them. A one-line or empty declaration does not mean "no parameters".
+3. **Grep by area.** Read the `## Check` table of `.unikit/system/engine-mcp/INDEX.md` and of `.unikit/MCP-RECHECK-NOTES.md`, filtered to the change's own area **plus every cross-cutting area**: `rollback · console · batch · compile · transport · visual`. The cross-cutting six are read **always**: the lines are short, and the moment one becomes applicable is not knowable in advance.
+4. **Execute, then read the changed state back.** Close the claim with the evidence class its claim class requires (A2). A response code is not evidence; the evidence is the read-back of what you claimed to change.
+
+**No rules file, or no check line for this area → nothing changes.** Every right you had, you keep (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show (D3).
+
+### D7. A call that misled you — the finding
+
+A call whose answer misled you is a **finding**, and it goes in two places, neither of them the notes file:
+
+- your own report — the run, fix or verification report — as a candidate line: the `area`, what has to be confirmed, and the raw call with the raw answer it gave;
+- the plan's `## MCP Findings` table, when you work against a plan — the half that survives the session.
+
+**When: at the change that produced it, never at the end of the run** — in the same `Edit` that ticks the task's checkbox, or, where nothing is ticked, on finishing the step or the target that produced it. A table filled only at the end is lost to every `/clear`, every context overflow and every session that simply stops.
+
+The row:
+
+- **id** `F<n>`, one more than the highest already in the table — read the table before appending, so a re-run does not restart the numbering and collide with rows written earlier;
+- **`observed`** — the date you observed it, taken from the system clock, never recalled: the `unikit-mcp-trap` skill copies the column verbatim, so an empty or recalled date makes the notes record the transfer instead of the observation;
+- **dedup is semantic, not mechanical** — drop a candidate that says the same thing about the same `area` as a row already there, judged by meaning rather than by string match. Being loose is deliberate: a duplicate that slips through costs one line, a wrong merge destroys the `evidence` of an observation, and evidence cannot be reconstructed;
+- the columns and their contract: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
+
+**Never write `.unikit/MCP-RECHECK-NOTES.md` yourself.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running the `unikit-mcp-trap` skill.
+
+### D8. The library reference
+
+The documentation source the header of `.unikit/system/engine-mcp/INDEX.md` names for the configured server. Its identifier is carried there, so nothing is resolved at run time. **Only a reader granted that server reaches for it**; for every other reader of this file D8 is inert — the same as an unconfigured reference (below). Reach for it on exactly two occasions, and **never at Bootstrap**:
+
+1. **an unfamiliar area** — what approaches the authors propose; once per area per session;
+2. **a dead end** — you hold the schema and the capability still is not there.
+
+**Never routinely.** It is a network dependency inside the editor lane, a few thousand tokens per query, and it makes the run irreproducible; retrieval returns what is most relevant, and a caveat is almost never the most relevant answer to "how do I do this".
+
+**Say when you reached for it, and why** — one line into your report, at the moment of the call:
+
+```
+Reference: trigger <1|2> — <the area, or the dead end>
+```
+
+**How the answer is treated.** The reference describes **intent, not behaviour**: anything taken from it carries the same evidence obligations as anything else, with heightened attention — it has been caught presenting a structurally broken path as an exemplary example. It never closes a claim; only an observation does (A2).
+
+**The reference is optional in the wizard.** Unconfigured, trigger 2 simply has no fallback: descend the degradation ladder (D3) and reach `⏸️ MANUAL` at its proper rung only — by absence of a route, established by trying. An unconfigured reference is not itself a missing capability.

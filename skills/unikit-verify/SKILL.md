@@ -141,7 +141,7 @@ Search logic — same as `/unikit-implement` (unified plan detection):
 INFO [plan] resolved: <path> (<reason>)
 ```
 
-`<reason>` is exactly one of: `explicit path` · `feature name` · `fast plan` · `fix plan` ·
+`<reason>` is exactly one of: `explicit path` · `feature name` · `fast plan` ·
 `branch match: <branch>` · `latest fallback`. This is plain output, never the payload of an
 interactive question.
 3. If no plan found (no `.unikit/code/PLAN.md` and `.unikit/code/plans/` is empty or doesn't exist):
@@ -186,12 +186,14 @@ Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit
 
 **Parse `## Settings`** from the plan while it is open here — Step 1 needs it and runs long before the `Docs:` read in Step 3:
 - `Editor tasks: mcp | manual | direct` — the mode `/unikit-implement` used. Context for Step 1: under `manual`, editor targets are expected to be marked `⏸️ MANUAL` rather than implemented.
-- `Test checkpoints: task | phase | plan` — the run placement the planner recorded. Context for Step 2.2: under `phase` and `plan` there are no runs among the `### Verification` commands — they live in test-checkpoint tasks. **Line absent → the plan is legacy:** placement was never declared, and runs may sit anywhere in the task text.
+- `Test checkpoints: task | phase | plan` — the run placement the planner recorded. Context for Step 2.2: under `phase` and `plan` there are no runs among the `### Verification` commands — they live in test-checkpoint tasks. **Line absent under `Testing: yes` → the plan is legacy:** placement was never declared, and runs may sit anywhere in the task text. Under `Testing: no` the line is omitted by design, and there are no runs to place.
+
+**`## Rule Candidates` holds at least one `open` row** → read `{{skills_dir}}/{{self_name}}/references/rule-candidates.md` now, once — Step 5 follows it. No `open` row → do not read it here.
 
 Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can be applied inline without re-loading on each delegation.
 
 **Read in parallel (rules + principles, for inline fix execution in Step 4.3):**
-1. `.unikit/system/dev-principles.md` — engine development principles
+1. `.unikit/system/dev-principles.md` — **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` the file with `limit` set to that line number. The part **below the marker is read once, at plan load, when the checklist carries an `Editor:` line** — D3 and the editor procedures D6–D7 close the editor targets of Step 1; without such a line it is read before the first `GATE LIFTED` verdict of Step 2, if not read yet — D1 decides whether an absent affordance is absent. An agent that cannot read with a limit reads the whole file.
 2. `.unikit/RULES.md` — project overrides (highest priority)
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-verify` — read that file from `.unikit/memory/code/core/` using the Read tool.
@@ -292,8 +294,8 @@ Launch one Explore task per phase from the plan's task list. For each phase, pro
 - **Editor tasks stay in this skill's own context** and are verified by **reading the editor state back through the engine MCP**, never with Glob/Grep. The per-kind checks are engine knowledge — see `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` → `## Editor Target Checks`.
 - **The file exists but carries no `## Editor Target Checks` section** → a normal A9 degradation, not a dead end. Verify the target anyway: close it with an evidence class from `.unikit/system/dev-principles.md` (A2, and D3 when the first route is unavailable), reading the project's own rules in `.unikit/system/engine-mcp/` first. This is **never** `Engine MCP unavailable` and **never** `⏸️ MANUAL` — a missing section means the per-kind signals were not written down for this engine yet, never that the affordance is absent.
 - **Verify against the editor, never against the plan.** The acceptance criterion is closed by what the editor reports now, not by what the plan said would happen and not by what the implementation report claimed. Re-reading the plan's own words back is not verification: it makes a planning error invisible, because the two sides of the comparison have the same author.
-- **Per target, before the read-back:** pick candidate affordances from the live catalog by intent (never from a file, never from memory), ask the server for their schemas, and grep the `## Check` tables of `.unikit/system/engine-mcp/INDEX.md` and `.unikit/MCP-RECHECK-NOTES.md` for this target's own area **plus every cross-cutting area** — `rollback · console · batch · compile · transport · visual`. No matching line changes nothing: an absent exception is not an absent capability (A9).
-- **A call that misled you is a finding.** Record it in the verification report as a candidate line (the `area`, what has to be confirmed, the raw call and the raw answer) and in the plan's `## MCP Findings` table. **Write the table row on the pass over the target that produced it, not in the verification summary** — a finding held until the summary is lost to every run that stops early. `F<n>` is one more than the highest id already in the table (read the table first, so a re-verify does not restart the numbering); `observed` is the date you observed it (`Bash(date *)`), copied into the notes verbatim by `/unikit-mcp-trap`, so leaving it empty makes the notes record the transfer date instead; dedup is semantic — a candidate saying the same thing about the same `area` as an existing row is dropped, by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`. **Never write `.unikit/MCP-RECHECK-NOTES.md` from here** — the durable surface passes through a human running `/unikit-mcp-trap`.
+- **Per target, before the read-back:** steps 1–3 of `.unikit/system/dev-principles.md` → **D6** — candidates from the live catalog by intent, their schemas, the `## Check` tables grepped by area. No matching line changes nothing: an absent exception is not an absent capability (A9).
+- **A call that misled you is a finding** (`dev-principles.md` → **D7**): a candidate line in the verification report and a row in the plan's `## MCP Findings` table, written on the pass over the target that produced it, never in the verification summary — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/MCP-RECHECK-NOTES.md` from here.**
 - **MCP unavailable** → `⏭️ SKIPPED (editor target, MCP unavailable)`. Not a failure.
 - **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
 
@@ -692,27 +694,11 @@ Candidates come from two places, and they are unified before anything is propose
 
 **What this verification found is written into `## Rule Candidates` first, and only then proposed** — the same columns, with `from: verify`. The order is the point: a candidate that was proposed but never recorded disappears with the session.
 
-1. **No `open` candidate → silence.** Not a line, not a "no rules found". A run without candidates is the ordinary case, and a line about it on every run turns the signal into wallpaper.
-2. **Select at most three** `open` candidates. The filter: a general convention for future code; not about one task; not a description of the current code; absent from `.unikit/RULES.md` and from `RULES_INDEX.md`; one line, one directive.
-3. **Print the candidates as plain markdown, in a block of their own** — before the question:
+**No `open` candidate → silence.** Not a line, not a "no rules found". A run without candidates is the ordinary case, and a line about it on every run turns the signal into wallpaper.
 
-   ```
-   Project rule candidates:
+**At least one `open` candidate → follow `{{skills_dir}}/{{self_name}}/references/rule-candidates.md`** — read at Step 0.2 when the manifest already carried an `open` candidate, otherwise read it now, once. If the file is missing or unreadable, propose the candidates in the report as text, write nothing, and print `WARN [rules] rule-candidates reference missing — candidates proposed in the report only; run unikit-ai update`.
 
-   1. <the rule text, as it will be written>
-      from: verify
-   2. <the rule text>
-      from: task 4.1
-   ```
-
-   **Print first, ask second: the question mechanism carries the options and nothing else.** A question that also holds the payload is invisible on a runtime that has no such mechanism — that is a measured failure, not a supposition.
-4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"**. Three candidates and a refusal are exactly four options, the tool's limit — which is the reason the count is capped at three. Keep the option label short; the full rule text goes in the option's `description`.
-5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
-6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
-7. **What was selected goes to `/unikit-rules` as one numbered batch**, through the three-tier dispatch: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline; Tier 2 the inline slash form `/unikit-rules <batch>`, rewritten per agent by the installer; Tier 3 printing the command, only where no inline mechanism exists at all. This is **a real call, not text in backticks**.
-8. **Show the user the `## Batch result` table** the delegate returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
-
-**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed — the one line explaining why fewer were proposed than recorded. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added`: the rule was not written, and marking otherwise would be a lie — print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the same holds: the statuses stand, and `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`. **No manifest at all** — verify was called outside a plan — → the candidates cannot be recorded: propose them in the report as text and print `WARN [rules] no plan — candidates were not saved, proposed in the report only`. Losing a candidate silently is not allowed, and inventing a file is not either.
+**No manifest at all** — verify was called outside a plan — → the candidates cannot be recorded: select them by the filter of `{{skills_dir}}/{{self_name}}/references/rule-candidates.md` (read it now, once — at most three) and propose them in the report as text, then print `WARN [rules] no plan — candidates were not saved, proposed in the report only`. Losing a candidate silently is not allowed, and inventing a file is not either.
 
 This block runs **before** the "What's next?" question below, and the two are never merged: they are different questions, and folding them into one would take away the option of adding nothing independently of choosing the next step.
 

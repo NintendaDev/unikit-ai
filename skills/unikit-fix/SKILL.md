@@ -175,7 +175,7 @@ git diff --stat
 Bootstrap loads coding rules and principles ONCE upfront so the fix can be implemented inline without re-loading on each delegation.
 
 **Read in parallel (rules + principles):**
-1. `.unikit/system/dev-principles.md` — engine development principles
+1. `.unikit/system/dev-principles.md` — **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` the file with `limit` set to that line number. The part below the marker is read once, on the first step that touches the editor's serialized state — including the editor rungs of the Step 1 diagnosis ladder, which use its **D2**. An agent that cannot read with a limit reads the whole file.
 2. `.unikit/RULES.md` — project overrides (highest priority)
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-fix` — read that file from `.unikit/memory/code/core/` using the Read tool.
@@ -445,43 +445,9 @@ When implementing inline, apply:
 
 **Fallback:** If `Agent` tool is unavailable, do NOT invoke `/unikit-devcontext` inline. Implement directly with the loaded rules — Bootstrap already covers everything needed.
 
-**When the fix touches the editor's serialized state** — a scene, a prefab, a component, an asset, UI, VFX, animation, project settings — rather than source text, carry it out through the engine MCP in this order:
+**When the fix touches the editor's serialized state** — a scene, a prefab, a component, an asset, UI, VFX, animation, project settings — rather than source text, carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6** (its part below the lazy-read boundary is read now if this session has not read it yet). **No rules file, or no check line for this area → nothing changes:** it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
 
-1. **Candidates from the live catalog, by intent.** Pick 3-5 candidate affordances from the tool list you actually hold. That list is the only place a name may come from — not this file, not a rules file, not memory. A name recalled instead of read is a `catalog phantom` you invented.
-2. **Ask the server for the schema** of those 3-5 before calling any of them. A one-line or empty declaration does not mean "no parameters".
-3. **Grep by area.** Read the `## Check` table of `.unikit/system/engine-mcp/INDEX.md` and of `.unikit/MCP-RECHECK-NOTES.md`, filtered to the area this change belongs to **plus every cross-cutting area**: `rollback · console · batch · compile · transport · visual`. The cross-cutting six are read **always**; the lines are short, and the moment one becomes applicable is not knowable in advance.
-4. **Execute, then read the changed state back.** Close the claim with the evidence class its claim class requires (`dev-principles.md` → A2). A response code is not evidence.
-
-**No rules file, or no check line for this area → nothing changes.** Every right you had, you keep: an absent exception is not an absent capability, and it is never a reason to declare the fix impossible or to mark it `⏸️ MANUAL` (A9).
-
-**A call that misled you is a finding — and it goes in two places, neither of them the notes file.** Put it in the fix report as a candidate line (the `area`, what has to be confirmed, the raw call with the raw answer), and — when this fix is running against a plan — into that plan's `## MCP Findings` table.
-
-**When: on finishing the step that produced it, not in the fix report at the end.** A finding held until the report is lost to every `/clear` and every session that stops early, which is the whole reason the table exists. `F<n>` is one more than the highest id already in the table — read the table before appending, so a re-run does not restart the numbering; `observed` is the date you observed it (`Bash(date *)`), because `/unikit-mcp-trap` copies that column into the notes verbatim and an empty one turns into the date of the transfer; dedup is semantic — drop a candidate saying the same thing about the same `area` as an existing row, judging by meaning rather than by string match. Columns: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
-
-**Never write `.unikit/MCP-RECHECK-NOTES.md` from here:** one observation is a bad sample and a bad line lives for months, so the durable surface passes through a human running `/unikit-mcp-trap`.
-
-**The library reference — two triggers, and never on Bootstrap.**
-
-Reach for it on exactly two occasions:
-
-1. **an unfamiliar area** — what approaches the authors propose; once per area per session;
-2. **a dead end** — you hold the schema and the capability still is not there.
-
-**Never routinely, and never at Bootstrap.** It is a network dependency inside the editor lane, a few thousand tokens per query, and it makes the run irreproducible — two runs of the same plan diverge. It also mixes a source with a systematic bias toward confidence into the hot path: retrieval returns what is most relevant, and a caveat is almost never the most relevant answer to "how do I do this".
-
-**The identifier is already known.** It is carried in the header of `.unikit/system/engine-mcp/INDEX.md`, which names the reference for the configured server — so nothing has to be resolved at run time.
-
-**Say when you reached for it, and why.** One line into the run report, at the moment of the call — the network was touched and the report has to show it:
-
-```
-Reference: trigger <1|2> — <the area, or the dead end>
-```
-
-Without it the run reads as if everything came from observation, which is exactly the confusion a source biased toward confidence should not get for free.
-
-**How the answer is treated.** The reference describes **intent, not behaviour**. Anything taken from it carries the same evidence obligations as anything else, and with heightened attention: it has been caught presenting a structurally broken path as an exemplary example. It never closes a claim — only an observation does (`dev-principles.md` → A2).
-
-**The reference is optional in the wizard.** If it was not configured, trigger 2 simply has no fallback: descend the degradation ladder (`dev-principles.md` → D3) and reach `⏸️ MANUAL` at its proper rung only — by absence of a route, established by trying. An unconfigured reference is not itself a missing capability.
+**A call that misled you is a finding** (**D7**): a candidate line in the fix report and, when this fix runs against a plan, a row in that plan's `## MCP Findings` table, written on finishing the step that produced it — `observed` is the date you observed it (`Bash(date *)`). **Never write `.unikit/MCP-RECHECK-NOTES.md` from here.** The library reference has two triggers (**D8**).
 
 After the fix is implemented, you MUST continue through ALL remaining steps (4 → 5 → 6 → 7).
 

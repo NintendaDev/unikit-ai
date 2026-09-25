@@ -65,7 +65,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 - Saves results to `.unikit/code/researches/<slug>/` with `RESEARCH.md` (the manifest — header, `## Active Summary` between markers, `## Findings`, an append-only `## Sessions`), plus `SOURCE.md` for prompt-based explorations — a **verbatim** log, where your answers are quoted rather than summarised, written as the conversation happens rather than assembled at the end — and adaptive artifacts in ultra
 - The research folder therefore appears on disk **before** you are asked to save, from the moment the conversation has become a research: a requirement was stated, a decision was taken, you corrected the agent. A one-off question leaves nothing behind, and that is the intended outcome rather than a malfunction. Writing the log is not saving the research — no manifest, no registry, no coherence gate — and the research is still saved only when you agree to it
 - A folder holding a `SOURCE.md` and no manifest is an **unfinished** research: a session that ended before it was saved. It stays out of `researches/INDEX.md`, is announced there by name, and is resumed with `/unikit-explore <folder>`
-- Before the save is confirmed the agent **reads back** the requirements you have not actually seen — the ones it inferred itself, the ones that depart from what you said, and the ones whose wording admits two different implementations. What you stated unambiguously is not shown. Anything left unconfirmed is demoted to an open question rather than travelling on as the planner's input
+- Before the save is confirmed the agent **reads back** the requirements you have not actually seen — the ones it inferred itself, the ones that depart from what you said, and the ones whose wording admits two different implementations. What you stated unambiguously is not shown. Anything left unconfirmed is demoted to an open question rather than travelling on as the planner's input. Each such requirement is its own question — pick an option or answer in your own words; an agent without a question tool prints the same options as a numbered list and waits for your answer.
 - Re-running on an existing slug **continues** that research instead of opening a second folder; `researches/INDEX.md` is regenerated from disk on every save, so there is no separate rebuild command
 - Retired reference files stay on disk in projects installed before this change — the skill installer copies additively and never prunes. They are inert: nothing reads them
 - The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised only as the leading token, never inferred
@@ -114,6 +114,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 /unikit-implement status             # Show progress without executing
 /unikit-implement Phase 3            # Execute only Phase 3
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
+/unikit-implement Phases 5-6, tests at the end of phase 6   # One test run for the range, no question
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
 /unikit-implement core-loop          # Find plan by name
 /unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
@@ -122,6 +123,9 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Executes tasks one by one with commit checkpoints
 - Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and implements tasks inline with `Read/Edit/Write/Bash`. The `develop-agent` alias is used only for true parallel scopes or deep-dive single tasks
 - Supports selective execution by phase, task numbers, or feature name
+- On a branch with its own plan, that plan is used while the requested work — the named phases, or the whole plan — is still pending in it, even when a flat `.unikit/code/PLAN.md` also exists; only a finished branch plan next to an unfinished fast plan brings a question: run the fast plan?
+- When the call covers two or more test-checkpoint tasks, asks once — before the first task, together with the uncommitted-changes question — whether to run the tests once at the last point or at every point; words in the call (`tests at the end of phase 6`) answer in advance. A merged point's own non-run steps (a negative control, a manual smoke) are performed at the surviving point
+- Reads only what the plan needs: the ultra reader contract only for an ultra bundle, the test-run rules only under `Testing: yes`, the editor procedures of `dev-principles.md` only when the plan carries an `Editor:` task
 - `@<path>` bypasses auto-detection for explicit plan targeting
 
 ### `/unikit-fix [bug description]` - fix and learn

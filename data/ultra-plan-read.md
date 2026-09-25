@@ -43,6 +43,9 @@ The merge pre-pass (`/unikit-implement` Step 2.5) reads **only the manifest's ch
 test-checkpoint task in scope is listed there. It opens no phase file — reading depth does not
 grow by this step.
 
+At run time the surviving point of a merge also reads the `## Task N.M:` sections of the
+tasks merged into it: their non-run steps are performed there (`/unikit-implement` Step 3.2).
+
 ## What is mutable
 
 - Checkboxes, `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Commit Plan` and

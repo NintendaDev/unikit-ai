@@ -266,7 +266,7 @@ coverage ∈ task N.M | phase N | phases N-M | plan
 
 Rules:
 
-- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task creates nothing, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — the only form of task in this format without that line.
+- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task leaves nothing behind in the project, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — the only form of task in this format without that line. A temporary probe it creates and removes within its own steps (a negative control: make a test fail, see red, remove the probe, see green) and a manual smoke are legitimate steps of the task; when the task is merged into a later point, they are performed there (`/unikit-implement` Step 3.2).
 - **The width of a run follows from its coverage and is not configurable:** `task N.M` → the fixtures and classes that task names; `phase N` / `phases N-M` → the test suites of the modules those phases touch, plus the suites that depend on them; `plan` → every test in the project.
 - **The planner writes no list of suites.** The executor computes the set at run time, from the files actually changed. The planner neither reads nor builds a module graph, so planning time does not grow.
 - `task N.M` exists **only in an ultra bundle**: fast and full have no per-task surface to put it on.

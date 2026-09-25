@@ -261,7 +261,7 @@ Thinking-partner mode for exploring ideas, constraints, and trade-offs without i
 
 `SOURCE.md` is written as the conversation happens rather than at the end: the folder appears on disk from the moment the conversation has become a research - a requirement stated, a decision taken, a correction made - and each reply appends what has been said since. A one-off question never reaches that point and leaves nothing behind. Writing the log is not saving the research: it creates no manifest, touches no registry, runs no gate and asks nothing, and the research is still saved only when you agree to it. A folder carrying a log and no manifest is an unfinished research - it stays out of `researches/INDEX.md`, is announced there by name, and resumes with `/unikit-explore <folder>`.
 
-Before the save is confirmed the agent reads back the requirements you have not actually seen: the ones it inferred itself, the ones that depart from what you said, and the ones whose wording admits two different implementations. What you stated unambiguously is not shown. Anything left unconfirmed becomes an open question instead of the planner's input.
+Before the save is confirmed the agent reads back the requirements you have not actually seen: the ones it inferred itself, the ones that depart from what you said, and the ones whose wording admits two different implementations. What you stated unambiguously is not shown. Anything left unconfirmed becomes an open question instead of the planner's input. Each such requirement is asked as a separate question, with the grounds printed above it.
 
 `/unikit-plan` picks the research up from `researches/INDEX.md` and reads the `## Active Summary` as its declared input, using `## Findings` and the adaptive artifacts for rationale. Saving is the recommended approach for maximum code quality, but not mandatory. For quick, straightforward solutions you can skip saving and call `/unikit-plan` directly in the current explore session - the planner will use the conversation context instead.
 
@@ -332,7 +332,7 @@ After phase completion:
 
 - Runs compilation check (through the engine MCP server)
 - Writes tests if `Testing: yes` — inside the tasks that introduce them
-- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; with `testing.implement.merge_checkpoints` the checkpoints inside the invocation scope collapse into one. Under `Testing: yes` the plan's last task is a full run
+- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run
 - Creates commit checkpoint
 
 Post-completion, in order:

@@ -139,7 +139,7 @@ the checkboxes live **only** in the manifest. Phase files are read-only during e
 
 ## Step H: Confirm with the user
 
-In addition to the full-mode Step 6 items, show:
+In addition to the Step 6 items, show:
 
 1. The bundle folder path.
 2. The number of phase files.
