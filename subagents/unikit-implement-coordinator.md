@@ -311,6 +311,7 @@ Every commit message is written by the `unikit-commit` skill. This agent never c
   2. Stage only the files this run created or modified for that range, minus the sidecar's `excluded_files`: `git add -- <files>`. Never `git add .` or `git add -A`.
   3. Invoke `Skill(skill: "unikit-commit", args: "checkpoint: Commit N, tasks X-Y")`. When the sidecar returned `needs_split`, append its groups to the args — labels and file lists only — as the proposed split.
 - **At the end of the full run:** uncommitted work from this run remains → the same three steps, with `args: "final commit"`.
+- **The user cancels in the `unikit-commit` confirmation** → nothing is committed and the files stay staged: set the layer's `Commit:` line to `skipped — cancelled by the user` and continue the run.
 - **No `Skill` tool in this session** → do not commit by hand: leave the files staged, set the layer's `Commit:` line to `pending — run /unikit-commit`, and continue.
 - Never auto-push — `unikit-commit` asks about the push itself and honours `git.skip_push_after_commit`.
 

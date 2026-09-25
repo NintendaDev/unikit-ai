@@ -7864,14 +7864,20 @@ if [[ -z "$CA_WHY" ]]; then
     grep -qF 'create a final commit' "$CA_COORD" && CA_WHY+=" CA-2:final-self-commit-returned"
     grep -qF '→ create commit' "$CA_COORD" && CA_WHY+=" CA-2:pseudocode-self-commit"
     grep -qF 'Assess commit readiness for layer N: [all changed files]' "$CA_COORD" || CA_WHY+=" CA-2:sidecar-gets-no-files"
+    # A cancel in the skill's confirmation is a normal outcome of a checkpoint, not a failure:
+    # the layer records it and the run goes on (verify finding on the plan's Task 5 contract).
+    grep -qF '`Commit:` line to `skipped — cancelled by the user`' "$CA_COORD" || CA_WHY+=" CA-2:cancel-unhandled"
     # (CA-3) implement's checkpoint proposes no subject of its own, and the commit that must
     # precede a `direct` editor edit goes through the skill as well.
     grep -qF 'Suggested message:' "$CA_IMPLEMENT" && CA_WHY+=" CA-3:checkpoint-suggests-a-subject"
     grep -qF 'Do not suggest a message here' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:no-suggestion-ban"
     grep -qF 'commit them through `/unikit-commit`, like every other commit of this run' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-edit-self-commit"
+    # The commit before a `direct` edit is the only rollback point, so a cancelled or failed one
+    # stops the edit and returns the task to `manual` (the plan's supported-combination row).
+    grep -qF 'without that commit there is no rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-refusal-unhandled"
 fi
 if [[ -z "$CA_WHY" ]]; then
-    pass "CA-1…CA-3 one author of commit messages: the sidecar drafts none, the coordinator commits through the skill, implement suggests no subject and commits before a direct edit through the skill"
+    pass "CA-1…CA-3 one author of commit messages: the sidecar drafts none, the coordinator commits through the skill, implement suggests no subject and commits before a direct edit through the skill; a cancelled checkpoint commit is recorded as skipped, and no direct edit happens without its commit"
 else
     fail "CA single commit-message author:$CA_WHY"
 fi
