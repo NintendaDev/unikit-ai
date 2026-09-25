@@ -362,7 +362,7 @@ feature without ever saying so.
 
 Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
 
-An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for.
+An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for. `/unikit-explore` reads archived plans whose name matches its topic, as the history of how a feature was built.
 
 ## Artifact Ownership
 

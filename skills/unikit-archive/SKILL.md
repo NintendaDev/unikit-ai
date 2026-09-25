@@ -3,9 +3,10 @@ name: unikit-archive
 description: >-
   Archive finished folder plans: move a completed plan from .unikit/code/plans/<folder>/ to
   .unikit/code/archive/plans/<folder>/ so plan lookup, the plan lists and the "latest plan"
-  choice stop offering it. A plan is archived only when every checklist task is done, its
-  MCP findings were transferred and no rule candidate is still open. Nothing is deleted,
-  nothing is renamed, no commit is made. Use when the user says "archive the plan",
+  choice stop offering it. A plan is archived only when every checklist task is done; MCP
+  findings never transferred and rule candidates never proposed are shown, and the user
+  chooses to handle them first or archive anyway. Nothing is deleted, nothing is renamed,
+  no commit is made. Use when the user says "archive the plan",
   "archive completed plans", "clean up plans", "move finished plans out", "show archived
   plans". Not for the fast plan .unikit/code/PLAN.md or .unikit/code/FIX_PLAN.md
   (/unikit-implement and /unikit-fix remove those themselves); to check that a plan is
@@ -40,7 +41,7 @@ Do not announce, confirm, or mention the language setting.
 
 ## Scope
 
-**Archived:** a folder plan `.unikit/code/plans/<folder>/` — full or ultra, current or legacy layout, any folder name format (`<name>`, `YYYY-MM-DD_<name>`, `DDD-<name>`) — once Step 2 calls it `completed` and neither stop applies.
+**Archived:** a folder plan `.unikit/code/plans/<folder>/` — full or ultra, current or legacy layout, any folder name format (`<name>`, `YYYY-MM-DD_<name>`, `DDD-<name>`) — once Step 2 calls it `completed` and the user has answered any follow-up question.
 
 **Never touched:**
 - `.unikit/code/PLAN.md` — the fast plan; `/unikit-implement` offers to delete it when it is done.
@@ -80,15 +81,36 @@ Run this for every folder the mode looks at. It reads, it never writes.
    - `incomplete (<done>/<total>)` — at least one unfinished line.
    - `empty` — no checkbox line at all. An empty plan is not archived.
 5. **Ultra bundle.** The task file's first line is `<!-- unikit:plan-mode:ultra -->` → every link under its `## Phase Index` heading must resolve to an existing file directly inside the folder. A missing one → verdict `broken bundle (<missing file>)`, not archived.
-6. **Stops** — checked for a `completed` plan only:
-   - **Stop 1 — MCP findings not transferred.** The task file's `## MCP Findings` table has rows (a row's first cell is `F<n>`), and at least one of them has no back-reference in `.unikit/MCP-RECHECK-NOTES.md` or in a parked `.unikit/MCP-RECHECK-NOTES.archive.*.md` — the installer parks the notes there when the engine server changes. The back-reference of row `F<n>` is the text `<folder>/<task file name>#F<n>`: `/unikit-mcp-trap` writes it into every note it takes from a plan, so it is the exact record of what was moved. No notes file at all → nothing was transferred. Verdict `stop: <k> MCP findings not transferred`.
-   - **Stop 2 — rule candidates never proposed.** A row of `## Rule Candidates` has the status `open`. Verdict `stop: <k> open rule candidates`.
+6. **Follow-ups** — checked for a `completed` plan only. Each is **a question, never a stop**: the plan stays archivable, and the mode asks the user through [the follow-up question](#the-follow-up-question).
+   - **MCP findings not transferred.** The task file's `## MCP Findings` table has rows (a row's first cell is `F<n>`), and at least one of them has no back-reference in `.unikit/MCP-RECHECK-NOTES.md` or in a parked `.unikit/MCP-RECHECK-NOTES.archive.*.md` — the installer parks the notes there when the engine server changes. The back-reference of row `F<n>` is the text `<folder>/<task file name>#F<n>`: `/unikit-mcp-trap` writes it into every note it takes from a plan, so it is the exact record of what was moved. No notes file at all → nothing was transferred. A missing back-reference is not always a loss: `/unikit-mcp-trap` lets the user decline a finding, and a declined row leaves no back-reference behind; `/unikit-mcp-audit` removes a note it retires together with its back-reference.
+   - **Rule candidates never proposed.** A row of `## Rule Candidates` has the status `open`.
+
+   The verdict names what is left: `completed, <k> MCP findings not transferred`, `completed, <m> open rule candidates`, or both.
 
 Print one line per folder as it is classified: `INFO [archive] <folder>: <verdict>`.
 
-**Commands that clear a stop:** Stop 1 → `/unikit-mcp-trap .unikit/code/plans/<folder>/<task file name>`. Stop 2 → `/unikit-verify <folder>` — it proposes the open candidates and records each as `added` or `declined`.
+**Commands that handle a follow-up:** untransferred findings → `/unikit-mcp-trap .unikit/code/plans/<folder>/<task file name>`; open rule candidates → `/unikit-verify <folder>` — it proposes them and records each as `added` or `declined`.
 
 ## Step 3: Modes
+
+### The follow-up question
+
+Asked once per run, for every plan about to be archived that has a follow-up left. First print, per plan, the findings rows that have no back-reference and the open rule candidates, then:
+
+```
+AskUserQuestion: <folder list> still have follow-ups: <k> MCP findings not transferred to .unikit/MCP-RECHECK-NOTES.md, <m> rule candidates never proposed.
+
+Options:
+1. Handle them first — leave these plans in place
+2. Archive anyway — the rows move with the plan, and /unikit-mcp-trap and /unikit-verify will no longer find them
+3. Cancel
+```
+
+Name only the kinds that are present.
+
+- "Handle them first" → these plans are not archived — the summary lists them under `Skipped` as `follow-ups left` — and print the command for each (see above). The other chosen plans are archived.
+- "Archive anyway" → archive them as usual.
+- "Cancel" → archive nothing and stop.
 
 ### list
 
@@ -97,8 +119,8 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
 ### interactive
 
 1. Classify every folder in `.unikit/code/plans/` and print a table: folder · verdict.
-2. No folder is `completed` without a stop → `No plan can be archived now.`, followed by the command that clears each stopped plan, and stop.
-3. Print the archivable folders as a numbered list, then ask:
+2. No folder is `completed` → `No plan can be archived now.` and stop.
+3. Print the `completed` folders as a numbered list — a plan with follow-ups is marked with them, e.g. `(2 MCP findings not transferred, 1 open rule candidate)` — then ask:
 
    ```
    AskUserQuestion: Archive which plans?
@@ -108,11 +130,12 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
    2. Some of them — I'll enter the numbers
    3. Cancel
    ```
-4. Archive the chosen folders (Step 4). Stopped plans are listed with the command that clears them and are not offered.
+4. Chosen plans with follow-ups → [the follow-up question](#the-follow-up-question).
+5. Archive the chosen folders (Step 4).
 
 ### all
 
-Classify every folder in `.unikit/code/plans/`. Stopped plans are skipped, each with `WARN [archive] skipped <folder>: <verdict> — run <command>`; for Stop 1 the line ends with `, or archive it by name if its findings were declined or retired`. Print the archivable ones and ask:
+Classify every folder in `.unikit/code/plans/`. Print the `completed` ones, marked as in interactive mode, and ask:
 
 ```
 AskUserQuestion: Archive all <n> completed plans?
@@ -122,24 +145,14 @@ Options:
 2. Cancel
 ```
 
+"Yes" and some of them have follow-ups → [the follow-up question](#the-follow-up-question) before anything moves.
+
 ### one plan
 
 1. Resolve the name inside `.unikit/code/plans/`: an exact folder name; else the one folder ending in `_<name>`, or in `-<name>` after three digits; else the one folder whose name contains `<name>` — a match by this last rule is confirmed before anything moves (`AskUserQuestion: Archive <matched folder>?` — `Yes` / `Cancel`). None → `Plan not found: <name>` — with `(already archived)` added when `.unikit/code/archive/plans/<name>/` exists — and stop. More than one → list them, ask for a more specific name, and stop.
 2. Classify it. Not `completed` → print the verdict and stop.
-3. Stop 1 → print the rows that have no back-reference, then ask:
-
-   ```
-   AskUserQuestion: <k> MCP findings of <folder> were not transferred to .unikit/MCP-RECHECK-NOTES.md.
-
-   Options:
-   1. Transfer them first — stop here
-   2. Archive anyway — the rows move with the plan, and /unikit-mcp-trap will no longer find them
-   3. Cancel
-   ```
-
-   "Transfer them first" → print `Run: /unikit-mcp-trap .unikit/code/plans/<folder>/<task file name>` and stop. "Archive anyway" exists because a finding can lose its back-reference legitimately: `/unikit-mcp-trap` lets the user decline a finding, and a declined row leaves no back-reference behind; `/unikit-mcp-audit` removes a note it retires together with its back-reference.
-4. Stop 2 → print `<folder> has <k> open rule candidates — run /unikit-verify <folder> to propose them.` and stop.
-5. Archive it (Step 4).
+3. Follow-ups → [the follow-up question](#the-follow-up-question); "Handle them first" stops here.
+4. Archive it (Step 4).
 
 ## Step 4: Archive one plan
 
@@ -167,11 +180,11 @@ Omit `Skipped` when `<k>` is 0.
 
 ## Rules
 
-1. Never archive a plan that is not `completed` — an `incomplete`, `empty` or `broken bundle` plan stays where it is.
+1. Never archive a plan that is not `completed` — an `incomplete`, `empty` or `broken bundle` plan stays where it is. Follow-ups — untransferred MCP findings, open rule candidates — never block: they ask, and the user decides.
 2. Never delete, overwrite or rename a folder.
 3. Never commit or push — `/unikit-commit` does that.
 4. Edit nothing but the one `Archived:` line.
-5. Other skills do not search the archive, on purpose: an archived plan must stop being offered. The one reader that needs completed plans — the `implemented_version` fallback of `/unikit-plan` — reads `.unikit/code/archive/plans/` explicitly, and the `/unikit-plan` collision check looks there too, so a new plan never takes an archived plan's name.
+5. Other skills do not search the archive, on purpose: an archived plan must stop being offered. Three readers look there explicitly: the `implemented_version` fallback of `/unikit-plan` needs completed plans; the `/unikit-plan` collision check keeps a new plan from taking an archived plan's name; `/unikit-explore` reads archived plans as history of what was already built — never as a plan to continue.
 
 ## Artifact Ownership
 

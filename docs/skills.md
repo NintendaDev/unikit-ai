@@ -178,11 +178,11 @@ Creates conventional commits with engine-aware checks:
 ```
 Moves a completed folder plan from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`:
 - A plan qualifies when every checklist task is `[x]` - an open, in-progress or failed task keeps it in place, and a plan with no tasks is never archived
-- Two stops: MCP findings never transferred to `.unikit/MCP-RECHECK-NOTES.md` (run `/unikit-mcp-trap`), and rule candidates still `open` (run `/unikit-verify`)
+- Nothing else blocks a finished plan. MCP findings never transferred to `.unikit/MCP-RECHECK-NOTES.md` and rule candidates still `open` are shown, and the skill asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or archive anyway
 - Uses `git mv` when the folder is tracked by git and plain `mv` otherwise; the folder name never changes, and the manifest gains one `Archived:` line
 - Never deletes, overwrites or commits - commit the move with `/unikit-commit`
 - The fast plan `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md`, researches and patches are never archived
-- Plan lookup, `--list` and the "latest plan" choice stop offering an archived plan; `/unikit-plan` still reads archived plans for the `implemented_version` fallback and will not give a new plan an archived plan's name
+- Plan lookup, `--list` and the "latest plan" choice stop offering an archived plan; `/unikit-plan` still reads archived plans for the `implemented_version` fallback and will not give a new plan an archived plan's name, and `/unikit-explore` reads them as the history of how a feature was built
 
 ### `/unikit-evolve` - learn project rules from past fixes
 

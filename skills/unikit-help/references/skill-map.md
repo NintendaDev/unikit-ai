@@ -165,8 +165,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "archive the plan", "archive completed plans", "clean up plans".
 - **In:** a plan folder name, `--all`, `list`, or nothing (interactive).
 - **Out:** the moved folder + one `Archived:` line in its manifest.
-- **Optional (after commit).** Refuses while MCP findings are untransferred
-  (`/unikit-mcp-trap`) or rule candidates are still `open` (`/unikit-verify`).
+- **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
+  block: it asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or
+  archive anyway. `/unikit-explore` reads archived plans as history.
 
 ### unikit-evolve
 - **Purpose:** Learn from accumulated fix-patches — extract prevention points and turn them into

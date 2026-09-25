@@ -85,7 +85,9 @@ Do **not** read file contents deeply; presence/absence is usually enough.
 
 - `.unikit/config.yaml` — does the framework exist in this project at all? (absent → the
   user likely needs `/unikit` first)
-- `.unikit/code/plans/` and `.unikit/code/PLAN.md` — is there a plan to implement?
+- `.unikit/code/plans/` and `.unikit/code/PLAN.md` — is there a plan to implement? A folder
+  plan whose checkboxes are all `[x]` is finished: route it to `/unikit-archive`, not
+  `/unikit-implement`.
 - `.unikit/code/researches/INDEX.md` — is there research to plan from?
 - `.unikit/gamedesign/GD-IDS.yaml` — does a game-design workspace exist?
 
@@ -151,6 +153,7 @@ canonical intent list and the full routing table live in
 | Test the code | `/unikit-verify`, `/unikit-implement` (test phase), `/unikit-fix` | scenarios.md |
 | Fix a bug | `/unikit-fix` (or `/unikit-explore` first for deep bugs) | scenarios.md |
 | Review code quality | `/unikit-review` → `/unikit-fix` | skill-map.md |
+| Archive finished plans / clean up the plan list | `/unikit-archive` (then `/unikit-commit` the move) | skill-map.md |
 | The engine MCP reported success but nothing changed | `/unikit-mcp-trap` (record the finding) → `/unikit-mcp-audit` (curate later) | skill-map.md |
 | Add a rule / learn from a book or article | `/unikit-rules`, `/unikit-memory` | knowledge-base.md |
 | Share/publish rules across projects | `/unikit-rules-registry`, `unikit-ai rules ...` | knowledge-base.md |

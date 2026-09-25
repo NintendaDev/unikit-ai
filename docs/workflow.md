@@ -451,7 +451,7 @@ Runs read-only context gates against ARCHITECTURE.md and RULES.md. Writes the me
 /unikit-archive inventory-system
 ```
 
-A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. It refuses while the plan still carries MCP findings nobody transferred or rule candidates nobody proposed, and it never commits. `/unikit-implement` names it once the whole plan is done.
+A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. MCP findings nobody transferred and rule candidates nobody proposed do not block it: it shows them and asks whether to handle them first or archive anyway. It never commits. `/unikit-implement` names it once the whole plan is done.
 
 ---
 
