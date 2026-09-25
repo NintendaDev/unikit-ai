@@ -36,6 +36,8 @@ If the file is missing or unreadable, fall back to English.
 Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Development Principles — BLOCKING PRE-REQUISITE
 
 Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. Read everything **above** the LAZY-READ BOUNDARY (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`, then `Read` with `limit` set to that line): Layer A — the evidence contract (`CLAIM / EVIDENCE / VERDICT`, the claim-class → evidence-class lattice, the nine failure classes, discipline, phase order, lane, stop-conditions, the `kind` and area vocabularies, "no rules ≠ no rights"), then the engine workflow and the code conventions (MCP server `{{engine_mcp_tool}}` usage, comments policy, docs/tests requirements, TODO handling). The section **below** the boundary is read once per session, on the first Editor task — unconditionally, never gated on which rules are installed.

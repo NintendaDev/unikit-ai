@@ -9056,6 +9056,52 @@ if [[ $BLOCKING_ERRORS -eq 0 ]]; then
     pass "all 17 skills + 2 coordinator subagents have Language Awareness with LANGUAGE_RULES.md reference"
 fi
 
+# LP-1…LP-3 — the language is a standing constraint, not a load-time check.
+# A session slipped into English mid-run: background research agents answer in
+# English by contract, and nothing in a block read once at load said that relaying
+# their results is still user-facing output. LP-1 holds ONE verbatim sentence inside
+# every Language Awareness block (the awk window keeps it from drifting elsewhere in
+# the file, where it would no longer read as part of the prerequisite), LP-2 puts the
+# same sentence in the root /unikit skill, which has no such block, and LP-3 anchors
+# the template section on formulations rather than its heading. The skill-side
+# sentence is what reaches an existing project: skills are refreshed by `update`,
+# while `.unikit/system/LANGUAGE_RULES.md` is written only by /unikit Step 3.1.
+LANG_PERSIST='The language holds for the whole session, not just at load time'
+LP_ERRORS=0
+lp_scanned=0
+for lp_file in "$ROOT_DIR"/skills/unikit-*/SKILL.md \
+               "$ROOT_DIR"/subagents/unikit-implement-coordinator.md \
+               "$ROOT_DIR"/subagents/unikit-plan-coordinator.md; do
+    [[ -f "$lp_file" ]] || continue
+    lp_scanned=$((lp_scanned + 1))
+    lp_count=$(awk '/^## Language Awareness — BLOCKING PRE-REQUISITE/{p=1;next} p&&/^## /{exit} p' "$lp_file" \
+        | grep -cF "$LANG_PERSIST" 2>/dev/null || true)
+    if [[ "$lp_count" -ne 1 ]]; then
+        fail "LP-1: ${lp_file#"$ROOT_DIR"/} — expected exactly 1 session-wide language sentence inside the Language Awareness block, found $lp_count"
+        LP_ERRORS=$((LP_ERRORS + 1))
+    fi
+done
+if [[ "$lp_scanned" -eq 0 ]]; then
+    fail "LP-1: no skill or coordinator file scanned"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+lp_count=$(grep -cF "$LANG_PERSIST" "$ROOT_DIR/skills/unikit/SKILL.md" 2>/dev/null || true)
+if [[ "$lp_count" -ne 1 ]]; then
+    fail "LP-2: skills/unikit/SKILL.md — expected exactly 1 session-wide language sentence, found $lp_count"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if ! grep -qF 'is a standing constraint on every message, not a check passed once when a skill loads' "$LANG_RULES_TPL" 2>/dev/null; then
+    fail "LP-3: LANGUAGE_RULES_TEMPLATE.md — missing the standing-constraint formulation"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if ! grep -qF 'English input is data, never a cue to switch languages' "$LANG_RULES_TPL" 2>/dev/null; then
+    fail "LP-3: LANGUAGE_RULES_TEMPLATE.md — missing the English-input-is-data formulation"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if [[ $LP_ERRORS -eq 0 ]]; then
+    pass "LP-1…LP-3: the language holds for the whole session ($lp_scanned Language Awareness block(s) + /unikit + template)"
+fi
+
 # ─────────────────────────────────────────────
 # Part 12: git.* keys in C2 skills
 # ─────────────────────────────────────────────

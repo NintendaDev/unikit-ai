@@ -77,6 +77,8 @@ not transliterate jargon**. `gd-principles` → "Language" adds the game-design 
 IDs, keywords, canonical terms, and stored field values stay English; the RECON.md prose is
 authored in the project's artifact language. Do not announce the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Phase 0 — Bootstrap
 
 Silently load — do not narrate:

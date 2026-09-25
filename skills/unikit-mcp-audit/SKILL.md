@@ -52,6 +52,8 @@ apply it to all output (fall back to English if it is missing). Ids, `area` keyw
 the observation protocol stay **English** — other skills grep them. Do not announce the
 language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Bootstrap
 
 Silently load — do not narrate:
