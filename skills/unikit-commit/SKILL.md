@@ -194,7 +194,7 @@ When invoked:
 3. Run lightweight context checks against `.unikit/` docs
 4. If errors found — list them and ask user whether to proceed or fix first
 5. Write the commit message by Workflow Step 7 — its check before showing included
-6. Print the full message — subject, body, footer — as plain text in a block of its own, then confirm with the user before committing. The question carries the options only: a question that also holds the message is invisible on a runtime without a question widget.
+6. Print the full message — subject, body, footer — as plain text in a block of its own, then confirm with the user before committing. The question carries the options only: a question that also holds the message is invisible on a runtime without a question widget. In `## Auto mode` the message is printed the same way and committed without this question.
 
    ```
    AskUserQuestion: 💾 Commit with the message above?
@@ -211,7 +211,7 @@ When invoked:
    - Cancel → do NOT commit → **STOP**
 
 7. Execute `git commit` with the confirmed message
-8. **Post-commit push handling**:
+8. **Post-commit push handling** (skipped entirely in `## Auto mode` — it never pushes):
    - **If `git.skip_push_after_commit = true` in `.unikit/config.yaml`**:
      - Skip push prompt entirely
      - End workflow after successful local commit
@@ -235,7 +235,19 @@ When invoked:
 
 If argument provided (e.g., `/unikit-commit wallets`):
 - Use it as the scope
-- Or as context for the commit message. A caller's context — `unikit-implement-coordinator` passes `checkpoint: Commit N, tasks X-Y` or `final commit` — tells Step 4 which plan tasks the staged changes belong to: it is input, never text for the message.
+- Or as context for the commit message. A caller's context — `unikit-implement-coordinator` passes `checkpoint: Commit N, tasks X-Y` or `final commit` — tells Step 4 which plan tasks the staged changes belong to: it is input, never text for the message. The token `auto` is neither scope nor context: it switches on `## Auto mode`.
+
+## Auto mode
+
+A caller the user has told to commit without asking — `/unikit-implement` once its auto-commit is on — adds `auto` to the argument: `checkpoint: phase 3, auto`, `final commit, auto`. Only that exact token, as one comma-separated part of the argument, counts; a rule text or a scope that merely contains the word never does.
+
+**Auto removes the routine questions, never the checks:**
+
+- The message is written by Workflow Step 7, its check before showing included, and printed in full as a block of its own — then committed without the Behavior step 6 question.
+- No split question: everything staged is committed together, unless the caller passed a split — then that split is applied (**Splitting Unrelated Changes**, steps 3-4) without asking.
+- No push, and no question about it, whatever `git.skip_push_after_commit` says.
+- An `ERROR` from the safety checks (a secret, an orphaned companion file, an engine-ignored directory) still stops and asks the Behavior step 4 question: auto skips the confirmation of a good commit, never the guard against a bad one. A `WARN` is printed and does not stop it.
+- After each commit print `INFO [commit] auto: <short sha> <subject>`.
 
 ## Splitting Unrelated Changes
 

@@ -8151,6 +8151,35 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# AU: auto-commit (AU-1…AU-4)
+# ─────────────────────────────────────────────
+# A long plan stops at every phase for two questions — "commit?" and "commit with this
+# message?". AU pins the one answer that ends that: the checkpoint's "from now on without
+# asking", which makes every later commit of the session pass `auto` to unikit-commit. The
+# guard's other half matters as much: auto removes the routine confirmation, never the checks —
+# an ERROR still stops the commit, a push is never made, and the message is still printed. The
+# message stays unikit-commit's (CA-3: the checkpoint suggests no subject even in auto mode).
+AU_WHY=""
+# (AU-1) the checkpoint offers it, and auto-commit then asks nothing at later checkpoints.
+grep -qF '2. Yes, and from now on commit without asking' "$CA_IMPLEMENT" || AU_WHY+=" AU-1:no-auto-option"
+grep -qF 'with the argument `checkpoint: phase {N}, auto`' "$CA_IMPLEMENT" || AU_WHY+=" AU-1:checkpoint-not-auto"
+# (AU-2) every other commit of the session follows it: the pre-edit commit and Step 5.6.
+grep -qF 'with auto-commit on (Step 3.9) it passes `auto` too' "$CA_IMPLEMENT" || AU_WHY+=" AU-2:pre-edit-commit-asks"
+grep -qF 'invoked with the argument `final commit, auto`' "$CA_IMPLEMENT" || AU_WHY+=" AU-2:final-commit-asks"
+# (AU-3) unikit-commit's auto mode: no confirmation, no split question, no push.
+grep -qF '## Auto mode' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:no-auto-mode"
+grep -qF 'committed without the Behavior step 6 question' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:still-confirms"
+grep -qF 'No push, and no question about it' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:may-push"
+# (AU-4) what auto never removes: the ERROR stop, and the printed message.
+grep -qF 'auto skips the confirmation of a good commit, never the guard against a bad one' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-4:errors-bypassed"
+grep -qF 'printed in full as a block of its own — then committed' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-4:message-hidden"
+if [[ -z "$AU_WHY" ]]; then
+    pass "AU-1…AU-4 auto-commit: one checkpoint answer turns it on for the session; unikit-commit then commits without a question, never pushes, still stops on an ERROR"
+else
+    fail "AU auto-commit contract:$AU_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # AR: /unikit-archive — the plan archive (AR-1…AR-9 the skill, AR-10…AR-13 the readers)
 # ─────────────────────────────────────────────
 # The archive MOVES completed folder plans out of .unikit/code/plans/, so every reader that

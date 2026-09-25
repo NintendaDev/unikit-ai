@@ -109,7 +109,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 
 ### unikit-implement
 - **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks),
-  commit at checkpoints. Resumable across sessions.
+  commit at checkpoints. Resumable across sessions. At a checkpoint, "from now on commit without
+  asking" makes every later commit of the session automatic (message written, no question, no push).
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
 - **In:** the latest plan, or `@<folder>`, or a phase/task selector. A range with two or more
   test runs asks once whether to merge them (or say it in the call). Bootstraps rules once, then
@@ -154,7 +155,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   what it gives, then at most three lines of technical detail — after engine-specific safety
   checks; optionally push. Splits unrelated changes without taking unstaged edits along.
 - **When:** "commit", "save changes". Always commit through this, not manual git.
-- **In:** an optional scope hint.
+- **In:** an optional scope hint. A caller in auto-commit mode (`/unikit-implement`) adds `auto`:
+  the message is still printed, but committed without a question and never pushed; an ERROR still stops it.
 - **Out:** a git commit (+ optional push).
 - **Optional (terminal step).** Before: any of implement/fix/verify/review.
 

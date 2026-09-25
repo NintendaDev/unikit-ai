@@ -120,7 +120,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 /unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
 - Reads skill-context rules first, then the plan manifest
-- Executes tasks one by one with commit checkpoints
+- Executes tasks one by one with commit checkpoints. At a checkpoint you can answer **Yes, and from now on commit without asking**: every later commit of the session - the next checkpoints, the commit before a direct editor edit, the final one - is then written and made by `/unikit-commit` without a question and without a push. Safety errors (a secret, a missing companion file) still stop the commit. The choice lasts until the session ends; `/clear` forgets it, `/compact` does not
 - Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and implements tasks inline with `Read/Edit/Write/Bash`. The `develop-agent` alias is used only for true parallel scopes or deep-dive single tasks
 - Supports selective execution by phase, task numbers, or feature name
 - On a branch with its own plan, that plan is used while the requested work — the named phases, or the whole plan — is still pending in it, even when a flat `.unikit/code/PLAN.md` also exists; only a finished branch plan next to an unfinished fast plan brings a question: run the fast plan?
@@ -167,6 +167,7 @@ Creates conventional commits with engine-aware checks:
 - Follows conventional commits format (feat, fix, refactor, etc.)
 - Suggests commit splitting for unrelated changes, and never lets unstaged edits into a split commit
 - Offers to push after commit
+- **Auto mode** — when `/unikit-implement` runs with auto-commit on, it passes `auto`: the message is still written and printed, but committed without the confirmation question, with no split question and no push. A safety error still stops the commit and asks
 
 ### `/unikit-archive [list | --all | <plan-folder>]` - move finished plans out of the active list
 
