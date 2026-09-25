@@ -178,11 +178,11 @@ Bootstrap loads coding rules and principles ONCE upfront so the fix can be imple
 
 **Read in parallel (rules + principles):**
 1. `.unikit/system/dev-principles.md` — **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` the file with `limit` set to that line number. The part below the marker is read once, on the first step that touches the editor's serialized state — including the editor rungs of the Step 1 diagnosis ladder, which use its **D2**. An agent that cannot read with a limit reads the whole file.
-2. `.unikit/RULES.md` — project overrides (highest priority)
+2. `.unikit/RULES.md` — project overrides (highest priority). **Rule topics:** only the root here; its topic files load with the stack rules below.
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-fix` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
-Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask).
+Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask). At the same point, load the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches the area the investigation localized — the files, types or feature the bug lives in; when unsure, load (`RULES_INDEX.md` → Step 1).
 
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 

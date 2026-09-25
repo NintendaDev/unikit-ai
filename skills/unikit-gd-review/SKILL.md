@@ -150,7 +150,7 @@ Silently load — do not narrate:
    **Rule-Loading Discipline**: load by `Load When`, load a reference only from its
    parent rule's `> **References**:`, and **never glob the memory tree**
    (`.unikit/memory/gamedesign/**`) to discover rules.
-5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority. **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the design work at hand — the concept, system, flow or content type; when unsure, load.
 
 **One-way boundary:** never read `.unikit/code/`, project source, or build
 artifacts. **Single sanctioned exception:** the **feasibility lens** may read

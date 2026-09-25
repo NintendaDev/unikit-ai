@@ -220,7 +220,7 @@ will produce, not inside `researches/` (it is a top-level seed, consumed once).
 Detect the engine and its asset conventions from a cold-start scan **per `code-recon.md` →
 Step 1** (the project markers and the per-engine asset-form matrix live there — this skill
 stays engine-agnostic and defers the specifics to the reference), and read the project's
-`.unikit/RULES.md` if present for house conventions. Record the detected engine (or the
+`.unikit/RULES.md` if present for house conventions — **Rule topics:** with the topic files listed under its `## Topics` whose `Load when` names code conventions, folders or types. Record the detected engine (or the
 ambiguity) in the RECON.md banner. Never fabricate an engine.
 
 ### Step 3 — Scan (map-reduce)

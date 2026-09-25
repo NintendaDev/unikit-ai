@@ -47,7 +47,7 @@ coordinator run fails. Track your turn count mentally and honor the phase budget
 1. Read `.unikit/memory/code/RULES_INDEX.md`.
 2. Read `.unikit/DESCRIPTION.md`.
 3. Read `.unikit/ARCHITECTURE.md`.
-4. Read `.unikit/RULES.md`.
+4. Read `.unikit/RULES.md`. **Rule topics:** its topic files load lazily in Phase B or D, like core/stack rules — a topic whose `Load when` matches a phase you write or check; when unsure, load.
 
 Do NOT eagerly load every matching core rule here — load individual core/stack
 rule files lazily in Phase B or D, only when you're about to reference that rule

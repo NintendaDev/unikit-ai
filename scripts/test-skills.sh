@@ -7884,6 +7884,32 @@ if [[ -z "$PRT7_WHY" ]]; then
 else
     fail "PRT-7 per-phase topic loading:$PRT7_WHY"
 fi
+# (PRT-8) every reader of `.unikit/RULES.md` names its rule-topics point. A reader is found by
+# the shape of its read line; the writers that read every file on purpose — unikit-rules
+# itself, migrate-rules, evolve — are PRT-1…PRT-5 / PRT-9's objects, not this one's. The floor
+# is the measured reader count (25 when the family was added): a reworded read line leaves
+# BOTH counters silently, and only the floor notices. code-recon.md wraps its read across two
+# lines, which no line-based pattern can see, so it is asserted by name.
+PRT8_RE='ALWAYS read `\.unikit/RULES\.md`|`\.unikit/RULES\.md` — project overrides|`\.unikit/RULES\.md`\*\* \(if present\)|[Rr]ead `\.unikit/RULES\.md`|\*\*Read `\.unikit/RULES\.md`\*\*|read the project.s( own)? `\.unikit/RULES\.md`|Then `\.unikit/RULES\.md`|`\.unikit/RULES\.md`\s+if present'
+PRT8_FLOOR=25
+PRT8_READERS=0
+PRT8_MISSING=""
+while IFS= read -r prt8_f; do
+    prt8_rel="${prt8_f#"$ROOT_DIR"/}"
+    case "$prt8_rel" in
+        skills/unikit-rules/*|skills/unikit-memory/references/migrate-rules.md|skills/unikit-evolve/SKILL.md) continue ;;
+    esac
+    PRT8_READERS=$((PRT8_READERS + 1))
+    grep -qF '**Rule topics:**' "$prt8_f" || PRT8_MISSING+=" $prt8_rel"
+done < <(grep -rlE "$PRT8_RE" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null | sort)
+grep -qF '**Rule topics:**' "$ROOT_DIR/skills/unikit-gd-recon/references/code-recon.md" || PRT8_MISSING+=" skills/unikit-gd-recon/references/code-recon.md"
+if (( PRT8_READERS < PRT8_FLOOR )); then
+    fail "PRT-8 found $PRT8_READERS readers of .unikit/RULES.md, measured $PRT8_FLOOR — a read line was reworded out of the pattern"
+elif [[ -n "$PRT8_MISSING" ]]; then
+    fail "PRT-8 readers of .unikit/RULES.md without a **Rule topics:** point:$PRT8_MISSING"
+else
+    pass "PRT-8 all $PRT8_READERS readers of .unikit/RULES.md (+ code-recon.md) name their rule-topics point"
+fi
 
 # ─────────────────────────────────────────────
 # CM: the commit-message contract of /unikit-commit (CM-1…CM-7)

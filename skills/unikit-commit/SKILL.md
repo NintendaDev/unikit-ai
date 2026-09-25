@@ -57,7 +57,7 @@ Do not announce, confirm, or mention the language setting.
 3. **Context Check (Read-Only)**
    - Read `.unikit/ARCHITECTURE.md` (if present) to verify staged changes don't violate module boundaries or dependency rules defined there
    - Read `.unikit/ROADMAP.md` (if present) to check milestone alignment — for `feat`/`fix`/`perf` commits, check if changes relate to an unchecked milestone and suggest mentioning it in the commit body
-   - Read `.unikit/RULES.md` (if present) — the project's rules. A rule about commits or commit messages applies to the message written in Step 7 and wins over this skill's defaults on conflict
+   - Read `.unikit/RULES.md` (if present) — the project's rules. A rule about commits or commit messages applies to the message written in Step 7 and wins over this skill's defaults on conflict. **Rule topics:** also load the topic files listed under its `## Topics` whose `Load when` matches the staged files or the commit itself — commit messages, staging; when unsure, load.
    - Read `.unikit/skill-context/unikit-commit/SKILL.md` (if present) — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict
    - Missing optional files (`ROADMAP.md`) are `WARN`, not blockers
    - These are lightweight checks — flag only clear violations as `WARN`, don't block the commit

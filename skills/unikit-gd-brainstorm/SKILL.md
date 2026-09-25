@@ -87,7 +87,7 @@ Before responding, silently load — do not narrate:
    SKILL.md and `methods.md` only point to it, never re-spell a table.
 5. **`.unikit/DESCRIPTION.md`** (optional) — existing project constraints, if this
    is ideation inside an established project.
-6. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+6. **`.unikit/RULES.md`** (if present) — project overrides, highest priority. **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the design work at hand — the concept, system, flow or content type; when unsure, load.
 
 **Market validation is delegated, not ad-hoc.** This skill does **not** research the
 market inline or early — early data anchors timid ideas (anti-anchoring,

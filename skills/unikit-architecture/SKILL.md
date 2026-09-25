@@ -55,7 +55,7 @@ This gives you the baseline understanding of what technologies are in play befor
 rule files that the project already uses. This tells you which frameworks and patterns are in play.
 Do NOT read the individual rule files — only the index to understand what's covered.
 
-**Read `.unikit/RULES.md`** if it exists — naming conventions, class structure, DI rules.
+**Read `.unikit/RULES.md`** if it exists — naming conventions, class structure, DI rules. **Rule topics:** its `## Topics` table names the topic files in `.unikit/rules/`; open one only when the architecture work at hand touches its `Load when`.
 Extract key conventions but do NOT duplicate them into ARCHITECTURE.md — reference the file instead.
 
 **Read existing `.unikit/ARCHITECTURE.md`** if it exists — you may be updating, not creating from scratch.
@@ -229,7 +229,7 @@ For each pattern, specify which module or framework provides it.]
 
 For framework-specific rules, coding conventions, and implementation details see:
 
-- **`.unikit/RULES.md`** — [brief description of what's there]
+- **`.unikit/RULES.md`** — [brief description of what's there; when it has a `## Topics` table, name its topic files in `.unikit/rules/`]
 - **`.unikit/memory/code/RULES_INDEX.md`** — index of all framework-specific rule files
 ```
 

@@ -196,7 +196,7 @@ Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can b
 
 **Read in parallel (rules + principles, for inline fix execution in Step 4.3):**
 1. `.unikit/system/dev-principles.md` — **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` the file with `limit` set to that line number. The part **below the marker is read once, at plan load, when the checklist carries an `Editor:` line** — D3 and the editor procedures D6–D7 close the editor targets of Step 1; without such a line it is read before the first `GATE LIFTED` verdict of Step 2, if not read yet — D1 decides whether an absent affordance is absent. An agent that cannot read with a limit reads the whole file.
-2. `.unikit/RULES.md` — project overrides (highest priority)
+2. `.unikit/RULES.md` — project overrides (highest priority). **Rule topics:** the root always; then the topic files listed under its `## Topics` whose `Load when` matches a file the plan's tasks changed — their `Files:` lines and the diff under verification; when unsure, load (`RULES_INDEX.md` → Step 1).
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-verify` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
@@ -488,6 +488,7 @@ If you detect that a context artifact is stale, missing, or ambiguous, report it
 - `DESCRIPTION.md` drift → suggest `/unikit` (or note that `/unikit-implement` should have updated it)
 - `ARCHITECTURE.md` drift → suggest `/unikit-architecture`
 - `RULES.md` drift → suggest `/unikit-rules` to add missing conventions
+- `## Topics` table ↔ `.unikit/rules/` drift (a listed file missing, a file not listed) → suggest `/unikit-rules optimise`
 - `ROADMAP.md` drift → suggest `/unikit-roadmap check` (or `/unikit-roadmap <update request>`)
 
 Ask the user a single optional question **only if** drift was detected and fixing it now would materially improve correctness:

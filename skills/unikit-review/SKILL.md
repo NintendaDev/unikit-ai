@@ -88,7 +88,7 @@ Read (they always apply):
 - `.unikit/system/gate-result-contract.md` — schema for the machine-readable `unikit-gate-result` block emitted in Step 5. If missing or unreadable, do not block: the Step 5 gate-result section is self-sufficient on the schema and degrades gracefully (see there).
 
 Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
-- **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
+- **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority). **Rule topics:** the root here; its topic files load in Step 3, by the reviewed files.
 - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
 - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 
@@ -138,6 +138,8 @@ Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-lev
 ## Step 3: Load stack rules
 
 Now that target code is available, scan it for framework markers from the **Stack** section of `RULES_INDEX.md`. Each entry lists which keywords/types indicate relevance ("Load When" column). Load only matching rule files. If no markers match — skip stack rules entirely.
+
+**Rule topics.** In the same pass, load the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches the reviewed files — their paths, types, area; when unsure, load (`RULES_INDEX.md` → Step 1). They apply in Step 4 together with the root's rules.
 
 ## Step 4: Analyze
 

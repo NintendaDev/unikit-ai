@@ -88,7 +88,7 @@ Before any authoring, silently load — do NOT narrate the loading:
    conversation's cache. Obey the index's **Rule-Loading Discipline**: load by
    `Load When`, load a reference only from its parent rule's `> **References**:`, and
    **never glob the memory tree** (`.unikit/memory/gamedesign/**`) to discover rules.
-3. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+3. **`.unikit/RULES.md`** (if present) — project overrides, highest priority. **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the design work at hand — the concept, system, flow or content type; when unsure, load.
 4. **`.unikit/DESCRIPTION.md`** and **`.unikit/ROADMAP.md`** (optional) — project
    constraints and milestones; routing context only.
 5. **Schema guard (clean break — no automatic migration).** When `GD-IDS.yaml`
