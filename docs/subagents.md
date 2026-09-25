@@ -79,7 +79,7 @@ Dependency-aware plan execution.
 - With `Testing: yes` and two or more test-checkpoint tasks in its scope, asks once before the first layer whether to merge their test runs (the same question as `/unikit-implement`; no answer in a non-interactive run → runs as written)
 - **Single ready phase** → executes tasks directly inside the coordinator (no worker overhead). Bootstraps principles + rules (`dev-principles.md`, `RULES.md`, `RULES_INDEX.md`, core rules) before the phase, then writes code inline
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
-- After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, handles commit checkpoints, advances to the next layer
+- After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, hands commit checkpoints to the `unikit-commit` skill (it never writes a commit message itself), advances to the next layer
 - Annotates the manifest with layer markers and `[~]` / `[x]` / `[!]` status in real time
 - **Is itself a writer of `## MCP Findings`** in the single-phase branch, where no worker exists to do it - same rules as everywhere else (`F<n>` = highest present + 1, `observed` = the date, semantic dedup), and never touches `.unikit/MCP-RECHECK-NOTES.md`
 - Ends by **printing** a `/unikit-mcp-trap <plan path>` recommendation when the table has rows. Printed rather than invoked because this agent closes the session on exit, and the trap is interactive - it would be cut off mid-question
@@ -132,7 +132,7 @@ Sidecars share the same shape: read-only tools (`Read`, `Glob`, `Grep`), `backgr
 |---------|---------|--------------|
 | `unikit-review-sidecar` | Surfaces correctness, regression, and performance risks in the diff - only material findings, no cosmetic nits | `ARCHITECTURE.md`, `RULES.md`, core rules, relevant stack rules |
 | `unikit-architecture-sidecar` | Checks module boundaries and dependency directions | `ARCHITECTURE.md`, `RULES.md`, core rules |
-| `unikit-commit-sidecar` | Inspects the diff, drafts the safest next commit action (message + readiness) without touching git state | `RULES.md`, recent `git log` |
+| `unikit-commit-sidecar` | Assesses commit readiness, the split into groups and the files to leave out, from the files the coordinator passes - writes no commit message and never touches git state | `RULES.md` |
 | `unikit-docs-sidecar` | Classifies documentation drift as `no_action` / `safe_update_existing` / `needs_new_docs` / `needs_user_choice` | `RULES.md`, `RULES_INDEX.md`, skill-context for `unikit-docs` |
 
 All sidecars return their findings in English so the coordinator can parse them consistently across projects.

@@ -150,8 +150,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   `/unikit-evolve`.
 
 ### unikit-commit
-- **Purpose:** Generate conventional-commit messages from staged changes (with engine-specific
-  safety checks), commit, and optionally push. Splits unrelated changes.
+- **Purpose:** Commit staged changes with a message written for the team — what changed and
+  what it gives, then at most three lines of technical detail — after engine-specific safety
+  checks; optionally push. Splits unrelated changes without taking unstaged edits along.
 - **When:** "commit", "save changes". Always commit through this, not manual git.
 - **In:** an optional scope hint.
 - **Out:** a git commit (+ optional push).

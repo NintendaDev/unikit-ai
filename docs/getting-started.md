@@ -153,7 +153,7 @@ Background sidecars and coordinators for parallel execution and read-only audits
 | `unikit-plan-coordinator` | Feature-plan polishing coordinator |
 | `unikit-plan-polisher` | Single-pass plan refiner spawned by the coordinator |
 | `unikit-architecture-sidecar` | Read-only architecture audit |
-| `unikit-commit-sidecar` | Commit preparation (diff inspection, message draft) |
+| `unikit-commit-sidecar` | Commit readiness, split and exclusions (writes no message) |
 | `unikit-review-sidecar` | Read-only code review |
 | `unikit-docs-sidecar` | Documentation drift detection |
 

@@ -162,9 +162,10 @@ Creates conventional commits with engine-aware checks:
 - Analyzes staged changes (`git status` + `git diff --cached`)
 - Verifies companion/metadata file pairing where the engine requires it (Unity `.meta` files and their equivalents)
 - Checks for binary assets, secrets, engine-ignored directories
-- References plan tasks in commit message when applicable
+- Writes the subject and body for the team: what changed and what it gives, then at most three lines of technical detail
+- Links the plan with a `Plan: <folder>` trailer instead of phase and task numbers
 - Follows conventional commits format (feat, fix, refactor, etc.)
-- Suggests commit splitting for unrelated changes
+- Suggests commit splitting for unrelated changes, and never lets unstaged edits into a split commit
 - Offers to push after commit
 
 ### `/unikit-evolve` - learn project rules from past fixes

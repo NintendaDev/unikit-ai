@@ -7833,6 +7833,47 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# CA: one author of commit messages (CA-1…CA-3)
+# ─────────────────────────────────────────────
+# DEC-4 of human-commit-messages-and-plan-archive: every message is written by the
+# unikit-commit skill. Before it the coordinator could commit on the sidecar's own draft —
+# English regardless of language.artifacts and styled after a git log the sidecar cannot
+# even read — and implement's checkpoint proposed a subject built from a phase title. Both
+# halves are asserted: the second author is gone (negatives) AND the skill call is there.
+CA_SIDECAR="$ROOT_DIR/subagents/unikit-commit-sidecar.md"
+CA_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+CA_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+CA_WHY=""
+for f in "$CA_SIDECAR" "$CA_COORD" "$CA_IMPLEMENT"; do
+    [[ -s "$f" ]] || CA_WHY+=" missing:$(basename "$f")"
+done
+if [[ -z "$CA_WHY" ]]; then
+    # (CA-1) the sidecar assesses and never drafts; it has no git and says so.
+    grep -qF 'proposed_message' "$CA_SIDECAR" && CA_WHY+=" CA-1:sidecar-drafts-a-message"
+    grep -qF '"message"' "$CA_SIDECAR" && CA_WHY+=" CA-1:group-message-field"
+    grep -qF 'git log' "$CA_SIDECAR" && CA_WHY+=" CA-1:copies-history-style"
+    grep -qF 'You never write commit message text' "$CA_SIDECAR" || CA_WHY+=" CA-1:no-authorship-ban"
+    grep -qF 'You have no git access' "$CA_SIDECAR" || CA_WHY+=" CA-1:claims-git-state"
+    # (CA-2) the coordinator commits only through the skill, and hands the sidecar its files.
+    grep -qF 'Skill(skill: "unikit-commit"' "$CA_COORD" || CA_WHY+=" CA-2:no-skill-call"
+    grep -qF 'never runs `git commit` itself' "$CA_COORD" || CA_WHY+=" CA-2:no-self-commit-ban"
+    grep -qF 'create a commit based on' "$CA_COORD" && CA_WHY+=" CA-2:sidecar-commit-branch-returned"
+    grep -qF 'create a final commit' "$CA_COORD" && CA_WHY+=" CA-2:final-self-commit-returned"
+    grep -qF '→ create commit' "$CA_COORD" && CA_WHY+=" CA-2:pseudocode-self-commit"
+    grep -qF 'Assess commit readiness for layer N: [all changed files]' "$CA_COORD" || CA_WHY+=" CA-2:sidecar-gets-no-files"
+    # (CA-3) implement's checkpoint proposes no subject of its own, and the commit that must
+    # precede a `direct` editor edit goes through the skill as well.
+    grep -qF 'Suggested message:' "$CA_IMPLEMENT" && CA_WHY+=" CA-3:checkpoint-suggests-a-subject"
+    grep -qF 'Do not suggest a message here' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:no-suggestion-ban"
+    grep -qF 'commit them through `/unikit-commit`, like every other commit of this run' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-edit-self-commit"
+fi
+if [[ -z "$CA_WHY" ]]; then
+    pass "CA-1…CA-3 one author of commit messages: the sidecar drafts none, the coordinator commits through the skill, implement suggests no subject and commits before a direct edit through the skill"
+else
+    fail "CA single commit-message author:$CA_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Codebase integrity checks ===${NC}\n"

@@ -356,7 +356,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 - **`mcp`** — carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); the library reference has two triggers and none of them is Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9).
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
-- **`direct`** — **commit to git before editing** (this is mandatory and the whole reason the mode is gated), then edit the serialized format directly, staying inside the bounds §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
+- **`direct`** — **commit to git before editing** (this is mandatory and the whole reason the mode is gated): stage only the files this run changed and commit them through `/unikit-commit`, like every other commit of this run — never with a `git commit` of your own. Then edit the serialized format directly, staying inside the bounds §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
 
   **§6 is owned by the `unikit-plan` skill** — read it from `references/ENGINE_RULES.md` inside that skill's own directory under `{{skills_dir}}`. This skill has no engine template of its own, so there is no local copy of §6 to read and none to keep in sync.
 
@@ -457,7 +457,6 @@ After all tasks in a phase are completed (and tests written if applicable), ask:
 ✅ Phase {N} complete — {count} tasks done.
 
 💾 Commit checkpoint. Commit changes?
-Suggested message: "feat({feature}): {phase summary}"
 
 Options:
 1. Yes, commit — /unikit-commit with this phase's files
@@ -466,6 +465,8 @@ Options:
 ```
 
 Staging: **Important Rules** → *Commit only your own changes*.
+
+Do not suggest a message here. `/unikit-commit` writes it from the plan's `## Overview` and this phase's `WHY:` lines; a subject assembled from a phase title is exactly the technical message its contract rules out.
 
 A scope of many phases: suggest `/compact` or `/clear` before the next phase.
 
