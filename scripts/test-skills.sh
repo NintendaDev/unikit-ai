@@ -6908,17 +6908,19 @@ else
     fail "RCA-3…RCA-10 implement rule-capture contract:$RCA_G2_WHY"
 fi
 
+VR_RULES_REF="$ROOT_DIR/skills/unikit-verify/references/rule-candidates.md"
 RCA_G3_WHY=""
 if [[ ! -s "$UNIKIT_VERIFY_SKILL" ]]; then
     RCA_G3_WHY+=" missing:unikit-verify/SKILL.md"
 else
     # (RCA-11) SHARED — one string per formulation applied to BOTH skills in one loop. The
     # two questions must read identically; a contract only one side still states is not one.
+    # Since DEC-012 d verify's half lives in references/rule-candidates.md — the pair is implement ↔ that reference.
     for rca11 in 'the question mechanism carries the options and nothing else' \
                  'Do NOT add any rules until the user answers' \
                  'presents the same options as plain text'; do
         grep -qF "$rca11" "$UNIKIT_IMPLEMENT_SKILL" || RCA_G3_WHY+=" RCA-11:implement-drifted"
-        grep -qF "$rca11" "$UNIKIT_VERIFY_SKILL"    || RCA_G3_WHY+=" RCA-11:verify-drifted"
+        grep -qF "$rca11" "$VR_RULES_REF" 2>/dev/null || RCA_G3_WHY+=" RCA-11:verify-drifted"
     done
     # verify has no Step 3.4 of its own, so what it finds must be RECORDED before it is
     # proposed — a candidate proposed and not recorded dies with the session.
@@ -6926,11 +6928,34 @@ else
     # (RCA-12) NEGATIVE, separate from RCA-9: the alias lived in two files and could return
     # to either one alone.
     grep -qF 'rules-agent' "$UNIKIT_VERIFY_SKILL" && RCA_G3_WHY+=" RCA-12:alias-returned-in-verify"
+    grep -qF 'rules-agent' "$VR_RULES_REF" 2>/dev/null && RCA_G3_WHY+=" RCA-12:alias-returned-in-verify-reference"
 fi
 if [[ -z "$RCA_G3_WHY" ]]; then
     pass "RCA-11…RCA-12 verify asks the same question in the same words, records before proposing; alias gone"
 else
     fail "RCA-11…RCA-12 verify rule-capture contract:$RCA_G3_WHY"
+fi
+
+# VR: verify's rule proposal lives in a reference read only when an `open` candidate exists (DEC-012 d).
+VR_WHY=""
+# (VR-1) present, carrying the procedure.
+[[ -s "$VR_RULES_REF" ]] || VR_WHY+=" VR-1:reference-missing"
+for vr1 in 'multiSelect' '"Add nothing"' 'Print first, ask second'; do
+    grep -qF "$vr1" "$VR_RULES_REF" 2>/dev/null || VR_WHY+=" VR-1:no-${vr1// /-}"
+done
+# (VR-2) NEGATIVE — not inline in the body any more.
+for vr2 in '"Add nothing"' 'Print first, ask second'; do
+    grep -qF "$vr2" "$UNIKIT_VERIFY_SKILL" && VR_WHY+=" VR-2:still-inline:${vr2// /-}"
+done
+# (VR-3) read at plan load when the manifest already holds an open candidate, and named at Step 5.
+VR3_S02="$(awk 'index($0,"### 0.2 Read Plan & Context")==1{f=1;next} index($0,"### 0.3")==1{f=0} f' "$UNIKIT_VERIFY_SKILL")"
+printf '%s' "$VR3_S02" | grep -qF 'references/rule-candidates.md' || VR_WHY+=" VR-3:not-read-at-plan-load"
+VR3_S5="$(awk 'index($0,"## Step 5: Suggest Follow-Up")==1{f=1;next} index($0,"## Strict Mode")==1{f=0} f' "$UNIKIT_VERIFY_SKILL")"
+printf '%s' "$VR3_S5" | grep -qF 'references/rule-candidates.md' || VR_WHY+=" VR-3:step-5-trigger-dangling"
+if [[ -z "$VR_WHY" ]]; then
+    pass "VR-1…VR-3 verify's rule proposal extracted to references/rule-candidates.md (present, not inline, read only with an open candidate)"
+else
+    fail "VR verify rule-proposal extraction:$VR_WHY"
 fi
 
 RCA_G4_WHY=""
