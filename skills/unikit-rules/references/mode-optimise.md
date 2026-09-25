@@ -7,7 +7,7 @@
 
 The layout — the two shapes of the root, the header paragraph, the table row, the topic file, the marker — is SKILL.md → `## Layout of the rule files`; the placement criteria are SKILL.md → Step 4. This file only moves rules into that layout.
 
-**No rule is deleted** — under any outcome. This mode changes where a rule lives, never its wording: shortening is Mode C (`compact`).
+**No rule is deleted** — under any outcome. This mode changes where a rule lives, never its wording: shortening is Mode C (`compact`), deleting is Mode E (`prune`).
 
 It edits files in the user's project, so it runs **only on confirmation**. It touches only `.unikit/RULES.md` and `.unikit/rules/`: never `RULES_INDEX.md`, never anything under `.unikit/memory/`.
 

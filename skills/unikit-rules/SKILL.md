@@ -2,17 +2,18 @@
 name: unikit-rules
 description: >-
   Add a short, project-specific rule, convention, or override to .unikit/RULES.md — the
-  quick-capture inbox for this project's rules; each invocation appends a rule,
-  automatically loaded by /unikit-implement before execution (later promotable into the
-  knowledge base via /unikit-memory migrate-rules). Works only with a rule typed as a
+  quick-capture inbox for this project's rules (common rules always load; topic files in
+  .unikit/rules/ load when the work matches), automatically loaded by /unikit-implement
+  (later promotable via /unikit-memory migrate-rules). Works only with a rule typed as a
   prompt — it does NOT read files, folders, URLs, or PDFs. Cross-checks against the
   knowledge base (RULES_INDEX.md) to avoid duplicating core/stack entries. Use for fast,
   one-line conventions and corrections: "add a rule", "remember this", "convention",
   "always do X", "never use Y", "from now on do Z", or when the user corrects agent
-  behavior and wants it remembered. If the user points to a source (file, folder, URL,
-  PDF, article, book) or wants to research/document framework usage, use /unikit-memory;
-  for architecture decisions use ARCHITECTURE.md.
-argument-hint: "[rule text or topic | numbered batch | compact | optimise]"
+  behavior and wants it remembered; also "split the rules into topics" (optimise), "clean
+  up the rules" (prune), "shorten RULES.md" (compact). If the user points to a source
+  (file, folder, URL, PDF, article, book) or wants to research/document framework usage,
+  use /unikit-memory; for architecture decisions use ARCHITECTURE.md.
+argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune]"
 allowed-tools:
   - Read
   - Write
@@ -104,14 +105,17 @@ Read `.unikit/skill-context/unikit-rules/SKILL.md` if it exists. Treat it as pro
 Check $ARGUMENTS:
 ├── Exactly `compact`?             → Mode C: retro-compaction
 ├── Exactly `optimise`/`optimize`? → Mode D: reorganize into topics
+├── Exactly `prune`?               → Mode E: delete the rules the user selects
 ├── Numbered batch?                → Mode A: Direct add, N rules
 ├── Has text?                      → Mode A: Direct add, 1 rule
 └── No arguments?                  → Mode B: Interactive
 ```
 
-**Modes C and D are matched on an exact argument, never on containment.** A rule that happens to contain the word "compact" or "optimise" is still a rule; only the bare argument selects the mode. Mode D accepts `optimise` or `optimize`, in any letter case.
+**Modes C, D and E are matched on an exact argument, never on containment.** A rule that happens to contain the word "compact", "optimise" or "prune" is still a rule; only the bare argument selects the mode. Mode D accepts `optimise` or `optimize`, in any letter case; Mode E accepts `prune`, in any letter case.
 
 **Mode D** → read `{{skills_dir}}/{{self_name}}/references/mode-optimise.md` and follow it; Steps 2-6 below do not run. The layout it writes is `## Layout of the rule files` below.
+
+**Mode E** → read `{{skills_dir}}/{{self_name}}/references/mode-prune.md` and follow it; Steps 2-6 below do not run.
 
 **Mode A** — user provided rule text:
 ```
@@ -283,6 +287,10 @@ A retro mode. It edits a file inside the user's project, so it runs **only on co
 This mode touches only `.unikit/RULES.md` and its topic files: it never edits `RULES_INDEX.md` and nothing under `.unikit/memory/`.
 
 **Verbose.** One summary line — `INFO [rules] compact: shorten=<a> keep=<b> flatten-only=<c>`; the preview is the detailed output. Cancelled by the user → the file is untouched, and `compact: cancelled, file unchanged` is printed. The file will not parse — not a markdown list, nested structures → write **nothing**, name the places that did not parse, and stop: `WARN [rules] compact: <n> items did not parse — file unchanged`. A half-compacted file belonging to someone else is worse than an uncompacted one.
+
+## Deleting rules
+
+This skill deletes a rule only in Mode E (`prune`), and only the rules the user selected there. Adding (Modes A and B), compaction (Mode C) and reorganization (Mode D) never delete one. Removing entries migrated into the knowledge base is `/unikit-memory migrate-rules`' own, separate right.
 
 ## Priority Reminder
 

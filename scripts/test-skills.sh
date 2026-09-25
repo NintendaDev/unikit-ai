@@ -7657,7 +7657,7 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -7933,6 +7933,38 @@ if [[ -z "$PRT9_WHY" ]]; then
     pass "PRT-9 migrate-rules, the ownership contract and evolve know topic files; the Keep tag and the emptied-topic deletion are named"
 else
     fail "PRT-9 other writers ignore topic files:$PRT9_WHY"
+fi
+# (PRT-10) Mode E: the one mode that deletes, and only what the user selected. Five classes,
+# each shown with its evidence; three protections that each lift one class (an override is
+# never `covered`, a prohibition never `stale-ref`, a topic/common pair never `conflict`); the
+# right to delete is confined to prune in the skill AND in the ownership contract. RFM-7 keeps
+# compact non-destructive and PRT-4 keeps optimise so — neither is touched here.
+PRT_PRUNE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-prune.md"
+PRT10_WHY=""
+grep -qF 'references/mode-prune.md' "$EV_RULES_SKILL" || PRT10_WHY+=" dispatch-missing"
+grep -qF 'Exactly `prune`?' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
+grep -qF 'deletes a rule only in Mode E (`prune`)' "$EV_RULES_SKILL" || PRT10_WHY+=" skill:deletion-not-confined"
+grep -qF 'deletes a rule only in its `prune` mode' "$UNIKIT_VERIFY_CONTRACT" || PRT10_WHY+=" contract:deletion-not-confined"
+if [[ ! -s "$PRT_PRUNE_REF" ]]; then
+    PRT10_WHY+=" missing:unikit-rules/references/mode-prune.md"
+else
+    for prt10_c in duplicate covered not-a-rule conflict stale-ref; do
+        grep -qF "| \`$prt10_c\` |" "$PRT_PRUNE_REF" || PRT10_WHY+=" no-class-$prt10_c"
+    done
+    grep -qF 'Only the rules the user selected are deleted.' "$PRT_PRUNE_REF" || PRT10_WHY+=" deletes-unselected"
+    grep -qF 'A candidate without evidence is not shown.' "$PRT_PRUNE_REF" || PRT10_WHY+=" evidence-optional"
+    grep -qF '**`covered` only on the same meaning.**' "$PRT_PRUNE_REF" || PRT10_WHY+=" override-may-be-covered"
+    grep -qF '**`stale-ref` never applies to a prohibition**' "$PRT_PRUNE_REF" || PRT10_WHY+=" prohibition-may-be-stale"
+    grep -qF 'are never a `conflict`' "$PRT_PRUNE_REF" || PRT10_WHY+=" topic-common-pair-may-conflict"
+    grep -qF '"No longer needed" is not a class' "$PRT_PRUNE_REF" || PRT10_WHY+=" unused-class-returned"
+    grep -qF '`Delete nothing`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-refusal-option"
+    grep -qF 'end your turn and wait' "$PRT_PRUNE_REF" || PRT10_WHY+=" text-tier-does-not-stop"
+    grep -qF '**only on confirmation**' "$PRT_PRUNE_REF" || PRT10_WHY+=" unconfirmed"
+fi
+if [[ -z "$PRT10_WHY" ]]; then
+    pass "PRT-10 prune deletes only the selected rules, shows evidence for every candidate, keeps the three protections; deletion is confined to prune"
+else
+    fail "PRT-10 prune contract:$PRT10_WHY"
 fi
 
 # ─────────────────────────────────────────────
