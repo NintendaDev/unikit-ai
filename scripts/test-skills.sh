@@ -3971,7 +3971,7 @@ fi
 # is deliberately OUT of scope — the documentation is rewritten by tasks 15-16, and a
 # second guard over it would be a second owner of one fact; those tasks carry an
 # explicit grep in their acceptance criteria instead.
-# ONE measured allowlist entry: the pre-merge detection branch in
+# ONE measured allowlist marker, carried by TWO sites. The first is the pre-merge detection branch in
 # skills/unikit-improve/SKILL.md. That branch exists to recognise an
 # un-migrated plan folder and send the user to `unikit-ai update`; a branch that
 # DESCRIBES the old shape instead of naming it cannot be executed reliably, so
@@ -3979,6 +3979,9 @@ fi
 # The entry is pinned to the marker `(a pre-merge plan)` on that same line, not
 # to the file — exempting the whole file would re-open the 27 occurrences the
 # merge removed from it.
+# The second site is skills/unikit-archive/SKILL.md Step 2: a completed plan is never
+# migrated, so the archive must still recognise the legacy task file to classify it — the
+# same load-bearing reason, on one line, under the same marker.
 PL2_ALLOW='(a pre-merge plan)'
 PL2_HITS="$({ grep -rn -e 'TASKS\.md' -e 'PLAN-BRIEF' "${PL_SCAN_ROOTS[@]}" "$ROOT_DIR/data" --include='*.md' 2>/dev/null || true; } | { grep -vF "$PL2_ALLOW" || true; })"
 if [[ -z "$PL2_HITS" ]]; then
@@ -7871,6 +7874,69 @@ if [[ -z "$CA_WHY" ]]; then
     pass "CA-1…CA-3 one author of commit messages: the sidecar drafts none, the coordinator commits through the skill, implement suggests no subject and commits before a direct edit through the skill"
 else
     fail "CA single commit-message author:$CA_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# AR: /unikit-archive — the plan archive (AR-1…AR-9)
+# ─────────────────────────────────────────────
+# The archive MOVES completed folder plans out of .unikit/code/plans/, so every reader that
+# walks that directory stops seeing them — the point for plan lookup, and wrong for the
+# readers that need finished plans or their unfinished rows. This half pins the skill: the
+# predicate (every mark other than x is unfinished — the coordinator writes [~] and [!]),
+# the two stops, the move rule measured in ADR-0001 and the scope. The reader half is added
+# below by the phase that edits the readers. Anchored on formulations, never on headings.
+AR_SKILL="$ROOT_DIR/skills/unikit-archive/SKILL.md"
+AR_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
+AR_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+AR_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+AR_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+AR_WHY=""
+for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT"; do
+    [[ -s "$f" ]] || AR_WHY+=" missing:${f#"$ROOT_DIR"/}"
+done
+if [[ -z "$AR_WHY" ]]; then
+    # (AR-1) the modes.
+    grep -qF 'argument-hint: "[list | --all | <plan-folder>]"' "$AR_SKILL" || AR_WHY+=" AR-1:no-mode-hint"
+    # (AR-2) completion: every non-x mark is unfinished; a phase status line is not a task;
+    # a plan with no tasks is never archived.
+    grep -qF 'Any other mark is unfinished' "$AR_SKILL" || AR_WHY+=" AR-2:only-open-boxes-count"
+    grep -qF 'is not a checkbox line' "$AR_SKILL" || AR_WHY+=" AR-2:status-line-counted"
+    grep -qF 'An empty plan is not archived' "$AR_SKILL" || AR_WHY+=" AR-2:empty-plan-archivable"
+    # (AR-3) stop 1 is keyed on the trap's own back-reference, never on a date: audited: is
+    # moved only by an audit, so a date rule could not be cleared by running the trap.
+    grep -qF '`<folder>/<task file name>#F<n>`' "$AR_SKILL" || AR_WHY+=" AR-3:no-back-reference-key"
+    grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
+    # (AR-4) stop 2 names the skill that actually flips an open candidate.
+    grep -qF 'has the status `open`' "$AR_SKILL" || AR_WHY+=" AR-4:no-open-candidate-stop"
+    grep -qF '/unikit-verify <folder>' "$AR_SKILL" || AR_WHY+=" AR-4:wrong-or-no-command"
+    # (AR-5) git mv only for a tracked folder in an enabled git work tree — measured, not assumed.
+    grep -qF '`git.enabled` is not `false`' "$AR_SKILL" || AR_WHY+=" AR-5:ignores-git-enabled"
+    grep -qF 'git rev-parse --is-inside-work-tree' "$AR_SKILL" || AR_WHY+=" AR-5:no-work-tree-check"
+    grep -qF 'git ls-files -- .unikit/code/plans/<folder>' "$AR_SKILL" || AR_WHY+=" AR-5:no-tracked-check"
+    grep -qF 'fatal: source directory is empty' "$AR_SKILL" || AR_WHY+=" AR-5:reason-lost"
+    grep -qF 'Never retry with the other command' "$AR_SKILL" || AR_WHY+=" AR-5:silent-fallback"
+    # (AR-6) no overwrite, no rename, no commit, no staging; one label line.
+    grep -qF 'Never overwrite, never rename' "$AR_SKILL" || AR_WHY+=" AR-6:may-overwrite"
+    grep -qF 'Never commit or push' "$AR_SKILL" || AR_WHY+=" AR-6:may-commit"
+    grep -qF 'git commit' "$AR_SKILL" && AR_WHY+=" AR-6:commits"
+    grep -qF 'git add' "$AR_SKILL" && AR_WHY+=" AR-6:stages"
+    grep -qF '`Archived: <today>`' "$AR_SKILL" || AR_WHY+=" AR-6:no-label"
+    # (AR-7) the scope: fast and fix plans, researches and patches are never archived.
+    grep -qF '**Never touched:**' "$AR_SKILL" || AR_WHY+=" AR-7:no-exclusion-list"
+    grep -qF '`.unikit/code/FIX_PLAN.md`' "$AR_SKILL" || AR_WHY+=" AR-7:fix-plan-unmentioned"
+    # (AR-8) every command the skill runs is granted, and nothing that deletes — a rule the
+    # skill cannot carry out degrades silently (the NM-5 lesson).
+    for g in 'Bash(git *)' 'Bash(mv *)' 'Bash(mkdir *)' 'Bash(date *)'; do
+        grep -qF "  - $g" "$AR_SKILL" || AR_WHY+=" AR-8:no-grant-$g"
+    done
+    grep -qF 'Bash(rm' "$AR_SKILL" && AR_WHY+=" AR-8:can-delete"
+    # (AR-9) the legacy layout is recognised under the PL-2 marker, never by a bare old name.
+    grep -qF '(a pre-merge plan)' "$AR_SKILL" || AR_WHY+=" AR-9:legacy-layout-unrecognised"
+fi
+if [[ -z "$AR_WHY" ]]; then
+    pass "AR-1…AR-9 unikit-archive: non-x marks are unfinished, two stops keyed on the trap back-reference and open candidates, git mv only for a tracked folder, no overwrite and no commit"
+else
+    fail "AR plan archive contract:$AR_WHY"
 fi
 
 # ─────────────────────────────────────────────

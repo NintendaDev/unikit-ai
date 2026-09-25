@@ -158,6 +158,16 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Out:** a git commit (+ optional push).
 - **Optional (terminal step).** Before: any of implement/fix/verify/review.
 
+### unikit-archive
+- **Purpose:** Move a completed folder plan from `.unikit/code/plans/<folder>/` to
+  `.unikit/code/archive/plans/<folder>/`, so plan lookup and the plan lists stop offering it.
+  Never deletes, never commits.
+- **When:** "archive the plan", "archive completed plans", "clean up plans".
+- **In:** a plan folder name, `--all`, `list`, or nothing (interactive).
+- **Out:** the moved folder + one `Archived:` line in its manifest.
+- **Optional (after commit).** Refuses while MCP findings are untransferred
+  (`/unikit-mcp-trap`) or rule candidates are still `open` (`/unikit-verify`).
+
 ### unikit-evolve
 - **Purpose:** Learn from accumulated fix-patches — extract prevention points and turn them into
   coding rules (`RULES.md`) or skill-workflow overrides (`skill-context/`).
