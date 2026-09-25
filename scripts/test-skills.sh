@@ -7877,14 +7877,15 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# AR: /unikit-archive — the plan archive (AR-1…AR-9)
+# AR: /unikit-archive — the plan archive (AR-1…AR-9 the skill, AR-10…AR-12 the readers)
 # ─────────────────────────────────────────────
 # The archive MOVES completed folder plans out of .unikit/code/plans/, so every reader that
 # walks that directory stops seeing them — the point for plan lookup, and wrong for the
 # readers that need finished plans or their unfinished rows. This half pins the skill: the
 # predicate (every mark other than x is unfinished — the coordinator writes [~] and [!]),
-# the two stops, the move rule measured in ADR-0001 and the scope. The reader half is added
-# below by the phase that edits the readers. Anchored on formulations, never on headings.
+# the two stops, the move rule measured in ADR-0001 and the scope. AR-10…AR-12 pin the three
+# readers outside the skill that had to learn about the archive. Anchored on formulations,
+# never on headings.
 AR_SKILL="$ROOT_DIR/skills/unikit-archive/SKILL.md"
 AR_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
 AR_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
@@ -7932,9 +7933,21 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF 'Bash(rm' "$AR_SKILL" && AR_WHY+=" AR-8:can-delete"
     # (AR-9) the legacy layout is recognised under the PL-2 marker, never by a bare old name.
     grep -qF '(a pre-merge plan)' "$AR_SKILL" || AR_WHY+=" AR-9:legacy-layout-unrecognised"
+    # (AR-10) the one reader that wants completed plans reads the archive too — a glob that
+    # misses returns "no prior plan", never an error, so nothing else would notice.
+    grep -qF '`.unikit/code/archive/plans/*/*.md`' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:fallback-blind-to-archive"
+    grep -qF 'moves exactly the completed plans this fallback reads' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:no-reason"
+    # (AR-11) a new plan never takes an archived plan's name — both producers.
+    grep -qF '`.unikit/code/archive/plans/`' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-collision-blind-to-archive"
+    grep -qF 'is archived (<matched folder>)' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-no-archived-branch"
+    grep -qF '`.unikit/code/archive/plans/`' "$AR_POLISHER" || AR_WHY+=" AR-11:polisher-collision-blind-to-archive"
+    grep -qF 'is archived (<matched folder>)' "$AR_POLISHER" || AR_WHY+=" AR-11:polisher-no-archived-branch"
+    # (AR-12) the end of implement names the way out, and still never offers to delete.
+    grep -qF '/unikit-archive <folder>' "$AR_IMPLEMENT" || AR_WHY+=" AR-12:no-archive-hint"
+    grep -qF 'Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`' "$AR_IMPLEMENT" || AR_WHY+=" AR-12:delete-ban-lost"
 fi
 if [[ -z "$AR_WHY" ]]; then
-    pass "AR-1…AR-9 unikit-archive: non-x marks are unfinished, two stops keyed on the trap back-reference and open candidates, git mv only for a tracked folder, no overwrite and no commit"
+    pass "AR-1…AR-12 unikit-archive: non-x marks are unfinished, two stops keyed on the trap back-reference and open candidates, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it"
 else
     fail "AR plan archive contract:$AR_WHY"
 fi

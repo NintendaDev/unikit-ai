@@ -234,10 +234,10 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 3. **Get today's date** (`YYYY-MM-DD`) — the value of the manifest's `Created:` and `Updated:` fields (Plan Manifest Template in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`).
 4. The folder name **is** the feature name from step 2 — `<feature-name>`, no date and no separator prefix (e.g. `item-appraisal-system`).
 
-5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
+5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/` and `.unikit/code/archive/plans/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
 
    - No match → create `plans/<feature-name>/` and continue.
-   - A match → ask, and do not decide it yourself:
+   - A match in `.unikit/code/plans/` → ask, and do not decide it yourself:
 
    ```
    AskUserQuestion: A plan named "<name>" already exists (<matched folder>).
@@ -249,6 +249,17 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
    - "Refine the existing plan" → hand control to the `add` body (`{{skills_dir}}/{{self_name}}/references/mode-add.md`) on the matched folder and print `INFO [plan] <name> exists — switching to add mode`.
    - "Choose another name" → take the user's slug and repeat this check on it. On success print `INFO [plan] creating <new-name>`.
+   - A match **only in `.unikit/code/archive/plans/`** → the name belongs to an archived plan. An archived plan is not refined in place, and a second folder of that name would collide when this one is archived:
+
+   ```
+   AskUserQuestion: A plan named "<name>" is archived (<matched folder>).
+
+   Options:
+   1. Choose another name — I'll enter a different slug
+   2. Cancel planning
+   ```
+
+   - "Choose another name" → as above. "Cancel planning" → **STOP**.
 
    **Appending an automatic suffix (`-2`, `-v2`, a date) is forbidden.**
 

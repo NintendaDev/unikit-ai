@@ -579,7 +579,7 @@ Options:
 
 Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
-**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.**
+**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** A finished folder plan leaves the active list only through `/unikit-archive`, which Step 5.8 names.
 
 **5.5: MCP Findings handoff**
 
@@ -629,6 +629,8 @@ Next steps:
 - {suggest what to do next — e.g. "Run /unikit-implement to continue from Phase 4"}
 - {or "All phases completed — feature is done!"}
 ```
+
+When the plan is a folder plan and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself refuses while MCP findings are untransferred or rule candidates are still open.
 
 ## Status Display
 
