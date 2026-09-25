@@ -22,6 +22,7 @@ allowed-tools:
   - Grep
   - AskUserQuestion
   - Bash(rm .unikit/rules/*)
+  - Bash(node *)
 ---
 
 # UniKit Rules — Project Conventions

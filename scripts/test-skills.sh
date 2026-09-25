@@ -7769,7 +7769,7 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# PRT: project rule topics (PRT-1…PRT-12)
+# PRT: project rule topics (PRT-1…PRT-13)
 # ─────────────────────────────────────────────
 # `.unikit/RULES.md` became a root: common rules under `## Common`, bounded rules in topic
 # files under `.unikit/rules/`, listed by a `## Topics` table whose `Load when` column is the
@@ -8001,6 +8001,30 @@ if [[ -z "$PRT12_WHY" ]]; then
     pass "PRT-12 every unikit-rules mode announces itself as the run's first output and prints progress before long steps; the offer stays silent"
 else
     fail "PRT-12 mode announcement contract:$PRT12_WHY"
+fi
+# (PRT-13) optimise hands the exact work to skills/unikit-rules/scripts/rules-layout.mjs: a real
+# run on a 360-line file had the agent write its own awk to number 192 rules, because counting
+# and moving that many by hand is where a rule gets lost. The script is self-contained Node (every
+# UniKit project has it, Python it may not); the skill needs its `Bash(node *)` grant, the
+# reference must call it by its installed path, and the by-hand path must survive for an agent
+# that cannot run node. Its behaviour — parse, refusal, verbatim move — is Part 13c's object.
+PRT13_SCRIPT="$ROOT_DIR/skills/unikit-rules/scripts/rules-layout.mjs"
+PRT13_WHY=""
+[[ -s "$PRT13_SCRIPT" ]] || PRT13_WHY+=" missing:unikit-rules/scripts/rules-layout.mjs"
+grep -qxF '  - Bash(node *)' "$EV_RULES_SKILL" || PRT13_WHY+=" skill:no-node-grant"
+grep -qF '{{skills_dir}}/{{self_name}}/scripts/rules-layout.mjs' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:script-not-called"
+grep -qF 'Only when `node` cannot run.' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:no-by-hand-fallback"
+grep -qF 'never work around it by hand' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:refusal-may-be-bypassed"
+if [[ -s "$PRT13_SCRIPT" ]]; then
+    prt13_lines="$(wc -l < "$PRT13_SCRIPT")"
+    (( prt13_lines <= 500 )) || PRT13_WHY+=" script:${prt13_lines}-lines-over-500"
+    grep -qE "^import .* from '(node:)?[a-z]+';$" "$PRT13_SCRIPT" || PRT13_WHY+=" script:no-node-imports"
+    grep -E '^import ' "$PRT13_SCRIPT" | grep -vqE "from 'node:" && PRT13_WHY+=" script:non-builtin-import"
+fi
+if [[ -z "$PRT13_WHY" ]]; then
+    pass "PRT-13 optimise runs the self-contained rules-layout.mjs (node grant, installed path, by-hand fallback kept)"
+else
+    fail "PRT-13 rules-layout helper wiring:$PRT13_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -9387,6 +9411,16 @@ if bash "$SCRIPT_DIR/test-rules.sh"; then
     pass "Rules registry tests passed"
 else
     fail "Rules registry tests failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 13c: rules-layout.mjs — the optimise helper, run for real on fixture projects
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13c: rules-layout helper tests${NC}"
+if bash "$SCRIPT_DIR/test-rules-layout.sh"; then
+    pass "rules-layout helper tests passed"
+else
+    fail "rules-layout helper tests failed"
 fi
 
 # ─────────────────────────────────────────────

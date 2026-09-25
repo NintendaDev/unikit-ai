@@ -56,7 +56,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "subagentsDir": ".claude/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-memory",
-                          "unikit-skills-context", "unikit-verify",
+                          "unikit-rules", "unikit-skills-context", "unikit-verify",
                           "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify"],
       "installedSubagents": ["unikit-architecture-sidecar"]
@@ -707,6 +707,10 @@ echo "  ✓ ENGINE_RULES.md: installed for unity engine (unikit + unikit-verify 
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-memory/scripts/material-prep.py" \
   "material-prep.py should be delivered into the installed unikit-memory skill (scripts/ subdir)"
 echo "  ✓ unikit-memory: scripts/material-prep.py delivered on install"
+# unikit-rules ships the second scripts/ subdir: rules-layout.mjs, which optimise runs.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-rules/scripts/rules-layout.mjs" \
+  "rules-layout.mjs should be delivered into the installed unikit-rules skill (scripts/ subdir)"
+echo "  ✓ unikit-rules: scripts/rules-layout.mjs delivered on install"
 
 # ─────────────────────────────────────────────────────
 # Test 8: ENGINE_RULES.md installation for Godot

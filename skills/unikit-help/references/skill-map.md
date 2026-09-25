@@ -379,7 +379,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **`compact` mode:** `/unikit-rules compact` retro-fits an already bloated `RULES.md` — shortens
   what reduces, keeps what does not, flattens the sections. Non-destructive, asks before writing.
 - **`optimise` mode:** `/unikit-rules optimise` splits the rules into topics or regroups them —
-  preview, confirmation, nothing deleted. Also offered by itself on an old flat file.
+  preview, confirmation, nothing deleted. Also offered by itself on an old flat file. A bundled
+  Node script does the counting and the word-for-word move; the agent only picks the topics.
 - **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence and deletes only
   the ones you select.
 - **Every mode announces itself** before reading anything — the mode, what it will do, what it
