@@ -7657,7 +7657,7 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -7766,6 +7766,65 @@ if [[ -z "$RFM_WHY" ]]; then
     pass "RFM-1…RFM-8 rule form is a flat one-line list; compact is exact-matched, confirmed, non-destructive; no length counters"
 else
     fail "RFM-1…RFM-8 rule form contract:$RFM_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# PRT: project rule topics (PRT-1…PRT-11)
+# ─────────────────────────────────────────────
+# `.unikit/RULES.md` became a root: common rules under `## Common`, bounded rules in topic
+# files under `.unikit/rules/`, listed by a `## Topics` table whose `Load when` column is the
+# only copy of each load condition (research project-rules-topics, DEC-001…DEC-003). This
+# block pins the writer; PRT-6…PRT-10 below pin the canon, the readers, the other writers and
+# the prune mode. Anchored on formulations, never on headings. RFM-1 keeps asserting
+# `is a **flat list**`: every list — the whole flat file, `## Common`, each topic file — is
+# still one.
+PRT_OPTIMISE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-optimise.md"
+PRT_WHY=""
+[[ -s "$PRT_OPTIMISE_REF" ]] || PRT_WHY+=" missing:unikit-rules/references/mode-optimise.md"
+# (PRT-1) the layout: the table header, two headings that live together, the header paragraph,
+# the one marker (there is no `topics` marker), and the single source of `Load when`.
+grep -qF '| Topic | Load when |' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-table-header"
+grep -qF '`## Topics` and `## Common` exist together or not at all' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-two-heading-rule"
+grep -qF 'the rules under `## Common` apply to every task' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-header-paragraph"
+grep -qF '<!-- unikit:rules-layout flat -->' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-flat-marker"
+grep -qF 'rules-layout topics' "$EV_RULES_SKILL" && PRT_WHY+=" PRT-1:topics-marker-returned"
+grep -qF '**`Load when` lives only in the root table**' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:load-when-not-single-source"
+# (PRT-2) the state comes from the content, in a fixed order, and a refusal is final.
+grep -qF "decided by the file's content" "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:state-not-content-derived"
+for prt_s in topics flat empty legacy; do
+    grep -qF "| \`$prt_s\` |" "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:no-state-$prt_s"
+done
+grep -qF 'Check the states in this order' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:no-order"
+grep -qF 'A `flat` file is never offered the reorganization again' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:refusal-not-final"
+# (PRT-3) placement and the report: common when unsure, the Topic column, the drift warnings.
+grep -qF 'When unsure, the rule goes to common.' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-unsure-default"
+grep -qF '| # | Outcome | Topic | Cross-check |' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-topic-column"
+grep -qF '`<slug> (new)`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-new-topic-value"
+grep -qF 'WARN [rules] topic table:' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-drift-warning"
+# (PRT-4) Mode D: exact argument, both spellings, non-destructive, the invariant, the offer.
+grep -qF 'references/mode-optimise.md' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-4:dispatch-missing"
+grep -qF '`optimise` or `optimize`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-4:spellings"
+if [[ -s "$PRT_OPTIMISE_REF" ]]; then
+    grep -qF '**No rule is deleted**' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:destructive"
+    grep -qF '**only on confirmation**' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:unconfirmed"
+    grep -qF 'rules before, <M> after — file unchanged' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-invariant"
+    for prt_o in 'Apply' 'Keep the flat format' 'Not now'; do
+        grep -qF "\`$prt_o\`" "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-option-${prt_o// /-}"
+    done
+    grep -qF 'No topic proposed → no question' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:offer-without-topics"
+    grep -qF 'end your turn and wait' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:text-tier-does-not-stop"
+fi
+# (PRT-5) Mode C keeps the layout and the tag, and offers the reorganization on a legacy file.
+grep -qF 'compact never removes or rewrites it' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:compact-may-strip-layout"
+grep -qF 'stays verbatim at the end of the shortened rule' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:no-migrate-tag-dropped"
+grep -qF 'Mode C on a `legacy` file first runs the offer' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:compact-no-offer"
+# (PRT-11) the rule language is the `language.rules` setting, not a hardcoded English.
+grep -qF '`language.rules`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-11:no-language-setting"
+grep -qF 'translate it to English before writing' "$EV_RULES_SKILL" && PRT_WHY+=" PRT-11:hardcoded-english-returned"
+if [[ -z "$PRT_WHY" ]]; then
+    pass "PRT-1…PRT-5, PRT-11 unikit-rules writes the root + topic layout, reads its state from the content, offers once, keeps compact/optimise non-destructive"
+else
+    fail "PRT writer contract:$PRT_WHY"
 fi
 
 # ─────────────────────────────────────────────

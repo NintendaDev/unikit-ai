@@ -12,18 +12,20 @@ description: >-
   behavior and wants it remembered. If the user points to a source (file, folder, URL,
   PDF, article, book) or wants to research/document framework usage, use /unikit-memory;
   for architecture decisions use ARCHITECTURE.md.
-argument-hint: "[rule text or topic | numbered batch | compact]"
+argument-hint: "[rule text or topic | numbered batch | compact | optimise]"
 allowed-tools:
   - Read
   - Write
   - Edit
   - Glob
   - Grep
+  - AskUserQuestion
+  - Bash(rm .unikit/rules/*)
 ---
 
 # UniKit Rules — Project Conventions
 
-Add short, actionable rules to `.unikit/RULES.md`. Rules are project-specific overrides that take precedence over the base knowledge rules in `.unikit/memory/code/core/` and `.unikit/memory/code/stack/`.
+Add short, actionable rules to `.unikit/RULES.md` and to the topic files it lists in `.unikit/rules/`. Rules are project-specific overrides that take precedence over the base knowledge rules in `.unikit/memory/code/core/` and `.unikit/memory/code/stack/`.
 
 Before adding any rule, cross-check it against RULES_INDEX.md to avoid duplicating what's already covered in the knowledge base. If a rule is already covered — tell the user and skip. If the rule contradicts or extends an existing knowledge base rule — add it as an explicit override to RULES.md with a note about what it overrides.
 
@@ -38,7 +40,57 @@ Do not announce, confirm, or mention the language setting.
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
 Skill-specific rule:
-- If the user provides a rule in a non-English language, translate it to English before writing to `.unikit/RULES.md`
+- Write every rule — and a topic's title and `Load when` — in the language set by `language.rules` in `.unikit/config.yaml` (default `en`; `.unikit/system/LANGUAGE_RULES.md` → `## Knowledge base rule files`). A rule the user gives in another language is translated into that language before it is written. The layout anchors listed in `## Layout of the rule files` stay English in every language.
+
+## Layout of the rule files
+
+`.unikit/RULES.md` is the **root**, and the only file every reader opens. It takes one of two shapes.
+
+**Flat** — every file until its first topic appears, and every older project:
+
+```markdown
+# Project Rules
+
+<header paragraph>
+
+- <rule>
+- <rule>
+```
+
+**Topics** — common rules in the root, bounded rules in topic files:
+
+```markdown
+# Project Rules
+
+<header paragraph>
+
+## Topics
+
+| Topic | Load when |
+|-------|-----------|
+| [UI views](rules/ui.md) | UI screens, HUD, view models, the `UI/` folder |
+| [Save system](rules/save-system.md) | saving and loading, save data, save migrations |
+
+## Common
+
+- <rule>
+```
+
+The header paragraph is the same in both shapes. This skill writes it verbatim whenever it creates the root or reorganizes it:
+
+```markdown
+Project-specific rules that override or extend the base knowledge rules in `.unikit/memory/`.
+One rule per line, one directive per rule. When this file has a `## Topics` table, the rules under `## Common` apply to every task, and a topic file applies when the work matches its "Load when" — check again when the work moves to a new phase or area, and when unsure, load it.
+```
+
+It travels with the data, so it instructs even a reader whose skills predate topics.
+
+- **`## Topics` and `## Common` exist together or not at all.** Both appear with the first topic and both go away with the last one. There is never an empty `## Topics`; `## Common` may stay empty while topics exist — it is where new common rules are appended, which is why it is the root's last section.
+- **A topic file** is `.unikit/rules/<slug>.md`: the line `# Project Rules — <Title>`, a blank line, and a flat list of rules. It carries no `Load when` of its own: **`Load when` lives only in the root table**, one source that no second copy can contradict.
+- **A table row** is `| [<Title>](rules/<slug>.md) | <Load when> |`. `<slug>` is English kebab-case, one to three words, unique among the files in `.unikit/rules/`. `<Load when>` names the area in the words a plan's tasks use — area and feature names, folders, type names, frameworks — and contains no `|`.
+- **The `flat` marker** is the line `<!-- unikit:rules-layout flat -->`, placed directly under the root's `# Project Rules` line (as the first line when there is none). It records the user's refusal of the topic layout and means nothing to readers. There is no marker for the topic layout: the `## Topics` table is the sign.
+- **Priority.** The root and its topic files together are the project's override level (`## Priority Reminder`). Inside a topic's own area, a topic rule wins over a `## Common` rule it contradicts.
+- **Anchors.** `# Project Rules`, the header paragraph, `## Topics`, `## Common`, the header row `| Topic | Load when |`, the marker and the slugs are English in every `language.rules`.
 
 ## Workflow
 
@@ -50,15 +102,16 @@ Read `.unikit/skill-context/unikit-rules/SKILL.md` if it exists. Treat it as pro
 
 ```
 Check $ARGUMENTS:
-├── Exactly `compact`? → Mode C: retro-compaction
-├── Numbered batch?    → Mode A: Direct add, N rules
-├── Has text?          → Mode A: Direct add, 1 rule
-└── No arguments?      → Mode B: Interactive
+├── Exactly `compact`?             → Mode C: retro-compaction
+├── Exactly `optimise`/`optimize`? → Mode D: reorganize into topics
+├── Numbered batch?                → Mode A: Direct add, N rules
+├── Has text?                      → Mode A: Direct add, 1 rule
+└── No arguments?                  → Mode B: Interactive
 ```
 
-**Mode C is matched on an exact argument, never on containment.** A rule that happens to
-contain the word "compact" is still a rule, and only the bare argument `compact` selects the
-retro mode.
+**Modes C and D are matched on an exact argument, never on containment.** A rule that happens to contain the word "compact" or "optimise" is still a rule; only the bare argument selects the mode. Mode D accepts `optimise` or `optimize`, in any letter case.
+
+**Mode D** → read `{{skills_dir}}/{{self_name}}/references/mode-optimise.md` and follow it; Steps 2-6 below do not run. The layout it writes is `## Layout of the rule files` below.
 
 **Mode A** — user provided rule text:
 ```
@@ -121,28 +174,26 @@ This step prevents duplication and helps maintain a clean separation between pro
    | Rule extends/narrows an existing rule | Add to RULES.md. Mention the related base rule for context. |
    | Rule covers a new topic not in knowledge base | Add to RULES.md. |
 
-### Step 3: Read or Create RULES.md
+### Step 3: Read RULES.md and Determine Its Layout
 
-Check if `.unikit/RULES.md` exists.
+Read `.unikit/RULES.md` if it exists. Its layout state is **decided by the file's content** — no setting, no second file. Check the states in this order; the first that matches wins:
 
-**If it does NOT exist** → create it:
+| State | Recognized by | Where an added rule goes |
+|-------|---------------|--------------------------|
+| `topics` | a line `## Topics` followed by the table header row `Topic` / `Load when` | Step 4 places it: an existing topic, a new topic, or `## Common` |
+| `flat` | the marker line `<!-- unikit:rules-layout flat -->` | the end of the flat list; nothing is offered |
+| `empty` | no file, or a file without a single rule — no line starting `- ` | Step 4 places it; the first topic brings in both headings |
+| `legacy` | anything else: rules, but neither the table nor the marker | the end of the list; after the Step 6 report the reorganization is offered |
 
-```markdown
-# Project Rules
+- **No file** → create it with the line `# Project Rules`, a blank line and the header paragraph (`## Layout of the rule files`); the rule itself is written in Step 4.
+- **`topics`** → also read the table and `Glob .unikit/rules/*.md`, and compare the two. A row whose file is missing → `WARN [rules] topic table: <slug> is listed, .unikit/rules/<slug>.md does not exist`. A file with no row → `WARN [rules] topic table: .unikit/rules/<file> is not listed under ## Topics — no reader loads it`. Neither is repaired here, and this skill never writes into an unlisted file; a listed topic whose file is missing is recreated when Step 4 writes a rule into it. The warnings are printed after the Step 6 report.
+- **The table and the marker both present** → the table wins: `WARN [rules] layout: flat marker ignored — the file already has a ## Topics table`.
+- **A `flat` file is never offered the reorganization again.** The refusal is final; only `/unikit-rules optimise` reorganizes it, and removes the marker when it does. A user who deletes the marker by hand turns the file back into `legacy`, and the offer returns.
+- A new file that has received only common rules looks exactly like a `legacy` one. That is harmless: the offer appears only when the analysis finds something to put in a topic.
 
-Project-specific rules that override or extend the base knowledge rules in `.unikit/memory/`.
-One rule per line, one directive per rule. No sections.
+### Step 4: Place and Append the Rule
 
----
-
-- [new rule here]
-```
-
-**If it exists** → read it and append to the end of the list.
-
-### Step 4: Append the Rule
-
-`.unikit/RULES.md` is a **flat list**. There are no sections: the rule is appended to the end of the list as a `- ` item. Choosing or creating a `## Section` is no longer part of this skill, and existing sections are never recreated.
+Every rule list — the whole file in the `flat` and `legacy` states, the `## Common` section and each topic file in the `topics` state — is a **flat list**. Within a list there are no sections: the rule is appended to the end of its list as a `- ` item. Choosing or creating a `## Section` is no longer part of this skill, and existing sections are never recreated.
 
 **The rule's form is constrained by shape, not by a number:**
 
@@ -155,31 +206,45 @@ One rule per line, one directive per rule. No sections.
 
 **When the existing file already has sections**, the rule is appended at the end of the file and those sections are left untouched and unreformatted. Silently restructuring the user's own file during an ordinary add is not allowed: flattening belongs to Mode C, and it happens only on confirmation.
 
-### Step 5: Also Check Existing RULES.md
+**Where the rule goes** depends on the Step 3 state:
 
-Before writing, verify the new rule doesn't duplicate something already in RULES.md itself (not just the knowledge base). Read through existing rules and check for semantic overlap.
+- **`flat`, `legacy`** → the end of the file, exactly as before. The report's `Topic` is `common`.
+- **`empty`, `topics`** → the first of these that fits:
+  1. **An existing topic** whose `Load when` covers the rule's area → append the rule to the end of `.unikit/rules/<slug>.md`. When that `Load when` would not match a task that needs the rule, widen the cell with the words that name the rule's area.
+  2. **A new topic** — the rule governs a bounded area that a task names explicitly (a subsystem or feature, a folder, a family of types, a framework or library, a process step such as commits or releases), so that a task outside that area never needs it, and no topic covers it yet. Write `.unikit/rules/<slug>.md` (`## Layout of the rule files`) and add its row to the table. When it is the first topic, write `## Topics` with its table and then `## Common` after the header paragraph; the rules the root already holds and the common rules of this batch stand under `## Common`, in their order.
+  3. **Common** — every other case: the rule can apply to any task (naming, formatting, general language use, error handling, dependency injection, logging).
+
+  **When unsure, the rule goes to common.** A common rule costs tokens on every run; a rule in a topic that did not load is a rule silently not applied.
+- A `topics` root without a `## Common` heading → add `## Common` at the end of the file before appending the first common rule.
+- Inside one batch, write the topic files first and the root last.
+
+### Step 5: Also Check the Existing Project Rules
+
+Before writing, verify the new rule doesn't duplicate something the project rules already say — not just the knowledge base. Read every list in the root and, in the `topics` state, the topic file chosen in Step 4; then `Grep -i` two or three distinctive words of the rule across `.unikit/rules/` and read the files that match. A duplicate by meaning is `skipped-duplicate`, wherever it lives.
 
 ### Step 6: Write and Confirm
 
-Use `Edit` to add the rule(s). Then report — **one row per input rule, skipped ones
+Use `Edit` to add the rule(s) to existing files and `Write` for a new topic file or a new root. Then report — **one row per input rule, skipped ones
 included**:
 
 ```markdown
 ## Batch result — N rules
 
-| # | Outcome | Cross-check |
-|---|---------|-------------|
-| 1 | added | no overlap |
-| 2 | already-covered | core/reactive-async.md |
-| 3 | added | extends code-style.md |
-| 4 | skipped-duplicate | same meaning as existing entry |
+| # | Outcome | Topic | Cross-check |
+|---|---------|-------|-------------|
+| 1 | added | common | no overlap |
+| 2 | already-covered | — | core/reactive-async.md |
+| 3 | added | save-system (new) | extends code-style.md |
+| 4 | skipped-duplicate | ui | same meaning as existing entry |
 ```
 
 Outcomes, and nothing else:
 
-- `added` — written into `.unikit/RULES.md`
+- `added` — written into `.unikit/RULES.md` or one of its topic files
 - `already-covered` — the knowledge base already carries it (Step 2); `Cross-check` names the file
 - `skipped-duplicate` — `RULES.md` already carries the same meaning (Step 5)
+
+`Topic` names where the rule landed: `common`, `<slug>`, or `<slug> (new)` for a topic this call created; for `skipped-duplicate`, where the existing rule lives; `—` for `already-covered`, which writes nothing. In the `flat` and `legacy` states every written rule is `common`.
 
 **A rule with no row in the report was not processed.** That is the fourth outcome, and it
 is expressed by absence rather than by a token because absence is how it actually happens —
@@ -198,22 +263,24 @@ formats of this repository forbid.
 If the input looked like a numbered batch but parsed as one rule, say so in the report
 instead of silently writing the whole text as a single `RULES.md` entry.
 
+**After the report:** the Step 3 warnings, one per line; then, when Step 3 found the `legacy` state, the reorganization offer — read `{{skills_dir}}/{{self_name}}/references/mode-optimise.md` and follow its `## Offer`. The rules of this call are already written: the answer changes the layout, never whether they landed.
+
 ## Mode C: Compact an existing RULES.md
 
 A retro mode. It edits a file inside the user's project, so it runs **only on confirmation** and is non-destructive: content is moved, never dropped.
 
-1. Read `.unikit/RULES.md`. No file → say so and stop.
-2. Parse it into `- ` items, preserving their order. A section (`## …`) is not an item: its heading goes away, and the items beneath it join the single list in the same order they had.
+1. Read `.unikit/RULES.md`. No file → say so and stop. Determine its state (Step 3). **Mode C on a `legacy` file first runs the offer** (`{{skills_dir}}/{{self_name}}/references/mode-optimise.md` → `## Offer`): `Apply` reorganizes the file, and compaction then runs over the new layout; `Keep the flat format` writes the marker, and compaction continues as before; `Not now` — compaction continues as before. A `flat` or `topics` file is compacted without an offer.
+2. Parse every list into `- ` items, preserving their order — the root and, in the `topics` state, each topic file its table lists, each file on its own. An item is a line starting `- ` at column zero together with the indented lines that continue it; a nested list (an indented `- ` or `1. `) does not parse. **Structure is not an item, and compact never removes or rewrites it:** the `# ` line, the header paragraph, the marker line, `## Topics` with its table, and `## Common`. A legacy section (any other `## …`) is not an item either: its heading goes away, and the items beneath it join the list in the same order they had.
 3. Decide an outcome per rule:
-   - **`shorten`** — it reduces to one directive without losing knowledge: prepare the short wording;
+   - **`shorten`** — it reduces to one directive without losing knowledge: prepare the short wording. A trailing `<!-- @no-migrate -->` stays verbatim at the end of the shortened rule;
    - **`keep`** — it does not reduce: it stays exactly as it stands. That is not a defect, and it is not marked;
    - **`flatten-only`** — the rule is already one line; only its place changes, because the section around it is going away.
-4. **Print the preview as plain markdown, in a block of its own** — before the question: one line per rule, in the form `before → after` for `shorten`, a single line for the rest. The question mechanism carries the options and nothing else.
+4. **Print the preview as plain markdown, in a block of its own** — before the question: one line per rule, in the form `before → after` for `shorten`, a single line for the rest. The question mechanism carries the options and nothing else. With topics, the preview is grouped by file: the root first, then the topic files in table order.
 5. Ask once: **apply everything / apply only the `shorten` set / cancel**. Without an answer the file is not touched.
-6. Write it with `Edit`: a flat list, the order of the rules preserved, section headings removed. **No rule is deleted** — under any outcome. The order is kept by stripping headings rather than by re-sorting: re-sorting would shuffle rules whose sequence the user chose.
+6. Write it with `Edit`, file by file: every list flat, the order of the rules preserved, legacy section headings removed, the structure untouched. **No rule is deleted** — under any outcome. The order is kept by stripping headings rather than by re-sorting: re-sorting would shuffle rules whose sequence the user chose.
 7. Report how many `shorten`, how many `keep`, how many `flatten-only`. **Not one line about length in characters**, and no suggestion to move anything into the knowledge base.
 
-This mode touches exactly one file: it never edits `RULES_INDEX.md` and nothing under `.unikit/memory/`.
+This mode touches only `.unikit/RULES.md` and its topic files: it never edits `RULES_INDEX.md` and nothing under `.unikit/memory/`.
 
 **Verbose.** One summary line — `INFO [rules] compact: shorten=<a> keep=<b> flatten-only=<c>`; the preview is the detailed output. Cancelled by the user → the file is untouched, and `compact: cancelled, file unchanged` is printed. The file will not parse — not a markdown list, nested structures → write **nothing**, name the places that did not parse, and stop: `WARN [rules] compact: <n> items did not parse — file unchanged`. A half-compacted file belonging to someone else is worse than an uncompacted one.
 
@@ -221,7 +288,7 @@ This mode touches exactly one file: it never edits `RULES_INDEX.md` and nothing 
 
 From RULES_INDEX.md, the override priority (highest wins):
 
-1. `.unikit/RULES.md` — project-specific overrides (what this skill writes to)
+1. `.unikit/RULES.md` and its topic files in `.unikit/rules/` — project-specific overrides (what this skill writes to). Inside a topic's own area, a topic rule wins over a `## Common` rule it contradicts.
 2. `.unikit/ARCHITECTURE.md` — project architecture decisions
 3. `.unikit/memory/code/core/*.md` — universal best practices
 4. `.unikit/memory/code/stack/*.md` — framework-specific knowledge
