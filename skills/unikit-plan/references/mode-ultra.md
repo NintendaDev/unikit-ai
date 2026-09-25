@@ -102,7 +102,7 @@ names the exact words that count as hiding.
 
 ## Step F: Write order
 
-1. Write **all** phase files.
+1. Write **all** phase files — before each one, the **Rule refresh per phase** of SKILL.md Step 5 for that phase.
 2. Write the manifest — `.unikit/code/plans/<feature-name>/PLAN.md` — **last**, once phase
    content has stopped moving, so that `## Phase Index`, the task links, the ranges and the
    dependency references all agree with it.

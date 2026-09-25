@@ -240,11 +240,11 @@ Load the project knowledge base once, before the first task.
 
 **Read in parallel:**
 1. `.unikit/system/dev-principles.md` — **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` the file with `limit` set to that line number. The part **below the marker is read once, at plan load, when the checklist carries an `Editor:` line** — the deep reference plus the editor procedures D6–D8 this skill follows; a plan without `Editor:` lines never reads it. An agent that cannot read with a limit reads the whole file.
-2. `.unikit/RULES.md` — project overrides (highest priority)
+2. `.unikit/RULES.md` — project overrides (highest priority). **Rule topics:** only the root here; the topic files its `## Topics` table lists load per phase in Step 3.0.
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-implement` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
-Stack rules are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
+Stack rules and rule topics are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
 
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
@@ -310,9 +310,9 @@ Keep a running list of files you create, modify, or delete during execution — 
 
 Before executing the first task of any phase (including the first phase):
 1. Re-read `.unikit/memory/code/RULES_INDEX.md`.
-2. Match the phase name and its task descriptions against the Stack table's `Load When` column.
-3. Compute delta: stack rules needed for this phase that are NOT in `loaded_rules`.
-4. Read each delta rule from `.unikit/memory/code/stack/` using the Read tool.
+2. Match the phase name and its task descriptions against the Stack table's `Load When` column **and against the `Load when` column of the `## Topics` table in `.unikit/RULES.md`** (read at Step 1.5; a root without that table has no topics).
+3. Compute delta: stack rules and topic files needed for this phase that are NOT in `loaded_rules`. A topic whose match is uncertain is needed.
+4. Read each delta rule — a stack rule from `.unikit/memory/code/stack/`, a topic file from `.unikit/rules/` — using the Read tool. A topic file the table lists but the disk lacks → print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue.
 5. Add them to `loaded_rules`.
 
 Inside a phase, do NOT re-check rules between individual tasks — they share the same loaded set.

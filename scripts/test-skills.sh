@@ -7854,6 +7854,36 @@ if [[ -z "$PRT6_WHY" ]]; then
 else
     fail "PRT-6 rule-topics canon drift:$PRT6_WHY"
 fi
+# (PRT-7) the phase readers: implement Step 3.0 and the new plan step load topics per phase
+# (the plan point is new — REQ-004), the worker by its phase, the coordinator once per phase
+# and never per task (research finding 7.1). The coordinator half is a NEGATIVE on the task
+# loop, because the read used to sit inside it and looked right there.
+PRT7_WHY=""
+PRT7_S30="$(awk 'index($0,"**3.0: Phase Rules Refresh")==1{f=1;next} index($0,"Inside a phase, do NOT re-check rules")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+if [[ -z "$PRT7_S30" ]]; then
+    PRT7_WHY+=" implement:3.0-window-empty"
+else
+    printf '%s' "$PRT7_S30" | grep -qF '`## Topics`' || PRT7_WHY+=" implement:3.0-no-topics"
+    printf '%s' "$PRT7_S30" | grep -qF '.unikit/rules/' || PRT7_WHY+=" implement:3.0-no-topic-dir"
+    printf '%s' "$PRT7_S30" | grep -qF 'A topic whose match is uncertain is needed.' || PRT7_WHY+=" implement:3.0-no-unsure-rule"
+fi
+grep -qF 'Stack rules and rule topics are NOT loaded here' "$UNIKIT_IMPLEMENT_SKILL" || PRT7_WHY+=" implement:1.5-loads-topics"
+grep -qF '**Rule refresh per phase.**' "$UNIKIT_PLAN_SKILL" || PRT7_WHY+=" plan:no-per-phase-refresh"
+grep -qF 'Rule refresh per phase' "$UP_MODE_ULTRA" || PRT7_WHY+=" plan-ultra:step-f-no-refresh"
+grep -qF 'Rule refresh per phase' "$UP_MODE_ADD" || PRT7_WHY+=" plan-add:no-refresh"
+grep -qF 'matches your phase' "$TC_WORKER" || PRT7_WHY+=" worker:not-by-phase"
+grep -qF 'once per phase, never per task' "$TC_COORD" || PRT7_WHY+=" coordinator:no-per-phase-rule"
+PRT7_LOOP="$(awk 'index($0,"For each task in the phase, sequentially:")==1{f=1;next} /^## Parallel Phase Dispatch/{f=0} f' "$TC_COORD")"
+if [[ -z "$PRT7_LOOP" ]]; then
+    PRT7_WHY+=" coordinator:task-loop-window-empty"
+else
+    printf '%s' "$PRT7_LOOP" | grep -qF 'Bootstrap principles + rules' && PRT7_WHY+=" coordinator:rules-read-per-task-returned"
+fi
+if [[ -z "$PRT7_WHY" ]]; then
+    pass "PRT-7 implement, plan, worker and coordinator load rule topics per phase; the coordinator reads rules once per phase, not per task"
+else
+    fail "PRT-7 per-phase topic loading:$PRT7_WHY"
+fi
 
 # ─────────────────────────────────────────────
 # CM: the commit-message contract of /unikit-commit (CM-1…CM-7)
