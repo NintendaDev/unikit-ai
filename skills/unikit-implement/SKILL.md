@@ -165,7 +165,10 @@ interactive question.
 
      Options 1-3 ask for the description, then run their command; option 4 shows `git branch --show-current` and `git log --oneline -5`.
 
-**If both `.unikit/code/PLAN.md` and a matching folder plan exist**, ask the user which one to use.
+**If both `.unikit/code/PLAN.md` and a folder plan resolved by the branch match exist**, the requested work decides — the tasks named by the selectors of item 4, or every task when there are none. Pending means at least one of those tasks is `- [ ]` in the plan's manifest checklist.
+- **Pending in the folder plan** → use the folder plan without asking: the branch names it and the work is there. Announce `branch match: <branch>`, then print `INFO [plan] fast plan .unikit/code/PLAN.md not used — the branch plan has pending work (<selectors | all tasks>)`.
+- **Nothing pending in the folder plan, but pending in the fast plan** → ask once: `Branch plan <folder> has nothing pending<, for the selectors>. Run the fast plan .unikit/code/PLAN.md?` — `Run the fast plan` (announce `fast plan`) · `Stop` (STOP). Without `AskUserQuestion`, the same two options as numbered text; end your turn and wait.
+- **Pending in neither** → use the folder plan; Step 2 reports that nothing is left.
 
 **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged.
 

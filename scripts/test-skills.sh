@@ -3879,6 +3879,28 @@ else
     fail "PR-6 unikit-plan/mode-list — must not carry the resolver contract:$vq_why"
 fi
 
+# (PR-7) fast plan vs branch plan: the branch plan wins while it has pending work — the selected
+#        tasks, or every task when the call names none — and the fast plan left aside is named.
+#        Only when the branch plan has nothing pending and the fast plan does is there a
+#        question, and it is a yes/no about the fast plan, not "which one". The coordinator runs
+#        every pending phase, i.e. the no-selector case, so it carries the same rule and line.
+#        The negative half is load-bearing: the unconditional "which one" question is what the
+#        user asked to remove, and a half-applied edit would leave it standing next to the rule.
+vq_why=""
+grep -qF 'or every task when there are none' "$VQ_IMPLEMENT"                  || vq_why+=" no-selector-case"
+grep -qF 'use the folder plan without asking' "$VQ_IMPLEMENT"                 || vq_why+=" branch-plan-rule"
+grep -qF 'Run the fast plan .unikit/code/PLAN.md?' "$VQ_IMPLEMENT"            || vq_why+=" fast-plan-question"
+grep -qF 'ask the user which one to use' "$VQ_IMPLEMENT"                      && vq_why+=" which-one-question-survived"
+for vq_f in "$VQ_IMPLEMENT" "$VQ_COORD"; do
+    grep -qF 'INFO [plan] fast plan .unikit/code/PLAN.md not used' "$vq_f"    || vq_why+=" no-left-aside-line:${vq_f##*/}"
+done
+grep -qF 'the branch plan wins while it has any' "$VQ_COORD"                  || vq_why+=" coordinator-rule"
+if [[ -z "$vq_why" ]]; then
+    pass "PR-7 fast vs branch plan — the branch plan wins while it has pending work; the fast plan is offered only when it has none"
+else
+    fail "PR-7 fast-vs-branch plan choice:$vq_why"
+fi
+
 # (IR-1) unikit-improve carries the clause exactly twice: Step 0 Priority 4 (which plan) and
 #        the Step 4 gate (which findings). An exact number catches both the loss of one and
 #        an accidental duplicate.

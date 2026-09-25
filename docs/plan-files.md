@@ -344,7 +344,13 @@ This table is about **the vocabularies this project writes**, not about what an 
 3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying neither is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime. Reaching this step at all means the branch named no plan, so *latest* is a guess rather than a resolution: with two or more plans present the candidates are printed and the choice is put to the user, never auto-selected. With exactly one plan there is nothing to choose between — it is announced with the branch miss named, and work continues
 4. **Fix plan fallback** → `.unikit/code/FIX_PLAN.md` → redirects to `/unikit-fix`
 
-If both `.unikit/code/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
+If both `.unikit/code/PLAN.md` and a folder plan matching the branch exist, `/unikit-implement` looks at the work the call asks for — the phases or tasks it names (`Phases 3-5`), or the whole plan when it names none:
+
+- **still pending in the branch's plan** → that plan is used without a question, and an `INFO [plan] fast plan .unikit/code/PLAN.md not used` line names the fast plan left aside;
+- **nothing pending there, but pending in the fast plan** → one yes/no question: run the fast plan, or stop;
+- **pending in neither** → the branch's plan, which then reports that nothing is left.
+
+`unikit-implement-coordinator` follows the same rule for the whole plan (it takes no selectors). `/unikit-verify` asks which plan to verify.
 
 Whichever branch of that order resolves, the plan is **named before any other output** — a single
 `INFO [plan] resolved: <path> (<reason>)` line, where the reason is the branch of discovery that

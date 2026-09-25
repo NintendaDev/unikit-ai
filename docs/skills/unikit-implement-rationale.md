@@ -13,6 +13,11 @@ explore save pipeline, on the same criterion — see
 - **Two branch-matching folders are a question, never a choice by format precedence.** Two
   folders for one feature is exactly the state the date in the folder name used to prevent,
   and choosing silently is how the resolver starts finding the wrong one.
+- **The branch plan wins while it has pending work.** Being on the branch of a plan is the
+  strongest signal of which plan a call means, and asking "fast or branch?" on every call trained
+  the user to click through the question. Pending is measured on the requested work — the named
+  phases, or the whole plan for a bare call — because a finished branch plan is no evidence: then,
+  and only then, the fast plan is offered, as a yes/no rather than a choice between two plans.
 - **A manifest with no `Updated:` is never dated from its file's mtime.** `git checkout` and a
   fresh clone rewrite the mtime, so it says when the file landed on this disk, not when the plan
   was last touched.
