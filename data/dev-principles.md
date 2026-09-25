@@ -274,7 +274,7 @@ The row:
 
 ### D8. The library reference
 
-The documentation source the header of `.unikit/system/engine-mcp/INDEX.md` names for the configured server. Its identifier is carried there, so nothing is resolved at run time. Reach for it on exactly two occasions, and **never at Bootstrap**:
+The documentation source the header of `.unikit/system/engine-mcp/INDEX.md` names for the configured server. Its identifier is carried there, so nothing is resolved at run time. **Only a reader granted that server reaches for it**; for every other reader of this file D8 is inert — the same as an unconfigured reference (below). Reach for it on exactly two occasions, and **never at Bootstrap**:
 
 1. **an unfamiliar area** — what approaches the authors propose; once per area per session;
 2. **a dead end** — you hold the schema and the capability still is not there.

@@ -349,7 +349,7 @@ findable.
 ### Readback
 
 - **Why it exists.** It is the only check in the whole mechanism that asks the source of truth
-  instead of the disk, and it costs one turn.
+  instead of the disk, and it costs one question call per four requirements shown.
 - **Why a `stated` requirement that passed is not shown.** A short list is the only defence
   against this step turning into something that gets clicked through.
 - **Why one question per requirement.** The printed block drew one free reply for every

@@ -64,7 +64,7 @@ planner that recorded it into the plan would make the executor's decision irreve
 
 #### Editor mode (`Editor tasks`)
 
-**Gate — `engine_rules_loaded = false` → skip this whole subsection.** Do not ask, and do **not** write an `Editor tasks` line into `## Settings`. Step 0.5 already disabled `Editor:` generation for this engine, so the setting would have no consumer and the question would be unanswerable noise.
+**Gate — `engine_rules_loaded = false` → skip this whole subsection.** Do not ask, and do **not** write an `Editor tasks` line into `## Settings`. Step 0.5 set `engine_rules_loaded = false`, and Step 5 then generates no `Editor:` field for this engine, so the setting would have no consumer and the question would be unanswerable noise.
 
 When `engine_rules_loaded = true`:
 

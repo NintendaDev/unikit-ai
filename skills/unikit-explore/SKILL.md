@@ -817,7 +817,7 @@ requirements it typically prints three.
 
 **Order of writes.** Append the readback exchange — the printed grounds, the question, `Offered:` and the answer — to `SOURCE.md` **before** the `Edit` it causes: the quotation a correction or a chosen reading is anchored on must already be in the log when the requirement is written, because that phrase is grepped at that moment.
 
-**Counting for the `Readback` field of `## Sessions`.** `Yours`, `Finding only`, `Open question`, `A` / `B` / `C` and an "Other" correction count as `corrected`; `Mine` and `Requirement` do not. `<K> demoted to OQ` counts only what **Nobody answered** demoted — never an item that already was an `OQ-<n>`.
+**Counting for the `Readback` field of `## Sessions`.** `Yours`, `Finding only`, `Open question` on an item that was not already an `OQ-<n>`, `A` / `B` / `C` and an "Other" correction count as `corrected`; `Mine` and `Requirement` do not. `<K> demoted to OQ` counts only what **Nobody answered** demoted — never an item that already was an `OQ-<n>`.
 
 **A text-tier question left unanswered** — the next message is about something else — applies **Nobody answered** and continues the save from Step 4: `RESEARCH.md` is already on disk and must not stay unchecked by the registry and the gate.
 

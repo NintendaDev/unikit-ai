@@ -226,7 +226,7 @@ done
 # `## Delegation agents` section MUST be defined in that section. This ensures aliases are
 # not drift-prone — if a narrative mentions `docs-agent`, that alias must be declared.
 #
-# A skill that names an alias only to FORBID it (`unikit-improve`, `unikit-plan` on
+# A skill that names an alias only to FORBID it (`unikit-improve` on
 # `develop-agent`) still owes the reader a lookup: the alias is recorded in that skill's
 # section as not-used-here. The guard's contract is "mentioned in the section", which is
 # what the awk already measures — no exemption shape is introduced.
@@ -4960,8 +4960,15 @@ MF5_WHY=""
 grep -qF 'observed' "$MF_IMPLEMENT" || MF5_WHY+=" implement"
 grep -qF 'observed' "$MF_FIX"       || MF5_WHY+=" fix"
 grep -qF 'observed' "$MF_VERIFY"    || MF5_WHY+=" verify"
+# The worker is a writer too (variant B), and the only one that may write a row without
+# having read D7: it reads the lower half only when its own task carries `Editor:`, while
+# the table exists whenever the plan has one anywhere. So it carries the two rules itself.
+# Scoped to the finding line: the rule-candidate line below it says `dedup is semantic` too.
+MF5_WORKER_LINE="$(grep -F 'A call that misled you is a finding' "$MF_WORKER")"
+printf '%s' "$MF5_WORKER_LINE" | grep -qF '`observed` is today' || MF5_WHY+=" worker"
+printf '%s' "$MF5_WORKER_LINE" | grep -qF 'dedup is semantic'   || MF5_WHY+=" worker-dedup"
 if [[ -z "$MF5_WHY" ]]; then
-    pass "MF-5 observed known to all three plan-side findings writers"
+    pass "MF-5 observed known to all four plan-side findings writers (the worker carries its own copy)"
 else
     fail "MF-5 observed column unknown to:$MF5_WHY"
 fi
@@ -6168,7 +6175,10 @@ grep -qF 'before the first `GATE LIFTED` verdict' "$UNIKIT_VERIFY_SKILL" || LB_W
 grep -qF 'when a task you were handed carries an `Editor:` line' "$ROOT_DIR/subagents/unikit-implement-worker.md" || LB_WHY+=" LB-3:worker"
 # (LB-4) the file and the docs promise the same moment.
 grep -qF "at plan load when the plan's checklist carries an \`Editor:\` line" "$LA_DEV_PRINCIPLES" || LB_WHY+=" LB-4:dev-principles-moment"
-grep -qF 'A run whose plan has no `Editor:` task never pays for the deep half' "$ROOT_DIR/docs/dynamic-memory.md" || LB_WHY+=" LB-4:docs-moment"
+grep -qF 'pays for the deep half only if it reaches editor state anyway' "$ROOT_DIR/docs/dynamic-memory.md" || LB_WHY+=" LB-4:docs-moment"
+# NEGATIVE — "never pays" is false: verify reads the lower half before its first GATE LIFTED
+# verdict, and fix working from FIX_PLAN.md (no Editor: field) reads it on its first editor step.
+grep -qF 'never pays for the deep half' "$ROOT_DIR/docs/dynamic-memory.md" && LB_WHY+=" LB-4:docs-overclaims"
 if [[ -z "$LB_WHY" ]]; then
     pass "LB-1…LB-4 lazy-read boundary enforced: 8 readers name it, 7 read up to it, the lower half loads at plan load under Editor:"
 else
@@ -6180,6 +6190,10 @@ if grep -qF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES"; then
     EW_BLINE=$(grep -nF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES" | head -1 | cut -d: -f1)
     EW_ABOVE=$(head -n "$EW_BLINE" "$LA_DEV_PRINCIPLES")
     EW_BELOW=$(tail -n +"$EW_BLINE" "$LA_DEV_PRINCIPLES")
+    # (EW-4) D8 is scoped to whoever holds the documentation server: every reader of the
+    # lower half reads D8, and only some of them are granted that server. Worded by
+    # capability, never by skill name — the recipient list lives in the server's config.
+    echo "$EW_BELOW" | grep -qF 'Only a reader granted that server reaches for it' || EW_WHY+=" EW-4:d8-unscoped"
     # (EW-1) the three procedures sit below the boundary, and nothing of them above it.
     for ew1 in 'Candidates from the live catalog, by intent' 'A call that misled you' 'Reference: trigger <1|2>'; do
         echo "$EW_BELOW" | grep -qF "$ew1" || EW_WHY+=" EW-1:not-below:${ew1// /-}"
@@ -6189,9 +6203,13 @@ else
     EW_WHY+=" EW-1:boundary-marker-missing"
 fi
 # (EW-2) NEGATIVE — the executors no longer restate them.
-for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL"; do
-    for ew2 in 'Candidates from the live catalog, by intent' 'Reference: trigger <1|2>' 'network dependency inside the editor lane'; do
-        grep -qF "$ew2" "$ew2_f" && EW_WHY+=" EW-2:restated:${ew2_f##*/skills/}"
+# All five readers of the lower half, not only the two that carried the full procedure: verify
+# and the worker held shortened retellings, and `candidate affordances` is the phrase both
+# retellings shared — D6 owns it now, so any executor that carries it is restating D6.
+for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL" "$UNIKIT_VERIFY_SKILL" \
+             "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    for ew2 in 'Candidates from the live catalog, by intent' 'Reference: trigger <1|2>' 'network dependency inside the editor lane' 'candidate affordances'; do
+        grep -qF "$ew2" "$ew2_f" && EW_WHY+=" EW-2:restated:${ew2_f#"$ROOT_DIR"/}"
     done
 done
 # (EW-3) and each points at the owner section it now follows.
@@ -6202,7 +6220,7 @@ for ew3_f in "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-worker
     grep -qF '**D7**' "$ew3_f" || EW_WHY+=" EW-3:no-D7:${ew3_f##*/}"
 done
 if [[ -z "$EW_WHY" ]]; then
-    pass "EW-1…EW-3 editor procedures live once below the boundary (D6–D8) and every executor points at them"
+    pass "EW-1…EW-4 editor procedures live once below the boundary (D6–D8), every executor points at them, and D8 is scoped to the server's grantees"
 else
     fail "EW editor-procedure ownership drift:$EW_WHY"
 fi
@@ -6632,7 +6650,7 @@ if [[ -z "$TC_G7_WHY" ]]; then
     TC53_WIN="$(awk '/^## Step 2\.5/{f=1;next} /^## Step 3\.2/{f=0} f' "$TC_TESTRUNS")"
     for tc53 in 'AskUserQuestion' 'One run at the end' 'end your turn and wait' \
                 '(<asked|arguments|no answer|nothing to merge>)' 'Fewer than two' \
-                'whatever the answer below' 'last one in execution order'; do
+                'whatever the answer below' 'last one in execution order' 'drops the answer'; do
         printf '%s' "$TC53_WIN" | grep -qF "$tc53" || TC_G7_WHY+=" TC-53:no-${tc53// /-}"
     done
     # (TC-54) the instruction in the arguments is recognised, and the Step 0.2 question rides the same call.
@@ -6652,11 +6670,18 @@ if [[ -z "$TC_G7_WHY" ]]; then
     grep -qF 'a point of the last layer that holds one' "$TC_COORD" || TC_G7_WHY+=" TC-56:survivor-by-checklist-order"
     # (TC-57) NEGATIVE — the answer is per call; nothing may re-introduce a stored default.
     grep -qF 'Merging is only ever enabled explicitly' "$UNIKIT_IMPLEMENT_SKILL" && TC_G7_WHY+=" TC-57:stored-default-returned"
+    grep -qF 'Merging is only ever enabled explicitly' "$TC_TESTRUNS"           && TC_G7_WHY+=" TC-57:stored-default-returned:test-runs"
+    # (TC-58) deferred work is closed by the run that carried it. Its marker still names the
+    # point it was first merged into, so "tick what points at this run point" never reaches
+    # it, and every later call would pick it up and run its coverage again.
+    grep -qF 'and every deferred task whose coverage this run carried' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:deferred-never-closed"
+    grep -qF 'is recorded like a point' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:end-of-scope-unrecorded"
+    grep -qF 'deferred task(s) closed' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:no-close-log"
 fi
 if [[ -z "$TC_G7_WHY" ]]; then
-    pass "TC-52…TC-57 merging is one question per call: no key, source named, non-run steps carried, coordinator asks too"
+    pass "TC-52…TC-58 merging is one question per call: no key, source named, non-run steps carried, coordinator asks too, deferred work closed where it ran"
 else
-    fail "TC-52…TC-57 merge-question contract:$TC_G7_WHY"
+    fail "TC-52…TC-58 merge-question contract:$TC_G7_WHY"
 fi
 
 # --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
@@ -6683,6 +6708,11 @@ TR3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f
 printf '%s' "$TR3_S32" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:step-3.2-stub-dangling"
 # (TR-4) the coordinator reads the same reference — it runs checkpoint tasks itself.
 grep -qF 'test-run reference' "$TC_COORD" || TR_WHY+=" TR-4:coordinator-blind"
+# Anchored on the read instruction and its path pointer (PD-10: `{{skills_dir}}` is empty in a
+# subagent, so the path comes from the preloaded implement body). The two later mentions in
+# the fifth branch and the run-owner rule kept the check above green with the read deleted.
+grep -qF "test-run reference once — the path is written in \`/unikit-implement\` Step 1" "$TC_COORD" \
+    || TR_WHY+=" TR-4:coordinator-never-reads"
 if [[ -z "$TR_WHY" ]]; then
     pass "TR-1…TR-4 test-run block extracted to references/test-runs.md (present, not inline, read only under Testing: yes, coordinator included)"
 else
@@ -6692,7 +6722,7 @@ fi
 # ─────────────────────────────────────────────
 # PX: incidental defects closed by the readback/merge/slimming plan (research section 14).
 # One assert per defect, numbered by the defect. Defect 13 (the dev-principles lazy-read
-# boundary ignored by implement/fix/verify) is closed by LB-1…LB-3, not here.
+# boundary ignored by implement/fix/verify) is closed by LB-1…LB-4, not here.
 PX_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 PX_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
 PX_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
@@ -6703,15 +6733,26 @@ PX_WHY=""
 # (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline".
 grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$PX_IMPLEMENT" && PX_WHY+=" PX-1:devcontext-inline-fallback"
 # (PX-2) the findings column contract lives in the planner's reference, not in implement's own.
-grep -qE '[^/]references/TASK-FORMAT\.md' "$PX_IMPLEMENT" && PX_WHY+=" PX-2:task-format-path-without-owner"
+# Every surface that names the file, D7 included (the defect-2 line moved there). Any path
+# that does not end in `unikit-plan/references/TASK-FORMAT.md` is a miss — including the
+# `{{self_name}}/references/` form, which a `[^/]` prefix test let through. Captured into a
+# variable rather than piped into `grep -q`: under pipefail a SIGPIPE hides the hit.
+for px2_f in "$PX_IMPLEMENT" "$ROOT_DIR/skills/unikit-fix/SKILL.md" "$PX_VERIFY" "$PX_DEV_PRINCIPLES" \
+             "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    PX2_PATHS="$(grep -oE '[^ `(]*references/TASK-FORMAT\.md' "$px2_f" || true)"
+    PX2_BAD="$(printf '%s\n' "$PX2_PATHS" | grep -vE '(^|/)unikit-plan/references/TASK-FORMAT\.md$' | grep -v '^$' || true)"
+    [[ -n "$PX2_BAD" ]] && PX_WHY+=" PX-2:task-format-path-without-owner:${px2_f##*/}"
+done
 # (PX-3) Testing: no omits the placement line by design — it is not a legacy plan.
 for px_f in "$PX_IMPLEMENT" "$PX_VERIFY"; do
     grep -qF 'Line absent under `Testing: yes` → the plan is legacy' "$px_f" || PX_WHY+=" PX-3:legacy-unconditioned:${px_f##*/skills/}"
 done
-# (PX-4) the Step 4 template carries the lines other steps say it carries.
+# (PX-4) the Step 4 template carries the lines other steps say it carries. Anchored on the
+# template's line forms: the paragraph below the template names both lines too, and a plain
+# `grep -F` stayed green with the template lines deleted.
 PX4_WIN="$(awk '/^### Step 4: Completion Summary/{f=1;next} /^### Step 5/{f=0} f' "$PX_IMPLEMENT")"
-printf '%s' "$PX4_WIN" | grep -qF 'Documentation:'           || PX_WHY+=" PX-4:no-documentation-line"
-printf '%s' "$PX4_WIN" | grep -qF 'Test checkpoints: legacy' || PX_WHY+=" PX-4:no-legacy-line"
+printf '%s' "$PX4_WIN" | grep -qE '^Documentation: \{delegated'             || PX_WHY+=" PX-4:no-documentation-line"
+printf '%s' "$PX4_WIN" | grep -qE '^Test checkpoints: legacy — placement' || PX_WHY+=" PX-4:no-legacy-line"
 # (PX-5) no example teaching the pre-contract announcement format.
 grep -qE '^> Plan:|^## Examples' "$PX_IMPLEMENT" && PX_WHY+=" PX-5:stale-examples"
 # (PX-6) Steps D-H refine Step 5 — the SKILL.md half of UP-5.
@@ -6730,10 +6771,11 @@ grep -qF 'criterion-2 finding' "$PX_EXPLORE" && PX_WHY+=" PX-10:gate-cannot-see-
 # (PX-12) an absent rules file is announced by one line, never skipped in silence.
 grep -qF 'skipped **silently**' "$PX_DEV_PRINCIPLES" && PX_WHY+=" PX-12:dev-principles-silent"
 grep -qF 'skipped silently'     "$PX_DYNAMIC_MEMORY" && PX_WHY+=" PX-12:docs-silent"
+grep -qF 'as a silent skip'     "$ROOT_DIR/docs/configuration.md" && PX_WHY+=" PX-12:configuration-silent"
 # (PX-14) verify never resolves FIX_PLAN.md, so it never names that reason.
 grep -qF '`fix plan` ·' "$PX_VERIFY" && PX_WHY+=" PX-14:verify-fix-plan-reason"
 if [[ -z "$PX_WHY" ]]; then
-    pass "PX-1…PX-14 incidental defects stay closed (defect 13: LB-1…LB-3)"
+    pass "PX-1…PX-14 incidental defects stay closed (defect 13: LB-1…LB-4)"
 else
     fail "PX incidental defect returned:$PX_WHY"
 fi

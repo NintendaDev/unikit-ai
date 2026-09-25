@@ -61,8 +61,8 @@ At the very start of your first turn, before doing anything else:
 
 The user may provide:
 - `@<path>` — explicit plan folder (e.g. `@.unikit/code/plans/2026-03-10_core-loop`). Highest priority.
-- A description of what to implement — used only if a plan exists that matches.
-- Nothing — auto-detect the latest plan.
+- A description of what to implement — context only: it selects no plan (there is no feature-name lookup here).
+- Nothing — the plan is resolved by the ladder in Plan Parsing (fast plan, branch match; the latest is only a guess, asked when several exist).
 - A test-run instruction (`tests at the end`, `run tests at every point`) — the answer to the merge question below, given in advance.
 
 ## Plan Parsing
