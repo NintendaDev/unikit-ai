@@ -55,19 +55,20 @@ Do not announce, confirm, or mention the language setting.
 3. **Context Check (Read-Only)**
    - Read `.unikit/ARCHITECTURE.md` (if present) to verify staged changes don't violate module boundaries or dependency rules defined there
    - Read `.unikit/ROADMAP.md` (if present) to check milestone alignment — for `feat`/`fix`/`perf` commits, check if changes relate to an unchecked milestone and suggest mentioning it in the commit body
+   - Read `.unikit/RULES.md` (if present) — the project's rules. A rule about commits or commit messages applies to the message written in Step 7 and wins over this skill's defaults on conflict
    - Read `.unikit/skill-context/unikit-commit/SKILL.md` (if present) — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict
-   - Read `.unikit/system/ultra-plan-read.md` — the reader contract for an ultra plan bundle: detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. Name it and follow it; never restate it here — one contract, one place.
-     **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
    - Missing optional files (`ROADMAP.md`) are `WARN`, not blockers
    - These are lightweight checks — flag only clear violations as `WARN`, don't block the commit
    - Never modify these files
 
-4. **Plan Task Linkage**
+4. **Plan Linkage**
    - Check if `.unikit/code/plans/` contains an active plan (look for a `plans/*/PLAN.md` manifest)
-   - If a plan exists and staged changes clearly relate to a planned task, suggest referencing the phase/task number in the commit message body (e.g., "Phase 8, tasks 8.1-8.3")
-   - This is optional — suggest it, don't require it
+   - If a plan exists and the staged changes clearly relate to its tasks, the plan is the source of the message's human part (Step 7): read its `## Overview` and the `WHY:` line of every task the staged changes belong to, and add the `Plan: <folder>` trailer. Phase and task numbers never go into the message — the trailer is the link.
+   - Print `INFO [commit] plan: <folder> — source of the message` when a plan is linked, or `INFO [commit] no related plan — the message is written from the diff` when none is.
+   - A related plan is optional: without one, the human part is written from the effect the diff makes visible.
 
-   **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
+   **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: read `.unikit/system/ultra-plan-read.md` now, once, and follow it for reading depth and mutability. A plan without the marker never reads this file. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
+   **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
 
    A broken bundle is a `WARN` here, never a blocker — like every other context check in this skill. Plan linkage is optional, and refusing to record finished work because a plan file lost a link punishes the wrong action. Blocking on bundle integrity belongs to `/unikit-verify`.
 
@@ -94,53 +95,92 @@ Do not announce, confirm, or mention the language setting.
    - Use argument as scope if provided
    - Omit scope if changes span multiple unrelated areas
 
-7. **Generate Message**
-   - Keep subject line under 72 characters
-   - Conventional Commits prefix (`type(scope):`) is always in English — only the description text after the colon uses the configured language
-   - Use imperative mood ("add" / "добавить" — not "added" / "добавлено")
-   - Don't capitalize first letter after type
-   - No period at end of subject
+7. **Write the Message**
+
+   The message is read by people who were not in this session — a teammate catching up, a reviewer, someone running `git log` months later. Write it for them, not as a report of the work done.
+
+   **Subject** — `<type>(<scope>): <subject>`
+   - The subject names what changed for the game or the team — a capability, a behaviour, a fix — not the class, method or file that changed. The technical area goes into `scope`.
+   - Under 72 characters, imperative mood ("add", not "added"), no capital letter after the type, no period at the end.
+   - The `type(scope):` prefix is always in English; the subject and the body are written in the language set by `language.artifacts` in `.unikit/config.yaml`.
+
+   **Body** — only when the subject cannot carry the point. A small change is a subject and nothing else.
+   - One to four bullets, or one short paragraph. Each point: what changed → before and now, when there was a "before" → what it gives the game or the team → the honest limit ("only one enemy uses it so far").
+   - A refactor is described through what it gives the team. When behaviour does not change, say so in one sentence.
+   - Every claim traces to the diff, to the plan's `## Overview` or to a task's `WHY:` line (Step 4). No evaluative words without a basis ("significantly", "much faster").
+
+   **Technical paragraph** — optional: the last paragraph of prose, at most three lines, labelled `Technical:`. The label is translated into the commit language like any heading; identifiers inside the paragraph stay whole English tokens. It carries only what a future developer will search for and the diff does not show by itself:
+   - a system or entry point that was added, renamed or removed;
+   - a change of data or save format, and whether existing saves still load;
+   - a new package or dependency;
+   - a manual setup step in the editor — a scene, an asset, project settings;
+   - a breaking change, together with the `BREAKING CHANGE:` footer.
+
+   **Never in the prose:** phase or task numbers, guard or test ids, lists of files (git keeps them — `git show --stat`), sizes in bytes, line or step numbers, a method-by-method retelling of the diff.
+
+   **Footer** — machine tokens, always in English: `BREAKING CHANGE: <what breaks>` when it applies, then `Plan: <folder>` when Step 4 found a related folder plan — the folder name alone, which does not change when the plan is archived. No other trailer (see **Important**).
+
+   **Check before showing.** Re-read the human part and take every identifier out of it. Then the chat test: could it be pasted, unedited, into a team chat where not everyone reads code? If not, rewrite it before it is shown.
 
 ## Format
 
 ```
 <type>(<scope>): <subject>
 
-<body>
+<body: one to four bullets or one short paragraph — omitted for a small change>
 
-<footer>
+Technical: <at most three lines — omitted when there is nothing to find>
+
+BREAKING CHANGE: <what breaks — only for a breaking change>
+Plan: <folder>
 ```
 
 ## Examples
 
-**Simple feature:**
-```
-feat(wallets): add currency conversion system
-```
+Identifiers below are invented — the shape is the point, not the names.
 
-**Bug fix with body:**
+**Small change — the subject is the whole message:**
 ```
-fix(mini-games): handle null item reference in slider game
-
-The slider mini-game could crash when item config was missing
-the difficulty curve. Added null check with fallback to default.
-
-Fixes #42
+fix(inventory): stop the item counter going negative on fast swaps
 ```
 
-**Refactor with plan reference:**
+**Feature with a body and a plan link:**
 ```
-refactor(characters): extract customer behavior into state machine
+feat(campaign): give campaign maps permanent ids
 
-Migrated customer logic from monolithic Update to NodeCanvas FSM.
-Phase 3, tasks 3.1-3.4
+- Maps used to be identified by their position in the list, so reordering
+  the list broke saves and links. Every map now has its own permanent id.
+- Map content can now be changed in the balance tables, without a programmer.
+- Only the first chapter uses the new ids so far; the rest follows.
+
+Technical: CampaignMapId replaces the list index; saves from older builds
+are converted on first load.
+
+Plan: campaign-map-ids
+```
+
+**Refactor that does not change behaviour:**
+```
+refactor(fx): separate hit effects from gameplay logic
+
+Flash, hit sound and damage numbers on enemies and blocks now come from one
+shared set of parts instead of being set up by hand on every object. Editing
+effects can no longer break gameplay. Game behaviour does not change.
+
+Technical: FeedbackPresenter owns the hit effects that used to live inside
+EnemyView and BlockView.
+
+Plan: fx-feedback-kit
 ```
 
 **Breaking change:**
 ```
-feat(inventory)!: migrate to Opsive UIS item categories
+feat(inventory)!: sort items by category instead of a fixed type list
 
-BREAKING CHANGE: item definitions now use CategoryID instead of TypeEnum
+A new kind of item no longer needs a code change: items are grouped by
+category. Existing item definitions have to be re-exported once.
+
+BREAKING CHANGE: item definitions use CategoryID instead of TypeEnum
 ```
 
 ## Behavior
@@ -151,13 +191,11 @@ When invoked:
 2. Run {{engine_name}} safety checks (meta pairing, ignored dirs, binary assets, secrets)
 3. Run lightweight context checks against `.unikit/` docs
 4. If errors found — list them and ask user whether to proceed or fix first
-5. Propose a commit message
-6. Confirm with the user before committing:
+5. Write the commit message by Workflow Step 7 — its check before showing included
+6. Print the full message — subject, body, footer — as plain text in a block of its own, then confirm with the user before committing. The question carries the options only: a question that also holds the message is invisible on a runtime without a question widget.
 
    ```
-   AskUserQuestion: 💾 Proposed commit message:
-
-   <type>(<scope>): <subject>
+   AskUserQuestion: 💾 Commit with the message above?
 
    Options:
    1. Commit as is
@@ -195,7 +233,7 @@ When invoked:
 
 If argument provided (e.g., `/unikit-commit wallets`):
 - Use it as the scope
-- Or as context for the commit message
+- Or as context for the commit message. A caller's context — `unikit-implement-coordinator` passes `checkpoint: Commit N, tasks X-Y` or `final commit` — tells Step 4 which plan tasks the staged changes belong to: it is input, never text for the message.
 
 ## Splitting Unrelated Changes
 

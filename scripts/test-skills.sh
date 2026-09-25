@@ -7766,6 +7766,60 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# CM: the commit-message contract of /unikit-commit (CM-1…CM-5)
+# ─────────────────────────────────────────────
+# A message is read by people who were not in the session. The research behind this family
+# (human-commit-messages-and-plan-archive, DEC-3) found no body contract at all and two
+# examples that taught mechanics; a model imitates examples, so the old ones are asserted
+# ABSENT rather than merely outnumbered. Every positive assert is anchored on a formulation,
+# never on a heading. The contract bullets are deliberately unwrapped in the skill, so no
+# reflow can split an anchor across two lines.
+CM_COMMIT_SKILL="$ROOT_DIR/skills/unikit-commit/SKILL.md"
+CM_WHY=""
+if [[ ! -s "$CM_COMMIT_SKILL" ]]; then
+    CM_WHY+=" missing:unikit-commit/SKILL.md"
+else
+    # (CM-1) the subject names the change for the game or the team; the area rides in scope.
+    grep -qF 'The subject names what changed for the game or the team' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-subject-rule"
+    grep -qF 'The technical area goes into `scope`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-scope-rule"
+    grep -qF 'A small change is a subject and nothing else' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-subject-only-rule"
+    # (CM-2) the technical paragraph: labelled, bounded, admitted only for what the diff hides.
+    grep -qF 'labelled `Technical:`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:no-technical-label"
+    grep -qF 'at most three lines' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:technical-paragraph-unbounded"
+    grep -qF 'the diff does not show by itself' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:no-admission-rule"
+    # (CM-3) what never enters the prose.
+    grep -qF '**Never in the prose:** phase or task numbers' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-3:no-prose-ban"
+    # (CM-4) truthfulness and the check before showing.
+    grep -qF 'Every claim traces to the diff' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:no-traceability-rule"
+    grep -qF 'the chat test' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:no-chat-test"
+    # The message is printed before the question, never carried inside it ("print first, ask
+    # second"): with a body, a payload inside the question is lost on a runtime without a widget.
+    grep -qF 'as plain text in a block of its own, then confirm' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:message-inside-the-question"
+    grep -qF '💾 Proposed commit message:' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-4:payload-in-question-returned"
+    # (CM-5) the plan rides in a trailer, the language key is named, the mechanic examples are gone.
+    grep -qF '`Plan: <folder>`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-5:no-plan-trailer"
+    grep -qF 'the language set by `language.artifacts`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-5:language-key-unnamed"
+    grep -qF 'uses the configured language' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:unnamed-language-returned"
+    grep -qF 'Phase 8, tasks' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:task-numbers-suggested"
+    grep -qF 'Phase 3, tasks' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:task-numbers-in-example"
+    grep -qF 'Added null check with fallback to default' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:mechanic-example-returned"
+    # (CM-6) the inputs: project rules are read; the ultra contract only under the marker; the
+    # plan's human sources replace the task-number suggestion.
+    grep -qF 'Read `.unikit/RULES.md` (if present)' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:rules-not-read"
+    grep -qF 'A plan without the marker never reads this file.' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:ultra-read-unconditional"
+    grep -qF 'Read `.unikit/system/ultra-plan-read.md` — the reader contract' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:old-bootstrap-read-returned"
+    grep -qF 'suggest referencing the phase/task number' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:task-number-suggestion-returned"
+    grep -qF 'read its `## Overview` and the `WHY:` line' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:no-human-sources"
+    # The coordinator's args carry task numbers; they steer Step 4 and never reach the prose.
+    grep -qF 'it is input, never text for the message' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:caller-context-becomes-text"
+fi
+if [[ -z "$CM_WHY" ]]; then
+    pass "CM-1…CM-6 unikit-commit writes for the team: subject by effect, bounded Technical: paragraph, no plan numbers in prose, Plan: trailer, language.artifacts named"
+else
+    fail "CM unikit-commit message contract:$CM_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Codebase integrity checks ===${NC}\n"
