@@ -274,14 +274,20 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 ```
 /unikit-rules Always use UniTask instead of coroutines
 /unikit-rules
+/unikit-rules compact
+/unikit-rules optimise
+/unikit-rules prune
 ```
 Also accepts a **numbered batch** - a prompt whose lines start `1. `, `2. `, … adds several rules in one call and returns a per-rule report. The batch is deliberately *not* atomic: a rule that fails is reported as failed while the rest still land.
 
-- Saves rules to `.unikit/RULES.md` (highest priority in rule hierarchy)
+- Saves rules to `.unikit/RULES.md` and, once it is split into topics, to the topic files in `.unikit/rules/` (highest priority in rule hierarchy)
 - Cross-checks against knowledge base in `memory/` via `RULES_INDEX.md`
-- Rules loaded automatically by `/unikit-implement` before task execution
-- **Form, not length:** `RULES.md` is a flat list — one line and one directive per rule, no sections. There is no character limit; a rule that cannot be reduced without losing knowledge is written as it stands and is not flagged
-- **`compact`** — `/unikit-rules compact` retro-fits an existing file: it shortens what reduces, keeps what does not, and flattens away the old sections. Non-destructive and confirmed first — no rule is ever deleted, and the order you chose is preserved
+- Rules loaded automatically by `/unikit-implement` before task execution - common rules at Bootstrap, topic files per phase by their `Load when`
+- **Form, not length:** every rule list is flat — one line and one directive per rule. There is no character limit; a rule that cannot be reduced without losing knowledge is written as it stands and is not flagged
+- **Topics:** once `RULES.md` has a `## Topics` table, each new rule goes into the matching topic, a new topic, or `## Common` — and into `## Common` whenever that is unclear. An older flat file is offered the split after the report; **Keep the flat format** writes a `flat` marker and ends the offer for good
+- **`compact`** — `/unikit-rules compact` retro-fits an existing file: it shortens what reduces, keeps what does not, and flattens away the old sections — file by file, never touching `## Topics` or `## Common`. Non-destructive and confirmed first — no rule is ever deleted, and the order you chose is preserved
+- **`optimise`** — `/unikit-rules optimise` (or `optimize`) moves rules into topics or regroups existing ones: a preview first, the rule count checked, nothing deleted
+- **`prune`** — `/unikit-rules prune` lists deletion candidates (duplicate, covered by the knowledge base, not a rule, conflict, stale reference) with evidence and deletes only the ones you pick
 
 ### `/unikit-rules-registry` - external registry orchestrator
 

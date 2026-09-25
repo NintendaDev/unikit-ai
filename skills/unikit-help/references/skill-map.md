@@ -369,12 +369,19 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 
 ### unikit-rules
 - **Purpose:** Quick-capture a short project convention/override into `.unikit/RULES.md` (the
-  highest-priority rule file, auto-loaded by `/unikit-implement`).
-- **When:** "always do X", "never use Y", "remember this", correcting the agent for next time.
-- **In:** a rule typed as a prompt (no files/URLs).
-- **Out:** appends to `.unikit/RULES.md` as a flat list — one line, one directive, no sections.
+  highest-priority rule file, auto-loaded by `/unikit-implement`) — or, once the file is split,
+  into a topic file in `.unikit/rules/` that loads only when the work matches its `Load when`.
+- **When:** "always do X", "never use Y", "remember this", correcting the agent for next time;
+  "split the rules into topics", "clean up the rules".
+- **In:** a rule typed as a prompt (no files/URLs), or a bare mode word.
+- **Out:** a flat list per file — one line, one directive; common rules in the root, bounded
+  rules in topic files listed under `## Topics`.
 - **`compact` mode:** `/unikit-rules compact` retro-fits an already bloated `RULES.md` — shortens
   what reduces, keeps what does not, flattens the sections. Non-destructive, asks before writing.
+- **`optimise` mode:** `/unikit-rules optimise` splits the rules into topics or regroups them —
+  preview, confirmation, nothing deleted. Also offered by itself on an old flat file.
+- **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence and deletes only
+  the ones you select.
 - **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).
 
 ### unikit-memory

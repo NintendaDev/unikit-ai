@@ -136,7 +136,7 @@ Reads all new patches incrementally and proposes rules across all skills.
 | **3: Build registry** | Build flat list of all prevention points. Classify each as `code` (patterns, null-checks, async, DI - destination: RULES.md) or `workflow:<skill>` (delegation, compilation checks, parallelism - destination: skill-context) |
 | **4: Filter covered** | Cross-check each point against existing rules. Code rules checked against RULES.md + knowledge base via RULES_INDEX.md. Workflow rules checked against skill-context + base SKILL.md. Only truly uncovered points survive |
 | **5: Present candidates** | Group uncovered points by type, show source patch and proposed rule text. User chooses: apply all, pick individually (batches of 4), or skip all |
-| **6: Add accepted rules** | Code rules added via `/unikit-rules` (handles dedup, section placement). Workflow rules written directly to `.unikit/skill-context/<skill>/SKILL.md` |
+| **6: Add accepted rules** | Code rules added via `/unikit-rules` (handles dedup and topic placement). Workflow rules written directly to `.unikit/skill-context/<skill>/SKILL.md` |
 | **7: Log & advance cursor** | Save evolution log to `.unikit/evolutions/YYYY-MM-DD-HH.mm.md` with stats and added rules. Advance cursor to newest processed patch. Suggest `/clear` or `/compact` to free context |
 
 ## How Rule Verification Works
@@ -161,7 +161,7 @@ For each rule in the batch, `/unikit-rules` runs the full verification pipeline:
 2. Reads the relevant knowledge base files (not all - only those matching the topic)
 3. Cross-checks against existing `RULES.md` entries for semantic duplicates
 4. Determines the relationship - already covered, contradicts, extends, or new topic
-5. Places the rule in the correct `RULES.md` section (or creates a new one)
+5. Places the rule: at the end of the list, or - once `RULES.md` has a `## Topics` table - in the matching topic file, a new topic, or `## Common`; the report's `Topic` column says where
 
 If a rule is already covered by the knowledge base or `RULES.md`, `/unikit-rules` reports it and skips - `/unikit-evolve` notes the result and moves on.
 

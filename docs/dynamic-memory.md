@@ -48,7 +48,7 @@ The `code` module stores a two-tier collection of proven development rules that 
 
 - `.unikit/memory/code/core/` - **core rules**, always loaded
 - `.unikit/memory/code/stack/` - **stack rules**, loaded on demand
-- `RULES.md` - **staging buffer** for new rules under validation (highest priority), shared across modules - see [Rule Lifecycle](#rule-lifecycle) below
+- `RULES.md` - **staging buffer** for new rules under validation (highest priority), shared across modules - see [Rule Lifecycle](#rule-lifecycle) below - common rules, plus topic files in `.unikit/rules/` once the file is split (see [Project rule topics](#project-rule-topics))
 
 The developer iteratively improves permanent memory over time by testing rules in `RULES.md` first. Only validated, battle-tested rules get promoted to `.unikit/memory/code/core/` or `.unikit/memory/code/stack/` - and once there, they travel with the developer to any Unity project.
 
@@ -148,13 +148,14 @@ Pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-
 │  1. Read dev-principles.md, above the        │  ← .unikit/system/ (every Bootstrap)
 │     LAZY-READ BOUNDARY                       │
 │  2. Read the engine-MCP rules tree + notes   │  ← .unikit/system/engine-mcp/ + .unikit/
-│  3. Read RULES.md                            │  ← project overrides
+│  3. Read RULES.md — the root only            │  ← project overrides (## Common + the topic table)
 │  4. Read RULES_INDEX.md                      │
 │  5. Read core rules                          │  ← .unikit/memory/code/core/ (always)
 │                                              │
 │  Step 3.0 Phase Rules Refresh (per phase):   │
 │  6. Re-read RULES_INDEX.md                   │
-│  7. Load stack rules needed for this phase   │  ← .unikit/memory/code/stack/ (delta)
+│  7. Load the stack rules and rule topics     │  ← .unikit/memory/code/stack/ + .unikit/rules/ (delta)
+│     this phase needs                         │
 │                                              │
 │  Step 3.2 Implement the task (per task):     │
 │  8. Write code inline (Read/Edit/Write/Bash) │
@@ -275,6 +276,35 @@ New rules land in `RULES.md` via `/unikit-rules`:
 
 The skill checks for conflicts with existing rules in `RULES.md` and permanent memory, then adds the rule where it takes priority over everything else. Use the rule on real tasks and refine it with `/unikit-rules` until stable.
 
+### Project rule topics
+
+A long-lived project accumulates rules, and a `RULES.md` read whole on every Bootstrap grows expensive. `/unikit-rules` can therefore split it: the rules every task needs stay in the root under `## Common`, and rules that matter to one area only move into **topic files** in `.unikit/rules/`, listed by a `## Topics` table in the root:
+
+```markdown
+# Project Rules
+
+Project-specific rules that override or extend the base knowledge rules in `.unikit/memory/`.
+One rule per line, one directive per rule. When this file has a `## Topics` table, the rules under `## Common` apply to every task, and a topic file applies when the work matches its "Load when" — check again when the work moves to a new phase or area, and when unsure, load it.
+
+## Topics
+
+| Topic | Load when |
+|-------|-----------|
+| [UI views](rules/ui.md) | UI screens, HUD, view models, the `UI/` folder |
+| [Save system](rules/save-system.md) | saving and loading, save data, save migrations |
+
+## Common
+
+- Never use var - always declare explicit types
+```
+
+- **No fixed set of topics.** The agent names the topics and writes each `Load when` in the words your tasks use. When it is unsure, a rule stays common: a common rule costs tokens, while a rule in a topic that did not load is silently not applied.
+- **Loading works like stack rules.** Skills that work in phases (`/unikit-plan`, `/unikit-implement`, the implement worker and coordinator) read only the root at Bootstrap and load the matching topic files at the start of each phase, as a delta. `/unikit-verify` and `/unikit-review` always read the root and load the topics that match the changed files; other skills load the topics that match their work. The protocol is written once, in `RULES_INDEX.md` → Step 1, which `unikit-ai update` regenerates.
+- **Priority.** The root and its topic files are one override level, above `ARCHITECTURE.md` and the knowledge base. Inside a topic's area, a topic rule wins over a common rule it contradicts.
+- **Old projects keep working.** A `RULES.md` without the table is read whole, exactly as before. When `/unikit-rules` meets such a file and finds rules worth splitting, it offers the reorganization after its report: **Apply**, **Keep the flat format** (a `<!-- unikit:rules-layout flat -->` marker is written and the offer never returns), or **Not now**. `/unikit-rules compact` makes the same offer first.
+- **`/unikit-rules optimise`** runs the reorganization on request - also on a file you once kept flat, and to regroup existing topics. It previews where every rule goes, checks that no rule is lost, and deletes none.
+- **`/unikit-rules prune`** lists rules that can go - duplicates, rules the knowledge base already covers, lines that are not rules, conflicts, references to things that no longer exist - each with its evidence, and deletes only the ones you select.
+
 ### Stage 2: Auto-extraction from Patches
 
 `/unikit-evolve` analyzes patches created by `/unikit-fix`, extracts recurring patterns, and routes each extracted rule to **one of two destinations** based on what kind of rule it is:
@@ -301,8 +331,9 @@ When rules in `RULES.md` are proven and stable:
 
 Migration is **interactive** - the skill asks which rules to migrate and which to skip:
 
-- **Migrate** - the rule moves to `.unikit/memory/code/core/` or `.unikit/memory/code/stack/`, conflicts with existing permanent rules are resolved interactively, and the rule is removed from `RULES.md`
-- **Skip** - the rule stays in `RULES.md` as-is. Skipped rules are tagged with `<!-- no-migrate -->` and won't be proposed again in future runs
+- **Migrate** - the rule moves to `.unikit/memory/code/core/` or `.unikit/memory/code/stack/`, conflicts with existing permanent rules are resolved interactively, and the rule is removed from `RULES.md` or the topic file it lived in (a topic file left empty is deleted together with its row in `## Topics`)
+- **Keep** - the rule stays in `RULES.md` for good: it is tagged `<!-- @no-migrate -->` and never proposed again
+- **Skip** - the rule stays as it is, untagged, and is proposed again on the next run
 
 For each migrated rule, the skill:
 1. **Classifies** - determines whether the rule belongs to `.unikit/memory/code/core/` or `.unikit/memory/code/stack/`

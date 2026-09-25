@@ -374,7 +374,7 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/DESCRIPTION.md` | `/unikit` | Project specification |
 | `.unikit/ARCHITECTURE.md` | `/unikit-architecture` | Architecture guidelines |
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
-| `.unikit/RULES.md` | `/unikit-rules` | Convention source of truth |
+| `.unikit/RULES.md` + `.unikit/rules/*.md` | `/unikit-rules` | Convention source of truth: common rules in the root, topic files by `Load when` |
 | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
 | `.unikit/code/archive/plans/*/` | `/unikit-archive` | Completed folder plans, moved unchanged apart from one `Archived:` line |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |

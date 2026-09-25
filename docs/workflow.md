@@ -216,7 +216,7 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit` | `.unikit/DESCRIPTION.md`, `AGENTS.md` | Invokes `/unikit-architecture` + rule generation |
 | `/unikit-architecture` | `.unikit/ARCHITECTURE.md` | Architecture guidelines |
 | `/unikit-roadmap` | `.unikit/ROADMAP.md` | Milestone tracking |
-| `/unikit-rules` | `.unikit/RULES.md` | Append/update rules only |
+| `/unikit-rules` | `.unikit/RULES.md` + `.unikit/rules/*.md` | Append rules; `optimise` reorganizes, `prune` deletes only what you select |
 | `/unikit-plan` | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-improve` refines |
 | `/unikit-explore` | `.unikit/code/researches/` | Exploration artifacts |
 | `/unikit-fix` | `.unikit/code/FIX_PLAN.md`, `.unikit/code/patches/*.md` | Bug-fix learning loop |
