@@ -605,6 +605,9 @@ RULES_INDEX="$CLAUDE_DIR/.unikit/memory/code/RULES_INDEX.md"
 assert_exists "$RULES_INDEX" "RULES_INDEX.md should exist after update"
 assert_contains "$RULES_INDEX" "## Core" "RULES_INDEX should have Core section"
 assert_contains "$RULES_INDEX" "code-style" "RULES_INDEX should contain seeded core rule"
+# The rule-topics reading protocol lives in the template's Step 1 and reaches the project
+# only through this regeneration — the one end-to-end proof that the canon is delivered.
+assert_contains "$RULES_INDEX" "Project rule topics" "RULES_INDEX should carry the project rule-topics protocol (Step 1 canon)"
 
 # ─────────────────────────────────────────────────────
 # Test 5: (removed)

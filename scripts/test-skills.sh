@@ -7826,6 +7826,34 @@ if [[ -z "$PRT_WHY" ]]; then
 else
     fail "PRT writer contract:$PRT_WHY"
 fi
+# (PRT-6) the reading protocol has ONE canon: "Step 1" of both RULES_INDEX templates, which
+# the CLI regenerates on every update and rules sync, so the text travels with the package.
+# One -qF per sentence, applied to BOTH templates (the UR-3 shape): a canon that only one
+# module still states is not a canon. The /unikit fallback index lost its `rules/` line.
+PRT6_TPL_CODE="$ROOT_DIR/data/RULES_INDEX_TEMPLATE.md"
+PRT6_SHARED=(
+    '**Project rule topics.**'
+    'Load a topic file the way you load a rule below by its **Load When** column'
+    'A skill that works in phases loads topic files at the start of each phase, not at Bootstrap.'
+    'print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue'
+    'Inside its own area a topic rule wins over a `## Common` rule it contradicts.'
+    'No `## Topics` section → the whole file applies, as before.'
+    'and its topic files in `.unikit/rules/` — project-specific overrides (always win)'
+)
+PRT6_WHY=""
+for prt6_f in "$PRT6_TPL_CODE" "$GD_RULES_INDEX_TPL"; do
+    prt6_n="${prt6_f##*/}"
+    [[ -s "$prt6_f" ]] || { PRT6_WHY+=" missing:$prt6_n"; continue; }
+    for prt6_s in "${PRT6_SHARED[@]}"; do
+        grep -qF -- "$prt6_s" "$prt6_f" || PRT6_WHY+=" ${prt6_n}:missing[${prt6_s:0:40}]"
+    done
+done
+grep -qF 'conflicts with a template rule in `rules/`' "$ROOT_DIR/skills/unikit/SKILL.md" && PRT6_WHY+=" unikit:stale-rules-dir-line"
+if [[ -z "$PRT6_WHY" ]]; then
+    pass "PRT-6 the rule-topics canon reads identically in both RULES_INDEX templates; the /unikit fallback no longer names a template rules/ folder"
+else
+    fail "PRT-6 rule-topics canon drift:$PRT6_WHY"
+fi
 
 # ─────────────────────────────────────────────
 # CM: the commit-message contract of /unikit-commit (CM-1…CM-7)
