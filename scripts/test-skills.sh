@@ -6138,6 +6138,75 @@ else
     fail "LA-8 anchor MISSING in skills/unikit-fix/SKILL.md:$LA8_WHY"
 fi
 
+# ─────────────────────────────────────────────
+# LB: the lazy-read boundary is enforced by its readers (DEC-014; closes research defect 13).
+# EW: the editor procedures live below it once, not restated per executor (DEC-015).
+LB_READERS=(
+    "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL"
+    "improve:$ROOT_DIR/skills/unikit-improve/SKILL.md" "devcontext:$EM_DEVCONTEXT_SKILL"
+    "worker:$ROOT_DIR/subagents/unikit-implement-worker.md"
+    "coordinator:$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+)
+LB_MCP_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+LB_PATTERN="^<!-- === LAZY-READ BOUNDARY === -->"
+LB_WHY=""
+for lb_pair in "${LB_READERS[@]}"; do
+    lb_name="${lb_pair%%:*}"; lb_file="${lb_pair#*:}"
+    # (LB-1) every reader names the boundary.
+    grep -qF 'LAZY-READ BOUNDARY' "$lb_file" || LB_WHY+=" LB-1:$lb_name"
+    # (LB-2) and reads up to it with a line limit — the grep pattern is the mechanism.
+    grep -qF -- "$LB_PATTERN" "$lb_file" || LB_WHY+=" LB-2:$lb_name"
+done
+grep -qF 'LAZY-READ BOUNDARY' "$LB_MCP_AUDIT" || LB_WHY+=" LB-1:mcp-audit"
+# (LB-3) the lower half is read at plan load under an Editor: line — one formulation, three plan readers.
+LB3='below the marker is read once, at plan load, when the checklist carries an `Editor:` line'
+for lb3_f in "$EM_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    grep -qF "$LB3" "$lb3_f" || LB_WHY+=" LB-3:${lb3_f##*/}"
+done
+grep -qF 'including the editor rungs of the Step 1 diagnosis ladder' "$EM_FIX_SKILL" || LB_WHY+=" LB-3:fix"
+grep -qF 'before the first `GATE LIFTED` verdict' "$UNIKIT_VERIFY_SKILL" || LB_WHY+=" LB-3:verify-gate-lifted"
+grep -qF 'when a task you were handed carries an `Editor:` line' "$ROOT_DIR/subagents/unikit-implement-worker.md" || LB_WHY+=" LB-3:worker"
+# (LB-4) the file and the docs promise the same moment.
+grep -qF "at plan load when the plan's checklist carries an \`Editor:\` line" "$LA_DEV_PRINCIPLES" || LB_WHY+=" LB-4:dev-principles-moment"
+grep -qF 'A run whose plan has no `Editor:` task never pays for the deep half' "$ROOT_DIR/docs/dynamic-memory.md" || LB_WHY+=" LB-4:docs-moment"
+if [[ -z "$LB_WHY" ]]; then
+    pass "LB-1…LB-4 lazy-read boundary enforced: 8 readers name it, 7 read up to it, the lower half loads at plan load under Editor:"
+else
+    fail "LB lazy-read boundary not enforced:$LB_WHY"
+fi
+
+EW_WHY=""
+if grep -qF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES"; then
+    EW_BLINE=$(grep -nF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES" | head -1 | cut -d: -f1)
+    EW_ABOVE=$(head -n "$EW_BLINE" "$LA_DEV_PRINCIPLES")
+    EW_BELOW=$(tail -n +"$EW_BLINE" "$LA_DEV_PRINCIPLES")
+    # (EW-1) the three procedures sit below the boundary, and nothing of them above it.
+    for ew1 in 'Candidates from the live catalog, by intent' 'A call that misled you' 'Reference: trigger <1|2>'; do
+        echo "$EW_BELOW" | grep -qF "$ew1" || EW_WHY+=" EW-1:not-below:${ew1// /-}"
+        echo "$EW_ABOVE" | grep -qF "$ew1" && EW_WHY+=" EW-1:leaked-above:${ew1// /-}"
+    done
+else
+    EW_WHY+=" EW-1:boundary-marker-missing"
+fi
+# (EW-2) NEGATIVE — the executors no longer restate them.
+for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL"; do
+    for ew2 in 'Candidates from the live catalog, by intent' 'Reference: trigger <1|2>' 'network dependency inside the editor lane'; do
+        grep -qF "$ew2" "$ew2_f" && EW_WHY+=" EW-2:restated:${ew2_f##*/skills/}"
+    done
+done
+# (EW-3) and each points at the owner section it now follows.
+EW3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f' "$EM_IMPLEMENT_SKILL")"
+printf '%s' "$EW3_S32" | grep -qF '→ **D6**' || EW_WHY+=" EW-3:implement-no-D6"
+grep -qF '→ **D6**' "$EM_FIX_SKILL" || EW_WHY+=" EW-3:fix-no-D6"
+for ew3_f in "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    grep -qF '**D7**' "$ew3_f" || EW_WHY+=" EW-3:no-D7:${ew3_f##*/}"
+done
+if [[ -z "$EW_WHY" ]]; then
+    pass "EW-1…EW-3 editor procedures live once below the boundary (D6–D8) and every executor points at them"
+else
+    fail "EW editor-procedure ownership drift:$EW_WHY"
+fi
+
 # (ED-15) Layer C — the two §4 rules Phase 2 added, plus the coherence of the three
 # counters §4 carries. A hard count ("§4 has seven rules") would break on every future
 # edit; coherence breaks only when the numbers disagree with the body, which is the one

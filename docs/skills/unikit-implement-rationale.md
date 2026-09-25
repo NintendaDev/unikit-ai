@@ -54,6 +54,20 @@ explore save pipeline, on the same criterion — see
   The step headings (`### Step 2.5`, `**3.8**`) and a one-line stub at each use site stay in the
   skill, because `data/ultra-plan-read.md` and the coordinator point at those steps by name.
 
+## The editor procedures (dev-principles D6–D8)
+
+- **Why they moved.** The same procedure was restated by four executors and drifted in
+  wording; one copy under the lazy-read boundary is read only when a plan carries an `Editor:`
+  task.
+- **Why the reference line is printed.** Without it the run reads as if everything came from
+  observation — the confusion a source biased toward confidence should not get for free. The
+  reference is also a network dependency, which makes two runs of the same plan diverge.
+- **Why the boundary read is line-limited.** The marker splits the file on paper only until
+  readers stop at it; the upper half is what every Bootstrap needs.
+- **Why the finding row is appended by the `Edit` that ticks the task.** The finding and the
+  task that produced it are one unit of work: written together, the two survive or fail as one,
+  while a table filled at the end of the run is lost to every session that stops early.
+
 ## Step 4 — Completion Summary
 
 - **The `Research drifted` line.** It carries the re-plan offer forward past the point where the

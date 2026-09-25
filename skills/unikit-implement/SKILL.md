@@ -234,7 +234,7 @@ No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the
 Load the project knowledge base once, before the first task.
 
 **Read in parallel:**
-1. `.unikit/system/dev-principles.md` — engine development principles
+1. `.unikit/system/dev-principles.md` — **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` the file with `limit` set to that line number. The part **below the marker is read once, at plan load, when the checklist carries an `Editor:` line** — the deep reference plus the editor procedures D6–D8 this skill follows; a plan without `Editor:` lines never reads it. An agent that cannot read with a limit reads the whole file.
 2. `.unikit/RULES.md` — project overrides (highest priority)
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-implement` — read that file from `.unikit/memory/code/core/` using the Read tool.
@@ -351,14 +351,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 **Tasks carrying an `Editor:` line** target the editor's serialized state, not source files. Handle each `Editor:` line — `[kind] <container> → <target> : <action>` — by the `Editor tasks` mode parsed in Step 1:
 
-- **`mcp`** — carry it out through the engine MCP, in this order, on **every** such task:
-
-  1. **Candidates from the live catalog, by intent.** Take the task's `kind` and its action, and pick 3-5 candidate affordances out of the tool list you actually hold. That list is the only place a name may come from — not this file, not a rules file, not memory. A name recalled instead of read is a `catalog phantom` you invented.
-  2. **Ask the server for the schema** of those 3-5 before calling any of them. A one-line or empty declaration does not mean "no parameters".
-  3. **Grep by area.** Read the `## Check` table of `.unikit/system/engine-mcp/INDEX.md` and of `.unikit/MCP-RECHECK-NOTES.md`, filtered to this task's own area — the one its `kind` names — **plus every cross-cutting area**: `rollback · console · batch · compile · transport · visual`. The cross-cutting six are read **always**; the lines are short, and the moment one becomes applicable is not knowable in advance.
-  4. **Execute, then read the changed state back.** Close the claim with the evidence class its claim class requires (`dev-principles.md` → A2). A response code is not evidence; the evidence is the read-back of what you claimed to change.
-
-  **No rules file, or no check line for this area → nothing changes.** Every right you had, you keep: an absent exception is not an absent capability, and it is never a reason to mark the target `⏸️ MANUAL` (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show.
+- **`mcp`** — carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); the library reference has two triggers and none of them is Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9).
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
 - **`direct`** — **commit to git before editing** (this is mandatory and the whole reason the mode is gated), then edit the serialized format directly, staying inside the bounds §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
 
@@ -367,38 +360,6 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
   **If that file is not there**, treat every format as 🔴: refuse `direct`, put the task back on `manual`, and state the reason in one line. Continuing silently is not an option here — a binary serialized format edited as text is not reversible by review, and this gate is the only thing standing in front of that. This is **not** the A9 case: what is missing is not a rule that would grant a right, it is the permission for an irreversible text edit, and withholding it changes nothing about the `mcp` route.
 
 **A task carrying a `Test checkpoint: <coverage>` line** is a test-checkpoint task: it leaves no project file changed, and its work is one test run plus its non-run steps — `references/test-runs.md` → `## Step 3.2`.
-
-**A call that misled you is a finding — and it goes in two places, neither of them the notes file.**
-
-- the run report for this task, as a candidate line: the `area`, what has to be confirmed, and the raw call with the raw answer it gave;
-- the plan's `## MCP Findings` table — the half that survives the session. Columns and their contract: `unikit-plan/references/TASK-FORMAT.md` → `### MCP findings section`.
-
-**When it is written: in Step 3.4, by the same `Edit` pass that ticks the checkbox** — not at the end of the run. The finding and the task that produced it are one unit of work, and a table filled only at the end is lost to every `/clear`, every context overflow and every session that simply stops. Ticking the box and appending the row together is what makes the two survive or fail as one.
-
-**Never write `.unikit/MCP-RECHECK-NOTES.md` from here.** One observation is a bad sample and a bad line lives for months; the durable surface passes through a human running `/unikit-mcp-trap`.
-
-**The library reference — two triggers, and never on Bootstrap.**
-
-Reach for it on exactly two occasions:
-
-1. **an unfamiliar area** — what approaches the authors propose; once per area per session;
-2. **a dead end** — you hold the schema and the capability still is not there.
-
-**Never routinely, and never at Bootstrap.** It is a network dependency inside the editor lane, a few thousand tokens per query, and it makes the run irreproducible — two runs of the same plan diverge. It also mixes a source with a systematic bias toward confidence into the hot path: retrieval returns what is most relevant, and a caveat is almost never the most relevant answer to "how do I do this".
-
-**The identifier is already known.** It is carried in the header of `.unikit/system/engine-mcp/INDEX.md`, which names the reference for the configured server — so nothing has to be resolved at run time.
-
-**Say when you reached for it, and why.** One line into the run report, at the moment of the call — the network was touched and the report has to show it:
-
-```
-Reference: trigger <1|2> — <the area, or the dead end>
-```
-
-Without it the run reads as if everything came from observation, which is exactly the confusion a source biased toward confidence should not get for free.
-
-**How the answer is treated.** The reference describes **intent, not behaviour**. Anything taken from it carries the same evidence obligations as anything else, and with heightened attention: it has been caught presenting a structurally broken path as an exemplary example. It never closes a claim — only an observation does (`dev-principles.md` → A2).
-
-**The reference is optional in the wizard.** If it was not configured, trigger 2 simply has no fallback: descend the degradation ladder (`dev-principles.md` → D3) and reach `⏸️ MANUAL` at its proper rung only — by absence of a route, established by trying. An unconfigured reference is not itself a missing capability.
 
 **Delegated execution.** `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim**, the already-resolved mode, and the matching `### EDITOR TARGETS` rows — from the manifest's `## Technical Context`, or in an ultra bundle from the task's own `### Required Interfaces and Contracts` in its phase file. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. **In an ultra bundle the whole task section goes into the prompt**, not just the `Editor:` lines: a delegate that receives only the checklist line loses the implementation steps, the contracts and the acceptance criteria along with the targets. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
 
@@ -431,11 +392,7 @@ After successful implementation, update the manifest:
 **Editor task handed to the user (`Editor tasks: manual`)** — a third outcome, neither done nor pending:
 - Write `- [x]` and append the marker `⏸️ MANUAL` to the task text: `- [x] Task 2.1 — wire the pause button ⏸️ MANUAL`. It counts by the `⏸️ MANUAL` rule of Step 2 and is reported separately (Step 4).
 
-**The task produced an MCP finding (Step 3.2)** — a third outcome to record in the same pass:
-- Append the row to the plan's `## MCP Findings` table now, in the same `Edit` that ticks the checkbox. Not at the end of the phase, not at the end of the run.
-- **Id:** `F<n>`, where `<n>` is one more than the highest already in the table. Read the table before appending — a re-run of the same task must not restart the numbering and collide with rows written earlier.
-- **`observed`:** the date you observed it, `Bash(date *)`.
-- **Dedup is semantic, not mechanical.** Drop a candidate that says the same thing about the same `area` as a row already there, judging by meaning rather than by string match; only the id allocation is mechanical. Being loose here is deliberate — the error is cheap in both directions. A duplicate that slips through costs one extra line, which `/unikit-mcp-trap` or `/unikit-mcp-audit` drops later; merging two observations that were not the same thing destroys the `evidence` of one of them, and evidence is the half that cannot be reconstructed.
+**The task produced an MCP finding (Step 3.2)** — append its row to the plan's `## MCP Findings` table in this same `Edit`, by `dev-principles.md` → **D7**: `F<n>`, `observed` from `Bash(date *)`, semantic dedup. Not at the end of the phase, not at the end of the run. In every case — an `Editor:` task or not (the Step 3.6 console read, a test run) — a misleading call is also a candidate line in the run report (the raw call and the raw answer), and `.unikit/MCP-RECHECK-NOTES.md` is never written from here.
 
 **A test-checkpoint task (Step 3.2)** — ticked and recorded by `references/test-runs.md` → `## Step 3.4`.
 
