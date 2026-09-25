@@ -3188,7 +3188,7 @@ printf '%s' "$SF_RB_WIN" | grep -qF 'end your turn and wait' || SF_WHY+=" SF-18:
 printf '%s' "$SF_RB_WIN" | grep -qF 'with the option labels' || SF_WHY+=" SF-19:menu-not-logged"
 
 if [[ -z "$SF_WHY" ]]; then
-    pass "SF-1..SF-15 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, and a standard research reads nothing from the ultra reference"
+    pass "SF-1..SF-19 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, a standard research reads nothing from the ultra reference, and the readback asks one question per requirement with a text tier that ends the turn"
 else
     fail "SF source fidelity:$SF_WHY"
 fi

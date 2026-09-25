@@ -76,6 +76,7 @@ Everything else (`unikit-implement-worker`, `unikit-plan-polisher`, sidecars, de
 Dependency-aware plan execution.
 
 - Reads the plan manifest, builds the phase dependency graph, groups independent phases into layers
+- With `Testing: yes` and two or more test-checkpoint tasks in its scope, asks once before the first layer whether to merge their test runs (the same question as `/unikit-implement`; no answer in a non-interactive run → runs as written)
 - **Single ready phase** → executes tasks directly inside the coordinator (no worker overhead). Bootstraps principles + rules (`dev-principles.md`, `RULES.md`, `RULES_INDEX.md`, core rules) before the phase, then writes code inline
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
 - After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, handles commit checkpoints, advances to the next layer

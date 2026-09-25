@@ -114,6 +114,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 /unikit-implement status             # Show progress without executing
 /unikit-implement Phase 3            # Execute only Phase 3
 /unikit-implement Phases 1-3         # Execute Phases 1 through 3
+/unikit-implement Phases 5-6, tests at the end of phase 6   # One test run for the range, no question
 /unikit-implement Tasks 2.1 2.3 5.2  # Execute specific tasks
 /unikit-implement core-loop          # Find plan by name
 /unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
@@ -122,6 +123,8 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Executes tasks one by one with commit checkpoints
 - Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and implements tasks inline with `Read/Edit/Write/Bash`. The `develop-agent` alias is used only for true parallel scopes or deep-dive single tasks
 - Supports selective execution by phase, task numbers, or feature name
+- When the call covers two or more test-checkpoint tasks, asks once — before the first task, together with the uncommitted-changes question — whether to run the tests once at the last point or at every point; words in the call (`tests at the end of phase 6`) answer in advance. A merged point's own non-run steps (a negative control, a manual smoke) are performed at the surviving point
+- Reads only what the plan needs: the ultra reader contract only for an ultra bundle, the test-run rules only under `Testing: yes`, the editor procedures of `dev-principles.md` only when the plan carries an `Editor:` task
 - `@<path>` bypasses auto-detection for explicit plan targeting
 
 ### `/unikit-fix [bug description]` - fix and learn

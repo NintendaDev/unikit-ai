@@ -111,7 +111,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks),
   commit at checkpoints. Resumable across sessions.
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
-- **In:** the latest plan, or `@<folder>`, or a phase/task selector. Bootstraps rules once, then
+- **In:** the latest plan, or `@<folder>`, or a phase/task selector. A range with two or more
+  test runs asks once whether to merge them (or say it in the call). Bootstraps rules once, then
   codes inline. `--list` lists the available plans and `status` shows progress — both stop
   without implementing anything.
 - **Out:** project source code; updates the plan manifest's checkboxes.
