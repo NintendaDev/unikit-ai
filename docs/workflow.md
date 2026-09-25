@@ -327,7 +327,7 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 
 Reads skill-context rules first, then the plan manifest. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
-Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text after a mandatory git commit. See [Editor tasks](plan-files.md#editor-tasks).
+Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text once there is a git commit to return to. See [Editor tasks](plan-files.md#editor-tasks).
 
 After phase completion:
 

@@ -79,7 +79,7 @@ Run this for every folder the mode looks at. It reads, it never writes.
    - `empty` — no checkbox line at all. An empty plan is not archived.
 5. **Ultra bundle.** The task file's first line is `<!-- unikit:plan-mode:ultra -->` → every link under its `## Phase Index` heading must resolve to an existing file directly inside the folder. A missing one → verdict `broken bundle (<missing file>)`, not archived.
 6. **Stops** — checked for a `completed` plan only:
-   - **Stop 1 — MCP findings not transferred.** The task file's `## MCP Findings` table has rows (a row's first cell is `F<n>`), and at least one of them has no back-reference in `.unikit/MCP-RECHECK-NOTES.md`. The back-reference of row `F<n>` is the text `<folder>/<task file name>#F<n>`: `/unikit-mcp-trap` writes it into every note it takes from a plan, so it is the exact record of what was moved. No notes file → nothing was transferred. Verdict `stop: <k> MCP findings not transferred`.
+   - **Stop 1 — MCP findings not transferred.** The task file's `## MCP Findings` table has rows (a row's first cell is `F<n>`), and at least one of them has no back-reference in `.unikit/MCP-RECHECK-NOTES.md` or in a parked `.unikit/MCP-RECHECK-NOTES.archive.*.md` — the installer parks the notes there when the engine server changes. The back-reference of row `F<n>` is the text `<folder>/<task file name>#F<n>`: `/unikit-mcp-trap` writes it into every note it takes from a plan, so it is the exact record of what was moved. No notes file at all → nothing was transferred. Verdict `stop: <k> MCP findings not transferred`.
    - **Stop 2 — rule candidates never proposed.** A row of `## Rule Candidates` has the status `open`. Verdict `stop: <k> open rule candidates`.
 
 Print one line per folder as it is classified: `INFO [archive] <folder>: <verdict>`.
@@ -110,7 +110,7 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
 
 ### all
 
-Classify every folder in `.unikit/code/plans/`. Stopped plans are skipped, each with `WARN [archive] skipped <folder>: <verdict> — run <command>`. Print the archivable ones and ask:
+Classify every folder in `.unikit/code/plans/`. Stopped plans are skipped, each with `WARN [archive] skipped <folder>: <verdict> — run <command>`; for Stop 1 the line ends with `, or archive it by name if its findings were declined or retired`. Print the archivable ones and ask:
 
 ```
 AskUserQuestion: Archive all <n> completed plans?
@@ -122,7 +122,7 @@ Options:
 
 ### one plan
 
-1. Resolve the name inside `.unikit/code/plans/`: an exact folder name; else the one folder ending in `_<name>`, or in `-<name>` after three digits; else the one folder whose name contains `<name>`. None → `Plan not found: <name>` — with `(already archived)` added when `.unikit/code/archive/plans/<name>/` exists — and stop. More than one → list them, ask for a more specific name, and stop.
+1. Resolve the name inside `.unikit/code/plans/`: an exact folder name; else the one folder ending in `_<name>`, or in `-<name>` after three digits; else the one folder whose name contains `<name>` — a match by this last rule is confirmed before anything moves (`AskUserQuestion: Archive <matched folder>?` — `Yes` / `Cancel`). None → `Plan not found: <name>` — with `(already archived)` added when `.unikit/code/archive/plans/<name>/` exists — and stop. More than one → list them, ask for a more specific name, and stop.
 2. Classify it. Not `completed` → print the verdict and stop.
 3. Stop 1 → print the rows that have no back-reference, then ask:
 
@@ -135,7 +135,7 @@ Options:
    3. Cancel
    ```
 
-   "Transfer them first" → print `Run: /unikit-mcp-trap .unikit/code/plans/<folder>/<task file name>` and stop. "Archive anyway" exists because `/unikit-mcp-trap` lets the user decline a finding, and a declined row leaves no back-reference behind.
+   "Transfer them first" → print `Run: /unikit-mcp-trap .unikit/code/plans/<folder>/<task file name>` and stop. "Archive anyway" exists because a finding can lose its back-reference legitimately: `/unikit-mcp-trap` lets the user decline a finding, and a declined row leaves no back-reference behind; `/unikit-mcp-audit` removes a note it retires together with its back-reference.
 4. Stop 2 → print `<folder> has <k> open rule candidates — run /unikit-verify <folder> to propose them.` and stop.
 5. Archive it (Step 4).
 
@@ -174,5 +174,5 @@ Omit `Skipped` when `<k>` is 0.
 ## Artifact Ownership
 
 - **Owns:** `.unikit/code/archive/plans/`.
-- **Reads:** `.unikit/code/plans/*/`, `.unikit/MCP-RECHECK-NOTES.md`, `.unikit/config.yaml`.
+- **Reads:** `.unikit/code/plans/*/`, `.unikit/MCP-RECHECK-NOTES.md` and its parked `.archive.*` copies, `.unikit/config.yaml`.
 - **Modifies:** nothing outside the folders it moves.

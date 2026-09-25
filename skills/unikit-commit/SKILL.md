@@ -1,6 +1,6 @@
 ---
 name: unikit-commit
-description: Create conventional commit messages for {{engine_name}} projects by analyzing staged changes. Handles engine-specific concerns like companion file pairing, binary assets, and plan task references. ALWAYS use this skill when the user asks to commit, save changes, or create a commit. Trigger phrases include "commit", "create commit", "commit this", "save changes", "save my work". Even if the user simply says "commit" or asks you to commit after finishing a task — invoke this skill, do NOT commit manually via git.
+description: Create conventional commit messages for {{engine_name}} projects by analyzing staged changes. Handles engine-specific concerns like companion file pairing, binary assets, and linking the related plan. ALWAYS use this skill when the user asks to commit, save changes, or create a commit. Trigger phrases include "commit", "create commit", "commit this", "save changes", "save my work". Even if the user simply says "commit" or asks you to commit after finishing a task — invoke this skill, do NOT commit manually via git.
 argument-hint: "[scope or context]"
 allowed-tools:
   - Read
@@ -92,7 +92,7 @@ Do not announce, confirm, or mention the language setting.
    - Derive from file paths using the project's module/folder structure (see `.unikit/ARCHITECTURE.md`):
      - Module directories → module name in kebab-case (e.g., `Wallets/` → `wallets`, `MiniGames/` → `mini-games`)
      - Feature directories → feature name (e.g., `Gameplay/` → `gameplay`, `Application/` → `app`)
-   - Use argument as scope if provided
+   - Use the argument as scope when it names an area; a caller's context (`checkpoint: …`, `final commit`) is never a scope
    - Omit scope if changes span multiple unrelated areas
 
 7. **Write the Message**

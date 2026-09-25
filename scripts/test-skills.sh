@@ -7806,6 +7806,7 @@ else
     grep -qF 'Phase 8, tasks' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:task-numbers-suggested"
     grep -qF 'Phase 3, tasks' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:task-numbers-in-example"
     grep -qF 'Added null check with fallback to default' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:mechanic-example-returned"
+    grep -qF 'plan task references' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:description-promises-task-numbers"
     # (CM-6) the inputs: project rules are read; the ultra contract only under the marker; the
     # plan's human sources replace the task-number suggestion.
     grep -qF 'Read `.unikit/RULES.md` (if present)' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:rules-not-read"
@@ -7815,6 +7816,10 @@ else
     grep -qF 'read its `## Overview` and the `WHY:` line' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:no-human-sources"
     # The coordinator's args carry task numbers; they steer Step 4 and never reach the prose.
     grep -qF 'it is input, never text for the message' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:caller-context-becomes-text"
+    # Step 6 once took ANY argument as the scope, which would turn that context into
+    # `feat(checkpoint: Commit 1, tasks 1-2): …` — the task numbers the contract bans (review finding).
+    grep -qF 'is never a scope' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:caller-context-as-scope"
+    grep -qF 'Use argument as scope if provided' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:scope-from-any-argument"
     # (CM-7) S1: a split never takes unstaged edits along. The index is snapshotted and restored
     # per group; `git add` of a working-tree file is exactly the defect this replaces. Measured
     # in a throwaway repository: modified, new, deleted, binary and renamed paths, plus one file
@@ -7875,9 +7880,13 @@ if [[ -z "$CA_WHY" ]]; then
     # The commit before a `direct` edit is the only rollback point, so a cancelled or failed one
     # stops the edit and returns the task to `manual` (the plan's supported-combination row).
     grep -qF 'without that commit there is no rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-refusal-unhandled"
+    # What the gate protects is a ROLLBACK POINT, not a commit: with nothing uncommitted HEAD is one,
+    # and requiring a commit there sent every first direct task of a phase to manual (review finding).
+    grep -qF 'Nothing of this run is uncommitted → `HEAD` already is the rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-blocked-with-nothing-to-commit"
+    grep -qF 'has uncommitted changes this run did not make' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:foreign-target-edits-unguarded"
 fi
 if [[ -z "$CA_WHY" ]]; then
-    pass "CA-1…CA-3 one author of commit messages: the sidecar drafts none, the coordinator commits through the skill, implement suggests no subject and commits before a direct edit through the skill; a cancelled checkpoint commit is recorded as skipped, and no direct edit happens without its commit"
+    pass "CA-1…CA-3 one author of commit messages: the sidecar drafts none, the coordinator commits through the skill, implement suggests no subject and commits before a direct edit through the skill; a cancelled checkpoint commit is recorded as skipped, and no direct edit happens without a rollback point"
 else
     fail "CA single commit-message author:$CA_WHY"
 fi
@@ -7904,6 +7913,7 @@ done
 if [[ -z "$AR_WHY" ]]; then
     # (AR-1) the modes.
     grep -qF 'argument-hint: "[list | --all | <plan-folder>]"' "$AR_SKILL" || AR_WHY+=" AR-1:no-mode-hint"
+    grep -qF 'is confirmed before anything moves' "$AR_SKILL" || AR_WHY+=" AR-1:substring-match-unconfirmed"
     # (AR-2) completion: every non-x mark is unfinished; a phase status line is not a task;
     # a plan with no tasks is never archived.
     grep -qF 'Any other mark is unfinished' "$AR_SKILL" || AR_WHY+=" AR-2:only-open-boxes-count"
@@ -7913,6 +7923,10 @@ if [[ -z "$AR_WHY" ]]; then
     # moved only by an audit, so a date rule could not be cleared by running the trap.
     grep -qF '`<folder>/<task file name>#F<n>`' "$AR_SKILL" || AR_WHY+=" AR-3:no-back-reference-key"
     grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
+    # A transferred finding can lose its back-reference legitimately: the installer parks the notes
+    # on a server switch, and /unikit-mcp-audit removes a retired note with its from: (review finding).
+    grep -qF '.unikit/MCP-RECHECK-NOTES.archive.*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
+    grep -qF 'removes a note it retires together with its back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:retire-unexplained"
     # (AR-4) stop 2 names the skill that actually flips an open candidate.
     grep -qF 'has the status `open`' "$AR_SKILL" || AR_WHY+=" AR-4:no-open-candidate-stop"
     grep -qF '/unikit-verify <folder>' "$AR_SKILL" || AR_WHY+=" AR-4:wrong-or-no-command"
