@@ -7910,6 +7910,30 @@ elif [[ -n "$PRT8_MISSING" ]]; then
 else
     pass "PRT-8 all $PRT8_READERS readers of .unikit/RULES.md (+ code-recon.md) name their rule-topics point"
 fi
+# (PRT-9) the other writers: migrate-rules walks every topic file and deletes a topic it emptied
+# (both headings with the last one); the ownership contract names `.unikit/rules/`, the Keep tag
+# and that deletion, and no longer claims `rules/` is written by nobody (finding 7.7); evolve
+# checks coverage across topic files, logs `**Topic:**` instead of the dead `**Section:**`
+# (finding 7.2), and takes the rule language from `language.rules` (finding 7.6).
+PRT9_MIGRATE="$ROOT_DIR/skills/unikit-memory/references/migrate-rules.md"
+PRT9_WHY=""
+grep -qF 'every topic file listed under its `## Topics` table' "$PRT9_MIGRATE" || PRT9_WHY+=" migrate:no-topic-traversal"
+grep -qF '**Emptied files.**' "$PRT9_MIGRATE" || PRT9_WHY+=" migrate:no-emptied-files-rule"
+grep -qF '(section: {section name})' "$PRT9_MIGRATE" && PRT9_WHY+=" migrate:section-field-returned"
+grep -qF 'the deletion of a topic file that migration emptied' "$UM_SKILL" || PRT9_WHY+=" memory:access-rule-not-extended"
+grep -qF '.unikit/rules/' "$UNIKIT_VERIFY_CONTRACT" || PRT9_WHY+=" contract:topic-files-unowned"
+grep -qF 'the `<!-- @no-migrate -->` tag its Keep option appends' "$UNIKIT_VERIFY_CONTRACT" || PRT9_WHY+=" contract:keep-tag-unnamed"
+grep -qF '`rules/` and `CLAUDE.md` are edited by no command at all' "$UNIKIT_VERIFY_CONTRACT" && PRT9_WHY+=" contract:stale-rules-dir-line"
+grep -qF 'Target section' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:target-section-returned"
+grep -qF '**Section:**' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:section-log-returned"
+grep -qF '**Topic:**' "$EV_EVOLVE_SKILL" || PRT9_WHY+=" evolve:no-topic-log"
+grep -qF 'every topic file its `## Topics` table lists' "$EV_EVOLVE_SKILL" || PRT9_WHY+=" evolve:coverage-ignores-topics"
+grep -qF 'all rules in RULES.md are in English' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:hardcoded-english-returned"
+if [[ -z "$PRT9_WHY" ]]; then
+    pass "PRT-9 migrate-rules, the ownership contract and evolve know topic files; the Keep tag and the emptied-topic deletion are named"
+else
+    fail "PRT-9 other writers ignore topic files:$PRT9_WHY"
+fi
 
 # ─────────────────────────────────────────────
 # CM: the commit-message contract of /unikit-commit (CM-1…CM-7)

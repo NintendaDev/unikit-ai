@@ -741,7 +741,7 @@ Skip the question entirely (do not ask, do not print a fallback hint) when:
 - `.unikit/memory/<module>/RULES_INDEX.md` — index of all rule files in the module
 
 **Writable only during Branch C (Migrate Rules):**
-- `.unikit/RULES.md` — removal of migrated entries only; adding new entries goes through `unikit-rules` skill
+- `.unikit/RULES.md` and its topic files in `.unikit/rules/` — removal of migrated entries only, plus two named edits: the `<!-- @no-migrate -->` tag of Keep, and the deletion of a topic file that migration emptied, together with its `## Topics` row; adding new entries goes through `unikit-rules` skill
 
 **Read-only** (this skill must NEVER modify these files):
 - `.unikit/config.yaml` — project settings (language). Read-only for this skill.

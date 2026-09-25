@@ -289,7 +289,7 @@ After applying:
 3. **Workflow rules only** — skill-context is for HOW skills work, not coding conventions (use `/unikit-rules` for those)
 4. **No duplicates** — always cross-check against base SKILL.md and existing skill-context
 5. **Reversible** — user approves changes in validate mode before applying
-6. **Ownership boundary** — this command owns `.unikit/skill-context/*`; treats base skills (`{{skills_dir}}/`) and rules (`.unikit/memory/`, `.unikit/RULES.md`) as read-only
+6. **Ownership boundary** — this command owns `.unikit/skill-context/*`; treats base skills (`{{skills_dir}}/`) and rules (`.unikit/memory/`, `.unikit/RULES.md`, `.unikit/rules/`) as read-only
 
 ## Examples
 

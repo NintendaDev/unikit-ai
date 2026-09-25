@@ -14,14 +14,14 @@ the loaded module contract (for tier semantics and the File Format Template).
 ## C.1: Load Context
 
 Read:
-1. **`.unikit/RULES.md`** — current entries
+1. **`.unikit/RULES.md`** — current entries, and every topic file listed under its `## Topics` table (`.unikit/rules/<slug>.md`): a rule is a migration candidate wherever it lives. A listed file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, skip it.
 2. **`.unikit/memory/<module>/RULES_INDEX.md`** — available rule files with descriptions
 
-**Skip entirely** if RULES.md has no entries — report "No entries in RULES.md to migrate" and stop.
+**Skip entirely** if neither the root nor any topic file has entries — report "No entries in RULES.md to migrate" and stop.
 
 ## C.2: Classify Entries
 
-For each rule entry in RULES.md:
+For each rule entry — in the root and in every topic file:
 
 0. **Check for `@no-migrate` tag** — if the rule line ends with `<!-- @no-migrate -->`, skip it entirely. This tag means the user previously decided this rule must stay in RULES.md. Do not present it as a transfer candidate, do not mention it in the output. Proceed to the next entry.
 1. **Classify destination** — match topic against RULES_INDEX.md "Description" and "Load When" columns to find the target file. If no file covers this topic — mark as **New File** candidate (needs a new rule file in the module). Use the module contract's tier semantics to pick the tier for a New File candidate.
@@ -39,7 +39,7 @@ For each rule entry in RULES.md:
 
 ```
 ### Transfer: "[rule text]"
-- **From:** `.unikit/RULES.md` (section: {section name})
+- **From:** `{source file}` — `.unikit/RULES.md` or `.unikit/rules/<slug>.md` ({section name}, only when a legacy root still has sections)
 - **To:** `.unikit/memory/<module>/<tier>/{FILE}.md` (section: {target section})
 - **Reason:** {why this belongs in the target file}
 ```
@@ -58,7 +58,7 @@ Based on choice:
 
 ```
 ### Override: "[rule text]"
-- **From:** `.unikit/RULES.md` (section: {section name})
+- **From:** `{source file}` — `.unikit/RULES.md` or `.unikit/rules/<slug>.md` ({section name}, only when a legacy root still has sections)
 - **To:** `.unikit/memory/<module>/<tier>/{FILE}.md` (section: {target section})
 - **Conflicts with:** "[existing rule text in memory file]"
 - **Reason:** {why the RULES.md entry overrides the base convention}
@@ -78,7 +78,7 @@ Based on choice:
 
 ```
 ### New File: "[rule text]"
-- **From:** `.unikit/RULES.md` (section: {section name})
+- **From:** `{source file}` — `.unikit/RULES.md` or `.unikit/rules/<slug>.md` ({section name}, only when a legacy root still has sections)
 - **Proposed file:** `.unikit/memory/<module>/<tier>/{PROPOSED-NAME}.md`
 - **Tier:** {tier} — {reasoning for the choice, per the module contract}
 - **Reason:** {why no existing file covers this topic}
@@ -114,32 +114,37 @@ The rephrased text replaces the original for all downstream steps (C.4 applies t
 **For "Transfer" (compatible entries):**
 1. Read the target rule file
 2. Add the rule text **verbatim** (or the approved rephrased variant from C.3a) — copy exact wording without rephrasing or paraphrasing
-3. Remove the rule from RULES.md using `Edit`
-4. If a RULES.md section becomes empty after removal, remove the section header too
+3. Remove the rule from the file it lives in using `Edit`
+4. Apply **Emptied files** below
 
 **For "Replace" (override entries):**
 1. Read the target rule file
 2. Locate and **delete** the conflicting rule(s) from the target memory file using `Edit`
 3. Insert the RULES.md entry **verbatim** (or the approved rephrased variant from C.3a) in the same section where the conflicting rule was
-4. Remove the rule from RULES.md using `Edit`
-5. If a RULES.md section becomes empty after removal, remove the section header too
+4. Remove the rule from the file it lives in using `Edit`
+5. Apply **Emptied files** below
 
 **For "Create & Transfer" (new file entries):**
 1. Create the new rule file following the **File Format Template** from the module contract, using the approved filename and tier
 2. Write the rule text (original or approved rephrased variant from C.3a) into the appropriate section
 3. Update `RULES_INDEX.md` — add a new row to the appropriate table in alphabetical order
-4. Remove the rule from RULES.md using `Edit`
-5. If a RULES.md section becomes empty after removal, remove the section header too
+4. Remove the rule from the file it lives in using `Edit`
+5. Apply **Emptied files** below
 
 **For "Delete" (discard override):**
-1. Remove the rule from RULES.md using `Edit`
-2. If a RULES.md section becomes empty after removal, remove the section header too
+1. Remove the rule from the file it lives in using `Edit`
+2. Apply **Emptied files** below
 3. Do not touch the memory file — the base convention remains
 
 **For "Keep" (leave in RULES.md permanently):**
-1. Append ` <!-- @no-migrate -->` to the end of the rule line in RULES.md using `Edit`
+1. Append ` <!-- @no-migrate -->` to the end of the rule line, in the file it lives in, using `Edit`
 2. The tag is an HTML comment — invisible when rendered, but detectable during future migrations (see C.2 step 0)
 3. Do not modify any memory files
+
+**Emptied files.** After every removal:
+- a legacy `## ` section of the root left without rules → remove its heading too, as before;
+- a topic file left without rules → delete it (`rm .unikit/rules/<slug>.md`) and remove its row from the root's `## Topics` table; when that was the last row, remove `## Topics` with its table and the `## Common` heading — the common rules stay as the flat list under the header paragraph (`unikit-rules`' layout: `## Topics` and `## Common` exist together or not at all);
+- `## Common` left without rules while topics remain → leave it, empty: new common rules are appended there.
 
 **Verbatim transfer is critical:** rules in RULES.md were carefully worded. Changing wording during transfer risks losing nuance. The only acceptable change is adding a section header in the target file if needed.
 
