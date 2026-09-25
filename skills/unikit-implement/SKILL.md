@@ -260,9 +260,9 @@ MCP rules: no INDEX.md — no known exceptions for this server, rights unchanged
 
 No rules means no known exceptions, never no capabilities. Absence never disables the engine MCP and never turns a target into `⏸️ MANUAL` (`.unikit/system/dev-principles.md` → **A9**).
 
-**Ultra plan bundle reader contract — once, before the first task is executed:**
+**Ultra plan bundle reader contract — only for an ultra bundle:**
 
-7. `.unikit/system/ultra-plan-read.md` — how to read an ultra plan bundle: detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. Name it and follow it; never restate it here — one contract, one place.
+7. `.unikit/system/ultra-plan-read.md` — **only when Step 0.1 found the marker `<!-- unikit:plan-mode:ultra -->`**: read it once — here, unless Step 0.1 already did — and follow it for detection, per-consumer reading depth, what is mutable during execution, and the blocking integrity checks. A plan without the marker never reads this file.
    **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
 
 Keep an in-memory list of loaded rule file paths (`loaded_rules`). Used in Step 3.0 for delta detection.

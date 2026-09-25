@@ -2624,10 +2624,19 @@ if [[ -z "$UP_WHY" ]]; then
         || UP_WHY+=" UP-7:marker-count"
     grep -qF 'unikit-improve' "$UP_MODE_ADD" || UP_WHY+=" UP-7:no-routing"
     grep -qF "$UP_DEGRADATION" "$UP_MODE_ADD" || UP_WHY+=" UP-7:degradation-wording-drifted"
+    # (UP-8) DEC-012 a: the reader contract costs ~8 KB and only a bundle needs it. The marker
+    # is known at Step 0.1, so the Bootstrap read is gated on it. The degradation line below
+    # it is untouched — T16, UP-7 and US-8 hold it verbatim.
+    grep -qF 'Ultra plan bundle reader contract — only for an ultra bundle' "$UP_IMPLEMENT" \
+        || UP_WHY+=" UP-8:reader-contract-unconditional"
+    grep -qF 'Ultra plan bundle reader contract — once, before the first task is executed' "$UP_IMPLEMENT" \
+        && UP_WHY+=" UP-8:old-unconditional-heading"
+    grep -qF 'A plan without the marker never reads this file.' "$UP_IMPLEMENT" \
+        || UP_WHY+=" UP-8:non-ultra-read-not-excluded"
 fi
 
 if [[ -z "$UP_WHY" ]]; then
-    pass "UP-1..UP-7 ultra producer: the redirect holds on both sides, Step 0.5 keeps no mode list, the manifest claims are branched, the depth gate is in place and add refuses a bundle"
+    pass "UP-1..UP-8 ultra producer: the redirect holds on both sides, Step 0.5 keeps no mode list, the manifest claims are branched, the depth gate is in place and add refuses a bundle, and implement reads the reader contract only for a bundle"
 else
     fail "UP ultra producer:$UP_WHY"
 fi
