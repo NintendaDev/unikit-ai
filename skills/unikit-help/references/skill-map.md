@@ -382,6 +382,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   preview, confirmation, nothing deleted. Also offered by itself on an old flat file.
 - **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence and deletes only
   the ones you select.
+- **Every mode announces itself** before reading anything — the mode, what it will do, what it
+  will not do without asking — and prints one progress line before each long step.
 - **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).
 
 ### unikit-memory

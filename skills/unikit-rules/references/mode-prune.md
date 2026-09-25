@@ -1,6 +1,6 @@
 # Mode E — Prune the Rules (`prune`)
 
-`unikit-rules` reads this file only when the whole argument is `prune`, in any letter case (SKILL.md → Step 1). No other mode and no other skill offers it: pruning is always the user's explicit call.
+`unikit-rules` reads this file only when the whole argument is `prune`, in any letter case (SKILL.md → Step 1, which has already printed the Mode E announcement before this file was read). No other mode and no other skill offers it: pruning is always the user's explicit call.
 
 This is the one mode of this skill that deletes rules. **Only the rules the user selected are deleted.** It never rewords a rule — that is Mode C (`compact`) — and never moves one — that is Mode D (`optimise`). It works the same in every layout state (SKILL.md → Step 3), and it edits files in the user's project, so it runs **only on confirmation**.
 
@@ -8,7 +8,7 @@ This is the one mode of this skill that deletes rules. **Only the rules the user
 
 1. Read `.unikit/RULES.md` and determine its state (SKILL.md → Step 3). No file, or the `empty` state → `INFO [rules] prune: no rules — file unchanged`, and stop.
 2. `topics` → read every topic file the table lists. A listed file that is missing contributes no rules: `WARN [rules] topic file missing: .unikit/rules/<slug>.md`.
-3. Parse every list into rules exactly as Mode C step 2 does. `N` is their number. Anything that does not parse → delete nothing: `WARN [rules] prune: <n> items did not parse — file unchanged`, name the places, and stop.
+3. Parse every list into rules exactly as Mode C step 2 does. `N` is their number. Anything that does not parse → delete nothing: `WARN [rules] prune: <n> items did not parse — file unchanged`, name the places, and stop. Then print `Read <N> rules from <K> files — checking them against each other, the knowledge base and the project code now.`
 4. For `covered`: read `.unikit/memory/code/RULES_INDEX.md` — and `.unikit/memory/gamedesign/RULES_INDEX.md` when it exists — then only the knowledge-base rule files whose description or `Load When` matches a rule's area. Never read the whole memory tree.
 5. For `stale-ref`: `Grep` the project for each concrete name a rule cites — a class, a file or folder, an API, another rule file. Matches under `.unikit/` are not evidence either way: the rule itself lives there.
 
@@ -67,6 +67,8 @@ One question, three options:
 Ask with `AskUserQuestion` — the id list arrives as the free-text answer; without it, the same three options as numbered text, answered by option number or by ids — print them, then end your turn and wait for the answer. No answer, or `Delete nothing` → nothing is deleted: `INFO [rules] prune: nothing deleted — file unchanged`. An id that is not in the preview is ignored and named in the report.
 
 ## E.5 Delete
+
+First print `Deleting <d> rules…`.
 
 1. Remove each selected rule — every line of it — with `Edit`, from the file it lives in. Nothing is reworded, nothing is moved.
 2. A topic file left without rules → delete it with `rm .unikit/rules/<slug>.md` and remove its row from the table. The last row gone → remove `## Topics` with its table and the `## Common` heading; the common rules stay as the flat list under the header paragraph.

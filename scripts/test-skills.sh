@@ -7769,7 +7769,7 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# PRT: project rule topics (PRT-1…PRT-11)
+# PRT: project rule topics (PRT-1…PRT-12)
 # ─────────────────────────────────────────────
 # `.unikit/RULES.md` became a root: common rules under `## Common`, bounded rules in topic
 # files under `.unikit/rules/`, listed by a `## Topics` table whose `Load when` column is the
@@ -7965,6 +7965,42 @@ if [[ -z "$PRT10_WHY" ]]; then
     pass "PRT-10 prune deletes only the selected rules, shows evidence for every candidate, keeps the three protections; deletion is confined to prune"
 else
     fail "PRT-10 prune contract:$PRT10_WHY"
+fi
+# (PRT-12) every mode announces itself as the run's FIRST output — after the language rules,
+# before Step 0, before the mode's reference file, before any project file and before any other
+# sentence — and prints one progress line before each long step. Two real runs of
+# `/unikit-rules optimise` are why: one showed nothing but "Reading .unikit\RULES.md" for two
+# minutes; the next read four files and then narrated its own awk plan without ever naming the
+# mode. The announcements live in SKILL.md Step 1 only, never in a reference: a reference is read
+# by a tool call, so an announcement kept there cannot come first (the NEGATIVE half). The offer
+# stays silent — it is not a mode the user called — or it would fire after every ordinary add
+# to a legacy file.
+PRT12_WHY=""
+grep -qF 'Announce the mode first.' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:no-announce-rule"
+grep -qF 'very first output of the run' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announce-not-first"
+grep -qF "before Step 0, before the mode's reference file, before any project file, and before any other sentence" "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announce-after-reads"
+grep -qF '**First, announce the mode**' "$EV_RULES_SKILL" || PRT12_WHY+=" step0:reads-before-announce"
+grep -qF "Print it before that step's analysis begins, not after it." "$EV_RULES_SKILL" || PRT12_WHY+=" skill:progress-after-the-fact"
+for prt12_m in 'Mode A — add <N> rule(s)' 'Mode C — compact: shorten the project rules in place.' 'Mode D — optimise: reorganize the project rules into topics' 'Mode E — prune: find project rules that can be deleted.'; do
+    grep -qF "$prt12_m" "$EV_RULES_SKILL" || PRT12_WHY+=" no-announcement[${prt12_m:0:6}]"
+done
+if [[ -s "$PRT_OPTIMISE_REF" ]]; then
+    grep -qF 'Mode D — optimise:' "$PRT_OPTIMISE_REF" && PRT12_WHY+=" mode-d:announcement-moved-into-reference"
+    grep -qF 'grouping them into topics now' "$PRT_OPTIMISE_REF" || PRT12_WHY+=" mode-d:no-progress-line"
+    grep -qF 'the offer is not a mode the user called, so nothing announces it' "$PRT_OPTIMISE_REF" || PRT12_WHY+=" offer:announces"
+else
+    PRT12_WHY+=" missing:unikit-rules/references/mode-optimise.md"
+fi
+if [[ -s "$PRT_PRUNE_REF" ]]; then
+    grep -qF 'Mode E — prune:' "$PRT_PRUNE_REF" && PRT12_WHY+=" mode-e:announcement-moved-into-reference"
+    grep -qF 'checking them against each other, the knowledge base and the project code now' "$PRT_PRUNE_REF" || PRT12_WHY+=" mode-e:no-progress-line"
+else
+    PRT12_WHY+=" missing:unikit-rules/references/mode-prune.md"
+fi
+if [[ -z "$PRT12_WHY" ]]; then
+    pass "PRT-12 every unikit-rules mode announces itself as the run's first output and prints progress before long steps; the offer stays silent"
+else
+    fail "PRT-12 mode announcement contract:$PRT12_WHY"
 fi
 
 # ─────────────────────────────────────────────

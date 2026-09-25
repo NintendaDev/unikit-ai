@@ -97,6 +97,8 @@ It travels with the data, so it instructs even a reader whose skills predate top
 
 ### Step 0: Load Skill Context
 
+**First, announce the mode** (Step 1 → **Announce the mode first**): the argument alone decides it, and its announcement is the run's first output — before this read.
+
 Read `.unikit/skill-context/unikit-rules/SKILL.md` if it exists. Treat it as project-level overrides — when it conflicts with this SKILL.md, the skill-context wins.
 
 ### Step 1: Determine Mode
@@ -113,6 +115,37 @@ Check $ARGUMENTS:
 
 **Modes C, D and E are matched on an exact argument, never on containment.** A rule that happens to contain the word "compact", "optimise" or "prune" is still a rule; only the bare argument selects the mode. Mode D accepts `optimise` or `optimize`, in any letter case; Mode E accepts `prune`, in any letter case.
 
+**Announce the mode first.** The argument alone decides the mode, so the mode is known before any file is read — say it before reading any. A tool call that sits alone on screen for minutes, or a remark about what you are about to read or compute, reads as a hang. Right after the language rules are loaded, the **very first output of the run** — before Step 0, before the mode's reference file, before any project file, and before any other sentence — is the mode's announcement below, said in `language.ui` (paths and mode names stay as they are):
+
+- **Mode A**, one line: `Mode A — add <N> rule(s): check each against the knowledge base and the existing project rules, write it where it belongs, then report every rule.`
+- **Mode B**: the question for the rule is the first output; once the rule arrives, the Mode A line.
+- **Mode C**:
+  ```
+  Mode C — compact: shorten the project rules in place.
+  1. Read .unikit/RULES.md and its topic files; an old flat file is first checked for rules worth splitting into topics.
+  2. Decide for every rule: shorten, keep, or only flatten.
+  3. Show every change as before → after.
+  4. Ask before writing. No rule is deleted, and nothing is written without your confirmation.
+  ```
+- **Mode D**:
+  ```
+  Mode D — optimise: reorganize the project rules into topics (or regroup the existing ones).
+  1. Read .unikit/RULES.md and its topic files, and count the rules.
+  2. Give every rule one place — a topic or the common part.
+  3. Show the proposed layout with every rule in it.
+  4. Ask before writing. Nothing is written, and no rule is deleted, unless you confirm.
+  ```
+- **Mode E**:
+  ```
+  Mode E — prune: find project rules that can be deleted.
+  1. Read .unikit/RULES.md and its topic files.
+  2. Look for five kinds of candidates — duplicates, rules the knowledge base already covers, lines that are not rules, conflicts, references to things that no longer exist — each with evidence.
+  3. Show the candidates.
+  4. Delete only the ones you select. Nothing is deleted without your answer.
+  ```
+
+Then, **right before each long step** — analysing the whole rule set, writing several files — print one line that says what is happening now and how much there is (`<N> rules from <K> files`). Print it before that step's analysis begins, not after it. Each mode names its progress lines at the step they precede: Mode C step 2, `mode-optimise.md` D.1 and D.5, `mode-prune.md` E.1 and E.5. Announcement and progress lines are plain sentences, not a log: no `INFO`/`WARN` prefix, and they replace none of the mode's own summary lines.
+
 **Mode D** → read `{{skills_dir}}/{{self_name}}/references/mode-optimise.md` and follow it; Steps 2-6 below do not run. The layout it writes is `## Layout of the rule files` below.
 
 **Mode E** → read `{{skills_dir}}/{{self_name}}/references/mode-prune.md` and follow it; Steps 2-6 below do not run.
@@ -121,7 +154,7 @@ Check $ARGUMENTS:
 ```
 /unikit-rules Never use var, always explicit types
 ```
-→ Proceed to Step 2 with the provided text.
+→ After the Mode A line (announcement above), proceed to Step 2 with the provided text.
 
 **Mode A, batch form** — the argument carries several rules at once. It is a **numbered
 batch** when two or more lines begin with `^\d+\. ` at column zero. Each rule starts at
@@ -143,7 +176,7 @@ Run Steps 2-5 per rule and report all of them together in Step 6. One rule and N
 differ only in how many rows the report carries.
 
 **Mode B** — no arguments:
-→ Ask the user what rule to add. Offer examples relevant to {{engine_name}}/{{engine_code_language}}:
+→ Ask the user what rule to add; once the rule arrives, continue as Mode A, its announcement included. Offer examples relevant to {{engine_name}}/{{engine_code_language}}:
 ```
 What rule or convention would you like to add?
 
@@ -274,7 +307,7 @@ instead of silently writing the whole text as a single `RULES.md` entry.
 A retro mode. It edits a file inside the user's project, so it runs **only on confirmation** and is non-destructive: content is moved, never dropped.
 
 1. Read `.unikit/RULES.md`. No file → say so and stop. Determine its state (Step 3); the `empty` state → `INFO [rules] compact: no rules — file unchanged`, and stop. **Mode C on a `legacy` file first runs the offer** (`{{skills_dir}}/{{self_name}}/references/mode-optimise.md` → `## Offer`): `Apply` reorganizes the file, and compaction then runs over the new layout; `Keep the flat format` writes the marker, and compaction continues as before; `Not now` — compaction continues as before. A `flat` or `topics` file is compacted without an offer.
-2. Parse every list into `- ` items, preserving their order — the root and, in the `topics` state, each topic file its table lists, each file on its own. An item is a line starting `- ` at column zero together with the indented lines that continue it; a nested list (an indented `- ` or `1. `) does not parse. **Structure is not an item, and compact never removes or rewrites it:** the `# ` line, the header paragraph, the marker line, `## Topics` with its table, and `## Common`. A legacy section (any other `## …`) is not an item either: its heading goes away, and the items beneath it join the list in the same order they had.
+2. Parse every list into `- ` items, preserving their order — the root and, in the `topics` state, each topic file its table lists, each file on its own. An item is a line starting `- ` at column zero together with the indented lines that continue it; a nested list (an indented `- ` or `1. `) does not parse. **Structure is not an item, and compact never removes or rewrites it:** the `# ` line, the header paragraph, the marker line, `## Topics` with its table, and `## Common`. A legacy section (any other `## …`) is not an item either: its heading goes away, and the items beneath it join the list in the same order they had. Then print `Read <N> rules from <K> files — deciding how to shorten each one now.`
 3. Decide an outcome per rule:
    - **`shorten`** — it reduces to one directive without losing knowledge: prepare the short wording. A trailing `<!-- @no-migrate -->` stays verbatim at the end of the shortened rule;
    - **`keep`** — it does not reduce: it stays exactly as it stands. That is not a defect, and it is not marked;

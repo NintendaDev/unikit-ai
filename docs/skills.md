@@ -288,6 +288,7 @@ Also accepts a **numbered batch** - a prompt whose lines start `1. `, `2. `, …
 - **`compact`** — `/unikit-rules compact` retro-fits an existing file: it shortens what reduces, keeps what does not, and flattens away the old sections — file by file, never touching `## Topics` or `## Common`. Non-destructive and confirmed first — no rule is ever deleted, and the order you chose is preserved
 - **`optimise`** — `/unikit-rules optimise` (or `optimize`) moves rules into topics or regroups existing ones: a preview first, the rule count checked, nothing deleted
 - **`prune`** — `/unikit-rules prune` lists deletion candidates (duplicate, covered by the knowledge base, not a rule, conflict, stale reference) with evidence and deletes only the ones you pick
+- **Every mode says what it is doing:** before it reads anything, the skill names the mode and lists what the run will do; before a long step it prints one line such as `Read 180 rules from 4 files — grouping them into topics now`
 
 ### `/unikit-rules-registry` - external registry orchestrator
 

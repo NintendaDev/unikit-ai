@@ -2,7 +2,7 @@
 
 `unikit-rules` reads this file in two cases, and never otherwise:
 
-- **Explicit** — the whole argument is `optimise` or `optimize`, in any letter case (SKILL.md → Step 1). It works in every state: it reorganizes a `legacy` file, turns a `flat` one into topics and removes its marker, and regroups a `topics` one.
+- **Explicit** — the whole argument is `optimise` or `optimize`, in any letter case (SKILL.md → Step 1, which has already printed the Mode D announcement before this file was read). It works in every state: it reorganizes a `legacy` file, turns a `flat` one into topics and removes its marker, and regroups a `topics` one.
 - **Offer** — the Step 3 state was `legacy`: after the Step 6 report of an add (Modes A and B), or before compaction (Mode C). Follow `## Offer` at the end of this file.
 
 The layout — the two shapes of the root, the header paragraph, the table row, the topic file, the marker — is SKILL.md → `## Layout of the rule files`; the placement criteria are SKILL.md → Step 4. This file only moves rules into that layout.
@@ -17,6 +17,7 @@ It edits files in the user's project, so it runs **only on confirmation**. It to
 2. `topics` → read every topic file the table lists. A listed file that is missing contributes no rules: `WARN [rules] topic file missing: .unikit/rules/<slug>.md`. A file in `.unikit/rules/` that the table does not list is outside the layout: warn as SKILL.md Step 3 does and leave it untouched.
 3. Parse every list into rules exactly as Mode C step 2 does, remembering each rule's file and, in a `legacy` root, the `## ` section it stood under. A trailing `<!-- @no-migrate -->` is part of its rule. Anything that does not parse → write nothing: `WARN [rules] optimise: <n> items did not parse — file unchanged`, name the places, and stop.
 4. `N` is the number of rules parsed — the invariant of D.5.
+5. Explicit call → print `Read <N> rules from <K> files — grouping them into topics now; this is the longest step.` before starting D.2.
 
 ## D.2 Propose
 
@@ -56,6 +57,8 @@ One question: `Apply` / `Cancel` — with `AskUserQuestion`; without it, the two
 
 ## D.5 Check, then write
 
+Explicit call → first print `Writing <T> topic files and the root…`.
+
 1. **Invariant, before any write:** the proposal holds exactly `N` rules, and every parsed rule stands in exactly one destination, word for word. Otherwise write nothing: `WARN [rules] optimise: <N> rules before, <M> after — file unchanged`, and stop.
 2. **At least one topic:** write each topic file with `Write` — its `# Project Rules — <Title>` line and its rules. Then write the root with `Write`, last: `# Project Rules`, the header paragraph, `## Topics` with one row per topic in alphabetical order of slug, and `## Common` with the common rules. The marker, legacy `## ` sections and `---` separators are not carried over.
 3. **Zero topics:** write the root flat — `# Project Rules`, the header paragraph, all rules; no `## Topics`, no `## Common`, no marker.
@@ -71,7 +74,7 @@ One question: `Apply` / `Cancel` — with `AskUserQuestion`; without it, the two
 
 Run by SKILL.md Step 6 after the report of an add, and by Mode C before compaction — only in the `legacy` state.
 
-1. Run D.1 and D.2. **No topic proposed → no question, nothing written, no line printed**: a file whose rules are all common has nothing to reorganize, and a question there is noise.
+1. Run D.1 and D.2 — without the D.1 progress line: the offer is not a mode the user called, so nothing announces it. **No topic proposed → no question, nothing written, no line printed**: a file whose rules are all common has nothing to reorganize, and a question there is noise.
 2. At least one topic → D.3, then one question with three options:
    - `Apply` — D.5 and D.6: the file takes the topic layout.
    - `Keep the flat format` — insert the marker line (SKILL.md → `## Layout of the rule files`) and nothing else; print `INFO [rules] layout: flat marker written — /unikit-rules optimise reorganizes later`. The refusal is final: the offer is never made for this file again.
