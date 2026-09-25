@@ -57,6 +57,8 @@ including the rule to **translate concepts, not transliterate jargon**.
 field values (e.g. `market_signal: red-ocean`) stay English. Do not announce the
 language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Bootstrap (MANDATORY)
 
 Before responding, silently load — do not narrate:

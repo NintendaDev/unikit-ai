@@ -2111,6 +2111,8 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-recon/references/code-re
     "unikit-gd-recon's shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
     "update --install-new installed the new GDD-render skill (unikit-gd-docs)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
+    "update --install-new installed the new plan-archive skill (unikit-archive)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-plan/SKILL.md" \
     "update --install-new installed a new code skill (unikit-plan)"
 assert_contains "$INSTALLNEW_OUT" "new skill installed" "new-skill-installed reason text appears"

@@ -44,6 +44,8 @@ If the file is missing or unreadable, fall back to English.
 Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 **Internal communication is always English:**
 - All prompts to `unikit-implement-worker` workers — English only
 - All prompts to sidecars — English only
@@ -173,7 +175,7 @@ for each layer:
     run quality sidecars in background for all changes in this layer
     collect sidecar results
     feed material findings into refinement (max 2 rounds)
-    if commit checkpoint at this layer → create commit
+    if commit checkpoint at this layer → commit through the unikit-commit skill (see "Commit Handling")
     mark completed phases
 
 report final summary
@@ -279,7 +281,7 @@ After completing each execution layer (all phases in the layer done), launch ALL
 Agent(unikit-review-sidecar):      "Review changes for layer N: [all changed files from all phases in layer]"
 Agent(unikit-architecture-sidecar): "Check architecture for layer N: [all changed files]"
 Agent(unikit-docs-sidecar):         "Check docs drift for layer N: [all changed files]"
-Agent(unikit-commit-sidecar):       "Assess commit readiness for layer N"
+Agent(unikit-commit-sidecar):       "Assess commit readiness for layer N: [all changed files]"
 ```
 
 All run in background (`run_in_background: true`). Continue to next refinement step when results arrive.
@@ -303,10 +305,17 @@ For single-phase execution (direct mode), sidecars can also be launched after ea
 
 ## Commit Handling
 
-- Check if the plan defines commit checkpoints (e.g. "Commit after Phase 1")
-- At checkpoints: use the `unikit-commit` skill or create a commit based on `unikit-commit-sidecar` recommendation
-- At the end of the full run: create a final commit if uncommitted work remains
-- Never auto-push
+Every commit message is written by the `unikit-commit` skill. This agent never composes a message and never runs `git commit` itself; `unikit-commit-sidecar` only assesses readiness, the split and the files to leave out.
+
+- Check if the plan defines commit checkpoints (`## Commit Plan` → `### Commit N: after tasks X-Y`)
+- **At a checkpoint** — the layer just finished the last task of a commit range:
+  1. Read the sidecar result for this layer. `not_ready` → do not commit; put its `why` into the layer's `Commit:` line and continue.
+  2. Stage only the files this run created or modified for that range, minus the sidecar's `excluded_files`: `git add -- <files>`. Never `git add .` or `git add -A`.
+  3. Invoke `Skill(skill: "unikit-commit", args: "checkpoint: Commit N, tasks X-Y")`. When the sidecar returned `needs_split`, append its groups to the args — labels and file lists only — as the proposed split.
+- **At the end of the full run:** uncommitted work from this run remains → the same three steps, with `args: "final commit"`.
+- **The user cancels in the `unikit-commit` confirmation** → nothing is committed and the files stay staged: set the layer's `Commit:` line to `skipped — cancelled by the user` and continue the run.
+- **No `Skill` tool in this session** → do not commit by hand: leave the files staged, set the layer's `Commit:` line to `pending — run /unikit-commit`, and continue.
+- Never auto-push — `unikit-commit` asks about the push itself and honours `git.skip_push_after_commit`.
 
 ## Safety Guards
 
@@ -329,7 +338,7 @@ Layer N: [parallel|sequential]
   Review: clean | N findings (M material)
   Architecture: clean | N violations
   Docs: no_action | safe_update | needs_user_choice
-  Commit: [created | skipped | checkpoint]
+  Commit: [created | skipped | checkpoint | pending]
 ```
 
 Final output:

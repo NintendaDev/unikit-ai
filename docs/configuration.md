@@ -18,7 +18,7 @@ Main configuration file, created by `unikit-ai init`:
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": [
-        "unikit", "unikit-architecture", "unikit-commit", "unikit-devcontext",
+        "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-devcontext",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
         "unikit-implement", "unikit-improve", "unikit-mcp-audit", "unikit-mcp-trap",
         "unikit-memory", "unikit-plan", "unikit-review", "unikit-roadmap",
@@ -132,7 +132,7 @@ git:
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `ui` | Language for AI-agent communication (prompts, questions, explanations). Options: `en`, `ru`, `de`, `fr`, `es`, `zh`, `ja`, `ko`, `pt`, `it` | `en` |
+| `ui` | Language for AI-agent communication (prompts, questions, explanations). It holds for the whole session, not just the first reply: status lines while background agents run, relays of what a subagent found (subagents talk to each other in English), the final report and any follow-up discussion. Options: `en`, `ru`, `de`, `fr`, `es`, `zh`, `ja`, `ko`, `pt`, `it` | `en` |
 | `artifacts` | Language for generated artifacts (plans, specs, documentation). Same options as `ui`. | same as `ui` |
 | `rules` | Language for knowledge base rule files: everything under `.unikit/memory/` (`core/`, `stack/`, `references/`, `RULES_INDEX.md`), `.unikit/RULES.md`, and skill-context rules. Intentionally decoupled from `ui` and `artifacts` - rule files are consumed by AI agents for prompt matching; keeping them in a stable language reduces semantic drift across agents and teams. Changing `ui` or `artifacts` does NOT change the language of existing rule files. **Strongly not recommended to change from `en`** - non-English rule files cause semantic drift and inconsistent agent behavior. Default is always `en`; can only be changed by manually editing this file (skills never write to this key). | `en` |
 | `technical_terms` | How to handle technical terms in translations. `keep` - preserve English terms (API, prefab, shader, ECS). `translate` - translate where a common translation exists. **Strongly not recommended to change from `keep`** - translating technical terms degrades agent accuracy. Default is always `keep`; can only be changed by manually editing this file (skills never write to this key). | `keep` |
@@ -542,10 +542,11 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 22 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 23 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
+│   │   ├── unikit-archive/
 │   │   ├── unikit-commit/
 │   │   ├── unikit-devcontext/
 │   │   ├── unikit-docs/

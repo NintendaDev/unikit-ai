@@ -33,6 +33,8 @@ quality:    /unikit-review  ──► /unikit-fix     (optional) review vs rules
               │
 commit:     /unikit-commit          (optional terminal) conventional commit (+ push)
               │
+archive:    /unikit-archive         (optional) move a finished folder plan out of the active list
+              │
 learn:      /unikit-evolve          (optional) turn fix-patches into project rules
 ```
 

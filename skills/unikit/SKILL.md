@@ -209,6 +209,8 @@ The file instructs skills to read `.unikit/config.yaml` at runtime for language 
 
 Only now — after language, git, and `.unikit/config.yaml` are settled — look at `$ARGUMENTS` and collect the project description. All output from this point forward is in the language chosen in Step 1.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ```
 Check $ARGUMENTS:
 ├── Has description? → save as project description, proceed to Step 5

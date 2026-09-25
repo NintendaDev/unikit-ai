@@ -68,6 +68,8 @@ apply it to all output (fall back to English if it is missing) — including the
 game-design specifics: which IDs and stored field values stay English (the owner skills
 re-apply it on every delegated write). Do not announce the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Phase 0 — Bootstrap
 
 Silently load — do not narrate. This skill loads **only routing context**, never domain

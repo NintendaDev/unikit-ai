@@ -3971,7 +3971,7 @@ fi
 # is deliberately OUT of scope — the documentation is rewritten by tasks 15-16, and a
 # second guard over it would be a second owner of one fact; those tasks carry an
 # explicit grep in their acceptance criteria instead.
-# ONE measured allowlist entry: the pre-merge detection branch in
+# ONE measured allowlist marker, carried by TWO sites. The first is the pre-merge detection branch in
 # skills/unikit-improve/SKILL.md. That branch exists to recognise an
 # un-migrated plan folder and send the user to `unikit-ai update`; a branch that
 # DESCRIBES the old shape instead of naming it cannot be executed reliably, so
@@ -3979,6 +3979,9 @@ fi
 # The entry is pinned to the marker `(a pre-merge plan)` on that same line, not
 # to the file — exempting the whole file would re-open the 27 occurrences the
 # merge removed from it.
+# The second site is skills/unikit-archive/SKILL.md Step 2: a completed plan is never
+# migrated, so the archive must still recognise the legacy task file to classify it — the
+# same load-bearing reason, on one line, under the same marker.
 PL2_ALLOW='(a pre-merge plan)'
 PL2_HITS="$({ grep -rn -e 'TASKS\.md' -e 'PLAN-BRIEF' "${PL_SCAN_ROOTS[@]}" "$ROOT_DIR/data" --include='*.md' 2>/dev/null || true; } | { grep -vF "$PL2_ALLOW" || true; })"
 if [[ -z "$PL2_HITS" ]]; then
@@ -7766,6 +7769,210 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# CM: the commit-message contract of /unikit-commit (CM-1…CM-7)
+# ─────────────────────────────────────────────
+# A message is read by people who were not in the session. The research behind this family
+# (human-commit-messages-and-plan-archive, DEC-3) found no body contract at all and two
+# examples that taught mechanics; a model imitates examples, so the old ones are asserted
+# ABSENT rather than merely outnumbered. Every positive assert is anchored on a formulation,
+# never on a heading. The contract bullets are deliberately unwrapped in the skill, so no
+# reflow can split an anchor across two lines.
+CM_COMMIT_SKILL="$ROOT_DIR/skills/unikit-commit/SKILL.md"
+CM_WHY=""
+if [[ ! -s "$CM_COMMIT_SKILL" ]]; then
+    CM_WHY+=" missing:unikit-commit/SKILL.md"
+else
+    # (CM-1) the subject names the change for the game or the team; the area rides in scope.
+    grep -qF 'The subject names what changed for the game or the team' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-subject-rule"
+    grep -qF 'The technical area goes into `scope`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-scope-rule"
+    grep -qF 'A small change is a subject and nothing else' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-subject-only-rule"
+    # (CM-2) the technical paragraph: labelled, bounded, admitted only for what the diff hides.
+    grep -qF 'labelled `Technical:`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:no-technical-label"
+    grep -qF 'at most three lines' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:technical-paragraph-unbounded"
+    grep -qF 'the diff does not show by itself' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:no-admission-rule"
+    # (CM-3) what never enters the prose.
+    grep -qF '**Never in the prose:** phase or task numbers' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-3:no-prose-ban"
+    # (CM-4) truthfulness and the check before showing.
+    grep -qF 'Every claim traces to the diff' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:no-traceability-rule"
+    grep -qF 'the chat test' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:no-chat-test"
+    # The message is printed before the question, never carried inside it ("print first, ask
+    # second"): with a body, a payload inside the question is lost on a runtime without a widget.
+    grep -qF 'as plain text in a block of its own, then confirm' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:message-inside-the-question"
+    grep -qF '💾 Proposed commit message:' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-4:payload-in-question-returned"
+    # (CM-5) the plan rides in a trailer, the language key is named, the mechanic examples are gone.
+    grep -qF '`Plan: <folder>`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-5:no-plan-trailer"
+    grep -qF 'the language set by `language.artifacts`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-5:language-key-unnamed"
+    grep -qF 'uses the configured language' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:unnamed-language-returned"
+    grep -qF 'Phase 8, tasks' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:task-numbers-suggested"
+    grep -qF 'Phase 3, tasks' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:task-numbers-in-example"
+    grep -qF 'Added null check with fallback to default' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:mechanic-example-returned"
+    grep -qF 'plan task references' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:description-promises-task-numbers"
+    # (CM-6) the inputs: project rules are read; the ultra contract only under the marker; the
+    # plan's human sources replace the task-number suggestion.
+    grep -qF 'Read `.unikit/RULES.md` (if present)' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:rules-not-read"
+    grep -qF 'A plan without the marker never reads this file.' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:ultra-read-unconditional"
+    grep -qF 'Read `.unikit/system/ultra-plan-read.md` — the reader contract' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:old-bootstrap-read-returned"
+    grep -qF 'suggest referencing the phase/task number' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:task-number-suggestion-returned"
+    grep -qF 'read its `## Overview` and the `WHY:` line' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:no-human-sources"
+    # The coordinator's args carry task numbers; they steer Step 4 and never reach the prose.
+    grep -qF 'it is input, never text for the message' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:caller-context-becomes-text"
+    # Step 6 once took ANY argument as the scope, which would turn that context into
+    # `feat(checkpoint: Commit 1, tasks 1-2): …` — the task numbers the contract bans (review finding).
+    grep -qF 'is never a scope' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:caller-context-as-scope"
+    grep -qF 'Use argument as scope if provided' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:scope-from-any-argument"
+    # (CM-7) S1: a split never takes unstaged edits along. The index is snapshotted and restored
+    # per group; `git add` of a working-tree file is exactly the defect this replaces. Measured
+    # in a throwaway repository: modified, new, deleted, binary and renamed paths, plus one file
+    # split by hunks, all land exactly as staged and HEAD equals the snapshot afterwards.
+    grep -qF 'Never `git add` here' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-add-ban"
+    grep -qF 'git write-tree' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-index-snapshot"
+    grep -qF 'git restore --staged --source=<snapshot>' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-restore-from-snapshot"
+    grep -qF 'git apply --cached --recount -' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-hunk-path"
+    grep -qF 'git diff --quiet HEAD <snapshot>' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-final-check"
+    grep -qF 'git diff --cached --name-status --no-renames' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:renames-not-paired"
+    grep -qF 'git rev-parse --verify -q HEAD' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-unborn-guard"
+    grep -qF 'Unstage all: `git reset HEAD`' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-7:old-unstage-all-returned"
+    grep -qF 'using `git add <files>`' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-7:old-add-per-group-returned"
+fi
+if [[ -z "$CM_WHY" ]]; then
+    pass "CM-1…CM-7 unikit-commit writes for the team: subject by effect, bounded Technical: paragraph, no plan numbers in prose, Plan: trailer, language.artifacts named; a split never takes unstaged edits"
+else
+    fail "CM unikit-commit message contract:$CM_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# CA: one author of commit messages (CA-1…CA-3)
+# ─────────────────────────────────────────────
+# DEC-4 of human-commit-messages-and-plan-archive: every message is written by the
+# unikit-commit skill. Before it the coordinator could commit on the sidecar's own draft —
+# English regardless of language.artifacts and styled after a git log the sidecar cannot
+# even read — and implement's checkpoint proposed a subject built from a phase title. Both
+# halves are asserted: the second author is gone (negatives) AND the skill call is there.
+CA_SIDECAR="$ROOT_DIR/subagents/unikit-commit-sidecar.md"
+CA_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+CA_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+CA_WHY=""
+for f in "$CA_SIDECAR" "$CA_COORD" "$CA_IMPLEMENT"; do
+    [[ -s "$f" ]] || CA_WHY+=" missing:$(basename "$f")"
+done
+if [[ -z "$CA_WHY" ]]; then
+    # (CA-1) the sidecar assesses and never drafts; it has no git and says so.
+    grep -qF 'proposed_message' "$CA_SIDECAR" && CA_WHY+=" CA-1:sidecar-drafts-a-message"
+    grep -qF '"message"' "$CA_SIDECAR" && CA_WHY+=" CA-1:group-message-field"
+    grep -qF 'git log' "$CA_SIDECAR" && CA_WHY+=" CA-1:copies-history-style"
+    grep -qF 'You never write commit message text' "$CA_SIDECAR" || CA_WHY+=" CA-1:no-authorship-ban"
+    grep -qF 'You have no git access' "$CA_SIDECAR" || CA_WHY+=" CA-1:claims-git-state"
+    # (CA-2) the coordinator commits only through the skill, and hands the sidecar its files.
+    grep -qF 'Skill(skill: "unikit-commit"' "$CA_COORD" || CA_WHY+=" CA-2:no-skill-call"
+    grep -qF 'never runs `git commit` itself' "$CA_COORD" || CA_WHY+=" CA-2:no-self-commit-ban"
+    grep -qF 'create a commit based on' "$CA_COORD" && CA_WHY+=" CA-2:sidecar-commit-branch-returned"
+    grep -qF 'create a final commit' "$CA_COORD" && CA_WHY+=" CA-2:final-self-commit-returned"
+    grep -qF '→ create commit' "$CA_COORD" && CA_WHY+=" CA-2:pseudocode-self-commit"
+    grep -qF 'Assess commit readiness for layer N: [all changed files]' "$CA_COORD" || CA_WHY+=" CA-2:sidecar-gets-no-files"
+    # A cancel in the skill's confirmation is a normal outcome of a checkpoint, not a failure:
+    # the layer records it and the run goes on (verify finding on the plan's Task 5 contract).
+    grep -qF '`Commit:` line to `skipped — cancelled by the user`' "$CA_COORD" || CA_WHY+=" CA-2:cancel-unhandled"
+    # (CA-3) implement's checkpoint proposes no subject of its own, and the commit that must
+    # precede a `direct` editor edit goes through the skill as well.
+    grep -qF 'Suggested message:' "$CA_IMPLEMENT" && CA_WHY+=" CA-3:checkpoint-suggests-a-subject"
+    grep -qF 'Do not suggest a message here' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:no-suggestion-ban"
+    grep -qF 'commit them through `/unikit-commit`, like every other commit of this run' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-edit-self-commit"
+    # The commit before a `direct` edit is the only rollback point, so a cancelled or failed one
+    # stops the edit and returns the task to `manual` (the plan's supported-combination row).
+    grep -qF 'without that commit there is no rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-refusal-unhandled"
+    # What the gate protects is a ROLLBACK POINT, not a commit: with nothing uncommitted HEAD is one,
+    # and requiring a commit there sent every first direct task of a phase to manual (review finding).
+    grep -qF 'Nothing of this run is uncommitted → `HEAD` already is the rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-blocked-with-nothing-to-commit"
+    grep -qF 'has uncommitted changes this run did not make' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:foreign-target-edits-unguarded"
+fi
+if [[ -z "$CA_WHY" ]]; then
+    pass "CA-1…CA-3 one author of commit messages: the sidecar drafts none, the coordinator commits through the skill, implement suggests no subject and commits before a direct edit through the skill; a cancelled checkpoint commit is recorded as skipped, and no direct edit happens without a rollback point"
+else
+    fail "CA single commit-message author:$CA_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# AR: /unikit-archive — the plan archive (AR-1…AR-9 the skill, AR-10…AR-12 the readers)
+# ─────────────────────────────────────────────
+# The archive MOVES completed folder plans out of .unikit/code/plans/, so every reader that
+# walks that directory stops seeing them — the point for plan lookup, and wrong for the
+# readers that need finished plans or their unfinished rows. This half pins the skill: the
+# predicate (every mark other than x is unfinished — the coordinator writes [~] and [!]),
+# the two stops, the move rule measured in ADR-0001 and the scope. AR-10…AR-12 pin the three
+# readers outside the skill that had to learn about the archive. Anchored on formulations,
+# never on headings.
+AR_SKILL="$ROOT_DIR/skills/unikit-archive/SKILL.md"
+AR_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
+AR_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+AR_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+AR_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+AR_WHY=""
+for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT"; do
+    [[ -s "$f" ]] || AR_WHY+=" missing:${f#"$ROOT_DIR"/}"
+done
+if [[ -z "$AR_WHY" ]]; then
+    # (AR-1) the modes.
+    grep -qF 'argument-hint: "[list | --all | <plan-folder>]"' "$AR_SKILL" || AR_WHY+=" AR-1:no-mode-hint"
+    grep -qF 'is confirmed before anything moves' "$AR_SKILL" || AR_WHY+=" AR-1:substring-match-unconfirmed"
+    # (AR-2) completion: every non-x mark is unfinished; a phase status line is not a task;
+    # a plan with no tasks is never archived.
+    grep -qF 'Any other mark is unfinished' "$AR_SKILL" || AR_WHY+=" AR-2:only-open-boxes-count"
+    grep -qF 'is not a checkbox line' "$AR_SKILL" || AR_WHY+=" AR-2:status-line-counted"
+    grep -qF 'An empty plan is not archived' "$AR_SKILL" || AR_WHY+=" AR-2:empty-plan-archivable"
+    # (AR-3) stop 1 is keyed on the trap's own back-reference, never on a date: audited: is
+    # moved only by an audit, so a date rule could not be cleared by running the trap.
+    grep -qF '`<folder>/<task file name>#F<n>`' "$AR_SKILL" || AR_WHY+=" AR-3:no-back-reference-key"
+    grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
+    # A transferred finding can lose its back-reference legitimately: the installer parks the notes
+    # on a server switch, and /unikit-mcp-audit removes a retired note with its from: (review finding).
+    grep -qF '.unikit/MCP-RECHECK-NOTES.archive.*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
+    grep -qF 'removes a note it retires together with its back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:retire-unexplained"
+    # (AR-4) stop 2 names the skill that actually flips an open candidate.
+    grep -qF 'has the status `open`' "$AR_SKILL" || AR_WHY+=" AR-4:no-open-candidate-stop"
+    grep -qF '/unikit-verify <folder>' "$AR_SKILL" || AR_WHY+=" AR-4:wrong-or-no-command"
+    # (AR-5) git mv only for a tracked folder in an enabled git work tree — measured, not assumed.
+    grep -qF '`git.enabled` is not `false`' "$AR_SKILL" || AR_WHY+=" AR-5:ignores-git-enabled"
+    grep -qF 'git rev-parse --is-inside-work-tree' "$AR_SKILL" || AR_WHY+=" AR-5:no-work-tree-check"
+    grep -qF 'git ls-files -- .unikit/code/plans/<folder>' "$AR_SKILL" || AR_WHY+=" AR-5:no-tracked-check"
+    grep -qF 'fatal: source directory is empty' "$AR_SKILL" || AR_WHY+=" AR-5:reason-lost"
+    grep -qF 'Never retry with the other command' "$AR_SKILL" || AR_WHY+=" AR-5:silent-fallback"
+    # (AR-6) no overwrite, no rename, no commit, no staging; one label line.
+    grep -qF 'Never overwrite, never rename' "$AR_SKILL" || AR_WHY+=" AR-6:may-overwrite"
+    grep -qF 'Never commit or push' "$AR_SKILL" || AR_WHY+=" AR-6:may-commit"
+    grep -qF 'git commit' "$AR_SKILL" && AR_WHY+=" AR-6:commits"
+    grep -qF 'git add' "$AR_SKILL" && AR_WHY+=" AR-6:stages"
+    grep -qF '`Archived: <today>`' "$AR_SKILL" || AR_WHY+=" AR-6:no-label"
+    # (AR-7) the scope: fast and fix plans, researches and patches are never archived.
+    grep -qF '**Never touched:**' "$AR_SKILL" || AR_WHY+=" AR-7:no-exclusion-list"
+    grep -qF '`.unikit/code/FIX_PLAN.md`' "$AR_SKILL" || AR_WHY+=" AR-7:fix-plan-unmentioned"
+    # (AR-8) every command the skill runs is granted, and nothing that deletes — a rule the
+    # skill cannot carry out degrades silently (the NM-5 lesson).
+    for g in 'Bash(git *)' 'Bash(mv *)' 'Bash(mkdir *)' 'Bash(date *)'; do
+        grep -qF "  - $g" "$AR_SKILL" || AR_WHY+=" AR-8:no-grant-$g"
+    done
+    grep -qF 'Bash(rm' "$AR_SKILL" && AR_WHY+=" AR-8:can-delete"
+    # (AR-9) the legacy layout is recognised under the PL-2 marker, never by a bare old name.
+    grep -qF '(a pre-merge plan)' "$AR_SKILL" || AR_WHY+=" AR-9:legacy-layout-unrecognised"
+    # (AR-10) the one reader that wants completed plans reads the archive too — a glob that
+    # misses returns "no prior plan", never an error, so nothing else would notice.
+    grep -qF '`.unikit/code/archive/plans/*/*.md`' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:fallback-blind-to-archive"
+    grep -qF 'moves exactly the completed plans this fallback reads' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:no-reason"
+    # (AR-11) a new plan never takes an archived plan's name — both producers.
+    grep -qF '`.unikit/code/archive/plans/`' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-collision-blind-to-archive"
+    grep -qF 'is archived (<matched folder>)' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-no-archived-branch"
+    grep -qF '`.unikit/code/archive/plans/`' "$AR_POLISHER" || AR_WHY+=" AR-11:polisher-collision-blind-to-archive"
+    grep -qF 'is archived (<matched folder>)' "$AR_POLISHER" || AR_WHY+=" AR-11:polisher-no-archived-branch"
+    # (AR-12) the end of implement names the way out, and still never offers to delete.
+    grep -qF '/unikit-archive <folder>' "$AR_IMPLEMENT" || AR_WHY+=" AR-12:no-archive-hint"
+    grep -qF 'Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`' "$AR_IMPLEMENT" || AR_WHY+=" AR-12:delete-ban-lost"
+fi
+if [[ -z "$AR_WHY" ]]; then
+    pass "AR-1…AR-12 unikit-archive: non-x marks are unfinished, two stops keyed on the trap back-reference and open candidates, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it"
+else
+    fail "AR plan archive contract:$AR_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Codebase integrity checks ===${NC}\n"
@@ -8847,6 +9054,52 @@ done
 
 if [[ $BLOCKING_ERRORS -eq 0 ]]; then
     pass "all 17 skills + 2 coordinator subagents have Language Awareness with LANGUAGE_RULES.md reference"
+fi
+
+# LP-1…LP-3 — the language is a standing constraint, not a load-time check.
+# A session slipped into English mid-run: background research agents answer in
+# English by contract, and nothing in a block read once at load said that relaying
+# their results is still user-facing output. LP-1 holds ONE verbatim sentence inside
+# every Language Awareness block (the awk window keeps it from drifting elsewhere in
+# the file, where it would no longer read as part of the prerequisite), LP-2 puts the
+# same sentence in the root /unikit skill, which has no such block, and LP-3 anchors
+# the template section on formulations rather than its heading. The skill-side
+# sentence is what reaches an existing project: skills are refreshed by `update`,
+# while `.unikit/system/LANGUAGE_RULES.md` is written only by /unikit Step 3.1.
+LANG_PERSIST='The language holds for the whole session, not just at load time'
+LP_ERRORS=0
+lp_scanned=0
+for lp_file in "$ROOT_DIR"/skills/unikit-*/SKILL.md \
+               "$ROOT_DIR"/subagents/unikit-implement-coordinator.md \
+               "$ROOT_DIR"/subagents/unikit-plan-coordinator.md; do
+    [[ -f "$lp_file" ]] || continue
+    lp_scanned=$((lp_scanned + 1))
+    lp_count=$(awk '/^## Language Awareness — BLOCKING PRE-REQUISITE/{p=1;next} p&&/^## /{exit} p' "$lp_file" \
+        | grep -cF "$LANG_PERSIST" 2>/dev/null || true)
+    if [[ "$lp_count" -ne 1 ]]; then
+        fail "LP-1: ${lp_file#"$ROOT_DIR"/} — expected exactly 1 session-wide language sentence inside the Language Awareness block, found $lp_count"
+        LP_ERRORS=$((LP_ERRORS + 1))
+    fi
+done
+if [[ "$lp_scanned" -eq 0 ]]; then
+    fail "LP-1: no skill or coordinator file scanned"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+lp_count=$(grep -cF "$LANG_PERSIST" "$ROOT_DIR/skills/unikit/SKILL.md" 2>/dev/null || true)
+if [[ "$lp_count" -ne 1 ]]; then
+    fail "LP-2: skills/unikit/SKILL.md — expected exactly 1 session-wide language sentence, found $lp_count"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if ! grep -qF 'is a standing constraint on every message, not a check passed once when a skill loads' "$LANG_RULES_TPL" 2>/dev/null; then
+    fail "LP-3: LANGUAGE_RULES_TEMPLATE.md — missing the standing-constraint formulation"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if ! grep -qF 'English input is data, never a cue to switch languages' "$LANG_RULES_TPL" 2>/dev/null; then
+    fail "LP-3: LANGUAGE_RULES_TEMPLATE.md — missing the English-input-is-data formulation"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if [[ $LP_ERRORS -eq 0 ]]; then
+    pass "LP-1…LP-3: the language holds for the whole session ($lp_scanned Language Awareness block(s) + /unikit + template)"
 fi
 
 # ─────────────────────────────────────────────

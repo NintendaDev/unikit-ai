@@ -15,12 +15,13 @@ Plans are stored in two locations depending on mode:
 | `/unikit-plan ultra` | `.unikit/code/plans/<feature-name>/` | `PLAN.md` + `phase-NN-<slug>.md` |
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
 | `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
+| `/unikit-archive` | `.unikit/code/archive/plans/<feature-name>/` | A completed folder plan, moved whole; its manifest gains an `Archived:` line |
 
 Ultra reuses the full-mode folder and the same `PLAN.md` entry point — moving a plan from full to ultra is purely additive: phase files appear, nothing is renamed, external links stay valid.
 
 **Two different files are called `PLAN.md`.** The flat `.unikit/code/PLAN.md` is the throwaway fast plan; `.unikit/code/plans/<folder>/PLAN.md` is a folder plan's manifest. Nothing else distinguishes them — always read the path, never the name. Skills are held to the same rule by a guard (`PL-1`): inside `skills/**` and `subagents/*` the name may never be written bare, only as a full path, as the glob `plans/*/PLAN.md`, or as the phrase "the plan folder's manifest".
 
-**Migration is selective.** `unikit-ai update` merges the old two-file form into one `PLAN.md` only in folders that still have open tasks. A plan whose checklist is fully ticked is left exactly as it was, with `TASKS.md` and `PLAN-BRIEF.md` side by side — a finished plan is a record, and a record is not rewritten. So `.unikit/code/plans/` stays mixed, permanently and by design; the two shapes are not a half-finished migration. Anything that has to read across old plans (the `implemented_version` migration-grace scan in `/unikit-plan`) locates blocks by heading and never by file name, which is why it globs `plans/*/*.md`.
+**Migration is selective.** `unikit-ai update` merges the old two-file form into one `PLAN.md` only in folders that still have open tasks. A plan whose checklist is fully ticked is left exactly as it was, with `TASKS.md` and `PLAN-BRIEF.md` side by side — a finished plan is a record, and a record is not rewritten. So `.unikit/code/plans/` stays mixed, permanently and by design; the two shapes are not a half-finished migration. Anything that has to read across old plans (the `implemented_version` migration-grace scan in `/unikit-plan`) locates blocks by heading and never by file name, which is why it globs `plans/*/*.md`. `/unikit-archive` is the way out of that directory: it moves a completed plan, in either shape, to `.unikit/code/archive/plans/` - which is why that scan globs the archive as well.
 
 A folder plan stays a folder even with a single file in it — discovery looks for the folder and never opens it, which is what lets new plan shapes be added without touching any consumer.
 
@@ -296,7 +297,7 @@ The naming of `<container>` and `<target>` is engine-specific and comes from the
 
 - **`mcp`** — through the engine MCP server. Chosen **silently** when an engine MCP is configured; you are not asked.
 - **`manual`** — nothing is touched. The task is marked `⏸️ MANUAL` and you get the exact instruction in `[kind] container → target : action` form. `/unikit-verify` reports these but never treats them as blockers.
-- **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always commits to git first. On Unreal Engine 5 the format tolerates it nowhere except `Config/Default*.ini` — every level and asset is binary — so `direct` is effectively an `.ini`-only route there.
+- **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always makes sure there is a commit to return to first. On Unreal Engine 5 the format tolerates it nowhere except `Config/Default*.ini` — every level and asset is binary — so `direct` is effectively an `.ini`-only route there.
 
   `/unikit-implement` reads the feasibility ratings out of §6 of the **`/unikit-plan` skill's** installed `ENGINE_RULES.md`, since it has no engine template of its own. If that file is not there — you installed a subset of skills without `/unikit-plan`, or a future engine's slot has no template written for it yet — the gate **fails closed**: every format is treated as 🔴, `direct` is refused, and the task goes back to `manual` with the reason stated. This is the one place an absent file removes a right rather than leaving it untouched, and deliberately so: what is missing is permission for an irreversible text edit of a possibly-binary format, not a rule that would grant a capability. The `mcp` route is unaffected.
 
@@ -361,6 +362,8 @@ feature without ever saying so.
 
 Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
 
+An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for.
+
 ## Artifact Ownership
 
 To avoid ownership conflicts, artifact writers are command-scoped:
@@ -373,6 +376,7 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
 | `.unikit/RULES.md` | `/unikit-rules` | Convention source of truth |
 | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
+| `.unikit/code/archive/plans/*/` | `/unikit-archive` | Completed folder plans, moved unchanged apart from one `Archived:` line |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
 | `.unikit/code/patches/*.md` | `/unikit-fix` | Self-improvement patches |
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |

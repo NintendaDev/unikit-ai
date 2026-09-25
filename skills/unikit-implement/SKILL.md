@@ -48,6 +48,8 @@ If the file is missing or unreadable, fall back to English.
 Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 <!-- unikit:agents codex -->
 ## Subagent Delegation — BLOCKING PRE-REQUISITE
 
@@ -356,7 +358,12 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 - **`mcp`** — carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); the library reference has two triggers and none of them is Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9).
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
-- **`direct`** — **commit to git before editing** (this is mandatory and the whole reason the mode is gated), then edit the serialized format directly, staying inside the bounds §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
+- **`direct`** — **a rollback point must exist before editing** (this is mandatory and the whole reason the mode is gated):
+  - Files this run changed and has not committed yet → stage only those and commit them through `/unikit-commit`, like every other commit of this run — never with a `git commit` of your own. The user cancels that commit, or it does not complete → do not edit: put the task back on `manual` and print `WARN [editor] <task>: no pre-edit commit — direct edit skipped, task back on manual` — without that commit there is no rollback point.
+  - Nothing of this run is uncommitted → `HEAD` already is the rollback point: no commit is needed.
+  - The target file itself has uncommitted changes this run did not make → a rollback would erase them. Before anything is staged, ask once with `AskUserQuestion` (numbered text, then end your turn, without the tool): `<target> has uncommitted changes that are not from this run` — `Commit them with the pre-edit commit` / `Leave this task on manual`. The first adds the target to the pre-edit commit; the second puts the task back on `manual` with that reason.
+
+  Once the rollback point exists, edit the serialized format directly, staying inside the bounds §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
 
   **§6 is owned by the `unikit-plan` skill** — read it from `references/ENGINE_RULES.md` inside that skill's own directory under `{{skills_dir}}`. This skill has no engine template of its own, so there is no local copy of §6 to read and none to keep in sync.
 
@@ -457,7 +464,6 @@ After all tasks in a phase are completed (and tests written if applicable), ask:
 ✅ Phase {N} complete — {count} tasks done.
 
 💾 Commit checkpoint. Commit changes?
-Suggested message: "feat({feature}): {phase summary}"
 
 Options:
 1. Yes, commit — /unikit-commit with this phase's files
@@ -466,6 +472,8 @@ Options:
 ```
 
 Staging: **Important Rules** → *Commit only your own changes*.
+
+Do not suggest a message here. `/unikit-commit` writes it from the plan's `## Overview` and this phase's `WHY:` lines; a subject assembled from a phase title is exactly the technical message its contract rules out.
 
 A scope of many phases: suggest `/compact` or `/clear` before the next phase.
 
@@ -578,7 +586,7 @@ Options:
 
 Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
-**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.**
+**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** A finished folder plan leaves the active list only through `/unikit-archive`, which Step 5.8 names.
 
 **5.5: MCP Findings handoff**
 
@@ -628,6 +636,8 @@ Next steps:
 - {suggest what to do next — e.g. "Run /unikit-implement to continue from Phase 4"}
 - {or "All phases completed — feature is done!"}
 ```
+
+When the plan is a folder plan and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself refuses while MCP findings are untransferred or rule candidates are still open.
 
 ## Status Display
 
