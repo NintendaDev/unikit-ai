@@ -37,6 +37,22 @@ explore save pipeline, on the same criterion — see
   `rule` form is allowed to stay short.
 - **Future-phase compilation errors do not block the phase commit.** They indicate planned work,
   not broken code.
+- **The safety valve fires at 70 % of the suites.** A filter of twenty names costs more than
+  one full run, and assembling it is the more error-prone half. The skill says the threshold is
+  assigned, not measured, so the next reader does not take it for a measurement.
+- **A degenerate case widens to a full run.** Failing to narrow means widening — fail-safe, not
+  refusal.
+- **Module manifests are searched, never read.** Reading the whole module graph costs thousands
+  of tokens and buys no accuracy.
+- **A red run has one reporter — the Step 3.3 blocker.** Two places printing one failure drift
+  apart.
+- **A test-checkpoint task is ticked by the `Edit` that records its run.** One write surface,
+  one `Edit` — the rule `## MCP Findings` is written by as well.
+- **Why the test-run block is a reference** (`skills/unikit-implement/references/test-runs.md`).
+  Its gate, `Testing: yes`, is known at plan load, before the context fills: a plan without
+  tests never pays for the ~10 KB, and a plan with tests pays at the cheapest moment of the run.
+  The step headings (`### Step 2.5`, `**3.8**`) and a one-line stub at each use site stay in the
+  skill, because `data/ultra-plan-read.md` and the coordinator point at those steps by name.
 
 ## Step 4 — Completion Summary
 

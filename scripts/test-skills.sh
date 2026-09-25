@@ -6436,9 +6436,13 @@ else
     fail "TC-14…TC-22 planner run-policy contract:$TC_G3_WHY"
 fi
 
+# The test-run block of unikit-implement lives in a reference read only under `Testing: yes`
+# (DEC-012 b); every TC literal that moved with it is asserted against that file.
+TC_TESTRUNS="$ROOT_DIR/skills/unikit-implement/references/test-runs.md"
+
 # --- group 4: verify reuses the executor's run (tasks 5.1, 5.2) ---
 TC_G4_WHY=""
-for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL"; do
+for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS"; do
     [[ -s "$f" ]] || TC_G4_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G4_WHY" ]]; then
@@ -6451,7 +6455,7 @@ if [[ -z "$TC_G4_WHY" ]]; then
     # procedure named in two places, never by two procedures that merely agree today: drift
     # in either half makes the anchor stop matching for no visible reason.
     TC24_SHARED='the same procedure as `Summary SHA256`'
-    for tc24_f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+    for tc24_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
         grep -qF "$TC24_SHARED" "$tc24_f" || TC_G4_WHY+=" TC-24:${tc24_f##*/skills/}-restates-hash-procedure"
     done
     # (TC-25) NEGATIVE — two dead references the reuse branch replaced: a CLAUDE.md list
@@ -6470,13 +6474,13 @@ fi
 
 # --- group 5: the executor, the coordinator and the worker (tasks 4.1-4.4) ---
 TC_G5_WHY=""
-for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD" "$TC_WORKER"; do
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$TC_COORD" "$TC_WORKER"; do
     [[ -s "$f" ]] || TC_G5_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G5_WHY" ]]; then
     # (TC-27) no executor key any more (DEC-008), the line that explains a run count, and the legacy branch.
     grep -qF 'merge_checkpoints' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-27:executor-key-returned"
-    grep -qF 'INFO [testing]'                      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-info-line"
+    grep -qF 'INFO [testing]'                      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-27:no-info-line"
     grep -qF 'the plan is legacy'                  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-legacy-branch"
     # (TC-28) NEGATIVE — symmetric to TC-22 from the other side: the executor never reads
     # the placement key, because the placement is already recorded in the plan.
@@ -6484,24 +6488,25 @@ if [[ -z "$TC_G5_WHY" ]]; then
     # (TC-29…TC-32) Step 2.5: the merge is marked BEFORE execution, or an interrupted run
     # leaves a ticked box with no run behind it.
     grep -qF '### Step 2.5' "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-29:no-step-2.5"
-    grep -qF '⏭️ MERGED'    "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-30:no-merge-marker"
-    grep -qF 'does not count as pending for its own run' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-31:no-counting-rule"
-    grep -qF 'never merged and never moved' "$UNIKIT_IMPLEMENT_SKILL"       || TC_G5_WHY+=" TC-31:final-run-mergeable"
-    grep -qF 'mark first, then execute'     "$UNIKIT_IMPLEMENT_SKILL"       || TC_G5_WHY+=" TC-32:no-order-contract"
+    grep -qF '⏭️ MERGED'    "$TC_TESTRUNS"                                  || TC_G5_WHY+=" TC-30:no-merge-marker"
+    grep -qF 'does not count as pending for its own run' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:no-counting-rule"
+    grep -qF 'never merged and never moved' "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-31:final-run-mergeable"
+    grep -qF 'mark first, then execute'     "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-32:no-order-contract"
     # (TC-33) one marker form across two files — a second spelling is a marker nobody reads.
     grep -qF '⏭️ MERGED → task' "$TC_READER" || TC_G5_WHY+=" TC-33:marker-form-drifted-in-reader"
     # (TC-34…TC-40) Step 3.2: the run task, its three widths, the graph-free algorithm, the
-    # assigned threshold, the manifest-reading ban and the two git commands.
+    # assigned threshold, the manifest-reading ban and the two git commands. TC-34 stays on
+    # the skill (the stub that recognises the task); the rest moved to the reference.
     grep -qF 'Test checkpoint: <coverage>'  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-34:no-run-task-branch"
-    grep -qF 'every test in the project'    "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-35:no-plan-width"
-    grep -qF 'without building a graph'     "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
-    grep -qF 'Safety valve'                 "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-37:no-safety-valve"
-    grep -qF 'assigned, not measured'       "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
-    grep -qF 'Reading every module manifest is forbidden' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
-    grep -qF 'git rev-parse HEAD; git status --porcelain' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-39:no-hash-commands"
-    grep -qF 'only WRITES tests and never runs them'      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
+    grep -qF 'every test in the project'    "$TC_TESTRUNS" || TC_G5_WHY+=" TC-35:no-plan-width"
+    grep -qF 'without building a graph'     "$TC_TESTRUNS" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
+    grep -qF 'Safety valve'                 "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:no-safety-valve"
+    grep -qF 'assigned, not measured'       "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
+    grep -qF 'Reading every module manifest is forbidden' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
+    grep -qF 'git rev-parse HEAD; git status --porcelain' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
+    grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
-    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-41:engine-names-leaked"
+    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" && TC_G5_WHY+=" TC-41:engine-names-leaked"
     # (TC-42…TC-44) POSITIVE half: the runner is one per editor, so the scope owner runs.
     grep -qF 'never handed to a worker'    "$TC_COORD"  || TC_G5_WHY+=" TC-42:coordinator-does-not-withhold"
     grep -qF 'once the layer has finished' "$TC_COORD"  || TC_G5_WHY+=" TC-43:no-run-after-layer"
@@ -6547,7 +6552,7 @@ fi
 # --- group 7: merging is a question per call, not a key (readback/merge plan, DEC-004…DEC-008) ---
 TC_G7_WHY=""
 TC_TASKFMT_Q="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
-for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD" "$TC_READER" "$TC_TASKFMT_Q"; do
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$TC_COORD" "$TC_READER" "$TC_TASKFMT_Q"; do
     [[ -s "$f" ]] || TC_G7_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G7_WHY" ]]; then
@@ -6555,7 +6560,7 @@ if [[ -z "$TC_G7_WHY" ]]; then
     TC52_HITS="$(grep -rlF 'merge_checkpoints' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/docs" "$ROOT_DIR/data" 2>/dev/null || true)"
     [[ -z "$TC52_HITS" ]] || TC_G7_WHY+=" TC-52:key-survives:$(echo "$TC52_HITS" | sed "s|$ROOT_DIR/||" | tr '\n' ',')"
     # (TC-53) Step 2.5 asks once, prints the points first, stops the turn on the text tier, names the source.
-    TC53_WIN="$(awk '/^### Step 2\.5/{f=1;next} /^### Step 3/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+    TC53_WIN="$(awk '/^## Step 2\.5/{f=1;next} /^## Step 3\.2/{f=0} f' "$TC_TESTRUNS")"
     for tc53 in 'AskUserQuestion' 'One run at the end' 'end your turn and wait' \
                 '(<asked|arguments|no answer|nothing to merge>)' 'Fewer than two' \
                 'whatever the answer below' 'last one in execution order'; do
@@ -6568,8 +6573,8 @@ if [[ -z "$TC_G7_WHY" ]]; then
     grep -qF 'the phase number inside it names a run point' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:instruction-parsed-as-selector"
     grep -qF 'After a stash, re-read the manifest' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:stash-leaves-stale-scope"
     # (TC-55) DEC-005 / OQ-3 — a merged point's non-run steps are performed at the survivor, and the format allows them.
-    grep -qF 'non-run steps of every task merged into it' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-55:non-run-steps-lost"
-    grep -qF 'its own non-run steps' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-55:survivor-own-steps-lost"
+    grep -qF 'non-run steps of every task merged into it' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-55:non-run-steps-lost"
+    grep -qF 'its own non-run steps' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-55:survivor-own-steps-lost"
     grep -qF 'A temporary probe it creates and removes within its own steps' "$TC_TASKFMT_Q" || TC_G7_WHY+=" TC-55:format-forbids-probe"
     grep -qF 'their non-run steps are performed there' "$TC_READER" || TC_G7_WHY+=" TC-55:reader-depth-silent"
     # (TC-56) the coordinator is an entry point too: it asks, and it holds the tool to ask with.
@@ -6583,6 +6588,36 @@ if [[ -z "$TC_G7_WHY" ]]; then
     pass "TC-52…TC-57 merging is one question per call: no key, source named, non-run steps carried, coordinator asks too"
 else
     fail "TC-52…TC-57 merge-question contract:$TC_G7_WHY"
+fi
+
+# --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
+# Modelled on MX-3 / RD-H: present, not inline, and read at the right step. A body that exists
+# while no step reads it is a contract no run follows (RISK-010).
+TR_WHY=""
+# (TR-1) present, with its four sections.
+[[ -s "$TC_TESTRUNS" ]] || TR_WHY+=" TR-1:reference-missing"
+for tr1 in '## Step 2.5' '## Step 3.2' '## Step 3.4' '## Step 3.8'; do
+    grep -qF "$tr1" "$TC_TESTRUNS" 2>/dev/null || TR_WHY+=" TR-1:no-${tr1// /-}"
+done
+# (TR-2) not inline — anchored on body formulations, never on headings.
+for tr2 in 'mark first, then execute' 'Reading every module manifest is forbidden' 'only WRITES tests and never runs them'; do
+    grep -qF "$tr2" "$UNIKIT_IMPLEMENT_SKILL" && TR_WHY+=" TR-2:still-inline:${tr2// /-}"
+done
+# (TR-3) read at plan load under Testing: yes, and pointed at from every use site.
+TR3_S1="$(awk 'index($0,"### Step 1: Load Plan Context")==1{f=1;next} index($0,"### Step 1.5")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S1" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:not-read-at-plan-load"
+printf '%s' "$TR3_S1" | grep -qF 'under `Testing: no` never read it' || TR_WHY+=" TR-3:read-unconditionally"
+printf '%s' "$TR3_S1" | grep -qF 'WARN [testing] test-run reference missing' || TR_WHY+=" TR-3:missing-reference-silent"
+TR3_S25="$(awk '/^### Step 2\.5/{f=1;next} /^### Step 3/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S25" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:step-2.5-stub-dangling"
+TR3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S32" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:step-3.2-stub-dangling"
+# (TR-4) the coordinator reads the same reference — it runs checkpoint tasks itself.
+grep -qF 'test-run reference' "$TC_COORD" || TR_WHY+=" TR-4:coordinator-blind"
+if [[ -z "$TR_WHY" ]]; then
+    pass "TR-1…TR-4 test-run block extracted to references/test-runs.md (present, not inline, read only under Testing: yes, coordinator included)"
+else
+    fail "TR test-run reference extraction:$TR_WHY"
 fi
 
 # ─────────────────────────────────────────────
