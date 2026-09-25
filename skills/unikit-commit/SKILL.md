@@ -237,7 +237,10 @@ If argument provided (e.g., `/unikit-commit wallets`):
 
 ## Splitting Unrelated Changes
 
-If staged changes contain unrelated work (e.g., a feature + a bugfix, or changes to independent modules), suggest splitting into separate commits:
+If staged changes contain unrelated work (e.g., a feature + a bugfix, or changes to independent modules), suggest splitting into separate commits. When the caller passes a proposed split — `unikit-implement-coordinator` relays the groups of `unikit-commit-sidecar` — start from that one instead of deriving your own.
+
+A split needs an existing commit to split against: when `git rev-parse --verify -q HEAD` fails (the repository has no commit yet), do not offer it — commit everything together and print `INFO [commit] no HEAD yet — split not offered`.
+
 1. Show which files/hunks belong to which commit
 2. Confirm split plan with the user:
 
@@ -252,11 +255,19 @@ If staged changes contain unrelated work (e.g., a feature + a bugfix, or changes
 
    Based on choice:
    - Yes, split as suggested → proceed to step 3
-   - No, commit everything together → proceed to step 4 (propose single commit message)
+   - No, commit everything together → write a single message (**Behavior** step 5)
    - Let me adjust the grouping → ask the user for the adjusted grouping via `AskUserQuestion`, then return to step 2 with the new plan
 
-3. Unstage all: `git reset HEAD`
-4. Stage and commit each group separately using `git add <files>` + `git commit`
+3. **Check the grouping before the index is touched.** List the staged paths with `git diff --cached --name-status --no-renames` — a rename shows up as its two halves, and both halves go into the same group. Every staged path belongs to exactly one group; a path in no group, or a rename split between groups, sends you back to step 2 with the problem named.
+   A file claimed by two groups is split by hunks: take its staged hunks with `git diff --cached -- <file>` now and assign every hunk to one group. A binary file has no hunks and goes whole into one group. A hunk that cannot be assigned with certainty → do not guess: stop before touching the index and return to step 2 — the user regroups or commits everything together.
+   Write every group's message by Workflow Step 7, print them all at once as plain text, then ask once with the same three options as **Behavior** step 6, before the first commit.
+4. **Snapshot the index, then commit group by group.** Never `git add` here: it stages the working-tree version of a file, so edits the user deliberately left unstaged would enter the commit.
+   - `git write-tree` — keep the printed id as `<snapshot>`: the staged state exactly as the user left it. Nothing is written to disk.
+   - `git reset -q` — the index returns to `HEAD`; the working tree is not touched.
+   - For each group, in order: `git restore --staged --source=<snapshot> -- <the group's paths>`, then `git commit` with that group's message. A file split by hunks enters through its hunks instead — `git apply --cached --recount -`, fed on stdin with the file's `diff --git` / `---` / `+++` header lines followed by that group's hunks as taken in step 3 — except in the last group that touches it, which takes the rest with the same `git restore` line.
+   - Print `INFO [commit] split: <n> groups, snapshot <first 8 characters of snapshot>` before the first group and `INFO [commit] group <i>/<n> committed: <short sha>` after each.
+   - A `git commit` or `git apply` that fails (a hook, a patch that does not apply) → stop the split, put the failed group and every later one back into the index with `git restore --staged --source=<snapshot> -- <their paths>`, and print `WARN [commit] split stopped at group <i>/<n>: <reason> — the uncommitted groups are staged again`.
+   - After the last group: `git diff --quiet HEAD <snapshot>` exits 0 when the commits hold exactly what was staged. Anything else → `WARN [commit] the split commits differ from what was staged — compare: git diff HEAD <snapshot>`.
 5. After all commits are done, run Post-commit push handling (Step 8) — respects `git.skip_push_after_commit`
 
 ## Important

@@ -7766,7 +7766,7 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# CM: the commit-message contract of /unikit-commit (CM-1…CM-5)
+# CM: the commit-message contract of /unikit-commit (CM-1…CM-7)
 # ─────────────────────────────────────────────
 # A message is read by people who were not in the session. The research behind this family
 # (human-commit-messages-and-plan-archive, DEC-3) found no body contract at all and two
@@ -7812,9 +7812,22 @@ else
     grep -qF 'read its `## Overview` and the `WHY:` line' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:no-human-sources"
     # The coordinator's args carry task numbers; they steer Step 4 and never reach the prose.
     grep -qF 'it is input, never text for the message' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:caller-context-becomes-text"
+    # (CM-7) S1: a split never takes unstaged edits along. The index is snapshotted and restored
+    # per group; `git add` of a working-tree file is exactly the defect this replaces. Measured
+    # in a throwaway repository: modified, new, deleted, binary and renamed paths, plus one file
+    # split by hunks, all land exactly as staged and HEAD equals the snapshot afterwards.
+    grep -qF 'Never `git add` here' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-add-ban"
+    grep -qF 'git write-tree' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-index-snapshot"
+    grep -qF 'git restore --staged --source=<snapshot>' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-restore-from-snapshot"
+    grep -qF 'git apply --cached --recount -' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-hunk-path"
+    grep -qF 'git diff --quiet HEAD <snapshot>' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-final-check"
+    grep -qF 'git diff --cached --name-status --no-renames' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:renames-not-paired"
+    grep -qF 'git rev-parse --verify -q HEAD' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-unborn-guard"
+    grep -qF 'Unstage all: `git reset HEAD`' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-7:old-unstage-all-returned"
+    grep -qF 'using `git add <files>`' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-7:old-add-per-group-returned"
 fi
 if [[ -z "$CM_WHY" ]]; then
-    pass "CM-1…CM-6 unikit-commit writes for the team: subject by effect, bounded Technical: paragraph, no plan numbers in prose, Plan: trailer, language.artifacts named"
+    pass "CM-1…CM-7 unikit-commit writes for the team: subject by effect, bounded Technical: paragraph, no plan numbers in prose, Plan: trailer, language.artifacts named; a split never takes unstaged edits"
 else
     fail "CM unikit-commit message contract:$CM_WHY"
 fi
