@@ -56,7 +56,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "subagentsDir": ".claude/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-memory",
-                          "unikit-skills-context", "unikit-verify",
+                          "unikit-rules", "unikit-skills-context", "unikit-verify",
                           "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify"],
       "installedSubagents": ["unikit-architecture-sidecar"]
@@ -194,6 +194,22 @@ ULTRA_READ_PATH="$CLAUDE_DIR/.unikit/system/ultra-plan-read.md"
 assert_exists "$ULTRA_READ_PATH" "ultra-plan-read.md created in .unikit/system/"
 assert_contains "$ULTRA_READ_PATH" 'unikit:plan-mode:ultra' \
   "ultra-plan-read.md carries the bundle marker it tells consumers to look for"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-rl: research-link.md installed as a system asset (flat copy, no vars)
+# Engine- and agent-agnostic, modeled on installUltraPlanReadContract. Read by
+# plan/improve/implement/verify when a plan links a research. This project is set up
+# through run_update (see below), so this is update-path coverage; the init.ts call
+# site is covered by SA-1 (scripts/test-skills.sh) instead.
+# ─────────────────────────────────────────────────────
+RESEARCH_LINK_PATH="$CLAUDE_DIR/.unikit/system/research-link.md"
+assert_exists "$RESEARCH_LINK_PATH" "research-link.md created in .unikit/system/"
+assert_contains "$RESEARCH_LINK_PATH" 'unikit:active-summary:start' \
+  "research-link.md carries the region marker it tells readers to hash between"
+assert_contains "$RESEARCH_LINK_PATH" 'WARN \[research-drift\]' \
+  "research-link.md carries the canonical WARN [research-drift] label"
+assert_not_contains "$RESEARCH_LINK_PATH" '\{\{' \
+  "research-link.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
@@ -589,6 +605,9 @@ RULES_INDEX="$CLAUDE_DIR/.unikit/memory/code/RULES_INDEX.md"
 assert_exists "$RULES_INDEX" "RULES_INDEX.md should exist after update"
 assert_contains "$RULES_INDEX" "## Core" "RULES_INDEX should have Core section"
 assert_contains "$RULES_INDEX" "code-style" "RULES_INDEX should contain seeded core rule"
+# The rule-topics reading protocol lives in the template's Step 1 and reaches the project
+# only through this regeneration — the one end-to-end proof that the canon is delivered.
+assert_contains "$RULES_INDEX" "Project rule topics" "RULES_INDEX should carry the project rule-topics protocol (Step 1 canon)"
 
 # ─────────────────────────────────────────────────────
 # Test 5: (removed)
@@ -688,6 +707,10 @@ echo "  ✓ ENGINE_RULES.md: installed for unity engine (unikit + unikit-verify 
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-memory/scripts/material-prep.py" \
   "material-prep.py should be delivered into the installed unikit-memory skill (scripts/ subdir)"
 echo "  ✓ unikit-memory: scripts/material-prep.py delivered on install"
+# unikit-rules ships the second scripts/ subdir: rules-layout.mjs, which optimise runs.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-rules/scripts/rules-layout.mjs" \
+  "rules-layout.mjs should be delivered into the installed unikit-rules skill (scripts/ subdir)"
+echo "  ✓ unikit-rules: scripts/rules-layout.mjs delivered on install"
 
 # ─────────────────────────────────────────────────────
 # Test 8: ENGINE_RULES.md installation for Godot

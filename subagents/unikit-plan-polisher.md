@@ -47,7 +47,7 @@ coordinator run fails. Track your turn count mentally and honor the phase budget
 1. Read `.unikit/memory/code/RULES_INDEX.md`.
 2. Read `.unikit/DESCRIPTION.md`.
 3. Read `.unikit/ARCHITECTURE.md`.
-4. Read `.unikit/RULES.md`.
+4. Read `.unikit/RULES.md`. **Rule topics:** its topic files load lazily in Phase B or D, like core/stack rules — a topic whose `Load when` matches a phase you write or check; when unsure, load.
 
 Do NOT eagerly load every matching core rule here — load individual core/stack
 rule files lazily in Phase B or D, only when you're about to reference that rule
@@ -65,7 +65,7 @@ they are NOT a reason for more tool calls.
 Parse the caller's request here and pick the target plan folder:
 - If the caller provided an explicit `@<path>` → use that folder.
 - Otherwise → the folder name **is** the feature name: 3-4 words, lowercase, hyphenated, **no date and no separator prefix** — `plans/<feature-name>/`, the same slug rule `/unikit-plan` follows.
-- Before creating it, check for a collision **on the name you just chose** — not on the git branch, which you may be running before one exists. Collect every folder in `.unikit/code/plans/` that matches that `<name>` in any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format.
+- Before creating it, check for a collision **on the name you just chose** — not on the git branch, which you may be running before one exists. Collect every folder in `.unikit/code/plans/` and in `.unikit/code/archive/plans/` that matches that `<name>` in any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format.
 
 **Collision — you return control, you do not choose.** A match was found and the caller gave no explicit `@<path>` → do **not** create a second folder, do **not** append a suffix, and do **not** silently write into the folder you found. Return:
 
@@ -74,6 +74,8 @@ plan_path: none
 blocked: plan folder '<name>' already exists (formats matched: <list>)
 next: re-invoke with @.unikit/code/plans/<name> to refine it, or pass a different name
 ```
+
+A match **only in `.unikit/code/archive/plans/`** returns the same shape with `blocked: plan folder '<name>' is archived (<matched folder>)` and `next: pass a different name — an archived plan keeps its name`. Refining an archived plan in place is not offered.
 
 The interactive producer asks the user this question; your `tools:` carries no interactive-question tool at all, so your verb is handing control back rather than asking. The prohibitions are the same one policy: an automatic suffix (`-2`, a date) makes the branch resolver find the wrong plan later, and silently adopting the folder you found is worse than refusing — you **write** into it. Deciding which of two folders is this feature is a person's call.
 
@@ -133,7 +135,7 @@ Re-read your own plan and apply this rubric:
   - Asset pipeline considerations (if applicable)
   - Editor tooling needs (if applicable)
 - Run placement: does the plan match its own `Test checkpoints:` line — no run commands in per-task `### Tests` or `### Verification` under `phase` / `plan`, a final `Test checkpoint: plan` present under `Testing: yes`, no repeated checkpoints, and no phase gate restating the run. **A plan carrying no such line is legacy, and this point does not apply to it:** criticising a plan for lacking a policy that did not exist when it was written produces a finding nobody can close.
-- A test-checkpoint task with no `Files:` line is **normal, not an oversight** — it creates nothing. Never raise a finding asking for one.
+- A test-checkpoint task with no `Files:` line is **normal, not an oversight** — it leaves nothing behind (a temporary probe it removes and a manual smoke are legitimate steps). Never raise a finding asking for one.
 - No redundant or gold-plated tasks
 - Plan follows architecture and rules from `.unikit/`
 

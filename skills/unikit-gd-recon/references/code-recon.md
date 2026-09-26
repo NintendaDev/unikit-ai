@@ -33,7 +33,7 @@ Therefore every fact this engine emits obeys three rules:
 ## Step 1 — Infer the engine (cold-start scan)
 
 Do not assume an engine. Detect it from project markers with generic `Glob`, then read
-the project's own `.unikit/RULES.md` (if present) for local conventions — the same
+the project's own `.unikit/RULES.md` (if present) for local conventions (**Rule topics:** plus the topic files listed under its `## Topics` whose `Load when` names code conventions, folders or types) — the same
 precedent `unikit-explore` follows (`.unikit/RULES.md` first, highest priority). No
 engine-template wiring is involved: this module is `enginePartitioned: false`, and
 `unikit-explore` already proves engine-agnostic code reading with zero `skillTemplates`.

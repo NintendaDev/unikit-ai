@@ -183,7 +183,7 @@ Materialize the collected values into `.unikit/config.yaml`.
 
 - To find what the file is missing, **compare `.unikit/config.yaml` against `{{skills_dir}}/{{self_name}}/references/config-template.yaml` and name every leaf key the config does not carry**. Do not work from a hand-written list of "recently-added keys": such a list names a subset of the template and falls behind silently every time the template grows. Then tell the user which keys are missing and offer to append them with their template defaults (do not touch the rest of the file). Use `Edit` for the targeted append, never a full rewrite.
 
-  > A key from a nested block is appended **together with its parent when the parent is absent**: if the whole `testing:` block is missing, append the entire block from the template; if only the `testing.implement.merge_checkpoints` group is missing, append just that group under the existing `testing:`. Always a targeted `Edit`, never a rewrite of the file (Rule 7).
+  > A key from a nested block is appended **together with its parent when the parent is absent**: if the whole `testing:` block is missing, append the entire block from the template; if only the `testing.plan.checkpoints` group is missing, append just that group under the existing `testing:`. Always a targeted `Edit`, never a rewrite of the file (Rule 7).
 
 - **Never `language.rules`, never `language.technical_terms`.** A comparison against the template surfaces these two like any other key, so the exclusion has to be stated here: do not append them and do not offer them. The template is explicit — "SKILLS NEVER TOUCH THIS KEY… never write to it, never prompt for it" — and the ban covers the offer as much as the write. While the missing set came from a hand-written list this invariant held only by accident, because neither key happened to be on it.
 
@@ -208,6 +208,8 @@ The file instructs skills to read `.unikit/config.yaml` at runtime for language 
 ### Step 4: Parse Arguments / Project Description
 
 Only now — after language, git, and `.unikit/config.yaml` are settled — look at `$ARGUMENTS` and collect the project description. All output from this point forward is in the language chosen in Step 1.
+
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
 ```
 Check $ARGUMENTS:
@@ -446,12 +448,12 @@ Knowledge base rules for the project. Located in `.unikit/memory/`.
 
 ## Override Priority (highest wins)
 
-1. **`.unikit/RULES.md`** — project-specific overrides (always wins)
+1. **`.unikit/RULES.md`** and its topic files in `.unikit/rules/` — project-specific overrides (always win)
 2. **`.unikit/ARCHITECTURE.md`** — project architecture decisions
 3. **`.unikit/memory/code/core/*.md`** — universal best practices
 4. **`.unikit/memory/code/stack/*.md`** — framework-specific knowledge
 
-When a project rule in `RULES.md` conflicts with a template rule in `rules/`, the project rule wins.
+When a project rule — in `RULES.md` or one of its topic files — conflicts with a core or stack rule, the project rule wins.
 
 ---
 
@@ -809,6 +811,7 @@ as the basis for the structure section, but only include directories and files t
 | .unikit/DESCRIPTION.md | Project specification and tech stack |
 | .unikit/ARCHITECTURE.md | Architecture decisions and guidelines |
 | .unikit/RULES.md | Coding conventions and rules |
+| .unikit/rules/ | Project rule topic files, listed under `## Topics` in RULES.md and loaded by their "Load when" (only if the project has topics) |
 | .unikit/memory/code/RULES_INDEX.md | Index of framework-specific rule files |
 | .unikit/memory/gamedesign/RULES_INDEX.md | Game-design knowledge index (only if the gamedesign module installed rules) |
 ```

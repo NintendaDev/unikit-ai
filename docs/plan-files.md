@@ -15,12 +15,13 @@ Plans are stored in two locations depending on mode:
 | `/unikit-plan ultra` | `.unikit/code/plans/<feature-name>/` | `PLAN.md` + `phase-NN-<slug>.md` |
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
 | `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
+| `/unikit-archive` | `.unikit/code/archive/plans/<feature-name>/` | A completed folder plan, moved whole; its manifest gains an `Archived:` line |
 
 Ultra reuses the full-mode folder and the same `PLAN.md` entry point — moving a plan from full to ultra is purely additive: phase files appear, nothing is renamed, external links stay valid.
 
 **Two different files are called `PLAN.md`.** The flat `.unikit/code/PLAN.md` is the throwaway fast plan; `.unikit/code/plans/<folder>/PLAN.md` is a folder plan's manifest. Nothing else distinguishes them — always read the path, never the name. Skills are held to the same rule by a guard (`PL-1`): inside `skills/**` and `subagents/*` the name may never be written bare, only as a full path, as the glob `plans/*/PLAN.md`, or as the phrase "the plan folder's manifest".
 
-**Migration is selective.** `unikit-ai update` merges the old two-file form into one `PLAN.md` only in folders that still have open tasks. A plan whose checklist is fully ticked is left exactly as it was, with `TASKS.md` and `PLAN-BRIEF.md` side by side — a finished plan is a record, and a record is not rewritten. So `.unikit/code/plans/` stays mixed, permanently and by design; the two shapes are not a half-finished migration. Anything that has to read across old plans (the `implemented_version` migration-grace scan in `/unikit-plan`) locates blocks by heading and never by file name, which is why it globs `plans/*/*.md`.
+**Migration is selective.** `unikit-ai update` merges the old two-file form into one `PLAN.md` only in folders that still have open tasks. A plan whose checklist is fully ticked is left exactly as it was, with `TASKS.md` and `PLAN-BRIEF.md` side by side — a finished plan is a record, and a record is not rewritten. So `.unikit/code/plans/` stays mixed, permanently and by design; the two shapes are not a half-finished migration. Anything that has to read across old plans (the `implemented_version` migration-grace scan in `/unikit-plan`) locates blocks by heading and never by file name, which is why it globs `plans/*/*.md`. `/unikit-archive` is the way out of that directory: it moves a completed plan, in either shape, to `.unikit/code/archive/plans/` - which is why that scan globs the archive as well.
 
 A folder plan stays a folder even with a single file in it — discovery looks for the folder and never opens it, which is what lets new plan shapes be added without touching any consumer.
 
@@ -189,9 +190,9 @@ This is what lets `/unikit-verify` quote the executor's full run instead of repe
 
 #### Test-checkpoint tasks — a run is a task, not a command
 
-A test run is its own checklist task carrying a `Test checkpoint:` line, and it is the one task form that carries **no `Files:`**: it creates nothing. Under `Testing: yes` the plan's last task is always a full run. Where such tasks are placed comes from `testing.plan.checkpoints` (see [Configuration](configuration.md)), which the planner resolves once and records into `## Settings` — so changing the key later never reinterprets a plan already written. The grammar and how a run's width follows from its coverage are canonical in the plan format reference; this page names them rather than repeating them.
+A test run is its own checklist task carrying a `Test checkpoint:` line, and it is the one task form that carries **no `Files:`**: it leaves nothing behind — a temporary probe it creates and removes (a negative control) and a manual smoke are legitimate steps, and when the task is merged into a later point they are performed there. Under `Testing: yes` the plan's last task is always a full run. Where such tasks are placed comes from `testing.plan.checkpoints` (see [Configuration](configuration.md)), which the planner resolves once and records into `## Settings` — so changing the key later never reinterprets a plan already written. The grammar and how a run's width follows from its coverage are canonical in the plan format reference; this page names them rather than repeating them.
 
-**A plan written before this existed has no `Test checkpoints:` line.** That is a legacy plan, and nothing breaks: the executor falls back to finding runs in the prose of the tasks, with lower confidence, and says so in its report. `/unikit-improve` will not add test-checkpoint tasks to such a plan — the placement was never declared, and guessing it while editing your plan is not its call.
+**A plan written before this existed has no `Test checkpoints:` line under `Testing: yes`.** That is a legacy plan, and nothing breaks: the executor falls back to finding runs in the prose of the tasks, with lower confidence, and says so in its report. `/unikit-improve` will not add test-checkpoint tasks to such a plan — the placement was never declared, and guessing it while editing your plan is not its call. A plan with `Testing: no` omits the line by design and is not legacy.
 
 **Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`.
 
@@ -296,7 +297,7 @@ The naming of `<container>` and `<target>` is engine-specific and comes from the
 
 - **`mcp`** — through the engine MCP server. Chosen **silently** when an engine MCP is configured; you are not asked.
 - **`manual`** — nothing is touched. The task is marked `⏸️ MANUAL` and you get the exact instruction in `[kind] container → target : action` form. `/unikit-verify` reports these but never treats them as blockers.
-- **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always commits to git first. On Unreal Engine 5 the format tolerates it nowhere except `Config/Default*.ini` — every level and asset is binary — so `direct` is effectively an `.ini`-only route there.
+- **`direct`** — the serialized file is edited as text. Offered **only** where the engine's format tolerates it, and `/unikit-implement` always makes sure there is a commit to return to first. On Unreal Engine 5 the format tolerates it nowhere except `Config/Default*.ini` — every level and asset is binary — so `direct` is effectively an `.ini`-only route there.
 
   `/unikit-implement` reads the feasibility ratings out of §6 of the **`/unikit-plan` skill's** installed `ENGINE_RULES.md`, since it has no engine template of its own. If that file is not there — you installed a subset of skills without `/unikit-plan`, or a future engine's slot has no template written for it yet — the gate **fails closed**: every format is treated as 🔴, `direct` is refused, and the task goes back to `manual` with the reason stated. This is the one place an absent file removes a right rather than leaving it untouched, and deliberately so: what is missing is permission for an irreversible text edit of a possibly-binary format, not a rule that would grant a capability. The `mcp` route is unaffected.
 
@@ -344,7 +345,13 @@ This table is about **the vocabularies this project writes**, not about what an 
 3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying neither is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime. Reaching this step at all means the branch named no plan, so *latest* is a guess rather than a resolution: with two or more plans present the candidates are printed and the choice is put to the user, never auto-selected. With exactly one plan there is nothing to choose between — it is announced with the branch miss named, and work continues
 4. **Fix plan fallback** → `.unikit/code/FIX_PLAN.md` → redirects to `/unikit-fix`
 
-If both `.unikit/code/PLAN.md` and a matching folder plan exist, the user is asked which one to use.
+If both `.unikit/code/PLAN.md` and a folder plan matching the branch exist, `/unikit-implement` looks at the work the call asks for — the phases or tasks it names (`Phases 3-5`), or the whole plan when it names none:
+
+- **still pending in the branch's plan** → that plan is used without a question, and an `INFO [plan] fast plan .unikit/code/PLAN.md not used` line names the fast plan left aside;
+- **nothing pending there, but pending in the fast plan** → one yes/no question: run the fast plan, or stop;
+- **pending in neither** → the branch's plan, which then reports that nothing is left.
+
+`unikit-implement-coordinator` follows the same rule for the whole plan (it takes no selectors). `/unikit-verify` asks which plan to verify.
 
 Whichever branch of that order resolves, the plan is **named before any other output** — a single
 `INFO [plan] resolved: <path> (<reason>)` line, where the reason is the branch of discovery that
@@ -354,6 +361,8 @@ produced it (`explicit path`, `feature name`, `fast plan`, `fix plan`, `branch m
 feature without ever saying so.
 
 Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
+
+An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for. `/unikit-explore` reads archived plans whose name matches its topic, as the history of how a feature was built.
 
 ## Artifact Ownership
 
@@ -365,8 +374,9 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/DESCRIPTION.md` | `/unikit` | Project specification |
 | `.unikit/ARCHITECTURE.md` | `/unikit-architecture` | Architecture guidelines |
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
-| `.unikit/RULES.md` | `/unikit-rules` | Convention source of truth |
+| `.unikit/RULES.md` + `.unikit/rules/*.md` | `/unikit-rules` | Convention source of truth: common rules in the root, topic files by `Load when` |
 | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
+| `.unikit/code/archive/plans/*/` | `/unikit-archive` | Completed folder plans, moved unchanged apart from one `Archived:` line |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
 | `.unikit/code/patches/*.md` | `/unikit-fix` | Self-improvement patches |
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |
@@ -464,9 +474,13 @@ Plan files are the shared state between exploration, planning, implementation, a
 
 ### /unikit-explore → /unikit-plan
 
-Explore saves a research to `.unikit/code/researches/<slug>/` as a single `RESEARCH.md` manifest, plus `SOURCE.md` for prompt-based explorations and, in ultra, whichever adaptive artifacts the subject actually needed. The manifest's `## Active Summary` — the region between its two markers — is the declared input for planning; the rest of the file is evidence and an append-only session log. When planning begins, `/unikit-plan` reads `researches/INDEX.md` and offers to link relevant researches. If linked, the plan uses that summary as a starting point for its own `## Technical Context` - verifying and extending it against the current codebase state. The plan references linked research via a `## Based on` section.
+Explore saves a research to `.unikit/code/researches/<slug>/` as a single `RESEARCH.md` manifest, plus `SOURCE.md` for prompt-based explorations — a verbatim dialogue log, written as the conversation happens rather than assembled at save time — and, in ultra, whichever adaptive artifacts the subject actually needed. The manifest's `## Active Summary` — the region between its two markers — is the declared input for planning; the rest of the file is evidence and an append-only session log. Two things about that input are worth knowing here: a requirement that came from you carries your own words plus an anchor into the log, so what the planner reads can be traced back to what was said; and a requirement you did not confirm when the agent read it back is demoted to an open question, which means it never becomes the planner's input at all. When planning begins, `/unikit-plan` reads `researches/INDEX.md` and offers to link relevant researches. If linked, the plan uses that summary as a starting point for its own `## Technical Context` - verifying and extending it against the current codebase state. The plan references linked research via a `## Based on` section.
 
-Each `## Based on` entry records a **`Summary SHA256`** — the SHA256 of the bytes between the `## Active Summary` markers as they stood at linking time, computed over normalized text (extracted between the markers, BOM stripped, LF endings, trailing spaces trimmed, exactly one final newline, nothing reformatted). Only that region is hashed: the header's `Updated:` moves on every session and `## Sessions` grows on every save, so hashing the whole file would report drift on every append that changed no requirement. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute the hash and report a mismatch as `WARN [research-drift]`. An entry with **no** `Summary SHA256` means drift is *unknown*, not absent — either the plan predates the field, or it carries a `Brief SHA256` recorded against the retired brief field, which describes a different object and is never recomputed against the summary. `/unikit-improve` records one when you accept the re-link it offers, and that is the only way the state clears — no migration backfills it and no consumer writes it while merely reading. Drift never blocks: work continues against the plan, which is the authoritative snapshot, and a rebase onto the newer research happens only when the user asks `/unikit-improve` for one.
+Each `## Based on` entry records a **`Summary SHA256`** — the SHA256 of the bytes between the `## Active Summary` markers as they stood at linking time, computed over normalized text (extracted between the markers, BOM stripped, LF endings, trailing spaces trimmed, exactly one final newline, nothing reformatted). Only that region is hashed: the header's `Updated:` moves on every session and `## Sessions` grows on every save, so hashing the whole file would report drift on every append that changed no requirement. `/unikit-improve`, `/unikit-implement` and `/unikit-verify` recompute the hash and report a mismatch as `WARN [research-drift]`. An entry with **no** `Summary SHA256` means drift is *unknown*, not absent — either the plan predates the field, or it carries a `Brief SHA256` recorded against the retired brief field, which describes a different object and is never recomputed against the summary. `/unikit-improve` records one when you approve the re-link it proposes in its report, and that is the only way the state clears — no migration backfills it and no consumer writes it while merely reading. Drift never blocks: work continues against the plan, which is the authoritative snapshot, and a rebase onto the newer research happens only when the user asks `/unikit-improve` for one.
+
+The full contract — the entry format, the normalization rules, the drift ladder, and who may
+write the field — is installed into every project as `.unikit/system/research-link.md`, and
+where this page and that file disagree, the contract is right and this page is stale.
 
 **What `unikit-ai update` does to an old research folder.** It renames `RESEARCH_RESULT.md` to
 `RESEARCH.md` and `RESEARCH_SOURCE.md` to `SOURCE.md`, normalizes the header, and seeds an

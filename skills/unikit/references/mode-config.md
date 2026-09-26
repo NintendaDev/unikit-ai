@@ -129,7 +129,7 @@ Every write is a targeted `Edit`; never a whole-file `Write`.
 
 A key from a nested block is appended **together with its parent when the parent is absent**:
 if the whole `testing:` block is missing, append the entire block from the template; if only
-the `testing.implement.merge_checkpoints` group is missing, append just that group under the
+the `testing.plan.checkpoints` group is missing, append just that group under the
 existing `testing:`. Carry the template's comments across with the key — they are what makes
 the knob discoverable, which is the whole point of this mode.
 

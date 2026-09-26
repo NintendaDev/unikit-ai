@@ -82,6 +82,7 @@ const markerConsumers = [
     'skills/unikit-verify/SKILL.md',
     'skills/unikit-improve/SKILL.md',
     'skills/unikit-commit/SKILL.md',
+    'skills/unikit-archive/SKILL.md',                        // classifies a bundle before moving it
 ];
 
 // The four skills that read the reader contract. Their graceful-degradation wording must be

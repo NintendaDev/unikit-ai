@@ -57,6 +57,8 @@ including the rule to **translate concepts, not transliterate jargon**.
 field values (e.g. `market_signal: red-ocean`) stay English. Do not announce the
 language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Bootstrap (MANDATORY)
 
 Before responding, silently load — do not narrate:
@@ -85,7 +87,7 @@ Before responding, silently load — do not narrate:
    SKILL.md and `methods.md` only point to it, never re-spell a table.
 5. **`.unikit/DESCRIPTION.md`** (optional) — existing project constraints, if this
    is ideation inside an established project.
-6. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+6. **`.unikit/RULES.md`** (if present) — project overrides, highest priority. **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the design work at hand — the concept, system, flow or content type; when unsure, load.
 
 **Market validation is delegated, not ad-hoc.** This skill does **not** research the
 market inline or early — early data anchors timid ideas (anti-anchoring,

@@ -172,7 +172,7 @@ In ultra the same box additionally holds `phase-NN-*.md` files.
 |---------|----------|-----------------|--------|
 | `/unikit-roadmap` | Strategic planning, milestones, long-term vision | No | `.unikit/ROADMAP.md` |
 | `/unikit-roadmap check` | Automated progress scan | No | Reads existing roadmap |
-| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` (optional - output can be used directly in the current session for fast planning) |
+| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` - the dialogue log is written verbatim as you talk; saving the research is the part that needs your agreement (optional - output can be used directly in the current session for fast planning) |
 | `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
 | `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/<name>/` |
 | `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Yes | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
@@ -183,6 +183,7 @@ In ultra the same box additionally holds `phase-NN-*.md` files.
 | `/unikit-verify` | Post-implementation quality check | No | Verification report |
 | `/unikit-review` | Code review against rules | No | Review report |
 | `/unikit-commit` | Conventional commits with Unity checks | No | Git commit |
+| `/unikit-archive` | Move a finished folder plan out of the active list | No | `.unikit/code/archive/plans/<folder>/` |
 | `/unikit-todo` | Lightweight task tracking | No | `.unikit/TODO.md` |
 
 This table covers the `code` module. For the parallel `gamedesign` skill set (`/unikit-gd-spec`, `/unikit-gd-system`, `/unikit-gd-flow`, `/unikit-gd-content`, `/unikit-gd-review`, `/unikit-gd-verify`, `/unikit-gd-apply`, `/unikit-gd-docs`, …), see [Game-Design Module](gamedesign.md).
@@ -215,7 +216,7 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit` | `.unikit/DESCRIPTION.md`, `AGENTS.md` | Invokes `/unikit-architecture` + rule generation |
 | `/unikit-architecture` | `.unikit/ARCHITECTURE.md` | Architecture guidelines |
 | `/unikit-roadmap` | `.unikit/ROADMAP.md` | Milestone tracking |
-| `/unikit-rules` | `.unikit/RULES.md` | Append/update rules only |
+| `/unikit-rules` | `.unikit/RULES.md` + `.unikit/rules/*.md` | Append rules; `optimise` reorganizes, `prune` deletes only what you select |
 | `/unikit-plan` | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-improve` refines |
 | `/unikit-explore` | `.unikit/code/researches/` | Exploration artifacts |
 | `/unikit-fix` | `.unikit/code/FIX_PLAN.md`, `.unikit/code/patches/*.md` | Bug-fix learning loop |
@@ -256,8 +257,12 @@ Creates `.unikit/ROADMAP.md` - a strategic checklist of major milestones (not gr
 Thinking-partner mode for exploring ideas, constraints, and trade-offs without implementing code. Reads project context (DESCRIPTION.md, ARCHITECTURE.md, RULES.md) and the full knowledge base at startup. Saves results to `.unikit/code/researches/<slug>/` with a single `RESEARCH.md` manifest:
 
 - `RESEARCH.md` - the whole research in one file: a header carrying `Created:` / `Updated:` / `Status:` / `Lifecycle:`, an `## Active Summary` between two markers (the declared input for planning), the measured `## Findings`, and an append-only `## Sessions` log
-- `SOURCE.md` - the original prompts, agent questions and user answers that drove the research; kept separate because it is a log that grows on its own and is read for its first forty lines
+- `SOURCE.md` - the original prompts, agent questions and user answers that drove the research, quoted verbatim rather than summarised; kept separate because it is a log that grows on its own
 - adaptive artifacts in `ultra` - a C4 view, ADRs, a dependency graph, a `CONTRACTS.md`, each written only when the subject actually produced one, and each *named with its reason* when it was not
+
+`SOURCE.md` is written as the conversation happens rather than at the end: the folder appears on disk from the moment the conversation has become a research - a requirement stated, a decision taken, a correction made - and each reply appends what has been said since. A one-off question never reaches that point and leaves nothing behind. Writing the log is not saving the research: it creates no manifest, touches no registry, runs no gate and asks nothing, and the research is still saved only when you agree to it. A folder carrying a log and no manifest is an unfinished research - it stays out of `researches/INDEX.md`, is announced there by name, and resumes with `/unikit-explore <folder>`.
+
+Before the save is confirmed the agent reads back the requirements you have not actually seen: the ones it inferred itself, the ones that depart from what you said, and the ones whose wording admits two different implementations. What you stated unambiguously is not shown. Anything left unconfirmed becomes an open question instead of the planner's input. Each such requirement is asked as a separate question, with the grounds printed above it.
 
 `/unikit-plan` picks the research up from `researches/INDEX.md` and reads the `## Active Summary` as its declared input, using `## Findings` and the adaptive artifacts for rationale. Saving is the recommended approach for maximum code quality, but not mandatory. For quick, straightforward solutions you can skip saving and call `/unikit-plan` directly in the current explore session - the planner will use the conversation context instead.
 
@@ -322,13 +327,13 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 
 Reads skill-context rules first, then the plan manifest. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
-Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text after a mandatory git commit. See [Editor tasks](plan-files.md#editor-tasks).
+Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text once there is a git commit to return to. See [Editor tasks](plan-files.md#editor-tasks).
 
 After phase completion:
 
 - Runs compilation check (through the engine MCP server)
 - Writes tests if `Testing: yes` — inside the tasks that introduce them
-- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; with `testing.implement.merge_checkpoints` the checkpoints inside the invocation scope collapse into one. Under `Testing: yes` the plan's last task is a full run
+- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run
 - Creates commit checkpoint
 
 Post-completion, in order:
@@ -437,7 +442,16 @@ Creates conventional commits with engine-aware safety checks. Analyzes staged ch
 - Binary assets and secrets
 - Engine-ignored directories, read from the project's own `.gitignore` (on Unity: `Library`, `Temp`, `Logs`)
 
-Runs read-only context gates against ARCHITECTURE.md and RULES.md. References plan task numbers in commit message when an active plan exists. Suggests commit splitting for unrelated staged changes. Offers to push after commit. Conventional prefix is always in English; description uses the configured language.
+Runs read-only context gates against ARCHITECTURE.md and RULES.md. Writes the message for the team rather than as a report of the session: the subject names what changed for the game, a body appears only when the subject cannot carry the point, and at most three lines of technical detail follow it. The plan is linked by a `Plan: <folder>` trailer instead of phase and task numbers. Suggests commit splitting for unrelated staged changes and never lets unstaged edits into a split commit. Offers to push after commit. Conventional prefix is always in English; subject and body use `language.artifacts`.
+
+### `/unikit-archive [list | --all | <plan-folder>]` - archive finished plans
+
+```
+/unikit-archive
+/unikit-archive inventory-system
+```
+
+A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. MCP findings nobody transferred and rule candidates nobody proposed do not block it: it shows them and asks whether to handle them first or archive anyway. It never commits. `/unikit-implement` names it once the whole plan is done.
 
 ---
 

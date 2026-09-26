@@ -17,6 +17,18 @@ Do NOT announce, report, or print the detected language — just use it.
 
 **`language.rules` is read-only from the skill's perspective.** Skills never write to this key, never prompt the user for it, and never suggest changing it. It changes only when the user manually edits `.unikit/config.yaml`. This is deliberate — rule files must stay in a stable language to avoid cross-agent prompt drift, and automatic re-localization would silently invalidate existing rule content.
 
+## The setting holds for the whole session
+
+The language is a standing constraint on every message, not a check passed once when a skill loads. It applies until the conversation ends — after the skill's final report as well, in any follow-up discussion, and when the user asks something unrelated to the skill.
+
+The usual way it breaks is mirroring: a large block of English arrives and the next message follows it. English input is data, never a cue to switch languages:
+
+- **Subagent results.** Delegated agents are prompted in English and answer in English by design. Relaying what one returned — a status line while agents run, a note that one has finished, a merged finding — is user-facing output and is written in `language.ui`.
+- **Tool output, logs and quoted files.** Quote them verbatim where a quote is needed; the sentence around the quote stays in `language.ui`.
+- **The skill's own text.** Skills, their output templates and their example messages are written in English. A template gives the structure; the words are in `language.ui`.
+
+If a message went out in the wrong language, the next one returns to `language.ui` without comment.
+
 ## Technical terms handling
 
 When `language.technical_terms` is `keep`: preserve original English technical terms even in non-English output. Examples: API, prefab, shader, ECS, dependency injection, singleton, component, ScriptableObject, coroutine, async/await, namespace, assembly, plugin, asset bundle.
@@ -46,7 +58,7 @@ All user-facing output uses the configured language unless explicitly listed in 
 
 ## Knowledge base rule files
 
-The language of knowledge base rules — everything under `.unikit/memory/` (core/, stack/, references/), `.unikit/memory/code/RULES_INDEX.md`, `.unikit/RULES.md`, and skill-context rules — is controlled by **`language.rules`** in `.unikit/config.yaml` (default: `en`).
+The language of knowledge base rules — everything under `.unikit/memory/` (core/, stack/, references/), `.unikit/memory/code/RULES_INDEX.md`, `.unikit/RULES.md` with its topic files in `.unikit/rules/`, and skill-context rules — is controlled by **`language.rules`** in `.unikit/config.yaml` (default: `en`).
 
 When generating or editing rule files (Branch A / B / C of `/unikit-memory`, Step 9.2 / 9.7 / 9.8 of `/unikit`, or any other rule-writing code path), write rule prose, section headings, explanations, examples, and comments in the language specified by `language.rules`. If the key is missing, the key is unreadable, or `.unikit/config.yaml` does not exist — use English.
 

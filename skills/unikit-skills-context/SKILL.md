@@ -41,6 +41,8 @@ If the file is missing or unreadable, fall back to English.
 Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Critical: Never Edit Built-in Skills Directly
 
 **NEVER modify files inside `{{skills_dir}}/unikit-*/`.**
@@ -287,7 +289,7 @@ After applying:
 3. **Workflow rules only** — skill-context is for HOW skills work, not coding conventions (use `/unikit-rules` for those)
 4. **No duplicates** — always cross-check against base SKILL.md and existing skill-context
 5. **Reversible** — user approves changes in validate mode before applying
-6. **Ownership boundary** — this command owns `.unikit/skill-context/*`; treats base skills (`{{skills_dir}}/`) and rules (`.unikit/memory/`, `.unikit/RULES.md`) as read-only
+6. **Ownership boundary** — this command owns `.unikit/skill-context/*`; treats base skills (`{{skills_dir}}/`) and rules (`.unikit/memory/`, `.unikit/RULES.md`, `.unikit/rules/`) as read-only
 
 ## Examples
 

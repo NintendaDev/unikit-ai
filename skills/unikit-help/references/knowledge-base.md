@@ -14,10 +14,11 @@ Rules live under `.unikit/memory/<module>/<tier>/` and are listed in a per-modul
 `RULES_INDEX.md`. Skills don't load every rule at session start — they read the index and
 **dynamically load only the rules relevant to the current task** (matched by each rule's
 `Load when` line). Above the memory there is `.unikit/RULES.md`, a project-local override file
-with the **highest priority**.
+with the **highest priority**. A long `RULES.md` can be split into common rules and topic files
+in `.unikit/rules/` that load only when the work matches their `Load when`.
 
-Priority (highest wins): `.unikit/RULES.md` → `.unikit/ARCHITECTURE.md` → module `core` rules →
-module `stack`/`library` rules.
+Priority (highest wins): `.unikit/RULES.md` (+ its topic files) → `.unikit/ARCHITECTURE.md` →
+module `core` rules → module `stack`/`library` rules.
 
 ---
 
@@ -56,7 +57,8 @@ time**. Editing these by hand is pointless. The user does not curate them; the C
 Relevant to the dev pipeline:
 
 - `dev-principles.md` — the canonical engine development principles + workflow. Read on Bootstrap
-  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`.
+  by `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-improve`, `/unikit-devcontext`,
+  `/unikit-mcp-audit`, and the `unikit-implement-coordinator` and `unikit-implement-worker` agents.
 - `engine-mcp/{INDEX,verification}.md` — the **rules tree of the engine MCP server the project
   actually selected**, delivered verbatim from the package with a provenance stamp. It records
   **exceptions, not capabilities**: no tool names, no inventory of what the server cannot do —
@@ -75,15 +77,22 @@ Relevant to the dev pipeline:
   Written by `/unikit-mcp-trap`, curated by `/unikit-mcp-audit`.
 - `cli-contract.md`, `gate-result-contract.md`, `modules.yml`, `gamedesign/` — contracts read on
   demand by the skills that need them.
+- `ultra-plan-read.md` — the ultra plan bundle reader contract, read by `/unikit-implement`,
+  `/unikit-verify`, `/unikit-improve` and `/unikit-commit` only when the plan is an ultra bundle.
+- `research-link.md` — the `## Based on` contract (entry format, hashing, drift ladder), read by
+  `/unikit-plan`, `/unikit-implement`, `/unikit-verify` and `/unikit-improve` only when a plan
+  links a research.
 
 ---
 
 ## Turning a rule into the knowledge base (the everyday flow)
 
 1. **Quick capture** — `/unikit-rules <one-liner>` appends to `.unikit/RULES.md`. Use it as a
-   testing ground / inbox; it's auto-loaded by `/unikit-implement`. The file is a flat list:
-   one line, one directive. If it has already grown bloated, `/unikit-rules compact` shortens
-   and flattens it in place — non-destructively, and only after you confirm.
+   testing ground / inbox; it's auto-loaded by `/unikit-implement`. Every rule list is flat:
+   one line, one directive. A growing file can be split into topics that load only when the
+   work matches — `/unikit-rules optimise`, which the skill also offers by itself;
+   `/unikit-rules compact` shortens rules in place, and `/unikit-rules prune` deletes the ones
+   you pick from an evidenced candidate list.
 2. **Promote** — `/unikit-memory migrate-rules` moves a matured `RULES.md` entry into the proper
    `core`/`stack`/`library` rule file (with conflict handling and a `no-migrate` tag option).
 3. **Generate / research** — `/unikit-memory <description or source>` creates a full rule. It
@@ -153,8 +162,9 @@ upgrades an old schema:1 local registry in place.
 
 - **Use `/unikit-memory`** for anything source-backed (a link, file, folder, book, PDF) or a
   researched rule — it does the research, distillation, reference extraction, and index update.
-- **Use `/unikit-rules`** for a quick one-line convention typed as a prompt, or `compact` to slim
-  a `RULES.md` that has already grown too big to read on every Bootstrap.
+- **Use `/unikit-rules`** for a quick one-line convention typed as a prompt; `optimise` splits a
+  big `RULES.md` into topics that load only when needed, `compact` shortens its rules, and
+  `prune` deletes the ones you no longer want.
 - **Use `/unikit-rules-registry`** to publish/pull rules between projects (handles seeding,
   diffing, semver, manifest, and state in one go).
 - **Use the raw `unikit-ai rules ...` CLI** for direct, scriptable ops: install a specific rule,

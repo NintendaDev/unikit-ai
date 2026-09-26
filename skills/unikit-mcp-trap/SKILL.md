@@ -55,6 +55,8 @@ authored in the project's artifact language; the `id`, the `area` keyword, and t
 observation protocol below the line stay **English** — they are grepped by other skills.
 Do not announce the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## The one rule that makes this file safe
 
 > A note may contain **only a check**. Never a lifted gate, never a named workaround,

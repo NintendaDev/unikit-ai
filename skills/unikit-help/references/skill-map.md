@@ -67,11 +67,18 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   bug happen". Use before planning when you don't yet have technical direction.
 - **In:** a topic / question / system name — or, when a design workspace exists, a **flow**
   / player sequence (a *first-class flow input* grounded on the dynamics axis via the shared
-  `design-read` contract). The researches index is regenerated on every save.
+  `design-read` contract) — or the slug of an existing research, which continues that research
+  instead of opening a second folder. The researches index is regenerated on every save.
 - **Modes:** default | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
   dependency graph — written into the research folder by relevance, never by checklist).
-- **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`
-  and adaptive artifacts in ultra), and a regenerated `researches/INDEX.md`.
+- **During:** the dialogue log is pinned as you talk, not written at save time, so the folder
+  exists before the save; before the save is confirmed the agent asks about each requirement it
+  inferred, each one that departs from what you said, and each one open to two readings — one
+  question per requirement. Every save ends with a coherence gate run in a fresh context: it
+  re-reads the written files, and after two passes asks you instead of looping.
+- **Out:** `.unikit/code/researches/<slug>/` (`RESEARCH.md` — the manifest, plus `SOURCE.md`,
+  the verbatim dialogue log, and adaptive artifacts in ultra), and a regenerated
+  `researches/INDEX.md`.
 - **Optional (research).** Before: `/unikit`. After: `/unikit-plan` (consumes the manifest's
   `## Active Summary`), `/unikit-fix` (if a bug was found).
 
@@ -95,15 +102,20 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   rule mismatches. Run it 1-3x; each pass digs into untouched parts.
 - **When:** right after `/unikit-plan`, before implementing.
 - **In:** the latest (or a named) plan. Optional `+check` validates findings in a fresh context.
-- **Out:** edits the plan in place + an improvement report.
+- **Out:** edits the plan in place + an improvement report. A linked research whose drift is
+  unknown is proposed for a re-link in the report; approving it records the hash that clears
+  the `drift unknown` warning.
 - **Optional but strongly recommended.** Before: `/unikit-plan`. After: `/unikit-implement`.
 
 ### unikit-implement
 - **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks),
-  commit at checkpoints. Resumable across sessions.
+  commit at checkpoints. Resumable across sessions. At a checkpoint, "from now on commit without
+  asking" makes every later commit of the session automatic (message written, no question, no push).
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
-- **In:** the latest plan, or `@<folder>`, or a phase/task selector. Bootstraps rules once, then
-  codes inline.
+- **In:** the latest plan, or `@<folder>`, or a phase/task selector. A range with two or more
+  test runs asks once whether to merge them (or say it in the call). Bootstraps rules once, then
+  codes inline. `--list` lists the available plans and `status` shows progress — both stop
+  without implementing anything.
 - **Out:** project source code; updates the plan manifest's checkboxes.
 - **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
   `/unikit-verify` / `/unikit-commit`.
@@ -139,12 +151,28 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   `/unikit-evolve`.
 
 ### unikit-commit
-- **Purpose:** Generate conventional-commit messages from staged changes (with engine-specific
-  safety checks), commit, and optionally push. Splits unrelated changes.
+- **Purpose:** Commit staged changes with a message written for the team — what changed and
+  what it gives, then at most three lines of technical detail — after engine-specific safety
+  checks; optionally push. Splits unrelated changes without taking unstaged edits along.
 - **When:** "commit", "save changes". Always commit through this, not manual git.
-- **In:** an optional scope hint.
-- **Out:** a git commit (+ optional push).
+- **In:** an optional scope hint. A caller in auto-commit mode (`/unikit-implement`) adds `auto`:
+  the message is still printed, but committed without a question and never pushed; an ERROR still stops it.
+- **Out:** a git commit (+ optional push). A quiet run in `language.ui`: problems only, the message,
+  the question, one result line.
 - **Optional (terminal step).** Before: any of implement/fix/verify/review.
+
+### unikit-archive
+- **Purpose:** Move a completed folder plan — or, on your explicit choice, an unfinished one,
+  labelled as such — from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`,
+  so plan lookup and the plan lists stop offering it.
+  Never deletes, never commits.
+- **When:** "archive the plan", "archive completed plans", "clean up plans".
+- **In:** a plan folder name, `--all`, `list`, or nothing (interactive — a table of every plan with
+  its verdict, created date and last change, oldest change first; pick by number or by date).
+- **Out:** the moved folder + one `Archived:` line in its manifest.
+- **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
+  block: it asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or
+  archive anyway. `/unikit-explore` reads archived plans as history.
 
 ### unikit-evolve
 - **Purpose:** Learn from accumulated fix-patches — extract prevention points and turn them into
@@ -346,12 +374,23 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 
 ### unikit-rules
 - **Purpose:** Quick-capture a short project convention/override into `.unikit/RULES.md` (the
-  highest-priority rule file, auto-loaded by `/unikit-implement`).
-- **When:** "always do X", "never use Y", "remember this", correcting the agent for next time.
-- **In:** a rule typed as a prompt (no files/URLs).
-- **Out:** appends to `.unikit/RULES.md` as a flat list — one line, one directive, no sections.
+  highest-priority rule file, auto-loaded by `/unikit-implement`) — or, once the file is split,
+  into a topic file in `.unikit/rules/` that loads only when the work matches its `Load when`.
+- **When:** "always do X", "never use Y", "remember this", correcting the agent for next time;
+  "split the rules into topics", "clean up the rules".
+- **In:** a rule typed as a prompt (no files/URLs), or a bare mode word.
+- **Out:** a flat list per file — one line, one directive; common rules in the root, bounded
+  rules in topic files listed under `## Topics`.
 - **`compact` mode:** `/unikit-rules compact` retro-fits an already bloated `RULES.md` — shortens
   what reduces, keeps what does not, flattens the sections. Non-destructive, asks before writing.
+- **`optimise` mode:** `/unikit-rules optimise` splits the rules into topics or regroups them —
+  preview, confirmation, nothing deleted. Also offered by itself on an old flat file. A bundled
+  Node script does the counting and the word-for-word move; the agent only picks the topics.
+- **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence — "delete everything
+  proposed" removes them in one answer, or choose by id — and resolves contradictions in a separate
+  question (keep the right side or merge both into one rule); a partly outdated rule is never deleted.
+- **Every mode announces itself** before reading anything, in one plain sentence — which mode
+  and what it is about to do — and starts every step with one short line about what it is doing now.
 - **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).
 
 ### unikit-memory

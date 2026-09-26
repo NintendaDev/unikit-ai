@@ -57,6 +57,8 @@ including the rule to **translate concepts, not transliterate jargon**.
 `gd-principles` → "Language" adds the game-design specifics: which IDs and stored
 field values stay English. Do not announce the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Phase 0 — Bootstrap
 
 Silently load — do not narrate:
@@ -111,7 +113,7 @@ Silently load — do not narrate:
    only from its parent rule's `> **References**:`, and **never glob the memory tree**
    (`.unikit/memory/gamedesign/**`) to discover rules.
 
-5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority. **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the design work at hand — the concept, system, flow or content type; when unsure, load.
 6. **Schema guard (clean break — no automatic migration).** `GD-IDS.yaml` MUST be
    `version: 2`. If it is still `version: 1`, **STOP** and report: the design
    workspace is on the pre-v2 layout — v2 dropped the standalone markdown

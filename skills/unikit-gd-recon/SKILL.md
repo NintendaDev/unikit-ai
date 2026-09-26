@@ -77,6 +77,8 @@ not transliterate jargon**. `gd-principles` → "Language" adds the game-design 
 IDs, keywords, canonical terms, and stored field values stay English; the RECON.md prose is
 authored in the project's artifact language. Do not announce the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Phase 0 — Bootstrap
 
 Silently load — do not narrate:
@@ -218,7 +220,7 @@ will produce, not inside `researches/` (it is a top-level seed, consumed once).
 Detect the engine and its asset conventions from a cold-start scan **per `code-recon.md` →
 Step 1** (the project markers and the per-engine asset-form matrix live there — this skill
 stays engine-agnostic and defers the specifics to the reference), and read the project's
-`.unikit/RULES.md` if present for house conventions. Record the detected engine (or the
+`.unikit/RULES.md` if present for house conventions — **Rule topics:** with the topic files listed under its `## Topics` whose `Load when` names code conventions, folders or types. Record the detected engine (or the
 ambiguity) in the RECON.md banner. Never fabricate an engine.
 
 ### Step 3 — Scan (map-reduce)

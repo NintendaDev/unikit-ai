@@ -72,6 +72,8 @@ including the rule to **translate concepts, not transliterate jargon**.
 `gd-principles` → "Language" adds the game-design specifics: which IDs and stored
 field values stay English. Do not announce the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 <!-- unikit:agents codex -->
 ## Subagent Delegation — BLOCKING PRE-REQUISITE
 
@@ -148,7 +150,7 @@ Silently load — do not narrate:
    **Rule-Loading Discipline**: load by `Load When`, load a reference only from its
    parent rule's `> **References**:`, and **never glob the memory tree**
    (`.unikit/memory/gamedesign/**`) to discover rules.
-5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority. **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the design work at hand — the concept, system, flow or content type; when unsure, load.
 
 **One-way boundary:** never read `.unikit/code/`, project source, or build
 artifacts. **Single sanctioned exception:** the **feasibility lens** may read

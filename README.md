@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/NintendaDev/unikit-ai/tests.yml?branch=main&label=tests" alt="Tests" />
   </a>
   <a href="https://github.com/NintendaDev/unikit-ai/blob/main/docs/skills.md">
-    <img src="https://img.shields.io/badge/skills-33-8b5cf6" alt="Skills" />
+    <img src="https://img.shields.io/badge/skills-34-8b5cf6" alt="Skills" />
   </a>
   <a href="https://unikit.nintenda.dev/">
     <img src="https://img.shields.io/badge/official%20site-unikit.nintenda.dev-0ea5e9" alt="Official Site" />
@@ -48,7 +48,7 @@ UniKit AI covers three layers of game development:
 | Layer             | What it covers                                                                                                                  | Where it lives                                          |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | **Game design**   | concept, pillars, systems, flows, content schemas - authored into `GD-IDS.yaml`, a registry that code plans read from            | `gamedesign` module, 11 `/unikit-gd-*` skills           |
-| **Game code**     | architecture, systems, tests, refactoring, review, documentation                                                                 | `code` module, 22 code-pipeline skills                  |
+| **Game code**     | architecture, systems, tests, refactoring, review, documentation                                                                 | `code` module, 23 code-pipeline skills                  |
 | **Engine editor** | scenes, prefabs, UI, materials, animation, assets, project settings - planned as explicit targets, executed through the engine MCP | `/unikit-plan` → `/unikit-implement` → `/unikit-verify` |
 
 Editor work is a **first-class part of a plan**, not an afterthought. `/unikit-plan` writes an `Editor: [kind] container → target : action` line next to `Files:` for every task that changes the editor's serialized state, aggregates them into an `### EDITOR TARGETS` table, and one `Editor tasks` setting decides how they run:
@@ -308,7 +308,7 @@ Uses its own config directory and skill format, never touches standard agent fil
 | Guide                                    | Description                                                                                                                        |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | [Development Workflow](docs/workflow.md) | Workflow diagram, skill pipeline, spec-driven approach                                                                             |
-| [Skills Reference](docs/skills.md)       | All 33 skills - 22 code-pipeline + 11 game-design, explore, plan, implement, verify, evolve, and more                              |
+| [Skills Reference](docs/skills.md)       | All 34 skills - 23 code-pipeline + 11 game-design, explore, plan, implement, verify, evolve, and more                              |
 | [Subagents](docs/subagents.md)           | Coordinators, workers, sidecars, delegation aliases                                                                                |
 | [Plan Files](docs/plan-files.md)         | Plan files, editor tasks, self-improvement patches, artifact ownership                                                             |
 | [Game-Design Module](docs/gamedesign.md) | GDD authoring - the system / flow / content axes, the `## Content Map [gen]`, and the bundled genre-profile catalog (`genres` CLI) |

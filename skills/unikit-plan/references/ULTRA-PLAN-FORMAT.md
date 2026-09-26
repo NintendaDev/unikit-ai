@@ -291,7 +291,8 @@ Rules:
 - **A test-checkpoint task is described by the same seven subsections** — the set is fixed by
   `scripts/test-ultra-plan-contract.mjs` and does not change. Its `### Tests` carries the
   literal `Not applicable — this task runs tests, it writes none`; its
-  `### Implementation Steps` describe how to compute the run's target and start it; its
+  `### Implementation Steps` describe how to compute the run's target and start it, plus any
+  non-run step the task carries (a negative control, a manual smoke); its
   `### Verification` names the entry written into the manifest's `## Test Runs`, and for
   `Test checkpoint: plan` the rewriting of the `Full run:` anchor line as well.
 - The `Test checkpoint:` line itself stays **in the manifest checkbox**, exactly as the

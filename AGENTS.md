@@ -18,6 +18,7 @@ This is the main navigation. Lists and details live in the source of truth — n
 | Layers, dependency rules, patterns | `.ai-factory/ARCHITECTURE.md` | prose |
 | Deep conventions and operations | `CLAUDE.md` | prose |
 | User-facing documentation | `README.md` (landing) + `docs/*.md` | prose |
+| Why a skill rule exists (maintainer rationale, not installed) | `docs/skills/*-rationale.md` | prose |
 | CLI contract (commands, exit codes) | `data/cli-contract.md` | machine-readable |
 | Engine principles (with `{{vars}}`) | `data/dev-principles.md` | template |
 | Skill list + descriptions | `skills/unikit-*/SKILL.md` (frontmatter) | filesystem |

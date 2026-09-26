@@ -36,9 +36,11 @@ If the file is missing or unreadable, fall back to English.
 Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Development Principles — BLOCKING PRE-REQUISITE
 
-Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. Read everything **above** the LAZY-READ BOUNDARY: Layer A — the evidence contract (`CLAIM / EVIDENCE / VERDICT`, the claim-class → evidence-class lattice, the nine failure classes, discipline, phase order, lane, stop-conditions, the `kind` and area vocabularies, "no rules ≠ no rights"), then the engine workflow and the code conventions (MCP server `{{engine_mcp_tool}}` usage, comments policy, docs/tests requirements, TODO handling). The section **below** the boundary is read once per session, on the first Editor task — unconditionally, never gated on which rules are installed.
+Before producing ANY code, silently read `.unikit/system/dev-principles.md` and apply its rules to ALL subsequent output. Read everything **above** the LAZY-READ BOUNDARY (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`, then `Read` with `limit` set to that line): Layer A — the evidence contract (`CLAIM / EVIDENCE / VERDICT`, the claim-class → evidence-class lattice, the nine failure classes, discipline, phase order, lane, stop-conditions, the `kind` and area vocabularies, "no rules ≠ no rights"), then the engine workflow and the code conventions (MCP server `{{engine_mcp_tool}}` usage, comments policy, docs/tests requirements, TODO handling). The section **below** the boundary is read once per session, on the first Editor task — unconditionally, never gated on which rules are installed.
 
 Then, in the same pass:
 - `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. The `## Check` table is **not** read here: it is grepped per editor task, by that task's own area plus the six cross-cutting ones (`rollback · console · batch · compile · transport · visual`).
@@ -55,7 +57,7 @@ Before writing code, load the project rules from `.unikit/`:
 1. **ALWAYS read** `.unikit/DESCRIPTION.md` — project specification, tech stack, constraints
 2. **ALWAYS read** `.unikit/ARCHITECTURE.md` — module boundaries, dependency directions, communication patterns
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
-   - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
+   - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the current task; when unsure, load.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **Read `.unikit/skill-context/{{self_name}}/SKILL.md`** if it exists — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict.

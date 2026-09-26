@@ -65,8 +65,9 @@ workflow:
 # =============================================================================
 # Testing Settings
 # =============================================================================
-# Where test RUNS are placed in a plan, and whether the executor merges them.
-# These keys never affect WRITING tests: tests are written in any task of any
+# Where test RUNS are placed in a plan. Whether the executor merges them is
+# asked per call by /unikit-implement — it is not configured here.
+# This key never affects WRITING tests: tests are written in any task of any
 # phase, exactly as they are today.
 
 testing:
@@ -84,18 +85,6 @@ testing:
       ultra: phase        # task | phase | plan
       full: phase         # phase | plan
       fast: plan          # phase | plan
-
-  # Executor (/unikit-implement): what it does with what was written.
-  implement:
-    # Merge every test-run checkpoint inside the invocation scope into a single
-    # run, at the last checkpoint of that scope. Opt-in: the default is false
-    # everywhere. Meaningful only when `plan.checkpoints` is `phase` or `task`:
-    # with `plan` there is nothing to merge. The plan's final full run is never
-    # merged.
-    merge_checkpoints:
-      ultra: false        # true | false
-      full: false         # true | false
-      fast: false         # true | false
 
 # =============================================================================
 # Git Settings

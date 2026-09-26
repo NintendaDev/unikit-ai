@@ -226,7 +226,7 @@ done
 # `## Delegation agents` section MUST be defined in that section. This ensures aliases are
 # not drift-prone — if a narrative mentions `docs-agent`, that alias must be declared.
 #
-# A skill that names an alias only to FORBID it (`unikit-improve`, `unikit-plan` on
+# A skill that names an alias only to FORBID it (`unikit-improve` on
 # `develop-agent`) still owes the reader a lookup: the alias is recorded in that skill's
 # section as not-used-here. The guard's contract is "mentioned in the section", which is
 # what the awk already measures — no exemption shape is introduced.
@@ -2624,10 +2624,19 @@ if [[ -z "$UP_WHY" ]]; then
         || UP_WHY+=" UP-7:marker-count"
     grep -qF 'unikit-improve' "$UP_MODE_ADD" || UP_WHY+=" UP-7:no-routing"
     grep -qF "$UP_DEGRADATION" "$UP_MODE_ADD" || UP_WHY+=" UP-7:degradation-wording-drifted"
+    # (UP-8) DEC-012 a: the reader contract costs ~8 KB and only a bundle needs it. The marker
+    # is known at Step 0.1, so the Bootstrap read is gated on it. The degradation line below
+    # it is untouched — T16, UP-7 and US-8 hold it verbatim.
+    grep -qF 'Ultra plan bundle reader contract — only for an ultra bundle' "$UP_IMPLEMENT" \
+        || UP_WHY+=" UP-8:reader-contract-unconditional"
+    grep -qF 'Ultra plan bundle reader contract — once, before the first task is executed' "$UP_IMPLEMENT" \
+        && UP_WHY+=" UP-8:old-unconditional-heading"
+    grep -qF 'A plan without the marker never reads this file.' "$UP_IMPLEMENT" \
+        || UP_WHY+=" UP-8:non-ultra-read-not-excluded"
 fi
 
 if [[ -z "$UP_WHY" ]]; then
-    pass "UP-1..UP-7 ultra producer: the redirect holds on both sides, Step 0.5 keeps no mode list, the manifest claims are branched, the depth gate is in place and add refuses a bundle"
+    pass "UP-1..UP-8 ultra producer: the redirect holds on both sides, Step 0.5 keeps no mode list, the manifest claims are branched, the depth gate is in place and add refuses a bundle, and implement reads the reader contract only for a bundle"
 else
     fail "UP ultra producer:$UP_WHY"
 fi
@@ -2862,7 +2871,8 @@ fi
 
 # (CG-7) The predicate itself, in every file that carries it and in both directions. There
 # are THREE carriers, not the two the rewrite set out to change: criterion 5 of the gate, its
-# writer-side twin in the research spec, and a closing line in the contracts note that credits
+# writer-side twin in the skill's `### Identifiers` (moved there from the research spec, which
+# keeps its negative), and a closing line in the contracts note that credits
 # the retired wording with making the gate converge. A half-applied edit — one that fixes the
 # gate and leaves the promise standing somewhere else — is exactly what the negative halves
 # catch and the positive halves cannot: every file would still contain a rule, just not the
@@ -2870,7 +2880,8 @@ fi
 # edit touched: it was found by reading, after a green suite, and nothing here would have.
 grep -qF 'One value, one owning section' "$CG_REF"                              || CG_WHY+=" CG-7:criterion-5-not-a-value-predicate"
 if grep -qF 'One fact, one owning section' "$CG_REF"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-gate"; fi
-grep -qF 'One value is stated in exactly one owning section' "$CG_RESEARCH_SPEC" || CG_WHY+=" CG-7:spec-not-a-value-predicate"
+grep -qF 'One value is stated in exactly one owning section' "$CG_SKILL" || CG_WHY+=" CG-7:writer-rule-not-a-value-predicate"
+if grep -qF 'One fact is stated in exactly one owning section' "$CG_SKILL"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-skill"; fi
 if grep -qF 'One fact is stated in exactly one owning section' "$CG_RESEARCH_SPEC"; then CG_WHY+=" CG-7:fact-predicate-returned-in-the-spec"; fi
 # The contracts note states the predicate in lower case, mid-sentence. Its existence is
 # asserted here too: a negative grep against a file that is not there reads as a pass, and
@@ -2907,7 +2918,7 @@ grep -qF 'the findings already adjudicated in this save' "$CG_REF" || CG_WHY+=" 
 # revision marker is what carries a value changed inside an artifact into the hashed region.
 grep -qF 'stopped at budget' "$CG_REF"   || CG_WHY+=" CG-10:budget-outcome-not-declared"
 grep -qF 'stopped at budget' "$CG_SKILL" || CG_WHY+=" CG-10:budget-outcome-not-emitted"
-grep -qF 'rev.<n>' "$CG_RESEARCH_SPEC"   || CG_WHY+=" CG-10:no-revision-marker"
+grep -qF 'rev.<n>' "$CG_SKILL"           || CG_WHY+=" CG-10:no-revision-marker"
 
 # (CG-11) The confirmation step must admit the verdict the budget branch produces. The gate
 # stopped being a pass/no-pass switch the moment it acquired a budget: `stopped at budget` is
@@ -2929,10 +2940,257 @@ else
     if grep -qF 'Only once the gate has passed' <<< "$CG11_STEP5"; then CG_WHY+=" CG-11:pass-only-precondition-returned"; fi
 fi
 
+# (CG-12) The gate travels to its pass BY PATH, and the report carries the procedure back.
+# The save is the peak of a session; the gate file is ~11 KB, and sending its criteria in the
+# prompt made the saving session read all of it at exactly that moment, to build a prompt for
+# a context that could have read the file itself. Three halves, each its own failure:
+#   - the dispatch form: the alias prompt names the path, in BOTH agent variants (count, not
+#     presence — a revert in one variant leaves the other green), and the retired form that
+#     carried the criteria is gone;
+#   - the report contract in the gate file: without it the saving session, which no longer
+#     reads the file, has no procedure to act on — no repair rules, no budget, no remainder;
+#   - the consumer: the call site acts on the report's `Next:` line. A contract declared and
+#     never consumed is the RM-1 failure in another place.
+CG12_PATH_FORMS="$(grep -cF 'Read <path of references/coherence-gate.md>' "$CG_SKILL" || true)"
+(( CG12_PATH_FORMS == 2 )) || CG_WHY+=" CG-12:dispatch-not-by-path-in-both-variants($CG12_PATH_FORMS)"
+if grep -qF 'the criteria from references/coherence-gate.md' "$CG_SKILL"; then CG_WHY+=" CG-12:criteria-sent-in-the-prompt"; fi
+grep -qF '## What the pass returns' "$CG_REF"                   || CG_WHY+=" CG-12:no-report-contract"
+grep -qF 'quotes `### What a repair may do` whole' "$CG_REF"    || CG_WHY+=" CG-12:report-drops-the-repair-rules"
+grep -qF '`repair` → apply the listed repairs' "$CG_SKILL"      || CG_WHY+=" CG-12:call-site-ignores-the-report"
+
 if [[ -z "$CG_WHY" ]]; then
-    pass "CG-1..CG-11 the coherence gate exists, is called after the write, degrades without losing work, terminates on a budget its confirmation step honours, keeps a closed scope and a contractive repair, and the research spec keeps a value predicate and no container it does not have"
+    pass "CG-1..CG-12 the coherence gate exists, is called after the write, degrades without losing work, terminates on a budget its confirmation step honours, keeps a closed scope and a contractive repair, reaches its pass by path with the procedure returned in the report, and the research spec keeps a value predicate and no container it does not have"
 else
     fail "CG research coherence gate:$CG_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# SF: source fidelity — the requirement that reaches the plan is the one that was said.
+# CG watches the GATE (its call, its budget, its scope, its predicate); SF watches the path a
+# requirement travels (the log, the anchor, the provenance marker, the readback). The one
+# deliberate overlap is SF-8, and its comment names why CG-2 does not cover it.
+# The family exists because of a measurement: before it, every content guard on this skill
+# addressed the two surfaces that had not rotted, and the SOURCE.md template — the one that
+# had — was watched by nothing at all, which is why it survived in first-release form.
+SF_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+SF_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+SF_GATE="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+# Declared per family rather than borrowed from CG_*: the variable name says which family reads
+# it, so moving a family leaves no dangling reference. Declared above first use — `set -u`
+# makes a forward reference abort the suite instead of failing one guard.
+
+SF_WHY=""
+# (SF-1) The SOURCE.md answer is a quotation, not a digest. Two halves, and neither alone is
+# enough: the negative catches the inline form COMING BACK (a rule added while the old sample
+# stays beside it), the positive catches the rule being DELETED (samples left untouched).
+if grep -qF '**Answer**: <' "$SF_SKILL"; then SF_WHY+=" SF-1:inline-answer-form-returned"; fi
+grep -qF 'An answer is a quotation, never a digest.' "$SF_SKILL" || SF_WHY+=" SF-1:no-quotation-rule"
+grep -qF 'Offered:' "$SF_SKILL" || SF_WHY+=" SF-1:no-offered-options-block"
+
+# (SF-2) The elision convention exists and forbids cutting inside a naming noun phrase — the
+# cut that removed "separate … of the same kind" and left the noun that decided nothing.
+grep -qF '[…]' "$SF_SKILL"         || SF_WHY+=" SF-2:no-elision-marker"
+grep -qF 'noun phrase' "$SF_SKILL" || SF_WHY+=" SF-2:no-noun-phrase-ban"
+
+# (SF-3) Pinning is declared, declared EARLY, targets the research folder itself, announces an
+# unfinished exploration as resumable, keeps its floor, and never brings back the hidden
+# scratch file A1 rejected. Positional by the CG-3 precedent: pinning declared after the saving
+# section is read too late, and the first exchange — the one carrying the original request — is
+# exactly the one that would go unpinned.
+SF3_PIN="$(grep -n '^## Pinning' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
+SF3_SAVE="$(grep -n '^## Saving Research Results' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
+if [[ -z "$SF3_PIN" ]]; then
+    SF_WHY+=" SF-3:no-pinning-section"
+elif [[ -z "$SF3_SAVE" ]]; then
+    SF_WHY+=" SF-3:no-save-section"
+elif (( SF3_PIN > SF3_SAVE )); then
+    SF_WHY+=" SF-3:pinning-declared-after-saving($SF3_PIN-after-$SF3_SAVE)"
+fi
+grep -qF '<slug>/SOURCE.md' "$SF_SKILL" || SF_WHY+=" SF-3:no-folder-target"
+# The re-render literal `no readable RESEARCH.md` is NOT asserted here on purpose: UR-2 already
+# owns it, in this same file. Two guards on one defect give two failures and the question of
+# which is canonical — the ED-8 precedent. Do not re-add.
+grep -qF 'NOTE [research]' "$SF_SKILL" || SF_WHY+=" SF-3:no-unfinished-branch"
+if grep -qF '.pin.' "$SF_SKILL"; then SF_WHY+=" SF-3:scratch-file-returned"; fi
+# The floor is the half that keeps "the agent decides when" from becoming "the agent defers".
+grep -qF 'When the conversation crystallizes' "$SF_SKILL" || SF_WHY+=" SF-3:no-floor-anchor"
+
+# (SF-4) A pin that cannot be written degrades loudly and does not take the conversation with
+# it. One WARN, not two: the two folder states are NOTE-level and belong to SF-3 — an
+# unfinished exploration is resumable work, not a failure.
+grep -qF 'WARN [pin]' "$SF_SKILL" || SF_WHY+=" SF-4:no-write-failure-degradation"
+
+# (SF-5) The auto-save prohibition survives in both places and keeps naming its object.
+# Count the RULE, not the word: `auto-save` occurs three times, one of them a mention inside
+# the gate rule, so a '>= 2' counter on the bare word survives the deletion of one of the two
+# rules. Measured, not supposed.
+(( "$(grep -cF "**Don't auto-save**" "$SF_SKILL")" == 2 )) || SF_WHY+=" SF-5:auto-save-rule-weakened"
+grep -qF 'Always offer and let the user decide' "$SF_SKILL" || SF_WHY+=" SF-5:offer-rule-lost"
+
+# (SF-6) The anchor contract is declared AND presented in the manifest template. Two carriers:
+# a fix to one of them leaves the other stale in silence.
+# It is asserted on SKILL.md, not on the reference, and that is the point of the guard: the
+# reference is loaded only when the leading token is `ultra`, so a guard pointed there would
+# pass while the rule stayed invisible to a standard research — the failure this family exists
+# to prevent.
+grep -qF 'SOURCE.md:' "$SF_SKILL" || SF_WHY+=" SF-6:no-anchor-contract"
+# The anchor is the quotation; the line number is a hint. A skill that makes the line number
+# the contract has silently reverted the finding that took the numbers' ground away. The file
+# is ENGLISH, so is the literal, and it is a formulation rather than a heading — cosmetics do
+# not move it, a change of meaning does.
+grep -qF 'the line number is a hint' "$SF_SKILL" || SF_WHY+=" SF-6:line-number-still-the-contract"
+# The ultra reference carries no copy of the anchor contract. It used to carry a pointer to
+# it; since the identifier rules moved into SKILL.md next to the contract, the reference has
+# nothing to point from, and a `SOURCE.md:` anchor turning up there would be a second owner.
+if grep -qF 'SOURCE.md:' "$SF_SPEC"; then SF_WHY+=" SF-6:anchor-contract-copied-into-the-reference"; fi
+# The window opens on the marker, not on a heading: the markers are already held by RM-1, so
+# the window stands on a guarded anchor rather than on prose.
+SF6_AS="$(awk '/unikit:active-summary:start/{f=1;next} /unikit:active-summary:end/{f=0} f' "$SF_SKILL" || true)"
+if [[ -z "$SF6_AS" ]]; then
+    SF_WHY+=" SF-6:active-summary-template-window-empty"
+else
+    grep -qF 'SOURCE.md:' <<< "$SF6_AS" || SF_WHY+=" SF-6:no-anchor-in-template"
+fi
+
+# (SF-7) Three provenance markers, the ported vocabulary named, and the prefix vocabulary still
+# closed at six — the marker is an attribute of the line, never a seventh prefix.
+# The BACKTICKED form, never the bare word, and that is measured rather than stylistic: on the
+# unedited file `stated` occurs twice as a substring of `restated` and `inferred` once inside
+# `model-inferred`, so two of the three bare-word asserts would be GREEN before the rule was
+# written at all — half the guard dead at birth. Backticks are the form innocent prose does not
+# produce, the same device UR-3 uses on the prefix rows.
+for SF_MARK in '`stated`' '`inferred`' '`diverges`'; do
+    grep -qF "$SF_MARK" "$SF_SKILL" || SF_WHY+=" SF-7:marker-missing:$SF_MARK"
+done
+grep -qF 'gd-provenance' "$SF_SKILL" || SF_WHY+=" SF-7:no-vocabulary-link"
+# Exact equality, not '>= 6': UR-3 checks that each of the six is present but cannot notice a
+# SEVENTH, and a seventh prefix is precisely what would make the skill's own claim — "The
+# vocabulary is closed. Six prefixes" — false. The unchecked half is the one that fills up.
+# Empty window degrades to a fail (the NN-4 / RT-7 convention), because grep -c returns 0 there
+# and 0 != 6. The count is measured on the current file, not guessed. The window is
+# `### Identifiers` of SKILL.md since the section left the ultra reference, and it closes on a
+# heading of ANY level — the next one below it is a `###`.
+SF7_PREFIXES="$(awk '/^### Identifiers$/{f=1;next} /^##+ /{f=0} f' "$SF_SKILL" | grep -c '^| `' || true)"
+(( SF7_PREFIXES == 6 )) || SF_WHY+=" SF-7:prefix-vocabulary-not-six($SF7_PREFIXES)"
+
+# (SF-8) The gate keeps exactly five criteria. The ADR refuses a sixth because source fidelity
+# as a gate criterion reopens the non-termination the previous research closed; until now that
+# refusal was prose, holding only for as long as the next editor read the ADR. CG-2 does not
+# hold it: it counts '>= 4' file-wide (twelve today), so a sixth criterion would pass unseen.
+# Window count, and an empty window degrades to a fail with the number in the slug.
+SF8_CRIT="$(awk '/^## The criteria$/{f=1;next} /^## /{f=0} f' "$SF_GATE" | grep -cE '^[0-9]+\. ' || true)"
+(( SF8_CRIT == 5 )) || SF_WHY+=" SF-8:gate-criteria-not-five($SF8_CRIT)"
+# No third assert on "SOURCE.md stays out of the durable scope" is written, and that is a
+# decision rather than an omission: the gate file names `SOURCE.md` precisely in order to put
+# it out of scope, so any grep for that literal catches its own negation. The boundary is held
+# by SF-8 (the count) and by CG-8 (`and nothing else`), which this family does not restate.
+
+# (SF-9) The readback step exists and precedes the index re-render. Three distinguished causes
+# by the CG-3 precedent: a merged check would report "readback broken" where someone in fact
+# renamed a neighbouring heading.
+SF9_RB="$(grep -n '^### Step 3.5' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
+SF9_STEP4="$(grep -n '^### Step 4: Re-render the Researches Index' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
+if [[ -z "$SF9_RB" ]]; then
+    SF_WHY+=" SF-9:no-readback-step"
+elif [[ -z "$SF9_STEP4" ]]; then
+    SF_WHY+=" SF-9:step4-heading-missing"
+elif (( SF9_RB > SF9_STEP4 )); then
+    SF_WHY+=" SF-9:readback-after-the-rerender($SF9_RB-after-$SF9_STEP4)"
+fi
+
+# (SF-10) The readback leaves a trace in the artifact, and its unconfirmed remainder is
+# announced — the discipline the gate already carries for its own budget overrun.
+grep -qF '**Readback**' "$SF_SKILL"    || SF_WHY+=" SF-10:no-readback-field"
+grep -qF 'WARN [readback]' "$SF_SKILL" || SF_WHY+=" SF-10:no-unconfirmed-warning"
+
+# (SF-11) The two-readings test exists as a rule of writing. It is the load-bearing half of the
+# mechanism: the quotation preserves the material, this test and the readback resolve the
+# ambiguity. SF-8 does not cover it — that one counts gate criteria and never opens the skill —
+# so without this assert the rule would ship unguarded, which is the exact state that let the
+# SOURCE.md template rot in the first place.
+grep -qF 'write out both readings' "$SF_SKILL"  || SF_WHY+=" SF-11:no-two-readings-rule"
+grep -qF 'structure, layout, order' "$SF_SKILL" || SF_WHY+=" SF-11:no-trigger-list"
+
+# (SF-12) The shared contract lives in the skill, and the reference is ultra-only again. It
+# used to be one third shared — a standard research read three of its sections at the moment
+# of saving, the peak of a session — and those three moved into SKILL.md. The pair: a positive
+# on the statement the reference now makes, and a negative on the shared-load claim it made
+# before, which is the form a half-reverted move would bring back.
+grep -qF 'A standard research does not read this file' "$SF_SPEC" || SF_WHY+=" SF-12:no-ultra-only-statement"
+if grep -qF 'a standard research reads the sections marked' "$SF_SPEC"; then SF_WHY+=" SF-12:shared-load-claim-returned"; fi
+# The write order moved with them and keeps the reason its item 3 was guarded: SOURCE.md is
+# not a step OF the save, phase 1 having moved the first write into the conversation. A negative
+# on the retired FORM plus a positive on its replacement — the pair, never either half: without
+# the negative the old line survives beside the new one, without the positive the item is
+# deleted outright and the save stops describing its own last write.
+if grep -qF '3. `SOURCE.md` (prompt-based explorations only).' "$SF_SKILL"; then SF_WHY+=" SF-12:write-order-still-creates-the-log-at-save"; fi
+grep -qF 'already on disk before the save begins' "$SF_SKILL" || SF_WHY+=" SF-12:no-pinned-log-in-write-order"
+
+# (SF-13) Every real section carries an applicability line, and the vocabulary is ONE value:
+# `ultra only`. It was two while three sections were shared; with those in SKILL.md, a section
+# marked `every research` coming back is the move SF-12 describes, reversed — so the value
+# itself is the detector, owned here and nowhere else. Fence-aware is not optional: the
+# templates inside this file carry their own '## ' headings, so a naive `grep -c '^## '` sees
+# more sections than there are — a counter built on it would be red always, and the obvious
+# "fix" would be to delete it.
+# Adjacency, not equal counters: equal counters pass when a section is added unmarked while an
+# `Applies to:` line is written somewhere else. Adjacency catches what actually happens.
+SF13_BAD="$(awk 'BEGIN{inf=0;want=0}
+    /^````/{inf=!inf;next}
+    /^```/{inf=!inf;next}
+    inf{next}
+    /^## /{sec=$0;want=1;next}
+    want && /^[[:space:]]*$/{next}
+    want{ if ($0 !~ /^Applies to: /) print sec; want=0 }' "$SF_SPEC" || true)"
+SF13_N="$(awk 'BEGIN{inf=0;n=0} /^````/{inf=!inf;next} /^```/{inf=!inf;next} !inf && /^## /{n++} END{print n+0}' "$SF_SPEC" || true)"
+# An object-less guard goes red rather than passing on nothing (the NN-4 / RT-7 convention).
+(( SF13_N > 0 )) || SF_WHY+=" SF-13:no-sections-found"
+[[ -z "$SF13_BAD" ]] || SF_WHY+=" SF-13:section-without-applicability($(printf '%s' "$SF13_BAD" | tr '\n' ','))"
+# Closedness written as a count, because `grep -E` has no look-ahead: a negated-alternation
+# pattern would silently match nothing and leave a guard that looks present without being one.
+SF13_VALS="$(grep -c '^Applies to: ' "$SF_SPEC" || true)"
+SF13_KNOWN="$(grep -cE '^Applies to: ultra only$' "$SF_SPEC" || true)"
+(( SF13_VALS == SF13_KNOWN )) || SF_WHY+=" SF-13:unknown-applicability-value"
+
+# (SF-14) A standard research reads nothing from the reference at the moment of saving. The
+# statement is asserted, and so is the absence of every address that would contradict it: a
+# pointer into the reference for one of the three sections that moved is the reverted form,
+# and it is written as an address (`→` plus the heading), which innocent prose does not produce.
+grep -qF 'A standard research does not read that file.' "$SF_SKILL" || SF_WHY+=" SF-14:no-standard-research-statement"
+for SF14_SEC in '`## Manifest layout`' '`## Identifiers`' '`## Write order`'; do
+    if grep -qF "→ $SF14_SEC" "$SF_SKILL"; then SF_WHY+=" SF-14:points-into-the-reference-for:$SF14_SEC"; fi
+done
+
+# (SF-15) The `Readback` field is never empty. SF-10 holds that the field EXISTS; this holds what
+# it says when there was nothing to show — the one value that tells "nothing to show" apart from
+# "the step was skipped", which is the whole reason the field exists. Two carriers, two asserts:
+# the value lives in the manifest template, the rule in the prose. The literal alone is not
+# enough, and that is measured: in the prose it wraps across two lines, so a line-wise grep finds
+# the TEMPLATE only and would stay green with the rule deleted. `>= 1`, never an exact count — a
+# rewrite that unwraps the prose makes it two.
+grep -qF 'not needed (every requirement was stated)' "$SF_SKILL" || SF_WHY+=" SF-15:no-nothing-to-show-value"
+grep -qF '`Readback` field is never empty' "$SF_SKILL"           || SF_WHY+=" SF-15:empty-readback-allowed"
+# (SF-16…SF-19) the readback is one menu per requirement, never a printed block answered by a
+# single free reply (REQ-001). Anchored inside the Step 3.5 window: the same words elsewhere in
+# the file would not prove the readback uses them.
+SF_RB_WIN="$(awk '/^### Step 3\.5/{f=1;next} /^### Step 4/{f=0} f' "$SF_SKILL")"
+[[ -n "$SF_RB_WIN" ]] || SF_WHY+=" SF-16:readback-window-empty"
+# (SF-16) NEGATIVE — the retired contract that forbade the question tool.
+grep -qF 'It is a printed block, not' "$SF_SKILL" && SF_WHY+=" SF-16:printed-block-returned"
+# (SF-17) one question per item, the tool, print-first, the class menus and the recommendation policy.
+for sf17 in 'One question per requirement' 'AskUserQuestion' 'carries the options and nothing else' \
+             'Mine (DEC-<n>)' 'Finding only' 'only on a two-readings question'; do
+    printf '%s' "$SF_RB_WIN" | grep -qF "$sf17" || SF_WHY+=" SF-17:no-${sf17// /-}"
+done
+# (SF-18) the text tier stops the turn — otherwise every item silently demotes to OQ (RISK-004).
+printf '%s' "$SF_RB_WIN" | grep -qF 'end your turn and wait' || SF_WHY+=" SF-18:text-tier-does-not-stop"
+# (SF-19) every readback menu reaches SOURCE.md with its offered options (REQ-006).
+printf '%s' "$SF_RB_WIN" | grep -qF 'with the option labels' || SF_WHY+=" SF-19:menu-not-logged"
+
+if [[ -z "$SF_WHY" ]]; then
+    pass "SF-1..SF-19 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, a standard research reads nothing from the ultra reference, and the readback asks one question per requirement with a text tier that ends the turn"
+else
+    fail "SF source fidelity:$SF_WHY"
 fi
 
 # (MX-2) Mode-extraction: unikit-gd-spec six mode bodies live in references/mode-*.md and
@@ -2949,6 +3207,49 @@ if [[ -z "$MX_SPEC_WHY" ]]; then
     pass "unikit-gd-spec — six mode bodies extracted to references/mode-*.md (bodies not inline; Regen-on-Write shared)"
 else
     fail "unikit-gd-spec — mode-extraction incomplete:$MX_SPEC_WHY"
+fi
+
+# (MX-3) Mode-extraction: unikit-implement's `--list` body lives in references/mode-list.md.
+# The gate fires on the first turn and STOPs, so the file is read in an empty context — the
+# one case where moving a body out of SKILL.md does not move its cost to a worse moment.
+# Three halves, not the MX-1 two: present, not inline, and REACHABLE — a body that exists
+# while the dispatch still says "skip to the section below" is a mode no one can enter.
+# The negative is anchored on the output template, not on the heading: a heading is renamed
+# during cosmetics, while the template line only comes back together with the body.
+MX_IMPL_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+MX_IMPL_LIST="$ROOT_DIR/skills/unikit-implement/references/mode-list.md"
+MX_IMPL_WHY=""
+[[ -s "$MX_IMPL_LIST" ]]                                             || MX_IMPL_WHY+=" mode-list.md-missing"
+grep -qF 'Follow these steps and **STOP**' "$MX_IMPL_LIST" 2>/dev/null         || MX_IMPL_WHY+=" no-stop-banner"
+grep -qF 'Available plans in .unikit/code/plans/:' "$MX_IMPL_LIST" 2>/dev/null || MX_IMPL_WHY+=" no-output-template"
+! grep -qF 'Available plans in .unikit/code/plans/:' "$MX_IMPL_SKILL" || MX_IMPL_WHY+=" list-still-inline"
+grep -qF 'references/mode-list.md' "$MX_IMPL_SKILL"                  || MX_IMPL_WHY+=" list-unreachable"
+if [[ -z "$MX_IMPL_WHY" ]]; then
+    pass "MX-3 unikit-implement — --list body extracted to references/mode-list.md (present, not inline, dispatched)"
+else
+    fail "MX-3 unikit-implement — list-mode extraction incomplete:$MX_IMPL_WHY"
+fi
+
+# (MX-4) unikit-explore's continuation body lives in references/continuing.md. Same reasoning
+# and same three halves as MX-3: the gate is "the argument named an existing folder", a first
+# turn in an empty context. The fourth assert is this move's own failure form — the body used
+# to be reached through `#continuing-a-research` anchors, and an anchor left behind points at
+# a section that no longer exists in the file.
+# `## Superseding a research` stays in SKILL.md on purpose: it fires when a NEW research is
+# saved, which is the peak of a session, not the start of one.
+MX_EXPLORE_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+MX_EXPLORE_CONT="$ROOT_DIR/skills/unikit-explore/references/continuing.md"
+MX_EXPLORE_WHY=""
+[[ -s "$MX_EXPLORE_CONT" ]]                                           || MX_EXPLORE_WHY+=" continuing.md-missing"
+grep -qF 'outgrown its question' "$MX_EXPLORE_CONT" 2>/dev/null       || MX_EXPLORE_WHY+=" no-continuation-body"
+! grep -qF 'outgrown its question' "$MX_EXPLORE_SKILL"                || MX_EXPLORE_WHY+=" continuing-still-inline"
+grep -qF 'references/continuing.md' "$MX_EXPLORE_SKILL"               || MX_EXPLORE_WHY+=" continuing-unreachable"
+! grep -qF '#continuing-a-research' "$MX_EXPLORE_SKILL"               || MX_EXPLORE_WHY+=" dangling-anchor"
+grep -qF 'superseded folder is **not deleted**' "$MX_EXPLORE_SKILL"   || MX_EXPLORE_WHY+=" superseding-rule-moved-out"
+if [[ -z "$MX_EXPLORE_WHY" ]]; then
+    pass "MX-4 unikit-explore — continuation body extracted to references/continuing.md (present, not inline, dispatched, no dangling anchor)"
+else
+    fail "MX-4 unikit-explore — continuation extraction incomplete:$MX_EXPLORE_WHY"
 fi
 
 # (DC-1) Plan design-context.md: the extracted Step 4.5 body that loads the shared
@@ -3482,6 +3783,7 @@ VQ_GD_REVIEW="$ROOT_DIR/skills/unikit-gd-review/SKILL.md"
 VQ_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
 VQ_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
 VQ_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+VQ_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
 VQ_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
 VQ_MODE_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
 VQ_MODE_LIST="$ROOT_DIR/skills/unikit-plan/references/mode-list.md"
@@ -3526,10 +3828,12 @@ vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_M
 vq_expect "AQ-6 unikit-gd-review — interview findings printed first" "$VQ_GD_REVIEW" "$VQ_K1" 1
 
 # (PR-1…PR-4) every resolver announces what it resolved, and says that *latest* is a guess.
+# (PX-11) the coordinator is a fifth entry point and owes the same announcement.
 for vq_pair in \
     "unikit-improve:$VQ_IMPROVE" \
     "unikit-implement:$VQ_IMPLEMENT" \
     "unikit-verify:$VQ_VERIFY" \
+    "unikit-implement-coordinator:$VQ_COORD" \
     "unikit-plan/mode-add:$VQ_MODE_ADD"
 do
     vq_name="${vq_pair%%:*}"
@@ -3554,7 +3858,7 @@ while IFS= read -r vq_f; do
     [[ -n "$vq_f" ]] || continue
     vq_sweep_seen=$((vq_sweep_seen + 1))
     [[ "$(vq_count "$vq_f" "$VQ_K3")" != "0" ]] || vq_sweep_bad+=" ${vq_f#"$ROOT_DIR/"}"
-done < <(grep -rlF 'fall through to *latest*' "$ROOT_DIR/skills" --include='*.md' || true)
+done < <(grep -rlF 'fall through to *latest*' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' || true)
 if [[ "$vq_sweep_seen" -eq 0 ]]; then
     fail "PR-5 — nothing mentions the *latest* fallback; the guard has lost its object"
 elif [[ -n "$vq_sweep_bad" ]]; then
@@ -3573,6 +3877,28 @@ if [[ -z "$vq_why" ]]; then
     pass "PR-6 unikit-plan/mode-list — labels only, carries no resolver contract"
 else
     fail "PR-6 unikit-plan/mode-list — must not carry the resolver contract:$vq_why"
+fi
+
+# (PR-7) fast plan vs branch plan: the branch plan wins while it has pending work — the selected
+#        tasks, or every task when the call names none — and the fast plan left aside is named.
+#        Only when the branch plan has nothing pending and the fast plan does is there a
+#        question, and it is a yes/no about the fast plan, not "which one". The coordinator runs
+#        every pending phase, i.e. the no-selector case, so it carries the same rule and line.
+#        The negative half is load-bearing: the unconditional "which one" question is what the
+#        user asked to remove, and a half-applied edit would leave it standing next to the rule.
+vq_why=""
+grep -qF 'or every task when there are none' "$VQ_IMPLEMENT"                  || vq_why+=" no-selector-case"
+grep -qF 'use the folder plan without asking' "$VQ_IMPLEMENT"                 || vq_why+=" branch-plan-rule"
+grep -qF 'Run the fast plan .unikit/code/PLAN.md?' "$VQ_IMPLEMENT"            || vq_why+=" fast-plan-question"
+grep -qF 'ask the user which one to use' "$VQ_IMPLEMENT"                      && vq_why+=" which-one-question-survived"
+for vq_f in "$VQ_IMPLEMENT" "$VQ_COORD"; do
+    grep -qF 'INFO [plan] fast plan .unikit/code/PLAN.md not used' "$vq_f"    || vq_why+=" no-left-aside-line:${vq_f##*/}"
+done
+grep -qF 'the branch plan wins while it has any' "$VQ_COORD"                  || vq_why+=" coordinator-rule"
+if [[ -z "$vq_why" ]]; then
+    pass "PR-7 fast vs branch plan — the branch plan wins while it has pending work; the fast plan is offered only when it has none"
+else
+    fail "PR-7 fast-vs-branch plan choice:$vq_why"
 fi
 
 # (IR-1) unikit-improve carries the clause exactly twice: Step 0 Priority 4 (which plan) and
@@ -3645,7 +3971,7 @@ fi
 # is deliberately OUT of scope — the documentation is rewritten by tasks 15-16, and a
 # second guard over it would be a second owner of one fact; those tasks carry an
 # explicit grep in their acceptance criteria instead.
-# ONE measured allowlist entry: the pre-merge detection branch in
+# ONE measured allowlist marker, carried by TWO sites. The first is the pre-merge detection branch in
 # skills/unikit-improve/SKILL.md. That branch exists to recognise an
 # un-migrated plan folder and send the user to `unikit-ai update`; a branch that
 # DESCRIBES the old shape instead of naming it cannot be executed reliably, so
@@ -3653,6 +3979,9 @@ fi
 # The entry is pinned to the marker `(a pre-merge plan)` on that same line, not
 # to the file — exempting the whole file would re-open the 27 occurrences the
 # merge removed from it.
+# The second site is skills/unikit-archive/SKILL.md Step 2: a completed plan is never
+# migrated, so the archive must still recognise the legacy task file to classify it — the
+# same load-bearing reason, on one line, under the same marker.
 PL2_ALLOW='(a pre-merge plan)'
 PL2_HITS="$({ grep -rn -e 'TASKS\.md' -e 'PLAN-BRIEF' "${PL_SCAN_ROOTS[@]}" "$ROOT_DIR/data" --include='*.md' 2>/dev/null || true; } | { grep -vF "$PL2_ALLOW" || true; })"
 if [[ -z "$PL2_HITS" ]]; then
@@ -3746,29 +4075,39 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# RD: research drift is a CONTENT signal, and one procedure computes it in four files.
+# RD: research drift is a CONTENT signal, and one procedure computes it — owned by ONE
+# file, data/research-link.md, installed flat as .unikit/system/research-link.md. Four
+# skills used to restate it; RD-F below is what now FORBIDS that copy from coming back —
+# RD-A used to REQUIRE the four restatements RD-F now bans, and the arrays that enforced
+# the requirement (RDA_ALL, RDA_READERS) are retired with it.
 # `## Based on` used to carry a link timestamp compared against a research index
 # timestamp — two clocks written by the same class of agent with the same care. The
 # field is now the SHA256 of a REGION — the bytes between the `## Active Summary`
-# markers of the linked `RESEARCH.md` — and three consumers recompute it. Four guards
-# close the four ways that goes wrong: the procedure diverges, the grant that makes it
-# runnable is missing, the label and the writer/reader split drift apart, or the
-# machine input silently reverts from a region back to a file.
+# markers of the linked `RESEARCH.md` — and three consumers recompute it. The guards
+# below close the ways that goes wrong: the owner's procedure diverges from what it
+# declares, the grant that makes it runnable is missing from a consumer, the label and
+# the writer/reader split drift apart, the machine input silently reverts from a region
+# back to a file, a consumer restates the contract instead of pointing at it, the one
+# degradation sentence forks into several, or a consumer reads the contract at the wrong
+# time or computes a digest at the wrong step.
 # Placed next to the PL family and reusing UNIKIT_PLAN_SKILL / UNIKIT_IMPROVE_SKILL /
 # UNIKIT_VERIFY_SKILL declared above; UNIKIT_IMPLEMENT_SKILL has no earlier declaration
 # (the MF block below takes its own path var locally), so it is declared here — `set -u`
 # makes a forward reference fatal.
 UNIKIT_IMPLEMENT_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
-# RD-E asserts the marker pair is DECLARED by its owner, so it needs the path to the
-# research-format spec. That path belongs to the UR family below; it is declared here
-# instead of copied, because `set -u` makes a forward reference fatal and a second
-# literal of the same path is exactly the drift these guards exist to catch.
-UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
+# The research-link contract's one owner, and the "all four consumers" array shared by
+# every guard below.
+RL_CONTRACT="$ROOT_DIR/data/research-link.md"
+RD_CONSUMERS=("$UNIKIT_PLAN_SKILL" "$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
+# RD-E asserts the marker pair is DECLARED by its owner. The owner is the manifest template
+# of /unikit-explore since the manifest layout left the ultra reference, so RD-E reads the
+# skill; declared here because `set -u` makes a forward reference fatal.
+RDE_OWNER="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 
-# (RD-A) The recorded field and the normalization procedure, in all FOUR files.
+# (RD-A) The recorded field and the normalization procedure, owned by RL_CONTRACT.
 # unikit-plan writes the hash; unikit-{improve,implement,verify} recompute it. If the
-# normalization diverges by a single rule in ONE of them, that skill reports drift that
-# did not happen — and the failure reads as "the research changed", not as "the guard is
+# normalization diverges by a single rule, every consumer reports drift that did not
+# happen — and the failure reads as "the research changed", not as "the guard is
 # missing". The tokens are chosen, not sampled: `UTF-8 BOM` and `one final newline` are
 # the two rules whose divergence produces a FALSE drift on byte-identical content (and
 # the BOM rule exists because this project's primary platform is Windows);
@@ -3778,48 +4117,43 @@ UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 # for one measured reason: it is the only one that can vanish alone. Drop it and the five
 # survivors still describe a coherent procedure, over the wrong object — the whole
 # manifest, whose `## Sessions` grows on every save, so every append would report drift
-# that did not happen. The negative half is load-bearing:
-# without it a half-applied replacement leaves both mechanisms standing and a consumer
-# reads a field /unikit-plan no longer writes. That half is anchored on the FIELD form
+# that did not happen.
+# The negative half is load-bearing: without it a half-applied edit leaves the retired
+# field standing somewhere it should not. That half is anchored on the FIELD form
 # `**Attached**`, never on the bare word: `Attached` is ordinary English and a sentence
 # beginning "Attached research folders are…" would turn the guard red with nothing
 # regressed — a false positive on a negative assert teaches people to delete it.
-RDA_READERS=("$UNIKIT_IMPROVE_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL")
-RDA_ALL=("$UNIKIT_PLAN_SKILL" "${RDA_READERS[@]}")
 RDA_ATTACHED_ALLOW='(the retired link-timestamp field)'
 RDA_BRIEF_ALLOW='the retired brief field'
 RDA_WHY=""
-for f in "${RDA_ALL[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'Summary SHA256'    "$f" || RDA_WHY+=" $n-no-field"
-    grep -qF 'UTF-8 BOM'         "$f" || RDA_WHY+=" $n-no-bom-rule"
-    grep -qF 'one final newline' "$f" || RDA_WHY+=" $n-no-final-newline-rule"
-    grep -qF 'never a temp file' "$f" || RDA_WHY+=" $n-no-stdin-rule"
-    grep -qF 'RESEARCH.md'       "$f" || RDA_WHY+=" $n-no-hashed-object"
-    grep -qF 'unikit:active-summary:start' "$f" || RDA_WHY+=" $n-no-rule-0"
-    # ONE measured allowlist entry, on the PL-2 precedent and for the same reason: the
-    # /unikit-improve branch that REMOVES the retired field has to name it, and a branch that
-    # DESCRIBES the old shape instead of naming it cannot be executed reliably. Pinned to the
-    # marker on that same line, never to the file — exempting the file would re-open every
-    # occurrence the replacement removed from it.
+# Degenerate to fail when the owner itself is gone (NN-4 / RT-7 convention), rather than
+# let six token checks all fail individually and bury the real cause in noise.
+if [[ ! -s "$RL_CONTRACT" ]]; then
+    RDA_WHY+=" contract-missing"
+else
+    for tok in 'Summary SHA256' 'UTF-8 BOM' 'one final newline' 'never a temp file' 'RESEARCH.md' 'unikit:active-summary:start'; do
+        grep -qF "$tok" "$RL_CONTRACT" || RDA_WHY+=" contract:no-${tok// /-}"
+    done
+    # A spelled-out count next to a list rots the moment the list grows and nothing turns red
+    # (patch 2026-08-22-09.18) — "the five normalization rules" survived exactly one addition
+    # of rule 0. The contract names rules and outcomes; it never counts them.
+    grep -qiE '\b(five|six|seven|eight) (normalization rules|rules|outcomes|branches)\b' "$RL_CONTRACT" && RDA_WHY+=" counter-next-to-list"
+fi
+# The two allowlisted negatives cover RL_CONTRACT + RD_CONSUMERS in one loop: a retired
+# field surviving in the owner is exactly as regressive as one surviving in a consumer.
+for f in "$RL_CONTRACT" "${RD_CONSUMERS[@]}"; do
+    if [[ "$f" == "$RL_CONTRACT" ]]; then n="research-link.md"; else n="$(basename "$(dirname "$f")")"; fi
+    # Pinned to the marker on that same physical line, never to the file — exempting a
+    # whole file would re-open every occurrence a past replacement removed from it. The
+    # allowlist literal is deliberately WITHOUT parentheses (measured, not stylistic): the
+    # sanctioned occurrences carry it in two different wrappings — the writer inside
+    # `(the retired brief field)`, the readers inside `(recorded against the retired brief
+    # field)` — and only the bracketless form is a substring of both.
     if grep -F '**Attached**' "$f" | grep -vF "$RDA_ATTACHED_ALLOW" | grep -q .; then RDA_WHY+=" $n-attached-survives"; fi
-    # Second allowlisted negative, same shape and same reason as `**Attached**` above: the
-    # retired field name survives ONLY where a branch has to name it — the writer's legacy
-    # note, branch 5 of the three readers, and the Step 5.5 line that DELETES it. Pinned to
-    # the turn of phrase on that same physical line, never to the file: exempting a file
-    # would re-open every occurrence the replacement removed from it.
-    #
-    # The allowlist literal is deliberately WITHOUT parentheses, and that is measured, not
-    # stylistic. The sanctioned occurrences carry it in two different wrappings — the writer
-    # inside `(the retired brief field)`, the readers inside
-    # `(recorded against the retired brief field)`. Only the bracketless form is a substring
-    # of both: after the opening parenthesis the readers have `recorded`, so a parenthesized
-    # allowlist would match none of their lines and would turn three files out of four red
-    # inside the one commit this phase declares indivisible.
     if grep -F 'Brief SHA256' "$f" | grep -vF "$RDA_BRIEF_ALLOW" | grep -q .; then RDA_WHY+=" $n-retired-field-survives"; fi
 done
 if [[ -z "$RDA_WHY" ]]; then
-    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in all four files (retired fields gone)"
+    pass "RD-A Summary SHA256 + the one normalization procedure (incl. rule 0) present in the owner (retired fields gone everywhere)"
 else
     fail "RD-A research-drift procedure diverged:$RDA_WHY"
 fi
@@ -3832,8 +4166,11 @@ fi
 # Rule 0 (extract the region between the markers) adds nothing here: it is performed on
 # text the skill has already read, not by a shell command, so the list of two names stays
 # complete and no `awk`/`sed` grant joins it.
+# Loops over RD_CONSUMERS, not RDA_ALL: the grant belongs to each SKILL regardless of
+# whether that skill still restates the procedure or only points at RL_CONTRACT, so this
+# check must keep covering all four after tasks 7-10 shrink RDA_ALL.
 RDB_WHY=""
-for f in "${RDA_ALL[@]}"; do
+for f in "${RD_CONSUMERS[@]}"; do
     n="$(basename "$(dirname "$f")")"
     grep -qF 'Bash(shasum *)'    "$f" || RDB_WHY+=" $n-no-shasum"
     grep -qF 'Bash(sha256sum *)' "$f" || RDB_WHY+=" $n-no-sha256sum"
@@ -3854,10 +4191,6 @@ fi
 # whole contract exists to close, and a drift check standing next to that channel is
 # decoration.
 RDC_WHY=""
-for f in "${RDA_READERS[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'WARN [research-drift]' "$f" || RDC_WHY+=" $n-no-canonical-label"
-done
 grep -qF 'verification bug' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-not-mandatory"
 for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     n="$(basename "$(dirname "$f")")"
@@ -3875,41 +4208,97 @@ for f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
     # so it — not the negative — is what survives a rewrite of the sentence.
     grep -qF 'as a substitute for the plan' "$f" || RDC_WHY+=" $n-no-substitute-ban"
 done
+# Owner-side: the label and the writer/reader split now live in RL_CONTRACT itself, not only
+# in the four skills that cite it. Windowed by section, not by file, because the same file
+# holds both the writer's vocabulary (`## Writing an entry`) and the reader's ladder
+# (`## Checking an entry`) — a file-level grep cannot tell which section a label sits in.
+RLC_CHECKING="$(awk '/^## Checking an entry/{f=1} f&&/^## Who writes the field/{f=0} f' "$RL_CONTRACT")"
+RLC_WRITING="$(awk '/^## Writing an entry/{f=1} f&&/^## Checking an entry/{f=0} f' "$RL_CONTRACT")"
+if [[ -z "$RLC_CHECKING" ]]; then
+    RDC_WHY+=" contract-no-checking-section"
+else
+    printf '%s' "$RLC_CHECKING" | grep -qF 'WARN [research-drift]' || RDC_WHY+=" contract-checking-no-canonical-label"
+    # Every WARN [research…] in the ladder must be the ONE canonical label — a per-outcome
+    # label would make outcomes indistinguishable when a log is grepped for drift, which is
+    # exactly what RD-C's own pass message promises.
+    while IFS= read -r lbl; do
+        [[ -z "$lbl" || "$lbl" == "WARN [research-drift]" ]] && continue
+        RDC_WHY+=" per-outcome-label:$lbl"
+    done < <(printf '%s' "$RLC_CHECKING" | grep -oE 'WARN \[research[a-zA-Z-]*\]' | sort -u)
+fi
+[[ -n "$RLC_WRITING" ]] || RDC_WHY+=" contract-no-writing-section"
+printf '%s' "$RLC_WRITING" | grep -qF 'WARN [research-drift]' && RDC_WHY+=" writer-section-uses-reader-label"
+# Consumer-side: verify and implement each project the drift result into a SECOND
+# surface (the gate result block / the completion summary) that has no owner in
+# RL_CONTRACT — it is entirely each consumer's own behaviour. Previously the (now
+# retired) RDA_READERS label loop incidentally held both halves together; nothing else
+# in this family checks them.
+grep -qF 'reaches the Step 4 report' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-projection-lost"
+grep -qE '\*\*Research drift\.\*\*.*raises' "$UNIKIT_VERIFY_SKILL" || RDC_WHY+=" verify-projection-lost"
+RDC_IMPL_S4="$(awk 'index($0,"### Step 4: Completion Summary")==1{f=1;next} index($0,"### Step 5")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$RDC_IMPL_S4" | grep -qF 'Research drifted — consider /unikit-improve' || RDC_WHY+=" implement-summary-line-lost"
 if [[ -z "$RDC_WHY" ]]; then
-    pass "RD-C one canonical WARN [research-drift] label; implement/verify check the hash and never read the brief instead of the plan"
+    pass "RD-C one canonical WARN [research-drift] label in the owner's ladder; implement/verify check the hash, project it forward, and never read the brief instead of the plan"
 else
     fail "RD-C drift label / writer-reader split:$RDC_WHY"
 fi
 
-# (RD-D) The field has a writer for an entry that does not carry it.
+# (RD-D) The field has a writer for an entry that does not carry it, and the Step 1.5
+# proposal actually reaches that writer.
 # RD-A proves three consumers READ `Summary SHA256` and that /unikit-plan writes it on create.
 # Nothing proved anything can write one into an entry created BEFORE the field existed — and
-# the on-disk plan migration rewrites the manifest without touching `## Based on`. Measured:
-# every plan that predates the field reported `drift unknown` on every run, /unikit-verify
-# held its gate at `warn` permanently, and Step 1.5 offered the user a re-link that Step 5.5
-# had no branch to carry out. Reachability is a separate invariant from presence — a guard
-# that an artifact exists says nothing about whether control flow reaches it
-# (patch 2026-08-22-09.18).
-# Both halves are load-bearing and neither substitutes for the other: the WRITE half asserts
-# Step 5.5 carries the branch, the WIRING half asserts the Step 1.5 offer names the step that
-# performs it. An offer pointing nowhere and a branch nobody reaches fail differently and are
-# equally dead. Anchored on formulations, never on the step numbers, which renumber.
+# the on-disk plan migration rewrites the manifest without touching `## Based on`. Measured
+# defect (patch 2026-08-22-12.40): both `drift unknown` branches in Step 1.5 offered the user
+# a re-link, but the write lived in Step 5.5 item 2, gated on `research_improvements` being
+# non-empty — and neither branch put anything into `research_improvements`, so the write was
+# never reached. The pointer naming the write step was ALSO wrong: it named "Step 5.5 item 3",
+# which is the "do NOT rewrite a drifted hash" branch, not the writer. Reachability is a
+# separate invariant from presence — a guard that an artifact exists says nothing about
+# whether control flow reaches it (patch 2026-08-22-09.18); the previous form of this guard
+# checked presence only and missed both halves of the defect.
+# The fix routes the proposal through a `Re-link: <folder>` finding in `research_improvements`,
+# so it is presented, chosen (`Choose which` → `Research-Based`) and applied in Step 5.5 exactly
+# like every other finding. The guard below checks that routing end to end, not just that a
+# writer exists: the finding is raised in the right list (Step 1.5), surfaced in the report
+# (Step 4), selectable (`Choose which`), and the write in Step 5.5 is gated on that Step 4
+# approval — four link in one chain, each checked on its own formulation so a single link
+# breaking cannot hide behind the other three staying green. Anchored on formulations, never
+# on step numbers, which renumber.
+RDD_S15="$(awk '/^### Step 1\.5: Research Check/{f=1} f&&/^### Step 2:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
+RDD_S4="$(awk '/^### Step 4: Present Improvements/{f=1} f&&/^### Step 5:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
 RDD_STEP55="$(awk '/^\*\*5\.5:/{f=1} f&&/^\*\*5\.6:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
 RDD_WHY=""
-# Degenerate to fail when the section is gone (NN-4 / RT-7 convention).
+# Degenerate to fail when a section is gone (NN-4 / RT-7 convention).
+[[ -n "$RDD_S15" ]]    || RDD_WHY+=" no-step-1.5-body"
+[[ -n "$RDD_S4" ]]     || RDD_WHY+=" no-step-4-body"
 [[ -n "$RDD_STEP55" ]] || RDD_WHY+=" no-step-5.5-body"
+# The proposal must be raised AS a finding in `research_improvements` — the pair is checked at
+# line level, not window level: `research_improvements` appears in this window many times for
+# unrelated reasons (Step 5.5 items 2-3, Case B), so a window-level pair would stay green even
+# if the finding stopped landing specifically in `research_improvements`, which is exactly the
+# reachability this guard exists to catch.
+if printf '%s' "$RDD_S15" | grep -qF 'Re-link: <folder>'; then
+    printf '%s' "$RDD_S15" | grep -qE 'Re-link: <folder>.*research_improvements|research_improvements.*Re-link: <folder>' || RDD_WHY+=" finding-not-in-research-improvements"
+else
+    RDD_WHY+=" no-relink-finding"
+fi
+printf '%s' "$RDD_S15" | grep -qF 'the re-link branch of Step 5.5' || RDD_WHY+=" wiring-lost"
+# Negative, whole file: the retired pointer must not come back (rollback detector).
+grep -qF 'the write is Step 5.5 item 3' "$UNIKIT_IMPROVE_SKILL" && RDD_WHY+=" stale-item-3-pointer-returned"
+printf '%s' "$RDD_S4" | grep -qF '#### Re-links (N)' || RDD_WHY+=" report-has-no-relinks-group"
+printf '%s' "$RDD_S4" | grep 'Group options by category' | grep -qF 'Research-Based' || RDD_WHY+=" choose-which-cannot-pick-research"
 printf '%s' "$RDD_STEP55" | grep -qF 'records the field on an entry that has none' || RDD_WHY+=" no-relink-writer"
 # Doubled, not replaced. The branch does two things now — it WRITES `Summary SHA256` and it
 # DELETES a legacy `Brief SHA256` line — and replacing the assert instead of splitting it
 # would have dropped half the contract without a single test turning red.
 printf '%s' "$RDD_STEP55" | grep -qF 'Summary SHA256' || RDD_WHY+=" writer-does-not-name-the-field"
 printf '%s' "$RDD_STEP55" | grep -qF 'Brief SHA256'   || RDD_WHY+=" writer-does-not-drop-the-retired-field"
-grep -qF 'the write is Step 5.5 item 3' "$UNIKIT_IMPROVE_SKILL" || RDD_WHY+=" offer-not-wired-to-writer"
-# The write is gated on the user's answer: hashing a brief nobody was asked about would claim
-# "no drift" over a period that was never examined.
+# The write is gated on the user's answer: hashing a summary nobody was asked about would claim
+# "no drift" over a period that was never examined. The answer now lives in Step 4, not Step 1.5.
 printf '%s' "$RDD_STEP55" | grep -qF 'Never perform this write without that answer' || RDD_WHY+=" write-not-gated-on-consent"
+printf '%s' "$RDD_STEP55" | grep -qF 'approved in Step 4' || RDD_WHY+=" write-not-gated-on-step4-approval"
 if [[ -z "$RDD_WHY" ]]; then
-    pass "RD-D a hashless \`## Based on\` entry has a writer, and the Step 1.5 offer is wired to it"
+    pass "RD-D a hashless \`## Based on\` entry has a writer, the Step 1.5 proposal reaches it through Step 4, and the write is gated on that approval"
 else
     fail "RD-D the drift-unknown state has no exit:$RDD_WHY"
 fi
@@ -3920,56 +4309,215 @@ fi
 # between two markers" to "the whole file", every appended session reports drift, and the
 # consumer prints "the research changed" about a research nobody touched — RISK-1 exactly,
 # a failure that reads as a finding.
-# Four assertions, and the negative is the point of the guard.
 RDE_WHY=""
 # 1. The marker pair is DECLARED by its owner. The overlap with RM-1 is deliberate and not
 #    redundant: RM-1 looks at the PRODUCER (does /unikit-explore write the markers), RD-E at
-#    the CONSUMERS (do the four readers name the region those markers delimit). Either can
-#    go red alone, and they fail for different reasons.
-[[ -s "$UR_REF" ]] || RDE_WHY+=" no-format-spec"
-grep -qF 'unikit:active-summary:start' "$UR_REF" || RDE_WHY+=" markers-not-declared-by-owner"
-grep -qF 'unikit:active-summary:end'   "$UR_REF" || RDE_WHY+=" end-marker-not-declared"
-# 2. All four skills name the REGION, not the file. One -qF literal applied to four files, so
-#    a rephrasing in any one of them turns the guard red — which is the only mechanism holding
-#    four verbatim copies of one procedure together.
-for f in "${RDA_ALL[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'between the `## Active Summary` markers' "$f" || RDE_WHY+=" $n-names-a-file-not-a-region"
-done
+#    the CONTRACT (does it name the region those markers delimit). Either can go red alone,
+#    and they fail for different reasons.
+[[ -s "$RDE_OWNER" ]] || RDE_WHY+=" no-format-owner"
+grep -qF 'unikit:active-summary:start' "$RDE_OWNER" || RDE_WHY+=" markers-not-declared-by-owner"
+grep -qF 'unikit:active-summary:end'   "$RDE_OWNER" || RDE_WHY+=" end-marker-not-declared"
+# 2. RL_CONTRACT itself names the REGION, not the file.
+grep -qF 'between the `## Active Summary` markers' "$RL_CONTRACT" || RDE_WHY+=" contract-names-a-file-not-a-region"
 # 3. The NEGATIVE: the reversed decision has not come back. `/unikit-plan` used to carry a
 #    written refusal of markers — "The file split is the marker" — and that sentence is the
-#    direct detector, because a revert would restore the sentence together with the behaviour.
-for f in "${RDA_ALL[@]}"; do
-    n="$(basename "$(dirname "$f")")"
+#    direct detector, because a revert would restore the sentence together with the
+#    behaviour. Loops over RL_CONTRACT + RD_CONSUMERS: the refusal could come back in the
+#    owner just as easily as in a consumer.
+for f in "$RL_CONTRACT" "${RD_CONSUMERS[@]}"; do
+    if [[ "$f" == "$RL_CONTRACT" ]]; then n="research-link.md"; else n="$(basename "$(dirname "$f")")"; fi
     if grep -qF 'The file split is the marker' "$f"; then RDE_WHY+=" $n-file-split-refusal-returned"; fi
 done
-# 4. The legacy branch exists exactly where it is owed. The three READERS meet entries written
-#    before the field was renamed and must report `drift unknown` rather than recompute; the
-#    WRITER never does — it creates new entries, it does not read old ones. Asserting the
-#    absence in unikit-plan is what keeps the branch from being pasted into all four out of
-#    symmetry, which would put a reader's contract in a file that has no reader.
-for f in "${RDA_READERS[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'recorded against the retired brief' "$f" || RDE_WHY+=" $n-no-legacy-branch"
-done
+# 4. The legacy branch's home: `## Checking an entry` is the reader's ladder, so the
+#    retired-field outcome belongs there and NOWHERE else — in particular not in
+#    `## Writing an entry`, the writer's section, which has no business describing how a
+#    reader resolves an old entry — and never in unikit-plan, which never reads an entry
+#    at all.
+RLE_CHECKING="$(awk '/^## Checking an entry/{f=1} f&&/^## Who writes the field/{f=0} f' "$RL_CONTRACT")"
+RLE_WRITING="$(awk '/^## Writing an entry/{f=1} f&&/^## Checking an entry/{f=0} f' "$RL_CONTRACT")"
+printf '%s' "$RLE_CHECKING" | grep -qF 'recorded against the retired brief' || RDE_WHY+=" contract-no-legacy-branch"
+printf '%s' "$RLE_WRITING"  | grep -qF 'recorded against the retired brief' && RDE_WHY+=" reader-branch-in-writer-section"
 if grep -qF 'recorded against the retired brief' "$UNIKIT_PLAN_SKILL"; then RDE_WHY+=" plan-carries-a-reader-branch"; fi
-# 5. The legacy branch is REACHABLE, not merely present. Measured in review: with the branches
-#    read in order, an entry carrying only the retired field fell through the mismatch branch
-#    first — because that branch said "Recomputed ≠ recorded" without naming which field
-#    `recorded` meant — and reported `WARN [research-drift] … no longer byte-identical` about a
-#    research nobody had touched. Presence is not reachability, the same distinction RD-D draws
-#    for the writer, and no token-presence assert above can see it. Two literals hold the two
-#    halves: the precondition that gates the recompute, and the named field that makes the
-#    comparison unambiguous once it runs.
-for f in "${RDA_READERS[@]}"; do
-    n="$(basename "$(dirname "$f")")"
-    grep -qF 'Only when the entry carries a'   "$f" || RDE_WHY+=" $n-recompute-not-gated"
-    grep -qF 'the recorded `Summary SHA256`'   "$f" || RDE_WHY+=" $n-comparison-does-not-name-the-field"
-done
+# 5. The marker pair the owner declares (point 1, RDE_OWNER) is the SAME literal pair the
+#    procedure hashes between — pinned to the source constants, not retyped, so a rename of
+#    either marker in code is caught here rather than silently describing a marker that no
+#    longer exists. Empty extraction (the constant itself renamed or restructured) is its own
+#    failure, distinct from the pin missing from the contract.
+RLE_START_CONST="$(sed -n "s/^export const RESEARCH_ACTIVE_SUMMARY_START = '\(.*\)';/\1/p" "$ROOT_DIR/src/core/constants-artifacts.ts")"
+RLE_END_CONST="$(sed -n "s/^export const RESEARCH_ACTIVE_SUMMARY_END = '\(.*\)';/\1/p" "$ROOT_DIR/src/core/constants-artifacts.ts")"
+if [[ -z "$RLE_START_CONST" ]]; then
+    RDE_WHY+=" constant-unreadable:RESEARCH_ACTIVE_SUMMARY_START"
+else
+    grep -qF "$RLE_START_CONST" "$RL_CONTRACT" || RDE_WHY+=" marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_START"
+fi
+if [[ -z "$RLE_END_CONST" ]]; then
+    RDE_WHY+=" constant-unreadable:RESEARCH_ACTIVE_SUMMARY_END"
+else
+    grep -qF "$RLE_END_CONST" "$RL_CONTRACT" || RDE_WHY+=" marker-not-pinned:RESEARCH_ACTIVE_SUMMARY_END"
+fi
 if [[ -z "$RDE_WHY" ]]; then
-    pass "RD-E the hashed object is the Active Summary region in all four files; the file-split refusal is gone"
+    pass "RD-E the hashed object is the Active Summary region in the owner; the file-split refusal is gone"
 else
     fail "RD-E machine-input contract broken:$RDE_WHY"
+fi
+
+# (RD-F) Pointer-only: no consumer restates the contract's wording, in any form.
+# RD-A used to REQUIRE four copies of the procedure; this guard FORBIDS them from coming
+# back. Two extra surfaces join the four skills — unikit-plan/references/TASK-FORMAT.md
+# and ULTRA-PLAN-FORMAT.md — because the planner writes `## Based on` through them too,
+# and a "for completeness" copy would return there first, not in a skill body.
+RDF_SURFACES=(
+    "${RD_CONSUMERS[@]}"
+    "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    "$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+)
+RDF_WHY=""
+# (a) Each of the four skills names the contract — the minimum a pointer has to do.
+for f in "${RD_CONSUMERS[@]}"; do
+    n="$(basename "$(dirname "$f")")"
+    grep -qF '.unikit/system/research-link.md' "$f" || RDF_WHY+=" $n-no-pointer"
+done
+# (b) No surface restates a fixed procedure token — chosen, not sampled, the same four
+#     RD-A anchors on: `Summary SHA256` and `RESEARCH.md` legitimately appear in ordinary
+#     prose elsewhere; these four do not.
+RDF_FIXED_TOKENS=('UTF-8 BOM' 'one final newline' 'never a temp file' 'unikit:active-summary:start')
+for f in "${RDF_SURFACES[@]}"; do
+    n="$(basename "$f")"
+    for tok in "${RDF_FIXED_TOKENS[@]}"; do
+        grep -qF "$tok" "$f" && RDF_WHY+=" $n-restates:${tok// /-}"
+    done
+done
+# (c) No surface copies a DERIVED template — a `WARN [research…]: <text>` line where text
+#     follows the label. A bare label is never included in the derivation: it is
+#     legitimately named by verify's Step 4.4 projection (RD-C) and by the degradation
+#     sentence itself (RD-G).
+RDF_CHECKING="$(awk '/^## Checking an entry/{f=1} f&&/^## Who writes the field/{f=0} f' "$RL_CONTRACT")"
+RDF_WRITING="$(awk '/^## Writing an entry/{f=1} f&&/^## Checking an entry/{f=0} f' "$RL_CONTRACT")"
+RDF_TEMPLATE_N=0
+while IFS= read -r tmpl; do
+    [[ -z "$tmpl" ]] && continue
+    RDF_TEMPLATE_N=$((RDF_TEMPLATE_N + 1))
+    body="${tmpl#\`}"; body="${body%\`}"
+    for f in "${RDF_SURFACES[@]}"; do
+        n="$(basename "$f")"
+        grep -qF "$body" "$f" && RDF_WHY+=" $n-copies-template:$RDF_TEMPLATE_N"
+    done
+done < <(printf '%s\n%s' "$RDF_CHECKING" "$RDF_WRITING" | grep -oE '`WARN \[research[a-zA-Z-]*\]: [^`]+`')
+[[ "$RDF_TEMPLATE_N" -gt 0 ]] || RDF_WHY+=" derivation-empty:templates"
+# (d) N-word windows, doctrine of T17 (scripts/test-ultra-plan-contract.mjs): a copy that
+#     has already diverged from the contract shares no whole template with it — that is the
+#     worst state (c) cannot see — but it still shares WORD RUNS with its source (patch
+#     2026-08-22-14.05). Measured, not reasoned, exactly like T17: sizes 5-8 false-positive
+#     on short vocabulary this project shares legitimately everywhere — at 5, improve's own
+#     Re-links report template ("recorded against the retired brief") and the literal
+#     `shasum -a 256 | awk '{print $1}'` command (duplicated by implement/verify on purpose,
+#     as the concrete digest step — see `### Digest`) both collide; the shasum command alone
+#     still collides through size 8. Size 9 is the smallest that gives ZERO windows on every
+#     correct surface today, and it still catches a paraphrase with roughly a third of its
+#     words replaced (24-51 shared 9-word runs, measured by inserting the pre-migration
+#     verify ladder verbatim, and separately a reworded copy of it, into a copy of the
+#     migrated file). `## Who writes the field` measured 0 at sizes 8-10 and is included —
+#     no section is excluded.
+RDF_SHINGLE_WORDS=9
+RDF_SHINGLE_SECTIONS=('## The entry' '## What is hashed' '## Computing the hash' '## Writing an entry' '## Checking an entry' '## Who writes the field')
+rdf_normalize() { tr '[:upper:]' '[:lower:]' | tr -d '`*_' | tr '\n' ' ' | tr -s '[:space:]' ' '; }
+rdf_shingles() {
+    awk -v n="$1" '{
+        c = split($0, w, " ")
+        for (i = 1; i + n - 1 <= c; i++) {
+            if (w[i] == "") continue
+            s = w[i]; ok = 1
+            for (j = 1; j < n; j++) { if (w[i+j] == "") { ok = 0; break }; s = s " " w[i+j] }
+            if (ok) print s
+        }
+    }'
+}
+RDF_CONTRACT_SHINGLES="$(mktemp)"
+: > "$RDF_CONTRACT_SHINGLES"
+for heading in "${RDF_SHINGLE_SECTIONS[@]}"; do
+    body="$(awk -v h="$heading" 'index($0,h)==1{f=1;next} f&&/^## /{f=0} f' "$RL_CONTRACT")"
+    [[ -n "$body" ]] && printf '%s\n' "$body" | rdf_normalize | rdf_shingles "$RDF_SHINGLE_WORDS" >> "$RDF_CONTRACT_SHINGLES"
+done
+sort -u -o "$RDF_CONTRACT_SHINGLES" "$RDF_CONTRACT_SHINGLES"
+if [[ ! -s "$RDF_CONTRACT_SHINGLES" ]]; then
+    RDF_WHY+=" derivation-empty:shingles"
+else
+    for f in "${RDF_SURFACES[@]}"; do
+        n="$(basename "$f")"
+        RDF_SURFACE_SHINGLES="$(mktemp)"
+        rdf_normalize < "$f" | rdf_shingles "$RDF_SHINGLE_WORDS" | sort -u > "$RDF_SURFACE_SHINGLES"
+        overlap=$(comm -12 "$RDF_CONTRACT_SHINGLES" "$RDF_SURFACE_SHINGLES" | wc -l)
+        [[ "$overlap" -eq 0 ]] || RDF_WHY+=" $n-reproduces-windows:$overlap"
+        rm -f "$RDF_SURFACE_SHINGLES"
+    done
+fi
+rm -f "$RDF_CONTRACT_SHINGLES"
+if [[ -z "$RDF_WHY" ]]; then
+    pass "RD-F pointer-only ($RDF_TEMPLATE_N templates derived, $RDF_SHINGLE_WORDS-word windows): no surface restates the contract"
+else
+    fail "RD-F a surface restates the contract instead of pointing at it:$RDF_WHY"
+fi
+
+# (RD-G) One degradation sentence, verbatim, in all four skills — not four independent
+# wordings of "the contract is missing, don't block." Taken from UNIKIT_IMPLEMENT_SKILL,
+# on the UP_DEGRADATION / US-8 precedent: an arbitrary anchor among equals, chosen because
+# nothing distinguishes the four skills as more canonical than another.
+RDG_LINE="$(grep -F 'research-link.md' "$UNIKIT_IMPLEMENT_SKILL" | grep -F 'is missing or unreadable, do not block' | head -1)"
+if [[ -z "$RDG_LINE" ]]; then
+    fail "RD-G no degradation line found in unikit-implement/SKILL.md — the guard has no object"
+else
+    RDG_WHY=""
+    for f in "${RD_CONSUMERS[@]}"; do
+        n="$(basename "$(dirname "$f")")"
+        cnt=$(grep -cF "$RDG_LINE" "$f" || true)
+        if [[ "$cnt" -eq 0 ]]; then
+            RDG_WHY+=" degradation-drifted:$n"
+        elif [[ "$cnt" -ne 1 ]]; then
+            RDG_WHY+=" degradation-count:$n=$cnt"
+        fi
+    done
+    if [[ -z "$RDG_WHY" ]]; then
+        pass "RD-G the missing-contract degradation is verbatim-identical, once each, in all four skills"
+    else
+        fail "RD-G degradation sentence drifted or miscounted:$RDG_WHY"
+    fi
+fi
+
+# (RD-H) The contract is read at the right STEP, never at Bootstrap — and the digest is
+# computed at the right TIME (decision 2). Mechanical form of a rule with no other
+# detector: nothing else greps for WHERE a line sits relative to two headings.
+RDH_WHY=""
+rdh_location() {
+    local skill="$1" step_start="$2" step_end="$3" boot_start="$4" boot_end="$5" label="$6"
+    local step_win boot_win
+    step_win="$(awk -v s="$step_start" -v e="$step_end" 'index($0,s)==1{f=1;next} index($0,e)==1{f=0} f' "$skill")"
+    boot_win="$(awk -v s="$boot_start" -v e="$boot_end" 'index($0,s)==1{f=1;next} index($0,e)==1{f=0} f' "$skill")"
+    [[ -n "$step_win" ]] || { RDH_WHY+=" $label-no-step-body"; return; }
+    [[ -n "$boot_win" ]] || { RDH_WHY+=" $label-no-bootstrap-body"; return; }
+    printf '%s' "$step_win" | grep -qF '.unikit/system/research-link.md' || RDH_WHY+=" $label-read-outside-research-step"
+    printf '%s' "$boot_win" | grep -qF '.unikit/system/research-link.md' && RDH_WHY+=" $label-reads-at-bootstrap"
+    return 0
+}
+rdh_location "$UNIKIT_PLAN_SKILL"      '### Step 2: Check for Related Researches' '### Step 3'   '### Step 0.5: Bootstrap Context' '### Step 1:' plan
+rdh_location "$UNIKIT_IMPLEMENT_SKILL" '### Step 1: Load Plan Context'            '### Step 1.5' '### Step 1.5: Bootstrap Rules'    '### Step 2:' implement
+rdh_location "$UNIKIT_VERIFY_SKILL"    '### 0.2 Read Plan & Context'              '### 0.3'      '### 0.0 Load Ownership'          '### 0.1'     verify
+rdh_location "$UNIKIT_IMPROVE_SKILL"   '### Step 1.5: Research Check'             '### Step 2:'  '### Step 0.5: Bootstrap Context'  '### Step 1:' improve
+# The second half of decision 2 — WHERE the digest is computed, not just where the
+# contract is read. Returning the old text to Step 5 / Step 5.5 would satisfy the checks
+# above (the contract is still read once, at the right step) while quietly moving the
+# read-time cost back to the peak — exactly the regression decision 2 exists to prevent.
+RDH_PLAN_S2="$(awk 'index($0,"### Step 2: Check for Related Researches")==1{f=1;next} index($0,"### Step 3")==1{f=0} f' "$UNIKIT_PLAN_SKILL")"
+RDH_PLAN_S5="$(awk 'index($0,"### Step 5: Create the Plan")==1{f=1;next} index($0,"### Step 6")==1{f=0} f' "$UNIKIT_PLAN_SKILL")"
+printf '%s' "$RDH_PLAN_S2" | grep -qF 'keep the digest for Step 5' || RDH_WHY+=" plan-no-link-time-digest"
+printf '%s' "$RDH_PLAN_S5" | grep -qF 'Compute `Summary SHA256`' && RDH_WHY+=" plan-computes-at-step-5"
+RDH_IMPROVE_S15="$(awk 'index($0,"### Step 1.5: Research Check")==1{f=1;next} index($0,"### Step 2:")==1{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
+RDH_IMPROVE_S55="$(awk '/^\*\*5\.5:/{f=1} f&&/^\*\*5\.6:/{f=0} f' "$UNIKIT_IMPROVE_SKILL")"
+printf '%s' "$RDH_IMPROVE_S15" | grep -qF 'over the summary just read' || RDH_WHY+=" improve-no-read-time-digest"
+printf '%s' "$RDH_IMPROVE_S55" | grep -qF 'freshly computed' && RDH_WHY+=" improve-computes-at-step-5.5"
+if [[ -z "$RDH_WHY" ]]; then
+    pass "RD-H the contract is read only at its research step, never at Bootstrap, and the digest is computed at read time, not at write time"
+else
+    fail "RD-H the contract is read or the digest computed at the wrong point:$RDH_WHY"
 fi
 
 # =============================================
@@ -4185,8 +4733,7 @@ fi
 # plan marker would make /unikit-implement treat a research as a bundle — and the failure
 # would surface as a missing phase file, far from its cause. The two cross negatives are
 # the content of this guard; the positives only give them an object.
-# UR_REF is declared above the RD family — RD-E reads it and `set -u` forbids the
-# forward reference.
+UR_REF="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 UR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 UR_PLAN_SPEC="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
 UR_WHY=""
@@ -4242,10 +4789,10 @@ fi
 # go red is worse than no guard — it reports confidence it never earned.
 UR3_WHY=""
 UR3_SECTION=""
-if ! grep -qF '## Identifiers' "$UR_REF"; then
+if ! grep -q '^### Identifiers$' "$UR_EXPLORE"; then
     UR3_WHY+=" no-section"
 else
-    UR3_SECTION="$(awk '/^## Identifiers$/{f=1;next} /^## /{f=0} f' "$UR_REF")"
+    UR3_SECTION="$(awk '/^### Identifiers$/{f=1;next} /^##+ /{f=0} f' "$UR_EXPLORE")"
     # Degenerate to fail when the section is empty (NN-4 / RT-7 convention): an object-less
     # guard must go red rather than pass on nothing.
     if [[ -z "$UR3_SECTION" ]]; then
@@ -4256,10 +4803,14 @@ else
         done
     fi
 fi
-grep -qF "must exist in \`## Active Summary\` of \`RESEARCH.md\`" "$UR_REF" || UR3_WHY+=" no-owner-rule"
-grep -qF 'never reused'                 "$UR_REF" || UR3_WHY+=" no-stability-rule"
-grep -qF 'Active Summary'               "$UR_REF" || UR3_WHY+=" active-summary-missing"
+# The contract moved into SKILL.md → `### Identifiers`; the vocabulary, owner and stability
+# asserts moved with it. `Traceability` stays negative on BOTH files: the ultra reference is
+# where a copy from the source format would land, the skill is where the contract now lives.
+grep -qF "must exist in \`## Active Summary\` of \`RESEARCH.md\`" "$UR_EXPLORE" || UR3_WHY+=" no-owner-rule"
+grep -qF 'never reused'                 "$UR_EXPLORE" || UR3_WHY+=" no-stability-rule"
+grep -qF 'Active Summary'               "$UR_EXPLORE" || UR3_WHY+=" active-summary-missing"
 if grep -qF 'Traceability'   "$UR_REF"; then UR3_WHY+=" traceability-returned";   fi
+if grep -qF 'Traceability'   "$UR_EXPLORE"; then UR3_WHY+=" traceability-returned-in-the-skill"; fi
 if [[ -z "$UR3_WHY" ]]; then
     pass "UR-3 the identifier vocabulary is closed (six prefixes), homed in the manifest's Active Summary, and stable"
 else
@@ -4283,15 +4834,18 @@ if [[ ! -s "$RM_SPEC" ]]; then
 elif [[ ! -s "$RM_SKILL" ]]; then
     RM_WHY+=" RM-0:skill-missing"
 else
-    # (RM-1) Both marker pairs are DECLARED in the spec and USED by the producer. The region
+    # (RM-1) Both marker pairs stand in the manifest TEMPLATE the producer copies. The region
     # between the active-summary markers is the hashed object of the whole drift mechanism —
     # without the markers there is nothing to hash, and the plan-side drift field of Phase 04
-    # has no object to be computed from. Asserted in both files because a marker declared and
-    # never emitted is exactly as useless as one emitted and never specified.
+    # has no object to be computed from. The guard used to read two files, the spec that
+    # declared the markers and the skill that emitted them; the layout left the spec, so the
+    # template is both, and the window is what keeps a marker mentioned only in prose from
+    # passing for one the template writes.
+    RM1_TEMPLATE="$(awk '/^# <Research Title>$/{f=1} f && /^```$/{exit} f' "$RM_SKILL" || true)"
+    [[ -n "$RM1_TEMPLATE" ]] || RM_WHY+=" RM-1:manifest-template-window-empty"
     for RM_MARK in 'unikit:active-summary:start' 'unikit:active-summary:end' \
                    'unikit:sessions:start' 'unikit:sessions:end'; do
-        grep -qF "$RM_MARK" "$RM_SPEC"  || RM_WHY+=" RM-1:marker-undeclared:$RM_MARK"
-        grep -qF "$RM_MARK" "$RM_SKILL" || RM_WHY+=" RM-1:marker-unused:$RM_MARK"
+        grep -qF "$RM_MARK" <<< "$RM1_TEMPLATE" || RM_WHY+=" RM-1:marker-not-in-template:$RM_MARK"
     done
 
     # (RM-2) The two state axes stay two. `Status` is completeness, `Lifecycle` is currency,
@@ -4301,12 +4855,12 @@ else
     # single error message — the skill answers "no researches", which is indistinguishable
     # from an honestly empty registry. Hence a negative on each axis carrying the other's
     # value, not merely a positive on both being present.
-    grep -qE '^Status: completed \| in-progress \| needs-follow-up' "$RM_SPEC" \
+    grep -qE '^Status: completed \| in-progress \| needs-follow-up' "$RM_SKILL" \
         || RM_WHY+=" RM-2:status-axis-missing-or-reworded"
-    grep -qE '^Lifecycle: active \| paused \| superseded' "$RM_SPEC" \
+    grep -qE '^Lifecycle: active \| paused \| superseded' "$RM_SKILL" \
         || RM_WHY+=" RM-2:lifecycle-axis-missing-or-reworded"
-    if grep -qE 'Lifecycle:.*completed' "$RM_SPEC"; then RM_WHY+=" RM-2:lifecycle-carries-completed"; fi
-    if grep -qE 'Status:.*active'       "$RM_SPEC"; then RM_WHY+=" RM-2:status-carries-active"; fi
+    if grep -qE 'Lifecycle:.*completed' "$RM_SKILL"; then RM_WHY+=" RM-2:lifecycle-carries-completed"; fi
+    if grep -qE 'Status:.*active'       "$RM_SKILL"; then RM_WHY+=" RM-2:status-carries-active"; fi
 
     # (RM-3) The brief retired WHOLE. A half-retirement — the artifact added while the old
     # template survives — is the shape that leaves two formats documented at once.
@@ -4431,8 +4985,15 @@ MF5_WHY=""
 grep -qF 'observed' "$MF_IMPLEMENT" || MF5_WHY+=" implement"
 grep -qF 'observed' "$MF_FIX"       || MF5_WHY+=" fix"
 grep -qF 'observed' "$MF_VERIFY"    || MF5_WHY+=" verify"
+# The worker is a writer too (variant B), and the only one that may write a row without
+# having read D7: it reads the lower half only when its own task carries `Editor:`, while
+# the table exists whenever the plan has one anywhere. So it carries the two rules itself.
+# Scoped to the finding line: the rule-candidate line below it says `dedup is semantic` too.
+MF5_WORKER_LINE="$(grep -F 'A call that misled you is a finding' "$MF_WORKER")"
+printf '%s' "$MF5_WORKER_LINE" | grep -qF '`observed` is today' || MF5_WHY+=" worker"
+printf '%s' "$MF5_WORKER_LINE" | grep -qF 'dedup is semantic'   || MF5_WHY+=" worker-dedup"
 if [[ -z "$MF5_WHY" ]]; then
-    pass "MF-5 observed known to all three plan-side findings writers"
+    pass "MF-5 observed known to all four plan-side findings writers (the worker carries its own copy)"
 else
     fail "MF-5 observed column unknown to:$MF5_WHY"
 fi
@@ -5115,8 +5676,8 @@ else
 fi
 
 # (GB-3) The grammar reference carries the rule too: TASK-FORMAT.md is what a plan author
-# reads while writing Dependencies: lines, and it is excluded from the Part 7c scan, so
-# nothing else looks at it.
+# reads while writing Dependencies: lines, and Part 7c looks at it for engine stop words
+# only, so nothing else holds the rule.
 if grep -qF 'serialized alone in its execution layer' "$GB_TASK_FORMAT"; then
     pass "GB-3 guard B present in the Editor task grammar (TASK-FORMAT.md)"
 else
@@ -5232,6 +5793,33 @@ if [[ -z "$EM5_WHY" ]]; then
     pass "EM-5 installEngineMcpRules + swapMcpRecheckNotes wired in both init.ts and update.ts"
 else
     fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
+fi
+
+# (SA-1) Every system-asset installer in system-assets.ts is called from BOTH init.ts and
+# update.ts. Derivative, not a name list: a new `export async function installX` is covered
+# by construction, and the overlap with EM-5 above is deliberate — EM-5 pins two specific
+# functions for a stronger reason (silent findings-log corruption on a missed call), SA-1
+# pins the general shape all of today's installers share.
+# Anchored on the call LINE (`await installX(`), not the substring `installX(`: a plain
+# grep -F would count a commented-out `// await installX(` as wiring, missing the most
+# natural way to disable a call. All of today's calls have the form `    await installX(`.
+SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts")"
+if [[ -z "$SA_INSTALLERS" ]]; then
+    fail "SA-1 no install* exports found in system-assets.ts — the guard has no object"
+else
+    SA_WHY=""
+    SA_COUNT=0
+    while IFS= read -r fn; do
+        [[ -n "$fn" ]] || continue
+        SA_COUNT=$((SA_COUNT + 1))
+        grep -qE "^[[:space:]]*await[[:space:]]+${fn}\(" "$ROOT_DIR/src/cli/commands/init.ts"   || SA_WHY+=" init.ts:$fn"
+        grep -qE "^[[:space:]]*await[[:space:]]+${fn}\(" "$ROOT_DIR/src/cli/commands/update.ts" || SA_WHY+=" update.ts:$fn"
+    done <<< "$SA_INSTALLERS"
+    if [[ -z "$SA_WHY" ]]; then
+        pass "SA-1 all $SA_COUNT system-asset installers are called from both init.ts and update.ts"
+    else
+        fail "SA-1 system-asset installer(s) not wired:$SA_WHY"
+    fi
 fi
 
 # (EM-6) No recommendation wording in a Godot displayName. Ranking is expressed by
@@ -5354,8 +5942,10 @@ fi
 
 # (ED-4) NEGATIVE — the only mechanical guard on the engine-neutrality cleanup.
 # TWO files, EIGHT assertions.
-#   TASK-FORMAT.md: references/ is EXCLUDED from the Part 7c engine stop-word scan,
+#   TASK-FORMAT.md: references/ WAS excluded from the Part 7c engine stop-word scan,
 #   which is precisely how the Unity specifics accumulated there in the first place.
+#   Part 7c scans references/ now, and this family is still the only cover: none of
+#   the tokens below is a stop word.
 #   Assert `.cs` (not `path/to/file.cs`): the latter misses the `path/to/file1.cs`
 #   line and would go green on a half-done cleanup. After the cleanup no legitimate
 #   `.cs` remains in the file.
@@ -5580,6 +6170,86 @@ else
     fail "LA-8 anchor MISSING in skills/unikit-fix/SKILL.md:$LA8_WHY"
 fi
 
+# ─────────────────────────────────────────────
+# LB: the lazy-read boundary is enforced by its readers (DEC-014; closes research defect 13).
+# EW: the editor procedures live below it once, not restated per executor (DEC-015).
+LB_READERS=(
+    "implement:$EM_IMPLEMENT_SKILL" "fix:$EM_FIX_SKILL" "verify:$UNIKIT_VERIFY_SKILL"
+    "improve:$ROOT_DIR/skills/unikit-improve/SKILL.md" "devcontext:$EM_DEVCONTEXT_SKILL"
+    "worker:$ROOT_DIR/subagents/unikit-implement-worker.md"
+    "coordinator:$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+)
+LB_MCP_AUDIT="$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+LB_PATTERN="^<!-- === LAZY-READ BOUNDARY === -->"
+LB_WHY=""
+for lb_pair in "${LB_READERS[@]}"; do
+    lb_name="${lb_pair%%:*}"; lb_file="${lb_pair#*:}"
+    # (LB-1) every reader names the boundary.
+    grep -qF 'LAZY-READ BOUNDARY' "$lb_file" || LB_WHY+=" LB-1:$lb_name"
+    # (LB-2) and reads up to it with a line limit — the grep pattern is the mechanism.
+    grep -qF -- "$LB_PATTERN" "$lb_file" || LB_WHY+=" LB-2:$lb_name"
+done
+grep -qF 'LAZY-READ BOUNDARY' "$LB_MCP_AUDIT" || LB_WHY+=" LB-1:mcp-audit"
+# (LB-3) the lower half is read at plan load under an Editor: line — one formulation, three plan readers.
+LB3='below the marker is read once, at plan load, when the checklist carries an `Editor:` line'
+for lb3_f in "$EM_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    grep -qF "$LB3" "$lb3_f" || LB_WHY+=" LB-3:${lb3_f##*/}"
+done
+grep -qF 'including the editor rungs of the Step 1 diagnosis ladder' "$EM_FIX_SKILL" || LB_WHY+=" LB-3:fix"
+grep -qF 'before the first `GATE LIFTED` verdict' "$UNIKIT_VERIFY_SKILL" || LB_WHY+=" LB-3:verify-gate-lifted"
+grep -qF 'when a task you were handed carries an `Editor:` line' "$ROOT_DIR/subagents/unikit-implement-worker.md" || LB_WHY+=" LB-3:worker"
+# (LB-4) the file and the docs promise the same moment.
+grep -qF "at plan load when the plan's checklist carries an \`Editor:\` line" "$LA_DEV_PRINCIPLES" || LB_WHY+=" LB-4:dev-principles-moment"
+grep -qF 'pays for the deep half only if it reaches editor state anyway' "$ROOT_DIR/docs/dynamic-memory.md" || LB_WHY+=" LB-4:docs-moment"
+# NEGATIVE — "never pays" is false: verify reads the lower half before its first GATE LIFTED
+# verdict, and fix working from FIX_PLAN.md (no Editor: field) reads it on its first editor step.
+grep -qF 'never pays for the deep half' "$ROOT_DIR/docs/dynamic-memory.md" && LB_WHY+=" LB-4:docs-overclaims"
+if [[ -z "$LB_WHY" ]]; then
+    pass "LB-1…LB-4 lazy-read boundary enforced: 8 readers name it, 7 read up to it, the lower half loads at plan load under Editor:"
+else
+    fail "LB lazy-read boundary not enforced:$LB_WHY"
+fi
+
+EW_WHY=""
+if grep -qF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES"; then
+    EW_BLINE=$(grep -nF "$LA_BOUNDARY" "$LA_DEV_PRINCIPLES" | head -1 | cut -d: -f1)
+    EW_ABOVE=$(head -n "$EW_BLINE" "$LA_DEV_PRINCIPLES")
+    EW_BELOW=$(tail -n +"$EW_BLINE" "$LA_DEV_PRINCIPLES")
+    # (EW-4) D8 is scoped to whoever holds the documentation server: every reader of the
+    # lower half reads D8, and only some of them are granted that server. Worded by
+    # capability, never by skill name — the recipient list lives in the server's config.
+    echo "$EW_BELOW" | grep -qF 'Only a reader granted that server reaches for it' || EW_WHY+=" EW-4:d8-unscoped"
+    # (EW-1) the three procedures sit below the boundary, and nothing of them above it.
+    for ew1 in 'Candidates from the live catalog, by intent' 'A call that misled you' 'Reference: trigger <1|2>'; do
+        echo "$EW_BELOW" | grep -qF "$ew1" || EW_WHY+=" EW-1:not-below:${ew1// /-}"
+        echo "$EW_ABOVE" | grep -qF "$ew1" && EW_WHY+=" EW-1:leaked-above:${ew1// /-}"
+    done
+else
+    EW_WHY+=" EW-1:boundary-marker-missing"
+fi
+# (EW-2) NEGATIVE — the executors no longer restate them.
+# All five readers of the lower half, not only the two that carried the full procedure: verify
+# and the worker held shortened retellings, and `candidate affordances` is the phrase both
+# retellings shared — D6 owns it now, so any executor that carries it is restating D6.
+for ew2_f in "$EM_IMPLEMENT_SKILL" "$EM_FIX_SKILL" "$UNIKIT_VERIFY_SKILL" \
+             "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    for ew2 in 'Candidates from the live catalog, by intent' 'Reference: trigger <1|2>' 'network dependency inside the editor lane' 'candidate affordances'; do
+        grep -qF "$ew2" "$ew2_f" && EW_WHY+=" EW-2:restated:${ew2_f#"$ROOT_DIR"/}"
+    done
+done
+# (EW-3) and each points at the owner section it now follows.
+EW3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f' "$EM_IMPLEMENT_SKILL")"
+printf '%s' "$EW3_S32" | grep -qF '→ **D6**' || EW_WHY+=" EW-3:implement-no-D6"
+grep -qF '→ **D6**' "$EM_FIX_SKILL" || EW_WHY+=" EW-3:fix-no-D6"
+for ew3_f in "$UNIKIT_VERIFY_SKILL" "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    grep -qF '**D7**' "$ew3_f" || EW_WHY+=" EW-3:no-D7:${ew3_f##*/}"
+done
+if [[ -z "$EW_WHY" ]]; then
+    pass "EW-1…EW-4 editor procedures live once below the boundary (D6–D8), every executor points at them, and D8 is scoped to the server's grantees"
+else
+    fail "EW editor-procedure ownership drift:$EW_WHY"
+fi
+
 # (ED-15) Layer C — the two §4 rules Phase 2 added, plus the coherence of the three
 # counters §4 carries. A hard count ("§4 has seven rules") would break on every future
 # edit; coherence breaks only when the numbers disagree with the body, which is the one
@@ -5766,11 +6436,12 @@ for f in "$TC_CONFIG_TPL" "$TC_UNIKIT_SKILL"; do
     [[ -s "$f" ]] || TC_G1_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G1_WHY" ]]; then
-    # (TC-1) both key groups, all three modes in each — a block carrying one mode is how a
-    # per-mode policy quietly becomes a global one.
-    for tok in 'testing:' 'checkpoints:' 'merge_checkpoints:' 'ultra:' 'full:' 'fast:'; do
+    # (TC-1) the placement key, all three modes — a block carrying one mode is how a per-mode policy quietly becomes a global one.
+    for tok in 'testing:' 'checkpoints:' 'ultra:' 'full:' 'fast:'; do
         grep -qF "$tok" "$TC_CONFIG_TPL" || TC_G1_WHY+=" TC-1:no-$tok"
     done
+    # (TC-1) NEGATIVE since DEC-008 — merging is asked per call; a key would silence the question.
+    grep -qF 'merge_checkpoints' "$TC_CONFIG_TPL" && TC_G1_WHY+=" TC-1:executor-key-returned"
     # (TC-2) NEGATIVE — REQ-006: the width of a run follows from its coverage and is never
     # configurable. A width key in the config is the whole requirement reversed.
     grep -qF 'run_width' "$TC_CONFIG_TPL" && TC_G1_WHY+=" TC-2:width-key-returned"
@@ -5792,7 +6463,7 @@ if [[ -z "$TC_G1_WHY" ]]; then
         || TC_G1_WHY+=" TC-3:no-never-touch-carveout"
 fi
 if [[ -z "$TC_G1_WHY" ]]; then
-    pass "TC-1…TC-3 config template declares both key groups (no width key); merge mode derives the missing set from the template and carves out the never-touch keys"
+    pass "TC-1…TC-3 config template declares the placement key (no width key); merge mode derives the missing set from the template and carves out the never-touch keys"
 else
     fail "TC-1…TC-3 test-run config contract:$TC_G1_WHY"
 fi
@@ -5877,9 +6548,13 @@ else
     fail "TC-14…TC-22 planner run-policy contract:$TC_G3_WHY"
 fi
 
+# The test-run block of unikit-implement lives in a reference read only under `Testing: yes`
+# (DEC-012 b); every TC literal that moved with it is asserted against that file.
+TC_TESTRUNS="$ROOT_DIR/skills/unikit-implement/references/test-runs.md"
+
 # --- group 4: verify reuses the executor's run (tasks 5.1, 5.2) ---
 TC_G4_WHY=""
-for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL"; do
+for f in "$UNIKIT_VERIFY_SKILL" "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS"; do
     [[ -s "$f" ]] || TC_G4_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G4_WHY" ]]; then
@@ -5892,7 +6567,7 @@ if [[ -z "$TC_G4_WHY" ]]; then
     # procedure named in two places, never by two procedures that merely agree today: drift
     # in either half makes the anchor stop matching for no visible reason.
     TC24_SHARED='the same procedure as `Summary SHA256`'
-    for tc24_f in "$UNIKIT_IMPLEMENT_SKILL" "$UNIKIT_VERIFY_SKILL"; do
+    for tc24_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
         grep -qF "$TC24_SHARED" "$tc24_f" || TC_G4_WHY+=" TC-24:${tc24_f##*/skills/}-restates-hash-procedure"
     done
     # (TC-25) NEGATIVE — two dead references the reuse branch replaced: a CLAUDE.md list
@@ -5911,13 +6586,13 @@ fi
 
 # --- group 5: the executor, the coordinator and the worker (tasks 4.1-4.4) ---
 TC_G5_WHY=""
-for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_COORD" "$TC_WORKER"; do
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$TC_COORD" "$TC_WORKER"; do
     [[ -s "$f" ]] || TC_G5_WHY+=" missing:${f##*/}"
 done
 if [[ -z "$TC_G5_WHY" ]]; then
-    # (TC-27) the executor's own key, the line that explains a run count, and the legacy branch.
-    grep -qF 'testing.implement.merge_checkpoints' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-executor-key"
-    grep -qF 'INFO [testing]'                      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-info-line"
+    # (TC-27) no executor key any more (DEC-008), the line that explains a run count, and the legacy branch.
+    grep -qF 'merge_checkpoints' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-27:executor-key-returned"
+    grep -qF 'INFO [testing]'                      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-27:no-info-line"
     grep -qF 'the plan is legacy'                  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-27:no-legacy-branch"
     # (TC-28) NEGATIVE — symmetric to TC-22 from the other side: the executor never reads
     # the placement key, because the placement is already recorded in the plan.
@@ -5925,24 +6600,25 @@ if [[ -z "$TC_G5_WHY" ]]; then
     # (TC-29…TC-32) Step 2.5: the merge is marked BEFORE execution, or an interrupted run
     # leaves a ticked box with no run behind it.
     grep -qF '### Step 2.5' "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-29:no-step-2.5"
-    grep -qF '⏭️ MERGED'    "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-30:no-merge-marker"
-    grep -qF 'does not count as pending for its own run' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-31:no-counting-rule"
-    grep -qF 'never merged and never moved' "$UNIKIT_IMPLEMENT_SKILL"       || TC_G5_WHY+=" TC-31:final-run-mergeable"
-    grep -qF 'mark first, then execute'     "$UNIKIT_IMPLEMENT_SKILL"       || TC_G5_WHY+=" TC-32:no-order-contract"
+    grep -qF '⏭️ MERGED'    "$TC_TESTRUNS"                                  || TC_G5_WHY+=" TC-30:no-merge-marker"
+    grep -qF 'does not count as pending for its own run' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:no-counting-rule"
+    grep -qF 'never merged and never moved' "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-31:final-run-mergeable"
+    grep -qF 'mark first, then execute'     "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-32:no-order-contract"
     # (TC-33) one marker form across two files — a second spelling is a marker nobody reads.
     grep -qF '⏭️ MERGED → task' "$TC_READER" || TC_G5_WHY+=" TC-33:marker-form-drifted-in-reader"
     # (TC-34…TC-40) Step 3.2: the run task, its three widths, the graph-free algorithm, the
-    # assigned threshold, the manifest-reading ban and the two git commands.
+    # assigned threshold, the manifest-reading ban and the two git commands. TC-34 stays on
+    # the skill (the stub that recognises the task); the rest moved to the reference.
     grep -qF 'Test checkpoint: <coverage>'  "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-34:no-run-task-branch"
-    grep -qF 'every test in the project'    "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-35:no-plan-width"
-    grep -qF 'without building a graph'     "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
-    grep -qF 'Safety valve'                 "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-37:no-safety-valve"
-    grep -qF 'assigned, not measured'       "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
-    grep -qF 'Reading every module manifest is forbidden' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
-    grep -qF 'git rev-parse HEAD; git status --porcelain' "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-39:no-hash-commands"
-    grep -qF 'only WRITES tests and never runs them'      "$UNIKIT_IMPLEMENT_SKILL" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
+    grep -qF 'every test in the project'    "$TC_TESTRUNS" || TC_G5_WHY+=" TC-35:no-plan-width"
+    grep -qF 'without building a graph'     "$TC_TESTRUNS" || TC_G5_WHY+=" TC-36:no-graph-free-rule"
+    grep -qF 'Safety valve'                 "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:no-safety-valve"
+    grep -qF 'assigned, not measured'       "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
+    grep -qF 'Reading every module manifest is forbidden' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
+    grep -qF 'git rev-parse HEAD; git status --porcelain' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
+    grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
-    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" && TC_G5_WHY+=" TC-41:engine-names-leaked"
+    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" && TC_G5_WHY+=" TC-41:engine-names-leaked"
     # (TC-42…TC-44) POSITIVE half: the runner is one per editor, so the scope owner runs.
     grep -qF 'never handed to a worker'    "$TC_COORD"  || TC_G5_WHY+=" TC-42:coordinator-does-not-withhold"
     grep -qF 'once the layer has finished' "$TC_COORD"  || TC_G5_WHY+=" TC-43:no-run-after-layer"
@@ -5983,6 +6659,150 @@ if [[ -z "$TC_G6_WHY" ]]; then
     pass "TC-46…TC-51 both plan editors honour the recorded policy, keep executor data, and treat a run task without Files: as normal"
 else
     fail "TC-46…TC-51 plan-editor run-policy contract:$TC_G6_WHY"
+fi
+
+# --- group 7: merging is a question per call, not a key (readback/merge plan, DEC-004…DEC-008) ---
+TC_G7_WHY=""
+TC_TASKFMT_Q="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+for f in "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$TC_COORD" "$TC_READER" "$TC_TASKFMT_Q"; do
+    [[ -s "$f" ]] || TC_G7_WHY+=" missing:${f##*/}"
+done
+if [[ -z "$TC_G7_WHY" ]]; then
+    # (TC-52) the success signal: the key is gone from everything that ships or documents.
+    TC52_HITS="$(grep -rlF 'merge_checkpoints' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/docs" "$ROOT_DIR/data" 2>/dev/null || true)"
+    [[ -z "$TC52_HITS" ]] || TC_G7_WHY+=" TC-52:key-survives:$(echo "$TC52_HITS" | sed "s|$ROOT_DIR/||" | tr '\n' ',')"
+    # (TC-53) Step 2.5 asks once, prints the points first, stops the turn on the text tier, names the source.
+    TC53_WIN="$(awk '/^## Step 2\.5/{f=1;next} /^## Step 3\.2/{f=0} f' "$TC_TESTRUNS")"
+    for tc53 in 'AskUserQuestion' 'One run at the end' 'end your turn and wait' \
+                '(<asked|arguments|no answer|nothing to merge>)' 'Fewer than two' \
+                'whatever the answer below' 'last one in execution order' 'drops the answer'; do
+        printf '%s' "$TC53_WIN" | grep -qF "$tc53" || TC_G7_WHY+=" TC-53:no-${tc53// /-}"
+    done
+    # (TC-54) the instruction in the arguments is recognised, and the Step 0.2 question rides the same call.
+    grep -qF 'A test-run instruction' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:no-argument-instruction"
+    grep -qF 'in one `AskUserQuestion` call together with the Step 2.5 question' "$UNIKIT_IMPLEMENT_SKILL" \
+        || TC_G7_WHY+=" TC-54:start-questions-not-combined"
+    grep -qF 'the phase number inside it names a run point' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:instruction-parsed-as-selector"
+    grep -qF 'After a stash, re-read the manifest' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:stash-leaves-stale-scope"
+    # (TC-55) DEC-005 / OQ-3 — a merged point's non-run steps are performed at the survivor, and the format allows them.
+    grep -qF 'non-run steps of every task merged into it' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-55:non-run-steps-lost"
+    grep -qF 'its own non-run steps' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-55:survivor-own-steps-lost"
+    grep -qF 'A temporary probe it creates and removes within its own steps' "$TC_TASKFMT_Q" || TC_G7_WHY+=" TC-55:format-forbids-probe"
+    grep -qF 'their non-run steps are performed there' "$TC_READER" || TC_G7_WHY+=" TC-55:reader-depth-silent"
+    # (TC-56) the coordinator is an entry point too: it asks, and it holds the tool to ask with.
+    awk '/^tools:/{f=1;next} /^[a-z]+:/{f=0} f' "$TC_COORD" | grep -qF 'AskUserQuestion' || TC_G7_WHY+=" TC-56:coordinator-no-question-tool"
+    grep -qF 'Merge question, before the first layer' "$TC_COORD" || TC_G7_WHY+=" TC-56:coordinator-never-asks"
+    grep -qF 'a point of the last layer that holds one' "$TC_COORD" || TC_G7_WHY+=" TC-56:survivor-by-checklist-order"
+    # (TC-57) NEGATIVE — the answer is per call; nothing may re-introduce a stored default.
+    grep -qF 'Merging is only ever enabled explicitly' "$UNIKIT_IMPLEMENT_SKILL" && TC_G7_WHY+=" TC-57:stored-default-returned"
+    grep -qF 'Merging is only ever enabled explicitly' "$TC_TESTRUNS"           && TC_G7_WHY+=" TC-57:stored-default-returned:test-runs"
+    # (TC-58) deferred work is closed by the run that carried it. Its marker still names the
+    # point it was first merged into, so "tick what points at this run point" never reaches
+    # it, and every later call would pick it up and run its coverage again.
+    grep -qF 'and every deferred task whose coverage this run carried' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:deferred-never-closed"
+    grep -qF 'is recorded like a point' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:end-of-scope-unrecorded"
+    grep -qF 'deferred task(s) closed' "$TC_TESTRUNS" || TC_G7_WHY+=" TC-58:no-close-log"
+fi
+if [[ -z "$TC_G7_WHY" ]]; then
+    pass "TC-52…TC-58 merging is one question per call: no key, source named, non-run steps carried, coordinator asks too, deferred work closed where it ran"
+else
+    fail "TC-52…TC-58 merge-question contract:$TC_G7_WHY"
+fi
+
+# --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
+# Modelled on MX-3 / RD-H: present, not inline, and read at the right step. A body that exists
+# while no step reads it is a contract no run follows (RISK-010).
+TR_WHY=""
+# (TR-1) present, with its four sections.
+[[ -s "$TC_TESTRUNS" ]] || TR_WHY+=" TR-1:reference-missing"
+for tr1 in '## Step 2.5' '## Step 3.2' '## Step 3.4' '## Step 3.8'; do
+    grep -qF "$tr1" "$TC_TESTRUNS" 2>/dev/null || TR_WHY+=" TR-1:no-${tr1// /-}"
+done
+# (TR-2) not inline — anchored on body formulations, never on headings.
+for tr2 in 'mark first, then execute' 'Reading every module manifest is forbidden' 'only WRITES tests and never runs them'; do
+    grep -qF "$tr2" "$UNIKIT_IMPLEMENT_SKILL" && TR_WHY+=" TR-2:still-inline:${tr2// /-}"
+done
+# (TR-3) read at plan load under Testing: yes, and pointed at from every use site.
+TR3_S1="$(awk 'index($0,"### Step 1: Load Plan Context")==1{f=1;next} index($0,"### Step 1.5")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S1" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:not-read-at-plan-load"
+printf '%s' "$TR3_S1" | grep -qF 'under `Testing: no` never read it' || TR_WHY+=" TR-3:read-unconditionally"
+printf '%s' "$TR3_S1" | grep -qF 'WARN [testing] test-run reference missing' || TR_WHY+=" TR-3:missing-reference-silent"
+TR3_S25="$(awk '/^### Step 2\.5/{f=1;next} /^### Step 3/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S25" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:step-2.5-stub-dangling"
+TR3_S32="$(awk '/^\*\*3\.2: Implement the task\*\*/{f=1;next} /^\*\*3\.3/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$TR3_S32" | grep -qF 'references/test-runs.md' || TR_WHY+=" TR-3:step-3.2-stub-dangling"
+# (TR-4) the coordinator reads the same reference — it runs checkpoint tasks itself.
+grep -qF 'test-run reference' "$TC_COORD" || TR_WHY+=" TR-4:coordinator-blind"
+# Anchored on the read instruction and its path pointer (PD-10: `{{skills_dir}}` is empty in a
+# subagent, so the path comes from the preloaded implement body). The two later mentions in
+# the fifth branch and the run-owner rule kept the check above green with the read deleted.
+grep -qF "test-run reference once — the path is written in \`/unikit-implement\` Step 1" "$TC_COORD" \
+    || TR_WHY+=" TR-4:coordinator-never-reads"
+if [[ -z "$TR_WHY" ]]; then
+    pass "TR-1…TR-4 test-run block extracted to references/test-runs.md (present, not inline, read only under Testing: yes, coordinator included)"
+else
+    fail "TR test-run reference extraction:$TR_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# PX: incidental defects closed by the readback/merge/slimming plan (research section 14).
+# One assert per defect, numbered by the defect. Defect 13 (the dev-principles lazy-read
+# boundary ignored by implement/fix/verify) is closed by LB-1…LB-4, not here.
+PX_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+PX_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+PX_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+PX_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+PX_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
+PX_DYNAMIC_MEMORY="$ROOT_DIR/docs/dynamic-memory.md"
+PX_WHY=""
+# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline".
+grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$PX_IMPLEMENT" && PX_WHY+=" PX-1:devcontext-inline-fallback"
+# (PX-2) the findings column contract lives in the planner's reference, not in implement's own.
+# Every surface that names the file, D7 included (the defect-2 line moved there). Any path
+# that does not end in `unikit-plan/references/TASK-FORMAT.md` is a miss — including the
+# `{{self_name}}/references/` form, which a `[^/]` prefix test let through. Captured into a
+# variable rather than piped into `grep -q`: under pipefail a SIGPIPE hides the hit.
+for px2_f in "$PX_IMPLEMENT" "$ROOT_DIR/skills/unikit-fix/SKILL.md" "$PX_VERIFY" "$PX_DEV_PRINCIPLES" \
+             "$ROOT_DIR/subagents/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-coordinator.md"; do
+    PX2_PATHS="$(grep -oE '[^ `(]*references/TASK-FORMAT\.md' "$px2_f" || true)"
+    PX2_BAD="$(printf '%s\n' "$PX2_PATHS" | grep -vE '(^|/)unikit-plan/references/TASK-FORMAT\.md$' | grep -v '^$' || true)"
+    [[ -n "$PX2_BAD" ]] && PX_WHY+=" PX-2:task-format-path-without-owner:${px2_f##*/}"
+done
+# (PX-3) Testing: no omits the placement line by design — it is not a legacy plan.
+for px_f in "$PX_IMPLEMENT" "$PX_VERIFY"; do
+    grep -qF 'Line absent under `Testing: yes` → the plan is legacy' "$px_f" || PX_WHY+=" PX-3:legacy-unconditioned:${px_f##*/skills/}"
+done
+# (PX-4) the Step 4 template carries the lines other steps say it carries. Anchored on the
+# template's line forms: the paragraph below the template names both lines too, and a plain
+# `grep -F` stayed green with the template lines deleted.
+PX4_WIN="$(awk '/^### Step 4: Completion Summary/{f=1;next} /^### Step 5/{f=0} f' "$PX_IMPLEMENT")"
+printf '%s' "$PX4_WIN" | grep -qE '^Documentation: \{delegated'             || PX_WHY+=" PX-4:no-documentation-line"
+printf '%s' "$PX4_WIN" | grep -qE '^Test checkpoints: legacy — placement' || PX_WHY+=" PX-4:no-legacy-line"
+# (PX-5) no example teaching the pre-contract announcement format.
+grep -qE '^> Plan:|^## Examples' "$PX_IMPLEMENT" && PX_WHY+=" PX-5:stale-examples"
+# (PX-6) Steps D-H refine Step 5 — the SKILL.md half of UP-5.
+grep -qF 'replace Step 5 and Step 6' "$PX_PLAN" && PX_WHY+=" PX-6:replace-returned"
+grep -qF 'refine Step 5 and Step 6'  "$PX_PLAN" || PX_WHY+=" PX-6:no-refine"
+# (PX-7) no example contradicting --base > git.base_branch > main.
+grep -qF 'base: HEAD' "$PX_PLAN" && PX_WHY+=" PX-7:base-head-example"
+# (PX-8) module boundaries come from the project's ARCHITECTURE.md, not from one pattern.
+grep -qF 'Modular Monolith' "$PX_PLAN" && PX_WHY+=" PX-8:hardcoded-architecture"
+# (PX-9) a v1 registry is an ERROR at the consumer (design-read.md "When this applies").
+grep -qF 'WARN [design] GD-IDS.yaml is version 1'  "$PX_EXPLORE" && PX_WHY+=" PX-9:warn-level"
+grep -qF 'ERROR [design] GD-IDS.yaml is version 1' "$PX_EXPLORE" || PX_WHY+=" PX-9:no-error-level"
+# (PX-10) SOURCE.md is outside the gate's scope, so no gate criterion can catch a bad quote.
+grep -qF 'criterion-2 finding' "$PX_EXPLORE" && PX_WHY+=" PX-10:gate-cannot-see-source"
+# (PX-11) is the coordinator pair in the PR loop and the subagents/ root in PR-5 above.
+# (PX-12) an absent rules file is announced by one line, never skipped in silence.
+grep -qF 'skipped **silently**' "$PX_DEV_PRINCIPLES" && PX_WHY+=" PX-12:dev-principles-silent"
+grep -qF 'skipped silently'     "$PX_DYNAMIC_MEMORY" && PX_WHY+=" PX-12:docs-silent"
+grep -qF 'as a silent skip'     "$ROOT_DIR/docs/configuration.md" && PX_WHY+=" PX-12:configuration-silent"
+# (PX-14) verify never resolves FIX_PLAN.md, so it never names that reason.
+grep -qF '`fix plan` ·' "$PX_VERIFY" && PX_WHY+=" PX-14:verify-fix-plan-reason"
+if [[ -z "$PX_WHY" ]]; then
+    pass "PX-1…PX-14 incidental defects stay closed (defect 13: LB-1…LB-4)"
+else
+    fail "PX incidental defect returned:$PX_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -6155,17 +6975,19 @@ else
     fail "RCA-3…RCA-10 implement rule-capture contract:$RCA_G2_WHY"
 fi
 
+VR_RULES_REF="$ROOT_DIR/skills/unikit-verify/references/rule-candidates.md"
 RCA_G3_WHY=""
 if [[ ! -s "$UNIKIT_VERIFY_SKILL" ]]; then
     RCA_G3_WHY+=" missing:unikit-verify/SKILL.md"
 else
     # (RCA-11) SHARED — one string per formulation applied to BOTH skills in one loop. The
     # two questions must read identically; a contract only one side still states is not one.
+    # Since DEC-012 d verify's half lives in references/rule-candidates.md — the pair is implement ↔ that reference.
     for rca11 in 'the question mechanism carries the options and nothing else' \
                  'Do NOT add any rules until the user answers' \
                  'presents the same options as plain text'; do
         grep -qF "$rca11" "$UNIKIT_IMPLEMENT_SKILL" || RCA_G3_WHY+=" RCA-11:implement-drifted"
-        grep -qF "$rca11" "$UNIKIT_VERIFY_SKILL"    || RCA_G3_WHY+=" RCA-11:verify-drifted"
+        grep -qF "$rca11" "$VR_RULES_REF" 2>/dev/null || RCA_G3_WHY+=" RCA-11:verify-drifted"
     done
     # verify has no Step 3.4 of its own, so what it finds must be RECORDED before it is
     # proposed — a candidate proposed and not recorded dies with the session.
@@ -6173,11 +6995,34 @@ else
     # (RCA-12) NEGATIVE, separate from RCA-9: the alias lived in two files and could return
     # to either one alone.
     grep -qF 'rules-agent' "$UNIKIT_VERIFY_SKILL" && RCA_G3_WHY+=" RCA-12:alias-returned-in-verify"
+    grep -qF 'rules-agent' "$VR_RULES_REF" 2>/dev/null && RCA_G3_WHY+=" RCA-12:alias-returned-in-verify-reference"
 fi
 if [[ -z "$RCA_G3_WHY" ]]; then
     pass "RCA-11…RCA-12 verify asks the same question in the same words, records before proposing; alias gone"
 else
     fail "RCA-11…RCA-12 verify rule-capture contract:$RCA_G3_WHY"
+fi
+
+# VR: verify's rule proposal lives in a reference read only when an `open` candidate exists (DEC-012 d).
+VR_WHY=""
+# (VR-1) present, carrying the procedure.
+[[ -s "$VR_RULES_REF" ]] || VR_WHY+=" VR-1:reference-missing"
+for vr1 in 'multiSelect' '"Add nothing"' 'Print first, ask second'; do
+    grep -qF "$vr1" "$VR_RULES_REF" 2>/dev/null || VR_WHY+=" VR-1:no-${vr1// /-}"
+done
+# (VR-2) NEGATIVE — not inline in the body any more.
+for vr2 in '"Add nothing"' 'Print first, ask second'; do
+    grep -qF "$vr2" "$UNIKIT_VERIFY_SKILL" && VR_WHY+=" VR-2:still-inline:${vr2// /-}"
+done
+# (VR-3) read at plan load when the manifest already holds an open candidate, and named at Step 5.
+VR3_S02="$(awk 'index($0,"### 0.2 Read Plan & Context")==1{f=1;next} index($0,"### 0.3")==1{f=0} f' "$UNIKIT_VERIFY_SKILL")"
+printf '%s' "$VR3_S02" | grep -qF 'references/rule-candidates.md' || VR_WHY+=" VR-3:not-read-at-plan-load"
+VR3_S5="$(awk 'index($0,"## Step 5: Suggest Follow-Up")==1{f=1;next} index($0,"## Strict Mode")==1{f=0} f' "$UNIKIT_VERIFY_SKILL")"
+printf '%s' "$VR3_S5" | grep -qF 'references/rule-candidates.md' || VR_WHY+=" VR-3:step-5-trigger-dangling"
+if [[ -z "$VR_WHY" ]]; then
+    pass "VR-1…VR-3 verify's rule proposal extracted to references/rule-candidates.md (present, not inline, read only with an open candidate)"
+else
+    fail "VR verify rule-proposal extraction:$VR_WHY"
 fi
 
 RCA_G4_WHY=""
@@ -6594,7 +7439,8 @@ fi
 
 # (NN-3) Layer C. The allowlist above is spent almost entirely here: engine templates are
 # the one shipped surface where snake_case is legitimate, because GDScript and the Unity
-# serialized formats use it. `references/` is excluded from the Part 7c stop-word scan and
+# serialized formats use it. Part 7c scans the source `skills/` tree and never reaches
+# `data/engine-templates/` (a template lands in `references/` only at install time), and
 # engine stop-words are ALLOWED in an engine template anyway, so before this guard nothing
 # looked at layer C at all — which is how seven tool names accumulated in one table there.
 NN3_HITS="$(nn_scan "$ROOT_DIR/data/engine-templates")"
@@ -6811,7 +7657,7 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -6920,6 +7766,584 @@ if [[ -z "$RFM_WHY" ]]; then
     pass "RFM-1…RFM-8 rule form is a flat one-line list; compact is exact-matched, confirmed, non-destructive; no length counters"
 else
     fail "RFM-1…RFM-8 rule form contract:$RFM_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# PRT: project rule topics (PRT-1…PRT-13)
+# ─────────────────────────────────────────────
+# `.unikit/RULES.md` became a root: common rules under `## Common`, bounded rules in topic
+# files under `.unikit/rules/`, listed by a `## Topics` table whose `Load when` column is the
+# only copy of each load condition (research project-rules-topics, DEC-001…DEC-003). This
+# block pins the writer; PRT-6…PRT-10 below pin the canon, the readers, the other writers and
+# the prune mode. Anchored on formulations, never on headings. RFM-1 keeps asserting
+# `is a **flat list**`: every list — the whole flat file, `## Common`, each topic file — is
+# still one.
+PRT_OPTIMISE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-optimise.md"
+PRT_WHY=""
+[[ -s "$PRT_OPTIMISE_REF" ]] || PRT_WHY+=" missing:unikit-rules/references/mode-optimise.md"
+# (PRT-1) the layout: the table header, two headings that live together, the header paragraph,
+# the one marker (there is no `topics` marker), and the single source of `Load when`.
+grep -qF '| Topic | Load when |' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-table-header"
+grep -qF '`## Topics` and `## Common` exist together or not at all' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-two-heading-rule"
+grep -qF 'the rules under `## Common` apply to every task' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-header-paragraph"
+grep -qF '<!-- unikit:rules-layout flat -->' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-flat-marker"
+grep -qF 'rules-layout topics' "$EV_RULES_SKILL" && PRT_WHY+=" PRT-1:topics-marker-returned"
+grep -qF '**`Load when` lives only in the root table**' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:load-when-not-single-source"
+# (PRT-2) the state comes from the content, in a fixed order, and a refusal is final.
+grep -qF "decided by the file's content" "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:state-not-content-derived"
+for prt_s in topics flat empty legacy; do
+    grep -qF "| \`$prt_s\` |" "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:no-state-$prt_s"
+done
+grep -qF 'Check the states in this order' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:no-order"
+grep -qF 'A `flat` file is never offered the reorganization again' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:refusal-not-final"
+# (PRT-3) placement and the report: common when unsure, the Topic column, the drift warnings.
+grep -qF 'When unsure, the rule goes to common.' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-unsure-default"
+grep -qF '| # | Outcome | Topic | Cross-check |' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-topic-column"
+grep -qF '`<slug> (new)`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-new-topic-value"
+grep -qF 'WARN [rules] topic table:' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-drift-warning"
+# (PRT-4) Mode D: exact argument, both spellings, non-destructive, the invariant, the offer.
+grep -qF 'references/mode-optimise.md' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-4:dispatch-missing"
+grep -qF '`optimise` or `optimize`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-4:spellings"
+if [[ -s "$PRT_OPTIMISE_REF" ]]; then
+    grep -qF '**No rule is deleted**' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:destructive"
+    grep -qF '**only on confirmation**' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:unconfirmed"
+    grep -qF 'rules before, <M> after — file unchanged' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-invariant"
+    for prt_o in 'Apply' 'Keep the flat format' 'Not now'; do
+        grep -qF "\`$prt_o\`" "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-option-${prt_o// /-}"
+    done
+    grep -qF 'No topic proposed → no question' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:offer-without-topics"
+    grep -qF 'end your turn and wait' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:text-tier-does-not-stop"
+fi
+# (PRT-5) Mode C keeps the layout and the tag, and offers the reorganization on a legacy file.
+grep -qF 'compact never removes or rewrites it' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:compact-may-strip-layout"
+grep -qF 'stays verbatim at the end of the shortened rule' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:no-migrate-tag-dropped"
+grep -qF 'Mode C on a `legacy` file first runs the offer' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:compact-no-offer"
+# (PRT-11) the rule language is the `language.rules` setting, not a hardcoded English.
+grep -qF '`language.rules`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-11:no-language-setting"
+grep -qF 'translate it to English before writing' "$EV_RULES_SKILL" && PRT_WHY+=" PRT-11:hardcoded-english-returned"
+if [[ -z "$PRT_WHY" ]]; then
+    pass "PRT-1…PRT-5, PRT-11 unikit-rules writes the root + topic layout, reads its state from the content, offers once, keeps compact/optimise non-destructive"
+else
+    fail "PRT writer contract:$PRT_WHY"
+fi
+# (PRT-6) the reading protocol has ONE canon: "Step 1" of both RULES_INDEX templates, which
+# the CLI regenerates on every update and rules sync, so the text travels with the package.
+# One -qF per sentence, applied to BOTH templates (the UR-3 shape): a canon that only one
+# module still states is not a canon. The /unikit fallback index lost its `rules/` line.
+PRT6_TPL_CODE="$ROOT_DIR/data/RULES_INDEX_TEMPLATE.md"
+PRT6_SHARED=(
+    '**Project rule topics.**'
+    'Load a topic file the way you load a rule below by its **Load When** column'
+    'A skill that works in phases loads topic files at the start of each phase, not at Bootstrap.'
+    'print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue'
+    'Inside its own area a topic rule wins over a `## Common` rule it contradicts.'
+    'No `## Topics` section → the whole file applies, as before.'
+    'and its topic files in `.unikit/rules/` — project-specific overrides (always win)'
+)
+PRT6_WHY=""
+for prt6_f in "$PRT6_TPL_CODE" "$GD_RULES_INDEX_TPL"; do
+    prt6_n="${prt6_f##*/}"
+    [[ -s "$prt6_f" ]] || { PRT6_WHY+=" missing:$prt6_n"; continue; }
+    for prt6_s in "${PRT6_SHARED[@]}"; do
+        grep -qF -- "$prt6_s" "$prt6_f" || PRT6_WHY+=" ${prt6_n}:missing[${prt6_s:0:40}]"
+    done
+done
+grep -qF 'conflicts with a template rule in `rules/`' "$ROOT_DIR/skills/unikit/SKILL.md" && PRT6_WHY+=" unikit:stale-rules-dir-line"
+if [[ -z "$PRT6_WHY" ]]; then
+    pass "PRT-6 the rule-topics canon reads identically in both RULES_INDEX templates; the /unikit fallback no longer names a template rules/ folder"
+else
+    fail "PRT-6 rule-topics canon drift:$PRT6_WHY"
+fi
+# (PRT-7) the phase readers: implement Step 3.0 and the new plan step load topics per phase
+# (the plan point is new — REQ-004), the worker by its phase, the coordinator once per phase
+# and never per task (research finding 7.1). The coordinator half is a NEGATIVE on the task
+# loop, because the read used to sit inside it and looked right there.
+PRT7_WHY=""
+PRT7_S30="$(awk 'index($0,"**3.0: Phase Rules Refresh")==1{f=1;next} index($0,"Inside a phase, do NOT re-check rules")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+if [[ -z "$PRT7_S30" ]]; then
+    PRT7_WHY+=" implement:3.0-window-empty"
+else
+    printf '%s' "$PRT7_S30" | grep -qF '`## Topics`' || PRT7_WHY+=" implement:3.0-no-topics"
+    printf '%s' "$PRT7_S30" | grep -qF '.unikit/rules/' || PRT7_WHY+=" implement:3.0-no-topic-dir"
+    printf '%s' "$PRT7_S30" | grep -qF 'A topic whose match is uncertain is needed.' || PRT7_WHY+=" implement:3.0-no-unsure-rule"
+fi
+grep -qF 'Stack rules and rule topics are NOT loaded here' "$UNIKIT_IMPLEMENT_SKILL" || PRT7_WHY+=" implement:1.5-loads-topics"
+grep -qF '**Rule refresh per phase.**' "$UNIKIT_PLAN_SKILL" || PRT7_WHY+=" plan:no-per-phase-refresh"
+grep -qF 'Rule refresh per phase' "$UP_MODE_ULTRA" || PRT7_WHY+=" plan-ultra:step-f-no-refresh"
+grep -qF 'Rule refresh per phase' "$UP_MODE_ADD" || PRT7_WHY+=" plan-add:no-refresh"
+grep -qF 'matches your phase' "$TC_WORKER" || PRT7_WHY+=" worker:not-by-phase"
+grep -qF 'once per phase, never per task' "$TC_COORD" || PRT7_WHY+=" coordinator:no-per-phase-rule"
+PRT7_LOOP="$(awk 'index($0,"For each task in the phase, sequentially:")==1{f=1;next} /^## Parallel Phase Dispatch/{f=0} f' "$TC_COORD")"
+if [[ -z "$PRT7_LOOP" ]]; then
+    PRT7_WHY+=" coordinator:task-loop-window-empty"
+else
+    printf '%s' "$PRT7_LOOP" | grep -qF 'Bootstrap principles + rules' && PRT7_WHY+=" coordinator:rules-read-per-task-returned"
+fi
+if [[ -z "$PRT7_WHY" ]]; then
+    pass "PRT-7 implement, plan, worker and coordinator load rule topics per phase; the coordinator reads rules once per phase, not per task"
+else
+    fail "PRT-7 per-phase topic loading:$PRT7_WHY"
+fi
+# (PRT-8) every reader of `.unikit/RULES.md` names its rule-topics point. A reader is found by
+# the shape of its read line; the writers that read every file on purpose — unikit-rules
+# itself, migrate-rules, evolve — are PRT-1…PRT-5 / PRT-9's objects, not this one's. The floor
+# is the measured reader count (25 when the family was added): a reworded read line leaves
+# BOTH counters silently, and only the floor notices. code-recon.md wraps its read across two
+# lines, which no line-based pattern can see, so it is asserted by name.
+PRT8_RE='ALWAYS read `\.unikit/RULES\.md`|`\.unikit/RULES\.md` — project overrides|`\.unikit/RULES\.md`\*\* \(if present\)|[Rr]ead `\.unikit/RULES\.md`|\*\*Read `\.unikit/RULES\.md`\*\*|read the project.s( own)? `\.unikit/RULES\.md`|Then `\.unikit/RULES\.md`|`\.unikit/RULES\.md`\s+if present'
+PRT8_FLOOR=25
+PRT8_READERS=0
+PRT8_MISSING=""
+while IFS= read -r prt8_f; do
+    prt8_rel="${prt8_f#"$ROOT_DIR"/}"
+    case "$prt8_rel" in
+        skills/unikit-rules/*|skills/unikit-memory/references/migrate-rules.md|skills/unikit-evolve/SKILL.md) continue ;;
+    esac
+    PRT8_READERS=$((PRT8_READERS + 1))
+    grep -qF '**Rule topics:**' "$prt8_f" || PRT8_MISSING+=" $prt8_rel"
+done < <(grep -rlE "$PRT8_RE" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null | sort)
+grep -qF '**Rule topics:**' "$ROOT_DIR/skills/unikit-gd-recon/references/code-recon.md" || PRT8_MISSING+=" skills/unikit-gd-recon/references/code-recon.md"
+if (( PRT8_READERS < PRT8_FLOOR )); then
+    fail "PRT-8 found $PRT8_READERS readers of .unikit/RULES.md, measured $PRT8_FLOOR — a read line was reworded out of the pattern"
+elif [[ -n "$PRT8_MISSING" ]]; then
+    fail "PRT-8 readers of .unikit/RULES.md without a **Rule topics:** point:$PRT8_MISSING"
+else
+    pass "PRT-8 all $PRT8_READERS readers of .unikit/RULES.md (+ code-recon.md) name their rule-topics point"
+fi
+# (PRT-9) the other writers: migrate-rules walks every topic file and deletes a topic it emptied
+# (both headings with the last one); the ownership contract names `.unikit/rules/`, the Keep tag
+# and that deletion, and no longer claims `rules/` is written by nobody (finding 7.7); evolve
+# checks coverage across topic files, logs `**Topic:**` instead of the dead `**Section:**`
+# (finding 7.2), and takes the rule language from `language.rules` (finding 7.6).
+PRT9_MIGRATE="$ROOT_DIR/skills/unikit-memory/references/migrate-rules.md"
+PRT9_WHY=""
+grep -qF 'every topic file listed under its `## Topics` table' "$PRT9_MIGRATE" || PRT9_WHY+=" migrate:no-topic-traversal"
+grep -qF '**Emptied files.**' "$PRT9_MIGRATE" || PRT9_WHY+=" migrate:no-emptied-files-rule"
+grep -qF '(section: {section name})' "$PRT9_MIGRATE" && PRT9_WHY+=" migrate:section-field-returned"
+grep -qF 'the deletion of a topic file that migration emptied' "$UM_SKILL" || PRT9_WHY+=" memory:access-rule-not-extended"
+grep -qF '.unikit/rules/' "$UNIKIT_VERIFY_CONTRACT" || PRT9_WHY+=" contract:topic-files-unowned"
+grep -qF 'the `<!-- @no-migrate -->` tag its Keep option appends' "$UNIKIT_VERIFY_CONTRACT" || PRT9_WHY+=" contract:keep-tag-unnamed"
+grep -qF '`rules/` and `CLAUDE.md` are edited by no command at all' "$UNIKIT_VERIFY_CONTRACT" && PRT9_WHY+=" contract:stale-rules-dir-line"
+grep -qF 'Target section' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:target-section-returned"
+grep -qF '**Section:**' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:section-log-returned"
+grep -qF '**Topic:**' "$EV_EVOLVE_SKILL" || PRT9_WHY+=" evolve:no-topic-log"
+grep -qF 'every topic file its `## Topics` table lists' "$EV_EVOLVE_SKILL" || PRT9_WHY+=" evolve:coverage-ignores-topics"
+grep -qF 'all rules in RULES.md are in English' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:hardcoded-english-returned"
+if [[ -z "$PRT9_WHY" ]]; then
+    pass "PRT-9 migrate-rules, the ownership contract and evolve know topic files; the Keep tag and the emptied-topic deletion are named"
+else
+    fail "PRT-9 other writers ignore topic files:$PRT9_WHY"
+fi
+# (PRT-10) Mode E: the one mode that deletes, and only what the user selected. Five classes,
+# each shown with its evidence; three protections that each lift one class (an override is
+# never `covered`, a prohibition never `stale-ref`, a topic/common pair never `conflict`); the
+# right to delete is confined to prune in the skill AND in the ownership contract. RFM-7 keeps
+# compact non-destructive and PRT-4 keeps optimise so — neither is touched here.
+PRT_PRUNE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-prune.md"
+PRT10_WHY=""
+grep -qF 'references/mode-prune.md' "$EV_RULES_SKILL" || PRT10_WHY+=" dispatch-missing"
+grep -qF 'Exactly `prune`?' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
+grep -qF 'deletes a rule only in Mode E (`prune`)' "$EV_RULES_SKILL" || PRT10_WHY+=" skill:deletion-not-confined"
+grep -qF 'deletes a rule only in its `prune` mode' "$UNIKIT_VERIFY_CONTRACT" || PRT10_WHY+=" contract:deletion-not-confined"
+if [[ ! -s "$PRT_PRUNE_REF" ]]; then
+    PRT10_WHY+=" missing:unikit-rules/references/mode-prune.md"
+else
+    for prt10_c in duplicate covered not-a-rule conflict stale-ref; do
+        grep -qF "| \`$prt10_c\` |" "$PRT_PRUNE_REF" || PRT10_WHY+=" no-class-$prt10_c"
+    done
+    grep -qF 'Only the rules the user selected are deleted.' "$PRT_PRUNE_REF" || PRT10_WHY+=" deletes-unselected"
+    grep -qF 'A candidate without evidence is not shown.' "$PRT_PRUNE_REF" || PRT10_WHY+=" evidence-optional"
+    grep -qF '**`covered` only on the same meaning.**' "$PRT_PRUNE_REF" || PRT10_WHY+=" override-may-be-covered"
+    grep -qF '**`stale-ref` never applies to a prohibition**' "$PRT_PRUNE_REF" || PRT10_WHY+=" prohibition-may-be-stale"
+    grep -qF 'are never a `conflict`' "$PRT_PRUNE_REF" || PRT10_WHY+=" topic-common-pair-may-conflict"
+    grep -qF '"No longer needed" is not a class' "$PRT_PRUNE_REF" || PRT10_WHY+=" unused-class-returned"
+    grep -qF '`Delete nothing`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-refusal-option"
+    # One answer deletes the whole proposal. The old first option, `Delete the ones I list`,
+    # came out in Russian as "delete the listed ones" — read as "the ones shown" — and a real
+    # user picked it three times expecting everything to go; it is banned by name.
+    grep -qF '`Delete everything proposed`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-delete-all-proposed"
+    grep -qF '`Choose by id`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-choose-by-id"
+    grep -qF 'never render it as "delete the listed ones"' "$PRT_PRUNE_REF" || PRT10_WHY+=" id-option-translation-trap"
+    grep -qF '`Delete the ones I list`' "$PRT_PRUNE_REF" && PRT10_WHY+=" ambiguous-option-returned"
+    # A conflict is RESOLVED, never deleted wholesale: a real "delete everything" removed both
+    # sides of a pair in which one side refined the other, and a half-dead stale-ref took its
+    # live half along. Resolution (keep one side / merge into one rule / undecided) is its own
+    # question; a partly dead rule is never a candidate.
+    grep -qF '**A conflict is resolved, never simply deleted**' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflict-deleted-wholesale"
+    grep -qF 'Never propose deleting both sides.' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflict-both-sides-may-go"
+    grep -qF 'keeps what is true in both and drops what the evidence refutes' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-merge-resolution"
+    grep -qF 'A separate question, never folded into the first' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflicts-share-the-delete-question"
+    grep -qF '`Resolve as proposed`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-resolve-option"
+    grep -qF '**`stale-ref` only when nothing of the rule still applies.**' "$PRT_PRUNE_REF" || PRT10_WHY+=" half-live-rule-may-go"
+    grep -qF 'end your turn and wait' "$PRT_PRUNE_REF" || PRT10_WHY+=" text-tier-does-not-stop"
+    grep -qF '**only on confirmation**' "$PRT_PRUNE_REF" || PRT10_WHY+=" unconfirmed"
+fi
+if [[ -z "$PRT10_WHY" ]]; then
+    pass "PRT-10 prune deletes only the selected rules, shows evidence for every candidate, keeps the four protections, resolves conflicts in their own question instead of deleting them; deletion is confined to prune"
+else
+    fail "PRT-10 prune contract:$PRT10_WHY"
+fi
+# (PRT-12) every mode announces itself as the run's FIRST output — after the language rules,
+# before Step 0, before the mode's reference file, before any project file and before any other
+# sentence — and prints one progress line before each long step. Two real runs of
+# `/unikit-rules optimise` are why: one showed nothing but "Reading .unikit\RULES.md" for two
+# minutes; the next read four files and then narrated its own awk plan without ever naming the
+# mode. The announcements live in SKILL.md Step 1 only, never in a reference: a reference is read
+# by a tool call, so an announcement kept there cannot come first (the NEGATIVE half). The offer
+# stays silent — it is not a mode the user called — or it would fire after every ordinary add
+# to a legacy file.
+PRT12_WHY=""
+grep -qF 'Announce the mode first.' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:no-announce-rule"
+grep -qF 'very first output of the run' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announce-not-first"
+grep -qF "before Step 0, before the mode's reference file, before any project file, and before any other sentence" "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announce-after-reads"
+grep -qF '**First, announce the mode**' "$EV_RULES_SKILL" || PRT12_WHY+=" step0:reads-before-announce"
+grep -qF "Print it before that step's analysis begins, not after it." "$EV_RULES_SKILL" || PRT12_WHY+=" skill:progress-after-the-fact"
+grep -qF '**Then say what you are doing, as you do it:**' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:silent-steps"
+# The announcement is one or two plain sentences — a numbered plan read as bureaucracy on a
+# real run ("как-то топорно"), so the rule forbidding it is asserted as well.
+grep -qF 'No numbered steps, no heading, no list' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announcement-may-be-a-plan"
+for prt12_m in 'Adding <N> rule(s) — first' "compact: I'll shorten the rules" "optimise: I'll sort the rules into topics" "prune: I'll look for rules that can go"; do
+    grep -qF "$prt12_m" "$EV_RULES_SKILL" || PRT12_WHY+=" no-announcement[${prt12_m:0:6}]"
+done
+if [[ -s "$PRT_OPTIMISE_REF" ]]; then
+    grep -qF "optimise: I'll sort the rules" "$PRT_OPTIMISE_REF" && PRT12_WHY+=" mode-d:announcement-moved-into-reference"
+    grep -qF 'grouping them into topics now' "$PRT_OPTIMISE_REF" || PRT12_WHY+=" mode-d:no-progress-line"
+    grep -qF 'the offer is not a mode the user called, so nothing announces it' "$PRT_OPTIMISE_REF" || PRT12_WHY+=" offer:announces"
+else
+    PRT12_WHY+=" missing:unikit-rules/references/mode-optimise.md"
+fi
+if [[ -s "$PRT_PRUNE_REF" ]]; then
+    grep -qF "prune: I'll look for rules" "$PRT_PRUNE_REF" && PRT12_WHY+=" mode-e:announcement-moved-into-reference"
+    grep -qF 'checking them against each other, the knowledge base and the project code now' "$PRT_PRUNE_REF" || PRT12_WHY+=" mode-e:no-progress-line"
+else
+    PRT12_WHY+=" missing:unikit-rules/references/mode-prune.md"
+fi
+if [[ -z "$PRT12_WHY" ]]; then
+    pass "PRT-12 every unikit-rules mode announces itself as the run's first output and prints progress before long steps; the offer stays silent"
+else
+    fail "PRT-12 mode announcement contract:$PRT12_WHY"
+fi
+# (PRT-13) optimise hands the exact work to skills/unikit-rules/scripts/rules-layout.mjs: a real
+# run on a 360-line file had the agent write its own awk to number 192 rules, because counting
+# and moving that many by hand is where a rule gets lost. The script is self-contained Node (every
+# UniKit project has it, Python it may not); the skill needs its `Bash(node *)` grant, the
+# reference must call it by its installed path, and the by-hand path must survive for an agent
+# that cannot run node. Its behaviour — parse, refusal, verbatim move — is Part 13c's object.
+PRT13_SCRIPT="$ROOT_DIR/skills/unikit-rules/scripts/rules-layout.mjs"
+PRT13_WHY=""
+[[ -s "$PRT13_SCRIPT" ]] || PRT13_WHY+=" missing:unikit-rules/scripts/rules-layout.mjs"
+grep -qxF '  - Bash(node *)' "$EV_RULES_SKILL" || PRT13_WHY+=" skill:no-node-grant"
+grep -qF '{{skills_dir}}/{{self_name}}/scripts/rules-layout.mjs' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:script-not-called"
+grep -qF 'Only when `node` cannot run.' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:no-by-hand-fallback"
+grep -qF 'never work around it by hand' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:refusal-may-be-bypassed"
+if [[ -s "$PRT13_SCRIPT" ]]; then
+    prt13_lines="$(wc -l < "$PRT13_SCRIPT")"
+    (( prt13_lines <= 500 )) || PRT13_WHY+=" script:${prt13_lines}-lines-over-500"
+    grep -qE "^import .* from '(node:)?[a-z]+';$" "$PRT13_SCRIPT" || PRT13_WHY+=" script:no-node-imports"
+    grep -E '^import ' "$PRT13_SCRIPT" | grep -vqE "from 'node:" && PRT13_WHY+=" script:non-builtin-import"
+fi
+if [[ -z "$PRT13_WHY" ]]; then
+    pass "PRT-13 optimise runs the self-contained rules-layout.mjs (node grant, installed path, by-hand fallback kept)"
+else
+    fail "PRT-13 rules-layout helper wiring:$PRT13_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# CM: the commit-message contract of /unikit-commit (CM-1…CM-7)
+# ─────────────────────────────────────────────
+# A message is read by people who were not in the session. The research behind this family
+# (human-commit-messages-and-plan-archive, DEC-3) found no body contract at all and two
+# examples that taught mechanics; a model imitates examples, so the old ones are asserted
+# ABSENT rather than merely outnumbered. Every positive assert is anchored on a formulation,
+# never on a heading. The contract bullets are deliberately unwrapped in the skill, so no
+# reflow can split an anchor across two lines.
+CM_COMMIT_SKILL="$ROOT_DIR/skills/unikit-commit/SKILL.md"
+CM_WHY=""
+if [[ ! -s "$CM_COMMIT_SKILL" ]]; then
+    CM_WHY+=" missing:unikit-commit/SKILL.md"
+else
+    # (CM-1) the subject names the change for the game or the team; the area rides in scope.
+    grep -qF 'The subject names what changed for the game or the team' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-subject-rule"
+    grep -qF 'The technical area goes into `scope`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-scope-rule"
+    grep -qF 'A small change is a subject and nothing else' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-1:no-subject-only-rule"
+    # (CM-2) the technical paragraph: labelled, bounded, admitted only for what the diff hides.
+    grep -qF 'labelled `Technical:`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:no-technical-label"
+    grep -qF 'at most three lines' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:technical-paragraph-unbounded"
+    grep -qF 'the diff does not show by itself' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-2:no-admission-rule"
+    # (CM-3) what never enters the prose.
+    grep -qF '**Never in the prose:** phase or task numbers' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-3:no-prose-ban"
+    # (CM-4) truthfulness and the check before showing.
+    grep -qF 'Every claim traces to the diff' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:no-traceability-rule"
+    grep -qF 'the chat test' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:no-chat-test"
+    # The message is printed before the question, never carried inside it ("print first, ask
+    # second"): with a body, a payload inside the question is lost on a runtime without a widget.
+    grep -qF 'as plain text in a block of its own, then confirm' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-4:message-inside-the-question"
+    grep -qF '💾 Proposed commit message:' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-4:payload-in-question-returned"
+    # (CM-5) the plan rides in a trailer, the language key is named, the mechanic examples are gone.
+    grep -qF '`Plan: <folder>`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-5:no-plan-trailer"
+    grep -qF 'the language set by `language.artifacts`' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-5:language-key-unnamed"
+    grep -qF 'uses the configured language' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:unnamed-language-returned"
+    grep -qF 'Phase 8, tasks' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:task-numbers-suggested"
+    grep -qF 'Phase 3, tasks' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:task-numbers-in-example"
+    grep -qF 'Added null check with fallback to default' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:mechanic-example-returned"
+    grep -qF 'plan task references' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-5:description-promises-task-numbers"
+    # (CM-6) the inputs: project rules are read; the ultra contract only under the marker; the
+    # plan's human sources replace the task-number suggestion.
+    grep -qF 'Read `.unikit/RULES.md` (if present)' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:rules-not-read"
+    grep -qF 'A plan without the marker never reads this file.' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:ultra-read-unconditional"
+    grep -qF 'Read `.unikit/system/ultra-plan-read.md` — the reader contract' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:old-bootstrap-read-returned"
+    grep -qF 'suggest referencing the phase/task number' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:task-number-suggestion-returned"
+    grep -qF 'read its `## Overview` and the `WHY:` line' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:no-human-sources"
+    # The coordinator's args carry task numbers; they steer Step 4 and never reach the prose.
+    grep -qF 'it is input, never text for the message' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:caller-context-becomes-text"
+    # Step 6 once took ANY argument as the scope, which would turn that context into
+    # `feat(checkpoint: Commit 1, tasks 1-2): …` — the task numbers the contract bans (review finding).
+    grep -qF 'is never a scope' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-6:caller-context-as-scope"
+    grep -qF 'Use argument as scope if provided' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-6:scope-from-any-argument"
+    # (CM-7) S1: a split never takes unstaged edits along. The index is snapshotted and restored
+    # per group; `git add` of a working-tree file is exactly the defect this replaces. Measured
+    # in a throwaway repository: modified, new, deleted, binary and renamed paths, plus one file
+    # split by hunks, all land exactly as staged and HEAD equals the snapshot afterwards.
+    grep -qF 'Never `git add` here' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-add-ban"
+    grep -qF 'git write-tree' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-index-snapshot"
+    grep -qF 'git restore --staged --source=<snapshot>' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-restore-from-snapshot"
+    grep -qF 'git apply --cached --recount -' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-hunk-path"
+    grep -qF 'git diff --quiet HEAD <snapshot>' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-final-check"
+    grep -qF 'git diff --cached --name-status --no-renames' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:renames-not-paired"
+    grep -qF 'git rev-parse --verify -q HEAD' "$CM_COMMIT_SKILL" || CM_WHY+=" CM-7:no-unborn-guard"
+    grep -qF 'Unstage all: `git reset HEAD`' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-7:old-unstage-all-returned"
+    grep -qF 'using `git add <files>`' "$CM_COMMIT_SKILL" && CM_WHY+=" CM-7:old-add-per-group-returned"
+fi
+if [[ -z "$CM_WHY" ]]; then
+    pass "CM-1…CM-7 unikit-commit writes for the team: subject by effect, bounded Technical: paragraph, no plan numbers in prose, Plan: trailer, language.artifacts named; a split never takes unstaged edits"
+else
+    fail "CM unikit-commit message contract:$CM_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# CA: one author of commit messages (CA-1…CA-3)
+# ─────────────────────────────────────────────
+# DEC-4 of human-commit-messages-and-plan-archive: every message is written by the
+# unikit-commit skill. Before it the coordinator could commit on the sidecar's own draft —
+# English regardless of language.artifacts and styled after a git log the sidecar cannot
+# even read — and implement's checkpoint proposed a subject built from a phase title. Both
+# halves are asserted: the second author is gone (negatives) AND the skill call is there.
+CA_SIDECAR="$ROOT_DIR/subagents/unikit-commit-sidecar.md"
+CA_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+CA_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+CA_WHY=""
+for f in "$CA_SIDECAR" "$CA_COORD" "$CA_IMPLEMENT"; do
+    [[ -s "$f" ]] || CA_WHY+=" missing:$(basename "$f")"
+done
+if [[ -z "$CA_WHY" ]]; then
+    # (CA-1) the sidecar assesses and never drafts; it has no git and says so.
+    grep -qF 'proposed_message' "$CA_SIDECAR" && CA_WHY+=" CA-1:sidecar-drafts-a-message"
+    grep -qF '"message"' "$CA_SIDECAR" && CA_WHY+=" CA-1:group-message-field"
+    grep -qF 'git log' "$CA_SIDECAR" && CA_WHY+=" CA-1:copies-history-style"
+    grep -qF 'You never write commit message text' "$CA_SIDECAR" || CA_WHY+=" CA-1:no-authorship-ban"
+    grep -qF 'You have no git access' "$CA_SIDECAR" || CA_WHY+=" CA-1:claims-git-state"
+    # (CA-2) the coordinator commits only through the skill, and hands the sidecar its files.
+    grep -qF 'Skill(skill: "unikit-commit"' "$CA_COORD" || CA_WHY+=" CA-2:no-skill-call"
+    grep -qF 'never runs `git commit` itself' "$CA_COORD" || CA_WHY+=" CA-2:no-self-commit-ban"
+    grep -qF 'create a commit based on' "$CA_COORD" && CA_WHY+=" CA-2:sidecar-commit-branch-returned"
+    grep -qF 'create a final commit' "$CA_COORD" && CA_WHY+=" CA-2:final-self-commit-returned"
+    grep -qF '→ create commit' "$CA_COORD" && CA_WHY+=" CA-2:pseudocode-self-commit"
+    grep -qF 'Assess commit readiness for layer N: [all changed files]' "$CA_COORD" || CA_WHY+=" CA-2:sidecar-gets-no-files"
+    # A cancel in the skill's confirmation is a normal outcome of a checkpoint, not a failure:
+    # the layer records it and the run goes on (verify finding on the plan's Task 5 contract).
+    grep -qF '`Commit:` line to `skipped — cancelled by the user`' "$CA_COORD" || CA_WHY+=" CA-2:cancel-unhandled"
+    # (CA-3) implement's checkpoint proposes no subject of its own, and the commit that must
+    # precede a `direct` editor edit goes through the skill as well.
+    grep -qF 'Suggested message:' "$CA_IMPLEMENT" && CA_WHY+=" CA-3:checkpoint-suggests-a-subject"
+    grep -qF 'Do not suggest a message here' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:no-suggestion-ban"
+    grep -qF 'commit them through `/unikit-commit`, like every other commit of this run' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-edit-self-commit"
+    # The commit before a `direct` edit is the only rollback point, so a cancelled or failed one
+    # stops the edit and returns the task to `manual` (the plan's supported-combination row).
+    grep -qF 'without that commit there is no rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-refusal-unhandled"
+    # What the gate protects is a ROLLBACK POINT, not a commit: with nothing uncommitted HEAD is one,
+    # and requiring a commit there sent every first direct task of a phase to manual (review finding).
+    grep -qF 'Nothing of this run is uncommitted → `HEAD` already is the rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-blocked-with-nothing-to-commit"
+    grep -qF 'has uncommitted changes this run did not make' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:foreign-target-edits-unguarded"
+fi
+if [[ -z "$CA_WHY" ]]; then
+    pass "CA-1…CA-3 one author of commit messages: the sidecar drafts none, the coordinator commits through the skill, implement suggests no subject and commits before a direct edit through the skill; a cancelled checkpoint commit is recorded as skipped, and no direct edit happens without a rollback point"
+else
+    fail "CA single commit-message author:$CA_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# AU: auto-commit (AU-1…AU-4)
+# ─────────────────────────────────────────────
+# A long plan stops at every phase for two questions — "commit?" and "commit with this
+# message?". AU pins the one answer that ends that: the checkpoint's "from now on without
+# asking", which makes every later commit of the session pass `auto` to unikit-commit. The
+# guard's other half matters as much: auto removes the routine confirmation, never the checks —
+# an ERROR still stops the commit, a push is never made, and the message is still printed. The
+# message stays unikit-commit's (CA-3: the checkpoint suggests no subject even in auto mode).
+AU_WHY=""
+# (AU-1) the checkpoint offers it, and auto-commit then asks nothing at later checkpoints.
+grep -qF '2. Yes, and from now on commit without asking' "$CA_IMPLEMENT" || AU_WHY+=" AU-1:no-auto-option"
+grep -qF 'with the argument `checkpoint: phase {N}, auto`' "$CA_IMPLEMENT" || AU_WHY+=" AU-1:checkpoint-not-auto"
+# (AU-2) every other commit of the session follows it: the pre-edit commit and Step 5.6.
+grep -qF 'with auto-commit on (Step 3.9) it passes `auto` too' "$CA_IMPLEMENT" || AU_WHY+=" AU-2:pre-edit-commit-asks"
+grep -qF 'invoked with the argument `final commit, auto`' "$CA_IMPLEMENT" || AU_WHY+=" AU-2:final-commit-asks"
+# (AU-3) unikit-commit's auto mode: no confirmation, no split question, no push.
+grep -qF '## Auto mode' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:no-auto-mode"
+grep -qF 'committed without the Behavior step 6 question' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:still-confirms"
+grep -qF 'No push, and no question about it' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:may-push"
+# (AU-4) what auto never removes: the ERROR stop, and the printed message.
+grep -qF 'auto skips the confirmation of a good commit, never the guard against a bad one' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-4:errors-bypassed"
+grep -qF 'printed in full as a block of its own — then committed' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-4:message-hidden"
+if [[ -z "$AU_WHY" ]]; then
+    pass "AU-1…AU-4 auto-commit: one checkpoint answer turns it on for the session; unikit-commit then commits without a question, never pushes, still stops on an ERROR"
+else
+    fail "AU auto-commit contract:$AU_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# CO: what a /unikit-commit run shows (CO-1…CO-3)
+# ─────────────────────────────────────────────
+# Measured on a real run with language.ui = ru: the skill is git commands with English output
+# plus English question literals, so the agent narrated every check in English, announced the
+# language it had found, copied "Commit with the message above?" verbatim, kept the English
+# `Technical:` label inside a Russian message, and closed by explaining the push setting. CO pins
+# the three fixes on formulations: the templates are said in language.ui, a passing check and a
+# setting that did its job say nothing, and the label follows the commit language.
+CO_WHY=""
+# (CO-1) two languages, and the templates are translated.
+grep -qF 'only one of them belongs to the commit' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-1:ui-vs-artifacts-unstated"
+grep -qF 'are templates: say them in `language.ui`' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-1:question-literals-copied"
+# (CO-2) a quiet run: no narration of passing checks, no word about a setting that did its job.
+grep -qF '**A check that passes says nothing**' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:checks-narrated"
+grep -qF '**no mention of a setting that merely did its job**' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:settings-narrated"
+grep -qF 'silently: the result line is the last thing said' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:push-skip-narrated"
+# (CO-3) the Technical label follows the commit language.
+grep -qF 'the English word `Technical:` never appears in the message' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-3:english-label-allowed"
+if [[ -z "$CO_WHY" ]]; then
+    pass "CO-1…CO-3 unikit-commit talks in language.ui, says nothing about passing checks or settings, translates the Technical label"
+else
+    fail "CO unikit-commit output contract:$CO_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# AR: /unikit-archive — the plan archive (AR-1…AR-9 the skill, AR-10…AR-13 the readers)
+# ─────────────────────────────────────────────
+# The archive MOVES completed folder plans out of .unikit/code/plans/, so every reader that
+# walks that directory stops seeing them — the point for plan lookup, and wrong for the
+# readers that need finished plans or their unfinished rows. This half pins the skill: the
+# predicate (every mark other than x is unfinished — the coordinator writes [~] and [!]),
+# the follow-up question that replaced both stops, the move rule measured in ADR-0001 and the scope.
+# AR-10…AR-13 pin the readers outside the skill that had to learn about the archive.
+# Anchored on formulations, never on headings.
+AR_SKILL="$ROOT_DIR/skills/unikit-archive/SKILL.md"
+AR_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
+AR_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+AR_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+AR_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+AR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+AR_WHY=""
+for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT" "$AR_EXPLORE"; do
+    [[ -s "$f" ]] || AR_WHY+=" missing:${f#"$ROOT_DIR"/}"
+done
+if [[ -z "$AR_WHY" ]]; then
+    # (AR-1) the modes.
+    grep -qF 'argument-hint: "[list | --all | <plan-folder>]"' "$AR_SKILL" || AR_WHY+=" AR-1:no-mode-hint"
+    grep -qF 'is confirmed before anything moves' "$AR_SKILL" || AR_WHY+=" AR-1:substring-match-unconfirmed"
+    # (AR-2) completion: every non-x mark is unfinished; a phase status line is not a task;
+    # a plan with no tasks is never archived.
+    grep -qF 'Any other mark is unfinished' "$AR_SKILL" || AR_WHY+=" AR-2:only-open-boxes-count"
+    grep -qF 'is not a checkbox line' "$AR_SKILL" || AR_WHY+=" AR-2:status-line-counted"
+    grep -qF 'An empty plan is not archived' "$AR_SKILL" || AR_WHY+=" AR-2:empty-plan-archivable"
+    # (AR-3) the findings check is keyed on the trap's own back-reference, never on a date:
+    # audited: is moved only by an audit, so a date rule could not be cleared by running the trap.
+    # It asks and never stops: the user may not want the findings kept, and a stop left no way
+    # to archive such a plan from the interactive or --all mode at all.
+    grep -qF '`<folder>/<task file name>#F<n>`' "$AR_SKILL" || AR_WHY+=" AR-3:no-back-reference-key"
+    grep -qF 'a question, never a stop' "$AR_SKILL" || AR_WHY+=" AR-3:findings-block"
+    grep -qF 'stop: <k> MCP findings not transferred' "$AR_SKILL" && AR_WHY+=" AR-3:findings-stop-returned"
+    grep -qF '2. Archive anyway' "$AR_SKILL" || AR_WHY+=" AR-3:no-archive-anyway"
+    grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
+    # A transferred finding can lose its back-reference legitimately: the installer parks the notes
+    # on a server switch, and /unikit-mcp-audit removes a retired note with its from: (review finding).
+    grep -qF '.unikit/MCP-RECHECK-NOTES.archive.*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
+    grep -qF 'removes a note it retires together with its back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:retire-unexplained"
+    # (AR-4) an open rule candidate is a follow-up like a finding — it asks, never stops — and
+    # the question names the skill that actually flips an open candidate.
+    grep -qF 'has the status `open`' "$AR_SKILL" || AR_WHY+=" AR-4:open-candidate-unchecked"
+    grep -qF '/unikit-verify <folder>' "$AR_SKILL" || AR_WHY+=" AR-4:wrong-or-no-command"
+    grep -qF 'stop: <k> open rule candidates' "$AR_SKILL" && AR_WHY+=" AR-4:candidate-stop-returned"
+    # (AR-5) git mv only for a tracked folder in an enabled git work tree — measured, not assumed.
+    grep -qF '`git.enabled` is not `false`' "$AR_SKILL" || AR_WHY+=" AR-5:ignores-git-enabled"
+    grep -qF 'git rev-parse --is-inside-work-tree' "$AR_SKILL" || AR_WHY+=" AR-5:no-work-tree-check"
+    grep -qF 'git ls-files -- .unikit/code/plans/<folder>' "$AR_SKILL" || AR_WHY+=" AR-5:no-tracked-check"
+    grep -qF 'fatal: source directory is empty' "$AR_SKILL" || AR_WHY+=" AR-5:reason-lost"
+    grep -qF 'Never retry with the other command' "$AR_SKILL" || AR_WHY+=" AR-5:silent-fallback"
+    # (AR-6) no overwrite, no rename, no commit, no staging; one label line.
+    grep -qF 'Never overwrite, never rename' "$AR_SKILL" || AR_WHY+=" AR-6:may-overwrite"
+    grep -qF 'Never commit or push' "$AR_SKILL" || AR_WHY+=" AR-6:may-commit"
+    grep -qF 'git commit' "$AR_SKILL" && AR_WHY+=" AR-6:commits"
+    grep -qF 'git add' "$AR_SKILL" && AR_WHY+=" AR-6:stages"
+    grep -qF '`Archived: <today>`' "$AR_SKILL" || AR_WHY+=" AR-6:no-label"
+    # (AR-7) the scope: fast and fix plans, researches and patches are never archived.
+    grep -qF '**Never touched:**' "$AR_SKILL" || AR_WHY+=" AR-7:no-exclusion-list"
+    grep -qF '`.unikit/code/FIX_PLAN.md`' "$AR_SKILL" || AR_WHY+=" AR-7:fix-plan-unmentioned"
+    # (AR-8) every command the skill runs is granted, and nothing that deletes — a rule the
+    # skill cannot carry out degrades silently (the NM-5 lesson).
+    for g in 'Bash(git *)' 'Bash(mv *)' 'Bash(mkdir *)' 'Bash(date *)'; do
+        grep -qF "  - $g" "$AR_SKILL" || AR_WHY+=" AR-8:no-grant-$g"
+    done
+    grep -qF 'Bash(rm' "$AR_SKILL" && AR_WHY+=" AR-8:can-delete"
+    # (AR-9) the legacy layout is recognised under the PL-2 marker, never by a bare old name.
+    grep -qF '(a pre-merge plan)' "$AR_SKILL" || AR_WHY+=" AR-9:legacy-layout-unrecognised"
+    # (AR-10) the one reader that wants completed plans reads the archive too — a glob that
+    # misses returns "no prior plan", never an error, so nothing else would notice.
+    grep -qF '`.unikit/code/archive/plans/*/*.md`' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:fallback-blind-to-archive"
+    grep -qF 'moves the completed plans this fallback reads' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:no-reason"
+    # (AR-11) a new plan never takes an archived plan's name — both producers.
+    grep -qF '`.unikit/code/archive/plans/`' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-collision-blind-to-archive"
+    grep -qF 'is archived (<matched folder>)' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-no-archived-branch"
+    grep -qF '`.unikit/code/archive/plans/`' "$AR_POLISHER" || AR_WHY+=" AR-11:polisher-collision-blind-to-archive"
+    grep -qF 'is archived (<matched folder>)' "$AR_POLISHER" || AR_WHY+=" AR-11:polisher-no-archived-branch"
+    # (AR-12) the end of implement names the way out, and still never offers to delete.
+    grep -qF '/unikit-archive <folder>' "$AR_IMPLEMENT" || AR_WHY+=" AR-12:no-archive-hint"
+    grep -qF 'Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`' "$AR_IMPLEMENT" || AR_WHY+=" AR-12:delete-ban-lost"
+    # (AR-13) explore reads the archive as the history of what was built — and only as history:
+    # an archived plan offered for execution would undo the one thing the archive is for.
+    grep -qF '`.unikit/code/archive/plans/`' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-blind-to-archive"
+    grep -qF 'History, never a plan to continue' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-may-resume"
+    grep -qF '`/unikit-explore` reads archived plans as history' "$AR_SKILL" || AR_WHY+=" AR-13:reader-unlisted"
+    # (AR-14) the run says what it is about to do before it reads anything: a real interactive run
+    # classified thirty plans for five minutes and opened with a remark about the language.
+    grep -qF '**First, announce the mode**' "$AR_SKILL" || AR_WHY+=" AR-14:step0-reads-first"
+    grep -qF "I'll check every plan in .unikit/code/plans/" "$AR_SKILL" || AR_WHY+=" AR-14:no-interactive-announcement"
+    grep -qF 'not a word about the language or the config' "$AR_SKILL" || AR_WHY+=" AR-14:may-announce-language"
+    grep -qF '**Then say what you are doing, as you do it.**' "$AR_SKILL" || AR_WHY+=" AR-14:silent-steps"
+    # (AR-15) the table carries the created and last-change dates the archiving decision rests on,
+    # each with its source order, and uncommitted changes win over the last commit.
+    grep -qF 'folder · verdict · created · last change' "$AR_SKILL" || AR_WHY+=" AR-15:no-dates-in-table"
+    grep -qF "the task file's \`Created: YYYY-MM-DD\` header line" "$AR_SKILL" || AR_WHY+=" AR-15:created-source-lost"
+    grep -qF 'has changes no commit holds yet' "$AR_SKILL" || AR_WHY+=" AR-15:last-change-ignores-working-tree"
+    grep -qF 'including a remark made while a command runs' "$AR_SKILL" || AR_WHY+=" AR-14:english-remarks-allowed"
+    # (AR-16) an unfinished plan has a sanctioned way out: a real user archived eleven abandoned
+    # plans and the agent had to break the skill's own rule to do it. It moves only after the
+    # user has seen what is left, its label says so, --all never takes it, and the readers that
+    # want completed plans (the implemented_version fallback) or history (explore) tell it apart.
+    grep -qF 'Archive them unfinished' "$AR_SKILL" || AR_WHY+=" AR-16:no-unfinished-option"
+    grep -qF '`Archived: <today> — unfinished (<done>/<total>)`' "$AR_SKILL" || AR_WHY+=" AR-16:unfinished-label-lost"
+    grep -qF 'an unfinished plan is archived only by an explicit choice' "$AR_SKILL" || AR_WHY+=" AR-16:all-takes-unfinished"
+    grep -qF 'an `empty`, `broken bundle` or `not a plan` folder never moves' "$AR_SKILL" || AR_WHY+=" AR-16:empty-may-move"
+    grep -qF 'An archived plan whose `Archived:` line ends in' "$AR_DESIGN_CTX" || AR_WHY+=" AR-16:fallback-reads-unfinished"
+    grep -qF 'was dropped part-way' "$AR_EXPLORE" || AR_WHY+=" AR-16:explore-reads-unfinished-as-built"
+    # (AR-17) the plans are chosen by row number or by a date rule on the table's own columns,
+    # and the typing option never reads as "the listed ones" (the prune trap, PRT-10).
+    grep -qF 'Choose by number or date' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
+    grep -qF 'never as "the listed ones"' "$AR_SKILL" || AR_WHY+=" AR-17:choice-translation-trap"
+    grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
+fi
+if [[ -z "$AR_WHY" ]]; then
+    pass "AR-1…AR-17 unikit-archive: announces itself first, dates every plan, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
+else
+    fail "AR plan archive contract:$AR_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -7070,21 +8494,50 @@ echo -e "\n${BOLD}=== Engine stop words enforcement ===${NC}\n"
 
 STOPWORD_ERRORS=0
 
-# Scan skills/*/SKILL.md and subagents/*.md (skip references/)
+# Scan skills/*/SKILL.md, subagents/*.md and skills/*/references/**/*.md.
+# references/ used to be skipped, and that is exactly how Unity specifics accumulated in
+# TASK-FORMAT.md (the ED-4 family exists because of it). A skill that moves a mode body out
+# of SKILL.md must not move it out of this scan as well — without references/ here, a size
+# ceiling on SKILL.md turns into a loophole: "move it into a reference".
 SCAN_FILES=()
+STOPWORD_SKILLS=0
+STOPWORD_AGENTS=0
+STOPWORD_REFS=0
 for skill_dir in "$ROOT_DIR"/skills/*/; do
     sf="$skill_dir/SKILL.md"
-    [[ -f "$sf" ]] && SCAN_FILES+=("$sf")
+    [[ -f "$sf" ]] && SCAN_FILES+=("$sf") && STOPWORD_SKILLS=$((STOPWORD_SKILLS + 1))
 done
 for af in "$ROOT_DIR"/subagents/*.md; do
-    [[ -f "$af" ]] && SCAN_FILES+=("$af")
+    [[ -f "$af" ]] && SCAN_FILES+=("$af") && STOPWORD_AGENTS=$((STOPWORD_AGENTS + 1))
 done
+while IFS= read -r -d '' rf; do
+    SCAN_FILES+=("$rf")
+    STOPWORD_REFS=$((STOPWORD_REFS + 1))
+done < <(find "$ROOT_DIR"/skills/*/references -type f -name '*.md' -print0 2>/dev/null | sort -z)
 
 STOP_PATTERNS='\bUnity\b|\bGodot\b|\bUnreal\b|\bGDScript\b|(^| )C# |(^| )C\+\+ '
+
+# Measured per-file allowlist, on the NN-1 precedent: one entry per file, the number of
+# stop-word LINES measured in it, and why they are allowed. A count, not line numbers — a
+# line number goes stale on every edit above it, a count only when engine text is added or
+# removed, and both of those should make someone look. Equality, not '<=': a file that has
+# lost an allowed line keeps a free slot for an unexplained one otherwise.
+# Extending this list is a signal that engine knowledge is leaking into a skill, not that the
+# scan is too strict. SKILL.md and subagents never get an entry.
+declare -A STOPWORD_ALLOW=(
+    # The engine-detection matrix. REQUIRED, not tolerated: RD-2b (RECON_ENGINE_TOKENS)
+    # fails without these rows — recon cannot reconstruct an engine it cannot detect.
+    ["skills/unikit-gd-recon/references/code-recon.md"]=5
+    # Quotes what a user types to reach unikit-gd-recon ("a GDD from this Unity/Godot/Unreal
+    # project") — a routing example in the help map, not engine guidance.
+    ["skills/unikit-help/references/skill-map.md"]=1
+)
 
 for scan_file in "${SCAN_FILES[@]}"; do
     rel_path="${scan_file#"$ROOT_DIR/"}"
     MATCHES=$(grep -nE "$STOP_PATTERNS" "$scan_file" 2>/dev/null || true)
+    # Allowlisted files are settled below, including the case where the matches are gone.
+    [[ -n "${STOPWORD_ALLOW[$rel_path]:-}" ]] && continue
     if [[ -n "$MATCHES" ]]; then
         while IFS= read -r match_line; do
             fail "$rel_path:$match_line"
@@ -7093,8 +8546,29 @@ for scan_file in "${SCAN_FILES[@]}"; do
     fi
 done
 
+for allowed_path in "${!STOPWORD_ALLOW[@]}"; do
+    allowed_lines="${STOPWORD_ALLOW[$allowed_path]}"
+    if [[ ! -f "$ROOT_DIR/$allowed_path" ]]; then
+        fail "$allowed_path: stop-word allowlist names a file that no longer exists — drop the entry"
+        STOPWORD_ERRORS=$((STOPWORD_ERRORS + 1))
+        continue
+    fi
+    found_lines=$(grep -cE "$STOP_PATTERNS" "$ROOT_DIR/$allowed_path" 2>/dev/null || true)
+    if (( found_lines != allowed_lines )); then
+        fail "$allowed_path: $found_lines stop-word line(s), allowlist measured $allowed_lines — remove the engine text or re-measure the entry and name why:"
+        grep -nE "$STOP_PATTERNS" "$ROOT_DIR/$allowed_path" 2>/dev/null | head -10 || true
+        STOPWORD_ERRORS=$((STOPWORD_ERRORS + 1))
+    fi
+done
+
+# An object-less scan goes red rather than passing on nothing (the NN-4 / RT-7 convention).
+if (( STOPWORD_REFS == 0 )); then
+    fail "no skills/*/references/**/*.md found — the references half of the stop-word scan has no object left"
+    STOPWORD_ERRORS=$((STOPWORD_ERRORS + 1))
+fi
+
 if [[ $STOPWORD_ERRORS -eq 0 ]]; then
-    pass "no engine stop words in skills/*/SKILL.md or subagents/*.md"
+    pass "no engine stop words in skills/*/SKILL.md, subagents/*.md or skills/*/references/ outside ${#STOPWORD_ALLOW[@]} measured allowlist entries ($STOPWORD_SKILLS SKILL.md, $STOPWORD_AGENTS subagent(s), $STOPWORD_REFS reference file(s) scanned)"
 fi
 
 # ─────────────────────────────────────────────
@@ -7689,6 +9163,52 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7k: SKILL.md size ceiling
+# ─────────────────────────────────────────────
+# A skill body is loaded whole on every invocation, so its size is paid in context on every
+# run — and the pipeline skills grew until three of them passed 60 KB. The reduction that
+# brought them down is one-off; this ceiling is what stops it from growing back.
+# BYTES, not lines: a skill costs its text, and a line count lies in both directions — a body
+# of long unwrapped lines and one hard-wrapped at 95 columns differ by hundreds of lines at
+# the same size. The value sits above the largest file as measured when the ceiling was set
+# (unikit-implement, 67 049 B).
+# A body that crosses it is compressed, or split by the gate that loads it — a mode, a flag,
+# an argument that fires on the first turn. It is never moved out because it happens to be
+# large: a block read at the end of a long session costs more from a reference, not less, and
+# that judgement stays with review. Part 7c scans references/ too, so a moved body does not
+# leave the engine-neutrality check behind.
+echo -e "\n${BOLD}Part 7k: SKILL.md size ceiling${NC}"
+
+SKILL_SIZE_LIMIT=70000
+SKILL_SIZE_VIOLATIONS=""
+SKILL_SIZE_SEEN=0
+SKILL_SIZE_LARGEST=0
+SKILL_SIZE_LARGEST_NAME=""
+for f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    [[ -f "$f" ]] || continue
+    SKILL_SIZE_SEEN=$((SKILL_SIZE_SEEN + 1))
+    bytes=$(wc -c < "$f" | tr -d ' ')
+    name="$(basename "$(dirname "$f")")"
+    if (( bytes > SKILL_SIZE_LARGEST )); then
+        SKILL_SIZE_LARGEST=$bytes
+        SKILL_SIZE_LARGEST_NAME=$name
+    fi
+    if (( bytes > SKILL_SIZE_LIMIT )); then
+        SKILL_SIZE_VIOLATIONS+="    $name/SKILL.md: $bytes bytes (> $SKILL_SIZE_LIMIT)\n"
+    fi
+done
+
+# An object-less guard goes red rather than passing on nothing (the NN-4 / RT-7 convention).
+if (( SKILL_SIZE_SEEN == 0 )); then
+    fail "Part 7k found no skills/*/SKILL.md — the ceiling has no object"
+elif [[ -z "$SKILL_SIZE_VIOLATIONS" ]]; then
+    pass "skills/*/SKILL.md within the $SKILL_SIZE_LIMIT-byte ceiling ($SKILL_SIZE_SEEN scanned; largest $SKILL_SIZE_LARGEST_NAME at $SKILL_SIZE_LARGEST bytes)"
+else
+    fail "skills/*/SKILL.md over the $SKILL_SIZE_LIMIT-byte ceiling"
+    echo -e "$SKILL_SIZE_VIOLATIONS"
+fi
+
+# ─────────────────────────────────────────────
 # Part 8: Update command smoke tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Update command smoke tests ===${NC}\n"
@@ -7910,6 +9430,52 @@ if [[ $BLOCKING_ERRORS -eq 0 ]]; then
     pass "all 17 skills + 2 coordinator subagents have Language Awareness with LANGUAGE_RULES.md reference"
 fi
 
+# LP-1…LP-3 — the language is a standing constraint, not a load-time check.
+# A session slipped into English mid-run: background research agents answer in
+# English by contract, and nothing in a block read once at load said that relaying
+# their results is still user-facing output. LP-1 holds ONE verbatim sentence inside
+# every Language Awareness block (the awk window keeps it from drifting elsewhere in
+# the file, where it would no longer read as part of the prerequisite), LP-2 puts the
+# same sentence in the root /unikit skill, which has no such block, and LP-3 anchors
+# the template section on formulations rather than its heading. The skill-side
+# sentence is what reaches an existing project: skills are refreshed by `update`,
+# while `.unikit/system/LANGUAGE_RULES.md` is written only by /unikit Step 3.1.
+LANG_PERSIST='The language holds for the whole session, not just at load time'
+LP_ERRORS=0
+lp_scanned=0
+for lp_file in "$ROOT_DIR"/skills/unikit-*/SKILL.md \
+               "$ROOT_DIR"/subagents/unikit-implement-coordinator.md \
+               "$ROOT_DIR"/subagents/unikit-plan-coordinator.md; do
+    [[ -f "$lp_file" ]] || continue
+    lp_scanned=$((lp_scanned + 1))
+    lp_count=$(awk '/^## Language Awareness — BLOCKING PRE-REQUISITE/{p=1;next} p&&/^## /{exit} p' "$lp_file" \
+        | grep -cF "$LANG_PERSIST" 2>/dev/null || true)
+    if [[ "$lp_count" -ne 1 ]]; then
+        fail "LP-1: ${lp_file#"$ROOT_DIR"/} — expected exactly 1 session-wide language sentence inside the Language Awareness block, found $lp_count"
+        LP_ERRORS=$((LP_ERRORS + 1))
+    fi
+done
+if [[ "$lp_scanned" -eq 0 ]]; then
+    fail "LP-1: no skill or coordinator file scanned"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+lp_count=$(grep -cF "$LANG_PERSIST" "$ROOT_DIR/skills/unikit/SKILL.md" 2>/dev/null || true)
+if [[ "$lp_count" -ne 1 ]]; then
+    fail "LP-2: skills/unikit/SKILL.md — expected exactly 1 session-wide language sentence, found $lp_count"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if ! grep -qF 'is a standing constraint on every message, not a check passed once when a skill loads' "$LANG_RULES_TPL" 2>/dev/null; then
+    fail "LP-3: LANGUAGE_RULES_TEMPLATE.md — missing the standing-constraint formulation"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if ! grep -qF 'English input is data, never a cue to switch languages' "$LANG_RULES_TPL" 2>/dev/null; then
+    fail "LP-3: LANGUAGE_RULES_TEMPLATE.md — missing the English-input-is-data formulation"
+    LP_ERRORS=$((LP_ERRORS + 1))
+fi
+if [[ $LP_ERRORS -eq 0 ]]; then
+    pass "LP-1…LP-3: the language holds for the whole session ($lp_scanned Language Awareness block(s) + /unikit + template)"
+fi
+
 # ─────────────────────────────────────────────
 # Part 12: git.* keys in C2 skills
 # ─────────────────────────────────────────────
@@ -7947,6 +9513,16 @@ if bash "$SCRIPT_DIR/test-rules.sh"; then
     pass "Rules registry tests passed"
 else
     fail "Rules registry tests failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 13c: rules-layout.mjs — the optimise helper, run for real on fixture projects
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13c: rules-layout helper tests${NC}"
+if bash "$SCRIPT_DIR/test-rules-layout.sh"; then
+    pass "rules-layout helper tests passed"
+else
+    fail "rules-layout helper tests failed"
 fi
 
 # ─────────────────────────────────────────────

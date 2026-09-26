@@ -19,7 +19,8 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, GAMEDESIGN_MODULE_ID,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE,
+  GAMEDESIGN_MODULE_ID,
   GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
   MCP_STAMP_SERVER_KEY,
   systemDir, systemGamedesignDir, systemGamedesignGenresDir, systemEngineMcpDir,
@@ -133,6 +134,32 @@ export async function installUltraPlanReadContract(projectDir: string): Promise<
 
   await writeTextFile(destPath, content);
   logInfo('installUltraPlanReadContract', 'installed .unikit/system/ultra-plan-read.md');
+}
+
+// --- Research link contract ---
+
+/**
+ * The `## Based on` research-link contract — a flat copy from
+ * `data/research-link.md` with NO substitution (engine- and agent-agnostic).
+ * NOT hash-tracked — every init/update rewrites it. It is a system asset
+ * rather than a skill reference because FOUR skills read it (/unikit-plan,
+ * /unikit-improve, /unikit-implement, /unikit-verify) and `references/` is
+ * per-skill: the alternative is four copies, and they had already diverged —
+ * measured at `/unikit-improve`.
+ */
+export async function installResearchLinkContract(projectDir: string): Promise<void> {
+  const srcPath = path.join(getDataDir(), RESEARCH_LINK_FILE);
+  const destDir = systemDir(projectDir);
+  const destPath = path.join(destDir, RESEARCH_LINK_FILE);
+
+  const content = await readTextFile(srcPath);
+  if (!content) {
+    logWarn('installResearchLinkContract', 'research-link.md not found in data/, skipping');
+    return;
+  }
+
+  await writeTextFile(destPath, content);
+  logInfo('installResearchLinkContract', 'installed .unikit/system/research-link.md');
 }
 
 // --- Dev Principles installation ---

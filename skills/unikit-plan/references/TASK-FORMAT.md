@@ -53,7 +53,7 @@ What is being built, why, and what goal it serves. 3-5 sentences maximum.
 Answer: WHAT is done, WHY it is needed, WHAT GOAL it pursues.
 
 ## Based on
-(Optional) Use Research Reference Format from the main skill file to link researches.
+(Optional, only when a research is linked) One entry per linked research, in the form `.unikit/system/research-link.md` → `## The entry` defines — read when the research was linked, not here.
 
 If no research — technical context is in the `## Technical Context` section below.
 
@@ -266,7 +266,7 @@ coverage ∈ task N.M | phase N | phases N-M | plan
 
 Rules:
 
-- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task creates nothing, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — the only form of task in this format without that line.
+- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task leaves nothing behind in the project, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — the only form of task in this format without that line. A temporary probe it creates and removes within its own steps (a negative control: make a test fail, see red, remove the probe, see green) and a manual smoke are legitimate steps of the task; when the task is merged into a later point, they are performed there (`/unikit-implement` Step 3.2).
 - **The width of a run follows from its coverage and is not configurable:** `task N.M` → the fixtures and classes that task names; `phase N` / `phases N-M` → the test suites of the modules those phases touch, plus the suites that depend on them; `plan` → every test in the project.
 - **The planner writes no list of suites.** The executor computes the set at run time, from the files actually changed. The planner neither reads nor builds a module graph, so planning time does not grow.
 - `task N.M` exists **only in an ultra bundle**: fast and full have no per-task surface to put it on.
@@ -321,7 +321,7 @@ The window carries a 30-line cap **only when trap is scanning many plans at once
 - **One bullet per run, append-only:**
   `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`
 - **One `Full run:` anchor line**, rewritten in place after each full run, in that same form. This is the machine anchor `/unikit-verify` greps; the bullets are the log for a human. The duplication is deliberate: a verifier made to hunt for "the last bullet whose coverage is `plan`" would depend on the bullet order surviving every future edit.
-- `tree-sha256` is the digest of **a short text**, not of the project: the output of `git rev-parse HEAD` followed by the output of `git status --porcelain`, normalized and hashed by the same procedure as the plan's `Summary SHA256`. No project file is read.
+- `tree-sha256` is the digest of **a short text**, not of the project: the output of `git rev-parse HEAD` followed by the output of `git status --porcelain`, normalized and hashed by the digest step of `.unikit/system/research-link.md` (`### Digest`, the one `Summary SHA256` uses). No project file is read.
 - Git unavailable → the run is still recorded, and the field reads `tree-sha256 unavailable`. A verifier that reads that value does not reuse the run.
 
 ### Fast mode differences

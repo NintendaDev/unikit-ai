@@ -18,7 +18,7 @@ Main configuration file, created by `unikit-ai init`:
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": [
-        "unikit", "unikit-architecture", "unikit-commit", "unikit-devcontext",
+        "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-devcontext",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
         "unikit-implement", "unikit-improve", "unikit-mcp-audit", "unikit-mcp-trap",
         "unikit-memory", "unikit-plan", "unikit-review", "unikit-roadmap",
@@ -132,7 +132,7 @@ git:
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `ui` | Language for AI-agent communication (prompts, questions, explanations). Options: `en`, `ru`, `de`, `fr`, `es`, `zh`, `ja`, `ko`, `pt`, `it` | `en` |
+| `ui` | Language for AI-agent communication (prompts, questions, explanations). It holds for the whole session, not just the first reply: status lines while background agents run, relays of what a subagent found (subagents talk to each other in English), the final report and any follow-up discussion. Options: `en`, `ru`, `de`, `fr`, `es`, `zh`, `ja`, `ko`, `pt`, `it` | `en` |
 | `artifacts` | Language for generated artifacts (plans, specs, documentation). Same options as `ui`. | same as `ui` |
 | `rules` | Language for knowledge base rule files: everything under `.unikit/memory/` (`core/`, `stack/`, `references/`, `RULES_INDEX.md`), `.unikit/RULES.md`, and skill-context rules. Intentionally decoupled from `ui` and `artifacts` - rule files are consumed by AI agents for prompt matching; keeping them in a stable language reduces semantic drift across agents and teams. Changing `ui` or `artifacts` does NOT change the language of existing rule files. **Strongly not recommended to change from `en`** - non-English rule files cause semantic drift and inconsistent agent behavior. Default is always `en`; can only be changed by manually editing this file (skills never write to this key). | `en` |
 | `technical_terms` | How to handle technical terms in translations. `keep` - preserve English terms (API, prefab, shader, ECS). `translate` - translate where a common translation exists. **Strongly not recommended to change from `keep`** - translating technical terms degrades agent accuracy. Default is always `keep`; can only be changed by manually editing this file (skills never write to this key). | `keep` |
@@ -145,20 +145,21 @@ git:
 
 ### `testing` section
 
-Where **test runs** are placed in a plan, and whether the executor merges them. Neither key affects **writing** tests: tests are written in any task of any phase, exactly as before.
+Where **test runs** are placed in a plan. The key does not affect **writing** tests: tests are written in any task of any phase, exactly as before.
 
 | Key | Description | Default |
 |-----|-------------|---------|
 | `testing.plan.checkpoints.ultra` | Where `/unikit-plan` places a test-checkpoint task in an ultra bundle. Domain `task \| phase \| plan`; `task` is admissible only here, because only ultra has a per-task surface to put a run on. | `phase` |
 | `testing.plan.checkpoints.full` | The same for a full plan. Domain `phase \| plan`. | `phase` |
 | `testing.plan.checkpoints.fast` | The same for a fast plan. Domain `phase \| plan`. The default differs from full deliberately: a fast plan is short, and one full run at its end covers it whole. | `plan` |
-| `testing.implement.merge_checkpoints.<mode>` | Whether `/unikit-implement` collapses every checkpoint inside the invocation scope into a single run at the last one. Opt-in, per plan mode. Meaningful only when `plan.checkpoints` is `phase` or `task` — under `plan` there is nothing to merge, and the plan's final full run is never merged. | `false` |
 
-**Why two keys and not one.** They have different owners and different moments. `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written. `merge_checkpoints` is read by the executor **at execution time**; recording it into the plan instead would freeze the executor's decision and make it irreversible.
+**Merging runs is a question, not a key.** When a `/unikit-implement` call covers two or more test-checkpoint tasks that can be merged, it asks once, before the first task, whether to run the tests once at the last of them or at every point as planned; words in the call itself (`Phases 5-6, tests at the end of phase 6`) answer it in advance. The answer holds for that call only — on disk it survives as the `⏭️ MERGED` marks in the plan. The plan's final full run is never merged. A config written by an earlier version may still carry the executor's old merge key; nothing reads it any more.
+
+**The placement key is recorded, not re-read.** `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written.
 
 **There is no width key, and there will not be one.** How wide a run is follows from where the checkpoint sits — a task runs its own fixtures, a phase runs the test suites of the modules it touched and those depending on them, the end of a plan runs everything. Making it configurable would let a plan declare a checkpoint whose coverage contradicts its own position.
 
-Existing projects receive these keys by either of the two paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers them, or the config actualization mode, which appends a template literal silently. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
+Existing projects receive the key by either of the two paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers it, or the config actualization mode, which appends a template literal silently. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
 
 ### `git` section
 
@@ -362,7 +363,7 @@ The genre of every entry is a **check to perform**, not a claim about the server
 
 Mechanics worth knowing:
 
-- The tree comes from the [`rules`](#mcp-json-schema-fields) pointer of the MCP JSON you selected, so it changes when your MCP choice changes. A server without the pointer contributes nothing, and skills read a missing file as a silent skip.
+- The tree comes from the [`rules`](#mcp-json-schema-fields) pointer of the MCP JSON you selected, so it changes when your MCP choice changes. A server without the pointer contributes nothing, and a skill that finds no file prints one line and keeps every right it had.
 - It is **copied, not merged**. One engine takes one engine server, so there is nothing to concatenate and no per-contributor heading; subdirectories are copied as they are, so the tree may grow past its two starting files.
 - Every delivered `.md` gets a **provenance stamp** prepended — `server:`, plus a line saying to fix the source rather than the copy. That stamp is your project's only record of *whose* exceptions are on disk, and it is what the header of `.unikit/MCP-RECHECK-NOTES.md` is compared against at Bootstrap. It is the server id and nothing else, which is worth more than it sounds: a delivered file is byte-identical between runs for as long as the tree and the server are unchanged, so an unexpected diff in `.unikit/system/engine-mcp/` is a signal rather than the daily noise a delivery date used to produce.
 - Like `cli-contract.md` and `dev-principles.md`, the tree is a **system asset — not hash-tracked**. Every `init` / `update` rewrites it from source, so local edits are lost. Findings of your own go in `.unikit/MCP-RECHECK-NOTES.md` (below); durable project knowledge goes in `.unikit/memory/`.
@@ -496,7 +497,7 @@ It ships a rules tree: a handful of calls silently drop an argument or report su
 
 Provides up-to-date documentation for any library. It is a hosted HTTP endpoint: nothing is installed and no local process is spawned. Used by `/unikit` and `/unikit-architecture` during setup, by `/unikit-explore` while researching, and by `/unikit-memory` to enrich dynamic memory.
 
-`/unikit-implement` and `/unikit-fix` may also reach for it, but only on **two triggers**: an unfamiliar area (what approaches the authors propose — once per area per session), and a dead end (the schema is there, the capability is not). Never routinely at Bootstrap: it is a network dependency inside the editor lane, it costs 2-4k tokens per query, and it makes two runs of the same plan diverge. Whatever comes back describes **intent, not behaviour**, so it carries the same evidence obligations as anything else — with heightened attention, because it has been caught presenting a structurally broken path as an exemplary one. `/unikit-verify` is deliberately **not** granted it: verification needs evidence, not advice.
+`/unikit-implement` and `/unikit-fix` — the only executors granted it — may also reach for it, by the library-reference procedure of the development principles (`dev-principles.md` → D8), but only on **two triggers**: an unfamiliar area (what approaches the authors propose — once per area per session), and a dead end (the schema is there, the capability is not). Never routinely at Bootstrap: it is a network dependency inside the editor lane, it costs 2-4k tokens per query, and it makes two runs of the same plan diverge. Whatever comes back describes **intent, not behaviour**, so it carries the same evidence obligations as anything else — with heightened attention, because it has been caught presenting a structurally broken path as an exemplary one. `/unikit-verify` is deliberately **not** granted it: verification needs evidence, not advice.
 
 The server is optional in the wizard. Declining it does not disable anything — it removes one fallback, and the degradation ladder in the development principles continues from there.
 
@@ -541,10 +542,11 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 22 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 23 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
+│   │   ├── unikit-archive/
 │   │   ├── unikit-commit/
 │   │   ├── unikit-devcontext/
 │   │   ├── unikit-docs/
@@ -583,6 +585,8 @@ your-unity-project/
 │   │   ├── dev-principles.md      # Engine principles (the one asset with {{engine_*}} substituted)
 │   │   ├── modules.yml            # Generated snapshot of MODULE_REGISTRY
 │   │   ├── gate-result-contract.md # Schema of the `unikit-gate-result` fenced JSON block
+│   │   ├── ultra-plan-read.md     # Reader contract for an ultra plan bundle
+│   │   ├── research-link.md       # The `## Based on` contract - entry, hashing, drift ladder
 │   │   ├── gamedesign/            # only if the Game Design skills are installed
 │   │   │   ├── gd-principles.md    # The design working contract - slim core
 │   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it
@@ -617,6 +621,7 @@ your-unity-project/
 │   ├── DESCRIPTION.md            # Project spec (generated by /unikit)
 │   ├── ARCHITECTURE.md           # Architecture guidelines (generated by /unikit-architecture)
 │   ├── RULES.md                  # Project-specific rules (managed by /unikit-rules)
+│   ├── rules/                    # Project rule topics, listed under ## Topics in RULES.md (managed by /unikit-rules)
 │   ├── ROADMAP.md                # Strategic roadmap (managed by /unikit-roadmap)
 │   ├── TODO.md                   # Task checklist (managed by /unikit-todo)
 │   ├── code/                     # Dev-pipeline workspace

@@ -59,6 +59,8 @@ If the file is missing or unreadable, fall back to English.
 Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Critical: Write Boundary
 
 This skill writes to exactly two destinations plus its own log. Everything else in the
@@ -143,7 +145,7 @@ Read every patch in the processed set. For each one, extract:
 Read the following files:
 
 1. **`.unikit/DESCRIPTION.md`** — tech stack, project constraints
-2. **`.unikit/RULES.md`** — current project rules. If doesn't exist, will be created in Step 6
+2. **`.unikit/RULES.md`** — current project rules, and every topic file its `## Topics` table lists (`.unikit/rules/<slug>.md`). If it doesn't exist, it will be created in Step 6
 3. **`.unikit/memory/code/RULES_INDEX.md`** — index of knowledge base rule files. If doesn't exist or empty, skip knowledge base cross-check in Step 4 (check only RULES.md)
 
 ### Step 3: Build Prevention Point Registry
@@ -177,7 +179,7 @@ Classification heuristic:
 For each prevention point, cross-check against the appropriate destination:
 
 **For `code` type:**
-1. **`.unikit/RULES.md`** — is this rule already codified? If RULES.md doesn't exist, no rules are covered — all prevention points are candidates.
+1. **`.unikit/RULES.md`** and every topic file its `## Topics` table lists — is this rule already codified in any of them? If RULES.md doesn't exist, no rules are covered — all prevention points are candidates.
 2. **Knowledge base via RULES_INDEX.md** — identify relevant rule files by topic, read them, check if covered. If RULES_INDEX.md doesn't exist or is empty — skip this check, use only RULES.md.
 
 **For `workflow:<skill>` type:**
@@ -207,7 +209,6 @@ Based on N patches analyzed, M uncovered prevention points found:
 - **Source:** patch-YYYY-MM-DD-HH.mm.md
 - **Category:** #tag
 - **Proposed rule:** "[specific, actionable instruction]"
-- **Target section:** [suggested RULES.md section name]
 
 ### Workflow Rules (→ skill-context)
 
@@ -280,9 +281,9 @@ existing RULES.md entries, and the report. It returns a `## Batch result` table 
 row per input rule** and three outcomes — `added`, `already-covered`, `skipped-duplicate`.
 
 Read that table **by column name, never by column count.** Skill versions in a user's project
-do not update in step, so an older `unikit-rules` may still return a table carrying a
-`Section` column; reading by name survives both shapes. Introduce no fourth outcome — Step 7
-counts from exactly these three.
+do not update in step, so an older `unikit-rules` may return a table with a `Section` column
+or without the `Topic` column; reading by name survives every shape. Introduce no fourth
+outcome — Step 7 counts from exactly these three.
 
 **A rule with no row in the report was not processed.**
 
@@ -332,7 +333,7 @@ not exist — this skill carries no `Bash` grant, and does not need one:
 ## Rules Added
 
 - [rule text] <- Source: [patch filename]
-  **Section:** [RULES.md section name]
+  **Topic:** [the report's `Topic` value — `common` or a topic slug; omit this line when the report has no `Topic` column]
 
 ## Patterns Identified
 - [pattern]: [frequency] occurrences
@@ -340,7 +341,7 @@ not exist — this skill carries no `Bash` grant, and does not need one:
 
 `Rules added` and every `## Rules Added` entry are counted **from the Step 6 batch-report
 table**, not estimated: a row's `Outcome` decides whether the rule is listed, and its
-`Section` column fills `**Section:**`. Workflow rules are counted from this skill's own
+`Topic` column fills `**Topic:**`. Workflow rules are counted from this skill's own
 writes. Do not report a code rule as added on the strength of having dispatched it.
 
 **7.2: Update cursor**
@@ -377,7 +378,7 @@ After completing evolution, suggest `/clear` or `/compact` — context is heavy 
 3. **Reversible** — user approves before any changes are applied
 4. **Cumulative** — each evolution builds on previous ones
 5. **No hallucination** — only propose rules backed by evidence from patches
-6. **English only** — all rules in RULES.md are in English
+6. **Rule language** — rules are proposed in the language set by `language.rules` (default `en`); `/unikit-rules` writes them in it
 7. **No generic advice** — "write clean code" is not a rule; only specific, actionable instructions
 8. **One prevention point = one rule** — don't merge multiple independent rules into a single vague summary
 9. **Preserve concrete formats** — if a patch specifies exact format/syntax/template, the rule must include it verbatim

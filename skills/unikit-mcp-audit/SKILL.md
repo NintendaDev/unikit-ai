@@ -52,6 +52,8 @@ apply it to all output (fall back to English if it is missing). Ids, `area` keyw
 the observation protocol stay **English** — other skills grep them. Do not announce the
 language setting.
 
+**The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
 ## Bootstrap
 
 Silently load — do not narrate:
@@ -60,9 +62,9 @@ Silently load — do not narrate:
    specification: header fields, the two sections, ids, the genre rejections, and the
    `replay: safe` definition. Mandatory; without it, curate nothing.
 2. **`.unikit/system/dev-principles.md`** — the evidence contract (A1/A2), the failure
-   classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read the
-   deep reference below the boundary too: this skill touches editor state, so it is a
-   first Editor task by definition.
+   classes (A3), the area vocabulary (A8), and `no rules ≠ no rights` (A9). Read it
+   whole — the part below its `LAZY-READ BOUNDARY` marker too: this skill touches editor
+   state, so it is a first Editor task by definition.
 3. **`.unikit/system/engine-mcp/INDEX.md`** — the delivery stamp (`server:`) and the
    base section, including **how a project-relative asset path is written for this
    engine** (see "The asset root is a contract" below). File absent →

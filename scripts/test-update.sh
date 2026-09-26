@@ -1402,7 +1402,9 @@ echo "  ✓ gd-principles orphan-delete: stale flat .unikit/system/gd-principles
 # for the update.ts wiring of installGateResultContract (Task 1.2). DEVPRIN_DIR ran
 # `update` with no prior `init`, so the file existing proves update.ts calls the installer
 # (knip/lint can't catch a missing update.ts call — the function stays called from init.ts;
-# test-install.sh exercises only init). Tamper-refresh confirms it is flat-rewritten too.
+# test-install.sh's own projects are also set up via `update`, not `init` — see run_update
+# there — so the init.ts call site is reached by no smoke test at all; SA-1 in
+# scripts/test-skills.sh is its only guard). Tamper-refresh confirms it is flat-rewritten too.
 # ─────────────────────────────────────────────
 GATE_CONTRACT="$DEVPRIN_DIR/.unikit/system/gate-result-contract.md"
 assert_exists "$GATE_CONTRACT" "gate-result-contract.md must be installed on update (system asset, update.ts wiring)"
@@ -2029,7 +2031,9 @@ echo "  ✓ recheck notes: an engine switch parks the log; a switch to a treeles
 # Test 30k: ultra-plan-read.md is delivered on update — the ONLY mechanical guard for
 # the update.ts wiring of installUltraPlanReadContract. Without it a missing update.ts
 # call is invisible: the function stays called from init.ts, so neither lint nor knip
-# sees an unused export, and test-install.sh exercises only the init path. DEVPRIN_DIR
+# sees an unused export, and test-install.sh's own projects are also set up via `update`,
+# not `init` — the init.ts call site is reached by no smoke test at all; SA-1 in
+# scripts/test-skills.sh is its only guard. DEVPRIN_DIR
 # ran `update` with no prior `init`, so the file existing proves update.ts calls the
 # installer; tamper-refresh confirms it is flat-rewritten from data/ too (mirror of 30b).
 # Placed last in the 30-family so the numbering reads in order. By then Test 30e has
@@ -2050,6 +2054,28 @@ if grep -q "UR_TAMPERED_BY_TEST" "$ULTRA_READ"; then
 fi
 
 echo "  ✓ ultra-plan-read.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30l: research-link.md is delivered on update — the ONLY mechanical guard for the
+# update.ts wiring of installResearchLinkContract. Same shape as 30k: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms it is flat-rewritten from data/ too. The init.ts call site is
+# SA-1's job (scripts/test-skills.sh), same as above.
+# ─────────────────────────────────────────────
+RESEARCH_LINK="$DEVPRIN_DIR/.unikit/system/research-link.md"
+assert_exists "$RESEARCH_LINK" "research-link.md must be installed on update (system asset, update.ts wiring)"
+
+echo "RL_TAMPERED_BY_TEST" >> "$RESEARCH_LINK"
+
+DEVPRIN_OUT9="$TMPDIR/update-research-link-9.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT9" 2>&1)
+
+if grep -q "RL_TAMPERED_BY_TEST" "$RESEARCH_LINK"; then
+    echo "Assertion failed: update did NOT refresh research-link.md from data/ (tamper marker still present)"
+    exit 1
+fi
+
+echo "  ✓ research-link.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
@@ -2085,6 +2111,8 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-recon/references/code-re
     "unikit-gd-recon's shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
     "update --install-new installed the new GDD-render skill (unikit-gd-docs)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
+    "update --install-new installed the new plan-archive skill (unikit-archive)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-plan/SKILL.md" \
     "update --install-new installed a new code skill (unikit-plan)"
 assert_contains "$INSTALLNEW_OUT" "new skill installed" "new-skill-installed reason text appears"

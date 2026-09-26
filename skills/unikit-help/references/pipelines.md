@@ -33,6 +33,8 @@ quality:    /unikit-review  ──► /unikit-fix     (optional) review vs rules
               │
 commit:     /unikit-commit          (optional terminal) conventional commit (+ push)
               │
+archive:    /unikit-archive         (optional) move a finished folder plan out of the active list
+              │
 learn:      /unikit-evolve          (optional) turn fix-patches into project rules
 ```
 
@@ -242,6 +244,7 @@ Pick the row that matches what the user already has:
 | **A plan, wants code** | `/unikit-implement` | `/unikit-verify` → `/unikit-commit` |
 | **Written code to check** | `/unikit-review` and/or `/unikit-verify` | `/unikit-fix` |
 | **A bug** | `/unikit-fix <bug>` (deep bug → `/unikit-explore` first) | `/unikit-verify` → `/unikit-commit` |
+| **Finished plans piling up** | `/unikit-archive` (no args — it shows which plans qualify) | `/unikit-commit` the move |
 | **Rules to capture / books to learn from** | `/unikit-rules` (one-liner) or `/unikit-memory` (sources) | — |
 
 If the user can't place themselves in this table, fall back to the diagnostic in
