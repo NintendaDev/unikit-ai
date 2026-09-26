@@ -112,12 +112,14 @@ Prompts like "plan the new version of Combat" or "bring combat up to the design"
    blocks for this `SYS-id` across `.unikit/code/plans/*/*.md` and
    `.unikit/code/archive/plans/*/*.md` (and the flat
    `.unikit/code/PLAN.md`); the highest version in a completed plan is the inferred
-   baseline. The glob is **file-name-agnostic on purpose**: a completed plan folder is
+   baseline. An archived plan whose `Archived:` line ends in `— unfinished (<done>/<total>)`
+   is not a completed plan — `/unikit-archive` also moves abandoned plans, on the user's
+   explicit choice — and is skipped. The glob is **file-name-agnostic on purpose**: a completed plan folder is
    never rewritten by a migration, so its `## Design` block stays in whichever file the
    plan was originally written into — the block is located by its heading, not by the
    name of the file around it. The glob is also load-bearing — one that misses returns
    *no prior plan* rather than an error. The archive is part of it on purpose:
-   `/unikit-archive` moves exactly the completed plans this fallback reads, so a glob
+   `/unikit-archive` moves the completed plans this fallback reads, so a glob
    without `.unikit/code/archive/plans/` loses the baseline without a word. Neither
    source → ask: "no implementation found
    — plan the full system?" — no match is **not** an error condition, and the question

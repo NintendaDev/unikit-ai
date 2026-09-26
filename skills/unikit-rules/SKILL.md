@@ -116,36 +116,17 @@ Check $ARGUMENTS:
 
 **Modes C, D and E are matched on an exact argument, never on containment.** A rule that happens to contain the word "compact", "optimise" or "prune" is still a rule; only the bare argument selects the mode. Mode D accepts `optimise` or `optimize`, in any letter case; Mode E accepts `prune`, in any letter case.
 
-**Announce the mode first.** The argument alone decides the mode, so the mode is known before any file is read — say it before reading any. A tool call that sits alone on screen for minutes, or a remark about what you are about to read or compute, reads as a hang. Right after the language rules are loaded, the **very first output of the run** — before Step 0, before the mode's reference file, before any project file, and before any other sentence — is the mode's announcement below, said in `language.ui` (paths and mode names stay as they are):
+**Announce the mode first.** The argument alone decides the mode, so the mode is known before any file is read — say it before reading any. A tool call that sits alone on screen for minutes, or a remark about what you are about to read or compute, reads as a hang. Right after the language rules are loaded, the **very first output of the run** — before Step 0, before the mode's reference file, before any project file, and before any other sentence — is the mode's announcement below, said in `language.ui` (mode names stay as they are).
 
-- **Mode A**, one line: `Mode A — add <N> rule(s): check each against the knowledge base and the existing project rules, write it where it belongs, then report every rule.`
+**One or two plain sentences, as you would say it to a colleague** — which mode is on and what it is about to do, and for Modes C, D and E that nothing is written before the user says so. No numbered steps, no heading, no list: the steps show up as the work happens.
+
+- **Mode A**: `Adding <N> rule(s) — first I'll check them against the knowledge base and the rules you already have.`
 - **Mode B**: the question for the rule is the first output; once the rule arrives, the Mode A line.
-- **Mode C**:
-  ```
-  Mode C — compact: shorten the project rules in place.
-  1. Read .unikit/RULES.md and its topic files; an old flat file is first checked for rules worth splitting into topics.
-  2. Decide for every rule: shorten, keep, or only flatten.
-  3. Show every change as before → after.
-  4. Ask before writing. No rule is deleted, and nothing is written without your confirmation.
-  ```
-- **Mode D**:
-  ```
-  Mode D — optimise: reorganize the project rules into topics (or regroup the existing ones).
-  1. Read .unikit/RULES.md and its topic files, and count the rules.
-  2. Give every rule one place — a topic or the common part.
-  3. Show the proposed layout with every rule in it.
-  4. Ask before writing. Nothing is written, and no rule is deleted, unless you confirm.
-  ```
-- **Mode E**:
-  ```
-  Mode E — prune: find project rules that can be deleted.
-  1. Read .unikit/RULES.md and its topic files.
-  2. Look for five kinds of candidates — duplicates, rules the knowledge base already covers, lines that are not rules, conflicts, references to things that no longer exist — each with evidence.
-  3. Show the candidates.
-  4. Delete only the ones you select. Nothing is deleted without your answer.
-  ```
+- **Mode C**: `compact: I'll shorten the rules that can be shorter and show every change before writing — no rule is deleted.`
+- **Mode D**: `optimise: I'll sort the rules into topics and show you the proposed layout before writing anything.`
+- **Mode E**: `prune: I'll look for rules that can go — duplicates, outdated references, lines that aren't rules — and for rules that contradict each other; nothing changes until you choose.`
 
-Then, **right before each long step** — analysing the whole rule set, writing several files — print one line that says what is happening now and how much there is (`<N> rules from <K> files`). Print it before that step's analysis begins, not after it. Each mode names its progress lines at the step they precede: Mode C step 2, `mode-optimise.md` D.1 and D.5, `mode-prune.md` E.1 and E.5. Announcement and progress lines are plain sentences, not a log: no `INFO`/`WARN` prefix, and they replace none of the mode's own summary lines.
+**Then say what you are doing, as you do it:** at each step — reading the files, analysing the rules, writing — one short line saying what is happening right now, with how much there is where it helps (`<N> rules from <K> files`). Print it before that step's analysis begins, not after it. One line per step: not a plan announced in advance, and not a retelling of what went fine. Each mode names its progress lines at the step they precede: Mode C step 2, `mode-optimise.md` D.1 and D.5, `mode-prune.md` E.1 and E.5. Announcement and progress lines are plain sentences, not a log: no `INFO`/`WARN` prefix, and they replace none of the mode's own summary lines.
 
 **Mode D** → read `{{skills_dir}}/{{self_name}}/references/mode-optimise.md` and follow it; Steps 2-6 below do not run. The layout it writes is `## Layout of the rule files` below.
 

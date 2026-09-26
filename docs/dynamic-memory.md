@@ -303,7 +303,7 @@ One rule per line, one directive per rule. When this file has a `## Topics` tabl
 - **Priority.** The root and its topic files are one override level, above `ARCHITECTURE.md` and the knowledge base. Inside a topic's area, a topic rule wins over a common rule it contradicts.
 - **Old projects keep working.** A `RULES.md` without the table is read whole, exactly as before. When `/unikit-rules` meets such a file and finds rules worth splitting, it offers the reorganization after its report: **Apply**, **Keep the flat format** (a `<!-- unikit:rules-layout flat -->` marker is written and the offer never returns), or **Not now**. `/unikit-rules compact` makes the same offer first.
 - **`/unikit-rules optimise`** runs the reorganization on request - also on a file you once kept flat, and to regroup existing topics. It previews where every rule goes, checks that no rule is lost, and deletes none.
-- **`/unikit-rules prune`** lists rules that can go - duplicates, rules the knowledge base already covers, lines that are not rules, conflicts, references to things that no longer exist - each with its evidence, and deletes only the ones you select.
+- **`/unikit-rules prune`** lists rules that can go - duplicates, rules the knowledge base already covers, lines that are not rules, references to things that no longer exist - each with its evidence; **Delete everything proposed** removes them in one answer, **Choose by id** only the ids you type. Rules that contradict each other are resolved rather than deleted, in their own question: keep the side that is right, or merge the two into one corrected rule. A rule that is only partly outdated is never deleted - it is listed for you to fix.
 
 ### Stage 2: Auto-extraction from Patches
 

@@ -157,15 +157,18 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "commit", "save changes". Always commit through this, not manual git.
 - **In:** an optional scope hint. A caller in auto-commit mode (`/unikit-implement`) adds `auto`:
   the message is still printed, but committed without a question and never pushed; an ERROR still stops it.
-- **Out:** a git commit (+ optional push).
+- **Out:** a git commit (+ optional push). A quiet run in `language.ui`: problems only, the message,
+  the question, one result line.
 - **Optional (terminal step).** Before: any of implement/fix/verify/review.
 
 ### unikit-archive
-- **Purpose:** Move a completed folder plan from `.unikit/code/plans/<folder>/` to
-  `.unikit/code/archive/plans/<folder>/`, so plan lookup and the plan lists stop offering it.
+- **Purpose:** Move a completed folder plan — or, on your explicit choice, an unfinished one,
+  labelled as such — from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`,
+  so plan lookup and the plan lists stop offering it.
   Never deletes, never commits.
 - **When:** "archive the plan", "archive completed plans", "clean up plans".
-- **In:** a plan folder name, `--all`, `list`, or nothing (interactive).
+- **In:** a plan folder name, `--all`, `list`, or nothing (interactive — a table of every plan with
+  its verdict, created date and last change, oldest change first; pick by number or by date).
 - **Out:** the moved folder + one `Archived:` line in its manifest.
 - **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
   block: it asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or
@@ -383,10 +386,11 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **`optimise` mode:** `/unikit-rules optimise` splits the rules into topics or regroups them —
   preview, confirmation, nothing deleted. Also offered by itself on an old flat file. A bundled
   Node script does the counting and the word-for-word move; the agent only picks the topics.
-- **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence and deletes only
-  the ones you select.
-- **Every mode announces itself** before reading anything — the mode, what it will do, what it
-  will not do without asking — and prints one progress line before each long step.
+- **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence — "delete everything
+  proposed" removes them in one answer, or choose by id — and resolves contradictions in a separate
+  question (keep the right side or merge both into one rule); a partly outdated rule is never deleted.
+- **Every mode announces itself** before reading anything, in one plain sentence — which mode
+  and what it is about to do — and starts every step with one short line about what it is doing now.
 - **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).
 
 ### unikit-memory

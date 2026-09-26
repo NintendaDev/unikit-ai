@@ -24,6 +24,23 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
+Skill-specific rules:
+- Two languages meet in one run, and only one of them belongs to the commit: the commit message follows `language.artifacts`; everything said to the user — a problem found by a check, the question and its options, the result line — is in `language.ui`. Git and its output speak English; they are data, not a reason to answer in English.
+- The question texts and option labels quoted in this skill (`Commit with the message above?`, `Commit as is`, …) are templates: say them in `language.ui`. `INFO` / `WARN` / `ERROR` and the `[commit]` tag stay as they are; the words after them are in `language.ui`.
+
+## What the user sees
+
+A commit run is short and quiet. In this order, and nothing else:
+
+1. A problem, only when a check finds one — the `WARN` / `ERROR` line and what to do about it. **A check that passes says nothing**: no "all checks pass", no list of what was checked, no retelling of what the diff contains.
+2. The plan line of Workflow Step 4.
+3. The message, as a block of its own.
+4. The question — Behavior step 6, or the split question of **Splitting Unrelated Changes**; none in `## Auto mode`.
+5. One result line per commit: `Committed <short sha>: <subject>`, said in `language.ui` — in `## Auto mode`, its `INFO [commit] auto:` line; in a split, the group lines of step 4 there.
+6. The push question, only when `git.skip_push_after_commit` is not `true`.
+
+No narration between commands, and **no mention of a setting that merely did its job**: `git.skip_push_after_commit: true` ends the run silently after the result line.
+
 ## Workflow
 
 1. **Analyze Changes**
@@ -111,7 +128,7 @@ Do not announce, confirm, or mention the language setting.
    - A refactor is described through what it gives the team. When behaviour does not change, say so in one sentence.
    - Every claim traces to the diff, to the plan's `## Overview` or to a task's `WHY:` line (Step 4). No evaluative words without a basis ("significantly", "much faster").
 
-   **Technical paragraph** — optional: the last paragraph of prose, at most three lines, labelled `Technical:`. The label is translated into the commit language like any heading; identifiers inside the paragraph stay whole English tokens. It carries only what a future developer will search for and the diff does not show by itself:
+   **Technical paragraph** — optional: the last paragraph of prose, at most three lines, labelled `Technical:`. The label is translated into the commit language like any heading — with a non-English `language.artifacts` the English word `Technical:` never appears in the message, whatever the examples below show; identifiers inside the paragraph stay whole English tokens. It carries only what a future developer will search for and the diff does not show by itself:
    - a system or entry point that was added, renamed or removed;
    - a change of data or save format, and whether existing saves still load;
    - a new package or dependency;
@@ -214,7 +231,7 @@ When invoked:
 8. **Post-commit push handling** (skipped entirely in `## Auto mode` — it never pushes):
    - **If `git.skip_push_after_commit = true` in `.unikit/config.yaml`**:
      - Skip push prompt entirely
-     - End workflow after successful local commit
+     - End workflow after successful local commit — silently: the result line is the last thing said, with no word about the setting
    - **Otherwise** (default behavior), offer to push:
      - Show branch/ahead status: `git status -sb`
      - If the branch has no upstream, use: `git push -u origin <branch>`

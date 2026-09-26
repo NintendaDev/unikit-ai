@@ -1,16 +1,14 @@
 ---
 name: unikit-archive
 description: >-
-  Archive finished folder plans: move a completed plan from .unikit/code/plans/<folder>/ to
-  .unikit/code/archive/plans/<folder>/ so plan lookup, the plan lists and the "latest plan"
-  choice stop offering it. A plan is archived only when every checklist task is done; MCP
-  findings never transferred and rule candidates never proposed are shown, and the user
-  chooses to handle them first or archive anyway. Nothing is deleted, nothing is renamed,
-  no commit is made. Use when the user says "archive the plan",
-  "archive completed plans", "clean up plans", "move finished plans out", "show archived
-  plans". Not for the fast plan .unikit/code/PLAN.md or .unikit/code/FIX_PLAN.md
-  (/unikit-implement and /unikit-fix remove those themselves); to check that a plan is
-  really done use /unikit-verify, to commit the move use /unikit-commit.
+  Archive completed plans. Moves finished folder plans from .unikit/code/plans/<folder>/
+  to .unikit/code/archive/plans/<folder>/, so plan lookup and the plan lists stop offering
+  them; an unfinished plan moves only when the user picks it, and is marked as unfinished.
+  Lists every plan with its created and last-change dates; plans can be picked by number
+  or by date. Never deletes, renames or commits. Use when user says "archive plans",
+  "archive completed", "archive old plans", "clean up plans", or "show archived plans".
+  Not for .unikit/code/PLAN.md or FIX_PLAN.md; to check that a plan is really done use
+  /unikit-verify, to commit the move use /unikit-commit.
 argument-hint: "[list | --all | <plan-folder>]"
 allowed-tools:
   - Read
@@ -39,9 +37,12 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
+Skill-specific rule:
+- Everything said to the user — the step lines, the table, the questions and their options, the summary — is in `language.ui`, including a remark made while a command runs. The question texts and option labels quoted in this skill are templates: say them in `language.ui`. Git, file listings and scratch output are data, never a reason to answer in English.
+
 ## Scope
 
-**Archived:** a folder plan `.unikit/code/plans/<folder>/` — full or ultra, current or legacy layout, any folder name format (`<name>`, `YYYY-MM-DD_<name>`, `DDD-<name>`) — once Step 2 calls it `completed` and the user has answered any follow-up question.
+**Archived:** a folder plan `.unikit/code/plans/<folder>/` — full or ultra, current or legacy layout, any folder name format (`<name>`, `YYYY-MM-DD_<name>`, `DDD-<name>`) — once Step 2 calls it `completed` and the user has answered any follow-up question; or, `incomplete`, once the user has seen what is left and chosen to archive it unfinished (the unfinished question).
 
 **Never touched:**
 - `.unikit/code/PLAN.md` — the fast plan; `/unikit-implement` offers to delete it when it is done.
@@ -53,6 +54,8 @@ Do not announce, confirm, or mention the language setting.
 **The folder name never changes.** It is how an archived plan is found again: the `Plan: <folder>` trailer that `/unikit-commit` writes names it, and an explicit path `@.unikit/code/archive/plans/<folder>` still works wherever a skill accepts one.
 
 ## Step 0: Context
+
+**First, announce the mode** (Step 1 → **Announce the mode first**): the argument alone decides it, and its announcement is the run's first output — before these reads.
 
 1. Read `.unikit/skill-context/unikit-archive/SKILL.md` if it exists — project-level overrides; on conflict the skill-context wins.
 2. Read `git.enabled` from `.unikit/config.yaml`. A missing file or key counts as enabled.
@@ -68,6 +71,15 @@ Do not announce, confirm, or mention the language setting.
 | anything else | **one plan** — the named folder; a leading `@` and a leading `.unikit/code/plans/` are stripped first |
 
 `list` or `--all` together with a folder name → `ERROR [archive] conflicting arguments: <args>` and stop.
+
+**Announce the mode first.** Classifying thirty plans takes minutes, and a run that says nothing for that long reads as a hang. Right after the language rules are loaded, the run's **very first output** — before Step 0 and before any other sentence, and not a word about the language or the config — is one or two plain sentences in `language.ui`:
+
+- interactive: `I'll check every plan in .unikit/code/plans/ — how far each one got and what is left to hand over — then ask which completed ones to archive. Nothing moves before you answer.`
+- `list`: `Showing the plans already archived.`
+- `--all`: `I'll check every plan and archive the completed ones after one confirmation.`
+- one plan: `I'll check <folder> and archive it if every task is done.`
+
+**Then say what you are doing, as you do it.** Before each step that reads, runs or writes something, one short line in `language.ui` saying what is happening right now — `Found 30 plan folders — checking each one…`, `Reading the dates from git…`, `Looking for MCP findings that never reached the notes…`, `Moving <folder>…`. One line per step, at the moment it starts: not a plan announced in advance, and not a retelling of what went fine. The per-folder `INFO [archive]` lines of Step 2 are the progress of the longest step.
 
 ## Step 2: Classify a plan folder
 
@@ -86,6 +98,9 @@ Run this for every folder the mode looks at. It reads, it never writes.
    - **Rule candidates never proposed.** A row of `## Rule Candidates` has the status `open`.
 
    The verdict names what is left: `completed, <k> MCP findings not transferred`, `completed, <m> open rule candidates`, or both.
+7. **Dates** — shown next to the verdict, so the user can tell a finished plan from a forgotten one. Dates are `YYYY-MM-DD`; `—` when nothing below answers.
+   - **Created:** the task file's `Created: YYYY-MM-DD` header line; else the `YYYY-MM-DD_` prefix of the folder name; else the date of the commit that added the task file — the last line of `git log --diff-filter=A --format=%as -- <task file>`.
+   - **Last change:** run `git status --porcelain -- .unikit/code/plans/` once per run. A folder listed there has changes no commit holds yet → `date -r <task file> +%Y-%m-%d`. Otherwise `git log -1 --format=%as -- .unikit/code/plans/<folder>/`. Without git (`git.enabled: false`, or not a work tree) → `date -r <task file> +%Y-%m-%d`.
 
 Print one line per folder as it is classified: `INFO [archive] <folder>: <verdict>`.
 
@@ -112,30 +127,51 @@ Name only the kinds that are present.
 - "Archive anyway" → archive them as usual.
 - "Cancel" → archive nothing and stop.
 
+### The unfinished question
+
+Asked once per run, for every chosen plan whose verdict is `incomplete`. First print, per plan, what is left: each unfinished checkbox line — its task id and the start of its text; more than five → the first five and `… and <k> more`. Then:
+
+```
+AskUserQuestion: <n> of the chosen plans are unfinished: <folder list>. Archived, they are no longer offered to /unikit-implement and /unikit-verify, and their open tasks go with them.
+
+Options:
+1. Archive them unfinished — the manifest says so
+2. Only the completed ones — leave these in place
+3. Cancel
+```
+
+- "Archive them unfinished" → archive them; Step 4 writes the unfinished label.
+- "Only the completed ones" → they are listed under `Skipped` as `unfinished — left in place`.
+- "Cancel" → archive nothing and stop.
+
+An `empty`, `broken bundle` or `not a plan` folder never reaches this question: it is never archived, and a chosen one is listed under `Skipped` with its verdict.
+
 ### list
 
-Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has been archived yet.` and stop. Otherwise print each folder with the date from its `Archived:` line (`—` when the line is missing), then `Total: <n> archived plans`, and stop.
+Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has been archived yet.` and stop. Otherwise print each folder with the date from its `Archived:` line (`—` when the line is missing) and `unfinished` when that line says so, then `Total: <n> archived plans`, and stop.
 
 ### interactive
 
-1. Classify every folder in `.unikit/code/plans/` and print a table: folder · verdict.
-2. No folder is `completed` → `No plan can be archived now.` and stop.
-3. Print the `completed` folders as a numbered list — a plan with follow-ups is marked with them, e.g. `(2 MCP findings not transferred, 1 open rule candidate)` — then ask:
+1. Classify every folder in `.unikit/code/plans/` and print a table: # · folder · verdict · created · last change, the oldest last change first — a plan nobody has touched for weeks is what the user is deciding about. `#` numbers the rows for the question below.
+2. No folder is `completed` or `incomplete` → `No plan can be archived now.` and stop.
+3. Ask which plans. A plan with follow-ups is marked in the table with them, e.g. `(2 MCP findings not transferred, 1 open rule candidate)`.
 
    ```
    AskUserQuestion: Archive which plans?
 
    Options:
-   1. All <n> listed above
-   2. Some of them — I'll enter the numbers
+   1. All <n> completed — only when there are completed plans
+   2. Choose by number or date — type it: "3, 5-7", "created on or before 2026-09-14", "not changed since 2026-09-01"
    3. Cancel
    ```
-4. Chosen plans with follow-ups → [the follow-up question](#the-follow-up-question).
+
+   Option 2 asks the user to type: say its label by that meaning, never as "the listed ones". Its answer arrives as the free-text answer; picked without any text → ask once, as plain text, and end your turn. A date rule is matched against the table's `created` or `last change` column, the given day included; print the folders it selects before anything moves.
+4. Chosen `incomplete` plans → [the unfinished question](#the-unfinished-question). Chosen `completed` plans with follow-ups → [the follow-up question](#the-follow-up-question).
 5. Archive the chosen folders (Step 4).
 
 ### all
 
-Classify every folder in `.unikit/code/plans/`. Print the `completed` ones, marked as in interactive mode, and ask:
+Classify every folder in `.unikit/code/plans/`. Print the `completed` ones with their created and last-change dates, marked as in interactive mode, and ask:
 
 ```
 AskUserQuestion: Archive all <n> completed plans?
@@ -145,12 +181,12 @@ Options:
 2. Cancel
 ```
 
-"Yes" and some of them have follow-ups → [the follow-up question](#the-follow-up-question) before anything moves.
+"Yes" and some of them have follow-ups → [the follow-up question](#the-follow-up-question) before anything moves. `--all` takes `completed` plans only: an unfinished plan is archived only by an explicit choice — the interactive mode or its own name.
 
 ### one plan
 
 1. Resolve the name inside `.unikit/code/plans/`: an exact folder name; else the one folder ending in `_<name>`, or in `-<name>` after three digits; else the one folder whose name contains `<name>` — a match by this last rule is confirmed before anything moves (`AskUserQuestion: Archive <matched folder>?` — `Yes` / `Cancel`). None → `Plan not found: <name>` — with `(already archived)` added when `.unikit/code/archive/plans/<name>/` exists — and stop. More than one → list them, ask for a more specific name, and stop.
-2. Classify it. Not `completed` → print the verdict and stop.
+2. Classify it. `incomplete` → [the unfinished question](#the-unfinished-question) for this one plan, its option 2 read as `Leave it in place`. `empty`, `broken bundle` or `not a plan` → print the verdict and stop.
 3. Follow-ups → [the follow-up question](#the-follow-up-question); "Handle them first" stops here.
 4. Archive it (Step 4).
 
@@ -161,7 +197,7 @@ Options:
 3. **Move.** Use `git mv` only when all three hold: `git.enabled` is not `false`; `git rev-parse --is-inside-work-tree` succeeds; `git ls-files -- .unikit/code/plans/<folder>` prints at least one path. Then run `git mv .unikit/code/plans/<folder> .unikit/code/archive/plans/<folder>`; otherwise `mv .unikit/code/plans/<folder> .unikit/code/archive/plans/<folder>`. Print which one and why: `INFO [archive] <folder>: git mv (tracked)` or `INFO [archive] <folder>: mv (git disabled | not a git work tree | untracked)`.
    "git is installed" is not enough: `git mv` of an untracked or ignored folder fails with `fatal: source directory is empty`. A tracked folder that also holds untracked files moves whole — the untracked files travel along and stay untracked.
    A move that fails anyway → `ERROR [archive] <folder>: <the command's error>`, then stop (one plan) or skip it (interactive, all). Never retry with the other command.
-4. **Label.** In the moved task file, insert one line `Archived: <today>` directly below `Updated:`; no `Updated:` → below `Created:`; neither → below the `# ` title line, after a blank line. Change nothing else: `Updated:` stays, the ultra marker stays the first line.
+4. **Label.** In the moved task file, insert one line `Archived: <today>` — for a plan archived unfinished, `Archived: <today> — unfinished (<done>/<total>)` — directly below `Updated:`; no `Updated:` → below `Created:`; neither → below the `# ` title line, after a blank line. Change nothing else: `Updated:` stays, the ultra marker stays the first line.
 5. Print `INFO [archive] archived: .unikit/code/plans/<folder> → .unikit/code/archive/plans/<folder>`.
 
 After the last plan:
@@ -180,11 +216,11 @@ Omit `Skipped` when `<k>` is 0.
 
 ## Rules
 
-1. Never archive a plan that is not `completed` — an `incomplete`, `empty` or `broken bundle` plan stays where it is. Follow-ups — untransferred MCP findings, open rule candidates — never block: they ask, and the user decides.
+1. Never archive a plan that is not `completed` on your own: an `incomplete` plan moves only after the user has seen what is left and chosen `Archive them unfinished`, and its label says so; an `empty`, `broken bundle` or `not a plan` folder never moves. Follow-ups — untransferred MCP findings, open rule candidates — never block: they ask, and the user decides.
 2. Never delete, overwrite or rename a folder.
 3. Never commit or push — `/unikit-commit` does that.
 4. Edit nothing but the one `Archived:` line.
-5. Other skills do not search the archive, on purpose: an archived plan must stop being offered. Three readers look there explicitly: the `implemented_version` fallback of `/unikit-plan` needs completed plans; the `/unikit-plan` collision check keeps a new plan from taking an archived plan's name; `/unikit-explore` reads archived plans as history of what was already built — never as a plan to continue.
+5. Other skills do not search the archive, on purpose: an archived plan must stop being offered. Three readers look there explicitly: the `implemented_version` fallback of `/unikit-plan` needs completed plans and skips one labelled `unfinished`; the `/unikit-plan` collision check keeps a new plan from taking an archived plan's name; `/unikit-explore` reads archived plans as history of what was already built — an `unfinished` one as work that was dropped — never as a plan to continue.
 
 ## Artifact Ownership
 

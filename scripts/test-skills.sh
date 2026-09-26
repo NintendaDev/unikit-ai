@@ -7958,11 +7958,28 @@ else
     grep -qF 'are never a `conflict`' "$PRT_PRUNE_REF" || PRT10_WHY+=" topic-common-pair-may-conflict"
     grep -qF '"No longer needed" is not a class' "$PRT_PRUNE_REF" || PRT10_WHY+=" unused-class-returned"
     grep -qF '`Delete nothing`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-refusal-option"
+    # One answer deletes the whole proposal. The old first option, `Delete the ones I list`,
+    # came out in Russian as "delete the listed ones" — read as "the ones shown" — and a real
+    # user picked it three times expecting everything to go; it is banned by name.
+    grep -qF '`Delete everything proposed`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-delete-all-proposed"
+    grep -qF '`Choose by id`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-choose-by-id"
+    grep -qF 'never render it as "delete the listed ones"' "$PRT_PRUNE_REF" || PRT10_WHY+=" id-option-translation-trap"
+    grep -qF '`Delete the ones I list`' "$PRT_PRUNE_REF" && PRT10_WHY+=" ambiguous-option-returned"
+    # A conflict is RESOLVED, never deleted wholesale: a real "delete everything" removed both
+    # sides of a pair in which one side refined the other, and a half-dead stale-ref took its
+    # live half along. Resolution (keep one side / merge into one rule / undecided) is its own
+    # question; a partly dead rule is never a candidate.
+    grep -qF '**A conflict is resolved, never simply deleted**' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflict-deleted-wholesale"
+    grep -qF 'Never propose deleting both sides.' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflict-both-sides-may-go"
+    grep -qF 'keeps what is true in both and drops what the evidence refutes' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-merge-resolution"
+    grep -qF 'A separate question, never folded into the first' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflicts-share-the-delete-question"
+    grep -qF '`Resolve as proposed`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-resolve-option"
+    grep -qF '**`stale-ref` only when nothing of the rule still applies.**' "$PRT_PRUNE_REF" || PRT10_WHY+=" half-live-rule-may-go"
     grep -qF 'end your turn and wait' "$PRT_PRUNE_REF" || PRT10_WHY+=" text-tier-does-not-stop"
     grep -qF '**only on confirmation**' "$PRT_PRUNE_REF" || PRT10_WHY+=" unconfirmed"
 fi
 if [[ -z "$PRT10_WHY" ]]; then
-    pass "PRT-10 prune deletes only the selected rules, shows evidence for every candidate, keeps the three protections; deletion is confined to prune"
+    pass "PRT-10 prune deletes only the selected rules, shows evidence for every candidate, keeps the four protections, resolves conflicts in their own question instead of deleting them; deletion is confined to prune"
 else
     fail "PRT-10 prune contract:$PRT10_WHY"
 fi
@@ -7981,18 +7998,22 @@ grep -qF 'very first output of the run' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:
 grep -qF "before Step 0, before the mode's reference file, before any project file, and before any other sentence" "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announce-after-reads"
 grep -qF '**First, announce the mode**' "$EV_RULES_SKILL" || PRT12_WHY+=" step0:reads-before-announce"
 grep -qF "Print it before that step's analysis begins, not after it." "$EV_RULES_SKILL" || PRT12_WHY+=" skill:progress-after-the-fact"
-for prt12_m in 'Mode A — add <N> rule(s)' 'Mode C — compact: shorten the project rules in place.' 'Mode D — optimise: reorganize the project rules into topics' 'Mode E — prune: find project rules that can be deleted.'; do
+grep -qF '**Then say what you are doing, as you do it:**' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:silent-steps"
+# The announcement is one or two plain sentences — a numbered plan read as bureaucracy on a
+# real run ("как-то топорно"), so the rule forbidding it is asserted as well.
+grep -qF 'No numbered steps, no heading, no list' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announcement-may-be-a-plan"
+for prt12_m in 'Adding <N> rule(s) — first' "compact: I'll shorten the rules" "optimise: I'll sort the rules into topics" "prune: I'll look for rules that can go"; do
     grep -qF "$prt12_m" "$EV_RULES_SKILL" || PRT12_WHY+=" no-announcement[${prt12_m:0:6}]"
 done
 if [[ -s "$PRT_OPTIMISE_REF" ]]; then
-    grep -qF 'Mode D — optimise:' "$PRT_OPTIMISE_REF" && PRT12_WHY+=" mode-d:announcement-moved-into-reference"
+    grep -qF "optimise: I'll sort the rules" "$PRT_OPTIMISE_REF" && PRT12_WHY+=" mode-d:announcement-moved-into-reference"
     grep -qF 'grouping them into topics now' "$PRT_OPTIMISE_REF" || PRT12_WHY+=" mode-d:no-progress-line"
     grep -qF 'the offer is not a mode the user called, so nothing announces it' "$PRT_OPTIMISE_REF" || PRT12_WHY+=" offer:announces"
 else
     PRT12_WHY+=" missing:unikit-rules/references/mode-optimise.md"
 fi
 if [[ -s "$PRT_PRUNE_REF" ]]; then
-    grep -qF 'Mode E — prune:' "$PRT_PRUNE_REF" && PRT12_WHY+=" mode-e:announcement-moved-into-reference"
+    grep -qF "prune: I'll look for rules" "$PRT_PRUNE_REF" && PRT12_WHY+=" mode-e:announcement-moved-into-reference"
     grep -qF 'checking them against each other, the knowledge base and the project code now' "$PRT_PRUNE_REF" || PRT12_WHY+=" mode-e:no-progress-line"
 else
     PRT12_WHY+=" missing:unikit-rules/references/mode-prune.md"
@@ -8180,6 +8201,31 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# CO: what a /unikit-commit run shows (CO-1…CO-3)
+# ─────────────────────────────────────────────
+# Measured on a real run with language.ui = ru: the skill is git commands with English output
+# plus English question literals, so the agent narrated every check in English, announced the
+# language it had found, copied "Commit with the message above?" verbatim, kept the English
+# `Technical:` label inside a Russian message, and closed by explaining the push setting. CO pins
+# the three fixes on formulations: the templates are said in language.ui, a passing check and a
+# setting that did its job say nothing, and the label follows the commit language.
+CO_WHY=""
+# (CO-1) two languages, and the templates are translated.
+grep -qF 'only one of them belongs to the commit' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-1:ui-vs-artifacts-unstated"
+grep -qF 'are templates: say them in `language.ui`' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-1:question-literals-copied"
+# (CO-2) a quiet run: no narration of passing checks, no word about a setting that did its job.
+grep -qF '**A check that passes says nothing**' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:checks-narrated"
+grep -qF '**no mention of a setting that merely did its job**' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:settings-narrated"
+grep -qF 'silently: the result line is the last thing said' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:push-skip-narrated"
+# (CO-3) the Technical label follows the commit language.
+grep -qF 'the English word `Technical:` never appears in the message' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-3:english-label-allowed"
+if [[ -z "$CO_WHY" ]]; then
+    pass "CO-1…CO-3 unikit-commit talks in language.ui, says nothing about passing checks or settings, translates the Technical label"
+else
+    fail "CO unikit-commit output contract:$CO_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # AR: /unikit-archive — the plan archive (AR-1…AR-9 the skill, AR-10…AR-13 the readers)
 # ─────────────────────────────────────────────
 # The archive MOVES completed folder plans out of .unikit/code/plans/, so every reader that
@@ -8252,7 +8298,7 @@ if [[ -z "$AR_WHY" ]]; then
     # (AR-10) the one reader that wants completed plans reads the archive too — a glob that
     # misses returns "no prior plan", never an error, so nothing else would notice.
     grep -qF '`.unikit/code/archive/plans/*/*.md`' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:fallback-blind-to-archive"
-    grep -qF 'moves exactly the completed plans this fallback reads' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:no-reason"
+    grep -qF 'moves the completed plans this fallback reads' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:no-reason"
     # (AR-11) a new plan never takes an archived plan's name — both producers.
     grep -qF '`.unikit/code/archive/plans/`' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-collision-blind-to-archive"
     grep -qF 'is archived (<matched folder>)' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-no-archived-branch"
@@ -8266,9 +8312,36 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF '`.unikit/code/archive/plans/`' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-blind-to-archive"
     grep -qF 'History, never a plan to continue' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-may-resume"
     grep -qF '`/unikit-explore` reads archived plans as history' "$AR_SKILL" || AR_WHY+=" AR-13:reader-unlisted"
+    # (AR-14) the run says what it is about to do before it reads anything: a real interactive run
+    # classified thirty plans for five minutes and opened with a remark about the language.
+    grep -qF '**First, announce the mode**' "$AR_SKILL" || AR_WHY+=" AR-14:step0-reads-first"
+    grep -qF "I'll check every plan in .unikit/code/plans/" "$AR_SKILL" || AR_WHY+=" AR-14:no-interactive-announcement"
+    grep -qF 'not a word about the language or the config' "$AR_SKILL" || AR_WHY+=" AR-14:may-announce-language"
+    grep -qF '**Then say what you are doing, as you do it.**' "$AR_SKILL" || AR_WHY+=" AR-14:silent-steps"
+    # (AR-15) the table carries the created and last-change dates the archiving decision rests on,
+    # each with its source order, and uncommitted changes win over the last commit.
+    grep -qF 'folder · verdict · created · last change' "$AR_SKILL" || AR_WHY+=" AR-15:no-dates-in-table"
+    grep -qF "the task file's \`Created: YYYY-MM-DD\` header line" "$AR_SKILL" || AR_WHY+=" AR-15:created-source-lost"
+    grep -qF 'has changes no commit holds yet' "$AR_SKILL" || AR_WHY+=" AR-15:last-change-ignores-working-tree"
+    grep -qF 'including a remark made while a command runs' "$AR_SKILL" || AR_WHY+=" AR-14:english-remarks-allowed"
+    # (AR-16) an unfinished plan has a sanctioned way out: a real user archived eleven abandoned
+    # plans and the agent had to break the skill's own rule to do it. It moves only after the
+    # user has seen what is left, its label says so, --all never takes it, and the readers that
+    # want completed plans (the implemented_version fallback) or history (explore) tell it apart.
+    grep -qF 'Archive them unfinished' "$AR_SKILL" || AR_WHY+=" AR-16:no-unfinished-option"
+    grep -qF '`Archived: <today> — unfinished (<done>/<total>)`' "$AR_SKILL" || AR_WHY+=" AR-16:unfinished-label-lost"
+    grep -qF 'an unfinished plan is archived only by an explicit choice' "$AR_SKILL" || AR_WHY+=" AR-16:all-takes-unfinished"
+    grep -qF 'an `empty`, `broken bundle` or `not a plan` folder never moves' "$AR_SKILL" || AR_WHY+=" AR-16:empty-may-move"
+    grep -qF 'An archived plan whose `Archived:` line ends in' "$AR_DESIGN_CTX" || AR_WHY+=" AR-16:fallback-reads-unfinished"
+    grep -qF 'was dropped part-way' "$AR_EXPLORE" || AR_WHY+=" AR-16:explore-reads-unfinished-as-built"
+    # (AR-17) the plans are chosen by row number or by a date rule on the table's own columns,
+    # and the typing option never reads as "the listed ones" (the prune trap, PRT-10).
+    grep -qF 'Choose by number or date' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
+    grep -qF 'never as "the listed ones"' "$AR_SKILL" || AR_WHY+=" AR-17:choice-translation-trap"
+    grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
 fi
 if [[ -z "$AR_WHY" ]]; then
-    pass "AR-1…AR-13 unikit-archive: non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
+    pass "AR-1…AR-17 unikit-archive: announces itself first, dates every plan, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
 else
     fail "AR plan archive contract:$AR_WHY"
 fi
