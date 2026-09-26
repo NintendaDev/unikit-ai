@@ -124,7 +124,7 @@ Silently load — do not narrate:
    only from its parent rule's `> **References**:`, and **never glob the memory tree**
    (`.unikit/memory/gamedesign/**`) to discover rules.
 
-5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority. **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the design work at hand — the concept, system, flow or content type; when unsure, load.
 6. **Schema guard (clean break — no automatic migration).** `GD-IDS.yaml` MUST be
    `version: 2`. If it is still `version: 1`, **STOP** and report: the design
    workspace is on the pre-v2 layout — v2 dropped the standalone markdown

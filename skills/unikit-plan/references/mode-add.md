@@ -49,7 +49,7 @@ Load the plan manifest: `.unikit/code/plans/<folder>/PLAN.md` for folder plans, 
 
 The refusal is never silent: a silent stop is indistinguishable from "there was nothing to add".
 
-Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core/stack rules) are already loaded by Bootstrap (Step 0.5).
+Project docs (DESCRIPTION.md, ARCHITECTURE.md, RULES.md, core rules) are already loaded by Bootstrap (Step 0.5). For every phase you add or rewrite, run the **Rule refresh per phase** of SKILL.md Step 5 before drafting its tasks.
 
 ### Add Step 2: Analyze & Apply
 

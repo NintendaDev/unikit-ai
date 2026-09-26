@@ -16,7 +16,7 @@ domain *knowledge*, not process.
 
 ### Override Priority (highest wins)
 
-1. **`.unikit/RULES.md`** — project-specific overrides (always wins)
+1. **`.unikit/RULES.md`** and its topic files in `.unikit/rules/` — project-specific overrides (always win)
 2. **`.unikit/gamedesign/GAME.md`** — the project's own design truth (pillars, anti-pillars, design decisions)
 3. **Library rules** (`.unikit/memory/gamedesign/library/`) — the studio's own custom design rules
 4. **Core rules** (`.unikit/memory/gamedesign/core/`) — canonical, official-backed design knowledge
@@ -26,6 +26,8 @@ When a project decision (RULES.md / GAME.md) or a studio custom library rule con
 ### Step 1: Load RULES.md
 
 Read `.unikit/RULES.md` before loading any rule below. It contains project-specific overrides that take highest priority.
+
+**Project rule topics.** A `.unikit/RULES.md` with a `## Topics` section — a table with the columns `Topic` and `Load when` — is split: the rules under its `## Common` heading apply to every task, and each table row links a topic file `.unikit/rules/<slug>.md` that applies only to the work its `Load when` describes. Load a topic file the way you load a rule below by its **Load When** column: when the current work matches it; re-check whenever the work moves to a new phase or area, and read only the topic files not loaded yet; when unsure, load it. A skill that works in phases loads topic files at the start of each phase, not at Bootstrap. A row whose file is missing → print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue. Inside its own area a topic rule wins over a `## Common` rule it contradicts. No `## Topics` section → the whole file applies, as before.
 
 ### Step 2: Load Core rules (on demand)
 

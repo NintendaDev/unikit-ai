@@ -240,11 +240,11 @@ Load the project knowledge base once, before the first task.
 
 **Read in parallel:**
 1. `.unikit/system/dev-principles.md` — **up to its lazy-read boundary**: find the marker line (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`) and `Read` the file with `limit` set to that line number. The part **below the marker is read once, at plan load, when the checklist carries an `Editor:` line** — the deep reference plus the editor procedures D6–D8 this skill follows; a plan without `Editor:` lines never reads it. An agent that cannot read with a limit reads the whole file.
-2. `.unikit/RULES.md` — project overrides (highest priority)
+2. `.unikit/RULES.md` — project overrides (highest priority). **Rule topics:** only the root here; the topic files its `## Topics` table lists load per phase in Step 3.0.
 3. `.unikit/memory/code/RULES_INDEX.md` — index of core/stack rules
 4. For EACH row in the Core table where Required By = `all` or contains `unikit-implement` — read that file from `.unikit/memory/code/core/` using the Read tool.
 
-Stack rules are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
+Stack rules and rule topics are NOT loaded here — they are loaded lazily per-phase in Step 3.0.
 
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
@@ -310,9 +310,9 @@ Keep a running list of files you create, modify, or delete during execution — 
 
 Before executing the first task of any phase (including the first phase):
 1. Re-read `.unikit/memory/code/RULES_INDEX.md`.
-2. Match the phase name and its task descriptions against the Stack table's `Load When` column.
-3. Compute delta: stack rules needed for this phase that are NOT in `loaded_rules`.
-4. Read each delta rule from `.unikit/memory/code/stack/` using the Read tool.
+2. Match the phase name and its task descriptions against the Stack table's `Load When` column **and against the `Load when` column of the `## Topics` table in `.unikit/RULES.md`** (read at Step 1.5; a root without that table has no topics).
+3. Compute delta: stack rules and topic files needed for this phase that are NOT in `loaded_rules`. A topic whose match is uncertain is needed.
+4. Read each delta rule — a stack rule from `.unikit/memory/code/stack/`, a topic file from `.unikit/rules/` — using the Read tool. A topic file the table lists but the disk lacks → print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue.
 5. Add them to `loaded_rules`.
 
 Inside a phase, do NOT re-check rules between individual tasks — they share the same loaded set.
@@ -359,7 +359,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 - **`mcp`** — carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); the library reference has two triggers and none of them is Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9).
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
 - **`direct`** — **a rollback point must exist before editing** (this is mandatory and the whole reason the mode is gated):
-  - Files this run changed and has not committed yet → stage only those and commit them through `/unikit-commit`, like every other commit of this run — never with a `git commit` of your own. The user cancels that commit, or it does not complete → do not edit: put the task back on `manual` and print `WARN [editor] <task>: no pre-edit commit — direct edit skipped, task back on manual` — without that commit there is no rollback point.
+  - Files this run changed and has not committed yet → stage only those and commit them through `/unikit-commit`, like every other commit of this run — never with a `git commit` of your own; with auto-commit on (Step 3.9) it passes `auto` too. The user cancels that commit, or it does not complete → do not edit: put the task back on `manual` and print `WARN [editor] <task>: no pre-edit commit — direct edit skipped, task back on manual` — without that commit there is no rollback point.
   - Nothing of this run is uncommitted → `HEAD` already is the rollback point: no commit is needed.
   - The target file itself has uncommitted changes this run did not make → a rollback would erase them. Before anything is staged, ask once with `AskUserQuestion` (numbered text, then end your turn, without the tool): `<target> has uncommitted changes that are not from this run` — `Commit them with the pre-edit commit` / `Leave this task on manual`. The first adds the target to the pre-edit commit; the second puts the task back on `manual` with that reason.
 
@@ -458,7 +458,10 @@ Skip this step if the phase only modified existing files without structural chan
 
 **3.9: Commit checkpoint (after completing a phase)**
 
-After all tasks in a phase are completed (and tests written if applicable), ask:
+After all tasks in a phase are completed (and tests written if applicable):
+
+- **Auto-commit is on** (chosen at an earlier checkpoint of this session) → ask nothing: stage this phase's files and invoke `unikit-commit` with the argument `checkpoint: phase {N}, auto` — it writes the message and commits without a question (its `## Auto mode`). Print its result line and go on to the next phase.
+- Otherwise ask:
 
 ```
 ✅ Phase {N} complete — {count} tasks done.
@@ -467,15 +470,18 @@ After all tasks in a phase are completed (and tests written if applicable), ask:
 
 Options:
 1. Yes, commit — /unikit-commit with this phase's files
-2. No, continue to next phase
-3. Disable checkpoints — no more commit questions this session
+2. Yes, and from now on commit without asking — this and every later commit of this session
+3. No, continue to next phase
+4. Disable checkpoints — no more commit questions this session
 ```
+
+**Option 2 turns auto-commit on**, and this checkpoint already commits the auto way. From then on every commit this session makes through `unikit-commit` passes `auto`: each later checkpoint, the pre-edit commit of a `direct` editor task, and the commit of Step 5.6. It is held in this session's memory, like option 4 — after `/clear` or in a new session the question returns once. Auto-commit never pushes.
 
 Staging: **Important Rules** → *Commit only your own changes*.
 
 Do not suggest a message here. `/unikit-commit` writes it from the plan's `## Overview` and this phase's `WHY:` lines; a subject assembled from a phase title is exactly the technical message its contract rules out.
 
-A scope of many phases: suggest `/compact` or `/clear` before the next phase.
+A scope of many phases: suggest `/compact` or `/clear` before the next phase — with auto-commit on, `/compact`: `/clear` forgets the choice.
 
 **3.10: Check ROADMAP.md progress (after all phases in scope are done)**
 
@@ -615,6 +621,8 @@ Based on choice:
 - **Verify first** → invoke `unikit-review`, wait for it to return, then invoke `unikit-commit`.
 - **Skip to commit** → invoke `unikit-commit`.
 
+**Auto-commit on (Step 3.9)** → the question stays — it is about the review — and the commit it leads to is invoked with the argument `final commit, auto`.
+
 **These are skill invocations, in this session — not delegations.** Three tiers, in order:
 
 - **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit")`, inline, waiting for each to return before starting the next. This is the path on Claude Code.
@@ -637,7 +645,7 @@ Next steps:
 - {or "All phases completed — feature is done!"}
 ```
 
-When the plan is a folder plan and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself refuses while MCP findings are untransferred or rule candidates are still open.
+When the plan is a folder plan and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself asks about MCP findings never transferred and rule candidates still open.
 
 ## Status Display
 

@@ -410,7 +410,7 @@ File exists?
 Before appending, compare the new content against existing rules:
 
 1. **Read the target file.**
-2. **Read related files** — scan `RULES_INDEX.md` for files with overlapping keywords, then read those too (across all tiers of the module). Also read `.unikit/RULES.md` for project-specific overrides.
+2. **Read related files** — scan `RULES_INDEX.md` for files with overlapping keywords, then read those too (across all tiers of the module). Also read `.unikit/RULES.md` for project-specific overrides. **Rule topics:** plus the topic files listed under its `## Topics` whose `Load when` matches the new rule's area; when unsure, load.
 3. **Compare each new rule against existing formulations.** A contradiction is when the new content prescribes something different from an existing rule — e.g., "use `await` directly" vs existing "always wrap in `UniTask.Create`", or "bind as Transient" vs existing "bind as Singleton".
 4. **Build the gap list (the default for every update).** Classify the new material against what the file already says, and show the result to the user as the summary of what the update will do:
    - **Add** — genuinely new rules not yet present in the file.
@@ -741,7 +741,7 @@ Skip the question entirely (do not ask, do not print a fallback hint) when:
 - `.unikit/memory/<module>/RULES_INDEX.md` — index of all rule files in the module
 
 **Writable only during Branch C (Migrate Rules):**
-- `.unikit/RULES.md` — removal of migrated entries only; adding new entries goes through `unikit-rules` skill
+- `.unikit/RULES.md` and its topic files in `.unikit/rules/` — removal of migrated entries only, plus two named edits: the `<!-- @no-migrate -->` tag of Keep, and the deletion of a topic file that migration emptied, together with its `## Topics` row; adding new entries goes through `unikit-rules` skill
 
 **Read-only** (this skill must NEVER modify these files):
 - `.unikit/config.yaml` — project settings (language). Read-only for this skill.

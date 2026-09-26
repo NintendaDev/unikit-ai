@@ -564,6 +564,8 @@ assert_stdout_contains "$S20_DIR/.unikit/memory/gamedesign/core/balance.md" "STU
     "override file carries the studio's custom content, not the bundled rule"
 assert_stdout_contains "$S20_DIR/.unikit/memory/gamedesign/RULES_INDEX.md" "| File | Description | Origin | Load When |" \
     "GD RULES_INDEX core table carries the per-rule Origin column"
+assert_stdout_contains "$S20_DIR/.unikit/memory/gamedesign/RULES_INDEX.md" "Project rule topics" \
+    "GD RULES_INDEX carries the project rule-topics protocol (Step 1 canon)"
 
 # Per-rule origin (robust to install ordering): override → primary, backfill → bundled.
 assert_cmd_exit 0 "status --module gamedesign on override exits 0" "$TMPDIR/s20-status.log" -- \

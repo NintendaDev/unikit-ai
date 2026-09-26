@@ -186,7 +186,7 @@ Silently load the project knowledge base before any exploration — do not narra
 1. **`.unikit/DESCRIPTION.md`** — project description, tech stack, constraints
 2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
-   - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
+   - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority). **Rule topics:** only the root here — its topic files load per phase in Step 5 (**Rule refresh per phase**), or earlier when the Step 4 exploration needs one.
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **`.unikit/skill-context/{{self_name}}/SKILL.md`** — project-specific skill overrides (if exists)
@@ -504,6 +504,8 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    Form: `Editor: [kind] <container> → <target> : <action>`, one line per target, placed after `Files:` (grammar and the 6 kinds: `references/TASK-FORMAT.md` → `### Editor task grammar`). Pure code tasks omit the field. When `engine_rules_loaded = false` the field is **not generated at all**.
 
    **Test-checkpoint task.** A run point is a **separate** checklist task carrying the line `Test checkpoint: <coverage>` in the position `Files:` occupies. The rest — no `Files:`, where a checkpoint is worth placing, a phase left without one, the closing `Test checkpoint: plan` under `Testing: yes`, no list of suites, no run commands elsewhere — is `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate it here**.
+
+   **Rule refresh per phase.** Before you draft the tasks of each phase — in ultra, before you write each phase file (`mode-ultra.md` Step F) — match the phase's name and the tasks you are about to write against the `Load when` column of the `## Topics` table in `.unikit/RULES.md` and the Stack table of `.unikit/memory/code/RULES_INDEX.md`. Read only the topic files and stack rules not loaded yet — keep their paths in `loaded_rules`, the same delta `/unikit-implement` Step 3.0 computes; when unsure, load. A listed topic file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, continue. Nothing is re-read between the tasks of one phase.
 
 6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`).
 

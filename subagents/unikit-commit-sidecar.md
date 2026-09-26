@@ -25,7 +25,7 @@ You never write commit message text — no subject, no body, no draft. Every mes
 
 ## Rules Loading
 
-1. Read `.unikit/RULES.md` if present — check for rules about what must never be committed
+1. Read `.unikit/RULES.md` if present — check for rules about what must never be committed. **Rule topics:** also load the topic files listed under its `## Topics` whose `Load when` matches the files you were handed or committing itself; when unsure, load.
 
 ## What to Assess
 

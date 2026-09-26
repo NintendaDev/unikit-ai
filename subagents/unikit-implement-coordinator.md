@@ -185,20 +185,23 @@ report final summary
 
 When only one phase is ready, execute it directly within the coordinator (no worker overhead).
 
+**Rules — once per phase, never per task.** Before the first task of the phase:
+- **The first phase you execute yourself** — Bootstrap principles + rules: `.unikit/system/dev-principles.md` **up to its lazy-read boundary** (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`, then `Read` with `limit` set to that line); the part **below the marker is read once, at plan load, when the checklist carries an `Editor:` line**. Then `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Keep the paths of the rule files you read in `loaded_rules`.
+- **Every phase you execute yourself, the first included** — **Rule topics:** read the stack rules and the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches this phase — its name and its tasks — and that are not in `loaded_rules` yet; when unsure, load. A listed topic file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, continue.
+
 For each task in the phase, sequentially:
 1. Mark `[~]` in the manifest
 2. Implement using direct tool calls (Read, Write, Edit, Glob, Grep, Bash)
-3. Bootstrap principles + rules: `.unikit/system/dev-principles.md` **up to its lazy-read boundary** (`Grep -n '^<!-- === LAZY-READ BOUNDARY === -->'`, then `Read` with `limit` set to that line); the part **below the marker is read once, at plan load, when the checklist carries an `Editor:` line**. Then `.unikit/RULES.md`, `.unikit/memory/code/RULES_INDEX.md`, and all core rules where Required By = `all` or contains `unikit-implement-coordinator`. Stack rules — on-demand.
-4. Run verification pass scoped to changed files
-5. If material issues found, fix and re-verify (max 2 rounds)
-6. Mark `[x]` or `[!]` in the manifest. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
+3. Run verification pass scoped to changed files
+4. If material issues found, fix and re-verify (max 2 rounds)
+5. Mark `[x]` or `[!]` in the manifest. **Third branch — an editor target handed to the user:** mark `[x]` and append `⏸️ MANUAL` to the task text. It does not block "phase complete" (the user took it on deliberately) and it is never picked up again by a later run, but it is not counted as implemented either — carry it into the summary from the worker's `manual_targets:`
 
    **Fourth branch — the task produced an MCP finding.** In this branch you are the executor: no worker was spawned, so nobody else can write the row. Append it to the plan's `## MCP Findings` table in the same pass that marks the task, by `dev-principles.md` → **D7**. **Never write `.unikit/MCP-RECHECK-NOTES.md` yourself** — the durable surface passes through a human running `/unikit-mcp-trap`.
 
    **Fifth branch — a test-checkpoint task.** In this branch you are the executor, so there is nobody to withhold it from: execute it in the ordinary order, by `## Step 3.2` of that test-run reference, and write the result into the manifest's `## Test Runs` in the same pass that marks the task.
 
    **Sixth branch — the task produced a rule candidate.** Here too you are the executor, so you are the writer: append the row to the plan's `## Rule Candidates` in the same pass that marks the task — `R<n>` one more than the highest already there (read the table first), `from` the task, `status` `open`, dedup semantic. **Never write `.unikit/RULES.md` yourself**, and never ask about the candidates here: this agent's session usually ends before a question could be answered, so it records them and reports the count.
-7. If any task fails, stop the phase
+6. If any task fails, stop the phase
 
 ## Parallel Phase Dispatch
 

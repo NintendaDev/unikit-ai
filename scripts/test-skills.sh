@@ -7657,7 +7657,7 @@ fi
 # cannot collide with content — asserted as the literal the skill spells out, so a rewrite
 # onto a different delimiter has to delete this line first.
 UR1_WHY=""
-grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
+grep -qF 'argument-hint: "[rule text or topic | numbered batch | compact | optimise | prune]"' "$EV_RULES_SKILL" || UR1_WHY+=" argument-hint-not-updated"
 grep -qF 'numbered batch'  "$EV_RULES_SKILL" || UR1_WHY+=" no-batch-mode"
 grep -qF '`^\d+\. `'       "$EV_RULES_SKILL" || UR1_WHY+=" no-marker-rule"
 if [[ -z "$UR1_WHY" ]]; then
@@ -7766,6 +7766,286 @@ if [[ -z "$RFM_WHY" ]]; then
     pass "RFM-1…RFM-8 rule form is a flat one-line list; compact is exact-matched, confirmed, non-destructive; no length counters"
 else
     fail "RFM-1…RFM-8 rule form contract:$RFM_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# PRT: project rule topics (PRT-1…PRT-13)
+# ─────────────────────────────────────────────
+# `.unikit/RULES.md` became a root: common rules under `## Common`, bounded rules in topic
+# files under `.unikit/rules/`, listed by a `## Topics` table whose `Load when` column is the
+# only copy of each load condition (research project-rules-topics, DEC-001…DEC-003). This
+# block pins the writer; PRT-6…PRT-10 below pin the canon, the readers, the other writers and
+# the prune mode. Anchored on formulations, never on headings. RFM-1 keeps asserting
+# `is a **flat list**`: every list — the whole flat file, `## Common`, each topic file — is
+# still one.
+PRT_OPTIMISE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-optimise.md"
+PRT_WHY=""
+[[ -s "$PRT_OPTIMISE_REF" ]] || PRT_WHY+=" missing:unikit-rules/references/mode-optimise.md"
+# (PRT-1) the layout: the table header, two headings that live together, the header paragraph,
+# the one marker (there is no `topics` marker), and the single source of `Load when`.
+grep -qF '| Topic | Load when |' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-table-header"
+grep -qF '`## Topics` and `## Common` exist together or not at all' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-two-heading-rule"
+grep -qF 'the rules under `## Common` apply to every task' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-header-paragraph"
+grep -qF '<!-- unikit:rules-layout flat -->' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:no-flat-marker"
+grep -qF 'rules-layout topics' "$EV_RULES_SKILL" && PRT_WHY+=" PRT-1:topics-marker-returned"
+grep -qF '**`Load when` lives only in the root table**' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-1:load-when-not-single-source"
+# (PRT-2) the state comes from the content, in a fixed order, and a refusal is final.
+grep -qF "decided by the file's content" "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:state-not-content-derived"
+for prt_s in topics flat empty legacy; do
+    grep -qF "| \`$prt_s\` |" "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:no-state-$prt_s"
+done
+grep -qF 'Check the states in this order' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:no-order"
+grep -qF 'A `flat` file is never offered the reorganization again' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-2:refusal-not-final"
+# (PRT-3) placement and the report: common when unsure, the Topic column, the drift warnings.
+grep -qF 'When unsure, the rule goes to common.' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-unsure-default"
+grep -qF '| # | Outcome | Topic | Cross-check |' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-topic-column"
+grep -qF '`<slug> (new)`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-new-topic-value"
+grep -qF 'WARN [rules] topic table:' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-3:no-drift-warning"
+# (PRT-4) Mode D: exact argument, both spellings, non-destructive, the invariant, the offer.
+grep -qF 'references/mode-optimise.md' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-4:dispatch-missing"
+grep -qF '`optimise` or `optimize`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-4:spellings"
+if [[ -s "$PRT_OPTIMISE_REF" ]]; then
+    grep -qF '**No rule is deleted**' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:destructive"
+    grep -qF '**only on confirmation**' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:unconfirmed"
+    grep -qF 'rules before, <M> after — file unchanged' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-invariant"
+    for prt_o in 'Apply' 'Keep the flat format' 'Not now'; do
+        grep -qF "\`$prt_o\`" "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-option-${prt_o// /-}"
+    done
+    grep -qF 'No topic proposed → no question' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:offer-without-topics"
+    grep -qF 'end your turn and wait' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:text-tier-does-not-stop"
+fi
+# (PRT-5) Mode C keeps the layout and the tag, and offers the reorganization on a legacy file.
+grep -qF 'compact never removes or rewrites it' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:compact-may-strip-layout"
+grep -qF 'stays verbatim at the end of the shortened rule' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:no-migrate-tag-dropped"
+grep -qF 'Mode C on a `legacy` file first runs the offer' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:compact-no-offer"
+# (PRT-11) the rule language is the `language.rules` setting, not a hardcoded English.
+grep -qF '`language.rules`' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-11:no-language-setting"
+grep -qF 'translate it to English before writing' "$EV_RULES_SKILL" && PRT_WHY+=" PRT-11:hardcoded-english-returned"
+if [[ -z "$PRT_WHY" ]]; then
+    pass "PRT-1…PRT-5, PRT-11 unikit-rules writes the root + topic layout, reads its state from the content, offers once, keeps compact/optimise non-destructive"
+else
+    fail "PRT writer contract:$PRT_WHY"
+fi
+# (PRT-6) the reading protocol has ONE canon: "Step 1" of both RULES_INDEX templates, which
+# the CLI regenerates on every update and rules sync, so the text travels with the package.
+# One -qF per sentence, applied to BOTH templates (the UR-3 shape): a canon that only one
+# module still states is not a canon. The /unikit fallback index lost its `rules/` line.
+PRT6_TPL_CODE="$ROOT_DIR/data/RULES_INDEX_TEMPLATE.md"
+PRT6_SHARED=(
+    '**Project rule topics.**'
+    'Load a topic file the way you load a rule below by its **Load When** column'
+    'A skill that works in phases loads topic files at the start of each phase, not at Bootstrap.'
+    'print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue'
+    'Inside its own area a topic rule wins over a `## Common` rule it contradicts.'
+    'No `## Topics` section → the whole file applies, as before.'
+    'and its topic files in `.unikit/rules/` — project-specific overrides (always win)'
+)
+PRT6_WHY=""
+for prt6_f in "$PRT6_TPL_CODE" "$GD_RULES_INDEX_TPL"; do
+    prt6_n="${prt6_f##*/}"
+    [[ -s "$prt6_f" ]] || { PRT6_WHY+=" missing:$prt6_n"; continue; }
+    for prt6_s in "${PRT6_SHARED[@]}"; do
+        grep -qF -- "$prt6_s" "$prt6_f" || PRT6_WHY+=" ${prt6_n}:missing[${prt6_s:0:40}]"
+    done
+done
+grep -qF 'conflicts with a template rule in `rules/`' "$ROOT_DIR/skills/unikit/SKILL.md" && PRT6_WHY+=" unikit:stale-rules-dir-line"
+if [[ -z "$PRT6_WHY" ]]; then
+    pass "PRT-6 the rule-topics canon reads identically in both RULES_INDEX templates; the /unikit fallback no longer names a template rules/ folder"
+else
+    fail "PRT-6 rule-topics canon drift:$PRT6_WHY"
+fi
+# (PRT-7) the phase readers: implement Step 3.0 and the new plan step load topics per phase
+# (the plan point is new — REQ-004), the worker by its phase, the coordinator once per phase
+# and never per task (research finding 7.1). The coordinator half is a NEGATIVE on the task
+# loop, because the read used to sit inside it and looked right there.
+PRT7_WHY=""
+PRT7_S30="$(awk 'index($0,"**3.0: Phase Rules Refresh")==1{f=1;next} index($0,"Inside a phase, do NOT re-check rules")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+if [[ -z "$PRT7_S30" ]]; then
+    PRT7_WHY+=" implement:3.0-window-empty"
+else
+    printf '%s' "$PRT7_S30" | grep -qF '`## Topics`' || PRT7_WHY+=" implement:3.0-no-topics"
+    printf '%s' "$PRT7_S30" | grep -qF '.unikit/rules/' || PRT7_WHY+=" implement:3.0-no-topic-dir"
+    printf '%s' "$PRT7_S30" | grep -qF 'A topic whose match is uncertain is needed.' || PRT7_WHY+=" implement:3.0-no-unsure-rule"
+fi
+grep -qF 'Stack rules and rule topics are NOT loaded here' "$UNIKIT_IMPLEMENT_SKILL" || PRT7_WHY+=" implement:1.5-loads-topics"
+grep -qF '**Rule refresh per phase.**' "$UNIKIT_PLAN_SKILL" || PRT7_WHY+=" plan:no-per-phase-refresh"
+grep -qF 'Rule refresh per phase' "$UP_MODE_ULTRA" || PRT7_WHY+=" plan-ultra:step-f-no-refresh"
+grep -qF 'Rule refresh per phase' "$UP_MODE_ADD" || PRT7_WHY+=" plan-add:no-refresh"
+grep -qF 'matches your phase' "$TC_WORKER" || PRT7_WHY+=" worker:not-by-phase"
+grep -qF 'once per phase, never per task' "$TC_COORD" || PRT7_WHY+=" coordinator:no-per-phase-rule"
+PRT7_LOOP="$(awk 'index($0,"For each task in the phase, sequentially:")==1{f=1;next} /^## Parallel Phase Dispatch/{f=0} f' "$TC_COORD")"
+if [[ -z "$PRT7_LOOP" ]]; then
+    PRT7_WHY+=" coordinator:task-loop-window-empty"
+else
+    printf '%s' "$PRT7_LOOP" | grep -qF 'Bootstrap principles + rules' && PRT7_WHY+=" coordinator:rules-read-per-task-returned"
+fi
+if [[ -z "$PRT7_WHY" ]]; then
+    pass "PRT-7 implement, plan, worker and coordinator load rule topics per phase; the coordinator reads rules once per phase, not per task"
+else
+    fail "PRT-7 per-phase topic loading:$PRT7_WHY"
+fi
+# (PRT-8) every reader of `.unikit/RULES.md` names its rule-topics point. A reader is found by
+# the shape of its read line; the writers that read every file on purpose — unikit-rules
+# itself, migrate-rules, evolve — are PRT-1…PRT-5 / PRT-9's objects, not this one's. The floor
+# is the measured reader count (25 when the family was added): a reworded read line leaves
+# BOTH counters silently, and only the floor notices. code-recon.md wraps its read across two
+# lines, which no line-based pattern can see, so it is asserted by name.
+PRT8_RE='ALWAYS read `\.unikit/RULES\.md`|`\.unikit/RULES\.md` — project overrides|`\.unikit/RULES\.md`\*\* \(if present\)|[Rr]ead `\.unikit/RULES\.md`|\*\*Read `\.unikit/RULES\.md`\*\*|read the project.s( own)? `\.unikit/RULES\.md`|Then `\.unikit/RULES\.md`|`\.unikit/RULES\.md`\s+if present'
+PRT8_FLOOR=25
+PRT8_READERS=0
+PRT8_MISSING=""
+while IFS= read -r prt8_f; do
+    prt8_rel="${prt8_f#"$ROOT_DIR"/}"
+    case "$prt8_rel" in
+        skills/unikit-rules/*|skills/unikit-memory/references/migrate-rules.md|skills/unikit-evolve/SKILL.md) continue ;;
+    esac
+    PRT8_READERS=$((PRT8_READERS + 1))
+    grep -qF '**Rule topics:**' "$prt8_f" || PRT8_MISSING+=" $prt8_rel"
+done < <(grep -rlE "$PRT8_RE" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null | sort)
+grep -qF '**Rule topics:**' "$ROOT_DIR/skills/unikit-gd-recon/references/code-recon.md" || PRT8_MISSING+=" skills/unikit-gd-recon/references/code-recon.md"
+if (( PRT8_READERS < PRT8_FLOOR )); then
+    fail "PRT-8 found $PRT8_READERS readers of .unikit/RULES.md, measured $PRT8_FLOOR — a read line was reworded out of the pattern"
+elif [[ -n "$PRT8_MISSING" ]]; then
+    fail "PRT-8 readers of .unikit/RULES.md without a **Rule topics:** point:$PRT8_MISSING"
+else
+    pass "PRT-8 all $PRT8_READERS readers of .unikit/RULES.md (+ code-recon.md) name their rule-topics point"
+fi
+# (PRT-9) the other writers: migrate-rules walks every topic file and deletes a topic it emptied
+# (both headings with the last one); the ownership contract names `.unikit/rules/`, the Keep tag
+# and that deletion, and no longer claims `rules/` is written by nobody (finding 7.7); evolve
+# checks coverage across topic files, logs `**Topic:**` instead of the dead `**Section:**`
+# (finding 7.2), and takes the rule language from `language.rules` (finding 7.6).
+PRT9_MIGRATE="$ROOT_DIR/skills/unikit-memory/references/migrate-rules.md"
+PRT9_WHY=""
+grep -qF 'every topic file listed under its `## Topics` table' "$PRT9_MIGRATE" || PRT9_WHY+=" migrate:no-topic-traversal"
+grep -qF '**Emptied files.**' "$PRT9_MIGRATE" || PRT9_WHY+=" migrate:no-emptied-files-rule"
+grep -qF '(section: {section name})' "$PRT9_MIGRATE" && PRT9_WHY+=" migrate:section-field-returned"
+grep -qF 'the deletion of a topic file that migration emptied' "$UM_SKILL" || PRT9_WHY+=" memory:access-rule-not-extended"
+grep -qF '.unikit/rules/' "$UNIKIT_VERIFY_CONTRACT" || PRT9_WHY+=" contract:topic-files-unowned"
+grep -qF 'the `<!-- @no-migrate -->` tag its Keep option appends' "$UNIKIT_VERIFY_CONTRACT" || PRT9_WHY+=" contract:keep-tag-unnamed"
+grep -qF '`rules/` and `CLAUDE.md` are edited by no command at all' "$UNIKIT_VERIFY_CONTRACT" && PRT9_WHY+=" contract:stale-rules-dir-line"
+grep -qF 'Target section' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:target-section-returned"
+grep -qF '**Section:**' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:section-log-returned"
+grep -qF '**Topic:**' "$EV_EVOLVE_SKILL" || PRT9_WHY+=" evolve:no-topic-log"
+grep -qF 'every topic file its `## Topics` table lists' "$EV_EVOLVE_SKILL" || PRT9_WHY+=" evolve:coverage-ignores-topics"
+grep -qF 'all rules in RULES.md are in English' "$EV_EVOLVE_SKILL" && PRT9_WHY+=" evolve:hardcoded-english-returned"
+if [[ -z "$PRT9_WHY" ]]; then
+    pass "PRT-9 migrate-rules, the ownership contract and evolve know topic files; the Keep tag and the emptied-topic deletion are named"
+else
+    fail "PRT-9 other writers ignore topic files:$PRT9_WHY"
+fi
+# (PRT-10) Mode E: the one mode that deletes, and only what the user selected. Five classes,
+# each shown with its evidence; three protections that each lift one class (an override is
+# never `covered`, a prohibition never `stale-ref`, a topic/common pair never `conflict`); the
+# right to delete is confined to prune in the skill AND in the ownership contract. RFM-7 keeps
+# compact non-destructive and PRT-4 keeps optimise so — neither is touched here.
+PRT_PRUNE_REF="$ROOT_DIR/skills/unikit-rules/references/mode-prune.md"
+PRT10_WHY=""
+grep -qF 'references/mode-prune.md' "$EV_RULES_SKILL" || PRT10_WHY+=" dispatch-missing"
+grep -qF 'Exactly `prune`?' "$EV_RULES_SKILL" || PRT10_WHY+=" not-exact-match"
+grep -qF 'deletes a rule only in Mode E (`prune`)' "$EV_RULES_SKILL" || PRT10_WHY+=" skill:deletion-not-confined"
+grep -qF 'deletes a rule only in its `prune` mode' "$UNIKIT_VERIFY_CONTRACT" || PRT10_WHY+=" contract:deletion-not-confined"
+if [[ ! -s "$PRT_PRUNE_REF" ]]; then
+    PRT10_WHY+=" missing:unikit-rules/references/mode-prune.md"
+else
+    for prt10_c in duplicate covered not-a-rule conflict stale-ref; do
+        grep -qF "| \`$prt10_c\` |" "$PRT_PRUNE_REF" || PRT10_WHY+=" no-class-$prt10_c"
+    done
+    grep -qF 'Only the rules the user selected are deleted.' "$PRT_PRUNE_REF" || PRT10_WHY+=" deletes-unselected"
+    grep -qF 'A candidate without evidence is not shown.' "$PRT_PRUNE_REF" || PRT10_WHY+=" evidence-optional"
+    grep -qF '**`covered` only on the same meaning.**' "$PRT_PRUNE_REF" || PRT10_WHY+=" override-may-be-covered"
+    grep -qF '**`stale-ref` never applies to a prohibition**' "$PRT_PRUNE_REF" || PRT10_WHY+=" prohibition-may-be-stale"
+    grep -qF 'are never a `conflict`' "$PRT_PRUNE_REF" || PRT10_WHY+=" topic-common-pair-may-conflict"
+    grep -qF '"No longer needed" is not a class' "$PRT_PRUNE_REF" || PRT10_WHY+=" unused-class-returned"
+    grep -qF '`Delete nothing`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-refusal-option"
+    # One answer deletes the whole proposal. The old first option, `Delete the ones I list`,
+    # came out in Russian as "delete the listed ones" — read as "the ones shown" — and a real
+    # user picked it three times expecting everything to go; it is banned by name.
+    grep -qF '`Delete everything proposed`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-delete-all-proposed"
+    grep -qF '`Choose by id`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-choose-by-id"
+    grep -qF 'never render it as "delete the listed ones"' "$PRT_PRUNE_REF" || PRT10_WHY+=" id-option-translation-trap"
+    grep -qF '`Delete the ones I list`' "$PRT_PRUNE_REF" && PRT10_WHY+=" ambiguous-option-returned"
+    # A conflict is RESOLVED, never deleted wholesale: a real "delete everything" removed both
+    # sides of a pair in which one side refined the other, and a half-dead stale-ref took its
+    # live half along. Resolution (keep one side / merge into one rule / undecided) is its own
+    # question; a partly dead rule is never a candidate.
+    grep -qF '**A conflict is resolved, never simply deleted**' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflict-deleted-wholesale"
+    grep -qF 'Never propose deleting both sides.' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflict-both-sides-may-go"
+    grep -qF 'keeps what is true in both and drops what the evidence refutes' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-merge-resolution"
+    grep -qF 'A separate question, never folded into the first' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflicts-share-the-delete-question"
+    grep -qF '`Resolve as proposed`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-resolve-option"
+    grep -qF '**`stale-ref` only when nothing of the rule still applies.**' "$PRT_PRUNE_REF" || PRT10_WHY+=" half-live-rule-may-go"
+    grep -qF 'end your turn and wait' "$PRT_PRUNE_REF" || PRT10_WHY+=" text-tier-does-not-stop"
+    grep -qF '**only on confirmation**' "$PRT_PRUNE_REF" || PRT10_WHY+=" unconfirmed"
+fi
+if [[ -z "$PRT10_WHY" ]]; then
+    pass "PRT-10 prune deletes only the selected rules, shows evidence for every candidate, keeps the four protections, resolves conflicts in their own question instead of deleting them; deletion is confined to prune"
+else
+    fail "PRT-10 prune contract:$PRT10_WHY"
+fi
+# (PRT-12) every mode announces itself as the run's FIRST output — after the language rules,
+# before Step 0, before the mode's reference file, before any project file and before any other
+# sentence — and prints one progress line before each long step. Two real runs of
+# `/unikit-rules optimise` are why: one showed nothing but "Reading .unikit\RULES.md" for two
+# minutes; the next read four files and then narrated its own awk plan without ever naming the
+# mode. The announcements live in SKILL.md Step 1 only, never in a reference: a reference is read
+# by a tool call, so an announcement kept there cannot come first (the NEGATIVE half). The offer
+# stays silent — it is not a mode the user called — or it would fire after every ordinary add
+# to a legacy file.
+PRT12_WHY=""
+grep -qF 'Announce the mode first.' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:no-announce-rule"
+grep -qF 'very first output of the run' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announce-not-first"
+grep -qF "before Step 0, before the mode's reference file, before any project file, and before any other sentence" "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announce-after-reads"
+grep -qF '**First, announce the mode**' "$EV_RULES_SKILL" || PRT12_WHY+=" step0:reads-before-announce"
+grep -qF "Print it before that step's analysis begins, not after it." "$EV_RULES_SKILL" || PRT12_WHY+=" skill:progress-after-the-fact"
+grep -qF '**Then say what you are doing, as you do it:**' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:silent-steps"
+# The announcement is one or two plain sentences — a numbered plan read as bureaucracy on a
+# real run ("как-то топорно"), so the rule forbidding it is asserted as well.
+grep -qF 'No numbered steps, no heading, no list' "$EV_RULES_SKILL" || PRT12_WHY+=" skill:announcement-may-be-a-plan"
+for prt12_m in 'Adding <N> rule(s) — first' "compact: I'll shorten the rules" "optimise: I'll sort the rules into topics" "prune: I'll look for rules that can go"; do
+    grep -qF "$prt12_m" "$EV_RULES_SKILL" || PRT12_WHY+=" no-announcement[${prt12_m:0:6}]"
+done
+if [[ -s "$PRT_OPTIMISE_REF" ]]; then
+    grep -qF "optimise: I'll sort the rules" "$PRT_OPTIMISE_REF" && PRT12_WHY+=" mode-d:announcement-moved-into-reference"
+    grep -qF 'grouping them into topics now' "$PRT_OPTIMISE_REF" || PRT12_WHY+=" mode-d:no-progress-line"
+    grep -qF 'the offer is not a mode the user called, so nothing announces it' "$PRT_OPTIMISE_REF" || PRT12_WHY+=" offer:announces"
+else
+    PRT12_WHY+=" missing:unikit-rules/references/mode-optimise.md"
+fi
+if [[ -s "$PRT_PRUNE_REF" ]]; then
+    grep -qF "prune: I'll look for rules" "$PRT_PRUNE_REF" && PRT12_WHY+=" mode-e:announcement-moved-into-reference"
+    grep -qF 'checking them against each other, the knowledge base and the project code now' "$PRT_PRUNE_REF" || PRT12_WHY+=" mode-e:no-progress-line"
+else
+    PRT12_WHY+=" missing:unikit-rules/references/mode-prune.md"
+fi
+if [[ -z "$PRT12_WHY" ]]; then
+    pass "PRT-12 every unikit-rules mode announces itself as the run's first output and prints progress before long steps; the offer stays silent"
+else
+    fail "PRT-12 mode announcement contract:$PRT12_WHY"
+fi
+# (PRT-13) optimise hands the exact work to skills/unikit-rules/scripts/rules-layout.mjs: a real
+# run on a 360-line file had the agent write its own awk to number 192 rules, because counting
+# and moving that many by hand is where a rule gets lost. The script is self-contained Node (every
+# UniKit project has it, Python it may not); the skill needs its `Bash(node *)` grant, the
+# reference must call it by its installed path, and the by-hand path must survive for an agent
+# that cannot run node. Its behaviour — parse, refusal, verbatim move — is Part 13c's object.
+PRT13_SCRIPT="$ROOT_DIR/skills/unikit-rules/scripts/rules-layout.mjs"
+PRT13_WHY=""
+[[ -s "$PRT13_SCRIPT" ]] || PRT13_WHY+=" missing:unikit-rules/scripts/rules-layout.mjs"
+grep -qxF '  - Bash(node *)' "$EV_RULES_SKILL" || PRT13_WHY+=" skill:no-node-grant"
+grep -qF '{{skills_dir}}/{{self_name}}/scripts/rules-layout.mjs' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:script-not-called"
+grep -qF 'Only when `node` cannot run.' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:no-by-hand-fallback"
+grep -qF 'never work around it by hand' "$PRT_OPTIMISE_REF" || PRT13_WHY+=" optimise:refusal-may-be-bypassed"
+if [[ -s "$PRT13_SCRIPT" ]]; then
+    prt13_lines="$(wc -l < "$PRT13_SCRIPT")"
+    (( prt13_lines <= 500 )) || PRT13_WHY+=" script:${prt13_lines}-lines-over-500"
+    grep -qE "^import .* from '(node:)?[a-z]+';$" "$PRT13_SCRIPT" || PRT13_WHY+=" script:no-node-imports"
+    grep -E '^import ' "$PRT13_SCRIPT" | grep -vqE "from 'node:" && PRT13_WHY+=" script:non-builtin-import"
+fi
+if [[ -z "$PRT13_WHY" ]]; then
+    pass "PRT-13 optimise runs the self-contained rules-layout.mjs (node grant, installed path, by-hand fallback kept)"
+else
+    fail "PRT-13 rules-layout helper wiring:$PRT13_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -7892,22 +8172,77 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# AR: /unikit-archive — the plan archive (AR-1…AR-9 the skill, AR-10…AR-12 the readers)
+# AU: auto-commit (AU-1…AU-4)
+# ─────────────────────────────────────────────
+# A long plan stops at every phase for two questions — "commit?" and "commit with this
+# message?". AU pins the one answer that ends that: the checkpoint's "from now on without
+# asking", which makes every later commit of the session pass `auto` to unikit-commit. The
+# guard's other half matters as much: auto removes the routine confirmation, never the checks —
+# an ERROR still stops the commit, a push is never made, and the message is still printed. The
+# message stays unikit-commit's (CA-3: the checkpoint suggests no subject even in auto mode).
+AU_WHY=""
+# (AU-1) the checkpoint offers it, and auto-commit then asks nothing at later checkpoints.
+grep -qF '2. Yes, and from now on commit without asking' "$CA_IMPLEMENT" || AU_WHY+=" AU-1:no-auto-option"
+grep -qF 'with the argument `checkpoint: phase {N}, auto`' "$CA_IMPLEMENT" || AU_WHY+=" AU-1:checkpoint-not-auto"
+# (AU-2) every other commit of the session follows it: the pre-edit commit and Step 5.6.
+grep -qF 'with auto-commit on (Step 3.9) it passes `auto` too' "$CA_IMPLEMENT" || AU_WHY+=" AU-2:pre-edit-commit-asks"
+grep -qF 'invoked with the argument `final commit, auto`' "$CA_IMPLEMENT" || AU_WHY+=" AU-2:final-commit-asks"
+# (AU-3) unikit-commit's auto mode: no confirmation, no split question, no push.
+grep -qF '## Auto mode' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:no-auto-mode"
+grep -qF 'committed without the Behavior step 6 question' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:still-confirms"
+grep -qF 'No push, and no question about it' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-3:may-push"
+# (AU-4) what auto never removes: the ERROR stop, and the printed message.
+grep -qF 'auto skips the confirmation of a good commit, never the guard against a bad one' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-4:errors-bypassed"
+grep -qF 'printed in full as a block of its own — then committed' "$CM_COMMIT_SKILL" || AU_WHY+=" AU-4:message-hidden"
+if [[ -z "$AU_WHY" ]]; then
+    pass "AU-1…AU-4 auto-commit: one checkpoint answer turns it on for the session; unikit-commit then commits without a question, never pushes, still stops on an ERROR"
+else
+    fail "AU auto-commit contract:$AU_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# CO: what a /unikit-commit run shows (CO-1…CO-3)
+# ─────────────────────────────────────────────
+# Measured on a real run with language.ui = ru: the skill is git commands with English output
+# plus English question literals, so the agent narrated every check in English, announced the
+# language it had found, copied "Commit with the message above?" verbatim, kept the English
+# `Technical:` label inside a Russian message, and closed by explaining the push setting. CO pins
+# the three fixes on formulations: the templates are said in language.ui, a passing check and a
+# setting that did its job say nothing, and the label follows the commit language.
+CO_WHY=""
+# (CO-1) two languages, and the templates are translated.
+grep -qF 'only one of them belongs to the commit' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-1:ui-vs-artifacts-unstated"
+grep -qF 'are templates: say them in `language.ui`' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-1:question-literals-copied"
+# (CO-2) a quiet run: no narration of passing checks, no word about a setting that did its job.
+grep -qF '**A check that passes says nothing**' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:checks-narrated"
+grep -qF '**no mention of a setting that merely did its job**' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:settings-narrated"
+grep -qF 'silently: the result line is the last thing said' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-2:push-skip-narrated"
+# (CO-3) the Technical label follows the commit language.
+grep -qF 'the English word `Technical:` never appears in the message' "$CM_COMMIT_SKILL" || CO_WHY+=" CO-3:english-label-allowed"
+if [[ -z "$CO_WHY" ]]; then
+    pass "CO-1…CO-3 unikit-commit talks in language.ui, says nothing about passing checks or settings, translates the Technical label"
+else
+    fail "CO unikit-commit output contract:$CO_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# AR: /unikit-archive — the plan archive (AR-1…AR-9 the skill, AR-10…AR-13 the readers)
 # ─────────────────────────────────────────────
 # The archive MOVES completed folder plans out of .unikit/code/plans/, so every reader that
 # walks that directory stops seeing them — the point for plan lookup, and wrong for the
 # readers that need finished plans or their unfinished rows. This half pins the skill: the
 # predicate (every mark other than x is unfinished — the coordinator writes [~] and [!]),
-# the two stops, the move rule measured in ADR-0001 and the scope. AR-10…AR-12 pin the three
-# readers outside the skill that had to learn about the archive. Anchored on formulations,
-# never on headings.
+# the follow-up question that replaced both stops, the move rule measured in ADR-0001 and the scope.
+# AR-10…AR-13 pin the readers outside the skill that had to learn about the archive.
+# Anchored on formulations, never on headings.
 AR_SKILL="$ROOT_DIR/skills/unikit-archive/SKILL.md"
 AR_DESIGN_CTX="$ROOT_DIR/skills/unikit-plan/references/design-context.md"
 AR_PLAN_SKILL="$ROOT_DIR/skills/unikit-plan/SKILL.md"
 AR_POLISHER="$ROOT_DIR/subagents/unikit-plan-polisher.md"
 AR_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+AR_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 AR_WHY=""
-for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT"; do
+for f in "$AR_SKILL" "$AR_DESIGN_CTX" "$AR_PLAN_SKILL" "$AR_POLISHER" "$AR_IMPLEMENT" "$AR_EXPLORE"; do
     [[ -s "$f" ]] || AR_WHY+=" missing:${f#"$ROOT_DIR"/}"
 done
 if [[ -z "$AR_WHY" ]]; then
@@ -7919,17 +8254,24 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF 'Any other mark is unfinished' "$AR_SKILL" || AR_WHY+=" AR-2:only-open-boxes-count"
     grep -qF 'is not a checkbox line' "$AR_SKILL" || AR_WHY+=" AR-2:status-line-counted"
     grep -qF 'An empty plan is not archived' "$AR_SKILL" || AR_WHY+=" AR-2:empty-plan-archivable"
-    # (AR-3) stop 1 is keyed on the trap's own back-reference, never on a date: audited: is
-    # moved only by an audit, so a date rule could not be cleared by running the trap.
+    # (AR-3) the findings check is keyed on the trap's own back-reference, never on a date:
+    # audited: is moved only by an audit, so a date rule could not be cleared by running the trap.
+    # It asks and never stops: the user may not want the findings kept, and a stop left no way
+    # to archive such a plan from the interactive or --all mode at all.
     grep -qF '`<folder>/<task file name>#F<n>`' "$AR_SKILL" || AR_WHY+=" AR-3:no-back-reference-key"
+    grep -qF 'a question, never a stop' "$AR_SKILL" || AR_WHY+=" AR-3:findings-block"
+    grep -qF 'stop: <k> MCP findings not transferred' "$AR_SKILL" && AR_WHY+=" AR-3:findings-stop-returned"
+    grep -qF '2. Archive anyway' "$AR_SKILL" || AR_WHY+=" AR-3:no-archive-anyway"
     grep -qF 'a declined row leaves no back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:override-unexplained"
     # A transferred finding can lose its back-reference legitimately: the installer parks the notes
     # on a server switch, and /unikit-mcp-audit removes a retired note with its from: (review finding).
     grep -qF '.unikit/MCP-RECHECK-NOTES.archive.*.md' "$AR_SKILL" || AR_WHY+=" AR-3:parked-notes-unread"
     grep -qF 'removes a note it retires together with its back-reference' "$AR_SKILL" || AR_WHY+=" AR-3:retire-unexplained"
-    # (AR-4) stop 2 names the skill that actually flips an open candidate.
-    grep -qF 'has the status `open`' "$AR_SKILL" || AR_WHY+=" AR-4:no-open-candidate-stop"
+    # (AR-4) an open rule candidate is a follow-up like a finding — it asks, never stops — and
+    # the question names the skill that actually flips an open candidate.
+    grep -qF 'has the status `open`' "$AR_SKILL" || AR_WHY+=" AR-4:open-candidate-unchecked"
     grep -qF '/unikit-verify <folder>' "$AR_SKILL" || AR_WHY+=" AR-4:wrong-or-no-command"
+    grep -qF 'stop: <k> open rule candidates' "$AR_SKILL" && AR_WHY+=" AR-4:candidate-stop-returned"
     # (AR-5) git mv only for a tracked folder in an enabled git work tree — measured, not assumed.
     grep -qF '`git.enabled` is not `false`' "$AR_SKILL" || AR_WHY+=" AR-5:ignores-git-enabled"
     grep -qF 'git rev-parse --is-inside-work-tree' "$AR_SKILL" || AR_WHY+=" AR-5:no-work-tree-check"
@@ -7956,7 +8298,7 @@ if [[ -z "$AR_WHY" ]]; then
     # (AR-10) the one reader that wants completed plans reads the archive too — a glob that
     # misses returns "no prior plan", never an error, so nothing else would notice.
     grep -qF '`.unikit/code/archive/plans/*/*.md`' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:fallback-blind-to-archive"
-    grep -qF 'moves exactly the completed plans this fallback reads' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:no-reason"
+    grep -qF 'moves the completed plans this fallback reads' "$AR_DESIGN_CTX" || AR_WHY+=" AR-10:no-reason"
     # (AR-11) a new plan never takes an archived plan's name — both producers.
     grep -qF '`.unikit/code/archive/plans/`' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-collision-blind-to-archive"
     grep -qF 'is archived (<matched folder>)' "$AR_PLAN_SKILL" || AR_WHY+=" AR-11:plan-no-archived-branch"
@@ -7965,9 +8307,41 @@ if [[ -z "$AR_WHY" ]]; then
     # (AR-12) the end of implement names the way out, and still never offers to delete.
     grep -qF '/unikit-archive <folder>' "$AR_IMPLEMENT" || AR_WHY+=" AR-12:no-archive-hint"
     grep -qF 'Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`' "$AR_IMPLEMENT" || AR_WHY+=" AR-12:delete-ban-lost"
+    # (AR-13) explore reads the archive as the history of what was built — and only as history:
+    # an archived plan offered for execution would undo the one thing the archive is for.
+    grep -qF '`.unikit/code/archive/plans/`' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-blind-to-archive"
+    grep -qF 'History, never a plan to continue' "$AR_EXPLORE" || AR_WHY+=" AR-13:explore-may-resume"
+    grep -qF '`/unikit-explore` reads archived plans as history' "$AR_SKILL" || AR_WHY+=" AR-13:reader-unlisted"
+    # (AR-14) the run says what it is about to do before it reads anything: a real interactive run
+    # classified thirty plans for five minutes and opened with a remark about the language.
+    grep -qF '**First, announce the mode**' "$AR_SKILL" || AR_WHY+=" AR-14:step0-reads-first"
+    grep -qF "I'll check every plan in .unikit/code/plans/" "$AR_SKILL" || AR_WHY+=" AR-14:no-interactive-announcement"
+    grep -qF 'not a word about the language or the config' "$AR_SKILL" || AR_WHY+=" AR-14:may-announce-language"
+    grep -qF '**Then say what you are doing, as you do it.**' "$AR_SKILL" || AR_WHY+=" AR-14:silent-steps"
+    # (AR-15) the table carries the created and last-change dates the archiving decision rests on,
+    # each with its source order, and uncommitted changes win over the last commit.
+    grep -qF 'folder · verdict · created · last change' "$AR_SKILL" || AR_WHY+=" AR-15:no-dates-in-table"
+    grep -qF "the task file's \`Created: YYYY-MM-DD\` header line" "$AR_SKILL" || AR_WHY+=" AR-15:created-source-lost"
+    grep -qF 'has changes no commit holds yet' "$AR_SKILL" || AR_WHY+=" AR-15:last-change-ignores-working-tree"
+    grep -qF 'including a remark made while a command runs' "$AR_SKILL" || AR_WHY+=" AR-14:english-remarks-allowed"
+    # (AR-16) an unfinished plan has a sanctioned way out: a real user archived eleven abandoned
+    # plans and the agent had to break the skill's own rule to do it. It moves only after the
+    # user has seen what is left, its label says so, --all never takes it, and the readers that
+    # want completed plans (the implemented_version fallback) or history (explore) tell it apart.
+    grep -qF 'Archive them unfinished' "$AR_SKILL" || AR_WHY+=" AR-16:no-unfinished-option"
+    grep -qF '`Archived: <today> — unfinished (<done>/<total>)`' "$AR_SKILL" || AR_WHY+=" AR-16:unfinished-label-lost"
+    grep -qF 'an unfinished plan is archived only by an explicit choice' "$AR_SKILL" || AR_WHY+=" AR-16:all-takes-unfinished"
+    grep -qF 'an `empty`, `broken bundle` or `not a plan` folder never moves' "$AR_SKILL" || AR_WHY+=" AR-16:empty-may-move"
+    grep -qF 'An archived plan whose `Archived:` line ends in' "$AR_DESIGN_CTX" || AR_WHY+=" AR-16:fallback-reads-unfinished"
+    grep -qF 'was dropped part-way' "$AR_EXPLORE" || AR_WHY+=" AR-16:explore-reads-unfinished-as-built"
+    # (AR-17) the plans are chosen by row number or by a date rule on the table's own columns,
+    # and the typing option never reads as "the listed ones" (the prune trap, PRT-10).
+    grep -qF 'Choose by number or date' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
+    grep -qF 'never as "the listed ones"' "$AR_SKILL" || AR_WHY+=" AR-17:choice-translation-trap"
+    grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
 fi
 if [[ -z "$AR_WHY" ]]; then
-    pass "AR-1…AR-12 unikit-archive: non-x marks are unfinished, two stops keyed on the trap back-reference and open candidates, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it"
+    pass "AR-1…AR-17 unikit-archive: announces itself first, dates every plan, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
 else
     fail "AR plan archive contract:$AR_WHY"
 fi
@@ -9139,6 +9513,16 @@ if bash "$SCRIPT_DIR/test-rules.sh"; then
     pass "Rules registry tests passed"
 else
     fail "Rules registry tests failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 13c: rules-layout.mjs — the optimise helper, run for real on fixture projects
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13c: rules-layout helper tests${NC}"
+if bash "$SCRIPT_DIR/test-rules-layout.sh"; then
+    pass "rules-layout helper tests passed"
+else
+    fail "rules-layout helper tests failed"
 fi
 
 # ─────────────────────────────────────────────

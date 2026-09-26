@@ -130,9 +130,9 @@ Sidecars share the same shape: read-only tools (`Read`, `Glob`, `Grep`), `backgr
 
 | Sidecar | Purpose | Rules loaded |
 |---------|---------|--------------|
-| `unikit-review-sidecar` | Surfaces correctness, regression, and performance risks in the diff - only material findings, no cosmetic nits | `ARCHITECTURE.md`, `RULES.md`, core rules, relevant stack rules |
-| `unikit-architecture-sidecar` | Checks module boundaries and dependency directions | `ARCHITECTURE.md`, `RULES.md`, core rules |
-| `unikit-commit-sidecar` | Assesses commit readiness, the split into groups and the files to leave out, from the files the coordinator passes - writes no commit message and never touches git state | `RULES.md` |
+| `unikit-review-sidecar` | Surfaces correctness, regression, and performance risks in the diff - only material findings, no cosmetic nits | `ARCHITECTURE.md`, `RULES.md` (+ topic files matching the changed files), core rules, relevant stack rules |
+| `unikit-architecture-sidecar` | Checks module boundaries and dependency directions | `ARCHITECTURE.md`, `RULES.md` (+ topic files matching the changed files), core rules |
+| `unikit-commit-sidecar` | Assesses commit readiness, the split into groups and the files to leave out, from the files the coordinator passes - writes no commit message and never touches git state | `RULES.md` (+ topic files matching the files passed) |
 | `unikit-docs-sidecar` | Classifies documentation drift as `no_action` / `safe_update_existing` / `needs_new_docs` / `needs_user_choice` | `RULES.md`, `RULES_INDEX.md`, skill-context for `unikit-docs` |
 
 All sidecars return their findings in English so the coordinator can parse them consistently across projects.

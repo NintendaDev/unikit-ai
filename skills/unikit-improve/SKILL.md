@@ -302,7 +302,7 @@ Before any analysis — silently load the project knowledge base. Do NOT narrate
 1. **`.unikit/DESCRIPTION.md`** — project description, tech stack, constraints
 2. **`.unikit/ARCHITECTURE.md`** — architecture decisions, folder structure, module rules, dependency directions
 3. **Read `.unikit/memory/code/RULES_INDEX.md`**. Load rules:
-   - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority)
+   - **RULES.md**: ALWAYS read `.unikit/RULES.md` first (highest priority) **Rule topics:** once the plan is loaded, load the topic files listed under its `## Topics` whose `Load when` matches any phase of that plan — its phase names and tasks; when unsure, load (`RULES_INDEX.md` → Step 1).
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 4. **`.unikit/skill-context/{{self_name}}/SKILL.md`** — project-specific skill overrides (if exists)

@@ -216,7 +216,7 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit` | `.unikit/DESCRIPTION.md`, `AGENTS.md` | Invokes `/unikit-architecture` + rule generation |
 | `/unikit-architecture` | `.unikit/ARCHITECTURE.md` | Architecture guidelines |
 | `/unikit-roadmap` | `.unikit/ROADMAP.md` | Milestone tracking |
-| `/unikit-rules` | `.unikit/RULES.md` | Append/update rules only |
+| `/unikit-rules` | `.unikit/RULES.md` + `.unikit/rules/*.md` | Append rules; `optimise` reorganizes, `prune` deletes only what you select |
 | `/unikit-plan` | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-improve` refines |
 | `/unikit-explore` | `.unikit/code/researches/` | Exploration artifacts |
 | `/unikit-fix` | `.unikit/code/FIX_PLAN.md`, `.unikit/code/patches/*.md` | Bug-fix learning loop |
@@ -451,7 +451,7 @@ Runs read-only context gates against ARCHITECTURE.md and RULES.md. Writes the me
 /unikit-archive inventory-system
 ```
 
-A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. It refuses while the plan still carries MCP findings nobody transferred or rule candidates nobody proposed, and it never commits. `/unikit-implement` names it once the whole plan is done.
+A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. MCP findings nobody transferred and rule candidates nobody proposed do not block it: it shows them and asks whether to handle them first or archive anyway. It never commits. `/unikit-implement` names it once the whole plan is done.
 
 ---
 

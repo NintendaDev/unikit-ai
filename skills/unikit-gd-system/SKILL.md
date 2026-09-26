@@ -109,7 +109,7 @@ Silently load — do not narrate:
    when authoring J. Obey the index's **Rule-Loading Discipline**: load by `Load When`,
    load a reference only from its parent rule's `> **References**:`, and **never glob the
    memory tree** (`.unikit/memory/gamedesign/**`) to discover rules.
-5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority.
+5. **`.unikit/RULES.md`** (if present) — project overrides, highest priority. **Rule topics:** load the topic files listed under its `## Topics` whose `Load when` matches the design work at hand — the concept, system, flow or content type; when unsure, load.
 6. **`{{skills_dir}}/{{self_name}}/references/section-packs.md`** — the catalog of
    domain section-packs. On an **unambiguous** domain the matching pack is
    **auto-attached** — announced to the user in one outcome-language phrase (what it

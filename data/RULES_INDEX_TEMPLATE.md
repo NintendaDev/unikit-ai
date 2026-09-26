@@ -8,7 +8,7 @@ You were directed here by a skill or subagent. The name after "instructions for"
 
 ### Override Priority (highest wins)
 
-1. **`.unikit/RULES.md`** — project-specific overrides (always wins)
+1. **`.unikit/RULES.md`** and its topic files in `.unikit/rules/` — project-specific overrides (always win)
 2. **`.unikit/ARCHITECTURE.md`** — project architecture decisions
 3. **Core rules** (`.unikit/memory/code/core/`) — universal best practices
 4. **Stack rules** (`.unikit/memory/code/stack/`) — framework-specific knowledge
@@ -17,6 +17,8 @@ When a project rule in RULES.md or ARCHITECTURE.md conflicts with a core or stac
 
 ### Step 1: Load RULES.md
 Read `.unikit/RULES.md` before loading any rule below. It contains project-specific overrides that take highest priority.
+
+**Project rule topics.** A `.unikit/RULES.md` with a `## Topics` section — a table with the columns `Topic` and `Load when` — is split: the rules under its `## Common` heading apply to every task, and each table row links a topic file `.unikit/rules/<slug>.md` that applies only to the work its `Load when` describes. Load a topic file the way you load a rule below by its **Load When** column: when the current work matches it; re-check whenever the work moves to a new phase or area, and read only the topic files not loaded yet; when unsure, load it. A skill that works in phases loads topic files at the start of each phase, not at Bootstrap. A row whose file is missing → print `WARN [rules] topic file missing: .unikit/rules/<slug>.md` and continue. Inside its own area a topic rule wins over a `## Common` rule it contradicts. No `## Topics` section → the whole file applies, as before.
 
 ### Step 2: Load Core rules
 For each row in the Core table, check the **Required By** column:

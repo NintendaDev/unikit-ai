@@ -448,12 +448,12 @@ Knowledge base rules for the project. Located in `.unikit/memory/`.
 
 ## Override Priority (highest wins)
 
-1. **`.unikit/RULES.md`** — project-specific overrides (always wins)
+1. **`.unikit/RULES.md`** and its topic files in `.unikit/rules/` — project-specific overrides (always win)
 2. **`.unikit/ARCHITECTURE.md`** — project architecture decisions
 3. **`.unikit/memory/code/core/*.md`** — universal best practices
 4. **`.unikit/memory/code/stack/*.md`** — framework-specific knowledge
 
-When a project rule in `RULES.md` conflicts with a template rule in `rules/`, the project rule wins.
+When a project rule — in `RULES.md` or one of its topic files — conflicts with a core or stack rule, the project rule wins.
 
 ---
 
@@ -811,6 +811,7 @@ as the basis for the structure section, but only include directories and files t
 | .unikit/DESCRIPTION.md | Project specification and tech stack |
 | .unikit/ARCHITECTURE.md | Architecture decisions and guidelines |
 | .unikit/RULES.md | Coding conventions and rules |
+| .unikit/rules/ | Project rule topic files, listed under `## Topics` in RULES.md and loaded by their "Load when" (only if the project has topics) |
 | .unikit/memory/code/RULES_INDEX.md | Index of framework-specific rule files |
 | .unikit/memory/gamedesign/RULES_INDEX.md | Game-design knowledge index (only if the gamedesign module installed rules) |
 ```

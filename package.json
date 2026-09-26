@@ -77,6 +77,7 @@
       "scripts/test-config-tolerance.mjs",
       "scripts/test-ultra-plan-contract.mjs",
       "scripts/validate-agent-markers.mjs",
+      "skills/unikit-rules/scripts/rules-layout.mjs",
       "src/core/cli-contract.ts"
     ]
   },

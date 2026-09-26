@@ -362,7 +362,7 @@ feature without ever saying so.
 
 Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
 
-An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for.
+An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for. `/unikit-explore` reads archived plans whose name matches its topic, as the history of how a feature was built.
 
 ## Artifact Ownership
 
@@ -374,7 +374,7 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/DESCRIPTION.md` | `/unikit` | Project specification |
 | `.unikit/ARCHITECTURE.md` | `/unikit-architecture` | Architecture guidelines |
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
-| `.unikit/RULES.md` | `/unikit-rules` | Convention source of truth |
+| `.unikit/RULES.md` + `.unikit/rules/*.md` | `/unikit-rules` | Convention source of truth: common rules in the root, topic files by `Load when` |
 | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
 | `.unikit/code/archive/plans/*/` | `/unikit-archive` | Completed folder plans, moved unchanged apart from one `Archived:` line |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |

@@ -24,6 +24,23 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
+Skill-specific rules:
+- Two languages meet in one run, and only one of them belongs to the commit: the commit message follows `language.artifacts`; everything said to the user — a problem found by a check, the question and its options, the result line — is in `language.ui`. Git and its output speak English; they are data, not a reason to answer in English.
+- The question texts and option labels quoted in this skill (`Commit with the message above?`, `Commit as is`, …) are templates: say them in `language.ui`. `INFO` / `WARN` / `ERROR` and the `[commit]` tag stay as they are; the words after them are in `language.ui`.
+
+## What the user sees
+
+A commit run is short and quiet. In this order, and nothing else:
+
+1. A problem, only when a check finds one — the `WARN` / `ERROR` line and what to do about it. **A check that passes says nothing**: no "all checks pass", no list of what was checked, no retelling of what the diff contains.
+2. The plan line of Workflow Step 4.
+3. The message, as a block of its own.
+4. The question — Behavior step 6, or the split question of **Splitting Unrelated Changes**; none in `## Auto mode`.
+5. One result line per commit: `Committed <short sha>: <subject>`, said in `language.ui` — in `## Auto mode`, its `INFO [commit] auto:` line; in a split, the group lines of step 4 there.
+6. The push question, only when `git.skip_push_after_commit` is not `true`.
+
+No narration between commands, and **no mention of a setting that merely did its job**: `git.skip_push_after_commit: true` ends the run silently after the result line.
+
 ## Workflow
 
 1. **Analyze Changes**
@@ -57,7 +74,7 @@ Do not announce, confirm, or mention the language setting.
 3. **Context Check (Read-Only)**
    - Read `.unikit/ARCHITECTURE.md` (if present) to verify staged changes don't violate module boundaries or dependency rules defined there
    - Read `.unikit/ROADMAP.md` (if present) to check milestone alignment — for `feat`/`fix`/`perf` commits, check if changes relate to an unchecked milestone and suggest mentioning it in the commit body
-   - Read `.unikit/RULES.md` (if present) — the project's rules. A rule about commits or commit messages applies to the message written in Step 7 and wins over this skill's defaults on conflict
+   - Read `.unikit/RULES.md` (if present) — the project's rules. A rule about commits or commit messages applies to the message written in Step 7 and wins over this skill's defaults on conflict. **Rule topics:** also load the topic files listed under its `## Topics` whose `Load when` matches the staged files or the commit itself — commit messages, staging; when unsure, load.
    - Read `.unikit/skill-context/unikit-commit/SKILL.md` (if present) — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict
    - Missing optional files (`ROADMAP.md`) are `WARN`, not blockers
    - These are lightweight checks — flag only clear violations as `WARN`, don't block the commit
@@ -111,7 +128,7 @@ Do not announce, confirm, or mention the language setting.
    - A refactor is described through what it gives the team. When behaviour does not change, say so in one sentence.
    - Every claim traces to the diff, to the plan's `## Overview` or to a task's `WHY:` line (Step 4). No evaluative words without a basis ("significantly", "much faster").
 
-   **Technical paragraph** — optional: the last paragraph of prose, at most three lines, labelled `Technical:`. The label is translated into the commit language like any heading; identifiers inside the paragraph stay whole English tokens. It carries only what a future developer will search for and the diff does not show by itself:
+   **Technical paragraph** — optional: the last paragraph of prose, at most three lines, labelled `Technical:`. The label is translated into the commit language like any heading — with a non-English `language.artifacts` the English word `Technical:` never appears in the message, whatever the examples below show; identifiers inside the paragraph stay whole English tokens. It carries only what a future developer will search for and the diff does not show by itself:
    - a system or entry point that was added, renamed or removed;
    - a change of data or save format, and whether existing saves still load;
    - a new package or dependency;
@@ -194,7 +211,7 @@ When invoked:
 3. Run lightweight context checks against `.unikit/` docs
 4. If errors found — list them and ask user whether to proceed or fix first
 5. Write the commit message by Workflow Step 7 — its check before showing included
-6. Print the full message — subject, body, footer — as plain text in a block of its own, then confirm with the user before committing. The question carries the options only: a question that also holds the message is invisible on a runtime without a question widget.
+6. Print the full message — subject, body, footer — as plain text in a block of its own, then confirm with the user before committing. The question carries the options only: a question that also holds the message is invisible on a runtime without a question widget. In `## Auto mode` the message is printed the same way and committed without this question.
 
    ```
    AskUserQuestion: 💾 Commit with the message above?
@@ -211,10 +228,10 @@ When invoked:
    - Cancel → do NOT commit → **STOP**
 
 7. Execute `git commit` with the confirmed message
-8. **Post-commit push handling**:
+8. **Post-commit push handling** (skipped entirely in `## Auto mode` — it never pushes):
    - **If `git.skip_push_after_commit = true` in `.unikit/config.yaml`**:
      - Skip push prompt entirely
-     - End workflow after successful local commit
+     - End workflow after successful local commit — silently: the result line is the last thing said, with no word about the setting
    - **Otherwise** (default behavior), offer to push:
      - Show branch/ahead status: `git status -sb`
      - If the branch has no upstream, use: `git push -u origin <branch>`
@@ -235,7 +252,19 @@ When invoked:
 
 If argument provided (e.g., `/unikit-commit wallets`):
 - Use it as the scope
-- Or as context for the commit message. A caller's context — `unikit-implement-coordinator` passes `checkpoint: Commit N, tasks X-Y` or `final commit` — tells Step 4 which plan tasks the staged changes belong to: it is input, never text for the message.
+- Or as context for the commit message. A caller's context — `unikit-implement-coordinator` passes `checkpoint: Commit N, tasks X-Y` or `final commit` — tells Step 4 which plan tasks the staged changes belong to: it is input, never text for the message. The token `auto` is neither scope nor context: it switches on `## Auto mode`.
+
+## Auto mode
+
+A caller the user has told to commit without asking — `/unikit-implement` once its auto-commit is on — adds `auto` to the argument: `checkpoint: phase 3, auto`, `final commit, auto`. Only that exact token, as one comma-separated part of the argument, counts; a rule text or a scope that merely contains the word never does.
+
+**Auto removes the routine questions, never the checks:**
+
+- The message is written by Workflow Step 7, its check before showing included, and printed in full as a block of its own — then committed without the Behavior step 6 question.
+- No split question: everything staged is committed together, unless the caller passed a split — then that split is applied (**Splitting Unrelated Changes**, steps 3-4) without asking.
+- No push, and no question about it, whatever `git.skip_push_after_commit` says.
+- An `ERROR` from the safety checks (a secret, an orphaned companion file, an engine-ignored directory) still stops and asks the Behavior step 4 question: auto skips the confirmation of a good commit, never the guard against a bad one. A `WARN` is printed and does not stop it.
+- After each commit print `INFO [commit] auto: <short sha> <subject>`.
 
 ## Splitting Unrelated Changes
 

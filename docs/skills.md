@@ -120,7 +120,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 /unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
 - Reads skill-context rules first, then the plan manifest
-- Executes tasks one by one with commit checkpoints
+- Executes tasks one by one with commit checkpoints. At a checkpoint you can answer **Yes, and from now on commit without asking**: every later commit of the session - the next checkpoints, the commit before a direct editor edit, the final one - is then written and made by `/unikit-commit` without a question and without a push. Safety errors (a secret, a missing companion file) still stop the commit. The choice lasts until the session ends; `/clear` forgets it, `/compact` does not
 - Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and implements tasks inline with `Read/Edit/Write/Bash`. The `develop-agent` alias is used only for true parallel scopes or deep-dive single tasks
 - Supports selective execution by phase, task numbers, or feature name
 - On a branch with its own plan, that plan is used while the requested work — the named phases, or the whole plan — is still pending in it, even when a flat `.unikit/code/PLAN.md` also exists; only a finished branch plan next to an unfinished fast plan brings a question: run the fast plan?
@@ -167,6 +167,8 @@ Creates conventional commits with engine-aware checks:
 - Follows conventional commits format (feat, fix, refactor, etc.)
 - Suggests commit splitting for unrelated changes, and never lets unstaged edits into a split commit
 - Offers to push after commit
+- A run is quiet and speaks your interface language (`language.ui`): it shows a problem only when a check finds one, then the message (written in `language.artifacts`), the question and one result line - no narration of passing checks, no word about a setting such as `git.skip_push_after_commit`
+- **Auto mode** — when `/unikit-implement` runs with auto-commit on, it passes `auto`: the message is still written and printed, but committed without the confirmation question, with no split question and no push. A safety error still stops the commit and asks
 
 ### `/unikit-archive [list | --all | <plan-folder>]` - move finished plans out of the active list
 
@@ -177,12 +179,13 @@ Creates conventional commits with engine-aware checks:
 /unikit-archive inventory-system
 ```
 Moves a completed folder plan from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`:
-- A plan qualifies when every checklist task is `[x]` - an open, in-progress or failed task keeps it in place, and a plan with no tasks is never archived
-- Two stops: MCP findings never transferred to `.unikit/MCP-RECHECK-NOTES.md` (run `/unikit-mcp-trap`), and rule candidates still `open` (run `/unikit-verify`)
+- Says in a sentence what it is about to do before reading anything, starts every step with one short line about what it is doing right now, then shows every plan with its verdict, its **created** date (the manifest's `Created:` line, the folder's date prefix, or the commit that added it) and its **last change** (the last commit touching the folder, or the file date when there are uncommitted changes) - oldest change first
+- A completed plan - every checklist task `[x]` - is the default choice. An unfinished plan moves only when you pick it - by its number or by a date rule such as "created on or before 2026-09-14" - and confirm after seeing its open tasks; its manifest then says `Archived: <date> — unfinished (<done>/<total>)`, so `/unikit-plan` and `/unikit-explore` never take it for finished work. `--all` takes completed plans only, and a plan with no tasks is never archived
+- Nothing else blocks a finished plan. MCP findings never transferred to `.unikit/MCP-RECHECK-NOTES.md` and rule candidates still `open` are shown, and the skill asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or archive anyway
 - Uses `git mv` when the folder is tracked by git and plain `mv` otherwise; the folder name never changes, and the manifest gains one `Archived:` line
 - Never deletes, overwrites or commits - commit the move with `/unikit-commit`
 - The fast plan `.unikit/code/PLAN.md`, `.unikit/code/FIX_PLAN.md`, researches and patches are never archived
-- Plan lookup, `--list` and the "latest plan" choice stop offering an archived plan; `/unikit-plan` still reads archived plans for the `implemented_version` fallback and will not give a new plan an archived plan's name
+- Plan lookup, `--list` and the "latest plan" choice stop offering an archived plan; `/unikit-plan` still reads archived plans for the `implemented_version` fallback and will not give a new plan an archived plan's name, and `/unikit-explore` reads them as the history of how a feature was built
 
 ### `/unikit-evolve` - learn project rules from past fixes
 
@@ -274,14 +277,21 @@ A standalone skill for writing, reviewing, or refactoring a single file or fragm
 ```
 /unikit-rules Always use UniTask instead of coroutines
 /unikit-rules
+/unikit-rules compact
+/unikit-rules optimise
+/unikit-rules prune
 ```
 Also accepts a **numbered batch** - a prompt whose lines start `1. `, `2. `, … adds several rules in one call and returns a per-rule report. The batch is deliberately *not* atomic: a rule that fails is reported as failed while the rest still land.
 
-- Saves rules to `.unikit/RULES.md` (highest priority in rule hierarchy)
+- Saves rules to `.unikit/RULES.md` and, once it is split into topics, to the topic files in `.unikit/rules/` (highest priority in rule hierarchy)
 - Cross-checks against knowledge base in `memory/` via `RULES_INDEX.md`
-- Rules loaded automatically by `/unikit-implement` before task execution
-- **Form, not length:** `RULES.md` is a flat list — one line and one directive per rule, no sections. There is no character limit; a rule that cannot be reduced without losing knowledge is written as it stands and is not flagged
-- **`compact`** — `/unikit-rules compact` retro-fits an existing file: it shortens what reduces, keeps what does not, and flattens away the old sections. Non-destructive and confirmed first — no rule is ever deleted, and the order you chose is preserved
+- Rules loaded automatically by `/unikit-implement` before task execution - common rules at Bootstrap, topic files per phase by their `Load when`
+- **Form, not length:** every rule list is flat — one line and one directive per rule. There is no character limit; a rule that cannot be reduced without losing knowledge is written as it stands and is not flagged
+- **Topics:** once `RULES.md` has a `## Topics` table, each new rule goes into the matching topic, a new topic, or `## Common` — and into `## Common` whenever that is unclear. An older flat file is offered the split after the report; **Keep the flat format** writes a `flat` marker and ends the offer for good
+- **`compact`** — `/unikit-rules compact` retro-fits an existing file: it shortens what reduces, keeps what does not, and flattens away the old sections — file by file, never touching `## Topics` or `## Common`. Non-destructive and confirmed first — no rule is ever deleted, and the order you chose is preserved
+- **`optimise`** — `/unikit-rules optimise` (or `optimize`) moves rules into topics or regroups existing ones: a preview first, the rule count checked, nothing deleted. The agent only decides where each rule goes; reading, counting and moving the rules word for word is done by a bundled Node script (`skills/unikit-rules/scripts/rules-layout.mjs`), which refuses to write anything if a single rule would be lost, doubled or changed. Text it does not recognise - a paragraph, a table, a line added to the old header - is shown to the agent to place, never dropped
+- **`prune`** — `/unikit-rules prune` lists deletion candidates (duplicate, covered by the knowledge base, not a rule, conflict, stale reference) with evidence. One answer, **Delete everything proposed**, removes them all; **Choose by id** takes the ids you type. Two rules that contradict each other are not deleted but **resolved**, in a separate question: the skill works out which is right and proposes to keep one side or to merge both into one corrected rule. A rule that is only partly outdated is never deleted - it is listed for you to fix
+- **Every mode says what it is doing:** before it reads anything, the skill says in a sentence which mode is on and what it is about to do; then each step starts with one short line about what is happening right now, such as `Read 180 rules from 4 files — grouping them into topics now`
 
 ### `/unikit-rules-registry` - external registry orchestrator
 

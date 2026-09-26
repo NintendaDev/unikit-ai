@@ -109,7 +109,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 
 ### unikit-implement
 - **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks),
-  commit at checkpoints. Resumable across sessions.
+  commit at checkpoints. Resumable across sessions. At a checkpoint, "from now on commit without
+  asking" makes every later commit of the session automatic (message written, no question, no push).
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
 - **In:** the latest plan, or `@<folder>`, or a phase/task selector. A range with two or more
   test runs asks once whether to merge them (or say it in the call). Bootstraps rules once, then
@@ -154,19 +155,24 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   what it gives, then at most three lines of technical detail — after engine-specific safety
   checks; optionally push. Splits unrelated changes without taking unstaged edits along.
 - **When:** "commit", "save changes". Always commit through this, not manual git.
-- **In:** an optional scope hint.
-- **Out:** a git commit (+ optional push).
+- **In:** an optional scope hint. A caller in auto-commit mode (`/unikit-implement`) adds `auto`:
+  the message is still printed, but committed without a question and never pushed; an ERROR still stops it.
+- **Out:** a git commit (+ optional push). A quiet run in `language.ui`: problems only, the message,
+  the question, one result line.
 - **Optional (terminal step).** Before: any of implement/fix/verify/review.
 
 ### unikit-archive
-- **Purpose:** Move a completed folder plan from `.unikit/code/plans/<folder>/` to
-  `.unikit/code/archive/plans/<folder>/`, so plan lookup and the plan lists stop offering it.
+- **Purpose:** Move a completed folder plan — or, on your explicit choice, an unfinished one,
+  labelled as such — from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`,
+  so plan lookup and the plan lists stop offering it.
   Never deletes, never commits.
 - **When:** "archive the plan", "archive completed plans", "clean up plans".
-- **In:** a plan folder name, `--all`, `list`, or nothing (interactive).
+- **In:** a plan folder name, `--all`, `list`, or nothing (interactive — a table of every plan with
+  its verdict, created date and last change, oldest change first; pick by number or by date).
 - **Out:** the moved folder + one `Archived:` line in its manifest.
-- **Optional (after commit).** Refuses while MCP findings are untransferred
-  (`/unikit-mcp-trap`) or rule candidates are still `open` (`/unikit-verify`).
+- **Optional (after commit).** Untransferred MCP findings and `open` rule candidates never
+  block: it asks whether to handle them first (`/unikit-mcp-trap`, `/unikit-verify`) or
+  archive anyway. `/unikit-explore` reads archived plans as history.
 
 ### unikit-evolve
 - **Purpose:** Learn from accumulated fix-patches — extract prevention points and turn them into
@@ -368,12 +374,23 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 
 ### unikit-rules
 - **Purpose:** Quick-capture a short project convention/override into `.unikit/RULES.md` (the
-  highest-priority rule file, auto-loaded by `/unikit-implement`).
-- **When:** "always do X", "never use Y", "remember this", correcting the agent for next time.
-- **In:** a rule typed as a prompt (no files/URLs).
-- **Out:** appends to `.unikit/RULES.md` as a flat list — one line, one directive, no sections.
+  highest-priority rule file, auto-loaded by `/unikit-implement`) — or, once the file is split,
+  into a topic file in `.unikit/rules/` that loads only when the work matches its `Load when`.
+- **When:** "always do X", "never use Y", "remember this", correcting the agent for next time;
+  "split the rules into topics", "clean up the rules".
+- **In:** a rule typed as a prompt (no files/URLs), or a bare mode word.
+- **Out:** a flat list per file — one line, one directive; common rules in the root, bounded
+  rules in topic files listed under `## Topics`.
 - **`compact` mode:** `/unikit-rules compact` retro-fits an already bloated `RULES.md` — shortens
   what reduces, keeps what does not, flattens the sections. Non-destructive, asks before writing.
+- **`optimise` mode:** `/unikit-rules optimise` splits the rules into topics or regroups them —
+  preview, confirmation, nothing deleted. Also offered by itself on an old flat file. A bundled
+  Node script does the counting and the word-for-word move; the agent only picks the topics.
+- **`prune` mode:** `/unikit-rules prune` lists deletion candidates with evidence — "delete everything
+  proposed" removes them in one answer, or choose by id — and resolves contradictions in a separate
+  question (keep the right side or merge both into one rule); a partly outdated rule is never deleted.
+- **Every mode announces itself** before reading anything, in one plain sentence — which mode
+  and what it is about to do — and starts every step with one short line about what it is doing now.
 - **Optional.** After: `/unikit-memory migrate-rules` (promote a mature rule into the knowledge base).
 
 ### unikit-memory
