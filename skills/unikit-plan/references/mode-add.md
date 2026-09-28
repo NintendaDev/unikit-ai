@@ -21,6 +21,14 @@ Use unified plan detection:
    and ask — never auto-select. With exactly one plan present there is nothing to choose
    between: announce it with the branch miss named in the reason and continue.
 
+   **An unfinished plan is not a plan.** A folder under `.unikit/code/plans/` that holds `.planning/STATE.md` but not its manifest `.unikit/code/plans/<folder>/PLAN.md` is an ultra plan still being written: it is never a candidate, and it is named once:
+
+   ```
+   NOTE [plan] <folder> — unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>
+   ```
+
+   Add never writes into an unfinished plan: when it is the only folder found, print that line and **STOP**.
+
 **Announce the resolution.** Print exactly one visible line before any other output:
 
 ```

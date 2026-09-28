@@ -129,7 +129,7 @@ This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading
 
 Search logic — same as `/unikit-implement` (unified plan detection):
 
-1. If `$ARGUMENTS` specifies a folder name (e.g. `core-loop`, `2026-03-10_core-loop`, or legacy `NNN-feature-name`) → use it
+1. If `$ARGUMENTS` specifies a folder name (e.g. `core-loop`, `2026-03-10_core-loop`, or legacy `NNN-feature-name`) → use it; a folder that is an unfinished plan (below) → print its `NOTE` line and STOP
 2. Otherwise → auto-detect:
    a. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan)
    b. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
@@ -138,6 +138,12 @@ Search logic — same as `/unikit-implement` (unified plan detection):
       or more plans present, print the candidate table (folder, `Updated:`, tasks remaining)
       and ask — never auto-select. With exactly one plan present there is nothing to choose
       between: announce it with the branch miss named in the reason and continue.
+
+**An unfinished plan is not a plan.** A folder under `.unikit/code/plans/` that holds `.planning/STATE.md` but not its manifest `.unikit/code/plans/<folder>/PLAN.md` is an ultra plan still being written: it is never a candidate, and it is named once:
+
+```
+NOTE [plan] <folder> — unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>
+```
 
 **Announce the resolution.** Print exactly one visible line before any other output:
 

@@ -179,6 +179,7 @@ If `$ARGUMENTS` contains `@<path>`:
 2. If the path is a directory holding a plan manifest (`<path>/PLAN.md`) → use it
 3. If the path is a directory containing `TASKS.md` (a pre-merge plan) → tell the user to run `unikit-ai update` and **STOP**. Do not read or convert it here — `update` is the sole migrator, the same refuse-over-autofix principle `rules sync` applies with exit 8.
 4. If missing → show "Plan folder not found: `<path>`" and **STOP**
+5. If the path is an unfinished plan (*An unfinished plan is not a plan* below) → print its `NOTE` line and **STOP**
 
 Remaining argument text (after removing `@<path>`) is the improvement prompt.
 
@@ -197,7 +198,9 @@ If `$ARGUMENTS` contains `--list`, run read-only discovery and **STOP**:
 3. Get current branch:
    git branch --show-current
 4. Scan .unikit/code/plans/ for all feature folders (all three name formats — see Branch match)
-5. For each, check if its .unikit/code/plans/<folder>/PLAN.md has uncompleted tasks (- [ ])
+5. For each, check if its .unikit/code/plans/<folder>/PLAN.md has uncompleted tasks (- [ ]);
+   a folder with .planning/STATE.md and no manifest is listed as "unfinished planning" and is
+   never counted as a plan with open tasks
 6. Mark which folder matches the current git branch (if any), by the three formats of Branch match
 7. Print availability summary (sorted by the manifest's Updated: descending — newest first):
 
@@ -211,6 +214,7 @@ Current branch: feature/customers-system
   * 🔄 customers-system                   ← matches branch (4 tasks remaining)
     ✅ 2026-03-10_customers-service-pool   (completed)
     🔄 002-customer-config-refactor        (2 tasks remaining)
+    ⏳ inventory-rework                   (unfinished planning — /unikit-plan ultra inventory-rework)
 
 Use:
   /unikit-improve                                              # auto-detect (.unikit/code/PLAN.md → branch → latest)
@@ -229,7 +233,7 @@ If `$ARGUMENTS` contains a feature name (e.g., `2026-03-08_customers-system`, `c
 1. Look for `.unikit/code/plans/$ARGUMENTS/` directory (exact match)
 2. If not found by exact match → try partial match: scan `.unikit/code/plans/` for folders
    whose name **ends with** `_$ARGUMENTS` (new format) or `*-$ARGUMENTS` (legacy `DDD-*` format)
-3. If found → use it
+3. If found → use it; a folder that is an unfinished plan (*An unfinished plan is not a plan* below) → print its `NOTE` line and **STOP**
 4. If NOT found → tell the user:
 
 ```
@@ -261,6 +265,11 @@ If `$ARGUMENTS` is empty (no parameters):
      or more plans present, print the candidate table (folder, `Updated:`, tasks remaining)
      and ask — never auto-select. With exactly one plan present there is nothing to choose
      between: announce it with the branch miss named in the reason and continue.
+   - **An unfinished plan is not a plan.** A folder under `.unikit/code/plans/` that holds `.planning/STATE.md` but not its manifest `.unikit/code/plans/<folder>/PLAN.md` is an ultra plan still being written: it is never a candidate, and it is named once:
+
+     ```
+     NOTE [plan] <folder> — unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>
+     ```
 
 2. **Resolve ambiguity:**
    - If **no candidates** found (no flat plans, no folder plans) → show "No plans found" message and **STOP**:

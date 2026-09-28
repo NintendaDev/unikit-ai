@@ -71,11 +71,17 @@ The user may provide:
 ## Plan Parsing
 
 1. Locate the active plan, in this order:
-   a. **Explicit `@<path>`** → use that folder.
+   a. **Explicit `@<path>`** → use that folder. An unfinished plan there (below) → print its `NOTE` line and stop.
    b. **Fast plan** — `.unikit/code/PLAN.md` exists → use it (the flat fast-mode plan). If a folder plan also matches the branch (step c), the branch plan wins while it has any `- [ ]` task in its manifest checklist — use it and print `INFO [plan] fast plan .unikit/code/PLAN.md not used — the branch plan has pending work (all tasks)`. When it has none and the fast plan has some, ask once whether to run the fast plan (`Run the fast plan` · `Stop`); when neither has any, use the branch plan. This is `/unikit-implement` Step 0.1 for a call without selectors — the coordinator takes none.
    c. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — never by format precedence. No match → fall through to *latest*.
    d. **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name or the file's mtime.
       **`latest fallback` is a guess, not a resolution:** the branch named no plan. With two or more plans present, print the candidate table (folder, `Updated:`, tasks remaining) and ask — never auto-select. With exactly one plan present, announce it with the branch miss named in the reason and continue.
+
+      **An unfinished plan is not a plan.** A folder under `.unikit/code/plans/` that holds `.planning/STATE.md` but not its manifest `.unikit/code/plans/<folder>/PLAN.md` is an ultra plan still being written: it is never a candidate, and it is named once:
+
+      ```
+      NOTE [plan] <folder> — unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>
+      ```
    e. No plan found — stop and report.
 
    **Announce the resolution** — exactly one visible line before any other output:

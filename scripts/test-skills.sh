@@ -8962,6 +8962,45 @@ else
     fail "WP-1…WP-3 ultra protocol wiring:$WP_WHY"
 fi
 
+# UF: two invariants with no other detector. The retired disk-first scheme (planning
+# subagents, a working folder outside plans/) stays out of every shipped text — the revert
+# removed it once and nothing else stops a copy bringing it back; and every reader that picks
+# a plan names an unfinished one the same way, since a drifted wording is where one of them
+# starts picking it. docs/ and scripts/ are out of UF-1's scope: docs/ is narrative, scripts/
+# holds the negative literals themselves.
+UF_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+UF_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+UF_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+UF_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+UF_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+UF_LIST="$ROOT_DIR/skills/unikit-plan/references/mode-list.md"
+UF_NOTE='unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>'
+UF_WHY=""
+# (UF-1) the retired files are gone and no shipped text names the scheme
+for f in skills/unikit-plan/references/disk-planning.md skills/unikit-plan/references/module-procedure.md \
+         subagents/unikit-plan-module-planner.md subagents/unikit-plan-recon-writer.md; do
+    [[ -e "$ROOT_DIR/$f" ]] && UF_WHY+=" UF-1:back(${f##*/})"
+done
+UF_HITS="$( { grep -rlE 'unikit-plan-module-planner|unikit-plan-recon-writer|\.unikit/code/\.planning' \
+    "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" "$ROOT_DIR/src" || true; } )"
+if [[ -n "$UF_HITS" ]]; then
+    while IFS= read -r hit; do UF_WHY+=" UF-1:named-in(${hit#"$ROOT_DIR"/})"; done <<< "$UF_HITS"
+fi
+# (UF-2) one wording, five readers; --list labels it
+UF_READERS=0
+for f in "$UF_IMPLEMENT" "$UF_VERIFY" "$UF_IMPROVE" "$UF_COORD" "$UF_ADD"; do
+    if [[ ! -f "$f" ]]; then UF_WHY+=" UF-2:missing(${f#"$ROOT_DIR"/})"; continue; fi
+    grep -qF -- "$UF_NOTE" "$f" || UF_WHY+=" UF-2:note-drifted(${f#"$ROOT_DIR"/})"
+    grep -qF 'An unfinished plan is not a plan.' "$f" || UF_WHY+=" UF-2:no-rule(${f#"$ROOT_DIR"/})"
+    UF_READERS=$((UF_READERS + 1))
+done
+grep -qF 'planning — unfinished' "$UF_LIST" || UF_WHY+=" UF-2:list-unlabelled"
+if [[ -z "$UF_WHY" ]]; then
+    pass "UF-1…UF-2 disk-first stays out of the package; implement, its coordinator, verify, improve, add and --list name an unfinished plan and never pick it ($UF_READERS readers)"
+else
+    fail "UF-1…UF-2 unfinished plan / disk-first remnants:$UF_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
