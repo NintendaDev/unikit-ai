@@ -8849,6 +8849,70 @@ else
     fail "CW-1…CW-3 coordinator/worker contract:$CW_WHY"
 fi
 
+# UW: the two ultra writing protocols. The classic one is Step F of the pre-disk-first
+# mode-ultra.md carried over word for word (its byte equality is checked by the plan, not
+# here: CI may clone without history); the one with saved state rests on a handful of
+# sentences — written at once, disk wins, English state, the path in every progress line —
+# and losing any of them silently brings back the context loss on a compaction.
+UW_DIRECT="$ROOT_DIR/skills/unikit-plan/references/ultra-direct.md"
+UW_STATEFUL="$ROOT_DIR/skills/unikit-plan/references/ultra-stateful.md"
+UW_WHY=""
+for f in "$UW_DIRECT" "$UW_STATEFUL"; do
+    [[ -f "$f" ]] || UW_WHY+=" UW:missing-${f##*/}"
+done
+if [[ -z "$UW_WHY" ]]; then
+    # (UW-1) the classic protocol: the carried-over block, the script call, the compaction note
+    for h in '## Write order' '## Checks through the script' '## After a compaction'; do
+        grep -qxF -- "$h" "$UW_DIRECT" || UW_WHY+=" UW-1:no-heading(${h:3})"
+    done
+    for lit in 'Write **all** phase files' 'Rule refresh per phase' '.unikit/code/plans/<feature-name>/PLAN.md' \
+               'Run every check in' 'Only then show the plan to the user.' 'Never write the manifest first' \
+               '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check'; do
+        grep -qF -- "$lit" "$UW_DIRECT" || UW_WHY+=" UW-1:missing(${lit:0:32})"
+    done
+    grep -qF '.planning' "$UW_DIRECT" && UW_WHY+=" UW-1:classic-saves-state"
+    grep -qF 'module-planner' "$UW_DIRECT" && UW_WHY+=" UW-1:planning-subagent"
+    # (UW-2) the eight sections of the protocol with saved state, as whole lines
+    for h in '## Folder' '## Entry: from the start' '## Entry: switch at D2' '## STATE.md' \
+             '## Recon files' '## Phase cycle' '## Resume' '## Assembly'; do
+        grep -qxF -- "$h" "$UW_STATEFUL" || UW_WHY+=" UW-2:no-heading(${h:3})"
+    done
+    # (UW-3) the STATE.md template window: header, six sections, Next: — and none of the retired ones
+    UW_TPL="$(awk '/^## STATE\.md$/{s=1;next} s&&/^```markdown$/{f=1;next} f&&/^```$/{exit} f' "$UW_STATEFUL")"
+    if [[ -z "$UW_TPL" ]]; then
+        UW_WHY+=" UW-3:no-template-window"
+    else
+        for lit in '> Resume:' 'Procedure:' 'Skill:' 'Mode:' 'Format:' 'Settings:' 'Rules:' '## Decisions' \
+                   '## Phases' '## Contracts' '## Handoff' '## Recon' '## Open' 'Next:'; do
+            grep -qF -- "$lit" <<< "$UW_TPL" || UW_WHY+=" UW-3:missing(${lit})"
+        done
+        for lit in '## Executors' '## Gaps' '## Research link' '## Design briefs' '## Catalog'; do
+            grep -qF -- "$lit" <<< "$UW_TPL" && UW_WHY+=" UW-3:retired(${lit:3})"
+        done
+    fi
+    # (UW-4) the doctrine, each sentence on one line
+    for lit in 'written to disk the moment it appears' 'are written in English' '.planning/checklist.md' \
+               'the checklist is `checklist.md` as it stands' '`Rules:` starts with the files read at Step 0.5' \
+               'Never written into' 'Disk wins' 'never recomputed' \
+               '· state: .unikit/code/plans/<feature-name>/.planning/STATE.md' 'first file is a `.gitignore` holding `*`'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:missing(${lit:0:32})"
+    done
+    # (UW-5) the script calls and the fallback; nothing of the retired module-by-module scheme
+    for lit in '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check' \
+               '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs finalize' \
+               'plan-bundle.mjs unavailable — checks done by the model'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-5:missing(${lit:0:40})"
+    done
+    for lit in 'module-planner' 'fragments/' '.unikit/code/.planning'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" && UW_WHY+=" UW-5:retired(${lit})"
+    done
+fi
+if [[ -z "$UW_WHY" ]]; then
+    pass "UW-1…UW-5 ultra writing protocols: classic straight into the plan folder; saved state with write-through, lean English state, disk wins, finalize"
+else
+    fail "UW-1…UW-5 ultra writing protocols:$UW_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
