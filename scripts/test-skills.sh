@@ -8806,6 +8806,8 @@ else
     grep -qF 'every `unikit-commit` call of this run adds `no-push`' "$IP_SKILL" || IP_WHY+=" IP-5:no-inline-no-push"
     grep -qF 'pr-checkpoints.md' "$IP_SKILL" || IP_WHY+=" IP-5:reference-unread"
     grep -qF 'combine PRs' "$IP_SKILL" || IP_WHY+=" IP-5:answers-become-folder-name"
+    # ...recognised from the wording, like the test-run instruction — not advertised as parameters
+    grep -qE '^argument-hint:.*combine PRs' "$IP_SKILL" && IP_WHY+=" IP-5:answers-in-argument-hint"
     grep -qF 'with the argument `checkpoint: phase {N}, auto`' "$IP_SKILL" || IP_WHY+=" IP-5:AU-1-literal-broken"
     grep -qF 'invoked with the argument `final commit, auto`' "$IP_SKILL" || IP_WHY+=" IP-5:AU-2-literal-broken"
     # a count, not grep -c: two call sites can share one line

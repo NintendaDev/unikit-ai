@@ -11,7 +11,7 @@ description: >-
   task", "implement phase 3", "implement tasks 2.1 and 2.3", "continue implementation",
   "continue where we left off", "keep going on the feature". To create the plan first,
   use the planning skill — this one carries an existing plan out.
-argument-hint: "[--list] [@<folder>] [Phase N | Phases N-M | Tasks N.M N.K | status | empty for all pending] [combine PRs | stop at PR points | run /unikit-pr at PR points]"
+argument-hint: "[--list] [@<folder>] [Phase N | Phases N-M | Tasks N.M N.K | status | empty for all pending]"
 allowed-tools:
   - Read
   - Write
