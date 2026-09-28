@@ -479,7 +479,7 @@ Compare the plan against what you found. Categorize issues:
 - Missing test tasks for new systems
 
 **3.2: Task quality issues**
-- Descriptions too vague (no file paths, no specific implementation details)
+- Descriptions too vague (no file paths, no specific implementation details) — a test-checkpoint task, and a PR checkpoint task with no `Files:` is normal: neither leaves anything in the project
 - Missing specific class names or namespaces
 - Incorrect assumptions about existing code
 - Missing reference to existing patterns that should be followed
@@ -523,6 +523,17 @@ Read the setting from the plan's `## Settings` and check the plan against it. Ea
 - a `## Phase Completion Checklist` that restates the run instead of leaving it to the task's own checkbox.
 
 **A plan with no `Test checkpoints:` line is legacy and is exempt from this check** — its placement was never declared, and criticising a plan for lacking a policy that did not exist when it was written produces a finding nobody can close.
+
+**3.3c: Modules and PR checkpoints — check the plan against its own grammar**
+
+The grammar is `unikit-plan/references/TASK-FORMAT.md` → `### Modules section` and `### PR checkpoint task grammar`. Each of these is a finding with a proposed fix, never an automatic change:
+
+- `## Modules` does not cover the phases in order, or a module longer than four phases carries no `why long:` (Integrity Check 12);
+- a PR checkpoint task that is not the last task of its module, a PR checkpoint task in the last module, `PR checkpoints: yes` with no PR checkpoint task, or a `PR: task N.M` that names another task (Integrity Check 13);
+- the module barrier is broken: recompute the layers exactly as in 3.3a — a layer holding phases of two modules is a finding in the 🔄 Dependency Fixes group, in the form `🔒 Layer <N> holds Phase <X> (M<a>) beside Phase <Y> (M<b>)` / `Fix: add Phase <closing phase of M<a>> to Phase <Y>'s **Dependencies:**`;
+- a `### Commit N` range crosses a module boundary (Integrity Check 15).
+
+**A plan with PR checkpoint tasks but no `PR checkpoints: yes` line is legacy** — its PR checkpoint tasks are exempt from the second point, exactly as a plan without `Test checkpoints:` is exempt from 3.3b. A plan without `## Modules` and without PR checkpoint tasks is one module: 3.3c finds nothing there.
 
 **3.4: Redundant or duplicate tasks**
 - Two tasks doing the same thing
@@ -712,6 +723,16 @@ For each new task from the report:
 
 At the start of the edit print one line — `INFO [testing] plan policy: checkpoints=<value|legacy>` — so the decision to insert tasks, or not to, is explainable from the output.
 
+**Plans with modules.** When the plan has `## Modules` or any `PR checkpoint:` line, print `INFO [plan] modules: <n>, PR checkpoints: <yes|no|legacy>` next to that line, and insert by the grammar in `unikit-plan/references/TASK-FORMAT.md` → `### Modules section`. Only the insertion decisions are stated here:
+
+- a new task of an existing module goes above that module's PR checkpoint task and its module test-checkpoint task;
+- a new module after the last: under `PR checkpoints: yes` the former last module gets a PR checkpoint task at the end of its closing phase and a `PR: task N.M` field, and under `Testing: yes` the final full run moves to the new last phase;
+- a new module before the first gets phase `0` and, under `PR checkpoints: yes`, its own PR checkpoint task;
+- a new module between two modules is not created — its work joins an existing module, above that module's PR checkpoint;
+- `## Modules` and the module barrier in the `**Dependencies:**` lines are updated in the same edit; `PR checkpoints: yes` is never written or removed here; no task is renumbered.
+
+In an ultra bundle a new PR checkpoint task gets its `## Task N.M:` section with all seven subsections — its `### Tests` carries `Not applicable — this task closes a module, it runs no tests` — and its `([details](…))` link, per `unikit-plan/references/ULTRA-PLAN-FORMAT.md`.
+
 **5.2: Improve existing task descriptions in the manifest**
 
 For each task flagged for improvement:
@@ -764,7 +785,7 @@ The section always exists — there is no "create it if missing" branch any more
 
 **5.7: Update Overview section and the header timestamp**
 
-Move the header's `Updated:` to today's date (`Bash(date *)`) — unconditionally, because reaching Step 5 at all means the manifest was rewritten, and that field is what every "latest plan" resolver sorts on. `Created:` is never rewritten: it records when the plan was made, not when it was last touched.
+Move the header's `Updated:` to today's date (`Bash(date *)`) — unconditionally, because reaching Step 5 at all means the manifest was rewritten, and that field is what every "latest plan" resolver sorts on. `Created:` is never rewritten: it records when the plan was made, not when it was last touched. `Planned at:` is never rewritten either: it marks where the plan's work starts.
 
 If the total number of tasks or phases changed significantly (added a phase, removed multiple tasks):
 1. Update `## Overview` task/phase counts

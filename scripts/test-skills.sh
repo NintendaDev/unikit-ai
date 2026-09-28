@@ -8490,6 +8490,40 @@ else
     fail "PW-1…PW-4 planner modules contract:$PW_WHY"
 fi
 
+# OW: the other three task writers — /unikit-plan add, /unikit-improve and the polisher —
+# know modules and PR checkpoints the way the planner does: insert above a module's PR
+# checkpoint, never renumber, never move Planned at:, and exempt a legacy plan.
+OW_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+OW_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+OW_POL="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+OW_WHY=""
+for f in "$OW_ADD" "$OW_IMPROVE" "$OW_POL"; do
+    [[ -f "$f" ]] || OW_WHY+=" OW:missing-${f##*/}"
+done
+if [[ -z "$OW_WHY" ]]; then
+    # (OW-1) add mode
+    grep -qF 'Plans with modules' "$OW_ADD" || OW_WHY+=" OW-1:no-modules-rules"
+    grep -qF '`Planned at:` is never rewritten either' "$OW_ADD" || OW_WHY+=" OW-1:planned-at-moves"
+    grep -qF 'the final full run moves to the new last phase' "$OW_ADD" || OW_WHY+=" OW-1:full-run-stranded"
+    grep -qF 'between two modules is not added' "$OW_ADD" || OW_WHY+=" OW-1:module-between-renumbers"
+    # (OW-2) improve — the full form of the Planned at: sentence: one bare `is never rewritten`
+    # already stood in the file, and a guard on it would have been green before the edit
+    grep -qF '3.3c: Modules and PR checkpoints' "$OW_IMPROVE" || OW_WHY+=" OW-2:no-modules-check"
+    grep -qF '### Modules section' "$OW_IMPROVE" || OW_WHY+=" OW-2:no-grammar-pointer"
+    grep -qF '`Planned at:` is never rewritten either' "$OW_IMPROVE" || OW_WHY+=" OW-2:planned-at-moves"
+    grep -qF 'a PR checkpoint task with no `Files:` is normal' "$OW_IMPROVE" || OW_WHY+=" OW-2:pr-task-files-finding"
+    # (OW-3) the polisher
+    grep -qF '### Modules section' "$OW_POL" || OW_WHY+=" OW-3:no-modules-rubric"
+    grep -qF 'Planned at: <short sha>' "$OW_POL" || OW_WHY+=" OW-3:no-planned-at"
+    grep -qF 'never writes or removes `PR checkpoints: yes`' "$OW_POL" || OW_WHY+=" OW-3:polisher-writes-setting"
+    grep -qF 'a PR checkpoint task with no `Files:` is normal too' "$OW_POL" || OW_WHY+=" OW-3:pr-task-files-finding"
+fi
+if [[ -z "$OW_WHY" ]]; then
+    pass "OW-1…OW-3 add, improve and polisher know modules and PR checkpoints"
+else
+    fail "OW-1…OW-3 other plan writers contract:$OW_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

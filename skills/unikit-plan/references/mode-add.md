@@ -62,9 +62,20 @@ Apply changes with Edit tool, preserving unaffected content (this list applies t
   - `Editor:` — one line per editor target, placed after `Files:`, only when the change touches the editor's **serialized state** (concrete signals for the active engine: `references/ENGINE_RULES.md` §3). Omitted for pure code tasks, and **not generated at all** when `engine_rules_loaded = false`.
   - Add mode does **not** introduce a `## Settings` section and does not re-ask the editor-mode question — it extends an existing plan and inherits its settings, `Test checkpoints:` among them. It never resolves that value from the config and never writes the line: the plan already carries it, and re-resolving it here would reinterpret a plan that has already been written.
 - **New tasks go above the final full run.** When the plan's last task carries `Test checkpoint: plan`, every task Add mode appends is inserted **before** it, so that the full run stays last. Appending after it leaves the plan with work no run covers, and breaks the integrity check requiring the final task to be that run. The same holds inside a phase closed by a test-checkpoint task: new tasks for that phase go above it, not after it.
+- **Plans with modules** (`## Modules` present, or any `PR checkpoint:` line). The grammar is `TASK-FORMAT.md` → `### Modules section` and `### PR checkpoint task grammar`; only the insertion decisions are stated here:
+  - A new task of an existing module goes **above** its PR checkpoint task and above its module test-checkpoint task. The module is the one whose `## Modules` line covers the phase.
+  - A new module **after the last**: under `PR checkpoints: yes` the former last module gets a PR checkpoint task — a new task at the end of its closing phase, with that phase's next free number — and its `## Modules` line gains `PR: task N.M`. The new module carries no `PR:` field: it is now the last.
+  - Under `Testing: yes` the last task of the plan must stay `Test checkpoint: plan`, so with a module after the last the final full run moves to the new last phase, with that phase's next free number. Its old place in the former closing phase takes the module's test-checkpoint task (under `Test checkpoints: phase | task`), right before the new PR checkpoint task.
+  - A new module **before the first** gets its own PR checkpoint task under `PR checkpoints: yes`; its phase is numbered `0`, and no existing phase changes its number.
+  - A new module between two modules is not added: its work joins an existing module, above that module's PR checkpoint. There is no number for a phase between two existing ones without renumbering.
+  - `## Modules` is updated in the same edit — its lines, ranges and `PR:` fields. A plan that had no section and now has two modules gets one.
+  - The module barrier is rewritten into the `**Dependencies:**` lines of every affected phase.
+  - `PR checkpoints: yes` is never written or removed here: Add mode does not read the config, so a plan without the line gets modules but no PR checkpoint tasks.
+  - Existing task IDs are never renumbered, and `Planned at:` is left alone.
+  - Adding a module prints one line: `INFO [plan] module <name> added as M<k> (phases K-L)`. Every other edit is silent.
 - Update the manifest's `## Total Estimated Effort`, `## Commit Plan` and `## Dependency Graph` as needed
 - Update the `## Technical Context` section if changes affect constraints, interfaces, or patterns
-- Move the header's `Updated:` to today's date (`Bash(date *)`). Add mode changes the plan's **content**, which is exactly what that field tracks; leaving it stale drops the plan behind untouched plans in every "latest" resolver. `Created:` is never rewritten.
+- Move the header's `Updated:` to today's date (`Bash(date *)`). Add mode changes the plan's **content**, which is exactly what that field tracks; leaving it stale drops the plan behind untouched plans in every "latest" resolver. `Created:` is never rewritten. `Planned at:` is never rewritten either: it marks where the plan's work starts.
 
 ### Add Step 3: Confirm
 
