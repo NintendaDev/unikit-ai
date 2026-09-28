@@ -124,6 +124,27 @@ Single refinement pass over a plan, then hand back.
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 20`.
 
+#### `unikit-plan-module-planner`
+
+Plans one module of an ultra plan, called by `/unikit-plan ultra` through the `module-planner` alias.
+
+- Reads the planning state (`.unikit/code/.planning/<name>/STATE.md`), the ultra format and the module procedure — their paths arrive in its prompt, since a subagent has no skill directory of its own to compute them from
+- Finishes the module's code evidence, writes its phase files and, last, its fragment — a fragment present means the module is done, which is what a resume after a compaction rests on
+- Returns exactly three lines (`tasks:`, `gaps:`, `blocking:`) — the only thing that reaches the planning session's context
+- Writes only inside the working folder; never invents a cross-module contract — it records a gap and returns it; never calls other agents
+
+Frontmatter highlights: `permissionMode: acceptEdits`, `model: inherit`, `maxTurns: 80`.
+
+#### `unikit-plan-recon-writer`
+
+Answers one reconnaissance question for `/unikit-plan ultra`, through the `recon-writer` alias, and writes the answer into the `recon/` file named in its prompt — the built-in `Explore` agent is read-only and cannot. The file opens with the `HEAD:` it was measured at; the reply is the path and at most five lines.
+
+Frontmatter highlights: `permissionMode: acceptEdits`, `model: sonnet`, `maxTurns: 40`.
+
+**Both are Claude Code only**, like every subagent. On the other runtimes the same work runs in the planning session itself, by the same procedure — the bundle comes out the same shape. **An existing project gets them with a re-run of `unikit-ai init`**: `update` installs only the subagents already listed in `.unikit.json`, and `update --install-new` adds skills only. Until then `/unikit-plan` plans each module in the session and says so in one line.
+
+`permissionMode: acceptEdits` does not bound the path a subagent writes to, so `/unikit-plan` compares the project before and after each executor (`git status --porcelain --untracked-files=all` plus a hash of `git diff`) and stops on any change outside the working folder.
+
 ### Sidecars (background, read-only)
 
 Sidecars share the same shape: read-only tools (`Read`, `Glob`, `Grep`), `background: true`, `permissionMode: dontAsk`, `maxTurns: 6`. They return structured findings (JSON or markdown) and never mutate state.
@@ -139,7 +160,7 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Skills expose five named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** three expand to a dispatch that names the model on Claude Code and omits it everywhere else; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts.
+Skills expose seven named aliases in three families. The **skill-loading** two expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** three expand to a dispatch that names the model on Claude Code and omits it everywhere else; the **subagent-backed** two expand to one of the subagent files above on Claude Code and to an inline procedure everywhere else. Each row below states its own read-only expectation. The first two families are not subagent files on disk - they live inside the skill prompts.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
@@ -148,6 +169,8 @@ Skills expose five named aliases in two families. The **skill-loading** two expa
 | `recon-agent` | `Agent(subagent_type: Explore, …)` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
 | `check-agent` | `Agent(subagent_type: Explore, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
 | `lens-agent` | `Agent(subagent_type: general-purpose, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
+| `module-planner` | `Agent(subagent_type: unikit-plan-module-planner, …)` on Claude Code; the module procedure inline elsewhere | `/unikit-plan ultra` | Plan one module into the planning working folder; writes files, returns three lines |
+| `recon-writer` | `Agent(subagent_type: unikit-plan-recon-writer, …)` on Claude Code; `recon-agent` plus a file write elsewhere | `/unikit-plan ultra` | One reconnaissance question answered into a `recon/` file |
 
 Rule capture has no alias: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to the user in the calling session and invoke `/unikit-rules` only with the batch the user selected — a background agent could not have asked.
 
@@ -156,7 +179,7 @@ Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `dev
 ## Design Principles
 
 1. **Read-only where possible.** All four sidecars declare only `Read/Glob/Grep`. They exist to observe the codebase after a change, not to mutate it.
-2. **Writers are few.** Only `unikit-implement-coordinator`, `unikit-implement-worker`, and `unikit-plan-polisher` carry `Write/Edit`. `unikit-plan-coordinator` can edit plan artifacts via its polisher, not directly.
+2. **Writers are few.** Only `unikit-implement-coordinator`, `unikit-implement-worker`, `unikit-plan-polisher`, `unikit-plan-module-planner` and `unikit-plan-recon-writer` carry `Write` (the last without `Edit`), and the two planning writers are bounded by a change guard in `/unikit-plan`. `unikit-plan-coordinator` can edit plan artifacts via its polisher, not directly.
 3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` and `unikit-docs-sidecar` pin `model: sonnet`. A subagent definition file is the **right** place for a model name - it is runtime-native and reaches Claude Code only. A skill body is not: it reaches all six runtimes, of which only Claude Code has a dispatch-time model argument at all. That is why the model-carrying aliases declare their model behind an agent-filter branch instead of writing it at the call site, and why the value is always a tier alias (`sonnet`) and never a versioned model id.
 4. **Strict output contracts.** Sidecars return structured JSON or markdown the coordinator can parse. Workers return a single task result block. Coordinators are the only place free-form prose appears.
 5. **English output for parsing, project language for artifacts.** Sidecars and workers return English summaries; plan and documentation artifacts they write follow `language.artifacts` from `.unikit/config.yaml`.
@@ -185,6 +208,6 @@ Day-to-day work through slash commands (`/unikit-implement`, `/unikit-fix`, `/un
 
 ## See Also
 
-- [Skills Reference](skills.md) - the 23 code-pipeline skills that workflow skills delegate to or compose over
+- [Skills Reference](skills.md) - the 24 code-pipeline skills that workflow skills delegate to or compose over
 - [Development Workflow](workflow.md) - where coordinators and sidecars fit in the end-to-end flow
 - [Plan Files](plan-files.md) - the `PLAN.md` manifest coordinators read and workers update

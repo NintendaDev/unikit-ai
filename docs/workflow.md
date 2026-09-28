@@ -166,6 +166,20 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
 
 In ultra the same box additionally holds `phase-NN-*.md` files.
 
+### Modules and pull requests
+
+A full or ultra plan is sliced into **modules** — pieces the base branch can take whole. With `git.pull_requests.checkpoints: true` every module but the last ends with a PR checkpoint task, and the loop gains a stop at each module boundary:
+
+```
+/unikit-implement  →  module committed  →  check the module (/unikit-verify Phases K-L + /unikit-review)
+                                        →  /unikit-pr — open or update the branch's PR, merge when safe
+                                        →  or stop here / merge into the next PR
+... last module ...
+/unikit-verify  →  Pull request — /unikit-pr  →  /unikit-archive
+```
+
+While the plan has PR checkpoints a run never pushes: the branch reaches the remote through `/unikit-pr` at a module boundary, or through you. See [Plan files → Modules](plan-files.md#modules--pieces-the-base-branch-can-take-whole) and [`/unikit-pr`](skills.md).
+
 ## When to Use What?
 
 | Command | Use Case | Creates Branch? | Output |

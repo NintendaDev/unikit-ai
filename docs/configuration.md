@@ -21,7 +21,7 @@ Main configuration file, created by `unikit-ai init`:
         "unikit", "unikit-architecture", "unikit-archive", "unikit-commit", "unikit-devcontext",
         "unikit-docs", "unikit-evolve", "unikit-explore", "unikit-fix", "unikit-help",
         "unikit-implement", "unikit-improve", "unikit-mcp-audit", "unikit-mcp-trap",
-        "unikit-memory", "unikit-plan", "unikit-review", "unikit-roadmap",
+        "unikit-memory", "unikit-plan", "unikit-pr", "unikit-review", "unikit-roadmap",
         "unikit-rules", "unikit-rules-registry", "unikit-skills-context",
         "unikit-todo", "unikit-verify"
       ],
@@ -29,7 +29,8 @@ Main configuration file, created by `unikit-ai init`:
         "unikit-architecture-sidecar", "unikit-commit-sidecar",
         "unikit-docs-sidecar", "unikit-review-sidecar",
         "unikit-implement-coordinator", "unikit-implement-worker",
-        "unikit-plan-coordinator", "unikit-plan-polisher"
+        "unikit-plan-coordinator", "unikit-plan-polisher",
+        "unikit-plan-module-planner", "unikit-plan-recon-writer"
       ],
       "managedSkills": {
         "unikit": { "sourceHash": "abc123", "installedHash": "abc123" }
@@ -126,6 +127,9 @@ git:
   create_branches: true
   branch_prefix: feature/
   skip_push_after_commit: false
+  pull_requests:
+    checkpoints: false
+    max_level: create   # remind | create | merge
 ```
 
 ### `language` section
@@ -170,6 +174,12 @@ Existing projects receive the key by either of the two paths in [How new keys re
 | `create_branches` | Automatically create feature branches for plans. Applies only when `git.enabled = true`. | `true` |
 | `branch_prefix` | Branch name prefix for new features. Applies only when `create_branches = true`. | `feature/` |
 | `skip_push_after_commit` | If `true`, `/unikit-commit` ends after a successful local commit with no push prompt. | `false` |
+| `pull_requests.checkpoints` | Write a PR checkpoint task at the end of every plan module but the last. Recorded into the plan as `PR checkpoints: yes`. Not written when git is off or when the plan is on the base branch. | `false` |
+| `pull_requests.max_level` | `remind` \| `create` \| `merge` — how far `/unikit-pr` goes. A ceiling for any request, and the action taken at a PR checkpoint. Without the GitHub MCP every level acts as `remind`. | `create` |
+
+**`pull_requests.checkpoints` is recorded, not re-read** — the same rule as the test-run placement key above: `/unikit-plan` resolves it once and writes `PR checkpoints: yes` into the plan, so changing the key later never reinterprets a plan already written. `/unikit-plan add` and `/unikit-improve` read the plan's line, never the key. `max_level` is never read by the planner: it is resolved when a pull request is made.
+
+**Plans are always sliced into modules**, whatever these keys say: a module is one or more consecutive phases after whose merge the base branch is whole. The keys only decide whether a module ends with a PR checkpoint task — see [Plan files → Modules](plan-files.md#modules--pieces-the-base-branch-can-take-whole).
 
 ### How new keys reach an existing project
 
@@ -381,7 +391,7 @@ The rules tree is what UniKit AI shipped. This file is what *your* project found
 
 ### MCP JSON schema fields
 
-Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `configByPlatform`. `key` must equal the file's own basename and `code` must be non-empty — an entry missing either is dropped at scan time, so the server is simply never offered. Beyond those, an MCP JSON may declare four optional fields. All four are backward compatible — a config without them behaves exactly as before.
+Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `configByPlatform`. `key` must equal the file's own basename and `code` must be non-empty — an entry missing either is dropped at scan time, so the server is simply never offered. Beyond those, an MCP JSON may declare five optional fields. All five are backward compatible — a config without them behaves exactly as before.
 
 | Field | Purpose |
 |-------|---------|
@@ -389,6 +399,20 @@ Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `co
 | `rules` | Directory holding this server's rules tree, resolved relative to the JSON's own directory (`"rules/<server>/"`). Delivered to `.unikit/system/engine-mcp/` — see [Engine-MCP rules tree](#engine-mcp-rules-tree). Absent is a normal state, not a degraded one. |
 | `order` | Presentation order within one engine group — the `is_engine` servers of a single `mcp/<engine>/` directory (ascending, 1-based; missing sorts last). Drives the wizard's radio pre-selection and nothing else — it does **not** affect the order servers are written into a settings file. |
 | `configByPlatform` | Per-OS config variants keyed by `win32` / `darwin` / `linux`, for servers whose binary path differs per platform. |
+| `preselect` | `false` keeps the server unchecked in the wizard's checkbox list on a fresh install; absent means checked, as before. A re-run of `init` mirrors your previous choice either way. Checkbox list only — an engine server's radio default is `order`'s job, and `preselect` never sits on an `is_engine` entry. |
+
+**A token in a header is a reference, never a value.** A header value in `config.headers` may carry `{{env:NAME}}` — the name of an environment variable, uppercase — and every writer renders it in its own client's syntax, so the settings file you commit never holds the token itself:
+
+| Client | `Authorization: Bearer {{env:GITHUB_PAT}}` becomes |
+|--------|----------------------------------------------------|
+| Claude Code | `"Authorization": "Bearer ${GITHUB_PAT}"` |
+| Cursor | `"Authorization": "Bearer ${env:GITHUB_PAT}"` |
+| Qwen Code | `"Authorization": "Bearer ${GITHUB_PAT}"`, with the URL in `httpUrl` |
+| OpenCode | `"Authorization": "Bearer {env:GITHUB_PAT}"` and `"oauth": false` |
+| Codex CLI | `bearer_token_env_var = "GITHUB_PAT"` — no `Authorization` header at all |
+| Antigravity | `"Authorization": "Bearer YOUR_GITHUB_PAT"` — it documents no reference syntax, so this is a placeholder you replace yourself |
+
+The first write has to be right: an entry already standing under our code is kept as it is (rule 3 of [What UniKit writes into your settings file](#what-unikit-writes-into-your-settings-file)), so nothing would ever correct a wrong one.
 
 `config` (and each `configByPlatform` variant) may carry an `env` block, handed to the server process verbatim; the path tokens below expand inside its values too. UniKit AI uses it for exactly one thing today — see [`UNITY_MCP_NO_GATING`](#unity-biome-mcp-order-1) above.
 
@@ -509,6 +533,26 @@ You can delete the hint from your own settings file and `update` will **not** pu
 
 **A project installed before this change keeps its `npx` entry**, by decision rather than oversight — there is no migration, because rewriting an entry you may have edited is precisely what rule 3 exists to prevent. To move over, delete the `context7` entry from your settings file and run `unikit-ai update`.
 
+**Qwen Code gets `httpUrl`.** Qwen reads `url` as an SSE endpoint and `httpUrl` as HTTP streaming, so a new entry for **every** HTTP server — Context7, the HTTP engine servers (Coplay `UnityMCP`, chir24 `unreal-engine`) and servers registered by extensions — is written with `httpUrl` and without `url`/`type`. An entry written earlier is kept as it is; to recreate it, delete it from `.qwen/settings.json` and run `unikit-ai init` or `update`.
+
+### GitHub
+
+```json
+{
+  "type": "http",
+  "url": "https://api.githubcopilot.com/mcp/",
+  "headers": { "Authorization": "Bearer {{env:GITHUB_PAT}}" }
+}
+```
+
+GitHub's official remote MCP server, offered in the wizard next to Context7 and **unchecked by default** (`preselect: false`) — it needs a token, and not every project makes pull requests. Only `/unikit-pr` uses it, and only five tools are granted, to that skill alone: `list_pull_requests`, `create_pull_request`, `update_pull_request`, `pull_request_read`, `merge_pull_request`. The tools that write into a repository past git (`create_branch`, `create_or_update_file`, `delete_file`) are never granted.
+
+**Set `GITHUB_PAT` in the environment your agent starts from.** It is a GitHub personal access token that can read and write pull requests, plus write contents if you allow the `merge` level; the scopes GitHub asks for are listed in the [github-mcp-server README](https://github.com/github/github-mcp-server). The push itself is ordinary `git` with your own credentials — the MCP token is not used for it. `init` prints one line naming the variable when the server is selected.
+
+**Antigravity** documents no syntax for referencing an environment variable, so its settings file gets the placeholder `YOUR_GITHUB_PAT`. Replace it with the token yourself — and never commit `.agents/mcp_config.json` once it holds the token. `init` says so in the summary.
+
+**An older `github` entry is kept as it is.** An entry you wrote by hand, or one another tool left under the `github` key (a local `npx` server with a different token variable, a literal token), is not rewritten — the same rule that keeps a key you typed into Context7. `init` and `update` warn about it with a line ending in `does not match the catalog`, without printing its value: delete the entry and run `unikit-ai init` again.
+
 ## Rules Manifest
 
 `data/rules-manifest.json` contains a `requiredBy` map only. It maps each core rule id (canonical lowercase-hyphen, no `.md`) to either `"all"` or an array of skill names that must load that rule. Example:
@@ -542,7 +586,7 @@ After initialization (example for Claude Code):
 ```
 your-unity-project/
 ├── .claude/                      # Agent config dir
-│   ├── skills/                   # 23 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
+│   ├── skills/                   # 24 code-pipeline skills (+ 11 unikit-gd-* if the Game Design group was selected)
 │   │   ├── unikit/
 │   │   │   └── references/
 │   │   ├── unikit-architecture/
@@ -565,6 +609,9 @@ your-unity-project/
 │   │   │   └── references/
 │   │   ├── unikit-memory/
 │   │   ├── unikit-plan/
+│   │   │   ├── references/
+│   │   │   └── scripts/          # plan-bundle.mjs - checks and moves an ultra bundle
+│   │   ├── unikit-pr/
 │   │   │   └── references/
 │   │   ├── unikit-review/
 │   │   ├── unikit-roadmap/
@@ -577,7 +624,7 @@ your-unity-project/
 │   │   │   └── references/
 │   │   └── unikit-gd-*/          # 11 game-design skills, one dir each - see Game-Design Module
 │   └── agents/                    # Subagents directory
-│       └── unikit-architecture-sidecar.md    # 8 subagent files (sidecars, coordinators, workers)
+│       └── unikit-architecture-sidecar.md    # 10 subagent files (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git)
 │   ├── system/                   # Flat-rewritten on every init/update - never hand-edit
@@ -587,6 +634,7 @@ your-unity-project/
 │   │   ├── gate-result-contract.md # Schema of the `unikit-gate-result` fenced JSON block
 │   │   ├── ultra-plan-read.md     # Reader contract for an ultra plan bundle
 │   │   ├── research-link.md       # The `## Based on` contract - entry, hashing, drift ladder
+│   │   ├── plan-boundaries.md     # Where a plan, a module and a push start and end - read by verify, implement, commit, pr
 │   │   ├── gamedesign/            # only if the Game Design skills are installed
 │   │   │   ├── gd-principles.md    # The design working contract - slim core
 │   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it
@@ -626,6 +674,7 @@ your-unity-project/
 │   ├── TODO.md                   # Task checklist (managed by /unikit-todo)
 │   ├── code/                     # Dev-pipeline workspace
 │   │   ├── plans/                 # Feature plans (managed by /unikit-plan)
+│   │   ├── .planning/<name>/      # An unfinished ultra planning - gone once the bundle is moved into plans/
 │   │   ├── patches/               # Fix patches (created by /unikit-fix)
 │   │   └── researches/            # Discovery output (created by /unikit-explore)
 │   ├── gamedesign/                # GDD workspace (GAME.md, GD-IDS.yaml, systems/, flows/, ...) - created on first /unikit-gd-spec use

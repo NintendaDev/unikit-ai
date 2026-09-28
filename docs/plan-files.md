@@ -34,6 +34,7 @@ One file per folder plan: overview, settings, the dependency-ordered checklist w
 
 Created: 2026-03-15
 Updated: 2026-03-18
+Planned at: 4f2a9c1
 
 ## Overview
 Adds a five-tier rarity classification to items, surfaced in the inventory grid.
@@ -193,6 +194,41 @@ This is what lets `/unikit-verify` quote the executor's full run instead of repe
 A test run is its own checklist task carrying a `Test checkpoint:` line, and it is the one task form that carries **no `Files:`**: it leaves nothing behind — a temporary probe it creates and removes (a negative control) and a manual smoke are legitimate steps, and when the task is merged into a later point they are performed there. Under `Testing: yes` the plan's last task is always a full run. Where such tasks are placed comes from `testing.plan.checkpoints` (see [Configuration](configuration.md)), which the planner resolves once and records into `## Settings` — so changing the key later never reinterprets a plan already written. The grammar and how a run's width follows from its coverage are canonical in the plan format reference; this page names them rather than repeating them.
 
 **A plan written before this existed has no `Test checkpoints:` line under `Testing: yes`.** That is a legacy plan, and nothing breaks: the executor falls back to finding runs in the prose of the tasks, with lower confidence, and says so in its report. `/unikit-improve` will not add test-checkpoint tasks to such a plan — the placement was never declared, and guessing it while editing your plan is not its call. A plan with `Testing: no` omits the line by design and is not legacy.
+
+#### `Planned at:` — where the plan's work starts
+
+Full and ultra manifests carry `Planned at: <short sha>` under `Updated:` — the commit `HEAD` pointed at when the planner saved the plan. It is written **once and never moves**: not by `add`, not by `/unikit-improve`, not by execution. `/unikit-verify` takes the plan's changed files from it, so modules already merged into the base branch stay in scope of the closing check, and `/unikit-implement` compares evidence against it at a module boundary. A plan without the line (an older plan, no git) finds its start through `.unikit/system/plan-boundaries.md` — the earliest commit with the plan's `Plan: <folder>` trailer, or the commit that added the manifest.
+
+#### Modules — pieces the base branch can take whole
+
+`/unikit-plan` always groups the phases of a full or ultra plan into **modules**: one or more consecutive phases after whose merge the base branch is whole — it builds, the tests pass, the game is playable, nothing half-wired is reachable. Seams and refactorings come first, their consumers next, wiring and content last. A fast plan is one module by construction.
+
+The section is written when there are two or more modules, or one longer than four phases; otherwise the whole plan is one module and nothing is written.
+
+```markdown
+## Modules
+- M1 · Rarity data · phases 1-2 · delivers: items carry a rarity the rest of the game can read · PR: task 2.4
+- M2 · Rarity in the inventory · phase 3 · delivers: players see an item's rarity at a glance
+```
+
+- `delivers:` is what the base branch gets, in plain words — `/unikit-pr` writes the pull request text from it.
+- `PR: task N.M` names the module's PR checkpoint task; the last module carries no `PR:` field — its pull request is the one made after `/unikit-verify`.
+- `why long:` is required on a module longer than four phases.
+- **A module boundary is a layer barrier**: the closing phase of a module depends on every other phase of it, and every phase of the next module depends on that closing phase, so nothing of the next module runs beside it. A commit range never crosses a module boundary.
+
+#### PR checkpoint tasks — stop and make a pull request
+
+With `git.pull_requests.checkpoints: true` in `.unikit/config.yaml` (see [Configuration](configuration.md)), git on and the plan off the base branch, every module but the last ends with a PR checkpoint task, and `## Settings` carries `PR checkpoints: yes`. Like a test-checkpoint task, it carries a line in place of `Files:` — `PR checkpoint: <module> → <base>` — and leaves nothing in the project.
+
+At that task `/unikit-implement` commits the module and asks one question — check the module (`/unikit-verify` on its phases and `/unikit-review` of its commits), run `/unikit-pr` and continue, stop here, or merge into the next PR — then labels the checkbox:
+
+| Label | Meaning |
+|-------|---------|
+| `- [x] Task 2.4 — … → PR a1b2c3d` | The module boundary: the commit that closed the module |
+| `- [ ] Task 2.4 — … ⏭️ MERGED → task 4.3` | Merged into the next PR checkpoint; ticked together with it, and has no boundary of its own |
+| `- [x] Task 7.3 — … ⏭️ MERGED` | The last PR checkpoint merged: the module goes into the PR made after `/unikit-verify` |
+
+While the checklist carries a `PR checkpoint:` line, a run never pushes — every automatic commit passes `no-push`, and the branch reaches the remote through `/unikit-pr` or you. A plan with PR checkpoint tasks but no `PR checkpoints: yes` line (written under a project's own rule) is legacy: its tasks run by their own steps, a `→ skipped` label reads as `⏭️ MERGED`, and a `→ PR` label without a SHA is a boundary found through the commit that added it.
 
 **Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`.
 
@@ -361,6 +397,8 @@ produced it (`explicit path`, `feature name`, `fast plan`, `fix plan`, `branch m
 feature without ever saying so.
 
 Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
+
+**An unfinished ultra planning is not a plan.** `/unikit-plan ultra` writes a bundle module by module inside `.unikit/code/.planning/<name>/` — a working folder with its own `.gitignore`, a `STATE.md` that records where the run stands, the recon answers, the modules' fragments and the phase files — and moves the finished bundle into `.unikit/code/plans/<name>/` only at the end, whole. `--list`, `/unikit-implement` and `/unikit-verify` never see the working folder. To continue an interrupted planning, run `/unikit-plan ultra <name>`, or choose `Continue it` when `/unikit-plan` finds the name already taken.
 
 An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for. `/unikit-explore` reads archived plans whose name matches its topic, as the history of how a feature was built.
 
