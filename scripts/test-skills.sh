@@ -8524,6 +8524,52 @@ else
     fail "OW-1…OW-3 other plan writers contract:$OW_WHY"
 fi
 
+# CP: /unikit-commit — the automatic commits of a run pass `no-push`, and a push a human asks
+# for takes HEAD by default but asks, inside a module, whether to stop at the last finished
+# module boundary. A silent cut and a silent push into an open PR are both the defect.
+CP_COMMIT="$ROOT_DIR/skills/unikit-commit/SKILL.md"
+CP_REF="$ROOT_DIR/skills/unikit-commit/references/push-boundary.md"
+CP_WHY=""
+if [[ ! -f "$CP_COMMIT" ]]; then
+    CP_WHY+=" CP:missing-commit-skill"
+else
+    # (CP-1) the token
+    grep -qE '^argument-hint:.*no-push' "$CP_COMMIT" || CP_WHY+=" CP-1:no-token-hint"
+    grep -qF 'it switches the push offer off for this run' "$CP_COMMIT" || CP_WHY+=" CP-1:token-undefined"
+    # (CP-2) Behavior step 8 routes to the reference, degrades loudly, and the split path follows it
+    grep -qF 'push-boundary.md' "$CP_COMMIT" || CP_WHY+=" CP-2:no-reference-read"
+    grep -qF 'push-boundary reference missing' "$CP_COMMIT" || CP_WHY+=" CP-2:silent-degradation"
+    grep -qF '`no-push` and a plan'"'"'s PR checkpoints' "$CP_COMMIT" || CP_WHY+=" CP-2:split-path-pushes"
+fi
+if [[ ! -f "$CP_REF" ]]; then
+    CP_WHY+=" CP-3:missing-reference"
+else
+    # (CP-3) the reference: HEAD by default, the boundary a choice, order of the checks
+    for lit in '## Last completed boundary' 'The default target is the current state' 'the head is the target' \
+               'git push origin <B>:refs/heads/<branch>' 'Push everything up to now (HEAD)' 'Push up to the end of' \
+               'no module of <folder> is finished yet' 'HEAD is inside module' 'never cut the push silently' \
+               'nothing was forced'; do
+        grep -qF -- "$lit" "$CP_REF" || CP_WHY+=" CP-3:missing(${lit:0:32})"
+    done
+    grep -qF 'git push -u' "$CP_REF" && CP_WHY+=" CP-3:boundary-push-tracks"
+    # "the whole plan is closed" is decided before the boundary is looked up, and HEAD is offered first
+    cp_closed=$(grep -nF 'the head is the target' "$CP_REF" | head -1 | cut -d: -f1)
+    cp_bound=$(grep -nF '## Last completed boundary' "$CP_REF" | head -1 | cut -d: -f1)
+    cp_head=$(grep -nF 'Push everything up to now (HEAD)' "$CP_REF" | head -1 | cut -d: -f1)
+    cp_end=$(grep -nF 'Push up to the end of' "$CP_REF" | head -1 | cut -d: -f1)
+    if [[ -n "$cp_closed" && -n "$cp_bound" ]] && (( cp_closed >= cp_bound )); then
+        CP_WHY+=" CP-3:boundary-before-closed-check"
+    fi
+    if [[ -n "$cp_head" && -n "$cp_end" ]] && (( cp_head >= cp_end )); then
+        CP_WHY+=" CP-3:boundary-offered-first"
+    fi
+fi
+if [[ -z "$CP_WHY" ]]; then
+    pass "CP-1…CP-3 commit: no-push token; a manual push takes HEAD and asks inside a module"
+else
+    fail "CP-1…CP-3 commit push contract:$CP_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
