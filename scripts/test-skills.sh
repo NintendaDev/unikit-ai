@@ -8346,6 +8346,54 @@ else
     fail "AR plan archive contract:$AR_WHY"
 fi
 
+# MP: plan modules, PR checkpoints and the planning commit — the grammar has ONE owner
+# (TASK-FORMAT.md). Ultra and the reader contract point at it; every writer and reader added
+# in later phases names its sections instead of restating them.
+MP_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+MP_ULTRA="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+MP_READ="$ROOT_DIR/data/ultra-plan-read.md"
+MP_WHY=""
+for f in "$MP_TASKFMT" "$MP_ULTRA" "$MP_READ"; do
+    [[ -f "$f" ]] || MP_WHY+=" MP:missing-${f##*/}"
+done
+if [[ -z "$MP_WHY" ]]; then
+    # (MP-1) the owner declares every token and rule of the grammar
+    grep -qF '### Modules section' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-modules-section"
+    grep -qF '### PR checkpoint task grammar' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-pr-grammar"
+    grep -qF 'PR checkpoint: <module name> → <base>' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-pr-line-form"
+    grep -qF -- '- PR checkpoints: yes' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-settings-line"
+    grep -qF 'Planned at: <short sha>' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-planned-at"
+    grep -qF 'delivers:' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-delivers"
+    grep -qF 'why long:' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-why-long"
+    grep -qF '→ PR <short sha>' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-boundary-label"
+    grep -qF 'at once, with no target' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-last-merge-rule"
+    grep -qF 'The last module carries no `PR:` field' "$MP_TASKFMT" || MP_WHY+=" MP-1:last-module-pr-field"
+    grep -qF 'A module boundary is a layer barrier' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-barrier"
+    grep -qF 'never crosses a module boundary' "$MP_TASKFMT" || MP_WHY+=" MP-1:commit-crosses-module"
+    grep -qF 'never moves' "$MP_TASKFMT" || MP_WHY+=" MP-1:planned-at-moves"
+    grep -qF 'one of the two forms of task in this format without that line' "$MP_TASKFMT" || MP_WHY+=" MP-1:only-form-claim"
+    # the `final` mechanic was withdrawn by the user — its tokens must not come back
+    grep -qF 'PR: final' "$MP_TASKFMT" && MP_WHY+=" MP-1:final-token-returned"
+    grep -qF 'MERGED → final' "$MP_TASKFMT" && MP_WHY+=" MP-1:final-merge-returned"
+    # (MP-2) ultra shows the header line and the section, and owns the phase-file form + checks 12-15
+    grep -qF 'Planned at: <short sha>' "$MP_ULTRA" || MP_WHY+=" MP-2:no-planned-at"
+    grep -qF '## Modules' "$MP_ULTRA" || MP_WHY+=" MP-2:no-modules-line"
+    grep -qF 'Not applicable — this task closes a module, it runs no tests' "$MP_ULTRA" || MP_WHY+=" MP-2:no-pr-task-tests-literal"
+    grep -qF 'The module barrier holds' "$MP_ULTRA" || MP_WHY+=" MP-2:no-barrier-check"
+    grep -qF 'check 13 does not apply to a legacy plan' "$MP_ULTRA" || MP_WHY+=" MP-2:legacy-contradicts-blocking"
+    # (MP-3) the reader contract: labels are checkbox text, Planned at: never edited, 12-15 write-time
+    grep -qF 'is never edited by any consumer' "$MP_READ" || MP_WHY+=" MP-3:planned-at-mutable"
+    grep -qF '| `/unikit-pr` |' "$MP_READ" || MP_WHY+=" MP-3:no-pr-depth-row"
+    grep -qF 'Checks 12-15 are write-time too' "$MP_READ" || MP_WHY+=" MP-3:checks-not-write-time"
+    # (MP-4) fast is one module by construction — asserted inside its own subsection
+    awk '/^### Fast mode differences/{w=1} w' "$MP_TASKFMT" | grep -qF 'No `## Modules`, no PR checkpoint tasks' || MP_WHY+=" MP-4:fast-modules"
+fi
+if [[ -z "$MP_WHY" ]]; then
+    pass "MP-1…MP-4 modules, PR checkpoints and Planned at: declared once"
+else
+    fail "MP-1…MP-4 grammar contract:$MP_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
