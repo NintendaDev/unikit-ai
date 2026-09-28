@@ -8668,6 +8668,70 @@ else
     fail "CP-1…CP-3 commit push contract:$CP_WHY"
 fi
 
+# UPR: /unikit-pr — the one author of pull requests. Levels capped by the config, the PR is
+# the current state (a question inside a module, never a silent cut), one open PR per branch,
+# a merge only when it brings nothing from the base branch, and a plain-language text.
+UPR_SKILL="$ROOT_DIR/skills/unikit-pr/SKILL.md"
+UPR_TEXT="$ROOT_DIR/skills/unikit-pr/references/pr-text.md"
+UPR_MERGE="$ROOT_DIR/skills/unikit-pr/references/safe-merge.md"
+UPR_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+UPR_WHY=""
+for f in "$UPR_SKILL" "$UPR_TEXT" "$UPR_MERGE" "$UPR_VERIFY"; do
+    [[ -f "$f" ]] || UPR_WHY+=" UPR:missing-${f##*/}"
+done
+if [[ -z "$UPR_WHY" ]]; then
+    # (UPR-1) levels and the ceiling; no GitHub MCP → remind
+    grep -qE '^argument-hint:.*remind \| create \| merge' "$UPR_SKILL" || UPR_WHY+=" UPR-1:no-level-hint"
+    grep -qF 'git.pull_requests.max_level' "$UPR_SKILL" || UPR_WHY+=" UPR-1:no-ceiling"
+    grep -qF 'acting at <ceiling>' "$UPR_SKILL" || UPR_WHY+=" UPR-1:above-ceiling-silent"
+    grep -qF 'GitHub MCP not available' "$UPR_SKILL" || UPR_WHY+=" UPR-1:no-remind-fallback"
+    # (UPR-2) boundaries: HEAD by default, a question inside a module, every refusal branch named
+    for lit in 'plan-boundaries.md' '## Push target' 'git push origin <end>:refs/heads/<branch>' \
+               'no argument marks the final pull request' 'The pull request is the current state' \
+               'PR everything up to now (HEAD)' 'it never cuts the PR silently' \
+               'push refused — nothing was forced' 'nothing between origin/<base>' 'you are on the base branch' \
+               'uncommitted file(s) are not part of the PR' 'Stop — I will commit first'; do
+        grep -qF -- "$lit" "$UPR_SKILL" || UPR_WHY+=" UPR-2:missing(${lit:0:32})"
+    done
+    upr_head=$(grep -nF 'PR everything up to now (HEAD)' "$UPR_SKILL" | head -1 | cut -d: -f1)
+    upr_end=$(grep -nF 'PR up to the end of' "$UPR_SKILL" | head -1 | cut -d: -f1)
+    if [[ -z "$upr_end" ]] || { [[ -n "$upr_head" ]] && (( upr_head >= upr_end )); }; then
+        UPR_WHY+=" UPR-2:boundary-offered-first"
+    fi
+    grep -qF 'git push -u' "$UPR_SKILL" && UPR_WHY+=" UPR-2:push-tracks"
+    grep -qF -- '--force' "$UPR_SKILL" && UPR_WHY+=" UPR-2:force"
+    grep -qxF '  - Edit' "$UPR_SKILL" && UPR_WHY+=" UPR-2:writes-plan"
+    # (UPR-3) one open PR per branch: find by head, update when open
+    grep -qF 'list_pull_requests' "$UPR_SKILL" || UPR_WHY+=" UPR-3:no-lookup"
+    grep -qF 'update_pull_request' "$UPR_SKILL" || UPR_WHY+=" UPR-3:no-update"
+    grep -qF '<owner>:<branch>' "$UPR_SKILL" || UPR_WHY+=" UPR-3:head-filter"
+    # (UPR-4) the tools that write past git are named as forbidden, inside ## Never
+    upr_never=$(awk '/^## Never/{w=1} w' "$UPR_SKILL")
+    grep -qF 'create_or_update_file' <<< "$upr_never" || UPR_WHY+=" UPR-4:create-file-allowed"
+    grep -qF 'delete_file' <<< "$upr_never" || UPR_WHY+=" UPR-4:delete-file-allowed"
+    # (UPR-5) the safe merge
+    for lit in 'merge-tree --write-tree' '^{tree}' 'merge_method: "merge"' 'stays open —' \
+               'has no merge-tree --write-tree' 'has changes this branch does not'; do
+        grep -qF -- "$lit" "$UPR_MERGE" || UPR_WHY+=" UPR-5:missing(${lit:0:32})"
+    done
+    grep -qF 'merge_method: "squash"' "$UPR_MERGE" && UPR_WHY+=" UPR-5:squash"
+    # (UPR-6) the text, and verify offering the final PR with no argument
+    for lit in 'One feature per line.' 'The code is the source of truth: commit subjects are hints.' \
+               'git diff --stat <start>..<end>' 'never all at once' 'in progress' \
+               'Plan: <folder> · phases K–L' 'task(s) of the plan are still open'; do
+        grep -qF -- "$lit" "$UPR_TEXT" || UPR_WHY+=" UPR-6:missing(${lit:0:32})"
+    done
+    grep -qF 'Skill(skill: "unikit-pr")' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-no-offer"
+    grep -qF '/unikit-pr is not installed' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-not-installed-silent"
+    grep -qF 'unikit-pr", args: "final"' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg"
+    grep -qF '/unikit-pr final' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg-slash"
+fi
+if [[ -z "$UPR_WHY" ]]; then
+    pass "UPR-1…UPR-6 unikit-pr: levels, boundaries, one PR per branch, safe merge, plain text"
+else
+    fail "UPR-1…UPR-6 unikit-pr contract:$UPR_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

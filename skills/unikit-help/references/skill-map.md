@@ -161,6 +161,19 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   the question, one result line.
 - **Optional (terminal step).** Before: any of implement/fix/verify/review.
 
+### unikit-pr
+- **Purpose:** Write, open and — when allowed — merge the feature branch's pull request. The
+  text is one feature per line in plain words, from the plan's modules or, without a plan,
+  from the commits and the code. One open PR per branch: it is created, or updated when open.
+- **When:** "open a PR", "write the PR description", "merge the PR"; after `/unikit-verify` on
+  a finished plan, or at a PR checkpoint of `/unikit-implement`.
+- **In:** `remind | create | merge` (capped by `git.pull_requests.max_level`), or nothing.
+- **Out:** the PR text; at `create` a pushed branch and an opened or updated PR (GitHub MCP);
+  at `merge` a merge commit — only when the merge brings nothing from the base branch.
+  Without the GitHub MCP: the text, the push command and the link.
+- **Optional (after commit).** Neighbours: `/unikit-commit` (commits), `/unikit-review` (reviews
+  the PR's code), `/unikit-verify` (offers it when the plan is done).
+
 ### unikit-archive
 - **Purpose:** Move a completed folder plan — or, on your explicit choice, an unfinished one,
   labelled as such — from `.unikit/code/plans/<folder>/` to `.unikit/code/archive/plans/<folder>/`,

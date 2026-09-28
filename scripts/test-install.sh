@@ -58,7 +58,8 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
                           "unikit-explore", "unikit-implement", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
                           "unikit-gd-recon", "unikit-gd-docs",
-                          "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify"],
+                          "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
+                          "unikit-pr"],
       "installedSubagents": ["unikit-architecture-sidecar"]
     }
   ],
@@ -728,6 +729,17 @@ echo "  ✓ unikit-memory: scripts/material-prep.py delivered on install"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-rules/scripts/rules-layout.mjs" \
   "rules-layout.mjs should be delivered into the installed unikit-rules skill (scripts/ subdir)"
 echo "  ✓ unikit-rules: scripts/rules-layout.mjs delivered on install"
+
+# unikit-pr ships two references: the PR text rules (read every run) and the safe-merge
+# steps (read only at the merge level). run_update has no --install-new, so the skill is in
+# this fixture's installedSkills — without it nothing below would be delivered at all.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-pr/SKILL.md" \
+  "unikit-pr should be installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-pr/references/pr-text.md" \
+  "unikit-pr/references/pr-text.md should be delivered"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-pr/references/safe-merge.md" \
+  "unikit-pr/references/safe-merge.md should be delivered"
+echo "  ✓ unikit-pr: SKILL.md and both references delivered on install"
 
 # ─────────────────────────────────────────────────────
 # Test 8: ENGINE_RULES.md installation for Godot

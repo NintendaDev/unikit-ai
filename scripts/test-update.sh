@@ -2134,6 +2134,8 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
     "update --install-new installed the new GDD-render skill (unikit-gd-docs)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
     "update --install-new installed the new plan-archive skill (unikit-archive)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-pr/SKILL.md" \
+    "update --install-new installed the new pull-request skill (unikit-pr)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-plan/SKILL.md" \
     "update --install-new installed a new code skill (unikit-plan)"
 assert_contains "$INSTALLNEW_OUT" "new skill installed" "new-skill-installed reason text appears"

@@ -733,8 +733,11 @@ Options:
 4. Skip — I'll handle it myself
 ```
 
+**The pull request option.** After a check of the whole plan (`phase_scope = all`) with **no blocker**, in a git repository (`git.enabled` from `.unikit/config.yaml`; no key → a `.git` directory decides) and on a branch other than the base of Step 0.4, option 1 becomes `Pull request — run /unikit-pr`: there is nothing to fix, and the question keeps its four options. The choice dispatches in three tiers — `Skill(skill: "unikit-pr")` → the `/unikit-pr` slash command → print `Run: /unikit-pr` — with no argument: a closed plan is read from its checkboxes. When `{{skills_dir}}/unikit-pr/SKILL.md` does not exist (a project that ran `update` without `--install-new`), print `WARN [pr] /unikit-pr is not installed — run unikit-ai update --install-new` instead of a command that does not exist. The `unikit-gate-result` block's `suggested_next` does not change.
+
 Based on choice:
 - Fix issues → run `/unikit-fix` with issue summary
+- Pull request → the three-tier dispatch above
 - Code review → run `/unikit-review` on changed files
 - Commit → run `/unikit-commit`
 - Skip → **STOP**
