@@ -135,6 +135,7 @@ Do **not** auto-run `git init`. Read the git keys from `.unikit/config.yaml`:
 - `git.enabled: false` → no branch commands; a full-mode plan goes to `.unikit/code/plans/<slug>/`
 - `git.base_branch` → the target branch for diffs and merge guidance (default: the detected branch or `main`)
 - `git.create_branches: false` → full mode still writes the rich plan, on the current branch
+- `git.pull_requests.checkpoints` — read once by the mode file's `#### PR checkpoints`; `git.pull_requests.max_level` is never read by the planner.
 
 `git.enabled: true` outside a git work tree → warn that git-aware actions are unavailable until the repository is initialized, and continue as with `git.enabled: false`.
 
@@ -478,7 +479,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
 #### Plan Sections (all planning modes)
 
-0. **Header timestamps** — `Created:` and `Updated:` directly under the H1, both today's date from Step 1 (`Bash(date *)`). Their shape and the rule for moving `Updated:`: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → *Plan Manifest Template*; ultra writes the same two lines under its own H1.
+0. **Header timestamps** — `Created:` and `Updated:` directly under the H1, both today's date from Step 1 (`Bash(date *)`). Their shape and the rule for moving `Updated:`: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → *Plan Manifest Template*; ultra writes the same two lines under its own H1. Full and ultra also write `Planned at: <short sha>` (`git rev-parse --short HEAD`) under `Updated:` — only in a git work tree with at least one commit; it never moves (`TASK-FORMAT.md` → *Plan Manifest Template*).
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
@@ -492,6 +493,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
    - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`**.
+   - `PR checkpoints: yes` — only when this plan carries at least one PR checkpoint task (`pr_checkpoints = true` in the mode file and two or more modules); otherwise the line is absent.
 
 4. **`## Roadmap Linkage`** (optional, only if `.unikit/ROADMAP.md` exists):
    - If linked: `Milestone: "<name>"` and `Rationale: "<why>"`
@@ -505,9 +507,13 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **Test-checkpoint task.** A run point is a **separate** checklist task carrying the line `Test checkpoint: <coverage>` in the position `Files:` occupies. The rest — no `Files:`, where a checkpoint is worth placing, a phase left without one, the closing `Test checkpoint: plan` under `Testing: yes`, no list of suites, no run commands elsewhere — is `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate it here**.
 
+   **Modules (full and ultra).** Group the phases into modules by the criteria of `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Modules section` — always, whether or not PR checkpoints are on. Write `## Modules` directly after `## Roadmap Linkage` — above `## Checklist` in full, before `## Architecture and Decisions` in ultra (the ultra manifest template) — when there are two or more modules, or one longer than four phases; a module longer than four phases carries `why long:`. Do not restate the criteria here.
+
+   **PR checkpoint task.** When `pr_checkpoints = true` and there are two or more modules, the last task of every module but the last is a PR checkpoint task carrying `PR checkpoint: <module name> → <base>` in the position `Files:` occupies; under `Testing: yes` and `Test checkpoints: phase | task` the module's test-checkpoint task stands right before it. Grammar, labels and placement: `TASK-FORMAT.md` → `### PR checkpoint task grammar`.
+
    **Rule refresh per phase.** Before you draft the tasks of each phase — in ultra, before you write each phase file (`mode-ultra.md` Step F) — match the phase's name and the tasks you are about to write against the `Load when` column of the `## Topics` table in `.unikit/RULES.md` and the Stack table of `.unikit/memory/code/RULES_INDEX.md`. Read only the topic files and stack rules not loaded yet — keep their paths in `loaded_rules`, the same delta `/unikit-implement` Step 3.0 computes; when unsure, load. A listed topic file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, continue. Nothing is re-read between the tasks of one phase.
 
-6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`).
+6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`). A range never crosses a module boundary.
 
 7. **`## MCP Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
 
@@ -529,6 +535,8 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    Then check the graph you actually wrote, not the intent: walk the layers the way the coordinator does and confirm that every layer holding an editor phase has exactly one member. If serialization makes the plan awkward, move the editor work into a phase of its own rather than relaxing the rule.
 
+   **Module barrier.** A module boundary is a layer barrier — the closing phase of a module depends on every other phase of it, and every phase of the next module depends on that closing phase (`TASK-FORMAT.md` → `### Modules section`). Write it into the `**Dependencies:**` lines together with Guard B and check the layers once for both.
+
 11. **`## Total Estimated Effort`** — sum of all phases.
 
 12. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **ultra** the manifest keeps only the cross-phase part and the rest goes into the phase files — the distribution rule is `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`. Content comes from Step 4 Phase B, synthesized with the Bootstrap rules: base it on the actual code, do not invent. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
@@ -543,9 +551,10 @@ Show the user:
 1. The plan path — `.unikit/code/PLAN.md` (fast), or `.unikit/code/plans/<feature-name>/PLAN.md` (full, ultra), plus the research reference if linked
 2. Full and ultra: the git branch name when `branch_created = true`, otherwise the current branch name
 3. A brief summary of the phases and the total estimated effort
-4. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
-5. The reminder: "To start implementation, run: `/unikit-implement`"
-6. Ask whether to adjust anything
+4. The modules — `N modules, M PR checkpoints` (or `one module`) — one line
+5. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
+6. The reminder: "To start implementation, run: `/unikit-implement`"
+7. Ask whether to adjust anything
 
 **Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist).
 

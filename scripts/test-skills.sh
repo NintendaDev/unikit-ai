@@ -8451,6 +8451,45 @@ else
     fail "VB-1…VB-4 verify contract:$VB_WHY"
 fi
 
+# PW: the planner slices full and ultra plans into modules, always, and writes PR checkpoint
+# tasks only when the project turned them on. The writer is the first place modularity can
+# vanish in silence — a SKILL.md trimmed for size loses a paragraph and nothing else notices.
+PW_CFG="$ROOT_DIR/skills/unikit/references/config-template.yaml"
+PW_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+PW_FAST="$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
+PW_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+PW_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+PW_WHY=""
+for f in "$PW_CFG" "$PW_FULL" "$PW_FAST" "$PW_ULTRA" "$PW_PLAN"; do
+    [[ -f "$f" ]] || PW_WHY+=" PW:missing-${f##*/}"
+done
+if [[ -z "$PW_WHY" ]]; then
+    # (PW-1) the config keys, with the inline domain comment /unikit config mode reads values from
+    grep -qF 'pull_requests:' "$PW_CFG" || PW_WHY+=" PW-1:no-block"
+    grep -qF 'checkpoints: false' "$PW_CFG" || PW_WHY+=" PW-1:checkpoints-not-off"
+    grep -qF 'max_level: create   # remind | create | merge' "$PW_CFG" || PW_WHY+=" PW-1:no-level-domain"
+    # (PW-2) resolved once per mode, never asked; fast never reads it
+    grep -qF 'git.pull_requests.checkpoints' "$PW_FULL" || PW_WHY+=" PW-2:full-no-key"
+    grep -qF 'PR checkpoints off — the plan is on the base branch' "$PW_FULL" || PW_WHY+=" PW-2:full-on-base"
+    grep -qF '`git.pull_requests.checkpoints` is not read' "$PW_FAST" || PW_WHY+=" PW-2:fast-reads-key"
+    grep -qF 'The **PR checkpoints** subsection is inherited' "$PW_ULTRA" || PW_WHY+=" PW-2:ultra-not-inherited"
+    # (PW-3) Step 5 names every new surface and points at the grammar
+    grep -qF 'Modules (full and ultra)' "$PW_PLAN" || PW_WHY+=" PW-3:no-modules-paragraph"
+    grep -qF '### Modules section' "$PW_PLAN" || PW_WHY+=" PW-3:no-modules-pointer"
+    grep -qF '### PR checkpoint task grammar' "$PW_PLAN" || PW_WHY+=" PW-3:no-pr-grammar-pointer"
+    grep -qF 'Module barrier' "$PW_PLAN" || PW_WHY+=" PW-3:no-barrier"
+    grep -qF 'Planned at: <short sha>' "$PW_PLAN" || PW_WHY+=" PW-3:no-planned-at"
+    grep -qF '`git.pull_requests.max_level` is never read by the planner' "$PW_PLAN" || PW_WHY+=" PW-3:planner-reads-level"
+    # (PW-4) ultra decides modules with the phases
+    grep -qF 'Group the phases into modules' "$PW_ULTRA" || PW_WHY+=" PW-4:ultra-no-grouping"
+    grep -qF 'only a PR checkpoint task may follow it' "$PW_ULTRA" || PW_WHY+=" PW-4:test-point-last-contradiction"
+fi
+if [[ -z "$PW_WHY" ]]; then
+    pass "PW-1…PW-4 the planner slices into modules and records PR checkpoints"
+else
+    fail "PW-1…PW-4 planner modules contract:$PW_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

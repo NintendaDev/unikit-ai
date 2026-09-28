@@ -59,6 +59,8 @@ The **Test run placement** subsection is inherited with one difference: the key 
 exists **only here**: a phase file's per-task `### Tests` is the only surface a per-task run
 can be written to. The default is `phase`.
 
+The **PR checkpoints** subsection is inherited unchanged.
+
 ## Step D: Partition the work into phases
 
 - A phase is a **coherent implementation checkpoint**, not a rubric: it ends in a state
@@ -70,9 +72,13 @@ can be written to. The default is `phase`.
   rather than "separating" two editor tasks into different phases, because the latter is
   what creates the collision the rule prevents. This is a rule about **phases, not tasks**:
   two `Editor:` tasks inside one phase are already sequential.
+- **Group the phases into modules** as part of the partition (`TASK-FORMAT.md` →
+  `### Modules section`): the module boundary is decided here, with the phases, not after. A
+  PR checkpoint task, when the plan carries them, is the last task of its module's closing
+  phase, after that phase's test-checkpoint task.
 - Give each phase a slug (kebab-case, 2-4 words) → the file name `phase-NN-<slug>.md`,
   zero-padded.
-- **A test-checkpoint task belongs to the phase it closes** and stands last in it. A phase
+- **A test-checkpoint task belongs to the phase it closes** and stands last in it — only a PR checkpoint task may follow it. A phase
   without one is normal, not an oversight (`Test checkpoints` is a ceiling): its goals pass to
   the next test-checkpoint task, whose coverage then names both phases. Say so in one line of
   the phase text, so the hand-over does not read as a loss.
