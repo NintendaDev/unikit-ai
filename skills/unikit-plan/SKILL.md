@@ -112,6 +112,7 @@ model argument of their own.
 3. If the first word (after flag removal) is `full` → full mode, remaining text is the feature description
 4. If the first word is `fast` → fast mode, remaining text is the feature description
 5. If the first word is `ultra`, **or** the text asks for an ultra plan in any phrasing or language — "ultra plan", "ultraplan", "ultra-plan", "ультраплан", "make an ultra plan for the inventory" → ultra mode; strip the ultra wording and the verb that carried it, the remainder is the feature description
+5a. If the text left after an optional leading `ultra` is exactly the name of a folder under `.unikit/code/plans/` that holds `.planning/STATE.md` and no manifest `.unikit/code/plans/<name>/PLAN.md`, this is a **continuation**: load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md` and `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md`, and follow `## Resume` there; Steps 0.1-4 do not run again.
 6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
 7. Otherwise → ask interactively, entire text is the description
 
@@ -241,6 +242,21 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/` and `.unikit/code/archive/plans/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
 
    - No match → create `plans/<feature-name>/` and continue.
+   - A match in `.unikit/code/plans/` that has no manifest `.unikit/code/plans/<name>/PLAN.md` → a plan that was not finished:
+
+   ```
+   AskUserQuestion: A plan named "<name>" was not finished (.unikit/code/plans/<name>/ has no manifest).
+
+   Options:
+   1. Continue it
+   2. Start over
+   3. Choose another name
+   ```
+
+   - "Continue it" is offered only when the folder holds `.planning/STATE.md`; without it (an interrupted classic protocol) the option is absent.
+   - "Continue it" → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md` and `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md`, and follow `## Resume` there.
+   - "Start over" → `node {{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs discard .unikit/code/plans/<name>`, print `INFO [plan] <name>: unfinished plan removed — starting over`, create the folder again and continue. A non-zero exit → stop with its `ERROR` line (code 3: the folder holds a finished plan). `node` cannot run → print the folder's path, ask the user to remove it, and stop.
+   - "Choose another name" → the folder stays; repeat this check on the new slug.
    - A match in `.unikit/code/plans/` → ask, and do not decide it yourself:
 
    ```
@@ -276,7 +292,7 @@ Load only the selected mode's body — never all of them at once:
 - **Fast mode** → load `{{skills_dir}}/{{self_name}}/references/mode-fast.md`, run its
   preferences step, then continue to the Shared Steps below.
 - **Ultra mode** → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md`, run its
-  additional steps A-C (git branch, recon, preferences), then continue to the Shared Steps
+  additional steps A0-C (writing protocol, git branch, recon, preferences), then continue to the Shared Steps
   below. Steps D-H of that body run later — they refine Step 5 and Step 6 of the shared
   workflow, so do **not** run them here.
 
@@ -370,6 +386,8 @@ This is the most critical step. The goal is to produce a **deep technical unders
 for writing actionable tasks with meaningful WHY context and for generating a `## Technical Context` that reflects the actual codebase state at planning time.
 
 You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to write precise prompts for Explore tasks and to synthesize their results against project conventions.
+
+**Ultra mode, saved-state protocol:** every recon answer is written into `recon/<topic>.md` the moment it returns (`ultra-stateful.md` → `## Entry: from the start`).
 
 #### Phase A: Exploration (Explore tasks)
 
@@ -473,7 +491,7 @@ That is the entire question — **not** which tool does it, **not** how it is ca
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
 - **Full mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder)
-- **Ultra mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
+- **Ultra mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (manifest) + `phase-NN-<slug>.md` — written straight into that folder by either writing protocol (`mode-ultra.md` Step F)
 
 In ultra, Step 5 is carried out by `mode-ultra.md` Steps D-G — the section list below still
 applies to the manifest, minus the task-level subsections of `## Technical Context`.
@@ -557,7 +575,7 @@ Show the user:
 6. The reminder: "To start implementation, run: `/unikit-implement`"
 7. Ask whether to adjust anything
 
-**Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist).
+**Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist). Under the saved-state protocol its `.planning/` folder is already gone (`plan-bundle.mjs finalize`).
 
 ### Step 7: Context Cleanup
 

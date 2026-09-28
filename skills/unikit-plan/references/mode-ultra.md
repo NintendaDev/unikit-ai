@@ -6,7 +6,7 @@
 > offered in the interactive mode question and never inferred from the complexity of
 > the task.
 >
-> Steps A-C run before the Shared Steps in `SKILL.md`; Steps D-H **refine** Step 5 and
+> Steps A0-C run before the Shared Steps in `SKILL.md`; Steps D-H **refine** Step 5 and
 > Step 6 of the shared workflow — they decide the phase partition, the write order, the
 > distribution of technical context and the contents of the confirmation. They do **not**
 > cancel the section list of Step 5, the rules governing what those sections contain, or
@@ -21,9 +21,31 @@ choosing the phase structure. Do not generate a bundle from memory: the manifest
 template, the marker, the Required Detail Gate and the integrity checks are canonical
 there, and a bundle written from recollection fails the checks it was never read.
 
+The writing protocol's file is read at Step A0 (or Step D2), never before.
+
 ## Ultra Mode — Additional Steps
 
 These steps run **only in ultra mode**.
+
+### Step A0: Choose the writing protocol
+
+- The arguments explicitly ask to save the planning state — any phrasing, any language, as rule 5
+  recognises ultra → the protocol with saved state, no question; strip that wording from the feature description, as rule 5 does for ultra.
+- A continuation (rule 5a in `SKILL.md`) → no question: it resumes the protocol with saved state.
+- Otherwise ask:
+
+  ```
+  AskUserQuestion: How should this ultra plan be written?
+
+  Options:
+  1. Classic (Recommended) — the session writes the whole plan in one go; the fastest; a context compaction may lose details of early decisions
+  2. With saved state — decisions, reconnaissance and progress are kept on disk; survives a compaction and continues in a new session; a little slower
+  ```
+
+After the answer, read `{{skills_dir}}/{{self_name}}/references/ultra-direct.md` (classic) or
+`{{skills_dir}}/{{self_name}}/references/ultra-stateful.md` (with saved state — then run its
+`## Entry: from the start`), and print `INFO [plan] ultra protocol: classic` or
+`INFO [plan] ultra protocol: saved state`.
 
 ### Step A: Decide on Git Branch
 
@@ -42,6 +64,8 @@ rejects a bundle that could have been written correctly the first time.
 The dispatch form is the same as `mode-full.md` Step B — the `recon-agent` alias,
 declared once in `SKILL.md` under `## Delegation agents`. A call site names the alias
 and never carries a model argument of its own.
+
+Under the saved-state protocol every answer goes into `recon/<topic>.md` the moment it returns (`ultra-stateful.md` → `## Entry: from the start`).
 
 When the Explore tasks return, **return here**.
 
@@ -85,6 +109,26 @@ The **PR checkpoints** subsection is inherited unchanged.
 - **The final full run is the last task of the plan's last phase** under `Testing: yes`. No
   separate phase is created for it.
 
+## Step D2: Offer saved state on a large plan
+
+The classic protocol and more phases than the threshold this line names → print
+`WARN [plan] <N> phases — above 12, the context will likely be compacted before the plan is written`
+and ask:
+
+```
+AskUserQuestion: The plan has <N> phases. Switch to writing with saved state?
+
+Options:
+1. Switch to saved state (Recommended) — what is decided so far goes to disk now, the rest as it appears
+2. Stay classic
+```
+
+- "Switch to saved state" → read `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md` and
+  run its `## Entry: switch at D2`.
+- "Stay classic" → continue, with no further line.
+
+The protocol with saved state chosen earlier, or no more phases than that threshold → this step is silent. The question is asked in one direction only: from classic to saved state.
+
 ## Step E: Resolve every cross-cutting decision
 
 Everything below is decided **before** the phase files are written, or the decision leaks
@@ -108,23 +152,19 @@ names the exact words that count as hiding.
 
 ## Step F: Write order
 
-1. Write **all** phase files — before each one, the **Rule refresh per phase** of SKILL.md Step 5 for that phase.
-2. Write the manifest — `.unikit/code/plans/<feature-name>/PLAN.md` — **last**, once phase
-   content has stopped moving, so that `## Phase Index`, the task links, the ranges and the
-   dependency references all agree with it.
-   Its **first line** is the mode marker, written verbatim and never localized:
+The bundle is written by the protocol chosen at Step A0 or Step D2 — `ultra-direct.md` →
+`## Write order`, or `ultra-stateful.md` → `## Phase cycle` and `## Assembly`.
 
-   ```
-   <!-- unikit:plan-mode:ultra -->
-   ```
+Common to both: the phase files go straight into `.unikit/code/plans/<feature-name>/`, with the
+**Rule refresh per phase** of SKILL.md Step 5 before each; the manifest
+`.unikit/code/plans/<feature-name>/PLAN.md` goes last, its first line the mode marker below,
+written verbatim and never localized; then the checks; only then is the plan shown.
 
-   The line is declared in `ULTRA-PLAN-FORMAT.md` — quoted here, never redefined.
-3. Run every check in `## Integrity Checks` from `ULTRA-PLAN-FORMAT.md`.
-4. Only then show the plan to the user.
+```
+<!-- unikit:plan-mode:ultra -->
+```
 
-Never write the manifest first and the phases after — the index would be written against
-content that does not exist yet, and the checks would then be run against a plan you
-have already shown.
+The line is declared in `ULTRA-PLAN-FORMAT.md` — quoted here, never redefined.
 
 ## Step G: Distribution of the technical context
 
@@ -163,6 +203,7 @@ Then **STOP**.
   suffix), and ordering comes from the manifest's `Updated:`. Neither is a property of the
   folder name any more.
 - There is no model layer.
+- There are no planning subagents: under both protocols the session writes every phase itself.
 - The design axis (`unikit-gd-*`) is untouched.
 - `--list` is unchanged.
 - `/unikit-fix` and its flat `FIX_PLAN.md` stay outside the bundle model.

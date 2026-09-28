@@ -8913,6 +8913,55 @@ else
     fail "UW-1…UW-5 ultra writing protocols:$UW_WHY"
 fi
 
+# WP: the protocols are wired into /unikit-plan. Wiring is where a new path silently fails to
+# switch on: the A0 question disappears, the threshold drifts, the continuation stops finding
+# the folder, or Step F grows a second copy of the classic write order.
+WP_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+WP_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+WP_FMT="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+WP_WHY=""
+for f in "$WP_PLAN" "$WP_ULTRA" "$WP_FMT"; do
+    [[ -f "$f" ]] || WP_WHY+=" WP:missing-${f##*/}"
+done
+if [[ -z "$WP_WHY" ]]; then
+    # (WP-1) the protocol is asked first and offered again above the threshold, in one direction
+    grep -qxF '### Step A0: Choose the writing protocol' "$WP_ULTRA" || WP_WHY+=" WP-1:no-step-a0"
+    grep -qxF '## Step D2: Offer saved state on a large plan' "$WP_ULTRA" || WP_WHY+=" WP-1:no-step-d2"
+    for lit in 'ultra-direct.md' 'ultra-stateful.md' 'Classic (Recommended)' 'With saved state' 'above 12' \
+               'Switch to saved state (Recommended)' 'Stay classic' 'The question is asked in one direction only' \
+               'Steps A0-C run before the Shared Steps' 'strip that wording from the feature description'; do
+        grep -qF -- "$lit" "$WP_ULTRA" || WP_WHY+=" WP-1:missing(${lit:0:32})"
+    done
+    WP_STEP_F="$(awk '/^## Step F/{f=1;next} /^## /{f=0} f' "$WP_ULTRA")"
+    [[ -n "$WP_STEP_F" ]] || WP_WHY+=" WP-1:no-step-f"
+    grep -qF 'Write **all** phase files' <<< "$WP_STEP_F" && WP_WHY+=" WP-1:step-f-second-copy"
+    grep -qF 'Steps A-C run before' "$WP_ULTRA" && WP_WHY+=" WP-1:header-without-a0"
+    # (WP-2) continuation, the unfinished-plan branch and "Start over" through the script only
+    WP_5A="$( { grep '^5a\. ' "$WP_PLAN" || true; } )"
+    if [[ -z "$WP_5A" ]]; then
+        WP_WHY+=" WP-2:no-rule-5a"
+    else
+        grep -qF '.planning/STATE.md' <<< "$WP_5A" || WP_WHY+=" WP-2:5a-no-state"
+        grep -qF 'ultra-stateful.md' <<< "$WP_5A" || WP_WHY+=" WP-2:5a-no-protocol"
+    fi
+    for lit in 'Continue it' 'Start over' 'plan-bundle.mjs discard' 'unfinished plan removed — starting over' \
+               'additional steps A0-C (writing protocol, git branch, recon, preferences)' 'refine Step 5 and Step 6'; do
+        grep -qF -- "$lit" "$WP_PLAN" || WP_WHY+=" WP-2:missing(${lit:0:32})"
+    done
+    grep -qF 'Bash(rm' "$WP_PLAN" && WP_WHY+=" WP-2:rm-grant"
+    grep -qF 'additional steps A-C (' "$WP_PLAN" && WP_WHY+=" WP-2:step-1.5-without-a0"
+    # (WP-3) the format's Write Order names both protocols and the state folder
+    WP_ORDER="$(awk '/^## Write Order/{f=1;next} /^## /{f=0} f' "$WP_FMT")"
+    for lit in 'ultra-direct.md' 'ultra-stateful.md' '.planning/'; do
+        grep -qF -- "$lit" <<< "$WP_ORDER" || WP_WHY+=" WP-3:missing(${lit})"
+    done
+fi
+if [[ -z "$WP_WHY" ]]; then
+    pass "WP-1…WP-3 /unikit-plan asks for the ultra protocol first, offers saved state above 12 phases, resumes and discards through the script"
+else
+    fail "WP-1…WP-3 ultra protocol wiring:$WP_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
