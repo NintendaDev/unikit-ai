@@ -8895,6 +8895,43 @@ else
     fail "DP-1…DP-4 disk-first planning contract:$DP_WHY"
 fi
 
+# DW: /unikit-plan wires disk-first planning in — the aliases in BOTH agent-filter blocks
+# (a new path that exists in one block only switches on for half the runtimes, silently),
+# the continuation entry, and the working folder in the format's write order.
+DW_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+DW_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+DW_FMT="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+DW_WHY=""
+for f in "$DW_PLAN" "$DW_ULTRA" "$DW_FMT"; do
+    [[ -f "$f" ]] || DW_WHY+=" DW:missing-${f##*/}"
+done
+if [[ -z "$DW_WHY" ]]; then
+    # (DW-1) the subagent in the claude block, the inline procedure in the !claude block
+    dw_claude=$(awk '/^<!-- unikit:agents claude -->/{w=1} w{print} w&&/^<!-- unikit:end -->/{w=0}' "$DW_PLAN")
+    dw_other=$(awk '/^<!-- unikit:agents !claude -->/{w=1} w{print} w&&/^<!-- unikit:end -->/{w=0}' "$DW_PLAN")
+    grep -qF 'Agent(subagent_type: unikit-plan-module-planner' <<< "$dw_claude" || DW_WHY+=" DW-1:claude-no-module-planner"
+    grep -qF 'Agent(subagent_type: unikit-plan-recon-writer' <<< "$dw_claude" || DW_WHY+=" DW-1:claude-no-recon-writer"
+    grep -qF 'module-procedure.md' <<< "$dw_other" || DW_WHY+=" DW-1:other-runtimes-no-procedure"
+    grep -qF 'recon-writer' <<< "$dw_other" || DW_WHY+=" DW-1:other-runtimes-no-recon-writer"
+    # (DW-2) the continuation, the three answers, a narrow delete grant, recon through the writer
+    for lit in '.unikit/code/.planning/' 'Continue it' 'Start over' 'Bash(rm -r .unikit/code/.planning/*)' \
+               'Phase A/B reconnaissance goes through `recon-writer`'; do
+        grep -qF -- "$lit" "$DW_PLAN" || DW_WHY+=" DW-2:missing(${lit:0:32})"
+    done
+    grep -qF 'Bash(rm *)' "$DW_PLAN" && DW_WHY+=" DW-2:broad-rm-grant"
+    # (DW-3) the state before the first phase, and the working folder inside ## Write Order
+    for lit in 'Step E2: Write the planning state' 'disk-planning.md' '## Change guard' '## Research link'; do
+        grep -qF -- "$lit" "$DW_ULTRA" || DW_WHY+=" DW-3:missing(${lit:0:32})"
+    done
+    awk '/^## Write Order/{w=1;next} /^## /{w=0} w' "$DW_FMT" | grep -qF '.unikit/code/.planning/<name>/' \
+        || DW_WHY+=" DW-3:write-order-no-working-folder"
+fi
+if [[ -z "$DW_WHY" ]]; then
+    pass "DW-1…DW-3 /unikit-plan ultra plans on disk, module by module, with a fallback"
+else
+    fail "DW-1…DW-3 disk-first wiring:$DW_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

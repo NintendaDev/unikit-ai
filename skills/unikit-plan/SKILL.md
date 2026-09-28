@@ -28,6 +28,7 @@ allowed-tools:
   - Bash(sha256sum *)
   - Bash(date *)
   - Bash(node *)
+  - Bash(rm -r .unikit/code/.planning/*)
   - Agent
   - Skill
   - AskUserQuestion
@@ -87,6 +88,19 @@ model argument of their own.
   UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+- **`module-planner`** — plans one module of an ultra plan into the planning working folder. Expands to:
+
+  ```
+  Agent(subagent_type: unikit-plan-module-planner, prompt: "<Procedure path> · <STATE.md path> · module M<k>")
+  ```
+
+- **`recon-writer`** — answers one reconnaissance question into a `recon/` file of the working folder. Expands to:
+
+  ```
+  Agent(subagent_type: unikit-plan-recon-writer, prompt: "<disk-planning.md path> · <recon file path> · <focused question>")
+  ```
+
+  Either call failing (the agent is not installed, agents are off) → run the same work in this session: `module-planner` → `{{skills_dir}}/{{self_name}}/references/module-procedure.md` inline; `recon-writer` → `recon-agent`, then write its answer into the recon file yourself.
 <!-- unikit:end -->
 <!-- unikit:agents !claude -->
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
@@ -100,6 +114,8 @@ model argument of their own.
   default applies.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+- **`module-planner`** — run `{{skills_dir}}/{{self_name}}/references/module-procedure.md` inline in this session, with the same input.
+- **`recon-writer`** — `recon-agent` (or inline `Glob`/`Grep`/`Read`), then write the answer into the recon file at once, before anything else.
 <!-- unikit:end -->
 
 ## Input
@@ -112,6 +128,7 @@ model argument of their own.
 3. If the first word (after flag removal) is `full` → full mode, remaining text is the feature description
 4. If the first word is `fast` → fast mode, remaining text is the feature description
 5. If the first word is `ultra`, **or** the text asks for an ultra plan in any phrasing or language — "ultra plan", "ultraplan", "ultra-plan", "ультраплан", "make an ultra plan for the inventory" → ultra mode; strip the ultra wording and the verb that carried it, the remainder is the feature description
+5a. If the text left after an optional leading `ultra` is exactly the name of a folder under `.unikit/code/.planning/`, this is a **continuation**: load `mode-ultra.md` and `{{skills_dir}}/{{self_name}}/references/disk-planning.md`, and follow `## Resume` there; Steps 0.1-4 do not run again.
 6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
 7. Otherwise → ask interactively, entire text is the description
 
@@ -238,9 +255,23 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 3. **Get today's date** (`YYYY-MM-DD`) — the value of the manifest's `Created:` and `Updated:` fields (Plan Manifest Template in `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`).
 4. The folder name **is** the feature name from step 2 — `<feature-name>`, no date and no separator prefix (e.g. `item-appraisal-system`).
 
-5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/` and `.unikit/code/archive/plans/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
+5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/`, `.unikit/code/archive/plans/` and `.unikit/code/.planning/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
 
-   - No match → create `plans/<feature-name>/` and continue.
+   - No match → **Full** → create `plans/<feature-name>/`; **ultra** → create `.unikit/code/.planning/<feature-name>/` only — the plan folder appears at the end, whole (`disk-planning.md` → `## Assembly`). Continue.
+   - A match in `.unikit/code/.planning/` → an ultra planning of that name was not finished:
+
+   ```
+   AskUserQuestion: A planning named "<name>" was not finished (.unikit/code/.planning/<name>/).
+
+   Options:
+   1. Continue it
+   2. Start over
+   3. Choose another name
+   ```
+
+   - "Continue it" → load `mode-ultra.md` and `disk-planning.md`, and follow `## Resume` there.
+   - "Start over" → `rm -r .unikit/code/.planning/<name>` — the whole working folder, or its old fragments would pass for finished modules — print `INFO [plan] <name>: unfinished planning removed — starting over`, and continue.
+   - "Choose another name" → the working folder stays; repeat this check on the new slug.
    - A match in `.unikit/code/plans/` → ask, and do not decide it yourself:
 
    ```
@@ -371,6 +402,8 @@ for writing actionable tasks with meaningful WHY context and for generating a `#
 
 You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to write precise prompts for Explore tasks and to synthesize their results against project conventions.
 
+**Ultra mode:** Phase A/B reconnaissance goes through `recon-writer` — each question into its own `recon/<topic>.md` of the working folder; only paths and five-line summaries enter this context. The Ultra depth gate is not checked here: it moves into the module procedure (`module-procedure.md` → `## Steps`, step 2), per module.
+
 #### Phase A: Exploration (Explore tasks)
 
 Launch 2-4 Explore tasks in parallel, each with a **specific focus**. Each task MUST receive references to project documentation files so it operates with project knowledge.
@@ -416,7 +449,7 @@ Synthesize the task's findings with Bootstrap rules to produce the plan's `## Te
 #### Ultra depth gate (ultra mode only)
 
 In ultra, reconnaissance is **not finished** until the plan has code-level evidence for
-**every** phase:
+**every** phase — in ultra it is checked per module by the module procedure:
 
 - relevant existing paths and symbols
 - callers/consumers and side effects
@@ -473,7 +506,7 @@ That is the entire question — **not** which tool does it, **not** how it is ca
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
 - **Full mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder)
-- **Ultra mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
+- **Ultra mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (manifest) + `phase-NN-<slug>.md` — assembled in `.unikit/code/.planning/<feature-name>/` and moved into `.unikit/code/plans/<feature-name>/` by `plan-bundle.mjs finalize`
 
 In ultra, Step 5 is carried out by `mode-ultra.md` Steps D-G — the section list below still
 applies to the manifest, minus the task-level subsections of `## Technical Context`.
@@ -557,7 +590,7 @@ Show the user:
 6. The reminder: "To start implementation, run: `/unikit-implement`"
 7. Ask whether to adjust anything
 
-**Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist).
+**Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist). The path of the planning state is no longer shown — the working folder is gone once the bundle is moved.
 
 ### Step 7: Context Cleanup
 

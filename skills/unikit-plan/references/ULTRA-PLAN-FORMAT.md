@@ -348,6 +348,12 @@ Exactly this order, and the order is part of the contract:
 The manifest goes last because its `## Phase Index`, its task links and its ranges must
 agree with phase content that has already stopped moving.
 
+In `/unikit-plan` this order runs inside the planning working folder
+`.unikit/code/.planning/<name>/`: phase files module by module, the manifest last from the
+modules' fragments, the checks, then `plan-bundle.mjs finalize` moves the manifest and the phase
+files into `plans/<name>/` and removes the working folder. The finished bundle is unchanged:
+the manifest plus direct `phase-*.md` files.
+
 ## Editing an Existing Bundle
 
 - The manifest and the affected phase files are edited **together**. **Never regenerate the

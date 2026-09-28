@@ -17,7 +17,9 @@
 ## Ultra Mode — Blocking Prerequisite
 
 Read `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md` **completely** before
-choosing the phase structure. Do not generate a bundle from memory: the manifest
+choosing the phase structure, and `{{skills_dir}}/{{self_name}}/references/disk-planning.md`
+completely as well — the working folder, the planning state and the module loop it describes
+are how this mode writes the bundle. Do not generate a bundle from memory: the manifest
 template, the marker, the Required Detail Gate and the integrity checks are canonical
 there, and a bundle written from recollection fails the checks it was never read.
 
@@ -32,18 +34,20 @@ Identical to full mode — follow `mode-full.md` Step A, then return here.
 ### Step B: Quick Reconnaissance
 
 Take from `mode-full.md` Step B only the **dispatch form** and its rules for writing the
-prompts. The scope is **not** inherited: launch **2-3** focused Explore tasks covering
+prompts. The scope is **not** inherited: ask **2-3** focused reconnaissance questions covering
 architecture, existing patterns, integration and side effects, and the test/operational
 surface. The `1-3 tasks max` limit stated in `mode-full.md` does **not** apply in ultra —
 it is that file's own limit, and ultra declares its own here. The depth the Required Detail
 Gate demands is produced here — a thin recon becomes a vague phase file, and the gate then
 rejects a bundle that could have been written correctly the first time.
 
-The dispatch form is the same as `mode-full.md` Step B — the `recon-agent` alias,
-declared once in `SKILL.md` under `## Delegation agents`. A call site names the alias
-and never carries a model argument of its own.
+The dispatch is the `recon-writer` alias, declared once in `SKILL.md` under
+`## Delegation agents`: each question goes into its own `recon/<topic>.md` of the working
+folder, and only the paths and five-line summaries enter this context. A call site names the
+alias and never carries a model argument of its own. The `## Recon` lines of the planning state
+are written after Step E — the state does not exist yet — so until then keep the paths.
 
-When the Explore tasks return, **return here**.
+When the recon files are written, **return here**.
 
 ### Step C: Ask About Preferences
 
@@ -106,12 +110,27 @@ If evidence is insufficient for a safe decision, record a **blocking** open ques
 hide the gap behind vague instructions — the Required Detail Gate item that forbids it
 names the exact words that count as hiding.
 
+## Step E2: Write the planning state
+
+Write `STATE.md` in the working folder by the template of `disk-planning.md` → `## STATE.md`,
+**before the first phase file**: the modules, the phases (name, goal, task range,
+dependencies), the cross-cutting decisions and contracts, the rules loaded, the recon files,
+and everything computed before Step E — `## Research link` (the `## Based on` entry with the
+digest computed back in Step 2, never recomputed), `## Design briefs`, `## Catalog` (Step 4.6),
+`## Overview`, `## Roadmap Linkage`, `## Technical Context`, `## Open Questions`. The last line
+is `Next: plan module M1`.
+
 ## Step F: Write order
 
-1. Write **all** phase files — before each one, the **Rule refresh per phase** of SKILL.md Step 5 for that phase.
-2. Write the manifest — `.unikit/code/plans/<feature-name>/PLAN.md` — **last**, once phase
-   content has stopped moving, so that `## Phase Index`, the task links, the ranges and the
-   dependency references all agree with it.
+1. For each module in order: the `## Change guard` snapshot → `module-planner`
+   (`disk-planning.md` → `## Executors`) → the change guard check → read its three lines → the
+   gaps (`## Gaps`) → the progress line (`## Progress lines`). The phase files are written by
+   the module procedure, and the **Rule refresh per phase** of SKILL.md Step 5 runs inside it,
+   before each phase.
+2. Assemble the manifest **last** (`disk-planning.md` → `## Assembly`), from the modules'
+   fragments, once phase content has stopped moving, so that `## Phase Index`, the task links,
+   the ranges and the dependency references all agree with it. `plan-bundle.mjs finalize` then
+   moves the bundle into `plans/<feature-name>/`.
    Its **first line** is the mode marker, written verbatim and never localized:
 
    ```
@@ -119,7 +138,9 @@ names the exact words that count as hiding.
    ```
 
    The line is declared in `ULTRA-PLAN-FORMAT.md` — quoted here, never redefined.
-3. Run every check in `## Integrity Checks` from `ULTRA-PLAN-FORMAT.md`.
+3. Run every check in `## Integrity Checks` from `ULTRA-PLAN-FORMAT.md` — through
+   `plan-bundle.mjs check` (`disk-planning.md` → `## Assembly`), by the model only when `node`
+   cannot run.
 4. Only then show the plan to the user.
 
 Never write the manifest first and the phases after — the index would be written against
@@ -150,8 +171,10 @@ In addition to the Step 6 items, show:
 1. The bundle folder path.
 2. The number of phase files.
 3. The number of tasks.
-4. The integrity check result — `all integrity checks passed`, or the list of violations.
-5. When blocking open questions exist, the line
+4. The integrity check result — the `plan-bundle.mjs check` line (`OK 15 checks`), or the list
+   of `FAIL` lines.
+5. The number of modules and PR checkpoints.
+6. When blocking open questions exist, the line
    `Plan is NOT implementation-ready: N blocking open question(s)`.
 
 Then **STOP**.
