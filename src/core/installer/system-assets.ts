@@ -19,7 +19,7 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE, PLAN_BOUNDARIES_FILE,
   GAMEDESIGN_MODULE_ID,
   GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
   MCP_STAMP_SERVER_KEY,
@@ -86,6 +86,24 @@ export async function installCliContract(projectDir: string): Promise<void> {
   logInfo('installCliContract', 'installed .unikit/system/cli-contract.md');
 }
 
+// --- Flat system assets ---
+
+/**
+ * Copy one `data/<fileName>` into `.unikit/system/<fileName>` verbatim — the shared body of
+ * every flat, substitution-free, non-hash-tracked contract below. A missing source is a skip
+ * with a warning, never an abort: one absent contract is not a reason to fail init/update.
+ */
+async function installFlatSystemAsset(projectDir: string, fileName: string, component: string): Promise<void> {
+  const content = await readTextFile(path.join(getDataDir(), fileName));
+  if (!content) {
+    logWarn(component, `${fileName} not found in data/, skipping`);
+    return;
+  }
+
+  await writeTextFile(path.join(systemDir(projectDir), fileName), content);
+  logInfo(component, `installed .unikit/system/${fileName}`);
+}
+
 // --- Gate-result contract installation ---
 
 /**
@@ -97,18 +115,7 @@ export async function installCliContract(projectDir: string): Promise<void> {
  * the `unikit-gate-result` fenced block.
  */
 export async function installGateResultContract(projectDir: string): Promise<void> {
-  const srcPath = path.join(getDataDir(), GATE_RESULT_CONTRACT_FILE);
-  const destDir = systemDir(projectDir);
-  const destPath = path.join(destDir, GATE_RESULT_CONTRACT_FILE);
-
-  const content = await readTextFile(srcPath);
-  if (!content) {
-    logWarn('installGateResultContract', 'gate-result-contract.md not found in data/, skipping');
-    return;
-  }
-
-  await writeTextFile(destPath, content);
-  logInfo('installGateResultContract', 'installed .unikit/system/gate-result-contract.md');
+  await installFlatSystemAsset(projectDir, GATE_RESULT_CONTRACT_FILE, 'installGateResultContract');
 }
 
 // --- Ultra plan bundle reader contract ---
@@ -122,18 +129,7 @@ export async function installGateResultContract(projectDir: string): Promise<voi
  * per-skill: the alternative is four copies, and a copied contract drifts.
  */
 export async function installUltraPlanReadContract(projectDir: string): Promise<void> {
-  const srcPath = path.join(getDataDir(), ULTRA_PLAN_READ_FILE);
-  const destDir = systemDir(projectDir);
-  const destPath = path.join(destDir, ULTRA_PLAN_READ_FILE);
-
-  const content = await readTextFile(srcPath);
-  if (!content) {
-    logWarn('installUltraPlanReadContract', 'ultra-plan-read.md not found in data/, skipping');
-    return;
-  }
-
-  await writeTextFile(destPath, content);
-  logInfo('installUltraPlanReadContract', 'installed .unikit/system/ultra-plan-read.md');
+  await installFlatSystemAsset(projectDir, ULTRA_PLAN_READ_FILE, 'installUltraPlanReadContract');
 }
 
 // --- Research link contract ---
@@ -148,18 +144,17 @@ export async function installUltraPlanReadContract(projectDir: string): Promise<
  * measured at `/unikit-improve`.
  */
 export async function installResearchLinkContract(projectDir: string): Promise<void> {
-  const srcPath = path.join(getDataDir(), RESEARCH_LINK_FILE);
-  const destDir = systemDir(projectDir);
-  const destPath = path.join(destDir, RESEARCH_LINK_FILE);
+  await installFlatSystemAsset(projectDir, RESEARCH_LINK_FILE, 'installResearchLinkContract');
+}
 
-  const content = await readTextFile(srcPath);
-  if (!content) {
-    logWarn('installResearchLinkContract', 'research-link.md not found in data/, skipping');
-    return;
-  }
-
-  await writeTextFile(destPath, content);
-  logInfo('installResearchLinkContract', 'installed .unikit/system/research-link.md');
+/**
+ * The plan-boundaries contract — a flat copy from `data/plan-boundaries.md`, NO
+ * substitution, NOT hash-tracked. A system asset because FOUR skills compute the same
+ * SHAs from it (/unikit-verify, /unikit-implement, /unikit-commit, /unikit-pr) and a
+ * per-skill reference would be four copies.
+ */
+export async function installPlanBoundariesContract(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, PLAN_BOUNDARIES_FILE, 'installPlanBoundariesContract');
 }
 
 // --- Dev Principles installation ---

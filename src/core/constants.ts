@@ -295,6 +295,8 @@ export const GATE_RESULT_CONTRACT_FILE = 'gate-result-contract.md';
 export const ULTRA_PLAN_READ_FILE = 'ultra-plan-read.md';
 /** The `## Based on` research-link contract; rationale on `installResearchLinkContract`. */
 export const RESEARCH_LINK_FILE = 'research-link.md';
+/** Where a plan, a module and a push start and end; rationale on `installPlanBoundariesContract`. */
+export const PLAN_BOUNDARIES_FILE = 'plan-boundaries.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

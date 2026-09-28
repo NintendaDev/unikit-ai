@@ -8394,6 +8394,32 @@ else
     fail "MP-1…MP-4 grammar contract:$MP_WHY"
 fi
 
+# PB: the plan-boundaries contract — one system asset four skills compute the same SHAs from.
+# Headings are asserted as WHOLE lines (-qxF): a renamed heading would otherwise stay green
+# on its own mentions in the prose of the same file ("(`## Plan start`)" in ## Module start).
+PB_CONTRACT="$ROOT_DIR/data/plan-boundaries.md"
+PB_WHY=""
+if [[ ! -f "$PB_CONTRACT" ]]; then
+    PB_WHY+=" PB-1:missing-contract"
+else
+    for h in '## Base branch' '## Plan start' '## Module boundary' '## Module start' \
+             '## Last completed boundary' '## Push target' '## Diff range of a check' '## Not this contract'; do
+        grep -qxF "$h" "$PB_CONTRACT" || PB_WHY+=" PB-1:no-heading(${h#\#\# })"
+    done
+    grep -qF 'INFO [plan-range] git.base_branch not set' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-base-info-line"
+    grep -qF 'WARN [plan-range]' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-start-warn-line"
+    grep -qF 'git push origin <boundary>:refs/heads/<branch>' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-boundary-push-form"
+    grep -qF 'A task carrying a ⏭️ MERGED label has no boundary of its own' "$PB_CONTRACT" || PB_WHY+=" PB-1:merged-task-has-boundary"
+    grep -qF 'No local branch `<base>` → compare with `origin/<base>`' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-remote-base-fallback"
+    grep -qF 'two-dot' "$PB_CONTRACT" || PB_WHY+=" PB-1:plan-start-half-three-dot"
+    grep -qF 'Inside a module the caller asks — it never cuts the push silently' "$PB_CONTRACT" || PB_WHY+=" PB-1:silent-push-cut"
+fi
+if [[ -z "$PB_WHY" ]]; then
+    pass "PB-1 plan-boundaries contract carries every section its readers name"
+else
+    fail "PB-1 plan-boundaries contract:$PB_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

@@ -212,6 +212,23 @@ assert_not_contains "$RESEARCH_LINK_PATH" '\{\{' \
   "research-link.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-pb: plan-boundaries.md installed as a system asset (flat copy, no vars)
+# Read by verify/implement/commit/pr to compute the same plan start, module boundary and
+# push target. Update-path coverage like 1b-rl above; the init.ts call site is SA-1's job.
+# assert_contains is grep -E: the [plan-range] tag is escaped, or it reads as a class.
+# ─────────────────────────────────────────────────────
+PLAN_BOUNDARIES_PATH="$CLAUDE_DIR/.unikit/system/plan-boundaries.md"
+assert_exists "$PLAN_BOUNDARIES_PATH" "plan-boundaries.md created in .unikit/system/"
+assert_contains "$PLAN_BOUNDARIES_PATH" '^## Plan start$' \
+  "plan-boundaries.md carries the ## Plan start section its readers name"
+assert_contains "$PLAN_BOUNDARIES_PATH" '^## Push target$' \
+  "plan-boundaries.md carries the ## Push target section its readers name"
+assert_contains "$PLAN_BOUNDARIES_PATH" 'WARN \[plan-range\]' \
+  "plan-boundaries.md carries the canonical WARN [plan-range] label"
+assert_not_contains "$PLAN_BOUNDARIES_PATH" '\{\{' \
+  "plan-boundaries.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
