@@ -1,10 +1,11 @@
 #!/bin/bash
 # Test suite: skills/unikit-plan/scripts/plan-bundle.mjs — the integrity check of an ultra plan
-# bundle and its move out of the planning working folder. Runs the real script with node over
-# the fixture bundles in scripts/test-fixtures/plan-bundle/ and proves what it exists for: a
-# correct bundle passes all 15 checks, each seeded defect fails its own numbered check, a
-# legacy plan is exempt from check 13, and `finalize` moves only a bundle that passed, never
-# over an existing plan and never removing a folder outside .unikit/code/.planning/.
+# bundle, `finalize` in place and `discard`. Runs the real script with node over the fixture
+# bundles in scripts/test-fixtures/plan-bundle/ and proves what it exists for: a correct bundle
+# passes all 15 checks, each seeded defect fails its own numbered check, a legacy plan is exempt
+# from check 13, `finalize` removes the `.planning/` folder only of a bundle that passed, and
+# `discard` removes only an unfinished plan folder — never one holding PLAN.md, and neither
+# command removes anything outside .unikit/code/plans/<name>.
 # The CRLF case is built at run time — .gitattributes forces LF on checkout.
 # Usage: ./scripts/test-plan-bundle.sh
 
@@ -65,38 +66,69 @@ for f in "$CRLF"/*.md; do sed -i 's/$/\r/' "$f"; done
 run check "$CRLF"
 check "CRLF: a CRLF bundle passes exactly as its LF original" '[[ $LAST_CODE -eq 0 ]] && grep -qxF "OK 15 checks" <<< "$LAST_OUT"' "$LAST_OUT"
 
+# with_planning <dir> — a plan folder of the protocol with saved state: its .planning/ subfolder
+with_planning() { mkdir -p "$1/.planning" && printf '*\n' > "$1/.planning/.gitignore" && printf 'state\n' > "$1/.planning/STATE.md"; }
+
 echo -e "\n${BOLD}Part 2: finalize${NC}"
 PROJ="$TMP_ROOT/project"
-WORK="$PROJ/.unikit/code/.planning/demo"
 PLANS="$PROJ/.unikit/code/plans"
-mkdir -p "$WORK" "$PLANS"
-cp "$FIXTURES/valid-ultra/"* "$WORK/"
-printf '*\n' > "$WORK/.gitignore"
-printf 'state\n' > "$WORK/STATE.md"
-run finalize "$WORK" "$PLANS"
-check "finalize: moves the manifest and the phase files, removes the working folder" \
-    '[[ $LAST_CODE -eq 0 ]] && [[ -f "$PLANS/demo/PLAN.md" ]] && [[ -f "$PLANS/demo/phase-01-trade.md" ]] && [[ ! -e "$WORK" ]] && [[ ! -e "$PLANS/demo/STATE.md" ]] && [[ ! -e "$PLANS/demo/.gitignore" ]]' "$LAST_OUT"
+DEMO="$PLANS/demo"
+mkdir -p "$DEMO" && cp "$FIXTURES/valid-ultra/"* "$DEMO/" && with_planning "$DEMO"
+run check "$DEMO"
+check "check: a .planning/ subfolder does not disturb the 15 checks" '[[ $LAST_CODE -eq 0 ]] && grep -qxF "OK 15 checks" <<< "$LAST_OUT"' "$LAST_OUT"
+run finalize "$DEMO"
+check "finalize: removes .planning/, keeps the manifest and the phase files" \
+    '[[ $LAST_CODE -eq 0 ]] && grep -q "^CLEANED " <<< "$LAST_OUT" && [[ ! -e "$DEMO/.planning" ]] && [[ -f "$DEMO/PLAN.md" ]] && [[ -f "$DEMO/phase-01-trade.md" ]]' "$LAST_OUT"
+run finalize "$DEMO"
+check "finalize again (the classic protocol has no .planning/): nothing to clean, exit 0" \
+    '[[ $LAST_CODE -eq 0 ]] && grep -qxF "OK nothing to clean" <<< "$LAST_OUT" && [[ -f "$DEMO/PLAN.md" ]]' "$LAST_OUT"
 
-mkdir -p "$WORK" && cp "$FIXTURES/valid-ultra/"* "$WORK/"
-run finalize "$WORK" "$PLANS"
-check "finalize over an existing plan: exit 3, nothing moved" '[[ $LAST_CODE -eq 3 ]] && [[ -f "$WORK/PLAN.md" ]] && grep -qF "target exists" <<< "$LAST_OUT"' "$LAST_OUT"
-rm -rf "$WORK"
-
-BAD_WORK="$PROJ/.unikit/code/.planning/broken"
-mkdir -p "$BAD_WORK" && cp "$FIXTURES/broken-anchor/"* "$BAD_WORK/"
-run finalize "$BAD_WORK" "$PLANS"
-check "finalize of a failing bundle: exit 2, nothing moved" '[[ $LAST_CODE -eq 2 ]] && [[ -f "$BAD_WORK/PLAN.md" ]] && [[ ! -e "$PLANS/broken" ]]' "$LAST_OUT"
+BROKEN="$PLANS/broken"
+mkdir -p "$BROKEN" && cp "$FIXTURES/broken-anchor/"* "$BROKEN/" && with_planning "$BROKEN"
+run finalize "$BROKEN"
+check "finalize of a failing bundle: exit 2, .planning/ kept" \
+    '[[ $LAST_CODE -eq 2 ]] && [[ -f "$BROKEN/.planning/STATE.md" ]] && [[ -f "$BROKEN/PLAN.md" ]]' "$LAST_OUT"
 
 OUTSIDE="$TMP_ROOT/elsewhere/demo2"
-mkdir -p "$OUTSIDE" && cp "$FIXTURES/valid-ultra/"* "$OUTSIDE/"
-run finalize "$OUTSIDE" "$PLANS"
-check "finalize outside .unikit/code/.planning: the folder is not removed, exit 1" \
-    '[[ $LAST_CODE -eq 1 ]] && grep -qF "refusing to remove" <<< "$LAST_OUT" && [[ -d "$OUTSIDE" ]]' "$LAST_OUT"
+mkdir -p "$OUTSIDE" && cp "$FIXTURES/valid-ultra/"* "$OUTSIDE/" && with_planning "$OUTSIDE"
+run finalize "$OUTSIDE"
+check "finalize outside .unikit/code/plans: refusing to clean, exit 1, nothing removed" \
+    '[[ $LAST_CODE -eq 1 ]] && grep -qF "refusing to clean" <<< "$LAST_OUT" && [[ -f "$OUTSIDE/.planning/STATE.md" ]]' "$LAST_OUT"
 
-echo -e "\n${BOLD}Part 3: wiring${NC}"
+echo -e "\n${BOLD}Part 3: discard${NC}"
+UNFINISHED="$PLANS/unfinished"
+mkdir -p "$UNFINISHED" && cp "$FIXTURES/valid-ultra/phase-01-trade.md" "$UNFINISHED/" && with_planning "$UNFINISHED"
+run discard "$UNFINISHED"
+check "discard: a plan folder without PLAN.md is removed, exit 0" \
+    '[[ $LAST_CODE -eq 0 ]] && grep -q "^DISCARDED " <<< "$LAST_OUT" && [[ ! -e "$UNFINISHED" ]]' "$LAST_OUT"
+run discard "$DEMO"
+check "discard of a finished plan: holds a finished plan, exit 3, nothing removed" \
+    '[[ $LAST_CODE -eq 3 ]] && grep -qF "holds a finished plan" <<< "$LAST_OUT" && [[ -f "$DEMO/PLAN.md" ]] && [[ -f "$DEMO/phase-01-trade.md" ]]' "$LAST_OUT"
+
+OUTSIDE_UNFINISHED="$TMP_ROOT/elsewhere/unfinished2"
+mkdir -p "$OUTSIDE_UNFINISHED" && with_planning "$OUTSIDE_UNFINISHED"
+run discard "$OUTSIDE_UNFINISHED"
+check "discard outside .unikit/code/plans: refusing to discard, exit 1, nothing removed" \
+    '[[ $LAST_CODE -eq 1 ]] && grep -qF "refusing to discard" <<< "$LAST_OUT" && [[ -f "$OUTSIDE_UNFINISHED/.planning/STATE.md" ]]' "$LAST_OUT"
+run discard "$PLANS"
+check "discard of the plans folder itself: refusing to discard, exit 1, nothing removed" \
+    '[[ $LAST_CODE -eq 1 ]] && grep -qF "refusing to discard" <<< "$LAST_OUT" && [[ -f "$DEMO/PLAN.md" ]]' "$LAST_OUT"
+mkdir -p "$DEMO/nested" && with_planning "$DEMO/nested"
+run discard "$DEMO/nested"
+check "discard of a folder nested inside a plan: refusing to discard, exit 1, nothing removed" \
+    '[[ $LAST_CODE -eq 1 ]] && grep -qF "refusing to discard" <<< "$LAST_OUT" && [[ -f "$DEMO/nested/.planning/STATE.md" ]]' "$LAST_OUT"
+run discard "$PLANS/missing"
+check "discard of a missing folder: not a directory, exit 1" \
+    '[[ $LAST_CODE -eq 1 ]] && grep -qF "not a directory" <<< "$LAST_OUT"' "$LAST_OUT"
+run discard
+check "discard without an argument prints the usage, exit 1" '[[ $LAST_CODE -eq 1 ]] && grep -qF "Usage:" <<< "$LAST_OUT"' "$LAST_OUT"
+
+echo -e "\n${BOLD}Part 4: wiring${NC}"
 check "unikit-plan grants node" 'grep -qxF "  - Bash(node *)" "$PLAN_SKILL"'
 check "plan-bundle.mjs stays within 500 lines" '[[ $(wc -l < "$BUNDLE") -le 500 ]]'
 check "plan-bundle.mjs imports builtin node: modules only" '[[ -z "$(grep -E "^import .* from '"'"'" "$BUNDLE" | grep -v "from '"'"'node:")" ]]'
+check "USAGE names finalize <plan-dir> | discard <plan-dir>" 'grep -qF "finalize <plan-dir> | discard <plan-dir>" "$BUNDLE"'
+check "NEGATIVE: no .unikit/code/.planning literal left in plan-bundle.mjs" '! grep -qF ".unikit/code/.planning" "$BUNDLE"'
 
 echo -e "\n${BOLD}=== Results ===${NC}"
 echo -e "  Total:    $TOTAL"

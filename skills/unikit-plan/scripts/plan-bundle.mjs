@@ -2,19 +2,20 @@
 // plan-bundle.mjs — the mechanical half of writing an ultra plan in `/unikit-plan`.
 //
 // The model writes the bundle; this script does what has to be exact.
-//   check <dir>                          Runs the Integrity Checks of
-//                                        `unikit-plan/references/ULTRA-PLAN-FORMAT.md` (1-15, the
-//                                        numbers are the same) on the manifest `<dir>/PLAN.md` and its phase files.
-//                                        A manifest without the ultra marker is a full plan: only
-//                                        checks 6, 9, 11 and 12-15 apply to it.
-//   finalize <working-dir> <plans-dir>   Checks `<working-dir>`, then moves the manifest and every
-//                                        `phase-*.md` into `<plans-dir>/<name of working-dir>/` and
-//                                        removes the working folder — only one under `.unikit/code/.planning/`.
+//   check <dir>           Runs the Integrity Checks of
+//                         `unikit-plan/references/ULTRA-PLAN-FORMAT.md` (1-15, the
+//                         numbers are the same) on the manifest `<dir>/PLAN.md` and its phase files.
+//                         A manifest without the ultra marker is a full plan: only
+//                         checks 6, 9, 11 and 12-15 apply to it.
+//   finalize <plan-dir>   Checks `<plan-dir>`, then removes its `.planning/` folder — only
+//                         one directly inside a folder under `.unikit/code/plans/`.
+//   discard <plan-dir>    Removes an unfinished plan folder: never one that holds `<plan-dir>/PLAN.md`,
+//                         never one outside `.unikit/code/plans/`.
 //
 // Check 10 only warns: "looks like a test-run command" is a judgement, not a mechanism.
 // Self-contained: Node >= 18, builtin imports only, no sibling modules.
-// Exit codes: 0 ok · 1 usage or I/O · 2 a check failed (nothing moved)
-//             · 3 the target plan folder exists (nothing moved).
+// Exit codes: 0 ok · 1 usage or I/O · 2 a check failed (nothing removed)
+//             · 3 the folder holds a finished plan (nothing removed).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,7 +23,7 @@ import path from 'node:path';
 // --- CONSTANTS ---
 const MANIFEST = 'PLAN.md';
 const MODE_MARKER = '<!-- unikit:plan-mode:ultra -->';
-const EXIT = { OK: 0, USAGE: 1, FAILED: 2, EXISTS: 3 };
+const EXIT = { OK: 0, USAGE: 1, FAILED: 2, FINISHED: 3 };
 const TOTAL_ULTRA_CHECKS = 15;
 const FULL_PLAN_CHECKS = [6, 9, 11, 12, 13, 14, 15];
 const H_SETTINGS = '## Settings';
@@ -62,9 +63,9 @@ const PHASE_CHECKBOX_RE = /^\s*- \[( |x)\]/;
 const TASK_ID_RE = /\b(\d+\.\d+)\b/g;
 const SLUG_DROP_RE = /[^\p{L}\p{M}\p{N}\p{Pc} -]/gu;
 const RUN_COMMAND_RE = /\b(npm (run )?test|npx (jest|vitest|mocha)|yarn test|pnpm test|pytest|dotnet test|go test|cargo test|gradlew? test|-runTests|run[-_ ]tests)\b/i;
-const PLANNING_SEGMENTS = ['.unikit', 'code', '.planning'];
-const EXDEV = 'EXDEV';
-const USAGE = 'Usage: node plan-bundle.mjs check <dir> | finalize <working-dir> <plans-dir>';
+const PLANS_SEGMENTS = ['.unikit', 'code', 'plans'];
+const PLANNING_DIR = '.planning';
+const USAGE = 'Usage: node plan-bundle.mjs check <dir> | finalize <plan-dir> | discard <plan-dir>';
 
 // --- Reading ---
 
@@ -387,42 +388,46 @@ function printCheck(dir) {
   return true;
 }
 
-// --- Finalize ---
+// --- Finalize and discard ---
 
-function isPlanningFolder(dir) {
+/** `<dir>` is `.unikit/code/plans/<name>` — the three segments in a row, then exactly one name. Compared by segment: `path.resolve` gives `\` on Windows. */
+function isPlanFolder(dir) {
   const parts = path.resolve(dir).split(path.sep);
-  for (let i = 0; i + PLANNING_SEGMENTS.length <= parts.length; i++) {
-    if (PLANNING_SEGMENTS.every((seg, j) => parts[i + j] === seg)) return true;
-  }
-  return false;
+  const at = parts.length - 1 - PLANS_SEGMENTS.length;
+  return at >= 0 && parts[parts.length - 1] !== '' && PLANS_SEGMENTS.every((seg, j) => parts[at + j] === seg);
 }
 
-function moveFile(from, to) {
-  try {
-    fs.renameSync(from, to);
-  } catch (err) {
-    if (err.code !== EXDEV) throw err;
-    fs.copyFileSync(from, to);
-    fs.unlinkSync(from);
-  }
-}
-
-function finalize(workingDir, plansDir) {
-  if (!printCheck(workingDir)) return EXIT.FAILED;
-  const target = path.join(plansDir, path.basename(path.resolve(workingDir)));
-  if (fs.existsSync(target)) {
-    console.log(`ERROR target exists: ${target}`);
-    return EXIT.EXISTS;
-  }
-  fs.mkdirSync(target, { recursive: true });
-  const files = [MANIFEST, ...fs.readdirSync(workingDir).filter((f) => PHASE_FILE_RE.test(f))];
-  for (const f of files) moveFile(path.join(workingDir, f), path.join(target, f));
-  if (!isPlanningFolder(workingDir)) {
-    console.log(`ERROR refusing to remove ${workingDir}: not under .unikit/code/.planning/ — the files were moved`);
+function finalize(planDir) {
+  if (!printCheck(planDir)) return EXIT.FAILED;
+  if (!isPlanFolder(planDir)) {
+    console.log(`ERROR refusing to clean ${planDir}: not a folder under .unikit/code/plans/`);
     return EXIT.USAGE;
   }
-  fs.rmSync(workingDir, { recursive: true, force: true });
-  console.log(`MOVED ${files.length} files to ${target}`);
+  const planning = path.join(planDir, PLANNING_DIR);
+  if (!fs.existsSync(planning)) {
+    console.log('OK nothing to clean');
+    return EXIT.OK;
+  }
+  fs.rmSync(planning, { recursive: true, force: true });
+  console.log(`CLEANED ${planDir}`);
+  return EXIT.OK;
+}
+
+function discard(planDir) {
+  if (!isPlanFolder(planDir)) {
+    console.log(`ERROR refusing to discard ${planDir}: not a folder under .unikit/code/plans/`);
+    return EXIT.USAGE;
+  }
+  if (!fs.existsSync(planDir) || !fs.statSync(planDir).isDirectory()) {
+    console.log(`ERROR not a directory: ${planDir}`);
+    return EXIT.USAGE;
+  }
+  if (fs.existsSync(path.join(planDir, MANIFEST))) {
+    console.log(`ERROR refusing to discard ${planDir}: it holds a finished plan`);
+    return EXIT.FINISHED;
+  }
+  fs.rmSync(planDir, { recursive: true, force: true });
+  console.log(`DISCARDED ${planDir}`);
   return EXIT.OK;
 }
 
@@ -432,7 +437,8 @@ function main(argv) {
   const [command, ...args] = argv;
   try {
     if (command === 'check' && args.length === 1) return printCheck(args[0]) ? EXIT.OK : EXIT.FAILED;
-    if (command === 'finalize' && args.length === 2) return finalize(args[0], args[1]);
+    if (command === 'finalize' && args.length === 1) return finalize(args[0]);
+    if (command === 'discard' && args.length === 1) return discard(args[0]);
     console.log(USAGE);
     return EXIT.USAGE;
   } catch (err) {
