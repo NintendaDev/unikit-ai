@@ -13,6 +13,7 @@ import {
 } from '../../core/config.js';
 import { getMcpDocsLines, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
+import { getMcpEnvLines } from '../../core/mcp-env.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
@@ -282,6 +283,10 @@ export async function initCommand(): Promise<void> {
       console.log(chalk.green(`  MCP servers configured: ${answers.mcpServers.join(', ')}`));
       for (const line of getMcpDocsLines(discoveredServers, answers.mcpServers)) {
         console.log(chalk.dim(`    ${line}`));
+      }
+      // Yellow, not dim: these are things the user has to do, not reference.
+      for (const line of getMcpEnvLines(discoveredServers, answers.mcpServers, answers.agents.map(a => a.id))) {
+        console.log(chalk.yellow(`    ${line}`));
       }
       if (answers.engineMcpKey) {
         console.log(chalk.dim(`  Engine MCP: ${answers.engineMcpKey}`));

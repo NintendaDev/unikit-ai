@@ -575,6 +575,13 @@ fi
 #     it is the only thing the `init` summary can generate an install line from,
 #     so without it the user is never told a plugin has to go into the editor
 #   - `rules`, when present, points at an existing directory holding an INDEX.md
+#   - GH-1: `preselect`, when present, is a boolean and never sits on an is_engine entry
+#     (the radio's default is `order`'s job)
+#   - GH-2: `{{env:` appears only in string header values (`config.headers`,
+#     `configByPlatform.*.headers`), and every occurrence matches MCP_ENV_TOKEN_PATTERN,
+#     read from src/core/constants.ts — `{{env:github_pat}}` would otherwise reach all six
+#     settings files verbatim. The count is printed, so a lost object shows as a number
+#   - GH-3: no config carries a literal GitHub token (`ghp_`, `github_pat_`, `gho_`)
 #   - the keys `shards`, `instruction` and `verified` are ABSENT everywhere. All three
 #     are retired, and all three would come back the same way: someone adds a server
 #     six months from now, copies the nearest config as a template, and reintroduces a
@@ -591,6 +598,30 @@ MCP_SCHEMA_RESULT=$(node -e "
   const KNOWN_PLATFORMS=['win32','darwin','linux'];
   const why=[];
   const orderByKey=new Map();   // directory -> Map<order, fileId>
+  const Q=String.fromCharCode(39), DQ=String.fromCharCode(34);
+  const constSrc=fs.readFileSync(path.join(root,'..','src','core','constants.ts'),'utf8');
+  const patLine=constSrc.split(String.fromCharCode(10)).find(l=>l.startsWith('export const MCP_ENV_TOKEN_PATTERN = '))||'';
+  const patRaw=patLine.slice(patLine.indexOf(Q)+1, patLine.lastIndexOf(Q));
+  let envFull=null;
+  try { envFull=new RegExp('^'+JSON.parse(DQ+patRaw+DQ)+'$'); } catch { why.push('GH-2:no-MCP_ENV_TOKEN_PATTERN-in-constants'); }
+  let envTokens=0;
+  const walkEnv=(node, trail, rel)=>{
+    if (typeof node==='string') {
+      if (!node.includes('{{env:')) return;
+      const inHeaders=(trail[0]==='config'&&trail[1]==='headers'&&trail.length===3)
+        ||(trail[0]==='configByPlatform'&&trail[2]==='headers'&&trail.length===4);
+      if (!inHeaders) why.push('GH-2:env-token-outside-headers:'+trail.join('.')+':'+rel);
+      let i=node.indexOf('{{env:');
+      while (i!==-1) {
+        const j=node.indexOf('}}',i);
+        const tok=j===-1?node.slice(i):node.slice(i,j+2);
+        if (!envFull||!envFull.test(tok)) why.push('GH-2:bad-env-token:'+rel);
+        envTokens++;
+        i=node.indexOf('{{env:',i+1);
+      }
+    } else if (Array.isArray(node)) node.forEach((v,k)=>walkEnv(v,trail.concat(String(k)),rel));
+    else if (node&&typeof node==='object') for (const [k,v] of Object.entries(node)) walkEnv(v,trail.concat(k),rel);
+  };
 
   for (const dir of fs.readdirSync(root)) {
     const dirPath=path.join(root, dir);
@@ -599,8 +630,14 @@ MCP_SCHEMA_RESULT=$(node -e "
       if (!f.endsWith('.json')) continue;
       const rel=dir+'/'+f;
       let m;
-      try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
+      const rawText=fs.readFileSync(path.join(dirPath,f),'utf8');
+      try { m=JSON.parse(rawText); }
       catch { why.push('parse-error:'+rel); continue; }
+
+      if (m.preselect !== undefined && typeof m.preselect !== 'boolean') why.push('GH-1:preselect-not-boolean:'+rel);
+      if (m.preselect !== undefined && m.is_engine === true) why.push('GH-1:preselect-on-engine:'+rel);
+      walkEnv(m, [], rel);
+      for (const lit of ['ghp_','github_pat_','gho_']) if (rawText.includes(lit)) why.push('GH-3:literal-token-'+lit+':'+rel);
 
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
 
@@ -656,11 +693,11 @@ MCP_SCHEMA_RESULT=$(node -e "
     }
   }
 
-  console.log(why.length ? why.join(' ') : 'ok');
+  console.log(why.length ? why.join(' ') : 'ok '+envTokens);
 " "$MCP_DIR" 2>/dev/null || echo "pass-error")
 
-if [[ "$MCP_SCHEMA_RESULT" == "ok" ]]; then
-    pass "MCP schema fields valid across all configs (order/configByPlatform/docs/rules + order unique, shards+instruction+verified gone)"
+if [[ "$MCP_SCHEMA_RESULT" == "ok "* ]]; then
+    pass "MCP schema fields valid across all configs (order/configByPlatform/docs/rules + order unique, shards+instruction+verified gone; GH-1…GH-3 preselect, env tokens (${MCP_SCHEMA_RESULT#ok }), no literal token)"
 else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi
@@ -770,6 +807,67 @@ if [[ "$TOML_WRITER_RESULT" == "ok" ]]; then
     pass "TomlMcpWriter unit smoke (round-trip, type strip, headers rename, null env, remove, warn)"
 else
     fail "TomlMcpWriter unit smoke: $TOML_WRITER_RESULT"
+fi
+
+# MCP env-reference smoke — every client gets `{{env:NAME}}` in its own syntax, and none
+# keeps the raw catalog token. A wrong first write is permanent ("present → keep" in
+# mcp-reconcile.ts), so this is the only place the syntax is ever checked. A quoted
+# heredoc carries the script: the expected values are full of `$` and braces.
+ENV_SMOKE_RESULT=$(cd "$ROOT_DIR" && node --input-type=module 2>&1 <<'NODE_EOF'
+const fs = await import('node:fs');
+const os = await import('node:os');
+const path = await import('node:path');
+const { getMcpWriter } = await import('./dist/core/mcp-writers/index.js');
+const { getMcpEnvLines } = await import('./dist/core/mcp-env.js');
+const why = [];
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'unikit-env-'));
+const URL = 'https://example.test/mcp';
+const tokenEntry = (header = 'Authorization') => ({ type: 'http', url: URL, headers: { [header]: 'Bearer {{env:GITHUB_PAT}}' } });
+const write = async (agent, cfg) => {
+  const writer = getMcpWriter(agent);
+  const settings = await writer.readExisting(path.join(tmp, 'absent-' + agent + '.json'));
+  writer.upsert(settings, 'github', cfg);
+  return { text: writer.serialize(settings), settings };
+};
+for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravity']) {
+  const { text } = await write(agent, tokenEntry());
+  if (text.includes('{{env:')) why.push(agent + ':raw-token-left');
+}
+{ const e = (await write('claude', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer ${GITHUB_PAT}') why.push('claude:syntax'); }
+{ const e = (await write('cursor', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer ${env:GITHUB_PAT}') why.push('cursor:syntax'); }
+{ const e = (await write('qwen', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer ${GITHUB_PAT}') why.push('qwen:syntax');
+  if (e.httpUrl !== URL || e.url !== undefined || e.type !== undefined) why.push('qwen:httpUrl'); }
+{ const e = (await write('opencode', tokenEntry())).settings.mcp.github;
+  if (e.headers.Authorization !== 'Bearer {env:GITHUB_PAT}') why.push('opencode:syntax');
+  if (e.oauth !== false) why.push('opencode:oauth'); }
+{ const e = (await write('codex', tokenEntry())).settings.mcp_servers.github;
+  if (e.bearer_token_env_var !== 'GITHUB_PAT') why.push('codex:bearer-var');
+  if (e.http_headers && e.http_headers.Authorization !== undefined) why.push('codex:authorization-left'); }
+{ const e = (await write('codex', tokenEntry('authorization'))).settings.mcp_servers.github;
+  if (e.bearer_token_env_var !== 'GITHUB_PAT') why.push('codex:lowercase-header'); }
+{ const e = (await write('antigravity', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer YOUR_GITHUB_PAT') why.push('antigravity:placeholder');
+  if (e.serverUrl !== URL) why.push('antigravity:serverUrl'); }
+// Regression: an entry without headers is unchanged everywhere except Qwen's URL field.
+{ const e = (await write('claude', { type: 'http', url: URL })).settings.mcpServers.github;
+  if (JSON.stringify(e) !== JSON.stringify({ type: 'http', url: URL })) why.push('claude:plain-entry-changed'); }
+{ const e = (await write('qwen', { type: 'http', url: URL })).settings.mcpServers.github;
+  if (e.httpUrl !== URL || e.url !== undefined || e.type !== undefined) why.push('qwen:plain-entry-httpUrl'); }
+const servers = new Map([['github', { displayName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
+const both = getMcpEnvLines(servers, ['github'], ['claude', 'antigravity']);
+if (both.length !== 2 || !both[0].includes('GITHUB_PAT') || !both[1].includes('YOUR_GITHUB_PAT')) why.push('envLines:antigravity');
+if (getMcpEnvLines(servers, ['github'], ['claude']).length !== 1) why.push('envLines:claude-only');
+fs.rmSync(tmp, { recursive: true, force: true });
+console.log(JSON.stringify({ why }));
+NODE_EOF
+)
+if [[ "$ENV_SMOKE_RESULT" == '{"why":[]}' ]]; then
+    pass "MCP env references rendered per client (6 agents)"
+else
+    fail "MCP env-reference smoke: $ENV_SMOKE_RESULT"
 fi
 
 # ─────────────────────────────────────────────

@@ -176,6 +176,12 @@ export function parseMcpServerEntry(raw: unknown, dirPath: string, fileName: str
     entry.order = raw['order'];
   }
 
+  // A non-boolean is dropped silently, like every optional field here.
+  const preselect = typeof raw['preselect'] === 'boolean' ? raw['preselect'] : undefined;
+  if (preselect !== undefined) {
+    entry.preselect = preselect;
+  }
+
   const docs = parseDocs(raw['docs'], fileName);
   if (docs) {
     entry.docs = docs;

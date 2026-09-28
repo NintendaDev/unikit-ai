@@ -1837,6 +1837,10 @@ echo "  ✓ resolveExistingEngine(' unity ') -> action=use, engine=unity (trim a
 MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
   const { sortMcpChoices, isMcpPreselected, resolveMcpGroupDefault } =
     await import('./dist/cli/wizard/prompts.js');
+  const { parseMcpServerEntry } = await import('./dist/core/mcp-schema.js');
+  const parsePreselect = (value) => parseMcpServerEntry(
+    { key: 'github', code: 'github', displayName: 'GitHub', config: { type: 'http', url: 'https://example.test' }, preselect: value },
+    '.', 'github.json');
 
   // Deliberately supplied out of order, with one entry carrying no \`order\`.
   const group = sortMcpChoices([
@@ -1853,6 +1857,11 @@ MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
     freshChecked:  isMcpPreselected('context7', null),
     reinitChecked: isMcpPreselected('context7', ['context7']),
     reinitUnchecked: isMcpPreselected('context7', ['something-else']),
+    preselectFresh:  isMcpPreselected('github', null, false),
+    preselectAbsent: isMcpPreselected('github', null),
+    preselectReinit: isMcpPreselected('github', ['github'], false),
+    parsedJunkHasPreselect: 'preselect' in parsePreselect('no'),
+    parsedFalse: parsePreselect(false).preselect,
   }));
 " 2>/dev/null)
 
@@ -1881,7 +1890,22 @@ if [[ "$MCP_DEFAULTS" != *'"freshChecked":true'* ]] \
   exit 1
 fi
 
-echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1"
+# The catalog's `preselect: false` keeps a token-requiring server unchecked on a fresh
+# install only; a re-init still mirrors the previous choice. A non-boolean is dropped by
+# the parser, silently, like every optional field there.
+if [[ "$MCP_DEFAULTS" != *'"preselectFresh":false'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"preselectAbsent":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"preselectReinit":true'* ]]; then
+  echo "Assertion failed: isMcpPreselected preselect contract broken (false=unchecked on fresh, absent=checked, re-init mirrors), got: $MCP_DEFAULTS"
+  exit 1
+fi
+if [[ "$MCP_DEFAULTS" != *'"parsedJunkHasPreselect":false'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"parsedFalse":false'* ]]; then
+  echo "Assertion failed: parseMcpServerEntry must keep preselect:false and drop a non-boolean preselect, got: $MCP_DEFAULTS"
+  exit 1
+fi
+
+echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1, preselect:false stays unchecked"
 
 # ─────────────────────────────────────────────────────
 # Test 14c: configByPlatform resolution writes a token-free command
