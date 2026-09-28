@@ -183,9 +183,7 @@ EXPECTED_AGENTS=(
     "unikit-implement-coordinator.md"
     "unikit-implement-worker.md"
     "unikit-plan-coordinator.md"
-    "unikit-plan-module-planner.md"
     "unikit-plan-polisher.md"
-    "unikit-plan-recon-writer.md"
     "unikit-review-sidecar.md"
 )
 
@@ -8849,89 +8847,6 @@ if [[ -z "$CW_WHY" ]]; then
     pass "CW-1…CW-3 coordinator keeps PR checkpoints, the barrier and no-push; worker returns them"
 else
     fail "CW-1…CW-3 coordinator/worker contract:$CW_WHY"
-fi
-
-# DP: disk-first ultra planning — the parts. The contract rests on a few sentences (the
-# fragment is written last, the state path is in every progress line, a contract is never
-# invented); losing one brings the old failure back with the suite green.
-DP_DISK="$ROOT_DIR/skills/unikit-plan/references/disk-planning.md"
-DP_PROC="$ROOT_DIR/skills/unikit-plan/references/module-procedure.md"
-DP_MP="$ROOT_DIR/subagents/unikit-plan-module-planner.md"
-DP_RW="$ROOT_DIR/subagents/unikit-plan-recon-writer.md"
-DP_WHY=""
-for f in "$DP_DISK" "$DP_PROC" "$DP_MP" "$DP_RW"; do
-    [[ -f "$f" ]] || DP_WHY+=" DP:missing-${f##*/}"
-done
-if [[ -z "$DP_WHY" ]]; then
-    # (DP-1) the working folder, the state and its resume protocol
-    for lit in '.unikit/code/.planning/<name>/' '> Resume:' 'Next:' 'a fragment present means the module is done' \
-               '· state: .unikit/code/.planning/<name>/STATE.md' \
-               'The working folder'"'"'s first file is a `.gitignore` holding `*`' '## Research link'; do
-        grep -qF -- "$lit" "$DP_DISK" || DP_WHY+=" DP-1:missing(${lit:0:32})"
-    done
-    # (DP-2) the change guard, the script calls, and every fallback line
-    for lit in '## Change guard' '--untracked-files=all' 'git hash-object --stdin' \
-               'executor changed files outside the working folder' \
-               '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check' 'plan-bundle.mjs finalize' \
-               'module-planner unavailable — planning M<k> in this session' 're-run unikit-ai init to install it' \
-               'change guard off — no git work tree' 'plan-bundle.mjs unavailable — checks done by the model'; do
-        grep -qF -- "$lit" "$DP_DISK" || DP_WHY+=" DP-2:missing(${lit:0:32})"
-    done
-    # (DP-3) one procedure for both executors
-    for lit in '## Return' 'tasks: <n>' 'do not invent it' 'Write only inside the working folder.'; do
-        grep -qF -- "$lit" "$DP_PROC" || DP_WHY+=" DP-3:missing(${lit:0:32})"
-    done
-    # (DP-4) the two subagents: writers bounded by instruction, a Language section each, and no
-    # {{skills_dir}} — it is empty in a subagent, so paths arrive in the prompt
-    for f in "$DP_MP" "$DP_RW"; do
-        grep -qF 'permissionMode: acceptEdits' "$f" || DP_WHY+=" DP-4:${f##*/}:no-accept-edits"
-        grep -qxF '## Language' "$f" || DP_WHY+=" DP-4:${f##*/}:no-language"
-        grep -qF '{{skills_dir}}' "$f" && DP_WHY+=" DP-4:${f##*/}:skills-dir-empty-in-subagent"
-    done
-    grep -qF 'never call other agents' "$DP_MP" || DP_WHY+=" DP-4:planner-may-delegate"
-    grep -qF 'HEAD:' "$DP_RW" || DP_WHY+=" DP-4:recon-without-head"
-fi
-if [[ -z "$DP_WHY" ]]; then
-    pass "DP-1…DP-4 disk-first planning: state, fragments last, change guard, one procedure, two subagents"
-else
-    fail "DP-1…DP-4 disk-first planning contract:$DP_WHY"
-fi
-
-# DW: /unikit-plan wires disk-first planning in — the aliases in BOTH agent-filter blocks
-# (a new path that exists in one block only switches on for half the runtimes, silently),
-# the continuation entry, and the working folder in the format's write order.
-DW_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
-DW_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
-DW_FMT="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
-DW_WHY=""
-for f in "$DW_PLAN" "$DW_ULTRA" "$DW_FMT"; do
-    [[ -f "$f" ]] || DW_WHY+=" DW:missing-${f##*/}"
-done
-if [[ -z "$DW_WHY" ]]; then
-    # (DW-1) the subagent in the claude block, the inline procedure in the !claude block
-    dw_claude=$(awk '/^<!-- unikit:agents claude -->/{w=1} w{print} w&&/^<!-- unikit:end -->/{w=0}' "$DW_PLAN")
-    dw_other=$(awk '/^<!-- unikit:agents !claude -->/{w=1} w{print} w&&/^<!-- unikit:end -->/{w=0}' "$DW_PLAN")
-    grep -qF 'Agent(subagent_type: unikit-plan-module-planner' <<< "$dw_claude" || DW_WHY+=" DW-1:claude-no-module-planner"
-    grep -qF 'Agent(subagent_type: unikit-plan-recon-writer' <<< "$dw_claude" || DW_WHY+=" DW-1:claude-no-recon-writer"
-    grep -qF 'module-procedure.md' <<< "$dw_other" || DW_WHY+=" DW-1:other-runtimes-no-procedure"
-    grep -qF 'recon-writer' <<< "$dw_other" || DW_WHY+=" DW-1:other-runtimes-no-recon-writer"
-    # (DW-2) the continuation, the three answers, a narrow delete grant, recon through the writer
-    for lit in '.unikit/code/.planning/' 'Continue it' 'Start over' 'Bash(rm -r .unikit/code/.planning/*)' \
-               'Phase A/B reconnaissance goes through `recon-writer`'; do
-        grep -qF -- "$lit" "$DW_PLAN" || DW_WHY+=" DW-2:missing(${lit:0:32})"
-    done
-    grep -qF 'Bash(rm *)' "$DW_PLAN" && DW_WHY+=" DW-2:broad-rm-grant"
-    # (DW-3) the state before the first phase, and the working folder inside ## Write Order
-    for lit in 'Step E2: Write the planning state' 'disk-planning.md' '## Change guard' '## Research link'; do
-        grep -qF -- "$lit" "$DW_ULTRA" || DW_WHY+=" DW-3:missing(${lit:0:32})"
-    done
-    awk '/^## Write Order/{w=1;next} /^## /{w=0} w' "$DW_FMT" | grep -qF '.unikit/code/.planning/<name>/' \
-        || DW_WHY+=" DW-3:write-order-no-working-folder"
-fi
-if [[ -z "$DW_WHY" ]]; then
-    pass "DW-1…DW-3 /unikit-plan ultra plans on disk, module by module, with a fallback"
-else
-    fail "DW-1…DW-3 disk-first wiring:$DW_WHY"
 fi
 
 # ─────────────────────────────────────────────
