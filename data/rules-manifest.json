@@ -9,7 +9,8 @@
       "unikit-explore",
       "unikit-plan",
       "unikit-improve",
-      "unikit-plan-polisher"
+      "unikit-plan-polisher",
+      "unikit-plan-module-planner"
     ]
   }
 }

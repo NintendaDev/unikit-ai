@@ -60,7 +60,8 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
                           "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
                           "unikit-pr"],
-      "installedSubagents": ["unikit-architecture-sidecar"]
+      "installedSubagents": ["unikit-architecture-sidecar", "unikit-plan-module-planner",
+                             "unikit-plan-recon-writer"]
     }
   ],
   "rules": {
@@ -80,6 +81,8 @@ run_update "$CLAUDE_DIR"
 
 # Subagent files SHOULD be installed for claude (supportsSubagents: true)
 assert_exists "$CLAUDE_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"
+assert_exists "$CLAUDE_DIR/.claude/agents/unikit-plan-module-planner.md" "the ultra module planner subagent must be installed for claude"
+assert_exists "$CLAUDE_DIR/.claude/agents/unikit-plan-recon-writer.md" "the ultra recon writer subagent must be installed for claude"
 
 # Check no template placeholders remain in installed skills
 TEMPLATE_HITS=$(grep -r '{{skills_dir}}\|{{settings_file}}\|{{home_skills_dir}}\|{{skills_cli_agent_flag}}\|{{self_name}}' \
@@ -308,7 +311,8 @@ cat > "$NOSUB_DIR/.unikit.json" << 'EOF'
       "skillsDir": ".codex/skills",
       "subagentsDir": ".codex/agents",
       "installedSkills": ["unikit"],
-      "installedSubagents": ["unikit-architecture-sidecar"]
+      "installedSubagents": ["unikit-architecture-sidecar", "unikit-plan-module-planner",
+                             "unikit-plan-recon-writer"]
     }
   ],
   "rules": {
@@ -325,6 +329,10 @@ assert_exists "$NOSUB_DIR/.codex/skills/unikit/SKILL.md" \
   "codex must have unikit skill installed (sanity)"
 assert_not_exists "$NOSUB_DIR/.codex/agents/unikit-architecture-sidecar.md" \
   "listed subagent must NOT be installed for supportsSubagents:false agent (codex)"
+assert_not_exists "$NOSUB_DIR/.codex/agents/unikit-plan-module-planner.md" \
+  "the module planner subagent must NOT be installed for codex — it plans modules in the session"
+assert_not_exists "$NOSUB_DIR/.codex/agents/unikit-plan-recon-writer.md" \
+  "the recon writer subagent must NOT be installed for codex"
 
 echo "  ✓ subagent skip-path: listed subagent not written for supportsSubagents:false agent"
 
