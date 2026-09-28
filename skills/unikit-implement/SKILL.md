@@ -11,7 +11,7 @@ description: >-
   task", "implement phase 3", "implement tasks 2.1 and 2.3", "continue implementation",
   "continue where we left off", "keep going on the feature". To create the plan first,
   use the planning skill — this one carries an existing plan out.
-argument-hint: "[--list] [@<folder>] [Phase N | Phases N-M | Tasks N.M N.K | status | empty for all pending]"
+argument-hint: "[--list] [@<folder>] [Phase N | Phases N-M | Tasks N.M N.K | status | empty for all pending] [combine PRs | stop at PR points | run /unikit-pr at PR points]"
 allowed-tools:
   - Read
   - Write
@@ -97,6 +97,7 @@ alternative.
 - **selectors** — `Phase N`, `Phases N-M`, `Task N.M`, `Tasks N.M N.K`
 - **a feature name** (e.g. `core-loop`) — a substring match against the folder names in `.unikit/code/plans/`
 - **a test-run instruction** (e.g. `tests at the end of phase 6`) — where this call's tests run; it answers the Step 2.5 question in advance
+- **a PR checkpoint answer** — `combine PRs`, `stop at PR points` or `run /unikit-pr at PR points`; it answers every PR checkpoint question of the run in advance
 
 Mixed input works: `@.unikit/code/plans/customers-system Phase 3`, `core-loop Phase 3`, `Tasks 2.1 2.3`.
 
@@ -113,7 +114,8 @@ Mixed input works: `@.unikit/code/plans/customers-system Phase 3`, `core-loop Ph
 3. `status` → skip to **Status Display** (combines with `@<path>`)
 4. Selectors — always explicitly prefixed; bare numbers are never selectors, they may be part of a feature name
 5. **A test-run instruction** — words saying where this call's tests run (`tests at the end of phase 6`, `тесты в конце фазы 6`, `run tests at every point`) → keep it for Step 2.5. It is neither a selector nor a feature name: recognise it **before** the selectors of item 4, because the phase number inside it names a run point and never narrows the scope.
-6. What remains, when there is no `@<path>` → a feature name
+6. PR checkpoint answers given in advance — `combine PRs`, `stop at PR points`, `run /unikit-pr at PR points` — are taken out of the argument before a folder is matched and answer every PR checkpoint of the run (`references/pr-checkpoints.md`).
+7. What remains, when there is no `@<path>` → a feature name
 
 **An `@<path>` that does not resolve** — no such folder, or no `<path>/PLAN.md` inside it:
 
@@ -232,7 +234,13 @@ Drift is printed **once**, here at plan load — not before each task. Execution
 - `Docs: yes | no` → the documentation checkpoint of Step 5.3
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Line absent:** `mcp` if MCP server `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the Step 3.6 probe), otherwise `manual`. Never default to `direct` — it is irreversible and only ever an explicit choice.
 
+- `PR checkpoints: yes` → the product behaviour of a PR checkpoint task; without the line, a PR checkpoint task is legacy.
+
 No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the same probe.
+
+**The checklist carries a `PR checkpoint:` line or the manifest has `## Modules`** → read `{{skills_dir}}/{{self_name}}/references/pr-checkpoints.md` now, once — Steps 2, 3.2, 3.4, 3.9, 4, 5.6, 5.8 and the status display follow it. Missing or unreadable → `WARN [pr] PR checkpoint reference missing — PR checkpoint tasks are reported as blockers; run unikit-ai update`, every PR checkpoint task is a Step 3.3 blocker, and the push rule below still holds.
+
+**While the checklist carries a `PR checkpoint:` line, every `unikit-commit` call of this run adds `no-push`.**
 
 ### Step 1.5: Bootstrap Rules & Principles
 
@@ -285,6 +293,8 @@ STOP here.
 **Counting rule for `⏸️ MANUAL`.** A task marked `- [x] … ⏸️ MANUAL` (Step 3.4) counts as **out of scope**, not as pending: it does not block "all tasks are completed" and it is never picked up again by a later run. It is also not counted as implemented — Step 4 reports it on its own line.
 
 A merged test-checkpoint task is the other third outcome, and it counts differently — the counting rule is in `references/test-runs.md` → `## Step 2.5`.
+
+A PR checkpoint carrying a `⏭️ MERGED` label is not pending either — `references/pr-checkpoints.md` → `## Counting (Step 2)`.
 
 **If `$ARGUMENTS` contains phase/task selectors:**
 
@@ -371,7 +381,9 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 **A task carrying a `Test checkpoint: <coverage>` line** is a test-checkpoint task: it leaves no project file changed, and its work is one test run plus its non-run steps — `references/test-runs.md` → `## Step 3.2`.
 
-**Delegated execution.** `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim**, the already-resolved mode, and the matching `### EDITOR TARGETS` rows — from the manifest's `## Technical Context`, or in an ultra bundle from the task's own `### Required Interfaces and Contracts` in its phase file. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. **In an ultra bundle the whole task section goes into the prompt**, not just the `Editor:` lines: a delegate that receives only the checklist line loses the implementation steps, the contracts and the acceptance criteria along with the targets. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`.
+**A task carrying a `PR checkpoint:` line** closes a module and runs at the Step 3.9 position of its phase, after Steps 3.6-3.8 — `references/pr-checkpoints.md` → `## Step 3.2 — the PR checkpoint`, or `## Legacy` when `## Settings` has no `PR checkpoints: yes`.
+
+**Delegated execution.** `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim**, the already-resolved mode, and the matching `### EDITOR TARGETS` rows — from the manifest's `## Technical Context`, or in an ultra bundle from the task's own `### Required Interfaces and Contracts` in its phase file. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. **In an ultra bundle the whole task section goes into the prompt**, not just the `Editor:` lines: a delegate that receives only the checklist line loses the implementation steps, the contracts and the acceptance criteria along with the targets. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`. A PR checkpoint task is never delegated.
 
 **3.3: Handle Blockers**
 
@@ -405,6 +417,8 @@ After successful implementation, update the manifest:
 **The task produced an MCP finding (Step 3.2)** — append its row to the plan's `## MCP Findings` table in this same `Edit`, by `dev-principles.md` → **D7**: `F<n>`, `observed` from `Bash(date *)`, semantic dedup. Not at the end of the phase, not at the end of the run. In every case — an `Editor:` task or not (the Step 3.6 console read, a test run) — a misleading call is also a candidate line in the run report (the raw call and the raw answer), and `.unikit/MCP-RECHECK-NOTES.md` is never written from here.
 
 **A test-checkpoint task (Step 3.2)** — ticked and recorded by `references/test-runs.md` → `## Step 3.4`.
+
+**A PR checkpoint task** — ticked and labelled by `references/pr-checkpoints.md` → `## Step 3.4 — labels`.
 
 **The task produced a rule candidate** — a further outcome, recorded in the same pass:
 - Append a row to `## Rule Candidates`: `id | rule | full formulation | from | status`, with `status = open` and `from = task <N.M>`.
@@ -460,7 +474,7 @@ Skip this step if the phase only modified existing files without structural chan
 
 After all tasks in a phase are completed (and tests written if applicable):
 
-- **Auto-commit is on** (chosen at an earlier checkpoint of this session) → ask nothing: stage this phase's files and invoke `unikit-commit` with the argument `checkpoint: phase {N}, auto` — it writes the message and commits without a question (its `## Auto mode`). Print its result line and go on to the next phase.
+- **Auto-commit is on** (chosen at an earlier checkpoint of this session) → ask nothing: stage this phase's files and invoke `unikit-commit` with the argument `checkpoint: phase {N}, auto` — and `, no-push` after it while the checklist carries a `PR checkpoint:` line — it writes the message and commits without a question (its `## Auto mode`). Print its result line and go on to the next phase.
 - Otherwise ask:
 
 ```
@@ -474,6 +488,10 @@ Options:
 3. No, continue to next phase
 4. Disable checkpoints — no more commit questions this session
 ```
+
+**Option 1** invokes `unikit-commit` with `args: "checkpoint: phase {N}"` — `+ ", no-push"` while the checklist carries a `PR checkpoint:` line.
+
+A phase closed by a PR checkpoint task was committed by that task — do not ask here for it.
 
 **Option 2 turns auto-commit on**, and this checkpoint already commits the auto way. From then on every commit this session makes through `unikit-commit` passes `auto`: each later checkpoint, the pre-edit commit of a `direct` editor task, and the commit of Step 5.6. It is held in this session's memory, like option 4 — after `/clear` or in a new session the question returns once. Auto-commit never pushes.
 
@@ -521,7 +539,11 @@ Remaining tasks: {count} (in {phases} phases)
 Documentation: {delegated to docs-agent | updated via /unikit-docs (fallback for docs-agent) | warn-only (Docs: no/unset)}
 Test checkpoints: legacy — placement not declared, runs found from the task text
 Research drifted — consider /unikit-improve <plan> before continuing
+PR checkpoints: task 4.5 → PR a1b2c3d · task 7.3 merged → task 11.4
+Module drift: M5 — consider /unikit-improve
 ```
+
+The `PR checkpoints:` and `Module drift:` lines appear only when the run met a PR checkpoint, and only after a `WARN [plan-drift]`, respectively — `references/pr-checkpoints.md` → `## Report lines (Step 4)`.
 
 The `Research drifted` line appears **only** when the Step 1 drift check emitted at least one `WARN [research-drift]`, and is omitted otherwise; it never stops the run.
 
@@ -621,12 +643,12 @@ Based on choice:
 - **Verify first** → invoke `unikit-review`, wait for it to return, then invoke `unikit-commit`.
 - **Skip to commit** → invoke `unikit-commit`.
 
-**Auto-commit on (Step 3.9)** → the question stays — it is about the review — and the commit it leads to is invoked with the argument `final commit, auto`.
+**Auto-commit on (Step 3.9)** → the question stays — it is about the review — and the commit it leads to is invoked with the argument `final commit, auto` — and `, no-push` after it while the checklist carries a `PR checkpoint:` line.
 
 **These are skill invocations, in this session — not delegations.** Three tiers, in order:
 
-- **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit")`, inline, waiting for each to return before starting the next. This is the path on Claude Code.
-- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, then `/unikit-commit`, one at a time, waiting for each. The slash form is rewritten per agent by the installer; `Skill(...)` is not.
+- **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit", args: "final commit")` — `+ ", no-push"` while the checklist carries a `PR checkpoint:` line — inline, waiting for each to return before starting the next. This is the path on Claude Code.
+- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, then `/unikit-commit final commit` (with `, no-push` under the same condition), one at a time, waiting for each. The slash form is rewritten per agent by the installer; `Skill(...)` is not.
 - **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at all, print the ordered `Run: /unikit-…` list for the user to execute by hand.
 
 The invocation must be **a real call, not printed text**, and must not be wrapped in triple backticks.
@@ -646,6 +668,8 @@ Next steps:
 ```
 
 When the plan is a folder plan and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself asks about MCP findings never transferred and rule candidates still open.
+
+When the plan has `## Modules` or PR checkpoint tasks and its whole checklist is done, add before that line: `- PR after verification: /unikit-verify, then /unikit-pr` — printed text, not a call.
 
 ## Status Display
 
@@ -670,6 +694,8 @@ When `$ARGUMENTS` is `status`:
 ```
 
 Counts come from the checkboxes; a `⏸️ MANUAL` task counts like any other `- [x]`. When any exist, add one line below the box: `Manual (editor targets): {count}`.
+
+With `## Modules` — the per-module lines of `references/pr-checkpoints.md` → `## Status by modules`.
 
 Then STOP — do not execute any tasks.
 

@@ -8680,10 +8680,12 @@ else
     done
     grep -qF 'git push -u' "$CP_REF" && CP_WHY+=" CP-3:boundary-push-tracks"
     # "the whole plan is closed" is decided before the boundary is looked up, and HEAD is offered first
-    cp_closed=$(grep -nF 'the head is the target' "$CP_REF" | head -1 | cut -d: -f1)
-    cp_bound=$(grep -nF '## Last completed boundary' "$CP_REF" | head -1 | cut -d: -f1)
-    cp_head=$(grep -nF 'Push everything up to now (HEAD)' "$CP_REF" | head -1 | cut -d: -f1)
-    cp_end=$(grep -nF 'Push up to the end of' "$CP_REF" | head -1 | cut -d: -f1)
+    # `|| true` inside each substitution: under `set -euo pipefail` a grep that finds nothing
+    # would abort the whole suite here instead of letting the literal checks above report it.
+    cp_closed=$( { grep -nF 'the head is the target' "$CP_REF" || true; } | head -1 | cut -d: -f1)
+    cp_bound=$( { grep -nF '## Last completed boundary' "$CP_REF" || true; } | head -1 | cut -d: -f1)
+    cp_head=$( { grep -nF 'Push everything up to now (HEAD)' "$CP_REF" || true; } | head -1 | cut -d: -f1)
+    cp_end=$( { grep -nF 'Push up to the end of' "$CP_REF" || true; } | head -1 | cut -d: -f1)
     if [[ -n "$cp_closed" && -n "$cp_bound" ]] && (( cp_closed >= cp_bound )); then
         CP_WHY+=" CP-3:boundary-before-closed-check"
     fi
@@ -8722,8 +8724,8 @@ if [[ -z "$UPR_WHY" ]]; then
                'uncommitted file(s) are not part of the PR' 'Stop — I will commit first'; do
         grep -qF -- "$lit" "$UPR_SKILL" || UPR_WHY+=" UPR-2:missing(${lit:0:32})"
     done
-    upr_head=$(grep -nF 'PR everything up to now (HEAD)' "$UPR_SKILL" | head -1 | cut -d: -f1)
-    upr_end=$(grep -nF 'PR up to the end of' "$UPR_SKILL" | head -1 | cut -d: -f1)
+    upr_head=$( { grep -nF 'PR everything up to now (HEAD)' "$UPR_SKILL" || true; } | head -1 | cut -d: -f1)
+    upr_end=$( { grep -nF 'PR up to the end of' "$UPR_SKILL" || true; } | head -1 | cut -d: -f1)
     if [[ -z "$upr_end" ]] || { [[ -n "$upr_head" ]] && (( upr_head >= upr_end )); }; then
         UPR_WHY+=" UPR-2:boundary-offered-first"
     fi
@@ -8759,6 +8761,59 @@ if [[ -z "$UPR_WHY" ]]; then
     pass "UPR-1…UPR-6 unikit-pr: levels, boundaries, one PR per branch, safe merge, plain text"
 else
     fail "UPR-1…UPR-6 unikit-pr contract:$UPR_WHY"
+fi
+
+# IP: /unikit-implement at a PR checkpoint — commit the module, remind, ask one question
+# (check / run /unikit-pr / stop / merge into the next PR), label the checkbox, never push
+# mid-module, and in an ultra plan check the next module's evidence for drift.
+IP_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+IP_REF="$ROOT_DIR/skills/unikit-implement/references/pr-checkpoints.md"
+IP_WHY=""
+IP_NOPUSH=0
+if [[ ! -f "$IP_REF" ]]; then
+    IP_WHY+=" IP-1:missing-reference"
+else
+    # (IP-1) the sections
+    for h in '## Push' '## Legacy' '## Step 3.2 — the PR checkpoint' '## Module check' '## Module boundary drift (ultra only)'; do
+        grep -qxF "$h" "$IP_REF" || IP_WHY+=" IP-1:no-heading(${h#\#\# })"
+    done
+    # (IP-2) the four options, the position, the re-taken boundary, and every refusal branch
+    for lit in 'Check the module' 'Run /unikit-pr and continue' 'Stop here' 'Merge into the next PR' \
+               'runs at the Step 3.9 position of its phase, after Steps 3.6-3.8' \
+               'After the module check the boundary is taken again' \
+               'Disable checkpoints does not skip the module commit' \
+               'is not committed — PR checkpoint' 'checkpoint: task <N.M>, no-push' \
+               'do not stash it, or the checkpoint runs again' '/unikit-pr is not installed' \
+               'printed as its own block before the question, never inside it'; do
+        grep -qF -- "$lit" "$IP_REF" || IP_WHY+=" IP-2:missing(${lit:0:32})"
+    done
+    grep -qF 'MERGED → final' "$IP_REF" && IP_WHY+=" IP-2:final-target"
+    # (IP-3) the calls it makes
+    for lit in 'checkpoint: task <N.M>, boundary <sha>' 'Phases K-L' 'combine PRs' 'full module start sha'; do
+        grep -qF -- "$lit" "$IP_REF" || IP_WHY+=" IP-3:missing(${lit:0:32})"
+    done
+    # (IP-4) the drift formula, byte for byte (U+2229, U+2212), its line and the improve form
+    grep -qF 'evidence ∩ changed − expected' "$IP_REF" || IP_WHY+=" IP-4:no-drift-formula"
+    grep -qF 'WARN [plan-drift]' "$IP_REF" || IP_WHY+=" IP-4:no-drift-line"
+    grep -qF '/unikit-improve @.unikit/code/plans/<folder>' "$IP_REF" || IP_WHY+=" IP-4:improve-without-at"
+fi
+if [[ ! -f "$IP_SKILL" ]]; then
+    IP_WHY+=" IP-5:missing-skill"
+else
+    # (IP-5) the push rule stands inline in SKILL.md — safety does not depend on the reference
+    grep -qF 'every `unikit-commit` call of this run adds `no-push`' "$IP_SKILL" || IP_WHY+=" IP-5:no-inline-no-push"
+    grep -qF 'pr-checkpoints.md' "$IP_SKILL" || IP_WHY+=" IP-5:reference-unread"
+    grep -qF 'combine PRs' "$IP_SKILL" || IP_WHY+=" IP-5:answers-become-folder-name"
+    grep -qF 'with the argument `checkpoint: phase {N}, auto`' "$IP_SKILL" || IP_WHY+=" IP-5:AU-1-literal-broken"
+    grep -qF 'invoked with the argument `final commit, auto`' "$IP_SKILL" || IP_WHY+=" IP-5:AU-2-literal-broken"
+    # a count, not grep -c: two call sites can share one line
+    IP_NOPUSH=$( { grep -o ', no-push' "$IP_SKILL" || true; } | wc -l | tr -d ' ')
+    (( IP_NOPUSH >= 3 )) || IP_WHY+=" IP-5:no-push-call-sites=$IP_NOPUSH"
+fi
+if [[ -z "$IP_WHY" ]]; then
+    pass "IP-1…IP-5 implement: PR checkpoint decision, no push mid-module, module check, drift ($IP_NOPUSH no-push call sites)"
+else
+    fail "IP-1…IP-5 implement PR checkpoint contract:$IP_WHY"
 fi
 
 # ─────────────────────────────────────────────
