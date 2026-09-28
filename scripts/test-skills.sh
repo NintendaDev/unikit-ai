@@ -485,6 +485,19 @@ else
     fail "mcp/universal/context7.json — missing"
 fi
 
+# universal/github.json — the pull-request server, unchecked by default in the wizard
+if [[ -f "$MCP_DIR/universal/github.json" ]] && validate_json "$MCP_DIR/universal/github.json"; then
+    GH_FIELDS=$(json_field "$MCP_DIR/universal/github.json" \
+      "m.key === 'github' && m.displayName && m.config && m.preselect === false ? 'ok' : 'bad'" 2>/dev/null || echo "bad")
+    if [[ "$GH_FIELDS" == "ok" ]]; then
+        pass "mcp/universal/github.json (valid structure, key=github, preselect=false)"
+    else
+        fail "mcp/universal/github.json — expected key 'github', displayName, config and preselect: false"
+    fi
+else
+    fail "mcp/universal/github.json — missing or invalid JSON"
+fi
+
 # unity/ — validate all MCP JSON files
 UNITY_MCP_COUNT=0
 for mcp_file in "$MCP_DIR"/unity/*.json; do
@@ -582,6 +595,8 @@ fi
 #     read from src/core/constants.ts — `{{env:github_pat}}` would otherwise reach all six
 #     settings files verbatim. The count is printed, so a lost object shows as a number
 #   - GH-3: no config carries a literal GitHub token (`ghp_`, `github_pat_`, `gho_`)
+#   - GH-4: universal/github.json exists and grants exactly five pull-request tools to
+#     unikit-pr and nothing else — never `*`, never a tool that writes past git
 #   - the keys `shards`, `instruction` and `verified` are ABSENT everywhere. All three
 #     are retired, and all three would come back the same way: someone adds a server
 #     six months from now, copies the nearest config as a template, and reintroduces a
@@ -693,6 +708,20 @@ MCP_SCHEMA_RESULT=$(node -e "
     }
   }
 
+  const ghPath=path.join(root,'universal','github.json');
+  if (!fs.existsSync(ghPath)) why.push('GH-4:github-json-missing');
+  else {
+    const gh=JSON.parse(fs.readFileSync(ghPath,'utf8'));
+    const at=gh['allowed-tools']||{};
+    const skills=at.skills||{};
+    const want=['list_pull_requests','create_pull_request','update_pull_request','pull_request_read','merge_pull_request'];
+    if (Object.keys(skills).join()!=='unikit-pr') why.push('GH-4:grant-recipients:'+Object.keys(skills).join('+'));
+    if (at.agents&&Object.keys(at.agents).length) why.push('GH-4:agent-grants');
+    const got=(skills['unikit-pr']||[]).slice().sort();
+    if (got.join()!==want.slice().sort().join()) why.push('GH-4:grant-set:'+got.join('+'));
+    for (const bad of ['*','create_branch','create_or_update_file','delete_file']) if (got.includes(bad)) why.push('GH-4:forbidden-grant-'+bad);
+  }
+  if (envTokens<1) why.push('GH-2:no-env-token-in-catalog');
   console.log(why.length ? why.join(' ') : 'ok '+envTokens);
 " "$MCP_DIR" 2>/dev/null || echo "pass-error")
 

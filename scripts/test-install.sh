@@ -1961,6 +1961,115 @@ fi
 echo "  ✓ configByPlatform: fennara resolves to a token-free absolute command for $(node -p 'process.platform')"
 
 # ─────────────────────────────────────────────────────
+# Test 14d: GitHub MCP selected — every agent gets its own env reference syntax, and
+# only unikit-pr gets the grants
+# ─────────────────────────────────────────────────────
+# The catalog stores the token as `{{env:GITHUB_PAT}}`; each writer renders it in its
+# client's syntax. A wrong first write is permanent ("present → keep"), so the real
+# catalog is driven through configureMcp for all six agents, then through a full
+# update for the grants. No network, no server start.
+
+for GH_AGENT in claude cursor qwen opencode codex antigravity; do
+  GH_DIR="$TMPDIR/test-github-mcp-$GH_AGENT"
+  mkdir -p "$GH_DIR"
+  (cd "$ROOT_DIR" && node --input-type=module -e "
+    const target = process.argv[1];
+    const { discoverMcpServers } = await import('./dist/core/mcp.js');
+    const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
+    const servers = await discoverMcpServers('unity');
+    await configureMcp(target, servers, ['context7', 'github'], process.argv[2]);
+  " "$GH_DIR" "$GH_AGENT" > /dev/null 2>&1)
+done
+
+GH_CLAUDE="$TMPDIR/test-github-mcp-claude/.mcp.json"
+GH_CURSOR="$TMPDIR/test-github-mcp-cursor/.cursor/mcp.json"
+GH_QWEN="$TMPDIR/test-github-mcp-qwen/.qwen/settings.json"
+GH_OPENCODE="$TMPDIR/test-github-mcp-opencode/opencode.json"
+GH_CODEX="$TMPDIR/test-github-mcp-codex/.codex/config.toml"
+GH_ANTIGRAVITY="$TMPDIR/test-github-mcp-antigravity/.agents/mcp_config.json"
+for GH_FILE in "$GH_CLAUDE" "$GH_CURSOR" "$GH_QWEN" "$GH_OPENCODE" "$GH_CODEX" "$GH_ANTIGRAVITY"; do
+  assert_exists "$GH_FILE" "GitHub MCP written into ${GH_FILE#$TMPDIR/}"
+  assert_not_contains "$GH_FILE" '\{\{env:' "no raw {{env:}} token left in ${GH_FILE#$TMPDIR/}"
+done
+assert_contains "$GH_CLAUDE" 'Bearer \$\{GITHUB_PAT\}' "claude: \${GITHUB_PAT}"
+assert_contains "$GH_CURSOR" 'Bearer \$\{env:GITHUB_PAT\}' "cursor: \${env:GITHUB_PAT}"
+assert_contains "$GH_QWEN" '"httpUrl"' "qwen: an HTTP server goes into httpUrl"
+assert_contains "$GH_QWEN" '\$\{GITHUB_PAT\}' "qwen: \${GITHUB_PAT}"
+assert_contains "$GH_OPENCODE" '\{env:GITHUB_PAT\}' "opencode: {env:GITHUB_PAT}"
+assert_contains "$GH_OPENCODE" '"oauth": false' "opencode: oauth off when the token is ours"
+assert_contains "$GH_CODEX" 'bearer_token_env_var = "GITHUB_PAT"' "codex: bearer_token_env_var"
+assert_contains "$GH_ANTIGRAVITY" 'Bearer YOUR_GITHUB_PAT' "antigravity: the YOUR_GITHUB_PAT placeholder"
+
+# The wizard reads the real catalog: GitHub stays unchecked on a fresh install.
+GH_PRESELECT=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const servers = await discoverMcpServers('unity');
+  process.stdout.write(String(servers.get('github')?.preselect));
+" 2>/dev/null)
+if [[ "$GH_PRESELECT" != "false" ]]; then
+  echo "Assertion failed: the catalog's github entry should parse with preselect === false, got: $GH_PRESELECT"
+  exit 1
+fi
+
+# A hand-written github entry with a literal token is kept ("present → keep") and named —
+# without its value ever reaching the output.
+GH_OLD_DIR="$TMPDIR/test-github-mcp-old-entry"
+mkdir -p "$GH_OLD_DIR"
+cat > "$GH_OLD_DIR/.mcp.json" << 'EOF'
+{
+  "mcpServers": {
+    "github": { "type": "http", "url": "https://example.test/", "headers": { "Authorization": "Bearer ghp_TEST" } }
+  }
+}
+EOF
+GH_OLD_ERR="$TMPDIR/test-github-mcp-old-entry.err"
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
+  const servers = await discoverMcpServers('unity');
+  await configureMcp(process.argv[1], servers, ['github'], 'claude');
+" "$GH_OLD_DIR" > /dev/null 2> "$GH_OLD_ERR")
+assert_contains "$GH_OLD_DIR/.mcp.json" 'ghp_TEST' "a hand-written github entry is kept as is"
+assert_contains "$GH_OLD_ERR" 'does not match the catalog' "a kept github entry that does not match the catalog is named"
+assert_not_contains "$GH_OLD_ERR" 'ghp_TEST' "the warning never prints the token"
+
+# Grants: only unikit-pr gets mcp__github__*. unikit-pr and unikit-commit are in
+# installedSkills — run_update has no --install-new, and without them the checks below
+# would have no object.
+GH_GRANTS_DIR="$TMPDIR/test-github-grants"
+mkdir -p "$GH_GRANTS_DIR"
+cat > "$GH_GRANTS_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": { "context7": "context7", "github": "github" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-pr", "unikit-commit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$GH_GRANTS_DIR"
+run_update "$GH_GRANTS_DIR"
+assert_exists "$GH_GRANTS_DIR/.claude/skills/unikit-pr/SKILL.md" "unikit-pr installed in the grants project"
+assert_exists "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" "unikit-commit installed in the grants project"
+assert_contains "$GH_GRANTS_DIR/.claude/skills/unikit-pr/SKILL.md" 'mcp__github__create_pull_request' \
+  "unikit-pr carries the GitHub pull-request grants"
+assert_not_contains "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" 'mcp__github__' \
+  "no other skill gets a GitHub grant"
+
+echo "  ✓ GitHub MCP: six clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
+
+# ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install
 # ─────────────────────────────────────────────────────
 # Every installed SKILL.md and subagent .md across every test scenario in
