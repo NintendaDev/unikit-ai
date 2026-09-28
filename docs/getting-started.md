@@ -7,7 +7,7 @@
 UniKit AI is an **AI-powered game code development toolkit**. It bootstraps an AI coding agent for your game project by:
 
 1. **Detecting the engine** - Unity, Godot 4, Godot 4 .NET, or Unreal Engine 5
-2. **Installing skills and subagents** - 35 skills (24 code-pipeline + 11 game-design) + 10 background agents (sidecars, coordinators, workers, planners) tailored to the selected engine, grouped by category so you only install what you need
+2. **Installing skills and subagents** - 35 skills (24 code-pipeline + 11 game-design) + 8 background agents (sidecars, coordinators, workers) tailored to the selected engine, grouped by category so you only install what you need
 3. **Wiring the knowledge base** - a remote rules registry feeds dynamic memory, module-aware (`code` and, if you install the game-design skills, `gamedesign`), with core rules always loaded and stack/library rules loaded by task context
 4. **Configuring MCP servers** - engine MCP (real-time console / tests) + Context7 (up-to-date library docs) for agents that support MCP
 5. **Providing a spec-driven workflow** - explore → plan → improve → implement → review → verify → commit, with self-learning patches feeding back into the rules. A parallel `gamedesign` pipeline (brainstorm → spec → system/flow/content → review/verify) authors the GDD that code plans read from
@@ -142,7 +142,7 @@ All skills use the `unikit-` prefix and are installed to the agent's skills dire
 
 24 skills form the code pipeline (Core + Memory and rules + Code + Tools); the 11 Game Design skills are a separate, optional module - see [Skills Reference](skills.md) for the full per-skill breakdown.
 
-### Subagents (10)
+### Subagents (8)
 
 Background sidecars and coordinators for parallel execution and read-only audits:
 
@@ -152,8 +152,6 @@ Background sidecars and coordinators for parallel execution and read-only audits
 | `unikit-implement-worker` | Single-task worker spawned by the coordinator |
 | `unikit-plan-coordinator` | Feature-plan polishing coordinator |
 | `unikit-plan-polisher` | Single-pass plan refiner spawned by the coordinator |
-| `unikit-plan-module-planner` | Plans one module of an ultra plan into the planning working folder |
-| `unikit-plan-recon-writer` | Answers one reconnaissance question for an ultra plan into a file |
 | `unikit-architecture-sidecar` | Read-only architecture audit |
 | `unikit-commit-sidecar` | Commit readiness, split and exclusions (writes no message) |
 | `unikit-review-sidecar` | Read-only code review |

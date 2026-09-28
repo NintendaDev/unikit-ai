@@ -29,8 +29,7 @@ Main configuration file, created by `unikit-ai init`:
         "unikit-architecture-sidecar", "unikit-commit-sidecar",
         "unikit-docs-sidecar", "unikit-review-sidecar",
         "unikit-implement-coordinator", "unikit-implement-worker",
-        "unikit-plan-coordinator", "unikit-plan-polisher",
-        "unikit-plan-module-planner", "unikit-plan-recon-writer"
+        "unikit-plan-coordinator", "unikit-plan-polisher"
       ],
       "managedSkills": {
         "unikit": { "sourceHash": "abc123", "installedHash": "abc123" }
@@ -610,7 +609,7 @@ your-unity-project/
 │   │   ├── unikit-memory/
 │   │   ├── unikit-plan/
 │   │   │   ├── references/
-│   │   │   └── scripts/          # plan-bundle.mjs - checks and moves an ultra bundle
+│   │   │   └── scripts/          # plan-bundle.mjs - checks, finalizes or discards an ultra bundle
 │   │   ├── unikit-pr/
 │   │   │   └── references/
 │   │   ├── unikit-review/
@@ -624,7 +623,7 @@ your-unity-project/
 │   │   │   └── references/
 │   │   └── unikit-gd-*/          # 11 game-design skills, one dir each - see Game-Design Module
 │   └── agents/                    # Subagents directory
-│       └── unikit-architecture-sidecar.md    # 10 subagent files (sidecars, coordinators, workers)
+│       └── unikit-architecture-sidecar.md    # 8 subagent files (sidecars, coordinators, workers)
 ├── .unikit/                      # UniKit AI working directory
 │   ├── config.yaml               # User-editable config (language, workflow, git)
 │   ├── system/                   # Flat-rewritten on every init/update - never hand-edit
@@ -674,7 +673,7 @@ your-unity-project/
 │   ├── TODO.md                   # Task checklist (managed by /unikit-todo)
 │   ├── code/                     # Dev-pipeline workspace
 │   │   ├── plans/                 # Feature plans (managed by /unikit-plan)
-│   │   ├── .planning/<name>/      # An unfinished ultra planning - gone once the bundle is moved into plans/
+│   │   │   └── <name>/.planning/  # An ultra plan written with saved state - gone once its checks pass
 │   │   ├── patches/               # Fix patches (created by /unikit-fix)
 │   │   └── researches/            # Discovery output (created by /unikit-explore)
 │   ├── gamedesign/                # GDD workspace (GAME.md, GD-IDS.yaml, systems/, flows/, ...) - created on first /unikit-gd-spec use
