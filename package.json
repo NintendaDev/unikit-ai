@@ -78,6 +78,7 @@
       "scripts/test-ultra-plan-contract.mjs",
       "scripts/validate-agent-markers.mjs",
       "skills/unikit-rules/scripts/rules-layout.mjs",
+      "skills/unikit-plan/scripts/plan-bundle.mjs",
       "src/core/cli-contract.ts"
     ]
   },

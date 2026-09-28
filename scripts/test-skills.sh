@@ -10027,6 +10027,16 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 13d: plan-bundle.mjs — the ultra bundle check, run for real on fixture bundles
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13d: plan-bundle helper tests${NC}"
+if bash "$SCRIPT_DIR/test-plan-bundle.sh"; then
+    pass "plan-bundle helper tests passed"
+else
+    fail "plan-bundle helper tests failed"
+fi
+
+# ─────────────────────────────────────────────
 # Part 13b: Genre profile tests (catalog + CLI + schema)
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13b: Genre profile tests${NC}"

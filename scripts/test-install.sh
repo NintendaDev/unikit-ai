@@ -730,6 +730,12 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-rules/scripts/rules-layout.mjs"
   "rules-layout.mjs should be delivered into the installed unikit-rules skill (scripts/ subdir)"
 echo "  ✓ unikit-rules: scripts/rules-layout.mjs delivered on install"
 
+# unikit-plan ships the third scripts/ subdir: plan-bundle.mjs, which checks and moves an
+# ultra bundle at the end of a disk-first planning.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/scripts/plan-bundle.mjs" \
+  "plan-bundle.mjs should be delivered into the installed unikit-plan skill (scripts/ subdir)"
+echo "  ✓ unikit-plan: scripts/plan-bundle.mjs delivered on install"
+
 # unikit-pr ships two references: the PR text rules (read every run) and the safe-merge
 # steps (read only at the merge level). run_update has no --install-new, so the skill is in
 # this fixture's installedSkills — without it nothing below would be delivered at all.

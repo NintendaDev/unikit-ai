@@ -27,6 +27,7 @@ allowed-tools:
   - Bash(shasum *)
   - Bash(sha256sum *)
   - Bash(date *)
+  - Bash(node *)
   - Agent
   - Skill
   - AskUserQuestion
