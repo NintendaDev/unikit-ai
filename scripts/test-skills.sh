@@ -8816,6 +8816,37 @@ else
     fail "IP-1…IP-5 implement PR checkpoint contract:$IP_WHY"
 fi
 
+# CW: the coordinator runs plans by the rules /unikit-implement runs them — it keeps PR
+# checkpoint tasks, never puts two modules in one layer, commits with no-push while the plan
+# has PR checkpoints; the worker hands a PR checkpoint back instead of executing it.
+CW_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+CW_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
+CW_WHY=""
+for f in "$CW_COORD" "$CW_WORKER"; do
+    [[ -f "$f" ]] || CW_WHY+=" CW:missing-${f##*/}"
+done
+if [[ -z "$CW_WHY" ]]; then
+    # (CW-1) the coordinator keeps the task and the barrier, and takes answers in advance
+    for lit in 'A PR checkpoint task is never handed to a worker' 'Seventh branch — a PR checkpoint task' \
+               'and after refinement' 'Module barrier, defensively' 'combine PRs'; do
+        grep -qF -- "$lit" "$CW_COORD" || CW_WHY+=" CW-1:missing(${lit:0:32})"
+    done
+    # (CW-2) no-push at its commit points; the module commit is not made twice. The new
+    # formulation is asserted, not the old one's absence: its first half lives on inside it.
+    grep -qF 'checkpoint: Commit N, tasks X-Y, no-push' "$CW_COORD" || CW_WHY+=" CW-2:commit-point-pushes"
+    grep -qF 'every commit passes `no-push`' "$CW_COORD" || CW_WHY+=" CW-2:session-may-push"
+    grep -qF "is that task's module commit — do not make it again" "$CW_COORD" || CW_WHY+=" CW-2:module-commit-twice"
+    # (CW-3) the worker returns it
+    grep -qF 'is never yours' "$CW_WORKER" || CW_WHY+=" CW-3:worker-executes-pr-task"
+    grep -qF 'PR checkpoint belongs to the coordinator' "$CW_WORKER" || CW_WHY+=" CW-3:no-return-reason"
+    grep -qF 'returned:' "$CW_WORKER" || CW_WHY+=" CW-3:no-returned-field"
+fi
+if [[ -z "$CW_WHY" ]]; then
+    pass "CW-1…CW-3 coordinator keeps PR checkpoints, the barrier and no-push; worker returns them"
+else
+    fail "CW-1…CW-3 coordinator/worker contract:$CW_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
