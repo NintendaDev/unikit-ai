@@ -8420,6 +8420,37 @@ else
     fail "PB-1 plan-boundaries contract:$PB_WHY"
 fi
 
+# VB: /unikit-verify takes its base and range from the plan-boundaries contract, can check
+# one module (a phase scope), and reads a PR checkpoint task from its checkbox — an Explore
+# agent would otherwise search the code for it and honestly report NOT FOUND.
+VB_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+VB_WHY=""
+if [[ ! -f "$VB_VERIFY" ]]; then
+    VB_WHY+=" VB:missing-verify"
+else
+    # (VB-1) the base branch comes from the contract
+    grep -qF 'plan-boundaries.md' "$VB_VERIFY" || VB_WHY+=" VB-1:no-contract"
+    grep -qF '## Base branch' "$VB_VERIFY" || VB_WHY+=" VB-1:no-base-section"
+    # (VB-2) the range comes from the contract, degrades loudly, and names its source
+    grep -qF '## Diff range of a check' "$VB_VERIFY" || VB_WHY+=" VB-2:no-range-section"
+    grep -qF 'plan-boundaries contract missing' "$VB_VERIFY" || VB_WHY+=" VB-2:silent-degradation"
+    grep -qF 'Changed files: from' "$VB_VERIFY" || VB_WHY+=" VB-2:union-source-unnamed"
+    # (VB-3) a phase selector, and what it narrows
+    grep -qE '^argument-hint:.*Phases N-M' "$VB_VERIFY" || VB_WHY+=" VB-3:no-selector-hint"
+    grep -qF 'phase_scope' "$VB_VERIFY" || VB_WHY+=" VB-3:no-phase-scope"
+    grep -qF 'WARN [plan] Phases N-M: the plan has no phase' "$VB_VERIFY" || VB_WHY+=" VB-3:bad-selector-silent"
+    grep -qF 'Step 3.8 checks only the acceptance criteria cited by tasks of phases N..M' "$VB_VERIFY" || VB_WHY+=" VB-3:late-ac-blockers"
+    # (VB-4) a PR checkpoint task is read from its checkbox and never blocks
+    grep -qF 'A PR checkpoint task is excluded from the fan-out too' "$VB_VERIFY" || VB_WHY+=" VB-4:pr-task-in-fan-out"
+    grep -qF 'never produces a blocker' "$VB_VERIFY" || VB_WHY+=" VB-4:pr-task-blocks"
+    grep -qF 'an `Editor:` line or a `PR checkpoint:` line' "$VB_VERIFY" || VB_WHY+=" VB-4:agent-instruction-unchanged"
+fi
+if [[ -z "$VB_WHY" ]]; then
+    pass "VB-1…VB-4 verify: base and range from the contract, phase scope, PR checkpoint by its checkbox"
+else
+    fail "VB-1…VB-4 verify contract:$VB_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
