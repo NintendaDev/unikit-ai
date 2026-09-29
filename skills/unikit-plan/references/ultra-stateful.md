@@ -32,7 +32,7 @@ Each step writes its result the moment it has one, not at the end of the step:
 | Step | Where its result is written |
 |------|-----------------------------|
 | Step A (branch) | `Settings:` |
-| Step B, Step 4 Phase A and Phase B (reconnaissance) | each answer at once into `recon/<topic>.md`, plus its line in `## Recon` |
+| Step B, Step 4 Phase A and Phase B (reconnaissance) | before an agent is launched, its question's `pending` line in `## Recon`; its answer, whole, into `recon/<topic>.md` the moment it returns (`## Recon files`) |
 | Step C (preferences) | `Settings:` and `## Decisions` |
 | Step 2 (research link) | `manifest-head.md` → `## Based on`, with the digest computed at Step 2 — never recomputed |
 | Step 4 synthesis | `manifest-head.md` → `## Technical Context` |
@@ -48,7 +48,9 @@ After every step `Next:` is **replaced**, never appended to.
 What so far lives only in the context is written to disk once, in this order:
 
 1. `.planning/.gitignore`;
-2. `recon/` — the reconnaissance answers condensed into the form of `## Recon files`, not retold;
+2. `recon/` — every reconnaissance answer still in the context, written whole in the form of `## Recon files`;
+   an answer a compaction has already taken is not rebuilt from memory — its file keeps only what is
+   certain and names the loss in `## Gaps`;
 3. `manifest-head.md`;
 4. `STATE.md` — Settings, the Decisions from the user's answers and Step C, Phases, Rules, Recon,
    `Next: Step E`.
@@ -81,6 +83,7 @@ Rules: <path> · <path> · …
 - P<n> · <exact names this phase created> · TEMP <what a later phase must undo> — undo in P<m>
 
 ## Recon
+- recon/<topic>.md · pending
 - recon/<topic>.md → P<a>, P<b>
 
 ## Open
@@ -98,7 +101,7 @@ the user. Phase files use `language.artifacts`.
 | `## Phases` | one table row per phase |
 | `## Contracts` | one line: signature · owner → consumers |
 | `## Handoff` | at most two lines per phase |
-| `## Recon` | one line: file → phases |
+| `## Recon` | one line per question: `· pending` until its file is written, then file → phases (from Step D) |
 | `## Open` | only what is unresolved and blocking |
 | `Next:` | one line, the last line of the file |
 
@@ -114,12 +117,20 @@ A guide for the size: about 50 lines for a 10-phase plan.
 
 ## Recon files
 
-One file per reconnaissance question, `recon/<topic>.md`, in English:
+One file per reconnaissance question, `recon/<topic>.md`, in English. The reconnaissance agent is
+read-only: its answer comes back into this session, and the session writes the file. Ask each agent
+for its answer in this form, so that it can be written as it came:
 
 - the first line is `HEAD: <short sha>`, the second `Question: <…>`;
 - the body: `## Current-Code Evidence` rows (path · symbols or lines · why it matters), interfaces
   with their signatures, tests and fixtures, logging;
 - the last section is `## Gaps` — what the answer could not establish.
+
+The answer is written whole, never condensed — every row, number, formula, path and signature the
+agent returned. The file is the only copy that outlives a compaction or the end of the session:
+whatever is left out of it is lost or asked again. Writing it is the first thing done when an answer
+arrives — before reading anything else, before waiting for the next agent; then its `## Recon` line
+loses `pending`.
 
 ## Phase cycle
 
@@ -156,8 +167,13 @@ to read — then:
   that one file, write its `## Handoff` line and the ✓, continue. A phase file on disk whose block
   is missing from `checklist.md` → rebuild that block from this one file. A ✓ without its file →
   write the phase.
-- A step before Step F that is already recorded is not run again; a recon file that exists is not
-  asked again.
+- A step before Step F that is already recorded is not run again.
+- Reconnaissance: a recon file that exists is the answer and is never asked again — a `pending`
+  line whose file exists just loses `pending`. A `pending` line with no file: in the same session,
+  while the summary says its agent is still running, wait for it; otherwise (a new session, or
+  nothing says it runs) ask that one question again — only that one.
+- Read only what `Next:` needs: the recon files `## Recon` maps to the next phase, or those the step
+  in `Next:` works from — never the whole `recon/` folder.
 - Print `INFO [plan] resuming <feature-name> from <Next> · state: .unikit/code/plans/<feature-name>/.planning/STATE.md`.
 
 ## Assembly

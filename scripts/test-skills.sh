@@ -8883,7 +8883,7 @@ if [[ -z "$UW_WHY" ]]; then
         UW_WHY+=" UW-3:no-template-window"
     else
         for lit in '> Resume:' 'Procedure:' 'Skill:' 'Mode:' 'Format:' 'Settings:' 'Rules:' '## Decisions' \
-                   '## Phases' '## Contracts' '## Handoff' '## Recon' '## Open' 'Next:'; do
+                   '## Phases' '## Contracts' '## Handoff' '## Recon' '· pending' '## Open' 'Next:'; do
             grep -qF -- "$lit" <<< "$UW_TPL" || UW_WHY+=" UW-3:missing(${lit})"
         done
         for lit in '## Executors' '## Gaps' '## Research link' '## Design briefs' '## Catalog'; do
@@ -8897,6 +8897,16 @@ if [[ -z "$UW_WHY" ]]; then
                '· state: .unikit/code/plans/<feature-name>/.planning/STATE.md' 'first file is a `.gitignore` holding `*`'; do
         grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:missing(${lit:0:32})"
     done
+    # ...and the reconnaissance answer: the read-only agent returns it into the session, so the
+    # file is the only copy that outlives a compaction — written whole and at once, a pending line
+    # per launched question so an interrupted batch re-asks only what never arrived, and a resume
+    # that reads only the files the next step needs
+    for lit in 'The answer is written whole, never condensed' 'Writing it is the first thing done when an answer' \
+               'ask that one question again — only that one' 'never the whole `recon/` folder' \
+               'is not rebuilt from memory'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:recon-missing(${lit:0:32})"
+    done
+    grep -qF 'answers condensed' "$UW_STATEFUL" && UW_WHY+=" UW-4:recon-condensed"
     # (UW-5) the script calls and the fallback; nothing of the retired module-by-module scheme
     for lit in '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check' \
                '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs finalize' \
@@ -8936,6 +8946,9 @@ if [[ -z "$WP_WHY" ]]; then
     [[ -n "$WP_STEP_F" ]] || WP_WHY+=" WP-1:no-step-f"
     grep -qF 'Write **all** phase files' <<< "$WP_STEP_F" && WP_WHY+=" WP-1:step-f-second-copy"
     grep -qF 'Steps A-C run before' "$WP_ULTRA" && WP_WHY+=" WP-1:header-without-a0"
+    # the two recon pointers the session reads while the agents are out: the answer goes in whole
+    grep -qF 'whole and never condensed' "$WP_ULTRA" || WP_WHY+=" WP-1:step-b-recon-not-whole"
+    grep -qF 'whole and never condensed' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-recon-not-whole"
     # (WP-2) continuation, the unfinished-plan branch and "Start over" through the script only
     WP_5A="$( { grep '^5a\. ' "$WP_PLAN" || true; } )"
     if [[ -z "$WP_5A" ]]; then

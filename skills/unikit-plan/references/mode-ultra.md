@@ -65,7 +65,7 @@ The dispatch form is the same as `mode-full.md` Step B — the `recon-agent` ali
 declared once in `SKILL.md` under `## Delegation agents`. A call site names the alias
 and never carries a model argument of its own.
 
-Under the saved-state protocol every answer goes into `recon/<topic>.md` the moment it returns (`ultra-stateful.md` → `## Entry: from the start`).
+Under the saved-state protocol every answer goes into `recon/<topic>.md` the moment it returns, whole and never condensed (`ultra-stateful.md` → `## Recon files`).
 
 When the Explore tasks return, **return here**.
 

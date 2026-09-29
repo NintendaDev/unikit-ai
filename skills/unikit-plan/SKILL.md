@@ -387,7 +387,7 @@ for writing actionable tasks with meaningful WHY context and for generating a `#
 
 You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to write precise prompts for Explore tasks and to synthesize their results against project conventions.
 
-**Ultra mode, saved-state protocol:** every recon answer is written into `recon/<topic>.md` the moment it returns (`ultra-stateful.md` → `## Entry: from the start`).
+**Ultra mode, saved-state protocol:** every recon answer is written into `recon/<topic>.md` the moment it returns, whole and never condensed (`ultra-stateful.md` → `## Recon files`).
 
 #### Phase A: Exploration (Explore tasks)
 
