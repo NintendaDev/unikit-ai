@@ -253,7 +253,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
    3. Choose another name
    ```
 
-   - "Continue it" is offered only when the folder holds `.planning/STATE.md`; without it (an interrupted classic protocol) the option is absent.
+   - "Continue it" is offered only when the folder holds `.planning/STATE.md`; without it (an interrupted standard protocol) the option is absent.
    - "Continue it" → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md` and `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md`, and follow `## Resume` there.
    - "Start over" → `node {{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs discard .unikit/code/plans/<name>`, print `INFO [plan] <name>: unfinished plan removed — starting over`, create the folder again and continue. A non-zero exit → stop with its `ERROR` line (code 3: the folder holds a finished plan). `node` cannot run → print the folder's path, ask the user to remove it, and stop.
    - "Choose another name" → the folder stays; repeat this check on the new slug.

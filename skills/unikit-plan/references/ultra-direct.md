@@ -1,6 +1,6 @@
-# unikit-plan — Ultra writing protocol: classic
+# unikit-plan — Ultra writing protocol: standard
 
-Read by `mode-ultra.md` Step A0 when the classic protocol is chosen — the default. The session writes
+Read by `mode-ultra.md` Step A0 when the standard protocol is chosen — the default. The session writes
 the whole bundle in one go; nothing but the bundle itself goes to disk.
 
 ## Write order

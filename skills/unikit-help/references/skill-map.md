@@ -96,9 +96,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<feature>/PLAN.md` — or, in
   ultra, that folder's manifest plus its `phase-NN-*.md` files. Full and ultra plans are cut into
   modules the base branch can take whole; with `git.pull_requests.checkpoints: true` each module
-  but the last ends with a PR checkpoint task. Ultra asks first how to write the plan: classic (the
+  but the last ends with a PR checkpoint task. Ultra asks first how to write the plan: standard (the
   default, in one go) or with saved state in the plan folder's `.planning/`, which survives a
-  compaction and resumes with `/unikit-plan ultra <name>`; a classic plan over 12 phases is
+  compaction and resumes with `/unikit-plan ultra <name>`; a standard plan over 12 phases is
   offered the switch.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 

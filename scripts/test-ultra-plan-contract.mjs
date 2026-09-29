@@ -85,7 +85,7 @@ const INTEGRITY_POINTS = 15;
 const markerConsumers = [
     'skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md',   // declares it
     'skills/unikit-plan/references/mode-ultra.md',          // writes it
-    'skills/unikit-plan/references/ultra-direct.md',        // writes it (classic)
+    'skills/unikit-plan/references/ultra-direct.md',        // writes it (standard)
     'skills/unikit-plan/references/ultra-stateful.md',      // writes it (saved state)
     'data/ultra-plan-read.md',                              // tells consumers to look for it
     'skills/unikit-implement/SKILL.md',

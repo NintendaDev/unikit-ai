@@ -80,7 +80,7 @@ run finalize "$DEMO"
 check "finalize: removes .planning/, keeps the manifest and the phase files" \
     '[[ $LAST_CODE -eq 0 ]] && grep -q "^CLEANED " <<< "$LAST_OUT" && [[ ! -e "$DEMO/.planning" ]] && [[ -f "$DEMO/PLAN.md" ]] && [[ -f "$DEMO/phase-01-trade.md" ]]' "$LAST_OUT"
 run finalize "$DEMO"
-check "finalize again (the classic protocol has no .planning/): nothing to clean, exit 0" \
+check "finalize again (the standard protocol has no .planning/): nothing to clean, exit 0" \
     '[[ $LAST_CODE -eq 0 ]] && grep -qxF "OK nothing to clean" <<< "$LAST_OUT" && [[ -f "$DEMO/PLAN.md" ]]' "$LAST_OUT"
 
 BROKEN="$PLANS/broken"

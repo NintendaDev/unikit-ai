@@ -8849,7 +8849,7 @@ else
     fail "CW-1…CW-3 coordinator/worker contract:$CW_WHY"
 fi
 
-# UW: the two ultra writing protocols. The classic one is Step F of the pre-disk-first
+# UW: the two ultra writing protocols. The standard one is Step F of the pre-disk-first
 # mode-ultra.md carried over word for word (its byte equality is checked by the plan, not
 # here: CI may clone without history); the one with saved state rests on a handful of
 # sentences — written at once, disk wins, English state, the path in every progress line —
@@ -8861,7 +8861,7 @@ for f in "$UW_DIRECT" "$UW_STATEFUL"; do
     [[ -f "$f" ]] || UW_WHY+=" UW:missing-${f##*/}"
 done
 if [[ -z "$UW_WHY" ]]; then
-    # (UW-1) the classic protocol: the carried-over block, the script call, the compaction note
+    # (UW-1) the standard protocol: the carried-over block, the script call, the compaction note
     for h in '## Write order' '## Checks through the script' '## After a compaction'; do
         grep -qxF -- "$h" "$UW_DIRECT" || UW_WHY+=" UW-1:no-heading(${h:3})"
     done
@@ -8870,7 +8870,7 @@ if [[ -z "$UW_WHY" ]]; then
                '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check'; do
         grep -qF -- "$lit" "$UW_DIRECT" || UW_WHY+=" UW-1:missing(${lit:0:32})"
     done
-    grep -qF '.planning' "$UW_DIRECT" && UW_WHY+=" UW-1:classic-saves-state"
+    grep -qF '.planning' "$UW_DIRECT" && UW_WHY+=" UW-1:standard-saves-state"
     grep -qF 'module-planner' "$UW_DIRECT" && UW_WHY+=" UW-1:planning-subagent"
     # (UW-2) the eight sections of the protocol with saved state, as whole lines
     for h in '## Folder' '## Entry: from the start' '## Entry: switch at D2' '## STATE.md' \
@@ -8918,14 +8918,14 @@ if [[ -z "$UW_WHY" ]]; then
     done
 fi
 if [[ -z "$UW_WHY" ]]; then
-    pass "UW-1…UW-5 ultra writing protocols: classic straight into the plan folder; saved state with write-through, lean English state, disk wins, finalize"
+    pass "UW-1…UW-5 ultra writing protocols: standard straight into the plan folder; saved state with write-through, lean English state, disk wins, finalize"
 else
     fail "UW-1…UW-5 ultra writing protocols:$UW_WHY"
 fi
 
 # WP: the protocols are wired into /unikit-plan. Wiring is where a new path silently fails to
 # switch on: the A0 question disappears, the threshold drifts, the continuation stops finding
-# the folder, or Step F grows a second copy of the classic write order.
+# the folder, or Step F grows a second copy of the standard write order.
 WP_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
 WP_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
 WP_FMT="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
@@ -8937,8 +8937,8 @@ if [[ -z "$WP_WHY" ]]; then
     # (WP-1) the protocol is asked first and offered again above the threshold, in one direction
     grep -qxF '### Step A0: Choose the writing protocol' "$WP_ULTRA" || WP_WHY+=" WP-1:no-step-a0"
     grep -qxF '## Step D2: Offer saved state on a large plan' "$WP_ULTRA" || WP_WHY+=" WP-1:no-step-d2"
-    for lit in 'ultra-direct.md' 'ultra-stateful.md' 'Classic (Recommended)' 'With saved state' 'above 12' \
-               'Switch to saved state (Recommended)' 'Stay classic' 'The question is asked in one direction only' \
+    for lit in 'ultra-direct.md' 'ultra-stateful.md' 'Standard (Recommended)' 'With saved state' 'above 12' \
+               'Switch to saved state (Recommended)' 'Stay standard' 'The question is asked in one direction only' \
                'Steps A0-C run before the Shared Steps' 'strip that wording from the feature description'; do
         grep -qF -- "$lit" "$WP_ULTRA" || WP_WHY+=" WP-1:missing(${lit:0:32})"
     done
@@ -8946,6 +8946,12 @@ if [[ -z "$WP_WHY" ]]; then
     [[ -n "$WP_STEP_F" ]] || WP_WHY+=" WP-1:no-step-f"
     grep -qF 'Write **all** phase files' <<< "$WP_STEP_F" && WP_WHY+=" WP-1:step-f-second-copy"
     grep -qF 'Steps A-C run before' "$WP_ULTRA" && WP_WHY+=" WP-1:header-without-a0"
+    # the default protocol is named "standard" (user decision 2026-09-29) — one name, not two
+    for f in "$WP_ULTRA" "$WP_PLAN" "$UW_DIRECT"; do
+        [[ -f "$f" ]] || continue
+        grep -qF 'classic' "$f" && WP_WHY+=" WP-1:classic-in(${f##*/})"
+        grep -qF 'Classic' "$f" && WP_WHY+=" WP-1:Classic-in(${f##*/})"
+    done
     # the two recon pointers the session reads while the agents are out: the answer goes in whole
     grep -qF 'whole and never condensed' "$WP_ULTRA" || WP_WHY+=" WP-1:step-b-recon-not-whole"
     grep -qF 'whole and never condensed' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-recon-not-whole"

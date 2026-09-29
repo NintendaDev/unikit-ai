@@ -38,13 +38,13 @@ These steps run **only in ultra mode**.
   AskUserQuestion: How should this ultra plan be written?
 
   Options:
-  1. Classic (Recommended) — the session writes the whole plan in one go; the fastest; a context compaction may lose details of early decisions
+  1. Standard (Recommended) — the session writes the whole plan in one go; the fastest; a context compaction may lose details of early decisions
   2. With saved state — decisions, reconnaissance and progress are kept on disk; survives a compaction and continues in a new session; a little slower
   ```
 
-After the answer, read `{{skills_dir}}/{{self_name}}/references/ultra-direct.md` (classic) or
+After the answer, read `{{skills_dir}}/{{self_name}}/references/ultra-direct.md` (standard) or
 `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md` (with saved state — then run its
-`## Entry: from the start`), and print `INFO [plan] ultra protocol: classic` or
+`## Entry: from the start`), and print `INFO [plan] ultra protocol: standard` or
 `INFO [plan] ultra protocol: saved state`.
 
 ### Step A: Decide on Git Branch
@@ -111,7 +111,7 @@ The **PR checkpoints** subsection is inherited unchanged.
 
 ## Step D2: Offer saved state on a large plan
 
-The classic protocol and more phases than the threshold this line names → print
+The standard protocol and more phases than the threshold this line names → print
 `WARN [plan] <N> phases — above 12, the context will likely be compacted before the plan is written`
 and ask:
 
@@ -120,14 +120,14 @@ AskUserQuestion: The plan has <N> phases. Switch to writing with saved state?
 
 Options:
 1. Switch to saved state (Recommended) — what is decided so far goes to disk now, the rest as it appears
-2. Stay classic
+2. Stay standard
 ```
 
 - "Switch to saved state" → read `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md` and
   run its `## Entry: switch at D2`.
-- "Stay classic" → continue, with no further line.
+- "Stay standard" → continue, with no further line.
 
-The protocol with saved state chosen earlier, or no more phases than that threshold → this step is silent. The question is asked in one direction only: from classic to saved state.
+The protocol with saved state chosen earlier, or no more phases than that threshold → this step is silent. The question is asked in one direction only: from standard to saved state.
 
 ## Step E: Resolve every cross-cutting decision
 
