@@ -87,7 +87,7 @@ model argument of their own.
   UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered by the agent straight into its `recon/` file, so only the answer's summary passes through this context. Expands to:
+- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered by the agent straight into its `recon/` file, so only the answer's summary passes through this context. Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol; under the standard protocol reconnaissance goes through `recon-agent`. Expands to:
 
   ```
   Agent(subagent_type: general-purpose, model: sonnet, prompt: "Reconnaissance for an ultra plan. Question: <focused question>. Write your whole answer, never condensed, into <recon file path>, in English, filling every section of the template <path of RECON-TEMPLATE.md> by its rules; its first line is `HEAD: <short sha>`. That file is the only one you may create or change: never edit anything else, never run a command that changes the repository, never start another agent. Reply with the file's path and its `## Summary` section, word for word — nothing else.")
@@ -109,7 +109,7 @@ model argument of their own.
   default applies.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered into its `recon/` file. This runtime has no writing agent to hand it to: ask the question through `recon-agent`, then write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`, the moment it returns. No model is named, for the reason given under `recon-agent`.
+- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered into its `recon/` file; used only after `mode-ultra.md` Step A0 or Step D2 chose that protocol. This runtime has no writing agent to hand it to: ask the question through `recon-agent`, then write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`, the moment it returns. No model is named, for the reason given under `recon-agent`.
 <!-- unikit:end -->
 
 ## Input
@@ -302,7 +302,7 @@ Load only the selected mode's body — never all of them at once:
 - **Fast mode** → load `{{skills_dir}}/{{self_name}}/references/mode-fast.md`, run its
   preferences step, then continue to the Shared Steps below.
 - **Ultra mode** → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md`, run its
-  additional steps A0-C (writing protocol, git branch, recon, preferences), then continue to the Shared Steps
+  additional steps A0-C (writing protocol, git branch, recon, preferences) — Step A0 first and on its own, before any agent — then continue to the Shared Steps
   below. Steps D-H of that body run later — they refine Step 5 and Step 6 of the shared
   workflow, so do **not** run them here.
 

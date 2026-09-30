@@ -8979,6 +8979,14 @@ if [[ -z "$WP_WHY" ]]; then
     [[ -n "$WP_STEP_F" ]] || WP_WHY+=" WP-1:no-step-f"
     grep -qF 'Write **all** phase files' <<< "$WP_STEP_F" && WP_WHY+=" WP-1:step-f-second-copy"
     grep -qF 'Steps A-C run before' "$WP_ULTRA" && WP_WHY+=" WP-1:header-without-a0"
+    # A0 cannot slip behind the reconnaissance (a live run batched every question after recon and
+    # the protocol question fell out), and its INFO line shows which protocol runs on every path
+    for lit in 'Step A0 is the first action of an ultra run' 'never deferred into the Step C batch' \
+               'Until Step A0 is settled, no agent is launched.' 'The line is printed on every path' \
+               'Under the standard protocol the dispatch is always `recon-agent`'; do
+        grep -qF -- "$lit" "$WP_ULTRA" || WP_WHY+=" WP-1:a0-missing(${lit:0:32})"
+    done
+    grep -qF 'Step A0 first and on its own, before any agent' "$WP_PLAN" || WP_WHY+=" WP-2:step-1.5-a0-not-first"
     # the default protocol is named "standard" (user decision 2026-09-29) — one name, not two
     for f in "$WP_ULTRA" "$WP_PLAN" "$UW_DIRECT"; do
         [[ -f "$f" ]] || continue
@@ -8999,6 +9007,12 @@ if [[ -z "$WP_WHY" ]]; then
     grep -qF 'filling every section of the template <path of RECON-TEMPLATE.md>' <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-no-template"
     grep -qF "Reply with the file's path and its \`## Summary\` section, word for word" <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-reply-not-summary"
     grep -qF '**`recon-writer-agent`**' <<< "$WP_OTHER" || WP_WHY+=" WP-2:no-writer-fallback-branch"
+    # ...and the writer is a saved-state tool only: a live run on the standard protocol picked it up
+    # on its own, leaving full answers in a folder no resume knows about
+    grep -qF 'Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol' <<< "$WP_CLAUDE" \
+        || WP_WHY+=" WP-2:writer-unscoped"
+    grep -qF 'used only after `mode-ultra.md` Step A0 or Step D2 chose that protocol' <<< "$WP_OTHER" \
+        || WP_WHY+=" WP-2:writer-fallback-unscoped"
     # (WP-2) continuation, the unfinished-plan branch and "Start over" through the script only
     WP_5A="$( { grep '^5a\. ' "$WP_PLAN" || true; } )"
     if [[ -z "$WP_5A" ]]; then

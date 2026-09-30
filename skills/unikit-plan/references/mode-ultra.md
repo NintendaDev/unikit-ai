@@ -29,6 +29,8 @@ These steps run **only in ultra mode**.
 
 ### Step A0: Choose the writing protocol
 
+Step A0 is the first action of an ultra run — before Step A, before any reconnaissance, and asked on its own, never deferred into the Step C batch: the answer decides how Step B dispatches its agents. Until Step A0 is settled, no agent is launched.
+
 - The arguments explicitly ask to save the planning state — any phrasing, any language, as rule 5
   recognises ultra → the protocol with saved state, no question; strip that wording from the feature description, as rule 5 does for ultra.
 - A continuation (rule 5a in `SKILL.md`) → no question: it resumes the protocol with saved state.
@@ -42,10 +44,11 @@ These steps run **only in ultra mode**.
   2. With saved state — decisions, reconnaissance and progress are kept on disk; survives a compaction and continues in a new session; a little slower
   ```
 
-After the answer, read `{{skills_dir}}/{{self_name}}/references/ultra-direct.md` (standard) or
+Once it is settled — answered, requested in the arguments, or a continuation — read
+`{{skills_dir}}/{{self_name}}/references/ultra-direct.md` (standard) or
 `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md` (with saved state — then run its
 `## Entry: from the start`), and print `INFO [plan] ultra protocol: standard` or
-`INFO [plan] ultra protocol: saved state`.
+`INFO [plan] ultra protocol: saved state`. The line is printed on every path, so the user always sees which protocol runs.
 
 ### Step A: Decide on Git Branch
 
@@ -65,7 +68,7 @@ The dispatch form is the same as `mode-full.md` Step B — the `recon-agent` ali
 declared once in `SKILL.md` under `## Delegation agents`. A call site names the alias
 and never carries a model argument of its own.
 
-Under the saved-state protocol the dispatch is `recon-writer-agent` instead: each agent writes its answer into its own `recon/<topic>.md`, whole and never condensed, and only the path and the file's `## Summary` come back (`ultra-stateful.md` → `## Recon files`).
+Under the standard protocol the dispatch is always `recon-agent`, whatever the size of the work. Under the saved-state protocol the dispatch is `recon-writer-agent` instead: each agent writes its answer into its own `recon/<topic>.md`, whole and never condensed, and only the path and the file's `## Summary` come back (`ultra-stateful.md` → `## Recon files`).
 
 When the Explore tasks return, **return here**.
 
