@@ -27,7 +27,7 @@ The order matters: "the whole plan is closed" is checked **before** any boundary
    ```
 
    - **Push everything up to now (HEAD)** → the push of Behavior step 8, case 4.
-   - **Push up to the end of <name of B's module>** → `git push origin <B>:refs/heads/<branch>`.
+   - **Push up to the end of <name of B's module>** → `git push origin <B>:refs/heads/<branch>`, `<B>` exactly as `git rev-parse --verify <B>^{commit}` printed it — never typed from memory or completed by hand; then `git ls-remote origin refs/heads/<branch>` must print the same SHA (`.unikit/system/plan-boundaries.md` → `## Push target`).
    - **Skip push** → end the workflow.
 
    `HEAD` comes first because the current state is the default; the boundary is the choice that keeps the base branch whole if the open pull request is merged now.

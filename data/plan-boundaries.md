@@ -96,6 +96,11 @@ module**.
   `HEAD` is inside the first module.
 - Pushing a boundary is `git push origin <boundary>:refs/heads/<branch>`, without `-u` — the
   source is a SHA, not a branch. Pushing `HEAD` is the caller's ordinary push.
+- **A SHA in a push is never typed from memory.** Resolve it once with
+  `git rev-parse --verify <boundary>^{commit}` and paste that output exactly as printed — never
+  lengthen a short SHA, complete it or retype it. When the end is `HEAD`, the source is the literal
+  `HEAD`. After the push, `git ls-remote origin refs/heads/<branch>` prints the same SHA as that
+  `git rev-parse`; a different one → `WARN [<skill>] origin/<branch> is at <short>, not <end short> — check the push`, and nothing that depends on the push runs.
 - The automatic commits of a run (`/unikit-implement`, the coordinator) do not push at all
   (`no-push`, `TASK-FORMAT.md` → `### PR checkpoint task grammar`). This section concerns only a
   push or a pull request a human asked for.

@@ -8540,6 +8540,10 @@ else
     grep -qF 'No local branch `<base>` → compare with `origin/<base>`' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-remote-base-fallback"
     grep -qF 'two-dot' "$PB_CONTRACT" || PB_WHY+=" PB-1:plan-start-half-three-dot"
     grep -qF 'Inside a module the caller asks — it never cuts the push silently' "$PB_CONTRACT" || PB_WHY+=" PB-1:silent-push-cut"
+    # a live /unikit-pr run lengthened a short SHA from memory and pushed a hash that did not
+    # exist: the SHA comes from git rev-parse as printed, and the push is checked on the remote
+    grep -qF 'A SHA in a push is never typed from memory.' "$PB_CONTRACT" || PB_WHY+=" PB-1:sha-from-memory"
+    grep -qF 'git ls-remote origin refs/heads/<branch>' "$PB_CONTRACT" || PB_WHY+=" PB-1:push-unchecked"
 fi
 if [[ -z "$PB_WHY" ]]; then
     pass "PB-1 plan-boundaries contract carries every section its readers name"
@@ -8692,6 +8696,9 @@ else
     if [[ -n "$cp_head" && -n "$cp_end" ]] && (( cp_head >= cp_end )); then
         CP_WHY+=" CP-3:boundary-offered-first"
     fi
+    # the boundary SHA is pasted from git rev-parse, never retyped, and the push is checked
+    grep -qF 'never typed from memory or completed by hand' "$CP_REF" || CP_WHY+=" CP-3:sha-from-memory"
+    grep -qF 'git ls-remote origin refs/heads/<branch>' "$CP_REF" || CP_WHY+=" CP-3:push-unchecked"
 fi
 if [[ -z "$CP_WHY" ]]; then
     pass "CP-1…CP-3 commit: no-push token; a manual push takes HEAD and asks inside a module"
@@ -8756,11 +8763,19 @@ if [[ -z "$UPR_WHY" ]]; then
     grep -qF '/unikit-pr is not installed' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-not-installed-silent"
     grep -qF 'unikit-pr", args: "final"' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg"
     grep -qF '/unikit-pr final' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg-slash"
+    # (UPR-7) the end is resolved once and pasted; the push says it is a push and is checked on
+    # the remote before any pull request call (a live run pushed a hash lengthened from memory,
+    # announced as a "placeholder check")
+    for lit in 'git rev-parse --verify <end>^{commit}' 'never typed from memory or completed by hand' \
+               'announced as the push it is, never as a check or a dry run' \
+               'git ls-remote origin refs/heads/<branch>' 'stop before any pull request call'; do
+        grep -qF -- "$lit" "$UPR_SKILL" || UPR_WHY+=" UPR-7:missing(${lit:0:32})"
+    done
 fi
 if [[ -z "$UPR_WHY" ]]; then
-    pass "UPR-1…UPR-6 unikit-pr: levels, boundaries, one PR per branch, safe merge, plain text"
+    pass "UPR-1…UPR-7 unikit-pr: levels, boundaries, one PR per branch, safe merge, plain text, a pasted and checked push"
 else
-    fail "UPR-1…UPR-6 unikit-pr contract:$UPR_WHY"
+    fail "UPR-1…UPR-7 unikit-pr contract:$UPR_WHY"
 fi
 
 # IP: /unikit-implement at a PR checkpoint — commit the module, remind, ask one question

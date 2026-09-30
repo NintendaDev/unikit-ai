@@ -95,6 +95,8 @@ The pull request is the current state — `HEAD` — unless the user chooses oth
   An answer already given in the request ("up to the end of the module", "everything there is") counts, and nothing is asked.
 - **A closed plan** — the final pull request after `/unikit-verify`. A closed plan is read from its checkboxes — no argument marks the final pull request.
 
+**Resolve the end once.** `git rev-parse --verify <end>^{commit}` gives `<end>` and `git rev-parse --short <end>` gives `<end short>`; every later command pastes them exactly as printed — a hash is never typed from memory or completed by hand (`.unikit/system/plan-boundaries.md` → `## Push target`). When the end is `HEAD`, the push source is the literal `HEAD`.
+
 The start is `git merge-base origin/<base> <end>`. Nothing between them → `INFO [pr] nothing between origin/<base> and <end short> — no PR to make`, and stop.
 
 ## Step 2: Text
@@ -120,7 +122,7 @@ Options:
 
 With uncommitted changes (Step 0.7), `Only print the text` is replaced by `Stop — I will commit first`.
 
-1. **Push** — `git push origin <end>:refs/heads/<branch>`. The remote refuses it (non-fast-forward, a protected branch) → print git's answer and `WARN [pr] push refused — nothing was forced; the branch on the remote has commits this branch does not`, and stop.
+1. **Push** — `git push origin <end>:refs/heads/<branch>`, `<end>` as Step 1 resolved it (`HEAD` when the end is `HEAD`). The command is announced as the push it is, never as a check or a dry run. The remote refuses it (non-fast-forward, a protected branch) → print git's answer and `WARN [pr] push refused — nothing was forced; the branch on the remote has commits this branch does not`, and stop. After the push, `git ls-remote origin refs/heads/<branch>` must print the full `<end>`; a different SHA → `WARN [pr] origin/<branch> is at <short>, not <end short> — check the push`, and stop before any pull request call.
 2. **Find the branch's pull request** — `list_pull_requests` with `head: "<owner>:<branch>"` and `state: "open"`.
    - None → `create_pull_request` with `base`, `head: <branch>`, `title`, `body`.
    - One → `update_pull_request` with `title` and `body`, and the line `PR #<n> updated — it now also covers <modules>`: a pull request follows its head branch, so the new module is already in it.
