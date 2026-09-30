@@ -43,6 +43,10 @@ const SECTION_TEST_RUNS = '## Test Runs';
 const TASK_RUN_MARKER = 'Test checkpoint:';
 const SECTION_MODULES = '## Modules';
 const SECTION_ROADMAP_LINKAGE = '## Roadmap Linkage';
+const SECTION_RECON = '## Recon';
+const SECTION_TOTAL_EFFORT = '## Total Estimated Effort';
+const HEADER_DEPENDS_ON = 'Depends on:';
+const HEADER_RECON = 'Recon:';
 const HEADER_UPDATED = 'Updated:';
 const HEADER_PLANNED_AT = 'Planned at:';
 
@@ -77,7 +81,7 @@ const DETAIL_GATE_POINTS = 7;
 // the last module; check 14 — the module barrier; check 15 — no commit range crosses a module
 // boundary.
 // Changing this number requires naming, here, which check was added or removed and why.
-const INTEGRITY_POINTS = 15;
+const INTEGRITY_POINTS = 16;
 
 // Every file here must carry the literal marker. The list IS the contract:
 // a consumer that "forgets" ultra degrades silently to full-plan behaviour, and
@@ -415,6 +419,17 @@ if (manifest) {
         modulesLines.length === 1 && idxRoadmap !== -1 && idxPhaseIndex !== -1
             && idxModules > idxRoadmap && idxModules < idxPhaseIndex,
         `${modulesLines.length} ${SECTION_MODULES} line(s); ${SECTION_MODULES} at ${idxModules}, ${SECTION_ROADMAP_LINKAGE} at ${idxRoadmap}, ${SECTION_PHASE_INDEX} at ${idxPhaseIndex}`);
+
+    // --- T27: recon is part of a plan written with saved state ---
+    // `## Recon` is the list the manifest keeps of the plan's reconnaissance. It stands above
+    // `## Technical Context`, which stays the last section (T5), and below the effort estimate.
+    const reconLines = mLines.map((l, i) => [l, i]).filter(([l]) => l.startsWith(SECTION_RECON + ' ') || l.trim() === SECTION_RECON);
+    const idxRecon = reconLines.length ? reconLines[0][1] : -1;
+    const idxTechnical = mLines.findIndex((l) => l.startsWith(SECTION_TECHNICAL_CONTEXT));
+    const idxEffort = mLines.findIndex((l) => l.startsWith(SECTION_TOTAL_EFFORT));
+    assertTrue('T27 recon-section-between-effort-and-technical-context',
+        reconLines.length === 1 && idxTechnical !== -1 && idxEffort !== -1 && idxRecon > idxEffort && idxRecon < idxTechnical,
+        `${reconLines.length} ${SECTION_RECON} line(s); at ${idxRecon}, ${SECTION_TOTAL_EFFORT} at ${idxEffort}, ${SECTION_TECHNICAL_CONTEXT} at ${idxTechnical}`);
 }
 
 // --- T7..T10: the phase file template ---
@@ -431,6 +446,12 @@ if (phaseTpl) {
 
     assertContains('T9 phase-template-links-back-to-manifest', phaseTpl, PHASE_BACKLINK, HEADING_PHASE_TEMPLATE);
     assertContains('T10 phase-template-has-files-section', phaseTpl, SECTION_FILES_IN_PHASE, HEADING_PHASE_TEMPLATE);
+
+    // T27 (phase half) — the phase names the recon it was written from, directly under its dependencies
+    const idxDepends = pLines.findIndex((l) => l.startsWith(HEADER_DEPENDS_ON));
+    assertTrue('T27 phase-recon-line-under-depends-on',
+        idxDepends !== -1 && (pLines[idxDepends + 1] ?? '').startsWith(HEADER_RECON),
+        `${HEADER_DEPENDS_ON} at ${idxDepends}, next line: ${JSON.stringify(pLines[idxDepends + 1] ?? '')}`);
 }
 
 // --- T14..T15: the marker consumers ---

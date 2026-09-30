@@ -1,9 +1,10 @@
 # unikit-plan — Recon file template
 
-The form of one reconnaissance answer of an ultra plan written with saved state:
-`.unikit/code/plans/<feature-name>/.planning/recon/<topic>.md`, in English. `recon-writer-agent`
-fills it; the planning session reads it back a section at a time (`ultra-stateful.md` →
-`## Recon files`).
+The form of one reconnaissance answer of an ultra plan written with saved state, in English. It is
+written to `.unikit/code/plans/<feature-name>/.planning/recon/<topic>.md`; once the plan is
+assembled, `plan-bundle.mjs finalize` keeps it as `recon/<topic>.md` of the plan folder, the plan's
+evidence. `recon-writer-agent` fills it; the planning session reads it back a section at a time
+(`ultra-stateful.md` → `## Recon files`).
 
 The file has two layers. The head — `## Summary` and `## Contents` — is short, and it is all that
 reaches the planning context: the agent returns its `## Summary` as its reply, and a reader opens the
@@ -67,3 +68,14 @@ Paths: <abbreviation = root · … — only when the sections below shorten long
   signature found. `## Topic:` sections carry what the fixed sections cannot; there may be none or
   several.
 - `## Gaps` is the last section.
+
+## After the plan is written
+
+- The file is part of the plan — named by the manifest's `## Recon` and by the phases' `Recon:`
+  lines, committed with the plan. Nobody edits it after that: a newer look at the code is a new
+  reconnaissance, not an edit of this one.
+- It describes the code as it stood at its `HEAD:` line. Before relying on an evidence row, run
+  `git diff --stat <HEAD>..HEAD -- <path>` for the row's path: the path changed → the row is
+  history, not fact, and is checked against the code again. A plan being carried out changes the
+  very files its reconnaissance read, so the file ages as the plan advances — that is expected.
+- It is read as ever: the head first, then single sections by their line range.

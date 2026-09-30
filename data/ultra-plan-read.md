@@ -100,8 +100,24 @@ The two run-placement checks are write-time-only in exactly the same way — poi
 `## Integrity Checks` in `unikit-plan/references/ULTRA-PLAN-FORMAT.md`. The planner secures them
 before the bundle is saved, and a consumer resolves runs through the checklist rather than by
 searching the phase files for commands. If that stops being true, they move into the list
-above — and not into one consumer. Checks 12-15 are write-time too: the planner,
+above — and not into one consumer. Checks 12-16 are write-time too: the planner,
 `/unikit-improve` and `plan-bundle.mjs` run them; a consumer never re-runs them.
+
+## Recon
+
+A bundle written with saved state keeps its reconnaissance in `recon/` beside the phase files,
+named by the manifest's `## Recon` and by each phase's `Recon:` line (the form and the freshness rule:
+`unikit-plan/references/RECON-TEMPLATE.md` → `## After the plan is written`).
+
+| Consumer | Reads recon |
+|----------|-------------|
+| `/unikit-improve` | as the baseline of a pass, by its own reference `recon-baseline.md` |
+| `/unikit-implement` | only when a detail of the phase does not match the code: through the phase's `Recon:` line — the file's head, then the one section, after the freshness check |
+| `/unikit-verify`, `/unikit-commit`, `/unikit-pr` | never |
+
+No consumer creates, edits or deletes a recon file.
+A recon file that is missing is never an integrity violation: the consumer that wanted it prints one line —
+`WARN [<skill>] recon file missing: recon/<name> — continuing without it` — and goes on.
 
 ## Verification commands
 

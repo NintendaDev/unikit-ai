@@ -3,18 +3,21 @@
 //
 // The model writes the bundle; this script does what has to be exact.
 //   check <dir>           Runs the Integrity Checks of
-//                         `unikit-plan/references/ULTRA-PLAN-FORMAT.md` (1-15, the
+//                         `unikit-plan/references/ULTRA-PLAN-FORMAT.md` (1-16, the
 //                         numbers are the same) on the manifest `<dir>/PLAN.md` and its phase files.
 //                         A manifest without the ultra marker is a full plan: only
 //                         checks 6, 9, 11 and 12-15 apply to it.
-//   finalize <plan-dir>   Checks `<plan-dir>`, then removes its `.planning/` folder — only
-//                         one directly inside a folder under `.unikit/code/plans/`.
+//   finalize <plan-dir>   Checks `<plan-dir>`, keeps its `.planning/recon/` as `recon/` of the plan
+//                         folder, then removes the rest of `.planning/` — only one directly inside a
+//                         folder under `.unikit/code/plans/`.
 //   discard <plan-dir>    Removes an unfinished plan folder: never one that holds `<plan-dir>/PLAN.md`,
 //                         never one outside `.unikit/code/plans/`.
 //
-// Check 10 only warns: "looks like a test-run command" is a judgement, not a mechanism.
+// Checks 10 and 16 only warn: "looks like a test-run command" is a judgement, and a missing recon
+// file loses supplementary evidence, not part of the plan.
 // Self-contained: Node >= 18, builtin imports only, no sibling modules.
-// Exit codes: 0 ok · 1 usage or I/O · 2 a check failed (nothing removed)
+// Exit codes: 0 ok · 1 usage, I/O or a recon file already kept differently (nothing removed)
+//             · 2 a check failed (nothing removed)
 //             · 3 the folder holds a finished plan (nothing removed).
 
 import fs from 'node:fs';
@@ -24,7 +27,7 @@ import path from 'node:path';
 const MANIFEST = 'PLAN.md';
 const MODE_MARKER = '<!-- unikit:plan-mode:ultra -->';
 const EXIT = { OK: 0, USAGE: 1, FAILED: 2, FINISHED: 3 };
-const TOTAL_ULTRA_CHECKS = 15;
+const TOTAL_ULTRA_CHECKS = 16;
 const FULL_PLAN_CHECKS = [6, 9, 11, 12, 13, 14, 15];
 const H_SETTINGS = '## Settings';
 const H_PHASE_INDEX = '## Phase Index';
@@ -65,6 +68,10 @@ const SLUG_DROP_RE = /[^\p{L}\p{M}\p{N}\p{Pc} -]/gu;
 const RUN_COMMAND_RE = /\b(npm (run )?test|npx (jest|vitest|mocha)|yarn test|pnpm test|pytest|dotnet test|go test|cargo test|gradlew? test|-runTests|run[-_ ]tests)\b/i;
 const PLANS_SEGMENTS = ['.unikit', 'code', 'plans'];
 const PLANNING_DIR = '.planning';
+const RECON_DIR = 'recon';
+const H_RECON = '## Recon';
+const RECON_LINE_PREFIX = 'Recon:';
+const RECON_REF_RE = /\brecon\/([^\s`§,)]+)/g;
 const USAGE = 'Usage: node plan-bundle.mjs check <dir> | finalize <plan-dir> | discard <plan-dir>';
 
 // --- Reading ---
@@ -74,8 +81,8 @@ function readLines(file) {
 }
 
 /** Lines under a `## ` heading, up to the next `## ` heading. `null` when the heading is absent. */
-function section(lines, heading) {
-  const start = lines.findIndex((line) => line.startsWith(heading));
+function section(lines, heading, exact = false) {
+  const start = lines.findIndex((line) => (exact ? line.trim() === heading : line.startsWith(heading)));
   if (start === -1) return null;
   const body = [];
   for (let i = start + 1; i < lines.length && !SECTION_RE.test(lines[i]); i++) body.push(lines[i]);
@@ -86,6 +93,11 @@ function setting(lines, prefix) {
   const body = section(lines, H_SETTINGS) ?? [];
   const line = body.find((l) => l.trim().startsWith(prefix));
   return line ? line.trim().slice(prefix.length).trim() : null;
+}
+
+/** The file names a line points at under `recon/`. */
+function reconNames(line) {
+  return [...line.matchAll(RECON_REF_RE)].map((m) => m[1]);
 }
 
 /** GitHub heading anchor: lowercase, drop everything but letters, marks, digits, connectors, spaces and hyphens. */
@@ -162,6 +174,7 @@ function parseModules(lines) {
 function readPhaseFiles(dir, files) {
   const sections = [];
   const checkboxes = [];
+  const reconRefs = [];
   for (const file of files) {
     const full = path.join(dir, file);
     if (!fs.existsSync(full)) continue;
@@ -169,6 +182,7 @@ function readPhaseFiles(dir, files) {
     let current = null;
     for (const line of lines) {
       if (PHASE_CHECKBOX_RE.test(line)) checkboxes.push(file);
+      if (line.startsWith(RECON_LINE_PREFIX)) for (const name of reconNames(line)) reconRefs.push({ name, where: file });
       const s = line.match(TASK_SECTION_RE);
       if (s) {
         current = { id: s[1], file, slug: slug(line.slice(3)), lines: [] };
@@ -180,7 +194,7 @@ function readPhaseFiles(dir, files) {
       }
     }
   }
-  return { sections, checkboxes };
+  return { sections, checkboxes, reconRefs };
 }
 
 /** Lines of one `### ` subsection inside a task section. */
@@ -248,7 +262,7 @@ function runChecks(dir) {
 
   // 3, 4, 8 — task sections in the phase files
   if (ultra) {
-    const { sections, checkboxes } = readPhaseFiles(dir, indexFiles);
+    const { sections, checkboxes, reconRefs } = readPhaseFiles(dir, indexFiles);
     for (const file of new Set(checkboxes)) fail(8, `task checkbox in phase file: ${file}`);
     for (const t of tasks) {
       const found = sections.filter((s) => s.id === t.id);
@@ -273,6 +287,14 @@ function runChecks(dir) {
         const text = [...subsection(s.lines, H_TESTS), ...subsection(s.lines, H_VERIFICATION)].join('\n');
         if (RUN_COMMAND_RE.test(text)) warn(10, `task ${s.id} may carry a test-run command under Test checkpoints: ${placement}`);
       }
+    }
+
+    // 16 — every recon file the plan names exists (warning only); while the plan is assembled it is still in .planning/recon/
+    const manifestRefs = (section(lines, H_RECON, true) ?? []).flatMap((l) => reconNames(l).map((name) => ({ name, where: MANIFEST })));
+    for (const { name, where } of [...manifestRefs, ...reconRefs]) {
+      if (name.includes('..') || /[\\/]/.test(name)) { warn(16, `recon reference escapes recon/: ${name}`); continue; }
+      const places = [path.join(dir, RECON_DIR, name), path.join(dir, PLANNING_DIR, RECON_DIR, name)];
+      if (!places.some((f) => fs.existsSync(f))) warn(16, `recon file named in ${where} is missing: ${RECON_DIR}/${name}`);
     }
   }
 
@@ -408,9 +430,31 @@ function finalize(planDir) {
     console.log('OK nothing to clean');
     return EXIT.OK;
   }
+  const kept = keepRecon(path.join(planning, RECON_DIR), path.join(planDir, RECON_DIR));
+  if (kept === null) return EXIT.USAGE;
   fs.rmSync(planning, { recursive: true, force: true });
-  console.log(`CLEANED ${planDir}`);
+  console.log(kept ? `CLEANED ${planDir} · recon kept: ${kept}` : `CLEANED ${planDir}`);
   return EXIT.OK;
+}
+
+/** Moves every entry of `from` into `to`, skipping a file already there byte for byte. `null` — one there differs: nothing moved. */
+function keepRecon(from, to) {
+  if (!fs.existsSync(from)) return 0;
+  const names = fs.readdirSync(from);
+  const moves = [];
+  for (const name of names) {
+    const src = path.join(from, name);
+    const target = path.join(to, name);
+    if (!fs.existsSync(target)) { moves.push(name); continue; }
+    const same = fs.statSync(src).isFile() && fs.statSync(target).isFile() && fs.readFileSync(src).equals(fs.readFileSync(target));
+    if (!same) {
+      console.log(`ERROR ${RECON_DIR}/${name} already exists and differs — nothing removed`);
+      return null;
+    }
+  }
+  fs.mkdirSync(to, { recursive: true });
+  for (const name of moves) fs.renameSync(path.join(from, name), path.join(to, name));
+  return names.length;
 }
 
 function discard(planDir) {

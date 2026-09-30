@@ -160,7 +160,8 @@ For each phase, in order:
    `## Contents` names for this phase's paths and symbols (**Reading a recon file**); read
    `## Contracts` and `## Handoff`; open an earlier phase file only for an exact detail of a direct
    dependency;
-3. write `.unikit/code/plans/<feature-name>/phase-NN-<slug>.md` in one write;
+3. write `.unikit/code/plans/<feature-name>/phase-NN-<slug>.md` in one write; its header carries
+   `Recon:` — the recon files and sections read for it, in their final form `recon/<topic>.md § <section>`;
 4. append the phase's block to `.planning/checklist.md` — the `### Phase N:` heading with
    `**Effort:**`, `**Dependencies:**` and `**Status:** [ ] Not started`, then one task line per
    task with its `WHY:` line and its `Files:` / `Test checkpoint:` / `PR checkpoint:` line, in the
@@ -205,8 +206,10 @@ After the last phase:
    `<!-- unikit:plan-mode:ultra -->`; the header and the sections computed before the phases come
    from `manifest-head.md`; `## Phase Index`, `## Commit Plan` and `## Dependency Graph` come from
    `## Phases`; the checklist is `checklist.md` as it stands — no phase file is re-read for it;
-   every section stands in the order of the `ULTRA-PLAN-FORMAT.md` manifest template.
+   every section stands in the order of the `ULTRA-PLAN-FORMAT.md` manifest template. `## Recon` comes
+   from `## Recon` of `STATE.md`, one line per file — `- recon/<topic>.md · HEAD <short sha> · <question> → phases N, M`,
+   its `HEAD` and question taken from the file's first two lines.
 2. `node {{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check .unikit/code/plans/<feature-name>` — a `FAIL` line → fix it and check again, until `OK`; a `WARN 10` line is judged by the model.
-3. `node {{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs finalize .unikit/code/plans/<feature-name>` — removes `.planning/`.
+3. `node {{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs finalize .unikit/code/plans/<feature-name>` — keeps .planning/recon/ as the plan's recon/ and removes the rest of `.planning/`.
 4. `node` cannot run → the model runs the checks itself and prints
-   `WARN [plan] plan-bundle.mjs unavailable — checks done by the model; remove .unikit/code/plans/<feature-name>/.planning/ by hand`.
+   `WARN [plan] plan-bundle.mjs unavailable — checks done by the model; move .planning/recon/ into recon/ and remove the rest of .unikit/code/plans/<feature-name>/.planning/ by hand`.

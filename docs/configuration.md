@@ -673,6 +673,7 @@ your-unity-project/
 │   ├── TODO.md                   # Task checklist (managed by /unikit-todo)
 │   ├── code/                     # Dev-pipeline workspace
 │   │   ├── plans/                 # Feature plans (managed by /unikit-plan)
+│   │   │   ├── <name>/recon/      # Reconnaissance kept with an ultra plan written with saved state
 │   │   │   └── <name>/.planning/  # An ultra plan written with saved state - gone once its checks pass
 │   │   ├── patches/               # Fix patches (created by /unikit-fix)
 │   │   └── researches/            # Discovery output (created by /unikit-explore)

@@ -324,6 +324,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 ### Step 1: Load Feature Plan
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
+- The plan folder holds `recon/` → read `{{skills_dir}}/{{self_name}}/references/recon-baseline.md` and follow it: it sets the scope of Step 2 from the plan's reconnaissance and adds a report section. No `recon/` → the file is not read.
 - If the manifest has a `## Based on` section → parse all linked research entries (folder name + the recorded hash field for each — the form it takes is resolved by the research-link contract's ladder in Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH.md` — `## Active Summary` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
 
 Understand:
@@ -401,7 +402,7 @@ Regardless of the outcome, **always continue to Step 2** (Deep Codebase Analysis
 
 Follow the delegation rules from **Code Analysis Rules** section above.
 
-Formulate analysis questions based on the feature plan, then launch Explore tasks in parallel. Each task MUST receive references to project doc files in its prompt.
+Formulate analysis questions based on the feature plan, then launch Explore tasks in parallel. With a scope set from the plan's reconnaissance (`recon-baseline.md`), they cover only the paths that changed since a recon file's `HEAD` and what the reconnaissance does not cover. Each task MUST receive references to project doc files in its prompt.
 
 **Doc references to include in every Explore task prompt:**
 - `.unikit/ARCHITECTURE.md` — always (module boundaries, dependency rules)
@@ -607,6 +608,7 @@ Files: <plan folder>/PLAN.md
 Phases analyzed: N
 Tasks analyzed: N
 Researches checked: N (list names if any)
+Recon: used N · re-explored N · skipped N   (only when recon was used)
 
 ### Research-Based Findings (only if research_improvements is non-empty)
 
@@ -635,6 +637,9 @@ Source: [research folder name(s)]
 #### New Researches to Attach (N) (only if new researches were selected in Step 1.5)
 1. **[Research title]** (<date>)
    Relevant findings: [brief summary of what this research adds]
+
+### Recon-Based Findings (only when recon was used)
+1. **Phase X, Task Y: [name]** — [what the phase misses or gets wrong] (recon/<file> § <section>)
 
 ### Codebase Analysis Findings
 

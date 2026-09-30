@@ -107,6 +107,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Performs deeper codebase analysis than initial `/unikit-plan`
 - Shows diff-like report before applying changes
 - `--list` shows available plans; `@<path>` targets a specific plan folder
+- **Builds on the plan's reconnaissance** when the plan kept it (`recon/`, an ultra plan written with saved state): each recon file is a topic, with the phases it covers, their open tasks and how fresh it is (paths changed since its `HEAD`). Without a prompt it shows the topics and asks what to improve - all fresh topics with open tasks by default, or chosen ones, or the whole plan as before; with a prompt it takes only the topics the prompt touches. Fresh reconnaissance replaces a new exploration, changed paths are explored again, the plan's logic (dependencies, modules, commit ranges) is checked across the whole plan either way, and only heads and single sections of recon files are read. The reconnaissance itself is never edited
 - `+check` runs the refinements past a **fresh-context validator** before they are applied - a read-only subagent that drops, modifies, or reclassifies findings it cannot substantiate. If the validator fails to launch, the pass is skipped: every finding is kept and a single `WARN [+check]` line is printed
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan

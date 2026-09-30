@@ -8508,10 +8508,10 @@ if [[ -z "$MP_WHY" ]]; then
     grep -qF 'Not applicable — this task closes a module, it runs no tests' "$MP_ULTRA" || MP_WHY+=" MP-2:no-pr-task-tests-literal"
     grep -qF 'The module barrier holds' "$MP_ULTRA" || MP_WHY+=" MP-2:no-barrier-check"
     grep -qF 'check 13 does not apply to a legacy plan' "$MP_ULTRA" || MP_WHY+=" MP-2:legacy-contradicts-blocking"
-    # (MP-3) the reader contract: labels are checkbox text, Planned at: never edited, 12-15 write-time
+    # (MP-3) the reader contract: labels are checkbox text, Planned at: never edited, 12-16 write-time
     grep -qF 'is never edited by any consumer' "$MP_READ" || MP_WHY+=" MP-3:planned-at-mutable"
     grep -qF '| `/unikit-pr` |' "$MP_READ" || MP_WHY+=" MP-3:no-pr-depth-row"
-    grep -qF 'Checks 12-15 are write-time too' "$MP_READ" || MP_WHY+=" MP-3:checks-not-write-time"
+    grep -qF 'Checks 12-16 are write-time too' "$MP_READ" || MP_WHY+=" MP-3:checks-not-write-time"
     # (MP-4) fast is one module by construction — asserted inside its own subsection
     awk '/^### Fast mode differences/{w=1} w' "$MP_TASKFMT" | grep -qF 'No `## Modules`, no PR checkpoint tasks' || MP_WHY+=" MP-4:fast-modules"
 fi
@@ -9091,6 +9091,54 @@ if [[ -z "$UF_WHY" ]]; then
     pass "UF-1…UF-2 disk-first stays out of the package; implement, its coordinator, verify, improve, add and --list name an unfinished plan and never pick it ($UF_READERS readers)"
 else
     fail "UF-1…UF-2 unfinished plan / disk-first remnants:$UF_WHY"
+fi
+
+# RE: the reconnaissance of a plan written with saved state stays with the plan. Four things
+# with no other detector: finalize keeps it (the behaviour is Part 13d; this is the text that
+# tells the planner so), the plan names it, the readers know their role, and /unikit-improve
+# builds on its fresh part without ever editing it. A missing recon file must stay a warning —
+# a plan whose reconnaissance was lost is still a whole plan.
+RE_FMT="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+RE_STATEFUL="$ROOT_DIR/skills/unikit-plan/references/ultra-stateful.md"
+RE_TPL="$ROOT_DIR/skills/unikit-plan/references/RECON-TEMPLATE.md"
+RE_READ="$ROOT_DIR/data/ultra-plan-read.md"
+RE_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+RE_IMPROVE_REF="$ROOT_DIR/skills/unikit-improve/references/recon-baseline.md"
+RE_WHY=""
+for f in "$RE_FMT" "$RE_STATEFUL" "$RE_TPL" "$RE_READ" "$RE_IMPROVE" "$RE_IMPROVE_REF"; do
+    [[ -f "$f" ]] || RE_WHY+=" RE:missing(${f#"$ROOT_DIR"/})"
+done
+if [[ -z "$RE_WHY" ]]; then
+    # (RE-1) the format names recon and the freshness rule lives with the file's form
+    grep -qF '## Recon   (optional; only a plan written with saved state)' "$RE_FMT" || RE_WHY+=" RE-1:no-manifest-section"
+    grep -qF 'Recon: recon/<topic>.md § <section>' "$RE_FMT" || RE_WHY+=" RE-1:no-phase-line"
+    grep -qF 'check 16 only warns' "$RE_FMT" || RE_WHY+=" RE-1:check-16-blocks"
+    grep -qxF '## After the plan is written' "$RE_TPL" || RE_WHY+=" RE-1:no-after-section"
+    grep -qF 'git diff --stat <HEAD>..HEAD -- <path>' "$RE_TPL" || RE_WHY+=" RE-1:no-freshness-rule"
+    # (RE-2) the protocol with saved state writes Recon: per phase, ## Recon at assembly, keeps recon/
+    grep -qF "keeps .planning/recon/ as the plan's recon/" "$RE_STATEFUL" || RE_WHY+=" RE-2:finalize-drops-recon"
+    grep -qF 'its header carries' "$RE_STATEFUL" || RE_WHY+=" RE-2:phase-without-recon-line"
+    grep -qF '`## Recon` comes' "$RE_STATEFUL" || RE_WHY+=" RE-2:assembly-without-recon"
+    grep -qF '— removes `.planning/`.' "$RE_STATEFUL" && RE_WHY+=" RE-2:old-finalize-text"
+    # (RE-3) the reader contract: who reads recon, and a missing file never blocks
+    grep -qxF '## Recon' "$RE_READ" || RE_WHY+=" RE-3:no-reader-section"
+    grep -qF 'A recon file that is missing is never an integrity violation' "$RE_READ" || RE_WHY+=" RE-3:missing-recon-blocks"
+    grep -qF 'No consumer creates, edits or deletes a recon file.' "$RE_READ" || RE_WHY+=" RE-3:recon-mutable"
+    grep -qF 'Checks 12-16 are write-time too' "$RE_READ" || RE_WHY+=" RE-3:check-16-re-run"
+    # (RE-4) /unikit-improve: the reference is read only with recon/, sets the scope, never edits recon
+    grep -qF 'references/recon-baseline.md' "$RE_IMPROVE" || RE_WHY+=" RE-4:reference-unread"
+    for h in '## Topic map' '## Scope without a prompt' '## Scope with a prompt' '## Two layers' '## Reading budget' '## Never'; do
+        grep -qxF -- "$h" "$RE_IMPROVE_REF" || RE_WHY+=" RE-4:no-heading(${h:3})"
+    done
+    for lit in 'All fresh topics with open tasks (Recommended)' 'Whole plan — standard pass' 'INFO [improve] recon:' \
+               'never creates, edits or deletes a recon file' 'A whole file is never read.'; do
+        grep -qF -- "$lit" "$RE_IMPROVE_REF" || RE_WHY+=" RE-4:missing(${lit:0:32})"
+    done
+fi
+if [[ -z "$RE_WHY" ]]; then
+    pass "RE-1…RE-4 recon stays with the plan: kept by finalize, named by the plan, read by improve on its fresh part, never edited"
+else
+    fail "RE-1…RE-4 recon as plan evidence:$RE_WHY"
 fi
 
 # ─────────────────────────────────────────────

@@ -155,6 +155,9 @@ Planned at: <short sha>
 ## Dependency Graph
 ## Total Estimated Effort
 
+## Recon   (optional; only a plan written with saved state)
+- recon/<topic>.md · HEAD <short sha> · <question> → phases N, M
+
 ---
 
 ## Technical Context
@@ -216,6 +219,7 @@ Rules:
 Plan: [PLAN.md](PLAN.md)
 Tasks: {N}.1-{N}.M
 Depends on: none | Phase {K}
+Recon: recon/<topic>.md § <section>, …   (optional; only a plan written with saved state)
 
 ## Objective
 [The observable outcome this phase must produce.]
@@ -350,8 +354,10 @@ agree with phase content that has already stopped moving.
 
 In `/unikit-plan` this order runs straight in the plan folder `.unikit/code/plans/<name>/` under
 either writing protocol (`ultra-direct.md`, `ultra-stateful.md`). The saved-state protocol keeps
-its state in `.unikit/code/plans/<name>/.planning/`, which `plan-bundle.mjs finalize` removes once
-the checks pass. The finished bundle is the manifest plus direct `phase-*.md` files either way.
+its state in `.unikit/code/plans/<name>/.planning/`. Once the checks pass, `plan-bundle.mjs finalize`
+keeps its `.planning/recon/` as the plan's `recon/` — evidence the plan names in `## Recon` and in
+the phases' `Recon:` lines, committed with it — and removes the rest of `.planning/`. The finished
+bundle is the manifest plus direct `phase-*.md` files either way, and under saved state its `recon/`.
 
 ## Editing an Existing Bundle
 
@@ -364,7 +370,7 @@ the checks pass. The finished bundle is the manifest plus direct `phase-*.md` fi
 
 ## Integrity Checks
 
-Each check is **blocking** — check 13 does not apply to a legacy plan (PR checkpoint tasks without `PR checkpoints: yes`):
+Each check is **blocking** — check 13 does not apply to a legacy plan (PR checkpoint tasks without `PR checkpoints: yes`), and check 16 only warns: a missing recon file loses supplementary evidence, not part of the plan:
 
 1. The marker is present in the manifest exactly once, and on the first line.
 2. Every `## Phase Index` link exists, is relative, and **does not escape the bundle
@@ -401,6 +407,8 @@ Each check is **blocking** — check 13 does not apply to a legacy plan (PR chec
     module k, and every phase of module k+1 depends on the closing phase of module k —
     directly or transitively, through the `**Dependencies:**` lines.
 15. No `### Commit N: after tasks X-Y` range crosses a module boundary.
+16. Every `recon/<name>` named by `## Recon` or by a phase's `Recon:` line exists in `recon/` (or,
+    while the plan is assembled, in `.planning/recon/`).
 
 The reason, kept in the words the original used: a broken or missing link means **the
 committed specification is incomplete** — verify the plan, do not verify it partially.
