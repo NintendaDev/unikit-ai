@@ -87,6 +87,15 @@ model argument of their own.
   UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered by the agent straight into its `recon/` file, so only the answer's summary passes through this context. Expands to:
+
+  ```
+  Agent(subagent_type: general-purpose, model: sonnet, prompt: "Reconnaissance for an ultra plan. Question: <focused question>. Write your whole answer, never condensed, into <recon file path>, in English, filling every section of the template <path of RECON-TEMPLATE.md> by its rules; its first line is `HEAD: <short sha>`. That file is the only one you may create or change: never edit anything else, never run a command that changes the repository, never start another agent. Reply with the file's path and its `## Summary` section, word for word — nothing else.")
+  ```
+
+  `sonnet` is a tier alias, never a version, as for `recon-agent`. This agent can edit files and only its prompt bounds it — hence the change guard in `ultra-stateful.md` → `## Recon files`.
+
+  Fallback: if the call fails, or the agent returns without its file, ask that question through `recon-agent` and write the answer into the file yourself, whole, the moment it returns.
 <!-- unikit:end -->
 <!-- unikit:agents !claude -->
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
@@ -100,6 +109,7 @@ model argument of their own.
   default applies.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered into its `recon/` file. This runtime has no writing agent to hand it to: ask the question through `recon-agent`, then write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`, the moment it returns. No model is named, for the reason given under `recon-agent`.
 <!-- unikit:end -->
 
 ## Input
@@ -387,7 +397,7 @@ for writing actionable tasks with meaningful WHY context and for generating a `#
 
 You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to write precise prompts for Explore tasks and to synthesize their results against project conventions.
 
-**Ultra mode, saved-state protocol:** every recon answer is written into `recon/<topic>.md` the moment it returns, whole and never condensed (`ultra-stateful.md` → `## Recon files`).
+**Ultra mode, saved-state protocol:** reconnaissance goes through `recon-writer-agent` — each agent writes its answer into its own `recon/<topic>.md`, whole and never condensed, and only the path and the file's `## Summary` enter this context (`ultra-stateful.md` → `## Recon files`).
 
 #### Phase A: Exploration (Explore tasks)
 

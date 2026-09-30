@@ -8856,8 +8856,9 @@ fi
 # and losing any of them silently brings back the context loss on a compaction.
 UW_DIRECT="$ROOT_DIR/skills/unikit-plan/references/ultra-direct.md"
 UW_STATEFUL="$ROOT_DIR/skills/unikit-plan/references/ultra-stateful.md"
+UW_RECON="$ROOT_DIR/skills/unikit-plan/references/RECON-TEMPLATE.md"
 UW_WHY=""
-for f in "$UW_DIRECT" "$UW_STATEFUL"; do
+for f in "$UW_DIRECT" "$UW_STATEFUL" "$UW_RECON"; do
     [[ -f "$f" ]] || UW_WHY+=" UW:missing-${f##*/}"
 done
 if [[ -z "$UW_WHY" ]]; then
@@ -8883,7 +8884,7 @@ if [[ -z "$UW_WHY" ]]; then
         UW_WHY+=" UW-3:no-template-window"
     else
         for lit in '> Resume:' 'Procedure:' 'Skill:' 'Mode:' 'Format:' 'Settings:' 'Rules:' '## Decisions' \
-                   '## Phases' '## Contracts' '## Handoff' '## Recon' '· pending' '## Open' 'Next:'; do
+                   '## Phases' '## Contracts' '## Handoff' '## Recon' '- guard: ' '· pending' '## Open' 'Next:'; do
             grep -qF -- "$lit" <<< "$UW_TPL" || UW_WHY+=" UW-3:missing(${lit})"
         done
         for lit in '## Executors' '## Gaps' '## Research link' '## Design briefs' '## Catalog'; do
@@ -8897,13 +8898,16 @@ if [[ -z "$UW_WHY" ]]; then
                '· state: .unikit/code/plans/<feature-name>/.planning/STATE.md' 'first file is a `.gitignore` holding `*`'; do
         grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:missing(${lit:0:32})"
     done
-    # ...and the reconnaissance answer: the read-only agent returns it into the session, so the
-    # file is the only copy that outlives a compaction — written whole and at once, a pending line
-    # per launched question so an interrupted batch re-asks only what never arrived, and a resume
-    # that reads only the files the next step needs
+    # ...and the reconnaissance answer. The writing agent puts it into its file itself, so the
+    # answers never pass through the session (a live run: seven answers written back by the session
+    # filled the context twice over and forced a compaction mid-batch); the file is written whole;
+    # the fallback path writes it first; a pending line per launched question lets an interrupted
+    # batch re-ask only what never arrived; a resume reads only what the next step needs; and the
+    # change guard is the only bound on an agent that can edit
     for lit in 'The answer is written whole, never condensed' 'Writing it is the first thing done when an answer' \
                'ask that one question again — only that one' 'never the whole `recon/` folder' \
-               'is not rebuilt from memory'; do
+               'is not rebuilt from memory' 'recon-writer-agent' 'returns only the path and its `## Summary`' \
+               'WARN [plan] files changed outside .planning/ while recon agents ran' 'never revert anything yourself'; do
         grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:recon-missing(${lit:0:32})"
     done
     grep -qF 'answers condensed' "$UW_STATEFUL" && UW_WHY+=" UW-4:recon-condensed"
@@ -8916,11 +8920,40 @@ if [[ -z "$UW_WHY" ]]; then
     for lit in 'module-planner' 'fragments/' '.unikit/code/.planning'; do
         grep -qF -- "$lit" "$UW_STATEFUL" && UW_WHY+=" UW-5:retired(${lit})"
     done
+    # (UW-6) the recon file template: a fixed set of blocks IN ORDER (a reader finds a section
+    # without opening the file only because the headings never vary), a short head that alone
+    # reaches the context, and a contents table whose line ranges stay true; the protocol reads
+    # the head and then single sections by range
+    UW_RT="$(awk '/^```markdown$/{f=1;next} f&&/^```$/{exit} f' "$UW_RECON")"
+    if [[ -z "$UW_RT" ]]; then
+        UW_WHY+=" UW-6:no-template-window"
+    else
+        grep -q '^HEAD: ' <<< "$UW_RT" || UW_WHY+=" UW-6:no-head-line"
+        grep -q '^Question: ' <<< "$UW_RT" || UW_WHY+=" UW-6:no-question-line"
+        grep -qxF '| Section | Lines | Covers |' <<< "$UW_RT" || UW_WHY+=" UW-6:no-contents-table"
+        UW_PREV=0
+        for h in '## Summary' '## Contents' '## Current-Code Evidence' '## Interfaces' '## Tests and Fixtures' \
+                 '## Logging' '## Topic: <name>' '## Gaps'; do
+            UW_N="$( { grep -nxF -- "$h" <<< "$UW_RT" || true; } | head -1 | cut -d: -f1)"
+            if [[ -z "$UW_N" ]]; then UW_WHY+=" UW-6:no-block(${h:3})"
+            elif (( UW_N <= UW_PREV )); then UW_WHY+=" UW-6:out-of-order(${h:3})"
+            else UW_PREV=$UW_N; fi
+        done
+    fi
+    for lit in 'Every section is written, in this order.' '`## Summary` holds at most 30 lines.' \
+               'returns it as its reply, word for word' "grep -n '^## '" 'the table keeps its length' \
+               'Below the head the answer is whole, never condensed'; do
+        grep -qF -- "$lit" "$UW_RECON" || UW_WHY+=" UW-6:rule-missing(${lit:0:32})"
+    done
+    for lit in 'references/RECON-TEMPLATE.md' '**Reading a recon file.**' 'by their line range' \
+               'the summaries are the working material'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-6:protocol-missing(${lit:0:32})"
+    done
 fi
 if [[ -z "$UW_WHY" ]]; then
-    pass "UW-1…UW-5 ultra writing protocols: standard straight into the plan folder; saved state with write-through, lean English state, disk wins, finalize"
+    pass "UW-1…UW-6 ultra writing protocols: standard straight into the plan folder; saved state with write-through, lean English state, disk wins, finalize; recon files in a fixed template read by head and section"
 else
-    fail "UW-1…UW-5 ultra writing protocols:$UW_WHY"
+    fail "UW-1…UW-6 ultra writing protocols:$UW_WHY"
 fi
 
 # WP: the protocols are wired into /unikit-plan. Wiring is where a new path silently fails to
@@ -8955,6 +8988,17 @@ if [[ -z "$WP_WHY" ]]; then
     # the two recon pointers the session reads while the agents are out: the answer goes in whole
     grep -qF 'whole and never condensed' "$WP_ULTRA" || WP_WHY+=" WP-1:step-b-recon-not-whole"
     grep -qF 'whole and never condensed' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-recon-not-whole"
+    grep -qF 'the dispatch is `recon-writer-agent` instead' "$WP_ULTRA" || WP_WHY+=" WP-1:step-b-no-writer"
+    grep -qF 'reconnaissance goes through `recon-writer-agent`' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-no-writer"
+    # the alias in BOTH agent-filter branches: the writing agent on Claude, recon-agent + a write elsewhere
+    WP_CLAUDE="$(awk '/^<!-- unikit:agents claude -->$/{f=1;next} /^<!-- unikit:end -->$/{f=0} f' "$WP_PLAN")"
+    WP_OTHER="$(awk '/^<!-- unikit:agents !claude -->$/{f=1;next} /^<!-- unikit:end -->$/{f=0} f' "$WP_PLAN")"
+    grep -qF 'Agent(subagent_type: general-purpose, model: sonnet, prompt: "Reconnaissance for an ultra plan' <<< "$WP_CLAUDE" \
+        || WP_WHY+=" WP-2:no-writer-expansion"
+    grep -qF 'That file is the only one you may create or change' <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-unbounded"
+    grep -qF 'filling every section of the template <path of RECON-TEMPLATE.md>' <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-no-template"
+    grep -qF "Reply with the file's path and its \`## Summary\` section, word for word" <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-reply-not-summary"
+    grep -qF '**`recon-writer-agent`**' <<< "$WP_OTHER" || WP_WHY+=" WP-2:no-writer-fallback-branch"
     # (WP-2) continuation, the unfinished-plan branch and "Start over" through the script only
     WP_5A="$( { grep '^5a\. ' "$WP_PLAN" || true; } )"
     if [[ -z "$WP_5A" ]]; then

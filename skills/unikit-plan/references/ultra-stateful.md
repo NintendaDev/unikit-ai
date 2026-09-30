@@ -32,7 +32,7 @@ Each step writes its result the moment it has one, not at the end of the step:
 | Step | Where its result is written |
 |------|-----------------------------|
 | Step A (branch) | `Settings:` |
-| Step B, Step 4 Phase A and Phase B (reconnaissance) | before an agent is launched, its question's `pending` line in `## Recon`; its answer, whole, into `recon/<topic>.md` the moment it returns (`## Recon files`) |
+| Step B, Step 4 Phase A and Phase B (reconnaissance) | before an agent is launched, the `guard:` line and its question's `pending` line in `## Recon`; its answer, whole, into `recon/<topic>.md` — by the agent itself (`## Recon files`) |
 | Step C (preferences) | `Settings:` and `## Decisions` |
 | Step 2 (research link) | `manifest-head.md` → `## Based on`, with the digest computed at Step 2 — never recomputed |
 | Step 4 synthesis | `manifest-head.md` → `## Technical Context` |
@@ -48,7 +48,8 @@ After every step `Next:` is **replaced**, never appended to.
 What so far lives only in the context is written to disk once, in this order:
 
 1. `.planning/.gitignore`;
-2. `recon/` — every reconnaissance answer still in the context, written whole in the form of `## Recon files`;
+2. `recon/` — every reconnaissance answer still in the context, sorted whole into the sections of
+   `RECON-TEMPLATE.md`, with its `## Summary` and `## Contents` (`## Recon files`);
    an answer a compaction has already taken is not rebuilt from memory — its file keeps only what is
    certain and names the loss in `## Gaps`;
 3. `manifest-head.md`;
@@ -83,6 +84,7 @@ Rules: <path> · <path> · …
 - P<n> · <exact names this phase created> · TEMP <what a later phase must undo> — undo in P<m>
 
 ## Recon
+- guard: <status hash> · <diff hash>
 - recon/<topic>.md · pending
 - recon/<topic>.md → P<a>, P<b>
 
@@ -97,11 +99,12 @@ the user. Phase files use `language.artifacts`.
 
 | Section | Limit |
 |---------|-------|
-| `## Decisions` | one line per decision, the outcome only |
+| `Settings:` | the values only — no remarks in brackets |
+| `## Decisions` | one line per decision, the outcome only — not who chose it, not what happened before |
 | `## Phases` | one table row per phase |
 | `## Contracts` | one line: signature · owner → consumers |
 | `## Handoff` | at most two lines per phase |
-| `## Recon` | one line per question: `· pending` until its file is written, then file → phases (from Step D) |
+| `## Recon` | the `guard:` line, then one line per question: `· pending` until its file is written, then file → phases (from Step D) |
 | `## Open` | only what is unresolved and blocking |
 | `Next:` | one line, the last line of the file |
 
@@ -117,28 +120,46 @@ A guide for the size: about 50 lines for a 10-phase plan.
 
 ## Recon files
 
-One file per reconnaissance question, `recon/<topic>.md`, in English. The reconnaissance agent is
-read-only: its answer comes back into this session, and the session writes the file. Ask each agent
-for its answer in this form, so that it can be written as it came:
-
-- the first line is `HEAD: <short sha>`, the second `Question: <…>`;
-- the body: `## Current-Code Evidence` rows (path · symbols or lines · why it matters), interfaces
-  with their signatures, tests and fixtures, logging;
-- the last section is `## Gaps` — what the answer could not establish.
+One file per reconnaissance question, `recon/<topic>.md`, in English, in the form of
+`{{skills_dir}}/{{self_name}}/references/RECON-TEMPLATE.md`: a short head — `## Summary` and
+`## Contents` — over the whole answer. Every question goes through `recon-writer-agent` (`SKILL.md` →
+`## Delegation agents`): the agent fills the template itself and returns only the path and its `## Summary`, so the answers never pass through this context — seven detailed answers written
+back by the session would fill it twice over, once as the answer and once as the write, and even
+read back once they fill it before the first phase.
 
 The answer is written whole, never condensed — every row, number, formula, path and signature the
-agent returned. The file is the only copy that outlives a compaction or the end of the session:
-whatever is left out of it is lost or asked again. Writing it is the first thing done when an answer
-arrives — before reading anything else, before waiting for the next agent; then its `## Recon` line
-loses `pending`.
+agent found. The file is the only copy that outlives a compaction or the end of the session:
+whatever is left out of it is lost or asked again. When an agent returns, its `## Recon` line loses
+`pending`; an agent that returns without its file is asked again as below.
+
+**Reading a recon file.** Open it at the head — `## Summary` and `## Contents`, the lines above
+`## Current-Code Evidence`. Then read only the sections `## Contents` names for what is needed now, by their line range (`Read` with `offset` and `limit`); a whole file only when the step rests on
+most of it. Before the phases — Step 4 synthesis, Step D, Step E —
+the summaries are the working material, and a section is opened only for an exact detail.
+
+Where `recon-writer-agent` falls back to `recon-agent` (a runtime without a writing agent, a failed
+call, a missing file), the answer comes back into this session instead.
+Writing it is the first thing done when an answer arrives — before reading anything else, before
+waiting for the next agent.
+
+**Change guard.** `recon-writer-agent` runs an agent that could edit files, and only its prompt
+bounds it. Before the first agent starts, write `guard: <status hash> · <diff hash>` into
+`## Recon`: `git status --porcelain --untracked-files=all | shasum -a 256` and
+`git diff | shasum -a 256` (`sha256sum` where `shasum` is missing). `.planning/` is ignored by git,
+so once no line is `pending` both hashes come out the same again. A different one → print
+`WARN [plan] files changed outside .planning/ while recon agents ran` with the paths
+`git status --porcelain` shows, and ask whether to continue or stop; never revert anything yourself.
+Outside a git work tree there is no guard.
 
 ## Phase cycle
 
 For each phase, in order:
 
 1. the **Rule refresh per phase** of SKILL.md Step 5 — new paths are appended to `Rules:`;
-2. read the recon files `## Recon` maps to this phase, `## Contracts` and `## Handoff`; open an
-   earlier phase file only for an exact detail of a direct dependency;
+2. read the head of each recon file `## Recon` maps to this phase, then only the sections its
+   `## Contents` names for this phase's paths and symbols (**Reading a recon file**); read
+   `## Contracts` and `## Handoff`; open an earlier phase file only for an exact detail of a direct
+   dependency;
 3. write `.unikit/code/plans/<feature-name>/phase-NN-<slug>.md` in one write;
 4. append the phase's block to `.planning/checklist.md` — the `### Phase N:` heading with
    `**Effort:**`, `**Dependencies:**` and `**Status:** [ ] Not started`, then one task line per
@@ -172,8 +193,8 @@ to read — then:
   line whose file exists just loses `pending`. A `pending` line with no file: in the same session,
   while the summary says its agent is still running, wait for it; otherwise (a new session, or
   nothing says it runs) ask that one question again — only that one.
-- Read only what `Next:` needs: the recon files `## Recon` maps to the next phase, or those the step
-  in `Next:` works from — never the whole `recon/` folder.
+- Read only what `Next:` needs: the heads of the recon files `## Recon` maps to the next phase, or of
+  those the step in `Next:` works from, and a section only by **Reading a recon file** — never the whole `recon/` folder.
 - Print `INFO [plan] resuming <feature-name> from <Next> · state: .unikit/code/plans/<feature-name>/.planning/STATE.md`.
 
 ## Assembly
