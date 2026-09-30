@@ -2078,6 +2078,27 @@ fi
 echo "  ✓ research-link.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30m: plan-boundaries.md is delivered on update — the ONLY mechanical guard for the
+# update.ts wiring of installPlanBoundariesContract. Same shape as 30l: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms it is flat-rewritten from data/ too. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+PLAN_BOUNDARIES="$DEVPRIN_DIR/.unikit/system/plan-boundaries.md"
+assert_exists "$PLAN_BOUNDARIES" "plan-boundaries.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$PLAN_BOUNDARIES"
+
+DEVPRIN_OUT10="$TMPDIR/update-plan-boundaries.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT10" 2>&1)
+
+if ! grep -q "^## Plan start$" "$PLAN_BOUNDARIES"; then
+    echo "Assertion failed: update did NOT refresh plan-boundaries.md from data/ (## Plan start missing)"
+    exit 1
+fi
+
+echo "  ✓ plan-boundaries.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).
@@ -2113,6 +2134,8 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
     "update --install-new installed the new GDD-render skill (unikit-gd-docs)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
     "update --install-new installed the new plan-archive skill (unikit-archive)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-pr/SKILL.md" \
+    "update --install-new installed the new pull-request skill (unikit-pr)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-plan/SKILL.md" \
     "update --install-new installed a new code skill (unikit-plan)"
 assert_contains "$INSTALLNEW_OUT" "new skill installed" "new-skill-installed reason text appears"

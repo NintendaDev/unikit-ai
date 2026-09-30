@@ -56,6 +56,7 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "review my code" | code review | `/unikit-review` → `/unikit-fix` | staged / PR / branch / file? |
 | "did I finish everything" | completeness | `/unikit-verify [--strict]` | — |
 | "commit this" | commit | `/unikit-commit` | — |
+| "open a PR", "write the PR description", "merge the PR" | pull request | `/unikit-pr` | is GitHub MCP set up? |
 | "archive the plan", "clean up finished plans" | archive plans | `/unikit-archive` | is every task `[x]`? |
 | "make the AI smarter from my fixes" | learn | `/unikit-evolve` | ≥3 patches accumulated? |
 | "I don't know what game to make" | ideate concept | `/unikit-gd-brainstorm` | — |

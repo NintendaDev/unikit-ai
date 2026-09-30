@@ -139,7 +139,7 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Skills expose five named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** three expand to a dispatch that names the model on Claude Code and omits it everywhere else; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts.
+Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** four expand to a dispatch that names the model on Claude Code and omits it everywhere else; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
@@ -148,10 +148,11 @@ Skills expose five named aliases in two families. The **skill-loading** two expa
 | `recon-agent` | `Agent(subagent_type: Explore, …)` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
 | `check-agent` | `Agent(subagent_type: Explore, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
 | `lens-agent` | `Agent(subagent_type: general-purpose, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
+| `recon-writer-agent` | `Agent(subagent_type: general-purpose, …)` on Claude Code; `recon-agent` plus a write by the session elsewhere | `/unikit-plan ultra` (saved-state protocol) | One reconnaissance question answered straight into its `recon/` file in the form of `references/RECON-TEMPLATE.md`, replying with the file's `## Summary` only, so the full answer never passes through the planning context; the only file it may write is that one, and `/unikit-plan` checks `git status` / `git diff` before and after the batch |
 
 Rule capture has no alias: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to the user in the calling session and invoke `/unikit-rules` only with the batch the user selected — a background agent could not have asked.
 
-Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying three fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session.
+Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying four fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session, `recon-writer-agent` asks through `recon-agent` and the session writes the answer into the file itself.
 
 ## Design Principles
 
@@ -185,6 +186,6 @@ Day-to-day work through slash commands (`/unikit-implement`, `/unikit-fix`, `/un
 
 ## See Also
 
-- [Skills Reference](skills.md) - the 23 code-pipeline skills that workflow skills delegate to or compose over
+- [Skills Reference](skills.md) - the 24 code-pipeline skills that workflow skills delegate to or compose over
 - [Development Workflow](workflow.md) - where coordinators and sidecars fit in the end-to-end flow
 - [Plan Files](plan-files.md) - the `PLAN.md` manifest coordinators read and workers update

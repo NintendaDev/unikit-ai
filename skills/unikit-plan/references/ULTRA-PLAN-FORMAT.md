@@ -83,7 +83,8 @@ Placement: `.unikit/code/plans/<feature-name>/PLAN.md` — the same path a full 
 section order below is the `TASK-FORMAT.md` order plus two new sections; it is a contract,
 not layout.
 
-The header carries the same two timestamp fields a full manifest carries, in the same form.
+The header carries the same two timestamp fields a full manifest carries, in the same form,
+and the `Planned at:` line, whose rule has the same single owner.
 The rule for when `Updated:` moves has **one** owner — `TASK-FORMAT.md` → *Plan Manifest
 Template* — and is not restated here. An ultra manifest written without these fields is
 excluded from "the latest plan" by every resolver, which would make this mode's own artifact
@@ -95,6 +96,7 @@ unfindable by the branch this change introduces.
 
 Created: YYYY-MM-DD
 Updated: YYYY-MM-DD
+Planned at: <short sha>
 
 ## Overview
 ## Based on
@@ -103,6 +105,7 @@ Updated: YYYY-MM-DD
 ## Content Context   (optional)
 ## Settings
 ## Roadmap Linkage   (optional)
+## Modules           (only with two or more modules, or one longer than four phases)
 
 ## Architecture and Decisions   (optional)
 - [A cross-phase boundary, contract or decision — and why this one was chosen]
@@ -152,6 +155,9 @@ Updated: YYYY-MM-DD
 ## Dependency Graph
 ## Total Estimated Effort
 
+## Recon   (optional; only a plan written with saved state)
+- recon/<topic>.md · HEAD <short sha> · <question> → phases N, M
+
 ---
 
 ## Technical Context
@@ -199,6 +205,11 @@ Rules:
 - **`## Open Questions` is where a blocking question goes.** If a choice genuinely cannot
   be made during planning, it is recorded here and the plan is declared **not
   implementation-ready** — instead of hiding the gap behind a vague phrase.
+- **`## Modules`, the module barrier and the PR checkpoint task follow `TASK-FORMAT.md` →
+  `### Modules section` and `### PR checkpoint task grammar`.** Ultra adds only the
+  phase-file form of the PR checkpoint task below; the example above keeps one module on
+  purpose — the contract test validates its task projections, and a second module would add
+  a PR checkpoint to a template whose phase 1 deliberately carries no task-level run.
 
 ## Phase File Template
 
@@ -208,6 +219,7 @@ Rules:
 Plan: [PLAN.md](PLAN.md)
 Tasks: {N}.1-{N}.M
 Depends on: none | Phase {K}
+Recon: recon/<topic>.md § <section>, …   (optional; only a plan written with saved state)
 
 ## Objective
 [The observable outcome this phase must produce.]
@@ -298,6 +310,11 @@ Rules:
 - The `Test checkpoint:` line itself stays **in the manifest checkbox**, exactly as the
   `Editor:` marker does: the executor and the coordinator read it, and what they read is the
   manifest.
+- **A PR checkpoint task is described by the same seven subsections.** Its `### Tests`
+  carries the literal `Not applicable — this task closes a module, it runs no tests`; its
+  `### Implementation Steps` name the module, its phases and the `delivers:` sentence of its
+  `## Modules` line; its `### Verification` reads the checkbox label only. The
+  `PR checkpoint:` line stays in the manifest checkbox, exactly as `Test checkpoint:` does.
 
 ## Required Detail Gate
 
@@ -335,6 +352,13 @@ Exactly this order, and the order is part of the contract:
 The manifest goes last because its `## Phase Index`, its task links and its ranges must
 agree with phase content that has already stopped moving.
 
+In `/unikit-plan` this order runs straight in the plan folder `.unikit/code/plans/<name>/` under
+either writing protocol (`ultra-direct.md`, `ultra-stateful.md`). The saved-state protocol keeps
+its state in `.unikit/code/plans/<name>/.planning/`. Once the checks pass, `plan-bundle.mjs finalize`
+keeps its `.planning/recon/` as the plan's `recon/` — evidence the plan names in `## Recon` and in
+the phases' `Recon:` lines, committed with it — and removes the rest of `.planning/`. The finished
+bundle is the manifest plus direct `phase-*.md` files either way, and under saved state its `recon/`.
+
 ## Editing an Existing Bundle
 
 - The manifest and the affected phase files are edited **together**. **Never regenerate the
@@ -346,12 +370,13 @@ agree with phase content that has already stopped moving.
 
 ## Integrity Checks
 
-Each check is **blocking**:
+Each check is **blocking** — check 13 does not apply to a legacy plan (PR checkpoint tasks without `PR checkpoints: yes`), and check 16 only warns: a missing recon file loses supplementary evidence, not part of the plan:
 
 1. The marker is present in the manifest exactly once, and on the first line.
 2. Every `## Phase Index` link exists, is relative, and **does not escape the bundle
    directory** (no `../`).
-3. Every checklist task maps to exactly one `## Task N.M:` section.
+3. Every checklist task maps to exactly one `## Task N.M:` section, and its
+   `([details](…#anchor))` anchor equals the GitHub slug of that heading.
 4. Every `## Task N.M:` section in the phase files appears in the checklist exactly once.
 5. No `phase-*.md` is missing from `## Phase Index` (no orphans).
 6. Dependency references point to task IDs that exist.
@@ -371,6 +396,19 @@ Each check is **blocking**:
 11. Under `Testing: yes` the last task of `## Checklist` is a test-checkpoint task carrying
     `Test checkpoint: plan`. A missing final full run is not a matter of style — REQ-007 has
     no off switch.
+12. When `## Modules` is present, its lines cover the phases in order — contiguous ranges,
+    every phase exactly once — and every module longer than four phases carries `why long:`.
+13. A `PR checkpoint:` task is the last task of its module's closing phase; the last module
+    carries none, and its `## Modules` line has no `PR:` field; `PR checkpoints: yes` in
+    `## Settings` requires at least one PR checkpoint task; the `PR: task N.M` of every other
+    module line names that task. A plan with PR checkpoint tasks but without the settings
+    line is a legacy plan: this check does not apply to it.
+14. The module barrier holds: the closing phase of module k depends on every other phase of
+    module k, and every phase of module k+1 depends on the closing phase of module k —
+    directly or transitively, through the `**Dependencies:**` lines.
+15. No `### Commit N: after tasks X-Y` range crosses a module boundary.
+16. Every `recon/<name>` named by `## Recon` or by a phase's `Recon:` line exists in `recon/` (or,
+    while the plan is assembled, in `.planning/recon/`).
 
 The reason, kept in the words the original used: a broken or missing link means **the
 committed specification is incomplete** — verify the plan, do not verify it partially.

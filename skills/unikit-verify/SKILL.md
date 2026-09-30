@@ -10,7 +10,7 @@ description: >-
   everything", "is the plan fully done", "make sure nothing was forgotten", "does it
   build and pass tests". This checks plan completeness and build/test health — for
   code-quality, bug, and security review use the review skill instead.
-argument-hint: "[--strict] [NNN-feature-name]"
+argument-hint: "[--strict] [Phase N | Phases N-M] [NNN-feature-name]"
 allowed-tools:
   - Read
   - Write
@@ -125,9 +125,11 @@ This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading
 
 ### 0.1 Find Feature Plan
 
+**Phase selector first.** Extract a phase selector — `Phase N` or `Phases N-M` (the same form `/unikit-implement` takes) — and remove it from `$ARGUMENTS` before a folder name is matched. With a selector, `phase_scope = N..M`; without, `phase_scope = all`. Once the plan is resolved, a selector naming a phase the plan does not have prints `WARN [plan] Phases N-M: the plan has no phase <X> — verifying the whole plan` and sets `phase_scope = all`.
+
 Search logic — same as `/unikit-implement` (unified plan detection):
 
-1. If `$ARGUMENTS` specifies a folder name (e.g. `core-loop`, `2026-03-10_core-loop`, or legacy `NNN-feature-name`) → use it
+1. If `$ARGUMENTS` specifies a folder name (e.g. `core-loop`, `2026-03-10_core-loop`, or legacy `NNN-feature-name`) → use it; a folder that is an unfinished plan (below) → print its `NOTE` line and STOP
 2. Otherwise → auto-detect:
    a. **Fast plan check** — if `.unikit/code/PLAN.md` exists, use it (flat fast-mode plan)
    b. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — do not pick by format precedence: two folders for one feature is exactly the state the date used to prevent, and choosing silently is how the resolver starts finding the wrong one. No match → fall through to *latest*.
@@ -136,6 +138,12 @@ Search logic — same as `/unikit-implement` (unified plan detection):
       or more plans present, print the candidate table (folder, `Updated:`, tasks remaining)
       and ask — never auto-select. With exactly one plan present there is nothing to choose
       between: announce it with the branch miss named in the reason and continue.
+
+**An unfinished plan is not a plan.** A folder under `.unikit/code/plans/` that holds `.planning/STATE.md` but not its manifest `.unikit/code/plans/<folder>/PLAN.md` is an ultra plan still being written: it is never a candidate, and it is named once:
+
+```
+NOTE [plan] <folder> — unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>
+```
 
 **Announce the resolution.** Print exactly one visible line before any other output:
 
@@ -152,7 +160,7 @@ interactive question.
 No plan found. What should I verify?
 
 Options:
-1. Verify branch diff — compare current branch against master
+1. Verify branch diff — compare the current branch against the base branch (Step 0.4)
 2. Verify last N commits — check recent commits for completeness
 3. Cancel
 ```
@@ -169,6 +177,17 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
 
 **Reading depth:** read the manifest plus **every** phase file **before** verification begins — this gate validates the plan as a whole, and a phase read late is a phase whose criteria were never applied.
+
+**Phase scope.** Under `phase_scope ≠ all` (a module check — `/unikit-implement` calls `<folder> Phases K-L` before a PR checkpoint) the run narrows in exactly these places, and nowhere else:
+
+- Step 1 audits only the tasks of phases `N..M`.
+- `CHANGED_FILES` is the phases line of `## Diff range of a check` (Step 0.5).
+- Step 2.2 starts no full run and reuses no `Full run:` — it reports the module's test state from `## Test Runs`: the last line whose coverage lies inside `N..M`, or `not run`.
+- Under a phase scope, Step 3.8 checks only the acceptance criteria cited by tasks of phases N..M. The criteria of later modules are not unmet yet — checked here, they would turn into Step 4.4 blockers under `## Design` and fail every module check.
+- Step 3.9 (`implemented_version`) does not run — a partial check stamps nothing into the design.
+- The report header reads `### Feature: <folder> — phases N-M`, and the `unikit-gate-result` block is built from the same findings.
+
+Reading the bundle does not narrow: every phase file is still read, and a task's criteria come from its own phase file.
 
 ### 0.2 Read Plan & Context
 
@@ -255,29 +274,32 @@ All engine-specific checks in Steps 2 and 3 reference this file. If `ENGINE_RULE
 
 ### 0.4 Detect Base Branch
 
-Determine the project's base branch (may be `main` or `master`):
+Read `.unikit/system/plan-boundaries.md` now, once, and resolve the base branch by its `## Base branch`. Save it as `$BASE_BRANCH` — every later git command uses it instead of a hardcoded `main` or `master`.
+
+**If `.unikit/system/plan-boundaries.md` is missing or unreadable, do not block:** resolve the base branch the old way, print the line below once, and continue — Step 0.5 then takes its fallback range.
 
 ```bash
-# Detect base branch
 BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
-# Fallback: check which branch exists
 if [ -z "$BASE_BRANCH" ]; then
   BASE_BRANCH=$(git rev-parse --verify origin/master >/dev/null 2>&1 && echo master || echo main)
 fi
 ```
 
-Save as `$BASE_BRANCH` — use it in all subsequent git commands instead of hardcoded `main` or `master`.
+```
+WARN [plan-range] plan-boundaries contract missing — base from origin/HEAD, plan range off; run unikit-ai update
+```
 
 ### 0.5 Gather Changed Files
 
-```bash
-# Files changed within the feature
-git diff --name-only $BASE_BRANCH...HEAD
-# Or if on $BASE_BRANCH — check recent commits
-git diff --name-only HEAD~20..HEAD
-```
+- **A folder plan in a git repository** → the range of `.unikit/system/plan-boundaries.md` → `## Diff range of a check`. The whole plan is the union of `git diff --name-only <plan start> HEAD` (two-dot — the start may be the empty tree) and `git diff --name-only $BASE_BRANCH...HEAD`, with the start found by `## Plan start`; no start → the second half alone. Under `phase_scope ≠ all` — the phases line of that section. No local branch `$BASE_BRANCH` → `origin/$BASE_BRANCH` (`## Base branch`).
+- **The flat fast plan `.unikit/code/PLAN.md`, or the contract is missing** → `git diff --name-only $BASE_BRANCH...HEAD`, as before: the plan-start chain needs a plan folder.
+- **On `$BASE_BRANCH` itself, without a plan** → `git diff --name-only HEAD~20..HEAD`, as before.
 
-Save as `CHANGED_FILES` — this list will be used in all subsequent steps.
+Save as `CHANGED_FILES` — this list will be used in all subsequent steps. When it is a union, the Step 4 report carries one line naming where the files came from; the list itself is never printed:
+
+```
+Changed files: from <plan start short> (plan start) and <base>
+```
 
 ---
 
@@ -289,7 +311,7 @@ Launch one Explore task per phase from the plan's task list. For each phase, pro
 - Task descriptions from the roadmap
 - `CHANGED_FILES` list for context
 - Instructions: find implementing code using Glob/Grep, read key files, confirm completeness (not a stub), report status per task with file paths
-- Instructions: **skip any task carrying an `Editor:` line — do not mark it `NOT FOUND`.** It is verified in the main context (see below).
+- Instructions: **skip any task carrying an `Editor:` line or a `PR checkpoint:` line — do not mark it `NOT FOUND`.** It is verified in the main context (see below).
 
 **Editor targets are excluded from the Explore fan-out.** A task with an `Editor:` line changed the editor's serialized state; there is nothing in the sources to find, so an Explore agent would honestly return `❌ NOT FOUND` and block correctly completed work. The subagents also have no engine tools — the `allowed-tools` grants in `mcp/*.json` are issued to `unikit-verify`, not to its children. So:
 
@@ -301,7 +323,9 @@ Launch one Explore task per phase from the plan's task list. For each phase, pro
 - **MCP unavailable** → `⏭️ SKIPPED (editor target, MCP unavailable)`. Not a failure.
 - **Task marked `⏸️ MANUAL` in the plan** → `⏸️ MANUAL`. Not a blocker: the user took it on deliberately. Report the target so it stays visible.
 
-**Fallback:** If Agent tool is unavailable, investigate directly using Glob and Grep — with the **same exclusion**: tasks carrying an `Editor:` line are not Glob/Grep-verifiable and keep the treatment above.
+**A PR checkpoint task is excluded from the fan-out too** — it leaves nothing in the project. Its status comes from its checkbox (`unikit-plan/references/TASK-FORMAT.md` → `### PR checkpoint task grammar`): `[x] … → PR <sha>` → `✅ COMPLETED` (boundary `<sha>`); a `⏭️ MERGED` label → `⏭️ SKIPPED` (merged into task N.M, or — the last one — into the PR after verification); `[ ]` without a label → `⏭️ SKIPPED` (not reached). A PR checkpoint never produces a blocker in the `unikit-gate-result` block — it is a process step, not an implementation.
+
+**Fallback:** If Agent tool is unavailable, investigate directly using Glob and Grep — with the **same exclusion**: tasks carrying an `Editor:` line are not Glob/Grep-verifiable and keep the treatment above, and a task carrying a `PR checkpoint:` line is read from its checkbox.
 
 **In an ultra bundle the checkbox is not the specification.** Verify implementation against the detailed per-task interfaces, edge cases, logging, acceptance criteria, and commands — **not only the short checkbox text**. The manifest's checklist line is a pointer; what is verified against is the task's own `### Acceptance Criteria` and `### Verification` in its phase file. Pass those to each Explore task alongside the checklist line.
 
@@ -543,7 +567,7 @@ Report findings under a `### Design Acceptance` section (see Step 4.1). The AC c
 
 ### 3.9 `implemented` Writeback (game-design module — the lone code→design write)
 
-**Gate — only when 3.8 found _every_ cited `AC-<id>` met** for the plan's `SYS-id`@version (no unmet, no partial). On any unmet/partial AC, **do nothing here** — skip silently.
+**Gate — only when `phase_scope = all` and 3.8 found _every_ cited `AC-<id>` met** for the plan's `SYS-id`@version (no unmet, no partial). On any unmet/partial AC, or under a phase scope, **do nothing here** — skip silently.
 
 This is the single sanctioned code→design write (`gd-principles` → One-Way Boundary; canonical in `references/CONTEXT-GATES-AND-OWNERSHIP.md`, which overrides this body). It is explicitly carved out of the read-only rules — Step 3.6, Step 3.8, and the global **Important Rules #1 and #5**. On all-AC-met, stamp the implemented marker on the **single** design surface:
 
@@ -715,8 +739,11 @@ Options:
 4. Skip — I'll handle it myself
 ```
 
+**The pull request option.** After a check of the whole plan (`phase_scope = all`) with **no blocker**, in a git repository (`git.enabled` from `.unikit/config.yaml`; no key → a `.git` directory decides) and on a branch other than the base of Step 0.4, option 1 becomes `Pull request — run /unikit-pr`: there is nothing to fix, and the question keeps its four options. The choice dispatches in three tiers — `Skill(skill: "unikit-pr")` → the `/unikit-pr` slash command → print `Run: /unikit-pr` — with no argument: a closed plan is read from its checkboxes. When `{{skills_dir}}/unikit-pr/SKILL.md` does not exist (a project that ran `update` without `--install-new`), print `WARN [pr] /unikit-pr is not installed — run unikit-ai update --install-new` instead of a command that does not exist. The `unikit-gate-result` block's `suggested_next` does not change.
+
 Based on choice:
 - Fix issues → run `/unikit-fix` with issue summary
+- Pull request → the three-tier dispatch above
 - Code review → run `/unikit-review` on changed files
 - Commit → run `/unikit-commit`
 - Skip → **STOP**

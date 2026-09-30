@@ -58,7 +58,8 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
                           "unikit-explore", "unikit-implement", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
                           "unikit-gd-recon", "unikit-gd-docs",
-                          "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify"],
+                          "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
+                          "unikit-pr"],
       "installedSubagents": ["unikit-architecture-sidecar"]
     }
   ],
@@ -210,6 +211,23 @@ assert_contains "$RESEARCH_LINK_PATH" 'WARN \[research-drift\]' \
   "research-link.md carries the canonical WARN [research-drift] label"
 assert_not_contains "$RESEARCH_LINK_PATH" '\{\{' \
   "research-link.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
+# Test 1b-pb: plan-boundaries.md installed as a system asset (flat copy, no vars)
+# Read by verify/implement/commit/pr to compute the same plan start, module boundary and
+# push target. Update-path coverage like 1b-rl above; the init.ts call site is SA-1's job.
+# assert_contains is grep -E: the [plan-range] tag is escaped, or it reads as a class.
+# ─────────────────────────────────────────────────────
+PLAN_BOUNDARIES_PATH="$CLAUDE_DIR/.unikit/system/plan-boundaries.md"
+assert_exists "$PLAN_BOUNDARIES_PATH" "plan-boundaries.md created in .unikit/system/"
+assert_contains "$PLAN_BOUNDARIES_PATH" '^## Plan start$' \
+  "plan-boundaries.md carries the ## Plan start section its readers name"
+assert_contains "$PLAN_BOUNDARIES_PATH" '^## Push target$' \
+  "plan-boundaries.md carries the ## Push target section its readers name"
+assert_contains "$PLAN_BOUNDARIES_PATH" 'WARN \[plan-range\]' \
+  "plan-boundaries.md carries the canonical WARN [plan-range] label"
+assert_not_contains "$PLAN_BOUNDARIES_PATH" '\{\{' \
+  "plan-boundaries.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
@@ -711,6 +729,23 @@ echo "  ✓ unikit-memory: scripts/material-prep.py delivered on install"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-rules/scripts/rules-layout.mjs" \
   "rules-layout.mjs should be delivered into the installed unikit-rules skill (scripts/ subdir)"
 echo "  ✓ unikit-rules: scripts/rules-layout.mjs delivered on install"
+
+# unikit-plan ships the third scripts/ subdir: plan-bundle.mjs, which checks and moves an
+# ultra bundle at the end of a disk-first planning.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/scripts/plan-bundle.mjs" \
+  "plan-bundle.mjs should be delivered into the installed unikit-plan skill (scripts/ subdir)"
+echo "  ✓ unikit-plan: scripts/plan-bundle.mjs delivered on install"
+
+# unikit-pr ships two references: the PR text rules (read every run) and the safe-merge
+# steps (read only at the merge level). run_update has no --install-new, so the skill is in
+# this fixture's installedSkills — without it nothing below would be delivered at all.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-pr/SKILL.md" \
+  "unikit-pr should be installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-pr/references/pr-text.md" \
+  "unikit-pr/references/pr-text.md should be delivered"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-pr/references/safe-merge.md" \
+  "unikit-pr/references/safe-merge.md should be delivered"
+echo "  ✓ unikit-pr: SKILL.md and both references delivered on install"
 
 # ─────────────────────────────────────────────────────
 # Test 8: ENGINE_RULES.md installation for Godot
@@ -1820,6 +1855,10 @@ echo "  ✓ resolveExistingEngine(' unity ') -> action=use, engine=unity (trim a
 MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
   const { sortMcpChoices, isMcpPreselected, resolveMcpGroupDefault } =
     await import('./dist/cli/wizard/prompts.js');
+  const { parseMcpServerEntry } = await import('./dist/core/mcp-schema.js');
+  const parsePreselect = (value) => parseMcpServerEntry(
+    { key: 'github', code: 'github', displayName: 'GitHub', config: { type: 'http', url: 'https://example.test' }, preselect: value },
+    '.', 'github.json');
 
   // Deliberately supplied out of order, with one entry carrying no \`order\`.
   const group = sortMcpChoices([
@@ -1836,6 +1875,11 @@ MCP_DEFAULTS=$(cd "$ROOT_DIR" && node --input-type=module -e "
     freshChecked:  isMcpPreselected('context7', null),
     reinitChecked: isMcpPreselected('context7', ['context7']),
     reinitUnchecked: isMcpPreselected('context7', ['something-else']),
+    preselectFresh:  isMcpPreselected('github', null, false),
+    preselectAbsent: isMcpPreselected('github', null),
+    preselectReinit: isMcpPreselected('github', ['github'], false),
+    parsedJunkHasPreselect: 'preselect' in parsePreselect('no'),
+    parsedFalse: parsePreselect(false).preselect,
   }));
 " 2>/dev/null)
 
@@ -1864,7 +1908,22 @@ if [[ "$MCP_DEFAULTS" != *'"freshChecked":true'* ]] \
   exit 1
 fi
 
-echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1"
+# The catalog's `preselect: false` keeps a token-requiring server unchecked on a fresh
+# install only; a re-init still mirrors the previous choice. A non-boolean is dropped by
+# the parser, silently, like every optional field there.
+if [[ "$MCP_DEFAULTS" != *'"preselectFresh":false'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"preselectAbsent":true'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"preselectReinit":true'* ]]; then
+  echo "Assertion failed: isMcpPreselected preselect contract broken (false=unchecked on fresh, absent=checked, re-init mirrors), got: $MCP_DEFAULTS"
+  exit 1
+fi
+if [[ "$MCP_DEFAULTS" != *'"parsedJunkHasPreselect":false'* ]] \
+   || [[ "$MCP_DEFAULTS" != *'"parsedFalse":false'* ]]; then
+  echo "Assertion failed: parseMcpServerEntry must keep preselect:false and drop a non-boolean preselect, got: $MCP_DEFAULTS"
+  exit 1
+fi
+
+echo "  ✓ MCP picker pre-selection: sorted by order, re-init restores prior choice, fresh falls back to order:1, preselect:false stays unchecked"
 
 # ─────────────────────────────────────────────────────
 # Test 14c: configByPlatform resolution writes a token-free command
@@ -1906,6 +1965,115 @@ if [[ "$FENNARA_CMD" == "missing" ]] || [[ "$FENNARA_CMD" != *"fennara-mcp"* ]];
 fi
 
 echo "  ✓ configByPlatform: fennara resolves to a token-free absolute command for $(node -p 'process.platform')"
+
+# ─────────────────────────────────────────────────────
+# Test 14d: GitHub MCP selected — every agent gets its own env reference syntax, and
+# only unikit-pr gets the grants
+# ─────────────────────────────────────────────────────
+# The catalog stores the token as `{{env:GITHUB_PAT}}`; each writer renders it in its
+# client's syntax. A wrong first write is permanent ("present → keep"), so the real
+# catalog is driven through configureMcp for all six agents, then through a full
+# update for the grants. No network, no server start.
+
+for GH_AGENT in claude cursor qwen opencode codex antigravity; do
+  GH_DIR="$TMPDIR/test-github-mcp-$GH_AGENT"
+  mkdir -p "$GH_DIR"
+  (cd "$ROOT_DIR" && node --input-type=module -e "
+    const target = process.argv[1];
+    const { discoverMcpServers } = await import('./dist/core/mcp.js');
+    const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
+    const servers = await discoverMcpServers('unity');
+    await configureMcp(target, servers, ['context7', 'github'], process.argv[2]);
+  " "$GH_DIR" "$GH_AGENT" > /dev/null 2>&1)
+done
+
+GH_CLAUDE="$TMPDIR/test-github-mcp-claude/.mcp.json"
+GH_CURSOR="$TMPDIR/test-github-mcp-cursor/.cursor/mcp.json"
+GH_QWEN="$TMPDIR/test-github-mcp-qwen/.qwen/settings.json"
+GH_OPENCODE="$TMPDIR/test-github-mcp-opencode/opencode.json"
+GH_CODEX="$TMPDIR/test-github-mcp-codex/.codex/config.toml"
+GH_ANTIGRAVITY="$TMPDIR/test-github-mcp-antigravity/.agents/mcp_config.json"
+for GH_FILE in "$GH_CLAUDE" "$GH_CURSOR" "$GH_QWEN" "$GH_OPENCODE" "$GH_CODEX" "$GH_ANTIGRAVITY"; do
+  assert_exists "$GH_FILE" "GitHub MCP written into ${GH_FILE#$TMPDIR/}"
+  assert_not_contains "$GH_FILE" '\{\{env:' "no raw {{env:}} token left in ${GH_FILE#$TMPDIR/}"
+done
+assert_contains "$GH_CLAUDE" 'Bearer \$\{GITHUB_PAT\}' "claude: \${GITHUB_PAT}"
+assert_contains "$GH_CURSOR" 'Bearer \$\{env:GITHUB_PAT\}' "cursor: \${env:GITHUB_PAT}"
+assert_contains "$GH_QWEN" '"httpUrl"' "qwen: an HTTP server goes into httpUrl"
+assert_contains "$GH_QWEN" '\$\{GITHUB_PAT\}' "qwen: \${GITHUB_PAT}"
+assert_contains "$GH_OPENCODE" '\{env:GITHUB_PAT\}' "opencode: {env:GITHUB_PAT}"
+assert_contains "$GH_OPENCODE" '"oauth": false' "opencode: oauth off when the token is ours"
+assert_contains "$GH_CODEX" 'bearer_token_env_var = "GITHUB_PAT"' "codex: bearer_token_env_var"
+assert_contains "$GH_ANTIGRAVITY" 'Bearer YOUR_GITHUB_PAT' "antigravity: the YOUR_GITHUB_PAT placeholder"
+
+# The wizard reads the real catalog: GitHub stays unchecked on a fresh install.
+GH_PRESELECT=$(cd "$ROOT_DIR" && node --input-type=module -e "
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const servers = await discoverMcpServers('unity');
+  process.stdout.write(String(servers.get('github')?.preselect));
+" 2>/dev/null)
+if [[ "$GH_PRESELECT" != "false" ]]; then
+  echo "Assertion failed: the catalog's github entry should parse with preselect === false, got: $GH_PRESELECT"
+  exit 1
+fi
+
+# A hand-written github entry with a literal token is kept ("present → keep") and named —
+# without its value ever reaching the output.
+GH_OLD_DIR="$TMPDIR/test-github-mcp-old-entry"
+mkdir -p "$GH_OLD_DIR"
+cat > "$GH_OLD_DIR/.mcp.json" << 'EOF'
+{
+  "mcpServers": {
+    "github": { "type": "http", "url": "https://example.test/", "headers": { "Authorization": "Bearer ghp_TEST" } }
+  }
+}
+EOF
+GH_OLD_ERR="$TMPDIR/test-github-mcp-old-entry.err"
+(cd "$ROOT_DIR" && node --input-type=module -e "
+  const { discoverMcpServers } = await import('./dist/core/mcp.js');
+  const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
+  const servers = await discoverMcpServers('unity');
+  await configureMcp(process.argv[1], servers, ['github'], 'claude');
+" "$GH_OLD_DIR" > /dev/null 2> "$GH_OLD_ERR")
+assert_contains "$GH_OLD_DIR/.mcp.json" 'ghp_TEST' "a hand-written github entry is kept as is"
+assert_contains "$GH_OLD_ERR" 'does not match the catalog' "a kept github entry that does not match the catalog is named"
+assert_not_contains "$GH_OLD_ERR" 'ghp_TEST' "the warning never prints the token"
+
+# Grants: only unikit-pr gets mcp__github__*. unikit-pr and unikit-commit are in
+# installedSkills — run_update has no --install-new, and without them the checks below
+# would have no object.
+GH_GRANTS_DIR="$TMPDIR/test-github-grants"
+mkdir -p "$GH_GRANTS_DIR"
+cat > "$GH_GRANTS_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": { "context7": "context7", "github": "github" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit-pr", "unikit-commit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$GH_GRANTS_DIR"
+run_update "$GH_GRANTS_DIR"
+assert_exists "$GH_GRANTS_DIR/.claude/skills/unikit-pr/SKILL.md" "unikit-pr installed in the grants project"
+assert_exists "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" "unikit-commit installed in the grants project"
+assert_contains "$GH_GRANTS_DIR/.claude/skills/unikit-pr/SKILL.md" 'mcp__github__create_pull_request' \
+  "unikit-pr carries the GitHub pull-request grants"
+assert_not_contains "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" 'mcp__github__' \
+  "no other skill gets a GitHub grant"
+
+echo "  ✓ GitHub MCP: six clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
 
 # ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install

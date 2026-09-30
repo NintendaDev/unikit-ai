@@ -22,6 +22,20 @@
  * @returns the key as it is spelled on disk, or `null` when the server is not
  *          registered under any variant.
  */
+/** Shared `getEntry` body: the entry registered under exactly `key`, or `null`. */
+export function getEntryInContainer(
+  settings: Record<string, unknown>,
+  container: string,
+  key: string,
+): Record<string, unknown> | null {
+  const servers = settings[container];
+  if (typeof servers !== 'object' || servers === null || Array.isArray(servers)) return null;
+  const entry = (servers as Record<string, unknown>)[key];
+  return typeof entry === 'object' && entry !== null && !Array.isArray(entry)
+    ? (entry as Record<string, unknown>)
+    : null;
+}
+
 export function findKeyInContainer(
   settings: Record<string, unknown>,
   container: string,

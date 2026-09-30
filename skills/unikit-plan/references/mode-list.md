@@ -14,13 +14,13 @@ Scan for plans in all locations:
 2. **Full plans** — list all folders in `.unikit/code/plans/` (if directory exists)
 3. **Fix plan** — check if `.unikit/code/FIX_PLAN.md` exists
 
-Listing never opens a plan folder — a folder is a plan whatever its manifest contains. That is what keeps this mode unchanged as new plan modes are added.
+Listing never opens a plan folder — a folder is a plan whatever its manifest contains — it only checks which files exist. That is what keeps this mode unchanged as new plan modes are added.
 
 ### List Step 2: Gather Info
 
 For each found plan:
 - **Name** — folder name (for full plans), `.unikit/code/PLAN.md` (fast), `.unikit/code/FIX_PLAN.md` (fix)
-- **Progress** — count completed (`- [x]`) and total (`- [ ]` + `- [x]`) task checkboxes
+- **Progress** — count completed (`- [x]`) and total (`- [ ]` + `- [x]`) task checkboxes. A folder with `.planning/STATE.md` and no manifest `.unikit/code/plans/<folder>/PLAN.md` shows `planning — unfinished` instead, with the hint `/unikit-plan ultra <folder>`.
 - **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Mark **every** match as `← current branch`.
 
   This is the one resolver where several matches do **not** raise a question: List mode only labels, it never selects, so there is nothing to choose between. Every other resolver asks.
@@ -37,6 +37,7 @@ Available plans (sorted by the manifest's `Updated:`, newest first):
   .unikit/code/plans/2026-03-08_mini-games     ✅ 12/12      feature/mini-games
   .unikit/code/PLAN.md                         ⏳ 0/5        —
   .unikit/code/FIX_PLAN.md                     ⏳ 1/3        —
+  .unikit/code/plans/inventory-rework          planning — unfinished (/unikit-plan ultra inventory-rework)
 
 To start implementation: /unikit-implement
 To modify a plan: /unikit-plan add <changes>

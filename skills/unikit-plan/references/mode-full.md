@@ -125,6 +125,37 @@ from the editor mode.
 The executor's own merge policy is resolved at execution time and is **never read here**: a
 planner that recorded it into the plan would make the executor's decision irreversible.
 
+#### PR checkpoints (`PR checkpoints`)
+
+**There is no question here.** Read `.unikit/config.yaml` → `git.pull_requests.checkpoints`.
+
+1. Key or file missing, or `false` → `pr_checkpoints = false`, silently.
+2. A value that is not a boolean → `pr_checkpoints = false`, and one line:
+
+   ```
+   WARN [plan] git.pull_requests.checkpoints=<value> is not true or false; took false
+   ```
+
+3. `true` → `pr_checkpoints = true`, **except** in two cases, each with one line:
+   - git is unavailable (`git.enabled: false`, or outside a work tree — Step 0.1 of `SKILL.md`):
+
+     ```
+     INFO [plan] PR checkpoints off — git is disabled
+     ```
+
+   - the plan's branch is the base branch (Step A created no branch, and the current branch is
+     the base resolved as `--base` > `git.base_branch` > `main`):
+
+     ```
+     INFO [plan] PR checkpoints off — the plan is on the base branch <base>
+     ```
+
+4. `pr_checkpoints` decides whether Step 5 writes PR checkpoint tasks. `PR checkpoints: yes` goes
+   into `## Settings` only when at least one such task was written — a plan of one module has
+   none. Recorded, not re-read — the same rule as `Test checkpoints`.
+5. The level of the executor and of `/unikit-pr` (`git.pull_requests.max_level`) is **never read
+   here**: it is resolved when a pull request is made.
+
 #### Editor mode (`Editor tasks`)
 
 **Gate — `engine_rules_loaded = false` → skip this whole subsection.** Do not ask, and do **not** write an `Editor tasks` line into `## Settings`. Step 0.5 set `engine_rules_loaded = false`, and Step 5 then generates no `Editor:` field for this engine, so the setting would have no consumer and the question would be unanswerable noise.
@@ -146,7 +177,7 @@ No engine MCP is configured. How should those tasks be carried out?
 
    Offer **`direct` only** when `references/ENGINE_RULES.md` §6 rates the engine's serialized formats 🟢 or 🟡. Where §6 rates them 🔴 (binary or dense generated formats), drop the option entirely rather than showing it and refusing later.
 
-Store the preferences — they affect the `## Settings` section in `.unikit/code/plans/<folder>/PLAN.md`, whether test tasks are written at all, the resolved `Test checkpoints:` placement, whether `/unikit-implement` shows a documentation checkpoint, and how `/unikit-implement` executes `Editor:` tasks.
+Store the preferences — they affect the `## Settings` section in `.unikit/code/plans/<folder>/PLAN.md`, whether test tasks are written at all, the resolved `Test checkpoints:` placement, whether PR checkpoint tasks are written, whether `/unikit-implement` shows a documentation checkpoint, and how `/unikit-implement` executes `Editor:` tasks.
 
 **If `.unikit/ROADMAP.md` exists and the user chose milestone linkage:**
 - Read `.unikit/ROADMAP.md` and list candidate milestones (prefer unchecked items)

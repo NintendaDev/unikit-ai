@@ -5,7 +5,7 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
@@ -13,6 +13,7 @@ import {
 } from '../../core/config.js';
 import { getMcpDocsLines, discoverMcpServers, collectMcpRules, buildMcpServerMap } from '../../core/mcp.js';
 import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
+import { getMcpEnvLines } from '../../core/mcp-env.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
@@ -243,6 +244,7 @@ export async function initCommand(): Promise<void> {
 
     // Install the research-link contract (read by plan/improve/implement/verify when a plan links a research)
     await installResearchLinkContract(projectDir);
+    await installPlanBoundariesContract(projectDir);
 
     // Deliver the rules tree of the selected engine MCP server
     await installEngineMcpRules(projectDir, selectedEngineServer);
@@ -281,6 +283,10 @@ export async function initCommand(): Promise<void> {
       console.log(chalk.green(`  MCP servers configured: ${answers.mcpServers.join(', ')}`));
       for (const line of getMcpDocsLines(discoveredServers, answers.mcpServers)) {
         console.log(chalk.dim(`    ${line}`));
+      }
+      // Yellow, not dim: these are things the user has to do, not reference.
+      for (const line of getMcpEnvLines(discoveredServers, answers.mcpServers, answers.agents.map(a => a.id))) {
+        console.log(chalk.yellow(`    ${line}`));
       }
       if (answers.engineMcpKey) {
         console.log(chalk.dim(`  Engine MCP: ${answers.engineMcpKey}`));

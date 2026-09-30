@@ -1,7 +1,7 @@
 ---
 name: unikit-commit
 description: Create conventional commit messages for {{engine_name}} projects by analyzing staged changes. Handles engine-specific concerns like companion file pairing, binary assets, and linking the related plan. ALWAYS use this skill when the user asks to commit, save changes, or create a commit. Trigger phrases include "commit", "create commit", "commit this", "save changes", "save my work". Even if the user simply says "commit" or asks you to commit after finishing a task — invoke this skill, do NOT commit manually via git.
-argument-hint: "[scope or context]"
+argument-hint: "[scope or context] [no-push]"
 allowed-tools:
   - Read
   - Bash(git *)
@@ -37,7 +37,7 @@ A commit run is short and quiet. In this order, and nothing else:
 3. The message, as a block of its own.
 4. The question — Behavior step 6, or the split question of **Splitting Unrelated Changes**; none in `## Auto mode`.
 5. One result line per commit: `Committed <short sha>: <subject>`, said in `language.ui` — in `## Auto mode`, its `INFO [commit] auto:` line; in a split, the group lines of step 4 there.
-6. The push question, only when `git.skip_push_after_commit` is not `true`.
+6. The push question, only when Behavior step 8 offers one — never under `auto` or `no-push`, never with `git.skip_push_after_commit: true`; in a plan with PR checkpoints it may be the boundary question of `references/push-boundary.md` or one line saying why no push is offered.
 
 No narration between commands, and **no mention of a setting that merely did its job**: `git.skip_push_after_commit: true` ends the run silently after the result line.
 
@@ -228,11 +228,14 @@ When invoked:
    - Cancel → do NOT commit → **STOP**
 
 7. Execute `git commit` with the confirmed message
-8. **Post-commit push handling** (skipped entirely in `## Auto mode` — it never pushes):
-   - **If `git.skip_push_after_commit = true` in `.unikit/config.yaml`**:
-     - Skip push prompt entirely
-     - End workflow after successful local commit — silently: the result line is the last thing said, with no word about the setting
-   - **Otherwise** (default behavior), offer to push:
+8. **Post-commit push handling** — the first case that holds decides:
+   1. **`## Auto mode`, or the token `no-push`** → no push is offered, and not a word is said about it.
+   2. **`git.skip_push_after_commit = true` in `.unikit/config.yaml`**:
+      - Skip push prompt entirely
+      - End workflow after successful local commit — silently: the result line is the last thing said, with no word about the setting
+   3. **The branch's plan carries at least one `PR checkpoint:` line** → read `{{skills_dir}}/{{self_name}}/references/push-boundary.md` now, once, and follow it — it replaces case 4. The branch's plan is the one Workflow step 4 (Plan Linkage) linked; when it linked none, the folder found by the branch-match rule of `/unikit-implement` Step 0.1 (the three name formats). The check is `grep -c 'PR checkpoint:'` over its manifest.
+      **If `references/push-boundary.md` is missing or unreadable, do not block:** take case 4 — the target is `HEAD`, the current state — and print once `WARN [commit] push-boundary reference missing — module boundaries are not checked, the ordinary push offer is used; run unikit-ai update`.
+   4. **Otherwise** (default behavior), offer to push:
      - Show branch/ahead status: `git status -sb`
      - If the branch has no upstream, use: `git push -u origin <branch>`
      - Otherwise: `git push`
@@ -252,7 +255,7 @@ When invoked:
 
 If argument provided (e.g., `/unikit-commit wallets`):
 - Use it as the scope
-- Or as context for the commit message. A caller's context — `unikit-implement-coordinator` passes `checkpoint: Commit N, tasks X-Y` or `final commit` — tells Step 4 which plan tasks the staged changes belong to: it is input, never text for the message. The token `auto` is neither scope nor context: it switches on `## Auto mode`.
+- Or as context for the commit message. A caller's context — `unikit-implement-coordinator` passes `checkpoint: Commit N, tasks X-Y` or `final commit` — tells Step 4 which plan tasks the staged changes belong to: it is input, never text for the message. The token `auto` is neither scope nor context: it switches on `## Auto mode`. The token `no-push` is not scope or context either: it switches the push offer off for this run (Behavior step 8) — `/unikit-implement` and `unikit-implement-coordinator` pass it while their plan carries a `PR checkpoint:` line. Only the exact token, as one comma-separated part of the argument, counts — the same rule as `auto`.
 
 ## Auto mode
 
@@ -262,7 +265,7 @@ A caller the user has told to commit without asking — `/unikit-implement` once
 
 - The message is written by Workflow Step 7, its check before showing included, and printed in full as a block of its own — then committed without the Behavior step 6 question.
 - No split question: everything staged is committed together, unless the caller passed a split — then that split is applied (**Splitting Unrelated Changes**, steps 3-4) without asking.
-- No push, and no question about it, whatever `git.skip_push_after_commit` says.
+- No push, and no question about it, whatever `git.skip_push_after_commit` says — the same as `no-push`.
 - An `ERROR` from the safety checks (a secret, an orphaned companion file, an engine-ignored directory) still stops and asks the Behavior step 4 question: auto skips the confirmation of a good commit, never the guard against a bad one. A `WARN` is printed and does not stop it.
 - After each commit print `INFO [commit] auto: <short sha> <subject>`.
 
@@ -299,7 +302,7 @@ A split needs an existing commit to split against: when `git rev-parse --verify 
    - Print `INFO [commit] split: <n> groups, snapshot <first 8 characters of snapshot>` before the first group and `INFO [commit] group <i>/<n> committed: <short sha>` after each.
    - A `git commit` or `git apply` that fails (a hook, a patch that does not apply) → stop the split, put the failed group and every later one back into the index with `git restore --staged --source=<snapshot> -- <their paths>`, and print `WARN [commit] split stopped at group <i>/<n>: <reason> — the uncommitted groups are staged again`.
    - After the last group: `git diff --quiet HEAD <snapshot>` exits 0 when the commits hold exactly what was staged. Anything else → `WARN [commit] the split commits differ from what was staged — compare: git diff HEAD <snapshot>`.
-5. After all commits are done, run Post-commit push handling (Step 8) — respects `git.skip_push_after_commit`
+5. After all commits are done, run Post-commit push handling (Behavior step 8) — respects `git.skip_push_after_commit`, `no-push` and a plan's PR checkpoints
 
 ## Important
 

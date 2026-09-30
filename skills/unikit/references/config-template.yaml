@@ -122,3 +122,19 @@ git:
   #   - no "Push to remote?" prompt is shown
   # Default: false
   skip_push_after_commit: false
+
+  # Pull requests per plan module (/unikit-plan, /unikit-implement, /unikit-pr).
+  pull_requests:
+    # Write a PR checkpoint task at the end of every plan module but the last.
+    # Recorded into the plan as "PR checkpoints: yes"; changing it later never
+    # reinterprets a plan already written.
+    # Default: false
+    checkpoints: false
+
+    # How far /unikit-pr goes — and what it does at a PR checkpoint:
+    #   remind — print the PR text, the push command and the link; touch no remote
+    #   create — push the module boundary, open the PR or update the open one
+    #   merge  — create, then merge when the merge brings nothing from the base branch
+    # Without the GitHub MCP every level acts as remind.
+    # Default: create
+    max_level: create   # remind | create | merge

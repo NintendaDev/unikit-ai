@@ -82,6 +82,9 @@ Relevant to the dev pipeline:
 - `research-link.md` — the `## Based on` contract (entry format, hashing, drift ladder), read by
   `/unikit-plan`, `/unikit-implement`, `/unikit-verify` and `/unikit-improve` only when a plan
   links a research.
+- `plan-boundaries.md` — where a plan, a module and a push start and end (base branch, plan
+  start, module boundary, push target), read by `/unikit-verify`, `/unikit-implement`,
+  `/unikit-commit` and `/unikit-pr`.
 
 ---
 

@@ -33,6 +33,8 @@ quality:    /unikit-review  ──► /unikit-fix     (optional) review vs rules
               │
 commit:     /unikit-commit          (optional terminal) conventional commit (+ push)
               │
+pr:         /unikit-pr              (optional) the branch's PR — text, open/update, safe merge
+              │
 archive:    /unikit-archive         (optional) move a finished folder plan out of the active list
               │
 learn:      /unikit-evolve          (optional) turn fix-patches into project rules

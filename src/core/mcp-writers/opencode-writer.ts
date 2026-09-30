@@ -1,6 +1,7 @@
 import type { McpWriter } from './index.js';
-import { findKeyInContainer } from './shared.js';
-import { MCP_COMMENT_KEY } from '../constants.js';
+import { findKeyInContainer, getEntryInContainer } from './shared.js';
+import { MCP_COMMENT_KEY, OPENCODE_OAUTH_FIELD } from '../constants.js';
+import { renderHeaderEnvRefs } from '../mcp-env.js';
 import { fileExists, readTextFile } from '../../utils/fs.js';
 import { logInfo } from '../../utils/log.js';
 
@@ -69,9 +70,13 @@ function toOpenCodeServerConfig(rawConfig: Record<string, unknown>, serverKey: s
 
     const headers = rawConfig['headers'];
     if (isRecord(headers)) {
-      out['headers'] = headers;
+      const rendered = renderHeaderEnvRefs(headers, 'opencode');
+      out['headers'] = rendered.headers;
+      // A header carrying a token reference means the token is ours to send: OpenCode
+      // would otherwise start its own OAuth flow against the server.
+      if (rendered.count > 0) out[OPENCODE_OAUTH_FIELD] = false;
       // Count only, never the values — a header is where a bearer token sits.
-      logInfo('mcp', `opencode: ${serverKey} — ${Object.keys(headers).length} header(s) carried through`);
+      logInfo('mcp', `opencode: ${serverKey} — ${Object.keys(headers).length} header(s) carried through, ${rendered.count} env reference(s)`);
     }
   } else {
     const type = typeof rawConfig['type'] === 'string' ? ` (type="${rawConfig['type'] as string}")` : '';
@@ -138,6 +143,10 @@ export class OpenCodeMcpWriter implements McpWriter {
 
   findKey(settings: Record<string, unknown>, code: string, reserved: Set<string>): string | null {
     return findKeyInContainer(settings, 'mcp', code, reserved);
+  }
+
+  getEntry(settings: Record<string, unknown>, key: string): Record<string, unknown> | null {
+    return getEntryInContainer(settings, 'mcp', key);
   }
 
   mergeEnv(settings: Record<string, unknown>, key: string, env: Record<string, unknown>): void {

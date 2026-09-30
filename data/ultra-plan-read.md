@@ -1,9 +1,9 @@
 # Ultra plan bundle — reader contract
 
-Read by `/unikit-implement`, `/unikit-verify`, `/unikit-improve` and `/unikit-commit`. It
-specifies **how to read** an ultra plan bundle. How to **write** one is declared canonically
-in `unikit-plan/references/ULTRA-PLAN-FORMAT.md`, which on a user machine sits in the
-agent's installed skills directory.
+Read by `/unikit-implement`, `/unikit-verify`, `/unikit-improve`, `/unikit-commit` and
+`/unikit-pr`. It specifies **how to read** an ultra plan bundle. How to **write** one is
+declared canonically in `unikit-plan/references/ULTRA-PLAN-FORMAT.md`, which on a user
+machine sits in the agent's installed skills directory.
 
 Do not restate this contract inside a skill — that is the failure mode this file exists to
 prevent. A skill **names** the rule and points here; a skill that **repeats** the rule
@@ -38,6 +38,8 @@ human, never a branch condition for a skill — read the marker.
 | `/unikit-improve` | the manifest plus **every** phase file | improvement is not local — moving a task between phases touches two of them |
 | `/unikit-commit` | the manifest plus the phase files of the **current commit group** | staged paths are mapped onto groups; the rest of the bundle is not needed |
 | `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the **current layer** | layers execute one at a time, so the phases of future layers have no business in the context; the hand-off to a worker is closed, so what it does not read, it cannot pass on |
+| `/unikit-pr` | the manifest only — `## Modules`, the checklist and its labels, the `WHY:` lines | a PR text is written from what the modules deliver; phase detail is not PR material |
+| `/unikit-commit` (push offer in a plan with PR checkpoints) | the manifest's checklist only | it looks for the last completed module boundary, nothing else |
 
 The merge pre-pass (`/unikit-implement` Step 2.5) reads **only the manifest's checklist**: every
 test-checkpoint task in scope is listed there. It opens no phase file — reading depth does not
@@ -60,6 +62,10 @@ tasks merged into it: their non-run steps are performed there (`/unikit-implemen
 - The merge marker of a test-checkpoint task (`⏭️ MERGED → task N.M`) is **the text of the
   task in the manifest's checklist**, on the model of `⏸️ MANUAL`. A merge changes no phase
   file, and no other place for that mark exists.
+- The PR checkpoint labels — `→ PR <sha>`, `⏭️ MERGED → task N.M`, and the bare `⏭️ MERGED`
+  of the last PR checkpoint — are text of the task's checkbox line in the manifest, written
+  with the tick; no phase file changes. The header's `Planned at:` is written once by the
+  planner and is never edited by any consumer.
 
 ## Integrity is blocking
 
@@ -94,7 +100,24 @@ The two run-placement checks are write-time-only in exactly the same way — poi
 `## Integrity Checks` in `unikit-plan/references/ULTRA-PLAN-FORMAT.md`. The planner secures them
 before the bundle is saved, and a consumer resolves runs through the checklist rather than by
 searching the phase files for commands. If that stops being true, they move into the list
-above — and not into one consumer.
+above — and not into one consumer. Checks 12-16 are write-time too: the planner,
+`/unikit-improve` and `plan-bundle.mjs` run them; a consumer never re-runs them.
+
+## Recon
+
+A bundle written with saved state keeps its reconnaissance in `recon/` beside the phase files,
+named by the manifest's `## Recon` and by each phase's `Recon:` line (the form and the freshness rule:
+`unikit-plan/references/RECON-TEMPLATE.md` → `## After the plan is written`).
+
+| Consumer | Reads recon |
+|----------|-------------|
+| `/unikit-improve` | as the baseline of a pass, by its own reference `recon-baseline.md` |
+| `/unikit-implement` | only when a detail of the phase does not match the code: through the phase's `Recon:` line — the file's head, then the one section, after the freshness check |
+| `/unikit-verify`, `/unikit-commit`, `/unikit-pr` | never |
+
+No consumer creates, edits or deletes a recon file.
+A recon file that is missing is never an integrity violation: the consumer that wanted it prints one line —
+`WARN [<skill>] recon file missing: recon/<name> — continuing without it` — and goes on.
 
 ## Verification commands
 

@@ -1,0 +1,29 @@
+{
+  "key": "github",
+  "code": "github",
+  "displayName": "GitHub (pull requests)",
+  "preselect": false,
+  "docs": {
+    "repo": "https://github.com/github/github-mcp-server"
+  },
+  "config": {
+    "type": "http",
+    "url": "https://api.githubcopilot.com/mcp/",
+    "headers": {
+      "Authorization": "Bearer {{env:GITHUB_PAT}}"
+    },
+    "_comment": "Reads a GitHub personal access token from the GITHUB_PAT environment variable. Only /unikit-pr uses this server."
+  },
+  "allowed-tools": {
+    "agents": {},
+    "skills": {
+      "unikit-pr": [
+        "list_pull_requests",
+        "create_pull_request",
+        "update_pull_request",
+        "pull_request_read",
+        "merge_pull_request"
+      ]
+    }
+  }
+}

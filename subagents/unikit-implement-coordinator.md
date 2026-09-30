@@ -66,15 +66,22 @@ The user may provide:
 - A description of what to implement — context only: it selects no plan (there is no feature-name lookup here).
 - Nothing — the plan is resolved by the ladder in Plan Parsing (fast plan, branch match; the latest is only a guess, asked when several exist).
 - A test-run instruction (`tests at the end`, `run tests at every point`) — the answer to the merge question below, given in advance.
+- A PR checkpoint answer (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`) — the answer to every PR checkpoint question of the session, given in advance.
 
 ## Plan Parsing
 
 1. Locate the active plan, in this order:
-   a. **Explicit `@<path>`** → use that folder.
+   a. **Explicit `@<path>`** → use that folder. An unfinished plan there (below) → print its `NOTE` line and stop.
    b. **Fast plan** — `.unikit/code/PLAN.md` exists → use it (the flat fast-mode plan). If a folder plan also matches the branch (step c), the branch plan wins while it has any `- [ ]` task in its manifest checklist — use it and print `INFO [plan] fast plan .unikit/code/PLAN.md not used — the branch plan has pending work (all tasks)`. When it has none and the fast plan has some, ask once whether to run the fast plan (`Run the fast plan` · `Stop`); when neither has any, use the branch plan. This is `/unikit-implement` Step 0.1 for a call without selectors — the coordinator takes none.
    c. **Branch match.** From branch `<prefix><name>`, collect every folder in `.unikit/code/plans/` that matches any of the three name formats: (1) exactly `<name>` — the current format; (2) ending with `_<name>` — the `YYYY-MM-DD_<name>` format; (3) ending with `-<name>` and beginning with three digits — the legacy `DDD-<name>` format. Exactly one match → use it. **More than one → ask the user which one**, listing each with its `Updated:` — never by format precedence. No match → fall through to *latest*.
    d. **Latest.** Read the `Updated:` line from each candidate's `.unikit/code/plans/<folder>/PLAN.md` and sort descending; ties break on `Created:` descending, then on folder name descending. A manifest with no `Updated:` is **excluded and named** — `WARN [plan] <folder>: manifest has no Updated: — excluded; run unikit-ai update to backfill it` — never guessed from the folder name or the file's mtime.
       **`latest fallback` is a guess, not a resolution:** the branch named no plan. With two or more plans present, print the candidate table (folder, `Updated:`, tasks remaining) and ask — never auto-select. With exactly one plan present, announce it with the branch miss named in the reason and continue.
+
+      **An unfinished plan is not a plan.** A folder under `.unikit/code/plans/` that holds `.planning/STATE.md` but not its manifest `.unikit/code/plans/<folder>/PLAN.md` is an ultra plan still being written: it is never a candidate, and it is named once:
+
+      ```
+      NOTE [plan] <folder> — unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>
+      ```
    e. No plan found — stop and report.
 
    **Announce the resolution** — exactly one visible line before any other output:
@@ -103,7 +110,9 @@ The user may provide:
    - Layer 1: phases that depend only on Layer 0 phases
    - Layer N: phases that depend only on phases in layers 0..N-1
    - If circular dependency detected — stop and report error
+   - **Module barrier, defensively.** With `## Modules`, never place phases of two modules in one layer: when the dependency lines of a legacy plan would allow it, move the later module's phases to the next layer and print `INFO [coordinator] module barrier: phase <X> (M<b>) waits for M<a>`. A plan written by `/unikit-plan` already carries the barrier.
 6. **Merge question, before the first layer** — only with `Testing: yes`. Read `unikit-implement`'s test-run reference once — the path is written in `/unikit-implement` Step 1, preloaded above — and run its `## Step 2.5` over this session's scope, which is every pending phase of the plan: count the mergeable points, take the answer from the input when it gives one, otherwise ask once with `AskUserQuestion` (without the tool: the numbered text question, then end your turn). No answer → the points run as written. Then write the marks exactly as Step 2.5 does, before any task is dispatched. Here the last point is a point of the last layer that holds one — layers, not checklist order, decide what runs last. A merged point is skipped by the `Test checkpoint:` branch; the surviving one runs when its layer has finished.
+7. **PR checkpoints and modules** — when the checklist carries a `PR checkpoint:` line or the manifest has `## Modules`, read `unikit-implement`'s PR checkpoint reference once — its path is written in `/unikit-implement` Step 1, preloaded above — and follow it for the whole session. An answer to the PR question given in the input (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`) counts for every point, as the test-run answer does.
 
 ## Dependency Parsing
 
@@ -201,6 +210,8 @@ For each task in the phase, sequentially:
    **Fifth branch — a test-checkpoint task.** In this branch you are the executor, so there is nobody to withhold it from: execute it in the ordinary order, by `## Step 3.2` of that test-run reference, and write the result into the manifest's `## Test Runs` in the same pass that marks the task.
 
    **Sixth branch — the task produced a rule candidate.** Here too you are the executor, so you are the writer: append the row to the plan's `## Rule Candidates` in the same pass that marks the task — `R<n>` one more than the highest already there (read the table first), `from` the task, `status` `open`, dedup semantic. **Never write `.unikit/RULES.md` yourself**, and never ask about the candidates here: this agent's session usually ends before a question could be answered, so it records them and reports the count.
+
+   **Seventh branch — a PR checkpoint task.** You are the executor: carry it out by `## Step 3.2 — the PR checkpoint` of the PR checkpoint reference (or `## Legacy`), after every phase of the module's last layer has finished **and after refinement** — the sidecars' fixes and the commit sidecar's `not_ready` / `excluded_files` are handled first, in place of the commit point that closes the module — and mark it by `## Step 3.4 — labels` in the same pass. A worker that hands one back (`returned:` in its output) leaves the task unticked and its phase unfinished; you then execute it here.
 6. If any task fails, stop the phase
 
 ## Parallel Phase Dispatch
@@ -218,6 +229,7 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
   - **any `Editor:` lines of those tasks, verbatim** — a worker that receives only the description implements an editor target as pure code
   - **`editor_mode:`** — the `Editor tasks` value from the plan's `## Settings`. Absent from the plan → pass `manual`, never `direct`
 - **A test-checkpoint task is never handed to a worker.** A task carrying a `Test checkpoint:` line is withheld from the set copied to the worker and stays with the coordinator. The reason is measured: the test runner is one per editor, and two workers of the same layer starting a run at the same moment get a refusal of the "test run already active" kind rather than two results.
+- **A PR checkpoint task is never handed to a worker.** A task carrying a `PR checkpoint:` line is withheld from the set copied to the worker and stays with the coordinator: it asks the user and may end the run.
 - **The run is performed by the scope owner — the coordinator — once the layer has finished.** The order is: every phase of the layer completes → the coordinator executes that layer's test-checkpoint tasks (`## Step 3.2` of the test-run reference) → the next layer. This holds whether or not anything was merged: the single runner decides it, not merging.
 - Maximum **3 parallel workers** per layer. If more phases are ready, split into sub-batches.
 - **Ultra, blocking:** a task present in the manifest's checklist whose `## Task N.M:` section exists in no phase file, or exists in more than one, is an integrity violation. Stop and report it; do not dispatch that phase with a one-line description standing in for the missing specification.
@@ -314,11 +326,12 @@ Every commit message is written by the `unikit-commit` skill. This agent never c
 - **At a checkpoint** — the layer just finished the last task of a commit range:
   1. Read the sidecar result for this layer. `not_ready` → do not commit; put its `why` into the layer's `Commit:` line and continue.
   2. Stage only the files this run created or modified for that range, minus the sidecar's `excluded_files`: `git add -- <files>`. Never `git add .` or `git add -A`.
-  3. Invoke `Skill(skill: "unikit-commit", args: "checkpoint: Commit N, tasks X-Y")`. When the sidecar returned `needs_split`, append its groups to the args — labels and file lists only — as the proposed split.
-- **At the end of the full run:** uncommitted work from this run remains → the same three steps, with `args: "final commit"`.
+  3. Invoke `Skill(skill: "unikit-commit", args: "checkpoint: Commit N, tasks X-Y")` — `args: "checkpoint: Commit N, tasks X-Y, no-push"` when the checklist carries a `PR checkpoint:` line. When the sidecar returned `needs_split`, append its groups to the args — labels and file lists only — as the proposed split.
+- **At the end of the full run:** uncommitted work from this run remains → the same three steps, with `args: "final commit"` — `"final commit, no-push"` under the same condition.
+- A commit point whose range ends with a PR checkpoint task is that task's module commit — do not make it again. The label of a PR checkpoint the session ends on is committed by the reference (`## Step 3.4 — labels`).
 - **The user cancels in the `unikit-commit` confirmation** → nothing is committed and the files stay staged: set the layer's `Commit:` line to `skipped — cancelled by the user` and continue the run.
 - **No `Skill` tool in this session** → do not commit by hand: leave the files staged, set the layer's `Commit:` line to `pending — run /unikit-commit`, and continue.
-- Never auto-push — `unikit-commit` asks about the push itself and honours `git.skip_push_after_commit`.
+- Never auto-push. In a plan without `PR checkpoint:` lines `unikit-commit` asks about the push itself and honours `git.skip_push_after_commit`; in a plan with them every commit passes `no-push` — the session never pushes; the branch reaches the remote through `/unikit-pr` or the developer.
 
 ## Safety Guards
 
@@ -361,6 +374,7 @@ Commits created: N
 Status: complete | partial | failed
 Remaining tasks: [list if any]
 Test runs: <n> performed · <m> merged
+PR checkpoints: <same form as /unikit-implement Step 4>
 Rule candidates: <n> recorded — /unikit-implement will propose them at the end of the call
 MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them into
   .unikit/MCP-RECHECK-NOTES.md
@@ -370,6 +384,8 @@ MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them int
 ```
 
 The `MCP findings:` line appears **only when the plan's `## MCP Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
+
+The `PR checkpoints:` line appears only when the session met a PR checkpoint.
 
 The `Test runs:` line follows the same rule: it is omitted entirely under `Testing: no`, and omitted when no run was performed in this session. Same reasoning — a line printed every time stops being read.
 

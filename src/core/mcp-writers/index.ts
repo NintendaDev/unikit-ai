@@ -23,6 +23,8 @@ export interface McpWriter {
    *          registered under any variant.
    */
   findKey(settings: Record<string, unknown>, code: string, reserved: Set<string>): string | null;
+  /** The entry registered under exactly `key`, or `null` — read-only, for the kept-entry check. */
+  getEntry(settings: Record<string, unknown>, key: string): Record<string, unknown> | null;
   /**
    * Overlay `env` onto an existing entry, leaving every other field untouched.
    *
@@ -44,7 +46,12 @@ export interface McpWriter {
   serialize(settings: Record<string, unknown>): string;
 }
 
-const jsonWriter = new JsonMcpWriter();
+// Three instances of one JSON writer: the clients share the container and the
+// file format, and differ in how an env reference is spelled and — on Qwen —
+// in the field an HTTP server's URL goes into (`url` means SSE there).
+const claudeJsonWriter = new JsonMcpWriter({ label: 'claude', envStyle: 'dollar-brace' });
+const cursorJsonWriter = new JsonMcpWriter({ label: 'cursor', envStyle: 'env-colon' });
+const qwenJsonWriter = new JsonMcpWriter({ label: 'qwen', envStyle: 'dollar-brace', httpUrlField: true });
 const tomlWriter = new TomlMcpWriter();
 const opencodeWriter = new OpenCodeMcpWriter();
 const antigravityWriter = new AntigravityMcpWriter();
@@ -59,5 +66,11 @@ export function getMcpWriter(agentId: string): McpWriter {
   if (agentId === 'antigravity') {
     return antigravityWriter;
   }
-  return jsonWriter;
+  if (agentId === 'cursor') {
+    return cursorJsonWriter;
+  }
+  if (agentId === 'qwen') {
+    return qwenJsonWriter;
+  }
+  return claudeJsonWriter;
 }

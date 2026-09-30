@@ -91,6 +91,9 @@ Four modes:
 
 Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan folder without re-exploring.
 
+- **Modules** - full and ultra plans are always sliced into modules the base branch can take whole, listed under `## Modules` when there are two or more; a module boundary is a layer barrier, and a commit range never crosses one. With `git.pull_requests.checkpoints: true` every module but the last ends with a **PR checkpoint task**. The manifest records `Planned at:`, the commit the plan's work starts from
+- **Two ultra writing protocols** - standard by default, or with saved state in the plan folder's `.planning/` (chosen by the first ultra question; a standard plan over 12 phases is offered the switch); saved state survives a compaction and resumes with `/unikit-plan ultra <name>`
+
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
 ```
@@ -104,6 +107,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Performs deeper codebase analysis than initial `/unikit-plan`
 - Shows diff-like report before applying changes
 - `--list` shows available plans; `@<path>` targets a specific plan folder
+- **Builds on the plan's reconnaissance** when the plan kept it (`recon/`, an ultra plan written with saved state): each recon file is a topic, with the phases it covers, their open tasks and how fresh it is (paths changed since its `HEAD`). Without a prompt it shows the topics and asks what to improve - all fresh topics with open tasks by default, or chosen ones, or the whole plan as before; with a prompt it takes only the topics the prompt touches. Fresh reconnaissance replaces a new exploration, changed paths are explored again, the plan's logic (dependencies, modules, commit ranges) is checked across the whole plan either way, and only heads and single sections of recon files are read. The reconnaissance itself is never edited
 - `+check` runs the refinements past a **fresh-context validator** before they are applied - a read-only subagent that drops, modifies, or reclassifies findings it cannot substantiate. If the validator fails to launch, the pass is skipped: every finding is kept and a single `WARN [+check]` line is printed
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
@@ -127,6 +131,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - When the call covers two or more test-checkpoint tasks, asks once — before the first task, together with the uncommitted-changes question — whether to run the tests once at the last point or at every point; words in the call (`tests at the end of phase 6`) answer in advance. A merged point's own non-run steps (a negative control, a manual smoke) are performed at the surviving point
 - Reads only what the plan needs: the ultra reader contract only for an ultra bundle, the test-run rules only under `Testing: yes`, the editor procedures of `dev-principles.md` only when the plan carries an `Editor:` task
 - `@<path>` bypasses auto-detection for explicit plan targeting
+- At a **PR checkpoint** it commits the module and asks once: check the module (`/unikit-verify` on its phases, `/unikit-review` of its commits), run `/unikit-pr` and continue, stop here, or merge into the next PR — answers can be given in advance (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`). While a plan has PR checkpoints, the run never pushes. In an ultra plan it checks, at a module boundary, whether the evidence the next module was planned on has changed
 
 ### `/unikit-fix [bug description]` - fix and learn
 
@@ -139,18 +144,22 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Creates a **self-improvement patch** in `.unikit/code/patches/`
 - Every fix makes the AI smarter through `/unikit-evolve`
 
-### `/unikit-verify [--strict] [feature-name]` - check completeness
+### `/unikit-verify [--strict] [Phases N-M] [feature-name]` - check completeness
 
 ```
 /unikit-verify                           # Verify implementation against plan
 /unikit-verify --strict                  # Strict mode - zero tolerance for gaps
 /unikit-verify customers-system          # Verify specific feature
+/unikit-verify Phases 3-5                # Check one module: its tasks and its range only
 ```
 - Goes through every task in the plan and verifies the code actually implements it
 - Checks build, tests, looks for leftover TODOs, plan-vs-code drift
 - Context gates: checks architecture/rules alignment
 - If gaps found, suggests `/unikit-fix <issue summary>`
 - Strict mode recommended before merging
+- Takes the base branch from `git.base_branch`, and the plan's changed files from the commit it was planned at as well as from the base — modules already merged into the base branch stay in scope
+- `Phases N-M` checks one module: only its tasks and its range, no full test run, no design stamp. A PR checkpoint task is read from its checkbox
+- After a clean check of a whole plan it offers **Pull request — run /unikit-pr**
 
 ### `/unikit-commit [scope]` - conventional commits
 
@@ -166,9 +175,23 @@ Creates conventional commits with engine-aware checks:
 - Links the plan with a `Plan: <folder>` trailer instead of phase and task numbers
 - Follows conventional commits format (feat, fix, refactor, etc.)
 - Suggests commit splitting for unrelated changes, and never lets unstaged edits into a split commit
-- Offers to push after commit
+- Offers to push after commit. In a plan with PR checkpoints the push takes the current state by default, and inside a module asks whether to push everything or stop at the end of the last finished module. `/unikit-implement` and the coordinator pass `no-push`, so an automatic commit never pushes
 - A run is quiet and speaks your interface language (`language.ui`): it shows a problem only when a check finds one, then the message (written in `language.artifacts`), the question and one result line - no narration of passing checks, no word about a setting such as `git.skip_push_after_commit`
 - **Auto mode** — when `/unikit-implement` runs with auto-commit on, it passes `auto`: the message is still written and printed, but committed without the confirmation question, with no split question and no push. A safety error still stops the commit and asks
+
+### `/unikit-pr [remind | create | merge]` - write, open and safely merge the branch's PR
+
+```
+/unikit-pr                     # Open or update the branch's PR at the configured level
+/unikit-pr remind              # Only write the PR text, the push command and the link
+/unikit-pr merge               # Open or update, then merge when it is safe
+```
+- The one author of pull requests. The text is one feature per line, in plain words, written from the plan's modules (`## Modules`, the tasks' `WHY:` lines) or, without a plan, from the commits and the code itself - the code is the source of truth, commit subjects are hints
+- Levels `remind` / `create` / `merge`, capped by `git.pull_requests.max_level` (default `create`); a request above the ceiling acts at the ceiling and says so. Without the GitHub MCP, or when `origin` is not on GitHub, every level prints the text instead
+- The PR is the current state of the branch (`HEAD`); inside a module of a plan with PR checkpoints it asks whether to include everything or stop at the end of the last finished module - it never cuts silently. Uncommitted changes are not part of the PR, and it says so
+- One PR per branch: none open - it opens one; one open - it updates its title and text, and the new module is already in it
+- Merges only with a merge commit, and only when merging brings nothing from the base branch, GitHub says the PR can be merged, and you confirm; the test state is shown before the question, never a condition. Otherwise the PR stays open with the reason named
+- Never merges the base branch into yours, never resolves conflicts, never force-pushes, never writes into a plan
 
 ### `/unikit-archive [list | --all | <plan-folder>]` - move finished plans out of the active list
 

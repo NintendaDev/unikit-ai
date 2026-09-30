@@ -24,6 +24,7 @@ import { getExtensionDir, loadExtensionManifest } from './extensions.js';
 import { ensureDir, writeTextFile } from '../utils/fs.js';
 import { logInfo, logWarn } from '../utils/log.js';
 import type { DiscoveredServers } from './mcp.js';
+import { warnOnKeptEnvEntry } from './mcp-env.js';
 import { resolvePlatformConfig } from './mcp-platform.js';
 import { getMcpWriter } from './mcp-writers/index.js';
 import type { McpWriter } from './mcp-writers/index.js';
@@ -229,6 +230,9 @@ export async function configureMcp(
       logInfo('mcp', `server ${server.code}: created`);
     } else if (existingKey === server.code) {
       logInfo('mcp', `server ${server.code}: kept`);
+      // "Present → keep" would preserve a hand-written entry forever — a literal token
+      // in a committed file, or a different server under our key. Say so; never fix it.
+      warnOnKeptEnvEntry(agentId, server.code, writer.getEntry(settings, server.code), resolvedConfig);
     } else {
       writer.remove(settings, existingKey);
       writer.upsert(settings, server.code, resolvedConfig);

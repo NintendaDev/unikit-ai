@@ -94,7 +94,12 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the
   system's `AC-<id>`s.
 - **Out:** `.unikit/code/PLAN.md` or `.unikit/code/plans/<feature>/PLAN.md` — or, in
-  ultra, that folder's manifest plus its `phase-NN-*.md` files.
+  ultra, that folder's manifest plus its `phase-NN-*.md` files. Full and ultra plans are cut into
+  modules the base branch can take whole; with `git.pull_requests.checkpoints: true` each module
+  but the last ends with a PR checkpoint task. Ultra asks first how to write the plan: standard (the
+  default, in one go) or with saved state in the plan folder's `.planning/`, which survives a
+  compaction and resumes with `/unikit-plan ultra <name>`; a standard plan over 12 phases is
+  offered the switch.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 
 ### unikit-improve
@@ -116,7 +121,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   test runs asks once whether to merge them (or say it in the call). Bootstraps rules once, then
   codes inline. `--list` lists the available plans and `status` shows progress — both stop
   without implementing anything.
-- **Out:** project source code; updates the plan manifest's checkboxes.
+- **Out:** project source code; updates the plan manifest's checkboxes. At a PR checkpoint it
+  commits the module and asks: check the module, run `/unikit-pr`, stop, or merge into the next
+  PR. While the plan has PR checkpoints it never pushes.
 - **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
   `/unikit-verify` / `/unikit-commit`.
 
@@ -133,7 +140,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Purpose:** Verify the implementation *against the plan* — every task done, build clean, tests
   pass, no leftover TODOs, conventions honoured. Emits a gate result.
 - **When:** "verify", "did we miss anything", "does it build and pass tests". After implementing.
-- **In:** nothing (latest plan), or a feature name; `--strict` raises the bar.
+- **In:** nothing (latest plan), or a feature name; `--strict` raises the bar; `Phases N-M`
+  checks one module. The base branch comes from `git.base_branch`; after a clean check of the
+  whole plan it offers `/unikit-pr`.
 - **Out:** a verification report. The **one** sanctioned code→design write: on all-AC-met it
   stamps `implemented_version` into the GDD's `GD-IDS.yaml` (a single surface; GAME.md's
   `## System Map [gen]` renders the `implemented` state read-only).
@@ -157,9 +166,24 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "commit", "save changes". Always commit through this, not manual git.
 - **In:** an optional scope hint. A caller in auto-commit mode (`/unikit-implement`) adds `auto`:
   the message is still printed, but committed without a question and never pushed; an ERROR still stops it.
+  A caller in a plan with PR checkpoints adds `no-push`; a push you ask for inside a module asks
+  whether to push everything or stop at the last finished module.
 - **Out:** a git commit (+ optional push). A quiet run in `language.ui`: problems only, the message,
   the question, one result line.
 - **Optional (terminal step).** Before: any of implement/fix/verify/review.
+
+### unikit-pr
+- **Purpose:** Write, open and — when allowed — merge the feature branch's pull request. The
+  text is one feature per line in plain words, from the plan's modules or, without a plan,
+  from the commits and the code. One open PR per branch: it is created, or updated when open.
+- **When:** "open a PR", "write the PR description", "merge the PR"; after `/unikit-verify` on
+  a finished plan, or at a PR checkpoint of `/unikit-implement`.
+- **In:** `remind | create | merge` (capped by `git.pull_requests.max_level`), or nothing.
+- **Out:** the PR text; at `create` a pushed branch and an opened or updated PR (GitHub MCP);
+  at `merge` a merge commit — only when the merge brings nothing from the base branch.
+  Without the GitHub MCP: the text, the push command and the link.
+- **Optional (after commit).** Neighbours: `/unikit-commit` (commits), `/unikit-review` (reviews
+  the PR's code), `/unikit-verify` (offers it when the plan is done).
 
 ### unikit-archive
 - **Purpose:** Move a completed folder plan — or, on your explicit choice, an unfinished one,

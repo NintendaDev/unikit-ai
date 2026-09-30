@@ -41,6 +41,14 @@ const SECTION_FILES_IN_PHASE = '## Files in This Phase';
 const SECTION_RULE_CANDIDATES = '## Rule Candidates';
 const SECTION_TEST_RUNS = '## Test Runs';
 const TASK_RUN_MARKER = 'Test checkpoint:';
+const SECTION_MODULES = '## Modules';
+const SECTION_ROADMAP_LINKAGE = '## Roadmap Linkage';
+const SECTION_RECON = '## Recon';
+const SECTION_TOTAL_EFFORT = '## Total Estimated Effort';
+const HEADER_DEPENDS_ON = 'Depends on:';
+const HEADER_RECON = 'Recon:';
+const HEADER_UPDATED = 'Updated:';
+const HEADER_PLANNED_AT = 'Planned at:';
 
 const PHASE_BACKLINK = 'Plan: [PLAN.md](PLAN.md)';
 
@@ -68,8 +76,12 @@ const DETAIL_GATE_POINTS = 7;
 // defect being a run that `/unikit-verify` then executes a second time — and check 11 —
 // under `Testing: yes` the last checklist task is a test-checkpoint task carrying
 // `Test checkpoint: plan`, because the final full run has no off switch.
+// 15 = those 11 plus the 4 added with plan modules: check 12 — the `## Modules` lines cover
+// the phases in order; check 13 — a PR checkpoint task is last in its module and absent from
+// the last module; check 14 — the module barrier; check 15 — no commit range crosses a module
+// boundary.
 // Changing this number requires naming, here, which check was added or removed and why.
-const INTEGRITY_POINTS = 11;
+const INTEGRITY_POINTS = 16;
 
 // Every file here must carry the literal marker. The list IS the contract:
 // a consumer that "forgets" ultra degrades silently to full-plan behaviour, and
@@ -77,6 +89,8 @@ const INTEGRITY_POINTS = 11;
 const markerConsumers = [
     'skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md',   // declares it
     'skills/unikit-plan/references/mode-ultra.md',          // writes it
+    'skills/unikit-plan/references/ultra-direct.md',        // writes it (standard)
+    'skills/unikit-plan/references/ultra-stateful.md',      // writes it (saved state)
     'data/ultra-plan-read.md',                              // tells consumers to look for it
     'skills/unikit-implement/SKILL.md',
     'skills/unikit-verify/SKILL.md',
@@ -387,6 +401,35 @@ if (manifest) {
     assertTrue('T24 last-checklist-task-is-full-run',
         lastBlock.some((l) => l.includes(`${TASK_RUN_MARKER} plan`)),
         `the last checklist task does not carry "${TASK_RUN_MARKER} plan"`);
+
+    // --- T25..T26: the plan-module surfaces ---
+    // `Planned at:` is where the plan's work starts for verify and the boundary drift check;
+    // a template that drops it or moves it away from the timestamps teaches a header the
+    // planner then writes somewhere nobody looks.
+    const idxUpdated = mLines.findIndex((l) => l.startsWith(HEADER_UPDATED));
+    const idxPlannedAt = mLines.findIndex((l) => l.startsWith(HEADER_PLANNED_AT));
+    assertTrue('T25 manifest-header-has-planned-at',
+        idxUpdated !== -1 && idxPlannedAt === idxUpdated + 1,
+        `${HEADER_UPDATED} at ${idxUpdated}, ${HEADER_PLANNED_AT} at ${idxPlannedAt} (expected directly below)`);
+
+    const modulesLines = mLines.map((l, i) => [l, i]).filter(([l]) => l.startsWith(SECTION_MODULES));
+    const idxModules = modulesLines.length ? modulesLines[0][1] : -1;
+    const idxRoadmap = mLines.findIndex((l) => l.startsWith(SECTION_ROADMAP_LINKAGE));
+    assertTrue('T26 modules-line-between-roadmap-and-phase-index',
+        modulesLines.length === 1 && idxRoadmap !== -1 && idxPhaseIndex !== -1
+            && idxModules > idxRoadmap && idxModules < idxPhaseIndex,
+        `${modulesLines.length} ${SECTION_MODULES} line(s); ${SECTION_MODULES} at ${idxModules}, ${SECTION_ROADMAP_LINKAGE} at ${idxRoadmap}, ${SECTION_PHASE_INDEX} at ${idxPhaseIndex}`);
+
+    // --- T27: recon is part of a plan written with saved state ---
+    // `## Recon` is the list the manifest keeps of the plan's reconnaissance. It stands above
+    // `## Technical Context`, which stays the last section (T5), and below the effort estimate.
+    const reconLines = mLines.map((l, i) => [l, i]).filter(([l]) => l.startsWith(SECTION_RECON + ' ') || l.trim() === SECTION_RECON);
+    const idxRecon = reconLines.length ? reconLines[0][1] : -1;
+    const idxTechnical = mLines.findIndex((l) => l.startsWith(SECTION_TECHNICAL_CONTEXT));
+    const idxEffort = mLines.findIndex((l) => l.startsWith(SECTION_TOTAL_EFFORT));
+    assertTrue('T27 recon-section-between-effort-and-technical-context',
+        reconLines.length === 1 && idxTechnical !== -1 && idxEffort !== -1 && idxRecon > idxEffort && idxRecon < idxTechnical,
+        `${reconLines.length} ${SECTION_RECON} line(s); at ${idxRecon}, ${SECTION_TOTAL_EFFORT} at ${idxEffort}, ${SECTION_TECHNICAL_CONTEXT} at ${idxTechnical}`);
 }
 
 // --- T7..T10: the phase file template ---
@@ -403,6 +446,12 @@ if (phaseTpl) {
 
     assertContains('T9 phase-template-links-back-to-manifest', phaseTpl, PHASE_BACKLINK, HEADING_PHASE_TEMPLATE);
     assertContains('T10 phase-template-has-files-section', phaseTpl, SECTION_FILES_IN_PHASE, HEADING_PHASE_TEMPLATE);
+
+    // T27 (phase half) — the phase names the recon it was written from, directly under its dependencies
+    const idxDepends = pLines.findIndex((l) => l.startsWith(HEADER_DEPENDS_ON));
+    assertTrue('T27 phase-recon-line-under-depends-on',
+        idxDepends !== -1 && (pLines[idxDepends + 1] ?? '').startsWith(HEADER_RECON),
+        `${HEADER_DEPENDS_ON} at ${idxDepends}, next line: ${JSON.stringify(pLines[idxDepends + 1] ?? '')}`);
 }
 
 // --- T14..T15: the marker consumers ---

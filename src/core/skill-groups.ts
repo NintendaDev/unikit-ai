@@ -62,7 +62,7 @@ export const SKILL_GROUPS: readonly SkillGroup[] = [
     skills: [
       'unikit-architecture', 'unikit-archive', 'unikit-commit', 'unikit-devcontext',
       'unikit-evolve', 'unikit-explore', 'unikit-fix', 'unikit-implement',
-      'unikit-improve', 'unikit-plan', 'unikit-review', 'unikit-roadmap', 'unikit-verify',
+      'unikit-improve', 'unikit-plan', 'unikit-pr', 'unikit-review', 'unikit-roadmap', 'unikit-verify',
     ],
   },
   {

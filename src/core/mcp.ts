@@ -80,6 +80,12 @@ export interface McpServerEntry {
    */
   order?: number;
   /**
+   * `false` keeps the server unchecked in the wizard's checkbox list on a fresh install.
+   * Absent means checked, as before. A re-init mirrors the previous choice either way.
+   * Checkbox list only — an engine server's radio default is `order`'s job.
+   */
+  preselect?: boolean;
+  /**
    * Where this server documents itself: `context7` is a Context7 library id,
    * `repo` the upstream repository URL. Both optional. `repo` is what the `init`
    * summary generates its install line from — the field replaced the

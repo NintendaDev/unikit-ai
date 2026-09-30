@@ -485,6 +485,19 @@ else
     fail "mcp/universal/context7.json — missing"
 fi
 
+# universal/github.json — the pull-request server, unchecked by default in the wizard
+if [[ -f "$MCP_DIR/universal/github.json" ]] && validate_json "$MCP_DIR/universal/github.json"; then
+    GH_FIELDS=$(json_field "$MCP_DIR/universal/github.json" \
+      "m.key === 'github' && m.displayName && m.config && m.preselect === false ? 'ok' : 'bad'" 2>/dev/null || echo "bad")
+    if [[ "$GH_FIELDS" == "ok" ]]; then
+        pass "mcp/universal/github.json (valid structure, key=github, preselect=false)"
+    else
+        fail "mcp/universal/github.json — expected key 'github', displayName, config and preselect: false"
+    fi
+else
+    fail "mcp/universal/github.json — missing or invalid JSON"
+fi
+
 # unity/ — validate all MCP JSON files
 UNITY_MCP_COUNT=0
 for mcp_file in "$MCP_DIR"/unity/*.json; do
@@ -575,6 +588,15 @@ fi
 #     it is the only thing the `init` summary can generate an install line from,
 #     so without it the user is never told a plugin has to go into the editor
 #   - `rules`, when present, points at an existing directory holding an INDEX.md
+#   - GH-1: `preselect`, when present, is a boolean and never sits on an is_engine entry
+#     (the radio's default is `order`'s job)
+#   - GH-2: `{{env:` appears only in string header values (`config.headers`,
+#     `configByPlatform.*.headers`), and every occurrence matches MCP_ENV_TOKEN_PATTERN,
+#     read from src/core/constants.ts — `{{env:github_pat}}` would otherwise reach all six
+#     settings files verbatim. The count is printed, so a lost object shows as a number
+#   - GH-3: no config carries a literal GitHub token (`ghp_`, `github_pat_`, `gho_`)
+#   - GH-4: universal/github.json exists and grants exactly five pull-request tools to
+#     unikit-pr and nothing else — never `*`, never a tool that writes past git
 #   - the keys `shards`, `instruction` and `verified` are ABSENT everywhere. All three
 #     are retired, and all three would come back the same way: someone adds a server
 #     six months from now, copies the nearest config as a template, and reintroduces a
@@ -591,6 +613,30 @@ MCP_SCHEMA_RESULT=$(node -e "
   const KNOWN_PLATFORMS=['win32','darwin','linux'];
   const why=[];
   const orderByKey=new Map();   // directory -> Map<order, fileId>
+  const Q=String.fromCharCode(39), DQ=String.fromCharCode(34);
+  const constSrc=fs.readFileSync(path.join(root,'..','src','core','constants.ts'),'utf8');
+  const patLine=constSrc.split(String.fromCharCode(10)).find(l=>l.startsWith('export const MCP_ENV_TOKEN_PATTERN = '))||'';
+  const patRaw=patLine.slice(patLine.indexOf(Q)+1, patLine.lastIndexOf(Q));
+  let envFull=null;
+  try { envFull=new RegExp('^'+JSON.parse(DQ+patRaw+DQ)+'$'); } catch { why.push('GH-2:no-MCP_ENV_TOKEN_PATTERN-in-constants'); }
+  let envTokens=0;
+  const walkEnv=(node, trail, rel)=>{
+    if (typeof node==='string') {
+      if (!node.includes('{{env:')) return;
+      const inHeaders=(trail[0]==='config'&&trail[1]==='headers'&&trail.length===3)
+        ||(trail[0]==='configByPlatform'&&trail[2]==='headers'&&trail.length===4);
+      if (!inHeaders) why.push('GH-2:env-token-outside-headers:'+trail.join('.')+':'+rel);
+      let i=node.indexOf('{{env:');
+      while (i!==-1) {
+        const j=node.indexOf('}}',i);
+        const tok=j===-1?node.slice(i):node.slice(i,j+2);
+        if (!envFull||!envFull.test(tok)) why.push('GH-2:bad-env-token:'+rel);
+        envTokens++;
+        i=node.indexOf('{{env:',i+1);
+      }
+    } else if (Array.isArray(node)) node.forEach((v,k)=>walkEnv(v,trail.concat(String(k)),rel));
+    else if (node&&typeof node==='object') for (const [k,v] of Object.entries(node)) walkEnv(v,trail.concat(k),rel);
+  };
 
   for (const dir of fs.readdirSync(root)) {
     const dirPath=path.join(root, dir);
@@ -599,8 +645,14 @@ MCP_SCHEMA_RESULT=$(node -e "
       if (!f.endsWith('.json')) continue;
       const rel=dir+'/'+f;
       let m;
-      try { m=JSON.parse(fs.readFileSync(path.join(dirPath,f),'utf8')); }
+      const rawText=fs.readFileSync(path.join(dirPath,f),'utf8');
+      try { m=JSON.parse(rawText); }
       catch { why.push('parse-error:'+rel); continue; }
+
+      if (m.preselect !== undefined && typeof m.preselect !== 'boolean') why.push('GH-1:preselect-not-boolean:'+rel);
+      if (m.preselect !== undefined && m.is_engine === true) why.push('GH-1:preselect-on-engine:'+rel);
+      walkEnv(m, [], rel);
+      for (const lit of ['ghp_','github_pat_','gho_']) if (rawText.includes(lit)) why.push('GH-3:literal-token-'+lit+':'+rel);
 
       if (m.order !== undefined && typeof m.order !== 'number') why.push('order-not-number:'+rel);
 
@@ -656,11 +708,25 @@ MCP_SCHEMA_RESULT=$(node -e "
     }
   }
 
-  console.log(why.length ? why.join(' ') : 'ok');
+  const ghPath=path.join(root,'universal','github.json');
+  if (!fs.existsSync(ghPath)) why.push('GH-4:github-json-missing');
+  else {
+    const gh=JSON.parse(fs.readFileSync(ghPath,'utf8'));
+    const at=gh['allowed-tools']||{};
+    const skills=at.skills||{};
+    const want=['list_pull_requests','create_pull_request','update_pull_request','pull_request_read','merge_pull_request'];
+    if (Object.keys(skills).join()!=='unikit-pr') why.push('GH-4:grant-recipients:'+Object.keys(skills).join('+'));
+    if (at.agents&&Object.keys(at.agents).length) why.push('GH-4:agent-grants');
+    const got=(skills['unikit-pr']||[]).slice().sort();
+    if (got.join()!==want.slice().sort().join()) why.push('GH-4:grant-set:'+got.join('+'));
+    for (const bad of ['*','create_branch','create_or_update_file','delete_file']) if (got.includes(bad)) why.push('GH-4:forbidden-grant-'+bad);
+  }
+  if (envTokens<1) why.push('GH-2:no-env-token-in-catalog');
+  console.log(why.length ? why.join(' ') : 'ok '+envTokens);
 " "$MCP_DIR" 2>/dev/null || echo "pass-error")
 
-if [[ "$MCP_SCHEMA_RESULT" == "ok" ]]; then
-    pass "MCP schema fields valid across all configs (order/configByPlatform/docs/rules + order unique, shards+instruction+verified gone)"
+if [[ "$MCP_SCHEMA_RESULT" == "ok "* ]]; then
+    pass "MCP schema fields valid across all configs (order/configByPlatform/docs/rules + order unique, shards+instruction+verified gone; GH-1…GH-3 preselect, env tokens (${MCP_SCHEMA_RESULT#ok }), no literal token)"
 else
     fail "MCP schema fields invalid: $MCP_SCHEMA_RESULT"
 fi
@@ -770,6 +836,67 @@ if [[ "$TOML_WRITER_RESULT" == "ok" ]]; then
     pass "TomlMcpWriter unit smoke (round-trip, type strip, headers rename, null env, remove, warn)"
 else
     fail "TomlMcpWriter unit smoke: $TOML_WRITER_RESULT"
+fi
+
+# MCP env-reference smoke — every client gets `{{env:NAME}}` in its own syntax, and none
+# keeps the raw catalog token. A wrong first write is permanent ("present → keep" in
+# mcp-reconcile.ts), so this is the only place the syntax is ever checked. A quoted
+# heredoc carries the script: the expected values are full of `$` and braces.
+ENV_SMOKE_RESULT=$(cd "$ROOT_DIR" && node --input-type=module 2>&1 <<'NODE_EOF'
+const fs = await import('node:fs');
+const os = await import('node:os');
+const path = await import('node:path');
+const { getMcpWriter } = await import('./dist/core/mcp-writers/index.js');
+const { getMcpEnvLines } = await import('./dist/core/mcp-env.js');
+const why = [];
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'unikit-env-'));
+const URL = 'https://example.test/mcp';
+const tokenEntry = (header = 'Authorization') => ({ type: 'http', url: URL, headers: { [header]: 'Bearer {{env:GITHUB_PAT}}' } });
+const write = async (agent, cfg) => {
+  const writer = getMcpWriter(agent);
+  const settings = await writer.readExisting(path.join(tmp, 'absent-' + agent + '.json'));
+  writer.upsert(settings, 'github', cfg);
+  return { text: writer.serialize(settings), settings };
+};
+for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravity']) {
+  const { text } = await write(agent, tokenEntry());
+  if (text.includes('{{env:')) why.push(agent + ':raw-token-left');
+}
+{ const e = (await write('claude', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer ${GITHUB_PAT}') why.push('claude:syntax'); }
+{ const e = (await write('cursor', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer ${env:GITHUB_PAT}') why.push('cursor:syntax'); }
+{ const e = (await write('qwen', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer ${GITHUB_PAT}') why.push('qwen:syntax');
+  if (e.httpUrl !== URL || e.url !== undefined || e.type !== undefined) why.push('qwen:httpUrl'); }
+{ const e = (await write('opencode', tokenEntry())).settings.mcp.github;
+  if (e.headers.Authorization !== 'Bearer {env:GITHUB_PAT}') why.push('opencode:syntax');
+  if (e.oauth !== false) why.push('opencode:oauth'); }
+{ const e = (await write('codex', tokenEntry())).settings.mcp_servers.github;
+  if (e.bearer_token_env_var !== 'GITHUB_PAT') why.push('codex:bearer-var');
+  if (e.http_headers && e.http_headers.Authorization !== undefined) why.push('codex:authorization-left'); }
+{ const e = (await write('codex', tokenEntry('authorization'))).settings.mcp_servers.github;
+  if (e.bearer_token_env_var !== 'GITHUB_PAT') why.push('codex:lowercase-header'); }
+{ const e = (await write('antigravity', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer YOUR_GITHUB_PAT') why.push('antigravity:placeholder');
+  if (e.serverUrl !== URL) why.push('antigravity:serverUrl'); }
+// Regression: an entry without headers is unchanged everywhere except Qwen's URL field.
+{ const e = (await write('claude', { type: 'http', url: URL })).settings.mcpServers.github;
+  if (JSON.stringify(e) !== JSON.stringify({ type: 'http', url: URL })) why.push('claude:plain-entry-changed'); }
+{ const e = (await write('qwen', { type: 'http', url: URL })).settings.mcpServers.github;
+  if (e.httpUrl !== URL || e.url !== undefined || e.type !== undefined) why.push('qwen:plain-entry-httpUrl'); }
+const servers = new Map([['github', { displayName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
+const both = getMcpEnvLines(servers, ['github'], ['claude', 'antigravity']);
+if (both.length !== 2 || !both[0].includes('GITHUB_PAT') || !both[1].includes('YOUR_GITHUB_PAT')) why.push('envLines:antigravity');
+if (getMcpEnvLines(servers, ['github'], ['claude']).length !== 1) why.push('envLines:claude-only');
+fs.rmSync(tmp, { recursive: true, force: true });
+console.log(JSON.stringify({ why }));
+NODE_EOF
+)
+if [[ "$ENV_SMOKE_RESULT" == '{"why":[]}' ]]; then
+    pass "MCP env references rendered per client (6 agents)"
+else
+    fail "MCP env-reference smoke: $ENV_SMOKE_RESULT"
 fi
 
 # ─────────────────────────────────────────────
@@ -6744,6 +6871,27 @@ else
     fail "TR test-run reference extraction:$TR_WHY"
 fi
 
+# --- EO: the execution overview reaches the screen on every run that executes a task ---
+# Real runs showed `## Implementation Progress` on some starts and not on others: it was an
+# unnumbered paragraph between 3.0 and 3.1, and a Step 0.2 / 2.5 question asked "right before
+# Step 3" sent the run through a commit, a stash or the merge marks, after which it went
+# straight to the first task. Its counts, taken by a command, sat in folded tool output.
+EO_WHY=""
+# (EO-1) one overview, opening Step 3 — before 3.0 of the first phase, not between 3.0 and 3.1.
+EO1_HEAD="$(awk 'index($0,"### Step 3: Execute Tasks")==1{f=1;next} index($0,"**3.0: Phase Rules Refresh")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$EO1_HEAD" | grep -qF '## Implementation Progress' || EO_WHY+=" EO-1:overview-not-opening-step-3"
+EO1_COUNT="$({ grep -cF '## Implementation Progress' "$UNIKIT_IMPLEMENT_SKILL" || true; })"
+[[ "$EO1_COUNT" == "1" ]] || EO_WHY+=" EO-1:overview-count=${EO1_COUNT}"
+# (EO-2) a question before Step 3 is no reason to skip it — anchored on the formulation.
+grep -qF 'the answer is no reason to skip it' "$UNIKIT_IMPLEMENT_SKILL" || EO_WHY+=" EO-2:skipped-after-question"
+# (EO-3) printed as the agent's own message, since tool output is folded away from the user.
+grep -qF 'print the overview as your own message' "$UNIKIT_IMPLEMENT_SKILL" || EO_WHY+=" EO-3:left-in-tool-output"
+if [[ -z "$EO_WHY" ]]; then
+    pass "EO-1…EO-3 unikit-implement execution overview: once per run, opening Step 3, printed after any Step 0.2 / 2.5 answer, as the agent's own message"
+else
+    fail "EO execution overview:$EO_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # PX: incidental defects closed by the readback/merge/slimming plan (research section 14).
 # One assert per defect, numbered by the defect. Defect 13 (the dev-principles lazy-read
@@ -8339,11 +8487,686 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF 'Choose by number or date' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
     grep -qF 'never as "the listed ones"' "$AR_SKILL" || AR_WHY+=" AR-17:choice-translation-trap"
     grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
+    # (AR-18) the table reaches the screen: a real interactive run classified ten plans with a
+    # script, left the table and every INFO line inside the folded tool output, printed one
+    # summary sentence, and asked "Archive which plans?" naming rows #4, #5, #7, #9 the user had
+    # never seen. Anchored on formulations, as the mode-optimise.md precedent does it.
+    grep -qF '**What the user must see, print as your own message.**' "$AR_SKILL" || AR_WHY+=" AR-18:no-visible-output-rule"
+    grep -qF 'Tool output is folded away from the user' "$AR_SKILL" || AR_WHY+=" AR-18:tool-output-assumed-visible"
+    grep -qF 'ask it only once the whole table is on screen' "$AR_SKILL" || AR_WHY+=" AR-18:question-before-table"
 fi
 if [[ -z "$AR_WHY" ]]; then
-    pass "AR-1…AR-17 unikit-archive: announces itself first, dates every plan, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
+    pass "AR-1…AR-18 unikit-archive: announces itself first, prints the dated table as its own message before asking, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
 else
     fail "AR plan archive contract:$AR_WHY"
+fi
+
+# MP: plan modules, PR checkpoints and the planning commit — the grammar has ONE owner
+# (TASK-FORMAT.md). Ultra and the reader contract point at it; every writer and reader added
+# in later phases names its sections instead of restating them.
+MP_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+MP_ULTRA="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+MP_READ="$ROOT_DIR/data/ultra-plan-read.md"
+MP_WHY=""
+for f in "$MP_TASKFMT" "$MP_ULTRA" "$MP_READ"; do
+    [[ -f "$f" ]] || MP_WHY+=" MP:missing-${f##*/}"
+done
+if [[ -z "$MP_WHY" ]]; then
+    # (MP-1) the owner declares every token and rule of the grammar
+    grep -qF '### Modules section' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-modules-section"
+    grep -qF '### PR checkpoint task grammar' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-pr-grammar"
+    grep -qF 'PR checkpoint: <module name> → <base>' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-pr-line-form"
+    grep -qF -- '- PR checkpoints: yes' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-settings-line"
+    grep -qF 'Planned at: <short sha>' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-planned-at"
+    grep -qF 'delivers:' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-delivers"
+    grep -qF 'why long:' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-why-long"
+    grep -qF '→ PR <short sha>' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-boundary-label"
+    grep -qF 'at once, with no target' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-last-merge-rule"
+    grep -qF 'The last module carries no `PR:` field' "$MP_TASKFMT" || MP_WHY+=" MP-1:last-module-pr-field"
+    grep -qF 'A module boundary is a layer barrier' "$MP_TASKFMT" || MP_WHY+=" MP-1:no-barrier"
+    grep -qF 'never crosses a module boundary' "$MP_TASKFMT" || MP_WHY+=" MP-1:commit-crosses-module"
+    grep -qF 'never moves' "$MP_TASKFMT" || MP_WHY+=" MP-1:planned-at-moves"
+    grep -qF 'one of the two forms of task in this format without that line' "$MP_TASKFMT" || MP_WHY+=" MP-1:only-form-claim"
+    # the `final` mechanic was withdrawn by the user — its tokens must not come back
+    grep -qF 'PR: final' "$MP_TASKFMT" && MP_WHY+=" MP-1:final-token-returned"
+    grep -qF 'MERGED → final' "$MP_TASKFMT" && MP_WHY+=" MP-1:final-merge-returned"
+    # (MP-2) ultra shows the header line and the section, and owns the phase-file form + checks 12-15
+    grep -qF 'Planned at: <short sha>' "$MP_ULTRA" || MP_WHY+=" MP-2:no-planned-at"
+    grep -qF '## Modules' "$MP_ULTRA" || MP_WHY+=" MP-2:no-modules-line"
+    grep -qF 'Not applicable — this task closes a module, it runs no tests' "$MP_ULTRA" || MP_WHY+=" MP-2:no-pr-task-tests-literal"
+    grep -qF 'The module barrier holds' "$MP_ULTRA" || MP_WHY+=" MP-2:no-barrier-check"
+    grep -qF 'check 13 does not apply to a legacy plan' "$MP_ULTRA" || MP_WHY+=" MP-2:legacy-contradicts-blocking"
+    # (MP-3) the reader contract: labels are checkbox text, Planned at: never edited, 12-16 write-time
+    grep -qF 'is never edited by any consumer' "$MP_READ" || MP_WHY+=" MP-3:planned-at-mutable"
+    grep -qF '| `/unikit-pr` |' "$MP_READ" || MP_WHY+=" MP-3:no-pr-depth-row"
+    grep -qF 'Checks 12-16 are write-time too' "$MP_READ" || MP_WHY+=" MP-3:checks-not-write-time"
+    # (MP-4) fast is one module by construction — asserted inside its own subsection
+    awk '/^### Fast mode differences/{w=1} w' "$MP_TASKFMT" | grep -qF 'No `## Modules`, no PR checkpoint tasks' || MP_WHY+=" MP-4:fast-modules"
+fi
+if [[ -z "$MP_WHY" ]]; then
+    pass "MP-1…MP-4 modules, PR checkpoints and Planned at: declared once"
+else
+    fail "MP-1…MP-4 grammar contract:$MP_WHY"
+fi
+
+# PB: the plan-boundaries contract — one system asset four skills compute the same SHAs from.
+# Headings are asserted as WHOLE lines (-qxF): a renamed heading would otherwise stay green
+# on its own mentions in the prose of the same file ("(`## Plan start`)" in ## Module start).
+PB_CONTRACT="$ROOT_DIR/data/plan-boundaries.md"
+PB_WHY=""
+if [[ ! -f "$PB_CONTRACT" ]]; then
+    PB_WHY+=" PB-1:missing-contract"
+else
+    for h in '## Base branch' '## Plan start' '## Module boundary' '## Module start' \
+             '## Last completed boundary' '## Push target' '## Diff range of a check' '## Not this contract'; do
+        grep -qxF "$h" "$PB_CONTRACT" || PB_WHY+=" PB-1:no-heading(${h#\#\# })"
+    done
+    grep -qF 'INFO [plan-range] git.base_branch not set' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-base-info-line"
+    grep -qF 'WARN [plan-range]' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-start-warn-line"
+    grep -qF 'git push origin <boundary>:refs/heads/<branch>' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-boundary-push-form"
+    grep -qF 'A task carrying a ⏭️ MERGED label has no boundary of its own' "$PB_CONTRACT" || PB_WHY+=" PB-1:merged-task-has-boundary"
+    grep -qF 'No local branch `<base>` → compare with `origin/<base>`' "$PB_CONTRACT" || PB_WHY+=" PB-1:no-remote-base-fallback"
+    grep -qF 'two-dot' "$PB_CONTRACT" || PB_WHY+=" PB-1:plan-start-half-three-dot"
+    grep -qF 'Inside a module the caller asks — it never cuts the push silently' "$PB_CONTRACT" || PB_WHY+=" PB-1:silent-push-cut"
+    # a live /unikit-pr run lengthened a short SHA from memory and pushed a hash that did not
+    # exist: the SHA comes from git rev-parse as printed, and the push is checked on the remote
+    grep -qF 'A SHA in a push is never typed from memory.' "$PB_CONTRACT" || PB_WHY+=" PB-1:sha-from-memory"
+    grep -qF 'git ls-remote origin refs/heads/<branch>' "$PB_CONTRACT" || PB_WHY+=" PB-1:push-unchecked"
+fi
+if [[ -z "$PB_WHY" ]]; then
+    pass "PB-1 plan-boundaries contract carries every section its readers name"
+else
+    fail "PB-1 plan-boundaries contract:$PB_WHY"
+fi
+
+# VB: /unikit-verify takes its base and range from the plan-boundaries contract, can check
+# one module (a phase scope), and reads a PR checkpoint task from its checkbox — an Explore
+# agent would otherwise search the code for it and honestly report NOT FOUND.
+VB_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+VB_WHY=""
+if [[ ! -f "$VB_VERIFY" ]]; then
+    VB_WHY+=" VB:missing-verify"
+else
+    # (VB-1) the base branch comes from the contract
+    grep -qF 'plan-boundaries.md' "$VB_VERIFY" || VB_WHY+=" VB-1:no-contract"
+    grep -qF '## Base branch' "$VB_VERIFY" || VB_WHY+=" VB-1:no-base-section"
+    # (VB-2) the range comes from the contract, degrades loudly, and names its source
+    grep -qF '## Diff range of a check' "$VB_VERIFY" || VB_WHY+=" VB-2:no-range-section"
+    grep -qF 'plan-boundaries contract missing' "$VB_VERIFY" || VB_WHY+=" VB-2:silent-degradation"
+    grep -qF 'Changed files: from' "$VB_VERIFY" || VB_WHY+=" VB-2:union-source-unnamed"
+    # (VB-3) a phase selector, and what it narrows
+    grep -qE '^argument-hint:.*Phases N-M' "$VB_VERIFY" || VB_WHY+=" VB-3:no-selector-hint"
+    grep -qF 'phase_scope' "$VB_VERIFY" || VB_WHY+=" VB-3:no-phase-scope"
+    grep -qF 'WARN [plan] Phases N-M: the plan has no phase' "$VB_VERIFY" || VB_WHY+=" VB-3:bad-selector-silent"
+    grep -qF 'Step 3.8 checks only the acceptance criteria cited by tasks of phases N..M' "$VB_VERIFY" || VB_WHY+=" VB-3:late-ac-blockers"
+    # (VB-4) a PR checkpoint task is read from its checkbox and never blocks
+    grep -qF 'A PR checkpoint task is excluded from the fan-out too' "$VB_VERIFY" || VB_WHY+=" VB-4:pr-task-in-fan-out"
+    grep -qF 'never produces a blocker' "$VB_VERIFY" || VB_WHY+=" VB-4:pr-task-blocks"
+    grep -qF 'an `Editor:` line or a `PR checkpoint:` line' "$VB_VERIFY" || VB_WHY+=" VB-4:agent-instruction-unchanged"
+fi
+if [[ -z "$VB_WHY" ]]; then
+    pass "VB-1…VB-4 verify: base and range from the contract, phase scope, PR checkpoint by its checkbox"
+else
+    fail "VB-1…VB-4 verify contract:$VB_WHY"
+fi
+
+# PW: the planner slices full and ultra plans into modules, always, and writes PR checkpoint
+# tasks only when the project turned them on. The writer is the first place modularity can
+# vanish in silence — a SKILL.md trimmed for size loses a paragraph and nothing else notices.
+PW_CFG="$ROOT_DIR/skills/unikit/references/config-template.yaml"
+PW_FULL="$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+PW_FAST="$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
+PW_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+PW_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+PW_WHY=""
+for f in "$PW_CFG" "$PW_FULL" "$PW_FAST" "$PW_ULTRA" "$PW_PLAN"; do
+    [[ -f "$f" ]] || PW_WHY+=" PW:missing-${f##*/}"
+done
+if [[ -z "$PW_WHY" ]]; then
+    # (PW-1) the config keys, with the inline domain comment /unikit config mode reads values from
+    grep -qF 'pull_requests:' "$PW_CFG" || PW_WHY+=" PW-1:no-block"
+    grep -qF 'checkpoints: false' "$PW_CFG" || PW_WHY+=" PW-1:checkpoints-not-off"
+    grep -qF 'max_level: create   # remind | create | merge' "$PW_CFG" || PW_WHY+=" PW-1:no-level-domain"
+    # (PW-2) resolved once per mode, never asked; fast never reads it
+    grep -qF 'git.pull_requests.checkpoints' "$PW_FULL" || PW_WHY+=" PW-2:full-no-key"
+    grep -qF 'PR checkpoints off — the plan is on the base branch' "$PW_FULL" || PW_WHY+=" PW-2:full-on-base"
+    grep -qF '`git.pull_requests.checkpoints` is not read' "$PW_FAST" || PW_WHY+=" PW-2:fast-reads-key"
+    grep -qF 'The **PR checkpoints** subsection is inherited' "$PW_ULTRA" || PW_WHY+=" PW-2:ultra-not-inherited"
+    # (PW-3) Step 5 names every new surface and points at the grammar
+    grep -qF 'Modules (full and ultra)' "$PW_PLAN" || PW_WHY+=" PW-3:no-modules-paragraph"
+    grep -qF '### Modules section' "$PW_PLAN" || PW_WHY+=" PW-3:no-modules-pointer"
+    grep -qF '### PR checkpoint task grammar' "$PW_PLAN" || PW_WHY+=" PW-3:no-pr-grammar-pointer"
+    grep -qF 'Module barrier' "$PW_PLAN" || PW_WHY+=" PW-3:no-barrier"
+    grep -qF 'Planned at: <short sha>' "$PW_PLAN" || PW_WHY+=" PW-3:no-planned-at"
+    grep -qF '`git.pull_requests.max_level` is never read by the planner' "$PW_PLAN" || PW_WHY+=" PW-3:planner-reads-level"
+    # (PW-4) ultra decides modules with the phases
+    grep -qF 'Group the phases into modules' "$PW_ULTRA" || PW_WHY+=" PW-4:ultra-no-grouping"
+    grep -qF 'only a PR checkpoint task may follow it' "$PW_ULTRA" || PW_WHY+=" PW-4:test-point-last-contradiction"
+fi
+if [[ -z "$PW_WHY" ]]; then
+    pass "PW-1…PW-4 the planner slices into modules and records PR checkpoints"
+else
+    fail "PW-1…PW-4 planner modules contract:$PW_WHY"
+fi
+
+# OW: the other three task writers — /unikit-plan add, /unikit-improve and the polisher —
+# know modules and PR checkpoints the way the planner does: insert above a module's PR
+# checkpoint, never renumber, never move Planned at:, and exempt a legacy plan.
+OW_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+OW_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+OW_POL="$ROOT_DIR/subagents/unikit-plan-polisher.md"
+OW_WHY=""
+for f in "$OW_ADD" "$OW_IMPROVE" "$OW_POL"; do
+    [[ -f "$f" ]] || OW_WHY+=" OW:missing-${f##*/}"
+done
+if [[ -z "$OW_WHY" ]]; then
+    # (OW-1) add mode
+    grep -qF 'Plans with modules' "$OW_ADD" || OW_WHY+=" OW-1:no-modules-rules"
+    grep -qF '`Planned at:` is never rewritten either' "$OW_ADD" || OW_WHY+=" OW-1:planned-at-moves"
+    grep -qF 'the final full run moves to the new last phase' "$OW_ADD" || OW_WHY+=" OW-1:full-run-stranded"
+    grep -qF 'between two modules is not added' "$OW_ADD" || OW_WHY+=" OW-1:module-between-renumbers"
+    # (OW-2) improve — the full form of the Planned at: sentence: one bare `is never rewritten`
+    # already stood in the file, and a guard on it would have been green before the edit
+    grep -qF '3.3c: Modules and PR checkpoints' "$OW_IMPROVE" || OW_WHY+=" OW-2:no-modules-check"
+    grep -qF '### Modules section' "$OW_IMPROVE" || OW_WHY+=" OW-2:no-grammar-pointer"
+    grep -qF '`Planned at:` is never rewritten either' "$OW_IMPROVE" || OW_WHY+=" OW-2:planned-at-moves"
+    grep -qF 'a PR checkpoint task with no `Files:` is normal' "$OW_IMPROVE" || OW_WHY+=" OW-2:pr-task-files-finding"
+    # (OW-3) the polisher
+    grep -qF '### Modules section' "$OW_POL" || OW_WHY+=" OW-3:no-modules-rubric"
+    grep -qF 'Planned at: <short sha>' "$OW_POL" || OW_WHY+=" OW-3:no-planned-at"
+    grep -qF 'never writes or removes `PR checkpoints: yes`' "$OW_POL" || OW_WHY+=" OW-3:polisher-writes-setting"
+    grep -qF 'a PR checkpoint task with no `Files:` is normal too' "$OW_POL" || OW_WHY+=" OW-3:pr-task-files-finding"
+fi
+if [[ -z "$OW_WHY" ]]; then
+    pass "OW-1…OW-3 add, improve and polisher know modules and PR checkpoints"
+else
+    fail "OW-1…OW-3 other plan writers contract:$OW_WHY"
+fi
+
+# CP: /unikit-commit — the automatic commits of a run pass `no-push`, and a push a human asks
+# for takes HEAD by default but asks, inside a module, whether to stop at the last finished
+# module boundary. A silent cut and a silent push into an open PR are both the defect.
+CP_COMMIT="$ROOT_DIR/skills/unikit-commit/SKILL.md"
+CP_REF="$ROOT_DIR/skills/unikit-commit/references/push-boundary.md"
+CP_WHY=""
+if [[ ! -f "$CP_COMMIT" ]]; then
+    CP_WHY+=" CP:missing-commit-skill"
+else
+    # (CP-1) the token
+    grep -qE '^argument-hint:.*no-push' "$CP_COMMIT" || CP_WHY+=" CP-1:no-token-hint"
+    grep -qF 'it switches the push offer off for this run' "$CP_COMMIT" || CP_WHY+=" CP-1:token-undefined"
+    # (CP-2) Behavior step 8 routes to the reference, degrades loudly, and the split path follows it
+    grep -qF 'push-boundary.md' "$CP_COMMIT" || CP_WHY+=" CP-2:no-reference-read"
+    grep -qF 'push-boundary reference missing' "$CP_COMMIT" || CP_WHY+=" CP-2:silent-degradation"
+    grep -qF '`no-push` and a plan'"'"'s PR checkpoints' "$CP_COMMIT" || CP_WHY+=" CP-2:split-path-pushes"
+fi
+if [[ ! -f "$CP_REF" ]]; then
+    CP_WHY+=" CP-3:missing-reference"
+else
+    # (CP-3) the reference: HEAD by default, the boundary a choice, order of the checks
+    for lit in '## Last completed boundary' 'The default target is the current state' 'the head is the target' \
+               'git push origin <B>:refs/heads/<branch>' 'Push everything up to now (HEAD)' 'Push up to the end of' \
+               'no module of <folder> is finished yet' 'HEAD is inside module' 'never cut the push silently' \
+               'nothing was forced'; do
+        grep -qF -- "$lit" "$CP_REF" || CP_WHY+=" CP-3:missing(${lit:0:32})"
+    done
+    grep -qF 'git push -u' "$CP_REF" && CP_WHY+=" CP-3:boundary-push-tracks"
+    # "the whole plan is closed" is decided before the boundary is looked up, and HEAD is offered first
+    # `|| true` inside each substitution: under `set -euo pipefail` a grep that finds nothing
+    # would abort the whole suite here instead of letting the literal checks above report it.
+    cp_closed=$( { grep -nF 'the head is the target' "$CP_REF" || true; } | head -1 | cut -d: -f1)
+    cp_bound=$( { grep -nF '## Last completed boundary' "$CP_REF" || true; } | head -1 | cut -d: -f1)
+    cp_head=$( { grep -nF 'Push everything up to now (HEAD)' "$CP_REF" || true; } | head -1 | cut -d: -f1)
+    cp_end=$( { grep -nF 'Push up to the end of' "$CP_REF" || true; } | head -1 | cut -d: -f1)
+    if [[ -n "$cp_closed" && -n "$cp_bound" ]] && (( cp_closed >= cp_bound )); then
+        CP_WHY+=" CP-3:boundary-before-closed-check"
+    fi
+    if [[ -n "$cp_head" && -n "$cp_end" ]] && (( cp_head >= cp_end )); then
+        CP_WHY+=" CP-3:boundary-offered-first"
+    fi
+    # the boundary SHA is pasted from git rev-parse, never retyped, and the push is checked
+    grep -qF 'never typed from memory or completed by hand' "$CP_REF" || CP_WHY+=" CP-3:sha-from-memory"
+    grep -qF 'git ls-remote origin refs/heads/<branch>' "$CP_REF" || CP_WHY+=" CP-3:push-unchecked"
+fi
+if [[ -z "$CP_WHY" ]]; then
+    pass "CP-1…CP-3 commit: no-push token; a manual push takes HEAD and asks inside a module"
+else
+    fail "CP-1…CP-3 commit push contract:$CP_WHY"
+fi
+
+# UPR: /unikit-pr — the one author of pull requests. Levels capped by the config, the PR is
+# the current state (a question inside a module, never a silent cut), one open PR per branch,
+# a merge only when it brings nothing from the base branch, and a plain-language text.
+UPR_SKILL="$ROOT_DIR/skills/unikit-pr/SKILL.md"
+UPR_TEXT="$ROOT_DIR/skills/unikit-pr/references/pr-text.md"
+UPR_MERGE="$ROOT_DIR/skills/unikit-pr/references/safe-merge.md"
+UPR_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+UPR_WHY=""
+for f in "$UPR_SKILL" "$UPR_TEXT" "$UPR_MERGE" "$UPR_VERIFY"; do
+    [[ -f "$f" ]] || UPR_WHY+=" UPR:missing-${f##*/}"
+done
+if [[ -z "$UPR_WHY" ]]; then
+    # (UPR-1) levels and the ceiling; no GitHub MCP → remind
+    grep -qE '^argument-hint:.*remind \| create \| merge' "$UPR_SKILL" || UPR_WHY+=" UPR-1:no-level-hint"
+    grep -qF 'git.pull_requests.max_level' "$UPR_SKILL" || UPR_WHY+=" UPR-1:no-ceiling"
+    grep -qF 'acting at <ceiling>' "$UPR_SKILL" || UPR_WHY+=" UPR-1:above-ceiling-silent"
+    grep -qF 'GitHub MCP not available' "$UPR_SKILL" || UPR_WHY+=" UPR-1:no-remind-fallback"
+    # (UPR-2) boundaries: HEAD by default, a question inside a module, every refusal branch named
+    for lit in 'plan-boundaries.md' '## Push target' 'git push origin <end>:refs/heads/<branch>' \
+               'no argument marks the final pull request' 'The pull request is the current state' \
+               'PR everything up to now (HEAD)' 'it never cuts the PR silently' \
+               'push refused — nothing was forced' 'nothing between origin/<base>' 'you are on the base branch' \
+               'uncommitted file(s) are not part of the PR' 'Stop — I will commit first'; do
+        grep -qF -- "$lit" "$UPR_SKILL" || UPR_WHY+=" UPR-2:missing(${lit:0:32})"
+    done
+    upr_head=$( { grep -nF 'PR everything up to now (HEAD)' "$UPR_SKILL" || true; } | head -1 | cut -d: -f1)
+    upr_end=$( { grep -nF 'PR up to the end of' "$UPR_SKILL" || true; } | head -1 | cut -d: -f1)
+    if [[ -z "$upr_end" ]] || { [[ -n "$upr_head" ]] && (( upr_head >= upr_end )); }; then
+        UPR_WHY+=" UPR-2:boundary-offered-first"
+    fi
+    grep -qF 'git push -u' "$UPR_SKILL" && UPR_WHY+=" UPR-2:push-tracks"
+    grep -qF -- '--force' "$UPR_SKILL" && UPR_WHY+=" UPR-2:force"
+    grep -qxF '  - Edit' "$UPR_SKILL" && UPR_WHY+=" UPR-2:writes-plan"
+    # (UPR-3) one open PR per branch: find by head, update when open
+    grep -qF 'list_pull_requests' "$UPR_SKILL" || UPR_WHY+=" UPR-3:no-lookup"
+    grep -qF 'update_pull_request' "$UPR_SKILL" || UPR_WHY+=" UPR-3:no-update"
+    grep -qF '<owner>:<branch>' "$UPR_SKILL" || UPR_WHY+=" UPR-3:head-filter"
+    # (UPR-4) the tools that write past git are named as forbidden, inside ## Never
+    upr_never=$(awk '/^## Never/{w=1} w' "$UPR_SKILL")
+    grep -qF 'create_or_update_file' <<< "$upr_never" || UPR_WHY+=" UPR-4:create-file-allowed"
+    grep -qF 'delete_file' <<< "$upr_never" || UPR_WHY+=" UPR-4:delete-file-allowed"
+    # (UPR-5) the safe merge
+    for lit in 'merge-tree --write-tree' '^{tree}' 'merge_method: "merge"' 'stays open —' \
+               'has no merge-tree --write-tree' 'has changes this branch does not'; do
+        grep -qF -- "$lit" "$UPR_MERGE" || UPR_WHY+=" UPR-5:missing(${lit:0:32})"
+    done
+    grep -qF 'merge_method: "squash"' "$UPR_MERGE" && UPR_WHY+=" UPR-5:squash"
+    # (UPR-6) the text, and verify offering the final PR with no argument
+    for lit in 'One feature per line.' 'The code is the source of truth: commit subjects are hints.' \
+               'git diff --stat <start>..<end>' 'never all at once' 'in progress' \
+               'Plan: <folder> · phases K–L' 'task(s) of the plan are still open'; do
+        grep -qF -- "$lit" "$UPR_TEXT" || UPR_WHY+=" UPR-6:missing(${lit:0:32})"
+    done
+    grep -qF 'Skill(skill: "unikit-pr")' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-no-offer"
+    grep -qF '/unikit-pr is not installed' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-not-installed-silent"
+    grep -qF 'unikit-pr", args: "final"' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg"
+    grep -qF '/unikit-pr final' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg-slash"
+    # (UPR-7) the end is resolved once and pasted; the push says it is a push and is checked on
+    # the remote before any pull request call (a live run pushed a hash lengthened from memory,
+    # announced as a "placeholder check")
+    for lit in 'git rev-parse --verify <end>^{commit}' 'never typed from memory or completed by hand' \
+               'announced as the push it is, never as a check or a dry run' \
+               'git ls-remote origin refs/heads/<branch>' 'stop before any pull request call'; do
+        grep -qF -- "$lit" "$UPR_SKILL" || UPR_WHY+=" UPR-7:missing(${lit:0:32})"
+    done
+fi
+if [[ -z "$UPR_WHY" ]]; then
+    pass "UPR-1…UPR-7 unikit-pr: levels, boundaries, one PR per branch, safe merge, plain text, a pasted and checked push"
+else
+    fail "UPR-1…UPR-7 unikit-pr contract:$UPR_WHY"
+fi
+
+# IP: /unikit-implement at a PR checkpoint — commit the module, remind, ask one question
+# (check / run /unikit-pr / stop / merge into the next PR), label the checkbox, never push
+# mid-module, and in an ultra plan check the next module's evidence for drift.
+IP_SKILL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+IP_REF="$ROOT_DIR/skills/unikit-implement/references/pr-checkpoints.md"
+IP_WHY=""
+IP_NOPUSH=0
+if [[ ! -f "$IP_REF" ]]; then
+    IP_WHY+=" IP-1:missing-reference"
+else
+    # (IP-1) the sections
+    for h in '## Push' '## Legacy' '## Step 3.2 — the PR checkpoint' '## Module check' '## Module boundary drift (ultra only)'; do
+        grep -qxF "$h" "$IP_REF" || IP_WHY+=" IP-1:no-heading(${h#\#\# })"
+    done
+    # (IP-2) the four options, the position, the re-taken boundary, and every refusal branch
+    for lit in 'Check the module' 'Run /unikit-pr and continue' 'Stop here' 'Merge into the next PR' \
+               'runs at the Step 3.9 position of its phase, after Steps 3.6-3.8' \
+               'After the module check the boundary is taken again' \
+               'Disable checkpoints does not skip the module commit' \
+               'is not committed — PR checkpoint' 'checkpoint: task <N.M>, no-push' \
+               'do not stash it, or the checkpoint runs again' '/unikit-pr is not installed' \
+               'printed as its own block before the question, never inside it'; do
+        grep -qF -- "$lit" "$IP_REF" || IP_WHY+=" IP-2:missing(${lit:0:32})"
+    done
+    grep -qF 'MERGED → final' "$IP_REF" && IP_WHY+=" IP-2:final-target"
+    # (IP-3) the calls it makes
+    for lit in 'checkpoint: task <N.M>, boundary <sha>' 'Phases K-L' 'combine PRs' 'full module start sha'; do
+        grep -qF -- "$lit" "$IP_REF" || IP_WHY+=" IP-3:missing(${lit:0:32})"
+    done
+    # (IP-4) the drift formula, byte for byte (U+2229, U+2212), its line and the improve form
+    grep -qF 'evidence ∩ changed − expected' "$IP_REF" || IP_WHY+=" IP-4:no-drift-formula"
+    grep -qF 'WARN [plan-drift]' "$IP_REF" || IP_WHY+=" IP-4:no-drift-line"
+    grep -qF '/unikit-improve @.unikit/code/plans/<folder>' "$IP_REF" || IP_WHY+=" IP-4:improve-without-at"
+fi
+if [[ ! -f "$IP_SKILL" ]]; then
+    IP_WHY+=" IP-5:missing-skill"
+else
+    # (IP-5) the push rule stands inline in SKILL.md — safety does not depend on the reference
+    grep -qF 'every `unikit-commit` call of this run adds `no-push`' "$IP_SKILL" || IP_WHY+=" IP-5:no-inline-no-push"
+    grep -qF 'pr-checkpoints.md' "$IP_SKILL" || IP_WHY+=" IP-5:reference-unread"
+    grep -qF 'combine PRs' "$IP_SKILL" || IP_WHY+=" IP-5:answers-become-folder-name"
+    # ...recognised from the wording, like the test-run instruction — not advertised as parameters
+    grep -qE '^argument-hint:.*combine PRs' "$IP_SKILL" && IP_WHY+=" IP-5:answers-in-argument-hint"
+    grep -qF 'with the argument `checkpoint: phase {N}, auto`' "$IP_SKILL" || IP_WHY+=" IP-5:AU-1-literal-broken"
+    grep -qF 'invoked with the argument `final commit, auto`' "$IP_SKILL" || IP_WHY+=" IP-5:AU-2-literal-broken"
+    # a count, not grep -c: two call sites can share one line
+    IP_NOPUSH=$( { grep -o ', no-push' "$IP_SKILL" || true; } | wc -l | tr -d ' ')
+    (( IP_NOPUSH >= 3 )) || IP_WHY+=" IP-5:no-push-call-sites=$IP_NOPUSH"
+fi
+if [[ -z "$IP_WHY" ]]; then
+    pass "IP-1…IP-5 implement: PR checkpoint decision, no push mid-module, module check, drift ($IP_NOPUSH no-push call sites)"
+else
+    fail "IP-1…IP-5 implement PR checkpoint contract:$IP_WHY"
+fi
+
+# CW: the coordinator runs plans by the rules /unikit-implement runs them — it keeps PR
+# checkpoint tasks, never puts two modules in one layer, commits with no-push while the plan
+# has PR checkpoints; the worker hands a PR checkpoint back instead of executing it.
+CW_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+CW_WORKER="$ROOT_DIR/subagents/unikit-implement-worker.md"
+CW_WHY=""
+for f in "$CW_COORD" "$CW_WORKER"; do
+    [[ -f "$f" ]] || CW_WHY+=" CW:missing-${f##*/}"
+done
+if [[ -z "$CW_WHY" ]]; then
+    # (CW-1) the coordinator keeps the task and the barrier, and takes answers in advance
+    for lit in 'A PR checkpoint task is never handed to a worker' 'Seventh branch — a PR checkpoint task' \
+               'and after refinement' 'Module barrier, defensively' 'combine PRs'; do
+        grep -qF -- "$lit" "$CW_COORD" || CW_WHY+=" CW-1:missing(${lit:0:32})"
+    done
+    # (CW-2) no-push at its commit points; the module commit is not made twice. The new
+    # formulation is asserted, not the old one's absence: its first half lives on inside it.
+    grep -qF 'checkpoint: Commit N, tasks X-Y, no-push' "$CW_COORD" || CW_WHY+=" CW-2:commit-point-pushes"
+    grep -qF 'every commit passes `no-push`' "$CW_COORD" || CW_WHY+=" CW-2:session-may-push"
+    grep -qF "is that task's module commit — do not make it again" "$CW_COORD" || CW_WHY+=" CW-2:module-commit-twice"
+    # (CW-3) the worker returns it
+    grep -qF 'is never yours' "$CW_WORKER" || CW_WHY+=" CW-3:worker-executes-pr-task"
+    grep -qF 'PR checkpoint belongs to the coordinator' "$CW_WORKER" || CW_WHY+=" CW-3:no-return-reason"
+    grep -qF 'returned:' "$CW_WORKER" || CW_WHY+=" CW-3:no-returned-field"
+fi
+if [[ -z "$CW_WHY" ]]; then
+    pass "CW-1…CW-3 coordinator keeps PR checkpoints, the barrier and no-push; worker returns them"
+else
+    fail "CW-1…CW-3 coordinator/worker contract:$CW_WHY"
+fi
+
+# UW: the two ultra writing protocols. The standard one is Step F of the pre-disk-first
+# mode-ultra.md carried over word for word (its byte equality is checked by the plan, not
+# here: CI may clone without history); the one with saved state rests on a handful of
+# sentences — written at once, disk wins, English state, the path in every progress line —
+# and losing any of them silently brings back the context loss on a compaction.
+UW_DIRECT="$ROOT_DIR/skills/unikit-plan/references/ultra-direct.md"
+UW_STATEFUL="$ROOT_DIR/skills/unikit-plan/references/ultra-stateful.md"
+UW_RECON="$ROOT_DIR/skills/unikit-plan/references/RECON-TEMPLATE.md"
+UW_WHY=""
+for f in "$UW_DIRECT" "$UW_STATEFUL" "$UW_RECON"; do
+    [[ -f "$f" ]] || UW_WHY+=" UW:missing-${f##*/}"
+done
+if [[ -z "$UW_WHY" ]]; then
+    # (UW-1) the standard protocol: the carried-over block, the script call, the compaction note
+    for h in '## Write order' '## Checks through the script' '## After a compaction'; do
+        grep -qxF -- "$h" "$UW_DIRECT" || UW_WHY+=" UW-1:no-heading(${h:3})"
+    done
+    for lit in 'Write **all** phase files' 'Rule refresh per phase' '.unikit/code/plans/<feature-name>/PLAN.md' \
+               'Run every check in' 'Only then show the plan to the user.' 'Never write the manifest first' \
+               '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check'; do
+        grep -qF -- "$lit" "$UW_DIRECT" || UW_WHY+=" UW-1:missing(${lit:0:32})"
+    done
+    grep -qF '.planning' "$UW_DIRECT" && UW_WHY+=" UW-1:standard-saves-state"
+    grep -qF 'module-planner' "$UW_DIRECT" && UW_WHY+=" UW-1:planning-subagent"
+    # (UW-2) the eight sections of the protocol with saved state, as whole lines
+    for h in '## Folder' '## Entry: from the start' '## Entry: switch at D2' '## STATE.md' \
+             '## Recon files' '## Phase cycle' '## Resume' '## Assembly'; do
+        grep -qxF -- "$h" "$UW_STATEFUL" || UW_WHY+=" UW-2:no-heading(${h:3})"
+    done
+    # (UW-3) the STATE.md template window: header, six sections, Next: — and none of the retired ones
+    UW_TPL="$(awk '/^## STATE\.md$/{s=1;next} s&&/^```markdown$/{f=1;next} f&&/^```$/{exit} f' "$UW_STATEFUL")"
+    if [[ -z "$UW_TPL" ]]; then
+        UW_WHY+=" UW-3:no-template-window"
+    else
+        for lit in '> Resume:' 'Procedure:' 'Skill:' 'Mode:' 'Format:' 'Settings:' 'Rules:' '## Decisions' \
+                   '## Phases' '## Contracts' '## Handoff' '## Recon' '- guard: ' '· pending' '## Open' 'Next:'; do
+            grep -qF -- "$lit" <<< "$UW_TPL" || UW_WHY+=" UW-3:missing(${lit})"
+        done
+        for lit in '## Executors' '## Gaps' '## Research link' '## Design briefs' '## Catalog'; do
+            grep -qF -- "$lit" <<< "$UW_TPL" && UW_WHY+=" UW-3:retired(${lit:3})"
+        done
+    fi
+    # (UW-4) the doctrine, each sentence on one line
+    for lit in 'written to disk the moment it appears' 'are written in English' '.planning/checklist.md' \
+               'the checklist is `checklist.md` as it stands' '`Rules:` starts with the files read at Step 0.5' \
+               'Never written into' 'Disk wins' 'never recomputed' \
+               '· state: .unikit/code/plans/<feature-name>/.planning/STATE.md' 'first file is a `.gitignore` holding `*`'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:missing(${lit:0:32})"
+    done
+    # ...and the reconnaissance answer. The writing agent puts it into its file itself, so the
+    # answers never pass through the session (a live run: seven answers written back by the session
+    # filled the context twice over and forced a compaction mid-batch); the file is written whole;
+    # the fallback path writes it first; a pending line per launched question lets an interrupted
+    # batch re-ask only what never arrived; a resume reads only what the next step needs; and the
+    # change guard is the only bound on an agent that can edit
+    for lit in 'The answer is written whole, never condensed' 'Writing it is the first thing done when an answer' \
+               'ask that one question again — only that one' 'never the whole `recon/` folder' \
+               'is not rebuilt from memory' 'recon-writer-agent' 'returns only the path and its `## Summary`' \
+               'WARN [plan] files changed outside .planning/ while recon agents ran' 'never revert anything yourself'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:recon-missing(${lit:0:32})"
+    done
+    grep -qF 'answers condensed' "$UW_STATEFUL" && UW_WHY+=" UW-4:recon-condensed"
+    # (UW-5) the script calls and the fallback; nothing of the retired module-by-module scheme
+    for lit in '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check' \
+               '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs finalize' \
+               'plan-bundle.mjs unavailable — checks done by the model'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-5:missing(${lit:0:40})"
+    done
+    for lit in 'module-planner' 'fragments/' '.unikit/code/.planning'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" && UW_WHY+=" UW-5:retired(${lit})"
+    done
+    # (UW-6) the recon file template: a fixed set of blocks IN ORDER (a reader finds a section
+    # without opening the file only because the headings never vary), a short head that alone
+    # reaches the context, and a contents table whose line ranges stay true; the protocol reads
+    # the head and then single sections by range
+    UW_RT="$(awk '/^```markdown$/{f=1;next} f&&/^```$/{exit} f' "$UW_RECON")"
+    if [[ -z "$UW_RT" ]]; then
+        UW_WHY+=" UW-6:no-template-window"
+    else
+        grep -q '^HEAD: ' <<< "$UW_RT" || UW_WHY+=" UW-6:no-head-line"
+        grep -q '^Question: ' <<< "$UW_RT" || UW_WHY+=" UW-6:no-question-line"
+        grep -qxF '| Section | Lines | Covers |' <<< "$UW_RT" || UW_WHY+=" UW-6:no-contents-table"
+        UW_PREV=0
+        for h in '## Summary' '## Contents' '## Current-Code Evidence' '## Interfaces' '## Tests and Fixtures' \
+                 '## Logging' '## Topic: <name>' '## Gaps'; do
+            UW_N="$( { grep -nxF -- "$h" <<< "$UW_RT" || true; } | head -1 | cut -d: -f1)"
+            if [[ -z "$UW_N" ]]; then UW_WHY+=" UW-6:no-block(${h:3})"
+            elif (( UW_N <= UW_PREV )); then UW_WHY+=" UW-6:out-of-order(${h:3})"
+            else UW_PREV=$UW_N; fi
+        done
+    fi
+    for lit in 'Every section is written, in this order.' '`## Summary` holds at most 30 lines.' \
+               'returns it as its reply, word for word' "grep -n '^## '" 'the table keeps its length' \
+               'Below the head the answer is whole, never condensed'; do
+        grep -qF -- "$lit" "$UW_RECON" || UW_WHY+=" UW-6:rule-missing(${lit:0:32})"
+    done
+    for lit in 'references/RECON-TEMPLATE.md' '**Reading a recon file.**' 'by their line range' \
+               'the summaries are the working material'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-6:protocol-missing(${lit:0:32})"
+    done
+fi
+if [[ -z "$UW_WHY" ]]; then
+    pass "UW-1…UW-6 ultra writing protocols: standard straight into the plan folder; saved state with write-through, lean English state, disk wins, finalize; recon files in a fixed template read by head and section"
+else
+    fail "UW-1…UW-6 ultra writing protocols:$UW_WHY"
+fi
+
+# WP: the protocols are wired into /unikit-plan. Wiring is where a new path silently fails to
+# switch on: the A0 question disappears, the threshold drifts, the continuation stops finding
+# the folder, or Step F grows a second copy of the standard write order.
+WP_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+WP_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+WP_FMT="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+WP_WHY=""
+for f in "$WP_PLAN" "$WP_ULTRA" "$WP_FMT"; do
+    [[ -f "$f" ]] || WP_WHY+=" WP:missing-${f##*/}"
+done
+if [[ -z "$WP_WHY" ]]; then
+    # (WP-1) the protocol is asked first and offered again above the threshold, in one direction
+    grep -qxF '### Step A0: Choose the writing protocol' "$WP_ULTRA" || WP_WHY+=" WP-1:no-step-a0"
+    grep -qxF '## Step D2: Offer saved state on a large plan' "$WP_ULTRA" || WP_WHY+=" WP-1:no-step-d2"
+    for lit in 'ultra-direct.md' 'ultra-stateful.md' 'Standard (Recommended)' 'With saved state' 'above 12' \
+               'Switch to saved state (Recommended)' 'Stay standard' 'The question is asked in one direction only' \
+               'Steps A0-C run before the Shared Steps' 'strip that wording from the feature description'; do
+        grep -qF -- "$lit" "$WP_ULTRA" || WP_WHY+=" WP-1:missing(${lit:0:32})"
+    done
+    WP_STEP_F="$(awk '/^## Step F/{f=1;next} /^## /{f=0} f' "$WP_ULTRA")"
+    [[ -n "$WP_STEP_F" ]] || WP_WHY+=" WP-1:no-step-f"
+    grep -qF 'Write **all** phase files' <<< "$WP_STEP_F" && WP_WHY+=" WP-1:step-f-second-copy"
+    grep -qF 'Steps A-C run before' "$WP_ULTRA" && WP_WHY+=" WP-1:header-without-a0"
+    # A0 cannot slip behind the reconnaissance (a live run batched every question after recon and
+    # the protocol question fell out), and its INFO line shows which protocol runs on every path
+    for lit in 'Step A0 is the first action of an ultra run' 'never deferred into the Step C batch' \
+               'Until Step A0 is settled, no agent is launched.' 'The line is printed on every path' \
+               'Under the standard protocol the dispatch is always `recon-agent`'; do
+        grep -qF -- "$lit" "$WP_ULTRA" || WP_WHY+=" WP-1:a0-missing(${lit:0:32})"
+    done
+    grep -qF 'Step A0 first and on its own, before any agent' "$WP_PLAN" || WP_WHY+=" WP-2:step-1.5-a0-not-first"
+    # the default protocol is named "standard" (user decision 2026-09-29) — one name, not two
+    for f in "$WP_ULTRA" "$WP_PLAN" "$UW_DIRECT"; do
+        [[ -f "$f" ]] || continue
+        grep -qF 'classic' "$f" && WP_WHY+=" WP-1:classic-in(${f##*/})"
+        grep -qF 'Classic' "$f" && WP_WHY+=" WP-1:Classic-in(${f##*/})"
+    done
+    # the two recon pointers the session reads while the agents are out: the answer goes in whole
+    grep -qF 'whole and never condensed' "$WP_ULTRA" || WP_WHY+=" WP-1:step-b-recon-not-whole"
+    grep -qF 'whole and never condensed' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-recon-not-whole"
+    grep -qF 'the dispatch is `recon-writer-agent` instead' "$WP_ULTRA" || WP_WHY+=" WP-1:step-b-no-writer"
+    grep -qF 'reconnaissance goes through `recon-writer-agent`' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-no-writer"
+    # the alias in BOTH agent-filter branches: the writing agent on Claude, recon-agent + a write elsewhere
+    WP_CLAUDE="$(awk '/^<!-- unikit:agents claude -->$/{f=1;next} /^<!-- unikit:end -->$/{f=0} f' "$WP_PLAN")"
+    WP_OTHER="$(awk '/^<!-- unikit:agents !claude -->$/{f=1;next} /^<!-- unikit:end -->$/{f=0} f' "$WP_PLAN")"
+    grep -qF 'Agent(subagent_type: general-purpose, model: sonnet, prompt: "Reconnaissance for an ultra plan' <<< "$WP_CLAUDE" \
+        || WP_WHY+=" WP-2:no-writer-expansion"
+    grep -qF 'That file is the only one you may create or change' <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-unbounded"
+    grep -qF 'filling every section of the template <path of RECON-TEMPLATE.md>' <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-no-template"
+    grep -qF "Reply with the file's path and its \`## Summary\` section, word for word" <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-reply-not-summary"
+    grep -qF '**`recon-writer-agent`**' <<< "$WP_OTHER" || WP_WHY+=" WP-2:no-writer-fallback-branch"
+    # ...and the writer is a saved-state tool only: a live run on the standard protocol picked it up
+    # on its own, leaving full answers in a folder no resume knows about
+    grep -qF 'Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol' <<< "$WP_CLAUDE" \
+        || WP_WHY+=" WP-2:writer-unscoped"
+    grep -qF 'used only after `mode-ultra.md` Step A0 or Step D2 chose that protocol' <<< "$WP_OTHER" \
+        || WP_WHY+=" WP-2:writer-fallback-unscoped"
+    # (WP-2) continuation, the unfinished-plan branch and "Start over" through the script only
+    WP_5A="$( { grep '^5a\. ' "$WP_PLAN" || true; } )"
+    if [[ -z "$WP_5A" ]]; then
+        WP_WHY+=" WP-2:no-rule-5a"
+    else
+        grep -qF '.planning/STATE.md' <<< "$WP_5A" || WP_WHY+=" WP-2:5a-no-state"
+        grep -qF 'ultra-stateful.md' <<< "$WP_5A" || WP_WHY+=" WP-2:5a-no-protocol"
+    fi
+    for lit in 'Continue it' 'Start over' 'plan-bundle.mjs discard' 'unfinished plan removed — starting over' \
+               'additional steps A0-C (writing protocol, git branch, recon, preferences)' 'refine Step 5 and Step 6'; do
+        grep -qF -- "$lit" "$WP_PLAN" || WP_WHY+=" WP-2:missing(${lit:0:32})"
+    done
+    grep -qF 'Bash(rm' "$WP_PLAN" && WP_WHY+=" WP-2:rm-grant"
+    grep -qF 'additional steps A-C (' "$WP_PLAN" && WP_WHY+=" WP-2:step-1.5-without-a0"
+    # (WP-3) the format's Write Order names both protocols and the state folder
+    WP_ORDER="$(awk '/^## Write Order/{f=1;next} /^## /{f=0} f' "$WP_FMT")"
+    for lit in 'ultra-direct.md' 'ultra-stateful.md' '.planning/'; do
+        grep -qF -- "$lit" <<< "$WP_ORDER" || WP_WHY+=" WP-3:missing(${lit})"
+    done
+fi
+if [[ -z "$WP_WHY" ]]; then
+    pass "WP-1…WP-3 /unikit-plan asks for the ultra protocol first, offers saved state above 12 phases, resumes and discards through the script"
+else
+    fail "WP-1…WP-3 ultra protocol wiring:$WP_WHY"
+fi
+
+# UF: two invariants with no other detector. The retired disk-first scheme (planning
+# subagents, a working folder outside plans/) stays out of every shipped text — the revert
+# removed it once and nothing else stops a copy bringing it back; and every reader that picks
+# a plan names an unfinished one the same way, since a drifted wording is where one of them
+# starts picking it. docs/ and scripts/ are out of UF-1's scope: docs/ is narrative, scripts/
+# holds the negative literals themselves.
+UF_IMPLEMENT="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+UF_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
+UF_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+UF_COORD="$ROOT_DIR/subagents/unikit-implement-coordinator.md"
+UF_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+UF_LIST="$ROOT_DIR/skills/unikit-plan/references/mode-list.md"
+UF_NOTE='unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>'
+UF_WHY=""
+# (UF-1) the retired files are gone and no shipped text names the scheme
+for f in skills/unikit-plan/references/disk-planning.md skills/unikit-plan/references/module-procedure.md \
+         subagents/unikit-plan-module-planner.md subagents/unikit-plan-recon-writer.md; do
+    [[ -e "$ROOT_DIR/$f" ]] && UF_WHY+=" UF-1:back(${f##*/})"
+done
+UF_HITS="$( { grep -rlE 'unikit-plan-module-planner|unikit-plan-recon-writer|\.unikit/code/\.planning' \
+    "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" "$ROOT_DIR/src" || true; } )"
+if [[ -n "$UF_HITS" ]]; then
+    while IFS= read -r hit; do UF_WHY+=" UF-1:named-in(${hit#"$ROOT_DIR"/})"; done <<< "$UF_HITS"
+fi
+# (UF-2) one wording, five readers; --list labels it
+UF_READERS=0
+for f in "$UF_IMPLEMENT" "$UF_VERIFY" "$UF_IMPROVE" "$UF_COORD" "$UF_ADD"; do
+    if [[ ! -f "$f" ]]; then UF_WHY+=" UF-2:missing(${f#"$ROOT_DIR"/})"; continue; fi
+    grep -qF -- "$UF_NOTE" "$f" || UF_WHY+=" UF-2:note-drifted(${f#"$ROOT_DIR"/})"
+    grep -qF 'An unfinished plan is not a plan.' "$f" || UF_WHY+=" UF-2:no-rule(${f#"$ROOT_DIR"/})"
+    UF_READERS=$((UF_READERS + 1))
+done
+grep -qF 'planning — unfinished' "$UF_LIST" || UF_WHY+=" UF-2:list-unlabelled"
+if [[ -z "$UF_WHY" ]]; then
+    pass "UF-1…UF-2 disk-first stays out of the package; implement, its coordinator, verify, improve, add and --list name an unfinished plan and never pick it ($UF_READERS readers)"
+else
+    fail "UF-1…UF-2 unfinished plan / disk-first remnants:$UF_WHY"
+fi
+
+# RE: the reconnaissance of a plan written with saved state stays with the plan. Four things
+# with no other detector: finalize keeps it (the behaviour is Part 13d; this is the text that
+# tells the planner so), the plan names it, the readers know their role, and /unikit-improve
+# builds on its fresh part without ever editing it. A missing recon file must stay a warning —
+# a plan whose reconnaissance was lost is still a whole plan.
+RE_FMT="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+RE_STATEFUL="$ROOT_DIR/skills/unikit-plan/references/ultra-stateful.md"
+RE_TPL="$ROOT_DIR/skills/unikit-plan/references/RECON-TEMPLATE.md"
+RE_READ="$ROOT_DIR/data/ultra-plan-read.md"
+RE_IMPROVE="$ROOT_DIR/skills/unikit-improve/SKILL.md"
+RE_IMPROVE_REF="$ROOT_DIR/skills/unikit-improve/references/recon-baseline.md"
+RE_WHY=""
+for f in "$RE_FMT" "$RE_STATEFUL" "$RE_TPL" "$RE_READ" "$RE_IMPROVE" "$RE_IMPROVE_REF"; do
+    [[ -f "$f" ]] || RE_WHY+=" RE:missing(${f#"$ROOT_DIR"/})"
+done
+if [[ -z "$RE_WHY" ]]; then
+    # (RE-1) the format names recon and the freshness rule lives with the file's form
+    grep -qF '## Recon   (optional; only a plan written with saved state)' "$RE_FMT" || RE_WHY+=" RE-1:no-manifest-section"
+    grep -qF 'Recon: recon/<topic>.md § <section>' "$RE_FMT" || RE_WHY+=" RE-1:no-phase-line"
+    grep -qF 'check 16 only warns' "$RE_FMT" || RE_WHY+=" RE-1:check-16-blocks"
+    grep -qxF '## After the plan is written' "$RE_TPL" || RE_WHY+=" RE-1:no-after-section"
+    grep -qF 'git diff --stat <HEAD>..HEAD -- <path>' "$RE_TPL" || RE_WHY+=" RE-1:no-freshness-rule"
+    # (RE-2) the protocol with saved state writes Recon: per phase, ## Recon at assembly, keeps recon/
+    grep -qF "keeps .planning/recon/ as the plan's recon/" "$RE_STATEFUL" || RE_WHY+=" RE-2:finalize-drops-recon"
+    grep -qF 'its header carries' "$RE_STATEFUL" || RE_WHY+=" RE-2:phase-without-recon-line"
+    grep -qF '`## Recon` comes' "$RE_STATEFUL" || RE_WHY+=" RE-2:assembly-without-recon"
+    grep -qF '— removes `.planning/`.' "$RE_STATEFUL" && RE_WHY+=" RE-2:old-finalize-text"
+    # (RE-3) the reader contract: who reads recon, and a missing file never blocks
+    grep -qxF '## Recon' "$RE_READ" || RE_WHY+=" RE-3:no-reader-section"
+    grep -qF 'A recon file that is missing is never an integrity violation' "$RE_READ" || RE_WHY+=" RE-3:missing-recon-blocks"
+    grep -qF 'No consumer creates, edits or deletes a recon file.' "$RE_READ" || RE_WHY+=" RE-3:recon-mutable"
+    grep -qF 'Checks 12-16 are write-time too' "$RE_READ" || RE_WHY+=" RE-3:check-16-re-run"
+    # (RE-4) /unikit-improve: the reference is read only with recon/, sets the scope, never edits recon
+    grep -qF 'references/recon-baseline.md' "$RE_IMPROVE" || RE_WHY+=" RE-4:reference-unread"
+    for h in '## Topic map' '## Scope without a prompt' '## Scope with a prompt' '## Two layers' '## Reading budget' '## Never'; do
+        grep -qxF -- "$h" "$RE_IMPROVE_REF" || RE_WHY+=" RE-4:no-heading(${h:3})"
+    done
+    for lit in 'All fresh topics with open tasks (Recommended)' 'Whole plan — standard pass' 'INFO [improve] recon:' \
+               'never creates, edits or deletes a recon file' 'A whole file is never read.'; do
+        grep -qF -- "$lit" "$RE_IMPROVE_REF" || RE_WHY+=" RE-4:missing(${lit:0:32})"
+    done
+fi
+if [[ -z "$RE_WHY" ]]; then
+    pass "RE-1…RE-4 recon stays with the plan: kept by finalize, named by the plan, read by improve on its fresh part, never edited"
+else
+    fail "RE-1…RE-4 recon as plan evidence:$RE_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -9523,6 +10346,16 @@ if bash "$SCRIPT_DIR/test-rules-layout.sh"; then
     pass "rules-layout helper tests passed"
 else
     fail "rules-layout helper tests failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 13d: plan-bundle.mjs — the ultra bundle check, run for real on fixture bundles
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 13d: plan-bundle helper tests${NC}"
+if bash "$SCRIPT_DIR/test-plan-bundle.sh"; then
+    pass "plan-bundle helper tests passed"
+else
+    fail "plan-bundle helper tests failed"
 fi
 
 # ─────────────────────────────────────────────
