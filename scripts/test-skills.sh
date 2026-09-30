@@ -6871,6 +6871,27 @@ else
     fail "TR test-run reference extraction:$TR_WHY"
 fi
 
+# --- EO: the execution overview reaches the screen on every run that executes a task ---
+# Real runs showed `## Implementation Progress` on some starts and not on others: it was an
+# unnumbered paragraph between 3.0 and 3.1, and a Step 0.2 / 2.5 question asked "right before
+# Step 3" sent the run through a commit, a stash or the merge marks, after which it went
+# straight to the first task. Its counts, taken by a command, sat in folded tool output.
+EO_WHY=""
+# (EO-1) one overview, opening Step 3 — before 3.0 of the first phase, not between 3.0 and 3.1.
+EO1_HEAD="$(awk 'index($0,"### Step 3: Execute Tasks")==1{f=1;next} index($0,"**3.0: Phase Rules Refresh")==1{f=0} f' "$UNIKIT_IMPLEMENT_SKILL")"
+printf '%s' "$EO1_HEAD" | grep -qF '## Implementation Progress' || EO_WHY+=" EO-1:overview-not-opening-step-3"
+EO1_COUNT="$({ grep -cF '## Implementation Progress' "$UNIKIT_IMPLEMENT_SKILL" || true; })"
+[[ "$EO1_COUNT" == "1" ]] || EO_WHY+=" EO-1:overview-count=${EO1_COUNT}"
+# (EO-2) a question before Step 3 is no reason to skip it — anchored on the formulation.
+grep -qF 'the answer is no reason to skip it' "$UNIKIT_IMPLEMENT_SKILL" || EO_WHY+=" EO-2:skipped-after-question"
+# (EO-3) printed as the agent's own message, since tool output is folded away from the user.
+grep -qF 'print the overview as your own message' "$UNIKIT_IMPLEMENT_SKILL" || EO_WHY+=" EO-3:left-in-tool-output"
+if [[ -z "$EO_WHY" ]]; then
+    pass "EO-1…EO-3 unikit-implement execution overview: once per run, opening Step 3, printed after any Step 0.2 / 2.5 answer, as the agent's own message"
+else
+    fail "EO execution overview:$EO_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # PX: incidental defects closed by the readback/merge/slimming plan (research section 14).
 # One assert per defect, numbered by the defect. Defect 13 (the dev-principles lazy-read
@@ -8466,9 +8487,16 @@ if [[ -z "$AR_WHY" ]]; then
     grep -qF 'Choose by number or date' "$AR_SKILL" || AR_WHY+=" AR-17:no-choice-by-date"
     grep -qF 'never as "the listed ones"' "$AR_SKILL" || AR_WHY+=" AR-17:choice-translation-trap"
     grep -qF 'A date rule is matched against the table' "$AR_SKILL" || AR_WHY+=" AR-17:date-rule-unbound"
+    # (AR-18) the table reaches the screen: a real interactive run classified ten plans with a
+    # script, left the table and every INFO line inside the folded tool output, printed one
+    # summary sentence, and asked "Archive which plans?" naming rows #4, #5, #7, #9 the user had
+    # never seen. Anchored on formulations, as the mode-optimise.md precedent does it.
+    grep -qF '**What the user must see, print as your own message.**' "$AR_SKILL" || AR_WHY+=" AR-18:no-visible-output-rule"
+    grep -qF 'Tool output is folded away from the user' "$AR_SKILL" || AR_WHY+=" AR-18:tool-output-assumed-visible"
+    grep -qF 'ask it only once the whole table is on screen' "$AR_SKILL" || AR_WHY+=" AR-18:question-before-table"
 fi
 if [[ -z "$AR_WHY" ]]; then
-    pass "AR-1…AR-17 unikit-archive: announces itself first, dates every plan, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
+    pass "AR-1…AR-18 unikit-archive: announces itself first, prints the dated table as its own message before asking, archives an unfinished plan only on an explicit choice and says so; non-x marks are unfinished, untransferred findings (keyed on the trap back-reference) and open rule candidates ask and never stop, git mv only for a tracked folder, no overwrite and no commit; the implemented_version fallback and both plan producers see the archive, implement names it, explore reads it as history"
 else
     fail "AR plan archive contract:$AR_WHY"
 fi

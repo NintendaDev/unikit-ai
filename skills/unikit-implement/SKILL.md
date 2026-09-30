@@ -324,6 +324,16 @@ Runs **before** the first task, and only when `Testing: yes`: follow `references
 
 Keep a running list of files you create, modify, or delete during execution — you'll need it for the completion summary and commit.
 
+**Execution overview — once per run, before the first task.** A run that executes at least one task opens Step 3 with it, before 3.0 of the first phase. A Step 0.2 or Step 2.5 question asked before Step 3 changes only the moment: carry out its answer first — the commit, the stash and its recount, the `⏭️ MERGED` marks — then print the overview with the counts as they stand now; the answer is no reason to skip it. Tool output is folded away from the user, so counts a command printed never reach the screen: print the overview as your own message.
+
+```
+## Implementation Progress
+
+✅ Completed: {X}/{total} tasks
+🔄 Executing: Phase {N} — {Y} tasks pending in scope
+⏳ Remaining after scope: {Z} tasks
+```
+
 **3.0: Phase Rules Refresh (before starting each phase)**
 
 Before executing the first task of any phase (including the first phase):
@@ -334,16 +344,6 @@ Before executing the first task of any phase (including the first phase):
 5. Add them to `loaded_rules`.
 
 Inside a phase, do NOT re-check rules between individual tasks — they share the same loaded set.
-
-**Before starting the first task**, display the execution overview:
-
-```
-## Implementation Progress
-
-✅ Completed: {X}/{total} tasks
-🔄 Executing: Phase {N} — {Y} tasks pending in scope
-⏳ Remaining after scope: {Z} tasks
-```
 
 For each task to execute:
 

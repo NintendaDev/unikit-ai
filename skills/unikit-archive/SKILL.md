@@ -81,6 +81,8 @@ Skill-specific rule:
 
 **Then say what you are doing, as you do it.** Before each step that reads, runs or writes something, one short line in `language.ui` saying what is happening right now — `Found 30 plan folders — checking each one…`, `Reading the dates from git…`, `Looking for MCP findings that never reached the notes…`, `Moving <folder>…`. One line per step, at the moment it starts: not a plan announced in advance, and not a retelling of what went fine. The per-folder `INFO [archive]` lines of Step 2 are the progress of the longest step.
 
+**What the user must see, print as your own message.** Tool output is folded away from the user: a table, a list or an `INFO [archive]` line that only a command printed never reaches the screen. The table, the lists printed before a question and the summary are printed as your own message, in full — never left in a script's output, never cut down to a one-line summary.
+
 ## Step 2: Classify a plan folder
 
 Run this for every folder the mode looks at. It reads, it never writes.
@@ -152,7 +154,7 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
 
 ### interactive
 
-1. Classify every folder in `.unikit/code/plans/` and print a table: # · folder · verdict · created · last change, the oldest last change first — a plan nobody has touched for weeks is what the user is deciding about. `#` numbers the rows for the question below.
+1. Classify every folder in `.unikit/code/plans/` and print a table as your own message, one row per folder: # · folder · verdict · created · last change, the oldest last change first — a plan nobody has touched for weeks is what the user is deciding about. `#` numbers the rows for the question below: ask it only once the whole table is on screen — the options name rows by `#`, and without the table the user chooses blind.
 2. No folder is `completed` or `incomplete` → `No plan can be archived now.` and stop.
 3. Ask which plans. A plan with follow-ups is marked in the table with them, e.g. `(2 MCP findings not transferred, 1 open rule candidate)`.
 
@@ -171,7 +173,7 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
 
 ### all
 
-Classify every folder in `.unikit/code/plans/`. Print the `completed` ones with their created and last-change dates, marked as in interactive mode, and ask:
+Classify every folder in `.unikit/code/plans/`. Print the `completed` ones as your own message, with their created and last-change dates, marked as in interactive mode, and ask:
 
 ```
 AskUserQuestion: Archive all <n> completed plans?
