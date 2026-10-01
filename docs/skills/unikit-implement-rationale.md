@@ -42,11 +42,36 @@ explore save pipeline, on the same criterion — see
   `rule` form is allowed to stay short.
 - **Future-phase compilation errors do not block the phase commit.** They indicate planned work,
   not broken code.
-- **The safety valve fires at 70 % of the suites.** A filter of twenty names costs more than
-  one full run, and assembling it is the more error-prone half. The skill says the threshold is
-  assigned, not measured, so the next reader does not take it for a measurement.
+- **A phase checkpoint runs every test by default.** The cost of a run is set by the number of
+  launches — each one pays the runner's fixed overhead again — and a narrowed check that
+  started its suites one after another was observed to be slower than one full run (an
+  observation, not a measurement). Narrowing is
+  opt-in (`testing.run.use_affected_modules`), read at run time and never recorded into the
+  plan: a wider run contains any coverage, so re-reading the key never makes a written plan wrong.
+- **A run is one launch.** When the filter cannot name every remaining suite, the run widens to
+  every test rather than splitting into several launches. How a server spells a list of suites
+  is taken from its live tool schema and written nowhere.
+- **The safety valve is a key, default 30 % of the suites.** A filter that names most of the
+  project costs more than one full run, and assembling it is the more error-prone half. The
+  skill says the threshold is assigned, not measured, so the next reader does not take it for a
+  measurement.
 - **A degenerate case widens to a full run.** Failing to narrow means widening — fail-safe, not
-  refusal.
+  refusal. That includes an affected set with no test suite in it: a run over zero suites would
+  prove nothing.
+- **A run over zero tests is not green.** `passed 0/0` means the filter matched nothing or
+  discovery had not finished. The bar is engine-neutral and needs no file read; a server's own
+  preconditions (its `verification.md` `tests` line) stay `/unikit-verify`'s to read.
+- **The `Full run:` anchor moves after every run of every test, and the final run may reuse it.**
+  When the last phase and `Test checkpoint: plan` land on the same tree, the second run would
+  repeat the first. The final run stays mandatory — it is closed by a run of every test over that
+  very tree.
+- **The executor carries the anchor over its own commits.** A commit moves no file, but it moves
+  `HEAD`, and without the carry every committed plan would read as stale to `/unikit-verify`.
+  The executor carries it rather than `/unikit-commit`, which writes nothing into a plan. The
+  tree hash includes a blob id per changed file and leaves `.unikit/` out: a second edit of an
+  already modified file must move it, and the plan's own progress must not.
+- **A phase writes its tests before its run.** Written after the run, a phase's tests reached no
+  run of that phase, and the last phase's tests reached none at all.
 - **Module manifests are searched, never read.** Reading the whole module graph costs thousands
   of tokens and buys no accuracy.
 - **A red run has one reporter — the Step 3.3 blocker.** Two places printing one failure drift

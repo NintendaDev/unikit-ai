@@ -160,7 +160,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - If gaps found, suggests `/unikit-fix <issue summary>`
 - Strict mode recommended before merging
 - Takes the base branch from `git.base_branch`, and the plan's changed files from the commit it was planned at as well as from the base — modules already merged into the base branch stay in scope
-- `Phases N-M` checks one module: only its tasks and its range, no full test run, no design stamp. A PR checkpoint task is read from its checkbox
+- `Phases N-M` checks one module: only its tasks and its range, the module's test state from `## Test Runs` instead of the `Full run:` check (no question under `--strict` either), no design stamp. A PR checkpoint task is read from its checkbox
 - After a clean check of a whole plan it offers **Pull request — run /unikit-pr**
 
 ### `/unikit-commit [scope]` - conventional commits
