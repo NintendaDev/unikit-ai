@@ -69,7 +69,10 @@ explore save pipeline, on the same criterion — see
   `HEAD`, and without the carry every committed plan would read as stale to `/unikit-verify`.
   The executor carries it rather than `/unikit-commit`, which writes nothing into a plan. The
   tree hash includes a blob id per changed file and leaves `.unikit/` out: a second edit of an
-  already modified file must move it, and the plan's own progress must not.
+  already modified file must move it, and the plan's own progress must not. It ignores the index
+  as well: the executor stages a commit's files before the call, and a hash that saw staging would
+  never match the anchor at that moment. A `fatal:` from git means some path went unhashed, so it
+  counts as git unavailable rather than as a hash.
 - **A phase writes its tests before its run.** Written after the run, a phase's tests reached no
   run of that phase, and the last phase's tests reached none at all.
 - **Module manifests are searched, never read.** Reading the whole module graph costs thousands

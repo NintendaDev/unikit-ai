@@ -6577,6 +6577,7 @@ if [[ -z "$TC_G1_WHY" ]]; then
     grep -qF 'use_affected_modules: false'    "$TC_CONFIG_TPL" || TC_G1_WHY+=" TC-2:no-affected-key-or-default"
     grep -qF 'full_run_threshold_percent: 30' "$TC_CONFIG_TPL" || TC_G1_WHY+=" TC-2:no-threshold-key-or-default"
     grep -rqF 'use_affected_modules' "$ROOT_DIR/skills/unikit-plan/" && TC_G1_WHY+=" TC-2:planner-names-run-key"
+    grep -rqF 'full_run_threshold_percent' "$ROOT_DIR/skills/unikit-plan/" && TC_G1_WHY+=" TC-2:planner-names-threshold-key"
     # (TC-3) merge mode is the ONLY path by which a template key reaches a project that
     # already has a config; unnamed there, an existing project never learns it exists.
     # The claim is the METHOD, not two literals. The previous form pinned
@@ -6694,7 +6695,7 @@ if [[ -z "$TC_G4_WHY" ]]; then
     grep -qF 'Full run:'              "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-anchor-read"
     grep -qF 'Test run: reused'       "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-reused-outcome"
     grep -qF 'git rev-parse HEAD'     "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-head-command"
-    grep -qF 'git status --porcelain' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-porcelain-command"
+    grep -qF 'git ls-files --others --exclude-standard --full-name' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:no-untracked-command"
     # (TC-23) normal mode starts no test run; --strict asks once and is the only way verify runs
     # tests; an unresolved strict finding is the `verify-tests` blocker.
     grep -qF 'Normal mode starts no test run' "$UNIKIT_VERIFY_SKILL" || TC_G4_WHY+=" TC-23:verify-may-run-tests"
@@ -6762,7 +6763,7 @@ if [[ -z "$TC_G5_WHY" ]]; then
     grep -qF 'Safety valve'                 "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:no-safety-valve"
     grep -qF 'assigned, not measured'       "$TC_TESTRUNS" || TC_G5_WHY+=" TC-37:threshold-passed-off-as-measured"
     grep -qF 'Reading every module manifest is forbidden' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-38:no-manifest-read-ban"
-    grep -qF 'git rev-parse HEAD; git status --porcelain' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
+    grep -qF 'git rev-parse HEAD; { git diff HEAD --name-only' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
     grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
     grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" && TC_G5_WHY+=" TC-41:engine-names-leaked"
@@ -6913,6 +6914,8 @@ done
 if [[ -z "$TW_WHY" ]]; then
     TW_SEC="$(awk '/^## Run width/{f=1} f' "$TC_TESTRUNS")"
     [[ -n "$TW_SEC" ]] || TW_WHY+=" TW-1:no-run-width-section"
+    # (TW-1) /unikit-fix reads "that section alone" — from the heading to the end of the file.
+    [[ -z "$(awk '/^## Run width/{f=1;next} f&&/^## /{print; exit}' "$TC_TESTRUNS")" ]] || TW_WHY+=" TW-1:run-width-not-last"
     # (TW-1) both keys, the default threshold, and the floor rule.
     grep -qF '`testing.run.use_affected_modules`'      <<< "$TW_SEC" || TW_WHY+=" TW-1:no-affected-key"
     grep -qF '`testing.run.full_run_threshold_percent`' <<< "$TW_SEC" || TW_WHY+=" TW-1:no-threshold-key"
@@ -6949,19 +6952,30 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF '`testing.run.full_run_threshold_percent`' "$TW_CONFIG_DOC" || TW_WHY+=" TW-8:docs-no-threshold-key"
     # (TW-9) the coordinator does not count a reused final run as a performed one.
     grep -qF '<r> reused' "$TC_COORD" || TW_WHY+=" TW-9:coordinator-counts-reuse-as-run"
-    # (TW-10) SHARED — the tree hash is ONE command in both files, and it sees content: five
-    # fragments, each applied to BOTH. The old `{ HEAD; status }` text was blind to a second edit
-    # of a file already modified, and moved with every edit of the plan's own manifest.
+    # (TW-10) SHARED — the tree hash is ONE command, compared as a whole line between the two
+    # files (a fragment check stays green while one of the four `.unikit` excludes drifts in one
+    # copy). The line must be index-independent, top-relative and nested-repo safe: the review of
+    # 2026-10-01 measured `git status --porcelain` moving on `git add` (so no executor commit ever
+    # carried the anchor) and `--relative` + `hash-object` failing from a subdirectory, silently.
+    tw10_impl="$(awk '/git hash-object --stdin-paths/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$TC_TESTRUNS")"
+    tw10_ver="$(awk '/git hash-object --stdin-paths/{n++; l=$0} END{if(n==1){sub(/^ +/,"",l); print l}}' "$UNIKIT_VERIFY_SKILL")"
+    [[ -n "$tw10_impl" ]] || TW_WHY+=" TW-10:not-one-hash-line:test-runs.md"
+    [[ -n "$tw10_ver" ]]  || TW_WHY+=" TW-10:not-one-hash-line:SKILL.md"
+    [[ -n "$tw10_impl" && "$tw10_impl" == "$tw10_ver" ]] || TW_WHY+=" TW-10:hash-drift-between-files"
     tw10_i=0
-    for tw10_frag in 'git status --porcelain --untracked-files=all' \
-                     'git diff HEAD --name-only --relative --diff-filter=d' \
-                     'git ls-files --others --exclude-standard' \
-                     '| git hash-object --stdin-paths; } | shasum -a 256' \
-                     "':(exclude).unikit'"; do
+    for tw10_frag in 'git diff HEAD --name-only --no-renames --ignore-submodules -- .' \
+                     'git ls-files --others --exclude-standard --full-name -- .' \
+                     "| grep -v '/\$' | sort | git hash-object --stdin-paths; } | shasum -a 256"; do
         tw10_i=$((tw10_i + 1))
-        for tw10_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
-            grep -qF "$tw10_frag" "$tw10_f" || TW_WHY+=" TW-10:hash-drift:${tw10_f##*/}:fragment-$tw10_i"
-        done
+        grep -qF "$tw10_frag" <<< "$tw10_impl" || TW_WHY+=" TW-10:fragment-$tw10_i-missing"
+    done
+    tw10_ex="':(exclude).unikit'"
+    tw10_rest="${tw10_impl//"$tw10_ex"/}"
+    (( (${#tw10_impl} - ${#tw10_rest}) == 4 * ${#tw10_ex} )) || TW_WHY+=" TW-10:not-four-unikit-excludes"
+    grep -qF 'git status --porcelain' <<< "$tw10_impl" && TW_WHY+=" TW-10:index-sensitive-hash-returned"
+    grep -qF -- '--relative' <<< "$tw10_impl" && TW_WHY+=" TW-10:cwd-relative-paths-returned"
+    for tw10_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
+        grep -qF 'Any `fatal:` line the command prints → git did not answer' "$tw10_f" || TW_WHY+=" TW-10:fatal-not-unavailable:${tw10_f##*/}"
     done
     # (TW-11) the executor carries a matching anchor over every commit — implement and the coordinator alike.
     grep -qF '## Carrying the anchor across a commit' "$TC_TESTRUNS"            || TW_WHY+=" TW-11:no-carry-section"
@@ -6972,7 +6986,7 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF 'A phase that has not run `## Step 3.8` yet writes its tests now' "$TC_TESTRUNS" || TW_WHY+=" TW-12:tests-written-after-run"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-12 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware tree hash, carried over the executor's commits; tests written before the phase's run"
+    pass "TW-1…TW-12 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run"
 else
     fail "TW run-width contract:$TW_WHY"
 fi
