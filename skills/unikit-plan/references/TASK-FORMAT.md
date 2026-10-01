@@ -155,7 +155,7 @@ the moment a candidate is noticed.)
 ## Test Runs
 
 (Only when `Testing: yes`. The planner emits the heading; everything under it is written by
-the executor.)
+the executor — or by `/unikit-verify --strict`, when the user has it run the full suite.)
 
 - 2026-09-12 · phases 1-2 · 4 test suites · passed 128/128 · tree-sha256 `a1b2c3d4…`
 - 2026-09-12 · plan · all tests · passed 3363/3363 · tree-sha256 `e5f6a7b8…`
@@ -282,7 +282,7 @@ coverage ∈ task N.M | phase N | phases N-M | plan
 Rules:
 
 - **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task leaves nothing behind in the project, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — one of the two forms of task in this format without that line; the other is the PR checkpoint task. A temporary probe it creates and removes within its own steps (a negative control: make a test fail, see red, remove the probe, see green) and a manual smoke are legitimate steps of the task; when the task is merged into a later point, they are performed there (`/unikit-implement` Step 3.2).
-- **The width of a run follows from its coverage and is not configurable:** `task N.M` → the fixtures and classes that task names; `phase N` / `phases N-M` → the test suites of the modules those phases touch, plus the suites that depend on them; `plan` → every test in the project.
+- **A run is never narrower than its coverage, and how much wider it goes is decided when it runs, not here:** `task N.M` → the fixtures and classes that task names, always; `phase N` / `phases N-M` → every test in the project by default, or the test suites of the modules those phases touch plus the suites that depend on them when the executor's run settings allow narrowing; `plan` → every test in the project, always. The run settings belong to the executor and are never recorded in the plan — `unikit-implement/references/test-runs.md` → `## Run width`.
 - **The planner writes no list of suites.** The executor computes the set at run time, from the files actually changed. The planner neither reads nor builds a module graph, so planning time does not grow.
 - `task N.M` exists **only in an ultra bundle**: fast and full have no per-task surface to put it on.
 - **When `Testing: yes`, the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch, and it is never merged away nor deferred.
@@ -375,12 +375,12 @@ The window carries a 30-line cap **only when trap is scanning many plans at once
 
 ### Test runs section
 
-`## Test Runs` lives in the manifest at `##` level, under `## Rule Candidates`, and only when `Testing: yes`. The planner emits the heading; every line under it is written by the executor.
+`## Test Runs` lives in the manifest at `##` level, under `## Rule Candidates`, and only when `Testing: yes`. The planner emits the heading; every line under it is written by the executor — or by `/unikit-verify --strict`, when the user has it run the full suite (`unikit-verify` Step 2.2).
 
 - **One bullet per run, append-only:**
   `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`
-- **One `Full run:` anchor line**, rewritten in place after each full run, in that same form. This is the machine anchor `/unikit-verify` greps; the bullets are the log for a human. The duplication is deliberate: a verifier made to hunt for "the last bullet whose coverage is `plan`" would depend on the bullet order surviving every future edit.
-- `tree-sha256` is the digest of **a short text**, not of the project: the output of `git rev-parse HEAD` followed by the output of `git status --porcelain`, normalized and hashed by the digest step of `.unikit/system/research-link.md` (`### Digest`, the one `Summary SHA256` uses). No project file is read.
+- **One `Full run:` anchor line**, rewritten in place after each run of every test — whichever checkpoint ran it — in that same form. This is the machine anchor `/unikit-verify` greps; the bullets are the log for a human. The duplication is deliberate: a verifier made to hunt for "the last bullet whose coverage is `plan`" would depend on the bullet order surviving every future edit.
+- `tree-sha256` is the digest of **a short text**, not of the project: the commit (`git rev-parse HEAD`), the changed paths (`git status --porcelain`) and one git blob id for every changed or new file, all with `.unikit/` left out, normalized and hashed by the digest step of `.unikit/system/research-link.md` (`### Digest`, the one `Summary SHA256` uses). The exact command is `unikit-implement/references/test-runs.md` → `## Step 3.2`, item 8. An edit to a file already modified moves it; the plan's own progress never does. No project file is read by the agent. A commit the executor makes carries a matching anchor over to the new `HEAD` (`## Carrying the anchor across a commit` there).
 - Git unavailable → the run is still recorded, and the field reads `tree-sha256 unavailable`. A verifier that reads that value does not reuse the run.
 
 ### Fast mode differences
