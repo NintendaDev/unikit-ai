@@ -250,6 +250,8 @@ No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the
 
 **While the checklist carries a `PR checkpoint:` line, every `unikit-commit` call of this run adds `no-push`.**
 
+**Under `Testing: yes`, every `unikit-commit` call of this run is wrapped by `references/test-runs.md` → `## Carrying the anchor across a commit`** — the tree hash before the call, the carried `Full run:` anchor after it — or every committed plan reads as stale to `/unikit-verify`.
+
 ### Step 1.5: Bootstrap Rules & Principles
 
 Load the project knowledge base once, before the first task.
@@ -474,7 +476,7 @@ After completing a phase, check whether the implementation introduced structural
 
 Skip this step if the phase only modified existing files without structural changes.
 
-**3.8: Tests (after completing a phase, if Testing: yes)**
+**3.8: Tests (if Testing: yes — before the phase's test checkpoint, or after the phase)**
 
 `Testing: yes` → `references/test-runs.md` → `## Step 3.8`. `Testing: no`, or no `## Settings` at all → skip this step.
 
