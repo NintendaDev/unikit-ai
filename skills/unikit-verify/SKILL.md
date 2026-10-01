@@ -386,10 +386,10 @@ Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after im
 3. **An anchor is there** → compute the current tree hash **by the same procedure as `Summary SHA256`** — its digest step, `.unikit/system/research-link.md` → `### Digest`; the command below is that step in full, and nothing is read for it:
 
    ```
-   { git rev-parse HEAD; { git diff HEAD --name-only --no-renames --ignore-submodules -- . ':(exclude).unikit'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit'; } | sort; { git diff HEAD --name-only --no-renames --ignore-submodules --diff-filter=d -- . ':(exclude).unikit'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit'; } | grep -v '/$' | sort | git hash-object --stdin-paths; } | shasum -a 256 | awk '{print $1}'
+   { git rev-parse HEAD; { git diff HEAD --name-only --no-renames --ignore-submodules -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | sort; { git diff HEAD --name-only --no-renames --ignore-submodules --diff-filter=d -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | grep -v '/$' | sort | git hash-object --stdin-paths; } | shasum -a 256 | awk '{print $1}'
    ```
 
-   No `shasum` → `sha256sum`. You read no project file for it — git hashes only the changed ones, so the size of the project does not affect the cost; `.unikit/`, where the plan records its progress, is left out, and staging a file never moves the hash. **Any `fatal:` line the command prints → git did not answer** (item 6): a path git could not hash drops every path after it, and such a hash proves nothing.
+   No `shasum` → `sha256sum`. You read no project file for it — git hashes only the changed ones, so the size of the project does not affect the cost; `.unikit/`, where the plan records its progress, and Markdown files (`*.md`), which the plan's documentation step writes after the final run, are left out, and staging a file never moves the hash. **Any `fatal:` line the command prints → git did not answer** (item 6): a path git could not hash drops every path after it, and such a hash proves nothing.
 4. **The hash matches, and the anchor's count is above zero** → one line into the report, quoting the run:
 
    ```

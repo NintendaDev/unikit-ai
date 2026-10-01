@@ -72,7 +72,10 @@ explore save pipeline, on the same criterion — see
   already modified file must move it, and the plan's own progress must not. It ignores the index
   as well: the executor stages a commit's files before the call, and a hash that saw staging would
   never match the anchor at that moment. A `fatal:` from git means some path went unhashed, so it
-  counts as git unavailable rather than as a hash.
+  counts as git unavailable rather than as a hash. Markdown files are left out as well: the
+  documentation step (Step 5.3) and the `AGENTS.md` refresh write them after the final run, and
+  counting them made nearly every `Docs: yes` plan read as stale, while in a game project no test
+  runs a `.md`.
 - **A phase writes its tests before its run.** Written after the run, a phase's tests reached no
   run of that phase, and the last phase's tests reached none at all.
 - **Module manifests are searched, never read.** Reading the whole module graph costs thousands

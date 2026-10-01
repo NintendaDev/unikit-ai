@@ -6972,6 +6972,11 @@ if [[ -z "$TW_WHY" ]]; then
     tw10_ex="':(exclude).unikit'"
     tw10_rest="${tw10_impl//"$tw10_ex"/}"
     (( (${#tw10_impl} - ${#tw10_rest}) == 4 * ${#tw10_ex} )) || TW_WHY+=" TW-10:not-four-unikit-excludes"
+    # Markdown is documentation: the plan's documentation step writes it after the final run, and
+    # counting it made nearly every `Docs: yes` plan read as stale (user decision 2026-10-01).
+    tw10_md="':(exclude,icase)*.md'"
+    tw10_rest_md="${tw10_impl//"$tw10_md"/}"
+    (( (${#tw10_impl} - ${#tw10_rest_md}) == 4 * ${#tw10_md} )) || TW_WHY+=" TW-10:not-four-markdown-excludes"
     grep -qF 'git status --porcelain' <<< "$tw10_impl" && TW_WHY+=" TW-10:index-sensitive-hash-returned"
     grep -qF -- '--relative' <<< "$tw10_impl" && TW_WHY+=" TW-10:cwd-relative-paths-returned"
     for tw10_f in "$TC_TESTRUNS" "$UNIKIT_VERIFY_SKILL"; do
