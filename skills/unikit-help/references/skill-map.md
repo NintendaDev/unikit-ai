@@ -113,9 +113,11 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Optional but strongly recommended.** Before: `/unikit-plan`. After: `/unikit-implement`.
 
 ### unikit-implement
-- **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks),
-  commit at checkpoints. Resumable across sessions. At a checkpoint, "from now on commit without
-  asking" makes every later commit of the session automatic (message written, no question, no push).
+- **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks)
+  and run them at its test checkpoints — every test by default, `testing.run.use_affected_modules`
+  narrows a phase run to the changed modules — and commit at checkpoints. Resumable across
+  sessions. At a checkpoint, "from now on commit without asking" makes every later commit of the
+  session automatic (message written, no question, no push).
 - **When:** "implement", "execute the plan", "continue", "do Phase 2".
 - **In:** the latest plan, or `@<folder>`, or a phase/task selector. A range with two or more
   test runs asks once whether to merge them (or say it in the call). Bootstraps rules once, then
@@ -137,10 +139,11 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Optional.** Before: `/unikit-implement`. After: `/unikit-fix` (apply the findings).
 
 ### unikit-verify
-- **Purpose:** Verify the implementation *against the plan* — every task done, build clean, tests
-  pass, no leftover TODOs, conventions honoured. Emits a gate result.
-- **When:** "verify", "did we miss anything", "does it build and pass tests". After implementing.
-- **In:** nothing (latest plan), or a feature name; `--strict` raises the bar; `Phases N-M`
+- **Purpose:** Verify the implementation *against the plan* — every task done, build clean, the
+  recorded test run still matches the code (it runs no tests itself), no leftover TODOs,
+  conventions honoured. Emits a gate result.
+- **When:** "verify", "check the work", "did we miss anything". After implementing.
+- **In:** nothing (latest plan), or a feature name; `--strict` raises the bar and offers one full test run when the record is stale; `Phases N-M`
   checks one module. The base branch comes from `git.base_branch`; after a clean check of the
   whole plan it offers `/unikit-pr`.
 - **Out:** a verification report. The **one** sanctioned code→design write: on all-AC-met it
@@ -149,8 +152,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Optional (pre-merge gate).** Before: `/unikit-implement`. After: `/unikit-fix`, `/unikit-commit`.
 
 ### unikit-fix
-- **Purpose:** Fix a specific bug — find the root cause, fix it, suggest a test, and always write
-  a learning *patch*. Also applies `/unikit-review` and `/unikit-verify` findings.
+- **Purpose:** Fix a specific bug — find the root cause, fix it, run the tests (every test by
+  default, `testing.run.use_affected_modules` narrows the run to the changed modules), suggest
+  a test, and always write a learning *patch*. Also applies `/unikit-review` and `/unikit-verify`
+  findings.
 - **When:** "fix this bug", an error / stack trace / console log, "apply the review findings".
 - **In:** a bug description, or findings already in the conversation, or an existing `FIX_PLAN.md`.
   Modes: Fix-now or Plan-first.

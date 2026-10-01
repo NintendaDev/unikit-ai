@@ -150,7 +150,7 @@ canonical intent list and the full routing table live in
 | Research a technical solution before coding | `/unikit-explore` | pipelines.md |
 | Plan a feature | `/unikit-plan` | pipelines.md |
 | Start writing code | `/unikit-plan` → `/unikit-implement` | pipelines.md |
-| Test the code | `/unikit-verify`, `/unikit-implement` (test phase), `/unikit-fix` | scenarios.md |
+| Test the code | `/unikit-implement` (test checkpoints), `/unikit-verify` (checks the recorded run), `/unikit-fix` | scenarios.md |
 | Fix a bug | `/unikit-fix` (or `/unikit-explore` first for deep bugs) | scenarios.md |
 | Review code quality | `/unikit-review` → `/unikit-fix` | skill-map.md |
 | Archive finished plans / clean up the plan list | `/unikit-archive` (then `/unikit-commit` the move) | skill-map.md |
