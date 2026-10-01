@@ -117,8 +117,8 @@ After building: /unikit-verify  →  /unikit-commit
 There is no single "test" skill — name the kind, then route.
 ```
 UniKit handles testing in a few ways:
-  • Automated tests       → ask for them in /unikit-plan (test phase); /unikit-implement writes them
-  • "Did I build what the plan says + does it compile + do tests pass?" → /unikit-verify [--strict]
+  • Automated tests       → ask for them in /unikit-plan (test phase); /unikit-implement writes and runs them
+  • "Did I build what the plan says + does it compile + is the recorded test run current?" → /unikit-verify [--strict]
   • Failing tests / bugs  → /unikit-fix
 
 There is no dedicated manual-QA runner skill — for exploratory/manual testing, do it in the

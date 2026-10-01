@@ -133,8 +133,9 @@ For `/unikit-verify`:
 - Under `Test checkpoints: phase | plan` there are **no test runs among these commands**: a
   run is a task of the plan, and verify meets it as a test-checkpoint task, never as a
   command.
-- Verify does not repeat a run of its own when the `Full run:` anchor line in `## Test Runs`
-  matches the current state of the tree. The comparison procedure lives in `unikit-verify`
+- Verify starts no test run of its own in normal mode: it checks the `Full run:` anchor line
+  in `## Test Runs` against the current state of the tree, and a test-run command found in a
+  legacy plan's task text is not executed either. The procedure lives in `unikit-verify`
   Step 2.2.
 
 ## Editing a bundle

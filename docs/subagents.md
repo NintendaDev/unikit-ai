@@ -81,6 +81,7 @@ Dependency-aware plan execution.
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
 - After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, hands commit checkpoints to the `unikit-commit` skill (it never writes a commit message itself), advances to the next layer
 - Annotates the manifest with layer markers and `[~]` / `[x]` / `[!]` status in real time
+- Under `Testing: yes`, carries the `Full run:` anchor over every commit it makes (the same rule as `/unikit-implement`), and reports a final run closed by reuse apart from a performed one (`Test runs: <n> performed · <m> merged · <r> reused`)
 - **Is itself a writer of `## MCP Findings`** in the single-phase branch, where no worker exists to do it - same rules as everywhere else (`F<n>` = highest present + 1, `observed` = the date, semantic dedup), and never touches `.unikit/MCP-RECHECK-NOTES.md`
 - Ends by **printing** a `/unikit-mcp-trap <plan path>` recommendation when the table has rows. Printed rather than invoked because this agent closes the session on exit, and the trap is interactive - it would be cut off mid-question
 

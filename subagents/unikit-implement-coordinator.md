@@ -328,6 +328,7 @@ Every commit message is written by the `unikit-commit` skill. This agent never c
   2. Stage only the files this run created or modified for that range, minus the sidecar's `excluded_files`: `git add -- <files>`. Never `git add .` or `git add -A`.
   3. Invoke `Skill(skill: "unikit-commit", args: "checkpoint: Commit N, tasks X-Y")` — `args: "checkpoint: Commit N, tasks X-Y, no-push"` when the checklist carries a `PR checkpoint:` line. When the sidecar returned `needs_split`, append its groups to the args — labels and file lists only — as the proposed split.
 - **At the end of the full run:** uncommitted work from this run remains → the same three steps, with `args: "final commit"` — `"final commit, no-push"` under the same condition.
+- **Under `Testing: yes`, every `unikit-commit` call above is wrapped by the test-run reference → `## Carrying the anchor across a commit`** — the tree hash before the call, the carried `Full run:` anchor after it. You commit, so you carry; a cancelled commit carries nothing.
 - A commit point whose range ends with a PR checkpoint task is that task's module commit — do not make it again. The label of a PR checkpoint the session ends on is committed by the reference (`## Step 3.4 — labels`).
 - **The user cancels in the `unikit-commit` confirmation** → nothing is committed and the files stay staged: set the layer's `Commit:` line to `skipped — cancelled by the user` and continue the run.
 - **No `Skill` tool in this session** → do not commit by hand: leave the files staged, set the layer's `Commit:` line to `pending — run /unikit-commit`, and continue.
@@ -373,7 +374,7 @@ Layers executed: N (M parallel, K sequential)
 Commits created: N
 Status: complete | partial | failed
 Remaining tasks: [list if any]
-Test runs: <n> performed · <m> merged
+Test runs: <n> performed · <m> merged · <r> reused
 PR checkpoints: <same form as /unikit-implement Step 4>
 Rule candidates: <n> recorded — /unikit-implement will propose them at the end of the call
 MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them into
@@ -387,7 +388,7 @@ The `MCP findings:` line appears **only when the plan's `## MCP Findings` table 
 
 The `PR checkpoints:` line appears only when the session met a PR checkpoint.
 
-The `Test runs:` line follows the same rule: it is omitted entirely under `Testing: no`, and omitted when no run was performed in this session. Same reasoning — a line printed every time stops being read.
+The `Test runs:` line follows the same rule: it is omitted entirely under `Testing: no`, and omitted when no run was performed or reused in this session. `reused` counts final runs closed by reuse (the test-run reference, `## Step 3.2`, item 4) — they were not performed, and counting them as performed would claim a run nobody started. Same reasoning — a line printed every time stops being read.
 
 The `Rule candidates:` line follows it as well, omitted entirely when nothing was recorded. It is a report and not a question on purpose: this agent ends by telling the user to close the session, so a choice offered here would be cut off mid-answer — `/unikit-implement` Step 5.2 is where the candidates are actually put to the user.
 

@@ -120,6 +120,16 @@ language:
 workflow:
   research_relevance_days: 7
 
+testing:
+  plan:
+    checkpoints:
+      ultra: phase
+      full: phase
+      fast: plan
+  run:
+    use_affected_modules: false
+    full_run_threshold_percent: 30
+
 git:
   enabled: true
   base_branch: main
@@ -148,19 +158,25 @@ git:
 
 ### `testing` section
 
-Where **test runs** are placed in a plan. The key does not affect **writing** tests: tests are written in any task of any phase, exactly as before.
+Where **test runs** are placed in a plan (`plan`), and how wide a run goes when it happens (`run`). The keys do not affect **writing** tests: tests are written in any task of any phase, exactly as before.
 
 | Key | Description | Default |
 |-----|-------------|---------|
 | `testing.plan.checkpoints.ultra` | Where `/unikit-plan` places a test-checkpoint task in an ultra bundle. Domain `task \| phase \| plan`; `task` is admissible only here, because only ultra has a per-task surface to put a run on. | `phase` |
 | `testing.plan.checkpoints.full` | The same for a full plan. Domain `phase \| plan`. | `phase` |
 | `testing.plan.checkpoints.fast` | The same for a fast plan. Domain `phase \| plan`. The default differs from full deliberately: a fast plan is short, and one full run at its end covers it whole. | `plan` |
+| `testing.run.use_affected_modules` | How a phase test checkpoint and a `/unikit-fix` test run choose their tests. `false` runs every test in the project; `true` runs only the test suites of the changed modules and of the modules that depend on them, found by name search, in one run — and every test when narrowing is not possible. `task N.M` checkpoints always run their own fixtures, and the plan's final checkpoint always runs everything. | `false` |
+| `testing.run.full_run_threshold_percent` | With `use_affected_modules: true`: when the affected suites reach this share of all the project's test suites, every test is run instead. An integer from 1 to 100; any other value falls back to the default with a `WARN [testing]` line. Assigned, not measured — tune it on your project. | `30` |
 
 **Merging runs is a question, not a key.** When a `/unikit-implement` call covers two or more test-checkpoint tasks that can be merged, it asks once, before the first task, whether to run the tests once at the last of them or at every point as planned; words in the call itself (`Phases 5-6, tests at the end of phase 6`) answer it in advance. The answer holds for that call only — on disk it survives as the `⏭️ MERGED` marks in the plan. The plan's final full run is never merged. A config written by an earlier version may still carry the executor's old merge key; nothing reads it any more.
 
 **The placement key is recorded, not re-read.** `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written.
 
-**There is no width key, and there will not be one.** How wide a run is follows from where the checkpoint sits — a task runs its own fixtures, a phase runs the test suites of the modules it touched and those depending on them, the end of a plan runs everything. Making it configurable would let a plan declare a checkpoint whose coverage contradicts its own position.
+**A run is never narrower than its coverage.** Where a checkpoint sits sets the minimum a run must cover — a task its own fixtures, a phase the modules it touched, the end of a plan everything. `testing.run` decides only how much wider than that minimum a run goes, so no setting can make a checkpoint cover less than its position promises. By default a phase checkpoint runs every test: several narrow launches in a row cost more than one full run, because every launch pays the test runner's fixed cost again. With narrowing on, the suites it finds still go out in one launch, and a run that finds zero tests is never counted as passed.
+
+**The run keys are re-read, not recorded.** Unlike `plan.checkpoints`, `testing.run` is read each time a run happens and never written into a plan: a wider run is always compatible with what the plan declared, so changing the key never makes a plan already written wrong.
+
+**`/unikit-verify` runs no tests of its own.** It checks the run the plan recorded against the current code; only `--strict` offers to run the full suite, when that record is missing or stale. See [Plan files](plan-files.md).
 
 Existing projects receive the key by either of the two paths in [How new keys reach an existing project](#how-new-keys-reach-an-existing-project) — `/unikit` merge mode, which offers it, or the config actualization mode, which appends a template literal silently. Until then the built-in defaults above apply, and nothing warns — a project without a config is a normal case.
 
