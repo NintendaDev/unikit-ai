@@ -1,15 +1,11 @@
 ---
 name: unikit-verify
 description: >-
-  Verify a completed implementation against the feature plan in .unikit/code/plans/.
-  Confirms every planned task was fully implemented and nothing was forgotten, the code
-  compiles, the tests pass, and {{engine_name}}-specific conventions are followed (per
-  ENGINE_RULES.md). Run this after /unikit-implement finishes, or whenever the user wants
-  to confirm the work is complete and correct against the plan, e.g. "verify", "verify
-  the implementation", "check the work", "did we miss anything", "did we implement
-  everything", "is the plan fully done", "make sure nothing was forgotten", "does it
-  build and pass tests". This checks plan completeness and build/test health — for
-  code-quality, bug, and security review use the review skill instead.
+  Verify a completed implementation against the plan in .unikit/code/plans/. Checks that
+  every task was implemented, nothing was forgotten, the code compiles, the recorded test
+  run still matches the code, and {{engine_name}} conventions are followed. Use after
+  /unikit-implement completes, or when the user says "verify", "check the work", "did we
+  miss anything". For code review use /unikit-review instead.
 argument-hint: "[--strict] [Phase N | Phases N-M] [NNN-feature-name]"
 allowed-tools:
   - Read
@@ -182,7 +178,7 @@ Check if `--strict` is in `$ARGUMENTS`. If yes — enable strict mode (see Stric
 
 - Step 1 audits only the tasks of phases `N..M`.
 - `CHANGED_FILES` is the phases line of `## Diff range of a check` (Step 0.5).
-- Step 2.2 starts no full run and reuses no `Full run:` — it reports the module's test state from `## Test Runs`: the last line whose coverage lies inside `N..M`, or `not run`.
+- Step 2.2 checks no `Full run:` anchor and asks nothing, under `--strict` as well — it reports the module's test state from `## Test Runs`: the last line whose coverage lies inside `N..M`, or `not run`.
 - Under a phase scope, Step 3.8 checks only the acceptance criteria cited by tasks of phases N..M. The criteria of later modules are not unmet yet — checked here, they would turn into Step 4.4 blockers under `## Design` and fail every module check.
 - Step 3.9 (`implemented_version`) does not run — a partial check stamps nothing into the design.
 - The report header reads `### Feature: <folder> — phases N-M`, and the `unikit-gate-result` block is built from the same findings.
@@ -362,7 +358,7 @@ Statuses:
 
 **Gate calibration — `.unikit/system/engine-mcp/verification.md` (read in Step 0).**
 
-Steps 2.1 and 2.2 each have a bail-out branch for "engine MCP unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
+Step 2.1 and the strict-mode run of Step 2.2 each have a bail-out branch for "engine MCP unavailable". That is not the only way a gate can fail to close: the tool may be reachable while the *capability* is not — a run that starts and never reports, a validator that answers clean by construction. Three outcomes, and only three:
 
 - **MCP unavailable** — MCP server `{{engine_mcp_tool}}` itself is not reachable → skip with the wording given in the step.
 - **Gate closed** — the gate produced the class of evidence `verification.md` names for it → report it passed, on that evidence and no other.
@@ -381,39 +377,48 @@ Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after im
 - If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Compilation check: engine MCP unavailable, skipped`
 - If the compile gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Compilation check: gate lifted — <the observation that established it>`
 
-### 2.2 {{engine_name}} Test Check
+### 2.2 {{engine_name}} Test Evidence
 
-**First — do not repeat what has already been done.** Read the manifest's `## Test Runs` and find the `Full run:` anchor line.
+**Normal mode starts no test run.** Running the tests is the executor's work: `/unikit-implement` runs them in the plan's test-checkpoint tasks and closes the plan with `Test checkpoint: plan`, a run of every test, recorded in the manifest's `## Test Runs`. This step checks that the record exists and still describes the code in front of you. A test-checkpoint task is audited by its checkbox and its `## Test Runs` line; a test-run command found in the task text of a legacy plan is not executed either — the recorded run stands for it.
 
-1. **No anchor** — no section, no line, or its `tree-sha256` reads `unavailable` → run your own, by the points below.
-2. **An anchor is there** → compute the current tree hash **by the same procedure as `Summary SHA256`** — its digest step, `.unikit/system/research-link.md` → `### Digest`; the command below is that step in full, and nothing is read for it:
+1. **`Testing: no`, or no `## Settings`** → one line, `Tests: not part of this plan (Testing: no)`, and nothing else in this step. It is not a finding.
+2. **Read the manifest's `## Test Runs` and find the `Full run:` anchor line.** No section or no line → `⚠️ Test run: no full run recorded`. An anchor whose `tree-sha256` reads `unavailable` → `⚠️ Test run: the full run of <date> carries no tree hash and cannot be checked`.
+3. **An anchor is there** → compute the current tree hash **by the same procedure as `Summary SHA256`** — its digest step, `.unikit/system/research-link.md` → `### Digest`; the command below is that step in full, and nothing is read for it:
 
    ```
-   { git rev-parse HEAD; git status --porcelain; } | shasum -a 256 | awk '{print $1}'
+   { git rev-parse HEAD; git status --porcelain --untracked-files=all -- . ':(exclude).unikit'; { git diff HEAD --name-only --relative --diff-filter=d -- . ':(exclude).unikit'; git ls-files --others --exclude-standard -- . ':(exclude).unikit'; } | git hash-object --stdin-paths; } | shasum -a 256 | awk '{print $1}'
    ```
 
-   No `shasum` → `sha256sum`. Not one project file is read: the size of the project does not affect the cost.
-3. **The hash matches the one recorded in the anchor** → **the run is reused.** Do not start your own. One line into the report, quoting the other run:
+   No `shasum` → `sha256sum`. You read no project file for it — git hashes only the changed ones, so the size of the project does not affect the cost; `.unikit/`, where the plan records its progress, is left out.
+4. **The hash matches, and the anchor's count is above zero** → one line into the report, quoting the run:
 
    ```
    Test run: reused — <anchor date> · <coverage> · passed N/N · tree unchanged
    ```
 
-   This is **not** a lifted gate and **not** a skip: the gate is closed, and closed by the very class of evidence `verification.md` names for it — the evidence was simply produced earlier, and by another skill. The report must name whose run it was, or verify claims someone else's result as its own.
-4. **The hash does not match** → the tree changed after that full run: run your own by the points below, and say why in one line — `Test run: re-run — the tree changed since the full run of <date>`.
-5. **Git is unavailable, or either command does not answer** → the hash cannot be computed: run your own, and print `WARN [testing] git unavailable — the Full run: anchor was not checked, the run was performed again`. Unavailable git never means "reuse": an unknown tree state resolves in favour of running.
+   This is **not** a lifted gate and **not** a skip: the gate is closed, and closed by the very class of evidence `verification.md` names for it — the evidence was produced earlier, and by another skill. The report must name whose run it was, or verify claims someone else's result as its own. The hash matches but the count is zero → `⚠️ Test run: the full run of <date> ran 0 tests — not evidence`.
+5. **The hash does not match** → `⚠️ Test run: stale — the tree changed since the full run of <date>`. The executor carries the anchor over every commit it makes; a commit made by hand outside `/unikit-implement` does not, and reads as a change too.
+6. **Git is unavailable, or either command does not answer** → `WARN [testing] git unavailable — the Full run: anchor was not checked`. Unavailable git never means "the evidence holds": an unknown tree state is reported, not assumed.
 
-A broken anchor — no `tree-sha256`, an unreadable date — is treated as branch 1 plus `WARN [testing] the Full run: line could not be parsed — the run was performed again`. Acting on a half-parsed anchor is forbidden: half a mark is worse than none.
+A broken anchor — no `tree-sha256`, an unreadable date — is reported as `WARN [testing] the Full run: line could not be parsed`. Acting on a half-parsed anchor is forbidden: half a mark is worse than none.
 
-**Reuse never lowers the bar.** It applies to the `Full run:` anchor alone, that is to a **full** run. A partial run of the executor's — the modules of one phase — is not verify's to reuse: it does not cover what verify checks.
+**Every ⚠️ and `WARN [testing]` above is a finding of the report, not a fourth outcome of the gate.** In normal mode it raises `status` to at least `warn` and never becomes a blocker (Step 4.4). The three outcomes of Step 2 apply to Step 2.1 and to the strict-mode run below.
 
-Use MCP server `{{engine_mcp_tool}}` to run tests for affected modules:
-- Determine which test suites cover the modified modules — by the same name-search algorithm the executor uses (`/unikit-implement` Step 3.2), whose engine-specific mechanism lives in the core rule `testing.md` loaded at Bootstrap. Verify builds no module graph and reads no module manifests
-- If changed files include modules with test suites — run those suites specifically
-- Otherwise a full run as a baseline check
-- Wait for results and display them — highlight any failures
-- If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
-- If the tests gate is attempted and no affordance answers it — **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`. `verification.md` also names what the gate must require of a passing run (a readable result, and a test count above zero); a run that reports success over zero tests has not closed it
+**Strict mode — one question when the evidence does not cover this tree.** Under `--strict`, the outcomes of items 2, 5 and 6, a zero count in item 4 and a broken anchor ask once:
+
+```
+The recorded test run does not cover the current code (<reason>). Run the full test suite now?
+
+Options:
+1. Run the full suite now
+2. Leave it — strict verification fails
+```
+
+- No `AskUserQuestion` → the same two options as a numbered text question; end your turn and wait for the number. A non-interactive run, or a reply that picks neither option → no run.
+- **Run the full suite now** → run every test in the project, in one run, through MCP server `{{engine_mcp_tool}}`, and wait for the result. Green — a readable result with a test count above zero, the bar `verification.md` names for this gate — → by one `Edit`, append `<date> · plan · all tests, /unikit-verify --strict · passed N/N · tree-sha256 <hash>` to `## Test Runs` and rewrite its anchor line as `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>`; `<date>` from `Bash(date *)`, `<hash>` by the command of item 3. This edit touches `## Test Runs` and nothing else in the manifest. Red → the failing tests go into the report, and strict verification fails.
+- **Leave it**, or no run → strict verification fails on this finding.
+- MCP server `{{engine_mcp_tool}}` unavailable → skip and note: `Test run: engine MCP unavailable, skipped`. The run is attempted and no affordance answers it → **GATE LIFTED**, skip and note: `Test run: gate lifted — <the observation that established it>`; a run that reports success over zero tests has not closed the gate. In both cases the finding stays a warning, exactly as the compilation gate behaves when it cannot run.
+- Under a phase scope (Step 0.1) nothing is asked.
 
 ### 2.3 Engine-Specific Checks
 
@@ -602,7 +607,7 @@ The `implemented` state is **read-only everywhere else**: GAME.md's `## System M
 
 ### Code Quality
 - Compilation: ✅ / ⏭️ engine MCP unavailable
-- Tests: ✅ 12 passed, 0 failed / ⏭️ engine MCP unavailable
+- Tests: ✅ passed 3363/3363 — full run of 2026-09-12 by /unikit-implement, tree unchanged / ⚠️ stale — the tree changed since the full run of <date> / ⚠️ no full run recorded / — not part of this plan (Testing: no)
 - Engine checks: ✅ All passed (per ENGINE_RULES.md)
 - Anti-patterns: ⚠️ 2 warnings
 
@@ -656,7 +661,7 @@ For each fix iteration (Fix now / Fix critical only). Fixes are written by this 
 - For TODO/debug artifacts — clean up
 - For anti-patterns — fix
 - Update the plan manifest after fixes — checkbox lines and the `## MCP Findings` table only. `## Technical Context` is never rewritten from here; it belongs to `/unikit-plan` and `/unikit-improve`
-- After fixes — re-run checks on affected items
+- After fixes — re-run checks on affected items, Step 2.2 included: a fix changes the tree, so the recorded run becomes stale, and the report says so instead of keeping the earlier ✅. A Step 2.2 finding is never fixed here by starting a run in normal mode — "Fix now" leaves it in the report; under `--strict` the Step 2.2 question is asked once more when a fix made the run it approved stale
 
 ### 4.4 Machine-Readable Gate Result
 
@@ -670,16 +675,17 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
 
 - `"gate"`: always `"verify"`.
 - `"status"`:
-  - `fail` — at least one **blocker**: a non-skipped task at `⚠️ PARTIAL` or `❌ NOT FOUND`, a failed blocking quality check (compile error, failing test), a context-gate `ERROR` (architecture/rules clear violation), or — in strict mode, or whenever the plan carries a `## Design` section — an unmet/partial Design `AC`.
+  - `fail` — at least one **blocker**: a non-skipped task at `⚠️ PARTIAL` or `❌ NOT FOUND`, a failed blocking quality check (compile error, a failing test of the strict-mode run), a Step 2.2 test-evidence finding left unresolved in strict mode, a context-gate `ERROR` (architecture/rules clear violation), or — in strict mode, or whenever the plan carries a `## Design` section — an unmet/partial Design `AC`.
   - `warn` — no blockers, but non-blocking findings remain: anti-pattern/TODO warnings (normal mode), docs/test gaps accepted as warnings, ambiguous context drift, or missing milestone linkage.
   - `pass` — no blocking or warning findings.
 - `"blocking"`: `true` only when `status` is `fail` (the result should stop commit/merge).
-- `"blockers"`: include **only** blocking findings, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`verify-task-<id>`, `verify-gate-architecture`, `verify-gate-rules`, `verify-ac-<AC-id>`, `verify-editor-<task-id>`). `severity` is `error` for blockers (`warning` only when policy escalates a warning-class finding to blocking). Non-blocking notes stay in the human summary, never in `blockers`.
+- `"blockers"`: include **only** blocking findings, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`verify-task-<id>`, `verify-gate-architecture`, `verify-gate-rules`, `verify-ac-<AC-id>`, `verify-editor-<task-id>`, `verify-tests`). `severity` is `error` for blockers (`warning` only when policy escalates a warning-class finding to blocking). Non-blocking notes stay in the human summary, never in `blockers`.
   - `verify-editor-<task-id>` covers an editor target that was read back and found **unimplemented or wrong**. The two benign outcomes never enter `blockers`: `⏸️ MANUAL` (the user took the target on) and `⏭️ SKIPPED (editor target, …)` (it could not be read back). Both belong in the human summary.
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
 - **Research drift.** Every `WARN [research-drift]` line from Step 0.2 raises `status` to at least `warn` and is named in the human summary. It is **never** a blocker and never enters `blockers`: source drift makes the work debatable, not wrong, and the call is the user's.
 - **A reused run.** A test gate closed by someone else's full run (Step 2.2, the `reused` branch) is a `Gate closed`: it does **not** affect `status`, and it never enters `blockers`. The human summary must name it in one line — `Test run: reused — …` — because "the gate was closed by evidence obtained earlier" and "the gate was not checked" are different statements, and in JSON they look identical.
-- **`WARN [testing]`** of any origin — git unavailable, an anchor line that would not parse, an inadmissible `checkpoints` value — raises `status` to at least `warn` and is named in the summary. It is never a blocker: not knowing the state of the tree makes the work debatable rather than wrong, which is the same logic research drift follows.
+- **Test evidence findings.** A Step 2.2 ⚠️ — no full run recorded, a stale or unhashed anchor, a zero count — raises `status` to at least `warn` and is named in the human summary. It enters `blockers` only in strict mode, as `verify-tests` with `file` set to the plan manifest, when the Step 2.2 question did not end in a green run. Under a phase scope Step 2.2 produces none of these findings.
+- **`WARN [testing]`** of any origin — git unavailable, an anchor line that would not parse, an inadmissible `checkpoints` value — raises `status` to at least `warn` and is named in the summary. It is never a blocker — except a Step 2.2 one in strict mode that the Step 2.2 question did not end in a green run, which is `verify-tests` like the ⚠️ above: not knowing the state of the tree makes the work debatable rather than wrong, which is the same logic research drift follows.
 - `"suggested_next.command"`: from the allowlist in `gate-result-contract.md` — `/unikit-fix` (task gaps, anti-patterns, failing checks), `/unikit-rules` (rules-gate violation needing a writer update), `/unikit-architecture` (architecture drift), `/unikit-roadmap` (roadmap drift), `/unikit-commit` (clean — natural next step), or `null`.
 
 **Ultra bundle — verification commands outside the grant.** Commands under a task's `### Verification` are executed within the grant this skill already holds. Anything outside it is printed with the `⏸️ MANUAL` status in the report **and** must reach this block, or it is lost in silence: an unrun verification command is an accepted skip, so `status` is at least `warn` and the human summary names the command and the task. It is not a blocker and it never enters `blockers`. **`allowed-tools` is not widened for this** — the `⏸️ MANUAL` idiom already exists for editor targets.
@@ -768,7 +774,7 @@ Normal mode already checks all items below but tolerates partial results and war
 |-------|-------------|-------------|
 | Task completion | `⚠️ PARTIAL` and `⏭️ SKIPPED` allowed | All tasks must be `✅ COMPLETED` — partial and skipped are failures. **Carve-out:** `⏭️ SKIPPED (editor target, …)` and `⏸️ MANUAL` are exempt in both modes — the first is an unreachable capability, the second is work the user deliberately took on; failing either would fail correctly completed work |
 | Compilation (MCP server `{{engine_mcp_tool}}`) | Reported if available | **Required** to pass if MCP server `{{engine_mcp_tool}}` is available |
-| Tests (MCP server `{{engine_mcp_tool}}`) | Reported if available | **Required** to pass if test assemblies exist for affected modules |
+| Tests (the recorded run, Step 2.2) | The `## Test Runs` record is checked against the current tree; missing, stale or zero-count evidence is a warning, and no test run is started | A green run of every test recorded for the current tree is **required**; when it is missing or stale, verify asks once whether to run the full suite now through MCP server `{{engine_mcp_tool}}` — declined or unanswered is a failure |
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
 | Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |
