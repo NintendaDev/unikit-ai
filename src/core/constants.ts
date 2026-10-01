@@ -182,6 +182,22 @@ export const MCP_VERSION_PLACEHOLDER = '{{ VERSION }}';
  */
 export const MCP_COMMENT_KEY = '_comment';
 
+/** A reference to an environment variable inside an MCP catalog header value: `{{env:NAME}}`. Rendered per client by the writers (`mcp-env.ts`). */
+export const MCP_ENV_TOKEN_PATTERN = '\\{\\{env:([A-Z][A-Z0-9_]*)\\}\\}';
+/** Antigravity documents no env reference syntax: the writer leaves `YOUR_<NAME>` for the user to replace. */
+export const MCP_ENV_PLACEHOLDER_PREFIX = 'YOUR_';
+export const CODEX_BEARER_TOKEN_ENV_FIELD = 'bearer_token_env_var';
+export const CODEX_ENV_HTTP_HEADERS_FIELD = 'env_http_headers';
+export const QWEN_HTTP_URL_FIELD = 'httpUrl';
+export const OPENCODE_OAUTH_FIELD = 'oauth';
+/** Prefixes of a literal GitHub token — a settings entry carrying one was not written by UniKit. */
+export const GITHUB_TOKEN_LITERAL_PREFIXES = ['ghp_', 'github_pat_', 'gho_'] as const;
+/** Where a settings entry carries its server URL, across the writers (`url`, Qwen's `httpUrl`, Antigravity's `serverUrl`). */
+export const MCP_ENTRY_URL_FIELDS = ['url', QWEN_HTTP_URL_FIELD, 'serverUrl'] as const;
+/** Header name compared case-insensitively when Codex gets a bearer token variable. */
+export const AUTHORIZATION_HEADER = 'authorization';
+export const BEARER_PREFIX = 'Bearer ';
+
 /**
  * Project-local log of MCP findings — `.unikit/MCP-RECHECK-NOTES.md`. It sits at
  * the root of `.unikit/` rather than under `system/` **by construction**: every
@@ -295,6 +311,8 @@ export const GATE_RESULT_CONTRACT_FILE = 'gate-result-contract.md';
 export const ULTRA_PLAN_READ_FILE = 'ultra-plan-read.md';
 /** The `## Based on` research-link contract; rationale on `installResearchLinkContract`. */
 export const RESEARCH_LINK_FILE = 'research-link.md';
+/** Where a plan, a module and a push start and end; rationale on `installPlanBoundariesContract`. */
+export const PLAN_BOUNDARIES_FILE = 'plan-boundaries.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

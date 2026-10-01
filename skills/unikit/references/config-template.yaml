@@ -65,9 +65,10 @@ workflow:
 # =============================================================================
 # Testing Settings
 # =============================================================================
-# Where test RUNS are placed in a plan. Whether the executor merges them is
-# asked per call by /unikit-implement — it is not configured here.
-# This key never affects WRITING tests: tests are written in any task of any
+# Where test RUNS are placed in a plan (`plan`) and how wide a run goes when it
+# happens (`run`). Whether the executor merges runs is asked per call by
+# /unikit-implement — it is not configured here.
+# These keys never affect WRITING tests: tests are written in any task of any
 # phase, exactly as they are today.
 
 testing:
@@ -85,6 +86,28 @@ testing:
       ultra: phase        # task | phase | plan
       full: phase         # phase | plan
       fast: plan          # phase | plan
+
+  # Executor (/unikit-implement, /unikit-fix): how wide a run actually goes.
+  # Read at run time and never recorded into a plan — a run may always be wider
+  # than the coverage its checkpoint declares, never narrower.
+  run:
+    # How a phase checkpoint (`Test checkpoint: phase N` / `phases N-M`) and a
+    # /unikit-fix test run choose their tests.
+    #   false — run every test in the project, in one run
+    #   true  — run only the test suites of the changed modules and of the
+    #           modules that depend on them, in one run (every test when the
+    #           narrowing is not possible)
+    # `task N.M` checkpoints always run their own fixtures, and the final
+    # `plan` checkpoint always runs every test, whatever this says.
+    # Default: false
+    use_affected_modules: false
+
+    # With use_affected_modules: true — when the affected test suites reach
+    # this share of all the project's test suites, every test is run instead.
+    # Percent, an integer from 1 to 100. The default is assigned, not
+    # measured: tune it on your project.
+    # Default: 30
+    full_run_threshold_percent: 30
 
 # =============================================================================
 # Git Settings
@@ -122,3 +145,19 @@ git:
   #   - no "Push to remote?" prompt is shown
   # Default: false
   skip_push_after_commit: false
+
+  # Pull requests per plan module (/unikit-plan, /unikit-implement, /unikit-pr).
+  pull_requests:
+    # Write a PR checkpoint task at the end of every plan module but the last.
+    # Recorded into the plan as "PR checkpoints: yes"; changing it later never
+    # reinterprets a plan already written.
+    # Default: false
+    checkpoints: false
+
+    # How far /unikit-pr goes — and what it does at a PR checkpoint:
+    #   remind — print the PR text, the push command and the link; touch no remote
+    #   create — push the module boundary, open the PR or update the open one
+    #   merge  — create, then merge when the merge brings nothing from the base branch
+    # Without the GitHub MCP every level acts as remind.
+    # Default: create
+    max_level: create   # remind | create | merge

@@ -27,6 +27,7 @@ allowed-tools:
   - Bash(shasum *)
   - Bash(sha256sum *)
   - Bash(date *)
+  - Bash(node *)
   - Agent
   - Skill
   - AskUserQuestion
@@ -86,6 +87,15 @@ model argument of their own.
   UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered by the agent straight into its `recon/` file, so only the answer's summary passes through this context. Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol; under the standard protocol reconnaissance goes through `recon-agent`. Expands to:
+
+  ```
+  Agent(subagent_type: general-purpose, model: sonnet, prompt: "Reconnaissance for an ultra plan. Question: <focused question>. Write your whole answer, never condensed, into <recon file path>, in English, filling every section of the template <path of RECON-TEMPLATE.md> by its rules; its first line is `HEAD: <short sha>`. That file is the only one you may create or change: never edit anything else, never run a command that changes the repository, never start another agent. Reply with the file's path and its `## Summary` section, word for word — nothing else.")
+  ```
+
+  `sonnet` is a tier alias, never a version, as for `recon-agent`. This agent can edit files and only its prompt bounds it — hence the change guard in `ultra-stateful.md` → `## Recon files`.
+
+  Fallback: if the call fails, or the agent returns without its file, ask that question through `recon-agent` and write the answer into the file yourself, whole, the moment it returns.
 <!-- unikit:end -->
 <!-- unikit:agents !claude -->
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
@@ -99,6 +109,7 @@ model argument of their own.
   default applies.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered into its `recon/` file; used only after `mode-ultra.md` Step A0 or Step D2 chose that protocol. This runtime has no writing agent to hand it to: ask the question through `recon-agent`, then write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`, the moment it returns. No model is named, for the reason given under `recon-agent`.
 <!-- unikit:end -->
 
 ## Input
@@ -111,6 +122,7 @@ model argument of their own.
 3. If the first word (after flag removal) is `full` → full mode, remaining text is the feature description
 4. If the first word is `fast` → fast mode, remaining text is the feature description
 5. If the first word is `ultra`, **or** the text asks for an ultra plan in any phrasing or language — "ultra plan", "ultraplan", "ultra-plan", "ультраплан", "make an ultra plan for the inventory" → ultra mode; strip the ultra wording and the verb that carried it, the remainder is the feature description
+5a. If the text left after an optional leading `ultra` is exactly the name of a folder under `.unikit/code/plans/` that holds `.planning/STATE.md` and no manifest `.unikit/code/plans/<name>/PLAN.md`, this is a **continuation**: load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md` and `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md`, and follow `## Resume` there; Steps 0.1-4 do not run again.
 6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
 7. Otherwise → ask interactively, entire text is the description
 
@@ -135,6 +147,7 @@ Do **not** auto-run `git init`. Read the git keys from `.unikit/config.yaml`:
 - `git.enabled: false` → no branch commands; a full-mode plan goes to `.unikit/code/plans/<slug>/`
 - `git.base_branch` → the target branch for diffs and merge guidance (default: the detected branch or `main`)
 - `git.create_branches: false` → full mode still writes the rich plan, on the current branch
+- `git.pull_requests.checkpoints` — read once by the mode file's `#### PR checkpoints`; `git.pull_requests.max_level` is never read by the planner.
 
 `git.enabled: true` outside a git work tree → warn that git-aware actions are unavailable until the repository is initialized, and continue as with `git.enabled: false`.
 
@@ -239,6 +252,21 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 5. **Collision check — a slug that already exists never resolves itself silently.** Scan `.unikit/code/plans/` and `.unikit/code/archive/plans/` for a folder matching the new name in **any** of the three formats that coexist on disk: exact `<name>`, a folder ending in `_<name>` (the `YYYY-MM-DD_` era), and a folder ending in `-<name>` whose name starts with three digits (the older `DDD-` era).
 
    - No match → create `plans/<feature-name>/` and continue.
+   - A match in `.unikit/code/plans/` that has no manifest `.unikit/code/plans/<name>/PLAN.md` → a plan that was not finished:
+
+   ```
+   AskUserQuestion: A plan named "<name>" was not finished (.unikit/code/plans/<name>/ has no manifest).
+
+   Options:
+   1. Continue it
+   2. Start over
+   3. Choose another name
+   ```
+
+   - "Continue it" is offered only when the folder holds `.planning/STATE.md`; without it (an interrupted standard protocol) the option is absent.
+   - "Continue it" → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md` and `{{skills_dir}}/{{self_name}}/references/ultra-stateful.md`, and follow `## Resume` there.
+   - "Start over" → `node {{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs discard .unikit/code/plans/<name>`, print `INFO [plan] <name>: unfinished plan removed — starting over`, create the folder again and continue. A non-zero exit → stop with its `ERROR` line (code 3: the folder holds a finished plan). `node` cannot run → print the folder's path, ask the user to remove it, and stop.
+   - "Choose another name" → the folder stays; repeat this check on the new slug.
    - A match in `.unikit/code/plans/` → ask, and do not decide it yourself:
 
    ```
@@ -274,7 +302,7 @@ Load only the selected mode's body — never all of them at once:
 - **Fast mode** → load `{{skills_dir}}/{{self_name}}/references/mode-fast.md`, run its
   preferences step, then continue to the Shared Steps below.
 - **Ultra mode** → load `{{skills_dir}}/{{self_name}}/references/mode-ultra.md`, run its
-  additional steps A-C (git branch, recon, preferences), then continue to the Shared Steps
+  additional steps A0-C (writing protocol, git branch, recon, preferences) — Step A0 first and on its own, before any agent — then continue to the Shared Steps
   below. Steps D-H of that body run later — they refine Step 5 and Step 6 of the shared
   workflow, so do **not** run them here.
 
@@ -368,6 +396,8 @@ This is the most critical step. The goal is to produce a **deep technical unders
 for writing actionable tasks with meaningful WHY context and for generating a `## Technical Context` that reflects the actual codebase state at planning time.
 
 You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to write precise prompts for Explore tasks and to synthesize their results against project conventions.
+
+**Ultra mode, saved-state protocol:** reconnaissance goes through `recon-writer-agent` — each agent writes its answer into its own `recon/<topic>.md`, whole and never condensed, and only the path and the file's `## Summary` enter this context (`ultra-stateful.md` → `## Recon files`).
 
 #### Phase A: Exploration (Explore tasks)
 
@@ -471,14 +501,14 @@ That is the entire question — **not** which tool does it, **not** how it is ca
 **Plan file path:**
 - **Fast mode** → `.unikit/code/PLAN.md` (single flat file)
 - **Full mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (single manifest in a folder)
-- **Ultra mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (manifest) + `phase-NN-<slug>.md`
+- **Ultra mode** → `.unikit/code/plans/<feature-name>/PLAN.md` (manifest) + `phase-NN-<slug>.md` — written straight into that folder by either writing protocol (`mode-ultra.md` Step F)
 
 In ultra, Step 5 is carried out by `mode-ultra.md` Steps D-G — the section list below still
 applies to the manifest, minus the task-level subsections of `## Technical Context`.
 
 #### Plan Sections (all planning modes)
 
-0. **Header timestamps** — `Created:` and `Updated:` directly under the H1, both today's date from Step 1 (`Bash(date *)`). Their shape and the rule for moving `Updated:`: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → *Plan Manifest Template*; ultra writes the same two lines under its own H1.
+0. **Header timestamps** — `Created:` and `Updated:` directly under the H1, both today's date from Step 1 (`Bash(date *)`). Their shape and the rule for moving `Updated:`: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → *Plan Manifest Template*; ultra writes the same two lines under its own H1. Full and ultra also write `Planned at: <short sha>` (`git rev-parse --short HEAD`) under `Updated:` — only in a git work tree with at least one commit; it never moves (`TASK-FORMAT.md` → *Plan Manifest Template*).
 
 1. **`## Overview`** — 3-5 sentences: WHAT is being built, WHY it's needed, WHAT GOAL it serves.
 
@@ -492,6 +522,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
    - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`**.
+   - `PR checkpoints: yes` — only when this plan carries at least one PR checkpoint task (`pr_checkpoints = true` in the mode file and two or more modules); otherwise the line is absent.
 
 4. **`## Roadmap Linkage`** (optional, only if `.unikit/ROADMAP.md` exists):
    - If linked: `Milestone: "<name>"` and `Rationale: "<why>"`
@@ -505,9 +536,13 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **Test-checkpoint task.** A run point is a **separate** checklist task carrying the line `Test checkpoint: <coverage>` in the position `Files:` occupies. The rest — no `Files:`, where a checkpoint is worth placing, a phase left without one, the closing `Test checkpoint: plan` under `Testing: yes`, no list of suites, no run commands elsewhere — is `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate it here**.
 
+   **Modules (full and ultra).** Group the phases into modules by the criteria of `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md` → `### Modules section` — always, whether or not PR checkpoints are on. Write `## Modules` directly after `## Roadmap Linkage` — above `## Checklist` in full, before `## Architecture and Decisions` in ultra (the ultra manifest template) — when there are two or more modules, or one longer than four phases; a module longer than four phases carries `why long:`. Do not restate the criteria here.
+
+   **PR checkpoint task.** When `pr_checkpoints = true` and there are two or more modules, the last task of every module but the last is a PR checkpoint task carrying `PR checkpoint: <module name> → <base>` in the position `Files:` occupies; under `Testing: yes` and `Test checkpoints: phase | task` the module's test-checkpoint task stands right before it. Grammar, labels and placement: `TASK-FORMAT.md` → `### PR checkpoint task grammar`.
+
    **Rule refresh per phase.** Before you draft the tasks of each phase — in ultra, before you write each phase file (`mode-ultra.md` Step F) — match the phase's name and the tasks you are about to write against the `Load when` column of the `## Topics` table in `.unikit/RULES.md` and the Stack table of `.unikit/memory/code/RULES_INDEX.md`. Read only the topic files and stack rules not loaded yet — keep their paths in `loaded_rules`, the same delta `/unikit-implement` Step 3.0 computes; when unsure, load. A listed topic file that is missing → `WARN [rules] topic file missing: .unikit/rules/<slug>.md`, continue. Nothing is re-read between the tasks of one phase.
 
-6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`).
+6. **`## Commit Plan`** — when 5+ tasks, checkpoints every 3-5 tasks, each mirrored by a decorative `<!-- Commit checkpoint: tasks X-Y -->` marker in `## Checklist`; `/unikit-implement` does not parse it (`TASK-FORMAT.md`). A range never crosses a module boundary.
 
 7. **`## MCP Findings`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Editor:` task, omitted otherwise; filled by the executor. Contract: `TASK-FORMAT.md` → `### MCP findings section`.
 
@@ -529,6 +564,8 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    Then check the graph you actually wrote, not the intent: walk the layers the way the coordinator does and confirm that every layer holding an editor phase has exactly one member. If serialization makes the plan awkward, move the editor work into a phase of its own rather than relaxing the rule.
 
+   **Module barrier.** A module boundary is a layer barrier — the closing phase of a module depends on every other phase of it, and every phase of the next module depends on that closing phase (`TASK-FORMAT.md` → `### Modules section`). Write it into the `**Dependencies:**` lines together with Guard B and check the layers once for both.
+
 11. **`## Total Estimated Effort`** — sum of all phases.
 
 12. **`## Technical Context`** — always included. Nine subsections (`CONTEXT`, `CONSTRAINTS`, `INTERFACES`, `KEY PATTERNS`, `DEPENDENCY GRAPH`, `FILES`, `EDITOR TARGETS`, `DI BINDINGS`, `OUT OF SCOPE`); `EDITOR TARGETS` is omitted entirely when the plan carries no `Editor:` task. In **ultra** the manifest keeps only the cross-phase part and the rest goes into the phase files — the distribution rule is `{{skills_dir}}/{{self_name}}/references/ULTRA-PLAN-FORMAT.md`. Content comes from Step 4 Phase B, synthesized with the Bootstrap rules: base it on the actual code, do not invent. Template: `{{skills_dir}}/{{self_name}}/references/TASK-FORMAT.md`.
@@ -543,11 +580,12 @@ Show the user:
 1. The plan path — `.unikit/code/PLAN.md` (fast), or `.unikit/code/plans/<feature-name>/PLAN.md` (full, ultra), plus the research reference if linked
 2. Full and ultra: the git branch name when `branch_created = true`, otherwise the current branch name
 3. A brief summary of the phases and the total estimated effort
-4. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
-5. The reminder: "To start implementation, run: `/unikit-implement`"
-6. Ask whether to adjust anything
+4. The modules — `N modules, M PR checkpoints` (or `one module`) — one line
+5. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
+6. The reminder: "To start implementation, run: `/unikit-implement`"
+7. Ask whether to adjust anything
 
-**Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist).
+**Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist). Under the saved-state protocol its `.planning/` folder is already gone (`plan-bundle.mjs finalize`).
 
 ### Step 7: Context Cleanup
 

@@ -42,11 +42,19 @@ written when the resolver picks the latest one.
 Both timestamps are `YYYY-MM-DD`, without a time: a plan has no notion of a session, and the
 hour a folder was opened decides nothing.
 
+`Planned at:` is the short SHA of `HEAD` at the moment the planner saved the plan — full and
+ultra, in a git work tree with at least one commit (`git rev-parse --short HEAD`). It is
+written **once and never moves**: not by `add`, not by `/unikit-improve`, not by execution.
+It is where the plan's work starts — for `/unikit-verify` and for the module-boundary drift
+check. When the line is absent (an older plan, no git), the start is found by the chain in
+`.unikit/system/plan-boundaries.md` → `## Plan start`. Fast plans do not carry it.
+
 ```markdown
 # {Feature Name} — Tasks
 
 Created: YYYY-MM-DD
 Updated: YYYY-MM-DD
+Planned at: <short sha>
 
 ## Overview
 What is being built, why, and what goal it serves. 3-5 sentences maximum.
@@ -62,10 +70,15 @@ If no research — technical context is in the `## Technical Context` section be
 - Test checkpoints: task | phase | plan
 - Docs: yes/no (full mode only)
 - Editor tasks: mcp | manual | direct
+- PR checkpoints: yes
 
 ## Roadmap Linkage (optional)
 Milestone: "[milestone name]" | "none"
 Rationale: [1 short sentence]
+
+## Modules
+- M1 · {module name} · phases 1-2 · delivers: {what the base branch gets, in plain words} · PR: task 2.4
+- M2 · {module name} · phase 3 · delivers: {…}
 
 ## Checklist
 
@@ -111,7 +124,7 @@ Tasks are ordered by dependencies. Each phase includes effort estimate and depen
 
 (Only for plans with 5+ tasks total)
 
-Each `### Commit N: after tasks X-Y` heading is the single source of truth for the decorative `<!-- Commit checkpoint: tasks X-Y -->` markers placed in the `## Checklist` above — keep the ranges in sync (Checklist marker derives from the heading here).
+Each `### Commit N: after tasks X-Y` heading is the single source of truth for the decorative `<!-- Commit checkpoint: tasks X-Y -->` markers placed in the `## Checklist` above — keep the ranges in sync (Checklist marker derives from the heading here). A range never crosses a module boundary — `### Modules section`.
 
 ### Commit 1: after tasks 1.1-1.6
 feat(<module>): <description>
@@ -142,7 +155,7 @@ the moment a candidate is noticed.)
 ## Test Runs
 
 (Only when `Testing: yes`. The planner emits the heading; everything under it is written by
-the executor.)
+the executor — or by `/unikit-verify --strict`, when the user has it run the full suite.)
 
 - 2026-09-12 · phases 1-2 · 4 test suites · passed 128/128 · tree-sha256 `a1b2c3d4…`
 - 2026-09-12 · plan · all tests · passed 3363/3363 · tree-sha256 `e5f6a7b8…`
@@ -233,6 +246,8 @@ Placed last, **after** `## Technical Context`, so it never falls inside the
 
 > **`Test checkpoints:` is omitted entirely when `Testing: no`** — there are no runs, so there is nowhere to place them. When `Testing: yes` the line is mandatory: a plan without it is legacy, and its executor is left inferring run placement from the prose of the tasks.
 
+> **`PR checkpoints: yes` is written only when the plan carries at least one PR checkpoint task**; a plan without the line has none. It is recorded, not re-read: the planner resolves `git.pull_requests.checkpoints` once, and changing the key later never reinterprets a plan already written. Writers that add a module to an existing plan (`/unikit-plan add`, `/unikit-improve`) read this line, never the config key.
+
 ### Editor task grammar
 
 Some tasks change the engine editor's **serialized state** (scenes, UI, VFX, animation, assets, input maps, project settings) rather than source files. Such a task carries one or more `Editor:` lines:
@@ -266,14 +281,58 @@ coverage ∈ task N.M | phase N | phases N-M | plan
 
 Rules:
 
-- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task leaves nothing behind in the project, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — the only form of task in this format without that line. A temporary probe it creates and removes within its own steps (a negative control: make a test fail, see red, remove the probe, see green) and a manual smoke are legitimate steps of the task; when the task is merged into a later point, they are performed there (`/unikit-implement` Step 3.2).
-- **The width of a run follows from its coverage and is not configurable:** `task N.M` → the fixtures and classes that task names; `phase N` / `phases N-M` → the test suites of the modules those phases touch, plus the suites that depend on them; `plan` → every test in the project.
+- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task leaves nothing behind in the project, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — one of the two forms of task in this format without that line; the other is the PR checkpoint task. A temporary probe it creates and removes within its own steps (a negative control: make a test fail, see red, remove the probe, see green) and a manual smoke are legitimate steps of the task; when the task is merged into a later point, they are performed there (`/unikit-implement` Step 3.2).
+- **A run is never narrower than its coverage, and how much wider it goes is decided when it runs, not here:** `task N.M` → the fixtures and classes that task names, always; `phase N` / `phases N-M` → every test in the project by default, or the test suites of the modules those phases touch plus the suites that depend on them when the executor's run settings allow narrowing; `plan` → every test in the project, always. The run settings belong to the executor and are never recorded in the plan — `unikit-implement/references/test-runs.md` → `## Run width`.
 - **The planner writes no list of suites.** The executor computes the set at run time, from the files actually changed. The planner neither reads nor builds a module graph, so planning time does not grow.
 - `task N.M` exists **only in an ultra bundle**: fast and full have no per-task surface to put it on.
 - **When `Testing: yes`, the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch, and it is never merged away nor deferred.
 - A checkpoint goes **where the change is worth one, not into every phase**: `Test checkpoints:` is a ceiling, not an obligation. The criterion: a check is needed when the phase changes executable code, or a contract other modules rely on; it is not needed when executable code is untouched — documentation, assets and their service files, data no test covers. What counts as an asset or a service file is engine-specific, and the answer lives where the signals for `Editor:` come from: `references/ENGINE_RULES.md` §3.
 - A phase without a check **does not lose its goals**: they pass to the next test-checkpoint task, whose coverage then names both phases (`Test checkpoint: phases 1-2`), and the phase text says so in one line.
 - **Repeats are forbidden:** the phase completion checklist does not restate the run, and a test-checkpoint task never follows another when nothing changed between them.
+
+### Modules section
+
+A **module** is one or more consecutive phases after whose merge the base branch is whole: it builds, the tests pass, the game is playable, existing content still works, nothing half-wired is reachable by a player or by the team, no data or asset migration is left halfway, and the documentation the module makes stale is fixed inside the module. The order is seams, contracts and refactorings that change no behaviour → their consumers → wiring, UI and content. Modules are as small and as early as these criteria allow.
+
+- **Slicing always runs in full and ultra, never in fast.**
+- `## Modules` is written when the plan has two or more modules **or** its only module is longer than four phases (the section then holds that one line, and it carries `why long:`). Otherwise the section is absent and the whole plan is one module.
+- One line per module:
+
+```
+- M<k> · <name> · phase <K> | phases <K>-<L> · delivers: <one sentence> [· PR: task <N.M>] [· why long: <reason>]
+```
+
+- `k` runs from 1, in order. The ranges are contiguous, cover every phase exactly once, and follow the phase order.
+- `delivers:` is what the base branch gets, in plain words — no class names, paths or formulas. `/unikit-pr` writes the pull request text from this sentence.
+- `PR: task N.M` is written only with `PR checkpoints: yes`, and only on a module that carries a PR checkpoint task — it names that task. The last module carries no `PR:` field: its pull request is the one made after `/unikit-verify`.
+- `why long:` is mandatory on a module longer than four phases.
+- The tokens `M<k>`, `phase` / `phases`, `delivers:`, `PR:`, `task`, `why long:` and the separator ` · ` are never localized; the module name and the sentences are written in `language.artifacts`.
+- **A module boundary is a layer barrier.** The closing phase of module k depends on every other phase of module k, directly or transitively; every phase of module k+1 depends on the closing phase of module k. The writing technique is the one `### Editor task grammar` uses for an editor phase, the reason is different: the base branch must be whole at the boundary, so nothing of the next module may run beside the closing phase.
+- **Commits:** a `### Commit N: after tasks X-Y` range never crosses a module boundary.
+
+### PR checkpoint task grammar
+
+A pull request is a **separate task** at the end of a module, never a step buried inside another task. Such a task carries one `PR checkpoint:` line:
+
+```
+PR checkpoint: <module name> → <base>
+```
+
+Rules:
+
+- **Written only with `PR checkpoints: yes`.** The planner places it when `git.pull_requests.checkpoints: true`, git is enabled and the plan's branch is not `<base>`.
+- **One per module, except the last** — it is the last task of the module's closing phase.
+- With `Testing: yes` and `Test checkpoints: phase | task`, a test-checkpoint task stands directly before it and covers the module's phases no earlier run covered. With `Test checkpoints: plan` there is none — the user chose one run at the end — and the reminder at the PR checkpoint says the module's tests have not run.
+- It stands in the position an ordinary task gives to `Files:`, carries `WHY:` and **carries no `Files:`**: it leaves nothing behind in the project.
+- `<base>` is the branch the plan created its branch from: `--base` > `git.base_branch` > `main`.
+- It is never handed to a coordinator worker.
+- **Executor labels** are text on the manifest's checkbox line:
+  - `- [x] Task N.M — … → PR <short sha>` — the module boundary: the SHA of the commit that closed the module, which is also where the next module starts for review and verify.
+  - `⏭️ MERGED → task <N.M>` on a task that stays `[ ]` — merged into the next PR checkpoint. When the label's target closes with `→ PR <sha>`, every task pointing at it (and, transitively, every task pointing at those) also becomes `[x]` with `→ PR <sha>` appended; the `⏭️ MERGED` label stays, and such a task has no boundary of its own.
+  - At the last PR checkpoint there is no next one: merging writes `[x]` and `⏭️ MERGED` at once, with no target. The module goes into the pull request made after `/unikit-verify`, and nothing would close the task later.
+- **Counting:** a `[ ]` PR checkpoint carrying `⏭️ MERGED → task <N.M>` is not pending.
+- **Legacy:** a PR checkpoint task in a plan without `PR checkpoints: yes` (a plan written under a project's own rule) is executed by its own steps. A `→ skipped` label reads as `⏭️ MERGED` into the next PR checkpoint; `→ PR` without a SHA is a boundary without a SHA, resolved by `.unikit/system/plan-boundaries.md` → `## Module boundary`.
+- **Push:** while the checklist carries at least one `PR checkpoint:` line — in any plan, legacy included — the automatic commits of a run (`/unikit-implement`, the coordinator) do not push (`no-push`). A push or a pull request a human asked for takes the current state (`HEAD`) by default and, in the middle of a module, asks how far it goes: `.unikit/system/plan-boundaries.md` → `## Push target`.
 
 ### MCP findings section
 
@@ -316,12 +375,12 @@ The window carries a 30-line cap **only when trap is scanning many plans at once
 
 ### Test runs section
 
-`## Test Runs` lives in the manifest at `##` level, under `## Rule Candidates`, and only when `Testing: yes`. The planner emits the heading; every line under it is written by the executor.
+`## Test Runs` lives in the manifest at `##` level, under `## Rule Candidates`, and only when `Testing: yes`. The planner emits the heading; every line under it is written by the executor — or by `/unikit-verify --strict`, when the user has it run the full suite (`unikit-verify` Step 2.2).
 
 - **One bullet per run, append-only:**
   `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`
-- **One `Full run:` anchor line**, rewritten in place after each full run, in that same form. This is the machine anchor `/unikit-verify` greps; the bullets are the log for a human. The duplication is deliberate: a verifier made to hunt for "the last bullet whose coverage is `plan`" would depend on the bullet order surviving every future edit.
-- `tree-sha256` is the digest of **a short text**, not of the project: the output of `git rev-parse HEAD` followed by the output of `git status --porcelain`, normalized and hashed by the digest step of `.unikit/system/research-link.md` (`### Digest`, the one `Summary SHA256` uses). No project file is read.
+- **One `Full run:` anchor line**, rewritten in place after each run of every test — whichever checkpoint ran it — in that same form. This is the machine anchor `/unikit-verify` greps; the bullets are the log for a human. The duplication is deliberate: a verifier made to hunt for "the last bullet whose coverage is `plan`" would depend on the bullet order surviving every future edit.
+- `tree-sha256` is the digest of **a short text**, not of the project: the commit (`git rev-parse HEAD`), the sorted paths that differ from it — tracked or new, read from the repository root — and one git blob id for every changed or new file, all with `.unikit/` and Markdown files (`*.md`) left out, normalized and hashed by the digest step of `.unikit/system/research-link.md` (`### Digest`, the one `Summary SHA256` uses). The exact command is `unikit-implement/references/test-runs.md` → `## Step 3.2`, item 8. An edit to a file already modified moves it; staging a file, a documentation edit and the plan's own progress never do. No project file is read by the agent. A commit the executor makes carries a matching anchor over to the new `HEAD` (`## Carrying the anchor across a commit` there).
 - Git unavailable → the run is still recorded, and the field reads `tree-sha256 unavailable`. A verifier that reads that value does not reuse the run.
 
 ### Fast mode differences
@@ -329,3 +388,4 @@ The window carries a 30-line cap **only when trap is scanning many plans at once
 - Title: `# {Feature Name} — Plan` (instead of `— Tasks`)
 - Settings: no `Docs` line
 - Settings: the `Test checkpoints:` line is present here too — the only meaningful values are `phase` and `plan`
+- No `## Modules`, no PR checkpoint tasks and no `Planned at:` — a fast plan is one module by construction.

@@ -56,6 +56,7 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "review my code" | code review | `/unikit-review` → `/unikit-fix` | staged / PR / branch / file? |
 | "did I finish everything" | completeness | `/unikit-verify [--strict]` | — |
 | "commit this" | commit | `/unikit-commit` | — |
+| "open a PR", "write the PR description", "merge the PR" | pull request | `/unikit-pr` | is GitHub MCP set up? |
 | "archive the plan", "clean up finished plans" | archive plans | `/unikit-archive` | is every task `[x]`? |
 | "make the AI smarter from my fixes" | learn | `/unikit-evolve` | ≥3 patches accumulated? |
 | "I don't know what game to make" | ideate concept | `/unikit-gd-brainstorm` | — |
@@ -116,8 +117,8 @@ After building: /unikit-verify  →  /unikit-commit
 There is no single "test" skill — name the kind, then route.
 ```
 UniKit handles testing in a few ways:
-  • Automated tests       → ask for them in /unikit-plan (test phase); /unikit-implement writes them
-  • "Did I build what the plan says + does it compile + do tests pass?" → /unikit-verify [--strict]
+  • Automated tests       → ask for them in /unikit-plan (test phase); /unikit-implement writes and runs them
+  • "Did I build what the plan says + does it compile + is the recorded test run current?" → /unikit-verify [--strict]
   • Failing tests / bugs  → /unikit-fix
 
 There is no dedicated manual-QA runner skill — for exploratory/manual testing, do it in the

@@ -70,6 +70,8 @@ export interface McpChoiceEntry {
   displayName: string;
   isEngine: boolean;
   order?: number;
+  /** `false` = unchecked on a fresh install (the catalog's `preselect`). */
+  preselect?: boolean;
 }
 
 // Pure helper -- orders MCP choices deterministically: ascending `order`,
@@ -94,8 +96,10 @@ export function sortMcpChoices(entries: McpChoiceEntry[]): McpChoiceEntry[] {
 // re-init, where we mirror what .unikit.json says is installed. Same semantics
 // as existingInstalledSkills for the skill picker. An empty array is NOT
 // "fresh": it means nothing was selected before, so nothing is pre-checked.
-export function isMcpPreselected(fileId: string, existingMcpServers: string[] | null): boolean {
-  return existingMcpServers ? existingMcpServers.includes(fileId) : true;
+// `preselect` is the catalog's own field: `false` keeps a server that needs a
+// token unchecked on a fresh install; a re-init still mirrors the last choice.
+export function isMcpPreselected(fileId: string, existingMcpServers: string[] | null, preselect?: boolean): boolean {
+  return existingMcpServers ? existingMcpServers.includes(fileId) : preselect !== false;
 }
 
 // Pure helper -- radio `default` for one duplicate-key group, as an INDEX into
@@ -368,6 +372,7 @@ export async function runWizard(
         displayName: server.displayName,
         isEngine: server.isEngine,
         ...(server.order === undefined ? {} : { order: server.order }),
+        ...(server.preselect === undefined ? {} : { preselect: server.preselect }),
       };
 
       if (!server.isEngine || server.originDir === null) {
@@ -399,6 +404,10 @@ export async function runWizard(
       }
     }
     logInfo('wizard:mcp', `checkbox group: ${uniqueKeyEntries.map(e => e.fileId).join(', ') || '(empty)'}`);
+    const uncheckedIds = uniqueKeyEntries.filter(e => e.preselect === false).map(e => e.fileId);
+    if (uncheckedIds.length > 0) {
+      logInfo('wizard:mcp', `unchecked by default: ${uncheckedIds.join(', ')}`);
+    }
 
     // Unique keys: checkbox (multi-select), all checked by default
     if (uniqueKeyEntries.length > 0) {
@@ -410,7 +419,7 @@ export async function runWizard(
           choices: sortMcpChoices(uniqueKeyEntries).map(entry => ({
             name: entry.displayName,
             value: entry.fileId,
-            checked: isMcpPreselected(entry.fileId, existingMcpServers),
+            checked: isMcpPreselected(entry.fileId, existingMcpServers, entry.preselect),
           })),
         },
       ]);

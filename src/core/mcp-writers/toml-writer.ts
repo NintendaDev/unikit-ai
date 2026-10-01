@@ -1,7 +1,10 @@
 import { parse, stringify } from 'smol-toml';
 import type { McpWriter } from './index.js';
-import { findKeyInContainer } from './shared.js';
+import { findKeyInContainer, getEntryInContainer } from './shared.js';
+import { CODEX_BEARER_TOKEN_ENV_FIELD, CODEX_ENV_HTTP_HEADERS_FIELD } from '../constants.js';
+import { splitCodexHeaderEnvRefs } from '../mcp-env.js';
 import { fileExists, readTextFile } from '../../utils/fs.js';
+import { logWarn } from '../../utils/log.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -37,7 +40,18 @@ function toCodexServerConfig(rawConfig: Record<string, unknown>, serverKey: stri
       continue;
     }
     if (field === 'headers') {
-      out['http_headers'] = value;
+      if (!isRecord(value)) {
+        out['http_headers'] = value;
+        continue;
+      }
+      // Codex takes a variable NAME in its own fields, never a reference in a string.
+      const split = splitCodexHeaderEnvRefs(value);
+      if (Object.keys(split.staticHeaders).length > 0) out['http_headers'] = split.staticHeaders;
+      if (split.bearerTokenEnvVar !== undefined) out[CODEX_BEARER_TOKEN_ENV_FIELD] = split.bearerTokenEnvVar;
+      if (Object.keys(split.envHttpHeaders).length > 0) out[CODEX_ENV_HTTP_HEADERS_FIELD] = split.envHttpHeaders;
+      for (const name of split.dropped) {
+        logWarn('mcp', `codex: ${serverKey} — header ${name} mixes text and an env reference; Codex cannot express it, header dropped`);
+      }
       continue;
     }
     if (field === 'env' && isRecord(value)) {
@@ -89,6 +103,10 @@ export class TomlMcpWriter implements McpWriter {
 
   findKey(settings: Record<string, unknown>, code: string, reserved: Set<string>): string | null {
     return findKeyInContainer(settings, 'mcp_servers', code, reserved);
+  }
+
+  getEntry(settings: Record<string, unknown>, key: string): Record<string, unknown> | null {
+    return getEntryInContainer(settings, 'mcp_servers', key);
   }
 
   mergeEnv(settings: Record<string, unknown>, key: string, env: Record<string, unknown>): void {

@@ -153,7 +153,7 @@ git rev-parse --is-inside-work-tree 2>/dev/null && echo "git" || echo "no-git"
 
 **Merge mode**: if `config.yaml` already declared `git.enabled` / `git.base_branch`, keep those values and skip detection.
 
-Other git keys (`create_branches`, `branch_prefix`, `skip_push_after_commit`) take their template defaults unless the user explicitly overrides them later by editing `config.yaml`.
+Other git keys (`create_branches`, `branch_prefix`, `skip_push_after_commit`, `pull_requests.checkpoints`, `pull_requests.max_level`) take their template defaults unless the user explicitly overrides them later by editing `config.yaml`.
 
 ---
 

@@ -33,7 +33,7 @@ Purpose:
 - You are a normal subagent. Never invoke nested subagents or agent teams.
 - When injected `/unikit-plan` or `/unikit-improve` instructions mention `Agent(...)` or other delegated exploration, replace that with direct `Read`, `Glob`, `Grep`, and `Bash` work.
 - Do not implement code. Your write scope is limited to `.unikit/code/plans/` plan files: the `plans/<folder>/PLAN.md` manifest and, when the plan is an ultra bundle, its phase files `phase-NN-<slug>.md` in the same folder.
-- **Executor data survives every edit.** When you touch the manifest, `## MCP Findings`, `## Rule Candidates` and `## Test Runs` are preserved whole — rows, candidate statuses and the run log. They are not a draft of the plan but what execution recorded, and nothing in your scope authorises editing or dropping them. You also never write or change the `Test checkpoints:` line: the planner sets the policy when the plan is created.
+- **Executor data survives every edit.** When you touch the manifest, `## MCP Findings`, `## Rule Candidates` and `## Test Runs` are preserved whole — rows, candidate statuses and the run log. They are not a draft of the plan but what execution recorded, and nothing in your scope authorises editing or dropping them. You also never write or change the `Test checkpoints:` line: the planner sets the policy when the plan is created. The same holds for PR checkpoints: this agent never writes or removes `PR checkpoints: yes` — it is resolved by `/unikit-plan` from the config, once. A plan this agent creates therefore carries no PR checkpoint tasks.
 - Respect `.unikit/DESCRIPTION.md`, `.unikit/ARCHITECTURE.md`, `.unikit/RULES.md`.
 
 ## Workflow — phased with hard budget
@@ -94,7 +94,7 @@ Write the plan manifest — `.unikit/code/plans/<folder>/PLAN.md` for a folder p
 `.unikit/code/PLAN.md` for a fast plan — following the `/unikit-plan` template.
 You MUST reach this phase.
 
-**The header carries `Created:` and `Updated:`**, both today's date in `YYYY-MM-DD`, written directly under the H1 — stated here explicitly rather than left to "follow the template", because inheriting an obligation by reference is the first thing that gets lost, and losing this one is not visible as a missing field: every resolver that picks the latest plan excludes a manifest without `Updated:`, so the plan you just wrote reads to the user as "no plan found".
+**The header carries `Created:` and `Updated:`**, both today's date in `YYYY-MM-DD`, written directly under the H1 — and, in full and ultra inside a git work tree, `Planned at: <short sha>` (`git rev-parse --short HEAD`), written once and never changed by a later pass. This is stated here explicitly rather than left to "follow the template", because inheriting an obligation by reference is the first thing that gets lost, and losing this one is not visible as a missing field: every resolver that picks the latest plan excludes a manifest without `Updated:`, so the plan you just wrote reads to the user as "no plan found".
 
 **Branch 1 — no manifest yet (creating a plan).** `Write` is allowed. For an ultra bundle the
 write order is: every phase file first, the manifest last, then the integrity checks
@@ -135,7 +135,8 @@ Re-read your own plan and apply this rubric:
   - Asset pipeline considerations (if applicable)
   - Editor tooling needs (if applicable)
 - Run placement: does the plan match its own `Test checkpoints:` line — no run commands in per-task `### Tests` or `### Verification` under `phase` / `plan`, a final `Test checkpoint: plan` present under `Testing: yes`, no repeated checkpoints, and no phase gate restating the run. **A plan carrying no such line is legacy, and this point does not apply to it:** criticising a plan for lacking a policy that did not exist when it was written produces a finding nobody can close.
-- A test-checkpoint task with no `Files:` line is **normal, not an oversight** — it leaves nothing behind (a temporary probe it removes and a manual smoke are legitimate steps). Never raise a finding asking for one.
+- A test-checkpoint task with no `Files:` line is **normal, not an oversight** — it leaves nothing behind (a temporary probe it removes and a manual smoke are legitimate steps). Never raise a finding asking for one; a PR checkpoint task with no `Files:` is normal too.
+- Modules: the phases are grouped by `unikit-plan/references/TASK-FORMAT.md` → `### Modules section`; a PR checkpoint task, when the plan has `PR checkpoints: yes`, is the last task of every module but the last; the module barrier holds in the `**Dependencies:**` lines; no commit range crosses a module boundary; a module longer than four phases says `why long:`. **A plan with PR checkpoint tasks but no `PR checkpoints: yes` line is legacy** — this point does not apply to it.
 - No redundant or gold-plated tasks
 - Plan follows architecture and rules from `.unikit/`
 

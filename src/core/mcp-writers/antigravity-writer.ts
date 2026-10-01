@@ -1,5 +1,6 @@
 import type { McpWriter } from './index.js';
-import { findKeyInContainer } from './shared.js';
+import { findKeyInContainer, getEntryInContainer } from './shared.js';
+import { renderHeaderEnvRefs } from '../mcp-env.js';
 import { fileExists, readTextFile } from '../../utils/fs.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -25,6 +26,11 @@ function toAntigravityServerConfig(rawConfig: Record<string, unknown>): Record<s
     }
     if (field === 'url') {
       out['serverUrl'] = value;
+      continue;
+    }
+    // No documented env reference syntax: a `YOUR_<NAME>` placeholder the user fills in.
+    if (field === 'headers' && isRecord(value)) {
+      out['headers'] = renderHeaderEnvRefs(value, 'placeholder').headers;
       continue;
     }
     out[field] = value;
@@ -71,6 +77,10 @@ export class AntigravityMcpWriter implements McpWriter {
 
   findKey(settings: Record<string, unknown>, code: string, reserved: Set<string>): string | null {
     return findKeyInContainer(settings, 'mcpServers', code, reserved);
+  }
+
+  getEntry(settings: Record<string, unknown>, key: string): Record<string, unknown> | null {
+    return getEntryInContainer(settings, 'mcpServers', key);
   }
 
   mergeEnv(settings: Record<string, unknown>, key: string, env: Record<string, unknown>): void {

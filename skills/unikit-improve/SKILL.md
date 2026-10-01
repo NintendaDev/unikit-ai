@@ -179,6 +179,7 @@ If `$ARGUMENTS` contains `@<path>`:
 2. If the path is a directory holding a plan manifest (`<path>/PLAN.md`) → use it
 3. If the path is a directory containing `TASKS.md` (a pre-merge plan) → tell the user to run `unikit-ai update` and **STOP**. Do not read or convert it here — `update` is the sole migrator, the same refuse-over-autofix principle `rules sync` applies with exit 8.
 4. If missing → show "Plan folder not found: `<path>`" and **STOP**
+5. If the path is an unfinished plan (*An unfinished plan is not a plan* below) → print its `NOTE` line and **STOP**
 
 Remaining argument text (after removing `@<path>`) is the improvement prompt.
 
@@ -197,7 +198,9 @@ If `$ARGUMENTS` contains `--list`, run read-only discovery and **STOP**:
 3. Get current branch:
    git branch --show-current
 4. Scan .unikit/code/plans/ for all feature folders (all three name formats — see Branch match)
-5. For each, check if its .unikit/code/plans/<folder>/PLAN.md has uncompleted tasks (- [ ])
+5. For each, check if its .unikit/code/plans/<folder>/PLAN.md has uncompleted tasks (- [ ]);
+   a folder with .planning/STATE.md and no manifest is listed as "unfinished planning" and is
+   never counted as a plan with open tasks
 6. Mark which folder matches the current git branch (if any), by the three formats of Branch match
 7. Print availability summary (sorted by the manifest's Updated: descending — newest first):
 
@@ -211,6 +214,7 @@ Current branch: feature/customers-system
   * 🔄 customers-system                   ← matches branch (4 tasks remaining)
     ✅ 2026-03-10_customers-service-pool   (completed)
     🔄 002-customer-config-refactor        (2 tasks remaining)
+    ⏳ inventory-rework                   (unfinished planning — /unikit-plan ultra inventory-rework)
 
 Use:
   /unikit-improve                                              # auto-detect (.unikit/code/PLAN.md → branch → latest)
@@ -229,7 +233,7 @@ If `$ARGUMENTS` contains a feature name (e.g., `2026-03-08_customers-system`, `c
 1. Look for `.unikit/code/plans/$ARGUMENTS/` directory (exact match)
 2. If not found by exact match → try partial match: scan `.unikit/code/plans/` for folders
    whose name **ends with** `_$ARGUMENTS` (new format) or `*-$ARGUMENTS` (legacy `DDD-*` format)
-3. If found → use it
+3. If found → use it; a folder that is an unfinished plan (*An unfinished plan is not a plan* below) → print its `NOTE` line and **STOP**
 4. If NOT found → tell the user:
 
 ```
@@ -261,6 +265,11 @@ If `$ARGUMENTS` is empty (no parameters):
      or more plans present, print the candidate table (folder, `Updated:`, tasks remaining)
      and ask — never auto-select. With exactly one plan present there is nothing to choose
      between: announce it with the branch miss named in the reason and continue.
+   - **An unfinished plan is not a plan.** A folder under `.unikit/code/plans/` that holds `.planning/STATE.md` but not its manifest `.unikit/code/plans/<folder>/PLAN.md` is an ultra plan still being written: it is never a candidate, and it is named once:
+
+     ```
+     NOTE [plan] <folder> — unfinished planning: .planning/STATE.md is there, the manifest is not. Continue it with: /unikit-plan ultra <folder>
+     ```
 
 2. **Resolve ambiguity:**
    - If **no candidates** found (no flat plans, no folder plans) → show "No plans found" message and **STOP**:
@@ -315,6 +324,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 ### Step 1: Load Feature Plan
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
+- The plan folder holds `recon/` → read `{{skills_dir}}/{{self_name}}/references/recon-baseline.md` and follow it: it sets the scope of Step 2 from the plan's reconnaissance and adds a report section. No `recon/` → the file is not read.
 - If the manifest has a `## Based on` section → parse all linked research entries (folder name + the recorded hash field for each — the form it takes is resolved by the research-link contract's ladder in Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH.md` — `## Active Summary` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
 
 Understand:
@@ -392,7 +402,7 @@ Regardless of the outcome, **always continue to Step 2** (Deep Codebase Analysis
 
 Follow the delegation rules from **Code Analysis Rules** section above.
 
-Formulate analysis questions based on the feature plan, then launch Explore tasks in parallel. Each task MUST receive references to project doc files in its prompt.
+Formulate analysis questions based on the feature plan, then launch Explore tasks in parallel. With a scope set from the plan's reconnaissance (`recon-baseline.md`), they cover only the paths that changed since a recon file's `HEAD` and what the reconnaissance does not cover. Each task MUST receive references to project doc files in its prompt.
 
 **Doc references to include in every Explore task prompt:**
 - `.unikit/ARCHITECTURE.md` — always (module boundaries, dependency rules)
@@ -479,7 +489,7 @@ Compare the plan against what you found. Categorize issues:
 - Missing test tasks for new systems
 
 **3.2: Task quality issues**
-- Descriptions too vague (no file paths, no specific implementation details)
+- Descriptions too vague (no file paths, no specific implementation details) — a test-checkpoint task, and a PR checkpoint task with no `Files:` is normal: neither leaves anything in the project
 - Missing specific class names or namespaces
 - Incorrect assumptions about existing code
 - Missing reference to existing patterns that should be followed
@@ -523,6 +533,17 @@ Read the setting from the plan's `## Settings` and check the plan against it. Ea
 - a `## Phase Completion Checklist` that restates the run instead of leaving it to the task's own checkbox.
 
 **A plan with no `Test checkpoints:` line is legacy and is exempt from this check** — its placement was never declared, and criticising a plan for lacking a policy that did not exist when it was written produces a finding nobody can close.
+
+**3.3c: Modules and PR checkpoints — check the plan against its own grammar**
+
+The grammar is `unikit-plan/references/TASK-FORMAT.md` → `### Modules section` and `### PR checkpoint task grammar`. Each of these is a finding with a proposed fix, never an automatic change:
+
+- `## Modules` does not cover the phases in order, or a module longer than four phases carries no `why long:` (Integrity Check 12);
+- a PR checkpoint task that is not the last task of its module, a PR checkpoint task in the last module, `PR checkpoints: yes` with no PR checkpoint task, or a `PR: task N.M` that names another task (Integrity Check 13);
+- the module barrier is broken: recompute the layers exactly as in 3.3a — a layer holding phases of two modules is a finding in the 🔄 Dependency Fixes group, in the form `🔒 Layer <N> holds Phase <X> (M<a>) beside Phase <Y> (M<b>)` / `Fix: add Phase <closing phase of M<a>> to Phase <Y>'s **Dependencies:**`;
+- a `### Commit N` range crosses a module boundary (Integrity Check 15).
+
+**A plan with PR checkpoint tasks but no `PR checkpoints: yes` line is legacy** — its PR checkpoint tasks are exempt from the second point, exactly as a plan without `Test checkpoints:` is exempt from 3.3b. A plan without `## Modules` and without PR checkpoint tasks is one module: 3.3c finds nothing there.
 
 **3.4: Redundant or duplicate tasks**
 - Two tasks doing the same thing
@@ -587,6 +608,7 @@ Files: <plan folder>/PLAN.md
 Phases analyzed: N
 Tasks analyzed: N
 Researches checked: N (list names if any)
+Recon: used N · re-explored N · skipped N   (only when recon was used)
 
 ### Research-Based Findings (only if research_improvements is non-empty)
 
@@ -615,6 +637,9 @@ Source: [research folder name(s)]
 #### New Researches to Attach (N) (only if new researches were selected in Step 1.5)
 1. **[Research title]** (<date>)
    Relevant findings: [brief summary of what this research adds]
+
+### Recon-Based Findings (only when recon was used)
+1. **Phase X, Task Y: [name]** — [what the phase misses or gets wrong] (recon/<file> § <section>)
 
 ### Codebase Analysis Findings
 
@@ -712,6 +737,16 @@ For each new task from the report:
 
 At the start of the edit print one line — `INFO [testing] plan policy: checkpoints=<value|legacy>` — so the decision to insert tasks, or not to, is explainable from the output.
 
+**Plans with modules.** When the plan has `## Modules` or any `PR checkpoint:` line, print `INFO [plan] modules: <n>, PR checkpoints: <yes|no|legacy>` next to that line, and insert by the grammar in `unikit-plan/references/TASK-FORMAT.md` → `### Modules section`. Only the insertion decisions are stated here:
+
+- a new task of an existing module goes above that module's PR checkpoint task and its module test-checkpoint task;
+- a new module after the last: under `PR checkpoints: yes` the former last module gets a PR checkpoint task at the end of its closing phase and a `PR: task N.M` field, and under `Testing: yes` the final full run moves to the new last phase;
+- a new module before the first gets phase `0` and, under `PR checkpoints: yes`, its own PR checkpoint task;
+- a new module between two modules is not created — its work joins an existing module, above that module's PR checkpoint;
+- `## Modules` and the module barrier in the `**Dependencies:**` lines are updated in the same edit; `PR checkpoints: yes` is never written or removed here; no task is renumbered.
+
+In an ultra bundle a new PR checkpoint task gets its `## Task N.M:` section with all seven subsections — its `### Tests` carries `Not applicable — this task closes a module, it runs no tests` — and its `([details](…))` link, per `unikit-plan/references/ULTRA-PLAN-FORMAT.md`.
+
 **5.2: Improve existing task descriptions in the manifest**
 
 For each task flagged for improvement:
@@ -764,7 +799,7 @@ The section always exists — there is no "create it if missing" branch any more
 
 **5.7: Update Overview section and the header timestamp**
 
-Move the header's `Updated:` to today's date (`Bash(date *)`) — unconditionally, because reaching Step 5 at all means the manifest was rewritten, and that field is what every "latest plan" resolver sorts on. `Created:` is never rewritten: it records when the plan was made, not when it was last touched.
+Move the header's `Updated:` to today's date (`Bash(date *)`) — unconditionally, because reaching Step 5 at all means the manifest was rewritten, and that field is what every "latest plan" resolver sorts on. `Created:` is never rewritten: it records when the plan was made, not when it was last touched. `Planned at:` is never rewritten either: it marks where the plan's work starts.
 
 If the total number of tasks or phases changed significantly (added a phase, removed multiple tasks):
 1. Update `## Overview` task/phase counts

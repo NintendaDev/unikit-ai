@@ -467,10 +467,11 @@ Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after th
 
 ### 4.2 {{engine_name}} Test Run
 
-Use MCP server `{{engine_mcp_tool}}` to run tests for the affected module:
-- Determine which test assembly covers the modified module (check CLAUDE.md for the list of test assemblies)
-- Run the relevant test assembly through MCP server `{{engine_mcp_tool}}`
-- Wait for results and display them — highlight any failures
+Run the tests through MCP server `{{engine_mcp_tool}}` at the width the shared run settings give — `{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width`. Read **that section alone**, once per session, the first time this step runs: it resolves `testing.run.use_affected_modules` and `testing.run.full_run_threshold_percent` from `.unikit/config.yaml`, says how the affected test suites are found, requires one run, and says what counts as green. A fix has no coverage, so its run follows the section's `phase` row; its changed files are `git status --porcelain` plus the files this fix touched.
+- `use_affected_modules: false` (the default) → every test in the project, in one run
+- `true` → the affected test suites in one run — or every test, when that section widens the run
+- The file or the section is missing → run every test in the project in one run, and print `WARN [testing] test-run reference missing — every test is run; run unikit-ai update`
+- Wait for results and display them — highlight any failures. A run that is not green by that section — zero tests, no readable counts — is a failed check, not a pass; the one zero that is not a failure is a run of every test in a project that has no tests yet — note `Test run: no tests in the project` and go on
 - If tests fail because of the fix — investigate and fix the regression
 - If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
 

@@ -166,6 +166,20 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
 
 In ultra the same box additionally holds `phase-NN-*.md` files.
 
+### Modules and pull requests
+
+A full or ultra plan is sliced into **modules** — pieces the base branch can take whole. With `git.pull_requests.checkpoints: true` every module but the last ends with a PR checkpoint task, and the loop gains a stop at each module boundary:
+
+```
+/unikit-implement  →  module committed  →  check the module (/unikit-verify Phases K-L + /unikit-review)
+                                        →  /unikit-pr — open or update the branch's PR, merge when safe
+                                        →  or stop here / merge into the next PR
+... last module ...
+/unikit-verify  →  Pull request — /unikit-pr  →  /unikit-archive
+```
+
+While the plan has PR checkpoints a run never pushes: the branch reaches the remote through `/unikit-pr` at a module boundary, or through you. See [Plan files → Modules](plan-files.md#modules--pieces-the-base-branch-can-take-whole) and [`/unikit-pr`](skills.md).
+
 ## When to Use What?
 
 | Command | Use Case | Creates Branch? | Output |
@@ -332,8 +346,8 @@ Tasks carrying an `Editor:` line target the editor's serialized state rather tha
 After phase completion:
 
 - Runs compilation check (through the engine MCP server)
-- Writes tests if `Testing: yes` — inside the tasks that introduce them
-- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run
+- Writes tests if `Testing: yes` — inside the tasks that introduce them, and before the phase's test checkpoint, so its run covers them
+- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run; a phase checkpoint runs every test unless `testing.run.use_affected_modules` narrows it, and the final run is closed by reuse when the code has not changed since the last run of every test
 - Creates commit checkpoint
 
 Post-completion, in order:
@@ -416,7 +430,7 @@ Reports include concrete code fixes for Critical/Warning items. Commits mode als
 Goes through every task in the plan and verifies the code actually implements it. Runs per-phase Explore agents for completion audit. Checks:
 
 - Engine compilation (through the engine MCP server)
-- Tests
+- Tests — the run recorded in the plan's `## Test Runs`, checked against the current code; verify starts no test run itself
 - Editor targets — read back through the engine MCP, not Glob/Grep (a task with an `Editor:` line has no implementing source to find)
 - `.meta` file pairing
 - Asmdef boundaries (Modules -> Game FORBIDDEN)
@@ -427,7 +441,7 @@ Goes through every task in the plan and verifies the code actually implements it
 
 When the plan cited a design system's acceptance criteria and all of them are met, stamps `implemented_version` back into `GD-IDS.yaml` - the one sanctioned code -> design write, checked against the AC snapshotted in the plan rather than the live GDD.
 
-Strict mode raises the bar: partial completion is a failure, compilation and tests are required, leftover TODOs are blocking. Two carve-outs survive strict mode, because failing them would fail correctly completed work: an editor target the configured server cannot read back, and one marked `⏸️ MANUAL` because you took it on yourself. If gaps are found, suggests `/unikit-fix`.
+Strict mode raises the bar: partial completion is a failure, compilation is required, and so is a green run of every test recorded for the current code — when it is missing or stale, verify asks once whether to run the full suite now — leftover TODOs are blocking. Two carve-outs survive strict mode, because failing them would fail correctly completed work: an editor target the configured server cannot read back, and one marked `⏸️ MANUAL` because you took it on yourself. If gaps are found, suggests `/unikit-fix`.
 
 ### `/unikit-commit [scope]` - conventional commits
 

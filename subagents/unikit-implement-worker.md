@@ -73,6 +73,8 @@ Before writing code:
    **`phase-*.md` files are read-only while you execute.** Everything you change lives in the manifest. This holds even when the fix looks trivial — a wrong path in a phase file is reported in your run report, never edited.
 
    **You never run tests.** `### Tests` is executed only in the part that *writes* tests. Starting a test run is not yours to do — not even when a run command sits inside the section you were handed, which happens in a legacy plan. Hand such a command back to the coordinator through `test_run_deferred:` in your `## Output`, unexecuted. The reason is measured: the test runner is one per editor, and two workers of the same layer starting a run at the same moment get a refusal rather than two results.
+
+   **A task carrying a `PR checkpoint:` line is never yours.** It closes a module and asks the user; if one reaches you, return it unexecuted — `returned: <task id> — PR checkpoint belongs to the coordinator` in your `## Output` — and change nothing.
 2. Load rules (see above).
 3. Implement the target task using direct tool calls.
 
@@ -111,6 +113,7 @@ Return a concise summary:
 - List of files modified
 - `manual_targets:` — editor targets NOT carried out, each as `[kind] container → target : action`; omit the field when there are none. The coordinator must not mark a phase complete on the strength of a task whose editor targets are still listed here
 - `test_run_deferred:` — the coverage, or the run command, that you did not execute and are handing to the scope owner; omit the field when there is none. **Absent → the coordinator reads it as nothing deferred**, never as a run already done — the same explicit-degradation rule `editor_mode:` carries in the dispatch contract
+- `returned:` — tasks handed back unexecuted, one line each (`returned: <task id> — PR checkpoint belongs to the coordinator`); omitted when none
 - `docs_recommended: yes/no`
 - `commit_recommended: yes/no`
 - `next_task: <task description or "phase complete" or "plan complete">`
