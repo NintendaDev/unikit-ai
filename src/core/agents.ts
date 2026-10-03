@@ -84,6 +84,18 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     skillsCliAgent: 'antigravity',
     isStable: false,
   },
+  kimi: {
+    id: 'kimi',
+    displayName: 'Kimi Code',
+    configDir: '.kimi-code',
+    skillsDir: '.kimi-code/skills',
+    subagentsDir: '.kimi-code/agents',
+    settingsFile: '.kimi-code/mcp.json',
+    supportsMcp: true,
+    supportsSubagents: true,
+    skillsCliAgent: 'kimi-code-cli',
+    isStable: false,
+  },
 };
 
 export function getAgentConfig(id: string): AgentConfig {
