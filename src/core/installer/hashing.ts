@@ -14,7 +14,7 @@ import { getAgentConfig } from '../agents.js';
 import { getEngineConfig } from '../engines.js';
 import { getTransformer } from '../transformer.js';
 import { logInfo } from '../../utils/log.js';
-import { REFERENCES_DIR_NAME, SKILL_FILE } from '../constants.js';
+import { PROFILE_HASH_TAG, REFERENCES_DIR_NAME, SKILL_FILE } from '../constants.js';
 import { stripMdExtension } from './shared.js';
 
 export interface ResolvedSkillPaths {
@@ -163,6 +163,20 @@ function mcpHashComponent(
   return `mcp:${engineMcpKey ?? 'none'}|${pairs.join(',')}`;
 }
 
+/**
+ * The agent's subagent profile as a hash component: the profile is substituted into the
+ * installed skill text, so a changed value must reinstall every skill. An unregistered id
+ * yields `profile:none` rather than throwing — the same stance as the engine lookup below.
+ */
+function profileHashComponent(agentId: string): string {
+  try {
+    const { readerType, workerType, modelDefault } = getAgentConfig(agentId).subagentProfile;
+    return `${PROFILE_HASH_TAG}:${readerType}|${workerType}|${modelDefault}`;
+  } catch {
+    return `${PROFILE_HASH_TAG}:none`;
+  }
+}
+
 export async function computeSourceHashWithTemplate(
   sourceSkillDir: string,
   engineId: string,
@@ -179,11 +193,13 @@ export async function computeSourceHashWithTemplate(
   // The MCP selection is the same kind of global dimension — see mcpHashComponent.
   const combined = createHash('sha256');
   const mcpComponent = mcpHashComponent(engineMcpKey, mcpServers);
+  const profileComponent = profileHashComponent(agentId);
   combined.update(baseHash);
   combined.update(`engine:${engineId}`);
   combined.update(`agent:${agentId}`);
+  combined.update(profileComponent);
   combined.update(mcpComponent);
-  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} ${mcpComponent} skill=${skillName}`);
+  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} ${profileComponent} ${mcpComponent} skill=${skillName}`);
 
   let engineConfig;
   try {

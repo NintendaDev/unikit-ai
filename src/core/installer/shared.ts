@@ -56,6 +56,11 @@ export function buildSubagentTemplateVars(
     engine_name: '',
     engine_code_language: '',
     engine_mcp_tool: '',
+    // agent-neutral: subagent files and system assets carry no delegation profile
+    agent_id: '',
+    agent_reader_type: '',
+    agent_worker_type: '',
+    agent_model_default: '',
   };
   if (engineId) {
     Object.assign(vars, buildEngineVars(engineId, engineMcpKey));

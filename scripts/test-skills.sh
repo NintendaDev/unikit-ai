@@ -9993,6 +9993,24 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f4: agent subagent-profile unit tests
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f4: agent profile unit tests${NC}"
+
+set +e
+AGENT_PROFILE_OUTPUT=$(node "$ROOT_DIR/scripts/test-agent-profile.mjs" 2>&1)
+AGENT_PROFILE_EXIT=$?
+set -e
+
+if [[ $AGENT_PROFILE_EXIT -eq 0 ]]; then
+    pass "Agent profile unit tests"
+    echo "$AGENT_PROFILE_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Agent profile unit tests"
+    echo "$AGENT_PROFILE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"

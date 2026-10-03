@@ -100,7 +100,7 @@ async function walk(dir) {
 
 await group('R', async () => {
     assertEq(
-        'R1 AGENT_REGISTRY.kimi is the REQ-001 entry',
+        'R1 AGENT_REGISTRY.kimi is the REQ-001 entry + the subagent profile',
         JSON.stringify(AGENT_REGISTRY.kimi),
         JSON.stringify({
             id: 'kimi',
@@ -113,10 +113,11 @@ await group('R', async () => {
             supportsSubagents: true,
             skillsCliAgent: 'kimi-code-cli',
             isStable: false,
+            subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
         }),
     );
 
-    const src = 'a\n<!-- unikit:agents claude -->\nC\n<!-- unikit:end -->\n<!-- unikit:agents !claude -->\nN\n<!-- unikit:end -->\n<!-- unikit:agents codex -->\nX\n<!-- unikit:end -->\nz\n';
+    const src ='a\n<!-- unikit:agents claude -->\nC\n<!-- unikit:end -->\n<!-- unikit:agents !claude -->\nN\n<!-- unikit:end -->\n<!-- unikit:agents codex -->\nX\n<!-- unikit:end -->\nz\n';
     assertEq('R2 agent filter for kimi keeps !claude, drops claude and codex', applyAgentFilter(src, 'kimi'), 'a\nN\nz\n');
 
     const kimi = AGENT_REGISTRY.kimi;

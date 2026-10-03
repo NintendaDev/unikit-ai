@@ -9,6 +9,15 @@ export interface AgentConfig {
   supportsSubagents: boolean;
   skillsCliAgent: string | null;
   isStable: boolean;
+  /**
+   * How skills name the subagents they launch on this runtime. `readerType` is the read-only
+   * agent type (reconnaissance, validation), `workerType` the one that can create files and
+   * is also what the skill-loading aliases launch. `modelDefault` is the model argument passed
+   * when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias
+   * (`sonnet`, `flash`) or empty — empty means pass no model. The values are pointers into
+   * the runtime's own type namespace and age with it: re-check them in a live session.
+   */
+  subagentProfile: { readerType: string; workerType: string; modelDefault: string };
 }
 
 export const AGENT_REGISTRY: Record<string, AgentConfig> = {
@@ -23,6 +32,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsSubagents: true,
     skillsCliAgent: 'claude-code',
     isStable: true,
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet' },
   },
   codex: {
     id: 'codex',
@@ -35,6 +45,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsSubagents: false,
     skillsCliAgent: 'codex',
     isStable: false,
+    subagentProfile: { readerType: 'explorer', workerType: 'worker', modelDefault: '' },
   },
   cursor: {
     id: 'cursor',
@@ -47,6 +58,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsSubagents: false,
     skillsCliAgent: 'cursor',
     isStable: false,
+    subagentProfile: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '' },
   },
   qwen: {
     id: 'qwen',
@@ -59,6 +71,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsSubagents: false,
     skillsCliAgent: 'qwen',
     isStable: false,
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
   },
   opencode: {
     id: 'opencode',
@@ -71,6 +84,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsSubagents: false,
     skillsCliAgent: 'opencode',
     isStable: false,
+    subagentProfile: { readerType: 'explore', workerType: 'general', modelDefault: '' },
   },
   antigravity: {
     id: 'antigravity',
@@ -83,6 +97,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsSubagents: false,
     skillsCliAgent: 'antigravity',
     isStable: false,
+    subagentProfile: { readerType: 'research', workerType: 'self', modelDefault: 'flash' },
   },
   kimi: {
     id: 'kimi',
@@ -95,6 +110,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsSubagents: true,
     skillsCliAgent: 'kimi-code-cli',
     isStable: false,
+    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
   },
 };
 

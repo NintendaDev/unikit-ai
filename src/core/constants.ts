@@ -278,6 +278,9 @@ export type McpPlatformKey = (typeof MCP_PLATFORM_KEYS)[number];
 export const MCP_TOKEN_HOME = '{{home}}';
 export const MCP_TOKEN_LOCALAPPDATA = '{{localappdata}}';
 
+/** Tag of the subagent-profile component in a skill's source hash (`hashing.ts`). */
+export const PROFILE_HASH_TAG = 'profile';
+
 // --- File names ---
 
 /**

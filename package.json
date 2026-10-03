@@ -76,6 +76,7 @@
       "scripts/generate-cli-contract.ts",
       "scripts/genres-validate.mjs",
       "scripts/test-agent-filter.mjs",
+      "scripts/test-agent-profile.mjs",
       "scripts/test-config-tolerance.mjs",
       "scripts/test-kimi-transform.mjs",
       "scripts/test-ultra-plan-contract.mjs",
