@@ -592,7 +592,7 @@ fi
 #     (the radio's default is `order`'s job)
 #   - GH-2: `{{env:` appears only in string header values (`config.headers`,
 #     `configByPlatform.*.headers`), and every occurrence matches MCP_ENV_TOKEN_PATTERN,
-#     read from src/core/constants.ts — `{{env:github_pat}}` would otherwise reach all six
+#     read from src/core/constants.ts — `{{env:github_pat}}` would otherwise reach all seven
 #     settings files verbatim. The count is printed, so a lost object shows as a number
 #   - GH-3: no config carries a literal GitHub token (`ghp_`, `github_pat_`, `gho_`)
 #   - GH-4: universal/github.json exists and grants exactly five pull-request tools to
@@ -858,7 +858,7 @@ const write = async (agent, cfg) => {
   writer.upsert(settings, 'github', cfg);
   return { text: writer.serialize(settings), settings };
 };
-for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravity']) {
+for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravity', 'kimi']) {
   const { text } = await write(agent, tokenEntry());
   if (text.includes('{{env:')) why.push(agent + ':raw-token-left');
 }
@@ -880,21 +880,30 @@ for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravi
 { const e = (await write('antigravity', tokenEntry())).settings.mcpServers.github;
   if (e.headers.Authorization !== 'Bearer YOUR_GITHUB_PAT') why.push('antigravity:placeholder');
   if (e.serverUrl !== URL) why.push('antigravity:serverUrl'); }
+{ const e = (await write('kimi', tokenEntry())).settings.mcpServers.github;
+  if (e.bearerTokenEnvVar !== 'GITHUB_PAT') why.push('kimi:bearer-var');
+  if (e.headers !== undefined || e.type !== undefined) why.push('kimi:header-or-type-left');
+  if (e.url !== URL) why.push('kimi:url'); }
+{ const e = (await write('kimi', tokenEntry('authorization'))).settings.mcpServers.github;
+  if (e.bearerTokenEnvVar !== 'GITHUB_PAT') why.push('kimi:lowercase-header'); }
 // Regression: an entry without headers is unchanged everywhere except Qwen's URL field.
 { const e = (await write('claude', { type: 'http', url: URL })).settings.mcpServers.github;
   if (JSON.stringify(e) !== JSON.stringify({ type: 'http', url: URL })) why.push('claude:plain-entry-changed'); }
 { const e = (await write('qwen', { type: 'http', url: URL })).settings.mcpServers.github;
   if (e.httpUrl !== URL || e.url !== undefined || e.type !== undefined) why.push('qwen:plain-entry-httpUrl'); }
+{ const e = (await write('kimi', { type: 'http', url: URL })).settings.mcpServers.github;
+  if (JSON.stringify(e) !== JSON.stringify({ url: URL })) why.push('kimi:plain-entry'); }
 const servers = new Map([['github', { displayName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
 const both = getMcpEnvLines(servers, ['github'], ['claude', 'antigravity']);
 if (both.length !== 2 || !both[0].includes('GITHUB_PAT') || !both[1].includes('YOUR_GITHUB_PAT')) why.push('envLines:antigravity');
 if (getMcpEnvLines(servers, ['github'], ['claude']).length !== 1) why.push('envLines:claude-only');
+if (getMcpEnvLines(servers, ['github'], ['claude', 'kimi']).length !== 1) why.push('envLines:kimi-adds-a-line');
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(JSON.stringify({ why }));
 NODE_EOF
 )
 if [[ "$ENV_SMOKE_RESULT" == '{"why":[]}' ]]; then
-    pass "MCP env references rendered per client (6 agents)"
+    pass "MCP env references rendered per client (7 agents)"
 else
     fail "MCP env-reference smoke: $ENV_SMOKE_RESULT"
 fi
@@ -7895,7 +7904,7 @@ fi
 
 # (EV-4) The dispatch. With RULES.md delegation-only this is load-bearing, and a bare prose
 # sentence is not a dispatch: `Skill(...)` is never rewritten by the installer and non-Claude
-# agents have no such tool, so Tier 2 is what keeps the channel alive on 5 of 6 agents. The
+# agents have no such tool, so Tier 2 is what keeps the channel alive on 5 of 7 agents. The
 # "real call" clause is the gd-apply formulation for the known failure mode — printing the
 # command instead of executing it.
 EV4_WHY=""
@@ -9296,6 +9305,60 @@ else
     fail "RE-1…RE-4 recon as plan evidence:$RE_WHY"
 fi
 
+# --- KM: the Kimi Code agent — source-level contracts --------------------------------------
+# The adapter (src/core/transformers/kimi*.ts) rewrites spellings that live in skill and
+# subagent SOURCES. These guards watch the source side, so a new spelling cannot slip past a
+# rewrite written against today's text. The rewrites' behaviour is scripts/test-kimi-transform.mjs
+# (Part 7f3); the installed result is test-install.sh Test 3d.
+KM_WHY=""
+
+# (KM-1) no positional-argument token in any SKILL.md body. Kimi Code substitutes $0, $1, …
+# before the model reads the text; `awk '{print $1}'` in a skill silently became
+# `awk '{print }'`. References are read through the Read tool and are NOT expanded, so they
+# are out of scope (market-scan.md carries "$500" legitimately).
+KM_SKILL_SEEN=0
+for km_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    [[ -f "$km_f" ]] || continue
+    KM_SKILL_SEEN=$((KM_SKILL_SEEN + 1))
+    if grep -qE '\$[0-9]' "$km_f"; then
+        KM_WHY+=" KM-1:positional-token:${km_f#"$ROOT_DIR"/}"
+    fi
+done
+[[ "$KM_SKILL_SEEN" -gt 0 ]] || KM_WHY+=" KM-1:no-skills-scanned"
+for km_f in "$ROOT_DIR/skills/unikit-verify/SKILL.md" "$ROOT_DIR/skills/unikit-implement/references/test-runs.md"; do
+    grep -qF "| shasum -a 256 | cut -d' ' -f1" "$km_f" || KM_WHY+=" KM-1:hash-tail-not-cut:${km_f##*/}"
+done
+
+# (KM-2) every `general-purpose` in skills/**/*.md is one of the two spellings the Kimi
+# transformer rewrites. The word is not forbidden — the swap exists because the skills use
+# it — but a third spelling would reach Kimi unrewritten.
+KM_GP_RE="subagent_type:[[:space:]]*[\"']?general-purpose([^[:alnum:]_-]|\$)|\`general-purpose\`"
+KM_GP_LINES=0
+while IFS= read -r km_hit; do
+    [[ -n "$km_hit" ]] || continue
+    KM_GP_LINES=$((KM_GP_LINES + 1))
+    km_text="${km_hit#*:*:}"
+    grep -qE -- "$KM_GP_RE" <<< "$km_text" || KM_WHY+=" KM-2:unhandled-spelling:${km_hit%%:*}"
+done < <(cd "$ROOT_DIR" && { grep -rnF 'general-purpose' skills --include='*.md' || true; })
+[[ "$KM_GP_LINES" -gt 0 ]] || KM_WHY+=" KM-2:no-object"
+
+# (KM-3) Kimi-only text is born in the adapter, never in a source. `${base_prompt}` in a
+# source would be literal text for the other six agents (and doubled for Kimi); `kimi --agent`
+# in a subagent source would be a Claude-first file with the wrong launch command; and with
+# no `claude --agent` left in subagents/ there would be nothing for the adapter to rewrite.
+km_bp="$({ grep -rlF '${base_prompt}' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" 2>/dev/null || true; } | wc -l | tr -d ' ')"
+[[ "$km_bp" -eq 0 ]] || KM_WHY+=" KM-3:base_prompt-in-source:$km_bp"
+km_kl="$({ grep -rlF 'kimi --agent' "$ROOT_DIR/subagents" 2>/dev/null || true; } | wc -l | tr -d ' ')"
+[[ "$km_kl" -eq 0 ]] || KM_WHY+=" KM-3:kimi-launch-in-source:$km_kl"
+km_cl="$({ grep -rlF 'claude --agent' "$ROOT_DIR/subagents" 2>/dev/null || true; } | wc -l | tr -d ' ')"
+[[ "$km_cl" -gt 0 ]] || KM_WHY+=" KM-3:no-claude-launch-to-rewrite"
+
+if [[ -z "$KM_WHY" ]]; then
+    pass "KM-1…KM-3 Kimi Code source contracts ($KM_SKILL_SEEN SKILL.md without a positional token, $KM_GP_LINES general-purpose line(s) all rewritable, adapter-only spellings)"
+else
+    fail "KM-1…KM-3 Kimi Code source contracts violated:$KM_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
@@ -9885,6 +9948,24 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f3: Kimi Code adapter unit tests
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f3: Kimi adapter unit tests${NC}"
+
+set +e
+KIMI_TRANSFORM_OUTPUT=$(node "$ROOT_DIR/scripts/test-kimi-transform.mjs" 2>&1)
+KIMI_TRANSFORM_EXIT=$?
+set -e
+
+if [[ $KIMI_TRANSFORM_EXIT -eq 0 ]]; then
+    pass "Kimi adapter unit tests"
+    echo "$KIMI_TRANSFORM_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Kimi adapter unit tests"
+    echo "$KIMI_TRANSFORM_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
@@ -9932,8 +10013,9 @@ fi
 # ─────────────────────────────────────────────
 # Part 7g3: DM-1…DM-3 — the delegation model policy
 # ─────────────────────────────────────────────
-# A skill body travels to all six runtimes; a dispatch-time `model:` argument works on
-# exactly one of them, and of the five others three have no stable tier alias at all. The
+# A skill body travels to all seven runtimes; a dispatch-time `model:` argument with a tier
+# alias works on exactly one of them (Kimi Code's `Agent` takes a `model` too, but no Claude
+# alias), and of the others three have no stable tier alias at all. The
 # policy is therefore not "pick the right model per runtime" but "name the model in ONE
 # declared place per skill, behind an agent-filter branch, and nowhere else". Three guards,
 # each closing a different way that policy rots:
@@ -9946,7 +10028,7 @@ fi
 #   DM-2  confinement (RT-5 idiom) — the only files that may carry the literal are
 #         `skills/*/SKILL.md`, and inside each one every occurrence sits between
 #         `<!-- unikit:agents claude -->` and its `<!-- unikit:end -->`. A reference file is
-#         never filtered (Part 7g2), so a literal there ships the argument to all six.
+#         never filtered (Part 7g2), so a literal there ships the argument to all seven.
 #   DM-3  positive presence — the two rationale sentences exist, one per branch. A guard
 #         does not reach the user (`scripts/` is outside `files` in package.json); the skill
 #         text does. Deleting the reason is the regression that leaves the suite green and

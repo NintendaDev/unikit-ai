@@ -610,6 +610,167 @@ else
 fi
 
 # ─────────────────────────────────────────────────────
+# Test 3d: Kimi Code (own .kimi-code/ tree, adapted skill text, adapted subagent files, MCP)
+# ─────────────────────────────────────────────────────
+# Kimi Code gets its OWN tree (ADR-0001): skills in .kimi-code/skills, subagents in
+# .kimi-code/agents, MCP in .kimi-code/mcp.json — nothing is written to the shared .agents/.
+# Installed through `update`, which runs the same installSkills / installSubagents /
+# reconcileMcpSettings the interactive `init` runs. Everything is asserted on the REAL
+# skills/, subagents/ and mcp/universal/ catalog, never a synthetic copy. Each installed skill
+# is the object of one claim: unikit (references, variable substitution), unikit-plan (a
+# reference that names /unikit-implement), unikit-implement (general-purpose → coder,
+# {{settings_file}}), unikit-fix, unikit-verify (the tree-hash tail), unikit-gd-explore (a
+# REFERENCE that spells the subagent type), unikit-gd-review (a !claude block), unikit-gd-brainstorm.
+# The four subagents are the two coordinators (rewritten) and a worker + sidecar (untouched).
+
+KIMI_DIR="$TMPDIR/test-kimi"
+mkdir -p "$KIMI_DIR"
+
+cat > "$KIMI_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": { "context7": "context7", "github": "github" } },
+  "agents": [
+    {
+      "id": "kimi",
+      "skillsDir": ".kimi-code/skills",
+      "subagentsDir": ".kimi-code/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-fix", "unikit-verify", "unikit-gd-brainstorm", "unikit-gd-review", "unikit-gd-explore"],
+      "installedSubagents": ["unikit-implement-coordinator", "unikit-plan-coordinator", "unikit-implement-worker", "unikit-review-sidecar"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$KIMI_DIR"
+
+seed_rule "$KIMI_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$KIMI_DIR"
+
+KIMI_SKILLS="$KIMI_DIR/.kimi-code/skills"
+KIMI_AGENTS="$KIMI_DIR/.kimi-code/agents"
+KIMI_MCP="$KIMI_DIR/.kimi-code/mcp.json"
+
+# Own directory (ADR-0001, REQ-001)
+assert_exists "$KIMI_SKILLS/unikit/SKILL.md" \
+  "kimi: unikit skill installed as .kimi-code/skills/<name>/SKILL.md"
+assert_exists "$KIMI_SKILLS/unikit/references/LANGUAGE_RULES_TEMPLATE.md" \
+  "kimi: unikit skill references/ delivered"
+assert_not_exists "$KIMI_DIR/.agents" \
+  "kimi: the shared .agents/ directory is never created (ADR-0001)"
+
+# No invocation rewrite (REQ-002): /unikit-* is accepted as shorthand for /skill:unikit-*
+assert_contains "$KIMI_SKILLS/unikit-plan/references/TASK-FORMAT.md" '/unikit-implement' \
+  "kimi: references keep /unikit-* verbatim"
+assert_not_contains "$KIMI_SKILLS/unikit-plan/references/TASK-FORMAT.md" '\$unikit-implement|/skills unikit-implement' \
+  "kimi: no Codex/Qwen-style invocation rewrite"
+
+# Variable substitution (REQ-001): {{settings_file}} → .kimi-code/mcp.json, nothing raw left
+assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json' \
+  "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
+assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
+  "kimi: no Antigravity settings path in a Kimi skill"
+KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool)\}\}'
+KIMI_TOKEN_HITS=$(grep -rE "$KIMI_TOKEN_RE" "$KIMI_DIR/.kimi-code" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+if [[ "$KIMI_TOKEN_HITS" -ne 0 ]]; then
+  echo "Assertion failed: kimi install leaked $KIMI_TOKEN_HITS template placeholder(s)"
+  grep -rE "$KIMI_TOKEN_RE" "$KIMI_DIR/.kimi-code" --include='*.md' | head -5
+  exit 1
+fi
+
+# general-purpose → coder in SKILL.md AND in references (REQ-007, DEC-009, DEC-011)
+KIMI_GP_HITS=$(grep -rEn 'subagent_type:[[:space:]]*"?general-purpose|`general-purpose`' "$KIMI_SKILLS" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+if [[ "$KIMI_GP_HITS" -ne 0 ]]; then
+  echo "Assertion failed: kimi skills still name the general-purpose subagent type in $KIMI_GP_HITS place(s)"
+  grep -rEn 'subagent_type:[[:space:]]*"?general-purpose|`general-purpose`' "$KIMI_SKILLS" --include='*.md' | head -5
+  exit 1
+fi
+assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "coder"' \
+  "kimi: unikit-implement spawns the coder type"
+assert_contains "$KIMI_SKILLS/unikit-gd-explore/references/delegation-contract.md" 'subagent_type: "coder"' \
+  "kimi: a REFERENCE file is rewritten too (transformReference)"
+assert_contains "$KIMI_SKILLS/unikit-gd-review/SKILL.md" 'subagent_type: coder' \
+  "kimi: the !claude block of unikit-gd-review names coder"
+assert_not_contains "$KIMI_SKILLS/unikit-gd-review/SKILL.md" 'model: sonnet' \
+  "kimi: the claude-only block (model: sonnet) is cut"
+KIMI_EXPLORE_FILES=$(grep -rEl 'subagent_type:[[:space:]]*"?Explore' "$KIMI_SKILLS" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+if [[ "$KIMI_EXPLORE_FILES" -eq 0 ]]; then
+  echo "Assertion failed: kimi: Explore must stay untouched in v1 (DEC-009) — no skill names it any more"
+  exit 1
+fi
+
+# No positional-argument token in a SKILL.md body (REQ-004, DEC-012)
+KIMI_DOLLAR_HITS=$(grep -rEn '\$[0-9]' "$KIMI_SKILLS" --include='SKILL.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+if [[ "$KIMI_DOLLAR_HITS" -ne 0 ]]; then
+  echo "Assertion failed: kimi SKILL.md bodies carry $KIMI_DOLLAR_HITS positional token(s) (\$0, \$1, …)"
+  grep -rEn '\$[0-9]' "$KIMI_SKILLS" --include='SKILL.md' | cut -c1-160 | head -5
+  exit 1
+fi
+assert_contains "$KIMI_SKILLS/unikit-verify/SKILL.md" "shasum -a 256 \| cut -d' ' -f1" \
+  "kimi: the tree-hash command ends in cut, not awk '{print \$1}'"
+
+# Coordinators (REQ-008, DEC-015, DEC-016): Agent(...) → Agent + subagents:, ${base_prompt}, kimi --agent
+KIMI_COORD="$KIMI_AGENTS/unikit-implement-coordinator.md"
+assert_exists "$KIMI_COORD" "kimi: unikit-implement-coordinator installed into .kimi-code/agents"
+frontmatter_of "$KIMI_COORD" > "$TMPDIR/kimi-coord.fm"
+assert_contains "$TMPDIR/kimi-coord.fm" '^  - Agent$' "kimi: coordinator tools: carries the plain Agent tool"
+assert_not_contains "$TMPDIR/kimi-coord.fm" 'Agent\(' "kimi: no Agent(...) entry left in the coordinator tools:"
+assert_contains "$TMPDIR/kimi-coord.fm" '^subagents:$' "kimi: coordinator has a subagents: list"
+for KIMI_SUB in unikit-implement-worker unikit-review-sidecar unikit-architecture-sidecar unikit-commit-sidecar unikit-docs-sidecar; do
+  assert_contains "$TMPDIR/kimi-coord.fm" "^  - ${KIMI_SUB}\$" "kimi: coordinator subagents: lists ${KIMI_SUB}"
+done
+if [[ "$(body_first_line_of "$KIMI_COORD")" != '${base_prompt}' ]]; then
+  echo "Assertion failed: kimi: the first body line of the coordinator must be \${base_prompt}"
+  exit 1
+fi
+assert_contains "$KIMI_COORD" 'kimi --agent unikit-implement-coordinator' "kimi: launch command rewritten"
+assert_not_contains "$KIMI_COORD" 'claude --agent' "kimi: no claude launch command left in the coordinator"
+assert_contains "$KIMI_COORD" '^Agent\(unikit-implement-worker\):' \
+  "kimi: illustrative Agent(...) lines in the body are untouched"
+
+KIMI_PLAN_COORD="$KIMI_AGENTS/unikit-plan-coordinator.md"
+assert_exists "$KIMI_PLAN_COORD" "kimi: unikit-plan-coordinator installed into .kimi-code/agents"
+frontmatter_of "$KIMI_PLAN_COORD" > "$TMPDIR/kimi-plan-coord.fm"
+assert_contains "$TMPDIR/kimi-plan-coord.fm" '^  - Agent$' "kimi: plan coordinator carries the plain Agent tool"
+assert_not_contains "$TMPDIR/kimi-plan-coord.fm" 'Agent\(' "kimi: no Agent(...) entry left in the plan coordinator"
+assert_contains "$TMPDIR/kimi-plan-coord.fm" '^subagents:$' "kimi: plan coordinator has a subagents: list"
+assert_contains "$TMPDIR/kimi-plan-coord.fm" '^  - unikit-plan-polisher$' "kimi: plan coordinator lists the polisher"
+if [[ "$(body_first_line_of "$KIMI_PLAN_COORD")" != '${base_prompt}' ]]; then
+  echo "Assertion failed: kimi: the first body line of the plan coordinator must be \${base_prompt}"
+  exit 1
+fi
+assert_contains "$KIMI_PLAN_COORD" 'kimi --agent unikit-plan-coordinator' "kimi: plan coordinator launch command rewritten"
+
+# A worker and a sidecar are not top-level agents: untouched, and `skills:` stays (DEC-014)
+for KIMI_PLAIN in unikit-implement-worker unikit-review-sidecar; do
+  assert_exists "$KIMI_AGENTS/$KIMI_PLAIN.md" "kimi: $KIMI_PLAIN installed"
+  assert_not_contains "$KIMI_AGENTS/$KIMI_PLAIN.md" 'base_prompt' "kimi: $KIMI_PLAIN gets no \${base_prompt}"
+  frontmatter_of "$KIMI_AGENTS/$KIMI_PLAIN.md" > "$TMPDIR/kimi-$KIMI_PLAIN.fm"
+  assert_not_contains "$TMPDIR/kimi-$KIMI_PLAIN.fm" '^subagents:$' "kimi: $KIMI_PLAIN gets no subagents: list"
+done
+frontmatter_of "$KIMI_AGENTS/unikit-implement-worker.md" > "$TMPDIR/kimi-worker.fm"
+assert_contains "$TMPDIR/kimi-worker.fm" '^  - Skill$' "kimi: worker keeps its Skill tool"
+assert_contains "$TMPDIR/kimi-worker.fm" '^skills:$' "kimi: worker keeps skills: (DEC-014 — Kimi ignores an unknown field)"
+
+# MCP (REQ-003): bearerTokenEnvVar, no type, no raw reference, no Antigravity placeholder
+assert_exists "$KIMI_MCP" "kimi: update wrote .kimi-code/mcp.json"
+assert_contains "$KIMI_MCP" '"bearerTokenEnvVar": "GITHUB_PAT"' "kimi: the variable NAME goes into bearerTokenEnvVar"
+assert_contains "$KIMI_MCP" '"url": "https://mcp.context7.com/mcp"' "kimi: the Context7 URL is written"
+assert_not_contains "$KIMI_MCP" '"type"' "kimi: no type field (the transport is read off command/url)"
+assert_not_contains "$KIMI_MCP" '\{\{env:' "kimi: no raw {{env:...}} reference"
+assert_not_contains "$KIMI_MCP" 'YOUR_GITHUB_PAT' "kimi: no Antigravity-style placeholder"
+# The word `Authorization` is legitimately present (Context7's _comment names it), so the
+# absence of the header is asserted on the STRUCTURE of the github entry, not by text search.
+KIMI_GH_SHAPE=$(node -e "const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')); const e = j.mcpServers.github; process.stdout.write(e && e.headers === undefined && e.type === undefined && e.bearerTokenEnvVar === 'GITHUB_PAT' ? 'ok' : 'bad');" "$KIMI_MCP")
+[[ "$KIMI_GH_SHAPE" == "ok" ]] || { echo "Assertion failed: kimi github entry must carry bearerTokenEnvVar and neither headers nor type"; exit 1; }
+
+echo "  ✓ kimi: own .kimi-code/ tree, coder instead of general-purpose (skills + references), no \$N token, adapted coordinators, bearerTokenEnvVar MCP"
+
+# ─────────────────────────────────────────────────────
 # Test 4: RULES_INDEX.md end-to-end smoke after `unikit-ai update`
 # ─────────────────────────────────────────────────────
 # Update should drive syncRulesState which regenerates the index. The
@@ -1972,10 +2133,10 @@ echo "  ✓ configByPlatform: fennara resolves to a token-free absolute command 
 # ─────────────────────────────────────────────────────
 # The catalog stores the token as `{{env:GITHUB_PAT}}`; each writer renders it in its
 # client's syntax. A wrong first write is permanent ("present → keep"), so the real
-# catalog is driven through configureMcp for all six agents, then through a full
+# catalog is driven through configureMcp for all seven agents, then through a full
 # update for the grants. No network, no server start.
 
-for GH_AGENT in claude cursor qwen opencode codex antigravity; do
+for GH_AGENT in claude cursor qwen opencode codex antigravity kimi; do
   GH_DIR="$TMPDIR/test-github-mcp-$GH_AGENT"
   mkdir -p "$GH_DIR"
   (cd "$ROOT_DIR" && node --input-type=module -e "
@@ -1993,7 +2154,8 @@ GH_QWEN="$TMPDIR/test-github-mcp-qwen/.qwen/settings.json"
 GH_OPENCODE="$TMPDIR/test-github-mcp-opencode/opencode.json"
 GH_CODEX="$TMPDIR/test-github-mcp-codex/.codex/config.toml"
 GH_ANTIGRAVITY="$TMPDIR/test-github-mcp-antigravity/.agents/mcp_config.json"
-for GH_FILE in "$GH_CLAUDE" "$GH_CURSOR" "$GH_QWEN" "$GH_OPENCODE" "$GH_CODEX" "$GH_ANTIGRAVITY"; do
+GH_KIMI="$TMPDIR/test-github-mcp-kimi/.kimi-code/mcp.json"
+for GH_FILE in "$GH_CLAUDE" "$GH_CURSOR" "$GH_QWEN" "$GH_OPENCODE" "$GH_CODEX" "$GH_ANTIGRAVITY" "$GH_KIMI"; do
   assert_exists "$GH_FILE" "GitHub MCP written into ${GH_FILE#$TMPDIR/}"
   assert_not_contains "$GH_FILE" '\{\{env:' "no raw {{env:}} token left in ${GH_FILE#$TMPDIR/}"
 done
@@ -2005,6 +2167,12 @@ assert_contains "$GH_OPENCODE" '\{env:GITHUB_PAT\}' "opencode: {env:GITHUB_PAT}"
 assert_contains "$GH_OPENCODE" '"oauth": false' "opencode: oauth off when the token is ours"
 assert_contains "$GH_CODEX" 'bearer_token_env_var = "GITHUB_PAT"' "codex: bearer_token_env_var"
 assert_contains "$GH_ANTIGRAVITY" 'Bearer YOUR_GITHUB_PAT' "antigravity: the YOUR_GITHUB_PAT placeholder"
+assert_contains "$GH_KIMI" '"bearerTokenEnvVar": "GITHUB_PAT"' "kimi: the variable NAME goes into bearerTokenEnvVar"
+assert_not_contains "$GH_KIMI" '"type"' "kimi: no type field (the transport is read off command/url)"
+# Text search for `Authorization` is no good here: Context7's _comment, written into the same
+# file, names it. The absence of the header is asserted on the entry's structure.
+GH_KIMI_SHAPE=$(node -e "const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')); const e = j.mcpServers.github; process.stdout.write(e && e.headers === undefined && e.bearerTokenEnvVar === 'GITHUB_PAT' ? 'ok' : 'bad');" "$GH_KIMI")
+[[ "$GH_KIMI_SHAPE" == "ok" ]] || { echo "Assertion failed: kimi github entry must carry bearerTokenEnvVar and no headers"; exit 1; }
 
 # The wizard reads the real catalog: GitHub stays unchecked on a fresh install.
 GH_PRESELECT=$(cd "$ROOT_DIR" && node --input-type=module -e "
@@ -2073,7 +2241,7 @@ assert_contains "$GH_GRANTS_DIR/.claude/skills/unikit-pr/SKILL.md" 'mcp__github_
 assert_not_contains "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" 'mcp__github__' \
   "no other skill gets a GitHub grant"
 
-echo "  ✓ GitHub MCP: six clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
+echo "  ✓ GitHub MCP: seven clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
 
 # ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install
