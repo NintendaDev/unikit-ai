@@ -188,6 +188,8 @@ export const MCP_ENV_TOKEN_PATTERN = '\\{\\{env:([A-Z][A-Z0-9_]*)\\}\\}';
 export const MCP_ENV_PLACEHOLDER_PREFIX = 'YOUR_';
 export const CODEX_BEARER_TOKEN_ENV_FIELD = 'bearer_token_env_var';
 export const CODEX_ENV_HTTP_HEADERS_FIELD = 'env_http_headers';
+/** Kimi Code takes the NAME of a bearer-token variable in one field, like Codex — it expands no `${VAR}` inside a header. */
+export const KIMI_BEARER_TOKEN_ENV_FIELD = 'bearerTokenEnvVar';
 export const QWEN_HTTP_URL_FIELD = 'httpUrl';
 export const OPENCODE_OAUTH_FIELD = 'oauth';
 /** Prefixes of a literal GitHub token — a settings entry carrying one was not written by UniKit. */
