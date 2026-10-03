@@ -2183,8 +2183,8 @@ echo "  ✓ update --install-new --skip-new: --skip-new wins (no new skills, no 
 # Test 33: Antigravity + Kimi in ONE project — two independent trees, idempotent update
 # ─────────────────────────────────────────────
 # Kimi Code owns .kimi-code/ (ADR-0001); Antigravity keeps the shared .agents/. A project that
-# selects both must get two trees with DIFFERENT bytes (Kimi: coder + .kimi-code/mcp.json +
-# adapted subagents; Antigravity: general-purpose + .agents/mcp_config.json + no subagents),
+# selects both must get two trees with DIFFERENT bytes (Kimi: worker type coder + .kimi-code/mcp.json +
+# adapted subagents; Antigravity: worker type self + .agents/mcp_config.json + no subagents),
 # a second `update` that changes nothing in either, and a repair of one tree that leaves the
 # other alone. Every hash check below is assert_same_sha, which exits 1: assert_file_unchanged
 # only bumps a counter these scripts never read, so it could not fail here.
@@ -2253,7 +2253,7 @@ fi
 assert_contains "$AK_KIMI_SKILL" '\.kimi-code/mcp\.json' "kimi copy: {{settings_file}} is .kimi-code/mcp.json"
 assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
 assert_contains "$AK_AG_SKILL" '\.agents/mcp_config\.json' "antigravity copy: {{settings_file}} is .agents/mcp_config.json"
-assert_contains "$AK_AG_SKILL" 'subagent_type: "general-purpose"' "antigravity copy: general-purpose untouched"
+assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
 assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
 
 # MCP, each client in its own form

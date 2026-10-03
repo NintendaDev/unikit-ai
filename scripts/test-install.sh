@@ -94,6 +94,17 @@ else
   exit 1
 fi
 
+# The agent-profile variables are substituted too: a `{{agent_…}}` left in an installed skill
+# means the name never reached the processTemplate alternation (an unknown name stays as written).
+AGENT_VAR_HITS=$(grep -rF '{{agent_' "$CLAUDE_DIR/.claude" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+if [[ "$AGENT_VAR_HITS" -eq 0 ]]; then
+  echo "  ✓ template substitution: no {{agent_…}} profile variables left in installed files"
+else
+  echo "Assertion failed: found $AGENT_VAR_HITS unresolved {{agent_…}} profile variable(s)"
+  grep -rF '{{agent_' "$CLAUDE_DIR/.claude" --include='*.md' | cut -c1-160 | head -5
+  exit 1
+fi
+
 # ─────────────────────────────────────────────────────
 # Test 1a-noref: default agents (claude) leave reference invocations verbatim
 # ─────────────────────────────────────────────────────
@@ -674,7 +685,7 @@ assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json'
   "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "kimi: no Antigravity settings path in a Kimi skill"
-KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool)\}\}'
+KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default)\}\}'
 KIMI_TOKEN_HITS=$(grep -rE "$KIMI_TOKEN_RE" "$KIMI_DIR/.kimi-code" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$KIMI_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: kimi install leaked $KIMI_TOKEN_HITS template placeholder(s)"
@@ -682,7 +693,7 @@ if [[ "$KIMI_TOKEN_HITS" -ne 0 ]]; then
   exit 1
 fi
 
-# general-purpose → coder in SKILL.md AND in references (REQ-007, DEC-009, DEC-011)
+# The worker type is `coder` through the agent profile, in SKILL.md AND in references (REQ-007, ASP-REQ-006)
 KIMI_GP_HITS=$(grep -rEn 'subagent_type:[[:space:]]*"?general-purpose|`general-purpose`' "$KIMI_SKILLS" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$KIMI_GP_HITS" -ne 0 ]]; then
   echo "Assertion failed: kimi skills still name the general-purpose subagent type in $KIMI_GP_HITS place(s)"
@@ -692,16 +703,20 @@ fi
 assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "coder"' \
   "kimi: unikit-implement spawns the coder type"
 assert_contains "$KIMI_SKILLS/unikit-gd-explore/references/delegation-contract.md" 'subagent_type: "coder"' \
-  "kimi: a REFERENCE file is rewritten too (transformReference)"
+  "kimi: a REFERENCE file carries the profile variable too (profile variable in a reference)"
 assert_contains "$KIMI_SKILLS/unikit-gd-review/SKILL.md" 'subagent_type: coder' \
-  "kimi: the !claude block of unikit-gd-review names coder"
+  "kimi: lens-agent names the worker type"
 assert_not_contains "$KIMI_SKILLS/unikit-gd-review/SKILL.md" 'model: sonnet' \
-  "kimi: the claude-only block (model: sonnet) is cut"
+  "kimi: Kimi has no model default"
+# The reader type is `explore` in lower case (the profile), never the capitalised Claude spelling (ASP-DEC-003)
 KIMI_EXPLORE_FILES=$(grep -rEl 'subagent_type:[[:space:]]*"?Explore' "$KIMI_SKILLS" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
-if [[ "$KIMI_EXPLORE_FILES" -eq 0 ]]; then
-  echo "Assertion failed: kimi: Explore must stay untouched in v1 (DEC-009) — no skill names it any more"
+if [[ "$KIMI_EXPLORE_FILES" -ne 0 ]]; then
+  echo "Assertion failed: kimi skills name the capitalised Explore type in $KIMI_EXPLORE_FILES file(s) — the profile reader type is explore"
+  grep -rEn 'subagent_type:[[:space:]]*"?Explore' "$KIMI_SKILLS" --include='*.md' | cut -c1-160 | head -5
   exit 1
 fi
+assert_contains "$KIMI_SKILLS/unikit-fix/SKILL.md" 'subagent_type: explore, prompt:' \
+  "kimi: recon-agent launches the profile's reader type, lower case"
 
 # No positional-argument token in a SKILL.md body (REQ-004, DEC-012)
 KIMI_DOLLAR_HITS=$(grep -rEn '\$[0-9]' "$KIMI_SKILLS" --include='SKILL.md' 2>/dev/null | wc -l | tr -d ' ' || true)
@@ -768,7 +783,7 @@ assert_not_contains "$KIMI_MCP" 'YOUR_GITHUB_PAT' "kimi: no Antigravity-style pl
 KIMI_GH_SHAPE=$(node -e "const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')); const e = j.mcpServers.github; process.stdout.write(e && e.headers === undefined && e.type === undefined && e.bearerTokenEnvVar === 'GITHUB_PAT' ? 'ok' : 'bad');" "$KIMI_MCP")
 [[ "$KIMI_GH_SHAPE" == "ok" ]] || { echo "Assertion failed: kimi github entry must carry bearerTokenEnvVar and neither headers nor type"; exit 1; }
 
-echo "  ✓ kimi: own .kimi-code/ tree, coder instead of general-purpose (skills + references), no \$N token, adapted coordinators, bearerTokenEnvVar MCP"
+echo "  ✓ kimi: own .kimi-code/ tree, worker type coder from the profile (skills + references), no \$N token, adapted coordinators, bearerTokenEnvVar MCP"
 
 # ─────────────────────────────────────────────────────
 # Test 4: RULES_INDEX.md end-to-end smoke after `unikit-ai update`

@@ -690,7 +690,7 @@ The `generate_set` list contains stack technologies that either had no registry 
 
 ```
 Agent(
-  subagent_type: "general-purpose",
+  subagent_type: "{{agent_worker_type}}",
   prompt: "/unikit-memory --module code --skip-registry Add stack rules for {technology name}",
   description: "Generate {technology} rules",
   skills: ["unikit-memory"]
@@ -834,7 +834,7 @@ Launch the subagent:
 
 ```
 Agent(
-  subagent_type: "general-purpose",
+  subagent_type: "{{agent_worker_type}}",
   prompt: "/unikit-architecture",
   description: "Generate project architecture",
   skills: ["unikit-architecture"]

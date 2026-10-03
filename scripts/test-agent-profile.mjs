@@ -4,6 +4,8 @@
 // harness. Writes nothing into the repository.
 
 import path from 'path';
+import os from 'os';
+import fs from 'fs/promises';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +17,7 @@ const { AGENT_REGISTRY } = await import(dist('core/agents.js'));
 const { buildTemplateVars, processTemplate } = await import(dist('core/template.js'));
 const { buildSubagentTemplateVars } = await import(dist('core/installer/shared.js'));
 const { computeSourceHashWithTemplate } = await import(dist('core/installer/hashing.js'));
+const { installSkills } = await import(dist('core/installer/skills.js'));
 
 let passed = 0;
 let failed = 0;
@@ -52,6 +55,16 @@ async function group(name, fn) {
     } catch (error) {
         fail(name, `threw: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
     }
+}
+
+async function walk(dir) {
+    const out = [];
+    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) out.push(...await walk(full));
+        else out.push(full);
+    }
+    return out;
 }
 
 // The profile as the research package states it (ASP-REQ-001, ASP-REQ-008). Writing the table
@@ -141,6 +154,69 @@ await group('V4', async () => {
             profile[field] = original;
         }
         assertEq(`V4c restoring ${field} restores the skill hash`, await hash(), before);
+    }
+});
+
+// ── I: the installed text, per agent (Task 25) ──────────────────────────────
+// The table is built from AGENT_REGISTRY and goes through the real installSkills over the real
+// skills/, so an eighth agent joins it by itself and the test cannot repeat the installer's logic.
+
+const INSTALL_SKILLS = ['unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-implement', 'unikit-gd-explore', 'unikit-review'];
+const countOf = (text, needle) => text.split(needle).length - 1;
+
+await group('I', async () => {
+    const agents = Object.values(AGENT_REGISTRY);
+    const installed = {};
+
+    for (const agent of agents) {
+        const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), `unikit-profile-${agent.id}-`));
+        try {
+            await installSkills({ projectDir, skillsDir: agent.skillsDir, skills: INSTALL_SKILLS, agentId: agent.id, engineId: 'unity', engineMcpKey: null });
+            const skill = (name, file = 'SKILL.md') => fs.readFile(path.join(projectDir, agent.skillsDir, name, file), 'utf8');
+            const texts = {
+                explore: await skill('unikit-explore'),
+                plan: await skill('unikit-plan'),
+                gdReview: await skill('unikit-gd-review'),
+                implement: await skill('unikit-implement'),
+                contract: await skill('unikit-gd-explore', path.join('references', 'delegation-contract.md')),
+            };
+
+            let leaked = 0;
+            for (const file of await walk(path.join(projectDir, agent.skillsDir))) {
+                if (file.endsWith('.md') && (await fs.readFile(file, 'utf8')).includes('{{agent_')) leaked++;
+            }
+            installed[agent.id] = texts;
+
+            const { readerType: reader, workerType: worker, modelDefault } = agent.subagentProfile;
+            assertTrue(`I1 ${agent.id}: recon-agent launches the reader type "${reader}"`, texts.explore.includes(`Agent(subagent_type: ${reader}, prompt: "<focused question>")`));
+            assertTrue(`I1 ${agent.id}: check-agent launches the reader type "${reader}"`, texts.explore.includes(`Agent(subagent_type: ${reader}, prompt: "Read <path of references/coherence-gate.md>`));
+            assertTrue(`I2 ${agent.id}: the recon writer launches the worker type "${worker}"`, texts.plan.includes(`Agent(subagent_type: ${worker}, prompt: "Reconnaissance for an ultra plan`));
+            assertTrue(`I3 ${agent.id}: lens-agent launches the worker type "${worker}"`, texts.gdReview.includes(`Agent(subagent_type: ${worker}, prompt: "<one lens brief>")`));
+            assertEq(`I3 ${agent.id}: develop-agent and docs-agent name the worker type`, countOf(texts.implement, `subagent_type: "${worker}",`), 2);
+            assertTrue(`I3 ${agent.id}: a reference file carries the worker type too`, texts.contract.includes(`subagent_type: "${worker}",`));
+            assertTrue(`I4 ${agent.id}: the model rule names its own config key`, texts.explore.includes(`subagents.model.${agent.id}`));
+            assertTrue(`I4 ${agent.id}: the model rule carries the built-in default "${modelDefault}"`, texts.explore.includes('built-in default `"' + modelDefault + '"`'));
+            assertEq(`I6 ${agent.id}: no unresolved {{agent_…}} in any installed .md`, leaked, 0);
+            assertEq(`I7 ${agent.id}: the codex-only block is present for codex alone`, texts.explore.includes('Subagent Delegation — BLOCKING PRE-REQUISITE'), agent.id === 'codex');
+        } finally {
+            await fs.rm(projectDir, { recursive: true, force: true });
+        }
+    }
+
+    // I5: no agent's text carries another agent's type. The trailing comma (and the quote on the
+    // worker form) is what tells `explore` from `explorer` and `general` from `general-purpose`.
+    for (const agent of agents) {
+        for (const other of agents) {
+            if (other.id === agent.id) continue;
+            const mine = agent.subagentProfile;
+            const theirs = other.subagentProfile;
+            if (theirs.readerType !== mine.readerType) {
+                assertTrue(`I5 ${agent.id} has no trace of ${other.id}'s reader type "${theirs.readerType}"`, !installed[agent.id].explore.includes(`Agent(subagent_type: ${theirs.readerType},`));
+            }
+            if (theirs.workerType !== mine.workerType) {
+                assertTrue(`I5 ${agent.id} has no trace of ${other.id}'s worker type "${theirs.workerType}"`, !installed[agent.id].implement.includes(`subagent_type: "${theirs.workerType}",`));
+            }
+        }
     }
 });
 

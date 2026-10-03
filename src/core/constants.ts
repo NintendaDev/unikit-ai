@@ -200,10 +200,6 @@ export const MCP_ENTRY_URL_FIELDS = ['url', QWEN_HTTP_URL_FIELD, 'serverUrl'] as
 export const AUTHORIZATION_HEADER = 'authorization';
 export const BEARER_PREFIX = 'Bearer ';
 
-/** Kimi Code has no `general-purpose` subagent type; `coder` is its only profile that edits files, and its default. */
-export const GENERAL_PURPOSE_SUBAGENT_TYPE = 'general-purpose';
-export const KIMI_CODER_SUBAGENT_TYPE = 'coder';
-
 /** Subagent-file spellings the Kimi adapter rewrites: the dispatch tool, its allow-list field, the launch command, the built-in prompt placeholder. */
 export const AGENT_TOOL_NAME = 'Agent';
 export const SUBAGENTS_FRONTMATTER_FIELD = 'subagents';

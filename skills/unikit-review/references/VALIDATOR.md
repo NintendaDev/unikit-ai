@@ -1,6 +1,6 @@
 # Review item validator — subagent prompt
 
-This file is loaded by `unikit-review` when the `+check` flag is set. The skill substitutes the placeholders below and dispatches a single `check-agent` call (declared in `SKILL.md` under `## Delegation agents`). The subagent runs with fresh context — it cannot rely on anything from the parent conversation. The alias expands to `Explore`, which is **read-only by construction** (its tool set excludes Edit/Write); the validator's read-only behavior is guaranteed by the dispatch, not merely requested in the prompt.
+This file is loaded by `unikit-review` when the `+check` flag is set. The skill substitutes the placeholders below and dispatches a single `check-agent` call (declared in `SKILL.md` under `## Delegation agents`). The subagent runs with fresh context — it cannot rely on anything from the parent conversation. The alias expands to this runtime's read-only agent type (`{{agent_reader_type}}`), but the validator's read-only behavior (`Read`, `Glob`, `Grep` only — no writes, no state-changing commands) is requested in the prompt below and never assumed from the type.
 
 Treat this file as a template. When the skill invokes the validator, it MUST replace:
 

@@ -3080,15 +3080,16 @@ fi
 # The save is the peak of a session; the gate file is ~11 KB, and sending its criteria in the
 # prompt made the saving session read all of it at exactly that moment, to build a prompt for
 # a context that could have read the file itself. Three halves, each its own failure:
-#   - the dispatch form: the alias prompt names the path, in BOTH agent variants (count, not
-#     presence — a revert in one variant leaves the other green), and the retired form that
-#     carried the criteria is gone;
+#   - the dispatch form: the alias prompt names the path, in the alias's ONE definition (a
+#     count, not presence — a second, divergent copy of the alias would leave this green by
+#     presence; the claude/!claude pair is gone since the agent profile replaced it), and the
+#     retired form that carried the criteria is gone;
 #   - the report contract in the gate file: without it the saving session, which no longer
 #     reads the file, has no procedure to act on — no repair rules, no budget, no remainder;
 #   - the consumer: the call site acts on the report's `Next:` line. A contract declared and
 #     never consumed is the RM-1 failure in another place.
 CG12_PATH_FORMS="$(grep -cF 'Read <path of references/coherence-gate.md>' "$CG_SKILL" || true)"
-(( CG12_PATH_FORMS == 2 )) || CG_WHY+=" CG-12:dispatch-not-by-path-in-both-variants($CG12_PATH_FORMS)"
+(( CG12_PATH_FORMS == 1 )) || CG_WHY+=" CG-12:dispatch-not-by-path-in-the-one-definition($CG12_PATH_FORMS)"
 if grep -qF 'the criteria from references/coherence-gate.md' "$CG_SKILL"; then CG_WHY+=" CG-12:criteria-sent-in-the-prompt"; fi
 grep -qF '## What the pass returns' "$CG_REF"                   || CG_WHY+=" CG-12:no-report-contract"
 grep -qF 'quotes `### What a repair may do` whole' "$CG_REF"    || CG_WHY+=" CG-12:report-drops-the-repair-rules"
@@ -7847,7 +7848,7 @@ fi
 # starts advancing over rules that were never written. Same shape as HG-5 and the CK
 # graceful-degradation pair.
 #
-# Anchored on FORMULATIONS, never on headings (RT-6 / LA-7 / DM-3 convention): a heading is
+# Anchored on FORMULATIONS, never on headings (RT-6 / LA-7 / AP-5 convention): a heading is
 # rewritten during cosmetics, a formulation only together with its meaning.
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Validate evolve write boundary + batch delegation ===${NC}\n"
@@ -9198,27 +9199,30 @@ if [[ -z "$WP_WHY" ]]; then
     grep -qF 'when the runtime has no writing agent' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-no-session-write"
     grep -qF 'only the path and the file' "$WP_ULTRA" && WP_WHY+=" WP-1:step-b-promises-path-only"
     grep -qF 'only the path and the file' "$WP_PLAN" && WP_WHY+=" WP-2:step-4-promises-path-only"
-    # the alias in BOTH agent-filter branches: the writing agent on Claude, recon-agent + a write elsewhere
-    WP_CLAUDE="$(awk '/^<!-- unikit:agents claude -->$/{f=1;next} /^<!-- unikit:end -->$/{f=0} f' "$WP_PLAN")"
-    WP_OTHER="$(awk '/^<!-- unikit:agents !claude -->$/{f=1;next} /^<!-- unikit:end -->$/{f=0} f' "$WP_PLAN")"
-    grep -qF 'Agent(subagent_type: general-purpose, model: sonnet, prompt: "Reconnaissance for an ultra plan' <<< "$WP_CLAUDE" \
-        || WP_WHY+=" WP-2:no-writer-expansion"
-    grep -qF 'That file is the only one you may create or change' <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-unbounded"
-    grep -qF 'filling every section of the template <path of RECON-TEMPLATE.md>' <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-no-template"
-    grep -qF "Reply with the file's path and its \`## Summary\` section, word for word" <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-reply-not-summary"
-    grep -qF '**`recon-writer-agent`**' <<< "$WP_OTHER" || WP_WHY+=" WP-2:no-writer-fallback-branch"
-    # ...and in that branch the session's write is spelled out: why (the reader cannot save), when
-    # (before anything else), the folder, and the order (file first, `pending` off last)
-    for lit in 'it only reads and cannot save a file' 'before anything else, create `recon/` if it is missing' \
-               'take `pending` off only once the file is on disk'; do
-        grep -qF -- "$lit" <<< "$WP_OTHER" || WP_WHY+=" WP-2:fallback-write-vague(${lit:0:28})"
-    done
-    # ...and the writer is a saved-state tool only: a live run on the standard protocol picked it up
-    # on its own, leaving full answers in a folder no resume knows about
-    grep -qF 'Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol' <<< "$WP_CLAUDE" \
-        || WP_WHY+=" WP-2:writer-unscoped"
-    grep -qF 'used only after `mode-ultra.md` Step A0 or Step D2 chose that protocol' <<< "$WP_OTHER" \
-        || WP_WHY+=" WP-2:writer-fallback-unscoped"
+    # the writer is ONE definition: an agent that can write where the runtime has one, and where it
+    # has not (or the call fails) recon-agent plus a write by the session — a fallback inside the
+    # definition, not a second branch of text. The window runs from its bullet to the next heading.
+    WP_WRITER="$(awk '/^- \*\*`recon-writer-agent`\*\*/{f=1} f&&/^## /{exit} f' "$WP_PLAN")"
+    if [[ -z "$WP_WRITER" ]]; then
+        WP_WHY+=" WP-2:no-writer-definition"
+    else
+        # the expansion, bounded: one file only, in the template's form, the reply the summary
+        # alone; the fallback spelled out: why (the reader cannot save), when (before anything
+        # else), the folder, and the order (file first, `pending` off last); and the writer is a
+        # saved-state tool only — a live run on the standard protocol picked it up on its own,
+        # leaving full answers in a folder no resume knows about
+        for lit in 'Agent(subagent_type: {{agent_worker_type}}, prompt: "Reconnaissance for an ultra plan' \
+                   'That file is the only one you may create or change' \
+                   'filling every section of the template <path of RECON-TEMPLATE.md>' \
+                   "Reply with the file's path and its \`## Summary\` section, word for word" \
+                   'it only reads and cannot save a file' \
+                   'before anything else, create `recon/` if it is missing' \
+                   'take `pending` off only once the file is on disk' \
+                   'Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol'; do
+            grep -qF -- "$lit" <<< "$WP_WRITER" || WP_WHY+=" WP-2:writer-missing(${lit:0:28})"
+        done
+        grep -qF 'unikit:agents' <<< "$WP_WRITER" && WP_WHY+=" WP-2:writer-behind-a-branch"
+    fi
     # (WP-2) continuation, the unfinished-plan branch and "Start over" through the script only
     WP_5A="$( { grep '^5a\. ' "$WP_PLAN" || true; } )"
     if [[ -z "$WP_5A" ]]; then
@@ -9333,10 +9337,11 @@ else
 fi
 
 # --- KM: the Kimi Code agent — source-level contracts --------------------------------------
-# The adapter (src/core/transformers/kimi*.ts) rewrites spellings that live in skill and
-# subagent SOURCES. These guards watch the source side, so a new spelling cannot slip past a
-# rewrite written against today's text. The rewrites' behaviour is scripts/test-kimi-transform.mjs
-# (Part 7f3); the installed result is test-install.sh Test 3d.
+# The adapter (src/core/transformers/kimi*.ts) adapts subagent FILES; skill text is the same for
+# every agent (the subagent types come from the agent profile — AP-1…AP-7, Part 7g3). These
+# guards watch the source side, so a new spelling cannot slip past an adaptation written
+# against today's text. The adapter's behaviour is scripts/test-kimi-transform.mjs (Part 7f3);
+# the installed result is test-install.sh Test 3d.
 KM_WHY=""
 
 # (KM-1) no positional-argument token in any SKILL.md body. Kimi Code substitutes $0, $1, …
@@ -9356,18 +9361,8 @@ for km_f in "$ROOT_DIR/skills/unikit-verify/SKILL.md" "$ROOT_DIR/skills/unikit-i
     grep -qF "| shasum -a 256 | cut -d' ' -f1" "$km_f" || KM_WHY+=" KM-1:hash-tail-not-cut:${km_f##*/}"
 done
 
-# (KM-2) every `general-purpose` in skills/**/*.md is one of the two spellings the Kimi
-# transformer rewrites. The word is not forbidden — the swap exists because the skills use
-# it — but a third spelling would reach Kimi unrewritten.
-KM_GP_RE="subagent_type:[[:space:]]*[\"']?general-purpose([^[:alnum:]_-]|\$)|\`general-purpose\`"
-KM_GP_LINES=0
-while IFS= read -r km_hit; do
-    [[ -n "$km_hit" ]] || continue
-    KM_GP_LINES=$((KM_GP_LINES + 1))
-    km_text="${km_hit#*:*:}"
-    grep -qE -- "$KM_GP_RE" <<< "$km_text" || KM_WHY+=" KM-2:unhandled-spelling:${km_hit%%:*}"
-done < <(cd "$ROOT_DIR" && { grep -rnF 'general-purpose' skills --include='*.md' || true; })
-[[ "$KM_GP_LINES" -gt 0 ]] || KM_WHY+=" KM-2:no-object"
+# (KM-2 was retired with the swap it guarded: the `general-purpose` → `coder` rewrite is gone,
+# and AP-1…AP-7 now forbid the literal in skills altogether.)
 
 # (KM-3) Kimi-only text is born in the adapter, never in a source. `${base_prompt}` in a
 # source would be literal text for the other six agents (and doubled for Kimi); `kimi --agent`
@@ -9381,9 +9376,9 @@ km_cl="$({ grep -rlF 'claude --agent' "$ROOT_DIR/subagents" 2>/dev/null || true;
 [[ "$km_cl" -gt 0 ]] || KM_WHY+=" KM-3:no-claude-launch-to-rewrite"
 
 if [[ -z "$KM_WHY" ]]; then
-    pass "KM-1…KM-3 Kimi Code source contracts ($KM_SKILL_SEEN SKILL.md without a positional token, $KM_GP_LINES general-purpose line(s) all rewritable, adapter-only spellings)"
+    pass "KM-1/KM-3 Kimi Code source contracts ($KM_SKILL_SEEN SKILL.md without a positional token, adapter-only spellings)"
 else
-    fail "KM-1…KM-3 Kimi Code source contracts violated:$KM_WHY"
+    fail "KM-1/KM-3 Kimi Code source contracts violated:$KM_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -10056,107 +10051,108 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7g3: DM-1…DM-3 — the delegation model policy
+# Part 7g3: AP-1…AP-7 — the agent profile in skills
 # ─────────────────────────────────────────────
-# A skill body travels to all seven runtimes; a dispatch-time `model:` argument with a tier
-# alias works on exactly one of them (Kimi Code's `Agent` takes a `model` too, but no Claude
-# alias), and of the others three have no stable tier alias at all. The
-# policy is therefore not "pick the right model per runtime" but "name the model in ONE
-# declared place per skill, behind an agent-filter branch, and nowhere else". Three guards,
-# each closing a different way that policy rots:
+# A skill body travels to all seven runtimes, and the runtimes disagree on what a subagent is
+# called and whether a dispatch can name a model. The disagreement is data — the agent profile
+# in `AGENT_REGISTRY` (`subagentProfile`) — and the installer substitutes it into the text
+# (`{{agent_reader_type}}`, `{{agent_worker_type}}`, `{{agent_id}}`, `{{agent_model_default}}`).
+# So the sources must name NO runtime's type and NO model; what they may carry is the variable
+# and, once per skill, the rule that settles the model argument from `.unikit/config.yaml`.
+# Seven guards, each closing a different way that rots:
 #
-#   DM-1  counter-pair (MT-1/MT-2 idiom) — every `model:` in skills/** sits inside an
-#         `Agent(subagent_type: …)` expansion. An EQUALITY between two counts, not a search
-#         for a negation, so a prose mention ("use `subagent_type: Explore, model: sonnet`")
-#         is caught with no allowlist: it raises the total and not the in-call count. That
-#         is the exact shape that survived every earlier cleanup.
-#   DM-2  confinement (RT-5 idiom) — the only files that may carry the literal are
-#         `skills/*/SKILL.md`, and inside each one every occurrence sits between
-#         `<!-- unikit:agents claude -->` and its `<!-- unikit:end -->`. A reference file is
-#         never filtered (Part 7g2), so a literal there ships the argument to all seven.
-#   DM-3  positive presence — the two rationale sentences exist, one per branch. A guard
-#         does not reach the user (`scripts/` is outside `files` in package.json); the skill
-#         text does. Deleting the reason is the regression that leaves the suite green and
-#         the reader uninformed, and nothing else here would notice.
+#   AP-1  counter pair (MT-1/MT-2 idiom) — every `subagent_type:` in skills/**/*.md is followed
+#         by a profile variable. An EQUALITY between two counts, not a search for a negation,
+#         so a literal type needs no allowlist: it raises the total and not the variable count.
+#   AP-2  no runtime's type name in prose backticks, and no `general-purpose` at all — the word
+#         that used to be the literal. The bare words `Explore` / `coder` stay legal as a skill
+#         name and a role ("Explore tasks"): only a backticked type name is a stale spelling.
+#   AP-3  no `model: <word>` and none of the retired per-branch rationale sentences.
+#   AP-4  the model rule stands once in every SKILL.md that declares a model-carrying alias,
+#         and nowhere else (a second copy drifts; a copy without an alias is dead text).
+#   AP-5  the rule says everything its reader needs — the reader is the model, not a compiler,
+#         and a rule with a clause missing is followed with that clause missing.
+#   AP-6  a delegation call never lives behind a non-codex agent-filter branch: the profile
+#         replaced those branches, so one coming back means a second definition has appeared.
+#   AP-7  the variables are a skills-only mechanism. Subagent files and system assets render
+#         with EMPTY values, so a stray `{{agent_…}}` there would vanish silently.
 #
 # Anchored on FORMULATIONS, never on headings: a heading is rewritten during cosmetics, a
-# formulation only together with its meaning. Zero occurrences is a FAIL and not a silent
-# pass, on the convention MT-1 and RT-1 use — an empty corpus is when a green result is
-# worth the least. That branch only exists if the counters survive an empty grep, which
-# under `set -euo pipefail` they do not by default — hence `{ … || true; }` below.
-echo -e "\n${BOLD}Part 7g3: delegation model policy (DM-1/DM-2/DM-3)${NC}"
+# formulation only together with its meaning. Zero objects is a FAIL, not a silent pass — an
+# empty corpus is when a green result is worth the least. That only works if the counters
+# survive an empty grep, which under `set -euo pipefail` they do not by default — hence the
+# `{ … || true; }` around every grep inside a substitution below.
+echo -e "\n${BOLD}Part 7g3: agent profile in skills (AP-1…AP-7)${NC}"
 
-DM_SCOPE="$ROOT_DIR/skills"
-DM_CALL_RE='Agent\(subagent_type: [A-Za-z][A-Za-z-]*, model: [a-z]+'
+AP_SCOPE="$ROOT_DIR/skills"
+AP_WHY=""
 
-# `|| true` inside the substitution, not after it: the file runs under `set -euo pipefail`
-# (`scripts/test-skills.sh:5`), so a grep that matches NOTHING fails the pipeline and the
-# assignment aborts the whole suite — the `-eq 0` branch below would never be reached and
-# the diagnostic it exists to print would never appear. The braces keep the failure inside
-# the pipeline's first stage; `wc -l` still receives an empty stream and prints `0`.
-DM_MODEL_TOTAL=$( { grep -rhoE 'model: [a-z]+' "$DM_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
-DM_IN_CALL=$( { grep -rhoE "$DM_CALL_RE" "$DM_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+# (AP-1)
+AP_TYPE_TOTAL=$( { grep -rhoE 'subagent_type:' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+AP_TYPE_VAR=$( { grep -rhoE 'subagent_type:[[:space:]]*"?\{\{agent_(reader|worker)_type\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_TYPE_TOTAL" -gt 0 ]] || AP_WHY+=" AP-1:no-call-site"
+[[ "$AP_TYPE_TOTAL" -eq "$AP_TYPE_VAR" ]] || AP_WHY+=" AP-1:literal-type($AP_TYPE_TOTAL!=$AP_TYPE_VAR)"
 
-# (DM-1)
-if [[ "$DM_MODEL_TOTAL" -eq 0 ]]; then
-    fail "DM-1: no model literal in skills/ at all — the scope is wrong, not the corpus"
-elif [[ "$DM_MODEL_TOTAL" -eq "$DM_IN_CALL" ]]; then
-    pass "DM-1: all $DM_MODEL_TOTAL model literals sit inside an Agent(subagent_type: …) expansion"
-else
-    fail "DM-1: $DM_MODEL_TOTAL model literals in skills/, only $DM_IN_CALL inside a dispatch expansion"
-    grep -rnE 'model: [a-z]+' "$DM_SCOPE" --include='*.md' 2>/dev/null \
-      | grep -vE "$DM_CALL_RE" | sed 's/^/      /' | head -10
-fi
+# (AP-2)
+for ap_name in 'Explore' 'general-purpose' 'coder'; do
+    ap_n=$( { grep -rhoF "\`$ap_name\`" "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$ap_n" -eq 0 ]] || AP_WHY+=" AP-2:backticked-type($ap_name x$ap_n)"
+done
+ap_gp=$( { grep -rhoF 'general-purpose' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_gp" -eq 0 ]] || AP_WHY+=" AP-2:general-purpose(x$ap_gp)"
 
-# (DM-2) DM-1 proves the literal is inside an expansion; it does not prove that expansion
-# is ever filtered out. A `references/**` file never passes through applyAgentFilter at all
-# (Part 7g2), and an expansion sitting outside a marker — or inside the `!claude` branch —
-# ships a Claude-only argument to five runtimes whose dispatch signature has no such field.
-# Named after RT-5, whose shape this borrows: collect by grep, allow by name, print the
-# offender.
-DM2_HITS="$(grep -rlE 'model: [a-z]+' "$DM_SCOPE" --include='*.md' 2>/dev/null || true)"
-DM2_WHY=""
-while IFS= read -r dm_file; do
-    [[ -n "$dm_file" ]] || continue
-    if [[ "$(basename "$dm_file")" != "SKILL.md" ]]; then
-        DM2_WHY+=" ${dm_file#"$ROOT_DIR/"}:not-a-SKILL.md"
-        continue
+# (AP-3)
+ap_model=$( { grep -rhoE 'model: [a-z]+' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+ap_tier=$( { grep -rhoF -e 'tier alias' -e 'No model is named' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_model" -eq 0 ]] || AP_WHY+=" AP-3:model-literal(x$ap_model)"
+[[ "$ap_tier" -eq 0 ]] || AP_WHY+=" AP-3:retired-rationale(x$ap_tier)"
+
+# (AP-4)
+AP_RULE_SKILLS=0
+for ap_f in "$AP_SCOPE"/*/SKILL.md; do
+    [[ -f "$ap_f" ]] || continue
+    ap_alias=$( { grep -cE '^- \*\*`(recon-agent|check-agent|lens-agent|recon-writer-agent)`\*\*' "$ap_f" || true; } )
+    ap_rule=$( { grep -cF 'subagents.model.{{agent_id}}' "$ap_f" || true; } )
+    if [[ "${ap_alias:-0}" -gt 0 ]]; then
+        AP_RULE_SKILLS=$((AP_RULE_SKILLS + 1))
+        [[ "${ap_rule:-0}" -eq 1 ]] || AP_WHY+=" AP-4:rule-count(${ap_rule:-0}):${ap_f#"$ROOT_DIR"/}"
+    else
+        [[ "${ap_rule:-0}" -eq 0 ]] || AP_WHY+=" AP-4:rule-without-alias:${ap_f#"$ROOT_DIR"/}"
     fi
-    dm_loose="$(awk '
-        /<!-- unikit:agents / { inblock = ($0 ~ /<!-- unikit:agents claude -->/) ? 1 : 0; next }
-        /<!-- unikit:end -->/ { inblock = 0; next }
-        /model: [a-z]/        { if (!inblock) print FNR }
-    ' "$dm_file" | tr "\n" "," )"
-    [[ -z "$dm_loose" ]] || DM2_WHY+=" ${dm_file#"$ROOT_DIR/"}:unguarded-at-${dm_loose%,}"
-done <<< "$DM2_HITS"
-if [[ -z "$DM2_HITS" ]]; then
-    fail "DM-2: no file carries a model literal — the scope is wrong, not the corpus"
-elif [[ -z "$DM2_WHY" ]]; then
-    pass "DM-2: the model literal is confined to SKILL.md, inside a claude-only branch"
-else
-    fail "DM-2 the model literal escaped its declaration block:$DM2_WHY"
-fi
+done
+[[ "$AP_RULE_SKILLS" -gt 0 ]] || AP_WHY+=" AP-4:no-skill-with-alias"
 
-# (DM-3) The rule itself, in the surface that ships. `scripts/` is outside `files` in
-# package.json, so no guard reaches a user's project; the SKILL.md text does. Anchored on
-# the two formulations rather than on the heading above them — a heading gets rewritten
-# during cosmetics, a formulation only together with its meaning. The third assertion is
-# the load-bearing one: as many reasons as there are dispatches means a block cannot be
-# added without its reason, nor a reason kept after its block is gone.
-# Same `|| true` shape as DM-1, and here it is load-bearing rather than defensive: the
-# regression DM-3 exists to catch is the rationale being deleted, which is exactly the case
-# where grep matches nothing. Without the guard that case kills the suite at this line
-# instead of printing `tier-rationale-absent`, and Part 7h onward never runs.
-DM3_TIER=$( { grep -rhoF 'is a tier alias, never a version' "$DM_SCOPE" --include='SKILL.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
-DM3_NOMODEL=$( { grep -rhoF 'No model is named' "$DM_SCOPE" --include='SKILL.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
-DM3_WHY=""
-[[ "$DM3_TIER" -gt 0 ]]              || DM3_WHY+=" tier-rationale-absent"
-[[ "$DM3_TIER" -eq "$DM3_NOMODEL" ]] || DM3_WHY+=" claude=$DM3_TIER!=non-claude=$DM3_NOMODEL"
-[[ "$DM3_TIER" -eq "$DM_IN_CALL" ]]  || DM3_WHY+=" reasons=$DM3_TIER!=dispatches=$DM_IN_CALL"
-if [[ -z "$DM3_WHY" ]]; then
-    pass "DM-3: $DM3_TIER declaration blocks, each branch carrying its own stated reason"
+# (AP-5)
+for ap_f in "$AP_SCOPE"/*/SKILL.md; do
+    grep -qF 'subagents.model.{{agent_id}}' "$ap_f" || continue
+    for ap_lit in 'pass no model argument' 'repeat that call once without the model argument' \
+                  'WARN [delegation] model' 'built-in default `"{{agent_model_default}}"`' '`inherit`'; do
+        grep -qF -- "$ap_lit" "$ap_f" || AP_WHY+=" AP-5:rule-incomplete(${ap_lit:0:24}):${ap_f#"$ROOT_DIR"/}"
+    done
+done
+
+# (AP-6)
+AP_CALLS=0
+for ap_f in "$AP_SCOPE"/*/SKILL.md; do
+    ap_in=$(awk '
+        /<!-- unikit:agents / { blk = ($0 ~ /<!-- unikit:agents codex -->/) ? 0 : 1; next }
+        /<!-- unikit:end -->/ { blk = 0; next }
+        /Agent\(/ { if (blk) n++ }
+        END { print n + 0 }' "$ap_f")
+    [[ "$ap_in" -eq 0 ]] || AP_WHY+=" AP-6:call-behind-agent-branch(x$ap_in):${ap_f#"$ROOT_DIR"/}"
+    AP_CALLS=$((AP_CALLS + $( { grep -cF 'Agent(' "$ap_f" || true; } )))
+done
+[[ "$AP_CALLS" -gt 0 ]] || AP_WHY+=" AP-6:no-call-site"
+
+# (AP-7)
+ap_leak=$( { grep -rlF '{{agent_' "$ROOT_DIR/subagents" "$ROOT_DIR/data" 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_leak" -eq 0 ]] || AP_WHY+=" AP-7:agent-variable-outside-skills(x$ap_leak)"
+
+if [[ -z "$AP_WHY" ]]; then
+    pass "AP-1…AP-7 agent profile in skills ($AP_TYPE_TOTAL call sites on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model)"
 else
-    fail "DM-3 the reason drifted from the declaration:$DM3_WHY"
+    fail "AP-1…AP-7 agent profile in skills:$AP_WHY"
+    grep -rnE 'subagent_type:[[:space:]]*"?[A-Za-z]' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -v '{{agent_' | sed 's/^/      /' | head -5
 fi
 
 # ─────────────────────────────────────────────

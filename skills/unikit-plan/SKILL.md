@@ -72,45 +72,40 @@ alternative.
 
 ## Delegation agents
 
-This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where the delegate's model is declared — call sites name the alias and never carry a
-model argument of their own.
+This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
+place where its delegate's agent type is declared — call sites name the alias and never carry
+a type or a model argument of their own.
 
-<!-- unikit:agents claude -->
+**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
+(a missing file, block or key is not an error) and settle the model argument once:
+
+1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
+   exactly as written (this runtime's own spelling of the model argument, if it differs).
+2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
+   model of this session.
+3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
+   means pass no model argument.
+
+If the runtime rejects the model name, repeat that call once without the model argument and
+report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  Agent(subagent_type: {{agent_reader_type}}, prompt: "<focused question>")
   ```
-
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered by the agent straight into its `recon/` file, so only the answer's summary passes through this context. Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol; under the standard protocol reconnaissance goes through `recon-agent`. Expands to:
+
+- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered straight into its `recon/` file by an agent that can write, so only the answer's summary passes through this context. Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol; under the standard protocol reconnaissance goes through `recon-agent`. Expands to:
 
   ```
-  Agent(subagent_type: general-purpose, model: sonnet, prompt: "Reconnaissance for an ultra plan. Question: <focused question>. Write your whole answer, never condensed, into <recon file path>, in English, filling every section of the template <path of RECON-TEMPLATE.md> by its rules; its first line is `HEAD: <short sha>`. That file is the only one you may create or change: never edit anything else, never run a command that changes the repository, never start another agent. Reply with the file's path and its `## Summary` section, word for word — nothing else.")
+  Agent(subagent_type: {{agent_worker_type}}, prompt: "Reconnaissance for an ultra plan. Question: <focused question>. Write your whole answer, never condensed, into <recon file path>, in English, filling every section of the template <path of RECON-TEMPLATE.md> by its rules; its first line is `HEAD: <short sha>`. That file is the only one you may create or change: never edit anything else, never run a command that changes the repository, never start another agent. Reply with the file's path and its `## Summary` section, word for word — nothing else.")
   ```
 
-  `sonnet` is a tier alias, never a version, as for `recon-agent`. This agent can edit files and only its prompt bounds it — hence the change guard in `ultra-stateful.md` → `## Recon files`.
+  The worker type can write files, which `recon-agent`'s reader type cannot — that is why this alias exists. This agent can edit files and only its prompt bounds it — hence the change guard in `ultra-stateful.md` → `## Recon files`.
 
-  Fallback: if the call fails, or the agent returns without its file, ask that question through `recon-agent` and write the answer into the file yourself, whole, the moment it returns.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
-
-  ```
-  Agent(subagent_type: Explore, prompt: "<focused question>")
-  ```
-
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
-
-  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered into its `recon/` file; used only after `mode-ultra.md` Step A0 or Step D2 chose that protocol. This runtime has no writing agent to hand it to: ask the question through `recon-agent` — it only reads and cannot save a file — then, the moment it returns and before anything else, create `recon/` if it is missing and write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`; take `pending` off only once the file is on disk (`ultra-stateful.md` → `## Recon files` → *Without a writing agent*). No model is named, for the reason given under `recon-agent`.
-<!-- unikit:end -->
+  Fallback: if the call fails, the runtime has no agent tool, or the agent returns without its file, ask that question through `recon-agent` — it only reads and cannot save a file — then, the moment the answer returns and before anything else, create `recon/` if it is missing and write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`; take `pending` off only once the file is on disk (`ultra-stateful.md` → `## Recon files` → *Without a writing agent*).
 
 ## Input
 

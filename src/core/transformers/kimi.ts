@@ -1,26 +1,18 @@
 import type { AgentTransformer, TransformResult } from '../transformer.js';
 import { logInfo } from '../../utils/log.js';
-import { swapGeneralPurposeSubagentType } from './kimi-skill-text.js';
 import { toKimiAgentFile } from './kimi-agent-file.js';
 
 /**
  * Kimi Code (v2, `kimi`) — own `.kimi-code/` directory; `/unikit-*` is accepted as a shorthand
- * for `/skill:unikit-*`, so invocations are NOT rewritten. Two things are adapted: the
- * `general-purpose` subagent type (Kimi has `coder`) in skill text and references, and the
+ * for `/skill:unikit-*`, so invocations are NOT rewritten. Skill text is the same as for every
+ * other agent: the subagent types it names (`explore`, `coder`) are substituted by the
+ * installer from `AGENT_REGISTRY.kimi.subagentProfile`. What this adapter changes are the
  * subagent files themselves (`Agent(...)` entry, `subagents:` list, launch command,
- * `${base_prompt}` for the coordinators). See RESEARCH.md F-6, F-8, F-9.
+ * `${base_prompt}` for the coordinators). See RESEARCH.md F-6, F-9.
  */
 export class KimiTransformer implements AgentTransformer {
   transform(skillName: string, content: string): TransformResult {
-    const rewritten = swapGeneralPurposeSubagentType(content);
-    if (rewritten !== content) {
-      logInfo('kimi', `${skillName}: general-purpose subagent type → coder`);
-    }
-    return { targetDir: skillName, targetName: 'SKILL.md', content: rewritten, flat: false };
-  }
-
-  transformReference(content: string): string {
-    return swapGeneralPurposeSubagentType(content);
+    return { targetDir: skillName, targetName: 'SKILL.md', content, flat: false };
   }
 
   transformSubagent(subagentName: string, content: string): string {

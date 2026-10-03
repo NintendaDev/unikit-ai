@@ -1,5 +1,6 @@
-// Unit tests for the Kimi Code adapter: the registry entry, the subagent-type swap in skill
-// text, the subagent-file adapter, the transformer hooks and the MCP writer.
+// Unit tests for the Kimi Code adapter: the registry entry, the subagent-file adapter, the
+// transformer hooks and the MCP writer. (Subagent types in skill text come from the agent
+// profile — see test-agent-profile.mjs — not from this adapter.)
 // Consumed from scripts/test-skills.sh (Part 7f3). Imports the compiled build because
 // tests run after `ensure_build` in the parent harness. Writes nothing into the repository
 // (temporary files live under os.tmpdir()). Real sources — skills/ and subagents/ — are
@@ -16,7 +17,6 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 
-const { swapGeneralPurposeSubagentType: swap } = await import(dist('core/transformers/kimi-skill-text.js'));
 const { toKimiAgentFile } = await import(dist('core/transformers/kimi-agent-file.js'));
 const { getTransformer, getAgentOnboarding } = await import(dist('core/transformer.js'));
 const { AGENT_REGISTRY } = await import(dist('core/agents.js'));
@@ -124,62 +124,6 @@ await group('R', async () => {
     const touchesAgentsDir = [kimi.configDir, kimi.skillsDir, kimi.subagentsDir, kimi.settingsFile].some((p) => p.startsWith('.agents'));
     assertTrue('R3a no Kimi path lives in the shared .agents/ (ADR-0001)', !touchesAgentsDir);
     assertTrue('R3b Kimi configDir differs from Antigravity configDir', kimi.configDir !== AGENT_REGISTRY.antigravity.configDir);
-});
-
-// ── S: subagent type swap in skill text (Task 2) ────────────────────────────
-
-await group('S-table', async () => {
-    const S1 = [
-        ['S1a', 'subagent_type: "general-purpose",', 'subagent_type: "coder",'],
-        ['S1b', 'Agent(subagent_type: general-purpose, model: sonnet, prompt: "x")', 'Agent(subagent_type: coder, model: sonnet, prompt: "x")'],
-        ['S1c', 'expands to an `Agent(subagent_type: "general-purpose", ...)` invocation', 'expands to an `Agent(subagent_type: "coder", ...)` invocation'],
-        ['S1d', '`general-purpose` and not `Explore`', '`coder` and not `Explore`'],
-    ];
-    for (const [id, input, expected] of S1) {
-        assertEq(`${id} swaps the type`, swap(input), expected);
-        assertEq(`${id} is idempotent`, swap(swap(input)), swap(input));
-    }
-
-    const untouched = [
-        ['S2a the bare English word', 'a general-purpose helper'],
-        ['S2b1 a longer identifier (suffix X)', 'subagent_type: general-purposeX'],
-        ['S2b2 a longer identifier (hyphen suffix)', 'subagent_type: general-purpose-agent'],
-        ['S2c Explore is not changed (DEC-009)', 'subagent_type: "Explore"'],
-    ];
-    for (const [id, input] of untouched) {
-        assertEq(id, swap(input), input);
-    }
-    assertEq('S2d single quotes', swap("subagent_type: 'general-purpose'"), "subagent_type: 'coder'");
-    assertEq('S3b empty string', swap(''), '');
-});
-
-await group('S4', async () => {
-    const SPELLING = /subagent_type:\s*["']?general-purpose(?![\w-])|`general-purpose`/;
-    const files = (await walk(path.join(ROOT, 'skills'))).filter((f) => f.endsWith('.md')).sort();
-    let before = 0;
-    const violations = [];
-
-    for (const file of files) {
-        const isSkillBody = path.basename(file) === 'SKILL.md' && path.dirname(path.dirname(file)) === path.join(ROOT, 'skills');
-        // A SKILL.md reaches the transformer AFTER the agent filter; a reference is copied raw.
-        const text = isSkillBody ? await readSourceForAgent(file, 'kimi') : await fs.readFile(file, 'utf8');
-        if (text === null) continue;
-        before += text.split('\n').filter((line) => SPELLING.test(line)).length;
-        const after = swap(text);
-        if (after.split('\n').some((line) => SPELLING.test(line))) {
-            violations.push(path.relative(ROOT, file));
-        }
-    }
-
-    assertTrue('S4a real skills carry something to rewrite (the scan is not empty)', before > 0, `matching lines before the swap: ${before}`);
-    assertTrue('S4b no handled spelling survives the swap in any real skill file', violations.length === 0, `left in: ${violations.join(', ')}`);
-});
-
-await group('S5', async () => {
-    const sample = 'subagent_type: "general-purpose" and `general-purpose`';
-    for (const id of ['claude', 'codex', 'cursor', 'qwen', 'opencode', 'antigravity']) {
-        assertEq(`S5 ${id} leaves general-purpose alone`, getTransformer(id).transform('x', sample).content, sample);
-    }
 });
 
 // ── A: the subagent-file adapter (Task 3) ───────────────────────────────────
@@ -344,13 +288,16 @@ await group('T', async () => {
         t.transform('unikit-plan', ''),
         { targetDir: 'unikit-plan', targetName: 'SKILL.md', content: '', flat: false },
     );
-    assertEq('T1b transformReference is defined', typeof t.transformReference, 'function');
+    assertEq('T1b transformReference is not defined for Kimi: references stay verbatim', typeof t.transformReference, 'undefined');
     assertEq('T1c transformSubagent is defined', typeof t.transformSubagent, 'function');
 
     const onboarding = getAgentOnboarding('kimi');
     assertTrue('T1d the welcome message has at least 3 lines', Array.isArray(onboarding.welcomeMessage) && onboarding.welcomeMessage.length >= 3);
     assertTrue('T1e the welcome message tells the user to trust the folder (REQ-005)', onboarding.welcomeMessage.some((line) => /trust/i.test(line)));
     assertTrue('T1f the invocation hint names /unikit-plan', typeof onboarding.invocationHint === 'string' && onboarding.invocationHint.includes('/unikit-plan'));
+
+    const verbatim = 'subagent_type: "general-purpose"';
+    assertEq('T1g transform rewrites nothing in skill text (types come from the profile)', t.transform('x', verbatim).content, verbatim);
 
     for (const id of ['claude', 'codex', 'cursor', 'qwen', 'opencode', 'antigravity']) {
         assertEq(`T2 ${id} has no transformSubagent`, getTransformer(id).transformSubagent, undefined);

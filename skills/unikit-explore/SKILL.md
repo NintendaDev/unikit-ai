@@ -68,66 +68,41 @@ alternative.
 ## Delegation agents
 
 This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
-place where its delegate's model is declared — call sites name the alias and never carry a
-model argument of their own.
+place where its delegate's agent type is declared — call sites name the alias and never carry
+a type or a model argument of their own.
 
-<!-- unikit:agents claude -->
+**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
+(a missing file, block or key is not an error) and settle the model argument once:
+
+1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
+   exactly as written (this runtime's own spelling of the model argument, if it differs).
+2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
+   model of this session.
+3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
+   means pass no model argument.
+
+If the runtime rejects the model name, repeat that call once without the model argument and
+report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  Agent(subagent_type: {{agent_reader_type}}, prompt: "<focused question>")
   ```
-
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
-  ```
-  Agent(subagent_type: Explore, prompt: "<focused question>")
-  ```
-
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
-
-  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
-
-<!-- unikit:agents claude -->
 - **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
 
   ```
-  Agent(subagent_type: Explore, model: sonnet, prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only.")
-  ```
-
-  The path travels, never the text. `Explore` is read-only by construction.
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
-
-  Fallback: if the `Agent` tool is unavailable, read `references/coherence-gate.md` yourself
-  and run the pass inline (`WARN [coherence] fresh-context pass unavailable — running inline`).
-  The gate is never skipped or delayed.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
-
-  ```
-  Agent(subagent_type: Explore, prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
+  Agent(subagent_type: {{agent_reader_type}}, prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
   ```
 
   The path travels, never the text. The read-only contract rides on the last sentence of the prompt above, which is never dropped.
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
 
   Fallback: if the `Agent` tool is unavailable, read `references/coherence-gate.md` yourself
   and run the pass inline (`WARN [coherence] fresh-context pass unavailable — running inline`).
   The gate is never skipped or delayed.
-<!-- unikit:end -->
 
 ## Artifact Ownership
 
