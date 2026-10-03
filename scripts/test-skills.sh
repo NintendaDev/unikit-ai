@@ -4537,9 +4537,11 @@ done < <(printf '%s\n%s' "$RDF_CHECKING" "$RDF_WRITING" | grep -oE '`WARN \[rese
 #     2026-08-22-14.05). Measured, not reasoned, exactly like T17: sizes 5-8 false-positive
 #     on short vocabulary this project shares legitimately everywhere — at 5, improve's own
 #     Re-links report template ("recorded against the retired brief") and the literal
-#     `shasum -a 256 | awk '{print $1}'` command (duplicated by implement/verify on purpose,
-#     as the concrete digest step — see `### Digest`) both collide; the shasum command alone
-#     still collides through size 8. Size 9 is the smallest that gives ZERO windows on every
+#     `shasum -a 256 | awk '{print $1}'` command both collide — it stood in implement/verify
+#     as the concrete digest step and still stands in the contract's `### Digest`; the
+#     tree-hash copies in implement/verify now end in `cut -d' ' -f1` (Kimi Code expands `$1`
+#     inside a SKILL.md body), which only removes a collision. The shasum command alone
+#     still collided through size 8. Size 9 is the smallest that gives ZERO windows on every
 #     correct surface today, and it still catches a paraphrase with roughly a third of its
 #     words replaced (24-51 shared 9-word runs, measured by inserting the pre-migration
 #     verify ladder verbatim, and separately a reworded copy of it, into a copy of the
