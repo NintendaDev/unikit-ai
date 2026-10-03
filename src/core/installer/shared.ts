@@ -3,14 +3,16 @@
 // These collapse patterns that were previously duplicated across the
 // installer monolith: the subagent TemplateVars literal (x4), the
 // "Could not <action>" install/update warning (x5), the
-// logInfo + readSourceForAgent loading pair (x4), and the inline `.md`
-// filename predicate / suffix strip. Centralizing them keeps the exact
-// runtime text and behaviour while removing the TS-level copies.
+// logInfo + readSourceForAgent loading pair (x4), the inline `.md`
+// filename predicate / suffix strip, and the subagent render (x3 → one).
+// Centralizing them keeps the exact runtime text and behaviour while removing
+// the TS-level copies.
 
 import { createHash } from 'crypto';
 import { readSourceForAgent } from '../agent-filter.js';
-import { buildEngineVars } from '../template.js';
+import { buildEngineVars, processTemplate } from '../template.js';
 import type { TemplateVars } from '../template.js';
+import { getTransformer } from '../transformer.js';
 import { logInfo } from '../../utils/log.js';
 
 // --- Content hashing ---
@@ -71,6 +73,30 @@ export function buildSubagentTemplateVars(
 export async function loadSourceForAgent(filePath: string, agentId: string): Promise<string | null> {
   logInfo('installer', `loading ${filePath} via readSourceForAgent(${agentId})`);
   return readSourceForAgent(filePath, agentId);
+}
+
+/**
+ * The one place a subagent source becomes installed text: agent-filter → `{{var}}`
+ * substitution → the agent's own `transformSubagent` (Kimi only; every other agent's
+ * file is the substituted text, byte for byte). `init`, `update` and `extension add`
+ * all render through here, so they cannot disagree about what a file looks like.
+ *
+ * @returns the file text, or `null` when the source is missing or empty (callers skip it).
+ */
+export async function renderSubagent(
+  sourcePath: string,
+  agentId: string,
+  subagentName: string,
+  engineId?: string,
+  engineMcpKey?: string | null,
+): Promise<string | null> {
+  const content = await loadSourceForAgent(sourcePath, agentId);
+  if (!content) return null;
+
+  const processed = processTemplate(content, buildSubagentTemplateVars(subagentName, engineId, engineMcpKey));
+  const rendered = getTransformer(agentId).transformSubagent?.(subagentName, processed) ?? processed;
+  logInfo('installer', `rendered subagent ${subagentName} for ${agentId}`);
+  return rendered;
 }
 
 // --- Warnings ---
