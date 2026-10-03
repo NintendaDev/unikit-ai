@@ -190,7 +190,7 @@ Calling `/unikit-devcontext` directly is still the right move for ad-hoc work, b
 
 ### Parallel Execution via the `develop-agent` alias
 
-Workflow skills expose a named delegation alias - `develop-agent` - that expands to an `Agent(subagent_type: "general-purpose", skills: ["unikit-devcontext"])` call. After the Bootstrap refactor this alias is reserved for **true parallel scopes** (independent phases that can run simultaneously) and **deep-dive single tasks** that would otherwise bloat the parent context:
+Workflow skills expose a named delegation alias - `develop-agent` - that expands to an `Agent(subagent_type: "<worker type>", skills: ["unikit-devcontext"])` call (the worker type of your agent, see [Subagents](subagents.md#subagent-profile-per-agent)). After the Bootstrap refactor this alias is reserved for **true parallel scopes** (independent phases that can run simultaneously) and **deep-dive single tasks** that would otherwise bloat the parent context:
 
 ```
 ┌───────────────────────────────┐    ┌───────────────────────────────┐

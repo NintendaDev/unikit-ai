@@ -139,6 +139,16 @@ git:
   pull_requests:
     checkpoints: false
     max_level: create   # remind | create | merge
+
+subagents:
+  model:
+    claude: sonnet
+    codex:
+    cursor:
+    qwen:
+    opencode:
+    antigravity: flash
+    kimi:
 ```
 
 ### `language` section
@@ -196,6 +206,30 @@ Existing projects receive the key by either of the two paths in [How new keys re
 
 **Plans are always sliced into modules**, whatever these keys say: a module is one or more consecutive phases after whose merge the base branch is whole. The keys only decide whether a module ends with a PR checkpoint task — see [Plan files → Modules](plan-files.md#modules--pieces-the-base-branch-can-take-whole).
 
+### `subagents` section
+
+Which model the subagents that skills launch run on, one value per agent. The block lists every supported agent, whichever ones the project has installed.
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `model.claude` | Claude Code. A tier name: `sonnet`, `opus` or `haiku`. | `sonnet` |
+| `model.codex` | Codex CLI. A model identifier as Codex lists it - versioned, so you write it yourself. | none |
+| `model.cursor` | Cursor. The subagent call does not name a model, so a value here has no effect; Cursor pins a model per agent file instead. | none |
+| `model.qwen` | Qwen Code. The call accepts a model only as a tier name, and only when `agents.modelGrades` is set in Qwen's `settings.json`. | none |
+| `model.opencode` | OpenCode. The subagent call has no model parameter: the subagent runs on the model of the session. | none |
+| `model.antigravity` | Antigravity. `flash`, `pro` or `inherit`. | `flash` |
+| `model.kimi` | Kimi Code. The call accepts a model only when `[secondary_model]` is set in `~/.kimi-code/config.toml`. | none |
+
+A value means:
+
+- **a model name** - passed to the subagent with every call, exactly as written;
+- **`inherit`, or an empty value** - nothing is passed: the subagent runs on the model of the session. Empty is a deliberate choice and is never filled in again;
+- **no key at all** (including no file, or no `subagents` block) - the built-in default noted above.
+
+**The skills read this block at run time**, once per skill before the first dispatch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Only the aliases that name a model read it (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`); `develop-agent` and `docs-agent` load a skill and never pass a model.
+
+UniKit keeps no list of model names. A name the runtime does not accept makes the launch fail, and the skill repeats the call once on the model of the session with a `WARN [delegation]` line. For Cursor, Qwen Code, OpenCode and Kimi Code the value either has no effect or needs a setting of the runtime itself (`agents.modelGrades`, `[secondary_model]`), which is why those keys ship empty. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
+
 ### How new keys reach an existing project
 
 A key added to this template after your project was bootstrapped does not arrive on its own: `unikit-ai init` only prints a hint about the file and `unikit-ai update` never touches it. `.unikit/config.yaml` is written by the `/unikit` skill and by nothing else, so there are exactly **two** paths, and the difference between them is deliberate.
@@ -205,13 +239,13 @@ A key added to this template after your project was bootstrapped does not arrive
 | merge mode | a full `/unikit` bootstrap run on a project that already has a config | names the missing keys and **offers** to append them |
 | config actualization mode | asking `/unikit` to update / actualize / repair the config on a project already set up | appends a template **literal** silently; **asks** only where the template carries a placeholder, or the current value falls outside a declared domain |
 
-Both derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so neither is more thorough than the other. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
+Both derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so neither is more thorough than the other. The `subagents` block reaches an existing project the same way: the actualization mode appends it whole, with its comments. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
 
 The actualization mode sorts every leaf key of the template into one of six buckets:
 
 1. Absent, template value is a literal → appended **silently**.
 2. Absent, template value is a `{{PLACEHOLDER}}` → **asked**.
-3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode.
+3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode. Exception: an empty `subagents.model.<agent>` is a deliberate choice (pass no model), so it is kept as it is.
 4. Present but outside a **declared** domain → asked. A domain is declared by exactly one thing: an inline `# a | b` comment standing beside the value. An `Options:` or `Examples:` list inside a comment block is prose for the reader, not a domain. Which keys carry one is settled by the template alone — this page deliberately does not list them, so the two cannot drift apart.
 5. Present in your file but absent from the template → **reported, never deleted**. This is usually a key you added on purpose.
 6. `language.rules` and `language.technical_terms` → **not touched at all**.
