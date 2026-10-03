@@ -157,6 +157,35 @@ await group('V4', async () => {
     }
 });
 
+// ── C: the config template against the registry (Task 26) ───────────────────
+// The template holds the user-facing `subagents.model` block; the registry holds the profile.
+// The Claude and Antigravity defaults are written in both places (the installer never reads the
+// config), so only this comparison keeps them from drifting apart. There is no YAML parser in
+// the project: the block has a fixed shape and is read line by line.
+
+await group('C', async () => {
+    const template = await fs.readFile(path.join(ROOT, 'skills', 'unikit', 'references', 'config-template.yaml'), 'utf8');
+    const lines = template.split(/\r?\n/);
+    const start = lines.findIndex((l) => /^subagents:\s*$/.test(l));
+    assertTrue('C1 the template has a top-level subagents: block', start >= 0);
+    const modelAt = lines.findIndex((l, i) => i > start && /^  model:\s*$/.test(l));
+    assertTrue('C2 subagents: holds a model: mapping', modelAt > start);
+
+    const entries = {};
+    for (let i = modelAt + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (/^\s*#/.test(line) || line.trim() === '') continue;
+        const m = /^ {4}([a-z]+):\s*([A-Za-z0-9_.-]*)\s*(?:#.*)?$/.exec(line);
+        if (!m) break; // the first line that is not a 4-space key ends the block
+        entries[m[1]] = m[2];
+    }
+    assertEq('C3 the template carries a key for exactly every registered agent', Object.keys(entries).sort().join(','), Object.keys(AGENT_REGISTRY).sort().join(','));
+    for (const [id, agent] of Object.entries(AGENT_REGISTRY)) {
+        assertEq(`C4 ${id}: the template default equals the profile's modelDefault`, entries[id], agent.subagentProfile.modelDefault);
+    }
+    assertTrue('C5 the block carries no {{placeholder}}', !lines.slice(start).some((l) => l.includes('{{')));
+});
+
 // ── I: the installed text, per agent (Task 25) ──────────────────────────────
 // The table is built from AGENT_REGISTRY and goes through the real installSkills over the real
 // skills/, so an eighth agent joins it by itself and the test cannot repeat the installer's logic.

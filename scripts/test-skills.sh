@@ -7091,7 +7091,7 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# MC: the /unikit config actualization mode (MC-1…MC-6)
+# MC: the /unikit config actualization mode (MC-1…MC-7)
 # ─────────────────────────────────────────────
 # `.unikit/config.yaml` is written by this skill and by nothing else — `init` only prints a
 # hint about the file and `update` never names it — so a key added to the template after a
@@ -7181,11 +7181,20 @@ if [[ -z "$MC_WHY" ]]; then
     [[ -n "$MC6_HITS" ]] && MC_WHY+=" MC-6:call-form-in-mode-body"
     grep -qF 'is explicitly **not** written' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-6:no-language-rules-negation"
+
+    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>`.
+    # Without the exception, bucket 3 refills a deliberately emptied key with the template's
+    # value — for Claude `sonnet` — and the user's "pass no model" is undone by the very mode
+    # that was asked to repair the config.
+    grep -qF 'subagents.model.<agent>' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:carveout-not-named"
+    grep -qF 'is a deliberate choice' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:no-deliberate-empty-reading"
 fi
 if [[ -z "$MC_WHY" ]]; then
-    pass "MC-1…MC-6 /unikit config actualization mode — triggered in the description, dispatched inside Step 0, three contract carve-outs, capability-bounded body"
+    pass "MC-1…MC-7 /unikit config actualization mode — triggered in the description, dispatched inside Step 0, three contract carve-outs, capability-bounded body"
 else
-    fail "MC-1…MC-6 config actualization mode contract:$MC_WHY"
+    fail "MC-1…MC-7 config actualization mode contract:$MC_WHY"
     [[ -n "${MC6_HITS:-}" ]] && echo "$MC6_HITS" | head -5
 fi
 

@@ -161,3 +161,54 @@ git:
     # Without the GitHub MCP every level acts as remind.
     # Default: create
     max_level: create   # remind | create | merge
+
+# =============================================================================
+# Subagent Settings
+# =============================================================================
+# Which model the subagents that skills launch run on — one value per agent.
+# Skills read this block at run time, so an edit takes effect on the next
+# command; no `unikit-ai update` is needed.
+#
+# Only the delegation aliases that name a model read it: recon-agent,
+# check-agent, lens-agent and recon-writer-agent. The two that load a skill
+# (develop-agent, docs-agent) never pass a model.
+#
+# A value is a model name exactly as that agent's own tool accepts it. UniKit
+# keeps no list of names: a stale name makes the launch fail, and the skill
+# then repeats the call once on the model of the session.
+#   <name>   — pass this model to the subagent
+#   inherit  — pass nothing; the subagent runs on the model of the session
+#   (empty)  — the same as inherit; a deliberate choice, never filled in again
+# A key that is missing altogether falls back to the built-in default noted
+# below. The block lists every supported agent, whichever ones this project
+# has installed.
+
+subagents:
+  model:
+    # Claude Code. Tier aliases: sonnet | opus | haiku.
+    # Built-in default: sonnet.
+    claude: sonnet
+
+    # Codex CLI. A model identifier as Codex lists it (versioned, for example
+    # gpt-6.1-sol). No built-in default: identifiers go stale, so choose your own.
+    codex:
+
+    # Cursor. The subagent call does not name a model, so a value here has no
+    # effect; Cursor pins a model per agent file instead. Leave empty.
+    cursor:
+
+    # Qwen Code. The call accepts a model only as a tier name, and only when
+    # agents.modelGrades is set in Qwen's settings.json. Leave empty otherwise.
+    qwen:
+
+    # OpenCode. The subagent call has no model parameter: the subagent runs on
+    # the model of the session. Leave empty.
+    opencode:
+
+    # Antigravity. flash | pro | inherit.
+    # Built-in default: flash.
+    antigravity: flash
+
+    # Kimi Code. The call accepts a model only when [secondary_model] is set in
+    # ~/.kimi-code/config.toml. Leave empty otherwise.
+    kimi:
