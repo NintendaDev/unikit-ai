@@ -2,6 +2,7 @@ import { DefaultTransformer } from './transformers/default.js';
 import { CodexTransformer } from './transformers/codex.js';
 import { QwenTransformer } from './transformers/qwen.js';
 import { AntigravityTransformer } from './transformers/antigravity.js';
+import { KimiTransformer } from './transformers/kimi.js';
 
 export interface TransformResult {
   targetDir: string;
@@ -14,13 +15,20 @@ export interface AgentTransformer {
   transform(skillName: string, content: string): TransformResult;
   /**
    * Rewrite skill invocations (`/unikit-*`) inside a reference `.md` file body.
-   * Optional: only agents that remap invocations (codex/qwen) implement it;
-   * default agents (claude/cursor/opencode) leave it undefined so
-   * references keep `/unikit-*` verbatim. Unlike {@link transform} this never
-   * runs the agent-filter — reference files carry no guarded blocks (enforced
-   * by a source guard in scripts/test-skills.sh).
+   * Optional: only agents that remap invocations (codex/qwen) or a subagent
+   * type (kimi) implement it; default agents (claude/cursor/opencode) leave it
+   * undefined so references keep `/unikit-*` verbatim. Unlike {@link transform}
+   * this never runs the agent-filter — reference files carry no guarded blocks
+   * (enforced by a source guard in scripts/test-skills.sh).
    */
   transformReference?(content: string): string;
+  /**
+   * Adapt an installed subagent file (`<subagentsDir>/<name>.md`) to the agent's own agent-file
+   * format. Runs on the whole file (frontmatter + body) AFTER the agent-filter and `{{var}}`
+   * substitution. Optional: only Kimi implements it; every other agent's subagent files are
+   * written exactly as before.
+   */
+  transformSubagent?(subagentName: string, content: string): string;
   postInstall?(projectDir: string): Promise<void>;
   getWelcomeMessage(): string[];
   getInvocationHint?(): string;
@@ -57,6 +65,7 @@ const registry: Record<string, () => AgentTransformer> = {
   codex: () => new CodexTransformer(),
   qwen: () => new QwenTransformer(),
   antigravity: () => new AntigravityTransformer(),
+  kimi: () => new KimiTransformer(),
 };
 
 export function getTransformer(agentId: string): AgentTransformer {

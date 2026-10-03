@@ -9,11 +9,9 @@ import {
   getSubagentsDir, ensureDir, listFiles, writeTextFile, removeFile, hashFile,
 } from '../../utils/fs.js';
 import type { AgentInstallation, ManagedSkillState } from '../config.js';
-import { processTemplate } from '../template.js';
 import { DEFAULT_ENGINE_ID } from '../constants.js';
 import {
-  isMarkdownFile, stripMdExtension, buildSubagentTemplateVars,
-  loadSourceForAgent, warnActionFailed,
+  isMarkdownFile, stripMdExtension, renderSubagent, warnActionFailed,
 } from './shared.js';
 import { computeSubagentSourceHash } from './hashing.js';
 
@@ -77,12 +75,10 @@ export async function installSubagents(
         }
       }
 
-      const content = await loadSourceForAgent(sourcePath, agentId);
-      if (content) {
-        const subagentName = stripMdExtension(file);
-        const vars = buildSubagentTemplateVars(subagentName, options?.engineId, options.engineMcpKey);
-        const processed = processTemplate(content, vars);
-        await writeTextFile(targetPath, processed);
+      const subagentName = stripMdExtension(file);
+      const rendered = await renderSubagent(sourcePath, agentId, subagentName, options?.engineId, options.engineMcpKey);
+      if (rendered) {
+        await writeTextFile(targetPath, rendered);
         installedSubagents.push(subagentName);
       }
     } catch (error) {
@@ -219,12 +215,10 @@ export async function updateSubagents(
     try {
       const sourcePath = path.join(packageSubagentsDir, sa + '.md');
       const targetPath = path.join(targetDir, sa + '.md');
-      const content = await loadSourceForAgent(sourcePath, agent.id);
+      const rendered = await renderSubagent(sourcePath, agent.id, sa, engineId, engineMcpKey);
 
-      if (content) {
-        const vars = buildSubagentTemplateVars(sa, engineId, engineMcpKey);
-        const processed = processTemplate(content, vars);
-        await writeTextFile(targetPath, processed);
+      if (rendered) {
+        await writeTextFile(targetPath, rendered);
         installedSet.add(sa);
       }
     } catch (error) {

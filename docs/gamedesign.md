@@ -348,7 +348,7 @@ derives the changed scope from the session itself.
 
 **Three-tier dispatch mechanism**, in preference order: ① `Skill(skill:
 "unikit-gd-<zone>", ...)` inline, when the agent supports it; ② the `/unikit-gd-<zone>`
-slash-command fallback, invoked as a real call (not printed) — needed because 5 of the 6
+slash-command fallback, invoked as a real call (not printed) — needed because 5 of the 7
 supported agents don't expose the `Skill` tool; ③ a printed `Run: /unikit-gd-…` list, the
 last resort when neither mechanism is available. On Codex, a `<!-- unikit:agents codex
 -->` block makes tiers ①/② automatic rather than asking the user to run them by hand.

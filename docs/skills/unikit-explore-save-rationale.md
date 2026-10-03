@@ -405,10 +405,9 @@ source of truth — before the coherence gate reads the same files from disk.
   registry look identical from the outside, so an unannounced skip reports "no researches" for a
   research that is sitting right there on disk.
 - **`check-agent` is dispatched with the path, never the text.** The file is read in the agent's
-  fresh context and not in the one that is saving. On Claude `Explore` is read-only by
-  construction — its tool set excludes `Edit`/`Write`, so the contract is guaranteed by the
-  dispatch, not merely requested; elsewhere the runtime may offer no such agent type, so the
-  contract rides on the prompt's last sentence.
+  fresh context and not in the one that is saving. Whether the reader type of an agent is
+  read-only is that runtime's own claim, so on every agent the contract rides on the prompt's
+  last sentence, which is never dropped.
 
 ## Outside the save pipeline
 

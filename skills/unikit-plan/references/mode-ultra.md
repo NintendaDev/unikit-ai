@@ -68,9 +68,9 @@ The dispatch form is the same as `mode-full.md` Step B — the `recon-agent` ali
 declared once in `SKILL.md` under `## Delegation agents`. A call site names the alias
 and never carries a model argument of its own.
 
-Under the standard protocol the dispatch is always `recon-agent`, whatever the size of the work. Under the saved-state protocol the dispatch is `recon-writer-agent` instead: each agent writes its answer into its own `recon/<topic>.md`, whole and never condensed, and only the path and the file's `## Summary` come back (`ultra-stateful.md` → `## Recon files`).
+Under the standard protocol the dispatch is always `recon-agent`, whatever the size of the work. Under the saved-state protocol the dispatch is `recon-writer-agent` instead: each answer lands in its own `recon/<topic>.md`, whole and never condensed — written by the agent itself, or, where the runtime has no writing agent, by this session the moment the answer returns — and later steps work from the file's `## Summary` (`ultra-stateful.md` → `## Recon files`).
 
-When the Explore tasks return, **return here**.
+When the Explore tasks return, **return here** — under the saved-state protocol with every answer already on disk (the recon gate in `ultra-stateful.md`).
 
 ### Step C: Ask About Preferences
 

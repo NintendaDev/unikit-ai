@@ -4,7 +4,7 @@
 
 UniKit AI ships eight subagents alongside the skill set. They split long-running workflows into single-responsibility roles, so the main conversation stays focused while planning, implementation, and quality checks run in parallel or in background.
 
-Bundled subagents install into `<agent-config>/agents/` during `unikit-ai init` (for agents that support subagents - Claude Code today, per `AGENT_REGISTRY.supportsSubagents`). Agents without subagent support still get the skill set; the workflows then fall back to inline execution.
+Bundled subagents install into `<agent-config>/agents/` during `unikit-ai init` (for agents that support subagents - Claude Code and, through an install-time adapter, Kimi Code, per `AGENT_REGISTRY.supportsSubagents`). Agents without subagent support still get the skill set; the workflows then fall back to inline execution.
 
 ## Overview
 
@@ -21,7 +21,7 @@ The subagent layer exists for six reasons:
 
 ```
 +-------------------------------------------------------------+
-|  Top-level coordinator (claude --agent ...)                 |
+|  Top-level coordinator (claude|kimi --agent ...)            |
 |    - unikit-implement-coordinator                           |
 |    - unikit-plan-coordinator                                |
 +------+-----------------------------------------------+------+
@@ -38,11 +38,11 @@ The subagent layer exists for six reasons:
 
 +-------------------------------------------------------------+
 |  Delegation aliases (from inside skills)                    |
-|   skill-loading (general-purpose + skills: [...])           |
+|   skill-loading (worker type + skills: [...])               |
 |    - develop-agent   (parallel/deep-dive only after         |
 |                       the Bootstrap refactor)               |
 |    - docs-agent      (update or create documentation)       |
-|   model-carrying (declared behind an agent-filter branch)   |
+|   model-carrying (type from the profile, model from config) |
 |    - recon-agent     (read-only parallel reconnaissance)    |
 |    - check-agent     (fresh-context findings validator)     |
 |    - lens-agent      (adversarial review lens)              |
@@ -51,10 +51,10 @@ The subagent layer exists for six reasons:
 
 | Tier | Members | Launch | Can spawn subagents? |
 |------|---------|--------|----------------------|
-| Coordinator | `unikit-implement-coordinator`, `unikit-plan-coordinator` | `claude --agent <name>` (top-level session) | Yes |
+| Coordinator | `unikit-implement-coordinator`, `unikit-plan-coordinator` | `claude --agent <name>` / `kimi --agent <name>` (top-level session) | Yes |
 | Internal worker | `unikit-implement-worker`, `unikit-plan-polisher` | Spawned by coordinator | No |
 | Sidecar (background, read-only) | `unikit-review-sidecar`, `unikit-architecture-sidecar`, `unikit-commit-sidecar`, `unikit-docs-sidecar` | Spawned by coordinator (or explicit `Agent(...)` from a user-launched skill) | No |
-| Delegation alias | `develop-agent`, `docs-agent` (skill-loading) · `recon-agent`, `check-agent`, `lens-agent` (model-carrying) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
+| Delegation alias | `develop-agent`, `docs-agent` (skill-loading) · `recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent` (model-carrying) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
 
 ## Top-Level Agent Sessions
 
@@ -63,7 +63,13 @@ Claude Code enforces an important rule: **ordinary subagents cannot spawn other 
 ```bash
 claude --agent unikit-implement-coordinator
 claude --agent unikit-plan-coordinator
+
+# Kimi Code
+kimi --agent unikit-implement-coordinator
+kimi --agent unikit-plan-coordinator
 ```
+
+On Kimi Code the dispatch right comes from the agent file instead: only an agent whose `tools` carries `Agent` can dispatch, and the subagent types it may start are its `subagents` list, which the installer writes for the two coordinators - see [agents.md](agents.md#kimi-code).
 
 If a coordinator detects that it is running as an ordinary subagent, it must stop immediately - that is how `unikit-plan-coordinator` and `unikit-implement-coordinator` are written.
 
@@ -140,26 +146,52 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "general-purpose", skills: [...])` calls; the **model-carrying** four expand to a dispatch that names the model on Claude Code and omits it everywhere else; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
+Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "<worker type>", skills: [...])` calls; the other four launch a subagent whose type comes from the agent's profile (see [Subagent profile per agent](#subagent-profile-per-agent)) and whose model comes from `subagents.model` in `.unikit/config.yaml`; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
-| `develop-agent` | `Agent(..., skills: ["unikit-devcontext"])` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
-| `docs-agent` | `Agent(..., skills: ["unikit-docs"])` | Pipeline skills at docs checkpoints | Update or create documentation pages |
-| `recon-agent` | `Agent(subagent_type: Explore, …)` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
-| `check-agent` | `Agent(subagent_type: Explore, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
-| `lens-agent` | `Agent(subagent_type: general-purpose, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
-| `recon-writer-agent` | `Agent(subagent_type: general-purpose, …)` on Claude Code; `recon-agent` plus a write by the session elsewhere | `/unikit-plan ultra` (saved-state protocol) | One reconnaissance question answered straight into its `recon/` file in the form of `references/RECON-TEMPLATE.md`, replying with the file's `## Summary` only, so the full answer never passes through the planning context; the only file it may write is that one, and `/unikit-plan` checks `git status` / `git diff` before and after the batch |
+| `develop-agent` | `Agent(subagent_type: "<worker type>", ..., skills: ["unikit-devcontext"])` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
+| `docs-agent` | `Agent(subagent_type: "<worker type>", ..., skills: ["unikit-docs"])` | Pipeline skills at docs checkpoints | Update or create documentation pages |
+| `recon-agent` | `Agent(subagent_type: <reader type>, …)` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
+| `check-agent` | `Agent(subagent_type: <reader type>, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
+| `lens-agent` | `Agent(subagent_type: <worker type>, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
+| `recon-writer-agent` | `Agent(subagent_type: <worker type>, …)`; if the call fails or the runtime has no subagent tool, `recon-agent` plus a write by the session | `/unikit-plan ultra` (saved-state protocol) | One reconnaissance question answered straight into its `recon/` file in the form of `references/RECON-TEMPLATE.md`, replying with the file's `## Summary` only, so the full answer never passes through the planning context; the only file it may write is that one, and `/unikit-plan` checks `git status` / `git diff` before and after the batch |
 
 Rule capture has no alias: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to the user in the calling session and invoke `/unikit-rules` only with the batch the user selected — a background agent could not have asked.
 
-Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying four fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session, `recon-writer-agent` asks through `recon-agent` and the session writes the answer into the file itself.
+Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying four fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session, `recon-writer-agent` asks through `recon-agent` and the session writes the answer into the file itself - it falls back when the call fails, when the agent returns without its file, or when the runtime has no subagent tool, and the file is checked on disk before the plan is synthesised.
+
+### Subagent profile per agent
+
+Which type a skill launches is data, not text: every agent in `AGENT_REGISTRY` (`src/core/agents.ts`) carries a profile, and the installer substitutes it into the skills (`{{agent_reader_type}}`, `{{agent_worker_type}}`, `{{agent_model_default}}`). The reader type is a read-only agent (reconnaissance, validation); the worker type can create files. The values were built from each runtime's documentation and source and are not confirmed in a live session, except for Claude Code.
+
+| Agent | Reader | Worker | Built-in model | Notes |
+|-------|--------|--------|----------------|-------|
+| Claude Code | `Explore` | `general-purpose` | `sonnet` | takes a model argument in the call |
+| Codex CLI | `explorer` | `worker` | none | the tool is `spawn_agent`; Codex starts subagents only when asked, so the writing recon agent may not start - the session then writes the file itself |
+| Cursor | `explore` | `generalPurpose` | none | the worker type is inferred from the docs |
+| Qwen Code | `Explore` | `general-purpose` | none | a subagent runs in the background by default |
+| OpenCode | `explore` | `general` | none | there is no default type: an unknown type is an error |
+| Antigravity | `research` | `self` | `flash` | the model argument comes from a third-party description of `invoke_subagent` |
+| Kimi Code | `explore` | `coder` | none | the type is matched by exact name, case included |
+
+A skill body names none of these: adding an agent means one registry entry (plus one key in the config template), with no edit under `skills/`.
+
+### Model argument
+
+The four model-carrying aliases settle the model once per skill, before the first dispatch, by reading `subagents.model.<agent>` in `.unikit/config.yaml` (a missing file, block or key is not an error):
+
+1. a model name - passed with every call, exactly as written;
+2. `inherit`, or present and empty - no model argument; the subagent runs on the model of the session;
+3. the key is absent - the built-in default of the agent (Claude Code `sonnet`, Antigravity `flash`, none elsewhere).
+
+If the runtime rejects the name, the skill repeats the call once without a model and reports `WARN [delegation] model "<name>" rejected - retried on the session model`. UniKit keeps no list of model names: a version-specific id goes stale, so you write it into the config yourself. See [Configuration](configuration.md#subagents-section).
 
 ## Design Principles
 
 1. **Read-only where possible.** All four sidecars declare only `Read/Glob/Grep`. They exist to observe the codebase after a change, not to mutate it.
 2. **Writers are few.** Only `unikit-implement-coordinator`, `unikit-implement-worker`, and `unikit-plan-polisher` carry `Write/Edit`. `unikit-plan-coordinator` can edit plan artifacts via its polisher, not directly.
-3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` and `unikit-docs-sidecar` pin `model: sonnet`. A subagent definition file is the **right** place for a model name - it is runtime-native and reaches Claude Code only. A skill body is not: it reaches all six runtimes, of which only Claude Code has a dispatch-time model argument at all. That is why the model-carrying aliases declare their model behind an agent-filter branch instead of writing it at the call site, and why the value is always a tier alias (`sonnet`) and never a versioned model id.
+3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` and `unikit-docs-sidecar` pin `model: sonnet`. A subagent definition file is the **right** place for a model name - it is runtime-native and reaches only the agents that receive subagent files (Claude Code, and Kimi Code, which ignores the `model` field). A skill body reaches all seven runtimes, so it names no model at all: the type comes from the agent profile in `src/core/agents.ts`, the model from `subagents.model` in `.unikit/config.yaml`, with a built-in default only where the vendor keeps a stable alias (Claude Code `sonnet`, Antigravity `flash`). A version-specific model id is never written into UniKit - you write it into the config yourself.
 4. **Strict output contracts.** Sidecars return structured JSON or markdown the coordinator can parse. Workers return a single task result block. Coordinators are the only place free-form prose appears.
 5. **English output for parsing, project language for artifacts.** Sidecars and workers return English summaries; plan and documentation artifacts they write follow `language.artifacts` from `.unikit/config.yaml`.
 6. **Rules loaded inside the subagent.** Every subagent with domain concerns (architecture, review, implement, plan) reads its own slice of `RULES_INDEX.md` - there is no implicit inheritance from the caller's context.
@@ -173,6 +205,8 @@ Launch the plan coordinator for a new feature:
 claude --agent unikit-plan-coordinator "add item rarity system with visual effects"
 ```
 
+On Kimi Code: `kimi --agent unikit-plan-coordinator "add item rarity system with visual effects"`.
+
 This creates a plan in `.unikit/code/plans/<feature>/`, critiques it, refines it, and stops when it is implementation-ready (or after the iteration budget).
 
 Execute the resulting plan:
@@ -180,6 +214,8 @@ Execute the resulting plan:
 ```bash
 claude --agent unikit-implement-coordinator
 ```
+
+On Kimi Code: `kimi --agent unikit-implement-coordinator`.
 
 The coordinator parses the latest plan, builds the phase graph, dispatches workers for parallel phases, runs background sidecars between layers, and advances to commit checkpoints.
 

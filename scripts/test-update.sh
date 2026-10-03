@@ -2179,5 +2179,144 @@ assert_contains "$BOTHFLAGS_OUT" "new in package" \
 
 echo "  ✓ update --install-new --skip-new: --skip-new wins (no new skills, no bootstrap)"
 
+# ─────────────────────────────────────────────
+# Test 33: Antigravity + Kimi in ONE project — two independent trees, idempotent update
+# ─────────────────────────────────────────────
+# Kimi Code owns .kimi-code/ (ADR-0001); Antigravity keeps the shared .agents/. A project that
+# selects both must get two trees with DIFFERENT bytes (Kimi: worker type coder + .kimi-code/mcp.json +
+# adapted subagents; Antigravity: worker type self + .agents/mcp_config.json + no subagents),
+# a second `update` that changes nothing in either, and a repair of one tree that leaves the
+# other alone. Every hash check below is assert_same_sha, which exits 1: assert_file_unchanged
+# only bumps a counter these scripts never read, so it could not fail here.
+AK_DIR="$TMPDIR/update-ag-kimi"
+mkdir -p "$AK_DIR"
+cat > "$AK_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": { "context7": "context7", "github": "github" } },
+  "agents": [
+    {
+      "id": "antigravity",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    },
+    {
+      "id": "kimi",
+      "skillsDir": ".kimi-code/skills",
+      "subagentsDir": ".kimi-code/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-verify"],
+      "installedSubagents": ["unikit-implement-coordinator", "unikit-implement-worker"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.1.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$AK_DIR"
+seed_rule "$AK_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+
+AK_AG_SKILL="$AK_DIR/.agents/skills/unikit-implement/SKILL.md"
+AK_KIMI_SKILL="$AK_DIR/.kimi-code/skills/unikit-implement/SKILL.md"
+AK_KIMI_COORD="$AK_DIR/.kimi-code/agents/unikit-implement-coordinator.md"
+AK_AG_MCP="$AK_DIR/.agents/mcp_config.json"
+AK_KIMI_MCP="$AK_DIR/.kimi-code/mcp.json"
+
+AK_FIRST="$TMPDIR/update-ag-kimi-1.log"
+(cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_FIRST" 2>&1)
+
+assert_contains "$AK_FIRST" "\[kimi\] Skills status:" "kimi agent status section must be printed"
+assert_contains "$AK_FIRST" "\[antigravity\] Skills status:" "antigravity agent status section must be printed"
+assert_exists "$AK_AG_SKILL" "antigravity must have unikit-implement installed under .agents/skills"
+assert_exists "$AK_KIMI_SKILL" "kimi must have unikit-implement installed under .kimi-code/skills"
+assert_exists "$AK_KIMI_COORD" "kimi must have the coordinator installed under .kimi-code/agents"
+assert_not_exists "$AK_DIR/.agents/agents/unikit-implement-coordinator.md" \
+    "antigravity has no subagents: the coordinator must not appear under .agents/agents"
+# Searched from INSIDE .agents with relative paths: the project directory is itself named
+# `update-ag-kimi`, so a search by absolute path would match every file under it.
+if [[ -n "$(cd "$AK_DIR/.agents" && find . -ipath '*kimi*' 2>/dev/null)" ]]; then
+    echo "Assertion failed: nothing of Kimi may live inside the shared .agents/ directory"
+    (cd "$AK_DIR/.agents" && find . -ipath '*kimi*' | head -5)
+    exit 1
+fi
+
+# Different bytes, each in its own agent's dialect
+if cmp -s "$AK_AG_SKILL" "$AK_KIMI_SKILL"; then
+    echo "Assertion failed: the Kimi and Antigravity copies of unikit-implement must differ"
+    exit 1
+fi
+assert_contains "$AK_KIMI_SKILL" '\.kimi-code/mcp\.json' "kimi copy: {{settings_file}} is .kimi-code/mcp.json"
+assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
+assert_contains "$AK_AG_SKILL" '\.agents/mcp_config\.json' "antigravity copy: {{settings_file}} is .agents/mcp_config.json"
+assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
+assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
+
+# MCP, each client in its own form
+assert_contains "$AK_KIMI_MCP" '"bearerTokenEnvVar": "GITHUB_PAT"' "kimi mcp.json: the variable NAME in bearerTokenEnvVar"
+assert_contains "$AK_AG_MCP" 'Bearer YOUR_GITHUB_PAT' "antigravity mcp_config.json: the placeholder"
+assert_not_contains "$AK_AG_MCP" 'bearerTokenEnvVar' "antigravity mcp_config.json: no Kimi field"
+
+# The coordinator is ADAPTED, not merely present. The hashes below only compare a file with
+# itself, so they would agree just as well on an unadapted one — this is what pins the shape.
+frontmatter_of "$AK_KIMI_COORD" > "$TMPDIR/ak-coord-1.fm"
+assert_not_contains "$TMPDIR/ak-coord-1.fm" 'Agent\(' "kimi coordinator: no Agent(...) entry left after update"
+assert_contains "$TMPDIR/ak-coord-1.fm" '^subagents:$' "kimi coordinator: update installs the adapted subagents: list"
+if [[ "$(body_first_line_of "$AK_KIMI_COORD")" != '${base_prompt}' ]]; then
+    echo "Assertion failed: kimi coordinator: update must install it with \${base_prompt} as the first body line"
+    exit 1
+fi
+
+AK_H_AG_SKILL="$(sha_of "$AK_AG_SKILL")"
+AK_H_KIMI_SKILL="$(sha_of "$AK_KIMI_SKILL")"
+AK_H_KIMI_COORD="$(sha_of "$AK_KIMI_COORD")"
+AK_H_AG_MCP="$(sha_of "$AK_AG_MCP")"
+AK_H_KIMI_MCP="$(sha_of "$AK_KIMI_MCP")"
+
+# Second run: nothing changes in either tree
+AK_SECOND="$TMPDIR/update-ag-kimi-2.log"
+(cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_SECOND" 2>&1)
+[[ "$(grep -c 'changed: 0' "$AK_SECOND")" -eq 2 ]] || {
+    echo "Assertion failed: both agents must report changed: 0 on the second update"
+    grep -n 'changed:' "$AK_SECOND" | head -6
+    exit 1
+}
+assert_not_contains "$AK_SECOND" "Local modifications detected" "an idle second update must warn about nothing"
+assert_same_sha "$AK_AG_SKILL" "$AK_H_AG_SKILL" "second update rewrote the Antigravity skill"
+assert_same_sha "$AK_KIMI_SKILL" "$AK_H_KIMI_SKILL" "second update rewrote the Kimi skill"
+assert_same_sha "$AK_KIMI_COORD" "$AK_H_KIMI_COORD" "second update rewrote the adapted Kimi coordinator"
+assert_same_sha "$AK_AG_MCP" "$AK_H_AG_MCP" "second update rewrote the Antigravity MCP file"
+assert_same_sha "$AK_KIMI_MCP" "$AK_H_KIMI_MCP" "second update rewrote the Kimi MCP file"
+
+# A tampered Kimi subagent is repaired to the ADAPTED text, not to the raw source
+printf '\nTAMPER-KIMI\n' >> "$AK_KIMI_COORD"
+AK_THIRD="$TMPDIR/update-ag-kimi-3.log"
+(cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_THIRD" 2>&1)
+assert_contains "$AK_THIRD" "Local modifications detected in subagent" "tampered Kimi subagent must be reported"
+assert_not_contains "$AK_KIMI_COORD" 'TAMPER-KIMI' "update must overwrite the tampered Kimi coordinator"
+frontmatter_of "$AK_KIMI_COORD" > "$TMPDIR/ak-coord-3.fm"
+assert_contains "$TMPDIR/ak-coord-3.fm" '^subagents:$' "the repair must restore the ADAPTED coordinator, not the raw source"
+if [[ "$(body_first_line_of "$AK_KIMI_COORD")" != '${base_prompt}' ]]; then
+    echo "Assertion failed: the repaired coordinator must start its body with \${base_prompt}"
+    exit 1
+fi
+assert_same_sha "$AK_KIMI_COORD" "$AK_H_KIMI_COORD" \
+    "the repaired coordinator must be byte-identical to the adapted install (subagents: + \${base_prompt})"
+
+# Independence: tampering with one tree is repaired there and leaves the other alone
+printf '\nTAMPER-AG\n' >> "$AK_AG_SKILL"
+AK_FOURTH="$TMPDIR/update-ag-kimi-4.log"
+(cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_FOURTH" 2>&1)
+assert_contains "$AK_FOURTH" "Local modifications detected" "tampered Antigravity skill must be reported"
+assert_not_contains "$AK_AG_SKILL" 'TAMPER-AG' "update must overwrite the tampered Antigravity skill"
+assert_same_sha "$AK_AG_SKILL" "$AK_H_AG_SKILL" "the repaired Antigravity skill must match the first install"
+assert_same_sha "$AK_KIMI_SKILL" "$AK_H_KIMI_SKILL" "repairing the Antigravity tree touched the Kimi tree"
+
+echo "  ✓ Antigravity + Kimi: independent trees, idempotent update, per-tree tamper refresh"
+
 echo ""
 echo "update smoke tests passed"

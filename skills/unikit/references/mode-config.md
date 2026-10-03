@@ -62,6 +62,11 @@ Assign every paired key to exactly one bucket. Write nothing and ask nothing in 
    ask). An empty value is a normal state, not an anomaly: Step 0 itself distinguishes
    "missing **or empty**", and the bootstrap deliberately leaves a placeholder-backed key
    empty when the run has nothing to resolve it from — the no-git case, for instance.
+
+   **Exception — `subagents.model.<agent>`.** An empty value there is a deliberate choice
+   (pass no model argument), not a missing one: keep it, never fill it from the template, and
+   report it as kept. For a key whose template value is itself empty, an absent key is
+   appended empty, together with its comment.
 4. **Present, value outside a declared domain** → ask. A domain is declared by exactly one
    thing: an inline `# a | b` comment standing beside the value on the same line. Nothing
    else declares one — an `Options:` or `Examples:` list inside a comment block is prose for
@@ -106,9 +111,9 @@ The bucket-6 row is **printed even though nothing happens to it**. Omitting it w
 absence read as "checked, all fine", when in fact it was never examined.
 
 The key names above are stand-ins showing the shape of a row; the real ones come out of the
-Phase A comparison. Only the bucket-6 row names actual keys, and it is the sole place in this
-file that does — that pair is the one fact the template does not encode positionally, so it
-has to be written down, while every other classification is derived and needs no list.
+Phase A comparison. Only the bucket-6 row and the bucket-3 exception name actual keys; they
+are the two facts the template does not encode positionally, so they have to be written down,
+while every other classification is derived and needs no list.
 
 If every bucket is empty, say the configuration already matches the template and **STOP**
 without writing.

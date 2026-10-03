@@ -150,8 +150,8 @@ explore save pipeline, on the same criterion — see
 ## 5.6 — Verify or Commit
 
 - **Tier 2 exists because `Skill(...)` is not rewritten.** The slash form is rewritten per agent
-  by the installer, while non-Claude agents have no `Skill` tool at all — without the slash tier
-  the step is dead on five agents out of six.
+  by the installer, while some agents have no `Skill` tool at all — without the slash tier
+  the step is dead there.
 - **Review is stated as NOT delegated because the file argues the other way.** A step above says
   "Delegate to `docs-agent`" and a `Subagent Delegation — BLOCKING PRE-REQUISITE` block sits at
   the top; generalising from the neighbours is exactly how this step came to be read as a

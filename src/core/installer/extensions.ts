@@ -10,10 +10,8 @@ import { ensureDir, writeTextFile, removeDirectory, removeFile } from '../../uti
 import type { AgentInstallation } from '../config.js';
 import { getAgentConfig } from '../agents.js';
 import { getTransformer } from '../transformer.js';
-import { processTemplate } from '../template.js';
 import {
-  isMarkdownFile, stripMdExtension, buildSubagentTemplateVars,
-  loadSourceForAgent, warnActionFailed,
+  isMarkdownFile, stripMdExtension, renderSubagent, warnActionFailed,
 } from './shared.js';
 import { installSkillWithTransformer } from './skills.js';
 
@@ -101,14 +99,11 @@ export async function installExtensionSubagents(
     if (!isMarkdownFile(fileName)) continue;
 
     try {
-      const content = await loadSourceForAgent(sourcePath, agent.id);
-      if (!content) continue;
-
       const subagentName = stripMdExtension(fileName);
-      const vars = buildSubagentTemplateVars(subagentName, engineId, engineMcpKey);
-      const processed = processTemplate(content, vars);
+      const rendered = await renderSubagent(sourcePath, agent.id, subagentName, engineId, engineMcpKey);
+      if (!rendered) continue;
 
-      await writeTextFile(path.join(targetDir, fileName), processed);
+      await writeTextFile(path.join(targetDir, fileName), rendered);
       installed.push(subagentName);
     } catch (error) {
       warnActionFailed('install extension subagent', fileName, error);

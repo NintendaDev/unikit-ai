@@ -62,13 +62,28 @@ alternative.
 
 ## Delegation agents
 
-This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded; a reconnaissance alias expands to a read-only `Explore` dispatch. Each alias is the single place where its delegate's model is declared — call sites name the alias and never carry a model argument of their own.
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "{{agent_worker_type}}", ...)` invocation with the matching skill loaded; a reconnaissance alias expands to a read-only `{{agent_reader_type}}` dispatch. Each alias is the single place where its delegate's agent type is declared — call sites name the alias and never carry a type or a model argument of their own.
+
+**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
+(a missing file, block or key is not an error) and settle the model argument once:
+
+1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
+   exactly as written (this runtime's own spelling of the model argument, if it differs).
+2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
+   model of this session.
+3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
+   means pass no model argument.
+
+If the runtime rejects the model name, repeat that call once without the model argument and
+report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+
+`develop-agent` carries no model argument.
 
 - **`develop-agent`** — used ONLY for complex fixes requiring extensive codebase exploration or independent multi-file changes. Default fixes are implemented inline by this skill using rules loaded in Bootstrap. Expands to:
 
   ```
   Agent(
-    subagent_type: "general-purpose",
+    subagent_type: "{{agent_worker_type}}",
     prompt: "/unikit-devcontext <fix details>",
     description: "Apply fix",
     skills: ["unikit-devcontext"]
@@ -77,31 +92,13 @@ This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading
 
   Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
 
-<!-- unikit:agents claude -->
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  Agent(subagent_type: {{agent_reader_type}}, prompt: "<focused question>")
   ```
-
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
-
-  ```
-  Agent(subagent_type: Explore, prompt: "<focused question>")
-  ```
-
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
-
-  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
 
 ---
 

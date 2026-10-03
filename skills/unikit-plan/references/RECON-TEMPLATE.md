@@ -3,7 +3,8 @@
 The form of one reconnaissance answer of an ultra plan written with saved state, in English. It is
 written to `.unikit/code/plans/<feature-name>/.planning/recon/<topic>.md`; once the plan is
 assembled, `plan-bundle.mjs finalize` keeps it as `recon/<topic>.md` of the plan folder, the plan's
-evidence. `recon-writer-agent` fills it; the planning session reads it back a section at a time
+evidence. `recon-writer-agent` fills it — or, where the runtime has no writing agent, the planning
+session does, from the answer of `recon-agent`; the session reads it back a section at a time
 (`ultra-stateful.md` → `## Recon files`).
 
 The file has two layers. The head — `## Summary` and `## Contents` — is short, and it is all that

@@ -292,7 +292,7 @@ model: sonnet
 Agent instructions here...
 ```
 
-Subagents are only installed for agents that support them (e.g., Claude Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`).
+Subagents are only installed for agents that support them (Claude Code and Kimi Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`).
 
 ---
 
@@ -399,6 +399,7 @@ The template is written into each agent's settings file under `mcpServers.<key>`
 | Qwen Code | `.qwen/settings.json` |
 | OpenCode | `opencode.json` |
 | Antigravity | `.agents/mcp_config.json` |
+| Kimi Code | `.kimi-code/mcp.json` |
 
 On `extension remove`, the key is deleted from the settings file.
 
@@ -533,6 +534,12 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{engine_name}}` | `Unity` | Game engine name |
 | `{{engine_code_language}}` | `CSharp` | Engine's programming language |
 | `{{engine_mcp_tool}}` | `unity-biome-mcp` | Vendor code of the engine MCP server — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. Not the server's file id. |
+| `{{agent_id}}` | `claude` | Agent id |
+| `{{agent_reader_type}}` | `Explore` | Read-only subagent type of the agent |
+| `{{agent_worker_type}}` | `general-purpose` | Subagent type that can write files |
+| `{{agent_model_default}}` | `sonnet` | Built-in default model argument; empty when the agent has none |
+
+The four `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty. They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent).
 
 Use these in SKILL.md files to write agent-agnostic skills:
 

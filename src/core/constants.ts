@@ -188,6 +188,8 @@ export const MCP_ENV_TOKEN_PATTERN = '\\{\\{env:([A-Z][A-Z0-9_]*)\\}\\}';
 export const MCP_ENV_PLACEHOLDER_PREFIX = 'YOUR_';
 export const CODEX_BEARER_TOKEN_ENV_FIELD = 'bearer_token_env_var';
 export const CODEX_ENV_HTTP_HEADERS_FIELD = 'env_http_headers';
+/** Kimi Code takes the NAME of a bearer-token variable in one field, like Codex — it expands no `${VAR}` inside a header. */
+export const KIMI_BEARER_TOKEN_ENV_FIELD = 'bearerTokenEnvVar';
 export const QWEN_HTTP_URL_FIELD = 'httpUrl';
 export const OPENCODE_OAUTH_FIELD = 'oauth';
 /** Prefixes of a literal GitHub token — a settings entry carrying one was not written by UniKit. */
@@ -197,6 +199,13 @@ export const MCP_ENTRY_URL_FIELDS = ['url', QWEN_HTTP_URL_FIELD, 'serverUrl'] as
 /** Header name compared case-insensitively when Codex gets a bearer token variable. */
 export const AUTHORIZATION_HEADER = 'authorization';
 export const BEARER_PREFIX = 'Bearer ';
+
+/** Subagent-file spellings the Kimi adapter rewrites: the dispatch tool, its allow-list field, the launch command, the built-in prompt placeholder. */
+export const AGENT_TOOL_NAME = 'Agent';
+export const SUBAGENTS_FRONTMATTER_FIELD = 'subagents';
+export const CLAUDE_AGENT_LAUNCH = 'claude --agent';
+export const KIMI_AGENT_LAUNCH = 'kimi --agent';
+export const KIMI_BASE_PROMPT_PLACEHOLDER = '${base_prompt}';
 
 /**
  * Project-local log of MCP findings — `.unikit/MCP-RECHECK-NOTES.md`. It sits at
@@ -264,6 +273,9 @@ export type McpPlatformKey = (typeof MCP_PLATFORM_KEYS)[number];
  */
 export const MCP_TOKEN_HOME = '{{home}}';
 export const MCP_TOKEN_LOCALAPPDATA = '{{localappdata}}';
+
+/** Tag of the subagent-profile component in a skill's source hash (`hashing.ts`). */
+export const PROFILE_HASH_TAG = 'profile';
 
 // --- File names ---
 

@@ -254,12 +254,12 @@ Number the batch **1..N of its own**, not by the Step 3 registry: that registry 
 **Dispatch — three tiers, in order:**
 
 - **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-rules", args: "<batch>")` inline.
-  This is the path on Claude Code.
+  This is the path wherever the `Skill` tool exists.
 - **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in the current
   environment, **invoke `/unikit-rules <batch>` inline**. The slash form is rewritten per
   agent by the installer (Codex `$unikit-rules`, Qwen `/skills unikit-rules`); `Skill(...)`
-  is **not** rewritten and non-Claude agents have no `Skill` tool, so without this tier the
-  dispatch is dead on 5 of 6 agents. This must be a **real call**, not a printed
+  is **not** rewritten and some agents have no `Skill` tool, so without this tier the
+  dispatch is dead there. This must be a **real call**, not a printed
   recommendation.
 - **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at
   all, print the `Run: /unikit-rules …` line for the user. Then say plainly that no rule was

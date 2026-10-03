@@ -14,6 +14,10 @@ export interface TemplateVars {
   engine_name: string;
   engine_code_language: string;
   engine_mcp_tool: string;
+  agent_id: string;
+  agent_reader_type: string;
+  agent_worker_type: string;
+  agent_model_default: string;
 }
 
 export function buildEngineVars(engineId: string, engineMcpKey?: string | null): Pick<TemplateVars, 'engine_name' | 'engine_code_language' | 'engine_mcp_tool'> {
@@ -36,11 +40,17 @@ export function buildTemplateVars(agent: AgentConfig): TemplateVars {
     engine_name: '',
     engine_code_language: '',
     engine_mcp_tool: '',
+    agent_id: agent.id,
+    agent_reader_type: agent.subagentProfile.readerType,
+    agent_worker_type: agent.subagentProfile.workerType,
+    agent_model_default: agent.subagentProfile.modelDefault,
   };
 }
 
+// An unknown `{{name}}` stays in the text as written — which is why a live `{{agent_` outside
+// the skills is guarded against (a subagent file or system asset would ship it unreplaced).
 export function processTemplate(content: string, vars: TemplateVars): string {
-  return content.replace(/\{\{(skills_dir|home_skills_dir|settings_file|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool)\}\}/g, (_, key: string) => {
+  return content.replace(/\{\{(skills_dir|home_skills_dir|settings_file|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default)\}\}/g, (_, key: string) => {
     return vars[key as keyof TemplateVars];
   });
 }

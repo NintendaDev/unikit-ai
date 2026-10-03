@@ -86,38 +86,32 @@ or blocked does the assistant run the lenses sequentially in the main session.
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where the delegate's model is declared — call sites name the alias and never carry a
-model argument of their own.
+place where its delegate's agent type is declared — call sites name the alias and never carry
+a type or a model argument of their own.
 
-<!-- unikit:agents claude -->
+**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
+(a missing file, block or key is not an error) and settle the model argument once:
+
+1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
+   exactly as written (this runtime's own spelling of the model argument, if it differs).
+2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
+   model of this session.
+3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
+   means pass no model argument.
+
+If the runtime rejects the model name, repeat that call once without the model argument and
+report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+
 - **`lens-agent`** — one adversarial review lens, read-only, findings only. Expands to:
 
   ```
-  Agent(subagent_type: general-purpose, model: sonnet, prompt: "<one lens brief>")
+  Agent(subagent_type: {{agent_worker_type}}, prompt: "<one lens brief>")
   ```
 
-  `general-purpose` and not `Explore`: the lens carries a written output contract and the
+  The worker type and not the reader type: the lens carries a written output contract and the
   configured artifact language, which is a reasoning job rather than a search.
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, run the lenses sequentially in this session.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`lens-agent`** — one adversarial review lens, read-only, findings only. Expands to:
-
-  ```
-  Agent(subagent_type: general-purpose, prompt: "<one lens brief>")
-  ```
-
-  `general-purpose` and not `Explore`: the lens carries a written output contract and the
-  configured artifact language, which is a reasoning job rather than a search.
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
-
-  Fallback: if the `Agent` tool is unavailable, run the lenses sequentially in this session.
-<!-- unikit:end -->
 
 ## Phase 0 — Bootstrap
 

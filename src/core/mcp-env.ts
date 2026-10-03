@@ -7,8 +7,10 @@
 //
 // Which style belongs to which client is measured, not guessed: Claude Code and
 // Qwen expand `${NAME}`, Cursor `${env:NAME}`, OpenCode `{env:NAME}`, Codex takes
-// the variable NAME in dedicated fields, and Antigravity documents no syntax at
-// all — it gets a `YOUR_NAME` placeholder the user replaces by hand.
+// the variable NAME in dedicated fields, Kimi Code takes it in one
+// `bearerTokenEnvVar` field and expands nothing inside a header, and Antigravity
+// documents no syntax at all — it gets a `YOUR_NAME` placeholder the user
+// replaces by hand.
 //
 // A wrong first write is permanent: reconciliation keeps an existing entry as it
 // is ("present → keep"), so nothing downstream ever corrects the syntax.
