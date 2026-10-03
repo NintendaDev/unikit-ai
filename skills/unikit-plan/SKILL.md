@@ -109,7 +109,7 @@ model argument of their own.
   default applies.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered into its `recon/` file; used only after `mode-ultra.md` Step A0 or Step D2 chose that protocol. This runtime has no writing agent to hand it to: ask the question through `recon-agent`, then write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`, the moment it returns. No model is named, for the reason given under `recon-agent`.
+- **`recon-writer-agent`** — one reconnaissance question of an ultra plan under the saved-state protocol, answered into its `recon/` file; used only after `mode-ultra.md` Step A0 or Step D2 chose that protocol. This runtime has no writing agent to hand it to: ask the question through `recon-agent` — it only reads and cannot save a file — then, the moment it returns and before anything else, create `recon/` if it is missing and write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`; take `pending` off only once the file is on disk (`ultra-stateful.md` → `## Recon files` → *Without a writing agent*). No model is named, for the reason given under `recon-agent`.
 <!-- unikit:end -->
 
 ## Input
@@ -397,7 +397,7 @@ for writing actionable tasks with meaningful WHY context and for generating a `#
 
 You loaded the project rules in Step 0.5 (Bootstrap). Now use that knowledge to write precise prompts for Explore tasks and to synthesize their results against project conventions.
 
-**Ultra mode, saved-state protocol:** reconnaissance goes through `recon-writer-agent` — each agent writes its answer into its own `recon/<topic>.md`, whole and never condensed, and only the path and the file's `## Summary` enter this context (`ultra-stateful.md` → `## Recon files`).
+**Ultra mode, saved-state protocol:** reconnaissance goes through `recon-writer-agent` — each answer lands in its own `recon/<topic>.md`, whole and never condensed (written by the agent itself, or by this session before anything else when the runtime has no writing agent), and later steps work from the file's `## Summary` (`ultra-stateful.md` → `## Recon files`).
 
 #### Phase A: Exploration (Explore tasks)
 

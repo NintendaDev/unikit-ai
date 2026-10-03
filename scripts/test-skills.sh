@@ -9090,6 +9090,22 @@ if [[ -z "$UW_WHY" ]]; then
         grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:recon-missing(${lit:0:32})"
     done
     grep -qF 'answers condensed' "$UW_STATEFUL" && UW_WHY+=" UW-4:recon-condensed"
+    # ...and where there is NO writing agent the SESSION is the writer, as an ordered procedure with a
+    # gate, never a clause it can skip. A live run on a runtime without a writing agent: the read-only
+    # recon agents finished and no recon/ folder existed — the exception had been one sentence,
+    # and the table row above it still said "by the agent itself". The procedure names the folder
+    # creation, the whole-answer write and the order (file first, `pending` off last); the gate
+    # refuses to synthesise from summaries whose files were never saved
+    for lit in '**Without a writing agent.**' 'only reads and cannot save a file' \
+               'create `.planning/recon/` if it is not there yet' \
+               'only then take `pending` off its `## Recon` line, and only once the file is on disk' \
+               'An answer is never summarised, discussed or built on before its file exists' \
+               '**Recon gate.**' 'never go on from a summary alone' \
+               'by the agent itself, or by this session when the runtime has no writing agent'; do
+        grep -qF -- "$lit" "$UW_STATEFUL" || UW_WHY+=" UW-4:no-writing-agent-path(${lit:0:32})"
+    done
+    # the row that used to say only "by the agent itself" must not come back unqualified
+    grep -qF 'by the agent itself (`## Recon files`)' "$UW_STATEFUL" && UW_WHY+=" UW-4:writer-only-row"
     # (UW-5) the script calls and the fallback; nothing of the retired module-by-module scheme
     for lit in '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs check' \
                '{{skills_dir}}/{{self_name}}/scripts/plan-bundle.mjs finalize' \
@@ -9177,6 +9193,11 @@ if [[ -z "$WP_WHY" ]]; then
     grep -qF 'whole and never condensed' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-recon-not-whole"
     grep -qF 'the dispatch is `recon-writer-agent` instead' "$WP_ULTRA" || WP_WHY+=" WP-1:step-b-no-writer"
     grep -qF 'reconnaissance goes through `recon-writer-agent`' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-no-writer"
+    # the two pointers must not promise "the agent writes it" without the runtime that has none
+    grep -qF 'by this session the moment the answer returns' "$WP_ULTRA" || WP_WHY+=" WP-1:step-b-no-session-write"
+    grep -qF 'when the runtime has no writing agent' "$WP_PLAN" || WP_WHY+=" WP-2:step-4-no-session-write"
+    grep -qF 'only the path and the file' "$WP_ULTRA" && WP_WHY+=" WP-1:step-b-promises-path-only"
+    grep -qF 'only the path and the file' "$WP_PLAN" && WP_WHY+=" WP-2:step-4-promises-path-only"
     # the alias in BOTH agent-filter branches: the writing agent on Claude, recon-agent + a write elsewhere
     WP_CLAUDE="$(awk '/^<!-- unikit:agents claude -->$/{f=1;next} /^<!-- unikit:end -->$/{f=0} f' "$WP_PLAN")"
     WP_OTHER="$(awk '/^<!-- unikit:agents !claude -->$/{f=1;next} /^<!-- unikit:end -->$/{f=0} f' "$WP_PLAN")"
@@ -9186,6 +9207,12 @@ if [[ -z "$WP_WHY" ]]; then
     grep -qF 'filling every section of the template <path of RECON-TEMPLATE.md>' <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-no-template"
     grep -qF "Reply with the file's path and its \`## Summary\` section, word for word" <<< "$WP_CLAUDE" || WP_WHY+=" WP-2:writer-reply-not-summary"
     grep -qF '**`recon-writer-agent`**' <<< "$WP_OTHER" || WP_WHY+=" WP-2:no-writer-fallback-branch"
+    # ...and in that branch the session's write is spelled out: why (the reader cannot save), when
+    # (before anything else), the folder, and the order (file first, `pending` off last)
+    for lit in 'it only reads and cannot save a file' 'before anything else, create `recon/` if it is missing' \
+               'take `pending` off only once the file is on disk'; do
+        grep -qF -- "$lit" <<< "$WP_OTHER" || WP_WHY+=" WP-2:fallback-write-vague(${lit:0:28})"
+    done
     # ...and the writer is a saved-state tool only: a live run on the standard protocol picked it up
     # on its own, leaving full answers in a folder no resume knows about
     grep -qF 'Used only after `mode-ultra.md` Step A0 or Step D2 chose the saved-state protocol' <<< "$WP_CLAUDE" \

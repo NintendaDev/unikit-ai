@@ -32,7 +32,7 @@ Each step writes its result the moment it has one, not at the end of the step:
 | Step | Where its result is written |
 |------|-----------------------------|
 | Step A (branch) | `Settings:` |
-| Step B, Step 4 Phase A and Phase B (reconnaissance) | before an agent is launched, the `guard:` line and its question's `pending` line in `## Recon`; its answer, whole, into `recon/<topic>.md` — by the agent itself (`## Recon files`) |
+| Step B, Step 4 Phase A and Phase B (reconnaissance) | before an agent is launched, the `guard:` line and its question's `pending` line in `## Recon`; its answer, whole, into `recon/<topic>.md` — by the agent itself, or by this session when the runtime has no writing agent (`## Recon files` → *Without a writing agent*) |
 | Step C (preferences) | `Settings:` and `## Decisions` |
 | Step 2 (research link) | `manifest-head.md` → `## Based on`, with the digest computed at Step 2 — never recomputed |
 | Step 4 synthesis | `manifest-head.md` → `## Technical Context` |
@@ -137,10 +137,26 @@ whatever is left out of it is lost or asked again. When an agent returns, its `#
 most of it. Before the phases — Step 4 synthesis, Step D, Step E —
 the summaries are the working material, and a section is opened only for an exact detail.
 
-Where `recon-writer-agent` falls back to `recon-agent` (a runtime without a writing agent, a failed
-call, a missing file), the answer comes back into this session instead.
+**Without a writing agent.** Where `recon-writer-agent` falls back to `recon-agent` (a runtime
+without a writing agent, a failed call, a missing file), the answer comes back into this session
+instead. `recon-agent` only reads and cannot save a file, so this session is the writer — and the
+saving is a step of the protocol, not an option: an answer that exists only in the context is gone
+at the next compaction.
 Writing it is the first thing done when an answer arrives — before reading anything else, before
-waiting for the next agent.
+waiting for the next agent. For each answer, in this order:
+
+1. create `.planning/recon/` if it is not there yet (`mkdir -p`);
+2. write `recon/<topic>.md` — the whole answer, never condensed, in the form of `RECON-TEMPLATE.md`
+   with its `## Summary` and `## Contents` (the line ranges from `grep -n '^## '` after the write);
+3. only then take `pending` off its `## Recon` line, and only once the file is on disk.
+
+Agents launched in one batch return together: write their files one after another, each whole, and
+only then go on. An answer is never summarised, discussed or built on before its file exists.
+
+**Recon gate.** Before Step 4 synthesis, and before any phase that cites a recon file, every line of
+`## Recon` has its file in `.planning/recon/` (`ls` it) and none stays `pending` while no agent runs.
+A line whose file is missing was never saved: ask that one question again, write it as above, and
+never go on from a summary alone.
 
 **Change guard.** `recon-writer-agent` runs an agent that could edit files, and only its prompt
 bounds it. Before the first agent starts, write `guard: <status hash> · <diff hash>` into
