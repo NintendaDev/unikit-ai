@@ -224,7 +224,7 @@ The actualization mode sorts every leaf key of the template into one of six buck
 
 ## MCP Configuration
 
-UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), or `.agents/mcp_config.json` (Antigravity).
+UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), `.agents/mcp_config.json` (Antigravity), or `.kimi-code/mcp.json` (Kimi Code).
 
 Every server carries two names, and keeping them apart is what the rest of this section rests on:
 
@@ -426,6 +426,7 @@ Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `co
 | OpenCode | `"Authorization": "Bearer {env:GITHUB_PAT}"` and `"oauth": false` |
 | Codex CLI | `bearer_token_env_var = "GITHUB_PAT"` — no `Authorization` header at all |
 | Antigravity | `"Authorization": "Bearer YOUR_GITHUB_PAT"` — it documents no reference syntax, so this is a placeholder you replace yourself |
+| Kimi Code | `"bearerTokenEnvVar": "GITHUB_PAT"` — Kimi expands nothing inside a header, so the variable NAME goes into its own field and no `Authorization` header is written; set `GITHUB_PAT` in the environment `kimi` starts from |
 
 The first write has to be right: an entry already standing under our code is kept as it is (rule 3 of [What UniKit writes into your settings file](#what-unikit-writes-into-your-settings-file)), so nothing would ever correct a wrong one.
 
@@ -550,6 +551,8 @@ You can delete the hint from your own settings file and `update` will **not** pu
 
 **Qwen Code gets `httpUrl`.** Qwen reads `url` as an SSE endpoint and `httpUrl` as HTTP streaming, so a new entry for **every** HTTP server — Context7, the HTTP engine servers (Coplay `UnityMCP`, chir24 `unreal-engine`) and servers registered by extensions — is written with `httpUrl` and without `url`/`type`. An entry written earlier is kept as it is; to recreate it, delete it from `.qwen/settings.json` and run `unikit-ai init` or `update`.
 
+**Kimi Code drops `type`.** Kimi reads the transport off the entry (`command` → stdio, `url` → HTTP), so a new entry for every HTTP server is written without `type`, and a bearer-token header becomes `bearerTokenEnvVar` (table above). A header that is a whole `{{env:NAME}}` reference, or mixes text with one, has no Kimi field: it is dropped with a warning. Kimi enables project-level MCP servers only after you trust the folder. An entry written earlier is kept as it is; to recreate it, delete it from `.kimi-code/mcp.json` and run `unikit-ai init` or `update`.
+
 ### GitHub
 
 ```json
@@ -593,6 +596,7 @@ Rule metadata (`id`, `description`, `version`, `references`) lives in the remote
 | Qwen Code | `.qwen` | `.qwen/skills` | Yes (`.qwen/settings.json`) |
 | OpenCode | `.opencode` | `.opencode/skills` | Yes (`opencode.json`) |
 | Antigravity | `.agents` | `.agents/skills` | Yes (`.agents/mcp_config.json`) |
+| Kimi Code | `.kimi-code` | `.kimi-code/skills` | Yes (`.kimi-code/mcp.json`) |
 
 ## Project Structure
 

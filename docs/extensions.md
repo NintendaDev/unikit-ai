@@ -292,7 +292,7 @@ model: sonnet
 Agent instructions here...
 ```
 
-Subagents are only installed for agents that support them (e.g., Claude Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`).
+Subagents are only installed for agents that support them (Claude Code and Kimi Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`).
 
 ---
 
@@ -399,6 +399,7 @@ The template is written into each agent's settings file under `mcpServers.<key>`
 | Qwen Code | `.qwen/settings.json` |
 | OpenCode | `opencode.json` |
 | Antigravity | `.agents/mcp_config.json` |
+| Kimi Code | `.kimi-code/mcp.json` |
 
 On `extension remove`, the key is deleted from the settings file.
 

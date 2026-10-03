@@ -4,7 +4,7 @@
 
 UniKit AI ships eight subagents alongside the skill set. They split long-running workflows into single-responsibility roles, so the main conversation stays focused while planning, implementation, and quality checks run in parallel or in background.
 
-Bundled subagents install into `<agent-config>/agents/` during `unikit-ai init` (for agents that support subagents - Claude Code today, per `AGENT_REGISTRY.supportsSubagents`). Agents without subagent support still get the skill set; the workflows then fall back to inline execution.
+Bundled subagents install into `<agent-config>/agents/` during `unikit-ai init` (for agents that support subagents - Claude Code and, through an install-time adapter, Kimi Code, per `AGENT_REGISTRY.supportsSubagents`). Agents without subagent support still get the skill set; the workflows then fall back to inline execution.
 
 ## Overview
 
@@ -21,7 +21,7 @@ The subagent layer exists for six reasons:
 
 ```
 +-------------------------------------------------------------+
-|  Top-level coordinator (claude --agent ...)                 |
+|  Top-level coordinator (claude|kimi --agent ...)            |
 |    - unikit-implement-coordinator                           |
 |    - unikit-plan-coordinator                                |
 +------+-----------------------------------------------+------+
@@ -51,7 +51,7 @@ The subagent layer exists for six reasons:
 
 | Tier | Members | Launch | Can spawn subagents? |
 |------|---------|--------|----------------------|
-| Coordinator | `unikit-implement-coordinator`, `unikit-plan-coordinator` | `claude --agent <name>` (top-level session) | Yes |
+| Coordinator | `unikit-implement-coordinator`, `unikit-plan-coordinator` | `claude --agent <name>` / `kimi --agent <name>` (top-level session) | Yes |
 | Internal worker | `unikit-implement-worker`, `unikit-plan-polisher` | Spawned by coordinator | No |
 | Sidecar (background, read-only) | `unikit-review-sidecar`, `unikit-architecture-sidecar`, `unikit-commit-sidecar`, `unikit-docs-sidecar` | Spawned by coordinator (or explicit `Agent(...)` from a user-launched skill) | No |
 | Delegation alias | `develop-agent`, `docs-agent` (skill-loading) · `recon-agent`, `check-agent`, `lens-agent` (model-carrying) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
@@ -63,7 +63,13 @@ Claude Code enforces an important rule: **ordinary subagents cannot spawn other 
 ```bash
 claude --agent unikit-implement-coordinator
 claude --agent unikit-plan-coordinator
+
+# Kimi Code
+kimi --agent unikit-implement-coordinator
+kimi --agent unikit-plan-coordinator
 ```
+
+On Kimi Code the dispatch right comes from the agent file instead: only an agent whose `tools` carries `Agent` can dispatch, and the subagent types it may start are its `subagents` list, which the installer writes for the two coordinators - see [agents.md](agents.md#kimi-code).
 
 If a coordinator detects that it is running as an ordinary subagent, it must stop immediately - that is how `unikit-plan-coordinator` and `unikit-implement-coordinator` are written.
 
@@ -159,7 +165,7 @@ Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `dev
 
 1. **Read-only where possible.** All four sidecars declare only `Read/Glob/Grep`. They exist to observe the codebase after a change, not to mutate it.
 2. **Writers are few.** Only `unikit-implement-coordinator`, `unikit-implement-worker`, and `unikit-plan-polisher` carry `Write/Edit`. `unikit-plan-coordinator` can edit plan artifacts via its polisher, not directly.
-3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` and `unikit-docs-sidecar` pin `model: sonnet`. A subagent definition file is the **right** place for a model name - it is runtime-native and reaches Claude Code only. A skill body is not: it reaches all six runtimes, of which only Claude Code has a dispatch-time model argument at all. That is why the model-carrying aliases declare their model behind an agent-filter branch instead of writing it at the call site, and why the value is always a tier alias (`sonnet`) and never a versioned model id.
+3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` and `unikit-docs-sidecar` pin `model: sonnet`. A subagent definition file is the **right** place for a model name - it is runtime-native and reaches only the agents that receive subagent files (Claude Code, and Kimi Code, which ignores the `model` field). A skill body is not: it reaches all seven runtimes, of which only Claude Code is known to take a tier alias such as `sonnet` as a dispatch-time model argument. That is why the model-carrying aliases declare their model behind an agent-filter branch instead of writing it at the call site, and why the value is always a tier alias (`sonnet`) and never a versioned model id.
 4. **Strict output contracts.** Sidecars return structured JSON or markdown the coordinator can parse. Workers return a single task result block. Coordinators are the only place free-form prose appears.
 5. **English output for parsing, project language for artifacts.** Sidecars and workers return English summaries; plan and documentation artifacts they write follow `language.artifacts` from `.unikit/config.yaml`.
 6. **Rules loaded inside the subagent.** Every subagent with domain concerns (architecture, review, implement, plan) reads its own slice of `RULES_INDEX.md` - there is no implicit inheritance from the caller's context.
@@ -173,6 +179,8 @@ Launch the plan coordinator for a new feature:
 claude --agent unikit-plan-coordinator "add item rarity system with visual effects"
 ```
 
+On Kimi Code: `kimi --agent unikit-plan-coordinator "add item rarity system with visual effects"`.
+
 This creates a plan in `.unikit/code/plans/<feature>/`, critiques it, refines it, and stops when it is implementation-ready (or after the iteration budget).
 
 Execute the resulting plan:
@@ -180,6 +188,8 @@ Execute the resulting plan:
 ```bash
 claude --agent unikit-implement-coordinator
 ```
+
+On Kimi Code: `kimi --agent unikit-implement-coordinator`.
 
 The coordinator parses the latest plan, builds the phase graph, dispatches workers for parallel phases, runs background sidecars between layers, and advances to commit checkpoints.
 
