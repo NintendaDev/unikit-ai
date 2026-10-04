@@ -858,7 +858,7 @@ const write = async (agent, cfg) => {
   writer.upsert(settings, 'github', cfg);
   return { text: writer.serialize(settings), settings };
 };
-for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravity', 'kimi']) {
+for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravity', 'kimi', 'universal']) {
   const { text } = await write(agent, tokenEntry());
   if (text.includes('{{env:')) why.push(agent + ':raw-token-left');
 }
@@ -893,17 +893,21 @@ for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravi
   if (e.httpUrl !== URL || e.url !== undefined || e.type !== undefined) why.push('qwen:plain-entry-httpUrl'); }
 { const e = (await write('kimi', { type: 'http', url: URL })).settings.mcpServers.github;
   if (JSON.stringify(e) !== JSON.stringify({ url: URL })) why.push('kimi:plain-entry'); }
+{ const e = (await write('universal', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer ${GITHUB_PAT}') why.push('universal:syntax'); }
+if (getMcpWriter('universal') !== getMcpWriter('claude')) why.push('universal:not-the-claude-writer');
 const servers = new Map([['github', { displayName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
 const both = getMcpEnvLines(servers, ['github'], ['claude', 'antigravity']);
 if (both.length !== 2 || !both[0].includes('GITHUB_PAT') || !both[1].includes('YOUR_GITHUB_PAT')) why.push('envLines:antigravity');
 if (getMcpEnvLines(servers, ['github'], ['claude']).length !== 1) why.push('envLines:claude-only');
 if (getMcpEnvLines(servers, ['github'], ['claude', 'kimi']).length !== 1) why.push('envLines:kimi-adds-a-line');
+if (getMcpEnvLines(servers, ['github'], ['claude', 'universal']).length !== 1) why.push('envLines:universal-adds-a-line');
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(JSON.stringify({ why }));
 NODE_EOF
 )
 if [[ "$ENV_SMOKE_RESULT" == '{"why":[]}' ]]; then
-    pass "MCP env references rendered per client (7 agents)"
+    pass "MCP env references rendered per client (8 agents)"
 else
     fail "MCP env-reference smoke: $ENV_SMOKE_RESULT"
 fi
@@ -10080,7 +10084,7 @@ fi
 # ─────────────────────────────────────────────
 # Part 7g3: AP-1…AP-7 — the agent profile in skills
 # ─────────────────────────────────────────────
-# A skill body travels to all seven runtimes, and the runtimes disagree on what a subagent is
+# A skill body travels to all eight runtimes, and the runtimes disagree on what a subagent is
 # called and whether a dispatch can name a model. The disagreement is data — the agent profile
 # in `AGENT_REGISTRY` (`subagentProfile`) — and the installer substitutes it into the text
 # (`{{agent_reader_type}}`, `{{agent_worker_type}}`, `{{agent_id}}`, `{{agent_model_default}}`).

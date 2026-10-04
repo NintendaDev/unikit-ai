@@ -299,7 +299,7 @@ await group('T', async () => {
     const verbatim = 'subagent_type: "general-purpose"';
     assertEq('T1g transform rewrites nothing in skill text (types come from the profile)', t.transform('x', verbatim).content, verbatim);
 
-    for (const id of ['claude', 'codex', 'cursor', 'qwen', 'opencode', 'antigravity']) {
+    for (const id of ['claude', 'codex', 'cursor', 'qwen', 'opencode', 'antigravity', 'universal']) {
         assertEq(`T2 ${id} has no transformSubagent`, getTransformer(id).transformSubagent, undefined);
     }
 });

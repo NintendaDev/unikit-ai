@@ -790,6 +790,95 @@ KIMI_GH_SHAPE=$(node -e "const j = JSON.parse(require('fs').readFileSync(process
 echo "  ✓ kimi: own .kimi-code/ tree, worker type coder from the profile (skills + references), no \$N token, adapted coordinators, bearerTokenEnvVar MCP"
 
 # ─────────────────────────────────────────────────────
+# Test 3e: Universal / Other (shared .agents/skills, Claude-vocabulary text, MCP in .mcp.json)
+# ─────────────────────────────────────────────────────
+# The universal agent is for runtimes UniKit does not name: skills in the shared .agents/skills,
+# the subagent types are the Claude literals (as AI Factory writes them), the model default is
+# empty, MCP goes into .mcp.json through Claude's writer. It writes nothing else: no subagent
+# files, no rules file (that is Antigravity's postInstall) and no .agents/mcp_config.json.
+# Installed through `update`, on the REAL skills/ and the real mcp/universal/ catalog.
+
+UNIVERSAL_DIR="$TMPDIR/test-universal"
+mkdir -p "$UNIVERSAL_DIR"
+
+cat > "$UNIVERSAL_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": { "context7": "context7", "github": "github" } },
+  "agents": [
+    {
+      "id": "universal",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-fix", "unikit-explore", "unikit-gd-explore"],
+      "installedSubagents": ["unikit-architecture-sidecar"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$UNIVERSAL_DIR"
+
+seed_rule "$UNIVERSAL_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+run_update "$UNIVERSAL_DIR"
+
+UNIVERSAL_SKILLS="$UNIVERSAL_DIR/.agents/skills"
+UNIVERSAL_MCP="$UNIVERSAL_DIR/.mcp.json"
+
+# Skills in the shared directory, text untouched by any rewrite
+assert_exists "$UNIVERSAL_SKILLS/unikit/SKILL.md" \
+  "universal: unikit skill installed as .agents/skills/<name>/SKILL.md"
+assert_exists "$UNIVERSAL_SKILLS/unikit/references/LANGUAGE_RULES_TEMPLATE.md" \
+  "universal: unikit skill references/ delivered"
+assert_contains "$UNIVERSAL_SKILLS/unikit-plan/references/TASK-FORMAT.md" '/unikit-implement' \
+  "universal: references keep /unikit-* verbatim (no invocation rewrite)"
+
+# Nothing but skills and .mcp.json: no subagents (even a listed one), no rules file, no Antigravity MCP file
+assert_not_exists "$UNIVERSAL_DIR/.agents/agents" \
+  "universal: no subagent directory (supportsSubagents:false), a listed subagent is not installed"
+assert_not_exists "$UNIVERSAL_DIR/.agents/rules" \
+  "universal: no guardrails file (that is Antigravity's postInstall)"
+assert_not_exists "$UNIVERSAL_DIR/.agents/mcp_config.json" \
+  "universal: no Antigravity MCP file"
+
+# Variable substitution and the profile: settings file, Claude's types, no model, no Codex block
+assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.mcp\.json' \
+  "universal: {{settings_file}} renders to .mcp.json"
+assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
+  "universal: no Antigravity settings path in a universal skill"
+assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "general-purpose"' \
+  "universal: the worker type is the Claude literal"
+assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "(self|coder|worker|generalPurpose|general)"' \
+  "universal: no other agent's worker type"
+assert_contains "$UNIVERSAL_SKILLS/unikit-fix/SKILL.md" 'subagent_type: Explore, prompt:' \
+  "universal: recon-agent launches the reader type Explore"
+assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'subagents\.model\.universal' \
+  "universal: the model rule names its own config key"
+assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in default `""`' \
+  "universal: no built-in model default"
+assert_not_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'Subagent Delegation.*BLOCKING PRE-REQUISITE' \
+  "universal: no Codex ask-the-user block (DEC-008)"
+UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default)\}\}'
+UNIVERSAL_TOKEN_HITS=$(grep -rE "$UNIVERSAL_TOKEN_RE" "$UNIVERSAL_DIR/.agents" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+if [[ "$UNIVERSAL_TOKEN_HITS" -ne 0 ]]; then
+  echo "Assertion failed: universal install leaked $UNIVERSAL_TOKEN_HITS template placeholder(s)"
+  grep -rE "$UNIVERSAL_TOKEN_RE" "$UNIVERSAL_DIR/.agents" --include='*.md' | head -5
+  exit 1
+fi
+
+# MCP in Claude Code's file and spelling (DEC-007)
+assert_exists "$UNIVERSAL_MCP" "universal: update wrote .mcp.json"
+assert_contains "$UNIVERSAL_MCP" '"context7"' "universal: the Context7 server is written"
+assert_contains "$UNIVERSAL_MCP" 'Bearer \$\{GITHUB_PAT\}' "universal: the GitHub token is a \${GITHUB_PAT} reference, Claude Code's syntax"
+assert_not_contains "$UNIVERSAL_MCP" 'bearerTokenEnvVar|serverUrl|YOUR_GITHUB_PAT' "universal: no other client's MCP spelling"
+
+echo "  ✓ universal: skills in the shared .agents/skills (Claude vocabulary, no model, no Codex block), MCP in .mcp.json, nothing else written"
+
+# ─────────────────────────────────────────────────────
 # Test 4: RULES_INDEX.md end-to-end smoke after `unikit-ai update`
 # ─────────────────────────────────────────────────────
 # Update should drive syncRulesState which regenerates the index. The
@@ -2152,10 +2241,10 @@ echo "  ✓ configByPlatform: fennara resolves to a token-free absolute command 
 # ─────────────────────────────────────────────────────
 # The catalog stores the token as `{{env:GITHUB_PAT}}`; each writer renders it in its
 # client's syntax. A wrong first write is permanent ("present → keep"), so the real
-# catalog is driven through configureMcp for all seven agents, then through a full
+# catalog is driven through configureMcp for all eight agents, then through a full
 # update for the grants. No network, no server start.
 
-for GH_AGENT in claude cursor qwen opencode codex antigravity kimi; do
+for GH_AGENT in claude cursor qwen opencode codex antigravity kimi universal; do
   GH_DIR="$TMPDIR/test-github-mcp-$GH_AGENT"
   mkdir -p "$GH_DIR"
   (cd "$ROOT_DIR" && node --input-type=module -e "
@@ -2174,11 +2263,13 @@ GH_OPENCODE="$TMPDIR/test-github-mcp-opencode/opencode.json"
 GH_CODEX="$TMPDIR/test-github-mcp-codex/.codex/config.toml"
 GH_ANTIGRAVITY="$TMPDIR/test-github-mcp-antigravity/.agents/mcp_config.json"
 GH_KIMI="$TMPDIR/test-github-mcp-kimi/.kimi-code/mcp.json"
-for GH_FILE in "$GH_CLAUDE" "$GH_CURSOR" "$GH_QWEN" "$GH_OPENCODE" "$GH_CODEX" "$GH_ANTIGRAVITY" "$GH_KIMI"; do
+GH_UNIVERSAL="$TMPDIR/test-github-mcp-universal/.mcp.json"
+for GH_FILE in "$GH_CLAUDE" "$GH_CURSOR" "$GH_QWEN" "$GH_OPENCODE" "$GH_CODEX" "$GH_ANTIGRAVITY" "$GH_KIMI" "$GH_UNIVERSAL"; do
   assert_exists "$GH_FILE" "GitHub MCP written into ${GH_FILE#$TMPDIR/}"
   assert_not_contains "$GH_FILE" '\{\{env:' "no raw {{env:}} token left in ${GH_FILE#$TMPDIR/}"
 done
 assert_contains "$GH_CLAUDE" 'Bearer \$\{GITHUB_PAT\}' "claude: \${GITHUB_PAT}"
+assert_contains "$GH_UNIVERSAL" 'Bearer \$\{GITHUB_PAT\}' "universal: \${GITHUB_PAT}, the same spelling as Claude Code"
 assert_contains "$GH_CURSOR" 'Bearer \$\{env:GITHUB_PAT\}' "cursor: \${env:GITHUB_PAT}"
 assert_contains "$GH_QWEN" '"httpUrl"' "qwen: an HTTP server goes into httpUrl"
 assert_contains "$GH_QWEN" '\$\{GITHUB_PAT\}' "qwen: \${GITHUB_PAT}"
@@ -2192,6 +2283,26 @@ assert_not_contains "$GH_KIMI" '"type"' "kimi: no type field (the transport is r
 # file, names it. The absence of the header is asserted on the entry's structure.
 GH_KIMI_SHAPE=$(node -e "const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')); const e = j.mcpServers.github; process.stdout.write(e && e.headers === undefined && e.bearerTokenEnvVar === 'GITHUB_PAT' ? 'ok' : 'bad');" "$GH_KIMI")
 [[ "$GH_KIMI_SHAPE" == "ok" ]] || { echo "Assertion failed: kimi github entry must carry bearerTokenEnvVar and no headers"; exit 1; }
+
+# Universal next to Claude Code shares ONE .mcp.json and ONE writer: the second agent finds the
+# entries under its own codes and leaves the file byte-identical ("present → keep").
+GH_SHARED_DIR="$TMPDIR/test-github-mcp-shared"
+mkdir -p "$GH_SHARED_DIR"
+for GH_SHARED_AGENT in claude universal; do
+  (cd "$ROOT_DIR" && node --input-type=module -e "
+    const target = process.argv[1];
+    const { discoverMcpServers } = await import('./dist/core/mcp.js');
+    const { configureMcp } = await import('./dist/core/mcp-reconcile.js');
+    const servers = await discoverMcpServers('unity');
+    await configureMcp(target, servers, ['context7', 'github'], process.argv[2]);
+  " "$GH_SHARED_DIR" "$GH_SHARED_AGENT" > /dev/null 2>&1)
+  if [[ "$GH_SHARED_AGENT" == "claude" ]]; then
+    assert_exists "$GH_SHARED_DIR/.mcp.json" "claude wrote the shared .mcp.json first"
+    GH_SHARED_SHA="$(sha_of "$GH_SHARED_DIR/.mcp.json")"
+  fi
+done
+assert_same_sha "$GH_SHARED_DIR/.mcp.json" "$GH_SHARED_SHA" \
+  "universal after claude must leave the shared .mcp.json byte-identical (one file, one writer)"
 
 # The wizard reads the real catalog: GitHub stays unchecked on a fresh install.
 GH_PRESELECT=$(cd "$ROOT_DIR" && node --input-type=module -e "
@@ -2260,7 +2371,7 @@ assert_contains "$GH_GRANTS_DIR/.claude/skills/unikit-pr/SKILL.md" 'mcp__github_
 assert_not_contains "$GH_GRANTS_DIR/.claude/skills/unikit-commit/SKILL.md" 'mcp__github__' \
   "no other skill gets a GitHub grant"
 
-echo "  ✓ GitHub MCP: seven clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
+echo "  ✓ GitHub MCP: eight clients get their own env reference syntax, unchecked by default, only unikit-pr granted"
 
 # ─────────────────────────────────────────────────────
 # Final sweep: agent-filter markers must not leak into any install
