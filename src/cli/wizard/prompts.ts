@@ -1,7 +1,8 @@
 import type inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getAgentChoices } from '../../core/agents.js';
+import { getAgentChoices, getAgentConfig } from '../../core/agents.js';
 import { getEngineChoices, getAllEngineIds, getEngineConfig } from '../../core/engines.js';
+import { describeSharedSkillsDir } from '../../core/agent-skills-dir.js';
 import { discoverMcpServers } from '../../core/mcp.js';
 import { getAvailableSkills } from '../../core/installer/skills.js';
 import { groupSkills, findUngrouped, resolveSkillDefaults } from '../../core/skill-groups.js';
@@ -62,6 +63,17 @@ export function resolveExistingEngine(existingEngine: string | null): EngineReso
     action: 'reselect',
     warning: `Unknown engine "${existingEngine}" in .unikit.json -- please re-select.`,
   };
+}
+
+// Pure helper -- the verdict of the agent checkbox: at least one agent, and no two that would
+// install skills into one directory (core/agent-skills-dir.ts). `true` accepts the selection;
+// a string is shown to the user and keeps the prompt open.
+export function validateAgentSelection(agentIds: string[]): true | string {
+  if (agentIds.length === 0) {
+    return 'Select at least one agent.';
+  }
+
+  return describeSharedSkillsDir(agentIds.map(id => getAgentConfig(id))) ?? true;
 }
 
 /** One row of the MCP picker — enough to render a choice and to order it. */
@@ -251,13 +263,7 @@ export async function runWizard(
       name: 'selectedAgents',
       message: 'Target AI agents:',
       choices: agentChoices,
-      validate: (value: string[]) => {
-        if (value.length === 0) {
-          return 'Select at least one agent.';
-        }
-
-        return true;
-      },
+      validate: validateAgentSelection,
     },
   ]);
 

@@ -14,6 +14,9 @@ const ROOT = path.resolve(__dirname, '..');
 const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 
 const { removeAgentSetup, collectExtensionSkillNames } = await import(dist('core/installer/agent-removal.js'));
+const { findSharedSkillsDirs, describeSharedSkillsDir } = await import(dist('core/agent-skills-dir.js'));
+const { AGENT_REGISTRY } = await import(dist('core/agents.js'));
+const { validateAgentSelection } = await import(dist('cli/wizard/prompts.js'));
 
 let passed = 0;
 let failed = 0;
@@ -192,6 +195,66 @@ await group('R7', async () => {
     } finally {
         await fs.rm(dir, { recursive: true, force: true });
     }
+});
+
+// ─── S: two agents never share one skills directory ───────────────────────────────────────────
+// The groups of registered agents that share a skills directory. Empty until the universal agent
+// joins the registry: it and Antigravity both write `.agents/skills`, and that one pair is the
+// only place the rule has work to do (Task 7 sets this to that pair).
+const EXPECTED_SHARED_GROUPS = [];
+
+await group('S', async () => {
+    const a = (id, skillsDir) => ({ id, skillsDir });
+
+    assertEq('S1 distinct directories: no group', JSON.stringify(findSharedSkillsDirs([a('x', 'one'), a('y', 'two')])), '[]');
+    assertEq('S1 distinct directories: no message', describeSharedSkillsDir([a('x', 'one'), a('y', 'two')]), null);
+
+    assertEq(
+        'S2 a shared directory forms one group, in the order given',
+        JSON.stringify(findSharedSkillsDirs([a('x', '.agents/skills'), a('y', '.agents/skills'), a('z', '.z/skills')])),
+        JSON.stringify([{ skillsDir: '.agents/skills', agentIds: ['x', 'y'] }]),
+    );
+    const message = describeSharedSkillsDir([a('x', '.agents/skills'), a('y', '.agents/skills')]);
+    assertTrue(
+        'S2 the message names both agents, the directory and the way out',
+        typeof message === 'string' && message.includes('x and y') && message.includes('(.agents/skills)') && message.includes('Select only one of them.'),
+        String(message),
+    );
+
+    const spelled = findSharedSkillsDirs([a('p', '.agents/skills'), a('q', './.agents/skills/'), a('r', '.AGENTS\\Skills')]);
+    assertEq('S3 spelling does not matter: slashes, ./, case', JSON.stringify(spelled), JSON.stringify([{ skillsDir: '.agents/skills', agentIds: ['p', 'q', 'r'] }]));
+    assertTrue('S3 three agents read "A, B and C"', describeSharedSkillsDir([a('p', 'd'), a('q', 'd'), a('r', 'd')]).startsWith('p, q and r would'));
+
+    assertEq('S4 one agent listed twice is not a conflict', JSON.stringify(findSharedSkillsDirs([a('x', 'd'), a('x', 'd')])), '[]');
+
+    const two = describeSharedSkillsDir([a('a', 'd1'), a('b', 'd1'), a('c', 'd2'), a('d', 'd2')]);
+    assertEq('S5 two shared directories: one line each', two.split('\n').length, 2);
+
+    assertEq('S6 a path that merely contains another is not the same directory', JSON.stringify(findSharedSkillsDirs([a('x', '.agents/skills'), a('y', '.agents/skills-extra')])), '[]');
+
+    assertEq(
+        'S7 the registry shares exactly the expected directories',
+        JSON.stringify(findSharedSkillsDirs(Object.values(AGENT_REGISTRY))),
+        JSON.stringify(EXPECTED_SHARED_GROUPS),
+    );
+
+    assertEq('S8 an empty selection is refused', validateAgentSelection([]), 'Select at least one agent.');
+    assertEq('S8 two agents with their own directories pass', validateAgentSelection(['claude', 'codex']), true);
+
+    // S9: the checkbox verdict is wired to the rule. A probe entry shares Codex's directory for the
+    // length of the check; without the wiring this returns `true`.
+    AGENT_REGISTRY.__probe = { ...AGENT_REGISTRY.codex, id: '__probe', displayName: 'Probe Agent' };
+    try {
+        const verdict = validateAgentSelection(['codex', '__probe']);
+        assertTrue(
+            'S9 the agent checkbox refuses two agents that share a directory',
+            typeof verdict === 'string' && verdict.includes('Codex CLI and Probe Agent') && verdict.includes('.codex/skills'),
+            String(verdict),
+        );
+    } finally {
+        delete AGENT_REGISTRY.__probe;
+    }
+    assertEq('S9 the probe entry is gone', Object.keys(AGENT_REGISTRY).includes('__probe'), false);
 });
 
 console.log(`\nagent-dirs: ${passed} passed, ${failed} failed`);

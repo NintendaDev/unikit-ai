@@ -10203,6 +10203,22 @@ UA_REMOVAL="$ROOT_DIR/src/core/installer/agent-removal.ts"
 { grep -qF 'removeSkillsByName(' "$UA_REMOVAL" || false; } || UA_WHY+=" UA-1:removal-not-by-skill-name"
 { grep -qF 'listEntries(' "$UA_REMOVAL" || false; } || UA_WHY+=" UA-1:directory-removed-without-listing-it"
 
+# (UA-2) the shared-skills-directory rule: the module is name-free, and every place that writes
+# skills for a set of agents asks it first — the wizard checkbox (through validateAgentSelection),
+# `update`, and the extension commands that install, restore or remove skills (add, remove, update).
+UA_RULE="$ROOT_DIR/src/core/agent-skills-dir.ts"
+UA_GUARDS="$ROOT_DIR/src/cli/guards.ts"
+UA_PROMPTS="$ROOT_DIR/src/cli/wizard/prompts.ts"
+UA_UPDATE="$ROOT_DIR/src/cli/commands/update.ts"
+UA_EXTENSION="$ROOT_DIR/src/cli/commands/extension.ts"
+{ grep -qF 'export function findSharedSkillsDirs' "$UA_RULE" || false; } || UA_WHY+=" UA-2:rule-function-missing"
+{ grep -qF 'export function exitOnSharedSkillsDir' "$UA_GUARDS" || false; } || UA_WHY+=" UA-2:guard-missing"
+[[ "$({ grep -cE "'(claude|codex|cursor|qwen|opencode|antigravity|kimi|universal)'" "$UA_RULE" || true; })" -eq 0 ]] || UA_WHY+=" UA-2:rule-knows-agent-names"
+[[ "$({ grep -c 'validate: validateAgentSelection' "$UA_PROMPTS" || true; })" -eq 1 ]] || UA_WHY+=" UA-2:wizard-checkbox-not-using-the-rule"
+[[ "$({ grep -c 'describeSharedSkillsDir(' "$UA_PROMPTS" || true; })" -eq 1 ]] || UA_WHY+=" UA-2:validateAgentSelection-not-asking-the-rule"
+[[ "$({ grep -c 'exitOnSharedSkillsDir(config.agents)' "$UA_UPDATE" || true; })" -eq 1 ]] || UA_WHY+=" UA-2:update-not-guarded"
+[[ "$({ grep -c 'exitOnSharedSkillsDir(config.agents)' "$UA_EXTENSION" || true; })" -eq 3 ]] || UA_WHY+=" UA-2:extension-commands-not-guarded(want-3)"
+
 if [[ -z "$UA_WHY" ]]; then
     pass "UA-1…UA-4 agent directory rules and the universal agent"
 else
