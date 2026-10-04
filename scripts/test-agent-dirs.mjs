@@ -15,8 +15,11 @@ const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 
 const { removeAgentSetup, collectExtensionSkillNames } = await import(dist('core/installer/agent-removal.js'));
 const { findSharedSkillsDirs, describeSharedSkillsDir } = await import(dist('core/agent-skills-dir.js'));
-const { AGENT_REGISTRY } = await import(dist('core/agents.js'));
+const { AGENT_REGISTRY, getAgentChoices } = await import(dist('core/agents.js'));
 const { validateAgentSelection } = await import(dist('cli/wizard/prompts.js'));
+const { getTransformer, getAgentOnboarding } = await import(dist('core/transformer.js'));
+const { getMcpWriter } = await import(dist('core/mcp-writers/index.js'));
+const { installSkills } = await import(dist('core/installer/skills.js'));
 
 let passed = 0;
 let failed = 0;
@@ -198,10 +201,10 @@ await group('R7', async () => {
 });
 
 // ─── S: two agents never share one skills directory ───────────────────────────────────────────
-// The groups of registered agents that share a skills directory. Empty until the universal agent
-// joins the registry: it and Antigravity both write `.agents/skills`, and that one pair is the
-// only place the rule has work to do (Task 7 sets this to that pair).
-const EXPECTED_SHARED_GROUPS = [];
+// The groups of registered agents that share a skills directory. Antigravity and the universal agent
+// both write `.agents/skills`; that pair is the only place the rule has work to do, and the init
+// wizard, `update` and the extension commands refuse it.
+const EXPECTED_SHARED_GROUPS = [{ skillsDir: '.agents/skills', agentIds: ['antigravity', 'universal'] }];
 
 await group('S', async () => {
     const a = (id, skillsDir) => ({ id, skillsDir });
@@ -255,6 +258,80 @@ await group('S', async () => {
         delete AGENT_REGISTRY.__probe;
     }
     assertEq('S9 the probe entry is gone', Object.keys(AGENT_REGISTRY).includes('__probe'), false);
+});
+
+// ─── U: the universal agent ───────────────────────────────────────────────────────────────────
+// For runtimes UniKit does not name. It rides on the defaults; only the welcome text is its own.
+
+await group('U', async () => {
+    const t = getTransformer('universal');
+    assertEq('U1 the universal agent has its own transformer', t.constructor.name, 'UniversalTransformer');
+    assertEq(
+        'U2 skills are written exactly as for a default agent',
+        JSON.stringify(t.transform('unikit-plan', 'body')),
+        JSON.stringify(getTransformer('claude').transform('unikit-plan', 'body')),
+    );
+    for (const hook of ['transformReference', 'transformSubagent', 'postInstall', 'cleanup', 'getInvocationHint']) {
+        assertEq(`U3 no ${hook}: nothing is adapted and no extra file is written`, typeof t[hook], 'undefined');
+    }
+    const lines = getAgentOnboarding('universal').welcomeMessage;
+    assertTrue('U4 the welcome message has at least 3 lines', Array.isArray(lines) && lines.length >= 3);
+    assertTrue('U4 it names the skills directory', lines.some((line) => line.includes('.agents/skills')));
+    assertTrue('U4 it names the MCP file and the by-hand fallback (DEC-011)', lines.some((line) => line.includes('.mcp.json') && /by hand/i.test(line)));
+
+    const universal = AGENT_REGISTRY.universal;
+    const pick = (source, keys) => Object.fromEntries(keys.map((key) => [key, source[key]]));
+    assertEq(
+        'U5 the registry entry matches the research (REQ-001)',
+        JSON.stringify(pick(universal, ['id', 'displayName', 'configDir', 'skillsDir', 'subagentsDir', 'settingsFile', 'supportsMcp', 'supportsSubagents', 'skillsCliAgent', 'isStable'])),
+        JSON.stringify({ id: 'universal', displayName: 'Universal / Other', configDir: '.agents', skillsDir: '.agents/skills', subagentsDir: '.agents/agents', settingsFile: '.mcp.json', supportsMcp: true, supportsSubagents: false, skillsCliAgent: 'universal', isStable: false }),
+    );
+    assertTrue('U6 MCP goes through the very writer Claude Code uses (same file, same format)', getMcpWriter('universal') === getMcpWriter('claude'));
+    assertEq(
+        'U7 the wizard row',
+        JSON.stringify(getAgentChoices().find((choice) => choice.value === 'universal')),
+        JSON.stringify({ name: 'Universal / Other (.agents/)', value: 'universal', isStable: false }),
+    );
+    assertTrue(
+        'U8 the welcome message names exactly what the registry says',
+        lines.some((line) => line.includes(universal.skillsDir)) && lines.some((line) => line.includes(universal.settingsFile)),
+    );
+    const verdict = validateAgentSelection(['antigravity', 'universal']);
+    assertTrue(
+        'U9 the wizard refuses Antigravity next to the universal agent, naming both and the directory',
+        typeof verdict === 'string' && verdict.includes('Antigravity and Universal / Other') && verdict.includes('.agents/skills'),
+        String(verdict),
+    );
+    for (const other of ['claude', 'codex', 'cursor', 'qwen', 'opencode', 'kimi']) {
+        assertEq(`U9 the wizard accepts ${other} next to the universal agent`, validateAgentSelection([other, 'universal']), true);
+    }
+});
+
+// ─── W: swapping Antigravity for the universal agent in one repeat init ───────────────────────
+// Both write `.agents/skills`. Removing Antigravity must keep a foreign skill that lives there, and
+// installing the universal agent afterwards must write its own text, not Antigravity's.
+
+await group('W', async () => {
+    const dir = await project({ '.agents/skills/community-skill/SKILL.md': 'community\n' });
+    const skills = ['unikit', 'unikit-plan'];
+    const install = (agentId) => installSkills({ projectDir: dir, skillsDir: '.agents/skills', skills, agentId, engineId: 'unity', engineMcpKey: null });
+    try {
+        await install('antigravity');
+        assertTrue('W1 setup: Antigravity wrote its guardrails file', await exists(path.join(dir, '.agents/rules/unikit.md')));
+        await removeAgentSetup(dir, record('antigravity', '.agents/skills', skills));
+        assertTrue('W1 the foreign skill survives the removal of Antigravity', await exists(path.join(dir, '.agents/skills/community-skill/SKILL.md')));
+        assertEq('W1 the guardrails file is gone', await exists(path.join(dir, '.agents/rules/unikit.md')), false);
+        assertEq('W1 the Antigravity skills are gone', await exists(path.join(dir, '.agents/skills/unikit-plan')), false);
+
+        await install('universal');
+        const plan = await fs.readFile(path.join(dir, '.agents/skills/unikit-plan/SKILL.md'), 'utf8');
+        assertTrue('W2 the universal text names the Claude worker type', plan.includes('Agent(subagent_type: general-purpose, prompt: "Reconnaissance for an ultra plan'));
+        assertEq('W2 and not the Antigravity one', plan.includes('subagent_type: self'), false);
+        assertEq('W2 the universal agent writes no guardrails file', await exists(path.join(dir, '.agents/rules/unikit.md')), false);
+        assertTrue('W2 the foreign skill is still there after the swap', await exists(path.join(dir, '.agents/skills/community-skill/SKILL.md')));
+    } finally {
+        await fs.rm(dir, { recursive: true, force: true });
+    }
 });
 
 console.log(`\nagent-dirs: ${passed} passed, ${failed} failed`);

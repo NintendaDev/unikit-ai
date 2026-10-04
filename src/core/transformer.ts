@@ -3,6 +3,7 @@ import { CodexTransformer } from './transformers/codex.js';
 import { QwenTransformer } from './transformers/qwen.js';
 import { AntigravityTransformer } from './transformers/antigravity.js';
 import { KimiTransformer } from './transformers/kimi.js';
+import { UniversalTransformer } from './transformers/universal.js';
 
 export interface TransformResult {
   targetDir: string;
@@ -66,6 +67,7 @@ const registry: Record<string, () => AgentTransformer> = {
   qwen: () => new QwenTransformer(),
   antigravity: () => new AntigravityTransformer(),
   kimi: () => new KimiTransformer(),
+  universal: () => new UniversalTransformer(),
 };
 
 export function getTransformer(agentId: string): AgentTransformer {
