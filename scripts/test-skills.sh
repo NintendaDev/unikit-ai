@@ -10219,6 +10219,16 @@ UA_EXTENSION="$ROOT_DIR/src/cli/commands/extension.ts"
 [[ "$({ grep -c 'exitOnSharedSkillsDir(config.agents)' "$UA_UPDATE" || true; })" -eq 1 ]] || UA_WHY+=" UA-2:update-not-guarded"
 [[ "$({ grep -c 'exitOnSharedSkillsDir(config.agents)' "$UA_EXTENSION" || true; })" -eq 3 ]] || UA_WHY+=" UA-2:extension-commands-not-guarded(want-3)"
 
+# (UA-3) Antigravity's slash invocation is described as its documentation does (DEC-006, REQ-009):
+# neither the guardrails text nor docs/agents.md says there is no slash command, and both name
+# /<skill-name>. The skill text itself is untouched — invocations are not rewritten for Antigravity.
+UA_AG_TRANSFORMER="$ROOT_DIR/src/core/transformers/antigravity.ts"
+UA_AGENTS_DOC="$ROOT_DIR/docs/agents.md"
+if grep -qF 'slash command here' "$UA_AG_TRANSFORMER"; then UA_WHY+=" UA-3:rules-text-still-denies-slash-invocation"; fi
+if grep -qF 'There is no `/unikit-*` slash command' "$UA_AGENTS_DOC"; then UA_WHY+=" UA-3:docs-still-deny-slash-invocation"; fi
+{ grep -qF 'a skill is invoked as \`/<skill-name>\`' "$UA_AG_TRANSFORMER" || false; } || UA_WHY+=" UA-3:rules-text-lacks-slash-invocation"
+{ grep -qF 'a skill is invoked with `/<skill-name>`' "$UA_AGENTS_DOC" || false; } || UA_WHY+=" UA-3:docs-lack-slash-invocation"
+
 if [[ -z "$UA_WHY" ]]; then
     pass "UA-1…UA-4 agent directory rules and the universal agent"
 else

@@ -600,6 +600,10 @@ assert_exists "$ANTIGRAVITY_DIR/.agents/rules/unikit.md" \
   "antigravity: postInstall wrote .agents/rules/unikit.md guardrails"
 assert_contains "$ANTIGRAVITY_DIR/.agents/rules/unikit.md" '.agents/mcp_config.json' \
   "antigravity: rules file points at the local, automatically-configured .agents/mcp_config.json"
+assert_contains "$ANTIGRAVITY_DIR/.agents/rules/unikit.md" '/unikit-plan' \
+  "antigravity: rules file names the slash invocation of a skill (Antigravity 2.0 and CLI)"
+assert_not_contains "$ANTIGRAVITY_DIR/.agents/rules/unikit.md" 'there is no .*slash command' \
+  "antigravity: rules file no longer claims that Antigravity has no slash command"
 
 # supportsSubagents:false → listed subagent must NOT materialize
 assert_not_exists "$ANTIGRAVITY_DIR/.agents/agents/unikit-architecture-sidecar.md" \

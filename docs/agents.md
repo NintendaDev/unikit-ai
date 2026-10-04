@@ -39,11 +39,11 @@ When launching some skills, the agent may pause at the very start and do nothing
 
 ### Antigravity
 
-Antigravity (the IDE and CLI share one `.agents/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agents/skills/<name>/` directory triggered by its `description`, like Claude Code. There is no `/unikit-*` slash command and no `Skill` tool, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) degrades to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.
+Antigravity (the IDE and CLI share one `.agents/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agents/skills/<name>/` directory with `SKILL.md` and `references/`. In Antigravity 2.0 a skill is invoked with `/<skill-name>`, and the CLI turns every skill into a slash command (for example `/unikit-plan`); the IDE documents no slash invocation, so there a skill is picked by its `description`. A `Skill` tool is not documented for Antigravity, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) may still degrade to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.
 
 MCP is configured automatically into `.agents/mcp_config.json`, same as other agents; a separate global `~/.gemini/config/mcp_config.json` remains available for user-wide servers, untouched by UniKit.
 
-Antigravity is also the one agent with an install-time side effect outside the skills directory: a `postInstall` step writes UniKit guardrails to `.agents/rules/unikit.md`, and the matching `cleanup` removes that file again when UniKit is uninstalled. No other agent writes a rules file of its own.
+Antigravity is also the one agent with an install-time side effect outside the skills directory: a `postInstall` step writes UniKit guardrails to `.agents/rules/unikit.md`, and the matching `cleanup` removes that file again when you deselect Antigravity on a repeat `init`. The file is rewritten whenever UniKit installs skills for Antigravity; in a project that already has it, `unikit-ai update --force` brings its text up to date. No other agent writes a rules file of its own.
 
 ### Kimi Code
 

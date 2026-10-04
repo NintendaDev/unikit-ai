@@ -7,7 +7,8 @@ import path from 'path';
  * project-scoped MCP config (`.agents/mcp_config.json`), so they are a single
  * agent. Skills-only port: every unikit skill installs as an Antigravity
  * **skill** (a `.agents/skills/<name>/` directory with `SKILL.md` +
- * `references/`), triggered by its `description` like Claude.
+ * `references/`). Antigravity 2.0 and the CLI invoke it as `/<skill-name>`; the IDE picks it by
+ * its `description`.
  *
  * Unlike the AI Factory original, there is NO workflows-split: unikit skills are
  * reference-heavy, and the installer's flat branch would collapse same-named
@@ -35,8 +36,9 @@ This project uses **UniKit** (\`unikit-ai\`) for AI-assisted Unity game developm
 
 ## Where things live
 
-- **Skills** — \`.agents/skills/<name>/SKILL.md\` (+ optional \`references/\`). Antigravity
-  auto-selects a skill by its \`description\`; there is no \`/unikit-*\` slash command here.
+- **Skills** — \`.agents/skills/<name>/SKILL.md\` (+ optional \`references/\`). In Antigravity 2.0
+  and the CLI a skill is invoked as \`/<skill-name>\` (for example \`/unikit-plan\`); the IDE
+  documents no slash invocation, so there Antigravity selects a skill by its \`description\`.
 - **Knowledge base** — engine-aware rules in \`.unikit/memory/\`, system contracts in
   \`.unikit/system/\`.
 - **Config** — \`.unikit.json\` at the project root.
