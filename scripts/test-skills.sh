@@ -10015,6 +10015,24 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f5: agent directory rules and the universal agent unit tests
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f5: agent directory unit tests${NC}"
+
+set +e
+AGENT_DIRS_OUTPUT=$(node "$ROOT_DIR/scripts/test-agent-dirs.mjs" 2>&1)
+AGENT_DIRS_EXIT=$?
+set -e
+
+if [[ $AGENT_DIRS_EXIT -eq 0 ]]; then
+    pass "Agent directory unit tests"
+    echo "$AGENT_DIRS_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Agent directory unit tests"
+    echo "$AGENT_DIRS_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
@@ -10162,6 +10180,33 @@ if [[ -z "$AP_WHY" ]]; then
 else
     fail "AP-1…AP-7 agent profile in skills:$AP_WHY"
     grep -rnE 'subagent_type:[[:space:]]*"?[A-Za-z]' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -v '{{agent_' | sed 's/^/      /' | head -5
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g4: UA-1…UA-4 — the agent directory rules and the universal agent (source level)
+# ─────────────────────────────────────────────
+# What the behavioural harness (Part 7f5) cannot see: who calls what. Every grep is wrapped
+# in { … || true; } — under `set -e` an empty match inside a substitution would abort the suite.
+echo -e "\n${BOLD}Part 7g4: agent directory rules and the universal agent (UA)${NC}"
+
+UA_WHY=""
+UA_INIT="$ROOT_DIR/src/cli/commands/init.ts"
+UA_REMOVAL="$ROOT_DIR/src/core/installer/agent-removal.ts"
+
+# (UA-1) removal takes only what UniKit installed: init delegates to the module and holds no
+# directory deletion of its own; the module removes skills by name and deletes the directory
+# only after listing its entries.
+[[ -f "$UA_REMOVAL" ]] || UA_WHY+=" UA-1:agent-removal-module-missing"
+{ grep -qF "from '../../core/installer/agent-removal.js'" "$UA_INIT" || false; } || UA_WHY+=" UA-1:init-does-not-use-agent-removal"
+[[ "$({ grep -c 'removeDirectory' "$UA_INIT" || true; })" -eq 0 ]] || UA_WHY+=" UA-1:init-deletes-directories-itself"
+[[ "$({ grep -c 'function removeAgentSetup' "$UA_INIT" || true; })" -eq 0 ]] || UA_WHY+=" UA-1:init-keeps-its-own-removeAgentSetup"
+{ grep -qF 'removeSkillsByName(' "$UA_REMOVAL" || false; } || UA_WHY+=" UA-1:removal-not-by-skill-name"
+{ grep -qF 'listEntries(' "$UA_REMOVAL" || false; } || UA_WHY+=" UA-1:directory-removed-without-listing-it"
+
+if [[ -z "$UA_WHY" ]]; then
+    pass "UA-1…UA-4 agent directory rules and the universal agent"
+else
+    fail "UA-1…UA-4 agent directory rules and the universal agent:$UA_WHY"
 fi
 
 # ─────────────────────────────────────────────

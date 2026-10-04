@@ -127,6 +127,20 @@ export async function listFiles(dirPath: string): Promise<string[]> {
   }
 }
 
+/**
+ * Every entry of a directory — files, directories and symbolic links alike — sorted; an absent
+ * directory has none. Unlike `listDirectories` / `listFiles` this does not look at the entry type,
+ * which is what an "is this directory empty" check needs: a symlink to someone else's skill is
+ * neither a file nor a directory to `Dirent`.
+ */
+export async function listEntries(dirPath: string): Promise<string[]> {
+  try {
+    return (await fs.readdir(dirPath)).sort();
+  } catch {
+    return [];
+  }
+}
+
 export async function writeTextFile(filePath: string, content: string): Promise<void> {
   await fs.ensureDir(path.dirname(filePath));
   await fs.writeFile(filePath, content, 'utf-8');

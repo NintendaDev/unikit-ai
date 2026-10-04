@@ -75,6 +75,7 @@
       "examples/**",
       "scripts/generate-cli-contract.ts",
       "scripts/genres-validate.mjs",
+      "scripts/test-agent-dirs.mjs",
       "scripts/test-agent-filter.mjs",
       "scripts/test-agent-profile.mjs",
       "scripts/test-config-tolerance.mjs",
