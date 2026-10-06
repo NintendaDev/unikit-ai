@@ -190,7 +190,7 @@ Calling `/unikit-devcontext` directly is still the right move for ad-hoc work, b
 
 ### Parallel Execution via the `develop-agent` alias
 
-Workflow skills expose a named delegation alias - `develop-agent` - that expands to an `Agent(subagent_type: "<worker type>", prompt: "Read <skills dir>/unikit-devcontext/SKILL.md and follow it …")` call: the subagent reads the skill file itself, because an `Agent` call cannot load a skill (see [How a skill reaches a subagent](subagents.md#how-a-skill-reaches-a-subagent)); the worker type is the one of your agent, see [Subagents](subagents.md#subagent-profile-per-agent). After the Bootstrap refactor this alias is reserved for **true parallel scopes** (independent phases that can run simultaneously) and **deep-dive single tasks** that would otherwise bloat the parent context:
+Workflow skills expose a named delegation alias - `develop-agent` - that expands to an `Agent(...)` call whose prompt makes the subagent load the skill - a Skill-tool call on Claude Code, a read of the skill file on every other agent, because an `Agent` call cannot load a skill by itself (see [How a skill reaches a subagent](subagents.md#how-a-skill-reaches-a-subagent)); the subagent type is the one of your agent, see [Subagents](subagents.md#subagent-profile-per-agent). After the Bootstrap refactor this alias is reserved for **true parallel scopes** (independent phases that can run simultaneously) and **deep-dive single tasks** that would otherwise bloat the parent context:
 
 ```
 ┌───────────────────────────────┐    ┌───────────────────────────────┐

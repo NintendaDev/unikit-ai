@@ -346,12 +346,7 @@ downstream owner (content, flow) always reads a fresh upstream (a just-added sys
 closes with exactly one bare `/unikit-gd-verify` call — no scope argument, since verify
 derives the changed scope from the session itself.
 
-**Three-tier dispatch mechanism**, in preference order: ① `Skill(skill:
-"unikit-gd-<zone>", ...)` inline, when the agent supports it; ② the `/unikit-gd-<zone>`
-slash-command fallback, invoked as a real call (not printed) — needed because 5 of the 7 named
-agents don't expose the `Skill` tool (for Universal / Other it depends on the runtime); ③ a printed `Run: /unikit-gd-…` list, the
-last resort when neither mechanism is available. On Codex, a `<!-- unikit:agents codex
--->` block makes tiers ①/② automatic rather than asking the user to run them by hand.
+**Skill calls.** Apply invokes each zone owner (`unikit-gd-<zone>`) and its closing verify with one recipe for every agent, written once in its `## Skill calls`: if the model has a `Skill` tool that accepts arguments it calls it, otherwise it reads the owner's `SKILL.md` and carries it out in the same session (`Run: /unikit-gd-…` is printed only when that file cannot be read). Printing the list of commands for the user to run, instead of making the calls, is a known failure mode, so the section says so for every agent.
 
 **Loop-guard.** Apply's closing verify call passes the sentinel `apply-phase3` as its
 argument. Verify recognizes it as an in-apply gate (not a scope) and suppresses its own

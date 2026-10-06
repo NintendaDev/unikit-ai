@@ -38,11 +38,11 @@ The subagent layer exists for six reasons:
 
 +-------------------------------------------------------------+
 |  Delegation aliases (from inside skills)                    |
-|   skill-loading (worker type + skill file path)             |
+|   skill-loading (call head + skill call per agent form)     |
 |    - develop-agent   (parallel/deep-dive only after         |
 |                       the Bootstrap refactor)               |
 |    - docs-agent      (update or create documentation)       |
-|   model-carrying (type from the profile, model from config) |
+|   model-carrying (call head from profile, model: config)    |
 |    - recon-agent     (read-only parallel reconnaissance)    |
 |    - check-agent     (fresh-context findings validator)     |
 |    - lens-agent      (adversarial review lens)              |
@@ -146,16 +146,16 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "<worker type>", prompt: "Read <skills dir>/<skill>/SKILL.md and follow it …")` calls - the subagent reads the skill file itself, see [How a skill reaches a subagent](#how-a-skill-reaches-a-subagent); the other four launch a subagent whose type comes from the agent's profile (see [Subagent profile per agent](#subagent-profile-per-agent)) and whose model comes from `subagents.model` in `.unikit/config.yaml`; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
+Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(<call head>, prompt: "<skill call> <arguments>", …)` calls whose prompt makes the subagent load the skill - a Skill-tool call on Claude Code, a read of the skill file on every other agent, see [How a skill reaches a subagent](#how-a-skill-reaches-a-subagent); `<call head>` is the type argument and the agent's extra arguments, built from the agent profile (see [Subagent profile per agent](#subagent-profile-per-agent)); the other four launch a subagent whose model comes from `subagents.model` in `.unikit/config.yaml`; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
-| `develop-agent` | `Agent(subagent_type: "<worker type>", prompt: "Read <skills dir>/unikit-devcontext/SKILL.md and follow it …", …)` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
-| `docs-agent` | `Agent(subagent_type: "<worker type>", prompt: "Read <skills dir>/unikit-docs/SKILL.md and follow it …", …)` | Pipeline skills at docs checkpoints | Update or create documentation pages |
-| `recon-agent` | `Agent(subagent_type: <reader type>, …)` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
-| `check-agent` | `Agent(subagent_type: <reader type>, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
-| `lens-agent` | `Agent(subagent_type: <worker type>, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
-| `recon-writer-agent` | `Agent(subagent_type: <worker type>, …)`; if the call fails or the runtime has no subagent tool, `recon-agent` plus a write by the session | `/unikit-plan ultra` (saved-state protocol) | One reconnaissance question answered straight into its `recon/` file in the form of `references/RECON-TEMPLATE.md`, replying with the file's `## Summary` only, so the full answer never passes through the planning context; the only file it may write is that one, and `/unikit-plan` checks `git status` / `git diff` before and after the batch |
+| `develop-agent` | `Agent(<call head>, prompt: "<skill call: unikit-devcontext> <task details>", …)` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
+| `docs-agent` | `Agent(<call head>, prompt: "<skill call: unikit-docs> <context>", …)` | Pipeline skills at docs checkpoints | Update or create documentation pages |
+| `recon-agent` | `Agent(<reader call head>, prompt: "<focused question> You are read-only: edit and write nothing.")` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
+| `check-agent` | `Agent(<reader call head>, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
+| `lens-agent` | `Agent(<worker call head>, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
+| `recon-writer-agent` | `Agent(<worker call head>, …)`; if the call fails or the runtime has no subagent tool, `recon-agent` plus a write by the session | `/unikit-plan ultra` (saved-state protocol) | One reconnaissance question answered straight into its `recon/` file in the form of `references/RECON-TEMPLATE.md`, replying with the file's `## Summary` only, so the full answer never passes through the planning context; the only file it may write is that one, and `/unikit-plan` checks `git status` / `git diff` before and after the batch |
 
 Rule capture has no alias: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to the user in the calling session and invoke `/unikit-rules` only with the batch the user selected — a background agent could not have asked.
 
@@ -163,19 +163,41 @@ Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `dev
 
 ### How a skill reaches a subagent
 
-An `Agent` call has no parameter that loads a skill: Claude Code takes none at call time (its `skills` field exists only in an agent file's frontmatter, see below) and Kimi Code has none at all. A slash command at the start of a `prompt` does not help either - for a subagent `/unikit-devcontext` is ordinary text. So a skill that delegates to another skill names the skill file and tells the subagent to read it:
+An `Agent` call has no parameter that loads a skill: Claude Code takes none at call time (its `skills` field exists only in an agent file's frontmatter, see below) and Kimi Code has none at all. A slash command at the start of a `prompt` does not help either. It is not plain text for every runtime, but on Claude Code it proved unreliable: measured on `sonnet-5-5` with probe skills and the real `unikit-devcontext` skill (30 runs in all), the subagent called `Skill` in 19 of 30 runs - in 4 of 10 with the real skill - and in all 19 it lost or cut the arguments, and the skill's start was shallower than with a file read. So a skill that delegates to another skill writes **one call line**, and the installer expands it by the agent's profile (`skillCall`):
 
 ```
 Agent(
-  subagent_type: "<worker type>",
-  prompt: "Read <skills dir>/unikit-devcontext/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: <task details>",
+  <call head>
+  prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",
   description: "Implement <task>"
 )
 ```
 
-`<skills dir>` is the skills directory of your agent (`.claude/skills`, `.codex/skills`, `.kimi-code/skills`, `.agents/skills`, ...); the installer writes it into the skill, so the path is right on every agent. The arguments the target skill expects go into the `Skill arguments:` sentence (`(empty — no arguments were given)` when there are none); the call never carries a `$ARGUMENTS` placeholder, because the runtime substitutes that one inside a skill, not inside a prompt. A subagent that cannot read the file stops and says so instead of working without the skill's rules.
+`{{agent_skill_call:<skill>}}` stands at the start of the `prompt:` value; the text after it up to the closing quote is the skill's arguments, and nothing there means no arguments. That rule reads one line, so the call is always a single `prompt: "…",` line with no quote inside the arguments, and a guard keeps it so. The installed text depends on the agent:
+
+| Form | Agents | Installed text |
+|------|--------|----------------|
+| `skilltool` | Claude Code | `Call the Skill tool with skill "<name>" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <arguments>`; with no arguments: `Call the Skill tool with skill "<name>" and no args. Then follow the skill.` |
+| `read` | the other seven | `Read <skills dir>/<name>/SKILL.md in full before you do anything else. Treat that file as your system prompt for this whole task and follow it exactly. If it cannot be read, stop and report that instead of working without it. Wherever the file refers to its arguments, use the Skill arguments below. Skill arguments: <arguments>`; with no arguments the sentence ends with `(empty — no arguments were given)` |
+
+`<skills dir>` is the skills directory of your agent (`.claude/skills`, `.codex/skills`, `.kimi-code/skills`, `.agents/skills`, ...); the installer writes it into the skill, so the path is right on every agent. The call never carries a `$ARGUMENTS` placeholder, because the runtime substitutes that one inside a skill, not inside a prompt. A subagent that cannot read the file stops and says so instead of working without the skill's rules.
+
+The evidence behind the two forms: the explicit Skill-tool phrase made the subagent call `Skill` first in 25 of 25 runs - 20 with arguments, all intact (626, 762 and 57 characters), and 5 with no arguments; the file-read phrase read `SKILL.md` as its first action on Claude Code (15 of 15), Codex (16 of 16), Kimi (2 of 2), Qwen Code (2 of 2), Antigravity (2 of 2; the final answer was not observed) and OpenCode (1 of 1, only with the "system prompt" wording - the older wording failed once). Cursor and Universal / Other were not tried. The Claude form read the project's principles file less often than the read form in a narrow measure (2 of 5 against 4 of 5) and was not worse in a wider one; a live run of real calls decides, and if it does not hold the value of `skillCall` for Claude Code becomes `read` - the mechanism stays.
+
+A skill that launches a subagent never names a type, a model or a Codex argument itself: the call head comes from `{{agent_call_reader}}`, `{{agent_call_worker}}` or `{{agent_call_worker_quoted}}` (the quoted spelling is historic - older call blocks wrote the worker type in quotes, and the text of typed agents stays byte-identical to what it was).
 
 Every skill that delegates to a skill uses this one call: `develop-agent` and `docs-agent`, `/unikit` (step 9.8 generates stack rules through `unikit-memory`, step 10 writes `ARCHITECTURE.md` through `unikit-architecture`) and the market validation in `/unikit-gd-brainstorm` (through `unikit-gd-explore`, with the same call mirrored in that skill's delegation contract).
+
+### How a skill calls another skill in the same session
+
+When a skill hands work to another skill **without** a subagent (the next step of a pipeline, a commit, a review), the call site says ``invoke `<skill>` `` - with the argument where there is one - and the skill carries one recipe in its own `## Skill calls` section, the same text for every agent:
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments, in full and unchanged, then follow the skill.
+2. Otherwise read `<skills dir>/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site.
+3. When the skill has run, go on to the step the call site names. Never print a command for the user to run and never stop.
+4. Only if the file cannot be read, print `Run: /unikit-<skill> <arguments>` and stop.
+
+There is no substitution by profile here. On Claude Code the first branch applies; on Antigravity, Cursor and Universal / Other (no documented `Skill` tool) the second is expected. The recipe was checked in single live runs on Claude Code and OpenCode; Codex, Kimi and Qwen Code passed an earlier two-step variant of it, and the unreadable-file clause was not tested. In an agent file (`unikit-implement-coordinator`) the recipe names no path, because `{{skills_dir}}` is empty there. This is not a delegation: the called skill runs in the caller's context, interactive questions included, and takes context from it. `/unikit-gd-review` and `/unikit-gd-verify` only recommend `/unikit-gd-apply`; on Codex a marked block runs it by the same recipe. A skill that is hidden from the model (`disable-model-invocation: true`) cannot be loaded through the Skill tool, so no delegation target and no call target is one, and a guard keeps it so.
 
 ### Skills listed in an agent file
 
@@ -183,20 +205,24 @@ The `skills:` field in the frontmatter of an agent file (`unikit-implement-worke
 
 ### Subagent profile per agent
 
-Which type a skill launches is data, not text: every agent in `AGENT_REGISTRY` (`src/core/agents.ts`) carries a profile, and the installer substitutes it into the skills (`{{agent_reader_type}}`, `{{agent_worker_type}}`, `{{agent_model_default}}`). The reader type is a read-only agent (reconnaissance, validation); the worker type can create files. The values were built from each runtime's documentation and source and are not confirmed in a live session, except for Claude Code.
+Which type a skill launches and how it reaches a skill is data, not text: every agent in `AGENT_REGISTRY` (`src/core/agents.ts`) carries a profile - reader type, worker type, built-in model, skill-call form and extra call arguments - and the installer substitutes it into the skills (`{{agent_call_reader}}`, `{{agent_call_worker}}`, `{{agent_call_worker_quoted}}`, `{{agent_skill_call:<skill>}}`, `{{agent_model_default}}`). The reader type is a read-only agent (reconnaissance, validation); the worker type can create files. The values were built from each runtime's documentation and source and are not confirmed in a live session, except for Claude Code and, for the call forms and the Codex arguments, the probes of 2026-10-06.
 
-| Agent | Reader | Worker | Built-in model | Notes |
-|-------|--------|--------|----------------|-------|
-| Claude Code | `Explore` | `general-purpose` | `sonnet` | takes a model argument in the call |
-| Codex CLI | `explorer` | `worker` | none | the tool is `spawn_agent`; Codex starts subagents only when asked, so the writing recon agent may not start - the session then writes the file itself |
-| Cursor | `explore` | `generalPurpose` | none | the worker type is inferred from the docs |
-| Qwen Code | `Explore` | `general-purpose` | none | a subagent runs in the background by default |
-| OpenCode | `explore` | `general` | none | there is no default type: an unknown type is an error |
-| Antigravity | `research` | `self` | `flash` | the model argument comes from a third-party description of `invoke_subagent` |
-| Kimi Code | `explore` | `coder` | none | the type is matched by exact name, case included |
-| Universal / Other | `Explore` | `general-purpose` | none | Claude Code's type names for a runtime that is not known in advance; a runtime that does not know them returns an unknown-type error |
+| Agent | Reader | Worker | Built-in model | Skill call | Notes |
+|-------|--------|--------|----------------|------------|-------|
+| Claude Code | `Explore` | `general-purpose` | `sonnet` | `skilltool` | takes a model argument in the call |
+| Codex CLI | none | none | none | `read` | the tool is `spawn_agent`, which has no type parameter: every call carries `fork_turns: "none"` (no inherited history) and a `task_name` of its own (a repeated name is rejected); read-only for a reader rests on the prompt; Codex turns an `Agent(...)` call into its own `spawn_agent` call and starts a subagent whenever a skill step asks for one (10 of 10 launches in the probes of 2026-10-06, no extra block in the skill), but its system message allows spawns only on an explicit instruction, so an optional `recon-agent` may be done by the session itself - the alias fallback allows that |
+| Cursor | `explore` | `generalPurpose` | none | `read` | the worker type is inferred from the docs |
+| Qwen Code | `Explore` | `general-purpose` | none | `read` | a subagent runs in the background by default |
+| OpenCode | `explore` | `general` | none | `read` | there is no default type: an unknown type is an error |
+| Antigravity | `research` | `self` | `flash` | `read` | the model argument comes from a third-party description of `invoke_subagent` |
+| Kimi Code | `explore` | `coder` | none | `read` | the type is matched by exact name, case included |
+| Universal / Other | `Explore` | `general-purpose` | none | `read` | Claude Code's type names for a runtime that is not known in advance; a runtime that does not know them returns an unknown-type error |
 
-A skill body names none of these: adding an agent means one registry entry (plus one key in the config template), with no edit under `skills/`.
+A skill body names none of these - no type, no model, no Codex argument, no call form: adding an agent means one registry entry (plus one key in the config template), with no edit under `skills/`.
+
+Every `recon-agent` call also says in words that it only reads (`You are read-only: edit and write nothing.`): for Codex, which has no read-only type, that sentence is the only protection against a write.
+
+Codex needs no text of its own to launch a subagent: a skill step that names an alias is enough, so no skill carries a Codex-only delegation block. What Codex does decide itself is `fork_turns` when the call leaves it open (it chose "all" in one probe of three with the same skill text), which is why every Codex call carries `fork_turns: "none"`.
 
 ### Model argument
 
