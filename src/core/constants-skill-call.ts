@@ -40,3 +40,12 @@ export const READ_CALL_NO_ARGS_NOTE = '(empty — no arguments were given)';
 
 /** The keyword of an `Agent(...)` call argument that names the subagent type. */
 export const SUBAGENT_TYPE_KEY = 'subagent_type';
+
+/**
+ * Extra arguments of every Codex agent call (`spawn_agent`). Codex has no subagent type parameter, so the
+ * call carries these instead: no inherited history (measured: `fork_turns: "none"` removed it in 16 of 16
+ * subagents; left to the model the value flipped between "all" and "none" for the same skill text) and a
+ * name of its own (a repeated `task_name` is rejected by the runtime).
+ */
+export const CODEX_SPAWN_ARGS =
+  'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",';

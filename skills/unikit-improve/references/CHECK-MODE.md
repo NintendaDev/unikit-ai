@@ -39,7 +39,7 @@ The validation pass has two sequential phases.
 1. Collect items from the four validated groups built in Step 3 (`missing`, `improvements`, `architectural`, `removals`). Number them across all four groups in display order — the group label is carried alongside each item. **If the combined list is empty, skip steps 2–5 of phase (a) entirely**: do not dispatch the validator, treat phase (a) as successful with `hidden = 0`, `adjusted = 0`, and proceed directly to phase (b) (Dependency Fixes still get recomputed normally).
 2. Build the project context block: working directory path, optional excerpt from `.unikit/DESCRIPTION.md`, a one-line summary of the plan being refined (plan path — the folder's `.unikit/code/plans/<folder>/PLAN.md` or the flat `.unikit/code/PLAN.md` — plus task count), and the user's improvement prompt parsed in Step 0 — verbatim when the run had one, or the literal marker `none — bare auto-review` when `$ARGUMENTS` carried no prompt text. The validator needs the prompt to tell a user-requested task apart from agent-invented gold-plating.
 3. Read `references/VALIDATOR.md`. The reference declares two substitution slots at the top of the file — one for the project context block from step 2 and one for the items list from step 1 (each under its own `### Item N (group: …)` heading). Replace both before dispatch; the exact placeholder tokens are listed in the VALIDATOR.md header.
-4. Dispatch one `check-agent` call with the rendered template as its prompt. The alias is declared in `SKILL.md` under `## Delegation agents`, which is also the only place its agent type and model argument are settled. The subagent runs with fresh context. The alias expands to this runtime's read-only agent type (`{{agent_reader_type}}`); whether that type is read-only is the runtime's own claim, so the read-only contract is carried by the prompt — the template's "You do not modify any files. You do not run commands." lines are never dropped from what is sent.
+4. Dispatch one `check-agent` call with the rendered template as its prompt. The alias is declared in `SKILL.md` under `## Delegation agents`, which is also the only place its agent call and model argument are settled. The subagent runs with fresh context. The alias expands to this runtime's read-only agent call; whether that agent is read-only is the runtime's own claim, so the read-only contract is carried by the prompt — the template's "You do not modify any files. You do not run commands." lines are never dropped from what is sent.
 5. Parse the response by `### Item N` headings. The group of each item is always its **original** group from step 1 — the validator is forbidden by `references/VALIDATOR.md` from changing it. The `Group:` line in the response is an integrity check, not a control field: if its value differs from the original group, treat the whole item block as malformed (see failure modes below). For each well-formed item:
    - `Verdict: keep` → keep the item unchanged in its original group.
    - `Verdict: modify` → replace the item text with `Modified-text`, put it back in its original group. Increment `adjusted`.
@@ -84,7 +84,7 @@ User: /unikit-improve +check
 
 → Found plan: .unikit/code/plans/2026-03-08_customers-system/
 → Step 3 produced 4 missing, 3 improvements, 1 architectural, 2 removals
-→ +check validator dispatched (Agent {{agent_reader_type}}, see procedure above)
+→ +check validator dispatched (Agent, see procedure above)
 → Validator returned: 8 keep, 1 modify, 1 drop
 → Dependencies recomputed against the post-(a) plan state
 

@@ -67,7 +67,7 @@ alternative.
 
   ```
   Agent(
-    subagent_type: "{{agent_worker_type}}",
+    {{agent_call_worker_quoted}}
     prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",
     description: "Implement <task>"
   )
@@ -79,7 +79,7 @@ alternative.
 
   ```
   Agent(
-    subagent_type: "{{agent_worker_type}}",
+    {{agent_call_worker_quoted}}
     prompt: "{{agent_skill_call:unikit-docs}} <context>",
     description: "Update documentation"
   )

@@ -86,8 +86,8 @@ or blocked does the assistant run the lenses sequentially in the main session.
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where its delegate's agent type is declared — call sites name the alias and never carry
-a type or a model argument of their own.
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 **Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
 (a missing file, block or key is not an error) and settle the model argument once:
@@ -105,10 +105,10 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 - **`lens-agent`** — one adversarial review lens, read-only, findings only. Expands to:
 
   ```
-  Agent(subagent_type: {{agent_worker_type}}, prompt: "<one lens brief>")
+  Agent({{agent_call_worker}} prompt: "<one lens brief>")
   ```
 
-  The worker type and not the reader type: the lens carries a written output contract and the
+  The worker call and not the read-only one: the lens carries a written output contract and the
   configured artifact language, which is a reasoning job rather than a search.
 
   Fallback: if the `Agent` tool is unavailable, run the lenses sequentially in this session.

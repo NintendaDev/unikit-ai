@@ -463,6 +463,22 @@ assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" \
   "codex install: the skills path in unikit-fix must reach the installed file intact"
 echo "  ✓ codex install: {{skills_dir}}/unikit-… paths survive the invocation rewrite"
 
+# Codex's agent call takes no type: no installed skill names one, and every call carries its own
+# spawn arguments (profile spawnArgs) instead; a recon call says it only reads
+CODEX_TYPE_HITS=$(grep -rn 'subagent_type' "$CODEX_DIR/.codex/skills" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+if [[ "$CODEX_TYPE_HITS" -ne 0 ]]; then
+  echo "Assertion failed: codex skills still name a subagent type in $CODEX_TYPE_HITS place(s)"
+  grep -rn 'subagent_type' "$CODEX_DIR/.codex/skills" --include='*.md' | cut -c1-160 | head -5
+  exit 1
+fi
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'fork_turns: "none", task_name: ' \
+  "codex install: every agent call carries fork_turns and a task name"
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'prompt: "<focused question> You are read-only: edit and write nothing\."' \
+  "codex install: recon-agent says in words that it only reads"
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'Read \.codex/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
+  "codex install: develop-agent reads the devcontext skill file"
+echo "  ✓ codex install: no subagent type, fork_turns none and a task name on every call, recon read-only"
+
 # ─────────────────────────────────────────────────────
 # Test 3b: Qwen invocation rewrite
 # ─────────────────────────────────────────────────────
@@ -749,7 +765,7 @@ assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json'
   "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "kimi: no Antigravity settings path in a Kimi skill"
-KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default)\}\}'
+KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
 KIMI_TOKEN_HITS=$(grep -rE "$KIMI_TOKEN_RE" "$KIMI_DIR/.kimi-code" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$KIMI_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: kimi install leaked $KIMI_TOKEN_HITS template placeholder(s)"
@@ -945,7 +961,7 @@ assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in default `"
   "universal: no built-in model default"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'Subagent Delegation.*BLOCKING PRE-REQUISITE' \
   "universal: no Codex ask-the-user block (DEC-008)"
-UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default)\}\}'
+UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
 UNIVERSAL_TOKEN_HITS=$(grep -rE "$UNIVERSAL_TOKEN_RE" "$UNIVERSAL_DIR/.agents" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$UNIVERSAL_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: universal install leaked $UNIVERSAL_TOKEN_HITS template placeholder(s)"

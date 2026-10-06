@@ -214,7 +214,7 @@ Which model the subagents that skills launch run on, one value per agent. The bl
 | Key | Description | Default |
 |-----|-------------|---------|
 | `model.claude` | Claude Code. A tier name: `sonnet`, `opus` or `haiku`. | `sonnet` |
-| `model.codex` | Codex CLI. A model identifier as Codex lists it - versioned, so you write it yourself. | none |
+| `model.codex` | Codex CLI. A model identifier as the model parameter of Codex's `spawn_agent` accepts it - its schema lists the valid names, and they change, so you write it yourself. | none |
 | `model.cursor` | Cursor. The subagent call does not name a model, so a value here has no effect; Cursor pins a model per agent file instead. | none |
 | `model.qwen` | Qwen Code. The call accepts a model only as a tier name, and only when `agents.modelGrades` is set in Qwen's `settings.json`. | none |
 | `model.opencode` | OpenCode. The subagent call has no model parameter: the subagent runs on the model of the session. | none |

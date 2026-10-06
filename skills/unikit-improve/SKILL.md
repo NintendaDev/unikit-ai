@@ -57,8 +57,8 @@ alternative.
 ## Delegation agents
 
 This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
-place where its delegate's agent type is declared — call sites name the alias and never carry
-a type or a model argument of their own.
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 **Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
 (a missing file, block or key is not an error) and settle the model argument once:
@@ -76,18 +76,20 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: {{agent_reader_type}}, prompt: "<focused question>")
+  Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")
   ```
+
+  Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
 
 - **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
 
   ```
-  Agent(subagent_type: {{agent_reader_type}}, prompt: "<rendered VALIDATOR.md template>")
+  Agent({{agent_call_reader}} prompt: "<rendered VALIDATOR.md template>")
   ```
 
-  Whether the agent type is read-only is this runtime's own claim, so the read-only contract
+  Whether the agent is read-only is this runtime's own claim, so the read-only contract
   rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
   "You do not modify any files. You do not run commands." lines in whatever is sent.
 

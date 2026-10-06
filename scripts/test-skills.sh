@@ -9224,7 +9224,7 @@ if [[ -z "$WP_WHY" ]]; then
         # else), the folder, and the order (file first, `pending` off last); and the writer is a
         # saved-state tool only — a live run on the standard protocol picked it up on its own,
         # leaving full answers in a folder no resume knows about
-        for lit in 'Agent(subagent_type: {{agent_worker_type}}, prompt: "Reconnaissance for an ultra plan' \
+        for lit in 'Agent({{agent_call_worker}} prompt: "Reconnaissance for an ultra plan' \
                    'That file is the only one you may create or change' \
                    'filling every section of the template <path of RECON-TEMPLATE.md>' \
                    "Reply with the file's path and its \`## Summary\` section, word for word" \
@@ -10084,18 +10084,19 @@ fi
 # ─────────────────────────────────────────────
 # Part 7g3: AP-1…AP-15 — the agent profile in skills, and how a skill reaches a subagent
 # ─────────────────────────────────────────────
-# A skill body travels to all eight runtimes, and the runtimes disagree on what a subagent is
-# called and whether a dispatch can name a model. The disagreement is data — the agent profile
+# A skill body travels to all eight runtimes, and the runtimes disagree on how a subagent is
+# launched and whether a dispatch can name a model. The disagreement is data — the agent profile
 # in `AGENT_REGISTRY` (`subagentProfile`) — and the installer substitutes it into the text
-# (`{{agent_reader_type}}`, `{{agent_worker_type}}`, `{{agent_id}}`, `{{agent_model_default}}`).
+# (the call heads `{{agent_call_reader}}`, `{{agent_call_worker}}`, `{{agent_call_worker_quoted}}`,
+# `{{agent_id}}`, `{{agent_model_default}}`).
 # So the sources must name NO runtime's type and NO model; what they may carry is the variable
 # and, once per skill, the rule that settles the model argument from `.unikit/config.yaml`.
 # Fifteen guards, each closing a different way that rots (AP-1…AP-7 the profile, AP-8…AP-15
 # the delivery of a skill to a subagent):
 #
-#   AP-1  counter pair (MT-1/MT-2 idiom) — every `subagent_type:` in skills/**/*.md is followed
-#         by a profile variable. An EQUALITY between two counts, not a search for a negation,
-#         so a literal type needs no allowlist: it raises the total and not the variable count.
+#   AP-1  a call head is a variable: no `subagent_type` and no `{{agent_…_type}}` in a skill, and as
+#         many call heads as `Agent(` openings (an equality, so a call written with a literal type
+#         raises the opening count and not the head count).
 #   AP-2  no runtime's type name in prose backticks, and no `general-purpose` at all — the word
 #         that used to be the literal. The bare words `Explore` / `coder` stay legal as a skill
 #         name and a role ("Explore tasks"): only a backticked type name is a stale spelling.
@@ -10149,10 +10150,16 @@ AP_SCOPE="$ROOT_DIR/skills"
 AP_WHY=""
 
 # (AP-1)
-AP_TYPE_TOTAL=$( { grep -rhoE 'subagent_type:' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
-AP_TYPE_VAR=$( { grep -rhoE 'subagent_type:[[:space:]]*"?\{\{agent_(reader|worker)_type\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
-[[ "$AP_TYPE_TOTAL" -gt 0 ]] || AP_WHY+=" AP-1:no-call-site"
-[[ "$AP_TYPE_TOTAL" -eq "$AP_TYPE_VAR" ]] || AP_WHY+=" AP-1:literal-type($AP_TYPE_TOTAL!=$AP_TYPE_VAR)"
+# the call head is a variable; the keyword and every type live in code. Three counts, no allowlist:
+# no `subagent_type` and no type variable in a skill, and as many call heads as `Agent(` openings
+AP_TYPE_LITERAL=$( { grep -rhoF 'subagent_type' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_TYPE_LITERAL" -eq 0 ]] || AP_WHY+=" AP-1:subagent_type-literal(x$AP_TYPE_LITERAL)"
+AP_TYPE_VARS=$( { grep -rhoE '\{\{agent_(reader|worker)_type\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_TYPE_VARS" -eq 0 ]] || AP_WHY+=" AP-1:type-variable-in-skill(x$AP_TYPE_VARS)"
+AP_HEAD_TOTAL=$( { grep -rhoE '\{\{agent_call_(reader|worker|worker_quoted)\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+AP_CALL_OPEN=$( { grep -rhE '^[[:space:]]*Agent\($|Agent\(\{\{agent_call_' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_HEAD_TOTAL" -gt 0 ]] || AP_WHY+=" AP-1:no-call-site"
+[[ "$AP_HEAD_TOTAL" -eq "$AP_CALL_OPEN" ]] || AP_WHY+=" AP-1:call-without-head($AP_CALL_OPEN!=$AP_HEAD_TOTAL)"
 
 # (AP-2)
 for ap_name in 'Explore' 'general-purpose' 'coder'; do
@@ -10274,12 +10281,12 @@ ap_call_lines=$( { grep -rhE '^[[:space:]]*prompt: "\{\{agent_skill_call:[a-z0-9
 [[ "$ap_call_lines" -eq "$AP_N_CALL" ]] || AP_WHY+=" AP-14:call-not-one-prompt-line($ap_call_lines!=$AP_N_CALL)"
 
 if [[ -z "$AP_WHY" ]]; then
-    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_TYPE_TOTAL call sites on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
+    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_HEAD_TOTAL call heads on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
 else
     fail "AP-1…AP-15 agent profile in skills and skill delivery:$AP_WHY"
     # Each diagnostic pipeline is wrapped: under `set -euo pipefail` an empty grep in a
     # pipeline would end the whole suite here instead of letting it report.
-    { grep -rnE 'subagent_type:[[:space:]]*"?[A-Za-z]' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -v '{{agent_' | sed 's/^/      /' | head -5 || true; }
+    { grep -rnF 'subagent_type' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
     { grep -rnE -e '^[[:space:]]*skills:[[:space:]]*\[' -e 'prompt:[[:space:]]*"/unikit' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
     { grep -rnF '{{agent_skill_call:' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -F '$' | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
 fi
@@ -10387,6 +10394,48 @@ if [[ -z "$SB_WHY" ]]; then
     pass "SB-1…SB-3 no stable/beta flag, tag or Status column (registry, wizard, 2 tests, $SB_N_DOCS documents)"
 else
     fail "SB-1…SB-3 the stable/beta label is back:$SB_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g6: CX-1…CX-3 — the Codex call head and the read-only recon call
+# ─────────────────────────────────────────────
+# Codex's agent call takes no type: a call carries `fork_turns: "none"` and a `task_name` of its own,
+# both built by the agent profile. The fragment lives in code and in no skill; every recon call says in
+# words that it only reads, because for Codex the prompt is the only thing that says so.
+echo -e "\n${BOLD}Part 7g6: Codex call head and read-only recon (CX-1…CX-3)${NC}"
+CX_WHY=""
+CX_CONST="$ROOT_DIR/src/core/constants-skill-call.ts"
+CX_AGENTS="$ROOT_DIR/src/core/agents.ts"
+
+# (CX-1) the fragment says both things, the codex entry uses it and names no type
+# anchored on the value line of the constant: the doc comment above it names both words too
+grep -qE "^[[:space:]]*'fork_turns: \"none\", task_name: " "$CX_CONST" 2>/dev/null || CX_WHY+=" CX-1:no-fork-turns-and-task-name-in-the-value"
+grep -qF 'spawnArgs: CODEX_SPAWN_ARGS' "$CX_AGENTS" 2>/dev/null || CX_WHY+=" CX-1:codex-does-not-use-it"
+CX_ENTRY=$(awk '/^  codex: \{/{f=1} f{print} f&&/^  \},/{exit}' "$CX_AGENTS" 2>/dev/null)
+if [[ -z "$CX_ENTRY" ]]; then
+    CX_WHY+=" CX-1:no-codex-entry"
+else
+    grep -qF "readerType: ''" <<< "$CX_ENTRY" || CX_WHY+=" CX-1:codex-names-a-reader-type"
+    grep -qF "workerType: ''" <<< "$CX_ENTRY" || CX_WHY+=" CX-1:codex-names-a-worker-type"
+fi
+
+# (CX-2) no skill, reference or agent file spells the Codex arguments: they come from the profile
+cx_literal=$( { grep -rhoE 'fork_turns|task_name' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$cx_literal" -eq 0 ]] || CX_WHY+=" CX-2:codex-arguments-in-text(x$cx_literal)"
+
+# (CX-3) every one-line recon call carries the read-only sentence; counted, not fixed
+cx_recon=$( { grep -rhE 'Agent\(\{\{agent_call_reader\}\} prompt: "<focused question>' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+cx_recon_ro=$( { grep -rhF 'Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$cx_recon" -gt 0 ]] || CX_WHY+=" CX-3:no-recon-call"
+[[ "$cx_recon" -eq "$cx_recon_ro" ]] || CX_WHY+=" CX-3:recon-without-read-only($cx_recon_ro!=$cx_recon)"
+# the rule line next to each alias, which tells the model to carry the sentence into the real question
+cx_recon_rule=$( { grep -rhF 'Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$cx_recon" -eq "$cx_recon_rule" ]] || CX_WHY+=" CX-3:recon-without-rule-line($cx_recon_rule!=$cx_recon)"
+
+if [[ -z "$CX_WHY" ]]; then
+    pass "CX-1…CX-3 Codex call head from the profile (no type, fork_turns, task_name), none in any skill; $cx_recon recon calls say they are read-only"
+else
+    fail "CX-1…CX-3 Codex call head or read-only recon weakened:$CX_WHY"
 fi
 
 # ─────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { DEFAULT_SKILL_CALL_FORM, SKILLTOOL_CALL_FORM } from './constants-skill-call.js';
+import { CODEX_SPAWN_ARGS, DEFAULT_SKILL_CALL_FORM, SKILLTOOL_CALL_FORM } from './constants-skill-call.js';
 import type { SkillCallForm } from './constants-skill-call.js';
 
 /**
@@ -48,6 +48,9 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     skillsCliAgent: 'claude-code',
     subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', skillCall: SKILLTOOL_CALL_FORM, spawnArgs: '' },
   },
+  // spawn_agent has no subagent type parameter (live probe 2026-10-06): the call names no type, drops the
+  // parent history and gives each subagent a name of its own. Read-only for a reader rests on the prompt,
+  // not on a type.
   codex: {
     id: 'codex',
     displayName: 'Codex CLI',
@@ -58,7 +61,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'codex',
-    subagentProfile: { readerType: 'explorer', workerType: 'worker', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: '', workerType: '', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: CODEX_SPAWN_ARGS },
   },
   cursor: {
     id: 'cursor',

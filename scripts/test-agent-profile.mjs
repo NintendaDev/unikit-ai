@@ -73,7 +73,7 @@ async function walk(dir) {
 // out here is the point: a changed registry value shows up as a red test, never silently.
 const EXPECTED = {
     claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', skillCall: 'skilltool', spawnArgs: '' },
-    codex: { readerType: 'explorer', workerType: 'worker', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    codex: { readerType: '', workerType: '', modelDefault: '', skillCall: 'read', spawnArgs: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
     cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
     qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
     opencode: { readerType: 'explore', workerType: 'general', modelDefault: '', skillCall: 'read', spawnArgs: '' },
@@ -87,7 +87,7 @@ const EXPECTED = {
 // (I) reads it too.
 const HEADS = {
     claude: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
-    codex: { reader: 'subagent_type: explorer,', worker: 'subagent_type: worker,', workerQuoted: 'subagent_type: "worker",' },
+    codex: { reader: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",', worker: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",', workerQuoted: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
     cursor: { reader: 'subagent_type: explore,', worker: 'subagent_type: generalPurpose,', workerQuoted: 'subagent_type: "generalPurpose",' },
     qwen: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
     opencode: { reader: 'subagent_type: explore,', worker: 'subagent_type: general,', workerQuoted: 'subagent_type: "general",' },
@@ -124,6 +124,13 @@ await group('P', async () => {
         const form = agent.subagentProfile?.skillCall;
         assertTrue(`P6 ${agent.id}: skillCall is a known form, and only claude calls the Skill tool`,
             ['read', 'skilltool'].includes(form) && ((form === 'skilltool') === (agent.id === 'claude')), String(form));
+    }
+
+    for (const agent of agents) {
+        const { readerType, workerType, spawnArgs } = agent.subagentProfile;
+        if (readerType !== '' || workerType !== '') continue;
+        assertTrue(`P7 ${agent.id}: an agent with no types carries spawn arguments with fork_turns and a task_name`,
+            spawnArgs.includes('fork_turns: "none"') && spawnArgs.includes('task_name:'), spawnArgs);
     }
 
     for (const [id, expected] of Object.entries(EXPECTED)) {
@@ -202,7 +209,7 @@ await group('V4', async () => {
 
 const COMPONENTS = {
     claude: 'profile:Explore|general-purpose|sonnet|call=skilltool',
-    codex: 'profile:explorer|worker|',
+    codex: 'profile:|||spawn=fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",',
     cursor: 'profile:explore|generalPurpose|',
     qwen: 'profile:Explore|general-purpose|',
     opencode: 'profile:explore|general|',
@@ -378,7 +385,7 @@ await group('C', async () => {
 // The table is built from AGENT_REGISTRY and goes through the real installSkills over the real
 // skills/, so a new agent joins it by itself and the test cannot repeat the installer's logic.
 
-const INSTALL_SKILLS = ['unikit', 'unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-gd-brainstorm', 'unikit-implement', 'unikit-gd-explore', 'unikit-review'];
+const INSTALL_SKILLS = ['unikit', 'unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-gd-brainstorm', 'unikit-implement', 'unikit-gd-explore', 'unikit-review', 'unikit-fix', 'unikit-verify', 'unikit-docs', 'unikit-improve', 'unikit-gd-recon'];
 
 // Forms an installed skill must never hold. The first two are what the invocation rewrite made of a
 // `{{skills_dir}}/unikit-…` path before its pattern learned `}`; a bare `skills unikit-` is NOT
@@ -420,24 +427,33 @@ await group('I', async () => {
             let leaked = 0;
             const damaged = new Map(DAMAGED_FORMS.map(([label]) => [label, []]));
             let scanned = 0;
+            const typeFiles = [];
             for (const file of await walk(path.join(projectDir, agent.skillsDir))) {
                 if (!file.endsWith('.md')) continue;
                 const text = await fs.readFile(file, 'utf8');
                 scanned++;
                 if (text.includes('{{agent_')) leaked++;
+                if (text.includes('subagent_type')) typeFiles.push(path.relative(projectDir, file));
                 for (const [label, test] of DAMAGED_FORMS) {
                     if (test(text)) damaged.get(label).push(path.relative(projectDir, file));
                 }
             }
             installed[agent.id] = texts;
 
-            const { readerType: reader, workerType: worker, modelDefault } = agent.subagentProfile;
-            assertTrue(`I1 ${agent.id}: recon-agent launches the reader type "${reader}"`, texts.explore.includes(`Agent(subagent_type: ${reader}, prompt: "<focused question>")`));
-            assertTrue(`I1 ${agent.id}: check-agent launches the reader type "${reader}"`, texts.explore.includes(`Agent(subagent_type: ${reader}, prompt: "Read <path of references/coherence-gate.md>`));
-            assertTrue(`I2 ${agent.id}: the recon writer launches the worker type "${worker}"`, texts.plan.includes(`Agent(subagent_type: ${worker}, prompt: "Reconnaissance for an ultra plan`));
-            assertTrue(`I3 ${agent.id}: lens-agent launches the worker type "${worker}"`, texts.gdReview.includes(`Agent(subagent_type: ${worker}, prompt: "<one lens brief>")`));
-            assertEq(`I3 ${agent.id}: develop-agent and docs-agent name the worker type`, countOf(texts.implement, `subagent_type: "${worker}",`), 2);
-            assertTrue(`I3 ${agent.id}: a reference file carries the worker type too`, texts.contract.includes(`subagent_type: "${worker}",`));
+            const { modelDefault } = agent.subagentProfile;
+            const h = HEADS[agent.id];
+            const RO = 'You are read-only: edit and write nothing.';
+            assertTrue(`I1 ${agent.id}: recon-agent carries its reader call head and the read-only sentence`, texts.explore.includes(`Agent(${h.reader} prompt: "<focused question> ${RO}")`));
+            assertTrue(`I1 ${agent.id}: check-agent carries its reader call head`, texts.explore.includes(`Agent(${h.reader} prompt: "Read <path of references/coherence-gate.md>`));
+            assertTrue(`I2 ${agent.id}: the recon writer carries its worker call head`, texts.plan.includes(`Agent(${h.worker} prompt: "Reconnaissance for an ultra plan`));
+            assertTrue(`I3 ${agent.id}: lens-agent carries its worker call head`, texts.gdReview.includes(`Agent(${h.worker} prompt: "<one lens brief>")`));
+            assertEq(`I3 ${agent.id}: develop-agent and docs-agent carry the quoted worker head`, countOf(texts.implement, h.workerQuoted), 2);
+            assertTrue(`I3 ${agent.id}: a reference file carries the worker head too`, texts.contract.includes(h.workerQuoted));
+            assertEq(`I10 ${agent.id}: fork_turns appears iff the profile has spawn arguments`, texts.implement.includes('fork_turns: "none"'), agent.subagentProfile.spawnArgs !== '');
+            assertEq(`I10 ${agent.id}: subagent_type is written iff the profile has a type`, texts.implement.includes('subagent_type'), agent.subagentProfile.workerType !== '');
+            if (agent.subagentProfile.workerType === '' && agent.subagentProfile.readerType === '') {
+                assertTrue(`I10 ${agent.id}: no installed .md names a subagent type`, typeFiles.length === 0, `found in: ${typeFiles.slice(0, 3).join(', ')}`);
+            }
 
             // I8: the call is the profile's form — a Skill-tool call, or a read of the skill file by this
             // agent's own installed path. The dead `skills:` key is gone, and a path variable that survived
@@ -481,10 +497,10 @@ await group('I', async () => {
             if (other.id === agent.id) continue;
             const mine = agent.subagentProfile;
             const theirs = other.subagentProfile;
-            if (theirs.readerType !== mine.readerType) {
+            if (theirs.readerType !== '' && theirs.readerType !== mine.readerType) {
                 assertTrue(`I5 ${agent.id} has no trace of ${other.id}'s reader type "${theirs.readerType}"`, !installed[agent.id].explore.includes(`Agent(subagent_type: ${theirs.readerType},`));
             }
-            if (theirs.workerType !== mine.workerType) {
+            if (theirs.workerType !== '' && theirs.workerType !== mine.workerType) {
                 assertTrue(`I5 ${agent.id} has no trace of ${other.id}'s worker type "${theirs.workerType}"`, !installed[agent.id].implement.includes(`subagent_type: "${theirs.workerType}",`));
             }
         }
