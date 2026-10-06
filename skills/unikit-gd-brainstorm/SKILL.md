@@ -25,6 +25,7 @@ allowed-tools:
   - Bash(date *)
   - Bash(mkdir *)
   - Agent
+  - Skill
   - AskUserQuestion
   - WebSearch
   - WebFetch
@@ -100,6 +101,15 @@ entering Phase 3.5** (per-phase, like `methods.md`), not up front; brainstorm re
 that *interface*, never explore's engine (`market-scan.md`). General `WebSearch` /
 `WebFetch` lookups remain available as read-only advisors — they never write and
 never substitute for the Phase 3.5 scan.
+
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user. A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ## Phase 0 — Auto-Resume (no flags)
 
@@ -294,11 +304,11 @@ gracefully (never fabricates a budget read). Substitute the real frame values in
 
 **Fallback (no Agent tool).** If the `Agent` tool is unavailable in this environment,
 do **not** print the delegation as a recommendation — that is a known failure mode
-where the model renders the call instead of running it. Instead, invoke
-`/unikit-gd-explore` **inline** as a real skill call, passing the same commercial
-frame + shortlist and the canonical marker verbatim, and wait for its brief. If skill
-invocation is *also* unavailable, run the scan yourself inline with `WebSearch` /
-`WebFetch` against the technique catalogue in
+where the model renders the call instead of running it. Instead, invoke `unikit-gd-explore`
+(`## Skill calls`), passing the same commercial frame + shortlist and the canonical marker
+verbatim, and wait for its brief. If its file cannot be read — instead of step 4 of
+`## Skill calls`, which would stop here — run the scan yourself inline with
+`WebSearch` / `WebFetch` against the technique catalogue in
 `unikit-gd-explore/references/market-scan.md` (comparable mapping, demand
 classification, review mining, and the cross-market rule above), and label every
 finding with the same `market_signal` + `validation_confidence` fields so the rest of

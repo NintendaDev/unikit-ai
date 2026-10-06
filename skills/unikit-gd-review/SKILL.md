@@ -359,11 +359,14 @@ nudge runs it — the two handoff tails are identical by contract.
 <!-- unikit:agents codex -->
 ### Auto-invoke the handoff — BLOCKING PRE-REQUISITE
 
-When this phase prints the `/unikit-gd-apply` recommendation, automatically invoke it
-(`$unikit-gd-apply <review-file>`) rather than asking the user to run it by hand — the
-printed command is the recommend-only fallback for agents without auto-invocation.
-This is a single handoff, not a per-finding dispatch: invoke `unikit-gd-apply` once
-with the review file and let it route the apply-ready bucket to the owners.
+When this phase prints the `/unikit-gd-apply` recommendation, do not ask the user to run it by
+hand: invoke `unikit-gd-apply` once, with the review file as its argument.
+If you have a `Skill` tool that accepts arguments, call it with that skill and the argument, in full and unchanged, then follow the skill.
+Otherwise Read `{{skills_dir}}/unikit-gd-apply/SKILL.md` in full, treat it as the instructions of this step and
+carry them out here, in this session, now, with the review file as its argument.
+This is a single handoff, not a per-finding dispatch: let `unikit-gd-apply` route the apply-ready bucket to the owners.
+Do not print a command for the user to run and do not stop.
+Only if that file cannot be read, the printed command is the recommend-only fallback.
 <!-- unikit:end -->
 
 - **Apply now → yes:** print the apply command for the review file —
@@ -432,7 +435,7 @@ the called skill does next.
 - **Never:** edit design **content** (any section A–K, `GAME.md`, or a `GD-IDS.yaml`
   fact value); write a `doc_status` (review is not a status writer); prescribe a fix the
   user did not ask for; inflate severity past the evidence; carry `Skill` in
-  `allowed-tools` or apply a fix / invoke `unikit-gd-apply` itself (the handoff is a
+  `allowed-tools` or apply a fix / run `unikit-gd-apply` itself (the handoff is a
   printed recommendation); read the code workspace beyond the feasibility exception.
 
 ## Quick Reference

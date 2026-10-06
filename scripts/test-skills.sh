@@ -2175,8 +2175,8 @@ else
     # (GA-3) closes with one unikit-gd-verify pass carrying the apply-phase3 loop-guard
     # sentinel — the single reserved arg (NOT a union of touched ids); verify recognises it
     # and suppresses its standalone handoff offer, so apply→verify→apply cannot loop.
-    if grep -qF 'Skill(skill: "unikit-gd-verify", args: "apply-phase3")' "$GD_APPLY_SKILL"; then
-        pass "GA-3 gd-apply closes with one Skill(unikit-gd-verify, apply-phase3) loop-guard pass"
+    if grep -qF 'invoke `unikit-gd-verify` with the argument `apply-phase3`' "$GD_APPLY_SKILL"; then
+        pass "GA-3 gd-apply closes with one invoke of unikit-gd-verify with the apply-phase3 loop-guard sentinel"
     else
         fail "GA-3 gd-apply missing the final unikit-gd-verify apply-phase3 handoff"
     fi
@@ -7921,18 +7921,19 @@ else
 fi
 
 # (EV-4) The dispatch. With RULES.md delegation-only this is load-bearing, and a bare prose
-# sentence is not a dispatch: `Skill(...)` is never rewritten by the installer and non-Claude
-# agents have no such tool, so Tier 2 is what keeps the channel alive on 5 of 7 agents. The
-# "real call" clause is the gd-apply formulation for the known failure mode — printing the
-# command instead of executing it.
+# sentence is not a dispatch: the call is an invocation by the one recipe of `## Skill calls`
+# (a Skill tool where there is one, otherwise the skill file read and carried out here), so it
+# works on every agent. The "real call" clause is the gd-apply formulation for the known
+# failure mode — printing the command instead of executing it — and it lives in the
+# `**Dispatch.**` paragraph for every agent: the Codex-only Dispatch block is gone (D-22),
+# and CB-1…CB-2 (Part 7g9) keep it gone.
 EV4_WHY=""
 grep -qF 'in **one** call'                        "$EV_EVOLVE_SKILL" || EV4_WHY+=" not-batched"
-grep -qF 'Skill(skill: "unikit-rules"'            "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-tier1"
-grep -qF 'invoke `/unikit-rules <batch>` inline'  "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-tier2"
+grep -qF 'invoke `unikit-rules`'                  "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-invoke"
+grep -qxF '## Skill calls'                        "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-recipe"
 grep -qF 'not text wrapped in backticks'          "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-real-call-clause"
-grep -qF '<!-- unikit:agents codex -->'           "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-codex-nudge"
 if [[ -z "$EV4_WHY" ]]; then
-    pass "EV-4 unikit-evolve Step 6 — one batched call, 3 dispatch tiers, codex auto-invoke nudge"
+    pass "EV-4 unikit-evolve Step 6 — one batched call, one invocation recipe, an explicit real-call clause"
 else
     fail "EV-4 unikit-evolve rules dispatch degraded:$EV4_WHY"
 fi
@@ -10440,6 +10441,90 @@ if [[ -z "$CX_WHY" ]]; then
     pass "CX-1…CX-3 Codex call head from the profile (no type, fork_turns, task_name), none in any skill; $cx_recon recon calls say they are read-only"
 else
     fail "CX-1…CX-3 Codex call head or read-only recon weakened:$CX_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g7: SK-1…SK-4 — one recipe for invoking a skill from a skill
+# ─────────────────────────────────────────────
+# A skill calls another skill in the same session by one recipe, written once in the caller's
+# `## Skill calls`: a Skill tool call where there is one, otherwise the skill file read and carried
+# out here. A call site says `invoke <skill>` and points at the recipe. The retired machinery —
+# three tiers, `Skill(skill: …)` pseudo-calls, a slash form the installer rewrites — must not come
+# back. Four guards, each over its own object; zero objects is a FAIL, not a silent pass.
+echo -e "\n${BOLD}Part 7g7: skill-to-skill calls — one recipe (SK-1…SK-4)${NC}"
+SK_WHY=""
+SK_FILES=()
+while IFS= read -r sk_f; do
+    [[ -n "$sk_f" ]] && SK_FILES+=("$sk_f")
+done < <( { grep -rlE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } | sort)
+SK_ANCHORS=(
+    'If you have a `Skill` tool that accepts arguments'
+    'carry them out here, in this session, now'
+    'print a command for the user to run and do not stop'
+    'Only if that file cannot be read'
+)
+
+# (SK-1) every file with a call site carries the whole recipe (a reference carries the pointer to its
+# host's), and a file with a call outside a Codex-only block has exactly one `## Skill calls` heading
+[[ "${#SK_FILES[@]}" -gt 0 ]] || SK_WHY+=" SK-1:no-call-site"
+for sk_f in ${SK_FILES[@]+"${SK_FILES[@]}"}; do
+    sk_rel="${sk_f#"$ROOT_DIR"/}"
+    if [[ "$sk_f" == */references/* ]]; then
+        grep -qF -- '`## Skill calls`' "$sk_f" || SK_WHY+=" SK-1:reference-without-pointer:$sk_rel"
+        continue
+    fi
+    for sk_lit in "${SK_ANCHORS[@]}"; do
+        grep -qF -- "$sk_lit" "$sk_f" || SK_WHY+=" SK-1:recipe-anchor-missing(${sk_lit:0:24}):$sk_rel"
+    done
+    sk_open=$(awk '/<!-- unikit:agents codex -->/{s=1;next} /<!-- unikit:end -->/{s=0;next} !s' "$sk_f" | { grep -cE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' || true; })
+    if [[ "${sk_open:-0}" -gt 0 ]]; then
+        sk_h=$( { grep -cx '## Skill calls' "$sk_f" || true; } )
+        [[ "${sk_h:-0}" -eq 1 ]] || SK_WHY+=" SK-1:skill-calls-heading(${sk_h:-0}):$sk_rel"
+    fi
+done
+
+# (SK-2) the retired machinery, by formulation, in every skill and agent file
+for sk_lit in 'Tier 1 — primary (`Skill`)' 'Tier 2 — fallback (slash-command)' 'Tier 2 — Fallback (slash-command)' \
+              'Tier 3 — degenerate' 'three-tier dispatch' 'three tiers' 'inline slash form' 'Skill(skill:'; do
+    sk_n=$( { grep -rlF -- "$sk_lit" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$sk_n" -eq 0 ]] || SK_WHY+=" SK-2:retired-wording(${sk_lit:0:26} x$sk_n)"
+done
+# the same machinery in the spellings the literals above miss: `Tiers 1–2`, `Tier 1/2`, `Tier 2's`, `a Tier 3
+# print`, a capitalised `Three tiers`. The Candidate Analyzer tiers of unikit-memory and the knowledge-base
+# reference of unikit-help are another concept and are left out by path (the guard counts, it has no allowlist of lines).
+sk_tier=$( { grep -rniE 'Tiers? [123]|three[- ]tier' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } \
+    | { grep -vE '/unikit-memory/|/unikit-help/references/' || true; } | wc -l | tr -d ' ')
+[[ "$sk_tier" -eq 0 ]] || SK_WHY+=" SK-2:tier-wording(x$sk_tier)"
+
+# (SK-3) every skill a call names exists and is not hidden from the model (a hidden skill cannot be
+# loaded through the Skill tool); gd-apply names its zone owners generically, so they are listed here
+SK_TARGETS=$( { grep -rhoE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } \
+    | sed -E 's/.*`(unikit-[a-z0-9-]+)`/\1/' | sort -u)
+SK_ZONES='unikit-gd-spec unikit-gd-system unikit-gd-content unikit-gd-flow unikit-gd-verify'
+SK_TARGET_N=0
+for sk_t in $SK_TARGETS; do SK_TARGET_N=$((SK_TARGET_N + 1)); done
+[[ "$SK_TARGET_N" -gt 0 ]] || SK_WHY+=" SK-3:no-target"
+for sk_t in $SK_TARGETS $SK_ZONES; do
+    if [[ ! -f "$ROOT_DIR/skills/$sk_t/SKILL.md" ]]; then
+        SK_WHY+=" SK-3:unknown-skill($sk_t)"
+    elif grep -qiE '^[[:space:]]*disable-model-invocation:[[:space:]]*["'\'']?true' "$ROOT_DIR/skills/$sk_t/SKILL.md"; then
+        SK_WHY+=" SK-3:hidden-target($sk_t)"
+    fi
+done
+
+# (SK-4) a file that calls outside a Codex-only block carries the Skill tool in its tool list
+for sk_f in ${SK_FILES[@]+"${SK_FILES[@]}"}; do
+    [[ "$sk_f" == */references/* ]] && continue
+    sk_open=$(awk '/<!-- unikit:agents codex -->/{s=1;next} /<!-- unikit:end -->/{s=0;next} !s' "$sk_f" | { grep -cE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' || true; })
+    [[ "${sk_open:-0}" -gt 0 ]] || continue
+    sk_head=$(awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$sk_f")
+    grep -qE '^[[:space:]]*-[[:space:]]+Skill[[:space:]]*$' <<< "$sk_head" || SK_WHY+=" SK-4:no-skill-tool:${sk_f#"$ROOT_DIR"/}"
+done
+
+if [[ -z "$SK_WHY" ]]; then
+    pass "SK-1…SK-4 skill-to-skill calls: the recipe in ${#SK_FILES[@]} files, $SK_TARGET_N targets exist and are visible to the model, no retired tier wording, callers carry the Skill tool"
+else
+    fail "SK-1…SK-4 skill-to-skill calls weakened:$SK_WHY"
 fi
 
 # ─────────────────────────────────────────────

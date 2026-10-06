@@ -416,12 +416,15 @@ runs it — the two handoff tails are identical by contract.
 <!-- unikit:agents codex -->
 ### Auto-invoke the handoff — BLOCKING PRE-REQUISITE
 
-When this phase prints the `/unikit-gd-apply` recommendation, automatically invoke it
-(`$unikit-gd-apply`, bare — it reads the printed deltas from this session) rather than
-asking the user to run it by hand — the printed command is the recommend-only fallback for
-agents without auto-invocation. This is a single handoff: invoke `unikit-gd-apply` once and
-let it route the deltas to the owners (it closes with its own `apply-phase3` verify — no
-loop).
+When this phase prints the `/unikit-gd-apply` recommendation, do not ask the user to run it by
+hand: invoke `unikit-gd-apply` once, bare — it reads the printed deltas from this session.
+If you have a `Skill` tool that accepts arguments, call it with that skill, in full and unchanged, then follow the skill.
+Otherwise Read `{{skills_dir}}/unikit-gd-apply/SKILL.md` in full, treat it as the instructions of this step and
+carry them out here, in this session, now.
+This is a single handoff: let `unikit-gd-apply` route the deltas to the owners (it closes with its own
+`apply-phase3` verify — no loop).
+Do not print a command for the user to run and do not stop.
+Only if that file cannot be read, the printed command is the recommend-only fallback.
 <!-- unikit:end -->
 
 - **apply-ready non-empty:** print the deltas as plain prose (each citing `target` +
@@ -493,7 +496,7 @@ skill does next.
   `doc_status` bump, no `[gen]`-map re-render — verify carries no `Write`/`Edit`/`mkdir`);
   use web research; guess where a grep settles it; change a `GD-IDS` value; delete or
   renumber an ID; write the roster (route to `unikit-gd-spec`); carry `Skill`/`Agent` in
-  `allowed-tools` or invoke `unikit-gd-apply` itself (the handoff is a printed prose
+  `allowed-tools` or run `unikit-gd-apply` itself (the handoff is a printed prose
   recommendation read by apply's no-arg session mode); offer the handoff or run the
   direction interview when invoked as apply's Phase 3 (the `apply-phase3` loop-guard); read
   the code workspace or project source.
