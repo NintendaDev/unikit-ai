@@ -16,7 +16,7 @@ export interface AgentTransformer {
   transform(skillName: string, content: string): TransformResult;
   /**
    * Rewrite skill invocations (`/unikit-*`) inside a reference `.md` file body.
-   * Optional: only agents that remap invocations (codex/qwen) or a subagent
+   * Optional: only agents that remap invocations (codex) or a subagent
    * type (kimi) implement it; default agents (claude/cursor/opencode) leave it
    * undefined so references keep `/unikit-*` verbatim. Unlike {@link transform}
    * this never runs the agent-filter — reference files carry no guarded blocks

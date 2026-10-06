@@ -18,7 +18,7 @@ const { buildTemplateVars, processTemplate } = await import(dist('core/template.
 const { buildSubagentTemplateVars } = await import(dist('core/installer/shared.js'));
 const { computeSourceHashWithTemplate, computeSubagentSourceHash, profileHashComponent, transformRevisionComponent } = await import(dist('core/installer/hashing.js'));
 const { installSkills } = await import(dist('core/installer/skills.js'));
-const { getTransformer } = await import(dist('core/transformer.js'));
+const { getTransformer, getAgentOnboarding } = await import(dist('core/transformer.js'));
 const { TRANSFORM_REVISIONS } = await import(dist('core/constants.js'));
 
 let passed = 0;
@@ -352,6 +352,27 @@ await group('R', async () => {
     assertEq(`R4 without the entry the ${outsider} hash is what it was`, await skillHash(outsider), outsiderBefore);
 });
 
+// ── Q: the Qwen transformer writes nothing (REQ-009, DEC-012) ───────────────
+await group('Q', async () => {
+    const t = getTransformer('qwen');
+    assertEq('Q1 qwen has its own transformer (the onboarding text)', t.constructor.name, 'QwenTransformer');
+    for (const hook of ['transformReference', 'transformSubagent', 'postInstall', 'cleanup']) {
+        assertEq(`Q2 no ${hook}: nothing is rewritten and nothing extra is written`, typeof t[hook], 'undefined');
+    }
+    assertEq(
+        'Q3 skills are written exactly as for a default agent',
+        JSON.stringify(t.transform('unikit-plan', 'run /unikit-implement')),
+        JSON.stringify(getTransformer('claude').transform('unikit-plan', 'run /unikit-implement')),
+    );
+    assertTrue('Q4 no TRANSFORM_REVISIONS entry', !('qwen' in TRANSFORM_REVISIONS));
+    const onboarding = getAgentOnboarding('qwen');
+    assertTrue(
+        'Q5 the welcome text names /<name> and /unikit and never the retired form',
+        onboarding.welcomeMessage.some((l) => l.includes('/<name>')) && onboarding.welcomeMessage.some((l) => l.includes('/unikit ')) && !onboarding.welcomeMessage.some((l) => l.includes('/skills')),
+    );
+    assertEq('Q6 the invocation hint', onboarding.invocationHint, 'Qwen Code: /unikit-plan, /unikit-commit');
+});
+
 // ── C: the config template against the registry (Task 26) ───────────────────
 // The template holds the user-facing `subagents.model` block; the registry holds the profile.
 // The Claude and Antigravity defaults are written in both places (the installer never reads the
@@ -388,12 +409,14 @@ await group('C', async () => {
 const INSTALL_SKILLS = ['unikit', 'unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-gd-brainstorm', 'unikit-implement', 'unikit-gd-explore', 'unikit-review', 'unikit-fix', 'unikit-verify', 'unikit-docs', 'unikit-improve', 'unikit-gd-recon'];
 
 // Forms an installed skill must never hold. The first two are what the invocation rewrite made of a
-// `{{skills_dir}}/unikit-…` path before its pattern learned `}`; a bare `skills unikit-` is NOT
-// listed — it is the legitimate Qwen rewrite `/skills unikit-plan`. The third is the dead call key.
+// `{{skills_dir}}/unikit-…` path before its pattern learned `}`; the third is the dead call key; the
+// fourth is an unresolved variable; the fifth is the retired Qwen invocation form — Qwen Code starts a
+// skill as `/<name>`.
 const DAMAGED_FORMS = [
     ['skills$unikit-', (text) => text.includes('skills$unikit-')],
     ['skills/skills unikit-', (text) => text.includes('skills/skills unikit-')],
     ['a skills: [...] key', (text) => /^\s*skills:\s*\[/m.test(text)],
+    ['the retired /skills unikit form', (text) => text.includes('/skills unikit')],
     ['an unresolved path or engine variable', (text) => /\{\{(skills_dir|home_skills_dir|settings_file|self_name|skills_cli_agent_flag|engine_name|engine_code_language|engine_mcp_tool)\}\}/.test(text)],
 ];
 const countOf = (text, needle) => text.split(needle).length - 1;

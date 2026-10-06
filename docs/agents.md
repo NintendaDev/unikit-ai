@@ -38,6 +38,10 @@ Skills install and work normally. **Subagents are not installed** - `AGENT_REGIS
 
 When launching some skills, the agent may pause at the very start and do nothing until the user types something like "Continue" or "Proceed". The root cause is still unclear - the behaviour reproduces on both Windows and macOS.
 
+### Qwen Code
+
+UniKit is written for the current Qwen Code, where a skill is started as `/<name>` (for example `/unikit-plan`). Skills are installed exactly as written - nothing rewrites their invocations. In the current Qwen Code `/skills <name>` only opens the skills panel and drops the argument; an older Qwen Code that knew only that form will not recognise the commands in the skill texts. The version from which `/<name>` works is not recorded.
+
 ### Antigravity
 
 Antigravity (the IDE and CLI share one `.agents/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agents/skills/<name>/` directory with `SKILL.md` and `references/`. In Antigravity 2.0 a skill is invoked with `/<skill-name>`, and the CLI turns every skill into a slash command (for example `/unikit-plan`); the IDE documents no slash invocation, so there a skill is picked by its `description`. A `Skill` tool is not documented for Antigravity, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) may still degrade to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.

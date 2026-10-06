@@ -10528,6 +10528,51 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7g8: QW-1…QW-3 — Qwen Code gets the text as written
+# ─────────────────────────────────────────────
+# Qwen Code starts a skill as `/<name>`; `/skills <name>` only opens its panel and drops the argument.
+# So nothing rewrites `/unikit-*` for it: the transformer is the onboarding text only, it has no
+# revision entry, and no source names the retired form. The retired form is built from two halves so
+# this very file never holds it whole.
+echo -e "\n${BOLD}Part 7g8: Qwen Code — no invocation rewrite (QW-1…QW-3)${NC}"
+QW_WHY=""
+QW_RETIRED='/skills ''unikit'
+QW_TRANSFORMER="$ROOT_DIR/src/core/transformers/qwen.ts"
+QW_REVISIONS="$ROOT_DIR/src/core/constants-transform.ts"
+
+# (QW-1) the transformer extends the default one and rewrites nothing: no method that writes text
+# (anchored on a method definition — the class comment legitimately names those hooks) and no use
+# of the rewrite helper
+if [[ -s "$QW_TRANSFORMER" ]]; then
+    grep -qF 'extends DefaultTransformer' "$QW_TRANSFORMER" || QW_WHY+=" QW-1:not-default-based"
+    grep -qE '^[[:space:]]+(transform|transformReference|transformSubagent|postInstall|cleanup)\(' "$QW_TRANSFORMER" && QW_WHY+=" QW-1:writes-text-again"
+    grep -qE 'rewriteInvocationPrefix|toQwenInvocation' "$QW_TRANSFORMER" && QW_WHY+=" QW-1:rewrites-again"
+else
+    QW_WHY+=" QW-1:missing"
+fi
+
+# (QW-2) no revision entry for qwen, entries for the two agents that do rewrite
+if [[ -s "$QW_REVISIONS" ]]; then
+    QW_TABLE=$(awk '/export const TRANSFORM_REVISIONS/{f=1} f{print} f&&/^\};/{exit}' "$QW_REVISIONS")
+    grep -qE '^[[:space:]]*qwen:' <<< "$QW_TABLE" && QW_WHY+=" QW-2:qwen-has-a-revision"
+    for qw_id in codex kimi; do
+        grep -qE "^[[:space:]]*${qw_id}:" <<< "$QW_TABLE" || QW_WHY+=" QW-2:missing-entry($qw_id)"
+    done
+else
+    QW_WHY+=" QW-2:missing"
+fi
+
+# (QW-3) the retired invocation form is named nowhere: skills, agent files, data, sources, README, documents
+qw_hits=$( { grep -rlF --include='*.md' --include='*.ts' -e "$QW_RETIRED" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" "$ROOT_DIR/src" "$ROOT_DIR/README.md" "$ROOT_DIR/docs" 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$qw_hits" -eq 0 ]] || QW_WHY+=" QW-3:retired-form(x$qw_hits files)"
+
+if [[ -z "$QW_WHY" ]]; then
+    pass "QW-1…QW-3 Qwen Code: default-based transformer, no revision entry, no retired invocation form in any source or document"
+else
+    fail "QW-1…QW-3 the Qwen invocation rewrite is back:$QW_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke
 # ─────────────────────────────────────────────
 # Catch the "forgot to wire a new command into src/cli/index.ts" regression

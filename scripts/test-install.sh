@@ -111,7 +111,7 @@ fi
 # transformReference is undefined for DefaultTransformer, so references/*.md are
 # copied verbatim for claude/cursor/opencode. unikit-plan's
 # references/TASK-FORMAT.md must keep `/unikit-implement` — NOT $unikit-
-# (codex) or /skills unikit- (qwen). A stray DefaultTransformer.transformReference
+# (codex). A stray DefaultTransformer.transformReference
 # would rewrite this and fail the assertion below.
 CLAUDE_TASKFORMAT="$CLAUDE_DIR/.claude/skills/unikit-plan/references/TASK-FORMAT.md"
 assert_exists "$CLAUDE_TASKFORMAT" "unikit-plan reference must be installed for claude"
@@ -480,7 +480,7 @@ assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'Read \.codex/ski
 echo "  ✓ codex install: no subagent type, fork_turns none and a task name on every call, recon read-only"
 
 # ─────────────────────────────────────────────────────
-# Test 3b: Qwen invocation rewrite
+# Test 3b: Qwen — skill text installed as written (no invocation rewrite)
 # ─────────────────────────────────────────────────────
 
 QWEN_DIR="$TMPDIR/test-qwen"
@@ -512,10 +512,9 @@ inject_fake_registry "$QWEN_DIR"
 seed_rule "$QWEN_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$QWEN_DIR"
 
-# No raw /unikit- invocations should remain in SKILL.md files (rewritten to "/skills unikit-")
-# SKILL.md is checked here; reference .md files are rewritten too (T3) and
-# checked separately below — they are no longer copied verbatim.
-# Exclude frontmatter name: field, package name unikit-ai, and .unikit/ paths
+# Qwen Code starts a skill as /<name>: the text is installed as written, nothing is rewritten.
+# SKILL.md: raw /unikit- invocations remain (frontmatter name:, the package name unikit-ai and
+# .unikit/ paths are not invocations) and no "/skills unikit" form exists anywhere — the retired rewrite turned the bare /unikit into it too.
 QWEN_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -name 'SKILL.md' -exec \
   grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
   | while read -r f; do
@@ -524,29 +523,19 @@ QWEN_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -name 'SKILL.md' -exec \
         | grep -v 'unikit-ai' \
         | grep -v '\.unikit/'
     done | wc -l | tr -d ' ' || true)
-
-# "/skills unikit-" invocations should exist in SKILL.md files
-QWEN_SKILLS_INVOCATIONS=$(find "$QWEN_DIR/.qwen/skills/" -name 'SKILL.md' -exec \
-  grep -c '/skills unikit-' {} \; 2>/dev/null \
-  | awk '{s+=$1} END{print s+0}' || true)
-
-if [[ "$QWEN_RAW_SLASH" -eq 0 && "$QWEN_SKILLS_INVOCATIONS" -gt 0 ]]; then
-  echo "  ✓ qwen invocation rewrite: /unikit-* → /skills unikit-* ($QWEN_SKILLS_INVOCATIONS rewrites)"
+QWEN_SKILLS_FORM=$(grep -rF '/skills unikit' "$QWEN_DIR/.qwen/skills/" --include='*.md' 2>/dev/null \
+  | wc -l | tr -d ' ' || true)
+if [[ "$QWEN_RAW_SLASH" -gt 0 && "$QWEN_SKILLS_FORM" -eq 0 ]]; then
+  echo "  ✓ qwen install: /unikit-* left as written ($QWEN_RAW_SLASH invocations in SKILL.md), no /skills unikit form"
 else
-  echo "Assertion failed: qwen rewrite"
-  echo "  Remaining /unikit- invocations: $QWEN_RAW_SLASH (expected 0)"
-  echo "  Found /skills unikit- invocations: $QWEN_SKILLS_INVOCATIONS (expected > 0)"
-  if [[ "$QWEN_RAW_SLASH" -gt 0 ]]; then
-    echo "  --- remaining /unikit- ---"
-    grep -rE '(^|[[:space:]`"(>])/unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' \
-      | grep -v '^[^:]*:name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
-    echo "  ---"
-  fi
+  echo "Assertion failed: qwen invocation text"
+  echo "  /unikit- invocations left in SKILL.md: $QWEN_RAW_SLASH (expected > 0)"
+  echo "  /skills unikit occurrences: $QWEN_SKILLS_FORM (expected 0)"
+  grep -rnF '/skills unikit' "$QWEN_DIR/.qwen/skills/" --include='*.md' | head -5
   exit 1
 fi
 
-# Reference .md files must ALSO have their invocations rewritten (T3) for qwen
-# (/unikit-* → /skills unikit-*). Same fixture coverage as codex Test 3.
+# References are installed as written too.
 QWEN_REF_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
   grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
   | while read -r f; do
@@ -555,34 +544,18 @@ QWEN_REF_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name
         | grep -v 'unikit-ai' \
         | grep -v '\.unikit/'
     done | wc -l | tr -d ' ' || true)
-
-QWEN_REF_SKILLS=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
-  grep -c '/skills unikit-' {} \; 2>/dev/null \
-  | awk '{s+=$1} END{print s+0}' || true)
-
-if [[ "$QWEN_REF_RAW_SLASH" -eq 0 && "$QWEN_REF_SKILLS" -gt 0 ]]; then
-  echo "  ✓ qwen reference rewrite: /unikit-* → /skills unikit-* in references/ ($QWEN_REF_SKILLS rewrites)"
+if [[ "$QWEN_REF_RAW_SLASH" -gt 0 ]]; then
+  echo "  ✓ qwen reference text: /unikit-* left as written in references/ ($QWEN_REF_RAW_SLASH invocations)"
 else
-  echo "Assertion failed: qwen reference rewrite"
-  echo "  Remaining /unikit- in references: $QWEN_REF_RAW_SLASH (expected 0)"
-  echo "  Found /skills unikit- in references: $QWEN_REF_SKILLS (expected > 0)"
-  if [[ "$QWEN_REF_RAW_SLASH" -gt 0 ]]; then
-    echo "  --- remaining /unikit- in references ---"
-    find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
-      grep -HE '(^|[[:space:]`"(>])/unikit-' {} \; \
-      | grep -v ':name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
-    echo "  ---"
-  fi
+  echo "Assertion failed: qwen references carry no /unikit- invocation (expected > 0 — the files are installed as written)"
   exit 1
 fi
 
-# Same path guard as Test 3 for qwen. The damaged form is `.qwen/skills/skills unikit-…`;
-# the bare `skills unikit-` is NOT banned — it is the legitimate rewrite `/skills unikit-plan`
-# (counted above), so the ban is on the doubled `skills/skills unikit-` only.
+# A `{{skills_dir}}/unikit-…` path stays a path (nothing rewrites it): the doubled form must not appear.
 QWEN_PATH_DAMAGE=$(grep -rE 'skills/skills unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' 2>/dev/null \
   | wc -l | tr -d ' ' || true)
 if [[ "$QWEN_PATH_DAMAGE" -ne 0 ]]; then
-  echo "Assertion failed: qwen install: a skills path was rewritten as an invocation"
+  echo "Assertion failed: qwen install: a skills path was damaged"
   echo "  Damaged paths (skills/skills unikit-): $QWEN_PATH_DAMAGE (expected 0)"
   grep -rE 'skills/skills unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' | head -5
   exit 1
@@ -590,7 +563,7 @@ fi
 assert_contains "$QWEN_DIR/.qwen/skills/unikit-fix/SKILL.md" \
   '\.qwen/skills/unikit-implement/references/test-runs\.md' \
   "qwen install: the skills path in unikit-fix must reach the installed file intact"
-echo "  ✓ qwen install: {{skills_dir}}/unikit-… paths survive the invocation rewrite"
+echo "  ✓ qwen install: {{skills_dir}}/unikit-… paths intact"
 
 # ─────────────────────────────────────────────────────
 # Test 3c: Antigravity (skills-only — no subagents, local MCP config, postInstall rules)

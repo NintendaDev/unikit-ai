@@ -1,33 +1,22 @@
-import type { AgentTransformer, TransformResult } from '../transformer.js';
-import { rewriteInvocationPrefix } from '../transformer.js';
+import { DefaultTransformer } from './default.js';
 
-function toQwenInvocation(content: string): string {
-  return rewriteInvocationPrefix(content, invocation => `/skills ${invocation}`);
-}
-
-export class QwenTransformer implements AgentTransformer {
-  transform(skillName: string, content: string): TransformResult {
-    return {
-      targetDir: skillName,
-      targetName: 'SKILL.md',
-      content: toQwenInvocation(content),
-      flat: false,
-    };
-  }
-
-  transformReference(content: string): string {
-    return toQwenInvocation(content);
-  }
-
+/**
+ * Qwen Code. Skills install exactly as for the default agents (inherited `transform`: standard
+ * `SKILL.md` directories, `/unikit-*` left verbatim): Qwen Code starts a skill as `/<name>`, while
+ * `/skills <name>` only opens its skills panel and drops the argument (Qwen Code documentation;
+ * confirmed by one live run). Only the onboarding text is Qwen's own. No `transformReference`, no
+ * `transformSubagent` — nothing is rewritten, so there is no `TRANSFORM_REVISIONS` entry either.
+ */
+export class QwenTransformer extends DefaultTransformer {
   getWelcomeMessage(): string[] {
     return [
       '1. Open Qwen Code in this directory',
-      '2. Run /skills unikit to analyze project and generate project-relevant skills',
-      '3. Qwen Code invokes skills via /skills <name> (e.g. /skills unikit-plan)',
+      '2. Run /unikit to analyze project and generate project-relevant skills',
+      '3. Qwen Code invokes skills via /<name> (e.g. /unikit-plan)',
     ];
   }
 
   getInvocationHint(): string {
-    return 'Qwen Code: /skills unikit-plan, /skills unikit-commit';
+    return 'Qwen Code: /unikit-plan, /unikit-commit';
   }
 }

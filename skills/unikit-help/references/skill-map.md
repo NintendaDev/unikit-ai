@@ -14,7 +14,7 @@
 
 Every `unikit-*` skill, what it owns, and what runs before/after it. Skills are
 invoked as slash commands (e.g. `/unikit-plan`); on Codex the prefix is `$`
-(`$unikit-plan`), on Qwen it is `/skills unikit-plan`.
+(`$unikit-plan`).
 
 Legend: **Required** = part of the minimum path · **Optional** = quality/extra ·
 **Setup** = one-time · arrows show the usual neighbours.

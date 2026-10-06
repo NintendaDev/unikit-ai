@@ -18,12 +18,13 @@ export const TRANSFORM_HASH_TAG = 'transform';
  * this number. RULE: raise an agent's revision whenever the output of its transformer changes —
  * the invocation pattern, an adapter, a line it inserts. An agent missing from the table has a
  * transformer that rewrites nothing and contributes nothing to the hash, which is why the hashes
- * of those agents did not move when this table was introduced. The key set is guarded against
+ * of those agents did not move when this table was introduced. Qwen Code is not in the table: since
+ * its invocation rewrite was dropped its transformer writes nothing, and removing its entry moved
+ * its hashes once, which reinstalled its files — wanted. The key set is guarded against
  * the transformer hooks in `scripts/test-agent-profile.mjs` (group R).
  */
 export const TRANSFORM_REVISIONS: Readonly<Record<string, string>> = {
   codex: '1',
-  qwen: '1',
   kimi: '1',
 };
 

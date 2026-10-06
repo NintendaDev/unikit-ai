@@ -124,7 +124,7 @@ export async function buildManagedSkillsState(
 
 /**
  * Rewrite the agent-specific spellings inside a skill's reference `.md` files (`/unikit-*`
- * invocations for codex/qwen, the subagent type for kimi) using
+ * invocations for codex, the subagent type for kimi) using
  * the agent transformer's {@link AgentTransformer.transformReference}. No-op for
  * default agents (method undefined) and for non-`.md` files. The root SKILL.md
  * (when present in `dir`) is skipped — it is already rewritten by `transform`.
@@ -203,7 +203,7 @@ export async function installSkillWithTransformer(
     // not leak into the installed file.
     await writeTextFile(path.join(targetSkillDir, SKILL_FILE), result.content);
     // Reference `.md` files are copied verbatim by copyDirectory; rewrite them
-    // for agents that rewrite references (codex/qwen invocations, kimi subagent
+    // for agents that rewrite references (codex invocations, kimi subagent
     // type). The root SKILL.md is excluded (already rewritten above). No-op for
     // default agents.
     await rewriteReferenceInvocations(transformer, targetSkillDir);
