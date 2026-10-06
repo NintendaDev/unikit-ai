@@ -691,13 +691,12 @@ The `generate_set` list contains stack technologies that either had no registry 
 ```
 Agent(
   subagent_type: "{{agent_worker_type}}",
-  prompt: "/unikit-memory --module code --skip-registry Add stack rules for {technology name}",
-  description: "Generate {technology} rules",
-  skills: ["unikit-memory"]
+  prompt: "Read {{skills_dir}}/unikit-memory/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: --module code --skip-registry Add stack rules for {technology name}",
+  description: "Generate {technology} rules"
 )
 ```
 
-Two flags are passed, and both are mandatory:
+Two flags are passed, in the argument text that ends the prompt — the subagent takes that text as the arguments of `unikit-memory`, so both flags and the request after them must stay in that one line — and both are mandatory:
 
 - `--module code` pins the delegation to the `code` knowledge-base module. `/unikit` is deliberately `code`-pinned, so it must name the target module explicitly rather than relying on `unikit-memory`'s module-inference fallback (which only resolves to `code` by accident while `code` is the sole registered module). This keeps the delegation deterministic and self-documenting once additional modules are registered.
 - `--skip-registry` tells `/unikit-memory` to bypass its own registry-lookup step (9.5 already covered it) and go straight to generation.
@@ -835,9 +834,8 @@ Launch the subagent:
 ```
 Agent(
   subagent_type: "{{agent_worker_type}}",
-  prompt: "/unikit-architecture",
-  description: "Generate project architecture",
-  skills: ["unikit-architecture"]
+  prompt: "Read {{skills_dir}}/unikit-architecture/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: (empty — no arguments were given)",
+  description: "Generate project architecture"
 )
 ```
 

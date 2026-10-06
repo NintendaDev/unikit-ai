@@ -62,7 +62,7 @@ alternative.
 
 ## Delegation agents
 
-This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "{{agent_worker_type}}", ...)` invocation with the matching skill loaded; a reconnaissance alias expands to a read-only `{{agent_reader_type}}` dispatch. Each alias is the single place where its delegate's agent type is declared — call sites name the alias and never carry a type or a model argument of their own.
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "{{agent_worker_type}}", ...)` invocation whose prompt names the skill file the subagent reads; a reconnaissance alias expands to a read-only `{{agent_reader_type}}` dispatch. Each alias is the single place where its delegate's agent type is declared — call sites name the alias and never carry a type or a model argument of their own.
 
 **Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
 (a missing file, block or key is not an error) and settle the model argument once:
@@ -84,9 +84,8 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   ```
   Agent(
     subagent_type: "{{agent_worker_type}}",
-    prompt: "/unikit-devcontext <fix details>",
-    description: "Apply fix",
-    skills: ["unikit-devcontext"]
+    prompt: "Read {{skills_dir}}/unikit-devcontext/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: <fix details>",
+    description: "Apply fix"
   )
   ```
 

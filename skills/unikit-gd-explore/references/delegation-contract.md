@@ -32,9 +32,8 @@ delegates a skill — and **waits for the return**:
 ```
 Agent(
   subagent_type: "{{agent_worker_type}}",
-  prompt: "/unikit-gd-explore <commercial frame incl. target platform + budget/team + shortlist>. scan_mode: <quick|standard|default standard>. Validate cross-market per the platform rule. Return the brief into this session as text; do not save any files.",
-  description: "Market-validate the shortlist",
-  skills: ["unikit-gd-explore"]
+  prompt: "Read {{skills_dir}}/unikit-gd-explore/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: <commercial frame incl. target platform + budget/team + shortlist>. scan_mode: <quick|standard|default standard>. Validate cross-market per the platform rule. Return the brief into this session as text; do not save any files.",
+  description: "Market-validate the shortlist"
 )
 ```
 
