@@ -5250,11 +5250,12 @@ fi
 # Steps 5.2 and 5.3 delegate legitimately.
 SI_REVIEW="$ROOT_DIR/skills/unikit-review/SKILL.md"
 
-# (SI-1) The Tier 1 call is spelled out as a call.
-if grep -qF 'Skill(skill: "unikit-review")' "$MF_IMPLEMENT"; then
-    pass "SI-1 unikit-implement invokes unikit-review through Skill()"
+# (SI-1) review is invoked as a skill call — by the one recipe of `## Skill calls`.
+if grep -qF 'invoke `unikit-review`' "$MF_IMPLEMENT" \
+   && grep -qF 'These are skill invocations, in this session' "$MF_IMPLEMENT"; then
+    pass "SI-1 unikit-implement invokes unikit-review as a skill call"
 else
-    fail "SI-1 unikit-implement has no Skill(skill: \"unikit-review\") invocation"
+    fail "SI-1 unikit-implement has no invoke \`unikit-review\` call by the recipe of \`## Skill calls\`"
 fi
 
 # (SI-2) The line that stops the generalisation. Without it the neighbours win again the
@@ -5267,7 +5268,7 @@ fi
 
 # (SI-3) The frontmatter half of the same contract, and the reason it is a guard rather
 # than a one-off edit: `context: fork` made the skill run in a forked context no matter WHO
-# called it, so switching the caller from a subagent to Skill() would have changed the
+# called it, so switching the caller from a subagent to an in-session skill call would have changed the
 # mechanism and delivered none of the four things SI-2 promises — the findings would still
 # land somewhere the user cannot see, and the +check validator would still be an agent
 # inside an agent. It was the only occurrence in the repository, undocumented and unguarded.
@@ -7044,8 +7045,11 @@ PX_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
 PX_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 PX_DYNAMIC_MEMORY="$ROOT_DIR/docs/dynamic-memory.md"
 PX_WHY=""
-# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline".
-grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$PX_IMPLEMENT" && PX_WHY+=" PX-1:devcontext-inline-fallback"
+# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline" — closed in
+# all three skills that declare develop-agent, not only in implement
+for px1_f in "$PX_IMPLEMENT" "$ROOT_DIR/skills/unikit-fix/SKILL.md" "$PX_VERIFY"; do
+    grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$px1_f" && PX_WHY+=" PX-1:devcontext-inline-fallback:${px1_f##*/skills/}"
+done
 # (PX-2) the findings column contract lives in the planner's reference, not in implement's own.
 # Every surface that names the file, D7 included (the defect-2 line moved there). Any path
 # that does not end in `unikit-plan/references/TASK-FORMAT.md` is a miss — including the
@@ -7258,7 +7262,7 @@ else
     # that may still write before the user has spoken.
     grep -qF 'Do NOT add any rules until the user answers' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-7:not-blocking"
     # (RCA-8) a real call, and a durable refusal.
-    grep -qF 'Skill(skill: "unikit-rules"' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-8:no-tier-1-dispatch"
+    grep -qF 'invoke `unikit-rules`' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-8:no-dispatch"
     grep -qF 'is durable'                  "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-8:declined-not-durable"
     # (RCA-9) NEGATIVE, its own assert: the alias is what gave a general-purpose subagent
     # Write/Edit over the whole tree for this.
@@ -8441,7 +8445,7 @@ if [[ -z "$CA_WHY" ]]; then
     grep -qF 'You never write commit message text' "$CA_SIDECAR" || CA_WHY+=" CA-1:no-authorship-ban"
     grep -qF 'You have no git access' "$CA_SIDECAR" || CA_WHY+=" CA-1:claims-git-state"
     # (CA-2) the coordinator commits only through the skill, and hands the sidecar its files.
-    grep -qF 'Skill(skill: "unikit-commit"' "$CA_COORD" || CA_WHY+=" CA-2:no-skill-call"
+    grep -qF 'Invoke `unikit-commit`' "$CA_COORD" || CA_WHY+=" CA-2:no-skill-call"
     grep -qF 'never runs `git commit` itself' "$CA_COORD" || CA_WHY+=" CA-2:no-self-commit-ban"
     grep -qF 'create a commit based on' "$CA_COORD" && CA_WHY+=" CA-2:sidecar-commit-branch-returned"
     grep -qF 'create a final commit' "$CA_COORD" && CA_WHY+=" CA-2:final-self-commit-returned"
@@ -8454,7 +8458,7 @@ if [[ -z "$CA_WHY" ]]; then
     # precede a `direct` editor edit goes through the skill as well.
     grep -qF 'Suggested message:' "$CA_IMPLEMENT" && CA_WHY+=" CA-3:checkpoint-suggests-a-subject"
     grep -qF 'Do not suggest a message here' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:no-suggestion-ban"
-    grep -qF 'commit them through `/unikit-commit`, like every other commit of this run' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-edit-self-commit"
+    grep -qF 'commit them: invoke `unikit-commit`, like every other commit of this run' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-edit-self-commit"
     # The commit before a `direct` edit is the only rollback point, so a cancelled or failed one
     # stops the edit and returns the task to `manual` (the plan's supported-combination row).
     grep -qF 'without that commit there is no rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-refusal-unhandled"
@@ -8937,7 +8941,7 @@ if [[ -z "$UPR_WHY" ]]; then
                'Plan: <folder> · phases K–L' 'task(s) of the plan are still open'; do
         grep -qF -- "$lit" "$UPR_TEXT" || UPR_WHY+=" UPR-6:missing(${lit:0:32})"
     done
-    grep -qF 'Skill(skill: "unikit-pr")' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-no-offer"
+    grep -qF 'invokes `unikit-pr` with no argument' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-no-offer"
     grep -qF '/unikit-pr is not installed' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-not-installed-silent"
     grep -qF 'unikit-pr", args: "final"' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg"
     grep -qF '/unikit-pr final' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg-slash"

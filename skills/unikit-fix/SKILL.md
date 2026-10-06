@@ -89,8 +89,6 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   )
   ```
 
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
-
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
@@ -100,6 +98,15 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the aliases of `## Delegation agents`). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ---
 
@@ -153,7 +160,7 @@ Options:
 ```
 
 Based on choice:
-- Commit now → run `/unikit-commit`, then continue
+- Commit now → invoke `unikit-commit`, then continue
 - Stash → `git stash push -m "unikit-fix: stash before fix"`, then continue
 - Continue as is → proceed without changes
 
@@ -649,8 +656,8 @@ Options:
 ```
 
 Based on choice:
-- Verify first → run `/unikit-verify`, after it completes run `/unikit-commit`
-- Skip to commit → run `/unikit-commit` directly
+- Verify first → invoke `unikit-verify`, and when it returns invoke `unikit-commit`
+- Skip to commit → invoke `unikit-commit` directly
 
 Stage ONLY files modified by the fix.
 

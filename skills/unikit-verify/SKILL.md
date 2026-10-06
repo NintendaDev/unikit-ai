@@ -89,8 +89,6 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   )
   ```
 
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
-
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
@@ -100,6 +98,15 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the aliases of `## Delegation agents`). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ---
 
@@ -743,13 +750,13 @@ Options:
 4. Skip — I'll handle it myself
 ```
 
-**The pull request option.** After a check of the whole plan (`phase_scope = all`) with **no blocker**, in a git repository (`git.enabled` from `.unikit/config.yaml`; no key → a `.git` directory decides) and on a branch other than the base of Step 0.4, option 1 becomes `Pull request — run /unikit-pr`: there is nothing to fix, and the question keeps its four options. The choice dispatches in three tiers — `Skill(skill: "unikit-pr")` → the `/unikit-pr` slash command → print `Run: /unikit-pr` — with no argument: a closed plan is read from its checkboxes. When `{{skills_dir}}/unikit-pr/SKILL.md` does not exist (a project that ran `update` without `--install-new`), print `WARN [pr] /unikit-pr is not installed — run unikit-ai update --install-new` instead of a command that does not exist. The `unikit-gate-result` block's `suggested_next` does not change.
+**The pull request option.** After a check of the whole plan (`phase_scope = all`) with **no blocker**, in a git repository (`git.enabled` from `.unikit/config.yaml`; no key → a `.git` directory decides) and on a branch other than the base of Step 0.4, option 1 becomes `Pull request — run /unikit-pr`: there is nothing to fix, and the question keeps its four options. The choice invokes `unikit-pr` with no argument (`## Skill calls`): a closed plan is read from its checkboxes. When `{{skills_dir}}/unikit-pr/SKILL.md` does not exist (a project that ran `update` without `--install-new`), print `WARN [pr] /unikit-pr is not installed — run unikit-ai update --install-new` instead of a command that does not exist. The `unikit-gate-result` block's `suggested_next` does not change.
 
 Based on choice:
-- Fix issues → run `/unikit-fix` with issue summary
-- Pull request → the three-tier dispatch above
-- Code review → run `/unikit-review` on changed files
-- Commit → run `/unikit-commit`
+- Fix issues → invoke `unikit-fix` with the issue summary as its argument
+- Pull request → invoke `unikit-pr` as above
+- Code review → invoke `unikit-review` on the changed files
+- Commit → invoke `unikit-commit`
 - Skip → **STOP**
 
 ### Context Cleanup

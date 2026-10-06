@@ -69,6 +69,15 @@ This skill must be executed as a strict workflow, not as guidance.
 5. If the environment prevents a required step (tool unavailable, file missing, subagent unreachable), stop and print `BLOCKED at Step N: <reason>`. Do not silently substitute an approximation.
 6. Every user-facing output of this skill is plain markdown — no HTML tags, in any step. Step 7 states the contract in full.
 
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the `Agent(...)` blocks of Steps 9.8 and 10). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
+
 ---
 
 ## Workflow
@@ -841,7 +850,7 @@ Agent(
 
 **Wait for the `Agent()` call to return** before proceeding to Step 11.
 
-**Fallback** (only if the `Agent` tool is unavailable in the current environment): invoke `/unikit-architecture` inline in this skill's context, wait for it to return, then proceed to Step 11. Unlike Step 9.8, Step 11's summary explicitly lists `.unikit/ARCHITECTURE.md` as a generated artifact — the flow must complete in the same turn, so inline execution is the mandatory fallback here.
+**Fallback** (only if the `Agent` tool is unavailable in the current environment): invoke `unikit-architecture` with no arguments in this skill's context (`## Skill calls`), wait for it to return, then proceed to Step 11. Unlike Step 9.8, Step 11's summary explicitly lists `.unikit/ARCHITECTURE.md` as a generated artifact — the flow must complete in the same turn, so inline execution is the mandatory fallback here.
 
 After the subagent (or inline invocation) returns, immediately print Step 11 in the same response.
 

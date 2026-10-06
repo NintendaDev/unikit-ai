@@ -98,6 +98,15 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 
 - **`develop-agent`** — **not used by this skill.** It belongs to the code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`); plan refinement reads and analyses code, it does not write it. Recorded here so the alias named in "Code Analysis Rules" can be looked up in the one place aliases are documented.
 
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the aliases of `## Delegation agents`). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
+
 ## Core Idea
 
 ```
@@ -816,8 +825,8 @@ Options:
 ```
 
 Based on choice:
-- **Implement now** → invoke `/unikit-implement @<resolved-plan-path>`, passing the same plan path used in this session (e.g., `@.unikit/code/plans/2026-03-08_customers-system` or `@.unikit/code/PLAN.md`)
-- **Review again** → invoke `/unikit-improve @<resolved-plan-path>` to reload the skill from scratch with full re-analysis
+- **Implement now** → invoke `unikit-implement` with the argument `@<resolved-plan-path>`, passing the same plan path used in this session (e.g., `@.unikit/code/plans/2026-03-08_customers-system` or `@.unikit/code/PLAN.md`)
+- **Review again** → invoke `unikit-improve` with the argument `@<resolved-plan-path>` to reload the skill from scratch with full re-analysis
 - **Done for now** → suggest `/clear` or `/compact` → **STOP**
 
 ### Context Cleanup

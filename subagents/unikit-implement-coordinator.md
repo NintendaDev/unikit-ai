@@ -318,6 +318,15 @@ For single-phase execution (direct mode), sidecars can also be launched after ea
 - Documentation nits in unchanged code
 - Generic best-practice advice without specific rule reference
 
+## Skill calls
+
+Where this agent says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the `Agent(...)` launches of this agent). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `<skill>/SKILL.md` from the skills directory of this project (the one that holds the `unikit-*` skills) in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
+
 ## Commit Handling
 
 Every commit message is written by the `unikit-commit` skill. This agent never composes a message and never runs `git commit` itself; `unikit-commit-sidecar` only assesses readiness, the split and the files to leave out.
@@ -326,12 +335,12 @@ Every commit message is written by the `unikit-commit` skill. This agent never c
 - **At a checkpoint** — the layer just finished the last task of a commit range:
   1. Read the sidecar result for this layer. `not_ready` → do not commit; put its `why` into the layer's `Commit:` line and continue.
   2. Stage only the files this run created or modified for that range, minus the sidecar's `excluded_files`: `git add -- <files>`. Never `git add .` or `git add -A`.
-  3. Invoke `Skill(skill: "unikit-commit", args: "checkpoint: Commit N, tasks X-Y")` — `args: "checkpoint: Commit N, tasks X-Y, no-push"` when the checklist carries a `PR checkpoint:` line. When the sidecar returned `needs_split`, append its groups to the args — labels and file lists only — as the proposed split.
-- **At the end of the full run:** uncommitted work from this run remains → the same three steps, with `args: "final commit"` — `"final commit, no-push"` under the same condition.
+  3. Invoke `unikit-commit` with the argument `checkpoint: Commit N, tasks X-Y` (`## Skill calls`) — `checkpoint: Commit N, tasks X-Y, no-push` when the checklist carries a `PR checkpoint:` line. When the sidecar returned `needs_split`, append its groups to the argument — labels and file lists only — as the proposed split.
+- **At the end of the full run:** uncommitted work from this run remains → the same three steps — invoke `unikit-commit` with the argument `final commit`, `final commit, no-push` under the same condition.
 - **Under `Testing: yes`, every `unikit-commit` call above is wrapped by the test-run reference → `## Carrying the anchor across a commit`** — the tree hash before the call, the carried `Full run:` anchor after it. You commit, so you carry; a cancelled commit carries nothing.
 - A commit point whose range ends with a PR checkpoint task is that task's module commit — do not make it again. The label of a PR checkpoint the session ends on is committed by the reference (`## Step 3.4 — labels`).
 - **The user cancels in the `unikit-commit` confirmation** → nothing is committed and the files stay staged: set the layer's `Commit:` line to `skipped — cancelled by the user` and continue the run.
-- **No `Skill` tool in this session** → do not commit by hand: leave the files staged, set the layer's `Commit:` line to `pending — run /unikit-commit`, and continue.
+- **`unikit-commit` cannot be invoked** (no `Skill` tool and its file cannot be read) → do not commit by hand: leave the files staged, set the layer's `Commit:` line to `pending — run /unikit-commit`, and continue — the run does not stop, whatever step 4 of `## Skill calls` says.
 - Never auto-push. In a plan without `PR checkpoint:` lines `unikit-commit` asks about the push itself and honours `git.skip_push_after_commit`; in a plan with them every commit passes `no-push` — the session never pushes; the branch reaches the remote through `/unikit-pr` or the developer.
 
 ## Safety Guards
@@ -392,4 +401,4 @@ The `Test runs:` line follows the same rule: it is omitted entirely under `Testi
 
 The `Rule candidates:` line follows it as well, omitted entirely when nothing was recorded. It is a report and not a question on purpose: this agent ends by telling the user to close the session, so a choice offered here would be cut off mid-answer — `/unikit-implement` Step 5.2 is where the candidates are actually put to the user.
 
-**Why this one is printed rather than invoked.** `/unikit-implement` Step 5.5 offers the same handoff as a real `Skill(...)` call, and that is the right shape there. Here it is not: this agent ends by telling the user to close the session, and `/unikit-mcp-trap` is interactive — it presents candidates and asks which to record. Started here it would be cut off mid-question. This is the legitimate degenerate tier of the dispatch, chosen because the session boundary makes the inline call impossible, not to avoid making it.
+**Why this one is printed rather than invoked.** `/unikit-implement` Step 5.5 offers the same handoff as a real skill invocation, and that is the right shape there. Here it is not: this agent ends by telling the user to close the session, and `/unikit-mcp-trap` is interactive — it presents candidates and asks which to record. Started here it would be cut off mid-question. This is the legitimate printed handoff, chosen because the session boundary makes the inline call impossible, not to avoid making it.
