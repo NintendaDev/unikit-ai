@@ -228,34 +228,14 @@ export async function runWizard(
   const selectedByDefault = new Set(defaultAgentIds);
 
   // Step 1: Select agents (checkbox - multi-agent)
-  // Render a single flat stable-first list. Stability is declared in
-  // AgentConfig.isStable -- wizard reads the flag but does not classify
-  // agents itself. Each row is `<padded name>   <colored tag>`, where the
-  // tag is chalk.green('[Stable]') or chalk.yellow('[Beta]'). Padding is
-  // computed against raw names (pre-chalk) so ANSI escape codes do not
-  // skew String.length. The tag itself is not padded -- '[Beta]' ends two
-  // columns left of '[Stable]' on purpose: the tag column aligns on its
-  // LEFT edge (where the eye lands), so a ragged right edge is accepted.
-  // Explicit pick of { name, value, checked } keeps the extra isStable
-  // field from leaking into inquirer choice objects.
-  const allChoices = getAgentChoices();
-  const sorted = [...allChoices].sort((a, b) => Number(b.isStable) - Number(a.isStable));
-  // Guard against an empty registry: Math.max(...[]) returns -Infinity and
-  // would make padEnd a no-op without error, producing a silently misaligned
-  // list. The validate() hook below already rejects zero selections, but
-  // defending here keeps the render path total.
-  const maxNameLen = sorted.length > 0 ? Math.max(...sorted.map(a => a.name.length)) : 0;
-
+  // One flat list in registry order. There is no stability tag: every supported agent is
+  // treated as stable.
   type AgentChoice = { name: string; value: string; checked: boolean };
-  const agentChoices: AgentChoice[] = sorted.map<AgentChoice>(a => {
-    const padded = a.name.padEnd(maxNameLen, ' ');
-    const tag = a.isStable ? chalk.green('[Stable]') : chalk.yellow('[Beta]');
-    return {
-      name: `${padded}   ${tag}`,
-      value: a.value,
-      checked: selectedByDefault.has(a.value),
-    };
-  });
+  const agentChoices: AgentChoice[] = getAgentChoices().map<AgentChoice>(a => ({
+    name: a.name,
+    value: a.value,
+    checked: selectedByDefault.has(a.value),
+  }));
 
   const { selectedAgents } = await inquirer.prompt([
     {

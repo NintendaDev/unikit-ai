@@ -7,24 +7,24 @@
 **Claude Code** is the recommended agent.
 
 - **Full native support** - primary development and optimization of UniKit AI are focused on Claude Code
-- **Advanced orchestration** - Claude Code provides full support for dev subagents and complex task orchestration; Kimi Code (Beta) receives the same subagents through an install-time adapter
+- **Advanced orchestration** - Claude Code provides full support for dev subagents and complex task orchestration; Kimi Code receives the same subagents through an install-time adapter
 
-| Agent | Config Directory | MCP Support | Status |
-|-------|-----------------|-------------|--------|
-| Claude Code | `.claude/` | Yes (`.mcp.json`) | Stable |
-| Codex CLI | `.codex/` | Yes (`.codex/config.toml`) | Beta |
-| Cursor | `.cursor/` | Yes (`.cursor/mcp.json`) | Beta |
-| Qwen Code | `.qwen/` | Yes (`.qwen/settings.json`) | Beta |
-| OpenCode | `.opencode/` | Yes (`opencode.json`) | Beta |
-| Antigravity | `.agents/` | Yes (`.agents/mcp_config.json`) | Beta |
-| Kimi Code | `.kimi-code/` | Yes (`.kimi-code/mcp.json`) | Beta |
-| Universal / Other | `.agents/` | Yes (`.mcp.json`) | Beta |
+| Agent | Config Directory | MCP Support |
+|-------|-----------------|-------------|
+| Claude Code | `.claude/` | Yes (`.mcp.json`) |
+| Codex CLI | `.codex/` | Yes (`.codex/config.toml`) |
+| Cursor | `.cursor/` | Yes (`.cursor/mcp.json`) |
+| Qwen Code | `.qwen/` | Yes (`.qwen/settings.json`) |
+| OpenCode | `.opencode/` | Yes (`opencode.json`) |
+| Antigravity | `.agents/` | Yes (`.agents/mcp_config.json`) |
+| Kimi Code | `.kimi-code/` | Yes (`.kimi-code/mcp.json`) |
+| Universal / Other | `.agents/` | Yes (`.mcp.json`) |
 
-Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Two agents that would write skills into the same directory cannot be selected together - today that is Antigravity and Universal / Other. Beta agents are fully wired in but rough edges are still possible. See [configuration.md](configuration.md) for details.
+Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with one row per agent. Two agents that would write skills into the same directory cannot be selected together - today that is Antigravity and Universal / Other. See [configuration.md](configuration.md) for details.
 
 ## Known Limitations
 
-The issues below are recurring rough edges we see with beta agents in practice. Claude Code is not listed - it is the reference agent that primary development targets.
+The issues below are recurring rough edges we see in practice. Claude Code is not listed - it is the reference agent that primary development targets.
 
 ### Codex CLI
 
@@ -56,7 +56,7 @@ Subagents install into `.kimi-code/agents/` through an adapter: a coordinator's 
 
 MCP servers are written to the project file `.kimi-code/mcp.json`. Kimi enables project-level MCP servers only after you trust the folder, so a freshly initialised project can show no servers until you confirm the trust prompt. A header such as `Authorization: Bearer {{env:GITHUB_PAT}}` is written as `"bearerTokenEnvVar": "GITHUB_PAT"` - set that variable in the environment `kimi` starts from; Kimi does not expand `${VAR}` inside headers. UniKit does not touch `~/.kimi-code/`, Kimi's `config.toml`/`local.toml`, or its plugins.
 
-This integration is Beta: it was built from Kimi Code's documentation and package source and has not yet been confirmed in a live session.
+This integration was built from Kimi Code's documentation and package source and has not yet been confirmed in a live session.
 
 ### Universal / Other
 
@@ -68,7 +68,7 @@ The skill text is the Claude Code text: the subagent types are `Explore` and `ge
 
 `.mcp.json` is read by the runtimes that follow Claude Code's convention. If your agent reads another MCP file, add the servers there by hand - `init` ends with the same hint.
 
-This integration is Beta: its values were taken from the `Universal / Other` agent of AI Factory and from the `vercel-labs/skills` README, and have not been confirmed in a live session.
+This integration's values were taken from the `Universal / Other` agent of AI Factory and from the `vercel-labs/skills` README, and have not been confirmed in a live session.
 
 ## See Also
 

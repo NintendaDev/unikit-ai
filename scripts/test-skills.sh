@@ -10323,6 +10323,49 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7g5: SB-1…SB-3 — no stable/beta flag, label or column
+# ─────────────────────────────────────────────
+# Every supported agent is treated as stable, so nothing tells the user otherwise: the registry
+# carries no flag, the wizard prints no tag, the documents have no Status column. Three greps,
+# each over its own object; a missing object is a FAIL, not a silent pass. The flag name is
+# built from two halves so this very file never holds it whole.
+echo -e "\n${BOLD}Part 7g5: no stable/beta flag, label or column (SB-1…SB-3)${NC}"
+SB_WHY=""
+SB_FLAG='is''Stable'
+
+# (SB-1) the flag: gone from the registry, the wizard and the two tests that carried it
+for sb_f in "$ROOT_DIR/src/core/agents.ts" "$ROOT_DIR/src/cli/wizard/prompts.ts" \
+            "$ROOT_DIR/scripts/test-agent-dirs.mjs" "$ROOT_DIR/scripts/test-kimi-transform.mjs"; do
+    if [[ -s "$sb_f" ]]; then
+        { grep -qF -- "$SB_FLAG" "$sb_f" && SB_WHY+=" SB-1:flag-returned($(basename "$sb_f"))"; } || true
+    else
+        SB_WHY+=" SB-1:missing($(basename "$sb_f"))"
+    fi
+done
+
+# (SB-2) the tag: no `[Stable]` / `[Beta]` in the code, the README or any document
+sb_tag=$( { grep -rnE '\[(Stable|Beta)\]' "$ROOT_DIR/src" "$ROOT_DIR/README.md" "$ROOT_DIR/docs" --include='*.ts' --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$sb_tag" -eq 0 ]] || SB_WHY+=" SB-2:tag-returned(x$sb_tag)"
+
+# (SB-3) the column and the words, in the three documents that had the agents table
+SB_N_DOCS=0
+for sb_d in "$ROOT_DIR/README.md" "$ROOT_DIR/docs/agents.md" "$ROOT_DIR/docs/getting-started.md"; do
+    if [[ ! -s "$sb_d" ]]; then SB_WHY+=" SB-3:missing($(basename "$sb_d"))"; continue; fi
+    SB_N_DOCS=$((SB_N_DOCS + 1))
+    sb_col=$( { grep -nE '\|[[:space:]]*(Status|Stable|Beta)[[:space:]]*\|' "$sb_d" || true; } | wc -l | tr -d ' ')
+    sb_word=$( { grep -nE '\bBeta\b' "$sb_d" || true; } | wc -l | tr -d ' ')
+    [[ "$sb_col" -eq 0 ]]  || SB_WHY+=" SB-3:status-column($(basename "$sb_d") x$sb_col)"
+    [[ "$sb_word" -eq 0 ]] || SB_WHY+=" SB-3:beta-word($(basename "$sb_d") x$sb_word)"
+done
+[[ "$SB_N_DOCS" -gt 0 ]] || SB_WHY+=" SB-3:no-document"
+
+if [[ -z "$SB_WHY" ]]; then
+    pass "SB-1…SB-3 no stable/beta flag, tag or Status column (registry, wizard, 2 tests, $SB_N_DOCS documents)"
+else
+    fail "SB-1…SB-3 the stable/beta label is back:$SB_WHY"
+fi
+
+# ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke
 # ─────────────────────────────────────────────
 # Catch the "forgot to wire a new command into src/cli/index.ts" regression

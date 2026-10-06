@@ -82,20 +82,20 @@ These servers are not interchangeable, and UniKit AI does not keep a table of wh
 **Claude Code** is the recommended agent.
 
 - **Full native support** - primary development and optimization of UniKit AI are focused on Claude Code
-- **Advanced orchestration** - Claude Code provides full support for dev subagents and complex task orchestration; Kimi Code (Beta) receives the same subagents through an install-time adapter
+- **Advanced orchestration** - Claude Code provides full support for dev subagents and complex task orchestration; Kimi Code receives the same subagents through an install-time adapter
 
-| Agent             | Config Directory | MCP Support                     | Status |
-| ----------------- | ---------------- | ------------------------------- | ------ |
-| Claude Code       | `.claude/`       | Yes (`.mcp.json`)               | Stable |
-| Codex CLI         | `.codex/`        | Yes (`.codex/config.toml`)      | Beta   |
-| Cursor            | `.cursor/`       | Yes (`.cursor/mcp.json`)        | Beta   |
-| Qwen Code         | `.qwen/`         | Yes (`.qwen/settings.json`)     | Beta   |
-| OpenCode          | `.opencode/`     | Yes (`opencode.json`)           | Beta   |
-| Antigravity       | `.agents/`       | Yes (`.agents/mcp_config.json`) | Beta   |
-| Kimi Code         | `.kimi-code/`    | Yes (`.kimi-code/mcp.json`)     | Beta   |
-| Universal / Other | `.agents/`       | Yes (`.mcp.json`)               | Beta   |
+| Agent             | Config Directory | MCP Support                     |
+| ----------------- | ---------------- | ------------------------------- |
+| Claude Code       | `.claude/`       | Yes (`.mcp.json`)               |
+| Codex CLI         | `.codex/`        | Yes (`.codex/config.toml`)      |
+| Cursor            | `.cursor/`       | Yes (`.cursor/mcp.json`)        |
+| Qwen Code         | `.qwen/`         | Yes (`.qwen/settings.json`)     |
+| OpenCode          | `.opencode/`     | Yes (`opencode.json`)           |
+| Antigravity       | `.agents/`       | Yes (`.agents/mcp_config.json`) |
+| Kimi Code         | `.kimi-code/`    | Yes (`.kimi-code/mcp.json`)     |
+| Universal / Other | `.agents/`       | Yes (`.mcp.json`)               |
 
-Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in but rough edges are still possible. See [docs/agents.md](docs/agents.md) for agent-specific caveats and [docs/configuration.md](docs/configuration.md) for configuration details.
+Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with one row per agent. See [docs/agents.md](docs/agents.md) for agent-specific caveats and [docs/configuration.md](docs/configuration.md) for configuration details.
 
 ---
 

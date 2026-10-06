@@ -113,7 +113,6 @@ await group('R', async () => {
             supportsMcp: true,
             supportsSubagents: true,
             skillsCliAgent: 'kimi-code-cli',
-            isStable: false,
             subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
         }),
     );

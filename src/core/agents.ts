@@ -8,7 +8,6 @@ export interface AgentConfig {
   supportsMcp: boolean;
   supportsSubagents: boolean;
   skillsCliAgent: string | null;
-  isStable: boolean;
   /**
    * How skills name the subagents they launch on this runtime. `readerType` is the read-only
    * agent type (reconnaissance, validation), `workerType` the one that can create files and
@@ -31,7 +30,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: true,
     skillsCliAgent: 'claude-code',
-    isStable: true,
     subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet' },
   },
   codex: {
@@ -44,7 +42,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'codex',
-    isStable: false,
     subagentProfile: { readerType: 'explorer', workerType: 'worker', modelDefault: '' },
   },
   cursor: {
@@ -57,7 +54,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'cursor',
-    isStable: false,
     subagentProfile: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '' },
   },
   qwen: {
@@ -70,7 +66,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'qwen',
-    isStable: false,
     subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
   },
   opencode: {
@@ -83,7 +78,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'opencode',
-    isStable: false,
     subagentProfile: { readerType: 'explore', workerType: 'general', modelDefault: '' },
   },
   antigravity: {
@@ -96,7 +90,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'antigravity',
-    isStable: false,
     subagentProfile: { readerType: 'research', workerType: 'self', modelDefault: 'flash' },
   },
   kimi: {
@@ -109,7 +102,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: true,
     skillsCliAgent: 'kimi-code-cli',
-    isStable: false,
     subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
   },
   // For runtimes UniKit does not name. Skills go to the shared `.agents/skills` — Antigravity's
@@ -126,7 +118,6 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'universal',
-    isStable: false,
     subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
   },
 };
@@ -139,10 +130,9 @@ export function getAgentConfig(id: string): AgentConfig {
   return config;
 }
 
-export function getAgentChoices(): { name: string; value: string; isStable: boolean }[] {
+export function getAgentChoices(): { name: string; value: string }[] {
   return Object.values(AGENT_REGISTRY).map(agent => ({
     name: `${agent.displayName} (${agent.configDir}/)`,
     value: agent.id,
-    isStable: agent.isStable,
   }));
 }
