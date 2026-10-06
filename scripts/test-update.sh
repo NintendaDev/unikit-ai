@@ -2253,9 +2253,15 @@ if cmp -s "$AK_AG_SKILL" "$AK_KIMI_SKILL"; then
 fi
 assert_contains "$AK_KIMI_SKILL" '\.kimi-code/mcp\.json' "kimi copy: {{settings_file}} is .kimi-code/mcp.json"
 assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
+assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md and follow it' \
+    "kimi copy: develop-agent reads its skill file from .kimi-code/skills"
 assert_contains "$AK_AG_SKILL" '\.agents/mcp_config\.json' "antigravity copy: {{settings_file}} is .agents/mcp_config.json"
 assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
 assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
+assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md and follow it' \
+    "antigravity copy: develop-agent reads its skill file from the shared .agents/skills"
+assert_not_contains "$AK_AG_SKILL" '\.kimi-code/skills' "antigravity copy: no Kimi skills path"
+assert_not_contains "$AK_KIMI_SKILL" '\.agents/skills/unikit-devcontext' "kimi copy: no Antigravity skills path"
 
 # MCP, each client in its own form
 assert_contains "$AK_KIMI_MCP" '"bearerTokenEnvVar": "GITHUB_PAT"' "kimi mcp.json: the variable NAME in bearerTokenEnvVar"

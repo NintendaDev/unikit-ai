@@ -9351,7 +9351,7 @@ fi
 
 # --- KM: the Kimi Code agent — source-level contracts --------------------------------------
 # The adapter (src/core/transformers/kimi*.ts) adapts subagent FILES; skill text is the same for
-# every agent (the subagent types come from the agent profile — AP-1…AP-7, Part 7g3). These
+# every agent (the subagent types come from the agent profile — AP-1…AP-13, Part 7g3). These
 # guards watch the source side, so a new spelling cannot slip past an adaptation written
 # against today's text. The adapter's behaviour is scripts/test-kimi-transform.mjs (Part 7f3);
 # the installed result is test-install.sh Test 3d.
@@ -10082,7 +10082,7 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7g3: AP-1…AP-7 — the agent profile in skills
+# Part 7g3: AP-1…AP-13 — the agent profile in skills, and how a skill reaches a subagent
 # ─────────────────────────────────────────────
 # A skill body travels to all eight runtimes, and the runtimes disagree on what a subagent is
 # called and whether a dispatch can name a model. The disagreement is data — the agent profile
@@ -10090,7 +10090,8 @@ fi
 # (`{{agent_reader_type}}`, `{{agent_worker_type}}`, `{{agent_id}}`, `{{agent_model_default}}`).
 # So the sources must name NO runtime's type and NO model; what they may carry is the variable
 # and, once per skill, the rule that settles the model argument from `.unikit/config.yaml`.
-# Seven guards, each closing a different way that rots:
+# Thirteen guards, each closing a different way that rots (AP-1…AP-7 the profile, AP-8…AP-13
+# the delivery of a skill to a subagent):
 #
 #   AP-1  counter pair (MT-1/MT-2 idiom) — every `subagent_type:` in skills/**/*.md is followed
 #         by a profile variable. An EQUALITY between two counts, not a search for a negation,
@@ -10108,12 +10109,35 @@ fi
 #   AP-7  the variables are a skills-only mechanism. Subagent files and system assets render
 #         with EMPTY values, so a stray `{{agent_…}}` there would vanish silently.
 #
+# How a skill reaches the subagent it delegates to. The `skills: [...]` key of an `Agent` call
+# delivers nothing (Kimi has no such parameter, Claude Code takes none at call time), and a
+# leading `/unikit-<skill>` in `prompt:` is plain text for a subagent, so the call names the
+# skill FILE and tells the subagent to read it (live checks of 2026-10-06). Three fragments carry
+# the phrase: `and follow it as your instructions throughout this task`, `if it cannot be read,
+# stop and report that`, and the `Skill arguments:` sentence (the wording avoids `instructions
+# for`, which the older self_name check reads as a RULES_INDEX directive).
+#
+#   AP-8  the three fragments are counted per line over skills/**/*.md and equal each other (no
+#         call site lost a part, no stray copy), with no `$` on any such line: Claude Code
+#         substitutes `$ARGUMENTS` in a SKILL.md and Kimi `$0`/`$1`, before the model reads it.
+#         No fixed number — it breaks on every legitimate edit.
+#   AP-9  no `skills: [` key in skills/**/*.md. Anchored at the line start: `Available unikit
+#         skills: [` in unikit-skills-context is legitimate prose.
+#   AP-10 no `prompt: "/unikit…` — only on `prompt:` lines; the many "Do NOT invoke
+#         `/unikit-devcontext` via `Skill(...)`" sentences are legitimate.
+#   AP-11 every `Read {{skills_dir}}/<name>/SKILL.md` names an existing skills/<name>/.
+#   AP-12 no `{{skills_dir}}` in subagents/ or data/: an agent file renders it EMPTY by design,
+#         so a path built from it would lose its prefix without a sound (like AP-7).
+#   AP-13 the two copies of the brainstorm → explore delegation `prompt:` — the call in
+#         unikit-gd-brainstorm/SKILL.md and its mirror in unikit-gd-explore's delegation-contract.md
+#         — are byte-identical; nothing else compared them before, the mirror held on discipline.
+#
 # Anchored on FORMULATIONS, never on headings: a heading is rewritten during cosmetics, a
 # formulation only together with its meaning. Zero objects is a FAIL, not a silent pass — an
 # empty corpus is when a green result is worth the least. That only works if the counters
 # survive an empty grep, which under `set -euo pipefail` they do not by default — hence the
 # `{ … || true; }` around every grep inside a substitution below.
-echo -e "\n${BOLD}Part 7g3: agent profile in skills (AP-1…AP-7)${NC}"
+echo -e "\n${BOLD}Part 7g3: agent profile in skills, skill delivery to subagents (AP-1…AP-13)${NC}"
 
 AP_SCOPE="$ROOT_DIR/skills"
 AP_WHY=""
@@ -10179,11 +10203,61 @@ done
 ap_leak=$( { grep -rlF '{{agent_' "$ROOT_DIR/subagents" "$ROOT_DIR/data" 2>/dev/null || true; } | wc -l | tr -d ' ')
 [[ "$ap_leak" -eq 0 ]] || AP_WHY+=" AP-7:agent-variable-outside-skills(x$ap_leak)"
 
+# (AP-8) three fragments, counted per LINE; equality, a floor, and no dollar sign on those lines
+AP_FRAG_FOLLOW='and follow it as your instructions throughout this task'
+AP_FRAG_STOP='if it cannot be read, stop and report that'
+AP_FRAG_ARGS='Skill arguments:'
+AP_N_FOLLOW=$( { grep -rhF -e "$AP_FRAG_FOLLOW" "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+AP_N_STOP=$( { grep -rhF -e "$AP_FRAG_STOP" "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+AP_N_ARGS=$( { grep -rhF -e "$AP_FRAG_ARGS" "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_N_FOLLOW" -gt 0 ]] || AP_WHY+=" AP-8:no-phrase"
+{ [[ "$AP_N_FOLLOW" -eq "$AP_N_STOP" ]] && [[ "$AP_N_FOLLOW" -eq "$AP_N_ARGS" ]]; } \
+    || AP_WHY+=" AP-8:counts-differ($AP_N_FOLLOW/$AP_N_STOP/$AP_N_ARGS)"
+ap_dollar=$( { grep -rhF -e "$AP_FRAG_FOLLOW" -e "$AP_FRAG_STOP" -e "$AP_FRAG_ARGS" "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | { grep -c '\$' || true; } )
+[[ "${ap_dollar:-0}" -eq 0 ]] || AP_WHY+=" AP-8:dollar-in-phrase(x${ap_dollar:-0})"
+
+# (AP-9) the dead key; the anchor keeps `Available unikit skills: [` (unikit-skills-context) legal
+ap_skills_key=$( { grep -rhE '^[[:space:]]*skills:[[:space:]]*\[' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_skills_key" -eq 0 ]] || AP_WHY+=" AP-9:skills-key-returned(x$ap_skills_key)"
+
+# (AP-10) a leading slash command in a `prompt:` line, and only there
+ap_lead_slash=$( { grep -rhE 'prompt:[[:space:]]*"/unikit' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_lead_slash" -eq 0 ]] || AP_WHY+=" AP-10:leading-slash-returned(x$ap_lead_slash)"
+
+# (AP-11) every skill named by the phrase exists; an empty set is a fail (the guard has no object)
+AP_REF_NAMES=$( { grep -rhoE 'Read \{\{skills_dir\}\}/[a-z0-9-]+/SKILL\.md' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } \
+    | sed -e 's#^Read {{skills_dir}}/##' -e 's#/SKILL\.md$##' | sort -u)
+AP_REF_N=0
+while IFS= read -r ap_ref; do
+    [[ -n "$ap_ref" ]] || continue
+    AP_REF_N=$((AP_REF_N + 1))
+    [[ -d "$AP_SCOPE/$ap_ref" ]] || AP_WHY+=" AP-11:unknown-skill($ap_ref)"
+done <<< "$AP_REF_NAMES"
+[[ "$AP_REF_N" -gt 0 ]] || AP_WHY+=" AP-11:no-reference"
+
+# (AP-12) the path variable is empty in an agent file and in a system asset
+ap_dir_leak=$( { grep -rlF '{{skills_dir}}' "$ROOT_DIR/subagents" "$ROOT_DIR/data" 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_dir_leak" -eq 0 ]] || AP_WHY+=" AP-12:skills-dir-in-neutral-file(x$ap_dir_leak)"
+
+# (AP-13) the call and its mirror, selected by the formulation both carry, compared whole
+AP_MIRROR_SRC='^  prompt:.*Skill arguments:'
+AP_MIRROR_A=$( { grep -m1 -E "$AP_MIRROR_SRC" "$AP_SCOPE/unikit-gd-brainstorm/SKILL.md" 2>/dev/null || true; } )
+AP_MIRROR_B=$( { grep -m1 -E "$AP_MIRROR_SRC" "$AP_SCOPE/unikit-gd-explore/references/delegation-contract.md" 2>/dev/null || true; } )
+if [[ -z "$AP_MIRROR_A" || -z "$AP_MIRROR_B" ]]; then
+    AP_WHY+=" AP-13:delegation-call-missing"
+elif [[ "$AP_MIRROR_A" != "$AP_MIRROR_B" ]]; then
+    AP_WHY+=" AP-13:copies-differ"
+fi
+
 if [[ -z "$AP_WHY" ]]; then
-    pass "AP-1…AP-7 agent profile in skills ($AP_TYPE_TOTAL call sites on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model)"
+    pass "AP-1…AP-13 agent profile in skills and skill delivery ($AP_TYPE_TOTAL call sites on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model; the delivery phrase on $AP_N_FOLLOW call sites naming $AP_REF_N skills)"
 else
-    fail "AP-1…AP-7 agent profile in skills:$AP_WHY"
-    grep -rnE 'subagent_type:[[:space:]]*"?[A-Za-z]' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -v '{{agent_' | sed 's/^/      /' | head -5
+    fail "AP-1…AP-13 agent profile in skills and skill delivery:$AP_WHY"
+    # Each diagnostic pipeline is wrapped: under `set -euo pipefail` an empty grep in a
+    # pipeline would end the whole suite here instead of letting it report.
+    { grep -rnE 'subagent_type:[[:space:]]*"?[A-Za-z]' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -v '{{agent_' | sed 's/^/      /' | head -5 || true; }
+    { grep -rnE -e '^[[:space:]]*skills:[[:space:]]*\[' -e 'prompt:[[:space:]]*"/unikit' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
+    { grep -rnF -e "$AP_FRAG_FOLLOW" -e "$AP_FRAG_STOP" -e "$AP_FRAG_ARGS" "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -F '$' | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
 fi
 
 # ─────────────────────────────────────────────

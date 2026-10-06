@@ -138,6 +138,9 @@ await group('V', async () => {
         JSON.stringify(['', '', '', '']),
     );
     assertEq('V3b the neutral substitution leaves the surrounding text alone', processTemplate('a {{agent_id}} b', neutral), 'a  b');
+    // The path to the skills is empty in an agent file by design, so a path built from it would lose its
+    // prefix without a sound: the sources keep `{{skills_dir}}` out of subagents/ and data/ (AP-12).
+    assertEq('V3c an agent file renders {{skills_dir}} empty', neutral.skills_dir, '');
 });
 
 await group('V4', async () => {
@@ -254,7 +257,17 @@ await group('C', async () => {
 // The table is built from AGENT_REGISTRY and goes through the real installSkills over the real
 // skills/, so a new agent joins it by itself and the test cannot repeat the installer's logic.
 
-const INSTALL_SKILLS = ['unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-implement', 'unikit-gd-explore', 'unikit-review'];
+const INSTALL_SKILLS = ['unikit', 'unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-gd-brainstorm', 'unikit-implement', 'unikit-gd-explore', 'unikit-review'];
+
+// Forms an installed skill must never hold. The first two are what the invocation rewrite made of a
+// `{{skills_dir}}/unikit-…` path before its pattern learned `}`; a bare `skills unikit-` is NOT
+// listed — it is the legitimate Qwen rewrite `/skills unikit-plan`. The third is the dead call key.
+const DAMAGED_FORMS = [
+    ['skills$unikit-', (text) => text.includes('skills$unikit-')],
+    ['skills/skills unikit-', (text) => text.includes('skills/skills unikit-')],
+    ['a skills: [...] key', (text) => /^\s*skills:\s*\[/m.test(text)],
+    ['an unresolved path or engine variable', (text) => /\{\{(skills_dir|home_skills_dir|settings_file|self_name|skills_cli_agent_flag|engine_name|engine_code_language|engine_mcp_tool)\}\}/.test(text)],
+];
 const countOf = (text, needle) => text.split(needle).length - 1;
 
 await group('I', async () => {
@@ -267,16 +280,26 @@ await group('I', async () => {
             await installSkills({ projectDir, skillsDir: agent.skillsDir, skills: INSTALL_SKILLS, agentId: agent.id, engineId: 'unity', engineMcpKey: null });
             const skill = (name, file = 'SKILL.md') => fs.readFile(path.join(projectDir, agent.skillsDir, name, file), 'utf8');
             const texts = {
+                unikit: await skill('unikit'),
                 explore: await skill('unikit-explore'),
                 plan: await skill('unikit-plan'),
                 gdReview: await skill('unikit-gd-review'),
+                brainstorm: await skill('unikit-gd-brainstorm'),
                 implement: await skill('unikit-implement'),
                 contract: await skill('unikit-gd-explore', path.join('references', 'delegation-contract.md')),
             };
 
             let leaked = 0;
+            const damaged = new Map(DAMAGED_FORMS.map(([label]) => [label, []]));
+            let scanned = 0;
             for (const file of await walk(path.join(projectDir, agent.skillsDir))) {
-                if (file.endsWith('.md') && (await fs.readFile(file, 'utf8')).includes('{{agent_')) leaked++;
+                if (!file.endsWith('.md')) continue;
+                const text = await fs.readFile(file, 'utf8');
+                scanned++;
+                if (text.includes('{{agent_')) leaked++;
+                for (const [label, test] of DAMAGED_FORMS) {
+                    if (test(text)) damaged.get(label).push(path.relative(projectDir, file));
+                }
             }
             installed[agent.id] = texts;
 
@@ -287,6 +310,22 @@ await group('I', async () => {
             assertTrue(`I3 ${agent.id}: lens-agent launches the worker type "${worker}"`, texts.gdReview.includes(`Agent(subagent_type: ${worker}, prompt: "<one lens brief>")`));
             assertEq(`I3 ${agent.id}: develop-agent and docs-agent name the worker type`, countOf(texts.implement, `subagent_type: "${worker}",`), 2);
             assertTrue(`I3 ${agent.id}: a reference file carries the worker type too`, texts.contract.includes(`subagent_type: "${worker}",`));
+
+            // I8: the call names the skill FILE by this agent's own installed path — the dead `skills:` key
+            // is gone and a path variable that survived to the install would show as the wrong prefix.
+            const reads = (skill) => `Read ${agent.skillsDir}/${skill}/SKILL.md and follow it as your instructions throughout this task`;
+            assertTrue(`I8 ${agent.id}: develop-agent reads the devcontext skill file from ${agent.skillsDir}`, texts.implement.includes(reads('unikit-devcontext')));
+            assertTrue(`I8 ${agent.id}: docs-agent reads the docs skill file`, texts.implement.includes(reads('unikit-docs')));
+            assertTrue(`I8 ${agent.id}: the brainstorm delegation reads the explore skill file`, texts.brainstorm.includes(reads('unikit-gd-explore')));
+            assertTrue(`I8 ${agent.id}: its mirror in the delegation contract reads it too`, texts.contract.includes(reads('unikit-gd-explore')));
+            assertTrue(`I8 ${agent.id}: /unikit step 9.8 reads the memory skill file`, texts.unikit.includes(reads('unikit-memory')));
+            assertTrue(`I8 ${agent.id}: /unikit step 10 reads the architecture skill file`, texts.unikit.includes(reads('unikit-architecture')));
+
+            // I9: nothing damaged anywhere in the installed set (the scan is non-empty by construction)
+            assertTrue(`I9 ${agent.id}: the installed set was scanned`, scanned > 0);
+            for (const [label, files] of damaged) {
+                assertTrue(`I9 ${agent.id}: no installed .md holds ${label}`, files.length === 0, `found in: ${files.slice(0, 3).join(', ')}`);
+            }
             assertTrue(`I4 ${agent.id}: the model rule names its own config key`, texts.explore.includes(`subagents.model.${agent.id}`));
             assertTrue(`I4 ${agent.id}: the model rule carries the built-in default "${modelDefault}"`, texts.explore.includes('built-in default `"' + modelDefault + '"`'));
             assertEq(`I6 ${agent.id}: no unresolved {{agent_…}} in any installed .md`, leaked, 0);
