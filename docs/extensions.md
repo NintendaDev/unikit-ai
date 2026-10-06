@@ -292,7 +292,7 @@ model: sonnet
 Agent instructions here...
 ```
 
-Subagents are only installed for agents that support them (Claude Code and Kimi Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`).
+Subagents are only installed for agents that support them (Claude Code and Kimi Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`). On Kimi Code, which does not read a `skills:` field in an agent file, the installer turns that field into a read list of `SKILL.md` paths at the top of the file - the same adapter runs over extension subagents (see [Subagents](subagents.md#skills-listed-in-an-agent-file)).
 
 ---
 

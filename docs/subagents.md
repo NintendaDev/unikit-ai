@@ -38,7 +38,7 @@ The subagent layer exists for six reasons:
 
 +-------------------------------------------------------------+
 |  Delegation aliases (from inside skills)                    |
-|   skill-loading (worker type + skills: [...])               |
+|   skill-loading (worker type + skill file path)             |
 |    - develop-agent   (parallel/deep-dive only after         |
 |                       the Bootstrap refactor)               |
 |    - docs-agent      (update or create documentation)       |
@@ -91,7 +91,7 @@ Dependency-aware plan execution.
 - **Is itself a writer of `## MCP Findings`** in the single-phase branch, where no worker exists to do it - same rules as everywhere else (`F<n>` = highest present + 1, `observed` = the date, semantic dedup), and never touches `.unikit/MCP-RECHECK-NOTES.md`
 - Ends by **printing** a `/unikit-mcp-trap <plan path>` recommendation when the table has rows. Printed rather than invoked because this agent closes the session on exit, and the trap is interactive - it would be cut off mid-question
 
-Frontmatter highlights: `permissionMode: acceptEdits`, `model: inherit`, `maxTurns: 40`. Can spawn: `unikit-implement-worker`, four sidecars.
+Frontmatter highlights: `permissionMode: acceptEdits`, `model: inherit`, `maxTurns: 40`. Can spawn: `unikit-implement-worker`, four sidecars. Lists `unikit-implement`, `unikit-verify`, `unikit-commit`, `unikit-review`, `unikit-docs` and `unikit-mcp-trap` under `skills:` - see [Skills listed in an agent file](#skills-listed-in-an-agent-file).
 
 ### `unikit-plan-coordinator`
 
@@ -115,7 +115,7 @@ Executes exactly ONE task from the active plan, then returns control.
 - Implements the task, verifies it, runs local quality checks via skill knowledge (no Agent delegation - workers cannot spawn children)
 - Does not create commits; the coordinator owns git state
 - **Writes its own row into the plan's `## MCP Findings` table** when an engine MCP call misled it, rather than returning a candidate to the coordinator. Workers have no worktree isolation, so they all edit the same plan file - which is safe only because a phase carrying an `Editor:` line is alone in its execution layer, leaving one writer at a time. Handing the row back instead would defer the write to the end of the layer and lose it if the coordinator failed
-- Carries `skills: [unikit-devcontext, unikit-verify]` so it has full access to the pipeline knowledge base without spawning anything
+- Lists `unikit-devcontext` and `unikit-verify` under `skills:` so it has full access to the pipeline knowledge base without spawning anything - Claude Code preloads them, on Kimi Code the installed file starts with a read list (see [Skills listed in an agent file](#skills-listed-in-an-agent-file))
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 16`.
 
@@ -126,7 +126,7 @@ Single refinement pass over a plan, then hand back.
 - Creates or refreshes the active plan artifact
 - Critiques it against implementation-readiness criteria
 - Runs at most **one** improvement pass, then returns a structured summary to the coordinator
-- Carries `skills: [unikit-plan, unikit-improve]`
+- Lists `unikit-plan` and `unikit-improve` under `skills:` (preloaded by Claude Code; a read list on Kimi Code - see [Skills listed in an agent file](#skills-listed-in-an-agent-file))
 - Returns the summary in English (structured output), while the plan manifest (`PLAN.md`) itself stays in the configured project language
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `maxTurns: 20`.
@@ -146,12 +146,12 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "<worker type>", skills: [...])` calls; the other four launch a subagent whose type comes from the agent's profile (see [Subagent profile per agent](#subagent-profile-per-agent)) and whose model comes from `subagents.model` in `.unikit/config.yaml`; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
+Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(subagent_type: "<worker type>", prompt: "Read <skills dir>/<skill>/SKILL.md and follow it …")` calls - the subagent reads the skill file itself, see [How a skill reaches a subagent](#how-a-skill-reaches-a-subagent); the other four launch a subagent whose type comes from the agent's profile (see [Subagent profile per agent](#subagent-profile-per-agent)) and whose model comes from `subagents.model` in `.unikit/config.yaml`; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
-| `develop-agent` | `Agent(subagent_type: "<worker type>", ..., skills: ["unikit-devcontext"])` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
-| `docs-agent` | `Agent(subagent_type: "<worker type>", ..., skills: ["unikit-docs"])` | Pipeline skills at docs checkpoints | Update or create documentation pages |
+| `develop-agent` | `Agent(subagent_type: "<worker type>", prompt: "Read <skills dir>/unikit-devcontext/SKILL.md and follow it …", …)` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
+| `docs-agent` | `Agent(subagent_type: "<worker type>", prompt: "Read <skills dir>/unikit-docs/SKILL.md and follow it …", …)` | Pipeline skills at docs checkpoints | Update or create documentation pages |
 | `recon-agent` | `Agent(subagent_type: <reader type>, …)` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
 | `check-agent` | `Agent(subagent_type: <reader type>, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
 | `lens-agent` | `Agent(subagent_type: <worker type>, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
@@ -160,6 +160,26 @@ Skills expose six named aliases in two families. The **skill-loading** two expan
 Rule capture has no alias: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to the user in the calling session and invoke `/unikit-rules` only with the batch the user selected — a background agent could not have asked.
 
 Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying four fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session, `recon-writer-agent` asks through `recon-agent` and the session writes the answer into the file itself - it falls back when the call fails, when the agent returns without its file, or when the runtime has no subagent tool, and the file is checked on disk before the plan is synthesised.
+
+### How a skill reaches a subagent
+
+An `Agent` call has no parameter that loads a skill: Claude Code takes none at call time (its `skills` field exists only in an agent file's frontmatter, see below) and Kimi Code has none at all. A slash command at the start of a `prompt` does not help either - for a subagent `/unikit-devcontext` is ordinary text. So a skill that delegates to another skill names the skill file and tells the subagent to read it:
+
+```
+Agent(
+  subagent_type: "<worker type>",
+  prompt: "Read <skills dir>/unikit-devcontext/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: <task details>",
+  description: "Implement <task>"
+)
+```
+
+`<skills dir>` is the skills directory of your agent (`.claude/skills`, `.codex/skills`, `.kimi-code/skills`, `.agents/skills`, ...); the installer writes it into the skill, so the path is right on every agent. The arguments the target skill expects go into the `Skill arguments:` sentence (`(empty — no arguments were given)` when there are none); the call never carries a `$ARGUMENTS` placeholder, because the runtime substitutes that one inside a skill, not inside a prompt. A subagent that cannot read the file stops and says so instead of working without the skill's rules.
+
+Every skill that delegates to a skill uses this one call: `develop-agent` and `docs-agent`, `/unikit` (step 9.8 generates stack rules through `unikit-memory`, step 10 writes `ARCHITECTURE.md` through `unikit-architecture`) and the market validation in `/unikit-gd-brainstorm` (through `unikit-gd-explore`, with the same call mirrored in that skill's delegation contract).
+
+### Skills listed in an agent file
+
+The `skills:` field in the frontmatter of an agent file (`unikit-implement-worker`, `unikit-plan-polisher`, `unikit-implement-coordinator`) is a different mechanism: Claude Code preloads the listed skills into the agent when it starts. Agent files are installed only for Claude Code and Kimi Code. Kimi Code does not read the field (live check, Kimi 2.1.1), so on install the Kimi adapter removes it and writes the same skills as a read list at the top of the file: a line asking the agent to read each file, then the `.kimi-code/skills/<name>/SKILL.md` paths. A coordinator keeps `${base_prompt}` as its first line and the list follows it. The files installed for Claude Code are not touched.
 
 ### Subagent profile per agent
 
