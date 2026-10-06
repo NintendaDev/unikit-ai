@@ -18,8 +18,9 @@
 | OpenCode | `.opencode/` | Yes (`opencode.json`) | Beta |
 | Antigravity | `.agents/` | Yes (`.agents/mcp_config.json`) | Beta |
 | Kimi Code | `.kimi-code/` | Yes (`.kimi-code/mcp.json`) | Beta |
+| Universal / Other | `.agents/` | Yes (`.mcp.json`) | Beta |
 
-Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in but rough edges are still possible. See [configuration.md](configuration.md) for details.
+Select one or more during `unikit-ai init`. The wizard renders a single flat checkbox list with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Two agents that would write skills into the same directory cannot be selected together - today that is Antigravity and Universal / Other. Beta agents are fully wired in but rough edges are still possible. See [configuration.md](configuration.md) for details.
 
 ## Known Limitations
 
@@ -39,11 +40,11 @@ When launching some skills, the agent may pause at the very start and do nothing
 
 ### Antigravity
 
-Antigravity (the IDE and CLI share one `.agents/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agents/skills/<name>/` directory triggered by its `description`, like Claude Code. There is no `/unikit-*` slash command and no `Skill` tool, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) degrades to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.
+Antigravity (the IDE and CLI share one `.agents/` workspace, so UniKit treats them as a single agent) installs every UniKit skill as an Antigravity **skill** - a `.agents/skills/<name>/` directory with `SKILL.md` and `references/`. In Antigravity 2.0 a skill is invoked with `/<skill-name>`, and the CLI turns every skill into a slash command (for example `/unikit-plan`); the IDE documents no slash invocation, so there a skill is picked by its `description`. A `Skill` tool is not documented for Antigravity, so multi-skill orchestration (`/unikit`, `/unikit-gd-apply`) may still degrade to the Tier 3 "print & ask" path: the skill prints the ordered commands for you to run by hand instead of chaining them automatically.
 
 MCP is configured automatically into `.agents/mcp_config.json`, same as other agents; a separate global `~/.gemini/config/mcp_config.json` remains available for user-wide servers, untouched by UniKit.
 
-Antigravity is also the one agent with an install-time side effect outside the skills directory: a `postInstall` step writes UniKit guardrails to `.agents/rules/unikit.md`, and the matching `cleanup` removes that file again when UniKit is uninstalled. No other agent writes a rules file of its own.
+Antigravity is also the one agent with an install-time side effect outside the skills directory: a `postInstall` step writes UniKit guardrails to `.agents/rules/unikit.md`, and the matching `cleanup` removes that file again when you deselect Antigravity on a repeat `init`. The file is rewritten whenever UniKit installs skills for Antigravity; in a project that already has it, `unikit-ai update --force` brings its text up to date. No other agent writes a rules file of its own.
 
 ### Kimi Code
 
@@ -56,6 +57,18 @@ Subagents install into `.kimi-code/agents/` through an adapter: a coordinator's 
 MCP servers are written to the project file `.kimi-code/mcp.json`. Kimi enables project-level MCP servers only after you trust the folder, so a freshly initialised project can show no servers until you confirm the trust prompt. A header such as `Authorization: Bearer {{env:GITHUB_PAT}}` is written as `"bearerTokenEnvVar": "GITHUB_PAT"` - set that variable in the environment `kimi` starts from; Kimi does not expand `${VAR}` inside headers. UniKit does not touch `~/.kimi-code/`, Kimi's `config.toml`/`local.toml`, or its plugins.
 
 This integration is Beta: it was built from Kimi Code's documentation and package source and has not yet been confirmed in a live session.
+
+### Universal / Other
+
+Universal / Other is for an AI agent UniKit does not support by name. It installs the skills into `.agents/skills/` - the project directory that, by the `vercel-labs/skills` agent table, more than twenty runtimes list as their own - and writes MCP servers to `.mcp.json`, the file Claude Code uses. UniKit does not check that a given runtime really reads `.agents/skills/`: the documentation confirms it for Antigravity and the source for Kimi Code, the rest is inferred from that table.
+
+The skill text is the Claude Code text: the subagent types are `Explore` and `general-purpose`, and no model argument is passed (`subagents.model.universal` is empty by default). A runtime that does not know those types answers with an unknown-type error; what the model does next has not been observed yet. No subagent files are installed (`supportsSubagents: false`), and the "ask the user before launching a subagent" block written for Codex is not included - on Codex, select Codex CLI instead. See [Subagents](subagents.md#subagent-profile-per-agent).
+
+**It cannot be selected together with Antigravity.** Both write skills into `.agents/skills/`; with different text in one directory they would overwrite each other on every `update`, and removing one would remove the other's skills. The `init` wizard refuses the pair before anything is installed, and `update` and the `extension` commands stop with the same message (exit code 1) if `.unikit.json` was edited into that state. To move from Antigravity to Universal / Other, deselect Antigravity and select Universal / Other in one repeat `init`. Next to Codex CLI, Cursor, OpenCode or Kimi Code it is allowed, but those agents may see UniKit skills twice - once from their own directory and once from `.agents/skills/`. Next to Claude Code it is allowed too: both write the same `.mcp.json` with the same writer.
+
+`.mcp.json` is read by the runtimes that follow Claude Code's convention. If your agent reads another MCP file, add the servers there by hand - `init` ends with the same hint.
+
+This integration is Beta: its values were taken from the `Universal / Other` agent of AI Factory and from the `vercel-labs/skills` README, and have not been confirmed in a live session.
 
 ## See Also
 

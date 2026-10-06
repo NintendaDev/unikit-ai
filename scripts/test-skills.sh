@@ -858,7 +858,7 @@ const write = async (agent, cfg) => {
   writer.upsert(settings, 'github', cfg);
   return { text: writer.serialize(settings), settings };
 };
-for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravity', 'kimi']) {
+for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravity', 'kimi', 'universal']) {
   const { text } = await write(agent, tokenEntry());
   if (text.includes('{{env:')) why.push(agent + ':raw-token-left');
 }
@@ -893,17 +893,21 @@ for (const agent of ['claude', 'cursor', 'qwen', 'opencode', 'codex', 'antigravi
   if (e.httpUrl !== URL || e.url !== undefined || e.type !== undefined) why.push('qwen:plain-entry-httpUrl'); }
 { const e = (await write('kimi', { type: 'http', url: URL })).settings.mcpServers.github;
   if (JSON.stringify(e) !== JSON.stringify({ url: URL })) why.push('kimi:plain-entry'); }
+{ const e = (await write('universal', tokenEntry())).settings.mcpServers.github;
+  if (e.headers.Authorization !== 'Bearer ${GITHUB_PAT}') why.push('universal:syntax'); }
+if (getMcpWriter('universal') !== getMcpWriter('claude')) why.push('universal:not-the-claude-writer');
 const servers = new Map([['github', { displayName: 'GitHub', config: { headers: { Authorization: 'Bearer {{env:GITHUB_PAT}}' } } }]]);
 const both = getMcpEnvLines(servers, ['github'], ['claude', 'antigravity']);
 if (both.length !== 2 || !both[0].includes('GITHUB_PAT') || !both[1].includes('YOUR_GITHUB_PAT')) why.push('envLines:antigravity');
 if (getMcpEnvLines(servers, ['github'], ['claude']).length !== 1) why.push('envLines:claude-only');
 if (getMcpEnvLines(servers, ['github'], ['claude', 'kimi']).length !== 1) why.push('envLines:kimi-adds-a-line');
+if (getMcpEnvLines(servers, ['github'], ['claude', 'universal']).length !== 1) why.push('envLines:universal-adds-a-line');
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(JSON.stringify({ why }));
 NODE_EOF
 )
 if [[ "$ENV_SMOKE_RESULT" == '{"why":[]}' ]]; then
-    pass "MCP env references rendered per client (7 agents)"
+    pass "MCP env references rendered per client (8 agents)"
 else
     fail "MCP env-reference smoke: $ENV_SMOKE_RESULT"
 fi
@@ -10015,6 +10019,24 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f5: agent directory rules and the universal agent unit tests
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f5: agent directory unit tests${NC}"
+
+set +e
+AGENT_DIRS_OUTPUT=$(node "$ROOT_DIR/scripts/test-agent-dirs.mjs" 2>&1)
+AGENT_DIRS_EXIT=$?
+set -e
+
+if [[ $AGENT_DIRS_EXIT -eq 0 ]]; then
+    pass "Agent directory unit tests"
+    echo "$AGENT_DIRS_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Agent directory unit tests"
+    echo "$AGENT_DIRS_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
@@ -10062,7 +10084,7 @@ fi
 # ─────────────────────────────────────────────
 # Part 7g3: AP-1…AP-7 — the agent profile in skills
 # ─────────────────────────────────────────────
-# A skill body travels to all seven runtimes, and the runtimes disagree on what a subagent is
+# A skill body travels to all eight runtimes, and the runtimes disagree on what a subagent is
 # called and whether a dispatch can name a model. The disagreement is data — the agent profile
 # in `AGENT_REGISTRY` (`subagentProfile`) — and the installer substitutes it into the text
 # (`{{agent_reader_type}}`, `{{agent_worker_type}}`, `{{agent_id}}`, `{{agent_model_default}}`).
@@ -10162,6 +10184,68 @@ if [[ -z "$AP_WHY" ]]; then
 else
     fail "AP-1…AP-7 agent profile in skills:$AP_WHY"
     grep -rnE 'subagent_type:[[:space:]]*"?[A-Za-z]' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -v '{{agent_' | sed 's/^/      /' | head -5
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g4: UA-1…UA-4 — the agent directory rules and the universal agent (source level)
+# ─────────────────────────────────────────────
+# What the behavioural harness (Part 7f5) cannot see: who calls what. Every grep is wrapped
+# in { … || true; } — under `set -e` an empty match inside a substitution would abort the suite.
+echo -e "\n${BOLD}Part 7g4: agent directory rules and the universal agent (UA)${NC}"
+
+UA_WHY=""
+UA_INIT="$ROOT_DIR/src/cli/commands/init.ts"
+UA_REMOVAL="$ROOT_DIR/src/core/installer/agent-removal.ts"
+
+# (UA-1) removal takes only what UniKit installed: init delegates to the module and holds no
+# directory deletion of its own; the module removes skills by name and deletes the directory
+# only after listing its entries.
+[[ -f "$UA_REMOVAL" ]] || UA_WHY+=" UA-1:agent-removal-module-missing"
+{ grep -qF "from '../../core/installer/agent-removal.js'" "$UA_INIT" || false; } || UA_WHY+=" UA-1:init-does-not-use-agent-removal"
+[[ "$({ grep -c 'removeDirectory' "$UA_INIT" || true; })" -eq 0 ]] || UA_WHY+=" UA-1:init-deletes-directories-itself"
+[[ "$({ grep -c 'function removeAgentSetup' "$UA_INIT" || true; })" -eq 0 ]] || UA_WHY+=" UA-1:init-keeps-its-own-removeAgentSetup"
+{ grep -qF 'removeSkillsByName(' "$UA_REMOVAL" || false; } || UA_WHY+=" UA-1:removal-not-by-skill-name"
+{ grep -qF 'listEntries(' "$UA_REMOVAL" || false; } || UA_WHY+=" UA-1:directory-removed-without-listing-it"
+
+# (UA-2) the shared-skills-directory rule: the module is name-free, and every place that writes
+# skills for a set of agents asks it first — the wizard checkbox (through validateAgentSelection),
+# `update`, and the extension commands that install, restore or remove skills (add, remove, update).
+UA_RULE="$ROOT_DIR/src/core/agent-skills-dir.ts"
+UA_GUARDS="$ROOT_DIR/src/cli/guards.ts"
+UA_PROMPTS="$ROOT_DIR/src/cli/wizard/prompts.ts"
+UA_UPDATE="$ROOT_DIR/src/cli/commands/update.ts"
+UA_EXTENSION="$ROOT_DIR/src/cli/commands/extension.ts"
+{ grep -qF 'export function findSharedSkillsDirs' "$UA_RULE" || false; } || UA_WHY+=" UA-2:rule-function-missing"
+{ grep -qF 'export function exitOnSharedSkillsDir' "$UA_GUARDS" || false; } || UA_WHY+=" UA-2:guard-missing"
+[[ "$({ grep -cE "'(claude|codex|cursor|qwen|opencode|antigravity|kimi|universal)'" "$UA_RULE" || true; })" -eq 0 ]] || UA_WHY+=" UA-2:rule-knows-agent-names"
+[[ "$({ grep -c 'validate: validateAgentSelection' "$UA_PROMPTS" || true; })" -eq 1 ]] || UA_WHY+=" UA-2:wizard-checkbox-not-using-the-rule"
+[[ "$({ grep -c 'describeSharedSkillsDir(' "$UA_PROMPTS" || true; })" -eq 1 ]] || UA_WHY+=" UA-2:validateAgentSelection-not-asking-the-rule"
+[[ "$({ grep -c 'exitOnSharedSkillsDir(config.agents)' "$UA_UPDATE" || true; })" -eq 1 ]] || UA_WHY+=" UA-2:update-not-guarded"
+[[ "$({ grep -c 'exitOnSharedSkillsDir(config.agents)' "$UA_EXTENSION" || true; })" -eq 3 ]] || UA_WHY+=" UA-2:extension-commands-not-guarded(want-3)"
+
+# (UA-3) Antigravity's slash invocation is described as its documentation does (DEC-006, REQ-009):
+# neither the guardrails text nor docs/agents.md says there is no slash command, and both name
+# /<skill-name>. The skill text itself is untouched — invocations are not rewritten for Antigravity.
+UA_AG_TRANSFORMER="$ROOT_DIR/src/core/transformers/antigravity.ts"
+UA_AGENTS_DOC="$ROOT_DIR/docs/agents.md"
+if grep -qF 'slash command here' "$UA_AG_TRANSFORMER"; then UA_WHY+=" UA-3:rules-text-still-denies-slash-invocation"; fi
+if grep -qF 'There is no `/unikit-*` slash command' "$UA_AGENTS_DOC"; then UA_WHY+=" UA-3:docs-still-deny-slash-invocation"; fi
+{ grep -qF 'a skill is invoked as \`/<skill-name>\`' "$UA_AG_TRANSFORMER" || false; } || UA_WHY+=" UA-3:rules-text-lacks-slash-invocation"
+{ grep -qF 'a skill is invoked with `/<skill-name>`' "$UA_AGENTS_DOC" || false; } || UA_WHY+=" UA-3:docs-lack-slash-invocation"
+
+# (UA-4) the universal agent rides on the defaults: no code branches on its id (its MCP writer and
+# its transformer are the default ones, apart from the welcome text), and the three places that must
+# agree — registry entry, transformer registration, config-template key — all carry it.
+[[ "$({ grep -rnE "(agentId|agent\.id|\.id) === 'universal'" "$ROOT_DIR/src" || true; } | wc -l | tr -d ' ')" -eq 0 ]] || UA_WHY+=" UA-4:code-branches-on-the-universal-id"
+[[ "$({ grep -c "'universal'" "$ROOT_DIR/src/core/mcp-writers/index.ts" || true; })" -eq 0 ]] || UA_WHY+=" UA-4:mcp-writer-has-a-universal-branch"
+{ grep -qF "universal: {" "$ROOT_DIR/src/core/agents.ts" || false; } || UA_WHY+=" UA-4:registry-entry-missing"
+{ grep -qF "universal: () => new UniversalTransformer()" "$ROOT_DIR/src/core/transformer.ts" || false; } || UA_WHY+=" UA-4:transformer-not-registered"
+{ grep -qE '^    universal:' "$ROOT_DIR/skills/unikit/references/config-template.yaml" || false; } || UA_WHY+=" UA-4:config-template-key-missing"
+
+if [[ -z "$UA_WHY" ]]; then
+    pass "UA-1…UA-4 agent directory rules and the universal agent"
+else
+    fail "UA-1…UA-4 agent directory rules and the universal agent:$UA_WHY"
 fi
 
 # ─────────────────────────────────────────────

@@ -400,6 +400,7 @@ The template is written into each agent's settings file under `mcpServers.<key>`
 | OpenCode | `opencode.json` |
 | Antigravity | `.agents/mcp_config.json` |
 | Kimi Code | `.kimi-code/mcp.json` |
+| Universal / Other | `.mcp.json` |
 
 On `extension remove`, the key is deleted from the settings file.
 

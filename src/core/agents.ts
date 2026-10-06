@@ -112,6 +112,23 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     isStable: false,
     subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
   },
+  // For runtimes UniKit does not name. Skills go to the shared `.agents/skills` — Antigravity's
+  // directory too, which is why the two are never selected together (core/agent-skills-dir.ts) —
+  // and MCP to `.mcp.json`, written by the same writer as Claude Code's. The profile reuses
+  // Claude's type names and passes no model: the runtime is not known in advance.
+  universal: {
+    id: 'universal',
+    displayName: 'Universal / Other',
+    configDir: '.agents',
+    skillsDir: '.agents/skills',
+    subagentsDir: '.agents/agents',
+    settingsFile: '.mcp.json',
+    supportsMcp: true,
+    supportsSubagents: false,
+    skillsCliAgent: 'universal',
+    isStable: false,
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
+  },
 };
 
 export function getAgentConfig(id: string): AgentConfig {

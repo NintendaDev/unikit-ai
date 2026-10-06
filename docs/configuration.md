@@ -149,6 +149,7 @@ subagents:
     opencode:
     antigravity: flash
     kimi:
+    universal:
 ```
 
 ### `language` section
@@ -219,6 +220,7 @@ Which model the subagents that skills launch run on, one value per agent. The bl
 | `model.opencode` | OpenCode. The subagent call has no model parameter: the subagent runs on the model of the session. | none |
 | `model.antigravity` | Antigravity. `flash`, `pro` or `inherit`. | `flash` |
 | `model.kimi` | Kimi Code. The call accepts a model only when `[secondary_model]` is set in `~/.kimi-code/config.toml`. | none |
+| `model.universal` | Universal / Other. The runtime is not known in advance: a value works only if the subagent tool of your agent accepts a model and the name is valid there. | none |
 
 A value means:
 
@@ -228,7 +230,7 @@ A value means:
 
 **The skills read this block at run time**, once per skill before the first dispatch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Only the aliases that name a model read it (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`); `develop-agent` and `docs-agent` load a skill and never pass a model.
 
-UniKit keeps no list of model names. A name the runtime does not accept makes the launch fail, and the skill repeats the call once on the model of the session with a `WARN [delegation]` line. For Cursor, Qwen Code, OpenCode and Kimi Code the value either has no effect or needs a setting of the runtime itself (`agents.modelGrades`, `[secondary_model]`), which is why those keys ship empty. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
+UniKit keeps no list of model names. A name the runtime does not accept makes the launch fail, and the skill repeats the call once on the model of the session with a `WARN [delegation]` line. For Cursor, Qwen Code, OpenCode and Kimi Code the value either has no effect or needs a setting of the runtime itself (`agents.modelGrades`, `[secondary_model]`), and Universal / Other does not know its runtime at all, which is why those keys ship empty. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
 
 ### How new keys reach an existing project
 
@@ -258,7 +260,7 @@ The actualization mode sorts every leaf key of the template into one of six buck
 
 ## MCP Configuration
 
-UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), `.agents/mcp_config.json` (Antigravity), or `.kimi-code/mcp.json` (Kimi Code).
+UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), `.agents/mcp_config.json` (Antigravity), `.kimi-code/mcp.json` (Kimi Code), or `.mcp.json` (Universal / Other - the same file Claude Code uses, written by the same writer).
 
 Every server carries two names, and keeping them apart is what the rest of this section rests on:
 
@@ -461,6 +463,7 @@ Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `co
 | Codex CLI | `bearer_token_env_var = "GITHUB_PAT"` — no `Authorization` header at all |
 | Antigravity | `"Authorization": "Bearer YOUR_GITHUB_PAT"` — it documents no reference syntax, so this is a placeholder you replace yourself |
 | Kimi Code | `"bearerTokenEnvVar": "GITHUB_PAT"` — Kimi expands nothing inside a header, so the variable NAME goes into its own field and no `Authorization` header is written; set `GITHUB_PAT` in the environment `kimi` starts from |
+| Universal / Other | `"Authorization": "Bearer ${GITHUB_PAT}"` - the same writer and the same spelling as Claude Code |
 
 The first write has to be right: an entry already standing under our code is kept as it is (rule 3 of [What UniKit writes into your settings file](#what-unikit-writes-into-your-settings-file)), so nothing would ever correct a wrong one.
 
@@ -631,6 +634,15 @@ Rule metadata (`id`, `description`, `version`, `references`) lives in the remote
 | OpenCode | `.opencode` | `.opencode/skills` | Yes (`opencode.json`) |
 | Antigravity | `.agents` | `.agents/skills` | Yes (`.agents/mcp_config.json`) |
 | Kimi Code | `.kimi-code` | `.kimi-code/skills` | Yes (`.kimi-code/mcp.json`) |
+| Universal / Other | `.agents` | `.agents/skills` | Yes (`.mcp.json`) |
+
+### Removing an agent
+
+Deselecting an agent on a repeat `unikit-ai init` removes only what UniKit installed for it: the skills recorded under that agent in `.unikit.json` (`installedSkills`) and the skills of installed extensions. The skills directory itself is deleted only when nothing else is left in it - skills you added by hand or with `npx skills add` stay, and `init` says how many items it left. Subagent files and MCP entries are not removed, and Antigravity's `.agents/rules/unikit.md` is.
+
+### Two agents, one skills directory
+
+Two agents of one project never share a skills directory: with different text in the same place they would overwrite each other on every `update`. Today the only such pair is Antigravity and Universal / Other (both use `.agents/skills`); the `init` wizard refuses the selection, and `update` and `extension add|remove|update` stop with exit code 1 if `.unikit.json` was edited into that state. The rule compares directories, not agent names, so it holds for any agent added later.
 
 ## Project Structure
 

@@ -212,3 +212,8 @@ subagents:
     # Kimi Code. The call accepts a model only when [secondary_model] is set in
     # ~/.kimi-code/config.toml. Leave empty otherwise.
     kimi:
+
+    # Universal / Other. The runtime is not known in advance, so no model is
+    # passed by default. Set a value only if the subagent tool of your agent
+    # accepts a model and the name is valid there. Leave empty otherwise.
+    universal:

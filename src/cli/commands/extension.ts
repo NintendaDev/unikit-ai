@@ -7,6 +7,7 @@ import {
   commitResolvedExtension, removeExtension, refreshExtensions,
   restoreBaseSkills,
 } from '../../core/extension-ops.js';
+import { exitOnSharedSkillsDir } from '../guards.js';
 
 export async function extensionAddCommand(source: string): Promise<void> {
   const projectDir = process.cwd();
@@ -16,6 +17,8 @@ export async function extensionAddCommand(source: string): Promise<void> {
     console.log(chalk.red('Error: No .unikit.json found. Run "unikit-ai init" first.'));
     process.exit(1);
   }
+
+  exitOnSharedSkillsDir(config.agents);
 
   const sourceInfo = classifySource(source);
   console.log(chalk.dim(`Resolving extension from ${sourceInfo.type}: ${sourceInfo.resolved}...\n`));
@@ -70,6 +73,8 @@ export async function extensionRemoveCommand(name: string): Promise<void> {
     console.log(chalk.red('Error: No .unikit.json found.'));
     process.exit(1);
   }
+
+  exitOnSharedSkillsDir(config.agents);
 
   const existing = findExtensionRecord(config.extensions ?? [], name);
   if (!existing) {
@@ -144,6 +149,8 @@ export async function extensionUpdateCommand(options: ExtensionUpdateOptions = {
     console.log(chalk.red('Error: No .unikit.json found.'));
     process.exit(1);
   }
+
+  exitOnSharedSkillsDir(config.agents);
 
   const extensions = config.extensions ?? [];
 

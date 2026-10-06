@@ -77,6 +77,7 @@ const EXPECTED = {
     opencode: { readerType: 'explore', workerType: 'general', modelDefault: '' },
     antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash' },
     kimi: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
+    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
 };
 
 // ── P: the registry profile (Task 18) ───────────────────────────────────────
@@ -106,7 +107,7 @@ await group('P', async () => {
     }
 
     assertEq(
-        'P5 the registry holds exactly the seven known agents (a new agent needs a conscious edit here and a config-template key)',
+        'P5 the registry holds exactly the eight known agents (a new agent needs a conscious edit here and a config-template key)',
         Object.keys(AGENT_REGISTRY).sort().join(','),
         Object.keys(EXPECTED).sort().join(','),
     );
@@ -188,7 +189,7 @@ await group('C', async () => {
 
 // ── I: the installed text, per agent (Task 25) ──────────────────────────────
 // The table is built from AGENT_REGISTRY and goes through the real installSkills over the real
-// skills/, so an eighth agent joins it by itself and the test cannot repeat the installer's logic.
+// skills/, so a new agent joins it by itself and the test cannot repeat the installer's logic.
 
 const INSTALL_SKILLS = ['unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-implement', 'unikit-gd-explore', 'unikit-review'];
 const countOf = (text, needle) => text.split(needle).length - 1;

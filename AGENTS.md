@@ -4,7 +4,7 @@
 
 ## What is UniKit?
 
-`unikit-ai` is an npm CLI that bootstraps AI-agent context for game-dev projects. It supports **4 engines** (Unity, Godot 4, Godot 4 .NET, Unreal Engine 5) and **7 agents** (Claude Code, Codex CLI, Cursor, Qwen Code, OpenCode, Antigravity, Kimi Code). It installs skills, subagents, MCP server configs, engine templates, and pulls knowledge-base rules from a remote registry.
+`unikit-ai` is an npm CLI that bootstraps AI-agent context for game-dev projects. It supports **4 engines** (Unity, Godot 4, Godot 4 .NET, Unreal Engine 5) and **8 agents** (Claude Code, Codex CLI, Cursor, Qwen Code, OpenCode, Antigravity, Kimi Code, Universal / Other). It installs skills, subagents, MCP server configs, engine templates, and pulls knowledge-base rules from a remote registry.
 
 Full prose: see `.ai-factory/DESCRIPTION.md`.
 

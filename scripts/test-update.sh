@@ -2318,5 +2318,184 @@ assert_same_sha "$AK_KIMI_SKILL" "$AK_H_KIMI_SKILL" "repairing the Antigravity t
 
 echo "  ✓ Antigravity + Kimi: independent trees, idempotent update, per-tree tamper refresh"
 
+# ─────────────────────────────────────────────
+# Test 34: the universal agent — next to Claude Code (one .mcp.json), refused next to Antigravity
+# ─────────────────────────────────────────────
+# Universal / Other writes the shared .agents/skills and Claude Code's .mcp.json. Next to Claude it is
+# an ordinary two-agent project: two trees with different bytes, one MCP file written by one writer,
+# an idle second update, a per-tree repair. Next to Antigravity — the other agent of .agents/skills —
+# `update` must stop before it writes anything. The exit code is asserted by hand: assert_exit and
+# assert_cmd_exit report through the soft fail() these scripts never read.
+UC_DIR="$TMPDIR/update-universal-claude"
+mkdir -p "$UC_DIR"
+cat > "$UC_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": { "context7": "context7", "github": "github" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    },
+    {
+      "id": "universal",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.1.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$UC_DIR"
+seed_rule "$UC_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+
+UC_CLAUDE_SKILL="$UC_DIR/.claude/skills/unikit-implement/SKILL.md"
+UC_UNI_SKILL="$UC_DIR/.agents/skills/unikit-implement/SKILL.md"
+# The model rule (`subagents.model.<agent>`) is carried by ten skills and unikit-implement is not one of
+# them; unikit-plan is, and it is in both agents' installedSkills.
+UC_CLAUDE_PLAN="$UC_DIR/.claude/skills/unikit-plan/SKILL.md"
+UC_UNI_PLAN="$UC_DIR/.agents/skills/unikit-plan/SKILL.md"
+UC_MCP="$UC_DIR/.mcp.json"
+
+UC_FIRST="$TMPDIR/update-uc-1.log"
+(cd "$UC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$UC_FIRST" 2>&1)
+
+assert_contains "$UC_FIRST" "\[universal\] Skills status:" "universal agent status section must be printed"
+assert_contains "$UC_FIRST" "\[claude\] Skills status:" "claude agent status section must be printed"
+assert_exists "$UC_CLAUDE_SKILL" "claude must have unikit-implement installed under .claude/skills"
+assert_exists "$UC_UNI_SKILL" "universal must have unikit-implement installed under .agents/skills"
+assert_not_exists "$UC_DIR/.agents/agents" "universal has no subagents: no .agents/agents directory"
+assert_not_exists "$UC_DIR/.agents/rules" "universal writes no guardrails file"
+
+# Same vocabulary, different bytes: the directory, the config key and the model default differ
+if cmp -s "$UC_CLAUDE_SKILL" "$UC_UNI_SKILL"; then
+    echo "Assertion failed: the Claude and universal copies of unikit-implement must differ"
+    exit 1
+fi
+assert_contains "$UC_CLAUDE_SKILL" 'subagent_type: "general-purpose"' "claude copy: the Claude worker type"
+assert_contains "$UC_UNI_SKILL" 'subagent_type: "general-purpose"' "universal copy: the same Claude worker type"
+assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the model rule)"
+assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the model rule)"
+assert_contains "$UC_CLAUDE_PLAN" 'subagents\.model\.claude' "claude copy: its own config key"
+assert_contains "$UC_UNI_PLAN" 'subagents\.model\.universal' "universal copy: its own config key"
+assert_not_contains "$UC_UNI_PLAN" 'subagents\.model\.claude' "universal copy: not the Claude key"
+
+# One MCP file for both, written once
+assert_exists "$UC_MCP" "update must write the shared .mcp.json"
+assert_contains "$UC_MCP" '"context7"' "the shared .mcp.json carries the Context7 server"
+assert_contains "$UC_MCP" 'Bearer \$\{GITHUB_PAT\}' "the shared .mcp.json carries the GitHub token as a \${GITHUB_PAT} reference"
+UC_KEYS=$(node -e "const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')); process.stdout.write(Object.keys(j.mcpServers).sort().join(','));" "$UC_MCP")
+[[ "$UC_KEYS" == "context7,github" ]] || {
+    echo "Assertion failed: the shared .mcp.json must hold exactly the servers context7 and github, got: $UC_KEYS"
+    exit 1
+}
+
+UC_H_CLAUDE_SKILL="$(sha_of "$UC_CLAUDE_SKILL")"
+UC_H_UNI_SKILL="$(sha_of "$UC_UNI_SKILL")"
+UC_H_MCP="$(sha_of "$UC_MCP")"
+
+# Second run: nothing changes in either tree or in the shared MCP file
+UC_SECOND="$TMPDIR/update-uc-2.log"
+(cd "$UC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$UC_SECOND" 2>&1)
+[[ "$(grep -c 'changed: 0' "$UC_SECOND")" -eq 2 ]] || {
+    echo "Assertion failed: both agents must report changed: 0 on the second update"
+    grep -n 'changed:' "$UC_SECOND" | head -6
+    exit 1
+}
+assert_not_contains "$UC_SECOND" "Local modifications detected" "an idle second update must warn about nothing"
+assert_same_sha "$UC_CLAUDE_SKILL" "$UC_H_CLAUDE_SKILL" "second update rewrote the Claude skill"
+assert_same_sha "$UC_UNI_SKILL" "$UC_H_UNI_SKILL" "second update rewrote the universal skill"
+assert_same_sha "$UC_MCP" "$UC_H_MCP" "second update rewrote the shared .mcp.json"
+
+# A tampered universal skill is repaired there and the Claude tree and the MCP file are left alone
+printf '\nTAMPER-UNI\n' >> "$UC_UNI_SKILL"
+UC_THIRD="$TMPDIR/update-uc-3.log"
+(cd "$UC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$UC_THIRD" 2>&1)
+assert_contains "$UC_THIRD" "Local modifications detected" "tampered universal skill must be reported"
+assert_not_contains "$UC_UNI_SKILL" 'TAMPER-UNI' "update must overwrite the tampered universal skill"
+assert_same_sha "$UC_UNI_SKILL" "$UC_H_UNI_SKILL" "the repaired universal skill must match the first install"
+assert_same_sha "$UC_CLAUDE_SKILL" "$UC_H_CLAUDE_SKILL" "repairing the universal tree touched the Claude tree"
+assert_same_sha "$UC_MCP" "$UC_H_MCP" "repairing the universal tree rewrote the shared .mcp.json"
+
+# Universal next to Antigravity (a hand-edited .unikit.json): refused before anything is written
+UX_DIR="$TMPDIR/update-universal-antigravity"
+mkdir -p "$UX_DIR"
+cat > "$UX_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "antigravity",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan"],
+      "installedSubagents": []
+    },
+    {
+      "id": "universal",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.1.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$UX_DIR"
+UX_H_CONFIG="$(sha_of "$UX_DIR/.unikit.json")"
+
+UX_UPDATE="$TMPDIR/update-ux-update.log"
+set +e
+(cd "$UX_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$UX_UPDATE" 2>&1)
+UX_UPDATE_CODE=$?
+set -e
+[[ "$UX_UPDATE_CODE" -eq 1 ]] || {
+    echo "Assertion failed: update on Antigravity + universal must exit 1, got $UX_UPDATE_CODE"
+    cat "$UX_UPDATE"
+    exit 1
+}
+assert_contains "$UX_UPDATE" 'Antigravity and Universal / Other' "the refusal must name both agents"
+assert_contains "$UX_UPDATE" '\.agents/skills' "the refusal must name the shared directory"
+assert_contains "$UX_UPDATE" 'Select only one of them' "the refusal must say how to fix it"
+assert_not_exists "$UX_DIR/.agents" "the refused update must write no skills"
+assert_same_sha "$UX_DIR/.unikit.json" "$UX_H_CONFIG" "the refused update must not rewrite .unikit.json"
+
+# The extension commands that write skills are guarded the same way (list is read-only and is not)
+for UX_EXT_ARGS in "remove not-installed" "update"; do
+    UX_EXT="$TMPDIR/update-ux-ext.log"
+    set +e
+    # shellcheck disable=SC2086
+    (cd "$UX_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension $UX_EXT_ARGS > "$UX_EXT" 2>&1)
+    UX_EXT_CODE=$?
+    set -e
+    [[ "$UX_EXT_CODE" -eq 1 ]] || {
+        echo "Assertion failed: 'extension $UX_EXT_ARGS' on Antigravity + universal must exit 1, got $UX_EXT_CODE"
+        cat "$UX_EXT"
+        exit 1
+    }
+    assert_contains "$UX_EXT" 'Antigravity and Universal / Other' "'extension $UX_EXT_ARGS' must name both agents"
+    assert_not_contains "$UX_EXT" 'is not installed' "'extension $UX_EXT_ARGS' must stop at the guard, not at its own check"
+done
+assert_not_exists "$UX_DIR/.agents" "the refused extension commands must write no skills"
+
+echo "  ✓ universal: next to Claude one .mcp.json and an idle second update with per-tree repair; next to Antigravity update and extension commands stop with exit 1 before writing"
+
 echo ""
 echo "update smoke tests passed"
