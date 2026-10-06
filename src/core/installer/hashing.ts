@@ -15,7 +15,7 @@ import { getEngineConfig } from '../engines.js';
 import { getTransformer } from '../transformer.js';
 import { logInfo } from '../../utils/log.js';
 import {
-  PROFILE_HASH_TAG, REFERENCES_DIR_NAME, SKILL_FILE, TRANSFORM_HASH_TAG, TRANSFORM_REVISIONS,
+  DEFAULT_SKILL_CALL_FORM, PROFILE_HASH_TAG, REFERENCES_DIR_NAME, SKILL_CALL_HASH_KEY, SKILL_FILE, SPAWN_ARGS_HASH_KEY, TRANSFORM_HASH_TAG, TRANSFORM_REVISIONS,
 } from '../constants.js';
 import { stripMdExtension } from './shared.js';
 
@@ -169,11 +169,19 @@ function mcpHashComponent(
  * The agent's subagent profile as a hash component: the profile is substituted into the
  * installed skill text, so a changed value must reinstall every skill. An unregistered id
  * yields `profile:none` rather than throwing — the same stance as the engine lookup below.
+ * The skill-call form and the extra call arguments join the tag only when they differ from the
+ * default, so an agent that has neither keeps the hash it had before the fields existed.
  */
-function profileHashComponent(agentId: string): string {
+export function profileHashComponent(agentId: string): string {
   try {
-    const { readerType, workerType, modelDefault } = getAgentConfig(agentId).subagentProfile;
-    return `${PROFILE_HASH_TAG}:${readerType}|${workerType}|${modelDefault}`;
+    const { readerType, workerType, modelDefault, skillCall, spawnArgs } = getAgentConfig(agentId).subagentProfile;
+    const base = `${PROFILE_HASH_TAG}:${readerType}|${workerType}|${modelDefault}`;
+    // Appended only for a value that is not the default: an agent that has none keeps the hash it had.
+    const extras = [
+      skillCall === DEFAULT_SKILL_CALL_FORM ? '' : `${SKILL_CALL_HASH_KEY}=${skillCall}`,
+      spawnArgs === '' ? '' : `${SPAWN_ARGS_HASH_KEY}=${spawnArgs}`,
+    ].filter(part => part !== '');
+    return [base, ...extras].join('|');
   } catch {
     return `${PROFILE_HASH_TAG}:none`;
   }

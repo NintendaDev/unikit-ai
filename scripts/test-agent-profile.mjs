@@ -16,7 +16,7 @@ const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 const { AGENT_REGISTRY } = await import(dist('core/agents.js'));
 const { buildTemplateVars, processTemplate } = await import(dist('core/template.js'));
 const { buildSubagentTemplateVars } = await import(dist('core/installer/shared.js'));
-const { computeSourceHashWithTemplate, computeSubagentSourceHash, transformRevisionComponent } = await import(dist('core/installer/hashing.js'));
+const { computeSourceHashWithTemplate, computeSubagentSourceHash, profileHashComponent, transformRevisionComponent } = await import(dist('core/installer/hashing.js'));
 const { installSkills } = await import(dist('core/installer/skills.js'));
 const { getTransformer } = await import(dist('core/transformer.js'));
 const { TRANSFORM_REVISIONS } = await import(dist('core/constants.js'));
@@ -72,14 +72,28 @@ async function walk(dir) {
 // The profile as the research package states it (ASP-REQ-001, ASP-REQ-008). Writing the table
 // out here is the point: a changed registry value shows up as a red test, never silently.
 const EXPECTED = {
-    claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet' },
-    codex: { readerType: 'explorer', workerType: 'worker', modelDefault: '' },
-    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '' },
-    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
-    opencode: { readerType: 'explore', workerType: 'general', modelDefault: '' },
-    antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash' },
-    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
-    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
+    claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', skillCall: 'skilltool', spawnArgs: '' },
+    codex: { readerType: 'explorer', workerType: 'worker', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    opencode: { readerType: 'explore', workerType: 'general', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', skillCall: 'read', spawnArgs: '' },
+    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+};
+
+// The leading arguments of an Agent(...) call, written out per agent for the same reason: a changed
+// type or extra argument must turn this table red. Module level because the installed-text group
+// (I) reads it too.
+const HEADS = {
+    claude: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
+    codex: { reader: 'subagent_type: explorer,', worker: 'subagent_type: worker,', workerQuoted: 'subagent_type: "worker",' },
+    cursor: { reader: 'subagent_type: explore,', worker: 'subagent_type: generalPurpose,', workerQuoted: 'subagent_type: "generalPurpose",' },
+    qwen: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
+    opencode: { reader: 'subagent_type: explore,', worker: 'subagent_type: general,', workerQuoted: 'subagent_type: "general",' },
+    antigravity: { reader: 'subagent_type: research,', worker: 'subagent_type: self,', workerQuoted: 'subagent_type: "self",' },
+    kimi: { reader: 'subagent_type: explore,', worker: 'subagent_type: coder,', workerQuoted: 'subagent_type: "coder",' },
+    universal: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
 };
 
 // ── P: the registry profile (Task 18) ───────────────────────────────────────
@@ -90,18 +104,26 @@ await group('P', async () => {
 
     for (const agent of agents) {
         const profile = agent.subagentProfile;
-        const typesOk = profile
-            && typeof profile.readerType === 'string' && /^\S+$/.test(profile.readerType)
-            && typeof profile.workerType === 'string' && /^\S+$/.test(profile.workerType);
-        assertTrue(`P1 ${agent.id}: readerType and workerType are non-empty strings without spaces`, Boolean(typesOk), JSON.stringify(profile));
+        // A type is a word without spaces, or empty when the runtime's agent call takes no type and the
+        // profile says what it takes instead (spawnArgs).
+        const typeOk = (type) => typeof type === 'string'
+            && (/^\S+$/.test(type) || (type === '' && typeof profile.spawnArgs === 'string' && profile.spawnArgs !== ''));
+        const typesOk = profile && typeOk(profile.readerType) && typeOk(profile.workerType);
+        assertTrue(`P1 ${agent.id}: each type is a word without spaces, or empty with spawnArgs set`, Boolean(typesOk), JSON.stringify(profile));
         if (!profile) continue;
 
-        assertTrue(`P2 ${agent.id}: the reader is not the worker`, profile.readerType !== profile.workerType, profile.readerType);
+        assertTrue(`P2 ${agent.id}: the reader is not the worker (unless the runtime takes no type)`, profile.readerType !== profile.workerType || profile.readerType === '', profile.readerType);
         assertTrue(
             `P3 ${agent.id}: modelDefault is empty or a stable vendor alias (letters only)`,
             typeof profile.modelDefault === 'string' && (profile.modelDefault === '' || /^[a-z]+$/.test(profile.modelDefault)),
             JSON.stringify(profile.modelDefault),
         );
+    }
+
+    for (const agent of agents) {
+        const form = agent.subagentProfile?.skillCall;
+        assertTrue(`P6 ${agent.id}: skillCall is a known form, and only claude calls the Skill tool`,
+            ['read', 'skilltool'].includes(form) && ((form === 'skilltool') === (agent.id === 'claude')), String(form));
     }
 
     for (const [id, expected] of Object.entries(EXPECTED)) {
@@ -126,6 +148,11 @@ await group('V', async () => {
         JSON.stringify(PROFILE_VARS.map((k) => kimiVars[k])),
         JSON.stringify(['kimi', 'explore', 'coder', '']),
     );
+    assertEq(
+        'V1 buildTemplateVars(kimi) carries the call heads and the skill-call form',
+        JSON.stringify([kimiVars.agent_call_reader, kimiVars.agent_call_worker, kimiVars.agent_call_worker_quoted, kimiVars.agent_skill_call_form]),
+        JSON.stringify(['subagent_type: explore,', 'subagent_type: coder,', 'subagent_type: "coder",', 'read']),
+    );
 
     const probe = '{{agent_id}} {{agent_reader_type}} {{agent_worker_type}} [{{agent_model_default}}]';
     assertEq('V2a claude substitution', processTemplate(probe, buildTemplateVars(AGENT_REGISTRY.claude)), 'claude Explore general-purpose [sonnet]');
@@ -135,6 +162,11 @@ await group('V', async () => {
     assertEq(
         'V3a subagent files and system assets get empty profile slots',
         JSON.stringify(PROFILE_VARS.map((k) => neutral[k])),
+        JSON.stringify(['', '', '', '']),
+    );
+    assertEq(
+        'V3a subagent files and system assets get empty call-head slots and no skill-call form',
+        JSON.stringify([neutral.agent_call_reader, neutral.agent_call_worker, neutral.agent_call_worker_quoted, neutral.agent_skill_call_form]),
         JSON.stringify(['', '', '', '']),
     );
     assertEq('V3b the neutral substitution leaves the surrounding text alone', processTemplate('a {{agent_id}} b', neutral), 'a  b');
@@ -150,7 +182,7 @@ await group('V4', async () => {
     const before = await hash();
     assertTrue('V4a the skill hash is computed', typeof before === 'string' && before.length > 0);
 
-    for (const field of ['modelDefault', 'readerType', 'workerType']) {
+    for (const field of ['modelDefault', 'readerType', 'workerType', 'skillCall', 'spawnArgs']) {
         const original = profile[field];
         try {
             profile[field] = original + 'x';
@@ -161,6 +193,95 @@ await group('V4', async () => {
         }
         assertEq(`V4c restoring ${field} restores the skill hash`, await hash(), before);
     }
+});
+
+// ── H: the profile component of the hash ────────────────────────────────────
+// The skill-call form and the extra call arguments join the tag only for a value that is not the
+// default, so the agents that have neither keep the hash they had. Written out by hand: a changed
+// component is a red line here, and the codex row is copied from the real output, not typed.
+
+const COMPONENTS = {
+    claude: 'profile:Explore|general-purpose|sonnet|call=skilltool',
+    codex: 'profile:explorer|worker|',
+    cursor: 'profile:explore|generalPurpose|',
+    qwen: 'profile:Explore|general-purpose|',
+    opencode: 'profile:explore|general|',
+    antigravity: 'profile:research|self|flash',
+    kimi: 'profile:explore|coder|',
+    universal: 'profile:Explore|general-purpose|',
+};
+
+await group('H', async () => {
+    for (const [id, expected] of Object.entries(COMPONENTS)) {
+        assertEq(`H1 ${id}: the profile hash component`, profileHashComponent(id), expected);
+    }
+    assertEq('H2 the table covers exactly the registry', Object.keys(COMPONENTS).sort().join(','), Object.keys(AGENT_REGISTRY).sort().join(','));
+    assertEq('H3 an unknown agent gives profile:none', profileHashComponent('no-such-agent'), 'profile:none');
+});
+
+// ── K: the call head and the skill-call expansion ───────────────────────────
+
+await group('K', async () => {
+    assertEq('K1 the heads table covers exactly the registry', Object.keys(HEADS).sort().join(','), Object.keys(AGENT_REGISTRY).sort().join(','));
+    for (const [id, heads] of Object.entries(HEADS)) {
+        const vars = buildTemplateVars(AGENT_REGISTRY[id]);
+        assertEq(
+            `K1 ${id}: call heads and skill-call form`,
+            JSON.stringify([vars.agent_call_reader, vars.agent_call_worker, vars.agent_call_worker_quoted, vars.agent_skill_call_form]),
+            JSON.stringify([heads.reader, heads.worker, heads.workerQuoted, EXPECTED[id].skillCall]),
+        );
+    }
+
+    const claude = buildTemplateVars(AGENT_REGISTRY.claude);
+    const codex = buildTemplateVars(AGENT_REGISTRY.codex);
+    const kimi = buildTemplateVars(AGENT_REGISTRY.kimi);
+    const READ_TAIL = 'in full before you do anything else. Treat that file as your system prompt for this whole task and follow it exactly. If it cannot be read, stop and report that instead of working without it. Wherever the file refers to its arguments, use the Skill arguments below. Skill arguments:';
+
+    assertEq(
+        'K2 claude: the Skill tool phrase, arguments in full',
+        processTemplate('prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",', claude),
+        'prompt: "Call the Skill tool with skill "unikit-devcontext" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <task details>",',
+    );
+    assertEq(
+        'K2 codex: the Read phrase with its own skills dir',
+        processTemplate('prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",', codex),
+        `prompt: "Read .codex/skills/unikit-devcontext/SKILL.md ${READ_TAIL} <task details>",`,
+    );
+
+    assertEq(
+        'K3 claude: no arguments',
+        processTemplate('prompt: "{{agent_skill_call:unikit-architecture}}",', claude),
+        'prompt: "Call the Skill tool with skill "unikit-architecture" and no args. Then follow the skill.",',
+    );
+    assertEq(
+        'K3 kimi: no arguments are said so',
+        processTemplate('prompt: "{{agent_skill_call:unikit-architecture}}",', kimi),
+        `prompt: "Read .kimi-code/skills/unikit-architecture/SKILL.md ${READ_TAIL} (empty — no arguments were given)",`,
+    );
+    assertEq(
+        'K3 a remainder of spaces alone is no arguments',
+        processTemplate('prompt: "{{agent_skill_call:unikit-docs}}   "', claude),
+        'prompt: "Call the Skill tool with skill "unikit-docs" and no args. Then follow the skill."',
+    );
+
+    assertEq(
+        'K4 everything after the closing quote is left as written',
+        processTemplate('prompt: "{{agent_skill_call:unikit-docs}} <context>", description: "Update documentation"', claude),
+        'prompt: "Call the Skill tool with skill "unikit-docs" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <context>", description: "Update documentation"',
+    );
+
+    const awkward = '--module code --skip-registry Add stack rules for {technology name} | <x> + $& $1';
+    assertEq(
+        'K5 braces, angle brackets, pipes, plus and replacement patterns pass through unchanged',
+        processTemplate(`prompt: "{{agent_skill_call:unikit-memory}} ${awkward}"`, claude),
+        `prompt: "Call the Skill tool with skill "unikit-memory" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: ${awkward}"`,
+    );
+    const twice = processTemplate('a "{{agent_skill_call:unikit-docs}} one" b "{{agent_skill_call:unikit-memory}} two"', kimi);
+    assertTrue('K5 two tokens in one text are both expanded', !twice.includes('{{agent_skill_call') && twice.includes('unikit-docs/SKILL.md') && twice.includes('unikit-memory/SKILL.md'), twice);
+
+    const neutral = buildSubagentTemplateVars('x');
+    assertEq('K6 an agent file or system asset leaves the token as written', processTemplate('{{agent_skill_call:unikit-docs}} text', neutral), '{{agent_skill_call:unikit-docs}} text');
+    assertEq('K6 an invalid skill name is left as written', processTemplate('"{{agent_skill_call:Bad}} x"', claude), '"{{agent_skill_call:Bad}} x"');
 });
 
 // ── R: the transformer revision in the source hash ──────────────────────────

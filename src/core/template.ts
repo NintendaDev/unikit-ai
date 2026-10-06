@@ -2,6 +2,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import type { AgentConfig } from './agents.js';
 import { getEngineConfig } from './engines.js';
+import { expandSkillCalls, renderCallHead } from './skill-call.js';
+import type { SkillCallForm } from './constants-skill-call.js';
 
 const DEFAULT_ENGINE_MCP_TOOL = 'EngineMCP';
 
@@ -18,6 +20,11 @@ export interface TemplateVars {
   agent_reader_type: string;
   agent_worker_type: string;
   agent_model_default: string;
+  agent_call_reader: string;
+  agent_call_worker: string;
+  agent_call_worker_quoted: string;
+  /** Internal, not a `{{name}}` of its own: the form `{{agent_skill_call:<skill>}}` expands to; '' leaves the token as written. */
+  agent_skill_call_form: SkillCallForm | '';
 }
 
 export function buildEngineVars(engineId: string, engineMcpKey?: string | null): Pick<TemplateVars, 'engine_name' | 'engine_code_language' | 'engine_mcp_tool'> {
@@ -44,15 +51,21 @@ export function buildTemplateVars(agent: AgentConfig): TemplateVars {
     agent_reader_type: agent.subagentProfile.readerType,
     agent_worker_type: agent.subagentProfile.workerType,
     agent_model_default: agent.subagentProfile.modelDefault,
+    agent_call_reader: renderCallHead(agent.subagentProfile, 'reader', false),
+    agent_call_worker: renderCallHead(agent.subagentProfile, 'worker', false),
+    agent_call_worker_quoted: renderCallHead(agent.subagentProfile, 'worker', true),
+    agent_skill_call_form: agent.subagentProfile.skillCall,
   };
 }
 
 // An unknown `{{name}}` stays in the text as written — which is why a live `{{agent_` outside
 // the skills is guarded against (a subagent file or system asset would ship it unreplaced).
+// `{{agent_skill_call:<skill>}}` is expanded by a second pass, by the form of the agent.
 export function processTemplate(content: string, vars: TemplateVars): string {
-  return content.replace(/\{\{(skills_dir|home_skills_dir|settings_file|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default)\}\}/g, (_, key: string) => {
+  const named = content.replace(/\{\{(skills_dir|home_skills_dir|settings_file|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}/g, (_, key: string) => {
     return vars[key as keyof TemplateVars];
   });
+  return expandSkillCalls(named, vars.agent_skill_call_form, vars.skills_dir);
 }
 
 export async function processSkillTemplates(skillDir: string, agent: AgentConfig, engineId?: string, engineMcpKey?: string | null, selfName?: string): Promise<void> {

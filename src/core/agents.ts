@@ -1,3 +1,27 @@
+import { DEFAULT_SKILL_CALL_FORM, SKILLTOOL_CALL_FORM } from './constants-skill-call.js';
+import type { SkillCallForm } from './constants-skill-call.js';
+
+/**
+ * How skills name the subagents they launch on this runtime. `readerType` is the read-only
+ * agent type (reconnaissance, validation), `workerType` the one that can create files and
+ * is also what the skill-loading aliases launch. `modelDefault` is the model argument passed
+ * when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias
+ * (`sonnet`, `flash`) or empty — empty means pass no model. The values are pointers into
+ * the runtime's own type namespace and age with it: re-check them in a live session.
+ */
+export interface SubagentProfile {
+  /** Read-only agent type (reconnaissance, validation). Empty when the runtime's agent call takes no type (see `spawnArgs`). */
+  readerType: string;
+  /** Agent type that can create files; also what the skill-loading aliases launch. Empty like `readerType`. */
+  workerType: string;
+  /** Model argument used when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias or empty. */
+  modelDefault: string;
+  /** How a subagent is told to load a skill: see `SKILL_CALL_FORMS`. */
+  skillCall: SkillCallForm;
+  /** Extra arguments every agent call carries, written as they stand in the call (each part ends with a comma); empty when none. */
+  spawnArgs: string;
+}
+
 export interface AgentConfig {
   id: string;
   displayName: string;
@@ -8,15 +32,7 @@ export interface AgentConfig {
   supportsMcp: boolean;
   supportsSubagents: boolean;
   skillsCliAgent: string | null;
-  /**
-   * How skills name the subagents they launch on this runtime. `readerType` is the read-only
-   * agent type (reconnaissance, validation), `workerType` the one that can create files and
-   * is also what the skill-loading aliases launch. `modelDefault` is the model argument passed
-   * when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias
-   * (`sonnet`, `flash`) or empty — empty means pass no model. The values are pointers into
-   * the runtime's own type namespace and age with it: re-check them in a live session.
-   */
-  subagentProfile: { readerType: string; workerType: string; modelDefault: string };
+  subagentProfile: SubagentProfile;
 }
 
 export const AGENT_REGISTRY: Record<string, AgentConfig> = {
@@ -30,7 +46,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: true,
     skillsCliAgent: 'claude-code',
-    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet' },
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', skillCall: SKILLTOOL_CALL_FORM, spawnArgs: '' },
   },
   codex: {
     id: 'codex',
@@ -42,7 +58,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'codex',
-    subagentProfile: { readerType: 'explorer', workerType: 'worker', modelDefault: '' },
+    subagentProfile: { readerType: 'explorer', workerType: 'worker', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   cursor: {
     id: 'cursor',
@@ -54,7 +70,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'cursor',
-    subagentProfile: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   qwen: {
     id: 'qwen',
@@ -66,7 +82,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'qwen',
-    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   opencode: {
     id: 'opencode',
@@ -78,7 +94,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'opencode',
-    subagentProfile: { readerType: 'explore', workerType: 'general', modelDefault: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'general', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   antigravity: {
     id: 'antigravity',
@@ -90,7 +106,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'antigravity',
-    subagentProfile: { readerType: 'research', workerType: 'self', modelDefault: 'flash' },
+    subagentProfile: { readerType: 'research', workerType: 'self', modelDefault: 'flash', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   kimi: {
     id: 'kimi',
@@ -102,12 +118,13 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: true,
     skillsCliAgent: 'kimi-code-cli',
-    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   // For runtimes UniKit does not name. Skills go to the shared `.agents/skills` — Antigravity's
   // directory too, which is why the two are never selected together (core/agent-skills-dir.ts) —
   // and MCP to `.mcp.json`, written by the same writer as Claude Code's. The profile reuses
   // Claude's type names and passes no model: the runtime is not known in advance.
+  // It reads the skill file: there is no Skill tool to rely on.
   universal: {
     id: 'universal',
     displayName: 'Universal / Other',
@@ -118,7 +135,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'universal',
-    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
 };
 
