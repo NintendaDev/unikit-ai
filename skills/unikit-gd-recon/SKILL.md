@@ -140,7 +140,7 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
 
-## Subagent Delegation — BLOCKING PRE-REQUISITE
+## Scan delegation
 
 The scan is a **map-reduce**: fan out one read-only investigator per candidate subsystem,
 then reduce their reports into `RECON.md`. Use the `recon-agent` alias — **not**
@@ -158,16 +158,6 @@ recon-agent(prompt:
    (pillars/fantasy/why) — list what you could NOT determine. Be concise: structured facts,
    not file contents.")
 ```
-
-<!-- unikit:agents codex -->
-## Scan delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches the scan step, the assistant MUST automatically spawn the
-investigator subagents if agent execution is supported by the current environment and not
-prohibited by higher-priority instructions. Only if agent execution is unavailable or
-blocked, the assistant MUST tell the user it is falling back to a direct inline scan before
-proceeding.
-<!-- unikit:end -->
 
 **Fallback (inline).** If the `Agent` tool is unavailable, the assistant scans **inline**
 itself with `Glob` / `Grep` / `Read` over the same `code-recon.md` heuristics — slower, same

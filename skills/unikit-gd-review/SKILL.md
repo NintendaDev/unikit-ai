@@ -74,15 +74,6 @@ field values stay English. Do not announce the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches the lens fan-out (`Agent`), the assistant MUST spawn the
-review lenses as parallel subagents if agent execution is supported and not
-prohibited by higher-priority instructions. Only if agent execution is unavailable
-or blocked does the assistant run the lenses sequentially in the main session.
-<!-- unikit:end -->
-
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single

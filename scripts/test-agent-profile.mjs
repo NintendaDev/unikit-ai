@@ -507,7 +507,8 @@ await group('I', async () => {
             assertTrue(`I4 ${agent.id}: the model rule names its own config key`, texts.explore.includes(`subagents.model.${agent.id}`));
             assertTrue(`I4 ${agent.id}: the model rule carries the built-in default "${modelDefault}"`, texts.explore.includes('built-in default `"' + modelDefault + '"`'));
             assertEq(`I6 ${agent.id}: no unresolved {{agent_…}} in any installed .md`, leaked, 0);
-            assertEq(`I7 ${agent.id}: the codex-only block is present for codex alone`, texts.explore.includes('Subagent Delegation — BLOCKING PRE-REQUISITE'), agent.id === 'codex');
+            assertEq(`I7 ${agent.id}: no installed skill carries the retired Subagent Delegation block`, texts.explore.includes('Subagent Delegation — BLOCKING PRE-REQUISITE'), false);
+            assertEq(`I7 ${agent.id}: the gd-review handoff auto-invoke block is present for codex alone`, texts.gdReview.includes('Auto-invoke the handoff — BLOCKING PRE-REQUISITE'), agent.id === 'codex');
         } finally {
             await fs.rm(projectDir, { recursive: true, force: true });
         }

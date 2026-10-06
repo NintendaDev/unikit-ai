@@ -47,17 +47,6 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
-
 ---
 
 ## Delegation agents

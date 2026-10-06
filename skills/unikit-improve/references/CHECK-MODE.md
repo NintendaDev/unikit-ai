@@ -8,9 +8,9 @@ This file describes the optional findings-validation pass that runs when `unikit
 
 `+check` together with `--list` is silently ignored (no refinement to validate).
 
-## Subagent-Delegation carve-out (IMPORTANT)
+## Never ask the user (IMPORTANT)
 
-`+check` is **exempt** from the skill-wide `## Subagent Delegation — BLOCKING PRE-REQUISITE` rule (the `unikit:agents codex` guard block in `SKILL.md`). That rule says the assistant MUST ask the user before falling back to an alternative when agent execution is unavailable. For `+check` this does NOT apply: `+check` is an optional validation pass, so an unavailable or blocked validator agent → **silently skip validation** (keep all items, emit one `WARN [+check]` line — see Failure modes), **NEVER** ask the user. The skip-fallback is the documented behavior; do not prompt.
+`+check` is an optional validation pass: an unavailable or blocked validator agent → **silently skip validation** (keep all items, emit one `WARN [+check]` line — see Failure modes), **NEVER** ask the user. The skip-fallback is the documented behavior; do not prompt.
 
 ## Validated groups
 

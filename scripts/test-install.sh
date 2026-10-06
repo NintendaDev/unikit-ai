@@ -405,11 +405,10 @@ else
   exit 1
 fi
 
-# Codex keeps the guarded 'Subagent Delegation' block (include-list contains
-# `codex`); the generic no-leak sweep across all agents runs at the end of
-# this script (see "agent-filter markers must not leak into any install").
-assert_contains "$CODEX_DIR/.codex/skills/unikit/SKILL.md" \
-  "Subagent Delegation" "codex install: guarded 'Subagent Delegation' block must be kept for codex"
+# No agent keeps a 'Subagent Delegation' block any more: Codex starts subagents on its own
+# (probes of 2026-10-06), and the generic no-leak sweep across all agents runs at the end of this script.
+assert_not_contains "$CODEX_DIR/.codex/skills/unikit/SKILL.md" \
+  "Subagent Delegation" "codex install: no 'Subagent Delegation' block (Codex needs none)"
 
 # Reference .md files must ALSO have their invocations rewritten (T3): the
 # installer runs transformReference over references/*.md, not just SKILL.md.
@@ -1277,10 +1276,10 @@ run_update "$MCP_DIR"
 # Note: MCP config is written during init, not update. Just verify skills installed.
 assert_exists "$MCP_DIR/.claude/skills/unikit/SKILL.md" "claude skill should be installed"
 
-# Claude must cut the codex-only guarded block (exclude path); the generic
-# no-leak sweep for markers runs at the end of this script.
+# No agent carries the retired 'Subagent Delegation' block; the generic no-leak sweep for markers
+# runs at the end of this script.
 assert_not_contains "$MCP_DIR/.claude/skills/unikit/SKILL.md" \
-  "Subagent Delegation" "claude install: codex-only 'Subagent Delegation' block must be cut"
+  "Subagent Delegation" "claude install: no 'Subagent Delegation' block"
 
 # Subagent files should be installed for claude (supportsSubagents: true)
 assert_exists "$MCP_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"

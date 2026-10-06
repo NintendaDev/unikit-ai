@@ -4,9 +4,9 @@ This file describes the optional findings-validation pass that runs when `unikit
 
 The four severity levels — 🔴 **Critical** / 🟡 **Warning** / 🟠 **Medium** / 🟢 **Suggestion** — and the rules for moving an item between them are defined **inline in `SKILL.md` Step 4 (Severity scale)** and in the validator prompt (`references/VALIDATOR.md`), which carries the same 4-level rubric. `unikit-review` has no separate `SEVERITY.md`; do not invent one.
 
-## Subagent-Delegation carve-out (IMPORTANT)
+## Never ask the user (IMPORTANT)
 
-`+check` is **exempt** from the `## Subagent Delegation — BLOCKING PRE-REQUISITE` rule (the `unikit:agents codex` guard block in `SKILL.md`). That rule says the assistant MUST ask the user before falling back to an alternative when agent execution is unavailable. For `+check` this does NOT apply: `+check` is an optional validation pass, so an unavailable or blocked validator agent → **render the review as drafted** (keep all findings, emit one `WARN [+check]` line — see Failure modes), **NEVER** ask the user.
+`+check` is an optional validation pass: an unavailable or blocked validator agent → **render the review as drafted** (keep all findings, emit one `WARN [+check]` line — see Failure modes), **NEVER** ask the user.
 
 ## When to run
 

@@ -3854,14 +3854,14 @@ else
     fail "shared gate-result degradation wording missing/drifted:$CK_DEGRADE_WHY"
 fi
 
-# (CK-6) unikit-review +check-enabling frontmatter intact — TWO asserts. Without either,
-#        review's +check validator is DEAD ON ARRIVAL, and the suite has no other
-#        allowed-tools CONTENT guard (Part 7b checks list FORMAT only, not tool names).
+# (CK-6) unikit-review +check-enabling frontmatter intact. Without `Agent` in allowed-tools review's +check
+#        validator is DEAD ON ARRIVAL, and the suite has no other allowed-tools CONTENT guard (Part 7b checks
+#        list FORMAT only, not tool names). (The Subagent Delegation marker used to be the second assert;
+#        the block is gone — CB-1/CB-2.)
 CK_RV_FM_WHY=""
 grep -qE '^  - Agent$' "$UNIKIT_REVIEW_SKILL"                  || CK_RV_FM_WHY+=" allowed-tools:Agent"
-grep -qF '<!-- unikit:agents codex -->' "$UNIKIT_REVIEW_SKILL" || CK_RV_FM_WHY+=" subagent-delegation-marker"
 if [[ -z "$CK_RV_FM_WHY" ]]; then
-    pass "unikit-review — Agent in allowed-tools + Subagent Delegation marker (Task 2.4d)"
+    pass "unikit-review — Agent in allowed-tools (Task 2.4d)"
 else
     fail "unikit-review +check frontmatter DEAD ON ARRIVAL — missing:$CK_RV_FM_WHY"
 fi
@@ -10070,10 +10070,8 @@ fi
 # leaks to every agent) or an inline landmine that would throw if the filter is
 # ever enabled for references. SKILL.md is the ONLY surface with agent-filter.
 # Match the fragment form `<!-- unikit:agents` / `<!-- unikit:end` exactly as
-# agent-filter detects it (START_FRAGMENT / END_FRAGMENT in agent-filter.ts) —
-# NOT the bare `unikit:agents` token, which would also match prose and the
-# non-literal `unikit:agents codex guard block` wording in the CHECK-MODE.md
-# files.
+# agent-filter detects it (START_FRAGMENT / END_FRAGMENT in agent-filter.ts), not
+# the bare `unikit:agents` token, which would also match prose.
 echo -e "\n${BOLD}Part 7g2: agent-filter markers only in SKILL.md${NC}"
 
 MARKER_LEAK_FILES=$(grep -rlE '<!-- unikit:agents|<!-- unikit:end' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null \
@@ -10570,6 +10568,55 @@ if [[ -z "$QW_WHY" ]]; then
     pass "QW-1…QW-3 Qwen Code: default-based transformer, no revision entry, no retired invocation form in any source or document"
 else
     fail "QW-1…QW-3 the Qwen invocation rewrite is back:$QW_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g9: CB-1…CB-4 — no Codex-only blocks for launching a subagent
+# ─────────────────────────────────────────────
+# Codex starts a subagent from a skill step on its own (probes of 2026-10-06: 10 of 10 launches, with and
+# without a block) and turns `Agent(...)` into its own `spawn_agent`. The "BLOCKING PRE-REQUISITE" blocks
+# that told it to spawn, or to ask the user when it could not, are gone — every alias carries its own
+# fallback. Two Codex blocks remain on purpose: the auto-invoke of the /unikit-gd-apply handoff in gd-review
+# and gd-verify (a deliberate Codex behaviour, not an insurance). Four guards, each over its own object.
+echo -e "\n${BOLD}Part 7g9: no Codex delegation blocks (CB-1…CB-4)${NC}"
+CB_WHY=""
+CB_SKILLS="$ROOT_DIR/skills"
+CB_AGENTS="$ROOT_DIR/subagents"
+
+# (CB-1) the three retired heading texts, in every skill, reference and agent file
+for cb_lit in 'Subagent Delegation — BLOCKING PRE-REQUISITE' 'Scan delegation — BLOCKING PRE-REQUISITE' 'Dispatch — BLOCKING PRE-REQUISITE'; do
+    cb_n=$( { grep -rlF --include='*.md' -e "$cb_lit" "$CB_SKILLS" "$CB_AGENTS" 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$cb_n" -eq 0 ]] || CB_WHY+=" CB-1:retired-heading(${cb_lit%% —*} x$cb_n)"
+done
+
+# (CB-2) an agent-filter marker is allowed only in front of the handoff block; counted, a floor of one
+CB_MARKERS=0
+for cb_f in "$CB_SKILLS"/*/SKILL.md "$CB_AGENTS"/*.md; do
+    cb_m=$( { grep -cF '<!-- unikit:agents' "$cb_f" || true; } )
+    cb_ok=$(awk '/<!-- unikit:agents codex -->/ { getline nxt; if (nxt ~ /^### Auto-invoke the handoff — BLOCKING PRE-REQUISITE$/) n++ } END { print n + 0 }' "$cb_f")
+    CB_MARKERS=$((CB_MARKERS + ${cb_m:-0}))
+    [[ "${cb_m:-0}" -eq "${cb_ok:-0}" ]] || CB_WHY+=" CB-2:marker-not-before-handoff:${cb_f#"$ROOT_DIR"/}"
+done
+[[ "$CB_MARKERS" -gt 0 ]] || CB_WHY+=" CB-2:no-handoff-block"
+
+# (CB-3) no text tells a model to start a subagent "automatically" or to ask the user when it cannot
+for cb_lit in 'the assistant MUST automatically spawn' 'MUST ask the user before proceeding with any' 'the assistant MUST spawn the' 'the assistant MUST **automatically invoke**'; do
+    cb_n=$( { grep -rlF --include='*.md' -e "$cb_lit" "$CB_SKILLS" "$CB_AGENTS" 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$cb_n" -eq 0 ]] || CB_WHY+=" CB-3:ask-the-user-wording(${cb_lit:0:32} x$cb_n)"
+done
+
+# (CB-4) the +check doctrine outlived the rule it used to be an exception to: never ask, skip silently
+for cb_f in "$CB_SKILLS/unikit-review/references/CHECK-MODE.md" "$CB_SKILLS/unikit-improve/references/CHECK-MODE.md"; do
+    grep -qF -- '**NEVER** ask the user' "$cb_f" 2>/dev/null || CB_WHY+=" CB-4:no-never-ask:${cb_f#"$ROOT_DIR"/}"
+done
+for cb_f in "$CB_SKILLS/unikit-review/SKILL.md" "$CB_SKILLS/unikit-improve/SKILL.md"; do
+    grep -qF -- 'the user is never asked' "$cb_f" 2>/dev/null || CB_WHY+=" CB-4:no-silent-skip:${cb_f#"$ROOT_DIR"/}"
+done
+
+if [[ -z "$CB_WHY" ]]; then
+    pass "CB-1…CB-4 Codex delegation blocks gone ($CB_MARKERS handoff marker(s) left), no ask-the-user wording, +check never asks"
+else
+    fail "CB-1…CB-4 Codex delegation blocks or the +check doctrine weakened:$CB_WHY"
 fi
 
 # ─────────────────────────────────────────────

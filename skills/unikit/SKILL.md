@@ -44,18 +44,6 @@ context that other unikit skills (`unikit-devcontext`, `unikit-plan`, `unikit-im
 rely on for informed decision-making, including the canonical `.unikit/config.yaml` they all
 read at the start of every command.
 
-<!-- unikit:agents codex -->
----
-
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
 ---
 
 ## Execution Contract
