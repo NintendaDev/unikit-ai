@@ -16,8 +16,10 @@ const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 const { AGENT_REGISTRY } = await import(dist('core/agents.js'));
 const { buildTemplateVars, processTemplate } = await import(dist('core/template.js'));
 const { buildSubagentTemplateVars } = await import(dist('core/installer/shared.js'));
-const { computeSourceHashWithTemplate } = await import(dist('core/installer/hashing.js'));
+const { computeSourceHashWithTemplate, computeSubagentSourceHash, transformRevisionComponent } = await import(dist('core/installer/hashing.js'));
 const { installSkills } = await import(dist('core/installer/skills.js'));
+const { getTransformer } = await import(dist('core/transformer.js'));
+const { TRANSFORM_REVISIONS } = await import(dist('core/constants.js'));
 
 let passed = 0;
 let failed = 0;
@@ -156,6 +158,67 @@ await group('V4', async () => {
         }
         assertEq(`V4c restoring ${field} restores the skill hash`, await hash(), before);
     }
+});
+
+// ── R: the transformer revision in the source hash ──────────────────────────
+// The hash holds the package text, not the transformer's logic. TRANSFORM_REVISIONS is the only way
+// a changed regex or adapter reaches an installed project through a plain `update`.
+
+await group('R', async () => {
+    const ids = Object.keys(AGENT_REGISTRY);
+    const rewriters = ids.filter((id) => {
+        const t = getTransformer(id);
+        return typeof t.transformReference === 'function' || typeof t.transformSubagent === 'function';
+    });
+    assertTrue('R1 at least one transformer rewrites text (the check below is not vacuous)', rewriters.length > 0);
+    assertEq(
+        'R1 a revision exists exactly for the agents whose transformer defines transformReference or transformSubagent',
+        JSON.stringify(Object.keys(TRANSFORM_REVISIONS).sort()),
+        JSON.stringify([...rewriters].sort()),
+    );
+    assertTrue('R1 every revision is a non-empty string', Object.values(TRANSFORM_REVISIONS).every((rev) => typeof rev === 'string' && rev !== ''));
+
+    for (const id of ids) {
+        const component = transformRevisionComponent(id);
+        if (rewriters.includes(id)) {
+            assertEq(`R2 ${id}: the component is transform:<revision>`, component, `transform:${TRANSFORM_REVISIONS[id]}`);
+        } else {
+            assertEq(`R2 ${id}: no component for a transformer that rewrites nothing`, component, '');
+        }
+    }
+
+    const skillDir = path.join(ROOT, 'skills', 'unikit-help');
+    const subagent = path.join(ROOT, 'subagents', 'unikit-implement-worker.md');
+    const skillHash = (agent) => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', agent, null, {});
+    const subagentHash = (agent) => computeSubagentSourceHash(subagent, 'unity', agent, null, {});
+
+    // Raising a revision changes both hashes of that agent and restoring it restores them (the V4 shape).
+    for (const id of rewriters) {
+        const [skillBefore, subagentBefore] = [await skillHash(id), await subagentHash(id)];
+        const original = TRANSFORM_REVISIONS[id];
+        try {
+            TRANSFORM_REVISIONS[id] = `${original}+`;
+            assertTrue(`R3 raising the ${id} revision changes the skill hash`, (await skillHash(id)) !== skillBefore);
+            assertTrue(`R3 raising the ${id} revision changes the subagent hash`, (await subagentHash(id)) !== subagentBefore);
+        } finally {
+            TRANSFORM_REVISIONS[id] = original;
+        }
+        assertEq(`R3 restoring the ${id} revision restores the skill hash`, await skillHash(id), skillBefore);
+        assertEq(`R3 restoring the ${id} revision restores the subagent hash`, await subagentHash(id), subagentBefore);
+    }
+
+    // An agent absent from the table contributes nothing: giving it an entry is the only thing that
+    // moves its hash, so adding the table moved no hash of the agents outside it.
+    const outsider = ids.find((id) => !rewriters.includes(id));
+    assertTrue('R4 some agent has no revision', outsider !== undefined);
+    const outsiderBefore = await skillHash(outsider);
+    try {
+        TRANSFORM_REVISIONS[outsider] = '1';
+        assertTrue(`R4 an entry for ${outsider} would change its hash (the component is wired in)`, (await skillHash(outsider)) !== outsiderBefore);
+    } finally {
+        delete TRANSFORM_REVISIONS[outsider];
+    }
+    assertEq(`R4 without the entry the ${outsider} hash is what it was`, await skillHash(outsider), outsiderBefore);
 });
 
 // ── C: the config template against the registry (Task 26) ───────────────────

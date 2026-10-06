@@ -14,7 +14,9 @@ import { getAgentConfig } from '../agents.js';
 import { getEngineConfig } from '../engines.js';
 import { getTransformer } from '../transformer.js';
 import { logInfo } from '../../utils/log.js';
-import { PROFILE_HASH_TAG, REFERENCES_DIR_NAME, SKILL_FILE } from '../constants.js';
+import {
+  PROFILE_HASH_TAG, REFERENCES_DIR_NAME, SKILL_FILE, TRANSFORM_HASH_TAG, TRANSFORM_REVISIONS,
+} from '../constants.js';
 import { stripMdExtension } from './shared.js';
 
 export interface ResolvedSkillPaths {
@@ -177,6 +179,16 @@ function profileHashComponent(agentId: string): string {
   }
 }
 
+/**
+ * The agent's transformer revision as a hash component, or an empty string for an agent whose
+ * transformer rewrites nothing. Callers add the component only when it is non-empty, so the
+ * hashes of those agents stay exactly what they were. See `TRANSFORM_REVISIONS`.
+ */
+export function transformRevisionComponent(agentId: string): string {
+  const revision = TRANSFORM_REVISIONS[agentId];
+  return revision === undefined ? '' : `${TRANSFORM_HASH_TAG}:${revision}`;
+}
+
 export async function computeSourceHashWithTemplate(
   sourceSkillDir: string,
   engineId: string,
@@ -194,12 +206,16 @@ export async function computeSourceHashWithTemplate(
   const combined = createHash('sha256');
   const mcpComponent = mcpHashComponent(engineMcpKey, mcpServers);
   const profileComponent = profileHashComponent(agentId);
+  const transformComponent = transformRevisionComponent(agentId);
   combined.update(baseHash);
   combined.update(`engine:${engineId}`);
   combined.update(`agent:${agentId}`);
   combined.update(profileComponent);
   combined.update(mcpComponent);
-  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} ${profileComponent} ${mcpComponent} skill=${skillName}`);
+  // Before any early return below: most skills have no engine template, so a component added after
+  // them would never reach the hash. Empty for an agent whose transformer rewrites nothing.
+  if (transformComponent !== '') combined.update(transformComponent);
+  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} ${profileComponent} ${mcpComponent} ${transformComponent || `${TRANSFORM_HASH_TAG}:none`} skill=${skillName}`);
 
   let engineConfig;
   try {
@@ -232,11 +248,13 @@ export async function computeSubagentSourceHash(
 
   const combined = createHash('sha256');
   const mcpComponent = mcpHashComponent(engineMcpKey, mcpServers);
+  const transformComponent = transformRevisionComponent(agentId);
   combined.update(fileHash);
   combined.update(`engine:${engineId}`);
   combined.update(`agent:${agentId}`);
   combined.update(mcpComponent);
-  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} ${mcpComponent} subagent=${stripMdExtension(path.basename(sourcePath))}`);
+  if (transformComponent !== '') combined.update(transformComponent);
+  logInfo('installer', `[hash] agent=${agentId} engine=${engineId} ${mcpComponent} ${transformComponent || `${TRANSFORM_HASH_TAG}:none`} subagent=${stripMdExtension(path.basename(sourcePath))}`);
 
   return combined.digest('hex');
 }
