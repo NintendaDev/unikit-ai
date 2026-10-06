@@ -769,8 +769,10 @@ assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "coder"
 # The delegation names the skill FILE by its installed path: the `skills:` key of an Agent call
 # delivers nothing on Kimi (live check 2026-10-06), so the subagent reads the file itself.
 assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" \
-  'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md and follow it as your instructions throughout this task' \
+  'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
   "kimi: develop-agent reads the devcontext skill file from .kimi-code/skills"
+assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" 'follow it as your instructions throughout this task' \
+  "kimi: the retired delegation phrase is gone"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '^[[:space:]]*skills:[[:space:]]*\[' \
   "kimi: no skills: [...] key left in a delegation call"
 assert_contains "$KIMI_SKILLS/unikit-gd-explore/references/delegation-contract.md" 'subagent_type: "coder"' \
@@ -931,7 +933,7 @@ assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_
 assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "general-purpose"' \
   "universal: the worker type is the Claude literal"
 assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" \
-  'Read \.agents/skills/unikit-devcontext/SKILL\.md and follow it as your instructions throughout this task' \
+  'Read \.agents/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
   "universal: develop-agent reads the devcontext skill file from the shared .agents/skills"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "(self|coder|worker|generalPurpose|general)"' \
   "universal: no other agent's worker type"

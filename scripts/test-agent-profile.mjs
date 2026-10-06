@@ -391,6 +391,13 @@ const DAMAGED_FORMS = [
 ];
 const countOf = (text, needle) => text.split(needle).length - 1;
 
+// The two forms of a skill call, written out by hand and equal to the constants module to the character:
+// a difference is a red test, never a reason to edit the test to match the code.
+const skillToolCall = (skill, text) => `Call the Skill tool with skill "${skill}" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: ${text}`;
+const skillToolNoArgs = (skill) => `Call the Skill tool with skill "${skill}" and no args. Then follow the skill.`;
+const readCall = (dir, skill, text) => `Read ${dir}/${skill}/SKILL.md in full before you do anything else. Treat that file as your system prompt for this whole task and follow it exactly. If it cannot be read, stop and report that instead of working without it. Wherever the file refers to its arguments, use the Skill arguments below. Skill arguments: ${text}`;
+const FRAME = '<commercial frame incl. target platform + budget/team + shortlist>. scan_mode: <quick|standard|default standard>. Validate cross-market per the platform rule. Return the brief into this session as text; do not save any files.';
+
 await group('I', async () => {
     const agents = Object.values(AGENT_REGISTRY);
     const installed = {};
@@ -432,15 +439,26 @@ await group('I', async () => {
             assertEq(`I3 ${agent.id}: develop-agent and docs-agent name the worker type`, countOf(texts.implement, `subagent_type: "${worker}",`), 2);
             assertTrue(`I3 ${agent.id}: a reference file carries the worker type too`, texts.contract.includes(`subagent_type: "${worker}",`));
 
-            // I8: the call names the skill FILE by this agent's own installed path — the dead `skills:` key
-            // is gone and a path variable that survived to the install would show as the wrong prefix.
-            const reads = (skill) => `Read ${agent.skillsDir}/${skill}/SKILL.md and follow it as your instructions throughout this task`;
-            assertTrue(`I8 ${agent.id}: develop-agent reads the devcontext skill file from ${agent.skillsDir}`, texts.implement.includes(reads('unikit-devcontext')));
-            assertTrue(`I8 ${agent.id}: docs-agent reads the docs skill file`, texts.implement.includes(reads('unikit-docs')));
-            assertTrue(`I8 ${agent.id}: the brainstorm delegation reads the explore skill file`, texts.brainstorm.includes(reads('unikit-gd-explore')));
-            assertTrue(`I8 ${agent.id}: its mirror in the delegation contract reads it too`, texts.contract.includes(reads('unikit-gd-explore')));
-            assertTrue(`I8 ${agent.id}: /unikit step 9.8 reads the memory skill file`, texts.unikit.includes(reads('unikit-memory')));
-            assertTrue(`I8 ${agent.id}: /unikit step 10 reads the architecture skill file`, texts.unikit.includes(reads('unikit-architecture')));
+            // I8: the call is the profile's form — a Skill-tool call, or a read of the skill file by this
+            // agent's own installed path. The dead `skills:` key is gone, and a path variable that survived
+            // to the install would show as the wrong prefix.
+            const viaTool = agent.subagentProfile.skillCall === 'skilltool';
+            const call = (skill, text) => (viaTool ? skillToolCall(skill, text) : readCall(agent.skillsDir, skill, text));
+            assertTrue(`I8 ${agent.id}: develop-agent calls the devcontext skill`, texts.implement.includes(call('unikit-devcontext', '<task details>')));
+            assertTrue(`I8 ${agent.id}: docs-agent calls the docs skill`, texts.implement.includes(call('unikit-docs', '<context>')));
+            assertTrue(`I8 ${agent.id}: the brainstorm delegation calls the explore skill`, texts.brainstorm.includes(call('unikit-gd-explore', FRAME)));
+            assertTrue(`I8 ${agent.id}: its mirror in the delegation contract calls it the same way`, texts.contract.includes(call('unikit-gd-explore', FRAME)));
+            assertTrue(`I8 ${agent.id}: step 9.8 calls the memory skill with both flags`, texts.unikit.includes(call('unikit-memory', '--module code --skip-registry Add stack rules for {technology name}')));
+            assertTrue(
+                `I8 ${agent.id}: step 10 calls the architecture skill with no arguments`,
+                texts.unikit.includes(viaTool ? skillToolNoArgs('unikit-architecture') : readCall(agent.skillsDir, 'unikit-architecture', '(empty — no arguments were given)')),
+            );
+            assertTrue(
+                `I8 ${agent.id}: the other form is absent from the call sites`,
+                viaTool
+                    ? !texts.implement.includes(`Read ${agent.skillsDir}/unikit-devcontext/SKILL.md in full before you do anything else`)
+                    : !texts.implement.includes('Call the Skill tool with skill'),
+            );
 
             // I9: nothing damaged anywhere in the installed set (the scan is non-empty by construction)
             assertTrue(`I9 ${agent.id}: the installed set was scanned`, scanned > 0);

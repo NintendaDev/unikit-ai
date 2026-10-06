@@ -84,7 +84,7 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   ```
   Agent(
     subagent_type: "{{agent_worker_type}}",
-    prompt: "Read {{skills_dir}}/unikit-devcontext/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: <fix details>",
+    prompt: "{{agent_skill_call:unikit-devcontext}} <fix details>",
     description: "Apply fix"
   )
   ```

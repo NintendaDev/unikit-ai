@@ -68,7 +68,7 @@ alternative.
   ```
   Agent(
     subagent_type: "{{agent_worker_type}}",
-    prompt: "Read {{skills_dir}}/unikit-devcontext/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: <task details>",
+    prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",
     description: "Implement <task>"
   )
   ```
@@ -80,7 +80,7 @@ alternative.
   ```
   Agent(
     subagent_type: "{{agent_worker_type}}",
-    prompt: "Read {{skills_dir}}/unikit-docs/SKILL.md and follow it as your instructions throughout this task; if it cannot be read, stop and report that instead of working without it. Skill arguments: <context>",
+    prompt: "{{agent_skill_call:unikit-docs}} <context>",
     description: "Update documentation"
   )
   ```
@@ -363,7 +363,7 @@ This skill writes sequential tasks itself, with `Read/Edit/Write/Bash` and the r
 
 Choose execution mode:
 - **Sequential within phase** (default for tasks that depend on each other or share files) → inline implementation. The skill writes code itself.
-- **Independent across phases** (per the manifest's `## Dependency Graph`, e.g. Phase 3 and Phase 4 can run in parallel) → spawn `develop-agent` (Agent + the `unikit-devcontext` skill file) per independent scope. Use ONLY for true parallelism.
+- **Independent across phases** (per the manifest's `## Dependency Graph`, e.g. Phase 3 and Phase 4 can run in parallel) → spawn `develop-agent` (Agent + the `unikit-devcontext` skill) per independent scope. Use ONLY for true parallelism.
 - **Deep-dive single task** (requires extensive codebase exploration that would bloat parent context) → spawn `develop-agent` to isolate the exploration.
 
 When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, the principles from `dev-principles.md`, the task description from the manifest's `## Checklist`, and the technical context from its `## Technical Context`.

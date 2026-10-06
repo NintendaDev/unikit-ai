@@ -2253,12 +2253,12 @@ if cmp -s "$AK_AG_SKILL" "$AK_KIMI_SKILL"; then
 fi
 assert_contains "$AK_KIMI_SKILL" '\.kimi-code/mcp\.json' "kimi copy: {{settings_file}} is .kimi-code/mcp.json"
 assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
-assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md and follow it' \
+assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full' \
     "kimi copy: develop-agent reads its skill file from .kimi-code/skills"
 assert_contains "$AK_AG_SKILL" '\.agents/mcp_config\.json' "antigravity copy: {{settings_file}} is .agents/mcp_config.json"
 assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
 assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
-assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md and follow it' \
+assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' \
     "antigravity copy: develop-agent reads its skill file from the shared .agents/skills"
 assert_not_contains "$AK_AG_SKILL" '\.kimi-code/skills' "antigravity copy: no Kimi skills path"
 assert_not_contains "$AK_KIMI_SKILL" '\.agents/skills/unikit-devcontext' "kimi copy: no Antigravity skills path"
@@ -2413,6 +2413,10 @@ if cmp -s "$UC_CLAUDE_SKILL" "$UC_UNI_SKILL"; then
 fi
 assert_contains "$UC_CLAUDE_SKILL" 'subagent_type: "general-purpose"' "claude copy: the Claude worker type"
 assert_contains "$UC_UNI_SKILL" 'subagent_type: "general-purpose"' "universal copy: the same Claude worker type"
+assert_contains "$UC_CLAUDE_SKILL" 'Call the Skill tool with skill "unikit-devcontext" and pass the text after the colon' "claude copy: develop-agent calls the Skill tool"
+assert_not_contains "$UC_CLAUDE_SKILL" 'Read \.claude/skills/unikit-devcontext/SKILL\.md in full' "claude copy: no file-read form"
+assert_contains "$UC_UNI_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' "universal copy: develop-agent reads the skill file"
+assert_not_contains "$UC_UNI_SKILL" 'Call the Skill tool with skill' "universal copy: no Skill-tool form"
 assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the model rule)"
 assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the model rule)"
 assert_contains "$UC_CLAUDE_PLAN" 'subagents\.model\.claude' "claude copy: its own config key"
