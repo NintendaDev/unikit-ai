@@ -50,7 +50,10 @@ export function replaceFrontmatterName(content: string, newName: string): string
   return content.replace(/^name:\s*.+$/m, `name: ${newName}`);
 }
 
-const INVOCATION_PATTERN = /(^|[^A-Za-z0-9_-])\/(unikit(?:-[a-z0-9-]+)?)/g;
+// `}` is part of the left boundary: the rewrite runs before `processTemplate`, so a path
+// such as `{{skills_dir}}/unikit-fix/…` still carries the closing braces of its variable
+// and its `/unikit-fix` is a path segment, not an invocation.
+const INVOCATION_PATTERN = /(^|[^A-Za-z0-9_}-])\/(unikit(?:-[a-z0-9-]+)?)/g;
 
 export function rewriteInvocationPrefix(
   content: string,

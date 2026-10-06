@@ -446,6 +446,23 @@ else
   exit 1
 fi
 
+# A `{{skills_dir}}/unikit-…` path is a file path, not an invocation: the rewrite runs
+# before the variable is substituted, so only the closing `}` keeps it out of the match.
+# The damaged form is `.codex/skills$unikit-…`; the positive anchor is the path that
+# unikit-fix names in its test-run line.
+CODEX_PATH_DAMAGE=$(grep -rE 'skills\$unikit-' "$CODEX_DIR/.codex/skills/" --include='*.md' 2>/dev/null \
+  | wc -l | tr -d ' ' || true)
+if [[ "$CODEX_PATH_DAMAGE" -ne 0 ]]; then
+  echo "Assertion failed: codex install: a skills path was rewritten as an invocation"
+  echo "  Damaged paths (skills\$unikit-): $CODEX_PATH_DAMAGE (expected 0)"
+  grep -rE 'skills\$unikit-' "$CODEX_DIR/.codex/skills/" --include='*.md' | head -5
+  exit 1
+fi
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" \
+  '\.codex/skills/unikit-implement/references/test-runs\.md' \
+  "codex install: the skills path in unikit-fix must reach the installed file intact"
+echo "  ✓ codex install: {{skills_dir}}/unikit-… paths survive the invocation rewrite"
+
 # ─────────────────────────────────────────────────────
 # Test 3b: Qwen invocation rewrite
 # ─────────────────────────────────────────────────────
@@ -542,6 +559,22 @@ else
   fi
   exit 1
 fi
+
+# Same path guard as Test 3 for qwen. The damaged form is `.qwen/skills/skills unikit-…`;
+# the bare `skills unikit-` is NOT banned — it is the legitimate rewrite `/skills unikit-plan`
+# (counted above), so the ban is on the doubled `skills/skills unikit-` only.
+QWEN_PATH_DAMAGE=$(grep -rE 'skills/skills unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' 2>/dev/null \
+  | wc -l | tr -d ' ' || true)
+if [[ "$QWEN_PATH_DAMAGE" -ne 0 ]]; then
+  echo "Assertion failed: qwen install: a skills path was rewritten as an invocation"
+  echo "  Damaged paths (skills/skills unikit-): $QWEN_PATH_DAMAGE (expected 0)"
+  grep -rE 'skills/skills unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' | head -5
+  exit 1
+fi
+assert_contains "$QWEN_DIR/.qwen/skills/unikit-fix/SKILL.md" \
+  '\.qwen/skills/unikit-implement/references/test-runs\.md' \
+  "qwen install: the skills path in unikit-fix must reach the installed file intact"
+echo "  ✓ qwen install: {{skills_dir}}/unikit-… paths survive the invocation rewrite"
 
 # ─────────────────────────────────────────────────────
 # Test 3c: Antigravity (skills-only — no subagents, local MCP config, postInstall rules)
