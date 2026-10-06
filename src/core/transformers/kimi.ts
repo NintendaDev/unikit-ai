@@ -1,5 +1,6 @@
 import type { AgentTransformer, TransformResult } from '../transformer.js';
-import { logInfo } from '../../utils/log.js';
+import { AGENT_REGISTRY } from '../agents.js';
+import { logInfo, logWarn } from '../../utils/log.js';
 import { toKimiAgentFile } from './kimi-agent-file.js';
 
 /**
@@ -8,7 +9,8 @@ import { toKimiAgentFile } from './kimi-agent-file.js';
  * other agent: the subagent types it names (`explore`, `coder`) are substituted by the
  * installer from `AGENT_REGISTRY.kimi.subagentProfile`. What this adapter changes are the
  * subagent files themselves (`Agent(...)` entry, `subagents:` list, launch command,
- * `${base_prompt}` for the coordinators). See RESEARCH.md F-6, F-9.
+ * `${base_prompt}` for the coordinators, the `skills:` field turned into a read list). See
+ * RESEARCH.md F-6, F-9.
  */
 export class KimiTransformer implements AgentTransformer {
   transform(skillName: string, content: string): TransformResult {
@@ -16,9 +18,17 @@ export class KimiTransformer implements AgentTransformer {
   }
 
   transformSubagent(subagentName: string, content: string): string {
-    const adapted = toKimiAgentFile(content);
+    // An object, not a `let`: TypeScript does not see a closure's assignment and would narrow it to `null`.
+    const skills: { paths: readonly string[] | null } = { paths: null };
+    const adapted = toKimiAgentFile(content, AGENT_REGISTRY.kimi.skillsDir, paths => { skills.paths = paths; });
+    if (skills.paths !== null && skills.paths.length === 0) {
+      logWarn('kimi', `${subagentName}: the skills: field named no skills — field removed, no read list written`);
+    }
     if (adapted !== content) {
-      logInfo('kimi', `${subagentName}: agent file adapted for Kimi Code`);
+      const readList = skills.paths !== null && skills.paths.length > 0
+        ? `; skills: → read list (${skills.paths.length} paths)`
+        : '';
+      logInfo('kimi', `${subagentName}: agent file adapted for Kimi Code${readList}`);
     }
     return adapted;
   }

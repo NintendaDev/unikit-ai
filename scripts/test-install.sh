@@ -669,7 +669,8 @@ fi
 # reference that names /unikit-implement), unikit-implement (general-purpose → coder,
 # {{settings_file}}), unikit-fix, unikit-verify (the tree-hash tail), unikit-gd-explore (a
 # REFERENCE that spells the subagent type), unikit-gd-review (a !claude block), unikit-gd-brainstorm.
-# The four subagents are the two coordinators (rewritten) and a worker + sidecar (untouched).
+# The five subagents are the two coordinators (rewritten), the polisher and the worker (their
+# `skills:` field becomes a read list) and a sidecar (untouched).
 
 KIMI_DIR="$TMPDIR/test-kimi"
 mkdir -p "$KIMI_DIR"
@@ -686,7 +687,7 @@ cat > "$KIMI_DIR/.unikit.json" << 'EOF'
       "skillsDir": ".kimi-code/skills",
       "subagentsDir": ".kimi-code/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-fix", "unikit-verify", "unikit-gd-brainstorm", "unikit-gd-review", "unikit-gd-explore"],
-      "installedSubagents": ["unikit-implement-coordinator", "unikit-plan-coordinator", "unikit-implement-worker", "unikit-review-sidecar"]
+      "installedSubagents": ["unikit-implement-coordinator", "unikit-plan-coordinator", "unikit-plan-polisher", "unikit-implement-worker", "unikit-review-sidecar"]
     }
   ],
   "rules": {
@@ -702,6 +703,32 @@ run_update "$KIMI_DIR"
 KIMI_SKILLS="$KIMI_DIR/.kimi-code/skills"
 KIMI_AGENTS="$KIMI_DIR/.kimi-code/agents"
 KIMI_MCP="$KIMI_DIR/.kimi-code/mcp.json"
+
+# Kimi does not read the `skills:` field, so the adapter turns it into a read list of
+# `.kimi-code/skills/<name>/SKILL.md` paths at the top of the installed file. The names come from
+# the SOURCE agent file (no fixed count to go stale); every one must be listed, and nothing else.
+assert_kimi_read_list() {
+  local installed="$1" source_file="$2" label="$3" names name expected=0 listed
+  names=$(awk '/^skills:/{f=1;next} f&&/^---$/{exit} f&&/^[[:space:]]+-[[:space:]]+/{sub(/^[[:space:]]+-[[:space:]]+/,""); print}' "$source_file")
+  if [[ -z "$names" ]]; then
+    echo "Assertion failed: $label: the source file lists no skills, so the read-list check would be vacuous ($source_file)"
+    exit 1
+  fi
+  while IFS= read -r name; do
+    assert_contains "$installed" '^- \.kimi-code/skills/'"${name}"'/SKILL\.md$' "$label: the read list names ${name}"
+    expected=$((expected + 1))
+  done <<< "$names"
+  listed=$(grep -cE '^- \.kimi-code/skills/[^/]+/SKILL\.md$' "$installed" || true)
+  if [[ "$listed" -ne "$expected" ]]; then
+    echo "Assertion failed: $label: the read list holds $listed path(s), the source lists $expected skill(s)"
+    grep -nE '^- \.kimi-code/skills/' "$installed" | head -10
+    exit 1
+  fi
+  assert_not_contains "$installed" '^skills:' "$label: no skills: field left (Kimi ignores it)"
+  assert_contains "$installed" '^Before you start, Read each file below and follow it as part of your instructions\.' \
+    "$label: the read list opens with its intro line"
+  assert_not_contains "$installed" '^- .*\{\{' "$label: no template placeholder in a read-list line"
+}
 
 # Own directory (ADR-0001, REQ-001)
 assert_exists "$KIMI_SKILLS/unikit/SKILL.md" \
@@ -783,6 +810,7 @@ assert_contains "$KIMI_COORD" 'kimi --agent unikit-implement-coordinator' "kimi:
 assert_not_contains "$KIMI_COORD" 'claude --agent' "kimi: no claude launch command left in the coordinator"
 assert_contains "$KIMI_COORD" '^Agent\(unikit-implement-worker\):' \
   "kimi: illustrative Agent(...) lines in the body are untouched"
+assert_kimi_read_list "$KIMI_COORD" "$ROOT_DIR/subagents/unikit-implement-coordinator.md" "kimi: coordinator"
 
 KIMI_PLAN_COORD="$KIMI_AGENTS/unikit-plan-coordinator.md"
 assert_exists "$KIMI_PLAN_COORD" "kimi: unikit-plan-coordinator installed into .kimi-code/agents"
@@ -797,8 +825,8 @@ if [[ "$(body_first_line_of "$KIMI_PLAN_COORD")" != '${base_prompt}' ]]; then
 fi
 assert_contains "$KIMI_PLAN_COORD" 'kimi --agent unikit-plan-coordinator' "kimi: plan coordinator launch command rewritten"
 
-# A worker and a sidecar are not top-level agents: untouched, and `skills:` stays (DEC-014)
-for KIMI_PLAIN in unikit-implement-worker unikit-review-sidecar; do
+# A worker, a polisher and a sidecar are not top-level agents: no ${base_prompt}, no subagents: list
+for KIMI_PLAIN in unikit-implement-worker unikit-plan-polisher unikit-review-sidecar; do
   assert_exists "$KIMI_AGENTS/$KIMI_PLAIN.md" "kimi: $KIMI_PLAIN installed"
   assert_not_contains "$KIMI_AGENTS/$KIMI_PLAIN.md" 'base_prompt' "kimi: $KIMI_PLAIN gets no \${base_prompt}"
   frontmatter_of "$KIMI_AGENTS/$KIMI_PLAIN.md" > "$TMPDIR/kimi-$KIMI_PLAIN.fm"
@@ -806,7 +834,17 @@ for KIMI_PLAIN in unikit-implement-worker unikit-review-sidecar; do
 done
 frontmatter_of "$KIMI_AGENTS/unikit-implement-worker.md" > "$TMPDIR/kimi-worker.fm"
 assert_contains "$TMPDIR/kimi-worker.fm" '^  - Skill$' "kimi: worker keeps its Skill tool"
-assert_contains "$TMPDIR/kimi-worker.fm" '^skills:$' "kimi: worker keeps skills: (DEC-014 — Kimi ignores an unknown field)"
+# `skills:` is gone from the frontmatter and its names are a read list at the top of the body
+# (Kimi does not read the field: live check 2026-10-06, Kimi 2.1.1). The worker names devcontext and verify.
+assert_kimi_read_list "$KIMI_AGENTS/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-worker.md" "kimi: worker"
+assert_contains "$KIMI_AGENTS/unikit-implement-worker.md" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' \
+  "kimi: worker reads the devcontext rules named in its source"
+assert_contains "$KIMI_AGENTS/unikit-implement-worker.md" '^- \.kimi-code/skills/unikit-verify/SKILL\.md$' \
+  "kimi: worker reads the verify rules named in its source"
+assert_kimi_read_list "$KIMI_AGENTS/unikit-plan-polisher.md" "$ROOT_DIR/subagents/unikit-plan-polisher.md" "kimi: plan polisher"
+# A sidecar lists no skills: its file is not touched by the read-list step
+assert_not_contains "$KIMI_AGENTS/unikit-review-sidecar.md" 'Before you start, Read each file below' \
+  "kimi: a sidecar without skills: gets no read list"
 
 # MCP (REQ-003): bearerTokenEnvVar, no type, no raw reference, no Antigravity placeholder
 assert_exists "$KIMI_MCP" "kimi: update wrote .kimi-code/mcp.json"

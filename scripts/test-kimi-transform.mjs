@@ -24,6 +24,7 @@ const { applyAgentFilter, readSourceForAgent } = await import(dist('core/agent-f
 const { getMcpWriter } = await import(dist('core/mcp-writers/index.js'));
 const { warnOnKeptEnvEntry } = await import(dist('core/mcp-env.js'));
 const { injectToolsIntoAgentFrontmatter } = await import(dist('core/mcp.js'));
+const { renderSubagent } = await import(dist('core/installer/shared.js'));
 
 let passed = 0;
 let failed = 0;
@@ -150,6 +151,10 @@ const COORD = [
     '',
 ].join('\n');
 
+// The intro line of the read list, written out on purpose: this table is the oracle, so a reworded
+// constant in src/core/constants-transform.ts turns the byte-for-byte checks below red.
+const KIMI_PREAMBLE = 'Before you start, Read each file below and follow it as part of your instructions. If a file cannot be read, stop and report that instead of working without it.';
+
 const COORD_EXPECTED = [
     '---',
     'name: demo-coordinator',
@@ -163,10 +168,12 @@ const COORD_EXPECTED = [
     '  - demo-sidecar',
     'model: inherit',
     'maxTurns: 40',
-    'skills:',
-    '  - demo-skill',
     '---',
     '${base_prompt}',
+    '',
+    KIMI_PREAMBLE,
+    '',
+    '- .kimi-code/skills/demo-skill/SKILL.md',
     '',
     'You are the demo coordinator.',
     '',
@@ -189,6 +196,24 @@ const WORKER = [
     'You are the demo worker.',
     '',
 ].join('\n');
+
+// Test-side parsing, deliberately not shared with the adapter: the names a source file lists under
+// `skills:` (block form), the read list the adapter wrote, and the first non-blank body lines.
+const sourceSkillNames = (text) => {
+    const block = /^skills:\n((?:\s+-\s+.*\n)+)/m.exec(frontmatterOf(text));
+    return block ? block[1].split('\n').map((l) => l.replace(/^\s+-\s+/, '').trim()).filter(Boolean) : [];
+};
+const hasSkillsField = (text) => /^skills:/m.test(frontmatterOf(text));
+const readListOf = (text) => {
+    const lines = bodyOf(text).split('\n');
+    const at = lines.indexOf(KIMI_PREAMBLE);
+    if (at === -1 || lines[at + 1] !== '') return null;
+    const list = [];
+    for (let i = at + 2; i < lines.length && lines[i].startsWith('- '); i++) list.push(lines[i].slice(2));
+    return list;
+};
+const leadingBodyLines = (text, n) => bodyOf(text).split('\n').filter((l) => l.trim() !== '').slice(0, n);
+const skillPathsFor = (names, dir = '.kimi-code/skills') => names.map((n) => `${dir}/${n}/SKILL.md`);
 
 await group('A-table', async () => {
     assertEq('A1 coordinator is rewritten as specified, byte for byte', toKimiAgentFile(COORD), COORD_EXPECTED);
@@ -220,16 +245,19 @@ await group('A6-A7', async () => {
     const files = (await fs.readdir(dir)).filter((f) => f.endsWith('.md')).sort();
     const withDispatch = [];
     const withBasePrompt = [];
+    const withSkills = [];
 
     for (const file of files) {
         const src = await fs.readFile(path.join(dir, file), 'utf8');
         const out = toKimiAgentFile(src);
         const name = file.replace(/\.md$/, '');
         const hasDispatch = DISPATCH_LINE_RE.test(frontmatterOf(src));
+        const skillNames = sourceSkillNames(src);
         const firstBodyLine = bodyOf(out).split('\n').find((line) => line.trim() !== '');
         const isCoordinatorOut = firstBodyLine === '${base_prompt}';
         if (hasDispatch) withDispatch.push(name);
         if (isCoordinatorOut) withBasePrompt.push(name);
+        if (skillNames.length > 0) withSkills.push(name);
 
         assertTrue(`A6 ${name}: no Agent(...) entry left in tools:`, !DISPATCH_LINE_RE.test(frontmatterOf(out)));
         assertTrue(`A6 ${name}: no claude --agent left`, !out.includes('claude --agent'));
@@ -240,8 +268,20 @@ await group('A6-A7', async () => {
             const block = /^subagents:\n((?:\s+-\s+.*\n)+)/m.exec(frontmatterOf(out))?.[1] ?? '';
             const got = block.split('\n').map((l) => l.replace(/^\s+-\s+/, '').trim()).filter(Boolean);
             assertJsonEq(`A6 ${name}: subagents: lists exactly the names of the source entry`, got, wanted);
-        } else {
-            assertEq(`A6 ${name}: a non-coordinator is changed only by the launch rewrite (none here)`, out, src.split('claude --agent').join('kimi --agent'));
+        } else if (skillNames.length === 0) {
+            assertEq(`A6 ${name}: a non-coordinator without skills: is changed only by the launch rewrite (none here)`, out, src.split('claude --agent').join('kimi --agent'));
+        }
+
+        if (skillNames.length > 0) {
+            assertTrue(`A6 ${name}: the skills: field is gone from the frontmatter`, !hasSkillsField(out));
+            assertJsonEq(`A6 ${name}: the read list names exactly the source skills, in order`, readListOf(out), skillPathsFor(skillNames));
+            assertJsonEq(
+                `A6 ${name}: the list is the first thing in the body (behind \${base_prompt} for a coordinator)`,
+                leadingBodyLines(out, hasDispatch ? 2 : 1),
+                hasDispatch ? ['${base_prompt}', KIMI_PREAMBLE] : [KIMI_PREAMBLE],
+            );
+            const sourceTail = bodyOf(src).replace(/^\n+/, '').split('claude --agent').join('kimi --agent');
+            assertTrue(`A6 ${name}: the original body text follows the list unchanged`, bodyOf(out).endsWith(sourceTail));
         }
 
         const bodyDispatch = (text) => (bodyOf(text).match(/^Agent\(/gm) ?? []).length;
@@ -249,6 +289,7 @@ await group('A6-A7', async () => {
     }
 
     assertTrue('A6 the set of files with a dispatch entry is not empty', withDispatch.length > 0);
+    assertTrue('A6 the set of files with a skills: field is not empty', withSkills.length > 0);
     assertJsonEq('A6 files with a dispatch entry == files that got ${base_prompt}', withBasePrompt, withDispatch);
     assertTrue(
         'A6 both named coordinators are in the set (DEC-016)',
@@ -277,6 +318,85 @@ await group('A8', async () => {
     } finally {
         await fs.rm(dir, { recursive: true, force: true });
     }
+});
+
+// ── A9: the skills: field becomes a read list (Kimi ignores the field) ──────
+
+const withFrontmatter = (extra, body = '\n\nYou are a demo agent.\n') => `---\nname: demo\ntools:\n  - Read\n${extra}---${body}`;
+
+await group('A9', async () => {
+    const block = withFrontmatter('skills:\n  - s-one\n  - s-two\n');
+    const outBlock = toKimiAgentFile(block);
+    assertEq(
+        'A9a block form: the field goes and the list opens the body, byte for byte',
+        outBlock,
+        `---\nname: demo\ntools:\n  - Read\n---\n\n${KIMI_PREAMBLE}\n\n- .kimi-code/skills/s-one/SKILL.md\n- .kimi-code/skills/s-two/SKILL.md\n\nYou are a demo agent.\n`,
+    );
+
+    const inline = toKimiAgentFile(withFrontmatter('skills: [s-one, "s-two"]\n'));
+    assertEq('A9b inline form (with a quoted name) gives the same result as the block form', inline, outBlock);
+
+    assertEq('A9c a file without skills: is returned unchanged', toKimiAgentFile(WORKER), WORKER);
+
+    assertEq('A9d idempotent: the block form', toKimiAgentFile(outBlock), outBlock);
+    assertEq('A9d idempotent: the inline form', toKimiAgentFile(inline), inline);
+    const coordOnce = toKimiAgentFile(COORD);
+    assertEq('A9d idempotent: a coordinator with skills:', toKimiAgentFile(coordOnce), coordOnce);
+
+    assertJsonEq('A9e coordinator: ${base_prompt} first, the list right behind it', leadingBodyLines(coordOnce, 2), ['${base_prompt}', KIMI_PREAMBLE]);
+    assertJsonEq('A9e worker: the list is the first thing in the body', leadingBodyLines(outBlock, 1), [KIMI_PREAMBLE]);
+
+    // A coordinator an older adapter already turned (base prompt written, `skills:` still there)
+    // must get the list BEHIND the placeholder — the placement follows the body, not the pass.
+    const legacy = '---\nname: c\ntools:\n  - Agent\nsubagents:\n  - w\nskills:\n  - s-one\n---\n${base_prompt}\n\nBody\n';
+    assertEq(
+        'A9f a body that already opens with ${base_prompt} keeps it first',
+        toKimiAgentFile(legacy),
+        `---\nname: c\ntools:\n  - Agent\nsubagents:\n  - w\n---\n\${base_prompt}\n\n${KIMI_PREAMBLE}\n\n- .kimi-code/skills/s-one/SKILL.md\n\nBody\n`,
+    );
+
+    assertJsonEq('A9g a custom skillsDir is used as given', readListOf(toKimiAgentFile(block, 'custom/dir')), skillPathsFor(['s-one', 's-two'], 'custom/dir'));
+    assertJsonEq('A9g ... trailing slashes do not double up', readListOf(toKimiAgentFile(block, 'custom/dir//')), skillPathsFor(['s-one', 's-two'], 'custom/dir'));
+
+    assertTrue('A9h the intro line carries no {{ and no base_prompt', !KIMI_PREAMBLE.includes('{{') && !KIMI_PREAMBLE.includes('base_prompt'));
+    assertTrue('A9h ... and neither does the whole list block', !outBlock.includes('{{') && !outBlock.includes('base_prompt'));
+
+    const ext = toKimiAgentFile(withFrontmatter('model: inherit\nskills:\n  - s-one\n'));
+    assertNotContains('A9i an extension agent file (no Agent(...)) gets no ${base_prompt}', ext, '${base_prompt}');
+    assertNotContains('A9i ... and no subagents: field', ext, 'subagents:');
+    assertContains('A9i ... but its list, with the next frontmatter key kept in place', ext, 'model: inherit\n---\n');
+    assertJsonEq('A9i ... and exactly its one path', readListOf(ext), skillPathsFor(['s-one']));
+
+    const calls = [];
+    toKimiAgentFile(block, undefined, (paths) => calls.push(paths.length));
+    toKimiAgentFile(WORKER, undefined, (paths) => calls.push(paths.length));
+    toKimiAgentFile(withFrontmatter('skills:\n'), undefined, (paths) => calls.push(paths.length));
+    toKimiAgentFile(withFrontmatter('skills: just-one\n'), undefined, (paths) => calls.push(paths.length));
+    assertJsonEq('A9j the report fires once per recognised field (2 paths, none for no field, 0 for an empty field, none for a scalar)', calls, [2, 0]);
+
+    const emptyField = toKimiAgentFile(withFrontmatter('skills:\n'));
+    assertEq('A9k an empty skills: field is removed and no list is written', emptyField, `---\nname: demo\ntools:\n  - Read\n---\n\nYou are a demo agent.\n`);
+    const scalar = withFrontmatter('skills: just-one\n');
+    assertEq('A9k a scalar value is not ours to interpret: returned unchanged', toKimiAgentFile(scalar), scalar);
+});
+
+// ── A10: the same source, rendered for two agents ───────────────────────────
+
+await group('A10', async () => {
+    const source = path.join(ROOT, 'subagents', 'unikit-implement-worker.md');
+    const names = sourceSkillNames(await fs.readFile(source, 'utf8'));
+    assertTrue('A10 the worker source lists skills (the property below is not vacuous)', names.length > 0);
+
+    const forClaude = await renderSubagent(source, 'claude', 'unikit-implement-worker', 'unity', null);
+    const forKimi = await renderSubagent(source, 'kimi', 'unikit-implement-worker', 'unity', null);
+    assertTrue('A10 both renders produced text', typeof forClaude === 'string' && typeof forKimi === 'string');
+
+    assertTrue('A10 claude: the skills: field stays (Claude Code preloads it)', hasSkillsField(forClaude));
+    assertJsonEq('A10 claude: the field lists the source skills', sourceSkillNames(forClaude), names);
+    assertNotContains('A10 claude: no Kimi path in the file', forClaude, '.kimi-code');
+
+    assertTrue('A10 kimi: no skills: field', !hasSkillsField(forKimi));
+    assertJsonEq('A10 kimi: the read list names the source skills', readListOf(forKimi), skillPathsFor(names));
 });
 
 // ── T: transformer API and hooks (Task 4) ───────────────────────────────────
