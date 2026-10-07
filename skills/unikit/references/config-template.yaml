@@ -22,8 +22,8 @@ language:
   artifacts: {{LANGUAGE_ARTIFACTS}}
 
   # Language for knowledge base rule files: everything under .unikit/memory/
-  # (core/, stack/, references/, RULES_INDEX.md), .unikit/RULES.md, and
-  # skill-context rules.
+  # (code/{core,stack}/, gamedesign/{core,library}/, references/,
+  # RULES_INDEX.md), .unikit/RULES.md, and skill-context rules.
   #
   # Options: en, ru, de, fr, es, zh, ja, ko, pt, it
   # Default: en

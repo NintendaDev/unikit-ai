@@ -41,9 +41,11 @@ The list of registered modules and their structural fields (`tiers`,
 module's content semantics, file format, and path conventions come from its
 contract file `{{skills_dir}}/{{self_name}}/references/module-<id>.md`.
 
-Today exactly one module is registered: **`code`** (tiers `core` + `stack`). The
-router is written so additional modules can be registered later with no change to
-this file — only a new `modules.yml` entry and a new `module-<id>.md` contract.
+Two modules are registered today: **`code`** (tiers `core` + `stack`) and
+**`gamedesign`** (tiers `core` + `library`) — read the live list from `modules.yml`,
+never from this paragraph. The router is written so additional modules can be
+registered later with no change to this file — only a new `modules.yml` entry and a
+new `module-<id>.md` contract.
 
 ## What Belongs Here
 
