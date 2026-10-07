@@ -10571,14 +10571,14 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7g9: CB-1…CB-4 — no Codex-only blocks for launching a subagent
+# Part 7g9: CB-1…CB-6 — no Codex-only blocks for launching a subagent, a validator that can read
 # ─────────────────────────────────────────────
 # Codex starts a subagent from a skill step on its own (probes of 2026-10-06: 10 of 10 launches, with and
 # without a block) and turns `Agent(...)` into its own `spawn_agent`. The "BLOCKING PRE-REQUISITE" blocks
 # that told it to spawn, or to ask the user when it could not, are gone — every alias carries its own
 # fallback. Two Codex blocks remain on purpose: the auto-invoke of the /unikit-gd-apply handoff in gd-review
 # and gd-verify (a deliberate Codex behaviour, not an insurance). Four guards, each over its own object.
-echo -e "\n${BOLD}Part 7g9: no Codex delegation blocks (CB-1…CB-4)${NC}"
+echo -e "\n${BOLD}Part 7g9: no Codex delegation blocks, a +check validator that can read (CB-1…CB-6)${NC}"
 CB_WHY=""
 CB_SKILLS="$ROOT_DIR/skills"
 CB_AGENTS="$ROOT_DIR/subagents"
@@ -10613,10 +10613,32 @@ for cb_f in "$CB_SKILLS/unikit-review/SKILL.md" "$CB_SKILLS/unikit-improve/SKILL
     grep -qF -- 'the user is never asked' "$cb_f" 2>/dev/null || CB_WHY+=" CB-4:no-silent-skip:${cb_f#"$ROOT_DIR"/}"
 done
 
+# (CB-5) the validator template names a capability, not a tool set: Codex has no `Read`/`Glob`/`Grep`, and a
+# validator told it may only use those and run no command can read nothing and refuses (live run, Codex,
+# 2026-10-06). The reading rule is one sentence in both templates, and the retired wording is gone from every skill file.
+for cb_f in "$CB_SKILLS/unikit-review/references/VALIDATOR.md" "$CB_SKILLS/unikit-improve/references/VALIDATOR.md"; do
+    for cb_lit in 'whatever read-only means your runtime gives you' 'You never modify a file and never run a command that changes state' 'do not refuse the task'; do
+        grep -qF -- "$cb_lit" "$cb_f" 2>/dev/null || CB_WHY+=" CB-5:validator-reading-rule-missing(${cb_lit:0:24}):${cb_f#"$ROOT_DIR"/}"
+    done
+done
+for cb_lit in 'You do not run commands' 'via `Read`, `Glob`, and `Grep`' 'use `Read` to load the full plan'; do
+    cb_n=$( { grep -rlF --include='*.md' -e "$cb_lit" "$CB_SKILLS" 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$cb_n" -eq 0 ]] || CB_WHY+=" CB-5:retired-validator-wording(${cb_lit:0:24} x$cb_n)"
+done
+
+# (CB-6) an empty Findings table never reaches the validator: without the rule a model invents a dispatch with a
+# prompt of its own (live run, Codex, 2026-10-06) and an empty review looks like a validated one. And a block is
+# matched to its item by the number alone: a Codex validator dropped the `(severity: …)` parenthetical, the parent
+# called the whole answer malformed and threw a finished validation away.
+for cb_f in "$CB_SKILLS/unikit-review/references/CHECK-MODE.md" "$CB_SKILLS/unikit-improve/references/CHECK-MODE.md"; do
+    grep -qF -- '+check: no findings to validate' "$cb_f" 2>/dev/null || CB_WHY+=" CB-6:no-empty-table-rule:${cb_f#"$ROOT_DIR"/}"
+    grep -qF -- 'Match a block to its item by the number alone' "$cb_f" 2>/dev/null || CB_WHY+=" CB-6:no-match-by-number:${cb_f#"$ROOT_DIR"/}"
+done
+
 if [[ -z "$CB_WHY" ]]; then
-    pass "CB-1…CB-4 Codex delegation blocks gone ($CB_MARKERS handoff marker(s) left), no ask-the-user wording, +check never asks"
+    pass "CB-1…CB-6 Codex delegation blocks gone ($CB_MARKERS handoff marker(s) left), no ask-the-user wording, +check never asks, its validator can read and is not called on nothing"
 else
-    fail "CB-1…CB-4 Codex delegation blocks or the +check doctrine weakened:$CB_WHY"
+    fail "CB-1…CB-6 Codex delegation blocks, the +check doctrine or the validator template weakened:$CB_WHY"
 fi
 
 # ─────────────────────────────────────────────

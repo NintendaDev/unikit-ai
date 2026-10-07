@@ -55,7 +55,7 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 
   Whether the agent is read-only is this runtime's own claim, so the read-only contract
   rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
-  "You do not modify any files. You do not run commands." lines in whatever is sent.
+  read-only paragraph ("You never modify a file and never run a command that changes state") in whatever is sent.
 
   Fallback: the validator is **never** replaced by inline analysis — see
   `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
