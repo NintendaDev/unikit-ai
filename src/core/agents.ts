@@ -6,7 +6,7 @@ import type { SkillCallForm } from './constants-skill-call.js';
  * agent type (reconnaissance, validation), `workerType` the one that can create files and
  * is also what the skill-loading aliases launch. `modelDefault` is the model argument passed
  * when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias
- * (`sonnet`, `flash`) or empty — empty means pass no model. The values are pointers into
+ * (`sonnet`, `flash`) or `inherit` — `inherit` means pass no model. The values are pointers into
  * the runtime's own type namespace and age with it: re-check them in a live session.
  */
 export interface SubagentProfile {
@@ -14,7 +14,7 @@ export interface SubagentProfile {
   readerType: string;
   /** Agent type that can create files; also what the skill-loading aliases launch. Empty like `readerType`. */
   workerType: string;
-  /** Model argument used when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias or empty. */
+  /** Model argument used when `.unikit/config.yaml` has no `subagents.model.<id>`: only a stable vendor alias or `inherit` (never empty). */
   modelDefault: string;
   /** How a subagent is told to load a skill: see `SKILL_CALL_FORMS`. */
   skillCall: SkillCallForm;
@@ -61,7 +61,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'codex',
-    subagentProfile: { readerType: '', workerType: '', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: CODEX_SPAWN_ARGS },
+    subagentProfile: { readerType: '', workerType: '', modelDefault: 'inherit', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: CODEX_SPAWN_ARGS },
   },
   cursor: {
     id: 'cursor',
@@ -73,7 +73,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'cursor',
-    subagentProfile: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: 'inherit', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   qwen: {
     id: 'qwen',
@@ -85,7 +85,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'qwen',
-    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   opencode: {
     id: 'opencode',
@@ -97,7 +97,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'opencode',
-    subagentProfile: { readerType: 'explore', workerType: 'general', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   antigravity: {
     id: 'antigravity',
@@ -121,7 +121,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: true,
     skillsCliAgent: 'kimi-code-cli',
-    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
   // For runtimes UniKit does not name. Skills go to the shared `.agents/skills` — Antigravity's
   // directory too, which is why the two are never selected together (core/agent-skills-dir.ts) —
@@ -138,7 +138,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     supportsSubagents: false,
     skillsCliAgent: 'universal',
-    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
+    subagentProfile: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', skillCall: DEFAULT_SKILL_CALL_FORM, spawnArgs: '' },
   },
 };
 

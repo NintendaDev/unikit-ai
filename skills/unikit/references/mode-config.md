@@ -65,8 +65,8 @@ Assign every paired key to exactly one bucket. Write nothing and ask nothing in 
 
    **Exception — `subagents.model.<agent>`.** An empty value there is a deliberate choice
    (pass no model argument), not a missing one: keep it, never fill it from the template, and
-   report it as kept. For a key whose template value is itself empty, an absent key is
-   appended empty, together with its comment.
+   report it as kept. An absent key is appended with its template value (`inherit` for
+   an agent without a pinned model), together with its comment.
 4. **Present, value outside a declared domain** → ask. A domain is declared by exactly one
    thing: an inline `# a | b` comment standing beside the value on the same line. Nothing
    else declares one — an `Options:` or `Examples:` list inside a comment block is prose for

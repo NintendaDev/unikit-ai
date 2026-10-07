@@ -929,8 +929,8 @@ assert_contains "$UNIVERSAL_SKILLS/unikit-fix/SKILL.md" 'subagent_type: Explore,
   "universal: recon-agent launches the reader type Explore"
 assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'subagents\.model\.universal' \
   "universal: the model rule names its own config key"
-assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in default `""`' \
-  "universal: no built-in model default"
+assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in default `"inherit"`' \
+  "universal: the built-in model default is inherit (no model argument)"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'Subagent Delegation.*BLOCKING PRE-REQUISITE' \
   "universal: no Codex ask-the-user block (DEC-008)"
 UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'

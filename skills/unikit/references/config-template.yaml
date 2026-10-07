@@ -190,31 +190,31 @@ subagents:
     claude: sonnet
 
     # Codex CLI. A model identifier exactly as the model parameter of Codex's
-    # spawn_agent accepts it; its schema lists the valid names. No built-in
-    # default: identifiers go stale, so choose your own.
-    codex:
+    # spawn_agent accepts it; its schema lists the valid names. Built-in
+    # default: inherit (identifiers go stale, so choose your own).
+    codex: inherit
 
     # Cursor. The subagent call does not name a model, so a value here has no
-    # effect; Cursor pins a model per agent file instead. Leave empty.
-    cursor:
+    # effect; Cursor pins a model per agent file instead. Keep inherit.
+    cursor: inherit
 
     # Qwen Code. The call accepts a model only as a tier name, and only when
-    # agents.modelGrades is set in Qwen's settings.json. Leave empty otherwise.
-    qwen:
+    # agents.modelGrades is set in Qwen's settings.json. Keep inherit otherwise.
+    qwen: inherit
 
     # OpenCode. The subagent call has no model parameter: the subagent runs on
-    # the model of the session. Leave empty.
-    opencode:
+    # the model of the session. Keep inherit.
+    opencode: inherit
 
     # Antigravity. flash | pro | inherit.
     # Built-in default: flash.
     antigravity: flash
 
     # Kimi Code. The call accepts a model only when [secondary_model] is set in
-    # ~/.kimi-code/config.toml. Leave empty otherwise.
-    kimi:
+    # ~/.kimi-code/config.toml. Keep inherit otherwise.
+    kimi: inherit
 
     # Universal / Other. The runtime is not known in advance, so no model is
     # passed by default. Set a value only if the subagent tool of your agent
-    # accepts a model and the name is valid there. Leave empty otherwise.
-    universal:
+    # accepts a model and the name is valid there. Keep inherit otherwise.
+    universal: inherit

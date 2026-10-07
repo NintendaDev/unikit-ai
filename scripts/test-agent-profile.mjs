@@ -73,13 +73,13 @@ async function walk(dir) {
 // out here is the point: a changed registry value shows up as a red test, never silently.
 const EXPECTED = {
     claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', skillCall: 'skilltool', spawnArgs: '' },
-    codex: { readerType: '', workerType: '', modelDefault: '', skillCall: 'read', spawnArgs: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
-    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
-    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
-    opencode: { readerType: 'explore', workerType: 'general', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    codex: { readerType: '', workerType: '', modelDefault: 'inherit', skillCall: 'read', spawnArgs: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
+    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
+    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
+    opencode: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
     antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', skillCall: 'read', spawnArgs: '' },
-    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: '', skillCall: 'read', spawnArgs: '' },
-    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
+    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
 };
 
 // The leading arguments of an Agent(...) call, written out per agent for the same reason: a changed
@@ -114,8 +114,8 @@ await group('P', async () => {
 
         assertTrue(`P2 ${agent.id}: the reader is not the worker (unless the runtime takes no type)`, profile.readerType !== profile.workerType || profile.readerType === '', profile.readerType);
         assertTrue(
-            `P3 ${agent.id}: modelDefault is empty or a stable vendor alias (letters only)`,
-            typeof profile.modelDefault === 'string' && (profile.modelDefault === '' || /^[a-z]+$/.test(profile.modelDefault)),
+            `P3 ${agent.id}: modelDefault is never empty - a stable vendor alias or inherit (letters only)`,
+            typeof profile.modelDefault === 'string' && /^[a-z]+$/.test(profile.modelDefault),
             JSON.stringify(profile.modelDefault),
         );
     }
@@ -153,7 +153,7 @@ await group('V', async () => {
     assertEq(
         'V1 buildTemplateVars(kimi) carries the profile',
         JSON.stringify(PROFILE_VARS.map((k) => kimiVars[k])),
-        JSON.stringify(['kimi', 'explore', 'coder', '']),
+        JSON.stringify(['kimi', 'explore', 'coder', 'inherit']),
     );
     assertEq(
         'V1 buildTemplateVars(kimi) carries the call heads and the skill-call form',
@@ -163,7 +163,7 @@ await group('V', async () => {
 
     const probe = '{{agent_id}} {{agent_reader_type}} {{agent_worker_type}} [{{agent_model_default}}]';
     assertEq('V2a claude substitution', processTemplate(probe, buildTemplateVars(AGENT_REGISTRY.claude)), 'claude Explore general-purpose [sonnet]');
-    assertEq('V2b kimi substitution', processTemplate(probe, buildTemplateVars(AGENT_REGISTRY.kimi)), 'kimi explore coder []');
+    assertEq('V2b kimi substitution', processTemplate(probe, buildTemplateVars(AGENT_REGISTRY.kimi)), 'kimi explore coder [inherit]');
 
     const neutral = buildSubagentTemplateVars('x');
     assertEq(
@@ -209,13 +209,13 @@ await group('V4', async () => {
 
 const COMPONENTS = {
     claude: 'profile:Explore|general-purpose|sonnet|call=skilltool',
-    codex: 'profile:|||spawn=fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",',
-    cursor: 'profile:explore|generalPurpose|',
-    qwen: 'profile:Explore|general-purpose|',
-    opencode: 'profile:explore|general|',
+    codex: 'profile:||inherit|spawn=fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",',
+    cursor: 'profile:explore|generalPurpose|inherit',
+    qwen: 'profile:Explore|general-purpose|inherit',
+    opencode: 'profile:explore|general|inherit',
     antigravity: 'profile:research|self|flash',
-    kimi: 'profile:explore|coder|',
-    universal: 'profile:Explore|general-purpose|',
+    kimi: 'profile:explore|coder|inherit',
+    universal: 'profile:Explore|general-purpose|inherit',
 };
 
 await group('H', async () => {
