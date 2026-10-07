@@ -72,14 +72,14 @@ async function walk(dir) {
 // The profile as the research package states it (ASP-REQ-001, ASP-REQ-008). Writing the table
 // out here is the point: a changed registry value shows up as a red test, never silently.
 const EXPECTED = {
-    claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', skillCall: 'skilltool', spawnArgs: '' },
-    codex: { readerType: '', workerType: '', modelDefault: 'inherit', skillCall: 'read', spawnArgs: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
-    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
-    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
-    opencode: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
-    antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', skillCall: 'read', spawnArgs: '' },
-    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
-    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', skillCall: 'read', spawnArgs: '' },
+    claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', modelParam: true, skillCall: 'skilltool', spawnArgs: '' },
+    codex: { readerType: '', workerType: '', modelDefault: 'inherit', modelParam: true, skillCall: 'read', spawnArgs: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
+    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: 'inherit', modelParam: false, skillCall: 'read', spawnArgs: '' },
+    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelParam: false, skillCall: 'read', spawnArgs: '' },
+    opencode: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', modelParam: false, skillCall: 'read', spawnArgs: '' },
+    antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', modelParam: true, skillCall: 'read', spawnArgs: '' },
+    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelParam: false, skillCall: 'read', spawnArgs: '' },
+    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelParam: false, skillCall: 'read', spawnArgs: '' },
 };
 
 // The leading arguments of an Agent(...) call, written out per agent for the same reason: a changed
@@ -118,6 +118,7 @@ await group('P', async () => {
             typeof profile.modelDefault === 'string' && /^[a-z]+$/.test(profile.modelDefault),
             JSON.stringify(profile.modelDefault),
         );
+        assertTrue(`P7 ${agent.id}: modelParam is a boolean`, typeof profile.modelParam === 'boolean', JSON.stringify(profile.modelParam));
     }
 
     for (const agent of agents) {
@@ -138,7 +139,7 @@ await group('P', async () => {
     }
 
     assertEq(
-        'P5 the registry holds exactly the eight known agents (a new agent needs a conscious edit here and a config-template key)',
+        'P5 the registry holds exactly the eight known agents (a new agent needs a conscious edit here; a config-template key only when its profile says modelParam)',
         Object.keys(AGENT_REGISTRY).sort().join(','),
         Object.keys(EXPECTED).sort().join(','),
     );
@@ -199,6 +200,16 @@ await group('V4', async () => {
             profile[field] = original;
         }
         assertEq(`V4c restoring ${field} restores the skill hash`, await hash(), before);
+    }
+
+    // modelParam only decides whether the config template carries a key: it reaches no installed file,
+    // so flipping it must not reinstall every skill of every project.
+    const modelParam = profile.modelParam;
+    try {
+        profile.modelParam = !modelParam;
+        assertEq('V4d changing modelParam leaves the skill hash alone', await hash(), before);
+    } finally {
+        profile.modelParam = modelParam;
     }
 });
 
@@ -395,8 +406,9 @@ await group('C', async () => {
         if (!m) break; // the first line that is not a 4-space key ends the block
         entries[m[1]] = m[2];
     }
-    assertEq('C3 the template carries a key for exactly every registered agent', Object.keys(entries).sort().join(','), Object.keys(AGENT_REGISTRY).sort().join(','));
-    for (const [id, agent] of Object.entries(AGENT_REGISTRY)) {
+    const keyed = Object.entries(AGENT_REGISTRY).filter(([, agent]) => agent.subagentProfile.modelParam);
+    assertEq('C3 the template carries a key for exactly the agents whose call takes a model', Object.keys(entries).sort().join(','), keyed.map(([id]) => id).sort().join(','));
+    for (const [id, agent] of keyed) {
         assertEq(`C4 ${id}: the template default equals the profile's modelDefault`, entries[id], agent.subagentProfile.modelDefault);
     }
     assertTrue('C5 the block carries no {{placeholder}}', !lines.slice(start).some((l) => l.includes('{{')));

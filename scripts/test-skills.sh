@@ -10342,13 +10342,13 @@ if grep -qF 'There is no `/unikit-*` slash command' "$UA_AGENTS_DOC"; then UA_WH
 { grep -qF 'a skill is invoked with `/<skill-name>`' "$UA_AGENTS_DOC" || false; } || UA_WHY+=" UA-3:docs-lack-slash-invocation"
 
 # (UA-4) the universal agent rides on the defaults: no code branches on its id (its MCP writer and
-# its transformer are the default ones, apart from the welcome text), and the three places that must
-# agree — registry entry, transformer registration, config-template key — all carry it.
+# its transformer are the default ones, apart from the welcome text), and the two places that must
+# agree — registry entry, transformer registration — both carry it. It has no config-template key:
+# its profile says `modelParam: false`, which test-agent-profile.mjs group C checks.
 [[ "$({ grep -rnE "(agentId|agent\.id|\.id) === 'universal'" "$ROOT_DIR/src" || true; } | wc -l | tr -d ' ')" -eq 0 ]] || UA_WHY+=" UA-4:code-branches-on-the-universal-id"
 [[ "$({ grep -c "'universal'" "$ROOT_DIR/src/core/mcp-writers/index.ts" || true; })" -eq 0 ]] || UA_WHY+=" UA-4:mcp-writer-has-a-universal-branch"
 { grep -qF "universal: {" "$ROOT_DIR/src/core/agents.ts" || false; } || UA_WHY+=" UA-4:registry-entry-missing"
 { grep -qF "universal: () => new UniversalTransformer()" "$ROOT_DIR/src/core/transformer.ts" || false; } || UA_WHY+=" UA-4:transformer-not-registered"
-{ grep -qE '^    universal:' "$ROOT_DIR/skills/unikit/references/config-template.yaml" || false; } || UA_WHY+=" UA-4:config-template-key-missing"
 
 if [[ -z "$UA_WHY" ]]; then
     pass "UA-1…UA-4 agent directory rules and the universal agent"
