@@ -180,8 +180,8 @@ git:
 #   inherit  — pass nothing; the subagent runs on the model of the session
 #   (empty)  — the same as inherit; a deliberate choice, never filled in again
 # A key that is missing altogether falls back to the built-in default noted
-# below. The block lists every supported agent, whichever ones this project
-# has installed.
+# below. The block lists the agents whose subagent call takes a model without
+# any setting of the runtime itself.
 
 subagents:
   model:
@@ -194,27 +194,16 @@ subagents:
     # default: inherit (identifiers go stale, so choose your own).
     codex: inherit
 
-    # Cursor. The subagent call does not name a model, so a value here has no
-    # effect; Cursor pins a model per agent file instead. Keep inherit.
-    cursor: inherit
-
-    # Qwen Code. The call accepts a model only as a tier name, and only when
-    # agents.modelGrades is set in Qwen's settings.json. Keep inherit otherwise.
-    qwen: inherit
-
-    # OpenCode. The subagent call has no model parameter: the subagent runs on
-    # the model of the session. Keep inherit.
-    opencode: inherit
-
     # Antigravity. flash | pro | inherit.
     # Built-in default: flash.
     antigravity: flash
 
-    # Kimi Code. The call accepts a model only when [secondary_model] is set in
-    # ~/.kimi-code/config.toml. Keep inherit otherwise.
-    kimi: inherit
-
-    # Universal / Other. The runtime is not known in advance, so no model is
-    # passed by default. Set a value only if the subagent tool of your agent
-    # accepts a model and the name is valid there. Keep inherit otherwise.
-    universal: inherit
+    # Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key:
+    # their subagent call takes no model, or takes one only after you set up the
+    # client itself, so nothing is passed and the subagent runs on the model of
+    # the session (the same as inherit). If you did enable it, add
+    # subagents.model.<agent> by hand and the skills will read it. Take the
+    # value from the client's own documentation: Kimi Code - an alias from
+    # [secondary_model.models] in ~/.kimi-code/config.toml, or primary; Qwen
+    # Code - a grade name from agents.modelGrades in settings.json; Universal /
+    # Other - whatever the subagent tool of your agent accepts.

@@ -209,28 +209,23 @@ Existing projects receive the key by either of the two paths in [How new keys re
 
 ### `subagents` section
 
-Which model the subagents that skills launch run on, one value per agent. The block lists every supported agent, whichever ones the project has installed.
+Which model the subagents that skills launch run on, one value per agent. The block lists the agents whose subagent call takes a model without any setting of the runtime itself; the other agents have no key.
 
 | Key | Description | Default |
 |-----|-------------|---------|
 | `model.claude` | Claude Code. A tier name: `sonnet`, `opus` or `haiku`. | `sonnet` |
 | `model.codex` | Codex CLI. A model identifier as the model parameter of Codex's `spawn_agent` accepts it - its schema lists the valid names, and they change, so you write it yourself. | `inherit` |
-| `model.cursor` | Cursor. The subagent call does not name a model, so a value here has no effect; Cursor pins a model per agent file instead. | `inherit` |
-| `model.qwen` | Qwen Code. The call accepts a model only as a tier name, and only when `agents.modelGrades` is set in Qwen's `settings.json`. | `inherit` |
-| `model.opencode` | OpenCode. The subagent call has no model parameter: the subagent runs on the model of the session. | `inherit` |
 | `model.antigravity` | Antigravity. `flash`, `pro` or `inherit`. | `flash` |
-| `model.kimi` | Kimi Code. The call accepts a model only when `[secondary_model]` is set in `~/.kimi-code/config.toml`. | `inherit` |
-| `model.universal` | Universal / Other. The runtime is not known in advance: a value works only if the subagent tool of your agent accepts a model and the name is valid there. | `inherit` |
 
 A value means:
 
 - **a model name** - passed to the subagent with every call, exactly as written;
-- **`inherit`, or an empty value** - nothing is passed: the subagent runs on the model of the session. `inherit` is what the template ships for every agent without a pinned model; an empty value written by hand means the same, is a deliberate choice and is never filled in again;
+- **`inherit`, or an empty value** - nothing is passed: the subagent runs on the model of the session. `inherit` is what the template ships for Codex CLI, whose identifiers go stale; an empty value written by hand means the same, is a deliberate choice and is never filled in again;
 - **no key at all** (including no file, or no `subagents` block) - the built-in default noted above.
 
 **The skills read this block at run time**, once per skill before the first dispatch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Only the aliases that name a model read it (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`); `develop-agent` and `docs-agent` load a skill and never pass a model.
 
-UniKit keeps no list of model names. A name the runtime does not accept makes the launch fail, and the skill repeats the call once on the model of the session with a `WARN [delegation]` line. For Cursor, Qwen Code, OpenCode and Kimi Code the value either has no effect or needs a setting of the runtime itself (`agents.modelGrades`, `[secondary_model]`), and Universal / Other does not know its runtime at all, which is why those keys ship empty. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
+UniKit keeps no list of model names. A name the runtime does not accept makes the launch fail, and the skill repeats the call once on the model of the session with a `WARN [delegation]` line. Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key in the template, and a missing key means `inherit`: nothing is passed and the subagent runs on the model of the session. The reason is that their subagent call takes no model at all (Cursor, OpenCode), takes one only after you set up the client itself (Kimi Code `[secondary_model]`, Qwen Code `agents.modelGrades`), or belongs to a runtime UniKit does not know in advance (Universal / Other). If you did enable it, add `subagents.model.<agent>` to the file by hand and the skills will pass it. The format comes from the vendor's documentation and has not been checked in a live session: for Kimi Code an alias from `[secondary_model.models]` in `~/.kimi-code/config.toml`, or `primary`; for Qwen Code a grade name from `agents.modelGrades`; for Universal / Other whatever the subagent tool of your agent accepts. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
 
 ### How new keys reach an existing project
 
