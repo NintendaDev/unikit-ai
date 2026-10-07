@@ -15,7 +15,7 @@ Plans are stored in two locations depending on mode:
 | `/unikit-plan ultra` | `.unikit/code/plans/<feature-name>/` | `PLAN.md` + `phase-NN-<slug>.md` |
 | `/unikit-plan add` | Existing plan location | Modifies existing plan in-place |
 | `/unikit-fix` (plan mode) | `.unikit/code/FIX_PLAN.md` | Single file with analysis + fix steps |
-| `/unikit-archive` | `.unikit/code/archive/plans/<feature-name>/` | A completed folder plan, moved whole; its manifest gains an `Archived:` line |
+| `/unikit-archive` | `.unikit/code/archive/plans/<feature-name>/` | A completed folder plan (or, on your explicit choice, an unfinished one, marked as such), moved whole; its manifest gains an `Archived:` line |
 
 Ultra reuses the full-mode folder and the same `PLAN.md` entry point — moving a plan from full to ultra is purely additive: phase files appear, nothing is renamed, external links stay valid.
 
@@ -42,7 +42,7 @@ Rarity drives filtering, drop weighting and the badge tint on the item widget.
 Goal: make an item's value readable at a glance without opening its tooltip.
 
 ## Settings
-- Testing: no
+- Testing: yes
 - Test checkpoints: phase
 - Docs: no
 - Editor tasks: mcp
@@ -60,6 +60,10 @@ Goal: make an item's value readable at a glance without opening its tooltip.
 - [ ] Task 1.2 — Add the rarity field to ItemDefinition
   WHY: items need a rarity property for filtering and display
   Files: `<content-root>/Inventory/ItemDefinition.<ext>`
+- [ ] Task 1.3 — Run the tests of the data model
+  WHY: the data model has to be green before any presentation builds on it
+  Test checkpoint: phase 1
+<!-- Commit checkpoint: tasks 1.1-1.3 -->
 
 ### Phase 2: Presentation
 **Effort:** S
@@ -70,14 +74,17 @@ Goal: make an item's value readable at a glance without opening its tooltip.
   WHY: the rarity has to be readable at a glance in the inventory grid
   Files: `<content-root>/UI/ItemWidget.<ext>`
   Editor: [ui] ItemWidget → RarityBadge : bind tint to Rarity
-<!-- Commit checkpoint: tasks 1.1-2.1 -->
+- [ ] Task 2.2 — Run the full test suite
+  WHY: the plan's last task is always a full run under `Testing: yes`
+  Test checkpoint: plan
+<!-- Commit checkpoint: tasks 2.1-2.2 -->
 
 ## Commit Plan
 
-### Commit 1: after tasks 1.1-1.2
+### Commit 1: after tasks 1.1-1.3
 feat(items): add rarity enum and data model
 
-### Commit 2: after tasks 2.1-2.4
+### Commit 2: after tasks 2.1-2.2
 feat(items): implement rarity visual effects
 
 ## MCP Findings
@@ -291,6 +298,8 @@ specification is incomplete.
 | `/unikit-improve` | the manifest plus every phase file |
 | `/unikit-commit` | the manifest plus the phase files of the current commit group |
 | `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the current layer |
+| `/unikit-pr` | the manifest only — modules, checklist labels, `WHY:` lines |
+| `/unikit-commit` (push offer in a plan with PR checkpoints) | the manifest's checklist only |
 
 That table has one owner — `.unikit/system/ultra-plan-read.md` — and where the two
 disagree, the contract is right and this page is stale.
@@ -298,9 +307,9 @@ disagree, the contract is right and this page is stale.
 The full rules — detection, mutability, the blocking integrity checks and the commit-group
 mapping — live in `.unikit/system/ultra-plan-read.md`, installed into every project. The
 producer side (the manifest and phase templates, the **Required Detail Gate** every task
-must clear, the **nine Integrity Checks** run before the plan is shown) lives in the
+must clear, the **sixteen Integrity Checks** run before the plan is shown) lives in the
 `unikit-plan` skill's `references/ULTRA-PLAN-FORMAT.md`. Neither is restated here. Two of
-the nine are worth knowing by name because they catch what the three projections cannot: no
+the sixteen are worth knowing by name because they catch what the three projections cannot: no
 `phase-*.md` may carry a task checkbox, and the task ranges in `## Commit Plan` must agree
 with `## Phase Index` and `## Checklist`.
 
@@ -309,7 +318,7 @@ with `## Phase Index` and `## Checklist`.
 are never bundles — a fix plan is architecturally a flat file and stays outside the model.
 The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra mode at all.
 `/unikit-review` is not a consumer either: it is diff/PR-scoped and reads no plan, so a
-broken bundle passes review in silence and only `/unikit-verify` blocks on it.
+broken bundle passes review in silence, while `/unikit-implement`, `/unikit-verify` and `/unikit-improve` block on it (`/unikit-commit` only warns).
 
 ## Editor tasks
 
@@ -378,7 +387,7 @@ This table is about **the vocabularies this project writes**, not about what an 
 `/unikit-implement` finds plans in this order:
 1. **Fast plan** → `.unikit/code/PLAN.md` (if exists, used directly)
 2. **Git branch match** → from branch `<prefix><name>`, every folder matching one of the three name formats that coexist on disk: exactly `<name>`, ending in `_<name>` (the `YYYY-MM-DD_` era), or ending in `-<name>` after three digits (the older `DDD-` era). More than one match is a question, never a silent pick
-3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying neither is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime. Reaching this step at all means the branch named no plan, so *latest* is a guess rather than a resolution: with two or more plans present the candidates are printed and the choice is put to the user, never auto-selected. With exactly one plan there is nothing to choose between — it is announced with the branch miss named, and work continues
+3. **Latest** → the folder whose manifest carries the newest `Updated:`; ties break on `Created:`. A manifest carrying no `Updated:` is excluded and named in a `WARN [plan]` line rather than guessed at from the folder name or the file's mtime. Reaching this step at all means the branch named no plan, so *latest* is a guess rather than a resolution: with two or more plans present the candidates are printed and the choice is put to the user, never auto-selected. With exactly one plan there is nothing to choose between — it is announced with the branch miss named, and work continues
 4. **Fix plan fallback** → `.unikit/code/FIX_PLAN.md` → redirects to `/unikit-fix`
 
 If both `.unikit/code/PLAN.md` and a folder plan matching the branch exist, `/unikit-implement` looks at the work the call asks for — the phases or tasks it names (`Phases 3-5`), or the whole plan when it names none:
@@ -398,7 +407,7 @@ feature without ever saying so.
 
 Discovery is unchanged for bundles. A directory listing cannot tell a bundle from a full plan — the marker in `PLAN.md` can, and that is the only supported way to ask.
 
-**An unfinished ultra plan is not a plan.** `/unikit-plan ultra` asks first how to write the plan: **standard** (the default — the session writes the phase files straight into `.unikit/code/plans/<name>/` and the manifest last) or **with saved state** (the same folder plus `.planning/`: an English `STATE.md`, `recon/` and `manifest-head.md`, so a context compaction or a new session continues from the next phase). Each reconnaissance answer goes into `recon/` whole, in one fixed template (`unikit-plan/references/RECON-TEMPLATE.md`) headed by a short `## Summary` and a `## Contents` table of its sections with their line ranges: on Claude Code the agent writes it itself and replies with the summary alone (elsewhere the session writes it the moment it returns), the steps before the phases work from the summaries, and a phase reads only the sections it needs, and every question is marked `pending` in `STATE.md` before its agent starts: a resume reads only the recon files the next step needs and asks again only a question whose answer never arrived. A standard plan that comes out longer than 12 phases is offered the switch. Until the manifest exists the folder is unfinished: `/unikit-implement` (and its coordinator), `/unikit-verify`, `/unikit-improve` and `/unikit-plan add` name it with a `NOTE [plan] <folder> — unfinished planning: …` line and never pick it, and `--list` marks it `planning — unfinished`. Continue it with `/unikit-plan ultra <name>`; `Start over` removes the folder through `plan-bundle.mjs discard`, which never removes a folder that holds a manifest. Once the checks pass, `plan-bundle.mjs finalize` keeps `.planning/recon/` as the plan's `recon/` — committed with the plan and archived with its folder — and removes the rest of `.planning/`. The manifest lists that reconnaissance under `## Recon` (file · `HEAD` · question → phases) and each phase names what it was written from on its `Recon:` line. A recon file describes the code at its `HEAD:` line: before one of its rows is relied on, `git diff --stat <HEAD>..HEAD -- <path>` shows whether that path has changed since, and a changed path is checked against the code again. Nobody edits a recon file after the plan is written; `/unikit-improve` reads it as a baseline, `/unikit-implement` only when a phase detail does not match the code, and a missing one is a warning, never a broken plan.
+**An unfinished ultra plan is not a plan.** `/unikit-plan ultra` asks first how to write the plan: **standard** (the default — the session writes the phase files straight into `.unikit/code/plans/<name>/` and the manifest last) or **with saved state** (the same folder plus `.planning/`: an English `STATE.md`, `recon/` and `manifest-head.md`, so a context compaction or a new session continues from the next phase). Each reconnaissance answer goes into `recon/` whole, in one fixed template (`unikit-plan/references/RECON-TEMPLATE.md`) headed by a short `## Summary` and a `## Contents` table of its sections with their line ranges: where the runtime has a writing agent (`recon-writer-agent`) the agent writes it itself and replies with the summary alone (otherwise the session writes it the moment it returns), the steps before the phases work from the summaries, and a phase reads only the sections it needs, and every question is marked `pending` in `STATE.md` before its agent starts: a resume reads only the recon files the next step needs and asks again only a question whose answer never arrived. A standard plan that comes out longer than 12 phases is offered the switch. Until the manifest exists the folder is unfinished: `/unikit-implement` (and its coordinator), `/unikit-verify`, `/unikit-improve` and `/unikit-plan add` name it with a `NOTE [plan] <folder> — unfinished planning: …` line and never pick it, and `--list` marks it `planning — unfinished`. Continue it with `/unikit-plan ultra <name>`; `Start over` removes the folder through `plan-bundle.mjs discard`, which never removes a folder that holds a manifest. Once the checks pass, `plan-bundle.mjs finalize` keeps `.planning/recon/` as the plan's `recon/` — committed with the plan and archived with its folder — and removes the rest of `.planning/`. The manifest lists that reconnaissance under `## Recon` (file · `HEAD` · question → phases) and each phase names what it was written from on its `Recon:` line. A recon file describes the code at its `HEAD:` line: before one of its rows is relied on, `git diff --stat <HEAD>..HEAD -- <path>` shows whether that path has changed since, and a changed path is checked against the code again. Nobody edits a recon file after the plan is written; `/unikit-improve` reads it as a baseline, `/unikit-implement` only when a phase detail does not match the code, and a missing one is a warning, never a broken plan.
 
 An archived plan (`.unikit/code/archive/plans/<folder>/`) is not discovered - it was moved there to stop being offered. An explicit path `@.unikit/code/archive/plans/<folder>` still reaches it in `/unikit-implement` and `/unikit-improve`, and a commit's `Plan: <folder>` trailer names the folder to look for. `/unikit-explore` reads archived plans whose name matches its topic, as the history of how a feature was built.
 
@@ -414,13 +423,13 @@ To avoid ownership conflicts, artifact writers are command-scoped:
 | `.unikit/ROADMAP.md` | `/unikit-roadmap` | Milestone tracking |
 | `.unikit/RULES.md` + `.unikit/rules/*.md` | `/unikit-rules` | Convention source of truth: common rules in the root, topic files by `Load when` |
 | `.unikit/code/plans/*/PLAN.md` + `phase-NN-*.md` | `/unikit-plan` | Folder-plan manifest; `/unikit-improve` refines existing. Phase files are written by `/unikit-plan ultra` and `/unikit-improve` — never by an executor |
-| `.unikit/code/archive/plans/*/` | `/unikit-archive` | Completed folder plans, moved unchanged apart from one `Archived:` line |
+| `.unikit/code/archive/plans/*/` | `/unikit-archive` | Completed folder plans (unfinished ones only on your explicit choice), moved unchanged apart from one `Archived:` line |
 | `.unikit/code/FIX_PLAN.md` | `/unikit-fix` | Bug-fix analysis and steps |
 | `.unikit/code/patches/*.md` | `/unikit-fix` | Self-improvement patches |
 | `.unikit/skill-context/*` | `/unikit-evolve` | Project-specific skill overrides |
 | `.unikit/evolutions/*` | `/unikit-evolve` | Evolution logs + patch cursor |
 
-Quality commands (`/unikit-commit`, `/unikit-review`, `/unikit-verify`) treat these files as read-only context by default.
+Quality commands (`/unikit-commit`, `/unikit-review`, `/unikit-verify`) treat these files as read-only context by default; the one exception is the bookkeeping `/unikit-verify` writes into the plan manifest (`## Test Runs`, `## Rule Candidates`, `## MCP Findings`).
 
 ## Self-Improvement Patches
 
@@ -563,7 +572,7 @@ Every fix creates a mandatory patch in `.unikit/code/patches/`. Evolve reads pat
 
 ### /unikit-explore → /unikit-fix
 
-If explore discovers a bug or broken behavior during investigation, it routes the finding to `/unikit-fix` via the insight routing table in the research's `## Next Steps` section. This enables a natural transition from "I found something broken" to "let me fix it properly".
+If explore discovers a bug or broken behavior during investigation, it routes the finding to `/unikit-fix` via the insight routing table, which feeds the `Next step:` field of the research's `## Active Summary`. This enables a natural transition from "I found something broken" to "let me fix it properly".
 
 ## See Also
 

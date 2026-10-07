@@ -10,8 +10,9 @@ configured language; **ids / keywords / canonical terms / formulas stay English*
 
 The boundary to the code module is deliberately **one-way**: code reads design, design
 never reads code. Code writes back exactly one field (`implemented_version`, stamped by
-code-side `/unikit-verify`); three narrow, individually-sanctioned reads cross the other
-way. See **How code and design connect** below for the full detail.
+code-side `/unikit-verify`); two narrow, individually-sanctioned reads of code context
+cross the other way (the feasibility lens and the research verbs). See **How code and
+design connect** below for the full detail.
 
 ## The four authoring axes
 
@@ -67,9 +68,9 @@ Twelve rules the design-track skills load by `Load when` match (not "always," un
 
 Resolution is **per-id-merge** (`coreResolution: 'per-id-merge'`), not `code`'s
 module-winner: for each id, a studio's own registry version overrides the canonical one;
-missing ids backfill from official → bundled. The `Load when` text lives inside each rule
-file, not in a separate index — the design-track skills read it directly to decide when a
-rule is relevant to the current zone/section.
+missing ids backfill from official → bundled. The `Load when` text is authored in each
+rule's header and surfaced in `.unikit/memory/gamedesign/RULES_INDEX.md` — the index the
+design-track skills read to decide when a rule is relevant to the current zone/section.
 
 ### `library` — the studio slot
 
@@ -91,9 +92,10 @@ only.
 
 ## The pipeline — from idea to verified GDD
 
-The design track has exactly one required stop — `/unikit-gd-spec`, the GDD root every
-other skill reads from. Everything else is optional-but-recommended quality, the same
-shape as the code pipeline. A typical run:
+The design track has exactly one required entry point — `/unikit-gd-spec`, the GDD root
+every other skill reads from. `/unikit-gd-system` is then required once per system;
+everything else is optional-but-recommended quality, the same shape as the code
+pipeline. A typical run:
 
 ```
 recon:    /unikit-gd-recon        (brownfield) existing code but NO GDD → reconstruct a RECON.md skeleton
@@ -101,8 +103,9 @@ recon:    /unikit-gd-recon        (brownfield) existing code but NO GDD → reco
 ideate:   /unikit-gd-brainstorm    (optional) blank page → a CONCEPT card (pillars, loops, pre-mortem)
             │
 spec:     /unikit-gd-spec          REQUIRED  master GDD (GAME.md + ## System Map [gen]) + GD-IDS.yaml registry
-            │                                 (also: edit GAME.md content, import a GDD, add one system;
-            │                                  Create seeds a genre profile — see "Genre profiles" below)
+            │                                 (also: edit GAME.md content, import a GDD, add one system,
+            │                                  pitch (PITCH.md), remap; Create seeds a genre profile —
+            │                                  see "Genre profiles" below)
 system:   /unikit-gd-system        REQUIRED per system  the A-K per-system doc — the *rules* (create/fill +
             │                                 revise as a versioned delta: tune / tweak / rework)
 flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynamics* (objectives, pacing, funnel);
@@ -118,9 +121,9 @@ handoff:  → /unikit-gd-apply (apply-ready, one pass) · /unikit-gd-explore (re
 docs:     /unikit-gd-docs          (optional) the GDD → human-readable docs/design/*.md (the export-out)
 ```
 
-`/unikit-gd-system` / `/unikit-gd-flow` / `/unikit-gd-content` are **required per
-instance** — a playable slice needs at least one system, but flows and content types are
-added only as the design actually needs them. Review, verify, apply, and docs are
+`/unikit-gd-system` is **required per system** — a playable slice needs at least one —
+while `/unikit-gd-flow` and `/unikit-gd-content` run per instance, only as the design
+actually needs flows and content types. Review, verify, apply, and docs are
 quality/export layers on top; maximum confidence comes from running the full chain, not
 from skipping to implementation.
 
@@ -306,7 +309,7 @@ For a **system**, the lens reads the target's `doc_status` and routes you withou
 |---|---|
 | no doc / `not-started` | `/unikit-gd-spec` (add the system to the map) → `/unikit-gd-system` |
 | `skeleton` (placeholders) | `/unikit-gd-system` (fill it in) |
-| `detailed` / `reviewed` / `revised` | `/unikit-gd-system` (record the change as a delta) |
+| `detailed` | `/unikit-gd-system` (record the change as a delta) |
 
 For a **flow** or **content type** the routing collapses to a single door — `/unikit-gd-flow`
 and `/unikit-gd-content` each own their whole axis lifecycle (create + fill + revise) and
@@ -511,10 +514,10 @@ code only reads.** The mechanics of that read are formalized in one shared contr
 `design-read.md` (installed to `.unikit/system/gamedesign/design-read.md`), loaded by
 both `/unikit-plan` and `/unikit-explore` once a linked design workspace exists (a
 `version: 2` `GD-IDS.yaml`). The two consumers treat an older workspace differently, by
-design: `/unikit-plan` emits a loud `ERROR [design]` and stops, because a plan built on a
-pre-v2 registry would silently target the wrong ids, while `/unikit-explore` emits a
-`WARN [design]` and simply continues without design grounding — research degrades, it
-does not fail.
+design: both emit a loud `ERROR [design]` on a pre-v2 registry and drop design grounding.
+`/unikit-plan` carries on code-side only, because a plan built on a pre-v2 registry would
+silently target the wrong ids; `/unikit-explore` carries on without design context —
+research degrades, it does not fail.
 
 **Read the registry, not the render.** `GD-IDS.yaml` is the machine-readable source of
 truth for ids, `status`/`doc_status`, `version`, `implemented_version`, `depends_on`, and
@@ -545,15 +548,15 @@ edit mid-implementation doesn't retroactively change what's being verified.
 state is *derived* from its systems' `implemented_version` rather than ever written
 directly (flow delivery is a playtest call, not a verify gate).
 
-**Three narrow reads cross the other way**, each sanctioned individually rather than
-opening the boundary generally:
+**Two narrow reads of code context cross the other way**, each sanctioned individually
+rather than opening the boundary generally (together with the `implemented_version`
+writeback above they make up the boundary's three sanctioned exceptions):
 
 1. The **feasibility lens** inside `/unikit-gd-review` may read exactly
    `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` — never `.unikit/code/` or
    actual source — to flag a design the real tech stack can't support (a Critical
    finding, evidenced by the line it relied on).
-2. The `implemented_version` writeback above.
-3. The **brownfield research verbs** (`/unikit-gd-recon`, and the `/unikit-gd-explore`
+2. The **brownfield research verbs** (`/unikit-gd-recon`, and the `/unikit-gd-explore`
    code-grounded lens) — covered next.
 
 ---
@@ -632,7 +635,3 @@ a `WARN`). The two doc generators split the tree cleanly: `unikit-docs` owns the
 - [Skills Reference](skills.md) — the full `unikit-*` skill list, including quick-reference entries for `/unikit-gd-content`, `/unikit-gd-apply`, and the `genres` CLI
 - [Development Workflow](workflow.md) — the code pipeline this module feeds through `## Design` / `## Flow Context` / `## Content Context` briefs
 - [Dynamic Memory](dynamic-memory.md) — how `gamedesign` rules (core + library) are installed and synced, module-aware alongside `code`
-
----
-
-[← Plan Files](plan-files.md) · [Back to README](../README.md) · [Dynamic Memory →](dynamic-memory.md)

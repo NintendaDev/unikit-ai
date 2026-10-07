@@ -7,9 +7,9 @@
 UniKit AI is an **AI-powered game code development toolkit**. It bootstraps an AI coding agent for your game project by:
 
 1. **Detecting the engine** - Unity, Godot 4, Godot 4 .NET, or Unreal Engine 5
-2. **Installing skills and subagents** - 35 skills (24 code-pipeline + 11 game-design) + 8 background agents (sidecars, coordinators, workers) tailored to the selected engine, grouped by category so you only install what you need
+2. **Installing skills and subagents** - 35 skills (24 code-pipeline + 11 game-design) tailored to the selected engine, grouped by category so you only install what you need, plus 8 background agents (sidecars, coordinators, workers) for Claude Code and Kimi Code - other agents run those workflows inline, see [Agents](agents.md)
 3. **Wiring the knowledge base** - a remote rules registry feeds dynamic memory, module-aware (`code` and, if you install the game-design skills, `gamedesign`), with core rules always loaded and stack/library rules loaded by task context
-4. **Configuring MCP servers** - engine MCP (real-time console / tests) + Context7 (up-to-date library docs) for agents that support MCP
+4. **Configuring MCP servers** - engine MCP (real-time console / tests) + Context7 (up-to-date library docs), plus an optional GitHub MCP for `/unikit-pr`, for agents that support MCP
 5. **Providing a spec-driven workflow** - explore → plan → improve → implement → review → verify → commit, with self-learning patches feeding back into the rules. A parallel `gamedesign` pipeline (brainstorm → spec → system/flow/content → review/verify) authors the GDD that code plans read from
 
 ## Supported Agents
@@ -51,11 +51,11 @@ unikit-ai init
 
 The `init` wizard asks only about installation concerns - it does **not** generate project context or install rules. Specifically:
 
-1. **Agents** - multi-select checkbox with one row per agent. Pick one or more; each selected agent gets its own skills / subagents / MCP files written in the correct per-agent format
+1. **Agents** - multi-select checkbox with one row per agent. Pick one or more; each selected agent gets its own skills and MCP files written in the correct per-agent format, plus subagents where the agent supports them
 2. **Engine** - Unity / Godot 4 / Godot 4 .NET / Unreal Engine 5. On a repeat `init` the engine is reused from `.unikit.json` and the prompt is skipped
 3. **Skills** - grouped multi-select checkbox (Core, Memory and rules, Code, Game Design, Tools). On a fresh `init` every skill is checked by default; uncheck any you don't want (at least one is required). On a repeat `init` the previously installed set is pre-checked, and de-selecting a skill removes it on save
 4. **Custom rules registry** - confirm Y/N. If yes, enter a URL or local path; invalid registries offer retry / skip (skip falls back to the official registry `NintendaDev/unikit-ai-rules`)
-5. **MCP servers** - discovered automatically for the selected engine (engine MCP + Context7). For MCP keys with multiple implementations you pick one from a radio list, for the rest it is a checkbox
+5. **MCP servers** - discovered automatically for the selected engine (engine MCP, Context7, optional GitHub). For MCP keys with multiple implementations you pick one from a radio list, for the rest it is a checkbox
 
 After `init` finishes, open your AI agent and run `/unikit`:
 
@@ -146,7 +146,7 @@ All skills use the `unikit-` prefix and are installed to the agent's skills dire
 
 ### Subagents (8)
 
-Background sidecars and coordinators for parallel execution and read-only audits:
+Background sidecars and coordinators for parallel execution and read-only audits. They are installed into `<agent-config>/agents/` for Claude Code and Kimi Code only; see [Agents](agents.md) and [Subagents](subagents.md).
 
 | Subagent | Role |
 |-------|------|
@@ -180,13 +180,13 @@ For agents with MCP support, the wizard configures:
 
 | Engine | Engine MCP (you pick one) | General |
 |--------|---------------------------|---------|
-| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+) | [Context7](https://github.com/upstash/context7) |
-| Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (default, Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum) | [Context7](https://github.com/upstash/context7) |
-| Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+) | [Context7](https://github.com/upstash/context7) |
+| Unity | [Unity Biome MCP](https://github.com/german-krasnikov/unity-biome-mcp) (default, Unity 6000.0+) · [Coplay Unity MCP](https://github.com/CoplayDev/unity-mcp) (Unity 2021.3 LTS+) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
+| Godot 4 / Godot 4 .NET | [Fennara Godot AI](https://github.com/fennaraOfficial/fennara-godot-ai) (default, Godot 4.5+) · [GDAI Godot MCP](https://github.com/3ddelano/gdai-mcp-plugin-godot) (Godot 4.1+) · [Coding-Solo Godot MCP](https://github.com/Coding-Solo/godot-mcp) (no declared minimum) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
+| Unreal Engine 5 | [ChiR24 Unreal MCP](https://github.com/ChiR24/Unreal_mcp) (Unreal Engine 5.0+) | [Context7](https://github.com/upstash/context7) · [GitHub MCP](https://github.com/github/github-mcp-server) (optional) |
 
 The versions are each vendor's own **floor**, and the default is not the most permissive choice: on Godot the default (Fennara) has the highest floor of the three, so a 4.3 project wants GDAI or Coding-Solo instead. UniKit AI does not detect your engine version — the bracket in the wizard is the whole warning you get.
 
-Engine MCP servers give the agent real-time feedback - compilation errors, tests, logs - so it can fix issues without developer involvement. Context7 is used by `/unikit-memory` and other skills for up-to-date library documentation lookup.
+Engine MCP servers give the agent real-time feedback - compilation errors, tests, logs - so it can fix issues without developer involvement. Context7 is used by `/unikit-memory` and other skills for up-to-date library documentation lookup. The GitHub MCP is unchecked by default and is used only by `/unikit-pr`; it reads a token from the `GITHUB_PAT` environment variable (see [Configuration](configuration.md)).
 
 ## Project Structure After Init
 

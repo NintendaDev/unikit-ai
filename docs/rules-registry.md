@@ -6,7 +6,7 @@ UniKit AI fetches all knowledge-base rules - both **core** and **stack** - from 
 
 ## Overview
 
-The **official registry** (`NintendaDev/unikit-ai-rules`) ships community-maintained rules for the most popular Unity frameworks.
+The **official registry** (`NintendaDev/unikit-ai-rules`) ships community-maintained rules for Unity, Godot, Godot (.NET) and Unreal Engine 5, plus the game-design domain rules.
 
 **Your own registry** is just as easy to set up - a local folder on disk or a private GitHub repo. Once configured, it works identically to the official one and lets you carry your team's rule library from project to project without copy-pasting files.
 
@@ -50,7 +50,7 @@ Core membership is **not** a hardcoded whitelist - a rule is core for an engine 
 | `testing` | NUnit, AAA pattern, test doubles, boundary conditions | all |
 | `pipeline` | Spec-driven workflow contract shared across all pipeline skills | Unreal Engine 5 |
 
-These rules are fully customizable - you can rewrite any of them in your own registry to reflect your team's pipeline, naming conventions, or architectural constraints. If a rule is missing from the custom registry, it falls back to the official version automatically. This means you only need to provide the rules you actually want to override; the rest are inherited from the official registry. A custom registry may also mark *additional* rules `always: true` for an engine - the set is per-engine registry data, not a fixed list.
+These rules are fully customizable - you can rewrite any of them in your own registry to reflect your team's pipeline, naming conventions, or architectural constraints. For the `code` module there is no per-rule fallback: a custom registry that carries your engine replaces the official one wholesale for that engine (see [Transport Chain](#transport-chain)), so it must supply every rule you want - core and stack. Per-id fallback to the official registry exists only for the `gamedesign` `core` tier. A custom registry may also mark *additional* rules `always: true` for an engine - the set is per-engine registry data, not a fixed list.
 
 ### Transport Chain
 
@@ -139,7 +139,7 @@ CLI equivalent:
 
 ```bash
 unikit-ai rules registry init ./rules-registry
-unikit-ai rules registry set ./rules-registry
+unikit-ai rules registry set ~/rules-registry          # absolute path, ~/ or file:// - relative paths are rejected
 unikit-ai rules sync --replace --prune
 ```
 
@@ -298,7 +298,7 @@ unikit-ai rules registry show                                   # Print the conf
 unikit-ai rules registry show --json                            # JSON output
 
 unikit-ai rules registry set https://example.com/my-rules       # Write URL only (no sync)
-unikit-ai rules registry set ./rules-registry                   # Set a local path registry
+unikit-ai rules registry set ~/rules-registry                   # Set a local path registry (absolute, ~/ or file://)
 unikit-ai rules registry reset                                  # Revert to official registry (no sync)
 
 unikit-ai rules registry init ./rules-registry                  # Scaffold a new local registry
@@ -306,7 +306,7 @@ unikit-ai rules registry init ../shared/org-rules               # Custom path
 
 unikit-ai rules registry migrate ./rules-registry               # Relocate schema:1 → schema:2 on disk
 unikit-ai rules registry status                                 # Can the CLI write/migrate this registry?
-unikit-ai rules registry status ../shared/org-rules --json      # Inspect another target, machine-readable
+unikit-ai rules registry status ~/shared/org-rules --json       # Inspect another target (absolute, ~/, file:// or URL), machine-readable
 ```
 
 After `set` or `reset`, the CLI prints a hint block with suggested `rules sync` variants. Run the appropriate sync when ready to pull content from the newly configured registry.
@@ -319,7 +319,7 @@ Maintainer command. Migrates a **local** registry on disk from schema:1 (flat `<
 
 Reports a registry's **physical** schema and whether the CLI can migrate or write it. Reads the raw schema from a single source - no fallback chain - so it describes the registry you named, not the one the chain would resolve to. Defaults to the configured registry.
 
-The `--json` form returns six facts: `{ target, kind, schema, isLatestSchema, readable, writable }`. This is the gate `/unikit-rules-registry` consults before every write operation. Exit codes: `0` reachable and schema ≤ latest, `2` unreachable, `5` schema newer than this CLI supports.
+The `--json` form returns six facts: `{ target, kind, schema, isLatestSchema, readable, writable }`. This is the gate `/unikit-rules-registry` consults before every write operation. Exit codes: `0` reachable and schema ≤ latest, `2` unreachable, `3` invalid target (a relative path), `5` schema newer than this CLI supports.
 
 ---
 
@@ -336,7 +336,7 @@ The `--json` form returns six facts: `{ target, kind, schema, isLatestSchema, re
 | Value | Meaning |
 |-------|---------|
 | HTTPS URL | Remote registry served over HTTP (GitHub raw, any CDN) |
-| Local path (`./…`, `../…`, `/…`) | Local file-system registry; auto-detected by the CLI as the `fs` transport |
+| Local path (absolute `/…`, drive-letter `C:\…`, `~/…`, or `file://…`) | Local file-system registry; auto-detected by the CLI as the `fs` transport. Relative paths are rejected by `rules registry set` (exit 3) |
 | `null` | Legacy value - maps to the official registry at runtime. New writes never produce `null`. |
 
 Both `unikit-ai init` (when the custom-registry wizard step is declined or skipped) and `unikit-ai rules registry reset` write the official `NintendaDev/unikit-ai-rules` URL verbatim, so new and reset projects always have a concrete URL.
@@ -353,16 +353,16 @@ Tracks every rule installed into `.unikit/memory/`:
       "modules": {
         "code": {
           "core": [
-            { "name": "code-style",        "source": "registry", "origin": "official", "version": "1.2.0", "installed_hash": "sha256:..." },
-            { "name": "folders-structure", "source": "registry", "origin": "primary",  "version": "2.0.0", "installed_hash": "sha256:..." }
+            { "name": "code-style",        "source": "registry", "origin": "official", "version": "1.2.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "folders-structure", "source": "registry", "origin": "primary",  "version": "2.0.0", "installed_hash": "<64-hex sha256>" }
           ],
           "stack": [
-            { "name": "dotween",   "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "sha256:..." },
+            { "name": "dotween",   "source": "registry", "origin": "primary", "version": "1.0.0", "installed_hash": "<64-hex sha256>" },
             { "name": "my-custom", "source": "local" }
           ]
         },
         "gamedesign": {
-          "core":    [ { "name": "economy", "source": "registry", "origin": "primary", "version": "2.1.0", "installed_hash": "sha256:..." } ],
+          "core":    [ { "name": "economy", "source": "registry", "origin": "primary", "version": "2.1.0", "installed_hash": "<64-hex sha256>" } ],
           "library": [ { "name": "our-meta-loop", "source": "local" } ]
         }
       }
@@ -416,8 +416,8 @@ The wizard interactively asks whether to connect a custom registry (confirm → 
 unikit-ai rules registry set https://raw.githubusercontent.com/my-org/my-rules/main
 unikit-ai rules sync --replace --prune
 
-# Switch to a local registry
-unikit-ai rules registry set ./rules-registry
+# Switch to a local registry (absolute path, ~/ or file://)
+unikit-ai rules registry set ~/rules-registry
 unikit-ai rules sync --replace --prune
 
 # Reset to the official registry
@@ -546,11 +546,11 @@ bash scripts/test-exit-codes.sh           # Matrix guard (reads the other files)
 - **Case-insensitive lookup (`test-rules-show.sh` / `test-rules-install.sh`)**: legacy `CODE-STYLE` ids normalize to canonical `code-style` via `normalizeRuleId`.
 - **Phase 2 downgrade event (`test-rules-sync.sh`)**: `sync --replace` against a registry with a LOWER version than state emits the `phase2:downgrade` log line so accidental rollbacks never happen silently.
 - **createRegistry origin fold (`test-rules-registry.sh`)**: `OFFICIAL_REGISTRY_URL` as a literal collapses `primary`/`official` into one `HybridRegistry` instance so `getResolvedOrigin()` returns `'official'` instead of misstamping every installed rule with `origin: 'primary'`.
-- **Exit code matrix (`test-exit-codes.sh`)**: walks the per-command tests and asserts every documented exit code (0, 1, 3, 5, 6, 7 - plus exemptions for 2 and 4) has at least one assertion. Cross-checks the `EXIT` enum in `src/cli/commands/rules.ts` against the contract table above.
+- **Exit code matrix (`test-exit-codes.sh`)**: walks the per-command tests and asserts every documented exit code (0, 1, 2, 3, 5, 6, 7, 8) has at least one assertion; only 4 (reserved, not wired) is exempt. Cross-checks the `EXIT` enum in `src/cli/commands/rules.ts` against the contract table above.
 
 ### `UNIKIT_OFFICIAL_REGISTRY_URL` (dev/test-only)
 
-`createRegistry` (`src/core/registry/index.ts`) reads this env var to override the official registry level's fetch **transport** (git/fs/api dispatch), leaving `OFFICIAL_REGISTRY_URL` itself — and everything keyed on it (resolve/reset/display) — untouched. It exists so per-id `gamedesign` backfill scenarios can point the official level at an empty local directory (no `manifest.json`) and resolve deterministically from bundled, without depending on the live official registry's current content. Several fixed scenarios in `test-rules-install.sh`, `test-rules-status.sh`, `test-rules-show.sh`, and `test-rules-list.sh` set it; `test-rules-registry.sh` Scenario 20 is the regression guard. Not to be confused with `UNIKIT_RULES_REPO_URL`/`UNIKIT_RULES_REPO_BRANCH`, which control the bundled snapshot clone in `scripts/download-rules.sh`, not the app.
+`createRegistry` (`src/core/registry/index.ts`) reads this env var to override the official registry level's fetch **transport** (git/fs/api dispatch), leaving `OFFICIAL_REGISTRY_URL` itself — and everything keyed on it (resolve/reset/display) — untouched. It exists so tests resolve deterministically from the bundled snapshot, without depending on the live official registry's current content. `scripts/test-fixtures.sh` exports it suite-wide unless it is already set, pointing at `scripts/test-fixtures/offline-official/` - a valid manifest that carries no modules (a *missing* manifest would make `FsRegistry` warn on stderr and break the `--json` asserts). Export it yourself to run against the live registry; `test-rules-registry.sh` Scenario 20 is the regression guard. Not to be confused with `UNIKIT_RULES_REPO_URL`/`UNIKIT_RULES_REPO_BRANCH`, which control the bundled snapshot clone in `scripts/download-rules.sh`, not the app.
 
 ---
 

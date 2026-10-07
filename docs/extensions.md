@@ -181,7 +181,7 @@ Only `name` and `version` are required. All other fields are optional.
 
 ### Name Validation
 
-Extension names must match the pattern: `^[a-zA-Z0-9_@][\w.@/-]*$` - start with an alphanumeric, `_` or `@`, then word characters, dots, `@`, `/` or `-`.
+Extension names must match the pattern: `^[a-zA-Z0-9_@][\w.@/-]*$` - start with an alphanumeric, `_` or `@`, then word characters, dots, `@`, `/` or `-`. The name must also not contain `..` anywhere (so `a..b` is rejected) and must not be an absolute path.
 
 Valid: `unikit-ext-hello`, `my-extension`, `@scope/my-ext`, `unikit-ext-v2`, `Custom_Ext`
 Invalid: `-leading-hyphen`, `.dotfile`, `../traversal`, `name with spaces`
@@ -235,7 +235,7 @@ The replacement skill is installed **under the base skill name**. For example, `
 **On update** (`unikit-ai update`):
 1. The base-skill pass **skips** every skill an extension replaces, so the replacement survives the update untouched rather than being overwritten by the packaged original
 2. The extension's own `skills` and `subagents` are reinstalled from `.unikit/extensions/`. A `replaces` entry is not itself reinstalled - it is protected by the skip above
-3. If an extension's manifest is missing or unreadable, that extension is skipped with a warning and the update continues. The base skill is **not** restored - restoring an original is exclusively the job of `unikit-ai extension remove`
+3. If an extension's manifest is missing or unreadable, that extension is skipped silently in the reinstall and injection passes and the update continues; a source that cannot be resolved during the refresh pass produces a `Could not refresh extension` warning. The base skill is **not** restored - restoring an original is exclusively the job of `unikit-ai extension remove`
 
 **On remove** (`extension remove`):
 1. The replacement skill is removed (by its base name)
@@ -533,12 +533,12 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{settings_file}}` | `.mcp.json` | Agent's MCP settings file |
 | `{{skills_cli_agent_flag}}` | `--agent claude-code` | CLI agent flag |
 | `{{engine_name}}` | `Unity` | Game engine name |
-| `{{engine_code_language}}` | `CSharp` | Engine's programming language |
+| `{{engine_code_language}}` | `C#` | Engine's programming language |
 | `{{engine_mcp_tool}}` | `unity-biome-mcp` | Vendor code of the engine MCP server — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. Not the server's file id. |
 | `{{agent_id}}` | `claude` | Agent id |
 | `{{agent_reader_type}}` | `Explore` | Read-only subagent type of the agent; empty when the agent has none (Codex) |
 | `{{agent_worker_type}}` | `general-purpose` | Subagent type that can write files; empty when the agent has none (Codex) |
-| `{{agent_model_default}}` | `sonnet` | Built-in default model argument; empty when the agent has none |
+| `{{agent_model_default}}` | `sonnet` | Built-in default model argument; `inherit` (no model argument) when the agent has none |
 | `{{agent_call_reader}}` | `subagent_type: Explore,` | Leading arguments of an `Agent(...)` call for a read-only subagent: the type and the agent's extra arguments (Codex: `fork_turns` and `task_name`, no type) |
 | `{{agent_call_worker}}` | `subagent_type: general-purpose,` | The same for a subagent that can write files |
 | `{{agent_call_worker_quoted}}` | `subagent_type: "general-purpose",` | The same, with the type in quotes (the spelling of multi-line call blocks) |
@@ -635,19 +635,19 @@ The `replacedSkills` field maps base skill names to extension skill paths, enabl
 
 ## Backup and Rollback
 
-During installation, a backup is created at `.unikit/extensions/<name>.backup`. If any error occurs during the asset installation phase:
+When an extension that is already installed is upgraded, a backup is created at `.unikit/extensions/<name>.backup`. If any error occurs during the upgrade:
 
 1. The corrupted extension directory is deleted
 2. The backup is restored
 3. The original error is thrown
 
-This ensures the project stays in a consistent state even if installation fails mid-way.
+The backup and rollback apply to upgrades only and cover only `.unikit/extensions/<name>/`: a failed first-time install leaves no backup to restore, and assets already written into an agent's directories are not rolled back.
 
 ---
 
 ## Security Considerations
 
-- **Extension names are validated** - the name must start with an alphanumeric, `_` or `@` and contain only word characters, dots, `@`, `/` and `-`, so a name can never begin with `.` or `-` and cannot express a `../` traversal segment
+- **Extension names are validated** - the name must start with an alphanumeric, `_` or `@` and contain only word characters, dots, `@`, `/` and `-`, and may not contain `..` at all, so a name can never begin with `.` or `-` and cannot express a `../` traversal segment
 - **Git clones use shallow depth** - `git clone --depth 1` for minimal download
 - **Manifest validation** - all manifest fields are strictly validated before installation
 - **Replacement conflicts** - no two extensions can replace the same base skill

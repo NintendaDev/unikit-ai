@@ -46,6 +46,7 @@ The subagent layer exists for six reasons:
 |    - recon-agent     (read-only parallel reconnaissance)    |
 |    - check-agent     (fresh-context findings validator)     |
 |    - lens-agent      (adversarial review lens)              |
+|    - recon-writer-agent (ultra recon, writes its own file)  |
 +-------------------------------------------------------------+
 ```
 
@@ -53,7 +54,7 @@ The subagent layer exists for six reasons:
 |------|---------|--------|----------------------|
 | Coordinator | `unikit-implement-coordinator`, `unikit-plan-coordinator` | `claude --agent <name>` / `kimi --agent <name>` (top-level session) | Yes |
 | Internal worker | `unikit-implement-worker`, `unikit-plan-polisher` | Spawned by coordinator | No |
-| Sidecar (background, read-only) | `unikit-review-sidecar`, `unikit-architecture-sidecar`, `unikit-commit-sidecar`, `unikit-docs-sidecar` | Spawned by coordinator (or explicit `Agent(...)` from a user-launched skill) | No |
+| Sidecar (background, read-only) | `unikit-review-sidecar`, `unikit-architecture-sidecar`, `unikit-commit-sidecar`, `unikit-docs-sidecar` | Spawned by `unikit-implement-coordinator` | No |
 | Delegation alias | `develop-agent`, `docs-agent` (skill-loading) · `recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent` (model-carrying) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
 
 ## Top-Level Agent Sessions
@@ -138,9 +139,9 @@ Sidecars share the same shape: read-only tools (`Read`, `Glob`, `Grep`), `backgr
 | Sidecar | Purpose | Rules loaded |
 |---------|---------|--------------|
 | `unikit-review-sidecar` | Surfaces correctness, regression, and performance risks in the diff - only material findings, no cosmetic nits | `ARCHITECTURE.md`, `RULES.md` (+ topic files matching the changed files), core rules, relevant stack rules |
-| `unikit-architecture-sidecar` | Checks module boundaries and dependency directions | `ARCHITECTURE.md`, `RULES.md` (+ topic files matching the changed files), core rules |
+| `unikit-architecture-sidecar` | Checks module boundaries and dependency directions | `ARCHITECTURE.md`, `RULES.md` (+ topic files matching the changed files), core rules, stack rules matching the task |
 | `unikit-commit-sidecar` | Assesses commit readiness, the split into groups and the files to leave out, from the files the coordinator passes - writes no commit message and never touches git state | `RULES.md` (+ topic files matching the files passed) |
-| `unikit-docs-sidecar` | Classifies documentation drift as `no_action` / `safe_update_existing` / `needs_new_docs` / `needs_user_choice` | `RULES.md`, `RULES_INDEX.md`, skill-context for `unikit-docs` |
+| `unikit-docs-sidecar` | Classifies documentation drift as `no_action` / `safe_update_existing` / `needs_new_docs` / `needs_user_choice` | `RULES.md` (+ topic files), `RULES_INDEX.md`, core and matching stack rules, skill-context for `unikit-docs` |
 
 All sidecars return their findings in English so the coordinator can parse them consistently across projects.
 
@@ -151,7 +152,7 @@ Skills expose six named aliases in two families. The **skill-loading** two expan
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
 | `develop-agent` | `Agent(<call head>, prompt: "<skill call: unikit-devcontext> <task details>", …)` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
-| `docs-agent` | `Agent(<call head>, prompt: "<skill call: unikit-docs> <context>", …)` | Pipeline skills at docs checkpoints | Update or create documentation pages |
+| `docs-agent` | `Agent(<call head>, prompt: "<skill call: unikit-docs> <context>", …)` | `/unikit-implement` (Step 5.3) | Update or create documentation pages |
 | `recon-agent` | `Agent(<reader call head>, prompt: "<focused question> You are read-only: edit and write nothing.")` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
 | `check-agent` | `Agent(<reader call head>, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
 | `lens-agent` | `Agent(<worker call head>, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
@@ -210,13 +211,13 @@ Which type a skill launches and how it reaches a skill is data, not text: every 
 | Agent | Reader | Worker | Built-in model | Skill call | Notes |
 |-------|--------|--------|----------------|------------|-------|
 | Claude Code | `Explore` | `general-purpose` | `sonnet` | `skilltool` | takes a model argument in the call |
-| Codex CLI | none | none | none | `read` | the tool is `spawn_agent`, which has no type parameter: every call carries `fork_turns: "none"` (no inherited history) and a `task_name` of its own (a repeated name is rejected); read-only for a reader rests on the prompt; Codex turns an `Agent(...)` call into its own `spawn_agent` call and starts a subagent whenever a skill step asks for one (10 of 10 launches in the probes of 2026-10-06, no extra block in the skill), but its system message allows spawns only on an explicit instruction, so an optional `recon-agent` may be done by the session itself - the alias fallback allows that |
-| Cursor | `explore` | `generalPurpose` | none | `read` | the worker type is inferred from the docs |
-| Qwen Code | `Explore` | `general-purpose` | none | `read` | a subagent runs in the background by default |
-| OpenCode | `explore` | `general` | none | `read` | there is no default type: an unknown type is an error |
+| Codex CLI | none | none | `inherit` | `read` | the tool is `spawn_agent`, which has no type parameter: every call carries `fork_turns: "none"` (no inherited history) and a `task_name` of its own (a repeated name is rejected); read-only for a reader rests on the prompt; Codex turns an `Agent(...)` call into its own `spawn_agent` call and starts a subagent whenever a skill step asks for one (10 of 10 launches in the probes of 2026-10-06, no extra block in the skill), but its system message allows spawns only on an explicit instruction, so an optional `recon-agent` may be done by the session itself - the alias fallback allows that |
+| Cursor | `explore` | `generalPurpose` | `inherit` | `read` | the worker type is inferred from the docs |
+| Qwen Code | `Explore` | `general-purpose` | `inherit` | `read` | a subagent runs in the background by default |
+| OpenCode | `explore` | `general` | `inherit` | `read` | there is no default type: an unknown type is an error |
 | Antigravity | `research` | `self` | `flash` | `read` | the call takes a type (`TypeName`) and rejects a call without one, so neither type may be empty; `research` has no write tool, `self` writes files; `flash` is applied over a session on another model, `inherit` keeps the session's, `pro` is accepted (its separate effect is not proven); subagents run asynchronously - the answer reaches the parent after it polls the subagent list |
-| Kimi Code | `explore` | `coder` | none | `read` | the type is matched by exact name, case included |
-| Universal / Other | `Explore` | `general-purpose` | none | `read` | Claude Code's type names for a runtime that is not known in advance; a runtime that does not know them returns an unknown-type error |
+| Kimi Code | `explore` | `coder` | `inherit` | `read` | the type is matched by exact name, case included |
+| Universal / Other | `Explore` | `general-purpose` | `inherit` | `read` | Claude Code's type names for a runtime that is not known in advance; a runtime that does not know them returns an unknown-type error |
 
 A skill body names none of these - no type, no model, no Codex argument, no call form: adding an agent means one registry entry (plus one key in the config template), with no edit under `skills/`.
 
@@ -230,7 +231,7 @@ The four model-carrying aliases settle the model once per skill, before the firs
 
 1. a model name - passed with every call, exactly as written;
 2. `inherit`, or present and empty - no model argument; the subagent runs on the model of the session;
-3. the key is absent - the built-in default of the agent (Claude Code `sonnet`, Antigravity `flash`, none elsewhere).
+3. the key is absent - the built-in default of the agent (Claude Code `sonnet`, Antigravity `flash`, `inherit` elsewhere - no model argument).
 
 If the runtime rejects the name, the skill repeats the call once without a model and reports `WARN [delegation] model "<name>" rejected - retried on the session model`. UniKit keeps no list of model names: a version-specific id goes stale, so you write it into the config yourself. See [Configuration](configuration.md#subagents-section).
 
