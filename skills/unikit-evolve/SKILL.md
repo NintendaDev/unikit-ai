@@ -94,6 +94,15 @@ past it.
 `/unikit-memory`, never `/unikit-skills-context` — each of them writes files this command
 is not allowed to reach.
 
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user. A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
+
 ## Workflow
 
 ### Step 1: Read Patches (Incremental)
@@ -251,30 +260,7 @@ Number the batch **1..N of its own**, not by the Step 3 registry: that registry 
 `code` and `workflow:<skill>` rows and only the `code` half travels here. Keep a local
 `batch# → prevention point` map — Step 7 reads the report back through it.
 
-**Dispatch — three tiers, in order:**
-
-- **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-rules", args: "<batch>")` inline.
-  This is the path on Claude Code.
-- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in the current
-  environment, **invoke `/unikit-rules <batch>` inline**. The slash form is rewritten per
-  agent by the installer (Codex `$unikit-rules`, Qwen `/skills unikit-rules`); `Skill(...)`
-  is **not** rewritten and non-Claude agents have no `Skill` tool, so without this tier the
-  dispatch is dead on 5 of 6 agents. This must be a **real call**, not a printed
-  recommendation.
-- **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at
-  all, print the `Run: /unikit-rules …` line for the user. Then say plainly that no rule was
-  recorded and the cursor will not advance — otherwise the print reads as a result.
-
-<!-- unikit:agents codex -->
-## Dispatch — BLOCKING PRE-REQUISITE
-
-When Step 6 reaches the `code`-rule dispatch, the assistant MUST **automatically invoke**
-`/unikit-rules` itself — the Tier 1 `Skill(...)` call if available, otherwise the Tier 2
-slash-command fallback — and wait for it to return. Do **NOT** print the command and ask
-the user to run it: rendering the call instead of executing it is a known failure mode. The
-invocation must be a real call, not text wrapped in backticks. The Tier 3 `Run:` print is
-reserved for the single case where no inline invocation mechanism exists at all.
-<!-- unikit:end -->
+**Dispatch.** To record the batch, invoke `unikit-rules` with the batch as its argument (`## Skill calls`), in **one** call. This must be a **real call**, not text wrapped in backticks and not a printed recommendation: rendering the call instead of executing it is a known failure mode. If its file cannot be read, only the `Run: /unikit-rules …` line is printed: say plainly that no rule was recorded and the cursor will not advance — otherwise the print reads as a result.
 
 The delegate handles everything: cross-check against the knowledge base, dedup against
 existing RULES.md entries, and the report. It returns a `## Batch result` table with **one
@@ -353,8 +339,8 @@ writes. Do not report a code rule as added on the strength of having dispatched 
      newest "New patch" filename.
    - No rules were accepted (user skipped all) → advance cursor. Patches have been analyzed;
      re-reading them wastes context.
-   - **Any accepted code rule has no row, or no report came back at all** (the dispatch
-     degenerated to a Tier 3 print, or the delegate returned nothing) → do **NOT** advance.
+   - **Any accepted code rule has no row, or no report came back at all** (the skill
+     could not be invoked and only its `Run:` line was printed, or it returned nothing) → do **NOT** advance.
      Name the pending prevention points and their source patches, and say that re-running
      `/unikit-evolve` will pick them up.
 3. If execution fails before changes finalized → do not advance cursor.

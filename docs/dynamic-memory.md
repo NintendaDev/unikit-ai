@@ -29,7 +29,7 @@ The knowledge base is **modular** - partitioned into top-level **modules**, each
 | Engine-partitioned | Yes - rules differ by engine | No - design theory doesn't depend on the engine |
 | Resolution | `module-winner` - first registry in the chain that carries the module wins wholesale | `per-id-merge` - a studio override wins per rule id, missing ids backfill from official → bundled |
 | Bootstrap installs | `core` only | the whole catalog (`core` + `library`) |
-| CLI scope | `--module code` (default for most commands) | `--module gamedesign` |
+| CLI scope | `--module code` (the default only for `rules install <id>…`; `rules list` and `rules status` cover every module by default, `rules show` searches all of them) | `--module gamedesign` |
 
 Below, "`code` module rules" and "`gamedesign` module rules" break out what each module actually stores. The Bootstrap load sequence ([Dynamic Loading](#dynamic-loading)) and the `RULES.md` staging stages ([Rule Lifecycle](#rule-lifecycle)) are written from the `code` pipeline skills' point of view, since every project installs `code` and those mechanics are easiest to show concretely - but they apply to `gamedesign` identically wherever noted inline, just scoped with `--module gamedesign` and rooted at `.unikit/memory/gamedesign/`. For the full write-up of what each `gamedesign` core rule actually teaches, see [Game-Design Module](gamedesign.md#domain-knowledge-rules).
 
@@ -48,13 +48,13 @@ The `code` module stores a two-tier collection of proven development rules that 
 
 - `.unikit/memory/code/core/` - **core rules**, always loaded
 - `.unikit/memory/code/stack/` - **stack rules**, loaded on demand
-- `RULES.md` - **staging buffer** for new rules under validation (highest priority), shared across modules - see [Rule Lifecycle](#rule-lifecycle) below - common rules, plus topic files in `.unikit/rules/` once the file is split (see [Project rule topics](#project-rule-topics))
+- `.unikit/RULES.md` - **staging buffer** for new rules under validation (highest priority), shared across modules. Its `## Common` rules apply to every task; once the file is split, topic files in `.unikit/rules/` hold the rest (see [Rule Lifecycle](#rule-lifecycle) and [Project rule topics](#project-rule-topics))
 
 The developer iteratively improves permanent memory over time by testing rules in `RULES.md` first. Only validated, battle-tested rules get promoted to `.unikit/memory/code/core/` or `.unikit/memory/code/stack/` - and once there, they travel with the developer to any Unity project.
 
 #### Core rules
 
-5 files in `.unikit/memory/code/core/`, loaded on every invocation:
+5 files in `.unikit/memory/code/core/`, loaded on every invocation (Unreal Engine 5 ships a sixth, `pipeline.md`). The table below shows the Unity set:
 
 | File | Coverage |
 |------|----------|
@@ -121,18 +121,18 @@ Ships empty. Recurring review/verify conflicts, or house design conventions, lan
 A compact auto-generated index that tells pipeline skills (and `/unikit-devcontext` in standalone mode) when to load each stack rule. **Each module keeps its own index** - `.unikit/memory/code/RULES_INDEX.md` for the `code` module, `.unikit/memory/gamedesign/RULES_INDEX.md` for `gamedesign` - there is no single shared file across modules:
 
 ```markdown
-## Stack Rules
+## Stack (`.unikit/memory/code/stack/`)
 
-| Rule | Description | Load When |
+| File | Description | Load When |
 |------|-------------|-----------|
-| unitask | UniTask async/await, CancellationToken... | Async code, UniTask, CancellationToken... |
-| r3 | R3 reactive programming... | Reactive streams, Observable, Subscribe... |
-| node-canvas | NodeCanvas ActionTask... | AI behaviour trees, FSM, ActionTask... |
+| unitask.md | UniTask async/await, CancellationToken... | Async code, UniTask, CancellationToken... |
+| r3.md | R3 reactive programming... | Reactive streams, Observable, Subscribe... |
+| node-canvas.md | NodeCanvas ActionTask... | AI behaviour trees, FSM, ActionTask... |
 ```
 
 The column scheme is module-specific: the `code` module's `core` table carries a **Required By** column (which pipeline skills need that rule loaded - see `data/rules-manifest.json`), because its core rules are mandatory-gated. The `gamedesign` module's `core` table carries an **Origin** column instead (`primary` / `official` / `bundled`), because its core tier resolves per rule id (see the `per-id-merge` row above) and there is no mandatory-gate concept there. Non-core tiers (`stack`, `library`) never carry an extra column - they're load-on-demand either way.
 
-Generated automatically by `unikit-ai init`, `unikit-ai update`, `unikit-ai rules sync`, `unikit-ai rules install` (every invocation, both the `defaults` bootstrap and the variadic id form), and `/unikit-memory`. Never edit it manually.
+Generated automatically by `unikit-ai update`, `unikit-ai rules sync`, `unikit-ai rules install` (every invocation, both the `defaults` bootstrap and the variadic id form), and `/unikit-memory`. `unikit-ai init` does not create it - the first index appears when `/unikit` Step 9 runs `rules install defaults`. Never edit it manually.
 
 ## Dynamic Loading
 
@@ -190,14 +190,14 @@ Calling `/unikit-devcontext` directly is still the right move for ad-hoc work, b
 
 ### Parallel Execution via the `develop-agent` alias
 
-Workflow skills expose a named delegation alias - `develop-agent` - that expands to an `Agent(subagent_type: "general-purpose", skills: ["unikit-devcontext"])` call. After the Bootstrap refactor this alias is reserved for **true parallel scopes** (independent phases that can run simultaneously) and **deep-dive single tasks** that would otherwise bloat the parent context:
+Workflow skills expose a named delegation alias - `develop-agent` - that expands to an `Agent(...)` call whose prompt makes the subagent load the skill - a Skill-tool call on Claude Code, a read of the skill file on every other agent, because an `Agent` call cannot load a skill by itself (see [How a skill reaches a subagent](subagents.md#how-a-skill-reaches-a-subagent)); the subagent type is the one of your agent, see [Subagents](subagents.md#subagent-profile-per-agent). After the Bootstrap refactor this alias is reserved for **true parallel scopes** (independent phases that can run simultaneously) and **deep-dive single tasks** that would otherwise bloat the parent context:
 
 ```
 ┌───────────────────────────────┐    ┌───────────────────────────────┐
 │  /unikit-implement · Phase 3  │    │  /unikit-implement · Phase 4  │
 │  (main context · Bootstrap)   │    │  (main context · Bootstrap)   │
 │                               │    │                               │
-│  Agent(develop-agent) ────────┼───►│  unikit-devcontext            │
+│  Agent(develop-agent) ────────┼───►│  reads unikit-devcontext      │
 │  → Phase 4 runs in parallel   │    │  (loads its own knowledge base)│
 └───────────────────────────────┘    └───────────────────────────────┘
 ```
@@ -310,7 +310,7 @@ One rule per line, one directive per rule. When this file has a `## Topics` tabl
 `/unikit-evolve` analyzes patches created by `/unikit-fix`, extracts recurring patterns, and routes each extracted rule to **one of two destinations** based on what kind of rule it is:
 
 ```
-patches/fix-async-leak.patch
+.unikit/code/patches/2026-03-09-14.30.md
     ↓ classify
     ├── coding convention  → RULES.md
     │     ("Always pass CancellationToken to UniTask.Delay")

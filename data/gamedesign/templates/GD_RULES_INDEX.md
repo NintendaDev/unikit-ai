@@ -35,7 +35,7 @@ Core rules are canonical design knowledge (frameworks, balance, economy, progres
 
 The **Origin** column tells you where each installed rule resolved from (per-rule B-merge):
 
-- `custom` — a studio override of the canonical rule; this project's version wins and does NOT auto-update from upstream
+- `primary` — a studio override of the canonical rule; this project's version wins and does NOT auto-update from upstream
 - `official` — the canonical rule from the official registry
 - `bundled` — the canonical rule from the packaged fallback snapshot
 

@@ -101,39 +101,14 @@ rules (it authors nothing, so there is no system/flow/content to balance):
 (`gd-principles` → One-Way Boundary). This skill does not load `RULES_INDEX.md` domain
 rules — it dispatches, it does not design.
 
-## Dispatch mechanism — how this skill delegates (3 tiers)
+## Skill calls
 
-Delegation mirrors `unikit-implement`'s `## Delegation agents` + `Fallback:` pattern, but
-to **owner skills** (not subagents — a read-only `Agent` could not write the GDD). Each
-delta is handed to its zone owner **inline, one at a time, in the Phase 2 order**, waiting
-for each to return before starting the next — **never in parallel** (the order is the
-correctness guarantee).
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation. Each delta is handed to its zone owner (`unikit-gd-<zone>`; **not** a subagent — a read-only `Agent` could not write the GDD) **inline, one at a time, in the Phase 2 order**, waiting for each to return before starting the next — **never in parallel** (the order is the correctness guarantee). The owner runs its full interactive cycle in the main session, so its collaborative protocol, approvals and writes all hold, and returns control here. A call site that names no argument passes none. Printing the list of `/unikit-gd-*` commands for the user to run, instead of making the calls, is a known failure mode here: every zone is an actual call.
 
-<!-- unikit:agents codex -->
-## Dispatch — BLOCKING PRE-REQUISITE
-
-When the pipeline reaches a DISPATCH step, the assistant MUST **automatically invoke** the
-owning skill itself — the Tier 1 `Skill(...)` call if available, otherwise the Tier 2
-slash-command fallback — in order, one zone at a time, waiting for each to return. Do
-**NOT** print the list of `/unikit-gd-*` commands and ask the user to run them: rendering
-the list instead of executing it is a known failure mode. The invocation must be a real
-call, not text wrapped in backticks. The Tier 3 `Run:` print is reserved for the single
-case where no inline invocation mechanism exists at all.
-<!-- unikit:end -->
-
-- **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-gd-<zone>", args: "<the delta>")`
-  inline. The owner runs its full interactive cycle in the main session (so its
-  collaborative protocol, approvals, and writes all hold) and returns control here; then
-  dispatch the next delta. This is the path on Claude Code.
-- **Tier 2 — Fallback (slash-command).** If the `Skill` tool is unavailable in the current
-  environment, **invoke `/unikit-gd-<zone>` inline**, one zone at a time, in the Phase 2
-  order, waiting for each to return. The slash form is rewritten per agent by the installer
-  (Codex `$unikit-gd-*`, Qwen `/skills unikit-gd-*`); `Skill(...)` is **not** rewritten and
-  non-Claude agents have no `Skill` tool, so without this tier the dispatch is dead on
-  5 of 6 agents. This must be a **real call**, not a printed recommendation.
-- **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at
-  all, print the ordered `Run: /unikit-gd-…` list for the user to execute by hand
-  (`unikit/SKILL.md` invariant). This is the last resort, never the default.
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ## Pipeline — ROUTING → DISPATCH → VERIFY
 
@@ -196,7 +171,7 @@ announce the split. This skill never researches.
   edit — there is nothing to order) · a lone **standalone create** → `/unikit-gd-spec`
   add-system (this skill does not write the roster — `unikit-gd-spec` does).
 
-A single-zone bounce is a real invocation (Tiers 1–2), not a printed suggestion.
+A single-zone bounce is a real invocation (`## Skill calls`), not a printed suggestion.
 
 ### Phase 2 — DISPATCH (ordered, one delta at a time)
 
@@ -222,7 +197,7 @@ falsely (subtlety ① below):
 - **Content ↔ flow order is staleness-neutral** (both are sinks of systems; neither
   stales the other) — it is fixed `content → flow` purely for **determinism** (subtlety
   ⑤). What matters is only that both follow every system dispatch.
-- **One delta at a time.** Invoke the owner (Tier 1/2), let it run its full cycle
+- **One delta at a time.** Invoke the owner (`## Skill calls`), let it run its full cycle
   (Context → Options → approval → write → delta tail → `[gen]` re-render), wait for it to
   return, then dispatch the next. Each owner records its own version bump / changelog and
   re-renders its own `[gen]` map — this skill touches none of that.
@@ -237,12 +212,8 @@ falsely (subtlety ① below):
 ### Phase 3 — VERIFY (one sentinel pass, last)
 
 After **every** delta has been dispatched and its owner has returned, run **one**
-consistency pass, passing the reserved **loop-guard sentinel** `apply-phase3` as the
-single argument:
-
-```
-Skill(skill: "unikit-gd-verify", args: "apply-phase3")    ← the loop-guard sentinel, NOT a scope
-```
+consistency pass: invoke `unikit-gd-verify` with the argument `apply-phase3` — the reserved
+**loop-guard sentinel**, NOT a scope.
 
 `apply-phase3` is **not** a scope or an id list — it is the one reserved token that tells
 `unikit-gd-verify` this run is apply's closing Phase 3. verify recognises it,
@@ -250,9 +221,7 @@ Skill(skill: "unikit-gd-verify", args: "apply-phase3")    ← the loop-guard sen
 loop), and derives its own changed-scope from the unverified design diff exactly as a bare
 call would (changed-scope impact across the just-touched systems, flows, and content types;
 otherwise a full check). Do **not** construct a union list of the touched ids and pass it
-instead — `apply-phase3` is the only argument gd-apply ever passes here. This is the only
-place gd-apply uses Tier 2's `/unikit-gd-verify apply-phase3` fallback / Tier 3 print, on
-the same rules as a dispatch.
+instead — `apply-phase3` is the only argument gd-apply ever passes here. This call follows the same recipe as a dispatch (`## Skill calls`).
 
 ## Content-axis subtleties
 

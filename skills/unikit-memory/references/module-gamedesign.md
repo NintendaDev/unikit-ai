@@ -48,7 +48,7 @@ The distinction is *provenance and resolution*, not load policy:
   loops, balance, economy, progression, level design, narrative, UX/onboarding,
   accessibility, live-ops, monetization ethics. This tier ships from the
   registry and is resolved **per-id via B-merge**: for each rule id, a studio's
-  own version (if present) overrides the canonical one (`origin: custom`),
+  own version (if present) overrides the canonical one (`origin: primary`),
   otherwise the canonical file backfills from the official registry
   (`origin: official`) or the bundled fallback snapshot (`origin: bundled`). A
   studio rarely *adds* a brand-new core id by hand — it overrides an existing
@@ -95,8 +95,10 @@ sanctioned slot for everything a studio authors itself.
   `.unikit/gamedesign/GAME.md`.
 - **Code rules** (framework usage, code style, testing) → the `code` module.
 - **Architecture decisions** → `.unikit/ARCHITECTURE.md`.
-- **Lessons from recurring design-verify conflicts** → the `unikit-evolve`
-  skill-context flow (`.unikit/skill-context/unikit-gd-*`), not memory rules.
+- **Lessons from recurring design-verify / design-review conflicts** → a studio
+  `library` rule, authored through this skill (`/unikit-memory --module gamedesign`).
+  The `unikit-gd-*` skills do not read `skill-context`, so the evolve flow does
+  not reach them.
 
 If the user provides content that falls into these categories, inform them and
 suggest the correct destination.
@@ -266,7 +268,7 @@ in place) before creating a new one.
 The index lives at `.unikit/memory/gamedesign/RULES_INDEX.md` and carries two
 tables, neither mandatory-gated (both load-on-demand by `Load When`). The Core
 table carries an **Origin** column (per-rule B-merge provenance:
-`custom`/`official`/`bundled`) so the agent can tell a studio override from
+`primary`/`official`/`bundled`) so the agent can tell a studio override from
 canonical knowledge; the Library table is purely custom and omits it:
 
 ```markdown

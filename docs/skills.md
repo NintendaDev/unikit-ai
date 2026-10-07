@@ -67,8 +67,8 @@ These skills form the core development loop. See [Development Workflow](workflow
 - A folder holding a `SOURCE.md` and no manifest is an **unfinished** research: a session that ended before it was saved. It stays out of `researches/INDEX.md`, is announced there by name, and is resumed with `/unikit-explore <folder>`
 - Before the save is confirmed the agent **reads back** the requirements you have not actually seen — the ones it inferred itself, the ones that depart from what you said, and the ones whose wording admits two different implementations. What you stated unambiguously is not shown. Anything left unconfirmed is demoted to an open question rather than travelling on as the planner's input. Each such requirement is its own question — pick an option or answer in your own words; an agent without a question tool prints the same options as a numbered list and waits for your answer.
 - Re-running on an existing slug **continues** that research instead of opening a second folder; `researches/INDEX.md` is regenerated from disk on every save, so there is no separate rebuild command
-- Retired reference files stay on disk in projects installed before this change — the skill installer copies additively and never prunes. They are inert: nothing reads them
-- The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised only as the leading token, never inferred
+- Retired reference files do not linger: `unikit-ai update` reinstalls a changed skill from a clean directory, so they disappear on the next update (only a fresh `init` copy is additive)
+- The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`. Recognised as the leading token or in your own wording ("ultra research"), never inferred from the topic's size
 - Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and checks that the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The gate runs **at most two passes**: zero blocking findings is a pass, a material or cosmetic remainder is recorded rather than held against the save, and blocking findings surviving the second pass stop the gate and ask the user instead of starting a third. The read-only pass goes to a fresh context that receives the path of the gate's reference file rather than its text, and returns a report whose `Next:` line — pass, repair, ask or hold — the saving session acts on, so an ordinary save reads no reference file at the moment its context is fullest; without an agent the pass runs inline. If the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
 - When direction is clear, transition to `/unikit-plan`
 
@@ -85,13 +85,13 @@ These skills form the core development loop. See [Development Workflow](workflow
 
 Four modes:
 - **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
-- **Full** - creates git branch, asks about testing/logging, saves plan
+- **Full** - optionally creates a git branch (`<git.branch_prefix><name>`), asks about tests, documentation and roadmap linkage, saves plan
 - **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
-- **Add** - extends an existing plan with new tasks
+- **Add** - extends an existing plan with new tasks (never creates a branch)
 
-Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan folder without re-exploring.
+Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan in place: it explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that).
 
-- **Modules** - full and ultra plans are always sliced into modules the base branch can take whole, listed under `## Modules` when there are two or more; a module boundary is a layer barrier, and a commit range never crosses one. With `git.pull_requests.checkpoints: true` every module but the last ends with a **PR checkpoint task**. The manifest records `Planned at:`, the commit the plan's work starts from
+- **Modules** - full and ultra plans are always sliced into modules the base branch can take whole, listed under `## Modules` when there are two or more (or one longer than four phases, with a `why long:` note); a module boundary is a layer barrier, and a commit range never crosses one. With `git.pull_requests.checkpoints: true` every module but the last ends with a **PR checkpoint task**. The manifest records `Planned at:`, the commit the plan's work starts from
 - **Two ultra writing protocols** - standard by default, or with saved state in the plan folder's `.planning/` (chosen by the first ultra question; a standard plan over 12 phases is offered the switch); saved state survives a compaction and resumes with `/unikit-plan ultra <name>`
 
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
@@ -123,7 +123,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 /unikit-implement core-loop          # Find plan by name
 /unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
-- Reads skill-context rules first, then the plan manifest
+- Resolves the plan, reads its manifest and then the project's skill-context rules
 - Executes tasks one by one with commit checkpoints. At a checkpoint you can answer **Yes, and from now on commit without asking**: every later commit of the session - the next checkpoints, the commit before a direct editor edit, the final one - is then written and made by `/unikit-commit` without a question and without a push. Safety errors (a secret, a missing companion file) still stop the commit. The choice lasts until the session ends; `/clear` forgets it, `/compact` does not
 - Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and implements tasks inline with `Read/Edit/Write/Bash`. The `develop-agent` alias is used only for true parallel scopes or deep-dive single tasks
 - Supports selective execution by phase, task numbers, or feature name
@@ -385,7 +385,7 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - Read-only research partner - studies references, market fit, or the existing GDD/code; **never authors** the design itself
 - Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
 - Saves to `.unikit/gamedesign/researches/<slug>/`; a review file is mutated in place instead of getting a new folder
-- Routes onward without asking based on the target's `doc_status` (no doc → spec add-system; `skeleton` → system; `detailed`+ → system as a delta)
+- Routes onward without asking based on the target's `doc_status` (no doc → spec add-system; `skeleton` → system; `detailed` → system as a delta); flow targets always go to `/unikit-gd-flow` and content types to `/unikit-gd-content`, in any state
 
 ### `/unikit-gd-spec [path-to-existing-GDD | URL | free-form description]` - the master GDD + registry
 
@@ -395,7 +395,7 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 /unikit-gd-spec add a crafting system              # Add-System mode
 ```
 - Owns `GAME.md` (the authored one-pager - pillars, loop stack, win/lose, monetization stance, non-goals) plus its generated `## System Map [gen]` / `## Flow Map [gen]` / `## Funnel [gen]` / `## Content Map [gen]`, and `GD-IDS.yaml` (the facts registry code reads)
-- Mode inferred from the argument: Create, Import (path/URL), Pitch (→ `PITCH.md`), Remap (rebuild the map), Add-System (graft one system onto an existing map)
+- Mode inferred from the argument: Create, Import (path/URL), Edit (change a pillar, the monetization stance, etc. in `GAME.md`), Pitch (→ `PITCH.md`), Remap (rebuild the map), Add-System (graft one system onto an existing map)
 - The **only** writer of the system roster - a flow/content type naming a missing system routes back here
 - On Create, best-fits a genre hint to the bundled genre-profile catalog and runs a seed interview (see [Game-Design Module](gamedesign.md#genre-profiles-the-seed-layer))
 
@@ -446,7 +446,8 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 /unikit-gd-verify
 /unikit-gd-verify crafting
 ```
-- Answers "is the design **consistent with itself**?" - grep-first checks against `GD-IDS.yaml`: IDs, terminology, dangling/unregistered facts, roster↔disk + map freshness, Depends 3-way, status/version coherence, AC presence, placeholder leaks
+- Answers "is the design **consistent with itself**?" - grep-first checks against `GD-IDS.yaml`: IDs, terminology, dangling/unregistered facts, roster↔disk + map freshness, Depends 3-way, status/version coherence, AC presence, placeholder leaks, plus the flow and content-schema families
+- Also a **changed-scope impact pass**: from an unverified git diff it computes which dependent systems, flows and content a change affects; conflicts triage into four tracks
 - Fully read-only - no report file, no changelog, no `doc_status` bump; prints an inline conflict report and hands apply-ready fixes to `/unikit-gd-apply`
 - Unlike review, a conflict is a fact, not a finding - you only choose *how* to fix it, not whether
 
@@ -540,7 +541,7 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 ```
 /unikit-mcp-trap                                 # Harvest findings from the current session
 /unikit-mcp-trap the snapshot reported ready with zero files
-/unikit-mcp-trap .unikit/code/plans/2026-08-18_ui/PLAN.md   # Take this plan's table, nothing else
+/unikit-mcp-trap .unikit/code/plans/rarity-ui/PLAN.md       # Take this plan's table, nothing else
 ```
 - Writes `.unikit/MCP-RECHECK-NOTES.md` - the project's log of what has to be re-checked about the **engine MCP server it actually talks to**
 - Zero MCP calls, no editor required: a finding was already observed, and re-observing it could record the wrong thing
@@ -568,7 +569,7 @@ unikit-ai genres install <id|alias…>  # selectively install profile(s)
 
 ## Agents
 
-UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>`) and **internal workers/sidecars** spawned by them - plus five **delegation aliases** in two families: the skill-loading `develop-agent` and `docs-agent`, which expand into `Agent(subagent_type: "general-purpose", skills: [...])` calls, and the model-carrying `recon-agent`, `check-agent`, `lens-agent`, which expand into a read-only dispatch declared in the calling skill's `## Delegation agents`.
+UniKit ships two tiers of agents - top-level **coordinators** (launched via `claude --agent <name>` or `kimi --agent <name>`) and **internal workers/sidecars** spawned by them - plus six **delegation aliases** in two families: the skill-loading `develop-agent` and `docs-agent`, which expand into `Agent(...)` calls whose prompt makes the subagent load the skill (a Skill-tool call on Claude Code, a read of the skill file elsewhere - see [Subagents](subagents.md#how-a-skill-reaches-a-subagent)), and the model-carrying `recon-agent`, `check-agent`, `lens-agent` and `recon-writer-agent`, which expand into a dispatch declared in the calling skill's `## Delegation agents` - see [Subagents](subagents.md#delegation-aliases).
 
 After the Bootstrap refactor, pipeline skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing inline and use `develop-agent` only for true parallel scopes or deep-dive single tasks. `docs-agent` keeps its usual role of updating documentation. Rule capture is delegated to nobody at all: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to you and call `/unikit-rules` only with the batch you selected. The model-carrying aliases exist so a model name is written once per skill, behind an agent-filter branch, instead of at every call site - see [Subagents](subagents.md#delegation-aliases).
 

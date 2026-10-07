@@ -41,9 +41,11 @@ The list of registered modules and their structural fields (`tiers`,
 module's content semantics, file format, and path conventions come from its
 contract file `{{skills_dir}}/{{self_name}}/references/module-<id>.md`.
 
-Today exactly one module is registered: **`code`** (tiers `core` + `stack`). The
-router is written so additional modules can be registered later with no change to
-this file — only a new `modules.yml` entry and a new `module-<id>.md` contract.
+Two modules are registered today: **`code`** (tiers `core` + `stack`) and
+**`gamedesign`** (tiers `core` + `library`) — read the live list from `modules.yml`,
+never from this paragraph. The router is written so additional modules can be
+registered later with no change to this file — only a new `modules.yml` entry and a
+new `module-<id>.md` contract.
 
 ## What Belongs Here
 
@@ -72,6 +74,15 @@ Do not produce any user-facing output until language rules are loaded.
 Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
+
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user. A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ## Workflow
 
@@ -725,7 +736,7 @@ Options:
 2. No  — skip promotion, keep the changes in memory only
 ```
 
-- **Yes** → finish the Final Step report first (the user must see exactly what changed in memory before promotion), then transition to `/unikit-rules-registry update` as the next action. Do not collapse the memory report into the promotion run — they are separate, ordered events.
+- **Yes** → finish the Final Step report first (the user must see exactly what changed in memory before promotion), then invoke `unikit-rules-registry` with the argument `update` (`## Skill calls`). Do not collapse the memory report into the promotion run — they are separate, ordered events.
 - **No** → finish the Final Step report without adding any promotion hint. The user can always run `/unikit-rules-registry update` manually later; do not repeat the question or nag on the next invocation.
 
 Skip the question entirely (do not ask, do not print a fallback hint) when:

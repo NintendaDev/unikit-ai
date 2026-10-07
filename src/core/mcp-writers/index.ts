@@ -2,6 +2,7 @@ import { JsonMcpWriter } from './json-writer.js';
 import { TomlMcpWriter } from './toml-writer.js';
 import { OpenCodeMcpWriter } from './opencode-writer.js';
 import { AntigravityMcpWriter } from './antigravity-writer.js';
+import { KimiMcpWriter } from './kimi-writer.js';
 
 export interface McpWriter {
   readExisting(settingsPath: string): Promise<Record<string, unknown>>;
@@ -49,12 +50,15 @@ export interface McpWriter {
 // Three instances of one JSON writer: the clients share the container and the
 // file format, and differ in how an env reference is spelled and — on Qwen —
 // in the field an HTTP server's URL goes into (`url` means SSE there).
+// Kimi Code is a subclass of the same writer (`kimi-writer.ts`): it drops `type`
+// and writes a bearer token as a variable NAME.
 const claudeJsonWriter = new JsonMcpWriter({ label: 'claude', envStyle: 'dollar-brace' });
 const cursorJsonWriter = new JsonMcpWriter({ label: 'cursor', envStyle: 'env-colon' });
 const qwenJsonWriter = new JsonMcpWriter({ label: 'qwen', envStyle: 'dollar-brace', httpUrlField: true });
 const tomlWriter = new TomlMcpWriter();
 const opencodeWriter = new OpenCodeMcpWriter();
 const antigravityWriter = new AntigravityMcpWriter();
+const kimiWriter = new KimiMcpWriter();
 
 export function getMcpWriter(agentId: string): McpWriter {
   if (agentId === 'codex') {
@@ -65,6 +69,9 @@ export function getMcpWriter(agentId: string): McpWriter {
   }
   if (agentId === 'antigravity') {
     return antigravityWriter;
+  }
+  if (agentId === 'kimi') {
+    return kimiWriter;
   }
   if (agentId === 'cursor') {
     return cursorJsonWriter;

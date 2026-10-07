@@ -46,24 +46,24 @@ Main configuration file, created by `unikit-ai init`:
       "modules": {
         "code": {
           "core": [
-            { "name": "code-style",        "source": "registry", "origin": "official", "version": "1.2.0", "installed_hash": "sha256:..." },
-            { "name": "design-principles", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-            { "name": "folders-structure", "source": "registry", "origin": "official", "version": "1.1.0", "installed_hash": "sha256:..." },
-            { "name": "performance",       "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-            { "name": "testing",           "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." }
+            { "name": "code-style",        "source": "registry", "origin": "official", "version": "1.2.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "design-principles", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "folders-structure", "source": "registry", "origin": "official", "version": "1.1.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "performance",       "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "testing",           "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" }
           ],
           "stack": [
-            { "name": "aspid-mvvm",  "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-            { "name": "node-canvas", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-            { "name": "odin",        "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-            { "name": "r3",          "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-            { "name": "unitask",     "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." }
+            { "name": "aspid-mvvm",  "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "node-canvas", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "odin",        "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "r3",          "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "unitask",     "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" }
           ]
         },
         "gamedesign": {
           "core": [
-            { "name": "core-loops", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "sha256:..." },
-            { "name": "economy",    "source": "registry", "origin": "primary",  "version": "2.1.0", "installed_hash": "sha256:..." }
+            { "name": "core-loops", "source": "registry", "origin": "official", "version": "1.0.0", "installed_hash": "<64-hex sha256>" },
+            { "name": "economy",    "source": "registry", "origin": "primary",  "version": "2.1.0", "installed_hash": "<64-hex sha256>" }
           ],
           "library": []
         }
@@ -139,6 +139,17 @@ git:
   pull_requests:
     checkpoints: false
     max_level: create   # remind | create | merge
+
+subagents:
+  model:
+    claude: sonnet
+    codex:
+    cursor:
+    qwen:
+    opencode:
+    antigravity: flash
+    kimi:
+    universal:
 ```
 
 ### `language` section
@@ -147,7 +158,7 @@ git:
 |-----|-------------|---------|
 | `ui` | Language for AI-agent communication (prompts, questions, explanations). It holds for the whole session, not just the first reply: status lines while background agents run, relays of what a subagent found (subagents talk to each other in English), the final report and any follow-up discussion. Options: `en`, `ru`, `de`, `fr`, `es`, `zh`, `ja`, `ko`, `pt`, `it` | `en` |
 | `artifacts` | Language for generated artifacts (plans, specs, documentation). Same options as `ui`. | same as `ui` |
-| `rules` | Language for knowledge base rule files: everything under `.unikit/memory/` (`core/`, `stack/`, `references/`, `RULES_INDEX.md`), `.unikit/RULES.md`, and skill-context rules. Intentionally decoupled from `ui` and `artifacts` - rule files are consumed by AI agents for prompt matching; keeping them in a stable language reduces semantic drift across agents and teams. Changing `ui` or `artifacts` does NOT change the language of existing rule files. **Strongly not recommended to change from `en`** - non-English rule files cause semantic drift and inconsistent agent behavior. Default is always `en`; can only be changed by manually editing this file (skills never write to this key). | `en` |
+| `rules` | Language for knowledge base rule files: everything under `.unikit/memory/` (`code/{core,stack}/`, `gamedesign/{core,library}/`, `references/`, `RULES_INDEX.md`), `.unikit/RULES.md`, and skill-context rules. Intentionally decoupled from `ui` and `artifacts` - rule files are consumed by AI agents for prompt matching; keeping them in a stable language reduces semantic drift across agents and teams. Changing `ui` or `artifacts` does NOT change the language of existing rule files. **Strongly not recommended to change from `en`** - non-English rule files cause semantic drift and inconsistent agent behavior. Default is always `en`; can only be changed by manually editing this file (skills never write to this key). | `en` |
 | `technical_terms` | How to handle technical terms in translations. `keep` - preserve English terms (API, prefab, shader, ECS). `translate` - translate where a common translation exists. **Strongly not recommended to change from `keep`** - translating technical terms degrades agent accuracy. Default is always `keep`; can only be changed by manually editing this file (skills never write to this key). | `keep` |
 
 ### `workflow` section
@@ -196,6 +207,31 @@ Existing projects receive the key by either of the two paths in [How new keys re
 
 **Plans are always sliced into modules**, whatever these keys say: a module is one or more consecutive phases after whose merge the base branch is whole. The keys only decide whether a module ends with a PR checkpoint task — see [Plan files → Modules](plan-files.md#modules--pieces-the-base-branch-can-take-whole).
 
+### `subagents` section
+
+Which model the subagents that skills launch run on, one value per agent. The block lists every supported agent, whichever ones the project has installed.
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `model.claude` | Claude Code. A tier name: `sonnet`, `opus` or `haiku`. | `sonnet` |
+| `model.codex` | Codex CLI. A model identifier as the model parameter of Codex's `spawn_agent` accepts it - its schema lists the valid names, and they change, so you write it yourself. | `inherit` |
+| `model.cursor` | Cursor. The subagent call does not name a model, so a value here has no effect; Cursor pins a model per agent file instead. | `inherit` |
+| `model.qwen` | Qwen Code. The call accepts a model only as a tier name, and only when `agents.modelGrades` is set in Qwen's `settings.json`. | `inherit` |
+| `model.opencode` | OpenCode. The subagent call has no model parameter: the subagent runs on the model of the session. | `inherit` |
+| `model.antigravity` | Antigravity. `flash`, `pro` or `inherit`. | `flash` |
+| `model.kimi` | Kimi Code. The call accepts a model only when `[secondary_model]` is set in `~/.kimi-code/config.toml`. | `inherit` |
+| `model.universal` | Universal / Other. The runtime is not known in advance: a value works only if the subagent tool of your agent accepts a model and the name is valid there. | `inherit` |
+
+A value means:
+
+- **a model name** - passed to the subagent with every call, exactly as written;
+- **`inherit`, or an empty value** - nothing is passed: the subagent runs on the model of the session. `inherit` is what the template ships for every agent without a pinned model; an empty value written by hand means the same, is a deliberate choice and is never filled in again;
+- **no key at all** (including no file, or no `subagents` block) - the built-in default noted above.
+
+**The skills read this block at run time**, once per skill before the first dispatch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Only the aliases that name a model read it (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`); `develop-agent` and `docs-agent` load a skill and never pass a model.
+
+UniKit keeps no list of model names. A name the runtime does not accept makes the launch fail, and the skill repeats the call once on the model of the session with a `WARN [delegation]` line. For Cursor, Qwen Code, OpenCode and Kimi Code the value either has no effect or needs a setting of the runtime itself (`agents.modelGrades`, `[secondary_model]`), and Universal / Other does not know its runtime at all, which is why those keys ship empty. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
+
 ### How new keys reach an existing project
 
 A key added to this template after your project was bootstrapped does not arrive on its own: `unikit-ai init` only prints a hint about the file and `unikit-ai update` never touches it. `.unikit/config.yaml` is written by the `/unikit` skill and by nothing else, so there are exactly **two** paths, and the difference between them is deliberate.
@@ -205,13 +241,13 @@ A key added to this template after your project was bootstrapped does not arrive
 | merge mode | a full `/unikit` bootstrap run on a project that already has a config | names the missing keys and **offers** to append them |
 | config actualization mode | asking `/unikit` to update / actualize / repair the config on a project already set up | appends a template **literal** silently; **asks** only where the template carries a placeholder, or the current value falls outside a declared domain |
 
-Both derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so neither is more thorough than the other. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
+Both derive the missing set the same way — by comparing `.unikit/config.yaml` against `skills/unikit/references/config-template.yaml` — so neither is more thorough than the other. The `subagents` block reaches an existing project the same way: the actualization mode appends it whole, with its comments. They differ only in whether they ask, and that difference follows from consent: a bootstrap run is not something you started in order to change configuration, so a question is appropriate there; the actualization mode is entered *because* you asked for exactly that, so re-asking about an obvious default is noise.
 
 The actualization mode sorts every leaf key of the template into one of six buckets:
 
 1. Absent, template value is a literal → appended **silently**.
 2. Absent, template value is a `{{PLACEHOLDER}}` → **asked**.
-3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode.
+3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode. Exception: an empty `subagents.model.<agent>` is a deliberate choice (pass no model), so it is kept as it is.
 4. Present but outside a **declared** domain → asked. A domain is declared by exactly one thing: an inline `# a | b` comment standing beside the value. An `Options:` or `Examples:` list inside a comment block is prose for the reader, not a domain. Which keys carry one is settled by the template alone — this page deliberately does not list them, so the two cannot drift apart.
 5. Present in your file but absent from the template → **reported, never deleted**. This is usually a key you added on purpose.
 6. `language.rules` and `language.technical_terms` → **not touched at all**.
@@ -224,7 +260,7 @@ The actualization mode sorts every leaf key of the template into one of six buck
 
 ## MCP Configuration
 
-UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), or `.agents/mcp_config.json` (Antigravity).
+UniKit AI writes MCP server configuration into the file selected per agent: `.mcp.json` (Claude Code), `.codex/config.toml` (Codex CLI), `.cursor/mcp.json` (Cursor), `.qwen/settings.json` (Qwen Code), `opencode.json` (OpenCode), `.agents/mcp_config.json` (Antigravity), `.kimi-code/mcp.json` (Kimi Code), or `.mcp.json` (Universal / Other - the same file Claude Code uses, written by the same writer).
 
 Every server carries two names, and keeping them apart is what the rest of this section rests on:
 
@@ -376,6 +412,7 @@ When you select an engine MCP, UniKit AI copies that server's **rules tree** int
 |------|---------|
 | `INDEX.md`, base section (everything except the `## Check` table) | `/unikit-plan`, `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `/unikit-devcontext`, `unikit-implement-worker` — once, at Bootstrap |
 | `INDEX.md`, the `## Check` table | `/unikit-implement`, `/unikit-fix`, `/unikit-verify`, `unikit-implement-worker` — grepped per editor task, by the task's own area plus the cross-cutting ones |
+| `INDEX.md`, the delivery stamp and the access section | `/unikit-mcp-audit`, `/unikit-mcp-trap` — the stamp (`server:`) is the configured server; the access section says how a project-relative asset path is written for this engine |
 | `verification.md` | `/unikit-verify` and no other skill — per-gate calibration: which observation closes which gate |
 
 Three invariants hold over everything in the tree, and they are what makes it safe to ship at all:
@@ -426,12 +463,14 @@ Every MCP JSON declares `key` / `code` / `displayName` and one of `config` / `co
 | OpenCode | `"Authorization": "Bearer {env:GITHUB_PAT}"` and `"oauth": false` |
 | Codex CLI | `bearer_token_env_var = "GITHUB_PAT"` — no `Authorization` header at all |
 | Antigravity | `"Authorization": "Bearer YOUR_GITHUB_PAT"` — it documents no reference syntax, so this is a placeholder you replace yourself |
+| Kimi Code | `"bearerTokenEnvVar": "GITHUB_PAT"` — Kimi expands nothing inside a header, so the variable NAME goes into its own field and no `Authorization` header is written; set `GITHUB_PAT` in the environment `kimi` starts from |
+| Universal / Other | `"Authorization": "Bearer ${GITHUB_PAT}"` - the same writer and the same spelling as Claude Code |
 
 The first write has to be right: an entry already standing under our code is kept as it is (rule 3 of [What UniKit writes into your settings file](#what-unikit-writes-into-your-settings-file)), so nothing would ever correct a wrong one.
 
 `config` (and each `configByPlatform` variant) may carry an `env` block, handed to the server process verbatim; the path tokens below expand inside its values too. UniKit AI uses it for exactly one thing today — see [`UNITY_MCP_NO_GATING`](#unity-biome-mcp-order-1) above.
 
-`config` may also carry **`_comment` as its last field**: a one-line hint addressed to whoever opens their own settings file. Every writer carries it through verbatim — Codex because it copies fields it does not recognise, OpenCode through a passthrough naming the key explicitly, since that writer assembles its output from a whitelist and would otherwise drop it. Nothing reads the value: no consumer changes behaviour depending on whether it is present, absent, or says something else entirely. The key is pinned to the `MCP_COMMENT_KEY` constant by a guard in `scripts/test-skills.sh` Part 5b, so the data and the writer cannot drift apart. [Context7](#context7) is the one server using it today.
+`config` may also carry **`_comment` as its last field**: a one-line hint addressed to whoever opens their own settings file. Every writer carries it through verbatim — Codex because it copies fields it does not recognise, OpenCode through a passthrough naming the key explicitly, since that writer assembles its output from a whitelist and would otherwise drop it. Nothing reads the value: no consumer changes behaviour depending on whether it is present, absent, or says something else entirely. The key is pinned to the `MCP_COMMENT_KEY` constant by a guard in `scripts/test-skills.sh` Part 5b, so the data and the writer cannot drift apart. [Context7](#context7) and [GitHub](#github) use it today.
 
 **`docs` replaced a hand-written `instruction` field, and the removal is deliberate.** That field restated the vendor's own documentation, which is how it came to carry a measured-false claim about how much of the catalog was reachable. A URL rots more slowly than prose, and when it finally dies it answers 404 loudly instead of walking you through outdated steps in silence. The install facts themselves — engine version, prerequisites, plugin setup — belong to the vendor and are deliberately not mirrored here. A server that needs no setup at all simply omits `docs.repo` and contributes no line.
 
@@ -482,7 +521,7 @@ Per selected server, in this order:
 2. **No entry** → the server is written in full.
 3. **An entry under our exact code** → `command` and `args` are **left alone**. Whoever wrote them knows things UniKit does not: a pinned version, a local build, an API key. Overwriting them is how the duplicate-registration bug this release fixes came about.
 4. **An entry under a case or whitespace variant** of our code → removed and rewritten under the canonical spelling. Leaving it is not an option: grants are literal, so `mcp__UnityMCP__*` confers nothing on tools published as `mcp__unityMCP__*`. The scan is bounded — a key registered by an extension is never treated as a variant of ours, however similar it looks.
-5. **`env` is the one narrow exception** and is overlaid onto an existing entry as well. It is UniKit's own field: `UNITY_MCP_NO_GATING=1` is what makes "gating is removed by configuration" a true statement about your project, and a plugin that rewrites the entry carries it away with everything else. The field name differs per agent (`environment` on OpenCode, `env` elsewhere) and Codex and OpenCode drop empty values. On OpenCode a **remote** entry is skipped by the overlay entirely: `environment` configures a spawned process, and a remote server has none. No shipped server reaches that path today — all three HTTP ones carry no `env` — but OpenCode is the one agent that declares a `$schema`, where a field that does not belong there can invalidate the whole file rather than a single entry.
+5. **`env` is the one narrow exception** and is overlaid onto an existing entry as well. It is UniKit's own field: `UNITY_MCP_NO_GATING=1` is what makes "gating is removed by configuration" a true statement about your project, and a plugin that rewrites the entry carries it away with everything else. The field name differs per agent (`environment` on OpenCode, `env` elsewhere) and Codex and OpenCode drop empty values. On OpenCode a **remote** entry is skipped by the overlay entirely: `environment` configures a spawned process, and a remote server has none. No shipped server reaches that path today — all four HTTP ones carry no `env` — but OpenCode is the one agent that declares a `$schema`, where a field that does not belong there can invalidate the whole file rather than a single entry.
 
 The pass is idempotent — it compares the serialized result against what is on disk and does not rewrite an unchanged file.
 
@@ -550,6 +589,8 @@ You can delete the hint from your own settings file and `update` will **not** pu
 
 **Qwen Code gets `httpUrl`.** Qwen reads `url` as an SSE endpoint and `httpUrl` as HTTP streaming, so a new entry for **every** HTTP server — Context7, the HTTP engine servers (Coplay `UnityMCP`, chir24 `unreal-engine`) and servers registered by extensions — is written with `httpUrl` and without `url`/`type`. An entry written earlier is kept as it is; to recreate it, delete it from `.qwen/settings.json` and run `unikit-ai init` or `update`.
 
+**Kimi Code drops `type`.** Kimi reads the transport off the entry (`command` → stdio, `url` → HTTP), so a new entry for every HTTP server is written without `type`, and a bearer-token header becomes `bearerTokenEnvVar` (table above). A header that is a whole `{{env:NAME}}` reference, or mixes text with one, has no Kimi field: it is dropped with a warning. Kimi enables project-level MCP servers only after you trust the folder. An entry written earlier is kept as it is; to recreate it, delete it from `.kimi-code/mcp.json` and run `unikit-ai init` or `update`.
+
 ### GitHub
 
 ```json
@@ -581,8 +622,7 @@ GitHub's official remote MCP server, offered in the wizard next to Context7 and 
 }
 ```
 
-Rule metadata (`id`, `description`, `version`, `references`) lives in the remote registry `manifest.json`; the `Load when` text stays exclusively inside each rule `.md` file and is parsed at runtime by `parseRuleMetadataFromContent()` when building `RULES_INDEX.md` and when `rules show` prints the header. See `CLAUDE.md` → **Content Layers** for the full split.
-
+Rule metadata (`id`, `description`, `version`, `references`) lives in the remote registry `manifest.json`; the `Load when` text stays exclusively inside each rule `.md` file and is parsed at runtime by `parseRuleMetadataFromContent()` when building `RULES_INDEX.md` and when `rules show` prints the header.
 ## Supported Agents
 
 | Agent | Config Dir | Skills Dir | MCP Support |
@@ -593,6 +633,16 @@ Rule metadata (`id`, `description`, `version`, `references`) lives in the remote
 | Qwen Code | `.qwen` | `.qwen/skills` | Yes (`.qwen/settings.json`) |
 | OpenCode | `.opencode` | `.opencode/skills` | Yes (`opencode.json`) |
 | Antigravity | `.agents` | `.agents/skills` | Yes (`.agents/mcp_config.json`) |
+| Kimi Code | `.kimi-code` | `.kimi-code/skills` | Yes (`.kimi-code/mcp.json`) |
+| Universal / Other | `.agents` | `.agents/skills` | Yes (`.mcp.json`) |
+
+### Removing an agent
+
+Deselecting an agent on a repeat `unikit-ai init` removes only what UniKit installed for it: the skills recorded under that agent in `.unikit.json` (`installedSkills`) and the skills of installed extensions. The skills directory itself is deleted only when nothing else is left in it - skills you added by hand or with `npx skills add` stay, and `init` says how many items it left. Subagent files and MCP entries are not removed, and Antigravity's `.agents/rules/unikit.md` is.
+
+### Two agents, one skills directory
+
+Two agents of one project never share a skills directory: with different text in the same place they would overwrite each other on every `update`. Today the only such pair is Antigravity and Universal / Other (both use `.agents/skills`); the `init` wizard refuses the selection, and `update` and `extension add|remove|update` stop with exit code 1 if `.unikit.json` was edited into that state. The rule compares directories, not agent names, so it holds for any agent added later.
 
 ## Project Structure
 
@@ -650,7 +700,7 @@ your-unity-project/
 │   │   ├── ultra-plan-read.md     # Reader contract for an ultra plan bundle
 │   │   ├── research-link.md       # The `## Based on` contract - entry, hashing, drift ladder
 │   │   ├── plan-boundaries.md     # Where a plan, a module and a push start and end - read by verify, implement, commit, pr
-│   │   ├── gamedesign/            # only if the Game Design skills are installed
+│   │   ├── gamedesign/            # Game-design system assets
 │   │   │   ├── gd-principles.md    # The design working contract - slim core
 │   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it
 │   │   │   ├── gd-lifecycle.md
@@ -688,11 +738,13 @@ your-unity-project/
 │   ├── ROADMAP.md                # Strategic roadmap (managed by /unikit-roadmap)
 │   ├── TODO.md                   # Task checklist (managed by /unikit-todo)
 │   ├── code/                     # Dev-pipeline workspace
+│   │   ├── PLAN.md                # Fast-mode plan (managed by /unikit-plan)
+│   │   ├── FIX_PLAN.md            # Fix plan (created by /unikit-fix)
 │   │   ├── plans/                 # Feature plans (managed by /unikit-plan)
 │   │   │   ├── <name>/recon/      # Reconnaissance kept with an ultra plan written with saved state
 │   │   │   └── <name>/.planning/  # An ultra plan written with saved state - gone once its checks pass
 │   │   ├── patches/               # Fix patches (created by /unikit-fix)
-│   │   └── researches/            # Discovery output (created by /unikit-explore)
+│   │   └── researches/            # Discovery output (created by /unikit-explore), with INDEX.md
 │   ├── gamedesign/                # GDD workspace (GAME.md, GD-IDS.yaml, systems/, flows/, ...) - created on first /unikit-gd-spec use
 │   ├── skill-context/            # Skill overrides (/unikit-evolve, /unikit-skills-context)
 │   └── evolutions/               # Evolution logs (generated by /unikit-evolve)

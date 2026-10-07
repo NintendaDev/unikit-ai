@@ -47,61 +47,55 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
-
 ---
 
 ## Delegation agents
 
-This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "general-purpose", ...)` invocation with the matching skill loaded; a reconnaissance alias expands to a read-only `Explore` dispatch. Each alias is the single place where its delegate's model is declared — call sites name the alias and never carry a model argument of their own.
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(...)` invocation whose prompt makes the subagent load the skill; a reconnaissance alias expands to a read-only dispatch. Each alias is the single place where its delegate's agent type and call arguments are declared — call sites name the alias and never carry a type or a model argument of their own.
+
+**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
+(a missing file, block or key is not an error) and settle the model argument once:
+
+1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
+   exactly as written (this runtime's own spelling of the model argument, if it differs).
+2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
+   model of this session.
+3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
+   means pass no model argument.
+
+If the runtime rejects the model name, repeat that call once without the model argument and
+report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+
+`develop-agent` carries no model argument.
 
 - **`develop-agent`** — used ONLY for fixes that span many independent files OR require extensive codebase exploration. Default fixes are applied inline by this skill using rules loaded in Step 0.2 Bootstrap. Expands to:
 
   ```
   Agent(
-    subagent_type: "general-purpose",
-    prompt: "/unikit-devcontext <fix details>",
-    description: "Apply fix",
-    skills: ["unikit-devcontext"]
+    {{agent_call_worker_quoted}}
+    prompt: "{{agent_skill_call:unikit-devcontext}} <fix details>",
+    description: "Apply fix"
   )
   ```
 
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
-
-<!-- unikit:agents claude -->
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")
   ```
 
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
+  Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
-  ```
-  Agent(subagent_type: Explore, prompt: "<focused question>")
-  ```
+## Skill calls
 
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the aliases of `## Delegation agents`). A call site that names no argument passes none.
 
-  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ---
 
@@ -386,7 +380,7 @@ Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after im
 3. **An anchor is there** → compute the current tree hash **by the same procedure as `Summary SHA256`** — its digest step, `.unikit/system/research-link.md` → `### Digest`; the command below is that step in full, and nothing is read for it:
 
    ```
-   { git rev-parse HEAD; { git diff HEAD --name-only --no-renames --ignore-submodules -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | sort; { git diff HEAD --name-only --no-renames --ignore-submodules --diff-filter=d -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | grep -v '/$' | sort | git hash-object --stdin-paths; } | shasum -a 256 | awk '{print $1}'
+   { git rev-parse HEAD; { git diff HEAD --name-only --no-renames --ignore-submodules -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | sort; { git diff HEAD --name-only --no-renames --ignore-submodules --diff-filter=d -- . ':(exclude).unikit' ':(exclude,icase)*.md'; git ls-files --others --exclude-standard --full-name -- . ':(exclude).unikit' ':(exclude,icase)*.md'; } | grep -v '/$' | sort | git hash-object --stdin-paths; } | shasum -a 256 | cut -d' ' -f1
    ```
 
    No `shasum` → `sha256sum`. You read no project file for it — git hashes only the changed ones, so the size of the project does not affect the cost; `.unikit/`, where the plan records its progress, and Markdown files (`*.md`), which the plan's documentation step writes after the final run, are left out, and staging a file never moves the hash. **Any `fatal:` line the command prints → git did not answer** (item 6): a path git could not hash drops every path after it, and such a hash proves nothing.
@@ -745,13 +739,13 @@ Options:
 4. Skip — I'll handle it myself
 ```
 
-**The pull request option.** After a check of the whole plan (`phase_scope = all`) with **no blocker**, in a git repository (`git.enabled` from `.unikit/config.yaml`; no key → a `.git` directory decides) and on a branch other than the base of Step 0.4, option 1 becomes `Pull request — run /unikit-pr`: there is nothing to fix, and the question keeps its four options. The choice dispatches in three tiers — `Skill(skill: "unikit-pr")` → the `/unikit-pr` slash command → print `Run: /unikit-pr` — with no argument: a closed plan is read from its checkboxes. When `{{skills_dir}}/unikit-pr/SKILL.md` does not exist (a project that ran `update` without `--install-new`), print `WARN [pr] /unikit-pr is not installed — run unikit-ai update --install-new` instead of a command that does not exist. The `unikit-gate-result` block's `suggested_next` does not change.
+**The pull request option.** After a check of the whole plan (`phase_scope = all`) with **no blocker**, in a git repository (`git.enabled` from `.unikit/config.yaml`; no key → a `.git` directory decides) and on a branch other than the base of Step 0.4, option 1 becomes `Pull request — run /unikit-pr`: there is nothing to fix, and the question keeps its four options. The choice invokes `unikit-pr` with no argument (`## Skill calls`): a closed plan is read from its checkboxes. When `{{skills_dir}}/unikit-pr/SKILL.md` does not exist (a project that ran `update` without `--install-new`), print `WARN [pr] /unikit-pr is not installed — run unikit-ai update --install-new` instead of a command that does not exist. The `unikit-gate-result` block's `suggested_next` does not change.
 
 Based on choice:
-- Fix issues → run `/unikit-fix` with issue summary
-- Pull request → the three-tier dispatch above
-- Code review → run `/unikit-review` on changed files
-- Commit → run `/unikit-commit`
+- Fix issues → invoke `unikit-fix` with the issue summary as its argument
+- Pull request → invoke `unikit-pr` as above
+- Code review → invoke `unikit-review` on the changed files
+- Commit → invoke `unikit-commit`
 - Skip → **STOP**
 
 ### Context Cleanup

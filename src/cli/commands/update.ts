@@ -20,6 +20,7 @@ import { reconcileMcpSettings } from '../../core/mcp-reconcile.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
+import { exitOnSharedSkillsDir } from '../guards.js';
 import { fileExists } from '../../utils/fs.js';
 import { collectReplacedSkills, refreshExtensions } from '../../core/extension-ops.js';
 import { loadExtensionManifest, getExtensionDir } from '../../core/extensions.js';
@@ -149,6 +150,8 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     console.log(chalk.dim('Run "unikit-ai init" to set up your project first.'));
     process.exit(1);
   }
+
+  exitOnSharedSkillsDir(config.agents);
 
   const currentVersion = getCurrentVersion();
   const engineId = config.engine;

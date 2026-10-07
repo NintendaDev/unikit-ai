@@ -114,36 +114,33 @@ Recon is **strictly cold-start**. Check the workspace **first**:
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where the delegate's model is declared — call sites name the alias and never carry a
-model argument of their own.
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
-<!-- unikit:agents claude -->
+**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
+(a missing file, block or key is not an error) and settle the model argument once:
+
+1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
+   exactly as written (this runtime's own spelling of the model argument, if it differs).
+2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
+   model of this session.
+3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
+   means pass no model argument.
+
+If the runtime rejects the model name, repeat that call once without the model argument and
+report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")
   ```
 
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
+  Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
-  ```
-  Agent(subagent_type: Explore, prompt: "<focused question>")
-  ```
-
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
-
-  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
-
-## Subagent Delegation — BLOCKING PRE-REQUISITE
+## Scan delegation
 
 The scan is a **map-reduce**: fan out one read-only investigator per candidate subsystem,
 then reduce their reports into `RECON.md`. Use the `recon-agent` alias — **not**
@@ -161,16 +158,6 @@ recon-agent(prompt:
    (pillars/fantasy/why) — list what you could NOT determine. Be concise: structured facts,
    not file contents.")
 ```
-
-<!-- unikit:agents codex -->
-## Scan delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches the scan step, the assistant MUST automatically spawn the
-investigator subagents if agent execution is supported by the current environment and not
-prohibited by higher-priority instructions. Only if agent execution is unavailable or
-blocked, the assistant MUST tell the user it is falling back to a direct inline scan before
-proceeding.
-<!-- unikit:end -->
 
 **Fallback (inline).** If the `Agent` tool is unavailable, the assistant scans **inline**
 itself with `Glob` / `Grep` / `Read` over the same `code-recon.md` heuristics — slower, same

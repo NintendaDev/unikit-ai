@@ -107,10 +107,12 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
  │         PLAN.md          │                │   With patches     │
  │  full → git branch,      │                │                    │
  │         PLAN.md          │                └─────────┬──────────┘
+ │ ultra → PLAN.md +        │                          │
+ │         phase files      │                          │
  │  add  → extend plan      │                          │
  └─────────────┬────────────┘                          ▼
                │                          ┌────────────────────┐
-               │                          │   .unikit/         │
+               │                          │   .unikit/code/    │
                │                          │     patches/       │
                │                          │   Self-improvement │
                │                          └─────────┬──────────┘
@@ -164,8 +166,6 @@ If the project has a linked `gamedesign` workspace, `/unikit-explore` and `/unik
           └──────────────────────┘
 ```
 
-In ultra the same box additionally holds `phase-NN-*.md` files.
-
 ### Modules and pull requests
 
 A full or ultra plan is sliced into **modules** — pieces the base branch can take whole. With `git.pull_requests.checkpoints: true` every module but the last ends with a PR checkpoint task, and the loop gains a stop at each module boundary:
@@ -188,16 +188,18 @@ While the plan has PR checkpoints a run never pushes: the branch reaches the rem
 | `/unikit-roadmap check` | Automated progress scan | No | Reads existing roadmap |
 | `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` - the dialogue log is written verbatim as you talk; saving the research is the part that needs your agreement (optional - output can be used directly in the current session for fast planning) |
 | `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
-| `/unikit-plan full` | Full features, stories, epics | Yes | `.unikit/code/plans/<name>/` |
-| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Yes | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
+| `/unikit-plan full` | Full features, stories, epics | Optional | `.unikit/code/plans/<name>/` |
+| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Optional | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
 | `/unikit-implement` | Execute plan tasks one by one | No | Updates the plan manifest status |
 | `/unikit-fix` | Bug fixes, errors, hotfixes | No | Optional `.unikit/code/FIX_PLAN.md` |
 | `/unikit-verify` | Post-implementation quality check | No | Verification report |
 | `/unikit-review` | Code review against rules | No | Review report |
-| `/unikit-commit` | Conventional commits with Unity checks | No | Git commit |
+| `/unikit-commit` | Conventional commits with engine-aware checks | No | Git commit |
+| `/unikit-pr` | Open or update the branch's pull request (GitHub MCP), or print its text | No | Pull request |
 | `/unikit-archive` | Move a finished folder plan out of the active list | No | `.unikit/code/archive/plans/<folder>/` |
+| `/unikit-evolve` | Distill accumulated patches into rules and skill overrides | No | `RULES.md`, `.unikit/skill-context/`, `.unikit/evolutions/` |
 | `/unikit-todo` | Lightweight task tracking | No | `.unikit/TODO.md` |
 
 This table covers the `code` module. For the parallel `gamedesign` skill set (`/unikit-gd-spec`, `/unikit-gd-system`, `/unikit-gd-flow`, `/unikit-gd-content`, `/unikit-gd-review`, `/unikit-gd-verify`, `/unikit-gd-apply`, `/unikit-gd-docs`, …), see [Game-Design Module](gamedesign.md).
@@ -240,7 +242,7 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/unikit-implement` | `.unikit/code/plans/*/PLAN.md` (status updates) | Marks tasks complete |
 | `/unikit-todo` | `.unikit/TODO.md` | Lightweight task list |
 | `/unikit-docs` | `README.md`, `docs/*.md`, `AGENTS.md` | Documentation generation |
-| `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report, no writes |
+| `/unikit-commit` `/unikit-review` `/unikit-verify` | read-only context | Gate and report; `/unikit-verify` writes only plan bookkeeping (`## Test Runs`, `## Rule Candidates`, `## MCP Findings`) and the `implemented_version` stamp, `/unikit-commit` makes commits |
 
 The `gamedesign` module has its own artifact-ownership map (`GAME.md`, `GD-IDS.yaml`, `systems/`, `flows/`, `content-types/`, `reviews/`) - see [Game-Design Module](gamedesign.md).
 
@@ -298,9 +300,9 @@ When a linked `gamedesign` workspace exists, it also grounds first-class on the 
 Four planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
-- **Full** - optional branch creation, asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/<name>/` with a single `PLAN.md` manifest. The folder name matches the branch name character for character; the date lives in the manifest's `Created:` / `Updated:` fields ([why](plan-files.md#why-a-plan-folder-has-no-date-and-a-patch-file-does))
+- **Full** - optional branch creation (`<git.branch_prefix><name>`, skipped when `git.create_branches` is off), asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/<name>/` with a single `PLAN.md` manifest. The folder name equals the branch name without its prefix; the date lives in the manifest's `Created:` / `Updated:` fields ([why](plan-files.md#why-a-plan-folder-has-no-date-and-a-patch-file-does))
 - **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: ask for it, or you get Full. Ultra is **user-named, never model-inferred** — it is recognised wherever the request sits in the sentence and in any language ("ultra plan", "ultraplan", "ультраплан", "make an ultra plan for the inventory"), but it must be an actual request. Size is not a request, and wording that only asks for care — "a deep plan", "plan this thoroughly" — is deliberately *not* ultra: the skill falls through and asks instead, because an unwanted bundle leaves you a folder of phase files you never asked for while a missed one costs you one word. The **shape of what you get** is held separately, by the redirect in `TASK-FORMAT.md` and the `ULTRA-PLAN-FORMAT.md` specification; without that second mechanism, asking for ultra still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
-- **Add** - extends an existing plan with new tasks
+- **Add** - extends an existing plan with new tasks; explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that)
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
 
@@ -325,7 +327,7 @@ Second-pass analysis. Runs 2-3 deep Explore agents to:
 - Remove redundant work
 - Check architectural consistency
 
-Plan resolution priority: `@<path>` argument, feature name match, git branch match, latest by date — and the resolved plan is announced on an `INFO [plan] resolved:` line before anything else runs. A branch that matches no plan makes *latest* a guess, so the candidates are shown and the choice is put to the user instead of being taken silently. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Edits the manifest in place; `Write` over it is forbidden.
+Plan resolution priority: `@<path>` argument, feature name match, then (with no argument) the fast plan or fix plan if present, git branch match, latest by `Updated:` — and the resolved plan is announced on an `INFO [plan] resolved:` line before anything else runs. A branch that matches no plan makes *latest* a guess, so the candidates are shown and the choice is put to the user instead of being taken silently. Shows a diff-like improvement report before applying changes. Preserves completed tasks (`- [x]`) - never modifies them. Edits the manifest in place; `Write` over it is forbidden.
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
@@ -339,7 +341,7 @@ Plan resolution priority: `@<path>` argument, feature name match, git branch mat
 /unikit-implement @.unikit/code/plans/core-loop            # Explicit plan path
 ```
 
-Reads skill-context rules first, then the plan manifest. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Checks for FIX_PLAN.md first - if found, redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
+Resolves the plan, reads its manifest and then the project's skill-context rules. Bootstraps rules and engine principles once (`.unikit/system/dev-principles.md` + core rules) and executes tasks inline with `Read/Edit/Write/Bash`, marking progress in real time. Spawns the `develop-agent` alias only for true parallel scopes or deep-dive single tasks. Falls back to FIX_PLAN.md only when no feature plan exists - then it redirects to `/unikit-fix`. Supports selective execution by phase, task numbers, or feature name.
 
 Tasks carrying an `Editor:` line target the editor's serialized state rather than source files, and `Editor tasks` decides how they run: `mcp` through the engine MCP server (chosen silently when one is configured), `manual` — nothing is touched, the task is marked `⏸️ MANUAL` and you get the exact instruction, or `direct` — the serialized file is edited as text once there is a git commit to return to. See [Editor tasks](plan-files.md#editor-tasks).
 
@@ -357,7 +359,7 @@ Post-completion, in order:
 - Triggers documentation checkpoint if `Docs: yes`
 - Decides what to do with the plan file
 - **Offers to move MCP findings to the durable log** - if the plan's `## MCP Findings` table has rows, hands the plan path to `/unikit-mcp-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
-- Offers `/unikit-review` then `/unikit-commit` - **invoked as skills, in your session**, not delegated to a subagent. That distinction is real: a subagent carries findings into a context you cannot see, `file:line` references stop being clickable, and you cannot ask a follow-up question about a finding. The two steps above it *are* delegated, because their output is a file rather than a conversation
+- Offers `/unikit-review` then `/unikit-commit` - **invoked as skills, in your session**, not delegated to a subagent. That distinction is real: a subagent carries findings into a context you cannot see, `file:line` references stop being clickable, and you cannot ask a follow-up question about a finding. Of the post-completion steps only the documentation checkpoint is delegated (to `docs-agent`), because its output is a file rather than a conversation
 
 ### `/unikit-fix [bug description]` - fix and learn
 
@@ -419,12 +421,13 @@ Reports include concrete code fixes for Critical/Warning items. Commits mode als
 - **`+check`** is an opt-in flag (also available on `/unikit-improve`) that sends the findings to a **fresh-context validator** before they reach you - a read-only subagent with no memory of how the findings were produced, which drops, modifies, or reclassifies anything it cannot substantiate from the code. It never prompts. If the validator cannot be launched, the pass is skipped rather than faked: every finding is kept and one `WARN [+check]` line is printed.
 - **`unikit-gate-result`** is a machine-readable fenced JSON block emitted as the **last** fence of the report - gate `verify` from `/unikit-verify` (projecting its task audit and context gates), gate `review` from `/unikit-review` (projecting its findings table, recomputed from the post-filter findings under `+check`). It is what lets a coordinator, a CI step, or another skill read the gate's verdict without parsing prose. The schema is installed at `.unikit/system/gate-result-contract.md`.
 
-### `/unikit-verify [--strict] [feature-name]` - check completeness
+### `/unikit-verify [--strict] [Phase N | Phases N-M] [feature-name]` - check completeness
 
 ```
 /unikit-verify                           # Verify implementation against plan
 /unikit-verify --strict                  # Strict mode - zero tolerance for gaps
 /unikit-verify customers-system          # Verify specific feature
+/unikit-verify Phases 1-3                # Verify only those phases (a module check)
 ```
 
 Goes through every task in the plan and verifies the code actually implements it. Runs per-phase Explore agents for completion audit. Checks:
@@ -432,8 +435,7 @@ Goes through every task in the plan and verifies the code actually implements it
 - Engine compilation (through the engine MCP server)
 - Tests — the run recorded in the plan's `## Test Runs`, checked against the current code; verify starts no test run itself
 - Editor targets — read back through the engine MCP, not Glob/Grep (a task with an `Editor:` line has no implementing source to find)
-- `.meta` file pairing
-- Asmdef boundaries (Modules -> Game FORBIDDEN)
+- Engine-specific checks from the skill's `ENGINE_RULES.md` (on Unity: `.meta` file pairing, asmdef boundaries)
 - Leftover TODOs/FIXMEs
 - Plan-vs-code drift
 - DESCRIPTION.md/ARCHITECTURE.md sync
@@ -465,7 +467,7 @@ Runs read-only context gates against ARCHITECTURE.md and RULES.md. Writes the me
 /unikit-archive inventory-system
 ```
 
-A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. MCP findings nobody transferred and rule candidates nobody proposed do not block it: it shows them and asks whether to handle them first or archive anyway. It never commits. `/unikit-implement` names it once the whole plan is done.
+A folder plan is never deleted, so `.unikit/code/plans/` keeps growing and every finished plan stays in the "latest plan" choice. `/unikit-archive` moves a plan whose checklist is fully `[x]` (or, if you explicitly choose it, an unfinished one, marked as such in its manifest) to `.unikit/code/archive/plans/<folder>/` - with `git mv` when the folder is tracked, plain `mv` otherwise - and adds an `Archived:` line to its manifest. MCP findings nobody transferred and rule candidates nobody proposed do not block it: it shows them and asks whether to handle them first or archive anyway. It never commits. `/unikit-implement` names it once the whole plan is done.
 
 ---
 

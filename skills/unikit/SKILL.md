@@ -44,18 +44,6 @@ context that other unikit skills (`unikit-devcontext`, `unikit-plan`, `unikit-im
 rely on for informed decision-making, including the canonical `.unikit/config.yaml` they all
 read at the start of every command.
 
-<!-- unikit:agents codex -->
----
-
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
 ---
 
 ## Execution Contract
@@ -68,6 +56,15 @@ This skill must be executed as a strict workflow, not as guidance.
 4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4). **Narrowed for the config actualization mode:** its single writable artifact is `.unikit/config.yaml`, and `.unikit/system/LANGUAGE_RULES.md` is excluded from it explicitly — Step 3.1 is marked "Both bootstrap and merge mode" and must not be read as permission for that mode.
 5. If the environment prevents a required step (tool unavailable, file missing, subagent unreachable), stop and print `BLOCKED at Step N: <reason>`. Do not silently substitute an approximation.
 6. Every user-facing output of this skill is plain markdown — no HTML tags, in any step. Step 7 states the contract in full.
+
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the `Agent(...)` blocks of Steps 9.8 and 10). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ---
 
@@ -690,14 +687,13 @@ The `generate_set` list contains stack technologies that either had no registry 
 
 ```
 Agent(
-  subagent_type: "general-purpose",
-  prompt: "/unikit-memory --module code --skip-registry Add stack rules for {technology name}",
-  description: "Generate {technology} rules",
-  skills: ["unikit-memory"]
+  {{agent_call_worker_quoted}}
+  prompt: "{{agent_skill_call:unikit-memory}} --module code --skip-registry Add stack rules for {technology name}",
+  description: "Generate {technology} rules"
 )
 ```
 
-Two flags are passed, and both are mandatory:
+Two flags are passed, in the argument text that ends the prompt — the subagent takes that text as the arguments of `unikit-memory`, so both flags and the request after them must stay in that one line — and both are mandatory:
 
 - `--module code` pins the delegation to the `code` knowledge-base module. `/unikit` is deliberately `code`-pinned, so it must name the target module explicitly rather than relying on `unikit-memory`'s module-inference fallback (which only resolves to `code` by accident while `code` is the sole registered module). This keeps the delegation deterministic and self-documenting once additional modules are registered.
 - `--skip-registry` tells `/unikit-memory` to bypass its own registry-lookup step (9.5 already covered it) and go straight to generation.
@@ -834,16 +830,15 @@ Launch the subagent:
 
 ```
 Agent(
-  subagent_type: "general-purpose",
-  prompt: "/unikit-architecture",
-  description: "Generate project architecture",
-  skills: ["unikit-architecture"]
+  {{agent_call_worker_quoted}}
+  prompt: "{{agent_skill_call:unikit-architecture}}",
+  description: "Generate project architecture"
 )
 ```
 
 **Wait for the `Agent()` call to return** before proceeding to Step 11.
 
-**Fallback** (only if the `Agent` tool is unavailable in the current environment): invoke `/unikit-architecture` inline in this skill's context, wait for it to return, then proceed to Step 11. Unlike Step 9.8, Step 11's summary explicitly lists `.unikit/ARCHITECTURE.md` as a generated artifact — the flow must complete in the same turn, so inline execution is the mandatory fallback here.
+**Fallback** (only if the `Agent` tool is unavailable in the current environment): invoke `unikit-architecture` with no arguments in this skill's context (`## Skill calls`), wait for it to return, then proceed to Step 11. Unlike Step 9.8, Step 11's summary explicitly lists `.unikit/ARCHITECTURE.md` as a generated artifact — the flow must complete in the same turn, so inline execution is the mandatory fallback here.
 
 After the subagent (or inline invocation) returns, immediately print Step 11 in the same response.
 

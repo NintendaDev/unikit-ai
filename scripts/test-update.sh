@@ -2179,5 +2179,356 @@ assert_contains "$BOTHFLAGS_OUT" "new in package" \
 
 echo "  ✓ update --install-new --skip-new: --skip-new wins (no new skills, no bootstrap)"
 
+# ─────────────────────────────────────────────
+# Test 33: Antigravity + Kimi in ONE project — two independent trees, idempotent update
+# ─────────────────────────────────────────────
+# Kimi Code owns .kimi-code/ (ADR-0001); Antigravity keeps the shared .agents/. A project that
+# selects both must get two trees with DIFFERENT bytes (Kimi: worker type coder + .kimi-code/mcp.json +
+# adapted subagents; Antigravity: worker type self + .agents/mcp_config.json + no subagents),
+# a second `update` that changes nothing in either, and a repair of one tree that leaves the
+# other alone. Every hash check below is assert_same_sha, which exits 1: assert_file_unchanged
+# only bumps a counter these scripts never read, so it could not fail here.
+AK_DIR="$TMPDIR/update-ag-kimi"
+mkdir -p "$AK_DIR"
+cat > "$AK_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": { "context7": "context7", "github": "github" } },
+  "agents": [
+    {
+      "id": "antigravity",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    },
+    {
+      "id": "kimi",
+      "skillsDir": ".kimi-code/skills",
+      "subagentsDir": ".kimi-code/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-verify"],
+      "installedSubagents": ["unikit-implement-coordinator", "unikit-implement-worker"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.1.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$AK_DIR"
+seed_rule "$AK_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+
+AK_AG_SKILL="$AK_DIR/.agents/skills/unikit-implement/SKILL.md"
+AK_KIMI_SKILL="$AK_DIR/.kimi-code/skills/unikit-implement/SKILL.md"
+AK_KIMI_COORD="$AK_DIR/.kimi-code/agents/unikit-implement-coordinator.md"
+AK_KIMI_WORKER="$AK_DIR/.kimi-code/agents/unikit-implement-worker.md"
+AK_AG_MCP="$AK_DIR/.agents/mcp_config.json"
+AK_KIMI_MCP="$AK_DIR/.kimi-code/mcp.json"
+
+AK_FIRST="$TMPDIR/update-ag-kimi-1.log"
+(cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_FIRST" 2>&1)
+
+assert_contains "$AK_FIRST" "\[kimi\] Skills status:" "kimi agent status section must be printed"
+assert_contains "$AK_FIRST" "\[antigravity\] Skills status:" "antigravity agent status section must be printed"
+assert_exists "$AK_AG_SKILL" "antigravity must have unikit-implement installed under .agents/skills"
+assert_exists "$AK_KIMI_SKILL" "kimi must have unikit-implement installed under .kimi-code/skills"
+assert_exists "$AK_KIMI_COORD" "kimi must have the coordinator installed under .kimi-code/agents"
+assert_not_exists "$AK_DIR/.agents/agents/unikit-implement-coordinator.md" \
+    "antigravity has no subagents: the coordinator must not appear under .agents/agents"
+# Searched from INSIDE .agents with relative paths: the project directory is itself named
+# `update-ag-kimi`, so a search by absolute path would match every file under it.
+if [[ -n "$(cd "$AK_DIR/.agents" && find . -ipath '*kimi*' 2>/dev/null)" ]]; then
+    echo "Assertion failed: nothing of Kimi may live inside the shared .agents/ directory"
+    (cd "$AK_DIR/.agents" && find . -ipath '*kimi*' | head -5)
+    exit 1
+fi
+
+# Different bytes, each in its own agent's dialect
+if cmp -s "$AK_AG_SKILL" "$AK_KIMI_SKILL"; then
+    echo "Assertion failed: the Kimi and Antigravity copies of unikit-implement must differ"
+    exit 1
+fi
+assert_contains "$AK_KIMI_SKILL" '\.kimi-code/mcp\.json' "kimi copy: {{settings_file}} is .kimi-code/mcp.json"
+assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
+assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full' \
+    "kimi copy: develop-agent reads its skill file from .kimi-code/skills"
+assert_contains "$AK_AG_SKILL" '\.agents/mcp_config\.json' "antigravity copy: {{settings_file}} is .agents/mcp_config.json"
+assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
+assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
+assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' \
+    "antigravity copy: develop-agent reads its skill file from the shared .agents/skills"
+assert_not_contains "$AK_AG_SKILL" '\.kimi-code/skills' "antigravity copy: no Kimi skills path"
+assert_not_contains "$AK_KIMI_SKILL" '\.agents/skills/unikit-devcontext' "kimi copy: no Antigravity skills path"
+
+# MCP, each client in its own form
+assert_contains "$AK_KIMI_MCP" '"bearerTokenEnvVar": "GITHUB_PAT"' "kimi mcp.json: the variable NAME in bearerTokenEnvVar"
+assert_contains "$AK_AG_MCP" 'Bearer YOUR_GITHUB_PAT' "antigravity mcp_config.json: the placeholder"
+assert_not_contains "$AK_AG_MCP" 'bearerTokenEnvVar' "antigravity mcp_config.json: no Kimi field"
+
+# The coordinator is ADAPTED, not merely present. The hashes below only compare a file with
+# itself, so they would agree just as well on an unadapted one — this is what pins the shape.
+frontmatter_of "$AK_KIMI_COORD" > "$TMPDIR/ak-coord-1.fm"
+assert_not_contains "$TMPDIR/ak-coord-1.fm" 'Agent\(' "kimi coordinator: no Agent(...) entry left after update"
+assert_contains "$TMPDIR/ak-coord-1.fm" '^subagents:$' "kimi coordinator: update installs the adapted subagents: list"
+if [[ "$(body_first_line_of "$AK_KIMI_COORD")" != '${base_prompt}' ]]; then
+    echo "Assertion failed: kimi coordinator: update must install it with \${base_prompt} as the first body line"
+    exit 1
+fi
+assert_contains "$AK_KIMI_COORD" '^Before you start, Read each file below and follow it as part of your instructions\.' \
+    "kimi coordinator: update installs the skills read list (Kimi ignores the skills: field)"
+assert_contains "$AK_KIMI_COORD" '^- \.kimi-code/skills/unikit-implement/SKILL\.md$' "kimi coordinator: its own skill is on the read list"
+
+# The worker is installed with the same step: no skills: field, its two skills as real paths. The
+# paths are built from the agent registry — an agent file renders {{skills_dir}} empty by design.
+assert_exists "$AK_KIMI_WORKER" "kimi must have the worker installed under .kimi-code/agents"
+frontmatter_of "$AK_KIMI_WORKER" > "$TMPDIR/ak-worker-1.fm"
+assert_not_contains "$TMPDIR/ak-worker-1.fm" '^skills:' "kimi worker: update installs it without the skills: field"
+assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' "kimi worker: the devcontext rules are on the read list"
+assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-verify/SKILL\.md$' "kimi worker: the verify rules are on the read list"
+assert_not_contains "$AK_KIMI_WORKER" '\{\{skills_dir\}\}' "kimi worker: no unresolved {{skills_dir}}"
+
+AK_H_AG_SKILL="$(sha_of "$AK_AG_SKILL")"
+AK_H_KIMI_SKILL="$(sha_of "$AK_KIMI_SKILL")"
+AK_H_KIMI_COORD="$(sha_of "$AK_KIMI_COORD")"
+AK_H_KIMI_WORKER="$(sha_of "$AK_KIMI_WORKER")"
+AK_H_AG_MCP="$(sha_of "$AK_AG_MCP")"
+AK_H_KIMI_MCP="$(sha_of "$AK_KIMI_MCP")"
+
+# Second run: nothing changes in either tree
+AK_SECOND="$TMPDIR/update-ag-kimi-2.log"
+(cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_SECOND" 2>&1)
+[[ "$(grep -c 'changed: 0' "$AK_SECOND")" -eq 2 ]] || {
+    echo "Assertion failed: both agents must report changed: 0 on the second update"
+    grep -n 'changed:' "$AK_SECOND" | head -6
+    exit 1
+}
+assert_not_contains "$AK_SECOND" "Local modifications detected" "an idle second update must warn about nothing"
+assert_same_sha "$AK_AG_SKILL" "$AK_H_AG_SKILL" "second update rewrote the Antigravity skill"
+assert_same_sha "$AK_KIMI_SKILL" "$AK_H_KIMI_SKILL" "second update rewrote the Kimi skill"
+assert_same_sha "$AK_KIMI_COORD" "$AK_H_KIMI_COORD" "second update rewrote the adapted Kimi coordinator"
+assert_same_sha "$AK_KIMI_WORKER" "$AK_H_KIMI_WORKER" "second update rewrote the adapted Kimi worker"
+assert_same_sha "$AK_AG_MCP" "$AK_H_AG_MCP" "second update rewrote the Antigravity MCP file"
+assert_same_sha "$AK_KIMI_MCP" "$AK_H_KIMI_MCP" "second update rewrote the Kimi MCP file"
+
+# A tampered Kimi subagent is repaired to the ADAPTED text, not to the raw source
+printf '\nTAMPER-KIMI\n' >> "$AK_KIMI_COORD"
+printf '\nTAMPER-KIMI\n' >> "$AK_KIMI_WORKER"
+AK_THIRD="$TMPDIR/update-ag-kimi-3.log"
+(cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_THIRD" 2>&1)
+assert_contains "$AK_THIRD" "Local modifications detected in subagent" "tampered Kimi subagent must be reported"
+assert_not_contains "$AK_KIMI_COORD" 'TAMPER-KIMI' "update must overwrite the tampered Kimi coordinator"
+frontmatter_of "$AK_KIMI_COORD" > "$TMPDIR/ak-coord-3.fm"
+assert_contains "$TMPDIR/ak-coord-3.fm" '^subagents:$' "the repair must restore the ADAPTED coordinator, not the raw source"
+if [[ "$(body_first_line_of "$AK_KIMI_COORD")" != '${base_prompt}' ]]; then
+    echo "Assertion failed: the repaired coordinator must start its body with \${base_prompt}"
+    exit 1
+fi
+assert_same_sha "$AK_KIMI_COORD" "$AK_H_KIMI_COORD" \
+    "the repaired coordinator must be byte-identical to the adapted install (subagents: + \${base_prompt})"
+assert_contains "$AK_KIMI_COORD" '^Before you start, Read each file below and follow it as part of your instructions\.' \
+    "the repaired coordinator must carry the skills read list again"
+assert_not_contains "$AK_KIMI_WORKER" 'TAMPER-KIMI' "update must overwrite the tampered Kimi worker"
+assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' \
+    "the repaired worker must carry the skills read list again, not the raw source"
+assert_same_sha "$AK_KIMI_WORKER" "$AK_H_KIMI_WORKER" \
+    "the repaired worker must be byte-identical to the adapted install (read list, no skills: field)"
+
+# Independence: tampering with one tree is repaired there and leaves the other alone
+printf '\nTAMPER-AG\n' >> "$AK_AG_SKILL"
+AK_FOURTH="$TMPDIR/update-ag-kimi-4.log"
+(cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_FOURTH" 2>&1)
+assert_contains "$AK_FOURTH" "Local modifications detected" "tampered Antigravity skill must be reported"
+assert_not_contains "$AK_AG_SKILL" 'TAMPER-AG' "update must overwrite the tampered Antigravity skill"
+assert_same_sha "$AK_AG_SKILL" "$AK_H_AG_SKILL" "the repaired Antigravity skill must match the first install"
+assert_same_sha "$AK_KIMI_SKILL" "$AK_H_KIMI_SKILL" "repairing the Antigravity tree touched the Kimi tree"
+
+echo "  ✓ Antigravity + Kimi: independent trees, idempotent update, per-tree tamper refresh"
+
+# ─────────────────────────────────────────────
+# Test 34: the universal agent — next to Claude Code (one .mcp.json), refused next to Antigravity
+# ─────────────────────────────────────────────
+# Universal / Other writes the shared .agents/skills and Claude Code's .mcp.json. Next to Claude it is
+# an ordinary two-agent project: two trees with different bytes, one MCP file written by one writer,
+# an idle second update, a per-tree repair. Next to Antigravity — the other agent of .agents/skills —
+# `update` must stop before it writes anything. The exit code is asserted by hand: assert_exit and
+# assert_cmd_exit report through the soft fail() these scripts never read.
+UC_DIR="$TMPDIR/update-universal-claude"
+mkdir -p "$UC_DIR"
+cat > "$UC_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": { "context7": "context7", "github": "github" } },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    },
+    {
+      "id": "universal",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-verify"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.1.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$UC_DIR"
+seed_rule "$UC_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
+
+UC_CLAUDE_SKILL="$UC_DIR/.claude/skills/unikit-implement/SKILL.md"
+UC_UNI_SKILL="$UC_DIR/.agents/skills/unikit-implement/SKILL.md"
+# The model rule (`subagents.model.<agent>`) is carried by ten skills and unikit-implement is not one of
+# them; unikit-plan is, and it is in both agents' installedSkills.
+UC_CLAUDE_PLAN="$UC_DIR/.claude/skills/unikit-plan/SKILL.md"
+UC_UNI_PLAN="$UC_DIR/.agents/skills/unikit-plan/SKILL.md"
+UC_MCP="$UC_DIR/.mcp.json"
+
+UC_FIRST="$TMPDIR/update-uc-1.log"
+(cd "$UC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$UC_FIRST" 2>&1)
+
+assert_contains "$UC_FIRST" "\[universal\] Skills status:" "universal agent status section must be printed"
+assert_contains "$UC_FIRST" "\[claude\] Skills status:" "claude agent status section must be printed"
+assert_exists "$UC_CLAUDE_SKILL" "claude must have unikit-implement installed under .claude/skills"
+assert_exists "$UC_UNI_SKILL" "universal must have unikit-implement installed under .agents/skills"
+assert_not_exists "$UC_DIR/.agents/agents" "universal has no subagents: no .agents/agents directory"
+assert_not_exists "$UC_DIR/.agents/rules" "universal writes no guardrails file"
+
+# Same vocabulary, different bytes: the directory, the config key and the model default differ
+if cmp -s "$UC_CLAUDE_SKILL" "$UC_UNI_SKILL"; then
+    echo "Assertion failed: the Claude and universal copies of unikit-implement must differ"
+    exit 1
+fi
+assert_contains "$UC_CLAUDE_SKILL" 'subagent_type: "general-purpose"' "claude copy: the Claude worker type"
+assert_contains "$UC_UNI_SKILL" 'subagent_type: "general-purpose"' "universal copy: the same Claude worker type"
+assert_contains "$UC_CLAUDE_SKILL" 'Call the Skill tool with skill "unikit-devcontext" and pass the text after the colon' "claude copy: develop-agent calls the Skill tool"
+assert_not_contains "$UC_CLAUDE_SKILL" 'Read \.claude/skills/unikit-devcontext/SKILL\.md in full' "claude copy: no file-read form"
+assert_contains "$UC_UNI_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' "universal copy: develop-agent reads the skill file"
+assert_not_contains "$UC_UNI_SKILL" 'Call the Skill tool with skill' "universal copy: no Skill-tool form"
+assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the model rule)"
+assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the model rule)"
+assert_contains "$UC_CLAUDE_PLAN" 'subagents\.model\.claude' "claude copy: its own config key"
+assert_contains "$UC_UNI_PLAN" 'subagents\.model\.universal' "universal copy: its own config key"
+assert_not_contains "$UC_UNI_PLAN" 'subagents\.model\.claude' "universal copy: not the Claude key"
+
+# One MCP file for both, written once
+assert_exists "$UC_MCP" "update must write the shared .mcp.json"
+assert_contains "$UC_MCP" '"context7"' "the shared .mcp.json carries the Context7 server"
+assert_contains "$UC_MCP" 'Bearer \$\{GITHUB_PAT\}' "the shared .mcp.json carries the GitHub token as a \${GITHUB_PAT} reference"
+UC_KEYS=$(node -e "const j = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')); process.stdout.write(Object.keys(j.mcpServers).sort().join(','));" "$UC_MCP")
+[[ "$UC_KEYS" == "context7,github" ]] || {
+    echo "Assertion failed: the shared .mcp.json must hold exactly the servers context7 and github, got: $UC_KEYS"
+    exit 1
+}
+
+UC_H_CLAUDE_SKILL="$(sha_of "$UC_CLAUDE_SKILL")"
+UC_H_UNI_SKILL="$(sha_of "$UC_UNI_SKILL")"
+UC_H_MCP="$(sha_of "$UC_MCP")"
+
+# Second run: nothing changes in either tree or in the shared MCP file
+UC_SECOND="$TMPDIR/update-uc-2.log"
+(cd "$UC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$UC_SECOND" 2>&1)
+[[ "$(grep -c 'changed: 0' "$UC_SECOND")" -eq 2 ]] || {
+    echo "Assertion failed: both agents must report changed: 0 on the second update"
+    grep -n 'changed:' "$UC_SECOND" | head -6
+    exit 1
+}
+assert_not_contains "$UC_SECOND" "Local modifications detected" "an idle second update must warn about nothing"
+assert_same_sha "$UC_CLAUDE_SKILL" "$UC_H_CLAUDE_SKILL" "second update rewrote the Claude skill"
+assert_same_sha "$UC_UNI_SKILL" "$UC_H_UNI_SKILL" "second update rewrote the universal skill"
+assert_same_sha "$UC_MCP" "$UC_H_MCP" "second update rewrote the shared .mcp.json"
+
+# A tampered universal skill is repaired there and the Claude tree and the MCP file are left alone
+printf '\nTAMPER-UNI\n' >> "$UC_UNI_SKILL"
+UC_THIRD="$TMPDIR/update-uc-3.log"
+(cd "$UC_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$UC_THIRD" 2>&1)
+assert_contains "$UC_THIRD" "Local modifications detected" "tampered universal skill must be reported"
+assert_not_contains "$UC_UNI_SKILL" 'TAMPER-UNI' "update must overwrite the tampered universal skill"
+assert_same_sha "$UC_UNI_SKILL" "$UC_H_UNI_SKILL" "the repaired universal skill must match the first install"
+assert_same_sha "$UC_CLAUDE_SKILL" "$UC_H_CLAUDE_SKILL" "repairing the universal tree touched the Claude tree"
+assert_same_sha "$UC_MCP" "$UC_H_MCP" "repairing the universal tree rewrote the shared .mcp.json"
+
+# Universal next to Antigravity (a hand-edited .unikit.json): refused before anything is written
+UX_DIR="$TMPDIR/update-universal-antigravity"
+mkdir -p "$UX_DIR"
+cat > "$UX_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.1.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "antigravity",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan"],
+      "installedSubagents": []
+    },
+    {
+      "id": "universal",
+      "skillsDir": ".agents/skills",
+      "subagentsDir": ".agents/agents",
+      "installedSkills": ["unikit", "unikit-plan"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.1.0", "modules": { "code": { "core": [], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$UX_DIR"
+UX_H_CONFIG="$(sha_of "$UX_DIR/.unikit.json")"
+
+UX_UPDATE="$TMPDIR/update-ux-update.log"
+set +e
+(cd "$UX_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$UX_UPDATE" 2>&1)
+UX_UPDATE_CODE=$?
+set -e
+[[ "$UX_UPDATE_CODE" -eq 1 ]] || {
+    echo "Assertion failed: update on Antigravity + universal must exit 1, got $UX_UPDATE_CODE"
+    cat "$UX_UPDATE"
+    exit 1
+}
+assert_contains "$UX_UPDATE" 'Antigravity and Universal / Other' "the refusal must name both agents"
+assert_contains "$UX_UPDATE" '\.agents/skills' "the refusal must name the shared directory"
+assert_contains "$UX_UPDATE" 'Select only one of them' "the refusal must say how to fix it"
+assert_not_exists "$UX_DIR/.agents" "the refused update must write no skills"
+assert_same_sha "$UX_DIR/.unikit.json" "$UX_H_CONFIG" "the refused update must not rewrite .unikit.json"
+
+# The extension commands that write skills are guarded the same way (list is read-only and is not)
+for UX_EXT_ARGS in "remove not-installed" "update"; do
+    UX_EXT="$TMPDIR/update-ux-ext.log"
+    set +e
+    # shellcheck disable=SC2086
+    (cd "$UX_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension $UX_EXT_ARGS > "$UX_EXT" 2>&1)
+    UX_EXT_CODE=$?
+    set -e
+    [[ "$UX_EXT_CODE" -eq 1 ]] || {
+        echo "Assertion failed: 'extension $UX_EXT_ARGS' on Antigravity + universal must exit 1, got $UX_EXT_CODE"
+        cat "$UX_EXT"
+        exit 1
+    }
+    assert_contains "$UX_EXT" 'Antigravity and Universal / Other' "'extension $UX_EXT_ARGS' must name both agents"
+    assert_not_contains "$UX_EXT" 'is not installed' "'extension $UX_EXT_ARGS' must stop at the guard, not at its own check"
+done
+assert_not_exists "$UX_DIR/.agents" "the refused extension commands must write no skills"
+
+echo "  ✓ universal: next to Claude one .mcp.json and an idle second update with per-tree repair; next to Antigravity update and extension commands stop with exit 1 before writing"
+
 echo ""
 echo "update smoke tests passed"

@@ -890,6 +890,44 @@ sha_of() {
     fi
 }
 
+# frontmatter_of <file>
+# Print the YAML frontmatter of a markdown file: the lines between the first two `---`
+# lines, exclusive. A frontmatter-scoped grep is the only honest way to assert on `tools:` —
+# coordinator BODIES carry illustrative `Agent(...)` lines that must stay untouched.
+frontmatter_of() {
+    awk 'NR==1 && $0=="---"{inside=1; next} inside && $0=="---"{exit} inside{print}' "$1"
+}
+
+# body_first_line_of <file>
+# Print the first line after the frontmatter (the line right after the closing `---`).
+body_first_line_of() {
+    awk 'c>=2{print; exit} $0=="---"{c++}' "$1"
+}
+
+# assert_same_sha <file> <saved_hash> <hint>
+# Fail HARD (exit 1) when a file's sha256 differs from a hash captured earlier with `sha_of`.
+# Use this, NOT assert_file_unchanged, in test-install.sh / test-update.sh / test-extensions.sh:
+# assert_file_unchanged reports through the soft `fail()` (a counter) that those scripts never
+# read, so a regression would print a red line and the script would still end with
+# "… smoke tests passed" and exit 0.
+assert_same_sha() {
+    local file="$1" saved_hash="$2" hint="$3"
+    if [[ ! -f "$file" ]]; then
+        echo "Assertion failed: $hint"
+        echo "Missing file: $file"
+        exit 1
+    fi
+    local current_hash
+    current_hash="$(sha_of "$file")"
+    if [[ "$current_hash" != "$saved_hash" ]]; then
+        echo "Assertion failed: $hint"
+        echo "File: $file"
+        echo "Expected sha256: $saved_hash"
+        echo "Actual sha256:   $current_hash"
+        exit 1
+    fi
+}
+
 # assert_file_unchanged <file> <saved_hash> <label>
 # Re-computes sha_of(file) and compares it to a previously captured
 # hash. Used by regression guards that must prove a command left a file

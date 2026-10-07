@@ -114,7 +114,7 @@ never to derive registry paths.
    Print the module ids with their one-line domain summaries to the screen as plain
    markdown first — the question mechanism carries the options and nothing else.
 2. **No flag, neutral operation** (a plain create/update/sync) → operate on **all**
-   registered modules. Today that is just `code`.
+   registered modules (read from `modules.yml`).
 3. **Context narrows to one module ambiguously** (e.g. the prompt clearly targets
    one module but another is plausible) → ask via `AskUserQuestion` (options =
    registered module ids + "all modules"). Never guess.

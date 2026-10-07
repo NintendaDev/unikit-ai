@@ -66,34 +66,31 @@ language setting.
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where the delegate's model is declared — call sites name the alias and never carry a
-model argument of their own.
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
-<!-- unikit:agents claude -->
+**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
+(a missing file, block or key is not an error) and settle the model argument once:
+
+1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
+   exactly as written (this runtime's own spelling of the model argument, if it differs).
+2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
+   model of this session.
+3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
+   means pass no model argument.
+
+If the runtime rejects the model name, repeat that call once without the model argument and
+report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: Explore, model: sonnet, prompt: "<focused question>")
+  Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")
   ```
 
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
+  Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`recon-agent`** — read-only parallel reconnaissance. Expands to:
-
-  ```
-  Agent(subagent_type: Explore, prompt: "<focused question>")
-  ```
-
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
-
-  Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
-<!-- unikit:end -->
 
 ## Bootstrap Context (MANDATORY)
 

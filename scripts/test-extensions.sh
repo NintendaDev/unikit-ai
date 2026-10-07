@@ -1796,5 +1796,117 @@ assert_not_contains "$MCP_INJECT_PROJECT/.claude/skills/unikit-fix/SKILL.md" \
 
 echo "  ✓ MCP injection: restored base skill has MCP tools after ext remove"
 
+# ─────────────────────────────────────────────────────
+# Test 40: an extension subagent that dispatches others goes through the same adapter
+# ─────────────────────────────────────────────────────
+# installExtensionSubagents is the third place a subagent source becomes an installed file
+# (after `init` and `update`). All three render through renderSubagent, so an extension
+# orchestrator carrying `Agent(...)` must come out in Kimi's format on a Kimi project and
+# stay byte-for-byte Claude-style on a Claude one — and disappear with the extension.
+
+KEXT_DIR="$TMPDIR/unikit-ext-kimi-agent"
+mkdir -p "$KEXT_DIR/subagents"
+cat > "$KEXT_DIR/extension.json" << 'EOF'
+{"name":"unikit-ext-kimi-agent","version":"1.0.0","description":"Orchestrator subagent for adapter tests","subagents":["subagents/ext-orchestrator.md"]}
+EOF
+cat > "$KEXT_DIR/subagents/ext-orchestrator.md" << 'EOF'
+---
+name: ext-orchestrator
+description: "Orchestrate helpers. Use via `claude --agent ext-orchestrator`."
+tools:
+  - Agent(ext-helper)
+  - Read
+model: inherit
+---
+
+You are the extension orchestrator.
+EOF
+
+KEXT_KIMI="$TMPDIR/test-ext-agent-kimi"
+mkdir -p "$KEXT_KIMI"
+cat > "$KEXT_KIMI/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "kimi",
+      "skillsDir": ".kimi-code/skills",
+      "subagentsDir": ".kimi-code/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "core": [], "stack": [] },
+    "declined": []
+  }
+}
+EOF
+inject_fake_registry "$KEXT_KIMI"
+
+KEXT_CLAUDE="$TMPDIR/test-ext-agent-claude"
+mkdir -p "$KEXT_CLAUDE"
+cat > "$KEXT_CLAUDE/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": []
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "core": [], "stack": [] },
+    "declined": []
+  }
+}
+EOF
+inject_fake_registry "$KEXT_CLAUDE"
+
+for KEXT_PROJECT in "$KEXT_KIMI" "$KEXT_CLAUDE"; do
+  (cd "$KEXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+  (cd "$KEXT_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension add "$KEXT_DIR" > /dev/null 2>&1)
+done
+
+# Kimi: Agent(ext-helper) → Agent + subagents:, ${base_prompt} first, kimi --agent
+KEXT_KIMI_FILE="$KEXT_KIMI/.kimi-code/agents/ext-orchestrator.md"
+assert_exists "$KEXT_KIMI_FILE" "extension subagent must be installed into .kimi-code/agents"
+frontmatter_of "$KEXT_KIMI_FILE" > "$TMPDIR/kimi-ext.fm"
+assert_contains "$TMPDIR/kimi-ext.fm" '^  - Agent$' "kimi: extension orchestrator carries the plain Agent tool"
+assert_not_contains "$TMPDIR/kimi-ext.fm" 'Agent\(' "kimi: no Agent(...) entry left in the extension orchestrator"
+assert_contains "$TMPDIR/kimi-ext.fm" '^subagents:$' "kimi: extension orchestrator has a subagents: list"
+assert_contains "$TMPDIR/kimi-ext.fm" '^  - ext-helper$' "kimi: the dispatched name moved into subagents:"
+if [[ "$(body_first_line_of "$KEXT_KIMI_FILE")" != '${base_prompt}' ]]; then
+  echo "Assertion failed: kimi: the first body line of the extension orchestrator must be \${base_prompt}"
+  exit 1
+fi
+assert_contains "$KEXT_KIMI_FILE" 'kimi --agent ext-orchestrator' "kimi: launch command rewritten"
+assert_not_contains "$KEXT_KIMI_FILE" 'claude --agent' "kimi: no claude launch command left"
+
+# Claude: untouched (the adapter is Kimi-only)
+KEXT_CLAUDE_FILE="$KEXT_CLAUDE/.claude/agents/ext-orchestrator.md"
+assert_exists "$KEXT_CLAUDE_FILE" "extension subagent must be installed into .claude/agents"
+assert_contains "$KEXT_CLAUDE_FILE" 'Agent\(ext-helper\)' "claude: the Agent(...) entry is kept"
+assert_contains "$KEXT_CLAUDE_FILE" 'claude --agent ext-orchestrator' "claude: the launch command is kept"
+assert_not_contains "$KEXT_CLAUDE_FILE" 'subagents:' "claude: no subagents: list is added"
+assert_not_contains "$KEXT_CLAUDE_FILE" 'base_prompt' "claude: no \${base_prompt} is added"
+
+# Removing the extension removes the adapted file
+(cd "$KEXT_KIMI" && node "$ROOT_DIR/dist/cli/index.js" extension remove unikit-ext-kimi-agent > /dev/null 2>&1)
+assert_not_exists "$KEXT_KIMI_FILE" "extension remove must delete the adapted subagent from .kimi-code/agents"
+
+echo "  ✓ extension subagent: adapted for Kimi, untouched for Claude, removed with the extension"
+
 echo ""
 echo "extension smoke tests passed"

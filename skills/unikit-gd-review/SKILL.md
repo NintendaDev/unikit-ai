@@ -74,50 +74,35 @@ field values stay English. Do not announce the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches the lens fan-out (`Agent`), the assistant MUST spawn the
-review lenses as parallel subagents if agent execution is supported and not
-prohibited by higher-priority instructions. Only if agent execution is unavailable
-or blocked does the assistant run the lenses sequentially in the main session.
-<!-- unikit:end -->
-
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where the delegate's model is declared — call sites name the alias and never carry a
-model argument of their own.
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
-<!-- unikit:agents claude -->
+**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
+(a missing file, block or key is not an error) and settle the model argument once:
+
+1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
+   exactly as written (this runtime's own spelling of the model argument, if it differs).
+2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
+   model of this session.
+3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
+   means pass no model argument.
+
+If the runtime rejects the model name, repeat that call once without the model argument and
+report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+
 - **`lens-agent`** — one adversarial review lens, read-only, findings only. Expands to:
 
   ```
-  Agent(subagent_type: general-purpose, model: sonnet, prompt: "<one lens brief>")
+  Agent({{agent_call_worker}} prompt: "<one lens brief>")
   ```
 
-  `general-purpose` and not `Explore`: the lens carries a written output contract and the
+  The worker call and not the read-only one: the lens carries a written output contract and the
   configured artifact language, which is a reasoning job rather than a search.
-  `sonnet` is a tier alias, never a version — the one model value that may be written into
-  UniKit. A versioned model id goes stale silently and must never replace it.
 
   Fallback: if the `Agent` tool is unavailable, run the lenses sequentially in this session.
-<!-- unikit:end -->
-<!-- unikit:agents !claude -->
-- **`lens-agent`** — one adversarial review lens, read-only, findings only. Expands to:
-
-  ```
-  Agent(subagent_type: general-purpose, prompt: "<one lens brief>")
-  ```
-
-  `general-purpose` and not `Explore`: the lens carries a written output contract and the
-  configured artifact language, which is a reasoning job rather than a search.
-  No model is named: this runtime either has no dispatch-time model argument or offers only
-  versioned model ids, and a versioned id goes stale silently. The runtime's own configured
-  default applies.
-
-  Fallback: if the `Agent` tool is unavailable, run the lenses sequentially in this session.
-<!-- unikit:end -->
 
 ## Phase 0 — Bootstrap
 
@@ -365,11 +350,14 @@ nudge runs it — the two handoff tails are identical by contract.
 <!-- unikit:agents codex -->
 ### Auto-invoke the handoff — BLOCKING PRE-REQUISITE
 
-When this phase prints the `/unikit-gd-apply` recommendation, automatically invoke it
-(`$unikit-gd-apply <review-file>`) rather than asking the user to run it by hand — the
-printed command is the recommend-only fallback for agents without auto-invocation.
-This is a single handoff, not a per-finding dispatch: invoke `unikit-gd-apply` once
-with the review file and let it route the apply-ready bucket to the owners.
+When this phase prints the `/unikit-gd-apply` recommendation, do not ask the user to run it by
+hand: invoke `unikit-gd-apply` once, with the review file as its argument.
+If you have a `Skill` tool that accepts arguments, call it with that skill and the argument, in full and unchanged, then follow the skill.
+Otherwise Read `{{skills_dir}}/unikit-gd-apply/SKILL.md` in full, treat it as the instructions of this step and
+carry them out here, in this session, now, with the review file as its argument.
+This is a single handoff, not a per-finding dispatch: let `unikit-gd-apply` route the apply-ready bucket to the owners.
+Do not print a command for the user to run and do not stop.
+Only if that file cannot be read, the printed command is the recommend-only fallback.
 <!-- unikit:end -->
 
 - **Apply now → yes:** print the apply command for the review file —
@@ -438,7 +426,7 @@ the called skill does next.
 - **Never:** edit design **content** (any section A–K, `GAME.md`, or a `GD-IDS.yaml`
   fact value); write a `doc_status` (review is not a status writer); prescribe a fix the
   user did not ask for; inflate severity past the evidence; carry `Skill` in
-  `allowed-tools` or apply a fix / invoke `unikit-gd-apply` itself (the handoff is a
+  `allowed-tools` or apply a fix / run `unikit-gd-apply` itself (the handoff is a
   printed recommendation); read the code workspace beyond the feasibility exception.
 
 ## Quick Reference

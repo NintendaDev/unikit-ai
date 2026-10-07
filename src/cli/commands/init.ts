@@ -17,15 +17,10 @@ import { getMcpEnvLines } from '../../core/mcp-env.js';
 import { resolveSelectedEngineServer } from '../../core/mcp-rules.js';
 import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
-import { getAgentOnboarding, cleanupAgentSetup } from '../../core/transformer.js';
-import { removeDirectory } from '../../utils/fs.js';
+import { collectExtensionSkillNames, removeAgentSetup } from '../../core/installer/agent-removal.js';
+import { getAgentOnboarding } from '../../core/transformer.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
 import { logInfo } from '../../utils/log.js';
-
-async function removeAgentSetup(projectDir: string, agent: AgentInstallation): Promise<void> {
-  await removeDirectory(path.join(projectDir, agent.skillsDir));
-  await cleanupAgentSetup(agent.id, projectDir, agent.skillsDir);
-}
 
 export async function initCommand(): Promise<void> {
   const projectDir = process.cwd();
@@ -89,15 +84,19 @@ export async function initCommand(): Promise<void> {
 
     if (removedAgents.length > 0) {
       console.log(chalk.dim('\nRemoving deselected agent setups...\n'));
+      const extensionSkills = await collectExtensionSkillNames(projectDir, existingConfig);
       for (const removedAgent of removedAgents) {
-        await removeAgentSetup(projectDir, removedAgent);
+        const removal = await removeAgentSetup(projectDir, removedAgent, extensionSkills);
         console.log(chalk.yellow(`  Removed: ${removedAgent.id}`));
+        if (removal.keptEntries.length > 0) {
+          console.log(chalk.dim(`    Kept ${removal.keptEntries.length} item(s) in ${removedAgent.skillsDir} that UniKit did not install`));
+        }
       }
     }
 
     // Re-init prune: for agents that remain selected, remove the skills the
-    // user de-selected this run. Deselected agents are already fully removed
-    // above (removeAgentSetup wipes the whole skillsDir); the install loop
+    // user de-selected this run. Deselected agents are already removed
+    // above (removeAgentSetup takes out every skill UniKit installed for them); the install loop
     // below only (re)installs the selected set and never removes, so without
     // this step deselected skills would linger on retained agents. The prune
     // set is the pure resolveSkillPrune(baseline, selected) per agent.

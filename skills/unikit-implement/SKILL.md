@@ -50,27 +50,15 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
-
 ## Delegation agents
 
 - **`develop-agent`** — only for a true parallel scope or a deep-dive single task. Expands to:
 
   ```
   Agent(
-    subagent_type: "general-purpose",
-    prompt: "/unikit-devcontext <task details>",
-    description: "Implement <task>",
-    skills: ["unikit-devcontext"]
+    {{agent_call_worker_quoted}}
+    prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",
+    description: "Implement <task>"
   )
   ```
 
@@ -80,12 +68,20 @@ alternative.
 
   ```
   Agent(
-    subagent_type: "general-purpose",
-    prompt: "/unikit-docs <context>",
-    description: "Update documentation",
-    skills: ["unikit-docs"]
+    {{agent_call_worker_quoted}}
+    prompt: "{{agent_skill_call:unikit-docs}} <context>",
+    description: "Update documentation"
   )
   ```
+
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the aliases of `## Delegation agents`). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ## Input
 
@@ -162,7 +158,7 @@ INFO [plan] resolved: <path> (<reason>)
 interactive question.
 
 4. If `.unikit/code/plans/` is empty or absent and there is no `.unikit/code/PLAN.md`:
-   - **`.unikit/code/FIX_PLAN.md` exists** → it was created by `/unikit-fix` and runs through the fix workflow: print `Fix plan detected (.unikit/code/FIX_PLAN.md) — launching /unikit-fix`, invoke `/unikit-fix` without arguments, and **STOP**.
+   - **`.unikit/code/FIX_PLAN.md` exists** → it was created by `/unikit-fix` and runs through the fix workflow: print `Fix plan detected (.unikit/code/FIX_PLAN.md) — launching /unikit-fix`, invoke `unikit-fix` with no arguments (`## Skill calls`), and **STOP** when it returns.
    - **No plan at all** → ask, act on the answer, and **STOP**:
 
      ```
@@ -365,7 +361,7 @@ This skill writes sequential tasks itself, with `Read/Edit/Write/Bash` and the r
 
 Choose execution mode:
 - **Sequential within phase** (default for tasks that depend on each other or share files) → inline implementation. The skill writes code itself.
-- **Independent across phases** (per the manifest's `## Dependency Graph`, e.g. Phase 3 and Phase 4 can run in parallel) → spawn `develop-agent` (Agent + /unikit-devcontext) per independent scope. Use ONLY for true parallelism.
+- **Independent across phases** (per the manifest's `## Dependency Graph`, e.g. Phase 3 and Phase 4 can run in parallel) → spawn `develop-agent` (Agent + the `unikit-devcontext` skill) per independent scope. Use ONLY for true parallelism.
 - **Deep-dive single task** (requires extensive codebase exploration that would bloat parent context) → spawn `develop-agent` to isolate the exploration.
 
 When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, the principles from `dev-principles.md`, the task description from the manifest's `## Checklist`, and the technical context from its `## Technical Context`.
@@ -379,7 +375,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 - **`mcp`** — carry it out through the engine MCP by `.unikit/system/dev-principles.md` → **D6**, on **every** such task; a call that misled you is a finding (**D7**); the library reference has two triggers and none of them is Bootstrap (**D8**). No rules file, or no check line for this area, changes nothing (A9).
 - **`manual`** — do **not** touch any file. Mark the task `⏸️ MANUAL` (Step 3.4) and hand the user the exact instruction in the form `[kind] container → target : action`, one line per target.
 - **`direct`** — **a rollback point must exist before editing** (this is mandatory and the whole reason the mode is gated):
-  - Files this run changed and has not committed yet → stage only those and commit them through `/unikit-commit`, like every other commit of this run — never with a `git commit` of your own; with auto-commit on (Step 3.9) it passes `auto` too. The user cancels that commit, or it does not complete → do not edit: put the task back on `manual` and print `WARN [editor] <task>: no pre-edit commit — direct edit skipped, task back on manual` — without that commit there is no rollback point.
+  - Files this run changed and has not committed yet → stage only those and commit them: invoke `unikit-commit`, like every other commit of this run — never with a `git commit` of your own; with auto-commit on (Step 3.9) it passes `auto` too. The user cancels that commit, or it does not complete → do not edit: put the task back on `manual` and print `WARN [editor] <task>: no pre-edit commit — direct edit skipped, task back on manual` — without that commit there is no rollback point.
   - Nothing of this run is uncommitted → `HEAD` already is the rollback point: no commit is needed.
   - The target file itself has uncommitted changes this run did not make → a rollback would erase them. Before anything is staged, ask once with `AskUserQuestion` (numbered text, then end your turn, without the tool): `<target> has uncommitted changes that are not from this run` — `Commit them with the pre-edit commit` / `Leave this task on manual`. The first adds the target to the pre-edit commit; the second puts the task back on `manual` with that reason.
 
@@ -499,7 +495,7 @@ Options:
 4. Disable checkpoints — no more commit questions this session
 ```
 
-**Option 1** invokes `unikit-commit` with `args: "checkpoint: phase {N}"` — `+ ", no-push"` while the checklist carries a `PR checkpoint:` line.
+**Option 1** invokes `unikit-commit` with the argument `checkpoint: phase {N}` — `, no-push` after it while the checklist carries a `PR checkpoint:` line.
 
 A phase closed by a PR checkpoint task was committed by that task — do not ask here for it.
 
@@ -592,11 +588,11 @@ The candidates are already collected: the rows whose status is `open` in the man
 4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"** — four options at most, the tool's limit. Keep the option label short; the full rule text goes in the option's `description`.
 5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
 6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
-7. **What was selected goes to `/unikit-rules` as one numbered batch**, by the three-tier dispatch of Step 5.6: Tier 1 `Skill(skill: "unikit-rules", args: "<batch>")` inline, Tier 2 the inline slash form, Tier 3 printing the command. This is **a real call, not text in backticks**.
-8. **Show the user the `## Batch result` table** the delegate returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
+7. **What was selected goes to `unikit-rules` as one numbered batch** — invoke `unikit-rules` with the batch as its argument (`## Skill calls`). This is **a real call, not text in backticks**.
+8. **Show the user the `## Batch result` table** the skill returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
 9. Only then proceed to Step 5.3.
 
-**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed. If the dispatch degenerated to Tier 3 (printing), the statuses are **not** set to `added` — the rule was not written; print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the delegate returned no table, the statuses stand as well: `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`.
+**Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed. If the skill could not be invoked (its file was unreadable, so only the `Run:` line was printed), the statuses are **not** set to `added` — the rule was not written; print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the skill returned no table, the statuses stand as well: `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`.
 
 **5.3: Documentation Checkpoint**
 
@@ -604,7 +600,7 @@ The candidates are already collected: the rows whose status is `open` in the man
 
 Delegate to `docs-agent` to update or create documentation based on completed work. Do NOT wait for the agent to finish — proceed to Step 5.4 immediately.
 
-**Fallback** (no `Agent` tool): invoke `/unikit-docs` yourself — a real call, not a printed recommendation — wait for it to return, then proceed to Step 5.4.
+**Fallback** (no `Agent` tool): invoke `unikit-docs` yourself with the context `docs-agent` would have got (`## Skill calls`) — a real call, not a printed recommendation — then proceed to Step 5.4.
 
 **If `Docs: no` or the Settings section is missing:** do **not** delegate; emit `WARN [docs] Docs policy is no/unset; skipping documentation`.
 
@@ -637,7 +633,7 @@ Read the plan's `## MCP Findings` table.
 <n> MCP findings recorded in this plan. Transfer them to .unikit/MCP-RECHECK-NOTES.md?
 ```
 
-  On agreement, invoke `Skill(skill: "unikit-mcp-trap", args: "<path to the plan file>")` — the explicit path makes it read this plan and nothing else.
+  On agreement, invoke `unikit-mcp-trap` with the argument `<path to the plan file>` — the explicit path makes it read this plan and nothing else.
 
 **5.6: Verify or Commit**
 
@@ -650,18 +646,12 @@ Options:
 ```
 
 Based on choice:
-- **Verify first** → invoke `unikit-review`, wait for it to return, then invoke `unikit-commit`.
-- **Skip to commit** → invoke `unikit-commit`.
+- **Verify first** → invoke `unikit-review`, wait for it to return, then invoke `unikit-commit` with the argument `final commit` — `, no-push` after it while the checklist carries a `PR checkpoint:` line.
+- **Skip to commit** → invoke `unikit-commit` with the argument `final commit` — the same `, no-push` rule.
 
 **Auto-commit on (Step 3.9)** → the question stays — it is about the review — and the commit it leads to is invoked with the argument `final commit, auto` — and `, no-push` after it while the checklist carries a `PR checkpoint:` line.
 
-**These are skill invocations, in this session — not delegations.** Three tiers, in order:
-
-- **Tier 1 — primary (`Skill`).** `Skill(skill: "unikit-review")`, then `Skill(skill: "unikit-commit", args: "final commit")` — `+ ", no-push"` while the checklist carries a `PR checkpoint:` line — inline, waiting for each to return before starting the next. This is the path on Claude Code.
-- **Tier 2 — fallback (slash-command).** If the `Skill` tool is unavailable in this environment, **invoke `/unikit-review` inline**, then `/unikit-commit final commit` (with `, no-push` under the same condition), one at a time, waiting for each. The slash form is rewritten per agent by the installer; `Skill(...)` is not.
-- **Tier 3 — degenerate (print).** Only when **no** inline invocation mechanism exists at all, print the ordered `Run: /unikit-…` list for the user to execute by hand.
-
-The invocation must be **a real call, not printed text**, and must not be wrapped in triple backticks.
+**These are skill invocations, in this session — not delegations** (`## Skill calls`): each runs to the end before the next starts. They must be **real calls, not printed text**, and must not be wrapped in triple backticks.
 
 **Review is NOT delegated here — unlike Step 5.3.**
 
