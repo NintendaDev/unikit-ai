@@ -111,7 +111,7 @@ fi
 # transformReference is undefined for DefaultTransformer, so references/*.md are
 # copied verbatim for claude/cursor/opencode. unikit-plan's
 # references/TASK-FORMAT.md must keep `/unikit-implement` — NOT $unikit-
-# (codex) or /skills unikit- (qwen). A stray DefaultTransformer.transformReference
+# (codex). A stray DefaultTransformer.transformReference
 # would rewrite this and fail the assertion below.
 CLAUDE_TASKFORMAT="$CLAUDE_DIR/.claude/skills/unikit-plan/references/TASK-FORMAT.md"
 assert_exists "$CLAUDE_TASKFORMAT" "unikit-plan reference must be installed for claude"
@@ -405,11 +405,10 @@ else
   exit 1
 fi
 
-# Codex keeps the guarded 'Subagent Delegation' block (include-list contains
-# `codex`); the generic no-leak sweep across all agents runs at the end of
-# this script (see "agent-filter markers must not leak into any install").
-assert_contains "$CODEX_DIR/.codex/skills/unikit/SKILL.md" \
-  "Subagent Delegation" "codex install: guarded 'Subagent Delegation' block must be kept for codex"
+# No agent keeps a 'Subagent Delegation' block any more: Codex starts subagents on its own
+# (probes of 2026-10-06), and the generic no-leak sweep across all agents runs at the end of this script.
+assert_not_contains "$CODEX_DIR/.codex/skills/unikit/SKILL.md" \
+  "Subagent Delegation" "codex install: no 'Subagent Delegation' block (Codex needs none)"
 
 # Reference .md files must ALSO have their invocations rewritten (T3): the
 # installer runs transformReference over references/*.md, not just SKILL.md.
@@ -446,8 +445,41 @@ else
   exit 1
 fi
 
+# A `{{skills_dir}}/unikit-…` path is a file path, not an invocation: the rewrite runs
+# before the variable is substituted, so only the closing `}` keeps it out of the match.
+# The damaged form is `.codex/skills$unikit-…`; the positive anchor is the path that
+# unikit-fix names in its test-run line.
+CODEX_PATH_DAMAGE=$(grep -rE 'skills\$unikit-' "$CODEX_DIR/.codex/skills/" --include='*.md' 2>/dev/null \
+  | wc -l | tr -d ' ' || true)
+if [[ "$CODEX_PATH_DAMAGE" -ne 0 ]]; then
+  echo "Assertion failed: codex install: a skills path was rewritten as an invocation"
+  echo "  Damaged paths (skills\$unikit-): $CODEX_PATH_DAMAGE (expected 0)"
+  grep -rE 'skills\$unikit-' "$CODEX_DIR/.codex/skills/" --include='*.md' | head -5
+  exit 1
+fi
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" \
+  '\.codex/skills/unikit-implement/references/test-runs\.md' \
+  "codex install: the skills path in unikit-fix must reach the installed file intact"
+echo "  ✓ codex install: {{skills_dir}}/unikit-… paths survive the invocation rewrite"
+
+# Codex's agent call takes no type: no installed skill names one, and every call carries its own
+# spawn arguments (profile spawnArgs) instead; a recon call says it only reads
+CODEX_TYPE_HITS=$(grep -rn 'subagent_type' "$CODEX_DIR/.codex/skills" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+if [[ "$CODEX_TYPE_HITS" -ne 0 ]]; then
+  echo "Assertion failed: codex skills still name a subagent type in $CODEX_TYPE_HITS place(s)"
+  grep -rn 'subagent_type' "$CODEX_DIR/.codex/skills" --include='*.md' | cut -c1-160 | head -5
+  exit 1
+fi
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'fork_turns: "none", task_name: ' \
+  "codex install: every agent call carries fork_turns and a task name"
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'prompt: "<focused question> You are read-only: edit and write nothing\."' \
+  "codex install: recon-agent says in words that it only reads"
+assert_contains "$CODEX_DIR/.codex/skills/unikit-fix/SKILL.md" 'Read \.codex/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
+  "codex install: develop-agent reads the devcontext skill file"
+echo "  ✓ codex install: no subagent type, fork_turns none and a task name on every call, recon read-only"
+
 # ─────────────────────────────────────────────────────
-# Test 3b: Qwen invocation rewrite
+# Test 3b: Qwen — skill text installed as written (no invocation rewrite)
 # ─────────────────────────────────────────────────────
 
 QWEN_DIR="$TMPDIR/test-qwen"
@@ -479,10 +511,9 @@ inject_fake_registry "$QWEN_DIR"
 seed_rule "$QWEN_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 run_update "$QWEN_DIR"
 
-# No raw /unikit- invocations should remain in SKILL.md files (rewritten to "/skills unikit-")
-# SKILL.md is checked here; reference .md files are rewritten too (T3) and
-# checked separately below — they are no longer copied verbatim.
-# Exclude frontmatter name: field, package name unikit-ai, and .unikit/ paths
+# Qwen Code starts a skill as /<name>: the text is installed as written, nothing is rewritten.
+# SKILL.md: raw /unikit- invocations remain (frontmatter name:, the package name unikit-ai and
+# .unikit/ paths are not invocations) and no "/skills unikit" form exists anywhere — the retired rewrite turned the bare /unikit into it too.
 QWEN_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -name 'SKILL.md' -exec \
   grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
   | while read -r f; do
@@ -491,29 +522,19 @@ QWEN_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -name 'SKILL.md' -exec \
         | grep -v 'unikit-ai' \
         | grep -v '\.unikit/'
     done | wc -l | tr -d ' ' || true)
-
-# "/skills unikit-" invocations should exist in SKILL.md files
-QWEN_SKILLS_INVOCATIONS=$(find "$QWEN_DIR/.qwen/skills/" -name 'SKILL.md' -exec \
-  grep -c '/skills unikit-' {} \; 2>/dev/null \
-  | awk '{s+=$1} END{print s+0}' || true)
-
-if [[ "$QWEN_RAW_SLASH" -eq 0 && "$QWEN_SKILLS_INVOCATIONS" -gt 0 ]]; then
-  echo "  ✓ qwen invocation rewrite: /unikit-* → /skills unikit-* ($QWEN_SKILLS_INVOCATIONS rewrites)"
+QWEN_SKILLS_FORM=$(grep -rF '/skills unikit' "$QWEN_DIR/.qwen/skills/" --include='*.md' 2>/dev/null \
+  | wc -l | tr -d ' ' || true)
+if [[ "$QWEN_RAW_SLASH" -gt 0 && "$QWEN_SKILLS_FORM" -eq 0 ]]; then
+  echo "  ✓ qwen install: /unikit-* left as written ($QWEN_RAW_SLASH invocations in SKILL.md), no /skills unikit form"
 else
-  echo "Assertion failed: qwen rewrite"
-  echo "  Remaining /unikit- invocations: $QWEN_RAW_SLASH (expected 0)"
-  echo "  Found /skills unikit- invocations: $QWEN_SKILLS_INVOCATIONS (expected > 0)"
-  if [[ "$QWEN_RAW_SLASH" -gt 0 ]]; then
-    echo "  --- remaining /unikit- ---"
-    grep -rE '(^|[[:space:]`"(>])/unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' \
-      | grep -v '^[^:]*:name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
-    echo "  ---"
-  fi
+  echo "Assertion failed: qwen invocation text"
+  echo "  /unikit- invocations left in SKILL.md: $QWEN_RAW_SLASH (expected > 0)"
+  echo "  /skills unikit occurrences: $QWEN_SKILLS_FORM (expected 0)"
+  grep -rnF '/skills unikit' "$QWEN_DIR/.qwen/skills/" --include='*.md' | head -5
   exit 1
 fi
 
-# Reference .md files must ALSO have their invocations rewritten (T3) for qwen
-# (/unikit-* → /skills unikit-*). Same fixture coverage as codex Test 3.
+# References are installed as written too.
 QWEN_REF_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
   grep -lE '(^|[[:space:]`"(>])/unikit-' {} \; 2>/dev/null \
   | while read -r f; do
@@ -522,26 +543,26 @@ QWEN_REF_RAW_SLASH=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name
         | grep -v 'unikit-ai' \
         | grep -v '\.unikit/'
     done | wc -l | tr -d ' ' || true)
-
-QWEN_REF_SKILLS=$(find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
-  grep -c '/skills unikit-' {} \; 2>/dev/null \
-  | awk '{s+=$1} END{print s+0}' || true)
-
-if [[ "$QWEN_REF_RAW_SLASH" -eq 0 && "$QWEN_REF_SKILLS" -gt 0 ]]; then
-  echo "  ✓ qwen reference rewrite: /unikit-* → /skills unikit-* in references/ ($QWEN_REF_SKILLS rewrites)"
+if [[ "$QWEN_REF_RAW_SLASH" -gt 0 ]]; then
+  echo "  ✓ qwen reference text: /unikit-* left as written in references/ ($QWEN_REF_RAW_SLASH invocations)"
 else
-  echo "Assertion failed: qwen reference rewrite"
-  echo "  Remaining /unikit- in references: $QWEN_REF_RAW_SLASH (expected 0)"
-  echo "  Found /skills unikit- in references: $QWEN_REF_SKILLS (expected > 0)"
-  if [[ "$QWEN_REF_RAW_SLASH" -gt 0 ]]; then
-    echo "  --- remaining /unikit- in references ---"
-    find "$QWEN_DIR/.qwen/skills/" -path '*/references/*' -name '*.md' -exec \
-      grep -HE '(^|[[:space:]`"(>])/unikit-' {} \; \
-      | grep -v ':name:' | grep -v 'unikit-ai' | grep -v '\.unikit/' | head -5
-    echo "  ---"
-  fi
+  echo "Assertion failed: qwen references carry no /unikit- invocation (expected > 0 — the files are installed as written)"
   exit 1
 fi
+
+# A `{{skills_dir}}/unikit-…` path stays a path (nothing rewrites it): the doubled form must not appear.
+QWEN_PATH_DAMAGE=$(grep -rE 'skills/skills unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' 2>/dev/null \
+  | wc -l | tr -d ' ' || true)
+if [[ "$QWEN_PATH_DAMAGE" -ne 0 ]]; then
+  echo "Assertion failed: qwen install: a skills path was damaged"
+  echo "  Damaged paths (skills/skills unikit-): $QWEN_PATH_DAMAGE (expected 0)"
+  grep -rE 'skills/skills unikit-' "$QWEN_DIR/.qwen/skills/" --include='*.md' | head -5
+  exit 1
+fi
+assert_contains "$QWEN_DIR/.qwen/skills/unikit-fix/SKILL.md" \
+  '\.qwen/skills/unikit-implement/references/test-runs\.md' \
+  "qwen install: the skills path in unikit-fix must reach the installed file intact"
+echo "  ✓ qwen install: {{skills_dir}}/unikit-… paths intact"
 
 # ─────────────────────────────────────────────────────
 # Test 3c: Antigravity (skills-only — no subagents, local MCP config, postInstall rules)
@@ -636,7 +657,8 @@ fi
 # reference that names /unikit-implement), unikit-implement (general-purpose → coder,
 # {{settings_file}}), unikit-fix, unikit-verify (the tree-hash tail), unikit-gd-explore (a
 # REFERENCE that spells the subagent type), unikit-gd-review (a !claude block), unikit-gd-brainstorm.
-# The four subagents are the two coordinators (rewritten) and a worker + sidecar (untouched).
+# The five subagents are the two coordinators (rewritten), the polisher and the worker (their
+# `skills:` field becomes a read list) and a sidecar (untouched).
 
 KIMI_DIR="$TMPDIR/test-kimi"
 mkdir -p "$KIMI_DIR"
@@ -653,7 +675,7 @@ cat > "$KIMI_DIR/.unikit.json" << 'EOF'
       "skillsDir": ".kimi-code/skills",
       "subagentsDir": ".kimi-code/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-implement", "unikit-fix", "unikit-verify", "unikit-gd-brainstorm", "unikit-gd-review", "unikit-gd-explore"],
-      "installedSubagents": ["unikit-implement-coordinator", "unikit-plan-coordinator", "unikit-implement-worker", "unikit-review-sidecar"]
+      "installedSubagents": ["unikit-implement-coordinator", "unikit-plan-coordinator", "unikit-plan-polisher", "unikit-implement-worker", "unikit-review-sidecar"]
     }
   ],
   "rules": {
@@ -669,6 +691,32 @@ run_update "$KIMI_DIR"
 KIMI_SKILLS="$KIMI_DIR/.kimi-code/skills"
 KIMI_AGENTS="$KIMI_DIR/.kimi-code/agents"
 KIMI_MCP="$KIMI_DIR/.kimi-code/mcp.json"
+
+# Kimi does not read the `skills:` field, so the adapter turns it into a read list of
+# `.kimi-code/skills/<name>/SKILL.md` paths at the top of the installed file. The names come from
+# the SOURCE agent file (no fixed count to go stale); every one must be listed, and nothing else.
+assert_kimi_read_list() {
+  local installed="$1" source_file="$2" label="$3" names name expected=0 listed
+  names=$(awk '/^skills:/{f=1;next} f&&/^---$/{exit} f&&/^[[:space:]]+-[[:space:]]+/{sub(/^[[:space:]]+-[[:space:]]+/,""); print}' "$source_file")
+  if [[ -z "$names" ]]; then
+    echo "Assertion failed: $label: the source file lists no skills, so the read-list check would be vacuous ($source_file)"
+    exit 1
+  fi
+  while IFS= read -r name; do
+    assert_contains "$installed" '^- \.kimi-code/skills/'"${name}"'/SKILL\.md$' "$label: the read list names ${name}"
+    expected=$((expected + 1))
+  done <<< "$names"
+  listed=$(grep -cE '^- \.kimi-code/skills/[^/]+/SKILL\.md$' "$installed" || true)
+  if [[ "$listed" -ne "$expected" ]]; then
+    echo "Assertion failed: $label: the read list holds $listed path(s), the source lists $expected skill(s)"
+    grep -nE '^- \.kimi-code/skills/' "$installed" | head -10
+    exit 1
+  fi
+  assert_not_contains "$installed" '^skills:' "$label: no skills: field left (Kimi ignores it)"
+  assert_contains "$installed" '^Before you start, Read each file below and follow it as part of your instructions\.' \
+    "$label: the read list opens with its intro line"
+  assert_not_contains "$installed" '^- .*\{\{' "$label: no template placeholder in a read-list line"
+}
 
 # Own directory (ADR-0001, REQ-001)
 assert_exists "$KIMI_SKILLS/unikit/SKILL.md" \
@@ -689,7 +737,7 @@ assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.kimi-code/mcp\.json'
   "kimi: {{settings_file}} renders to .kimi-code/mcp.json"
 assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_config\.json' \
   "kimi: no Antigravity settings path in a Kimi skill"
-KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default)\}\}'
+KIMI_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
 KIMI_TOKEN_HITS=$(grep -rE "$KIMI_TOKEN_RE" "$KIMI_DIR/.kimi-code" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$KIMI_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: kimi install leaked $KIMI_TOKEN_HITS template placeholder(s)"
@@ -706,6 +754,15 @@ if [[ "$KIMI_GP_HITS" -ne 0 ]]; then
 fi
 assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "coder"' \
   "kimi: unikit-implement spawns the coder type"
+# The delegation names the skill FILE by its installed path: the `skills:` key of an Agent call
+# delivers nothing on Kimi (live check 2026-10-06), so the subagent reads the file itself.
+assert_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" \
+  'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
+  "kimi: develop-agent reads the devcontext skill file from .kimi-code/skills"
+assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" 'follow it as your instructions throughout this task' \
+  "kimi: the retired delegation phrase is gone"
+assert_not_contains "$KIMI_SKILLS/unikit-implement/SKILL.md" '^[[:space:]]*skills:[[:space:]]*\[' \
+  "kimi: no skills: [...] key left in a delegation call"
 assert_contains "$KIMI_SKILLS/unikit-gd-explore/references/delegation-contract.md" 'subagent_type: "coder"' \
   "kimi: a REFERENCE file carries the profile variable too (profile variable in a reference)"
 assert_contains "$KIMI_SKILLS/unikit-gd-review/SKILL.md" 'subagent_type: coder' \
@@ -750,6 +807,7 @@ assert_contains "$KIMI_COORD" 'kimi --agent unikit-implement-coordinator' "kimi:
 assert_not_contains "$KIMI_COORD" 'claude --agent' "kimi: no claude launch command left in the coordinator"
 assert_contains "$KIMI_COORD" '^Agent\(unikit-implement-worker\):' \
   "kimi: illustrative Agent(...) lines in the body are untouched"
+assert_kimi_read_list "$KIMI_COORD" "$ROOT_DIR/subagents/unikit-implement-coordinator.md" "kimi: coordinator"
 
 KIMI_PLAN_COORD="$KIMI_AGENTS/unikit-plan-coordinator.md"
 assert_exists "$KIMI_PLAN_COORD" "kimi: unikit-plan-coordinator installed into .kimi-code/agents"
@@ -764,8 +822,8 @@ if [[ "$(body_first_line_of "$KIMI_PLAN_COORD")" != '${base_prompt}' ]]; then
 fi
 assert_contains "$KIMI_PLAN_COORD" 'kimi --agent unikit-plan-coordinator' "kimi: plan coordinator launch command rewritten"
 
-# A worker and a sidecar are not top-level agents: untouched, and `skills:` stays (DEC-014)
-for KIMI_PLAIN in unikit-implement-worker unikit-review-sidecar; do
+# A worker, a polisher and a sidecar are not top-level agents: no ${base_prompt}, no subagents: list
+for KIMI_PLAIN in unikit-implement-worker unikit-plan-polisher unikit-review-sidecar; do
   assert_exists "$KIMI_AGENTS/$KIMI_PLAIN.md" "kimi: $KIMI_PLAIN installed"
   assert_not_contains "$KIMI_AGENTS/$KIMI_PLAIN.md" 'base_prompt' "kimi: $KIMI_PLAIN gets no \${base_prompt}"
   frontmatter_of "$KIMI_AGENTS/$KIMI_PLAIN.md" > "$TMPDIR/kimi-$KIMI_PLAIN.fm"
@@ -773,7 +831,17 @@ for KIMI_PLAIN in unikit-implement-worker unikit-review-sidecar; do
 done
 frontmatter_of "$KIMI_AGENTS/unikit-implement-worker.md" > "$TMPDIR/kimi-worker.fm"
 assert_contains "$TMPDIR/kimi-worker.fm" '^  - Skill$' "kimi: worker keeps its Skill tool"
-assert_contains "$TMPDIR/kimi-worker.fm" '^skills:$' "kimi: worker keeps skills: (DEC-014 — Kimi ignores an unknown field)"
+# `skills:` is gone from the frontmatter and its names are a read list at the top of the body
+# (Kimi does not read the field: live check 2026-10-06, Kimi 2.1.1). The worker names devcontext and verify.
+assert_kimi_read_list "$KIMI_AGENTS/unikit-implement-worker.md" "$ROOT_DIR/subagents/unikit-implement-worker.md" "kimi: worker"
+assert_contains "$KIMI_AGENTS/unikit-implement-worker.md" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' \
+  "kimi: worker reads the devcontext rules named in its source"
+assert_contains "$KIMI_AGENTS/unikit-implement-worker.md" '^- \.kimi-code/skills/unikit-verify/SKILL\.md$' \
+  "kimi: worker reads the verify rules named in its source"
+assert_kimi_read_list "$KIMI_AGENTS/unikit-plan-polisher.md" "$ROOT_DIR/subagents/unikit-plan-polisher.md" "kimi: plan polisher"
+# A sidecar lists no skills: its file is not touched by the read-list step
+assert_not_contains "$KIMI_AGENTS/unikit-review-sidecar.md" 'Before you start, Read each file below' \
+  "kimi: a sidecar without skills: gets no read list"
 
 # MCP (REQ-003): bearerTokenEnvVar, no type, no raw reference, no Antigravity placeholder
 assert_exists "$KIMI_MCP" "kimi: update wrote .kimi-code/mcp.json"
@@ -852,6 +920,9 @@ assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" '\.agents/mcp_
   "universal: no Antigravity settings path in a universal skill"
 assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "general-purpose"' \
   "universal: the worker type is the Claude literal"
+assert_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" \
+  'Read \.agents/skills/unikit-devcontext/SKILL\.md in full before you do anything else' \
+  "universal: develop-agent reads the devcontext skill file from the shared .agents/skills"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-implement/SKILL.md" 'subagent_type: "(self|coder|worker|generalPurpose|general)"' \
   "universal: no other agent's worker type"
 assert_contains "$UNIVERSAL_SKILLS/unikit-fix/SKILL.md" 'subagent_type: Explore, prompt:' \
@@ -862,7 +933,7 @@ assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in default `"
   "universal: no built-in model default"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'Subagent Delegation.*BLOCKING PRE-REQUISITE' \
   "universal: no Codex ask-the-user block (DEC-008)"
-UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default)\}\}'
+UNIVERSAL_TOKEN_RE='\{\{(skills_dir|settings_file|home_skills_dir|skills_cli_agent_flag|self_name|engine_name|engine_code_language|engine_mcp_tool|agent_id|agent_reader_type|agent_worker_type|agent_model_default|agent_call_reader|agent_call_worker_quoted|agent_call_worker)\}\}|\{\{agent_skill_call:'
 UNIVERSAL_TOKEN_HITS=$(grep -rE "$UNIVERSAL_TOKEN_RE" "$UNIVERSAL_DIR/.agents" --include='*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
 if [[ "$UNIVERSAL_TOKEN_HITS" -ne 0 ]]; then
   echo "Assertion failed: universal install leaked $UNIVERSAL_TOKEN_HITS template placeholder(s)"
@@ -1205,10 +1276,10 @@ run_update "$MCP_DIR"
 # Note: MCP config is written during init, not update. Just verify skills installed.
 assert_exists "$MCP_DIR/.claude/skills/unikit/SKILL.md" "claude skill should be installed"
 
-# Claude must cut the codex-only guarded block (exclude path); the generic
-# no-leak sweep for markers runs at the end of this script.
+# No agent carries the retired 'Subagent Delegation' block; the generic no-leak sweep for markers
+# runs at the end of this script.
 assert_not_contains "$MCP_DIR/.claude/skills/unikit/SKILL.md" \
-  "Subagent Delegation" "claude install: codex-only 'Subagent Delegation' block must be cut"
+  "Subagent Delegation" "claude install: no 'Subagent Delegation' block"
 
 # Subagent files should be installed for claude (supportsSubagents: true)
 assert_exists "$MCP_DIR/.claude/agents/unikit-architecture-sidecar.md" "subagent files must be installed for claude"

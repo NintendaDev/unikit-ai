@@ -16,18 +16,18 @@ UniKit AI is an **AI-powered game code development toolkit**. It bootstraps an A
 
 UniKit supports eight AI coding agents. Select one or more during `unikit-ai init` - the CLI installs skills with per-agent path rewriting so every selected agent receives the correct format.
 
-| Agent | Config Directory | Skills Directory | MCP Support | Status |
-|-------|-----------------|-----------------|-------------|--------|
-| Claude Code | `.claude/` | `.claude/skills/` | Yes (`.mcp.json`) | Stable |
-| Codex CLI | `.codex/` | `.codex/skills/` | Yes (`.codex/config.toml`) | Beta |
-| Cursor | `.cursor/` | `.cursor/skills/` | Yes (`.cursor/mcp.json`) | Beta |
-| Qwen Code | `.qwen/` | `.qwen/skills/` | Yes (`.qwen/settings.json`) | Beta |
-| OpenCode | `.opencode/` | `.opencode/skills/` | Yes (`opencode.json`) | Beta |
-| Antigravity | `.agents/` | `.agents/skills/` | Yes (`.agents/mcp_config.json`) | Beta |
-| Kimi Code | `.kimi-code/` | `.kimi-code/skills/` | Yes (`.kimi-code/mcp.json`) | Beta |
-| Universal / Other | `.agents/` | `.agents/skills/` | Yes (`.mcp.json`) | Beta |
+| Agent | Config Directory | Skills Directory | MCP Support |
+|-------|-----------------|-----------------|-------------|
+| Claude Code | `.claude/` | `.claude/skills/` | Yes (`.mcp.json`) |
+| Codex CLI | `.codex/` | `.codex/skills/` | Yes (`.codex/config.toml`) |
+| Cursor | `.cursor/` | `.cursor/skills/` | Yes (`.cursor/mcp.json`) |
+| Qwen Code | `.qwen/` | `.qwen/skills/` | Yes (`.qwen/settings.json`) |
+| OpenCode | `.opencode/` | `.opencode/skills/` | Yes (`opencode.json`) |
+| Antigravity | `.agents/` | `.agents/skills/` | Yes (`.agents/mcp_config.json`) |
+| Kimi Code | `.kimi-code/` | `.kimi-code/skills/` | Yes (`.kimi-code/mcp.json`) |
+| Universal / Other | `.agents/` | `.agents/skills/` | Yes (`.mcp.json`) |
 
-The wizard renders a single flat selection checkbox with a right-aligned `[Stable]` / `[Beta]` tag next to each agent (stable agents listed first). Beta agents are fully wired in (skills + subagents + MCP where supported), but the adapters are newer and rough edges are still possible - use them and report issues.
+The wizard renders a single flat selection checkbox with one row per agent.
 
 ## Prerequisites
 
@@ -51,7 +51,7 @@ unikit-ai init
 
 The `init` wizard asks only about installation concerns - it does **not** generate project context or install rules. Specifically:
 
-1. **Agents** - multi-select checkbox where each agent is shown with a right-aligned `[Stable]` / `[Beta]` tag (stable agents listed first): `[Stable]` for Claude Code; `[Beta]` for Codex CLI, Cursor, Qwen Code, OpenCode, Antigravity, Kimi Code, Universal / Other. Pick one or more; each selected agent gets its own skills / subagents / MCP files written in the correct per-agent format
+1. **Agents** - multi-select checkbox with one row per agent. Pick one or more; each selected agent gets its own skills / subagents / MCP files written in the correct per-agent format
 2. **Engine** - Unity / Godot 4 / Godot 4 .NET / Unreal Engine 5. On a repeat `init` the engine is reused from `.unikit.json` and the prompt is skipped
 3. **Skills** - grouped multi-select checkbox (Core, Memory and rules, Code, Game Design, Tools). On a fresh `init` every skill is checked by default; uncheck any you don't want (at least one is required). On a repeat `init` the previously installed set is pre-checked, and de-selecting a skill removes it on save
 4. **Custom rules registry** - confirm Y/N. If yes, enter a URL or local path; invalid registries offer retry / skip (skip falls back to the official registry `NintendaDev/unikit-ai-rules`)
@@ -159,7 +159,7 @@ Background sidecars and coordinators for parallel execution and read-only audits
 | `unikit-review-sidecar` | Read-only code review |
 | `unikit-docs-sidecar` | Documentation drift detection |
 
-Workflow skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing directly. They load rules and engine principles once at the start of execution (Bootstrap) and then implement tasks inline with `Read/Edit/Write/Bash`. The skill-loading delegation aliases - `develop-agent`, `docs-agent` - still expand to `Agent(subagent_type: "<worker type>", skills: [...])` calls (the worker type of your agent, see [Subagents](subagents.md#subagent-profile-per-agent)), but `develop-agent` is now reserved for true parallel scopes or deep-dive single tasks, not for every task. Read-only work goes through the `recon-agent` alias instead.
+Workflow skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`) own code-writing directly. They load rules and engine principles once at the start of execution (Bootstrap) and then implement tasks inline with `Read/Edit/Write/Bash`. The skill-loading delegation aliases - `develop-agent`, `docs-agent` - still expand to `Agent(...)` calls whose prompt makes the subagent load the skill - a Skill-tool call on Claude Code, a read of the skill file elsewhere (see [Subagents](subagents.md#how-a-skill-reaches-a-subagent); the subagent type is the one of your agent, see [Subagents](subagents.md#subagent-profile-per-agent)) - but `develop-agent` is now reserved for true parallel scopes or deep-dive single tasks, not for every task. Read-only work goes through the `recon-agent` alias instead.
 
 ### Dynamic Memory Rules
 

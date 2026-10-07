@@ -2224,6 +2224,7 @@ seed_rule "$AK_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 AK_AG_SKILL="$AK_DIR/.agents/skills/unikit-implement/SKILL.md"
 AK_KIMI_SKILL="$AK_DIR/.kimi-code/skills/unikit-implement/SKILL.md"
 AK_KIMI_COORD="$AK_DIR/.kimi-code/agents/unikit-implement-coordinator.md"
+AK_KIMI_WORKER="$AK_DIR/.kimi-code/agents/unikit-implement-worker.md"
 AK_AG_MCP="$AK_DIR/.agents/mcp_config.json"
 AK_KIMI_MCP="$AK_DIR/.kimi-code/mcp.json"
 
@@ -2252,9 +2253,15 @@ if cmp -s "$AK_AG_SKILL" "$AK_KIMI_SKILL"; then
 fi
 assert_contains "$AK_KIMI_SKILL" '\.kimi-code/mcp\.json' "kimi copy: {{settings_file}} is .kimi-code/mcp.json"
 assert_contains "$AK_KIMI_SKILL" 'subagent_type: "coder"' "kimi copy: the coder subagent type"
+assert_contains "$AK_KIMI_SKILL" 'Read \.kimi-code/skills/unikit-devcontext/SKILL\.md in full' \
+    "kimi copy: develop-agent reads its skill file from .kimi-code/skills"
 assert_contains "$AK_AG_SKILL" '\.agents/mcp_config\.json' "antigravity copy: {{settings_file}} is .agents/mcp_config.json"
 assert_contains "$AK_AG_SKILL" 'subagent_type: "self"' "antigravity copy: its own worker type"
 assert_not_contains "$AK_AG_SKILL" 'subagent_type: "coder"' "antigravity copy: no Kimi rewrite"
+assert_contains "$AK_AG_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' \
+    "antigravity copy: develop-agent reads its skill file from the shared .agents/skills"
+assert_not_contains "$AK_AG_SKILL" '\.kimi-code/skills' "antigravity copy: no Kimi skills path"
+assert_not_contains "$AK_KIMI_SKILL" '\.agents/skills/unikit-devcontext' "kimi copy: no Antigravity skills path"
 
 # MCP, each client in its own form
 assert_contains "$AK_KIMI_MCP" '"bearerTokenEnvVar": "GITHUB_PAT"' "kimi mcp.json: the variable NAME in bearerTokenEnvVar"
@@ -2270,10 +2277,23 @@ if [[ "$(body_first_line_of "$AK_KIMI_COORD")" != '${base_prompt}' ]]; then
     echo "Assertion failed: kimi coordinator: update must install it with \${base_prompt} as the first body line"
     exit 1
 fi
+assert_contains "$AK_KIMI_COORD" '^Before you start, Read each file below and follow it as part of your instructions\.' \
+    "kimi coordinator: update installs the skills read list (Kimi ignores the skills: field)"
+assert_contains "$AK_KIMI_COORD" '^- \.kimi-code/skills/unikit-implement/SKILL\.md$' "kimi coordinator: its own skill is on the read list"
+
+# The worker is installed with the same step: no skills: field, its two skills as real paths. The
+# paths are built from the agent registry — an agent file renders {{skills_dir}} empty by design.
+assert_exists "$AK_KIMI_WORKER" "kimi must have the worker installed under .kimi-code/agents"
+frontmatter_of "$AK_KIMI_WORKER" > "$TMPDIR/ak-worker-1.fm"
+assert_not_contains "$TMPDIR/ak-worker-1.fm" '^skills:' "kimi worker: update installs it without the skills: field"
+assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' "kimi worker: the devcontext rules are on the read list"
+assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-verify/SKILL\.md$' "kimi worker: the verify rules are on the read list"
+assert_not_contains "$AK_KIMI_WORKER" '\{\{skills_dir\}\}' "kimi worker: no unresolved {{skills_dir}}"
 
 AK_H_AG_SKILL="$(sha_of "$AK_AG_SKILL")"
 AK_H_KIMI_SKILL="$(sha_of "$AK_KIMI_SKILL")"
 AK_H_KIMI_COORD="$(sha_of "$AK_KIMI_COORD")"
+AK_H_KIMI_WORKER="$(sha_of "$AK_KIMI_WORKER")"
 AK_H_AG_MCP="$(sha_of "$AK_AG_MCP")"
 AK_H_KIMI_MCP="$(sha_of "$AK_KIMI_MCP")"
 
@@ -2289,11 +2309,13 @@ assert_not_contains "$AK_SECOND" "Local modifications detected" "an idle second 
 assert_same_sha "$AK_AG_SKILL" "$AK_H_AG_SKILL" "second update rewrote the Antigravity skill"
 assert_same_sha "$AK_KIMI_SKILL" "$AK_H_KIMI_SKILL" "second update rewrote the Kimi skill"
 assert_same_sha "$AK_KIMI_COORD" "$AK_H_KIMI_COORD" "second update rewrote the adapted Kimi coordinator"
+assert_same_sha "$AK_KIMI_WORKER" "$AK_H_KIMI_WORKER" "second update rewrote the adapted Kimi worker"
 assert_same_sha "$AK_AG_MCP" "$AK_H_AG_MCP" "second update rewrote the Antigravity MCP file"
 assert_same_sha "$AK_KIMI_MCP" "$AK_H_KIMI_MCP" "second update rewrote the Kimi MCP file"
 
 # A tampered Kimi subagent is repaired to the ADAPTED text, not to the raw source
 printf '\nTAMPER-KIMI\n' >> "$AK_KIMI_COORD"
+printf '\nTAMPER-KIMI\n' >> "$AK_KIMI_WORKER"
 AK_THIRD="$TMPDIR/update-ag-kimi-3.log"
 (cd "$AK_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AK_THIRD" 2>&1)
 assert_contains "$AK_THIRD" "Local modifications detected in subagent" "tampered Kimi subagent must be reported"
@@ -2306,6 +2328,13 @@ if [[ "$(body_first_line_of "$AK_KIMI_COORD")" != '${base_prompt}' ]]; then
 fi
 assert_same_sha "$AK_KIMI_COORD" "$AK_H_KIMI_COORD" \
     "the repaired coordinator must be byte-identical to the adapted install (subagents: + \${base_prompt})"
+assert_contains "$AK_KIMI_COORD" '^Before you start, Read each file below and follow it as part of your instructions\.' \
+    "the repaired coordinator must carry the skills read list again"
+assert_not_contains "$AK_KIMI_WORKER" 'TAMPER-KIMI' "update must overwrite the tampered Kimi worker"
+assert_contains "$AK_KIMI_WORKER" '^- \.kimi-code/skills/unikit-devcontext/SKILL\.md$' \
+    "the repaired worker must carry the skills read list again, not the raw source"
+assert_same_sha "$AK_KIMI_WORKER" "$AK_H_KIMI_WORKER" \
+    "the repaired worker must be byte-identical to the adapted install (read list, no skills: field)"
 
 # Independence: tampering with one tree is repaired there and leaves the other alone
 printf '\nTAMPER-AG\n' >> "$AK_AG_SKILL"
@@ -2384,6 +2413,10 @@ if cmp -s "$UC_CLAUDE_SKILL" "$UC_UNI_SKILL"; then
 fi
 assert_contains "$UC_CLAUDE_SKILL" 'subagent_type: "general-purpose"' "claude copy: the Claude worker type"
 assert_contains "$UC_UNI_SKILL" 'subagent_type: "general-purpose"' "universal copy: the same Claude worker type"
+assert_contains "$UC_CLAUDE_SKILL" 'Call the Skill tool with skill "unikit-devcontext" and pass the text after the colon' "claude copy: develop-agent calls the Skill tool"
+assert_not_contains "$UC_CLAUDE_SKILL" 'Read \.claude/skills/unikit-devcontext/SKILL\.md in full' "claude copy: no file-read form"
+assert_contains "$UC_UNI_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' "universal copy: develop-agent reads the skill file"
+assert_not_contains "$UC_UNI_SKILL" 'Call the Skill tool with skill' "universal copy: no Skill-tool form"
 assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the model rule)"
 assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the model rule)"
 assert_contains "$UC_CLAUDE_PLAN" 'subagents\.model\.claude' "claude copy: its own config key"

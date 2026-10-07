@@ -292,7 +292,7 @@ model: sonnet
 Agent instructions here...
 ```
 
-Subagents are only installed for agents that support them (Claude Code and Kimi Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`).
+Subagents are only installed for agents that support them (Claude Code and Kimi Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`). On Kimi Code, which does not read a `skills:` field in an agent file, the installer turns that field into a read list of `SKILL.md` paths at the top of the file - the same adapter runs over extension subagents (see [Subagents](subagents.md#skills-listed-in-an-agent-file)).
 
 ---
 
@@ -536,11 +536,15 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{engine_code_language}}` | `CSharp` | Engine's programming language |
 | `{{engine_mcp_tool}}` | `unity-biome-mcp` | Vendor code of the engine MCP server — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. Not the server's file id. |
 | `{{agent_id}}` | `claude` | Agent id |
-| `{{agent_reader_type}}` | `Explore` | Read-only subagent type of the agent |
-| `{{agent_worker_type}}` | `general-purpose` | Subagent type that can write files |
+| `{{agent_reader_type}}` | `Explore` | Read-only subagent type of the agent; empty when the agent has none (Codex) |
+| `{{agent_worker_type}}` | `general-purpose` | Subagent type that can write files; empty when the agent has none (Codex) |
 | `{{agent_model_default}}` | `sonnet` | Built-in default model argument; empty when the agent has none |
+| `{{agent_call_reader}}` | `subagent_type: Explore,` | Leading arguments of an `Agent(...)` call for a read-only subagent: the type and the agent's extra arguments (Codex: `fork_turns` and `task_name`, no type) |
+| `{{agent_call_worker}}` | `subagent_type: general-purpose,` | The same for a subagent that can write files |
+| `{{agent_call_worker_quoted}}` | `subagent_type: "general-purpose",` | The same, with the type in quotes (the spelling of multi-line call blocks) |
+| `{{agent_skill_call:<skill>}}` | `Call the Skill tool with skill "<skill>" and …` | At the start of a `prompt: "…"` line: makes the subagent load the skill; the text after it up to the closing quote is the skill's arguments. Claude Code: a Skill-tool call; every other agent: a read of `<skills dir>/<skill>/SKILL.md` |
 
-The four `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty. They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent).
+The `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty, and `{{agent_skill_call:…}}` stays as written (a guard keeps it out of those files). They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent).
 
 Use these in SKILL.md files to write agent-agnostic skills:
 

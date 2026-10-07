@@ -61,6 +61,10 @@ export function buildSubagentTemplateVars(
     agent_reader_type: '',
     agent_worker_type: '',
     agent_model_default: '',
+    agent_call_reader: '',
+    agent_call_worker: '',
+    agent_call_worker_quoted: '',
+    agent_skill_call_form: '',
   };
   if (engineId) {
     Object.assign(vars, buildEngineVars(engineId, engineMcpKey));

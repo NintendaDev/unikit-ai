@@ -437,6 +437,10 @@ export function workspaceDir(projectDir: string, module: string): string {
 // composes `workspaceDir` with `RESEARCHES_DIR_NAME` itself and left this one
 // without a caller. Restoring it means restoring the `import` line too.
 export * from './constants-artifacts.js';
+// Text the agent transformers write into installed files (same reason, same re-export).
+export * from './constants-transform.js';
+// How a skill loads another skill for a subagent, and the call-head fragments (same reason, same re-export).
+export * from './constants-skill-call.js';
 
 // --- Migration version anchors (`Migration.since`) ---
 //

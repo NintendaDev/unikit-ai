@@ -149,12 +149,10 @@ explore save pipeline, on the same criterion — see
 
 ## 5.6 — Verify or Commit
 
-- **Tier 2 exists because `Skill(...)` is not rewritten.** The slash form is rewritten per agent
-  by the installer, while some agents have no `Skill` tool at all — without the slash tier
-  the step is dead there.
+- **One recipe instead of a ladder of fallbacks.** The step calls `unikit-review` and `unikit-commit` by the recipe of `## Skill calls`: a `Skill` tool where the runtime has one, the skill file read and carried out in the same session where it has not. The earlier middle step (a slash form the installer rewrites per agent) existed because the Skill call is not rewritten and some agents have no such tool; a slash command written by the model is only words, so the recipe replaced both the tier and the printed fallback.
 - **Review is stated as NOT delegated because the file argues the other way.** A step above says
-  "Delegate to `docs-agent`" and a `Subagent Delegation — BLOCKING PRE-REQUISITE` block sits at
-  the top; generalising from the neighbours is exactly how this step came to be read as a
+  "Delegate to `docs-agent`" and the skill is full of delegation wording (a Codex-only `Subagent Delegation` block sat at
+  the top until the Codex blocks were dropped); generalising from the neighbours is exactly how this step came to be read as a
   delegation. Step 5.2 is delegated to nobody at all — it blocks on the user, and only the answer
   decides what is written.
 - **Why review in particular stays in this session.** A review is a conversation: in a subagent

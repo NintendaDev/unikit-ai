@@ -283,14 +283,14 @@ await group('U', async () => {
     const pick = (source, keys) => Object.fromEntries(keys.map((key) => [key, source[key]]));
     assertEq(
         'U5 the registry entry matches the research (REQ-001)',
-        JSON.stringify(pick(universal, ['id', 'displayName', 'configDir', 'skillsDir', 'subagentsDir', 'settingsFile', 'supportsMcp', 'supportsSubagents', 'skillsCliAgent', 'isStable'])),
-        JSON.stringify({ id: 'universal', displayName: 'Universal / Other', configDir: '.agents', skillsDir: '.agents/skills', subagentsDir: '.agents/agents', settingsFile: '.mcp.json', supportsMcp: true, supportsSubagents: false, skillsCliAgent: 'universal', isStable: false }),
+        JSON.stringify(pick(universal, ['id', 'displayName', 'configDir', 'skillsDir', 'subagentsDir', 'settingsFile', 'supportsMcp', 'supportsSubagents', 'skillsCliAgent'])),
+        JSON.stringify({ id: 'universal', displayName: 'Universal / Other', configDir: '.agents', skillsDir: '.agents/skills', subagentsDir: '.agents/agents', settingsFile: '.mcp.json', supportsMcp: true, supportsSubagents: false, skillsCliAgent: 'universal' }),
     );
     assertTrue('U6 MCP goes through the very writer Claude Code uses (same file, same format)', getMcpWriter('universal') === getMcpWriter('claude'));
     assertEq(
         'U7 the wizard row',
         JSON.stringify(getAgentChoices().find((choice) => choice.value === 'universal')),
-        JSON.stringify({ name: 'Universal / Other (.agents/)', value: 'universal', isStable: false }),
+        JSON.stringify({ name: 'Universal / Other (.agents/)', value: 'universal' }),
     );
     assertTrue(
         'U8 the welcome message names exactly what the registry says',

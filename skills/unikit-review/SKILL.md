@@ -28,24 +28,11 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
-
-> **`+check` carve-out:** the optional `+check` findings validator (Step 4.5) is **exempt** from the rule above. If its validator agent is unavailable or blocked, render the review as drafted and emit a single `WARN [+check]` line — never ask the user. See `references/CHECK-MODE.md`.
-
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where its delegate's agent type is declared — call sites name the alias and never carry
-a type or a model argument of their own.
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 **Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
 (a missing file, block or key is not an error) and settle the model argument once:
@@ -63,12 +50,12 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 - **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
 
   ```
-  Agent(subagent_type: {{agent_reader_type}}, prompt: "<rendered VALIDATOR.md template>")
+  Agent({{agent_call_reader}} prompt: "<rendered VALIDATOR.md template>")
   ```
 
-  Whether the agent type is read-only is this runtime's own claim, so the read-only contract
+  Whether the agent is read-only is this runtime's own claim, so the read-only contract
   rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
-  "You do not modify any files. You do not run commands." lines in whatever is sent.
+  read-only paragraph ("You never modify a file and never run a command that changes state") in whatever is sent.
 
   Fallback: the validator is **never** replaced by inline analysis — see
   `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
@@ -196,7 +183,7 @@ When `+check` ran successfully, append one line after all review sections and be
 Filtered: N hidden, M adjusted, K reclassified by +check
 ```
 
-**Fallback (do NOT inline-analyze):** if the validator agent is unavailable/blocked or the dispatch fails, keep **all** findings as drafted, do NOT recompute the gate-result block (assemble it from the unfiltered table), and emit the single line `WARN [+check]: validator failed (<reason>), all items kept as-is` above the fence — never re-do the validator's work with Glob/Grep/Read. This `+check` path is exempt from the Subagent-Delegation prerequisite (see the carve-out note above) — an unavailable validator is silently skipped, the user is never asked.
+**Fallback (do NOT inline-analyze):** if the validator agent is unavailable/blocked or the dispatch fails, keep **all** findings as drafted, do NOT recompute the gate-result block (assemble it from the unfiltered table), and emit the single line `WARN [+check]: validator failed (<reason>), all items kept as-is` above the fence — never re-do the validator's work with Glob/Grep/Read. An unavailable validator is silently skipped; the user is never asked.
 
 If `+check` is not set, skip this step entirely — no validator-related lines appear and the gate-result block is computed once from the full draft.
 

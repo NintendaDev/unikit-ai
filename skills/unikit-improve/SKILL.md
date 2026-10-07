@@ -43,22 +43,11 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
-
 ## Delegation agents
 
 This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
-place where its delegate's agent type is declared — call sites name the alias and never carry
-a type or a model argument of their own.
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 **Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
 (a missing file, block or key is not an error) and settle the model argument once:
@@ -76,25 +65,36 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: {{agent_reader_type}}, prompt: "<focused question>")
+  Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")
   ```
+
+  Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
 
 - **`check-agent`** — fresh-context, read-only findings validator (`+check`). Expands to:
 
   ```
-  Agent(subagent_type: {{agent_reader_type}}, prompt: "<rendered VALIDATOR.md template>")
+  Agent({{agent_call_reader}} prompt: "<rendered VALIDATOR.md template>")
   ```
 
-  Whether the agent type is read-only is this runtime's own claim, so the read-only contract
+  Whether the agent is read-only is this runtime's own claim, so the read-only contract
   rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
-  "You do not modify any files. You do not run commands." lines in whatever is sent.
+  read-only paragraph ("You never modify a file and never run a command that changes state") in whatever is sent.
 
   Fallback: the validator is **never** replaced by inline analysis — see
   `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
 
 - **`develop-agent`** — **not used by this skill.** It belongs to the code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`); plan refinement reads and analyses code, it does not write it. Recorded here so the alias named in "Code Analysis Rules" can be looked up in the one place aliases are documented.
+
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the aliases of `## Delegation agents`). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ## Core Idea
 
@@ -558,7 +558,7 @@ Run this step **only** when `check = true` (the `+check` flag was parsed in Step
 
 Follow the full procedure in **`references/CHECK-MODE.md`**: it dispatches one fresh-context `check-agent` validator over the four codebase-traceable groups (`missing`, `improvements`, `architectural`, `removals`), applies each `keep`/`modify`/`drop` verdict, recomputes the 🔄 Dependency Fixes group on the filtered list (phase b), and tracks the `hidden` / `adjusted` counters. The **Research-Based Findings** (`research_improvements`) and the 🔄 Dependency Fixes group are **not** validated.
 
-**Fallback (do NOT inline-analyze):** if the validator agent is unavailable/blocked or the dispatch fails, the procedure keeps **all** findings as-is and emits the single line `WARN [+check]: validator failed (<reason>), all items kept as-is` — it never re-does the validator's work with Glob/Grep/Read. This `+check` path is **exempt** from the `## Subagent Delegation — BLOCKING PRE-REQUISITE` rule: an unavailable validator is silently skipped, the user is never asked.
+**Fallback (do NOT inline-analyze):** if the validator agent is unavailable/blocked or the dispatch fails, the procedure keeps **all** findings as-is and emits the single line `WARN [+check]: validator failed (<reason>), all items kept as-is` — it never re-does the validator's work with Glob/Grep/Read. An unavailable validator is silently skipped; the user is never asked.
 
 The filtered findings (and recomputed dependencies) are what Step 4 renders.
 
@@ -814,8 +814,8 @@ Options:
 ```
 
 Based on choice:
-- **Implement now** → invoke `/unikit-implement @<resolved-plan-path>`, passing the same plan path used in this session (e.g., `@.unikit/code/plans/2026-03-08_customers-system` or `@.unikit/code/PLAN.md`)
-- **Review again** → invoke `/unikit-improve @<resolved-plan-path>` to reload the skill from scratch with full re-analysis
+- **Implement now** → invoke `unikit-implement` with the argument `@<resolved-plan-path>`, passing the same plan path used in this session (e.g., `@.unikit/code/plans/2026-03-08_customers-system` or `@.unikit/code/PLAN.md`)
+- **Review again** → invoke `unikit-improve` with the argument `@<resolved-plan-path>` to reload the skill from scratch with full re-analysis
 - **Done for now** → suggest `/clear` or `/compact` → **STOP**
 
 ### Context Cleanup

@@ -16,8 +16,10 @@ const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 const { AGENT_REGISTRY } = await import(dist('core/agents.js'));
 const { buildTemplateVars, processTemplate } = await import(dist('core/template.js'));
 const { buildSubagentTemplateVars } = await import(dist('core/installer/shared.js'));
-const { computeSourceHashWithTemplate } = await import(dist('core/installer/hashing.js'));
+const { computeSourceHashWithTemplate, computeSubagentSourceHash, profileHashComponent, transformRevisionComponent } = await import(dist('core/installer/hashing.js'));
 const { installSkills } = await import(dist('core/installer/skills.js'));
+const { getTransformer, getAgentOnboarding } = await import(dist('core/transformer.js'));
+const { TRANSFORM_REVISIONS } = await import(dist('core/constants.js'));
 
 let passed = 0;
 let failed = 0;
@@ -70,14 +72,28 @@ async function walk(dir) {
 // The profile as the research package states it (ASP-REQ-001, ASP-REQ-008). Writing the table
 // out here is the point: a changed registry value shows up as a red test, never silently.
 const EXPECTED = {
-    claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet' },
-    codex: { readerType: 'explorer', workerType: 'worker', modelDefault: '' },
-    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '' },
-    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
-    opencode: { readerType: 'explore', workerType: 'general', modelDefault: '' },
-    antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash' },
-    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: '' },
-    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '' },
+    claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', skillCall: 'skilltool', spawnArgs: '' },
+    codex: { readerType: '', workerType: '', modelDefault: '', skillCall: 'read', spawnArgs: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
+    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    opencode: { readerType: 'explore', workerType: 'general', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', skillCall: 'read', spawnArgs: '' },
+    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: '', skillCall: 'read', spawnArgs: '' },
+};
+
+// The leading arguments of an Agent(...) call, written out per agent for the same reason: a changed
+// type or extra argument must turn this table red. Module level because the installed-text group
+// (I) reads it too.
+const HEADS = {
+    claude: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
+    codex: { reader: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",', worker: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",', workerQuoted: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
+    cursor: { reader: 'subagent_type: explore,', worker: 'subagent_type: generalPurpose,', workerQuoted: 'subagent_type: "generalPurpose",' },
+    qwen: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
+    opencode: { reader: 'subagent_type: explore,', worker: 'subagent_type: general,', workerQuoted: 'subagent_type: "general",' },
+    antigravity: { reader: 'subagent_type: research,', worker: 'subagent_type: self,', workerQuoted: 'subagent_type: "self",' },
+    kimi: { reader: 'subagent_type: explore,', worker: 'subagent_type: coder,', workerQuoted: 'subagent_type: "coder",' },
+    universal: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
 };
 
 // ── P: the registry profile (Task 18) ───────────────────────────────────────
@@ -88,18 +104,33 @@ await group('P', async () => {
 
     for (const agent of agents) {
         const profile = agent.subagentProfile;
-        const typesOk = profile
-            && typeof profile.readerType === 'string' && /^\S+$/.test(profile.readerType)
-            && typeof profile.workerType === 'string' && /^\S+$/.test(profile.workerType);
-        assertTrue(`P1 ${agent.id}: readerType and workerType are non-empty strings without spaces`, Boolean(typesOk), JSON.stringify(profile));
+        // A type is a word without spaces, or empty when the runtime's agent call takes no type and the
+        // profile says what it takes instead (spawnArgs).
+        const typeOk = (type) => typeof type === 'string'
+            && (/^\S+$/.test(type) || (type === '' && typeof profile.spawnArgs === 'string' && profile.spawnArgs !== ''));
+        const typesOk = profile && typeOk(profile.readerType) && typeOk(profile.workerType);
+        assertTrue(`P1 ${agent.id}: each type is a word without spaces, or empty with spawnArgs set`, Boolean(typesOk), JSON.stringify(profile));
         if (!profile) continue;
 
-        assertTrue(`P2 ${agent.id}: the reader is not the worker`, profile.readerType !== profile.workerType, profile.readerType);
+        assertTrue(`P2 ${agent.id}: the reader is not the worker (unless the runtime takes no type)`, profile.readerType !== profile.workerType || profile.readerType === '', profile.readerType);
         assertTrue(
             `P3 ${agent.id}: modelDefault is empty or a stable vendor alias (letters only)`,
             typeof profile.modelDefault === 'string' && (profile.modelDefault === '' || /^[a-z]+$/.test(profile.modelDefault)),
             JSON.stringify(profile.modelDefault),
         );
+    }
+
+    for (const agent of agents) {
+        const form = agent.subagentProfile?.skillCall;
+        assertTrue(`P6 ${agent.id}: skillCall is a known form, and only claude calls the Skill tool`,
+            ['read', 'skilltool'].includes(form) && ((form === 'skilltool') === (agent.id === 'claude')), String(form));
+    }
+
+    for (const agent of agents) {
+        const { readerType, workerType, spawnArgs } = agent.subagentProfile;
+        if (readerType !== '' || workerType !== '') continue;
+        assertTrue(`P7 ${agent.id}: an agent with no types carries spawn arguments with fork_turns and a task_name`,
+            spawnArgs.includes('fork_turns: "none"') && spawnArgs.includes('task_name:'), spawnArgs);
     }
 
     for (const [id, expected] of Object.entries(EXPECTED)) {
@@ -124,6 +155,11 @@ await group('V', async () => {
         JSON.stringify(PROFILE_VARS.map((k) => kimiVars[k])),
         JSON.stringify(['kimi', 'explore', 'coder', '']),
     );
+    assertEq(
+        'V1 buildTemplateVars(kimi) carries the call heads and the skill-call form',
+        JSON.stringify([kimiVars.agent_call_reader, kimiVars.agent_call_worker, kimiVars.agent_call_worker_quoted, kimiVars.agent_skill_call_form]),
+        JSON.stringify(['subagent_type: explore,', 'subagent_type: coder,', 'subagent_type: "coder",', 'read']),
+    );
 
     const probe = '{{agent_id}} {{agent_reader_type}} {{agent_worker_type}} [{{agent_model_default}}]';
     assertEq('V2a claude substitution', processTemplate(probe, buildTemplateVars(AGENT_REGISTRY.claude)), 'claude Explore general-purpose [sonnet]');
@@ -135,7 +171,15 @@ await group('V', async () => {
         JSON.stringify(PROFILE_VARS.map((k) => neutral[k])),
         JSON.stringify(['', '', '', '']),
     );
+    assertEq(
+        'V3a subagent files and system assets get empty call-head slots and no skill-call form',
+        JSON.stringify([neutral.agent_call_reader, neutral.agent_call_worker, neutral.agent_call_worker_quoted, neutral.agent_skill_call_form]),
+        JSON.stringify(['', '', '', '']),
+    );
     assertEq('V3b the neutral substitution leaves the surrounding text alone', processTemplate('a {{agent_id}} b', neutral), 'a  b');
+    // The path to the skills is empty in an agent file by design, so a path built from it would lose its
+    // prefix without a sound: the sources keep `{{skills_dir}}` out of subagents/ and data/ (AP-12).
+    assertEq('V3c an agent file renders {{skills_dir}} empty', neutral.skills_dir, '');
 });
 
 await group('V4', async () => {
@@ -145,7 +189,7 @@ await group('V4', async () => {
     const before = await hash();
     assertTrue('V4a the skill hash is computed', typeof before === 'string' && before.length > 0);
 
-    for (const field of ['modelDefault', 'readerType', 'workerType']) {
+    for (const field of ['modelDefault', 'readerType', 'workerType', 'skillCall', 'spawnArgs']) {
         const original = profile[field];
         try {
             profile[field] = original + 'x';
@@ -156,6 +200,177 @@ await group('V4', async () => {
         }
         assertEq(`V4c restoring ${field} restores the skill hash`, await hash(), before);
     }
+});
+
+// ── H: the profile component of the hash ────────────────────────────────────
+// The skill-call form and the extra call arguments join the tag only for a value that is not the
+// default, so the agents that have neither keep the hash they had. Written out by hand: a changed
+// component is a red line here, and the codex row is copied from the real output, not typed.
+
+const COMPONENTS = {
+    claude: 'profile:Explore|general-purpose|sonnet|call=skilltool',
+    codex: 'profile:|||spawn=fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",',
+    cursor: 'profile:explore|generalPurpose|',
+    qwen: 'profile:Explore|general-purpose|',
+    opencode: 'profile:explore|general|',
+    antigravity: 'profile:research|self|flash',
+    kimi: 'profile:explore|coder|',
+    universal: 'profile:Explore|general-purpose|',
+};
+
+await group('H', async () => {
+    for (const [id, expected] of Object.entries(COMPONENTS)) {
+        assertEq(`H1 ${id}: the profile hash component`, profileHashComponent(id), expected);
+    }
+    assertEq('H2 the table covers exactly the registry', Object.keys(COMPONENTS).sort().join(','), Object.keys(AGENT_REGISTRY).sort().join(','));
+    assertEq('H3 an unknown agent gives profile:none', profileHashComponent('no-such-agent'), 'profile:none');
+});
+
+// ── K: the call head and the skill-call expansion ───────────────────────────
+
+await group('K', async () => {
+    assertEq('K1 the heads table covers exactly the registry', Object.keys(HEADS).sort().join(','), Object.keys(AGENT_REGISTRY).sort().join(','));
+    for (const [id, heads] of Object.entries(HEADS)) {
+        const vars = buildTemplateVars(AGENT_REGISTRY[id]);
+        assertEq(
+            `K1 ${id}: call heads and skill-call form`,
+            JSON.stringify([vars.agent_call_reader, vars.agent_call_worker, vars.agent_call_worker_quoted, vars.agent_skill_call_form]),
+            JSON.stringify([heads.reader, heads.worker, heads.workerQuoted, EXPECTED[id].skillCall]),
+        );
+    }
+
+    const claude = buildTemplateVars(AGENT_REGISTRY.claude);
+    const codex = buildTemplateVars(AGENT_REGISTRY.codex);
+    const kimi = buildTemplateVars(AGENT_REGISTRY.kimi);
+    const READ_TAIL = 'in full before you do anything else. Treat that file as your system prompt for this whole task and follow it exactly. If it cannot be read, stop and report that instead of working without it. Wherever the file refers to its arguments, use the Skill arguments below. Skill arguments:';
+
+    assertEq(
+        'K2 claude: the Skill tool phrase, arguments in full',
+        processTemplate('prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",', claude),
+        'prompt: "Call the Skill tool with skill "unikit-devcontext" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <task details>",',
+    );
+    assertEq(
+        'K2 codex: the Read phrase with its own skills dir',
+        processTemplate('prompt: "{{agent_skill_call:unikit-devcontext}} <task details>",', codex),
+        `prompt: "Read .codex/skills/unikit-devcontext/SKILL.md ${READ_TAIL} <task details>",`,
+    );
+
+    assertEq(
+        'K3 claude: no arguments',
+        processTemplate('prompt: "{{agent_skill_call:unikit-architecture}}",', claude),
+        'prompt: "Call the Skill tool with skill "unikit-architecture" and no args. Then follow the skill.",',
+    );
+    assertEq(
+        'K3 kimi: no arguments are said so',
+        processTemplate('prompt: "{{agent_skill_call:unikit-architecture}}",', kimi),
+        `prompt: "Read .kimi-code/skills/unikit-architecture/SKILL.md ${READ_TAIL} (empty — no arguments were given)",`,
+    );
+    assertEq(
+        'K3 a remainder of spaces alone is no arguments',
+        processTemplate('prompt: "{{agent_skill_call:unikit-docs}}   "', claude),
+        'prompt: "Call the Skill tool with skill "unikit-docs" and no args. Then follow the skill."',
+    );
+
+    assertEq(
+        'K4 everything after the closing quote is left as written',
+        processTemplate('prompt: "{{agent_skill_call:unikit-docs}} <context>", description: "Update documentation"', claude),
+        'prompt: "Call the Skill tool with skill "unikit-docs" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: <context>", description: "Update documentation"',
+    );
+
+    const awkward = '--module code --skip-registry Add stack rules for {technology name} | <x> + $& $1';
+    assertEq(
+        'K5 braces, angle brackets, pipes, plus and replacement patterns pass through unchanged',
+        processTemplate(`prompt: "{{agent_skill_call:unikit-memory}} ${awkward}"`, claude),
+        `prompt: "Call the Skill tool with skill "unikit-memory" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: ${awkward}"`,
+    );
+    const twice = processTemplate('a "{{agent_skill_call:unikit-docs}} one" b "{{agent_skill_call:unikit-memory}} two"', kimi);
+    assertTrue('K5 two tokens in one text are both expanded', !twice.includes('{{agent_skill_call') && twice.includes('unikit-docs/SKILL.md') && twice.includes('unikit-memory/SKILL.md'), twice);
+
+    const neutral = buildSubagentTemplateVars('x');
+    assertEq('K6 an agent file or system asset leaves the token as written', processTemplate('{{agent_skill_call:unikit-docs}} text', neutral), '{{agent_skill_call:unikit-docs}} text');
+    assertEq('K6 an invalid skill name is left as written', processTemplate('"{{agent_skill_call:Bad}} x"', claude), '"{{agent_skill_call:Bad}} x"');
+});
+
+// ── R: the transformer revision in the source hash ──────────────────────────
+// The hash holds the package text, not the transformer's logic. TRANSFORM_REVISIONS is the only way
+// a changed regex or adapter reaches an installed project through a plain `update`.
+
+await group('R', async () => {
+    const ids = Object.keys(AGENT_REGISTRY);
+    const rewriters = ids.filter((id) => {
+        const t = getTransformer(id);
+        return typeof t.transformReference === 'function' || typeof t.transformSubagent === 'function';
+    });
+    assertTrue('R1 at least one transformer rewrites text (the check below is not vacuous)', rewriters.length > 0);
+    assertEq(
+        'R1 a revision exists exactly for the agents whose transformer defines transformReference or transformSubagent',
+        JSON.stringify(Object.keys(TRANSFORM_REVISIONS).sort()),
+        JSON.stringify([...rewriters].sort()),
+    );
+    assertTrue('R1 every revision is a non-empty string', Object.values(TRANSFORM_REVISIONS).every((rev) => typeof rev === 'string' && rev !== ''));
+
+    for (const id of ids) {
+        const component = transformRevisionComponent(id);
+        if (rewriters.includes(id)) {
+            assertEq(`R2 ${id}: the component is transform:<revision>`, component, `transform:${TRANSFORM_REVISIONS[id]}`);
+        } else {
+            assertEq(`R2 ${id}: no component for a transformer that rewrites nothing`, component, '');
+        }
+    }
+
+    const skillDir = path.join(ROOT, 'skills', 'unikit-help');
+    const subagent = path.join(ROOT, 'subagents', 'unikit-implement-worker.md');
+    const skillHash = (agent) => computeSourceHashWithTemplate(skillDir, 'unity', 'unikit-help', agent, null, {});
+    const subagentHash = (agent) => computeSubagentSourceHash(subagent, 'unity', agent, null, {});
+
+    // Raising a revision changes both hashes of that agent and restoring it restores them (the V4 shape).
+    for (const id of rewriters) {
+        const [skillBefore, subagentBefore] = [await skillHash(id), await subagentHash(id)];
+        const original = TRANSFORM_REVISIONS[id];
+        try {
+            TRANSFORM_REVISIONS[id] = `${original}+`;
+            assertTrue(`R3 raising the ${id} revision changes the skill hash`, (await skillHash(id)) !== skillBefore);
+            assertTrue(`R3 raising the ${id} revision changes the subagent hash`, (await subagentHash(id)) !== subagentBefore);
+        } finally {
+            TRANSFORM_REVISIONS[id] = original;
+        }
+        assertEq(`R3 restoring the ${id} revision restores the skill hash`, await skillHash(id), skillBefore);
+        assertEq(`R3 restoring the ${id} revision restores the subagent hash`, await subagentHash(id), subagentBefore);
+    }
+
+    // An agent absent from the table contributes nothing: giving it an entry is the only thing that
+    // moves its hash, so adding the table moved no hash of the agents outside it.
+    const outsider = ids.find((id) => !rewriters.includes(id));
+    assertTrue('R4 some agent has no revision', outsider !== undefined);
+    const outsiderBefore = await skillHash(outsider);
+    try {
+        TRANSFORM_REVISIONS[outsider] = '1';
+        assertTrue(`R4 an entry for ${outsider} would change its hash (the component is wired in)`, (await skillHash(outsider)) !== outsiderBefore);
+    } finally {
+        delete TRANSFORM_REVISIONS[outsider];
+    }
+    assertEq(`R4 without the entry the ${outsider} hash is what it was`, await skillHash(outsider), outsiderBefore);
+});
+
+// ── Q: the Qwen transformer writes nothing (REQ-009, DEC-012) ───────────────
+await group('Q', async () => {
+    const t = getTransformer('qwen');
+    assertEq('Q1 qwen has its own transformer (the onboarding text)', t.constructor.name, 'QwenTransformer');
+    for (const hook of ['transformReference', 'transformSubagent', 'postInstall', 'cleanup']) {
+        assertEq(`Q2 no ${hook}: nothing is rewritten and nothing extra is written`, typeof t[hook], 'undefined');
+    }
+    assertEq(
+        'Q3 skills are written exactly as for a default agent',
+        JSON.stringify(t.transform('unikit-plan', 'run /unikit-implement')),
+        JSON.stringify(getTransformer('claude').transform('unikit-plan', 'run /unikit-implement')),
+    );
+    assertTrue('Q4 no TRANSFORM_REVISIONS entry', !('qwen' in TRANSFORM_REVISIONS));
+    const onboarding = getAgentOnboarding('qwen');
+    assertTrue(
+        'Q5 the welcome text names /<name> and /unikit and never the retired form',
+        onboarding.welcomeMessage.some((l) => l.includes('/<name>')) && onboarding.welcomeMessage.some((l) => l.includes('/unikit ')) && !onboarding.welcomeMessage.some((l) => l.includes('/skills')),
+    );
+    assertEq('Q6 the invocation hint', onboarding.invocationHint, 'Qwen Code: /unikit-plan, /unikit-commit');
 });
 
 // ── C: the config template against the registry (Task 26) ───────────────────
@@ -191,8 +406,27 @@ await group('C', async () => {
 // The table is built from AGENT_REGISTRY and goes through the real installSkills over the real
 // skills/, so a new agent joins it by itself and the test cannot repeat the installer's logic.
 
-const INSTALL_SKILLS = ['unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-implement', 'unikit-gd-explore', 'unikit-review'];
+const INSTALL_SKILLS = ['unikit', 'unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-gd-brainstorm', 'unikit-implement', 'unikit-gd-explore', 'unikit-review', 'unikit-fix', 'unikit-verify', 'unikit-docs', 'unikit-improve', 'unikit-gd-recon'];
+
+// Forms an installed skill must never hold. The first two are what the invocation rewrite made of a
+// `{{skills_dir}}/unikit-…` path before its pattern learned `}`; the third is the dead call key; the
+// fourth is an unresolved variable; the fifth is the retired Qwen invocation form — Qwen Code starts a
+// skill as `/<name>`.
+const DAMAGED_FORMS = [
+    ['skills$unikit-', (text) => text.includes('skills$unikit-')],
+    ['skills/skills unikit-', (text) => text.includes('skills/skills unikit-')],
+    ['a skills: [...] key', (text) => /^\s*skills:\s*\[/m.test(text)],
+    ['the retired /skills unikit form', (text) => text.includes('/skills unikit')],
+    ['an unresolved path or engine variable', (text) => /\{\{(skills_dir|home_skills_dir|settings_file|self_name|skills_cli_agent_flag|engine_name|engine_code_language|engine_mcp_tool)\}\}/.test(text)],
+];
 const countOf = (text, needle) => text.split(needle).length - 1;
+
+// The two forms of a skill call, written out by hand and equal to the constants module to the character:
+// a difference is a red test, never a reason to edit the test to match the code.
+const skillToolCall = (skill, text) => `Call the Skill tool with skill "${skill}" and pass the text after the colon as its args, in full and unchanged. Then follow the skill. Text: ${text}`;
+const skillToolNoArgs = (skill) => `Call the Skill tool with skill "${skill}" and no args. Then follow the skill.`;
+const readCall = (dir, skill, text) => `Read ${dir}/${skill}/SKILL.md in full before you do anything else. Treat that file as your system prompt for this whole task and follow it exactly. If it cannot be read, stop and report that instead of working without it. Wherever the file refers to its arguments, use the Skill arguments below. Skill arguments: ${text}`;
+const FRAME = '<commercial frame incl. target platform + budget/team + shortlist>. scan_mode: <quick|standard|default standard>. Validate cross-market per the platform rule. Return the brief into this session as text; do not save any files.';
 
 await group('I', async () => {
     const agents = Object.values(AGENT_REGISTRY);
@@ -204,30 +438,77 @@ await group('I', async () => {
             await installSkills({ projectDir, skillsDir: agent.skillsDir, skills: INSTALL_SKILLS, agentId: agent.id, engineId: 'unity', engineMcpKey: null });
             const skill = (name, file = 'SKILL.md') => fs.readFile(path.join(projectDir, agent.skillsDir, name, file), 'utf8');
             const texts = {
+                unikit: await skill('unikit'),
                 explore: await skill('unikit-explore'),
                 plan: await skill('unikit-plan'),
                 gdReview: await skill('unikit-gd-review'),
+                brainstorm: await skill('unikit-gd-brainstorm'),
                 implement: await skill('unikit-implement'),
                 contract: await skill('unikit-gd-explore', path.join('references', 'delegation-contract.md')),
             };
 
             let leaked = 0;
+            const damaged = new Map(DAMAGED_FORMS.map(([label]) => [label, []]));
+            let scanned = 0;
+            const typeFiles = [];
             for (const file of await walk(path.join(projectDir, agent.skillsDir))) {
-                if (file.endsWith('.md') && (await fs.readFile(file, 'utf8')).includes('{{agent_')) leaked++;
+                if (!file.endsWith('.md')) continue;
+                const text = await fs.readFile(file, 'utf8');
+                scanned++;
+                if (text.includes('{{agent_')) leaked++;
+                if (text.includes('subagent_type')) typeFiles.push(path.relative(projectDir, file));
+                for (const [label, test] of DAMAGED_FORMS) {
+                    if (test(text)) damaged.get(label).push(path.relative(projectDir, file));
+                }
             }
             installed[agent.id] = texts;
 
-            const { readerType: reader, workerType: worker, modelDefault } = agent.subagentProfile;
-            assertTrue(`I1 ${agent.id}: recon-agent launches the reader type "${reader}"`, texts.explore.includes(`Agent(subagent_type: ${reader}, prompt: "<focused question>")`));
-            assertTrue(`I1 ${agent.id}: check-agent launches the reader type "${reader}"`, texts.explore.includes(`Agent(subagent_type: ${reader}, prompt: "Read <path of references/coherence-gate.md>`));
-            assertTrue(`I2 ${agent.id}: the recon writer launches the worker type "${worker}"`, texts.plan.includes(`Agent(subagent_type: ${worker}, prompt: "Reconnaissance for an ultra plan`));
-            assertTrue(`I3 ${agent.id}: lens-agent launches the worker type "${worker}"`, texts.gdReview.includes(`Agent(subagent_type: ${worker}, prompt: "<one lens brief>")`));
-            assertEq(`I3 ${agent.id}: develop-agent and docs-agent name the worker type`, countOf(texts.implement, `subagent_type: "${worker}",`), 2);
-            assertTrue(`I3 ${agent.id}: a reference file carries the worker type too`, texts.contract.includes(`subagent_type: "${worker}",`));
+            const { modelDefault } = agent.subagentProfile;
+            const h = HEADS[agent.id];
+            const RO = 'You are read-only: edit and write nothing.';
+            assertTrue(`I1 ${agent.id}: recon-agent carries its reader call head and the read-only sentence`, texts.explore.includes(`Agent(${h.reader} prompt: "<focused question> ${RO}")`));
+            assertTrue(`I1 ${agent.id}: check-agent carries its reader call head`, texts.explore.includes(`Agent(${h.reader} prompt: "Read <path of references/coherence-gate.md>`));
+            assertTrue(`I2 ${agent.id}: the recon writer carries its worker call head`, texts.plan.includes(`Agent(${h.worker} prompt: "Reconnaissance for an ultra plan`));
+            assertTrue(`I3 ${agent.id}: lens-agent carries its worker call head`, texts.gdReview.includes(`Agent(${h.worker} prompt: "<one lens brief>")`));
+            assertEq(`I3 ${agent.id}: develop-agent and docs-agent carry the quoted worker head`, countOf(texts.implement, h.workerQuoted), 2);
+            assertTrue(`I3 ${agent.id}: a reference file carries the worker head too`, texts.contract.includes(h.workerQuoted));
+            assertEq(`I10 ${agent.id}: fork_turns appears iff the profile has spawn arguments`, texts.implement.includes('fork_turns: "none"'), agent.subagentProfile.spawnArgs !== '');
+            assertEq(`I10 ${agent.id}: subagent_type is written iff the profile has a type`, texts.implement.includes('subagent_type'), agent.subagentProfile.workerType !== '');
+            if (agent.subagentProfile.workerType === '' && agent.subagentProfile.readerType === '') {
+                assertTrue(`I10 ${agent.id}: no installed .md names a subagent type`, typeFiles.length === 0, `found in: ${typeFiles.slice(0, 3).join(', ')}`);
+            }
+
+            // I8: the call is the profile's form — a Skill-tool call, or a read of the skill file by this
+            // agent's own installed path. The dead `skills:` key is gone, and a path variable that survived
+            // to the install would show as the wrong prefix.
+            const viaTool = agent.subagentProfile.skillCall === 'skilltool';
+            const call = (skill, text) => (viaTool ? skillToolCall(skill, text) : readCall(agent.skillsDir, skill, text));
+            assertTrue(`I8 ${agent.id}: develop-agent calls the devcontext skill`, texts.implement.includes(call('unikit-devcontext', '<task details>')));
+            assertTrue(`I8 ${agent.id}: docs-agent calls the docs skill`, texts.implement.includes(call('unikit-docs', '<context>')));
+            assertTrue(`I8 ${agent.id}: the brainstorm delegation calls the explore skill`, texts.brainstorm.includes(call('unikit-gd-explore', FRAME)));
+            assertTrue(`I8 ${agent.id}: its mirror in the delegation contract calls it the same way`, texts.contract.includes(call('unikit-gd-explore', FRAME)));
+            assertTrue(`I8 ${agent.id}: step 9.8 calls the memory skill with both flags`, texts.unikit.includes(call('unikit-memory', '--module code --skip-registry Add stack rules for {technology name}')));
+            assertTrue(
+                `I8 ${agent.id}: step 10 calls the architecture skill with no arguments`,
+                texts.unikit.includes(viaTool ? skillToolNoArgs('unikit-architecture') : readCall(agent.skillsDir, 'unikit-architecture', '(empty — no arguments were given)')),
+            );
+            assertTrue(
+                `I8 ${agent.id}: the other form is absent from the call sites`,
+                viaTool
+                    ? !texts.implement.includes(`Read ${agent.skillsDir}/unikit-devcontext/SKILL.md in full before you do anything else`)
+                    : !texts.implement.includes('Call the Skill tool with skill'),
+            );
+
+            // I9: nothing damaged anywhere in the installed set (the scan is non-empty by construction)
+            assertTrue(`I9 ${agent.id}: the installed set was scanned`, scanned > 0);
+            for (const [label, files] of damaged) {
+                assertTrue(`I9 ${agent.id}: no installed .md holds ${label}`, files.length === 0, `found in: ${files.slice(0, 3).join(', ')}`);
+            }
             assertTrue(`I4 ${agent.id}: the model rule names its own config key`, texts.explore.includes(`subagents.model.${agent.id}`));
             assertTrue(`I4 ${agent.id}: the model rule carries the built-in default "${modelDefault}"`, texts.explore.includes('built-in default `"' + modelDefault + '"`'));
             assertEq(`I6 ${agent.id}: no unresolved {{agent_…}} in any installed .md`, leaked, 0);
-            assertEq(`I7 ${agent.id}: the codex-only block is present for codex alone`, texts.explore.includes('Subagent Delegation — BLOCKING PRE-REQUISITE'), agent.id === 'codex');
+            assertEq(`I7 ${agent.id}: no installed skill carries the retired Subagent Delegation block`, texts.explore.includes('Subagent Delegation — BLOCKING PRE-REQUISITE'), false);
+            assertEq(`I7 ${agent.id}: the gd-review handoff auto-invoke block is present for codex alone`, texts.gdReview.includes('Auto-invoke the handoff — BLOCKING PRE-REQUISITE'), agent.id === 'codex');
         } finally {
             await fs.rm(projectDir, { recursive: true, force: true });
         }
@@ -240,10 +521,10 @@ await group('I', async () => {
             if (other.id === agent.id) continue;
             const mine = agent.subagentProfile;
             const theirs = other.subagentProfile;
-            if (theirs.readerType !== mine.readerType) {
+            if (theirs.readerType !== '' && theirs.readerType !== mine.readerType) {
                 assertTrue(`I5 ${agent.id} has no trace of ${other.id}'s reader type "${theirs.readerType}"`, !installed[agent.id].explore.includes(`Agent(subagent_type: ${theirs.readerType},`));
             }
-            if (theirs.workerType !== mine.workerType) {
+            if (theirs.workerType !== '' && theirs.workerType !== mine.workerType) {
                 assertTrue(`I5 ${agent.id} has no trace of ${other.id}'s worker type "${theirs.workerType}"`, !installed[agent.id].implement.includes(`subagent_type: "${theirs.workerType}",`));
             }
         }

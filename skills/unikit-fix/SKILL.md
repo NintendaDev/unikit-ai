@@ -47,22 +47,11 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
-
 ---
 
 ## Delegation agents
 
-This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(subagent_type: "{{agent_worker_type}}", ...)` invocation with the matching skill loaded; a reconnaissance alias expands to a read-only `{{agent_reader_type}}` dispatch. Each alias is the single place where its delegate's agent type is declared — call sites name the alias and never carry a type or a model argument of their own.
+This skill uses named delegation aliases for `Agent(...)` calls. A skill-loading alias expands to an `Agent(...)` invocation whose prompt makes the subagent load the skill; a reconnaissance alias expands to a read-only dispatch. Each alias is the single place where its delegate's agent type and call arguments are declared — call sites name the alias and never carry a type or a model argument of their own.
 
 **Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
 (a missing file, block or key is not an error) and settle the model argument once:
@@ -83,22 +72,30 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 
   ```
   Agent(
-    subagent_type: "{{agent_worker_type}}",
-    prompt: "/unikit-devcontext <fix details>",
-    description: "Apply fix",
-    skills: ["unikit-devcontext"]
+    {{agent_call_worker_quoted}}
+    prompt: "{{agent_skill_call:unikit-devcontext}} <fix details>",
+    description: "Apply fix"
   )
   ```
-
-  Fallback: if the `Agent` tool is unavailable, invoke `/unikit-devcontext` inline.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: {{agent_reader_type}}, prompt: "<focused question>")
+  Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")
   ```
 
+  Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
+
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+
+## Skill calls
+
+Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the aliases of `## Delegation agents`). A call site that names no argument passes none.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
 ---
 
@@ -152,7 +149,7 @@ Options:
 ```
 
 Based on choice:
-- Commit now → run `/unikit-commit`, then continue
+- Commit now → invoke `unikit-commit`, then continue
 - Stash → `git stash push -m "unikit-fix: stash before fix"`, then continue
 - Continue as is → proceed without changes
 
@@ -648,8 +645,8 @@ Options:
 ```
 
 Based on choice:
-- Verify first → run `/unikit-verify`, after it completes run `/unikit-commit`
-- Skip to commit → run `/unikit-commit` directly
+- Verify first → invoke `unikit-verify`, and when it returns invoke `unikit-commit`
+- Skip to commit → invoke `unikit-commit` directly
 
 Stage ONLY files modified by the fix.
 

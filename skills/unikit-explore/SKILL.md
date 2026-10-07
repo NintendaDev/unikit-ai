@@ -52,24 +52,13 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
-<!-- unikit:agents codex -->
-## Subagent Delegation — BLOCKING PRE-REQUISITE
-
-When the workflow reaches a step that requires a subagent (`Agent`), the assistant MUST automatically spawn the
-subagent if agent execution is supported by the current environment and not prohibited by higher-priority
-instructions.
-
-Only if agent execution is unavailable or blocked, the assistant MUST ask the user before proceeding with any
-alternative.
-<!-- unikit:end -->
-
 ---
 
 ## Delegation agents
 
 This skill uses named delegation aliases for `Agent(...)` calls. Each alias is the single
-place where its delegate's agent type is declared — call sites name the alias and never carry
-a type or a model argument of their own.
+place where its delegate's agent type and call arguments are declared — call sites name
+the alias and never carry a type or a model argument of their own.
 
 **Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
 (a missing file, block or key is not an error) and settle the model argument once:
@@ -87,15 +76,17 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
   ```
-  Agent(subagent_type: {{agent_reader_type}}, prompt: "<focused question>")
+  Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")
   ```
+
+  Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
 
 - **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
 
   ```
-  Agent(subagent_type: {{agent_reader_type}}, prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
+  Agent({{agent_call_reader}} prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
   ```
 
   The path travels, never the text. The read-only contract rides on the last sentence of the prompt above, which is never dropped.

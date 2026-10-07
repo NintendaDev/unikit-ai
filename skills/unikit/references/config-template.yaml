@@ -189,8 +189,9 @@ subagents:
     # Built-in default: sonnet.
     claude: sonnet
 
-    # Codex CLI. A model identifier as Codex lists it (versioned, for example
-    # gpt-6.1-sol). No built-in default: identifiers go stale, so choose your own.
+    # Codex CLI. A model identifier exactly as the model parameter of Codex's
+    # spawn_agent accepts it; its schema lists the valid names. No built-in
+    # default: identifiers go stale, so choose your own.
     codex:
 
     # Cursor. The subagent call does not name a model, so a value here has no

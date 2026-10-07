@@ -16,7 +16,7 @@ export interface AgentTransformer {
   transform(skillName: string, content: string): TransformResult;
   /**
    * Rewrite skill invocations (`/unikit-*`) inside a reference `.md` file body.
-   * Optional: only agents that remap invocations (codex/qwen) or a subagent
+   * Optional: only agents that remap invocations (codex) or a subagent
    * type (kimi) implement it; default agents (claude/cursor/opencode) leave it
    * undefined so references keep `/unikit-*` verbatim. Unlike {@link transform}
    * this never runs the agent-filter — reference files carry no guarded blocks
@@ -50,7 +50,10 @@ export function replaceFrontmatterName(content: string, newName: string): string
   return content.replace(/^name:\s*.+$/m, `name: ${newName}`);
 }
 
-const INVOCATION_PATTERN = /(^|[^A-Za-z0-9_-])\/(unikit(?:-[a-z0-9-]+)?)/g;
+// `}` is part of the left boundary: the rewrite runs before `processTemplate`, so a path
+// such as `{{skills_dir}}/unikit-fix/…` still carries the closing braces of its variable
+// and its `/unikit-fix` is a path segment, not an invocation.
+const INVOCATION_PATTERN = /(^|[^A-Za-z0-9_}-])\/(unikit(?:-[a-z0-9-]+)?)/g;
 
 export function rewriteInvocationPrefix(
   content: string,

@@ -2175,8 +2175,8 @@ else
     # (GA-3) closes with one unikit-gd-verify pass carrying the apply-phase3 loop-guard
     # sentinel — the single reserved arg (NOT a union of touched ids); verify recognises it
     # and suppresses its standalone handoff offer, so apply→verify→apply cannot loop.
-    if grep -qF 'Skill(skill: "unikit-gd-verify", args: "apply-phase3")' "$GD_APPLY_SKILL"; then
-        pass "GA-3 gd-apply closes with one Skill(unikit-gd-verify, apply-phase3) loop-guard pass"
+    if grep -qF 'invoke `unikit-gd-verify` with the argument `apply-phase3`' "$GD_APPLY_SKILL"; then
+        pass "GA-3 gd-apply closes with one invoke of unikit-gd-verify with the apply-phase3 loop-guard sentinel"
     else
         fail "GA-3 gd-apply missing the final unikit-gd-verify apply-phase3 handoff"
     fi
@@ -3854,14 +3854,14 @@ else
     fail "shared gate-result degradation wording missing/drifted:$CK_DEGRADE_WHY"
 fi
 
-# (CK-6) unikit-review +check-enabling frontmatter intact — TWO asserts. Without either,
-#        review's +check validator is DEAD ON ARRIVAL, and the suite has no other
-#        allowed-tools CONTENT guard (Part 7b checks list FORMAT only, not tool names).
+# (CK-6) unikit-review +check-enabling frontmatter intact. Without `Agent` in allowed-tools review's +check
+#        validator is DEAD ON ARRIVAL, and the suite has no other allowed-tools CONTENT guard (Part 7b checks
+#        list FORMAT only, not tool names). (The Subagent Delegation marker used to be the second assert;
+#        the block is gone — CB-1/CB-2.)
 CK_RV_FM_WHY=""
 grep -qE '^  - Agent$' "$UNIKIT_REVIEW_SKILL"                  || CK_RV_FM_WHY+=" allowed-tools:Agent"
-grep -qF '<!-- unikit:agents codex -->' "$UNIKIT_REVIEW_SKILL" || CK_RV_FM_WHY+=" subagent-delegation-marker"
 if [[ -z "$CK_RV_FM_WHY" ]]; then
-    pass "unikit-review — Agent in allowed-tools + Subagent Delegation marker (Task 2.4d)"
+    pass "unikit-review — Agent in allowed-tools (Task 2.4d)"
 else
     fail "unikit-review +check frontmatter DEAD ON ARRIVAL — missing:$CK_RV_FM_WHY"
 fi
@@ -5250,11 +5250,12 @@ fi
 # Steps 5.2 and 5.3 delegate legitimately.
 SI_REVIEW="$ROOT_DIR/skills/unikit-review/SKILL.md"
 
-# (SI-1) The Tier 1 call is spelled out as a call.
-if grep -qF 'Skill(skill: "unikit-review")' "$MF_IMPLEMENT"; then
-    pass "SI-1 unikit-implement invokes unikit-review through Skill()"
+# (SI-1) review is invoked as a skill call — by the one recipe of `## Skill calls`.
+if grep -qF 'invoke `unikit-review`' "$MF_IMPLEMENT" \
+   && grep -qF 'These are skill invocations, in this session' "$MF_IMPLEMENT"; then
+    pass "SI-1 unikit-implement invokes unikit-review as a skill call"
 else
-    fail "SI-1 unikit-implement has no Skill(skill: \"unikit-review\") invocation"
+    fail "SI-1 unikit-implement has no invoke \`unikit-review\` call by the recipe of \`## Skill calls\`"
 fi
 
 # (SI-2) The line that stops the generalisation. Without it the neighbours win again the
@@ -5267,7 +5268,7 @@ fi
 
 # (SI-3) The frontmatter half of the same contract, and the reason it is a guard rather
 # than a one-off edit: `context: fork` made the skill run in a forked context no matter WHO
-# called it, so switching the caller from a subagent to Skill() would have changed the
+# called it, so switching the caller from a subagent to an in-session skill call would have changed the
 # mechanism and delivered none of the four things SI-2 promises — the findings would still
 # land somewhere the user cannot see, and the +check validator would still be an agent
 # inside an agent. It was the only occurrence in the repository, undocumented and unguarded.
@@ -7044,8 +7045,11 @@ PX_VERIFY="$ROOT_DIR/skills/unikit-verify/SKILL.md"
 PX_DEV_PRINCIPLES="$ROOT_DIR/data/dev-principles.md"
 PX_DYNAMIC_MEMORY="$ROOT_DIR/docs/dynamic-memory.md"
 PX_WHY=""
-# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline".
-grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$PX_IMPLEMENT" && PX_WHY+=" PX-1:devcontext-inline-fallback"
+# (PX-1) the delegate fallback that contradicted "do NOT invoke /unikit-devcontext inline" — closed in
+# all three skills that declare develop-agent, not only in implement
+for px1_f in "$PX_IMPLEMENT" "$ROOT_DIR/skills/unikit-fix/SKILL.md" "$PX_VERIFY"; do
+    grep -qF 'unavailable, invoke `/unikit-devcontext` inline' "$px1_f" && PX_WHY+=" PX-1:devcontext-inline-fallback:${px1_f##*/skills/}"
+done
 # (PX-2) the findings column contract lives in the planner's reference, not in implement's own.
 # Every surface that names the file, D7 included (the defect-2 line moved there). Any path
 # that does not end in `unikit-plan/references/TASK-FORMAT.md` is a miss — including the
@@ -7258,7 +7262,7 @@ else
     # that may still write before the user has spoken.
     grep -qF 'Do NOT add any rules until the user answers' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-7:not-blocking"
     # (RCA-8) a real call, and a durable refusal.
-    grep -qF 'Skill(skill: "unikit-rules"' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-8:no-tier-1-dispatch"
+    grep -qF 'invoke `unikit-rules`' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-8:no-dispatch"
     grep -qF 'is durable'                  "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-8:declined-not-durable"
     # (RCA-9) NEGATIVE, its own assert: the alias is what gave a general-purpose subagent
     # Write/Edit over the whole tree for this.
@@ -7917,18 +7921,19 @@ else
 fi
 
 # (EV-4) The dispatch. With RULES.md delegation-only this is load-bearing, and a bare prose
-# sentence is not a dispatch: `Skill(...)` is never rewritten by the installer and non-Claude
-# agents have no such tool, so Tier 2 is what keeps the channel alive on 5 of 7 agents. The
-# "real call" clause is the gd-apply formulation for the known failure mode — printing the
-# command instead of executing it.
+# sentence is not a dispatch: the call is an invocation by the one recipe of `## Skill calls`
+# (a Skill tool where there is one, otherwise the skill file read and carried out here), so it
+# works on every agent. The "real call" clause is the gd-apply formulation for the known
+# failure mode — printing the command instead of executing it — and it lives in the
+# `**Dispatch.**` paragraph for every agent: the Codex-only Dispatch block is gone (D-22),
+# and CB-1…CB-2 (Part 7g9) keep it gone.
 EV4_WHY=""
 grep -qF 'in **one** call'                        "$EV_EVOLVE_SKILL" || EV4_WHY+=" not-batched"
-grep -qF 'Skill(skill: "unikit-rules"'            "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-tier1"
-grep -qF 'invoke `/unikit-rules <batch>` inline'  "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-tier2"
+grep -qF 'invoke `unikit-rules`'                  "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-invoke"
+grep -qxF '## Skill calls'                        "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-recipe"
 grep -qF 'not text wrapped in backticks'          "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-real-call-clause"
-grep -qF '<!-- unikit:agents codex -->'           "$EV_EVOLVE_SKILL" || EV4_WHY+=" no-codex-nudge"
 if [[ -z "$EV4_WHY" ]]; then
-    pass "EV-4 unikit-evolve Step 6 — one batched call, 3 dispatch tiers, codex auto-invoke nudge"
+    pass "EV-4 unikit-evolve Step 6 — one batched call, one invocation recipe, an explicit real-call clause"
 else
     fail "EV-4 unikit-evolve rules dispatch degraded:$EV4_WHY"
 fi
@@ -8441,7 +8446,7 @@ if [[ -z "$CA_WHY" ]]; then
     grep -qF 'You never write commit message text' "$CA_SIDECAR" || CA_WHY+=" CA-1:no-authorship-ban"
     grep -qF 'You have no git access' "$CA_SIDECAR" || CA_WHY+=" CA-1:claims-git-state"
     # (CA-2) the coordinator commits only through the skill, and hands the sidecar its files.
-    grep -qF 'Skill(skill: "unikit-commit"' "$CA_COORD" || CA_WHY+=" CA-2:no-skill-call"
+    grep -qF 'Invoke `unikit-commit`' "$CA_COORD" || CA_WHY+=" CA-2:no-skill-call"
     grep -qF 'never runs `git commit` itself' "$CA_COORD" || CA_WHY+=" CA-2:no-self-commit-ban"
     grep -qF 'create a commit based on' "$CA_COORD" && CA_WHY+=" CA-2:sidecar-commit-branch-returned"
     grep -qF 'create a final commit' "$CA_COORD" && CA_WHY+=" CA-2:final-self-commit-returned"
@@ -8454,7 +8459,7 @@ if [[ -z "$CA_WHY" ]]; then
     # precede a `direct` editor edit goes through the skill as well.
     grep -qF 'Suggested message:' "$CA_IMPLEMENT" && CA_WHY+=" CA-3:checkpoint-suggests-a-subject"
     grep -qF 'Do not suggest a message here' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:no-suggestion-ban"
-    grep -qF 'commit them through `/unikit-commit`, like every other commit of this run' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-edit-self-commit"
+    grep -qF 'commit them: invoke `unikit-commit`, like every other commit of this run' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-edit-self-commit"
     # The commit before a `direct` edit is the only rollback point, so a cancelled or failed one
     # stops the edit and returns the task to `manual` (the plan's supported-combination row).
     grep -qF 'without that commit there is no rollback point' "$CA_IMPLEMENT" || CA_WHY+=" CA-3:direct-refusal-unhandled"
@@ -8937,7 +8942,7 @@ if [[ -z "$UPR_WHY" ]]; then
                'Plan: <folder> · phases K–L' 'task(s) of the plan are still open'; do
         grep -qF -- "$lit" "$UPR_TEXT" || UPR_WHY+=" UPR-6:missing(${lit:0:32})"
     done
-    grep -qF 'Skill(skill: "unikit-pr")' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-no-offer"
+    grep -qF 'invokes `unikit-pr` with no argument' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-no-offer"
     grep -qF '/unikit-pr is not installed' "$UPR_VERIFY" || UPR_WHY+=" UPR-6:verify-not-installed-silent"
     grep -qF 'unikit-pr", args: "final"' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg"
     grep -qF '/unikit-pr final' "$UPR_VERIFY" && UPR_WHY+=" UPR-6:final-arg-slash"
@@ -9224,7 +9229,7 @@ if [[ -z "$WP_WHY" ]]; then
         # else), the folder, and the order (file first, `pending` off last); and the writer is a
         # saved-state tool only — a live run on the standard protocol picked it up on its own,
         # leaving full answers in a folder no resume knows about
-        for lit in 'Agent(subagent_type: {{agent_worker_type}}, prompt: "Reconnaissance for an ultra plan' \
+        for lit in 'Agent({{agent_call_worker}} prompt: "Reconnaissance for an ultra plan' \
                    'That file is the only one you may create or change' \
                    'filling every section of the template <path of RECON-TEMPLATE.md>' \
                    "Reply with the file's path and its \`## Summary\` section, word for word" \
@@ -9351,7 +9356,7 @@ fi
 
 # --- KM: the Kimi Code agent — source-level contracts --------------------------------------
 # The adapter (src/core/transformers/kimi*.ts) adapts subagent FILES; skill text is the same for
-# every agent (the subagent types come from the agent profile — AP-1…AP-7, Part 7g3). These
+# every agent (the subagent types come from the agent profile — AP-1…AP-15, Part 7g3). These
 # guards watch the source side, so a new spelling cannot slip past an adaptation written
 # against today's text. The adapter's behaviour is scripts/test-kimi-transform.mjs (Part 7f3);
 # the installed result is test-install.sh Test 3d.
@@ -10065,10 +10070,8 @@ fi
 # leaks to every agent) or an inline landmine that would throw if the filter is
 # ever enabled for references. SKILL.md is the ONLY surface with agent-filter.
 # Match the fragment form `<!-- unikit:agents` / `<!-- unikit:end` exactly as
-# agent-filter detects it (START_FRAGMENT / END_FRAGMENT in agent-filter.ts) —
-# NOT the bare `unikit:agents` token, which would also match prose and the
-# non-literal `unikit:agents codex guard block` wording in the CHECK-MODE.md
-# files.
+# agent-filter detects it (START_FRAGMENT / END_FRAGMENT in agent-filter.ts), not
+# the bare `unikit:agents` token, which would also match prose.
 echo -e "\n${BOLD}Part 7g2: agent-filter markers only in SKILL.md${NC}"
 
 MARKER_LEAK_FILES=$(grep -rlE '<!-- unikit:agents|<!-- unikit:end' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null \
@@ -10082,19 +10085,21 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7g3: AP-1…AP-7 — the agent profile in skills
+# Part 7g3: AP-1…AP-15 — the agent profile in skills, and how a skill reaches a subagent
 # ─────────────────────────────────────────────
-# A skill body travels to all eight runtimes, and the runtimes disagree on what a subagent is
-# called and whether a dispatch can name a model. The disagreement is data — the agent profile
+# A skill body travels to all eight runtimes, and the runtimes disagree on how a subagent is
+# launched and whether a dispatch can name a model. The disagreement is data — the agent profile
 # in `AGENT_REGISTRY` (`subagentProfile`) — and the installer substitutes it into the text
-# (`{{agent_reader_type}}`, `{{agent_worker_type}}`, `{{agent_id}}`, `{{agent_model_default}}`).
+# (the call heads `{{agent_call_reader}}`, `{{agent_call_worker}}`, `{{agent_call_worker_quoted}}`,
+# `{{agent_id}}`, `{{agent_model_default}}`).
 # So the sources must name NO runtime's type and NO model; what they may carry is the variable
 # and, once per skill, the rule that settles the model argument from `.unikit/config.yaml`.
-# Seven guards, each closing a different way that rots:
+# Fifteen guards, each closing a different way that rots (AP-1…AP-7 the profile, AP-8…AP-15
+# the delivery of a skill to a subagent):
 #
-#   AP-1  counter pair (MT-1/MT-2 idiom) — every `subagent_type:` in skills/**/*.md is followed
-#         by a profile variable. An EQUALITY between two counts, not a search for a negation,
-#         so a literal type needs no allowlist: it raises the total and not the variable count.
+#   AP-1  a call head is a variable: no `subagent_type` and no `{{agent_…_type}}` in a skill, and as
+#         many call heads as `Agent(` openings (an equality, so a call written with a literal type
+#         raises the opening count and not the head count).
 #   AP-2  no runtime's type name in prose backticks, and no `general-purpose` at all — the word
 #         that used to be the literal. The bare words `Explore` / `coder` stay legal as a skill
 #         name and a role ("Explore tasks"): only a backticked type name is a stale spelling.
@@ -10108,21 +10113,56 @@ fi
 #   AP-7  the variables are a skills-only mechanism. Subagent files and system assets render
 #         with EMPTY values, so a stray `{{agent_…}}` there would vanish silently.
 #
+# How a skill reaches the subagent it delegates to. The `skills: [...]` key of an `Agent` call
+# delivers nothing (Kimi has no such parameter, Claude Code takes none at call time). A skill that
+# delegates to a skill writes `prompt: "{{agent_skill_call:<skill>}} <arguments>"`; the installer
+# expands it by the agent profile (`skillCall`): a Skill-tool call on Claude Code, a read of the
+# skill file elsewhere. The phrases live in `src/core/constants-skill-call.ts` and nowhere else
+# (the wording avoids `instructions for`, which the older self_name check reads as a RULES_INDEX
+# directive).
+#
+#   AP-8  the phrases live in code: none of their formulations — the retired one and the new ones —
+#         is in a skill, a reference, an agent file or a data file, and the new ones are all in the
+#         constants module; no `$` on a line with the variable: Claude Code substitutes `$ARGUMENTS`
+#         in a SKILL.md and Kimi `$0`/`$1`, before the model reads it. No fixed number — it breaks
+#         on every legitimate edit.
+#   AP-9  no `skills: [` key in skills/**/*.md. Anchored at the line start: `Available unikit
+#         skills: [` in unikit-skills-context is legitimate prose.
+#   AP-10 no `prompt: "/unikit…` — only on `prompt:` lines; the many "Do NOT invoke
+#         `/unikit-devcontext` via `Skill(...)`" sentences are legitimate.
+#   AP-11 every `{{agent_skill_call:<name>}}` names an existing skills/<name>/.
+#   AP-12 no `{{skills_dir}}` in subagents/ or data/: an agent file renders it EMPTY by design,
+#         so a path built from it would lose its prefix without a sound (like AP-7).
+#   AP-13 the two copies of the brainstorm → explore delegation `prompt:` — the call in
+#         unikit-gd-brainstorm/SKILL.md and its mirror in unikit-gd-explore's delegation-contract.md
+#         — are byte-identical; nothing else compared them before, the mirror held on discipline.
+#   AP-14 the rule "the rest of the line up to the closing quote is the arguments" holds only for a
+#         call written as ONE `prompt: "{{agent_skill_call:<name>}}…",` line: every variable stands
+#         on such a line, with no quote inside its arguments.
+#   AP-15 no target of a call is hidden from the model (`disable-model-invocation: true`): a hidden
+#         skill cannot be loaded through the Skill tool, a Read still reaches it by path.
+#
 # Anchored on FORMULATIONS, never on headings: a heading is rewritten during cosmetics, a
 # formulation only together with its meaning. Zero objects is a FAIL, not a silent pass — an
 # empty corpus is when a green result is worth the least. That only works if the counters
 # survive an empty grep, which under `set -euo pipefail` they do not by default — hence the
 # `{ … || true; }` around every grep inside a substitution below.
-echo -e "\n${BOLD}Part 7g3: agent profile in skills (AP-1…AP-7)${NC}"
+echo -e "\n${BOLD}Part 7g3: agent profile in skills, skill delivery to subagents (AP-1…AP-15)${NC}"
 
 AP_SCOPE="$ROOT_DIR/skills"
 AP_WHY=""
 
 # (AP-1)
-AP_TYPE_TOTAL=$( { grep -rhoE 'subagent_type:' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
-AP_TYPE_VAR=$( { grep -rhoE 'subagent_type:[[:space:]]*"?\{\{agent_(reader|worker)_type\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
-[[ "$AP_TYPE_TOTAL" -gt 0 ]] || AP_WHY+=" AP-1:no-call-site"
-[[ "$AP_TYPE_TOTAL" -eq "$AP_TYPE_VAR" ]] || AP_WHY+=" AP-1:literal-type($AP_TYPE_TOTAL!=$AP_TYPE_VAR)"
+# the call head is a variable; the keyword and every type live in code. Three counts, no allowlist:
+# no `subagent_type` and no type variable in a skill, and as many call heads as `Agent(` openings
+AP_TYPE_LITERAL=$( { grep -rhoF 'subagent_type' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_TYPE_LITERAL" -eq 0 ]] || AP_WHY+=" AP-1:subagent_type-literal(x$AP_TYPE_LITERAL)"
+AP_TYPE_VARS=$( { grep -rhoE '\{\{agent_(reader|worker)_type\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_TYPE_VARS" -eq 0 ]] || AP_WHY+=" AP-1:type-variable-in-skill(x$AP_TYPE_VARS)"
+AP_HEAD_TOTAL=$( { grep -rhoE '\{\{agent_call_(reader|worker|worker_quoted)\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+AP_CALL_OPEN=$( { grep -rhE '^[[:space:]]*Agent\($|Agent\(\{\{agent_call_' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_HEAD_TOTAL" -gt 0 ]] || AP_WHY+=" AP-1:no-call-site"
+[[ "$AP_HEAD_TOTAL" -eq "$AP_CALL_OPEN" ]] || AP_WHY+=" AP-1:call-without-head($AP_CALL_OPEN!=$AP_HEAD_TOTAL)"
 
 # (AP-2)
 for ap_name in 'Explore' 'general-purpose' 'coder'; do
@@ -10179,11 +10219,79 @@ done
 ap_leak=$( { grep -rlF '{{agent_' "$ROOT_DIR/subagents" "$ROOT_DIR/data" 2>/dev/null || true; } | wc -l | tr -d ' ')
 [[ "$ap_leak" -eq 0 ]] || AP_WHY+=" AP-7:agent-variable-outside-skills(x$ap_leak)"
 
+# (AP-8) the phrase lives in code: none of its formulations — the retired one and the new ones — is
+# in a skill, a reference or an agent file, and the new ones are all in the constants module; no dollar
+# sign on a line with the variable (Claude Code substitutes `$ARGUMENTS` in a SKILL.md, Kimi `$0`/`$1`,
+# before the model reads it). The stop sentence is matched without its first letter: it began a clause
+# ("; if it cannot be read") in the retired phrase and begins a sentence ("If it cannot be read") in the new one.
+AP_CALL_CONST="$ROOT_DIR/src/core/constants-skill-call.ts"
+AP_FRAG_FOLLOW='and follow it as your instructions throughout this task'
+AP_FRAG_SYSTEM='Treat that file as your system prompt for this whole task'
+AP_FRAG_STOP='f it cannot be read, stop and report that'
+AP_FRAG_ARGS='Skill arguments:'
+AP_FRAG_TOOL='Call the Skill tool with skill'
+ap_frag_hits=$( { grep -rhF --include='*.md' -e "$AP_FRAG_FOLLOW" -e "$AP_FRAG_SYSTEM" -e "$AP_FRAG_STOP" -e "$AP_FRAG_ARGS" -e "$AP_FRAG_TOOL" \
+    "$AP_SCOPE" "$ROOT_DIR/subagents" "$ROOT_DIR/data" 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_frag_hits" -eq 0 ]] || AP_WHY+=" AP-8:phrase-outside-code(x$ap_frag_hits)"
+for ap_lit in "$AP_FRAG_SYSTEM" "$AP_FRAG_STOP" "$AP_FRAG_ARGS" "$AP_FRAG_TOOL"; do
+    grep -qF -- "$ap_lit" "$AP_CALL_CONST" 2>/dev/null || AP_WHY+=" AP-8:phrase-missing-in-code(${ap_lit:0:20})"
+done
+AP_N_CALL=$( { grep -rhoF '{{agent_skill_call:' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$AP_N_CALL" -gt 0 ]] || AP_WHY+=" AP-8:no-call-site"
+ap_dollar=$( { grep -rhF '{{agent_skill_call:' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | { grep -c '\$' || true; } )
+[[ "${ap_dollar:-0}" -eq 0 ]] || AP_WHY+=" AP-8:dollar-in-call(x${ap_dollar:-0})"
+
+# (AP-9) the dead key; the anchor keeps `Available unikit skills: [` (unikit-skills-context) legal
+ap_skills_key=$( { grep -rhE '^[[:space:]]*skills:[[:space:]]*\[' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_skills_key" -eq 0 ]] || AP_WHY+=" AP-9:skills-key-returned(x$ap_skills_key)"
+
+# (AP-10) a leading slash command in a `prompt:` line, and only there
+ap_lead_slash=$( { grep -rhE 'prompt:[[:space:]]*"/unikit' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_lead_slash" -eq 0 ]] || AP_WHY+=" AP-10:leading-slash-returned(x$ap_lead_slash)"
+
+# (AP-11) every skill a call names exists; an empty set is a fail (the guard has no object)
+AP_REF_NAMES=$( { grep -rhoE '\{\{agent_skill_call:[a-z0-9-]+\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } \
+    | sed -e 's#^{{agent_skill_call:##' -e 's#}}$##' | sort -u)
+AP_REF_N=0
+while IFS= read -r ap_ref; do
+    [[ -n "$ap_ref" ]] || continue
+    AP_REF_N=$((AP_REF_N + 1))
+    [[ -d "$AP_SCOPE/$ap_ref" ]] || AP_WHY+=" AP-11:unknown-skill($ap_ref)"
+    # (AP-15) a hidden skill cannot be loaded through the Skill tool: no target of a call is one
+    if grep -qiE '^[[:space:]]*disable-model-invocation:[[:space:]]*["'\'']?true' "$AP_SCOPE/$ap_ref/SKILL.md" 2>/dev/null; then
+        AP_WHY+=" AP-15:hidden-target($ap_ref)"
+    fi
+done <<< "$AP_REF_NAMES"
+[[ "$AP_REF_N" -gt 0 ]] || AP_WHY+=" AP-11:no-reference"
+
+# (AP-12) the path variable is empty in an agent file and in a system asset
+ap_dir_leak=$( { grep -rlF '{{skills_dir}}' "$ROOT_DIR/subagents" "$ROOT_DIR/data" 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_dir_leak" -eq 0 ]] || AP_WHY+=" AP-12:skills-dir-in-neutral-file(x$ap_dir_leak)"
+
+# (AP-13) the call and its mirror, selected by the formulation both carry, compared whole
+AP_MIRROR_SRC='^  prompt: "\{\{agent_skill_call:unikit-gd-explore\}\}'
+AP_MIRROR_A=$( { grep -m1 -E "$AP_MIRROR_SRC" "$AP_SCOPE/unikit-gd-brainstorm/SKILL.md" 2>/dev/null || true; } )
+AP_MIRROR_B=$( { grep -m1 -E "$AP_MIRROR_SRC" "$AP_SCOPE/unikit-gd-explore/references/delegation-contract.md" 2>/dev/null || true; } )
+if [[ -z "$AP_MIRROR_A" || -z "$AP_MIRROR_B" ]]; then
+    AP_WHY+=" AP-13:delegation-call-missing"
+elif [[ "$AP_MIRROR_A" != "$AP_MIRROR_B" ]]; then
+    AP_WHY+=" AP-13:copies-differ"
+fi
+
+# (AP-14) the rule "the rest of the line up to the closing quote is the arguments" holds only for a call
+# written as ONE `prompt: "…",` line with no quote inside the arguments; every variable must be one
+ap_call_lines=$( { grep -rhE '^[[:space:]]*prompt: "\{\{agent_skill_call:[a-z0-9]+(-[a-z0-9]+)*\}\}[^"]*",$' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$ap_call_lines" -eq "$AP_N_CALL" ]] || AP_WHY+=" AP-14:call-not-one-prompt-line($ap_call_lines!=$AP_N_CALL)"
+
 if [[ -z "$AP_WHY" ]]; then
-    pass "AP-1…AP-7 agent profile in skills ($AP_TYPE_TOTAL call sites on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model)"
+    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_HEAD_TOTAL call heads on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
 else
-    fail "AP-1…AP-7 agent profile in skills:$AP_WHY"
-    grep -rnE 'subagent_type:[[:space:]]*"?[A-Za-z]' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -v '{{agent_' | sed 's/^/      /' | head -5
+    fail "AP-1…AP-15 agent profile in skills and skill delivery:$AP_WHY"
+    # Each diagnostic pipeline is wrapped: under `set -euo pipefail` an empty grep in a
+    # pipeline would end the whole suite here instead of letting it report.
+    { grep -rnF 'subagent_type' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
+    { grep -rnE -e '^[[:space:]]*skills:[[:space:]]*\[' -e 'prompt:[[:space:]]*"/unikit' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
+    { grep -rnF '{{agent_skill_call:' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -F '$' | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
 fi
 
 # ─────────────────────────────────────────────
@@ -10246,6 +10354,291 @@ if [[ -z "$UA_WHY" ]]; then
     pass "UA-1…UA-4 agent directory rules and the universal agent"
 else
     fail "UA-1…UA-4 agent directory rules and the universal agent:$UA_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g5: SB-1…SB-3 — no stable/beta flag, label or column
+# ─────────────────────────────────────────────
+# Every supported agent is treated as stable, so nothing tells the user otherwise: the registry
+# carries no flag, the wizard prints no tag, the documents have no Status column. Three greps,
+# each over its own object; a missing object is a FAIL, not a silent pass. The flag name is
+# built from two halves so this very file never holds it whole.
+echo -e "\n${BOLD}Part 7g5: no stable/beta flag, label or column (SB-1…SB-3)${NC}"
+SB_WHY=""
+SB_FLAG='is''Stable'
+
+# (SB-1) the flag: gone from the registry, the wizard and the two tests that carried it
+for sb_f in "$ROOT_DIR/src/core/agents.ts" "$ROOT_DIR/src/cli/wizard/prompts.ts" \
+            "$ROOT_DIR/scripts/test-agent-dirs.mjs" "$ROOT_DIR/scripts/test-kimi-transform.mjs"; do
+    if [[ -s "$sb_f" ]]; then
+        { grep -qF -- "$SB_FLAG" "$sb_f" && SB_WHY+=" SB-1:flag-returned($(basename "$sb_f"))"; } || true
+    else
+        SB_WHY+=" SB-1:missing($(basename "$sb_f"))"
+    fi
+done
+
+# (SB-2) the tag: no `[Stable]` / `[Beta]` in the code, the README or any document
+sb_tag=$( { grep -rnE '\[(Stable|Beta)\]' "$ROOT_DIR/src" "$ROOT_DIR/README.md" "$ROOT_DIR/docs" --include='*.ts' --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$sb_tag" -eq 0 ]] || SB_WHY+=" SB-2:tag-returned(x$sb_tag)"
+
+# (SB-3) the column and the words, in the three documents that had the agents table
+SB_N_DOCS=0
+for sb_d in "$ROOT_DIR/README.md" "$ROOT_DIR/docs/agents.md" "$ROOT_DIR/docs/getting-started.md"; do
+    if [[ ! -s "$sb_d" ]]; then SB_WHY+=" SB-3:missing($(basename "$sb_d"))"; continue; fi
+    SB_N_DOCS=$((SB_N_DOCS + 1))
+    sb_col=$( { grep -nE '\|[[:space:]]*(Status|Stable|Beta)[[:space:]]*\|' "$sb_d" || true; } | wc -l | tr -d ' ')
+    sb_word=$( { grep -nE '\bBeta\b' "$sb_d" || true; } | wc -l | tr -d ' ')
+    [[ "$sb_col" -eq 0 ]]  || SB_WHY+=" SB-3:status-column($(basename "$sb_d") x$sb_col)"
+    [[ "$sb_word" -eq 0 ]] || SB_WHY+=" SB-3:beta-word($(basename "$sb_d") x$sb_word)"
+done
+[[ "$SB_N_DOCS" -gt 0 ]] || SB_WHY+=" SB-3:no-document"
+
+if [[ -z "$SB_WHY" ]]; then
+    pass "SB-1…SB-3 no stable/beta flag, tag or Status column (registry, wizard, 2 tests, $SB_N_DOCS documents)"
+else
+    fail "SB-1…SB-3 the stable/beta label is back:$SB_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g6: CX-1…CX-3 — the Codex call head and the read-only recon call
+# ─────────────────────────────────────────────
+# Codex's agent call takes no type: a call carries `fork_turns: "none"` and a `task_name` of its own,
+# both built by the agent profile. The fragment lives in code and in no skill; every recon call says in
+# words that it only reads, because for Codex the prompt is the only thing that says so.
+echo -e "\n${BOLD}Part 7g6: Codex call head and read-only recon (CX-1…CX-3)${NC}"
+CX_WHY=""
+CX_CONST="$ROOT_DIR/src/core/constants-skill-call.ts"
+CX_AGENTS="$ROOT_DIR/src/core/agents.ts"
+
+# (CX-1) the fragment says both things, the codex entry uses it and names no type
+# anchored on the value line of the constant: the doc comment above it names both words too
+grep -qE "^[[:space:]]*'fork_turns: \"none\", task_name: " "$CX_CONST" 2>/dev/null || CX_WHY+=" CX-1:no-fork-turns-and-task-name-in-the-value"
+grep -qF 'spawnArgs: CODEX_SPAWN_ARGS' "$CX_AGENTS" 2>/dev/null || CX_WHY+=" CX-1:codex-does-not-use-it"
+CX_ENTRY=$(awk '/^  codex: \{/{f=1} f{print} f&&/^  \},/{exit}' "$CX_AGENTS" 2>/dev/null)
+if [[ -z "$CX_ENTRY" ]]; then
+    CX_WHY+=" CX-1:no-codex-entry"
+else
+    grep -qF "readerType: ''" <<< "$CX_ENTRY" || CX_WHY+=" CX-1:codex-names-a-reader-type"
+    grep -qF "workerType: ''" <<< "$CX_ENTRY" || CX_WHY+=" CX-1:codex-names-a-worker-type"
+fi
+
+# (CX-2) no skill, reference or agent file spells the Codex arguments: they come from the profile
+cx_literal=$( { grep -rhoE 'fork_turns|task_name' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$cx_literal" -eq 0 ]] || CX_WHY+=" CX-2:codex-arguments-in-text(x$cx_literal)"
+
+# (CX-3) every one-line recon call carries the read-only sentence; counted, not fixed
+cx_recon=$( { grep -rhE 'Agent\(\{\{agent_call_reader\}\} prompt: "<focused question>' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+cx_recon_ro=$( { grep -rhF 'Agent({{agent_call_reader}} prompt: "<focused question> You are read-only: edit and write nothing.")' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$cx_recon" -gt 0 ]] || CX_WHY+=" CX-3:no-recon-call"
+[[ "$cx_recon" -eq "$cx_recon_ro" ]] || CX_WHY+=" CX-3:recon-without-read-only($cx_recon_ro!=$cx_recon)"
+# the rule line next to each alias, which tells the model to carry the sentence into the real question
+cx_recon_rule=$( { grep -rhF 'Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.' "$ROOT_DIR/skills" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$cx_recon" -eq "$cx_recon_rule" ]] || CX_WHY+=" CX-3:recon-without-rule-line($cx_recon_rule!=$cx_recon)"
+
+if [[ -z "$CX_WHY" ]]; then
+    pass "CX-1…CX-3 Codex call head from the profile (no type, fork_turns, task_name), none in any skill; $cx_recon recon calls say they are read-only"
+else
+    fail "CX-1…CX-3 Codex call head or read-only recon weakened:$CX_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g7: SK-1…SK-4 — one recipe for invoking a skill from a skill
+# ─────────────────────────────────────────────
+# A skill calls another skill in the same session by one recipe, written once in the caller's
+# `## Skill calls`: a Skill tool call where there is one, otherwise the skill file read and carried
+# out here. A call site says `invoke <skill>` and points at the recipe. The retired machinery —
+# three tiers, `Skill(skill: …)` pseudo-calls, a slash form the installer rewrites — must not come
+# back. Four guards, each over its own object; zero objects is a FAIL, not a silent pass.
+echo -e "\n${BOLD}Part 7g7: skill-to-skill calls — one recipe (SK-1…SK-4)${NC}"
+SK_WHY=""
+SK_FILES=()
+while IFS= read -r sk_f; do
+    [[ -n "$sk_f" ]] && SK_FILES+=("$sk_f")
+done < <( { grep -rlE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } | sort)
+SK_ANCHORS=(
+    'If you have a `Skill` tool that accepts arguments'
+    'carry them out here, in this session, now'
+    'print a command for the user to run and do not stop'
+    'Only if that file cannot be read'
+)
+
+# (SK-1) every file with a call site carries the whole recipe (a reference carries the pointer to its
+# host's), and a file with a call outside a Codex-only block has exactly one `## Skill calls` heading
+[[ "${#SK_FILES[@]}" -gt 0 ]] || SK_WHY+=" SK-1:no-call-site"
+for sk_f in ${SK_FILES[@]+"${SK_FILES[@]}"}; do
+    sk_rel="${sk_f#"$ROOT_DIR"/}"
+    if [[ "$sk_f" == */references/* ]]; then
+        grep -qF -- '`## Skill calls`' "$sk_f" || SK_WHY+=" SK-1:reference-without-pointer:$sk_rel"
+        continue
+    fi
+    for sk_lit in "${SK_ANCHORS[@]}"; do
+        grep -qF -- "$sk_lit" "$sk_f" || SK_WHY+=" SK-1:recipe-anchor-missing(${sk_lit:0:24}):$sk_rel"
+    done
+    sk_open=$(awk '/<!-- unikit:agents codex -->/{s=1;next} /<!-- unikit:end -->/{s=0;next} !s' "$sk_f" | { grep -cE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' || true; })
+    if [[ "${sk_open:-0}" -gt 0 ]]; then
+        sk_h=$( { grep -cx '## Skill calls' "$sk_f" || true; } )
+        [[ "${sk_h:-0}" -eq 1 ]] || SK_WHY+=" SK-1:skill-calls-heading(${sk_h:-0}):$sk_rel"
+    fi
+done
+
+# (SK-2) the retired machinery, by formulation, in every skill and agent file
+for sk_lit in 'Tier 1 — primary (`Skill`)' 'Tier 2 — fallback (slash-command)' 'Tier 2 — Fallback (slash-command)' \
+              'Tier 3 — degenerate' 'three-tier dispatch' 'three tiers' 'inline slash form' 'Skill(skill:'; do
+    sk_n=$( { grep -rlF -- "$sk_lit" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$sk_n" -eq 0 ]] || SK_WHY+=" SK-2:retired-wording(${sk_lit:0:26} x$sk_n)"
+done
+# the same machinery in the spellings the literals above miss: `Tiers 1–2`, `Tier 1/2`, `Tier 2's`, `a Tier 3
+# print`, a capitalised `Three tiers`. The Candidate Analyzer tiers of unikit-memory and the knowledge-base
+# reference of unikit-help are another concept and are left out by path (the guard counts, it has no allowlist of lines).
+sk_tier=$( { grep -rniE 'Tiers? [123]|three[- ]tier' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } \
+    | { grep -vE '/unikit-memory/|/unikit-help/references/' || true; } | wc -l | tr -d ' ')
+[[ "$sk_tier" -eq 0 ]] || SK_WHY+=" SK-2:tier-wording(x$sk_tier)"
+
+# (SK-3) every skill a call names exists and is not hidden from the model (a hidden skill cannot be
+# loaded through the Skill tool); gd-apply names its zone owners generically, so they are listed here
+SK_TARGETS=$( { grep -rhoE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" --include='*.md' 2>/dev/null || true; } \
+    | sed -E 's/.*`(unikit-[a-z0-9-]+)`/\1/' | sort -u)
+SK_ZONES='unikit-gd-spec unikit-gd-system unikit-gd-content unikit-gd-flow unikit-gd-verify'
+SK_TARGET_N=0
+for sk_t in $SK_TARGETS; do SK_TARGET_N=$((SK_TARGET_N + 1)); done
+[[ "$SK_TARGET_N" -gt 0 ]] || SK_WHY+=" SK-3:no-target"
+for sk_t in $SK_TARGETS $SK_ZONES; do
+    if [[ ! -f "$ROOT_DIR/skills/$sk_t/SKILL.md" ]]; then
+        SK_WHY+=" SK-3:unknown-skill($sk_t)"
+    elif grep -qiE '^[[:space:]]*disable-model-invocation:[[:space:]]*["'\'']?true' "$ROOT_DIR/skills/$sk_t/SKILL.md"; then
+        SK_WHY+=" SK-3:hidden-target($sk_t)"
+    fi
+done
+
+# (SK-4) a file that calls outside a Codex-only block carries the Skill tool in its tool list
+for sk_f in ${SK_FILES[@]+"${SK_FILES[@]}"}; do
+    [[ "$sk_f" == */references/* ]] && continue
+    sk_open=$(awk '/<!-- unikit:agents codex -->/{s=1;next} /<!-- unikit:end -->/{s=0;next} !s' "$sk_f" | { grep -cE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' || true; })
+    [[ "${sk_open:-0}" -gt 0 ]] || continue
+    sk_head=$(awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$sk_f")
+    grep -qE '^[[:space:]]*-[[:space:]]+Skill[[:space:]]*$' <<< "$sk_head" || SK_WHY+=" SK-4:no-skill-tool:${sk_f#"$ROOT_DIR"/}"
+done
+
+if [[ -z "$SK_WHY" ]]; then
+    pass "SK-1…SK-4 skill-to-skill calls: the recipe in ${#SK_FILES[@]} files, $SK_TARGET_N targets exist and are visible to the model, no retired tier wording, callers carry the Skill tool"
+else
+    fail "SK-1…SK-4 skill-to-skill calls weakened:$SK_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g8: QW-1…QW-3 — Qwen Code gets the text as written
+# ─────────────────────────────────────────────
+# Qwen Code starts a skill as `/<name>`; `/skills <name>` only opens its panel and drops the argument.
+# So nothing rewrites `/unikit-*` for it: the transformer is the onboarding text only, it has no
+# revision entry, and no source names the retired form. The retired form is built from two halves so
+# this very file never holds it whole.
+echo -e "\n${BOLD}Part 7g8: Qwen Code — no invocation rewrite (QW-1…QW-3)${NC}"
+QW_WHY=""
+QW_RETIRED='/skills ''unikit'
+QW_TRANSFORMER="$ROOT_DIR/src/core/transformers/qwen.ts"
+QW_REVISIONS="$ROOT_DIR/src/core/constants-transform.ts"
+
+# (QW-1) the transformer extends the default one and rewrites nothing: no method that writes text
+# (anchored on a method definition — the class comment legitimately names those hooks) and no use
+# of the rewrite helper
+if [[ -s "$QW_TRANSFORMER" ]]; then
+    grep -qF 'extends DefaultTransformer' "$QW_TRANSFORMER" || QW_WHY+=" QW-1:not-default-based"
+    grep -qE '^[[:space:]]+(transform|transformReference|transformSubagent|postInstall|cleanup)\(' "$QW_TRANSFORMER" && QW_WHY+=" QW-1:writes-text-again"
+    grep -qE 'rewriteInvocationPrefix|toQwenInvocation' "$QW_TRANSFORMER" && QW_WHY+=" QW-1:rewrites-again"
+else
+    QW_WHY+=" QW-1:missing"
+fi
+
+# (QW-2) no revision entry for qwen, entries for the two agents that do rewrite
+if [[ -s "$QW_REVISIONS" ]]; then
+    QW_TABLE=$(awk '/export const TRANSFORM_REVISIONS/{f=1} f{print} f&&/^\};/{exit}' "$QW_REVISIONS")
+    grep -qE '^[[:space:]]*qwen:' <<< "$QW_TABLE" && QW_WHY+=" QW-2:qwen-has-a-revision"
+    for qw_id in codex kimi; do
+        grep -qE "^[[:space:]]*${qw_id}:" <<< "$QW_TABLE" || QW_WHY+=" QW-2:missing-entry($qw_id)"
+    done
+else
+    QW_WHY+=" QW-2:missing"
+fi
+
+# (QW-3) the retired invocation form is named nowhere: skills, agent files, data, sources, README, documents
+qw_hits=$( { grep -rlF --include='*.md' --include='*.ts' -e "$QW_RETIRED" "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/data" "$ROOT_DIR/src" "$ROOT_DIR/README.md" "$ROOT_DIR/docs" 2>/dev/null || true; } | wc -l | tr -d ' ')
+[[ "$qw_hits" -eq 0 ]] || QW_WHY+=" QW-3:retired-form(x$qw_hits files)"
+
+if [[ -z "$QW_WHY" ]]; then
+    pass "QW-1…QW-3 Qwen Code: default-based transformer, no revision entry, no retired invocation form in any source or document"
+else
+    fail "QW-1…QW-3 the Qwen invocation rewrite is back:$QW_WHY"
+fi
+
+# ─────────────────────────────────────────────
+# Part 7g9: CB-1…CB-6 — no Codex-only blocks for launching a subagent, a validator that can read
+# ─────────────────────────────────────────────
+# Codex starts a subagent from a skill step on its own (probes of 2026-10-06: 10 of 10 launches, with and
+# without a block) and turns `Agent(...)` into its own `spawn_agent`. The "BLOCKING PRE-REQUISITE" blocks
+# that told it to spawn, or to ask the user when it could not, are gone — every alias carries its own
+# fallback. Two Codex blocks remain on purpose: the auto-invoke of the /unikit-gd-apply handoff in gd-review
+# and gd-verify (a deliberate Codex behaviour, not an insurance). Four guards, each over its own object.
+echo -e "\n${BOLD}Part 7g9: no Codex delegation blocks, a +check validator that can read (CB-1…CB-6)${NC}"
+CB_WHY=""
+CB_SKILLS="$ROOT_DIR/skills"
+CB_AGENTS="$ROOT_DIR/subagents"
+
+# (CB-1) the three retired heading texts, in every skill, reference and agent file
+for cb_lit in 'Subagent Delegation — BLOCKING PRE-REQUISITE' 'Scan delegation — BLOCKING PRE-REQUISITE' 'Dispatch — BLOCKING PRE-REQUISITE'; do
+    cb_n=$( { grep -rlF --include='*.md' -e "$cb_lit" "$CB_SKILLS" "$CB_AGENTS" 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$cb_n" -eq 0 ]] || CB_WHY+=" CB-1:retired-heading(${cb_lit%% —*} x$cb_n)"
+done
+
+# (CB-2) an agent-filter marker is allowed only in front of the handoff block; counted, a floor of one
+CB_MARKERS=0
+for cb_f in "$CB_SKILLS"/*/SKILL.md "$CB_AGENTS"/*.md; do
+    cb_m=$( { grep -cF '<!-- unikit:agents' "$cb_f" || true; } )
+    cb_ok=$(awk '/<!-- unikit:agents codex -->/ { getline nxt; if (nxt ~ /^### Auto-invoke the handoff — BLOCKING PRE-REQUISITE$/) n++ } END { print n + 0 }' "$cb_f")
+    CB_MARKERS=$((CB_MARKERS + ${cb_m:-0}))
+    [[ "${cb_m:-0}" -eq "${cb_ok:-0}" ]] || CB_WHY+=" CB-2:marker-not-before-handoff:${cb_f#"$ROOT_DIR"/}"
+done
+[[ "$CB_MARKERS" -gt 0 ]] || CB_WHY+=" CB-2:no-handoff-block"
+
+# (CB-3) no text tells a model to start a subagent "automatically" or to ask the user when it cannot
+for cb_lit in 'the assistant MUST automatically spawn' 'MUST ask the user before proceeding with any' 'the assistant MUST spawn the' 'the assistant MUST **automatically invoke**'; do
+    cb_n=$( { grep -rlF --include='*.md' -e "$cb_lit" "$CB_SKILLS" "$CB_AGENTS" 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$cb_n" -eq 0 ]] || CB_WHY+=" CB-3:ask-the-user-wording(${cb_lit:0:32} x$cb_n)"
+done
+
+# (CB-4) the +check doctrine outlived the rule it used to be an exception to: never ask, skip silently
+for cb_f in "$CB_SKILLS/unikit-review/references/CHECK-MODE.md" "$CB_SKILLS/unikit-improve/references/CHECK-MODE.md"; do
+    grep -qF -- '**NEVER** ask the user' "$cb_f" 2>/dev/null || CB_WHY+=" CB-4:no-never-ask:${cb_f#"$ROOT_DIR"/}"
+done
+for cb_f in "$CB_SKILLS/unikit-review/SKILL.md" "$CB_SKILLS/unikit-improve/SKILL.md"; do
+    grep -qF -- 'the user is never asked' "$cb_f" 2>/dev/null || CB_WHY+=" CB-4:no-silent-skip:${cb_f#"$ROOT_DIR"/}"
+done
+
+# (CB-5) the validator template names a capability, not a tool set: Codex has no `Read`/`Glob`/`Grep`, and a
+# validator told it may only use those and run no command can read nothing and refuses (live run, Codex,
+# 2026-10-06). The reading rule is one sentence in both templates, and the retired wording is gone from every skill file.
+for cb_f in "$CB_SKILLS/unikit-review/references/VALIDATOR.md" "$CB_SKILLS/unikit-improve/references/VALIDATOR.md"; do
+    for cb_lit in 'whatever read-only means your runtime gives you' 'You never modify a file and never run a command that changes state' 'do not refuse the task'; do
+        grep -qF -- "$cb_lit" "$cb_f" 2>/dev/null || CB_WHY+=" CB-5:validator-reading-rule-missing(${cb_lit:0:24}):${cb_f#"$ROOT_DIR"/}"
+    done
+done
+for cb_lit in 'You do not run commands' 'via `Read`, `Glob`, and `Grep`' 'use `Read` to load the full plan'; do
+    cb_n=$( { grep -rlF --include='*.md' -e "$cb_lit" "$CB_SKILLS" 2>/dev/null || true; } | wc -l | tr -d ' ')
+    [[ "$cb_n" -eq 0 ]] || CB_WHY+=" CB-5:retired-validator-wording(${cb_lit:0:24} x$cb_n)"
+done
+
+# (CB-6) an empty Findings table never reaches the validator: without the rule a model invents a dispatch with a
+# prompt of its own (live run, Codex, 2026-10-06) and an empty review looks like a validated one. And a block is
+# matched to its item by the number alone: a Codex validator dropped the `(severity: …)` parenthetical, the parent
+# called the whole answer malformed and threw a finished validation away.
+for cb_f in "$CB_SKILLS/unikit-review/references/CHECK-MODE.md" "$CB_SKILLS/unikit-improve/references/CHECK-MODE.md"; do
+    grep -qF -- '+check: no findings to validate' "$cb_f" 2>/dev/null || CB_WHY+=" CB-6:no-empty-table-rule:${cb_f#"$ROOT_DIR"/}"
+    grep -qF -- 'Match a block to its item by the number alone' "$cb_f" 2>/dev/null || CB_WHY+=" CB-6:no-match-by-number:${cb_f#"$ROOT_DIR"/}"
+done
+
+if [[ -z "$CB_WHY" ]]; then
+    pass "CB-1…CB-6 Codex delegation blocks gone ($CB_MARKERS handoff marker(s) left), no ask-the-user wording, +check never asks, its validator can read and is not called on nothing"
+else
+    fail "CB-1…CB-6 Codex delegation blocks, the +check doctrine or the validator template weakened:$CB_WHY"
 fi
 
 # ─────────────────────────────────────────────
