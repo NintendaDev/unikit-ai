@@ -3116,6 +3116,7 @@ fi
 SF_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 SF_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 SF_GATE="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+SF_CONT="$ROOT_DIR/skills/unikit-explore/references/continuing.md"
 # Declared per family rather than borrowed from CG_*: the variable name says which family reads
 # it, so moving a family leaves no dangling reference. Declared above first use — `set -u`
 # makes a forward reference abort the suite instead of failing one guard.
@@ -3133,33 +3134,31 @@ grep -qF 'Offered:' "$SF_SKILL" || SF_WHY+=" SF-1:no-offered-options-block"
 grep -qF '[…]' "$SF_SKILL"         || SF_WHY+=" SF-2:no-elision-marker"
 grep -qF 'noun phrase' "$SF_SKILL" || SF_WHY+=" SF-2:no-noun-phrase-ban"
 
-# (SF-3) Pinning is declared, declared EARLY, targets the research folder itself, announces an
-# unfinished exploration as resumable, keeps its floor, and never brings back the hidden
-# scratch file A1 rejected. Positional by the CG-3 precedent: pinning declared after the saving
-# section is read too late, and the first exchange — the one carrying the original request — is
-# exactly the one that would go unpinned.
-SF3_PIN="$(grep -n '^## Pinning' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
-SF3_SAVE="$(grep -n '^## Saving Research Results' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
-if [[ -z "$SF3_PIN" ]]; then
-    SF_WHY+=" SF-3:no-pinning-section"
-elif [[ -z "$SF3_SAVE" ]]; then
-    SF_WHY+=" SF-3:no-save-section"
-elif (( SF3_PIN > SF3_SAVE )); then
-    SF_WHY+=" SF-3:pinning-declared-after-saving($SF3_PIN-after-$SF3_SAVE)"
-fi
-grep -qF '<slug>/SOURCE.md' "$SF_SKILL" || SF_WHY+=" SF-3:no-folder-target"
+# (SF-3) Pinning is an ultra-only rule and lives in the ultra reference, which the ultra
+# request loads BEFORE the first exchange (the first exchange is the one that would go
+# unpinned). The section must not drift back into the shared skill: a standard research
+# would carry a rule that is not its own again. Positional guard retired with the move —
+# a heading that is not in SKILL.md has no position there.
+SF3_PIN="$({ grep -n '^## Pinning' "$SF_SPEC" || true; } | head -1 | cut -d: -f1)"
+[[ -n "$SF3_PIN" ]] || SF_WHY+=" SF-3:no-pinning-section-in-the-ultra-reference"
+if grep -q '^## Pinning' "$SF_SKILL"; then SF_WHY+=" SF-3:pinning-section-returned-to-the-skill"; fi
+grep -qF 'references/ULTRA-RESEARCH-FORMAT.md` now and follow it' "$SF_SKILL" || SF_WHY+=" SF-3:ultra-reference-not-loaded-at-the-request"
+grep -qF '<slug>/SOURCE.md' "$SF_SPEC" || SF_WHY+=" SF-3:no-folder-target"
 # The re-render literal `no readable RESEARCH.md` is NOT asserted here on purpose: UR-2 already
 # owns it, in this same file. Two guards on one defect give two failures and the question of
 # which is canonical — the ED-8 precedent. Do not re-add.
 grep -qF 'NOTE [research]' "$SF_SKILL" || SF_WHY+=" SF-3:no-unfinished-branch"
-if grep -qF '.pin.' "$SF_SKILL"; then SF_WHY+=" SF-3:scratch-file-returned"; fi
-# The floor is the half that keeps "the agent decides when" from becoming "the agent defers".
+if grep -qF '.pin.' "$SF_SKILL" || grep -qF '.pin.' "$SF_SPEC"; then SF_WHY+=" SF-3:scratch-file-returned"; fi
+# The floor is the half that keeps "the agent decides when" from becoming "the agent defers"; it
+# stays in the offer rule of the skill and is restated in the reference.
 grep -qF 'When the conversation crystallizes' "$SF_SKILL" || SF_WHY+=" SF-3:no-floor-anchor"
+grep -qF 'no later than the moment you would offer to save' "$SF_SPEC" || SF_WHY+=" SF-3:no-floor-in-the-reference"
 
 # (SF-4) A pin that cannot be written degrades loudly and does not take the conversation with
 # it. One WARN, not two: the two folder states are NOTE-level and belong to SF-3 — an
-# unfinished exploration is resumable work, not a failure.
-grep -qF 'WARN [pin]' "$SF_SKILL" || SF_WHY+=" SF-4:no-write-failure-degradation"
+# unfinished exploration is resumable work, not a failure. The degradation line moved with the
+# section, into the ultra reference.
+grep -qF 'WARN [pin]' "$SF_SPEC" || SF_WHY+=" SF-4:no-write-failure-degradation"
 
 # (SF-5) The auto-save prohibition survives in both places and keeps naming its object.
 # Count the RULE, not the word: `auto-save` occurs three times, one of them a mention inside
@@ -3259,13 +3258,12 @@ grep -qF 'structure, layout, order' "$SF_SKILL" || SF_WHY+=" SF-11:no-trigger-li
 # before, which is the form a half-reverted move would bring back.
 grep -qF 'A standard research does not read this file' "$SF_SPEC" || SF_WHY+=" SF-12:no-ultra-only-statement"
 if grep -qF 'a standard research reads the sections marked' "$SF_SPEC"; then SF_WHY+=" SF-12:shared-load-claim-returned"; fi
-# The write order moved with them and keeps the reason its item 3 was guarded: SOURCE.md is
-# not a step OF the save, phase 1 having moved the first write into the conversation. A negative
-# on the retired FORM plus a positive on its replacement — the pair, never either half: without
-# the negative the old line survives beside the new one, without the positive the item is
-# deleted outright and the save stops describing its own last write.
+# The write order moved with them and now STARTS with SOURCE.md (SF-21). The old third item is
+# asserted absent, and so is the retired claim that the log is already on disk for EVERY
+# research — it is true of an ultra research only, and the claim coming back would hand a
+# standard research a rule that is not its own.
 if grep -qF '3. `SOURCE.md` (prompt-based explorations only).' "$SF_SKILL"; then SF_WHY+=" SF-12:write-order-still-creates-the-log-at-save"; fi
-grep -qF 'already on disk before the save begins' "$SF_SKILL" || SF_WHY+=" SF-12:no-pinned-log-in-write-order"
+if grep -qF 'already on disk before the save begins' "$SF_SKILL"; then SF_WHY+=" SF-12:pinned-log-claimed-for-every-research"; fi
 
 # (SF-13) Every real section carries an applicability line, and the vocabulary is ONE value:
 # `ultra only`. It was two while three sections were shared; with those in SKILL.md, a section
@@ -3328,8 +3326,52 @@ printf '%s' "$SF_RB_WIN" | grep -qF 'end your turn and wait' || SF_WHY+=" SF-18:
 # (SF-19) every readback menu reaches SOURCE.md with its offered options (REQ-006).
 printf '%s' "$SF_RB_WIN" | grep -qF 'with the option labels' || SF_WHY+=" SF-19:menu-not-logged"
 
+# (SF-20) An ordinary exploration writes nothing before the save; pinning is ultra's and a late
+# ultra starts none. Retired forms are asserted ABSENT: the half-reverted skill is the one
+# that keeps both the old claim and the new rule.
+grep -qF 'An ordinary exploration writes nothing to disk until the user agrees to save.' "$SF_SKILL" || SF_WHY+=" SF-20:no-ordinary-writes-nothing-statement"
+grep -qF 'An ordinary exploration pins nothing' "$SF_SPEC" || SF_WHY+=" SF-20:no-ordinary-pins-nothing-in-the-reference"
+grep -qF 'Naming ultra later in the conversation starts no pinning.' "$SF_SPEC" || SF_WHY+=" SF-20:late-ultra-starts-pinning"
+grep -qF 'A **file-based** exploration opens no folder ahead of the save, ultra or not.' "$SF_SKILL" || SF_WHY+=" SF-20:file-based-rule-lost"
+for SF20_OLD in 'Everything before saving — the stance, the exploration itself — is unchanged' \
+                'the mode only changes what is written at save time' \
+                'Writing the dialogue log while you talk'; do
+    if grep -qF "$SF20_OLD" "$SF_SKILL"; then SF_WHY+=" SF-20:retired-claim-returned"; fi
+done
+
+# (SF-21) SOURCE.md is the FIRST item of the write order. Window = the numbered list between
+# `**Write in this order.**` and the sentence that closes it; the first numbered line must
+# name SOURCE.md. An empty window is a fail, not a pass on nothing.
+SF21_WIN="$(awk '/^ *\*\*Write in this order\.\*\*/{f=1;next} /^ *Never write the index/{f=0} f' "$SF_SKILL" || true)"
+if [[ -z "$SF21_WIN" ]]; then
+    SF_WHY+=" SF-21:write-order-window-empty"
+else
+    SF21_FIRST="$({ printf '%s\n' "$SF21_WIN" | grep -m1 -E '^[[:space:]]*[0-9]+\. ' || true; })"
+    printf '%s' "$SF21_FIRST" | grep -qF 'SOURCE.md' || SF_WHY+=" SF-21:log-is-not-the-first-write"
+    printf '%s' "$SF21_WIN" | grep -qF 'it comes first' || SF_WHY+=" SF-21:no-reason-for-the-order"
+fi
+
+# (SF-22) Framework questions stay out of the log, the list is closed, the readback is NOT on it,
+# and the template comment no longer asks for "all questions".
+for SF22_LIT in 'Framework questions are not logged.' 'The list is closed.' 'is **not** on this list' 'ordinary user turn'; do
+    grep -qF "$SF22_LIT" "$SF_SKILL" || SF_WHY+=" SF-22:missing:${SF22_LIT// /-}"
+done
+if grep -qF 'Continue for all questions asked during the exploration' "$SF_SKILL"; then SF_WHY+=" SF-22:template-comment-logs-everything"; fi
+grep -qF 'skipped whole' "$SF_SPEC" || SF_WHY+=" SF-22:pinned-append-does-not-skip-framework-questions"
+
+# (SF-23) A log that lost the user's words says so and downgrades what rests on them.
+for SF23_LIT in '<!-- unikit:not-verbatim -->' 'Earlier turns (not verbatim)' 'no quotation and no anchor'; do
+    grep -qF "$SF23_LIT" "$SF_SKILL" || SF_WHY+=" SF-23:missing:${SF23_LIT// /-}"
+done
+
+# (SF-24) The continuation splits by mode, and the ultra reference states what ultra adds.
+grep -qF 'In an ordinary research nothing was pinned' "$SF_CONT" || SF_WHY+=" SF-24:continuing-has-no-ordinary-branch"
+if grep -qF 'The log is already on disk.' "$SF_CONT"; then SF_WHY+=" SF-24:continuing-claims-pinning-for-every-research"; fi
+grep -qF "The mode is the session's, not the folder's" "$SF_CONT" || SF_WHY+=" SF-24:continuing-does-not-say-the-mode-is-the-sessions"
+grep -qF 'pins its dialogue log while the conversation goes on' "$SF_SPEC" || SF_WHY+=" SF-24:reference-does-not-say-what-ultra-adds"
+
 if [[ -z "$SF_WHY" ]]; then
-    pass "SF-1..SF-19 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, a standard research reads nothing from the ultra reference, and the readback asks one question per requirement with a text tier that ends the turn"
+    pass "SF-1..SF-24 the dialogue log is quoted; only an ultra exploration pins it as you talk, an ordinary one writes nothing before the save and writes the log first; framework questions stay out of the log and the readback stays in; a log that lost the user's words says so; the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, a standard research reads nothing from the ultra reference, and the readback asks one question per requirement with a text tier that ends the turn"
 else
     fail "SF source fidelity:$SF_WHY"
 fi

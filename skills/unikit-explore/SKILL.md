@@ -130,7 +130,7 @@ A stance, not a workflow: no fixed steps, no required sequence, no mandatory out
 - **Patient** — let the shape of the problem emerge; do not rush and do not force structure — you are not obliged to reach a conclusion, or to be brief
 - **Grounded** — explore the actual codebase when relevant, rather than theorize; question assumptions, the user's and your own; when something is unclear, dig deeper instead of faking understanding
 - **Don't implement** — never write feature code. Saving research files is fine, writing application code is not
-- **Don't auto-save** — offer to save the research, don't just do it. The thing that may not happen unasked is the research being saved: manifest, artifacts, registry, gate, confirmation. Writing the dialogue log while you talk — the folder that holds it included — is not that, and asks nothing
+- **Don't auto-save** — offer to save the research, don't just do it. An ordinary exploration writes nothing to disk until the user agrees to save. The one thing written earlier is the dialogue log of an ultra exploration, pinned as you talk (the ultra reference owns that rule): the log is not the research, and writing it asks nothing
 
 ---
 
@@ -209,10 +209,10 @@ When the topic involves a library or framework from the project's tech stack (`D
 
 The argument after `/unikit-explore` can be:
 - **The slug of an existing research folder** in `.unikit/code/researches/` — an **entry into the continuation cycle**, not a new topic: load `{{skills_dir}}/{{self_name}}/references/continuing.md` and follow it.
-- **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` and follow it when saving. Everything before saving — the stance, the exploration itself — is unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
+- **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts and the pinned dialogue log. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` now and follow it: it owns the pinning of the log while the conversation goes on, and the artifacts at save time. The stance and the exploration itself are unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
 - **Anything else** — a vague idea, a specific problem, a system name, a comparison, a question, or nothing at all — starts an ordinary exploration. A flow (`FLOW-<slug>`, "the onboarding") or a content type (`CT-<slug>`, "the item types") grounds on the design axes (see *Optional reads*).
 
-On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode only changes what is written at save time. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: the exploration has already happened, and losing it over a missing reference file is not an acceptable trade.
+On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode changes what is written while you talk (the pinned log) and at save time. Ultra is recognised when the request is made: naming it later starts no pinning. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: losing the research over a missing reference file is not an acceptable trade.
 
 **A standard research does not read that file.**
 
@@ -226,9 +226,9 @@ Determine the exploration mode based on user input:
 
 Remember this mode — it determines whether `SOURCE.md` is generated when saving (see [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)).
 
-It also decides when the log starts being written: in a **prompt-based** exploration [pinning](#pinning-the-log-is-written-as-you-talk) is in force from the first exchange — the one carrying the original request; a **file-based** exploration opens no folder ahead of the save.
+Neither kind writes anything before the save is agreed, except the pinned log of an ultra prompt-based exploration (the pinning rule is in the ultra reference). A **file-based** exploration opens no folder ahead of the save, ultra or not.
 
-**If the mode changes mid-way** — the user opened with a topic and later handed you files — pinning **continues**, and at save time `SOURCE.md` is generated under the prompt-based rule.
+**If the mode changes mid-way** — the user opened with a topic and later handed you files — `SOURCE.md` is still generated at save time under the prompt-based rule; in ultra the pinning, if it had started, continues.
 
 ### When a plan exists
 
@@ -237,66 +237,6 @@ If the user mentions a plan or you detect one is relevant:
 1. Read the existing plan from `.unikit/code/plans/`
 2. Reference it naturally in conversation
 3. Offer to capture insights in a research when decisions are made
-
----
-
-## Pinning: the log is written as you talk
-
-In a prompt-based exploration the dialogue log is not assembled at the end — it is **pinned**
-to disk while the conversation is still going, and appended to from there on. Pinning and
-saving are two different operations, and only the second one saves the research.
-
-**When the first write happens is your judgement, with a floor.** Pin as soon as any one of
-these has happened — the list is closed:
-
-- a requirement or a constraint was stated;
-- a decision was made;
-- the user corrected you;
-- a comparison, a table or a diagram was produced that the conversation then leans on.
-
-Any one of them is enough, and nothing outside the list counts: "this feels like it is going
-somewhere" is not a signal. The judgement asked of you here is the coarse one — *is this a
-research yet?* — and you already make it today, one section down, where you decide the
-conversation has crystallized. It is **not** the judgement of which words matter; that one you
-are never allowed to make, and the rules for the log say why.
-
-**The floor.** The first write happens no later than the moment you would offer to save (see [Saving Research Results](#saving-research-results)).
-
-**What goes into the first write:** the whole conversation from its first turn, verbatim, by
-the rules in [SOURCE.md for prompt-based explorations](#sourcemd-for-prompt-based-explorations)
-— including the turns that came before the signal.
-
-**After that, append.** Each of your replies ends by appending that exchange's user turns to
-the end of the file — one `Edit`, and no judgement involved.
-
-**Where.** `.unikit/code/researches/<slug>/SOURCE.md`, with `<slug>` generated by the ordinary rule (see [Naming convention](#naming-convention)); a topic that settles into another name is renamed at save time (*How to save*, step 1).
-
-**What pinning is not.** The first write:
-
-- does **not** create `RESEARCH.md` or any adaptive artifact;
-- does **not** re-render the registry;
-- does **not** run the coherence gate or the `## Integrity` checks;
-- does **not** ask for confirmation to save the research — that question stays where it is;
-- does **not** mean the research is finished, and you may not cite the file's existence as a
-  sign that it is.
-
-**A session that never crystallizes leaves nothing behind, and that is the correct outcome.**
-
-**Failures.**
-
-- The `Edit` did not go through — no permission, no disk. Print one line and **carry on with
-  the conversation**:
-
-  ```
-  WARN [pin] could not append to SOURCE.md — pinning is off for the rest of this session
-  ```
-
-  This is also the one state in which saving has to pick the log back up, see
-  `references/continuing.md`.
-
-- `.unikit/code/researches/` does not exist: create it (`mkdir -p`) and continue, silently.
-
-**On a continuation** pinning writes into the same file, into that session's `## Session <YYYY-MM-DD HH:MM>` block — appended, never rewritten.
 
 ---
 
@@ -346,12 +286,13 @@ If the user agrees:
 1. Determine the folder name: generate `<slug>` from the research topic (4-5 words,
    kebab-case, no date).
 
-   **If the log was pinned**, the folder already exists under the slug the topic carried at that
-   moment. Recompute the slug from the topic as it has now settled, and when the two differ,
-   rename the folder — **before** the manifest is written. A saved research is never renamed.
+   **In an ultra exploration the log was pinned**, so the folder already exists under the slug
+   the topic carried at that moment. Recompute the slug from the topic as it has now settled,
+   and when the two differ, rename the folder — **before** the manifest is written. A saved
+   research is never renamed.
 
    **If that slug already names a folder in `.unikit/code/researches/`** — any folder other
-   than this exploration's own pinned one — do not resolve it silently. Ask:
+   than this exploration's own pinned one (ultra only) — do not resolve it silently. Ask:
 
    ```
    AskUserQuestion: A research named <slug> already exists. What should happen?
@@ -374,13 +315,15 @@ If the user agrees:
    mkdir -p .unikit/code/researches/<slug>
    ```
 
-   **Write in this order.** A standard research skips items 1 and 5; ultra runs all six.
+   **Write in this order.** A standard research skips items 2 and 5; ultra runs all six.
 
-   1. The adaptive artifacts.
-   2. `RESEARCH.md` — with the `## Artifact Index` pointing at files already written.
-   3. `SOURCE.md` (prompt-based explorations only) — pinned as the conversation went on, and so
-      already on disk before the save begins. What happens at this point is the append of
-      whatever the log is still missing, never the writing of the file.
+   1. `SOURCE.md` (prompt-based explorations only) — it comes first, because a requirement's
+      anchor is grepped against it the moment the requirement is written. An ordinary
+      exploration writes it now, whole, from the conversation; an ultra exploration pinned
+      it as you talked, so what happens here is the append of whatever the log is still
+      missing.
+   2. The adaptive artifacts.
+   3. `RESEARCH.md` — with the `## Artifact Index` pointing at files already written.
    4. `researches/INDEX.md` — **re-rendered whole** from the contents of the folders (Step 4).
    5. The Integrity checks (`references/ULTRA-RESEARCH-FORMAT.md` → `## Integrity`).
    6. The coherence gate.
@@ -652,6 +595,8 @@ Numbering is per research folder and starts at 1 — `ADR-` at `0001`, zero-padd
 
 If the exploration was **prompt-based** (see [Exploration mode detection](#exploration-mode-detection)), generate an additional artifact `SOURCE.md` in the same research directory.
 
+**When it is written.** An ordinary exploration writes it at save time, whole, from the conversation, as the first write (*How to save*, step 2). An ultra exploration pinned it as the conversation went on (the pinning rule is in the ultra reference), and the save appends what is still missing.
+
 `SOURCE.md` is a **log, not a derived representation of the research.** Two consequences, both
 deliberate: it is **not** part of the hashed region (only `## Active Summary` inside
 `RESEARCH.md` is), and it is **not** in the coherence gate's durable scope. A log is allowed to
@@ -682,7 +627,7 @@ Offered:
 **Answer**:
 > <verbatim>
 
-<!-- Continue for all questions asked during the exploration -->
+<!-- Continue for every question that carried subject content — framework questions are not logged -->
 
 ## Additional Clarifications
 
@@ -705,6 +650,18 @@ certifying itself.
 
 The readback menus of Step 3.5 are menus in exactly this sense.
 
+**Framework questions are not logged.** Three exchanges belong to the machinery of this skill,
+not to the subject, and are left out of the log whole — the question and its answer: *Save this
+research?*; the choice of the folder name together with the existing-slug question; and the
+coherence gate's question when its budget is spent. The list is closed. For anything outside it
+the test is whether the answer could become or change a requirement, a constraint or a
+decision of the subject: if it could, the exchange is logged, whoever asked. That is why the
+readback is **not** on this list — its answer (`Yours`, `A` / `B`, a correction in the user's
+own words) becomes the anchor of a requirement. When the answer to a listed question carries
+subject content as well ("yes, but also include X"), the content part of the answer is logged
+as an ordinary user turn, and the service part ("yes") is not. What is left out is a whole
+exchange, never words inside another exchange.
+
 **Mark your own cuts, and only your own.** `[…]` means *you* left something out of the
 quotation. A bare `…` means the user spoke that way — trailed off, paused, thought better of a
 sentence. Two different things get two different marks.
@@ -720,6 +677,26 @@ cost of a cut modifier is a phase planned against a requirement nobody stated.
 
 The one admissible exception is a secret: a credential, a token or a key quoted by accident is
 cut, marked `[…]`, and the reason is written on its own line under the quote.
+
+**When the user's words are no longer there.** The log is written from the conversation as it
+stands in your context. If the oldest part of that context is a summary of earlier turns instead
+of the turns themselves — the client compacted it — those turns cannot be quoted, and a digest
+must not pass for a quotation. Do not reconstruct them. Put a section directly under
+`# Exploration Request`:
+
+```markdown
+## Earlier turns (not verbatim)
+<!-- unikit:not-verbatim -->
+These turns reached the log as a summary carried by the context, not as the user's words.
+<the summary, as short as the context allows>
+```
+
+`## Original Request` then holds the exact request if it is still visible, and otherwise the
+single line `Not available verbatim — see the section above.` A requirement that rests only on
+what that section covers is not `stated`: it is `inferred`, with no quotation and no anchor, and
+it goes through the readback — the user's answer there is logged and becomes its anchor. What you
+can see is a summary block at the start of the context, and that is all this check can rely on:
+it is a heuristic, not a guarantee.
 
 **On a continuation, append — never rewrite.** A new session adds a fresh block
 `## Session <YYYY-MM-DD HH:MM>` at the end of the file, carrying that session's questions,
@@ -781,7 +758,7 @@ requirements it typically prints three.
 - `Finding only` → the line leaves `Requirements:` and its content moves to `## Findings`. Its `REQ-<n>` is **not reused**; the next requirement takes the following number.
 - `A` / `B` / `C` → the item is already an `OQ-<n>` (the third rung of the resolution ladder); the chosen reading becomes a `REQ-` with the next number, marked `stated` and anchored on the logged answer, and the `OQ-<n>` keeps its number and is marked superseded by that `REQ-<m>`.
 - `Open question` → the requirement leaves `Requirements:` and becomes an `OQ-<n>` with the next number; a `diverges` item's paired `DEC-<n>` is marked superseded. An item that already is an `OQ-<n>` (two readings) stays as it is — no second number.
-- **"Other" — a correction** → `Edit` the `RESEARCH.md` already on disk: rewrite the requirement, change its marker to `stated`, and anchor it to the user's words from this very exchange — they are in the log already, pinned as they were said. A correction that turns out to be a new requirement opens a new `REQ-` with the next number, marked `stated`.
+- **"Other" — a correction** → `Edit` the `RESEARCH.md` already on disk: rewrite the requirement, change its marker to `stated`, and anchor it to the user's words from this very exchange — they are in the log already, appended as they were said (see *Order of writes*). A correction that turns out to be a new requirement opens a new `REQ-` with the next number, marked `stated`.
 - **"Other" — a counter-question** → answer it, then put the same menu for that requirement again.
 
 **Order of writes.** Append the readback exchange — the printed grounds, the question, `Offered:` and the answer — to `SOURCE.md` **before** the `Edit` it causes: the quotation a correction or a chosen reading is anchored on must already be in the log when the requirement is written, because that phrase is grepped at that moment.
@@ -818,9 +795,10 @@ appended to: on every save it is re-rendered whole from the folders on disk.
 3. A folder with no readable `RESEARCH.md` is skipped, and the skip is **printed**. Which line
    gets printed depends on what the folder holds.
 
-   A folder carrying a pinned `SOURCE.md` and no manifest is an **unfinished exploration**, not
-   a broken one — a conversation that crystallized and ended before it was saved. It stays out
-   of the registry all the same, and it is announced by a line that names the way back into it:
+   A folder carrying a `SOURCE.md` and no manifest is an **unfinished exploration**, not a
+   broken one — an ultra conversation whose pinned log ended before it was saved, or a save that
+   stopped after the log, which is written first. It stays out of the registry all the same, and
+   it is announced by a line that names the way back into it:
 
    ```
    NOTE [research] <folder> — unfinished exploration: SOURCE.md is there, the manifest is not.
@@ -912,7 +890,7 @@ override lives — not a withheld confirmation.
 
 ### Important rules for saving
 
-- **Don't auto-save** — Always offer and let the user decide. What the ban covers is saving the **research**: the manifest, the adaptive artifacts, the re-rendered registry, the gate and the confirmation. Pinning falls outside it — appending a turn to `SOURCE.md` is not a save, and neither is creating `<slug>/` to hold it
+- **Don't auto-save** — Always offer and let the user decide. What the ban covers is saving the **research**: the manifest, the adaptive artifacts, the re-rendered registry, the gate and the confirmation. Ultra pinning falls outside it — appending a turn to `SOURCE.md` is not a save, and neither is creating `<slug>/` to hold it
 - **Generate the name** from the research context — don't ask the user to name it
 - The user may edit the suggested name before you save
 
