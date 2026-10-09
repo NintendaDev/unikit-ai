@@ -24,12 +24,17 @@ folder name carries no date.
    - Reconsider `Status` and `Lifecycle` **explicitly**, and say what they became. Neither
      carries over by default; a research that has quietly stayed `in-progress` across four
      sessions is telling the registry something nobody decided.
-   - **The log is already on disk.** `## Pinning` in `SKILL.md` owns `SOURCE.md` and has been
-     appending this session's dialogue to it as you talked. Append the remainder here only
-     where pinning did not run: it was switched off for the session (`WARN [pin]`), or the
-     session started before it was in effect. Appending unconditionally writes the same
-     dialogue into the file twice, and a doubled log is indistinguishable from a session that
-     said everything twice.
+   - **The log.** In an ordinary research nothing was pinned: append this session's dialogue to
+     `SOURCE.md` first, before `RESEARCH.md` is touched, as a fresh block
+     `## Session <YYYY-MM-DD HH:MM>` at the end of the file, by the rules for the log in
+     `SKILL.md` (framework questions left out; the *not verbatim* section when the user's
+     words are gone). An ultra session pinned its dialogue as you talked (`## Pinning` in
+     `references/ULTRA-RESEARCH-FORMAT.md`): append the remainder only where pinning did not
+     run — it was switched off for the session (`WARN [pin]`), or the session started before
+     it was in effect. Appending an ultra session unconditionally writes the same dialogue
+     into the file twice, and a doubled log is indistinguishable from a session that said
+     everything twice. The mode is the session's, not the folder's: continuing an ultra
+     research without naming ultra is an ordinary session.
    - Re-render the registry and run the coherence gate, exactly as on a first save.
 4. **Say it out loud when the folder has outgrown its question.** From the fourth session, or
    past fifteen artifacts, print one line and continue — a note, never a gate:

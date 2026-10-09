@@ -71,8 +71,8 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   instead of opening a second folder. The researches index is regenerated on every save.
 - **Modes:** default | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
   dependency graph — written into the research folder by relevance, never by checklist).
-- **During:** the dialogue log is pinned as you talk, not written at save time, so the folder
-  exists before the save; before the save is confirmed the agent asks about each requirement it
+- **During:** an ordinary exploration writes nothing until you agree to save (ultra pins its
+  dialogue log as you talk); before the save is confirmed the agent asks about each requirement it
   inferred, each one that departs from what you said, and each one open to two readings — one
   question per requirement. Every save ends with a coherence gate run in a fresh context: it
   re-reads the written files, and after two passes asks you instead of looping.
