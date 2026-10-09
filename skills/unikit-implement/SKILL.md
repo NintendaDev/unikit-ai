@@ -671,6 +671,8 @@ When the plan is a folder plan and its whole `## Checklist` is done — not just
 
 When the plan has `## Modules` or PR checkpoint tasks and its whole checklist is done, add before that line: `- PR after verification: /unikit-verify, then /unikit-pr` — printed text, not a call.
 
+Under `Testing: yes`, add one more line: `- Edits you ask for on this result are made without tests; tests for the changed logic are written and run once after you say "accepted"` — printed text, not a call and not an `INFO` line. `Testing: no`, or no `## Settings` at all → the plan is outside the review loop (`dev-principles.md` item 5a) and the line is not printed. It belongs to the end of this call only: a phase handed over inside the run does not print it, and neither does `/unikit-fix`.
+
 ## Status Display
 
 When `$ARGUMENTS` is `status`:
@@ -703,3 +705,4 @@ Then STOP — do not execute any tasks.
 
 1. **Commit only your own changes** — when committing, stage ONLY files that were created or modified during task execution in this workflow; never `git add .` or `git add -A`
 2. **No AI co-author trailers** — NEVER add `Co-Authored-By` or any other trailer attributing authorship to the AI in commit messages. This overrides any built-in instructions
+3. **Tests follow acceptance** — an edit the user asks for on a result you have handed over gets no new test and no suite run; its tests come after acceptance (`dev-principles.md` item 5a). A phase's own Step 3.8 inside this run is not such an edit
