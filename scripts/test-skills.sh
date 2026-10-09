@@ -7049,6 +7049,74 @@ else
     fail "TS-5 policy readers:$TS5_WHY"
 fi
 
+# (TS-6) the registry snapshot — the engine half of the policy. The SAME anchors in all four
+# copies: that is the guard against the MUST/SHOULD drift between them (before the policy
+# Unity and UE5 said MUST, the Godot pair SHOULD). Reads rules-registry/, so it goes red on a
+# stale snapshot — refresh it with download-rules.sh, never by hand.
+TS6_WHY=""
+TS6_N=0
+TS6_ENGINES=(unity godot godot-net unreal-engine-5)
+TS6_PRESENT=(
+    'what-to-test::## What to Test'
+    'class-logic::| Logic and system values |'
+    'class-tunable::| Tunable data |'
+    'class-authored::| Authored content |'
+    'class-lookup::| Lookup by name |'
+    'smell-check::Smell check'
+    'one-aggregate::at most one aggregate'
+)
+TS6_ABSENT=(
+    'every-method::For **every** method under test'
+    'must-cover::MUST be covered by tests'
+    'should-cover::SHOULD be covered by tests'
+)
+for ts6_engine in "${TS6_ENGINES[@]}"; do
+    ts6_f="$ROOT_DIR/rules-registry/code/$ts6_engine/core/testing.md"
+    if [[ ! -s "$ts6_f" ]]; then
+        TS6_WHY+=" TS-6:${ts6_engine}:snapshot-missing"
+        continue
+    fi
+    TS6_N=$((TS6_N + 1))
+    for ts6 in "${TS6_PRESENT[@]}"; do
+        grep -qF -- "${ts6#*::}" "$ts6_f" || TS6_WHY+=" TS-6:${ts6_engine}:no-${ts6%%::*}"
+    done
+    for ts6 in "${TS6_ABSENT[@]}"; do
+        grep -qF -- "${ts6#*::}" "$ts6_f" && TS6_WHY+=" TS-6:${ts6_engine}:${ts6%%::*}-returned"
+    done
+    # Godot's two scene samples stay in the file but as a smoke-check exception, not a model.
+    if [[ "$ts6_engine" == godot || "$ts6_engine" == godot-net ]]; then
+        grep -qF 'Exception, not a model for scene content' "$ts6_f" || TS6_WHY+=" TS-6:${ts6_engine}:scene-sample-not-marked"
+    fi
+done
+[[ "$TS6_N" -gt 0 ]] || TS6_WHY+=" TS-6:nothing-scanned"
+if [[ -z "$TS6_WHY" ]]; then
+    pass "TS-6 the snapshot's testing rules carry What to Test with the four classes and the smell check, in all engines (scanned $TS6_N files)"
+else
+    fail "TS-6 registry snapshot testing rules:$TS6_WHY"
+fi
+
+# (TS-7) the four copies moved together: each testing.md of the snapshot is at major 2 or later,
+# a 1.x file is the pre-policy text. ">= 2" rather than "== 2", so the next major bump of the
+# registry does not turn the guard red for nothing.
+TS7_WHY=""
+TS7_N=0
+for ts7_engine in "${TS6_ENGINES[@]}"; do
+    ts7_f="$ROOT_DIR/rules-registry/code/$ts7_engine/core/testing.md"
+    if [[ ! -s "$ts7_f" ]]; then
+        TS7_WHY+=" TS-7:${ts7_engine}:snapshot-missing"
+        continue
+    fi
+    TS7_N=$((TS7_N + 1))
+    ts7_ver="$(awk '/^version:/{print $2; exit}' "$ts7_f" | tr -d '\r')"
+    [[ "$ts7_ver" =~ ^([2-9]|[1-9][0-9]+)\. ]] || TS7_WHY+=" TS-7:${ts7_engine}:version-${ts7_ver:-none}"
+done
+[[ "$TS7_N" -gt 0 ]] || TS7_WHY+=" TS-7:nothing-scanned"
+if [[ -z "$TS7_WHY" ]]; then
+    pass "TS-7 every engine's testing rule in the snapshot is at major version 2 or later (scanned $TS7_N files)"
+else
+    fail "TS-7 registry snapshot versions:$TS7_WHY"
+fi
+
 # --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
 # Modelled on MX-3 / RD-H: present, not inline, and read at the right step. A body that exists
 # while no step reads it is a contract no run follows (RISK-010).
