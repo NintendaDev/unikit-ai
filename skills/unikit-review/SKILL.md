@@ -169,8 +169,8 @@ Always run these checks in addition to project rules. If a finding from the chec
 - [ ] DRY principle
 
 **Testing:**
-- [ ] Test coverage for new code
-- [ ] Edge cases tested
+- [ ] Tests for new logic; none that pin tunable values or authored content
+- [ ] Edge cases of the logic tested
 - [ ] Mocking appropriateness
 
 ## Step 4.5: Validate Findings (`+check` only)

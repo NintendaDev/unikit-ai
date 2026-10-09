@@ -264,6 +264,8 @@ Recon: recon/<topic>.md § <section>, …   (optional; only a plan written with 
 - When `Testing: yes` and `Test checkpoints: task`: the same, plus the command when this task
   is itself the checkpoint.
 - For a test-checkpoint task: the literal `Not applicable — this task runs tests, it writes none`.
+- When `Testing: yes` and every change of the task is authored content — an `Editor:` task of kind `scene · ui · vfx · anim · settings` (which kind carries materials and shader graphs is the engine's `ENGINE_RULES.md`), a kind `asset` task without designer numbers (import settings, say), or a task whose `Files:` are only shader sources, UI markup, art and audio: the single literal `Not applicable — authored content; evidence is a read-back or a frame`, not a list of tests. A kind `asset` task that carries designer numbers does not get the literal: it gets the validity check of the "tunable data" class (`dev-principles.md` item 5).
+- **Which literal wins.** `Testing: no` → `Not planned by user preference` in every task. A test-checkpoint task → its own `Not applicable — this task runs tests, it writes none`. The authored-content literal applies only under `Testing: yes`, and a task with both logic and content lists tests for the logic only.
 
 ### Acceptance Criteria
 - [Observable, independently verifiable result.]
@@ -294,8 +296,11 @@ Rules:
   manifest.
 - A task's `### EDITOR TARGETS` rows live here, but the task's own `Editor:` marker stays
   in the manifest checkbox, because that is what Guard B and the executor read.
-- `### Tests`: under `Testing: yes` — exact cases, fixtures, test files and commands; under
-  `Testing: no` — the literal `Not planned by user preference`, and no test tasks are added.
+- `### Tests`: under `Testing: yes` — exact cases, fixtures, test files and commands for the
+  logic and system values; a task whose changes are all authored content — the literal
+  `Not applicable — authored content; evidence is a read-back or a frame` (precedence of the
+  three literals: see `### Tests` above); under `Testing: no` — the literal
+  `Not planned by user preference`, and no test tasks are added.
 - `### Verification`: commands `/unikit-verify` **executes** within the grant it already
   holds. Anything outside that grant is printed with the `⏸️ MANUAL` status and reaches
   both the report and the `unikit-gate-result` block — otherwise it is lost in silence.
