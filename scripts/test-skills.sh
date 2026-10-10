@@ -11154,10 +11154,15 @@ echo -e "\n${BOLD}Part 7i: core module file-size guard${NC}"
 
 SIZE_LIMIT=500
 SIZE_VIOLATIONS=""
+# The two command files that deliver the system assets join the list by name: update.ts had
+# grown to 556 lines unguarded, and each new system asset adds a line to both. rules.ts
+# (1493 lines) is deliberately not listed — splitting it is a refactor of its own.
 for f in "$ROOT_DIR"/src/core/*.ts \
          "$ROOT_DIR"/src/core/installer/*.ts \
          "$ROOT_DIR"/src/core/registry/*.ts \
-         "$ROOT_DIR"/src/core/registry/migrations/*.ts; do
+         "$ROOT_DIR"/src/core/registry/migrations/*.ts \
+         "$ROOT_DIR"/src/cli/commands/init.ts \
+         "$ROOT_DIR"/src/cli/commands/update.ts; do
     [[ -f "$f" ]] || continue
     lines=$(wc -l < "$f" | tr -d ' ')
     if [[ "$lines" -gt "$SIZE_LIMIT" ]]; then
@@ -11166,9 +11171,9 @@ for f in "$ROOT_DIR"/src/core/*.ts \
 done
 
 if [[ -z "$SIZE_VIOLATIONS" ]]; then
-    pass "src/core modules within $SIZE_LIMIT-line limit"
+    pass "src/core modules and the init/update commands within $SIZE_LIMIT-line limit"
 else
-    fail "src/core modules exceed $SIZE_LIMIT-line limit"
+    fail "src/core modules or the init/update commands exceed $SIZE_LIMIT-line limit"
     echo -e "$SIZE_VIOLATIONS"
 fi
 
