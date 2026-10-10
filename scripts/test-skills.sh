@@ -2032,6 +2032,65 @@ else
     fail "CS2-4 upstream content surface incomplete:$CS2_EXPLORE_WHY"
 fi
 
+# (GXR-1…GXR-4) unikit-gd-explore research record: a design research is self-sufficient
+# after /clear — an Active Summary region (cross-cutting ids, no values) and an append-only
+# Sessions region carrying the coherence-gate verdict; the index entry may carry the
+# ultra-only **Mode** field and `init` restores it from the first-line marker. The marker
+# pairs are counted on the TEMPLATE lines of save-research.md: its prose never repeats a
+# marker literal, so a count of exactly one per marker is the invariant.
+GXR1_WHY=""; GXR1_N=0
+for gxr_m in '<!-- unikit:active-summary:start -->' '<!-- unikit:active-summary:end -->'              '<!-- unikit:sessions:start -->' '<!-- unikit:sessions:end -->'; do
+    GXR1_N=$((GXR1_N + 1))
+    gxr_c=$({ grep -cF -- "$gxr_m" "$GD_EXPLORE_SAVE_RESEARCH" || true; })
+    [[ "$gxr_c" == "1" ]] || GXR1_WHY+=" marker:${gxr_m}=${gxr_c}"
+done
+for gxr_l in '## Active Summary' '## Sessions' 'Gate: passed (' 'F-<n>' 'DEC-<n>' 'RISK-<n>' 'OQ-<n>'; do
+    GXR1_N=$((GXR1_N + 1))
+    grep -qF -- "$gxr_l" "$GD_EXPLORE_SAVE_RESEARCH" || GXR1_WHY+=" no-literal:${gxr_l}"
+done
+if [[ "$GXR1_N" -eq 0 ]]; then
+    fail "GXR-1 scanned no record-format literals"
+elif [[ -z "$GXR1_WHY" ]]; then
+    pass "GXR-1 research record format (Active Summary + Sessions regions, one marker pair each, closed id vocabulary; $GXR1_N literals)"
+else
+    fail "GXR-1 research record format drift:$GXR1_WHY"
+fi
+
+GXR2_WHY=""
+grep -qF '**Mode**: ultra' "$GD_EXPLORE_SAVE_RESEARCH"      || GXR2_WHY+=" no-mode-field"
+grep -qF 'absent means standard' "$GD_EXPLORE_SAVE_RESEARCH" || GXR2_WHY+=" no-absent-means-standard"
+if [[ -z "$GXR2_WHY" ]]; then
+    pass "GXR-2 researches/INDEX.md entry carries the ultra-only Mode field (absent means standard)"
+else
+    fail "GXR-2 index Mode field drift:$GXR2_WHY"
+fi
+
+GXR3_WHY=""; GXR3_N=0
+for gxr_h in '## Improvement Plan' '## New Feature Plan' '## Flow Improvement Plan'              '## Flow Feature Plan' '## Content Improvement Plan' '## Content Feature Plan'              '**Recommended follow-up**'; do
+    GXR3_N=$((GXR3_N + 1))
+    grep -qF -- "$gxr_h" "$GD_EXPLORE_SAVE_RESEARCH" || GXR3_WHY+=" no-anchor:${gxr_h}"
+done
+if [[ "$GXR3_N" -eq 0 ]]; then
+    fail "GXR-3 scanned no brief anchors"
+elif [[ -z "$GXR3_WHY" ]]; then
+    pass "GXR-3 brief anchors the system/flow/content zones read stay intact ($GXR3_N anchors)"
+else
+    fail "GXR-3 brief anchor drift:$GXR3_WHY"
+fi
+
+# GN_INIT_INDEX is declared far below this block; the path is declared locally here.
+GXR_INIT_INDEX="$ROOT_DIR/skills/unikit-gd-explore/references/init-index.md"
+GXR4_WHY=""
+grep -qF 'unikit:research-mode:ultra' "$GXR_INIT_INDEX" || GXR4_WHY+=" no-mode-marker"
+grep -qF '**Mode**: ultra' "$GXR_INIT_INDEX"            || GXR4_WHY+=" no-mode-field"
+grep -qF 'NOTE [research]' "$GXR_INIT_INDEX"            || GXR4_WHY+=" no-unfinished-note"
+grep -qF 'Kept N · Added N' "$GXR_INIT_INDEX"           || GXR4_WHY+=" no-report-line"
+if [[ -z "$GXR4_WHY" ]]; then
+    pass "GXR-4 init-index restores the Mode field from the first-line marker; unfinished-exploration NOTE; report line intact"
+else
+    fail "GXR-4 init-index mode restore drift:$GXR4_WHY"
+fi
+
 # (CS2-5) the GD-IDS.yaml template carries the commented research: pointer on content_types
 # (T3) — the seed pointer unikit-gd-content writes, the non-id path the T4 carve-out excludes.
 if grep -qF 'when the CT was seeded from an explore brief' "$GD_IDS_TPL"; then

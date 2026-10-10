@@ -52,14 +52,36 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    Kind: feature | improvement   # internal-design lens only — feature = new system/flow/content type, improvement = existing one
 
    ## Table of Contents
+   ## Active Summary   — the region between the two markers below; what a reader needs without the chat
+   <!-- unikit:active-summary:start -->
+   Goal: <what this research is for>
+   Scope: <what it covers, and what it does not>
+   Constraints: <known limits; one line each>
+   Decisions: DEC-<n> — <a few words; the value stays in ## Conclusions>
+   Risks: RISK-<n> — <a few words; the value stays in ## Conclusions>
+   Open questions: OQ-<n> — <a few words; the question stays in ## Open Questions>
+   Success signals: <how a reader knows the research did its job>
+   Next step: <one concrete follow-up; the command comes from the routing table below>
+   <!-- unikit:active-summary:end -->
    ## Topic            — 1–2 sentences
    ## Context          — why this research started
-   ## Findings         — dissections, comparisons, diagrams, trade-off tables
-   ## Conclusions      — what the evidence supports
-   ## Open Questions   — what remains unproven
+   ## Findings         — dissections, comparisons, diagrams, trade-off tables; every finding carries an id `F-<n>`
+   ## Conclusions      — what the evidence supports; every decision carries `DEC-<n>`, every risk `RISK-<n>`
+   ## Open Questions   — what remains unproven; every question carries `OQ-<n>`
    ## Next Steps       — concrete follow-ups (see routing below)
+   ## Sessions         — the region between the two markers below
+   <!-- unikit:sessions:start -->
+   ### <YYYY-MM-DD HH:MM> — <session title>
+   What changed: <what this save added or revised>
+   Key notes: <what a later session must not rediscover>
+   Gate: passed (<N> passes) | stopped at budget: <k> unresolved — OQ-<n>, …
+   Links (paths): <files the session read or wrote>
+   <!-- unikit:sessions:end -->
    ## References       — games, articles, URLs (note any web/Agent sources used)
    ```
+
+   The text after each `—` in the template is a note to you; it is not copied into the
+   record.
 
    The Table of Contents is **mandatory** and reflects the real sections. The
    **`Target:` / `Kind:`** lines are written **only** by the internal design lens
@@ -67,6 +89,32 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    `unikit-gd-flow` / `unikit-gd-content` discover this research deterministically
    after a `/clear`.
    A reference-dissection or market research omits both.
+
+   **Identifiers.** The vocabulary is closed: `F-<n>` (finding), `DEC-<n>` (decision),
+   `RISK-<n>` (risk), `OQ-<n>` (open question), and in an ultra research also `ADR-<NNNN>`
+   (numbered inside the folder from 0001). An identifier is unique in the record and
+   never reused; a superseded item is marked superseded and keeps its number. The record
+   defines each identifier in the section that owns it — `F-<n>` in `## Findings`,
+   `DEC-<n>` and `RISK-<n>` in `## Conclusions`, `OQ-<n>` in `## Open Questions` — and the
+   summary only cites it: its `Decisions:` / `Risks:` / `Open questions:` lines carry the
+   identifier and a few words that let a reader recognise the item, while the value (a
+   number, a threshold, an enumeration, a path) stays in the one owning section. In one
+   sentence: the summary characterises, it never carries the value.
+
+   **A record without a summary stays readable.** Updating such a record (option 1 of the
+   collision question) adds both regions to the same record; `Date:` is not changed.
+
+   **`## Sessions` is append-only.** A new session entry goes at the end of its region;
+   earlier entries are never rewritten. The one exception is the `Gate:` field of the
+   current save's own entry, which is filled in after the coherence gate
+   (`references/coherence-gate.md`) has run.
+
+   The marker pair of the summary is the one `data/research-link.md` uses, so the format is
+   compatible with that contract; a design research is not read by it today and the
+   contract does not change. A marker pair with only one marker present is damage: the
+   saving session does not guess the boundary, it prints
+   `WARN [gd-research] <folder>: marker pair incomplete — region rewritten whole` and
+   rewrites that region whole.
 
 2. **`RESEARCH_BRIEF.md`** — a compact brief built **for `unikit-gd-spec` /
    `unikit-gd-system` to consume** (the acceptance bar: it must be usable as their
@@ -128,6 +176,7 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    - **Date**: <YYYY-MM-DD HH:MM>
    - **Updated**: <YYYY-MM-DD HH:MM>
    - **Status**: completed | in-progress | needs-follow-up
+   - **Mode**: ultra   (ultra research only — omit the field for a standard research; absent means standard)
    - **Summary**: <1–2 sentences from ## Topic>
    - **Path**: `<folder-name>/`
    - **Target**: SYS-<slug>   (internal-design lens only — the fallback discovery key
@@ -135,3 +184,13 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    ```
 
    On a new research `Updated` equals `Date`; on revision only `Updated` changes.
+
+## Write order
+
+The base order of writing a standard research:
+
+1. `RESEARCH_RESULT.md`
+2. `RESEARCH_BRIEF.md`
+3. Update researches/INDEX.md
+
+This is the order of a standard research. An ultra research inserts its own steps into it (references/ultra-research.md); every save ends with the coherence gate (references/coherence-gate.md). The index of artifacts is never written before the artifacts, and the gate never runs before researches/INDEX.md is re-rendered.
