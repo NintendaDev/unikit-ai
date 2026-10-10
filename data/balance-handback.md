@@ -63,7 +63,8 @@ complete when every name of the list is present.
 ## Matching keys
 
 The order in which a balance document is matched to a report: (1) `Balance` + `Point` — the slug
-exists and its `Current` equals `Point`; (2) the ids of the `## Measurements` rows against the
+exists and `Point` is a point of its roadmap, whatever its status (whether it is the current one
+is decided afterwards, by the receiving rules); (2) the ids of the `## Measurements` rows against the
 ids of the work items of the documents' current points — exactly one document matched; (3) topic
 proximity — it orders the list put to the user and never selects a document by itself. What
 happens when the match is uncertain belongs to the receiving skill.
@@ -78,7 +79,10 @@ matched document; `Point` and `Build` come from the person's answer (`Build` wit
 on a separate line `Supplemented: <names>` at the very top of the copy, above the header; a report
 that needed no completion has no such line. A duplicate is the same `Balance` + `Point` + `Build`
 already present in `results/`. A report for a point that is not `current`, and a duplicate, stop
-the receiving with a question.
+the receiving with a question. When the earlier report of the same key was judged invalid, or the
+decision was to repeat the point, the question also offers to replace it: the new copy is the
+next `results/HB-<n>.md` with a line `Supersedes: HB-<k>` at the very top (next to
+`Supplemented:`); the earlier file is kept.
 
 ## What this contract does not say
 

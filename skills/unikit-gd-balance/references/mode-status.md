@@ -5,7 +5,7 @@ arguments. It writes only `INDEX.md` (the redraw, when it disagrees).
 
 Load `resolve-target.md` first: the list, the five latest and the file-error rule are there.
 Say points by their goal, never by a code, in every line and menu (`named by its goal`, TIER B
-of the membrane).
+of the membrane): states are spoken as plain phrases, not as the header's tokens.
 
 ## No documents at all
 
@@ -15,8 +15,10 @@ loads `mode-open.md` in the same turn.
 
 ## Documents exist
 
-Print the five latest (`resolve-target.md`) and offer the next action for each by the state of
-its header:
+Print the five latest (`resolve-target.md`) as state only: name, a plain phrase for the state and
+the goal of the current point. Then offer exactly one action — for the most recent document only;
+actions for any other document belong to `## One slug`. The action is chosen by the document's
+header:
 
 - **Open, with a current point** → "run the plan" and the plan command — its form is defined
   once, in `SKILL.md` → `## Closing block`; it is printed last, and nothing follows it.
@@ -33,7 +35,10 @@ point's goal.
 
 ## One slug
 
-Print: the header; the `## Roadmap` section **only**; the summary of the closing set from
-`BALANCE.md` (how many questions are closed, deferred, open — read the status table only); the
-latest log entry. Then the next action as above. A file whose header combination is not allowed
-is reported as inconsistent and not continued.
+Print, in plain words: the state of the document (open with a current point, open and waiting for
+the next point, or closed); the roadmap as a short list of **goals** with a word for each one's
+state — done, current, planned, dropped — no ids and no table of codes; the summary of the closing
+set from `BALANCE.md` (how many questions are closed, deferred, open — read the status table
+only); the latest log entry in a sentence. The header itself is read, not printed. Then the next
+action as above. A file whose header combination is not allowed is reported as inconsistent and
+not continued.

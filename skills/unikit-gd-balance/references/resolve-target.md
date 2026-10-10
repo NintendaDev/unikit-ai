@@ -66,4 +66,9 @@ second and third work.
 A report for a point that is not the current one, or a duplicate (the same `Balance` + `Point` +
 `Build` is already in `results/`), stops the receiving with a question; the point is named by
 its goal in the question. Options: `1.` take it as late data (a log entry, the state does not
-change) · `2.` another document · `3.` discard.
+change) · `2.` another document · `3.` discard. A report for the current point whose earlier
+report with the same key was judged invalid, or for which the decision was "repeat the point",
+adds a fourth option — `4.` replace the earlier report: the new copy is the next `results/HB-<n>.md`
+and carries a `Supersedes: HB-<k>` line (the contract's `## Receiving`); the earlier file stays.
+This is how a repeated run on the same build is received, because a short SHA does not change
+when only an uncommitted tool fix did.

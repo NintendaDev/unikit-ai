@@ -8,7 +8,9 @@ the files.
 
 1. **Input.** A topic from the request and/or a path to `researches/<slug>/RESEARCH_RESULT.md`.
    From a research read only the `## Active Summary` region and `## Findings` as needed; a
-   record with no summary is read as text.
+   record with no summary is read as text. Neither a topic nor a path (the branch was reached
+   from an empty status) → ask once, with `AskUserQuestion`: the topic in a few words, or the
+   path of a research.
 2. **Slug.** Kebab-case of the topic, at most 40 characters, no date. If
    `balance/<slug>/` already exists, ask: continue it (the revise branch) or another name. An
    automatic suffix is forbidden. `resolve-target.md` owns the list.

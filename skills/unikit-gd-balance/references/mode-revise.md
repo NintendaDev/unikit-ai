@@ -17,11 +17,19 @@ those too). Confirmation questions name a point by its goal, never by its code o
 - A change of design (numbers in the GDD) is not made here: put a proposal into `Design deltas`
   for `/unikit-gd-system`.
 
+## Close the document
+
+Asked for directly ("close it"), or reached from `mode-status.md`: write what the "close the
+document" row of the table in `mode-ingest.md` step 9 says — that table is the one place; it is
+not copied here. Closing is never refused; open questions are deferred with the owner `user`.
+
 ## Issue the next point, add a point, reopen
 
 For an open document with no current point, a `planned` row (or a new row, its id the next
 `BCH-<n>`, a used id never reused) becomes `current`; `## Current Balance Checkpoint` is
-rewritten by the ingest rules; the header's `Current` takes its id. For a closed document: the
+rewritten by **Compose the point** of `mode-ingest.md` step 9 — investigation when facts are
+needed, the interview for Q6–Q8, `Work` and `Until` filled in, every item graded for feasibility
+as in step 6 of `mode-open.md`; the header's `Current` takes its id. For a closed document: the
 same plus `Status: open` (the reopening rule is in `closure-set.md`). The result must fall into
 an allowed header combination (`template-checkpoints.md` → `Allowed header combinations`); the
 log gets an entry as for any roadmap change.

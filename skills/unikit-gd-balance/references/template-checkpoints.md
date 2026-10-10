@@ -47,3 +47,9 @@ The `status` of a roadmap row is one of `done | current | planned | dropped`.
 
 `closed` with a `current` row is not allowed. The truth about which point is current is the
 `current` row of the roadmap; `Current` of the header and `Point` of the block must equal it.
+
+**The block with `Current: none`.** When no row is `current`, `## Current Balance Checkpoint`
+keeps its heading and holds exactly two lines — `Point: none` and `Last point: see the
+## Balance Checkpoint Log`; the fields `Why` … `Design deltas` are removed. `Point: none` is then
+the value `Current` must equal. Ingest and revise write this form whenever they leave no row
+`current`, and write the full form again when a point is issued.
