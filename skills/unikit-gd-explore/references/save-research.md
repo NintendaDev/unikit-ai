@@ -31,7 +31,7 @@ Options:
 
 Then print `INFO [gd-research] <slug> exists — updating it` or `INFO [gd-research] saving as <new-slug>`.
 
-In an ultra research the question was already put at the first pin (`ultra-research.md` → `## Pinning`); the save does not repeat it. In an ultra research the slug is fixed at the first pin and named to the user then; the save writes under it, asks no slug question, and an automatic suffix stays forbidden.
+In an ultra research the question was already put at the first pin (`ultra-research.md` → `## Pinning`); the save does not repeat it. When this session made no pin (ultra named late), there was no earlier question, and the save asks it itself. In an ultra research the slug is fixed at the first pin and named to the user then; the save writes under it, asks no slug question, and an automatic suffix stays forbidden.
 
 **Appending an automatic suffix is forbidden.** The date used to separate two runs at one topic on its own; without it there is a single name, and a silently suffixed second folder splits one research into two that no reader knows to join.
 
@@ -77,7 +77,7 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    ### <YYYY-MM-DD HH:MM> — <session title>
    What changed: <what this save added or revised>
    Key notes: <what a later session must not rediscover>
-   Gate: passed (<N> passes) | stopped at budget: <k> unresolved — OQ-<n>, …
+   Gate: passed (<N> passes) | stopped at budget: <k> unresolved — OQ-<n>, … | not run — <reason>
    Links (paths): <files the session read or wrote>
    <!-- unikit:sessions:end -->
    ## References       — games, articles, URLs (note any web/Agent sources used)
@@ -211,7 +211,7 @@ Act on the report's `Next:` line and on nothing the report does not carry:
 - `hold` → do not confirm; tell the user which durable file could not be read.
 
 If `references/coherence-gate.md` does not exist, or the pass reports that it cannot read it, print one line
-`WARN [coherence] reference missing — saving without the coherence pass` and continue.
+`WARN [coherence] reference missing — saving without the coherence pass`, write `Gate: not run — reference missing` into this save's session entry, and continue. A `hold` leaves the entry's `Gate:` as `not run — a durable file could not be read` until the file is readable again.
 A report without a `Next:` line is treated as `hold`: say that the gate report is incomplete, do not confirm, and do not start another pass on your own.
 The save is confirmed to the user only after the gate has finished (passed, or stopped at its budget with the user's answer in hand). The gate verdict is printed above the Next Steps routing and the handoff tail, which stay the last blocks of the reply.
 

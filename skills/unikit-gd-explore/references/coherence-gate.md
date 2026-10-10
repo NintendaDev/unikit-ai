@@ -27,7 +27,11 @@ Re-read **only the durable scope, from disk**:
 
 - `RESEARCH_RESULT.md`, in full — the header, `## Active Summary`, `## Findings`,
   `## Conclusions`, `## Open Questions` and `## Sessions`;
-- `RESEARCH_BRIEF.md`; in ultra, additionally every file listed in `## Artifact Index`.
+- `RESEARCH_BRIEF.md`; in ultra, additionally every file listed in `## Artifact Index`. The brief
+  is a **derived hand-off** for `unikit-gd-system`, `unikit-gd-flow` and `unikit-gd-content`: it
+  restates findings on purpose, so criterion 5 reaches it only as a divergence from the record,
+  and a repair there corrects the brief toward the record — it never replaces its values with
+  ids.
 
 `SOURCE.md` is **not** in scope. It is a log of the conversation, not a derived
 representation of the research, and admitting it would hand the gate back the job it was
@@ -46,11 +50,15 @@ and from then on every criterion applies.
 ## The criteria
 
 1. `## Active Summary` is understandable without the conversation that produced it.
-2. **Forward resolvability.** Every ID cited in `## Active Summary` is defined below —
-   `F-<n>` in `## Findings`, `DEC-<n>` and `RISK-<n>` in `## Conclusions`, `OQ-<n>` in
-   `## Open Questions`, or in an artifact listed in `## Artifact Index`.
+2. **Forward resolvability.** Every ID of the record's own vocabulary (`F-`, `DEC-`, `RISK-`,
+   `OQ-`, and in ultra `ADR-`) cited in `## Active Summary` is defined below — `F-<n>` in
+   `## Findings`, `DEC-<n>` and `RISK-<n>` in `## Conclusions`, `OQ-<n>` in `## Open Questions`,
+   or in an artifact listed in `## Artifact Index`. An identifier of the design registry (`SYS-`,
+   `FLOW-`, `CT-`, `PIL-`, `RF-`, …) is defined in `GD-IDS.yaml`, not in the record, and is not
+   checked here.
 3. **Backward resolvability.** Every `DEC-`, `RISK-` and `OQ-` identifier defined in
-   `## Conclusions`, in `## Open Questions` or in an artifact is present in
+   `## Conclusions`, in `## Open Questions` or in an artifact (registry ids are out of scope, as
+   in criterion 2) is present in
    `## Active Summary` (findings `F-<n>` are evidence, not requirements, and the summary
    need not cite them). A superseded item is named superseded explicitly and keeps its own
    number.
@@ -206,9 +214,10 @@ So the report carries what that session needs for its next step, and nothing mor
 3. **The `OQ-<n>` entries to add** — each defined in `## Open Questions` and cited in the
    summary's `Open questions:` — for evidence that was insufficient to decide.
 4. **One `Next:` line**, with what it requires:
-   - `Next: pass` — zero blocking findings. It names the `Gate:` value for the session entry,
+   - `Next: pass` — zero blocking findings, and after pass 1 no material finding either. It names
+     the `Gate:` value for the session entry,
      `passed (N passes)`, and the material or cosmetic remainder to record there.
-   - `Next: repair` — blocking findings after pass 1. It lists the blocking and material
+   - `Next: repair` — blocking or material findings after pass 1. It lists the blocking and material
      findings to repair as one batch and quotes `### What a repair may do` whole, both lists, so
      the repair stays contractive in a session that never read it. The batch is followed by
      pass 2, dispatched with the findings adjudicated so far.
@@ -223,10 +232,10 @@ So the report carries what that session needs for its next step, and nothing mor
 ## When it fails
 
 - All five criteria met → continue, confirm the save.
-- **Zero blocking findings → the gate passes**, even with material or cosmetic findings left
-  over. Record them and continue: a research is not required to be free of every
+- **Zero blocking findings after pass 2 → the gate passes**, even with material or cosmetic
+  findings left over. Record them and continue: a research is not required to be free of every
   imperfection, it is required not to lie.
-- Blocking findings after pass 1 → repair the batch, run pass 2.
+- Blocking or material findings after pass 1 → repair the batch, run pass 2.
 - Blocking findings after pass 2 → stop, ask the user, record the remainder as above.
 - Evidence insufficient to decide → record it as an `OQ-<n>`: defined in
   `## Open Questions`, cited in the summary's `Open questions:`. This does not spend a pass.

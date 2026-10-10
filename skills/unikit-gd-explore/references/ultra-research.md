@@ -10,8 +10,9 @@ section a standard research would need does not belong here.
 
 Ultra research adds artifacts **inside** the existing research folder. It creates no new root
 and no second registry: the folder `.unikit/gamedesign/researches/<slug>/` is the same one a
-standard research uses, and `researches/INDEX.md` is regenerated from the folders by the same
-procedure, whatever the mode.
+standard research uses, and `researches/INDEX.md` is updated by the same procedure, whatever the
+mode: a save prepends or revises its own entry, and `init` rebuilds the file from the folders,
+keeping entries whose folder is still there.
 
 ## Mode marker
 
@@ -33,8 +34,13 @@ plan reaches a research through `researches/INDEX.md`, never through this marker
 declared here and nowhere else.
 
 The marker has a second consumer: `references/init-index.md` reads the first line of every
-record to fill the `**Mode**` field of its index entry, so the first line of
+record to fill the `**Mode**` field of the index entry it adds, so the first line of
 `RESEARCH_RESULT.md` is read on every rebuild, not only when ultra is requested.
+
+**Which saves write it.** A save made in an ultra session writes the marker and the `**Mode**`
+field — also when it updates a record that was standard (the record becomes ultra). A save made in
+a standard session of an ultra record leaves the marker and `**Mode**` as they are: a mode is never
+removed by a save.
 
 ## Pinning: the log is written as you talk
 
@@ -72,9 +78,10 @@ At the **first pin** the slug is fixed, and two things happen once:
 
 - the slug is named to the user in one line — a different name is named **before** the first
   pin, not at save time;
-- if `researches/<slug>/RESEARCH_RESULT.md` already exists, the collision question (`Update it` /
-  `Save under another name`, its text lives in `references/save-research.md`) is asked **now**,
-  and the save does not repeat it. An automatic suffix stays forbidden.
+- if `researches/<slug>/RESEARCH_RESULT.md` **or** `researches/<slug>/SOURCE.md` already exists
+  (an abandoned ultra log counts: it is never overwritten by a first write), the collision question
+  (`Update it` / `Save under another name`, its text lives in `references/save-research.md`) is
+  asked **now**, and the save does not repeat it. An automatic suffix stays forbidden.
 
 The slug is **not renamed at save time**: this skill cannot move a folder, so the save writes
 under the pinned slug and asks no slug question. A user who wants another name renames the
@@ -312,5 +319,7 @@ Applies to: ultra only
 - The format of an entry of `researches/INDEX.md` except the `**Mode**` field, and
   `RESEARCH_BRIEF.md` with its mode-aware blocks for `unikit-gd-system`, `unikit-gd-flow` and
   `unikit-gd-content`; the Next Steps routing is the same.
-- **What a downstream skill reads.** The record's `## Active Summary` is the input; adaptive
-  artifacts are optional reading "for the rationale", never a source of requirements.
+- **What a downstream skill reads.** The zones `unikit-gd-system`, `unikit-gd-flow` and
+  `unikit-gd-content` read `RESEARCH_BRIEF.md` and its mode-aware block; the `## Active Summary`
+  serves a reader who comes back after `/clear`, and adaptive artifacts are optional reading "for
+  the rationale", never a source of requirements.
