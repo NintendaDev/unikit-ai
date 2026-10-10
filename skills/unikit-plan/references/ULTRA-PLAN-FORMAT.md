@@ -153,7 +153,7 @@ Planned at: <short sha>
 ## MCP Findings
 ## Rule Candidates
 ## Test Runs
-## Measurements
+## Measurements   (only with a `Measure:` task)
 ## Dependency Graph
 ## Total Estimated Effort
 

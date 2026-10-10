@@ -7,6 +7,7 @@ This branch answers "may these data be returned?", not "is this balance good": t
 ## Step 1 — task status
 
 - A `Measure:` task is done **iff** `## Measurements` has a row with its `Item` and `valid = yes`, and `runs` is not less than the task's `runs:`.
+- A `Measure:` task the user chose to skip at a Step 3.3 blocker (it is listed under `## Not measured` of the report) is `⏭️ SKIPPED`: reported, never `verify-measure-<id>`, and it does not hold back the hand-back command.
 - `⏳ AWAITING RESULT` means **waiting**: a separate line of the report, not `⏸️ MANUAL`, and not a blocker in the normal mode (in the strict mode it is a failure).
 - A `Hand-back:` task is done **iff** the report file exists and holds the header and every name of its `report:` list (by the contract's `## Header` and `## Body`). Contract missing → `WARN [balance] hand-back contract missing — report checked for existence and header only; run unikit-ai update`.
 

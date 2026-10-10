@@ -25,6 +25,8 @@ Carrying out `Measure:` and `Hand-back:` tasks, the `⏳ AWAITING RESULT` label,
 
 A task with `⏳ AWAITING RESULT` is **pending**: not "out of scope", not implemented; "all tasks are completed" is false; dependent tasks and `Hand-back:` wait. A ticked `Measure:` task counts as any ordinary one.
 
+While any task of the scope is pending — a label, or an unticked `Hand-back:` — the run is not complete, and the Step 5 prompts say so by what they do not offer: **5.4** never offers to delete `.unikit/code/PLAN.md` (the label, the snapshot and `## Measurements` live only there), **5.6** does not describe the work as complete, and **5.8** prints no `/unikit-archive` line and no hand-back command; Step 4 names the waiting tasks instead.
+
 ## Resume (Step 0.3)
 
 After a `/clear` labelled tasks are picked up: once per run the user is offered to hand the result over (a paste or a path). Accepted → check the form (the `what`, `runs` and `result` fields), write the row (`from` is `task <N.M> via user`), tick, remove the label. No result → the task stays pending and goes into the Step 4 report.

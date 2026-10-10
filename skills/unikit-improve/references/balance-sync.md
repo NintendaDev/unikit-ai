@@ -18,7 +18,7 @@ Compare the tasks' `Item:` links with the snapshot's `Work` list and the live bl
 
 | Divergence | Proposal |
 |---|---|
-| a work item has no task | add a task above `Hand-back:` (and above the final `Test checkpoint: plan`) |
+| a work item has no task | add a task above `Hand-back:` (and above the final `Test checkpoint: plan`); inside a phase, above the `Measure:` tasks of its phase |
 | an item changed (kind, acceptance) | update the linked task's text and acceptance |
 | an item was removed from the point | propose removing the task if it is not executed; mark an executed one |
 | the live header's `Updated` differs from the snapshot's `Checkpoints updated`, items the same | update the snapshot only (`Checkpoints updated`) |

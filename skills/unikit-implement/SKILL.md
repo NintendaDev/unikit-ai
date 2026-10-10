@@ -623,6 +623,8 @@ The Implementation Summary (Step 4) carries one documentation line: `Documentati
 
 **5.4: Handle plan file after completion**
 
+While a task of a plan with `## Balance Context` is pending, offer no deletion here and no archive line at 5.8 — `references/balance-measure.md` → `## Counting (Step 2)`.
+
 **If using the flat `.unikit/code/PLAN.md`** (fast-mode plan):
 
 ```
