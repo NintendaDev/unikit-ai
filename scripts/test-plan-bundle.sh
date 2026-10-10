@@ -72,6 +72,10 @@ check "balance-handback-last: Hand-back last, the full run directly above it —
 expect_fail handback-without-context 11
 expect_fail balance-no-full-run-above 11
 expect_fail handback-why-mentions-run 11
+# the format names ONE form: Hand-back: last, the run directly above it. Hand-back: first with the
+# run last, and an ordinary task above Hand-back: that merely names the run in its WHY, both fail
+expect_fail balance-handback-first 11
+expect_fail balance-ordinary-why-mentions-run 11
 
 run check "$TMP_ROOT/does-not-exist"
 check "a missing folder is an I/O error, exit 1" '[[ $LAST_CODE -eq 1 ]] && grep -q "^ERROR " <<< "$LAST_OUT"' "$LAST_OUT"

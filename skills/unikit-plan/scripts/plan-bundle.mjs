@@ -148,7 +148,7 @@ function parseChecklist(lines) {
     t.detailsFile = details ? details[1] : null;
     t.anchor = details ? details[2] : null;
     t.isTestCheckpoint = text.includes(TEST_CHECKPOINT);
-    t.isFullRun = text.includes(TEST_CHECKPOINT_PLAN);
+    t.isFullRun = t.lines.some((l) => l.trim().startsWith(TEST_CHECKPOINT_PLAN));
     t.isPrCheckpoint = text.includes(PR_CHECKPOINT);
     t.isHandBack = t.lines.some((l) => l.trim().startsWith(HAND_BACK));
   }
@@ -322,11 +322,10 @@ function runChecks(dir) {
 
   // 11 — under Testing: yes the last task is the full run (balance plan: Hand-back: last, the full run directly above it)
   const tail = tasks[tasks.length - 1];
-  const beforeTail = tasks[tasks.length - 2];
-  const runTask = section(lines, H_BALANCE_CONTEXT) !== null && tail?.isHandBack ? beforeTail : tail;
-  if (setting(lines, SETTING_TESTING) === YES && !runTask?.isFullRun) {
-    fail(11, 'Testing: yes, but the last checklist task is not Test checkpoint: plan (balance plan: Hand-back: directly under it)');
-  }
+  const balance = section(lines, H_BALANCE_CONTEXT) !== null && tasks.some((t) => t.isHandBack);
+  const runTask = balance ? tasks[tasks.length - 2] : tail;
+  if (balance && !tail?.isHandBack) fail(11, 'balance plan: Hand-back: is not the last checklist task');
+  else if (setting(lines, SETTING_TESTING) === YES && !runTask?.isFullRun) fail(11, 'Testing: yes, but the last checklist task is not Test checkpoint: plan (balance plan: Hand-back: directly under it)');
 
   // 12-15 — modules
   const parsed = parseModules(lines);
