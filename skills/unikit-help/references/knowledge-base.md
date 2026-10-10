@@ -85,6 +85,9 @@ Relevant to the dev pipeline:
 - `plan-boundaries.md` — where a plan, a module and a push start and end (base branch, plan
   start, module boundary, push target), read by `/unikit-verify`, `/unikit-implement`,
   `/unikit-commit` and `/unikit-pr`.
+- `merge-analysis.md` — how to read a merge before it happens (the three commits, `git merge-tree`
+  prediction, a directive per conflicted file), read by `/unikit-explore` and `/unikit-plan` only
+  when asked to merge a named branch.
 
 ---
 

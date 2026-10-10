@@ -198,7 +198,7 @@ This is the record `/unikit-verify` checks instead of running tests itself: an a
 
 #### Test-checkpoint tasks — a run is a task, not a command
 
-A test run is its own checklist task carrying a `Test checkpoint:` line, and it is the one task form that carries **no `Files:`**: it leaves nothing behind — a temporary probe it creates and removes (a negative control) and a manual smoke are legitimate steps, and when the task is merged into a later point they are performed there. Under `Testing: yes` the plan's last task is always a full run. Where such tasks are placed comes from `testing.plan.checkpoints` (see [Configuration](configuration.md)), which the planner resolves once and records into `## Settings` — so changing the key later never reinterprets a plan already written. The grammar and the floor rule — a run is never narrower than its coverage — are canonical in the plan format reference; how much wider a run goes is the executor's `testing.run` setting (see [Configuration](configuration.md)). This page names them rather than repeating them.
+A test run is its own checklist task carrying a `Test checkpoint:` line, and it is the one task form that carries **no `Files:`**: it leaves nothing behind — a temporary probe it creates and removes (a negative control) and a manual smoke are legitimate steps, and when the task is merged into a later point they are performed there. Under `Testing: yes` the plan's last task is always a full run. Where such tasks are placed comes from `testing.plan.checkpoints` (see [Configuration](configuration.md)), which the planner resolves once and records into `## Settings` — so changing the key later never reinterprets a plan already written. The grammar and the floor rule — a run is never narrower than its coverage — are canonical in the plan format reference; how much wider a run goes is the executor's `testing.run` setting (see [Configuration](configuration.md)). A run's scope is closed before its first launch, and a repeat after a red result is one launch of the whole scope. This page names them rather than repeating them.
 
 **A plan written before this existed has no `Test checkpoints:` line under `Testing: yes`.** That is a legacy plan, and nothing breaks: the executor falls back to finding runs in the prose of the tasks, with lower confidence, and says so in its report. `/unikit-improve` will not add test-checkpoint tasks to such a plan — the placement was never declared, and guessing it while editing your plan is not its call. A plan with `Testing: no` omits the line by design and is not legacy.
 
@@ -249,7 +249,8 @@ symbols, ordered edits, interfaces, error handling, acceptance criteria, verific
 commands) is simply too long to live inside `## Checklist`.
 
 **Ultra is strictly opt-in — user-named, never model-inferred.** It is never offered in
-the interactive mode question and never chosen because a feature looks big. You do have to
+the interactive mode question (except in a merge plan, where the mode question offers it)
+and never chosen because a feature looks big. You do have to
 ask for it, but you can ask in your own words and in any language ("ultra plan",
 "ультраплан", "make an ultra plan for the inventory") — the request is recognised wherever
 it sits in the sentence. What is *not* a request is wording that only asks for care: "plan
@@ -549,6 +550,8 @@ save. Until the first save the index still carries pre-2.0.0 rows, which have no
 no Updated — excluded; run /unikit-explore to redraw the index`. Nothing is lost and nothing fails
 silently; one `/unikit-explore` save regenerates the index whole and the researches become visible to
 planning again.
+
+A merge exploration hands off the same way, with one difference: `/unikit-plan` reuses it only while the SHAs on its `Merge anchors:` line still match the branches, and otherwise runs the analysis itself. The resulting merge plan lives in `.unikit/code/PLAN.md` (`fast`) or `.unikit/code/plans/merge-<slug>/` (`full`, `ultra`).
 
 ### Why a plan folder has no date and a patch file does
 

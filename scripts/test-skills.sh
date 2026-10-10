@@ -9133,6 +9133,15 @@ else
     # (MA-7) "ultra is named by the user" has exactly one exception, said in each place that states it
     ma_has "MA-7:no-exception-in-skill"    'merge plan'                                         "$MA_PLAN"
     ma_has "MA-7:no-exception-in-mode-ultra" 'merge plan'                                       "$MA_PLAN_ULTRA"
+    # the help map and the documentation say it too — a file left out would still teach "never offered"
+    for ma_f in skills/unikit-help/references/pipelines.md skills/unikit-help/references/skill-map.md \
+                docs/plan-files.md docs/skills.md docs/workflow.md docs/skills/unikit-plan-rationale.md; do
+        if [[ -s "$ROOT_DIR/$ma_f" ]]; then
+            ma_has "MA-7:no-exception(${ma_f##*/})" 'merge plan' "$ROOT_DIR/$ma_f"
+        else
+            MA_WHY+=" MA-7:missing(${ma_f##*/})"
+        fi
+    done
     MA_EXC="$(grep -cF 'except in a merge plan, where the mode question offers it' "$MA_PLAN" || true)"
     MA_CHK=$((MA_CHK + 1))
     (( MA_EXC >= 3 )) || MA_WHY+=" MA-7:exception-in-skill-x${MA_EXC}-of-3"

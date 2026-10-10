@@ -183,7 +183,7 @@ Where **test runs** are placed in a plan (`plan`), and how wide a run goes when 
 
 **The placement key is recorded, not re-read.** `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written.
 
-**A run is never narrower than its coverage.** Where a checkpoint sits sets the minimum a run must cover — a task its own fixtures, a phase the modules it touched, the end of a plan everything. `testing.run` decides only how much wider than that minimum a run goes, so no setting can make a checkpoint cover less than its position promises. By default a phase checkpoint runs every test: several narrow launches in a row cost more than one full run, because every launch pays the test runner's fixed cost again. With narrowing on, the suites it finds still go out in one launch, and a run that finds zero tests is never counted as passed.
+**A run is never narrower than its coverage.** Where a checkpoint sits sets the minimum a run must cover — a task its own fixtures, a phase the modules it touched, the end of a plan everything. `testing.run` decides only how much wider than that minimum a run goes, so no setting can make a checkpoint cover less than its position promises. By default a phase checkpoint runs every test: several narrow launches in a row cost more than one full run, because every launch pays the test runner's fixed cost again. The scope is closed before the first launch, and a repeat after a red result is one launch of the whole scope — never a narrow check of the fixed test first. With narrowing on, the suites it finds still go out in one launch, and a run that finds zero tests is never counted as passed.
 
 **The run keys are re-read, not recorded.** Unlike `plan.checkpoints`, `testing.run` is read each time a run happens and never written into a plan: a wider run is always compatible with what the plan declared, so changing the key never makes a plan already written wrong.
 
@@ -695,6 +695,7 @@ your-unity-project/
 │   │   ├── ultra-plan-read.md     # Reader contract for an ultra plan bundle
 │   │   ├── research-link.md       # The `## Based on` contract - entry, hashing, drift ladder
 │   │   ├── plan-boundaries.md     # Where a plan, a module and a push start and end - read by verify, implement, commit, pr
+│   │   ├── merge-analysis.md      # How to read a merge before it happens - read by explore and plan when asked to merge a branch
 │   │   ├── gamedesign/            # Game-design system assets
 │   │   │   ├── gd-principles.md    # The design working contract - slim core
 │   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it

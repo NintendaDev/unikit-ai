@@ -189,7 +189,7 @@ While the plan has PR checkpoints a run never pushes: the branch reaches the rem
 | `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` - the dialogue log is written verbatim when you agree to save (in ultra, as you talk); saving the research is the part that needs your agreement (optional - output can be used directly in the current session for fast planning) |
 | `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
 | `/unikit-plan full` | Full features, stories, epics | Optional | `.unikit/code/plans/<name>/` |
-| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Optional | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
+| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred (a merge plan offers it in its mode question) | Optional | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
 | `/unikit-implement` | Execute plan tasks one by one | No | Updates the plan manifest status |
@@ -286,6 +286,8 @@ Re-running `/unikit-explore` on an existing slug **continues** that research rat
 
 When a linked `gamedesign` workspace exists, it also grounds first-class on the design registry - systems, `flows:`, and `content_types:` in `GD-IDS.yaml` - resolving whichever axis the request actually names, so research stays consistent with the GDD (read-only; never edits it).
 
+**Merge mode.** Ask `/unikit-explore` to merge a named branch into the current one and it reads that merge before it happens. It follows the shared protocol in `.unikit/system/merge-analysis.md` — the three commits pinned, `git merge-tree` predicting the result without touching your working tree, a directive for every conflicted file — and saves a research whose anchors (the three SHAs and the predicted conflicts) a later plan checks against. The agent resolves every conflict afterwards; you resolve none. `git fetch` of the named branch asks your permission, and `merge`, `checkout`, `reset`, `stash` and `worktree` are never run.
+
 ### `/unikit-plan [fast|full|ultra|add|--list] <description>` - plan the work
 
 ```
@@ -301,12 +303,14 @@ Four planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - optional branch creation (`<git.branch_prefix><name>`, skipped when `git.create_branches` is off), asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/<name>/` with a single `PLAN.md` manifest. The folder name equals the branch name without its prefix; the date lives in the manifest's `Created:` / `Updated:` fields ([why](plan-files.md#why-a-plan-folder-has-no-date-and-a-patch-file-does))
-- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: ask for it, or you get Full. Ultra is **user-named, never model-inferred** — it is recognised wherever the request sits in the sentence and in any language ("ultra plan", "ultraplan", "ультраплан", "make an ultra plan for the inventory"), but it must be an actual request. Size is not a request, and wording that only asks for care — "a deep plan", "plan this thoroughly" — is deliberately *not* ultra: the skill falls through and asks instead, because an unwanted bundle leaves you a folder of phase files you never asked for while a missed one costs you one word. The **shape of what you get** is held separately, by the redirect in `TASK-FORMAT.md` and the `ULTRA-PLAN-FORMAT.md` specification; without that second mechanism, asking for ultra still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
+- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: ask for it, or you get Full. Ultra is **user-named, never model-inferred** — it is recognised wherever the request sits in the sentence and in any language ("ultra plan", "ultraplan", "ультраплан", "make an ultra plan for the inventory"), but it must be an actual request (in a merge plan the mode question lists ultra as its third option, and choosing it there is the request). Size is not a request, and wording that only asks for care — "a deep plan", "plan this thoroughly" — is deliberately *not* ultra: the skill falls through and asks instead, because an unwanted bundle leaves you a folder of phase files you never asked for while a missed one costs you one word. The **shape of what you get** is held separately, by the redirect in `TASK-FORMAT.md` and the `ULTRA-PLAN-FORMAT.md` specification; without that second mechanism, asking for ultra still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
 - **Add** - extends an existing plan with new tasks; explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that)
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
 
 When a linked `gamedesign` workspace exists, the plan also pulls a `## Design` brief from `GD-IDS.yaml` (citing the relevant system's acceptance criteria and version), plus optional `## Flow Context` (the `GOAL`-steps and wiring mode) and `## Content Context` (the `CT.fields` schema, `scale`, `belongs_to`) briefs when the feature touches those axes. The pull is read-only - the plan never edits the GDD.
+
+**Merge plan.** Ask `/unikit-plan` to merge a named branch into the current one and it does the analysis itself, by the same protocol (or reuses a fresh merge exploration whose SHAs still match), then asks `fast`, `full` or `ultra` — `ultra` last and never recommended — and writes a plan whose first phase merges, resolves and commits. It never creates or switches a branch: `fast` writes `.unikit/code/PLAN.md`, the others `.unikit/code/plans/merge-<slug>/`. The merge commit is made by the last task of the merge phase with `git commit --no-edit`, not by `/unikit-commit`.
 
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
@@ -349,7 +353,7 @@ After phase completion:
 
 - Runs compilation check (through the engine MCP server)
 - Writes tests for the logic if `Testing: yes` — inside the tasks that introduce them, and before the phase's test checkpoint, so its run covers them. What gets a test, and what never does, is described under [Tests follow acceptance](#tests-follow-acceptance) below
-- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run; a phase checkpoint runs every test unless `testing.run.use_affected_modules` narrows it, and the final run is closed by reuse when the code has not changed since the last run of every test
+- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run; a phase checkpoint runs every test unless `testing.run.use_affected_modules` narrows it, and the final run is closed by reuse when the code has not changed since the last run of every test. A run's scope is closed before its first launch, and a repeat after red is one launch of the whole scope
 - Creates commit checkpoint
 
 Post-completion, in order:
@@ -376,7 +380,7 @@ Timing follows the same idea. Once `/unikit-implement` hands a result over, you 
 
 Two modes - choose when you invoke:
 
-- **Fix now** - investigates codebase with 2-3 Explore agents, applies the fix inline after Bootstrap (rules + engine principles loaded in Step 0.2), verifies (compilation, tests, .meta, asmdef)
+- **Fix now** - investigates codebase with 2-3 Explore agents, applies the fix inline after Bootstrap (rules + engine principles loaded in Step 0.2), verifies (compilation, tests, .meta, asmdef) - the test run is one launch over the scope of all the changed files, and so is its repeat after a red result
 - **Plan first** - creates `.unikit/code/FIX_PLAN.md` with root cause analysis, fix steps, affected files, risks, and test coverage suggestions, then stops for review. When a plan exists, run without arguments to execute it
 
 Recommended to always fix bugs through this skill - every fix creates a **self-improvement patch** in `.unikit/code/patches/` (mandatory), enabling the system to learn from mistakes via `/unikit-evolve`. Can be used during `/unikit-implement` while working through plan phases, or independently when a bug is found in existing functionality - no prior planning stages required. Outside a review loop it suggests a regression test when the defect is in logic or a system value (never for authored content or tunable data); inside a review loop the test waits for acceptance.
@@ -465,6 +469,8 @@ Creates conventional commits with engine-aware safety checks. Analyzes staged ch
 - Engine-ignored directories, read from the project's own `.gitignore` (on Unity: `Library`, `Temp`, `Logs`)
 
 Runs read-only context gates against ARCHITECTURE.md and RULES.md. Writes the message for the team rather than as a report of the session: the subject names what changed for the game, a body appears only when the subject cannot carry the point, and at most three lines of technical detail follow it. The plan is linked by a `Plan: <folder>` trailer instead of phase and task numbers. Suggests commit splitting for unrelated staged changes and never lets unstaged edits into a split commit. Offers to push after commit. Conventional prefix is always in English; subject and body use `language.artifacts`.
+
+While a merge is in progress it never splits the commit — not even a split the caller passes — because the reset a split begins with would drop the merge and leave the merge commit with one parent.
 
 ### `/unikit-archive [list | --all | <plan-folder>]` - archive finished plans
 
