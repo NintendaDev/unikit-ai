@@ -55,7 +55,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
-                          "unikit-explore", "unikit-implement", "unikit-memory",
+                          "unikit-explore", "unikit-implement", "unikit-improve", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
                           "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
@@ -305,6 +305,16 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-resear
 # Same for the planner: merge-plan.md is read only on a merge request.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/merge-plan.md" \
   "unikit-plan merge-plan.md reference installed"
+# The branch files of the balance checkpoint plans are read only on their branch; a content test
+# cannot see a missing delivery, so the files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/balance-plan.md" \
+  "unikit-plan balance-plan.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-implement/references/balance-measure.md" \
+  "unikit-implement balance-measure.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-verify/references/balance-checks.md" \
+  "unikit-verify balance-checks.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-improve/references/balance-sync.md" \
+  "unikit-improve balance-sync.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-brownfield: the two new brownfield/export skills (unikit-gd-recon,

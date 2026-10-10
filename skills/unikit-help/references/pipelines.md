@@ -220,6 +220,12 @@ one-way boundary, delta discipline, and the "diagnose, don't prescribe" stance a
 - **The one exception:** when every cited AC is met, `/unikit-verify` stamps `implemented_version`
   into the GDD's `GD-IDS.yaml` (a single surface; GAME.md's `## System Map [gen]` renders the
   `implemented` state read-only). That is the only write from code back into design.
+- **Balance loop (code side).** `/unikit-plan` given a Balance Checkpoints file plans only up to the
+  current point (`## Balance Context` snapshot, `Measure:` tasks, a final `Hand-back:`);
+  `/unikit-implement` writes the `## Measurements` rows and the report and prints the return command
+  last; `/unikit-verify` checks the data and the report, not the balance; `/unikit-improve`
+  synchronises by `Item:` and never goes past the horizon. The report goes back to
+  `/unikit-gd-balance` as a document — design never reads the code workspace on its own.
 
 So a "GDD-first" project flows: design track → `GAME.md`/systems → `/unikit-plan` (pulls the AC) →
 `/unikit-implement` → `/unikit-verify` (confirms AC, stamps implemented).

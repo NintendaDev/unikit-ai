@@ -74,6 +74,8 @@ On Kimi Code the dispatch right comes from the agent file instead: only an agent
 
 If a coordinator detects that it is running as an ordinary subagent, it must stop immediately - that is how `unikit-plan-coordinator` and `unikit-implement-coordinator` are written.
 
+`unikit-implement-coordinator` never hands a `Measure:` or a `Hand-back:` task of a balance plan to `unikit-implement-worker`: it carries them out itself in its own session after the worker has returned the phase's other tasks, and the worker returns such a task unexecuted if one reaches it.
+
 Everything else (`unikit-implement-worker`, `unikit-plan-polisher`, sidecars, delegation aliases) is spawned automatically from the coordinator or a workflow skill. Users normally never launch those by hand.
 
 ## Coordinators

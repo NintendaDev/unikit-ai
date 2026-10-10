@@ -321,6 +321,52 @@ The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra mode at 
 `/unikit-review` is not a consumer either: it is diff/PR-scoped and reads no plan, so a
 broken bundle passes review in silence, while `/unikit-implement`, `/unikit-verify` and `/unikit-improve` block on it (`/unikit-commit` only warns).
 
+## Balance checkpoint plans
+
+A plan built from a Balance Checkpoints file (`/unikit-plan full <path to CHECKPOINTS.md>`, printed by `/unikit-gd-balance`) carries the extra vocabulary below. `unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar` is the only owner of the forms; this page describes them and copies them from there.
+
+### `## Balance Context` — the snapshot
+
+A snapshot of one point, placed directly before `## Settings`; the plan works from it, never from the live file:
+
+```markdown
+## Balance Context
+Source: .unikit/gamedesign/balance/<slug>/CHECKPOINTS.md
+Point: BCH-2
+Checkpoints updated: 2026-10-10 18:30
+Work:
+- BCH-2.W1 · tool · — · the sampler reproduces a known answer
+- BCH-2.W2 · measure · sim · metric inside the band
+Report: BCH-2.W2, build-notes
+```
+
+The key is `Checkpoints updated:`, not `Updated:` — `Updated:` is the header field of the plan manifest itself and the "latest plan" resolvers read it.
+
+### Task lines
+
+```markdown
+- [ ] Task 2.1 — Measure the metric
+  WHY: the next decision depends on this number
+  Item: BCH-2.W2
+  Measure: [sim] <stand> → <metric> : <acceptance> · runs: <N>
+```
+
+`Item:` links a task to a `Work` item (synchronisation and verification key on it). A `Measure:` task and the final `Hand-back:` task carry no `Files:`: they leave nothing in the project but a table row and a report. `Measure:` writes a capability class (`sim`, `play`, `probe`), never a tool; the executor picks the route by principle A9 and the degradation ladder D3 of `dev-principles.md`.
+
+### `## Measurements`
+
+Emitted empty by the planner when the plan has at least one `Measure:` task; rows are only appended by `/unikit-implement` (and the implement coordinator, in the main session): `id | what | stand | runs | build | result | accept | valid | band | from`. It stands directly after `## Test Runs` (after `## Rule Candidates` under `Testing: no`), above `## Technical Context`.
+
+### `⏳ AWAITING RESULT`
+
+A label on the checkbox line of a measuring task whose result cannot be obtained now; the checkbox stays `- [ ]`. It is **pending** — dependent tasks and `Hand-back:` wait — unlike `⏸️ MANUAL`, which is ticked and counted as out of scope.
+
+### Order and the horizon
+
+Inside a phase: ordinary tasks → the phase's `Test checkpoint:` → `Measure:` tasks → `PR checkpoint:` or `Hand-back:`. The last task is `Hand-back:`; under `Testing: yes` the final `Test checkpoint: plan` stands directly above it. Nothing follows `Hand-back:`, and nothing from the roadmap's later points is in the plan: the returned data may change the decision, and that decision is `/unikit-gd-balance`'s. The plan folder is `.unikit/code/plans/balance-<slug>-bch-<n>/`; the planner creates and switches no branch for such a plan. The executor writes the report to `handback-<point id>.md` in the plan folder (format: `.unikit/system/balance-handback.md`) and prints the return command last.
+
+---
+
 ## Editor tasks
 
 Most tasks change source files. Some change the **serialized state of the engine editor** — a scene, a prefab, a UI document, a material, an animation clip, a project setting. Those cannot be expressed as a file edit, so they get an `Editor:` line in addition to (or instead of) `Files:`:

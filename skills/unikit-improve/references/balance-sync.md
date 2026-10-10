@@ -43,4 +43,4 @@ As 3.3a-3.3c: `Hand-back:` is the last and the only one; a game-session or probe
 
 ## Never
 
-The balance document is never edited here: it belongs to `/unikit-gd-balance`. The live file is read, never written. If it is not readable: `WARN [balance] checkpoints file not readable — plan not synchronised`.
+The balance document is never edited here. It belongs to `/unikit-gd-balance`; the live file is read, never written. If it is not readable: `WARN [balance] checkpoints file not readable — plan not synchronised`.

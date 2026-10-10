@@ -105,6 +105,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   compaction and resumes with `/unikit-plan ultra <name>`; a standard plan over 12 phases is
   offered the switch.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
+- **Balance plan.** Given a Balance Checkpoints file (`/unikit-gd-balance` prints the command) it finds the current point itself and builds a plan only up to it, ending in a `Hand-back:` task.
 
 ### unikit-improve
 - **Purpose:** Refine an existing plan — find missing tasks, wrong dependencies, made-up APIs,
@@ -115,6 +116,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   unknown is proposed for a re-link in the report; approving it records the hash that clears
   the `drift unknown` warning.
 - **Optional but strongly recommended.** Before: `/unikit-plan`. After: `/unikit-implement`.
+- **Balance plan.** Synchronises the plan with the current point by `Item:`, stays inside the horizon.
 
 ### unikit-implement
 - **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks)
@@ -132,6 +134,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   PR. While the plan has PR checkpoints it never pushes.
 - **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
   `/unikit-verify` / `/unikit-commit`.
+- **Balance plan.** `Measure:` tasks write `## Measurements` rows, an unobtainable result waits as `⏳ AWAITING RESULT`, `Hand-back:` writes the report and prints the return command last.
 
 ### unikit-review
 - **Purpose:** Qualitative code review against the project's rules — bugs, security, performance,
@@ -154,6 +157,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   stamps `implemented_version` into the GDD's `GD-IDS.yaml` (a single surface; GAME.md's
   `## System Map [gen]` renders the `implemented` state read-only).
 - **Optional (pre-merge gate).** Before: `/unikit-implement`. After: `/unikit-fix`, `/unikit-commit`.
+- **Balance plan.** Checks the data's validity and the report, not the balance; warns on drift from the header of the checkpoints file.
 
 ### unikit-fix
 - **Purpose:** Fix a specific bug — find the root cause, fix it, run the tests (every test by
