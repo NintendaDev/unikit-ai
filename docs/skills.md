@@ -380,16 +380,19 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - Delegates market validation to `/unikit-gd-explore` at Phase 3.5 (a brief returns into the session - no `researches/` file, avoids anchoring on market data too early)
 - Writes a descriptive, CLI-free `genre:` hint into the concept card - see **Genre profiles** in [Game-Design Module](gamedesign.md)
 
-### `/unikit-gd-explore [init | topic | reference | market question | reviews/*.md | RECON.md | "<system> in the code"]` - design research partner
+### `/unikit-gd-explore [init | ultra <topic> | topic | reference | market question | reviews/*.md | RECON.md | "<system> in the code"]` - design research partner
 
 ```
 /unikit-gd-explore how do roguelike deckbuilders handle run-modifiers
 /unikit-gd-explore improve the crafting system                    # internal-design lens
-/unikit-gd-explore how is the inventory system actually built in the code   # code-grounded lens
+/unikit-gd-explore how is the inventory system actually built in the code   # code-grounded lens (no GDD needed)
+/unikit-gd-explore ultra the progression of our economy           # pinned log + artifacts + coherence gate
 /unikit-gd-explore init                                           # rebuild researches index
 ```
 - Read-only research partner - studies references, market fit, or the existing GDD/code; **never authors** the design itself
-- Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
+- Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice with or without a GDD, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
+- Every saved research has an `## Active Summary` (ids cited, values never repeated) and an append-only `## Sessions` log, and ends with a fresh-context coherence gate (`check-agent`, at most two passes, verdict in `Gate:`)
+- `ultra` (named by the user, never inferred) also pins the dialogue log to `SOURCE.md` as you talk and saves adaptive artifacts with an `## Artifact Index` and integrity checks
 - Saves to `.unikit/gamedesign/researches/<slug>/`; a review file is mutated in place instead of getting a new folder
 - Routes onward without asking based on the target's `doc_status` (no doc → spec add-system; `skeleton` → system; `detailed` → system as a delta); flow targets always go to `/unikit-gd-flow` and content types to `/unikit-gd-content`, in any state
 

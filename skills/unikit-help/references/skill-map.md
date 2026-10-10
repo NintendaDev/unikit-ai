@@ -260,12 +260,14 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   Never authors the GDD; it researches, then routes you onward.
 - **When:** "is there a market for X", "break down the combat of <game>", "find a new mechanic",
   "how could we improve our economy".
-- **In:** a topic / game reference / URL / design question; a `reviews/*_review-*.md` report
+- **In:** a topic / game reference / URL / design question; `ultra <topic>` (pinned dialogue
+  log + adaptive artifacts; named by the user, never inferred); a `reviews/*_review-*.md` report
   (develop its research bucket); or a `RECON.md` (work a pre-GDD reconstruction). `init`
   rebuilds the researches index — the game-design side keeps `init` until its own manifest
   port, which is why the code-side `/unikit-explore` no longer has one.
-- **Out:** a research + brief in `.unikit/gamedesign/researches/<slug>/`, then a routed
-  next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
+- **Out:** a research + brief in `.unikit/gamedesign/researches/<slug>/` — the record carries an
+  `## Active Summary` (cited ids) and a `## Sessions` log, and each save ends with a coherence
+  gate — then a routed next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
   skeleton/detailed → `/unikit-gd-system`. **Two file modes differ:** a review
   file is mutated **in place** (research → apply-ready) → one `/unikit-gd-apply reviews/X.md`
   (no `researches/`); a `RECON.md` keeps the research + gets a `## Explorations` backlink →

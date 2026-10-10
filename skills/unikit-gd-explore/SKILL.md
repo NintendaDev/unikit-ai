@@ -5,14 +5,14 @@ description: >-
   them into the GDD; produces a brief, never edits the GDD itself. Use to assess a genre or
   market for viability, dissect a reference game (mechanics → dynamics → aesthetics), explore
   how to improve or extend an existing system, flow, or content type, research new mechanics
-  the design lacks, investigate a part of the GDD in code, or develop the research bucket of
-  a /unikit-gd-review report into decided edits. Trigger on "explore how to improve the
-  flow", "ways to improve the combat system", "is this genre saturated", "break down the
-  combat of Hades", "work out the review's open questions". GAME-DESIGN research only — for
+  the design lacks, investigate how a slice is built in code, or develop the research bucket of
+  a /unikit-gd-review report into decided edits. "ultra" pins the dialogue log and saves
+  artifacts. Trigger on "explore how to improve the flow", "ways to improve the combat system",
+  "is this genre saturated", "break down the combat of Hades". GAME-DESIGN research only — for
   CODE or technical research use /unikit-explore; to reconstruct a design from code use
   /unikit-gd-recon; to write a change into the GDD use /unikit-gd-system or /unikit-gd-spec;
   to apply edits you know use /unikit-gd-apply; to invent a new game use /unikit-gd-brainstorm.
-argument-hint: "init | <reviews/*_review-*.md> | <RECON.md> | <topic | game reference | URL | design or market question>"
+argument-hint: "init | ultra <topic> | <reviews/*_review-*.md> | <RECON.md> | <topic | game reference | URL | design or market question>"
 allowed-tools:
   - Read
   - Glob
@@ -430,6 +430,28 @@ evidence), and **return the brief into the session as text — save no file** (s
 save step; the calling session owns persistence). Prefer direct `WebSearch` /
 `WebFetch` over a nested `recon-agent` (see "Parallel investigation").
 
+## Ultra research (user-named)
+
+An **ultra request** — the leading `ultra` token, or the same request in the user's own
+words ("ultra research", "ultraresearch", "ultra explore", "ультраисследование") — switches
+on a pinned dialogue log and adaptive artifacts. Ultra is **user-named, never model-inferred**:
+it is never chosen because the topic is large or difficult, and wording that only asks for care
+("look deeper", "be thorough") is not an ultra request — explore normally.
+
+On an ultra request strip the ultra wording and the verb that carried it, treat the rest as the
+topic, load `{{skills_dir}}/{{self_name}}/references/ultra-research.md` now and follow it: it
+owns the pinning of the log while the conversation goes on, and the artifacts at save time. The
+stance and the exploration itself are unchanged. Ultra applies to prompt-based requests and to
+the RECON-input mode; it does not apply to the review-file mode (nothing to save into
+`researches/`), to the subagent mode of an `unikit-gd-brainstorm` request, or to `init`. Ultra
+is recognised when the request is made: naming it later starts no pinning.
+
+If that reference cannot be read, degrade to a standard research and print one line
+`WARN [ultra] reference missing — saving a standard research`: losing the research over a
+missing reference file is not an acceptable trade.
+
+A standard research does not read that file.
+
 ## Saving Research Results
 
 When the conversation crystallizes, **offer** to save (never auto-save) — then **load
@@ -460,7 +482,8 @@ crystallize, you might summarize the findings — but the thinking is often the 
 ## Ownership Boundaries
 
 - **Owns:** `.unikit/gamedesign/researches/` — `RESEARCH_RESULT.md`,
-  `RESEARCH_BRIEF.md`, and the researches `INDEX.md`.
+  `RESEARCH_BRIEF.md`, the researches `INDEX.md`, and — in an ultra research — `SOURCE.md`
+  and the adaptive artifacts inside a research folder.
 - **Owns (spec):** `references/delegation-contract.md` — the brainstorm→explore
   contract. This skill is its provider; brainstorm reads it as the interface. Keep its
   canonical marker and brief field-list in sync with `references/market-scan.md`.
@@ -501,7 +524,8 @@ crystallize, you might summarize the findings — but the thinking is often the 
   the spec/systems/flows/content → `unikit-gd-spec` / `unikit-gd-system` /
   `unikit-gd-flow` / `unikit-gd-content`; cold-start code reconstruction →
   `unikit-gd-recon`.
-- **Never:** author or edit a design document; auto-save a research; read the code
+- **Never:** author or edit a design document; auto-save a research (appending a turn to
+  `SOURCE.md` in ultra is pinning, not saving); read the code
   workspace or project source **outside the code-grounded lens** (that lens is the one
   sanctioned read — `gd-principles` third exception).
 
@@ -517,5 +541,6 @@ crystallize, you might summarize the findings — but the thinking is often the 
 /unikit-gd-explore reviews/2026-06-25_review-SYS-combat.md → promote ## Research into ## Apply-ready in place → /unikit-gd-apply reviews/X.md
 /unikit-gd-explore .unikit/gamedesign/RECON.md      → develop the cold-start reconstruction (pre-GDD) → save research + ## Explorations backlink → /unikit-gd-spec import
 /unikit-gd-explore https://…                         → dissect a linked design source
+/unikit-gd-explore ultra the progression of our economy → ultra research: pinned log + artifacts + coherence gate
 /unikit-gd-explore init                              → rebuild researches/INDEX.md
 ```

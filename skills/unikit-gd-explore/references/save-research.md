@@ -31,6 +31,8 @@ Options:
 
 Then print `INFO [gd-research] <slug> exists — updating it` or `INFO [gd-research] saving as <new-slug>`.
 
+In an ultra research the question was already put at the first pin (`ultra-research.md` → `## Pinning`); the save does not repeat it. In an ultra research the slug is fixed at the first pin and named to the user then; the save writes under it, asks no slug question, and an automatic suffix stays forbidden.
+
 **Appending an automatic suffix is forbidden.** The date used to separate two runs at one topic on its own; without it there is a single name, and a silently suffixed second folder splits one research into two that no reader knows to join.
 
 Then create the folder (a no-op when option 1 resolved to an existing one):
@@ -52,6 +54,7 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    Kind: feature | improvement   # internal-design lens only — feature = new system/flow/content type, improvement = existing one
 
    ## Table of Contents
+   ## Artifact Index   — ultra only, immediately after the Table of Contents (see ultra-research.md); the first line of an ultra record is the mode marker defined there
    ## Active Summary   — the region between the two markers below; what a reader needs without the chat
    <!-- unikit:active-summary:start -->
    Goal: <what this research is for>
@@ -187,12 +190,15 @@ mkdir -p .unikit/gamedesign/researches/<slug>
 
 ## Write order
 
-The base order of writing a standard research:
+The order of writing a research. Items marked `[ultra]` are skipped by a standard research:
 
-1. `RESEARCH_RESULT.md`
-2. `RESEARCH_BRIEF.md`
-3. Update researches/INDEX.md
-4. Research coherence gate
+1. `[ultra]` append to `SOURCE.md` whatever the log does not hold yet (it was pinned while the conversation went on; here only what is still missing is appended)
+2. `[ultra]` write the adaptive artifacts — only those `ultra-research.md` → `## Adaptive artifacts` lists and the subject needs
+3. `RESEARCH_RESULT.md` — its `## Artifact Index` points at files that already exist
+4. `RESEARCH_BRIEF.md`
+5. Update researches/INDEX.md
+6. `[ultra]` the integrity checks (`ultra-research.md` → `## Integrity`); each is blocking, and the save stands still until it passes
+7. Research coherence gate
 
 After `researches/INDEX.md` is re-rendered (and, in ultra, after the integrity checks of `ultra-research.md`) hand the path
 `{{skills_dir}}/{{self_name}}/references/coherence-gate.md` to a `check-agent` dispatch, and

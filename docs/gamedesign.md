@@ -610,6 +610,18 @@ folds the findings into a research brief, tagged the same `provenance: extracted
 Recon and this lens share one extraction engine (`unikit-gd-recon/references/code-recon.md`)
 so the heuristics never diverge.
 
+Every saved research carries an `## Active Summary` (goal, scope, the decisions, risks and
+open questions it cites by id — `F-<n>`, `DEC-<n>`, `RISK-<n>`, `OQ-<n>` — never their values)
+and an append-only `## Sessions` log, and **every save ends with a coherence gate**: a
+fresh-context `check-agent` pass re-reads the record and the brief from disk, checks five
+criteria (the summary stands alone, ids resolve both ways, claims are tagged by evidence, one
+value lives in one place) in at most two passes, and writes its verdict into the session's
+`Gate:` field. Naming `ultra` in the request (`/unikit-gd-explore ultra <topic>`) additionally
+pins the dialogue log (`SOURCE.md`) while the conversation goes on and saves adaptive artifacts
+(decision records, a model, a measurement protocol, phases, a dependency graph) with an
+`## Artifact Index` and nine integrity checks before the gate. Ultra is never inferred from the
+size of a topic.
+
 ### Provenance — code-sourced is *suspect*, not trusted
 
 `extracted from code` is held by the `unikit-gd-review` provenance lens at **≥ Major** — the

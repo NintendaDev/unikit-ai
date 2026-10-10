@@ -2150,6 +2150,54 @@ else
     fi
 fi
 
+# (GXU-1…GXU-5) unikit-gd-explore ultra research: an opt-in, user-named mode that pins the
+# dialogue log while the conversation goes on and writes adaptive artifacts at save time. A
+# standard research never reads the reference; the reference is loaded from exactly one
+# section of the skill. GD_COHERENCE is declared by the GXG block above.
+GD_ULTRA="$ROOT_DIR/skills/unikit-gd-explore/references/ultra-research.md"
+GXU_WHY=""
+if [[ ! -s "$GD_ULTRA" ]]; then
+    fail "GXU-1 unikit-gd-explore/references/ultra-research.md missing or empty"
+else
+    # (GXU-1) a reference body without frontmatter, every section marked ultra-only
+    [[ "$(head -1 "$GD_ULTRA")" != "---" ]] || GXU_WHY+=" GXU-1:has-frontmatter"
+    GXU_APPLIES="$({ grep -c '^Applies to: ultra only$' "$GD_ULTRA" || true; })"
+    (( GXU_APPLIES >= 6 )) || GXU_WHY+=" GXU-1:applies-to-markers=$GXU_APPLIES"
+    # (GXU-2) literals, exactly nine integrity checks, redirected source addresses stay gone
+    for gxu_l in '<!-- unikit:research-mode:ultra -->' '## Mode marker' '## Pinning' '## Artifact Index' \
+                 '## Integrity' 'WARN [pin]' 'Considered and **not** created' 'unikit:not-verbatim'; do
+        grep -qF -- "$gxu_l" "$GD_ULTRA" || GXU_WHY+=" GXU-2:no-literal:${gxu_l}"
+    done
+    GXU_CHECKS="$({ awk '/^## Integrity/{f=1;next} /^## /{f=0} f && /^[0-9]+[.] /{n++} END{print n+0}' "$GD_ULTRA" || true; })"
+    [[ "$GXU_CHECKS" == "9" ]] || GXU_WHY+=" GXU-2:integrity-checks=$GXU_CHECKS"
+    for gxu_n in 'continuing.md' 'How to save' 'Naming convention' 'rules for the log in' 'unikit:plan-mode:ultra'; do
+        grep -qF -- "$gxu_n" "$GD_ULTRA" && GXU_WHY+=" GXU-2:foreign-address-returned:${gxu_n}"
+    done
+    # (GXU-3) the user-named rule, the degradation line, the argument hint; no file name in description
+    for gxu_l in 'user-named, never model-inferred' 'WARN [ultra] reference missing' \
+                 'A standard research does not read that file.'; do
+        grep -qF -- "$gxu_l" "$GD_EXPLORE_SKILL" || GXU_WHY+=" GXU-3:no-literal:${gxu_l}"
+    done
+    GXU_FM="$({ awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$GD_EXPLORE_SKILL" || true; })"
+    printf '%s\n' "$GXU_FM" | grep -E '^argument-hint:' | grep -qF 'ultra' || GXU_WHY+=" GXU-3:no-ultra-in-argument-hint"
+    GXU_DESC="$({ printf '%s\n' "$GXU_FM" | awk '/^description:/{f=1;next} f&&/^[a-zA-Z][a-zA-Z0-9_-]*:/{exit} f' || true; })"
+    printf '%s' "$GXU_DESC" | grep -qF 'ultra-research.md' && GXU_WHY+=" GXU-3:file-name-in-description"
+    # (GXU-4) the reference is loaded from exactly one section: inside the Ultra research window
+    GXU_IN="$({ awk '/^## Ultra research/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SKILL" | grep -cF 'references/ultra-research.md' || true; })"
+    GXU_ALL="$({ grep -cF 'references/ultra-research.md' "$GD_EXPLORE_SKILL" || true; })"
+    GXU_OUT=$(( GXU_ALL - GXU_IN ))
+    (( GXU_IN >= 1 )) || GXU_WHY+=" GXU-4:no-load-in-ultra-section(in=$GXU_IN)"
+    (( GXU_OUT == 0 )) || GXU_WHY+=" GXU-4:load-outside-ultra-section(out=$GXU_OUT)"
+    # (GXU-5) the save does not repeat the collision question; the gate runs after the integrity checks
+    grep -qF 'the save does not repeat it' "$GD_EXPLORE_SAVE_RESEARCH" || GXU_WHY+=" GXU-5:no-collision-moved-to-pin"
+    grep -qF 'ultra-research.md` → `## Integrity`' "$GD_COHERENCE" || GXU_WHY+=" GXU-5:gate-not-after-integrity"
+    if [[ -z "$GXU_WHY" ]]; then
+        pass "GXU-1…5 gd-explore ultra research ($GXU_APPLIES ultra-only sections, $GXU_CHECKS integrity checks, one load site)"
+    else
+        fail "GXU gd-explore ultra research drift:$GXU_WHY"
+    fi
+fi
+
 # (CS2-5) the GD-IDS.yaml template carries the commented research: pointer on content_types
 # (T3) — the seed pointer unikit-gd-content writes, the non-id path the T4 carve-out excludes.
 if grep -qF 'when the CT was seeded from an explore brief' "$GD_IDS_TPL"; then

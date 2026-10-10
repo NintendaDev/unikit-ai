@@ -311,6 +311,8 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
 # cannot see a missing delivery — the existence of the file is asserted here.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/coherence-gate.md" \
   "unikit-gd-explore coherence-gate.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/ultra-research.md" \
+  "unikit-gd-explore ultra-research.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks
