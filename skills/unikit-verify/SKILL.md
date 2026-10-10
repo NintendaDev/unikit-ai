@@ -201,6 +201,8 @@ Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit
 
 **`## Rule Candidates` holds at least one `open` row** → read `{{skills_dir}}/{{self_name}}/references/rule-candidates.md` now, once — Step 5 follows it. No `open` row → do not read it here.
 
+**The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-checks.md` now, once — Steps 1, 4.4 and 5 and the Strict Mode table follow it. Missing → `WARN [balance] balance-checks reference missing — plan verified as an ordinary plan; run unikit-ai update`.
+
 Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can be applied inline without re-loading on each delegation.
 
 **Read in parallel (rules + principles, for inline fix execution in Step 4.3):**
@@ -301,7 +303,7 @@ Launch one Explore task per phase from the plan's task list. For each phase, pro
 - Task descriptions from the roadmap
 - `CHANGED_FILES` list for context
 - Instructions: find implementing code using Glob/Grep, read key files, confirm completeness (not a stub), report status per task with file paths
-- Instructions: **skip any task carrying an `Editor:` line or a `PR checkpoint:` line — do not mark it `NOT FOUND`.** It is verified in the main context (see below).
+- Instructions: **skip any task carrying an `Editor:` line or a `PR checkpoint:` line, or — in a plan with `## Balance Context` — a `Measure:` line or a `Hand-back:` line — do not mark it `NOT FOUND`.** It is verified in the main context (see below).
 
 **Editor targets are excluded from the Explore fan-out.** A task with an `Editor:` line changed the editor's serialized state; there is nothing in the sources to find, so an Explore agent would honestly return `❌ NOT FOUND` and block correctly completed work. The subagents also have no engine tools — the `allowed-tools` grants in `mcp/*.json` are issued to `unikit-verify`, not to its children. So:
 
@@ -315,7 +317,9 @@ Launch one Explore task per phase from the plan's task list. For each phase, pro
 
 **A PR checkpoint task is excluded from the fan-out too** — it leaves nothing in the project. Its status comes from its checkbox (`unikit-plan/references/TASK-FORMAT.md` → `### PR checkpoint task grammar`): `[x] … → PR <sha>` → `✅ COMPLETED` (boundary `<sha>`); a `⏭️ MERGED` label → `⏭️ SKIPPED` (merged into task N.M, or — the last one — into the PR after verification); `[ ]` without a label → `⏭️ SKIPPED` (not reached). A PR checkpoint never produces a blocker in the `unikit-gate-result` block — it is a process step, not an implementation.
 
-**Fallback:** If Agent tool is unavailable, investigate directly using Glob and Grep — with the **same exclusion**: tasks carrying an `Editor:` line are not Glob/Grep-verifiable and keep the treatment above, and a task carrying a `PR checkpoint:` line is read from its checkbox.
+**A `Measure:` or `Hand-back:` task is excluded from the fan-out too** — its status comes from its checkbox and from `## Measurements` (`references/balance-checks.md` → `## Step 1 — task status`).
+
+**Fallback:** If Agent tool is unavailable, investigate directly using Glob and Grep — with the **same exclusion**: tasks carrying an `Editor:` line are not Glob/Grep-verifiable and keep the treatment above, and a task carrying a `PR checkpoint:` line is read from its checkbox, and a task carrying a `Measure:` or `Hand-back:` line is read from its checkbox and `## Measurements`.
 
 **In an ultra bundle the checkbox is not the specification.** Verify implementation against the detailed per-task interfaces, edge cases, logging, acceptance criteria, and commands — **not only the short checkbox text**. The manifest's checklist line is a pointer; what is verified against is the task's own `### Acceptance Criteria` and `### Verification` in its phase file. Pass those to each Explore task alongside the checklist line.
 
@@ -345,6 +349,7 @@ Statuses:
 - `❌ NOT FOUND` — implementation not found
 - `⏭️ SKIPPED` — task was intentionally skipped by the user, or an editor target could not be read back (`⏭️ SKIPPED (editor target, MCP unavailable)`)
 - `⏸️ MANUAL` — an editor target the user took on themselves (`Editor tasks: manual`); reported, never a blocker
+- `⏳ AWAITING RESULT` — a measurement waiting for its result; pending, never a blocker in normal mode
 
 ---
 
@@ -675,6 +680,7 @@ After the human-readable report (Step 4.1) and overall status (Step 4.2) — and
 - `"blocking"`: `true` only when `status` is `fail` (the result should stop commit/merge).
 - `"blockers"`: include **only** blocking findings, each `{ "id", "severity", "file", "summary" }`. Use stable ids (`verify-task-<id>`, `verify-gate-architecture`, `verify-gate-rules`, `verify-ac-<AC-id>`, `verify-editor-<task-id>`, `verify-tests`). `severity` is `error` for blockers (`warning` only when policy escalates a warning-class finding to blocking). Non-blocking notes stay in the human summary, never in `blockers`.
   - `verify-editor-<task-id>` covers an editor target that was read back and found **unimplemented or wrong**. The two benign outcomes never enter `blockers`: `⏸️ MANUAL` (the user took the target on) and `⏭️ SKIPPED (editor target, …)` (it could not be read back). Both belong in the human summary.
+- Balance plans add `verify-balance-report`, `verify-measure-<id>`, `verify-instrument-<id>` and `WARN [balance-drift]` — `references/balance-checks.md` → `## Gate result`.
 - `"affected_files"`: the `CHANGED_FILES` the gate actually evaluated or cited (not unrelated repo files); empty array when none apply.
 - **Research drift.** Every `WARN [research-drift]` line from Step 0.2 raises `status` to at least `warn` and is named in the human summary. It is **never** a blocker and never enters `blockers`: source drift makes the work debatable, not wrong, and the call is the user's.
 - **A reused run.** A test gate closed by someone else's full run (Step 2.2, the `reused` branch) is a `Gate closed`: it does **not** affect `status`, and it never enters `blockers`. The human summary must name it in one line — `Test run: reused — …` — because "the gate was closed by evidence obtained earlier" and "the gate was not checked" are different statements, and in JSON they look identical.
@@ -741,6 +747,8 @@ Options:
 
 **The pull request option.** After a check of the whole plan (`phase_scope = all`) with **no blocker**, in a git repository (`git.enabled` from `.unikit/config.yaml`; no key → a `.git` directory decides) and on a branch other than the base of Step 0.4, option 1 becomes `Pull request — run /unikit-pr`: there is nothing to fix, and the question keeps its four options. The choice invokes `unikit-pr` with no argument (`## Skill calls`): a closed plan is read from its checkboxes. When `{{skills_dir}}/unikit-pr/SKILL.md` does not exist (a project that ran `update` without `--install-new`), print `WARN [pr] /unikit-pr is not installed — run unikit-ai update --install-new` instead of a command that does not exist. The `unikit-gate-result` block's `suggested_next` does not change.
 
+A balance plan with no blocker repeats its hand-back command as the last line, in plain text after the gate-result block — `references/balance-checks.md` → `## Step 5`.
+
 Based on choice:
 - Fix issues → invoke `unikit-fix` with the issue summary as its argument
 - Pull request → invoke `unikit-pr` as above
@@ -772,6 +780,7 @@ Normal mode already checks all items below but tolerates partial results and war
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
 | Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |
+| Balance measurements | `⏳ AWAITING RESULT` is a warning | **Failure** — every `Measure:` task needs a row with `valid = yes` (only for a plan with `## Balance Context`) |
 
 Items that behave **the same** in both modes (always checked, always fail on violation):
 - Engine-specific checks (per ENGINE_RULES.md strict mode items)
