@@ -71,6 +71,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 - Retired reference files do not linger: `unikit-ai update` reinstalls a changed skill from a clean directory, so they disappear on the next update (only a fresh `init` copy is additive)
 - The `ultra` keyword adds adaptive artifacts to the research folder - a C4 view, ADRs, a dependency graph - written by relevance rather than by checklist and indexed from the research's `## Artifact Index`; it also makes the dialogue log write itself while you talk. Recognised as the leading token or in your own wording ("ultra research"), never inferred from the topic's size
 - Every save — regular and ultra alike — ends with a **coherence gate**: it re-reads the written files from disk (never the conversation, which does not survive a `/clear`) and checks that the brief stands on its own, does not silently contradict the result, and separates evidence from inference. A mismatch must quote both sides verbatim, so a pass cannot simply be asserted. The gate runs **at most two passes**: zero blocking findings is a pass, a material or cosmetic remainder is recorded rather than held against the save, and blocking findings surviving the second pass stop the gate and ask the user instead of starting a third. The read-only pass goes to a fresh context that receives the path of the gate's reference file rather than its text, and returns a report whose `Next:` line — pass, repair, ask or hold — the saving session acts on, so an ordinary save reads no reference file at the moment its context is fullest; without an agent the pass runs inline. If the gate's reference file is missing it prints `WARN [coherence]` and still saves, rather than losing an exploration that already happened
+- **Merge mode** - ask to merge a named branch into the current one and it reads that merge before it happens: `git merge-tree` predicts the result without touching your working tree, and the saved research gives an agent a directive for every conflict, so you resolve none yourself. Fetching the named branch still asks your permission
 - When direction is clear, transition to `/unikit-plan`
 
 ### `/unikit-plan [fast|full|ultra|add|--list] [--base <branch>] <description>` - plan the work
@@ -87,13 +88,14 @@ These skills form the core development loop. See [Development Workflow](workflow
 Four modes:
 - **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - optionally creates a git branch (`<git.branch_prefix><name>`), asks about tests, documentation and roadmap linkage, saves plan
-- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
+- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered (except in a merge plan, where the mode question offers it) and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
 - **Add** - extends an existing plan with new tasks (never creates a branch)
 
 Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan in place: it explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that).
 
 - **Modules** - full and ultra plans are always sliced into modules the base branch can take whole, listed under `## Modules` when there are two or more (or one longer than four phases, with a `why long:` note); a module boundary is a layer barrier, and a commit range never crosses one. With `git.pull_requests.checkpoints: true` every module but the last ends with a **PR checkpoint task**. The manifest records `Planned at:`, the commit the plan's work starts from
 - **Two ultra writing protocols** - standard by default, or with saved state in the plan folder's `.planning/` (chosen by the first ultra question; a standard plan over 12 phases is offered the switch); saved state survives a compaction and resumes with `/unikit-plan ultra <name>`
+- **Merge plan** - asked to merge a named branch into the current one, it analyses the merge itself (or reuses a fresh merge exploration) and writes the plan that carries it out: `fast` in `.unikit/code/PLAN.md`, `full` or `ultra` in `.unikit/code/plans/merge-<slug>/`, always on the current branch. The mode question has three options, `ultra` last and never recommended; the merge commit is made by the plan's own last merge task, not by `/unikit-commit`
 
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
@@ -130,11 +132,12 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Supports selective execution by phase, task numbers, or feature name
 - On a branch with its own plan, that plan is used while the requested work — the named phases, or the whole plan — is still pending in it, even when a flat `.unikit/code/PLAN.md` also exists; only a finished branch plan next to an unfinished fast plan brings a question: run the fast plan?
 - When the call covers two or more test-checkpoint tasks, asks once — before the first task, together with the uncommitted-changes question — whether to run the tests once at the last point or at every point; words in the call (`tests at the end of phase 6`) answer in advance. A merged point's own non-run steps (a negative control, a manual smoke) are performed at the surviving point
-- A phase's test checkpoint runs every test by default; with `testing.run.use_affected_modules: true` it runs only the changed modules and the modules that depend on them, always in one launch. The plan's final full run is closed by reuse when the code has not changed since the last run of every test
+- A phase's test checkpoint runs every test by default; with `testing.run.use_affected_modules: true` it runs only the changed modules and the modules that depend on them, always in one launch: the scope is closed before the first start, and a repeat after red is one launch of the whole scope. The plan's final full run is closed by reuse when the code has not changed since the last run of every test
 - Writes tests for logic and system values, never for tunable data or authored content. After the result is handed over, the edits you ask for go in without tests until you say "accepted"; then the tests for the changed logic are written and run once — see [Tests follow acceptance](workflow.md#tests-follow-acceptance)
 - Reads only what the plan needs: the ultra reader contract only for an ultra bundle, the test-run rules only under `Testing: yes`, the editor procedures of `dev-principles.md` only when the plan carries an `Editor:` task
 - `@<path>` bypasses auto-detection for explicit plan targeting
 - At a **PR checkpoint** it commits the module and asks once: check the module (`/unikit-verify` on its phases, `/unikit-review` of its commits), run `/unikit-pr` and continue, stop here, or merge into the next PR — answers can be given in advance (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`). While a plan has PR checkpoints, the run never pushes. In an ultra plan it checks, at a module boundary, whether the evidence the next module was planned on has changed
+- While a merge is unfinished (a `MERGE_HEAD` exists) the uncommitted-changes question has no stash option: stashing would silently drop the merge
 
 ### `/unikit-fix [bug description]` - fix and learn
 
@@ -144,9 +147,10 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Two modes: **Fix now** (immediate) or **Plan first** (creates `.unikit/code/FIX_PLAN.md`)
 - Investigates codebase to find root cause
 - Applies the fix and, outside a review loop, suggests a regression test when the defect is in logic or a system value; inside a review loop the test waits for acceptance
-- Outside a review loop, runs the tests after the fix — every test by default, or only the changed modules and the modules that depend on them with `testing.run.use_affected_modules: true`, always in one launch; in a project with no tests yet it notes that instead of failing
+- Outside a review loop, runs the tests after the fix — every test by default, or only the changed modules and the modules that depend on them with `testing.run.use_affected_modules: true`, always in one launch (the repeat after a red result is one launch of the whole scope, too); in a project with no tests yet it notes that instead of failing
 - Creates a **self-improvement patch** in `.unikit/code/patches/`
 - Every fix makes the AI smarter through `/unikit-evolve`
+- While a merge is unfinished it does not offer to stash your changes, for the same reason as `/unikit-implement`
 
 ### `/unikit-verify [--strict] [Phases N-M] [feature-name]` - check completeness
 
@@ -178,7 +182,7 @@ Creates conventional commits with engine-aware checks:
 - Writes the subject and body for the team: what changed and what it gives, then at most three lines of technical detail
 - Links the plan with a `Plan: <folder>` trailer instead of phase and task numbers
 - Follows conventional commits format (feat, fix, refactor, etc.)
-- Suggests commit splitting for unrelated changes, and never lets unstaged edits into a split commit
+- Suggests commit splitting for unrelated changes, and never lets unstaged edits into a split commit; while a merge is in progress it never splits at all, since a split would drop the merge
 - Offers to push after commit. In a plan with PR checkpoints the push takes the current state by default, and inside a module asks whether to push everything or stop at the end of the last finished module. `/unikit-implement` and the coordinator pass `no-push`, so an automatic commit never pushes
 - A run is quiet and speaks your interface language (`language.ui`): it shows a problem only when a check finds one, then the message (written in `language.artifacts`), the question and one result line - no narration of passing checks, no word about a setting such as `git.skip_push_after_commit`
 - **Auto mode** — when `/unikit-implement` runs with auto-commit on, it passes `auto`: the message is still written and printed, but committed without the confirmation question, with no split question and no push. A safety error still stops the commit and asks

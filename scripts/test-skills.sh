@@ -7249,9 +7249,36 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF 'Carrying the anchor across a commit'    "$TC_COORD"               || TW_WHY+=" TW-11:coordinator-never-carries"
     # (TW-12) a phase writes its tests before its run, or the last phase's tests are never run.
     grep -qF 'A phase that has not run `## Step 3.8` yet writes its tests now' "$TC_TESTRUNS" || TW_WHY+=" TW-12:tests-written-after-run"
+    # (TW-13…TW-15) one scope, one launch: the scope is closed whole before the first launch, and a
+    # repeat after red is one launch of the whole scope. tw_has counts the anchors it checked — a
+    # block that checks none fails, so a renamed file cannot turn these into a silent pass.
+    tw_chk=0
+    tw_has() { # <reason key> <literal> <text to search>
+        tw_chk=$((tw_chk + 1))
+        grep -qF -- "$2" <<< "$3" || TW_WHY+=" $1"
+    }
+    # (TW-13) the subsection and its prohibitions, inside the `## Run width` window.
+    tw_has "TW-13:no-subsection"       '### One scope, one launch'                                 "$TW_SEC"
+    tw_has "TW-13:scope-not-closed"    'closed before the first launch'                            "$TW_SEC"
+    tw_has "TW-13:trial-run-allowed"   'a trial run to see what is red or what exists'             "$TW_SEC"
+    tw_has "TW-13:scope-grows"         'growing the scope after the launch has started'            "$TW_SEC"
+    tw_has "TW-13:doubt-not-full-run"  'one wide run costs less than two narrow ones'              "$TW_SEC"
+    # (TW-14) a repeat after red: one launch of the whole scope, and no narrower check before it.
+    tw_has "TW-14:repeat-not-one-launch" 'A repeat after red is one launch of the whole scope'     "$TW_SEC"
+    tw_has "TW-14:narrow-check-allowed"  'A narrower check of the fixed test before the repeat is forbidden' "$TW_SEC"
+    tw_has "TW-14:task-scope-lost"       "the scope stays the fixtures and classes of that task"   "$TW_SEC"
+    tw_has "TW-14:plan-repeat-narrowed"  'it is every test in the project again'                   "$TW_SEC"
+    # (TW-15) the pointers: Step 3.2 item 6 names the subsection on the very line that repeats the
+    # run, the search loop says it is not a launch, and /unikit-fix points at the same subsection.
+    tw15_line="$( { grep -F 'After the fix the run is repeated' "$TC_TESTRUNS" || true; } | head -1)"
+    [[ -n "$tw15_line" ]] || TW_WHY+=" TW-15:no-repeat-line"
+    tw_has "TW-15:repeat-line-unlinked"  'One scope, one launch'                                   "$tw15_line"
+    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_TESTRUNS")"
+    tw_has "TW-15:fix-unlinked"          'One scope, one launch'                                   "$(cat "$EM_FIX_SKILL")"
+    (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-12 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run"
+    pass "TW-1…TW-15 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi
@@ -8977,6 +9004,171 @@ else
     fail "PB-1 plan-boundaries contract:$PB_WHY"
 fi
 
+# MA: the merge-analysis protocol — one system asset that /unikit-explore (merge mode) and
+# /unikit-plan (merge plan) both run, so the analysis is written once. Headings are read by name
+# in both readers, so they are asserted as WHOLE lines (-qxF); phrases are file-scoped -qF.
+# Every check goes through ma_has / ma_lacks, which count: a block that checks nothing fails.
+# The helpers and MA_WHY are shared by the MA-2…MA-7 blocks below; each block reports itself.
+MA_WHY=""
+MA_CHK=0
+ma_has() { # <reason key> <literal> <file> — a literal starting "## " must be a whole line
+    MA_CHK=$((MA_CHK + 1))
+    if [[ "$2" == "## "* ]]; then
+        grep -qxF -- "$2" "$3" || MA_WHY+=" $1"
+    else
+        grep -qF -- "$2" "$3" || MA_WHY+=" $1"
+    fi
+}
+ma_lacks() { # <reason key> <literal> <file>
+    MA_CHK=$((MA_CHK + 1))
+    ! grep -qF -- "$2" "$3" || MA_WHY+=" $1"
+}
+MA_PROTOCOL="$ROOT_DIR/data/merge-analysis.md"
+if [[ ! -s "$MA_PROTOCOL" ]]; then
+    MA_WHY+=" MA-1:missing-protocol"
+else
+    for h in '## Pin the three commits' '## Fetch' '## Start state' '## Divergence' '## Predict the result' \
+             '## Surface classes' '## Directive for a conflicted file' '## Anchors and the check after the merge'; do
+        ma_has "MA-1:no-heading(${h#\#\# })" "$h" "$MA_PROTOCOL"
+    done
+    ma_has "MA-1:no-single-owner-rule"   'Do not restate this contract inside a skill'       "$MA_PROTOCOL"
+    ma_has "MA-1:no-merge-tree-form"     'git merge-tree --write-tree --name-only --messages' "$MA_PROTOCOL"
+    ma_has "MA-1:no-ancestor-check"      'git merge-base --is-ancestor'                     "$MA_PROTOCOL"
+    ma_has "MA-1:no-merge-head-probe"    'git rev-parse -q --verify MERGE_HEAD'             "$MA_PROTOCOL"
+    ma_has "MA-1:no-unmerged-probe"      'git diff --name-only --diff-filter=U'             "$MA_PROTOCOL"
+    ma_has "MA-1:no-engine-rules-pointer" 'ENGINE_RULES.md'                                 "$MA_PROTOCOL"
+    ma_has "MA-1:no-service-tag"         '[merge]'                                          "$MA_PROTOCOL"
+    # a flat copy knows no variables, and an engine fact would put engine documentation into UniKit
+    ma_lacks "MA-1:variable-in-flat-copy" '{{'               "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Unity)"    'Unity'            "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Godot)"    'Godot'            "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Unreal)"   'Unreal'           "$MA_PROTOCOL"
+    ma_lacks "MA-1:retired-key"           'merge_checkpoints' "$MA_PROTOCOL"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-1:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-1 merge-analysis protocol carries every section its readers name, flat and engine-neutral (${MA_CHK} anchors)"
+else
+    fail "MA-1 merge-analysis protocol:$MA_WHY"
+fi
+
+# MA-2…MA-4: the explore side of the merge mode — a conditional reference, a narrow set of git
+# grants that cannot change the tree, and the form of the saved research. The reference is read
+# only on a merge request; an ordinary exploration must keep reading nothing extra.
+MA_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+MA_RESEARCH="$ROOT_DIR/skills/unikit-explore/references/merge-research.md"
+MA_WHY=""
+MA_CHK=0
+if [[ ! -s "$MA_EXPLORE" ]]; then
+    MA_WHY+=" MA-2:missing-explore-skill"
+elif [[ ! -s "$MA_RESEARCH" ]]; then
+    MA_WHY+=" MA-2:missing-merge-research"
+else
+    # (MA-2) loaded conditionally, owns the trigger, the write boundary and the "not included" list
+    ma_has "MA-2:skill-never-loads-reference" 'references/merge-research.md'                        "$MA_EXPLORE"
+    ma_has "MA-2:ordinary-exploration-reads-it" 'An ordinary exploration does not read that file'    "$MA_EXPLORE"
+    ma_has "MA-2:no-not-included-list"  '**rebase**, **cherry-pick**, and merging by a pull request number' "$MA_RESEARCH"
+    ma_has "MA-2:no-protocol-pointer"   'merge-analysis.md'                                         "$MA_RESEARCH"
+    ma_has "MA-2:no-fetch-permission"   'git fetch'                                                 "$MA_RESEARCH"
+    ma_has "MA-2:no-write-boundary"     '`git fetch` and `git merge-tree` write into `.git` only'   "$MA_RESEARCH"
+    ma_has "MA-2:no-forbidden-commands" '**Never** `git merge`, `checkout`, `reset`, `stash`, `worktree`' "$MA_RESEARCH"
+    # a grant matches the start of a command, not its flags: `--output=<file>` makes git diff, log
+    # and show write a file (measured on git 2.46), and git grep's `-O` hands files to a program
+    ma_has "MA-2:no-flag-boundary"      'Never pass a flag that writes a file or starts a program' "$MA_RESEARCH"
+    ma_has "MA-2:no-output-flag"        '`--output`'                                            "$MA_RESEARCH"
+    ma_has "MA-2:no-pager-flag"         '`-O`'                                                  "$MA_RESEARCH"
+    # (MA-3) the frontmatter grants: exactly the read-only git list, and none of the commands
+    # that change the tree, the index or the refs (a plain `git fetch` stays a prompted action)
+    MA_FM="$(awk '/^---$/{n++; next} n==1' "$MA_EXPLORE")"
+    for g in 'merge-base' 'log' 'diff' 'show' 'rev-parse' 'rev-list' 'merge-tree' 'grep' 'ls-tree' 'for-each-ref' 'status'; do
+        MA_CHK=$((MA_CHK + 1))
+        grep -qxF "  - Bash(git $g *)" <<< "$MA_FM" || MA_WHY+=" MA-3:no-grant($g)"
+    done
+    for g in 'Bash(git merge ' 'Bash(git checkout ' 'Bash(git reset ' 'Bash(git stash ' 'Bash(git worktree ' 'Bash(git fetch ' 'Bash(git *)'; do
+        MA_CHK=$((MA_CHK + 1))
+        ! grep -qF -- "$g" <<< "$MA_FM" || MA_WHY+=" MA-3:forbidden-grant(${g})"
+    done
+    # (MA-4) the saved research: anchors in the hashed Active Summary, evidence marked, forks blocking
+    ma_has "MA-4:no-merge-anchors"      'Merge anchors: ours=<sha>, theirs=<sha>, base=<sha>, result-tree=<oid>' "$MA_RESEARCH"
+    ma_has "MA-4:no-predicted-conflicts" 'Predicted conflicts: <path>; <path>'                      "$MA_RESEARCH"
+    ma_has "MA-4:actions-not-inferred"  'each marked `inferred`'                                    "$MA_RESEARCH"
+    ma_has "MA-4:evidence-unmarked"     'exists only after the merge'                               "$MA_RESEARCH"
+    ma_has "MA-4:blocking-not-first-word" 'whose first word is `blocking`'                          "$MA_RESEARCH"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-2:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-2…MA-4 explore merge mode: conditional reference, ${MA_CHK} anchors and grants, no command that changes the tree"
+else
+    fail "MA-2…MA-4 explore merge mode:$MA_WHY"
+fi
+
+# MA-5…MA-7: the plan side of the merge mode — a conditional reference that carries the plan's
+# rules, the merge phase's tasks, and the one exception to "ultra is named by the user". MA-7
+# covers the files that state that rule as far as they exist; the help and docs files join it
+# in the documentation task. Where a sentence wraps across lines in the source, it is read on
+# whitespace-collapsed text.
+MA_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+MA_PLAN_REF="$ROOT_DIR/skills/unikit-plan/references/merge-plan.md"
+MA_PLAN_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+MA_WHY=""
+MA_CHK=0
+if [[ ! -s "$MA_PLAN" || ! -s "$MA_PLAN_ULTRA" ]]; then
+    MA_WHY+=" MA-5:missing-plan-skill"
+elif [[ ! -s "$MA_PLAN_REF" ]]; then
+    MA_WHY+=" MA-5:missing-merge-plan"
+else
+    # (MA-5) conditional load, the service lines, the three-way mode question, no branch, the plan's place
+    ma_has "MA-5:skill-never-loads-reference" 'references/merge-plan.md'                       "$MA_PLAN"
+    ma_has "MA-5:ordinary-plan-reads-it"      'An ordinary plan does not read that file'        "$MA_PLAN"
+    ma_has "MA-5:no-missing-protocol-warn" 'WARN [merge] merge-analysis.md missing — plan is not per protocol; run unikit-ai update' "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-start"           'git merge --no-ff --no-commit'                      "$MA_PLAN_REF"
+    # merging by the pinned SHA names the commit after the SHA alone ("Merge commit '<sha>'"), so
+    # the start task carries the message itself and `git commit --no-edit` later reuses it
+    ma_has "MA-5:merge-message-unnamed"    '-m "Merge branch '"'"'<branch>'"'"' into <current branch>"' "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-commit"          'git commit --no-edit'                               "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-folder"          '.unikit/code/plans/merge-'                          "$MA_PLAN_REF"
+    ma_has "MA-5:no-not-ready-line"        'Plan is NOT implementation-ready'                   "$MA_PLAN_REF"
+    ma_has "MA-5:mode-question-changed"    'The question has three options, in this order: fast, full, ultra.' "$MA_PLAN_REF"
+    ma_has "MA-5:branch-may-be-created"    'Never create or switch a branch: the branch step of every mode is skipped.' "$MA_PLAN_REF"
+    # (MA-6) the merge phase: anchors compared with the research, the merge commit made by the plan itself
+    ma_has "MA-6:no-research-anchor-compare" 'Merge anchors:'                                   "$MA_PLAN_REF"
+    ma_has "MA-6:no-readiness-check"       'git merge-base --is-ancestor'                       "$MA_PLAN_REF"
+    ma_has "MA-6:merge-commit-owner-lost"  'The merge commit is made by the last task of the merge phase' "$MA_PLAN_REF"
+    ma_has "MA-6:commit-skill-takes-it"    '/unikit-commit does not make it'                    "$MA_PLAN_REF"
+    ma_has "MA-6:anchors-not-in-constraints" '- MUST:'                                          "$MA_PLAN_REF"
+    ma_has "MA-6:stale-research-silent"    'not used —'                                         "$MA_PLAN_REF"
+    ma_has "MA-6:no-continue-as-is"        'Continue as is'                                     "$MA_PLAN_REF"
+    # (MA-7) "ultra is named by the user" has exactly one exception, said in each place that states it
+    ma_has "MA-7:no-exception-in-skill"    'merge plan'                                         "$MA_PLAN"
+    ma_has "MA-7:no-exception-in-mode-ultra" 'merge plan'                                       "$MA_PLAN_ULTRA"
+    # the help map and the documentation say it too — a file left out would still teach "never offered"
+    for ma_f in skills/unikit-help/references/pipelines.md skills/unikit-help/references/skill-map.md \
+                docs/plan-files.md docs/skills.md docs/workflow.md docs/skills/unikit-plan-rationale.md; do
+        if [[ -s "$ROOT_DIR/$ma_f" ]]; then
+            ma_has "MA-7:no-exception(${ma_f##*/})" 'merge plan' "$ROOT_DIR/$ma_f"
+        else
+            MA_WHY+=" MA-7:missing(${ma_f##*/})"
+        fi
+    done
+    MA_EXC="$(grep -cF 'except in a merge plan, where the mode question offers it' "$MA_PLAN" || true)"
+    MA_CHK=$((MA_CHK + 1))
+    (( MA_EXC >= 3 )) || MA_WHY+=" MA-7:exception-in-skill-x${MA_EXC}-of-3"
+    # the frontmatter sentence is kept, and the description does not gain a merge trigger (DEC-5)
+    MA_PFM="$(awk '/^---$/{n++; next} n==1' "$MA_PLAN")"
+    MA_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-z-]+:/{exit} f' <<< "$MA_PFM" | tr '\n' ' ' | tr -s ' ')"
+    MA_CHK=$((MA_CHK + 1))
+    grep -qF 'Ultra runs only when the user names it' <<< "$MA_DESC" || MA_WHY+=" MA-7:description-sentence-lost"
+    MA_CHK=$((MA_CHK + 1))
+    # plain -qi, never -iF: the MSYS grep aborts on that pair, and an abort here would read as "absent"
+    ! grep -qi 'merge' <<< "$MA_DESC" || MA_WHY+=" MA-7:description-gained-a-merge-trigger"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-5:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-5…MA-7 plan merge mode: conditional reference, the merge phase's tasks and the one exception to user-named ultra (${MA_CHK} anchors)"
+else
+    fail "MA-5…MA-7 plan merge mode:$MA_WHY"
+fi
+
 # VB: /unikit-verify takes its base and range from the plan-boundaries contract, can check
 # one module (a phase scope), and reads a PR checkpoint task from its checkbox — an Explore
 # agent would otherwise search the code for it and honestly report NOT FOUND.
@@ -9130,6 +9322,46 @@ if [[ -z "$CP_WHY" ]]; then
     pass "CP-1…CP-3 commit: no-push token; a manual push takes HEAD and asks inside a module"
 else
     fail "CP-1…CP-3 commit push contract:$CP_WHY"
+fi
+
+# MR: an unfinished merge is not lost by the executors. Once its conflicts are resolved, both
+# `git stash` and the `git reset -q` of the commit skill's split path drop MERGE_HEAD for good,
+# and the merge commit would get one parent (research 2026-10-10, C-7). So implement and fix do
+# not offer the stash while MERGE_HEAD exists, and commit does not split — not even a split the
+# caller passed. The mark on the option line is asserted apart from the paragraph: the question
+# is formed "right before Step 3", in another turn, and the paragraph above it is easy to lose.
+MR_WHY=""
+MR_CHK=0
+mr_has() { # <reason key> <literal> <text to search>
+    MR_CHK=$((MR_CHK + 1))
+    grep -qF -- "$2" <<< "$3" || MR_WHY+=" $1"
+}
+mr_stash() { # <id> <file> — implement (Step 0.2) and fix share one shape
+    local id="$1" file="$2" text line
+    if [[ ! -s "$file" ]]; then MR_WHY+=" $id:missing-file"; return; fi
+    text="$(cat "$file")"
+    mr_has "$id:no-merge-head-probe" 'MERGE_HEAD'                              "$text"
+    mr_has "$id:stash-still-offered" 'has no "Stash and continue"'             "$text"
+    line="$( { grep -F '2. Stash and continue' "$file" || true; } | head -1)"
+    mr_has "$id:question-unmarked"   'not offered while a merge is unfinished' "$line"
+}
+mr_stash "MR-1" "$CA_IMPLEMENT"
+mr_stash "MR-2" "$EM_FIX_SKILL"
+if [[ ! -s "$CM_COMMIT_SKILL" ]]; then
+    MR_WHY+=" MR-3:missing-file"
+else
+    MR_AUTO="$(awk '/^## Auto mode/{f=1;next} f&&/^## /{exit} f' "$CM_COMMIT_SKILL")"
+    MR_SPLIT="$(awk '/^## Splitting Unrelated Changes/{f=1;next} f&&/^## /{exit} f' "$CM_COMMIT_SKILL")"
+    mr_has "MR-3:no-merge-head-probe"   'MERGE_HEAD'                                           "$MR_SPLIT"
+    mr_has "MR-3:caller-split-applied"  'a split passed by the caller is not applied'          "$MR_SPLIT"
+    mr_has "MR-3:no-info-line"          'INFO [commit] merge in progress — split not offered'  "$MR_SPLIT"
+    mr_has "MR-3:auto-applies-split"    'except while a merge is in progress'                  "$MR_AUTO"
+fi
+(( MR_CHK > 0 )) || MR_WHY+=" MR-1:nothing-checked"
+if [[ -z "$MR_WHY" ]]; then
+    pass "MR-1…MR-3 an unfinished merge is neither stashed (implement, fix) nor split (commit, caller's split included) (${MR_CHK} anchors)"
+else
+    fail "MR-1…MR-3 unfinished-merge protection:$MR_WHY"
 fi
 
 # UPR: /unikit-pr — the one author of pull requests. Levels capped by the config, the PR is
@@ -10922,10 +11154,15 @@ echo -e "\n${BOLD}Part 7i: core module file-size guard${NC}"
 
 SIZE_LIMIT=500
 SIZE_VIOLATIONS=""
+# The two command files that deliver the system assets join the list by name: update.ts had
+# grown to 556 lines unguarded, and each new system asset adds a line to both. rules.ts
+# (1493 lines) is deliberately not listed — splitting it is a refactor of its own.
 for f in "$ROOT_DIR"/src/core/*.ts \
          "$ROOT_DIR"/src/core/installer/*.ts \
          "$ROOT_DIR"/src/core/registry/*.ts \
-         "$ROOT_DIR"/src/core/registry/migrations/*.ts; do
+         "$ROOT_DIR"/src/core/registry/migrations/*.ts \
+         "$ROOT_DIR"/src/cli/commands/init.ts \
+         "$ROOT_DIR"/src/cli/commands/update.ts; do
     [[ -f "$f" ]] || continue
     lines=$(wc -l < "$f" | tr -d ' ')
     if [[ "$lines" -gt "$SIZE_LIMIT" ]]; then
@@ -10934,9 +11171,9 @@ for f in "$ROOT_DIR"/src/core/*.ts \
 done
 
 if [[ -z "$SIZE_VIOLATIONS" ]]; then
-    pass "src/core modules within $SIZE_LIMIT-line limit"
+    pass "src/core modules and the init/update commands within $SIZE_LIMIT-line limit"
 else
-    fail "src/core modules exceed $SIZE_LIMIT-line limit"
+    fail "src/core modules or the init/update commands exceed $SIZE_LIMIT-line limit"
     echo -e "$SIZE_VIOLATIONS"
 fi
 

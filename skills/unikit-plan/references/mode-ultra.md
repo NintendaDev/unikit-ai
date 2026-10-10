@@ -3,8 +3,8 @@
 > Loaded on demand by `unikit-plan` Step 1.5 dispatch when the mode is `ultra`.
 > Ultra is **user-named, never model-inferred**: it is reached because the user asked
 > for an ultra plan — as the leading `ultra` token or in their own wording — never
-> offered in the interactive mode question and never inferred from the complexity of
-> the task.
+> offered in the interactive mode question (except in a merge plan, where the mode
+> question offers it) and never inferred from the complexity of the task.
 >
 > Steps A0-C run before the Shared Steps in `SKILL.md`; Steps D-H **refine** Step 5 and
 > Step 6 of the shared workflow — they decide the phase partition, the write order, the

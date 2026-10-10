@@ -16,6 +16,8 @@ explore save pipeline, on the same criterion — see
 - **Wording that only asks for care is not ultra — ask instead.** An unwanted bundle leaves the
   user a folder of phase files they never asked for, while a missed one costs them one word.
   The asymmetry is why the doubtful case falls through to the question rather than to ultra.
+  The rule has one exception: in a merge plan the mode question offers `ultra` as its third
+  option, so the user — not the model — is the one who picks it.
 
 ## Step 0.2 — Resolve Feature Description
 
