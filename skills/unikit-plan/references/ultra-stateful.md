@@ -180,7 +180,7 @@ For each phase, in order:
    `Recon:` — the recon files and sections read for it, in their final form `recon/<topic>.md § <section>`;
 4. append the phase's block to `.planning/checklist.md` — the `### Phase N:` heading with
    `**Effort:**`, `**Dependencies:**` and `**Status:** [ ] Not started`, then one task line per
-   task with its `WHY:` line and its `Files:` / `Test checkpoint:` / `PR checkpoint:` line, in the
+   task with its `WHY:` line and its `Files:` / `Test checkpoint:` / `PR checkpoint:` / `Measure:` / `Hand-back:` line, in the
    form of the checklist in the `ULTRA-PLAN-FORMAT.md` manifest template;
 5. update `STATE.md` in one edit: the ✓ in the phase's row, its `## Handoff` line, the new `Next:`;
 6. print `INFO [plan] phase <N>/<total> written · state: .unikit/code/plans/<feature-name>/.planning/STATE.md`.

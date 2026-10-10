@@ -71,7 +71,7 @@ Rules:
   `## Phase Index`, a checkbox in `## Checklist`, and a `## Task N.M:` section in exactly
   one phase file.
 - **Everything mutable during execution lives in the manifest**: checkboxes,
-  `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Commit Plan`,
+  `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`, `## Commit Plan`,
   `## Settings`. Phase files are **read-only during
   execution**. The consequence has to be stated, because it is what the split buys: the
   executor has one write surface, `F<n>` numbering in the findings table never branches
@@ -103,6 +103,7 @@ Planned at: <short sha>
 ## Design            (only when design_linked = true)
 ## Flow Context      (optional)
 ## Content Context   (optional)
+## Balance Context   (only for a plan built from a Balance Checkpoints file)
 ## Settings
 ## Roadmap Linkage   (optional)
 ## Modules           (only with two or more modules, or one longer than four phases)
@@ -152,6 +153,7 @@ Planned at: <short sha>
 ## MCP Findings
 ## Rule Candidates
 ## Test Runs
+## Measurements
 ## Dependency Graph
 ## Total Estimated Effort
 
@@ -264,8 +266,9 @@ Recon: recon/<topic>.md § <section>, …   (optional; only a plan written with 
 - When `Testing: yes` and `Test checkpoints: task`: the same, plus the command when this task
   is itself the checkpoint.
 - For a test-checkpoint task: the literal `Not applicable — this task runs tests, it writes none`.
+- For a `Measure:` task: the literal `Not applicable — this task measures, it writes no tests`; for a `Hand-back:` task: the literal `Not applicable — this task returns data, it runs no tests`.
 - When `Testing: yes` and every change of the task is authored content — an `Editor:` task of kind `scene · ui · vfx · anim · settings` (which kind carries materials and shader graphs is the engine's `ENGINE_RULES.md`), a kind `asset` task without designer numbers (import settings, say), or a task whose `Files:` are only shader sources, UI markup, art and audio: the single literal `Not applicable — authored content; evidence is a read-back or a frame`, not a list of tests. A kind `asset` task that carries designer numbers does not get the literal: it gets the validity check of the "tunable data" class (`dev-principles.md` item 5).
-- **Which literal wins.** `Testing: no` → `Not planned by user preference` in every task. A test-checkpoint task → its own `Not applicable — this task runs tests, it writes none`. The authored-content literal applies only under `Testing: yes`, and a task with both logic and content lists tests for the logic only.
+- **Which literal wins.** `Testing: no` → `Not planned by user preference` in every task. A test-checkpoint task → its own `Not applicable — this task runs tests, it writes none`. A `Measure:` task and a `Hand-back:` task → their own literals above — even under `Testing: yes`; `Testing: no` still forces `Not planned by user preference` in every task. The authored-content literal applies only under `Testing: yes`, and a task with both logic and content lists tests for the logic only.
 
 ### Acceptance Criteria
 - [Observable, independently verifiable result.]
@@ -299,7 +302,7 @@ Rules:
 - `### Tests`: under `Testing: yes` — exact cases, fixtures, test files and commands for the
   logic and system values; a task whose changes are all authored content — the literal
   `Not applicable — authored content; evidence is a read-back or a frame` (precedence of the
-  three literals: see `### Tests` above); under `Testing: no` — the literal
+  literals: see `### Tests` above); under `Testing: no` — the literal
   `Not planned by user preference`, and no test tasks are added.
 - `### Verification`: commands `/unikit-verify` **executes** within the grant it already
   holds. Anything outside that grant is printed with the `⏸️ MANUAL` status and reaches
@@ -322,6 +325,14 @@ Rules:
   `### Implementation Steps` name the module, its phases and the `delivers:` sentence of its
   `## Modules` line; its `### Verification` reads the checkbox label only. The
   `PR checkpoint:` line stays in the manifest checkbox, exactly as `Test checkpoint:` does.
+- **A `Measure:` task and a `Hand-back:` task are described by the same seven subsections.**
+  The `### Tests` of a `Measure:` task carries the literal `Not applicable — this task measures,
+  it writes no tests`; of a `Hand-back:` task — `Not applicable — this task returns data, it runs
+  no tests`. Their `### Implementation Steps` name the work item and the capability class
+  (`Measure:`) or the report path and fields (`Hand-back:`); their `### Verification` names the
+  row written into `## Measurements` or the report file. The `Measure:` / `Hand-back:` lines stay
+  in the manifest checkbox. Point 1 of the Required Detail Gate is closed for these tasks by
+  naming the item, the stand and the metric (there is no file), not by a file path.
 
 ## Required Detail Gate
 
@@ -364,7 +375,10 @@ either writing protocol (`ultra-direct.md`, `ultra-stateful.md`). The saved-stat
 its state in `.unikit/code/plans/<name>/.planning/`. Once the checks pass, `plan-bundle.mjs finalize`
 keeps its `.planning/recon/` as the plan's `recon/` — evidence the plan names in `## Recon` and in
 the phases' `Recon:` lines, committed with it — and removes the rest of `.planning/`. The finished
-bundle is the manifest plus direct `phase-*.md` files either way, and under saved state its `recon/`.
+bundle is the manifest plus direct `phase-*.md` files either way, and under saved state its `recon/`;
+a balance plan also gains `handback-<point id>.md` — a file the executor writes into the plan folder
+when it carries out the `Hand-back:` task, not a phase file and not part of the bundle's integrity
+(`phase-*.md` is the only pattern check 5 reads).
 
 ## Editing an Existing Bundle
 
@@ -401,8 +415,9 @@ Each check is **blocking** — check 13 does not apply to a legacy plan (PR chec
     command exists only in the test-checkpoint task; one that reaches `### Verification` is
     executed a second time by `/unikit-verify`.
 11. Under `Testing: yes` the last task of `## Checklist` is a test-checkpoint task carrying
-    `Test checkpoint: plan`. A missing final full run is not a matter of style — REQ-007 has
-    no off switch.
+    `Test checkpoint: plan`. In a plan with a `## Balance Context` the last task is `Hand-back:`,
+    and the task directly above it carries `Test checkpoint: plan`. A missing final full run is
+    not a matter of style — REQ-007 has no off switch.
 12. When `## Modules` is present, its lines cover the phases in order — contiguous ranges,
     every phase exactly once — and every module longer than four phases carries `why long:`.
 13. A `PR checkpoint:` task is the last task of its module's closing phase; the last module

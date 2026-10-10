@@ -7,6 +7,7 @@
 //                         numbers are the same) on the manifest `<dir>/PLAN.md` and its phase files.
 //                         A manifest without the ultra marker is a full plan: only
 //                         checks 6, 9, 11 and 12-15 apply to it.
+//                         Check 11 also accepts Hand-back: as the last task of a plan with a ## Balance Context.
 //   finalize <plan-dir>   Checks `<plan-dir>`, keeps its `.planning/recon/` as `recon/` of the plan
 //                         folder, then removes the rest of `.planning/` — only one directly inside a
 //                         folder under `.unikit/code/plans/`.
@@ -54,6 +55,7 @@ const TASK_RE = /^- \[( |x)\] Task (\d+)\.(\d+)\b/;
 const DETAILS_RE = /\(\[details\]\(([^)#]+)#([^)]+)\)\)/;
 const TEST_CHECKPOINT = 'Test checkpoint:';
 const TEST_CHECKPOINT_PLAN = 'Test checkpoint: plan';
+const [H_BALANCE_CONTEXT, HAND_BACK] = ['## Balance Context', 'Hand-back:'];
 const PR_CHECKPOINT = 'PR checkpoint:';
 const COMMIT_RE = /^### Commit (\d+): after tasks? (\d+\.\d+)(?:\s*[-–]\s*(\d+\.\d+))?/;
 const MODULE_RE = /^- M(\d+) · (.+?) · phases? (\d+)(?:\s*[-–]\s*(\d+))? · delivers: (.+)$/;
@@ -148,6 +150,7 @@ function parseChecklist(lines) {
     t.isTestCheckpoint = text.includes(TEST_CHECKPOINT);
     t.isFullRun = text.includes(TEST_CHECKPOINT_PLAN);
     t.isPrCheckpoint = text.includes(PR_CHECKPOINT);
+    t.isHandBack = t.lines.some((l) => l.trim().startsWith(HAND_BACK));
   }
   return { phases, tasks };
 }
@@ -317,9 +320,12 @@ function runChecks(dir) {
     commits.push({ n: m[1], ids: taskIds.filter((id) => compareIds(id, from) >= 0 && compareIds(id, to) <= 0) });
   }
 
-  // 11 — under Testing: yes the last task is the full run
-  if (setting(lines, SETTING_TESTING) === YES && !(tasks.length && tasks[tasks.length - 1].isFullRun)) {
-    fail(11, 'Testing: yes, but the last checklist task is not Test checkpoint: plan');
+  // 11 — under Testing: yes the last task is the full run (balance plan: Hand-back: last, the full run directly above it)
+  const tail = tasks[tasks.length - 1];
+  const beforeTail = tasks[tasks.length - 2];
+  const runTask = section(lines, H_BALANCE_CONTEXT) !== null && tail?.isHandBack ? beforeTail : tail;
+  if (setting(lines, SETTING_TESTING) === YES && !runTask?.isFullRun) {
+    fail(11, 'Testing: yes, but the last checklist task is not Test checkpoint: plan (balance plan: Hand-back: directly under it)');
   }
 
   // 12-15 — modules

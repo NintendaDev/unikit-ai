@@ -64,6 +64,15 @@ expect_fail pr-not-last 13
 expect_fail barrier-missing 14
 expect_fail commit-crosses-module 15
 
+# check 11 in a balance plan: Hand-back: is the last task and the full run stands directly above it;
+# the same plan without ## Balance Context, a run that is not directly above, and a Hand-back: whose
+# WHY merely mentions the run (a substring match would let it through) all fail
+run check "$FIXTURES/balance-handback-last"
+check "balance-handback-last: Hand-back last, the full run directly above it — OK 7 checks" '[[ $LAST_CODE -eq 0 ]] && grep -qxF "OK 7 checks" <<< "$LAST_OUT"' "$LAST_OUT"
+expect_fail handback-without-context 11
+expect_fail balance-no-full-run-above 11
+expect_fail handback-why-mentions-run 11
+
 run check "$TMP_ROOT/does-not-exist"
 check "a missing folder is an I/O error, exit 1" '[[ $LAST_CODE -eq 1 ]] && grep -q "^ERROR " <<< "$LAST_OUT"' "$LAST_OUT"
 run

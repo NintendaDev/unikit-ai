@@ -116,6 +116,8 @@ Ultra is **user-named, never model-inferred**. Rule 5 recognises the request whe
 
 **A merge request** — the user asks to merge a named branch into the current one (not a rebase, a cherry-pick or a merge by pull request number): load `{{skills_dir}}/{{self_name}}/references/merge-plan.md` and follow it. It owns the trigger, the analysis, the mode question — `fast`, `full` or `ultra` (`add` does not apply to a merge) — and the shape of the plan; a branch that is not named is asked for there. An ordinary plan does not read that file.
 
+**A Balance Checkpoints input** — the argument names a `CHECKPOINTS.md` file, a folder or slug under `.unikit/gamedesign/balance/`, or the request is calibration or measurement work on a balance document (`/unikit-gd-balance` prints this command): load `{{skills_dir}}/{{self_name}}/references/balance-plan.md` and follow it. It owns finding the current point, the snapshot, the horizon and the shape of the plan. An ordinary plan does not read that file.
+
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
 ## Workflow
@@ -507,6 +509,8 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **`## Design`**, **`## Flow Context`**, **`## Content Context`** (game-design module) — the snapshots Step 4.5 prepared, placed in this order directly after `## Based on`, each omitted when it was not produced (always, for a pure-code plan). What each one carries — the `SYS-id`, its version and the cited Acceptance Criteria; the `FLOW-id`, its wiring mode and `GOAL` steps; the `CT-id`, its `scale` and `CT.fields` schema — is `design-context.md`'s. `## Design` feeds `/unikit-verify`'s `implemented_version` writeback; `## Flow Context` and `## Content Context` have none.
 
+   **`## Balance Context`** — only for a plan built from a Balance Checkpoints file (`references/balance-plan.md`): the snapshot of the point, placed after `## Based on` and after any of the three snapshots above, directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Balance checkpoint grammar`).
+
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)
    - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
@@ -539,6 +543,8 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 8. **`## Rule Candidates`** — emitted **always, and empty** (heading and header row). Contract: `TASK-FORMAT.md` → `### Rule candidates section`.
 
 9. **`## Test Runs`** — emitted **empty under `Testing: yes`** (the heading alone), omitted under `Testing: no`. Contract: `TASK-FORMAT.md` → `### Test runs section`.
+
+9a. **`## Measurements`** — emitted **empty** (heading and header row) whenever the plan carries at least one `Measure:` task, omitted otherwise; filled by the executor. It stands directly after `## Test Runs`, or — under `Testing: no`, when there is none — directly after `## Rule Candidates`, or, when that is absent too, above `## Dependency Graph`; always above `## Technical Context`. Contract: `TASK-FORMAT.md` → `### Balance checkpoint grammar`.
 
 10. **`## Dependency Graph`** — phase dependencies in ASCII.
 
