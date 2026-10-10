@@ -2206,7 +2206,7 @@ fi
 # ── Brownfield recon / explore code-lens / gd-docs guards (RD-1…RD-8) ─────────
 # The brownfield-adoption upgrade added three READ-ONLY verbs at the module edges:
 # unikit-gd-recon (cold-start, code → RECON.md), the unikit-gd-explore code-grounded
-# lens (post-GDD slice), and unikit-gd-docs (workspace → docs/design/). Code reading is
+# lens (named slice), and unikit-gd-docs (workspace → docs/design/). Code reading is
 # quarantined to the two research verbs; the authoring zones + apply never read code
 # (RD-8). bash cannot run an LLM skill — these are grep invariants on the contract text +
 # allowed-tools checks. All file-scoped -qF (MSYS grep aborts on -iF, and Unicode arrows /
@@ -2352,6 +2352,21 @@ if [[ -z "$RD5_WHY" ]]; then
     pass "RD-5 explore code-grounded lens (4th lens + cross-skill code-recon read + code-provenance + softened one-way)"
 else
     fail "RD-5 explore code-lens drift:$RD5_WHY"
+fi
+
+# (RD-5b) the explore code-grounded lens is not gated on a GDD: the lens reads a NAMED slice
+# with or without GAME.md; the old "post-GDD" qualifier is gone from the skill and from the
+# One-Way Boundary exception (the second half of the lens still defers whole-project cold
+# start to recon — pinned by RD-5/RD-3, not here).
+RD5B_WHY=""
+grep -qF 'with or without a GDD' "$GD_EXPLORE_SKILL" || RD5B_WHY+=" no-gdd-free-lens"
+grep -qF 'targeted' "$GD_PRINCIPLES"                 || RD5B_WHY+=" no-targeted"
+grep -qF 'post-GDD' "$GD_EXPLORE_SKILL" && RD5B_WHY+=" stale-post-gdd-explore"
+grep -qF 'post-GDD' "$GD_PRINCIPLES"    && RD5B_WHY+=" stale-post-gdd-principles"
+if [[ -z "$RD5B_WHY" ]]; then
+    pass "RD-5b explore code lens is not gated on a GDD (named slice, with or without GAME.md)"
+else
+    fail "RD-5b explore code lens gating drift:$RD5B_WHY"
 fi
 
 # (RD-6) unikit-gd-docs present + render contract: the six Variant-B chapters, the draft

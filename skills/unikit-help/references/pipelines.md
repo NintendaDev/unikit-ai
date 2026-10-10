@@ -107,7 +107,7 @@ docs:     /unikit-gd-docs          (optional) the GDD → human-readable docs/de
 **Read-only verbs at the I/O edges.** Three skills sit on the boundary of the module and are
 **read-only** at that edge: `/unikit-gd-recon` and the `/unikit-gd-explore` **code lens**
 **INPUT** (code → candidate design facts — recon for the whole project at cold start, the
-explore lens for a targeted slice once a GDD exists), the authoring zones
+explore lens for a named slice, with or without a GDD), the authoring zones
 (spec / system / flow / content) are the **core**, and `/unikit-gd-docs` **OUTPUTS**
 (design → a human-readable GDD). Reconstructing design from code is normally forbidden (the
 one-way boundary), so it is quantised into these read-only research verbs — every
@@ -237,7 +237,7 @@ Pick the row that matches what the user already has:
 | **A live game / existing code but NO GDD** | `/unikit-gd-recon` (reconstruct a RECON.md skeleton from code) | `/unikit-gd-spec <RECON.md>` (import) |
 | **A GDD, wants to detail a system** | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | **A GDD, wants a new mechanic** | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
-| **A GDD, wants to know how a system is built in code** | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| **A named slice of the code, wants to know how it is built (a GDD is not required)** | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
 | **A GDD, several decided edits across zones** | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | **A GDD, wants to publish/export it for people** | `/unikit-gd-docs` (→ `docs/design/*.md`; `--web` for HTML) | share the rendered docs |
 | **A feature idea, needs direction** | `/unikit-explore <topic>` | `/unikit-plan` |

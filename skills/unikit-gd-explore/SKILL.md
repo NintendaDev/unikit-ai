@@ -154,8 +154,8 @@ Before responding — before any analysis — silently load (do not narrate):
 
 **One-way boundary (with the code-lens exception):** the authoring zones never read
 code, but this skill is a **read-only research verb** — its **code-grounded lens**
-(below) *does* read project source and asset definitions to ground an in-flight design
-slice, the same sanctioned third exception `unikit-gd-recon` uses (`gd-principles` →
+(below) *does* read project source and asset definitions to ground a design question in
+the slice the prompt names, the same sanctioned third exception `unikit-gd-recon` uses (`gd-principles` →
 One-Way Boundary). Outside that lens, do not read `.unikit/code/` or build artifacts.
 Web research **is allowed** here (market and reference scans — `gd-principles`).
 
@@ -346,10 +346,10 @@ delta). A `belongs_to` that needs a **missing system** still routes that *system
 
 The fourth lens grounds a design slice against **this project's own code** — when the
 question is not "how does *another* game do this" (MDA) or "is it worth it" (market) but
-**"how is *our* X actually built?"**. It is the **post-GDD, targeted** counterpart to
+**"how is *our* X actually built?"**. It is the **targeted** counterpart to
 `unikit-gd-recon`: where recon is a strictly cold-start, whole-project bootstrap (no GDD
-yet → one passive `RECON.md`), this lens runs **when a GDD already exists** and reads only
-the **slice** the prompt names, to inform an in-flight design decision. Like the other
+yet → one passive `RECON.md`), this lens reads only the **slice** the prompt names —
+**with or without a GDD** — to inform a design question. Like the other
 lenses it is **inferred from the prompt, never a flag**, and it **combines** with the
 internal-design lens (read the design intent *and* the code reality together).
 
@@ -364,13 +364,15 @@ built / what the asset actually has* — separating it from MDA's "another game"
 
 **Decision rule:**
 
-- **Code-grounded signal present and `GAME.md` exists** → code lens **ON**: load
+- **Code-grounded signal present** → code lens **ON**: load
   `unikit-gd-recon/references/code-recon.md`, scan **only the named slice** with
-  `recon-agent` (fallback: inline `Glob`/`Grep`/`Read`), and fold the
-  code findings into the brief.
-- **No `GAME.md` yet** → this is the **cold-start** case → **do not** use this lens;
-  point at `/unikit-gd-recon` (whole-project reconstruction) instead. Recon owns cold
-  start; this lens owns the in-flight slice.
+  `recon-agent` (fallback: inline `Glob`/`Grep`/`Read`), and fold the code findings
+  into the brief. With `GAME.md` the lens combines with the internal-design lens;
+  without it the result is **pre-spec research** and routes as the internal-design
+  lens's no-`GAME.md` bullet does (`/unikit-gd-spec` or `/unikit-gd-brainstorm`).
+- **The request is to reconstruct the whole project** (no slice is named, no GDD yet)
+  → this is the **cold-start** case → **do not** use this lens; point at
+  `/unikit-gd-recon`. Recon owns cold start; this lens owns a named slice.
 - **No code-grounded signal** → code lens **OFF** (it never reads code uninvited).
 
 **Read-only and code-provenance-tagged.** This lens reads code; it **never** edits the
@@ -482,7 +484,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
 - **Code-grounded lens (read-only).** When the code lens engages, this skill reads
   project source and asset definitions — the sanctioned third exception to the one-way
   boundary (`gd-principles`), shared with `unikit-gd-recon`. It reads only the **named
-  slice** (post-GDD), folds code findings into a brief tagged `provenance: extracted from
+  slice** (with or without a GDD), folds code findings into a brief tagged `provenance: extracted from
   code`, and **never** edits the GDD or the code. Cold-start, whole-project
   reconstruction is `unikit-gd-recon`'s, not this lens's.
 - **Not this skill:** generating new concepts → `unikit-gd-brainstorm`; authoring
@@ -501,7 +503,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
 /unikit-gd-explore roguelike meta-progression       → genre / mechanics scan
 /unikit-gd-explore is this roguelike niche saturated?  → market lens (viability / white-space)
 /unikit-gd-explore improve our combat balance        → internal design lens (read-only) → routes to system / spec
-/unikit-gd-explore how is our loot wired in the code → code-grounded lens (read-only, post-GDD slice) → brief
+/unikit-gd-explore how is our loot wired in the code → code-grounded lens (read-only, named slice) → brief
 /unikit-gd-explore reviews/2026-06-25_review-SYS-combat.md → promote ## Research into ## Apply-ready in place → /unikit-gd-apply reviews/X.md
 /unikit-gd-explore .unikit/gamedesign/RECON.md      → develop the cold-start reconstruction (pre-GDD) → save research + ## Explorations backlink → /unikit-gd-spec import
 /unikit-gd-explore https://…                         → dissect a linked design source

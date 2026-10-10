@@ -137,7 +137,7 @@ from skipping to implementation.
 | A live game / existing code but no GDD | `/unikit-gd-recon` (reconstruct a `RECON.md` skeleton) | `/unikit-gd-spec <RECON.md>` (import) |
 | A GDD, want to detail a system | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | A GDD, want a new mechanic | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
-| A GDD, want to know how a system is actually built in code | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| A named slice of the code, want to know how it is actually built (a GDD is not required) | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
 | A GDD, several decided edits across zones | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | A GDD, want to publish/export it for people to read | `/unikit-gd-docs` (`--web` for HTML) | share the rendered docs |
 
@@ -286,7 +286,7 @@ command.
 |---|---|---|---|
 | **Reference & market** | external references, market signals (`references/market-scan.md`) | dissecting a reference game's mechanics → dynamics → aesthetics, checking a genre/mechanic's market fit | `.unikit/gamedesign/researches/<slug>/` |
 | **Internal design** | the GDD workspace, read-only | improving an existing system, inventing a new mechanic, or working out a flow — for *this* game | a research brief + a routed next command |
-| **Code-grounded** | the named code slice, read-only, post-GDD | "how is our X actually built?" | a brief tagged `provenance: extracted from code` — see **Brownfield adoption** below |
+| **Code-grounded** | the named code slice, read-only, with or without a GDD | "how is our X actually built?" | a brief tagged `provenance: extracted from code` — see **Brownfield adoption** below |
 
 `/unikit-gd-brainstorm` delegates to the reference & market lens at its Phase 3.5 for
 market validation — the brief returns directly into the brainstorm session, with no
@@ -604,8 +604,8 @@ Intent-Gap items the code is silent on.
 
 ### `unikit-gd-explore` — the code-grounded lens
 
-The post-GDD, **targeted** counterpart: when a GDD already exists and the question is "how
-is *our* X actually built?", the explore lens reads the named code slice (read-only) and
+The **targeted** counterpart: when the question names a slice of the code — with or without
+a GDD — such as "how is *our* X actually built?", the explore lens reads the named code slice (read-only) and
 folds the findings into a research brief, tagged the same `provenance: extracted from code`.
 Recon and this lens share one extraction engine (`unikit-gd-recon/references/code-recon.md`)
 so the heuristics never diverge.

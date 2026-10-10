@@ -2,7 +2,7 @@
 
 The single source of the heuristics that turn an implementation into **candidate**
 design facts. Owned by `unikit-gd-recon` (cold-start, whole project → `RECON.md`); read
-by the `unikit-gd-explore` **code-grounded lens** (post-GDD, targeted slice → an explore
+by the `unikit-gd-explore` **code-grounded lens** (targeted — a named slice, with or without a GDD → an explore
 brief). Same heuristics, two consumers, no duplication — the `delegation-contract`
 pattern (provider owns the spec, the other skill reads it).
 

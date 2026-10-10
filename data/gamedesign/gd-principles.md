@@ -170,9 +170,10 @@ Code reads design; design knows nothing about code.
   - the **read-only research verbs** read code to extract candidate design facts (the
     brownfield-bootstrap carve-out above): `unikit-gd-recon` (cold-start only — no GDD
     yet) scans the whole project into a passive `RECON.md`, and the `unikit-gd-explore`
-    **code-grounded lens** (post-GDD, targeted) grounds an in-flight slice. Both are
-    read-only on code, call no authoring zone, and emit a *document* (`RECON.md` / an
-    explore brief) — never a GDD edit. The shared extraction engine is
+    **code-grounded lens** (targeted — only the slice the prompt names, with or without
+    a GDD) grounds a design question in how that slice is built. Both are read-only on
+    code, call no authoring zone, and emit a *document* (`RECON.md` / an explore brief) —
+    never a GDD edit. The shared extraction engine is
     `unikit-gd-recon/references/code-recon.md`. Facts carry
     `provenance: extracted from code` (review ≥ Major). The authoring zones
     (spec/system/content/flow) and the `unikit-gd-apply` dispatcher are **never** in
