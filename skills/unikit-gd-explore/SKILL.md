@@ -65,9 +65,9 @@ language setting.
 
 ## Delegation agents
 
-This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single
-place where its delegate's agent type and call arguments are declared — call sites name
-the alias and never carry a type or a model argument of their own.
+This skill uses two named delegation aliases for `Agent(...)` calls. The aliases are the
+single place where each delegate's agent type and call arguments are declared — call sites
+name the alias and never carry a type or a model argument of their own.
 
 **Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
 (a missing file, block or key is not an error) and settle the model argument once:
@@ -91,6 +91,14 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   Every question you send ends with the sentence `You are read-only: edit and write nothing.`, verbatim.
 
   Fallback: if the `Agent` tool is unavailable, investigate inline with `Glob`/`Grep`/`Read`.
+
+- **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
+
+  ```
+  Agent({{agent_call_reader}} prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
+  ```
+
+  The path travels, never the text. Fallback: if the `Agent` tool is unavailable, read `references/coherence-gate.md` yourself and run the pass inline; print `WARN [coherence] fresh-context pass unavailable — running inline`. The gate is never skipped or delayed.
 
 ## Bootstrap Context (MANDATORY)
 
@@ -431,7 +439,9 @@ discovery tags, `RESEARCH_BRIEF.md`), the **Next Steps routing** table, and the
 `researches/INDEX.md` update format. When the research came from the **internal design
 lens**, the brief gets the **one** mode-aware block matching the resolved route — the
 block field lists live in `references/internal-design-lens.md` → "Mode-aware brief"
-(the single source of truth; do not duplicate them).
+(the single source of truth; do not duplicate them). Every save — new or an update — ends
+with the coherence gate: `{{skills_dir}}/{{self_name}}/references/coherence-gate.md`, run
+through `check-agent` by `references/save-research.md` → `## Write order`.
 
 ## Init: Rebuilding the Researches Index
 

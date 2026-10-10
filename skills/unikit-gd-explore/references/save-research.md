@@ -192,5 +192,21 @@ The base order of writing a standard research:
 1. `RESEARCH_RESULT.md`
 2. `RESEARCH_BRIEF.md`
 3. Update researches/INDEX.md
+4. Research coherence gate
+
+After `researches/INDEX.md` is re-rendered (and, in ultra, after the integrity checks of `ultra-research.md`) hand the path
+`{{skills_dir}}/{{self_name}}/references/coherence-gate.md` to a `check-agent` dispatch, and
+run the gate it specifies through that dispatch. The agent reads the file; this session does not.
+Act on the report's `Next:` line and on nothing the report does not carry:
+
+- `pass` → write the `Gate:` value it names into this save's session entry, record the remainder it lists, confirm the save;
+- `repair` → apply the listed repairs as one batch, keeping to the repair rules the report quotes, then dispatch pass 2 with the findings adjudicated so far;
+- `ask` → put the unresolved findings, the count per pass and the four options to the user, and on a save write the `OQ-<n>` entries and the `Gate:` value it names;
+- `hold` → do not confirm; tell the user which durable file could not be read.
+
+If `references/coherence-gate.md` does not exist, or the pass reports that it cannot read it, print one line
+`WARN [coherence] reference missing — saving without the coherence pass` and continue.
+A report without a `Next:` line is treated as `hold`: say that the gate report is incomplete, do not confirm, and do not start another pass on your own.
+The save is confirmed to the user only after the gate has finished (passed, or stopped at its budget with the user's answer in hand). The gate verdict is printed above the Next Steps routing and the handoff tail, which stay the last blocks of the reply.
 
 This is the order of a standard research. An ultra research inserts its own steps into it (references/ultra-research.md); every save ends with the coherence gate (references/coherence-gate.md). The index of artifacts is never written before the artifacts, and the gate never runs before researches/INDEX.md is re-rendered.

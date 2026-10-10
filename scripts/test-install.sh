@@ -57,7 +57,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
-                          "unikit-gd-recon", "unikit-gd-docs",
+                          "unikit-gd-explore", "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
                           "unikit-pr"],
       "installedSubagents": ["unikit-architecture-sidecar"]
@@ -307,6 +307,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-recon/references/code-recon.
   "unikit-gd-recon shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
   "unikit-gd-docs SKILL.md installed (GDD → docs/design render)"
+# The gate reference is read only at the moment a research is saved, so a content test
+# cannot see a missing delivery — the existence of the file is asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/coherence-gate.md" \
+  "unikit-gd-explore coherence-gate.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks

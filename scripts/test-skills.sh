@@ -2039,7 +2039,8 @@ fi
 # pairs are counted on the TEMPLATE lines of save-research.md: its prose never repeats a
 # marker literal, so a count of exactly one per marker is the invariant.
 GXR1_WHY=""; GXR1_N=0
-for gxr_m in '<!-- unikit:active-summary:start -->' '<!-- unikit:active-summary:end -->'              '<!-- unikit:sessions:start -->' '<!-- unikit:sessions:end -->'; do
+for gxr_m in '<!-- unikit:active-summary:start -->' '<!-- unikit:active-summary:end -->' \
+             '<!-- unikit:sessions:start -->' '<!-- unikit:sessions:end -->'; do
     GXR1_N=$((GXR1_N + 1))
     gxr_c=$({ grep -cF -- "$gxr_m" "$GD_EXPLORE_SAVE_RESEARCH" || true; })
     [[ "$gxr_c" == "1" ]] || GXR1_WHY+=" marker:${gxr_m}=${gxr_c}"
@@ -2066,7 +2067,9 @@ else
 fi
 
 GXR3_WHY=""; GXR3_N=0
-for gxr_h in '## Improvement Plan' '## New Feature Plan' '## Flow Improvement Plan'              '## Flow Feature Plan' '## Content Improvement Plan' '## Content Feature Plan'              '**Recommended follow-up**'; do
+for gxr_h in '## Improvement Plan' '## New Feature Plan' '## Flow Improvement Plan' \
+             '## Flow Feature Plan' '## Content Improvement Plan' '## Content Feature Plan' \
+             '**Recommended follow-up**'; do
     GXR3_N=$((GXR3_N + 1))
     grep -qF -- "$gxr_h" "$GD_EXPLORE_SAVE_RESEARCH" || GXR3_WHY+=" no-anchor:${gxr_h}"
 done
@@ -2089,6 +2092,62 @@ if [[ -z "$GXR4_WHY" ]]; then
     pass "GXR-4 init-index restores the Mode field from the first-line marker; unfinished-exploration NOTE; report line intact"
 else
     fail "GXR-4 init-index mode restore drift:$GXR4_WHY"
+fi
+
+# (GXG-1…GXG-6) unikit-gd-explore coherence gate: every save of a design research ends with a
+# fresh-context pass over the durable record (RESEARCH_RESULT.md, RESEARCH_BRIEF.md). The
+# criteria, the two-pass budget and the fallback lines are carried over from unikit-explore
+# (CG-*) with the record's own file names; SOURCE.md stays outside the scope.
+GD_COHERENCE="$ROOT_DIR/skills/unikit-gd-explore/references/coherence-gate.md"
+GXG_WHY=""
+if [[ ! -s "$GD_COHERENCE" ]]; then
+    fail "GXG-1 unikit-gd-explore/references/coherence-gate.md missing or empty"
+else
+    # (GXG-1) no frontmatter — a reference body, not a skill
+    [[ "$(head -1 "$GD_COHERENCE")" != "---" ]] || GXG_WHY+=" GXG-1:has-frontmatter"
+    # (GXG-2) exactly five numbered criteria; the scope literals; the record's own file name
+    GXG_CRIT="$({ awk '/^## The criteria/{f=1;next} /^## /{f=0} f && /^[0-9]+\. /{n++} END{print n+0}' "$GD_COHERENCE" || true; })"
+    [[ "$GXG_CRIT" == "5" ]] || GXG_WHY+=" GXG-2:criteria-count=$GXG_CRIT"
+    for gxg_l in 'not evidence' '## Active Summary' 'the `check-agent` alias' 'WARN [coherence]' 'Integrity' \
+                 '`SOURCE.md` is **not** in scope'; do
+        grep -qF -- "$gxg_l" "$GD_COHERENCE" || GXG_WHY+=" GXG-2:no-literal:${gxg_l}"
+    done
+    if sed 's/RESEARCH_RESULT\.md//g' "$GD_COHERENCE" | grep -qF 'RESEARCH.md'; then
+        GXG_WHY+=" GXG-2:manifest-name-RESEARCH.md-returned"
+    fi
+    grep -qF 'ULTRA-RESEARCH-FORMAT.md' "$GD_COHERENCE" && GXG_WHY+=" GXG-2:explore-format-path-returned"
+    # (GXG-3) the call sits in ## Write order, after the INDEX step and before the end of the file
+    GXG_WO="$({ awk '/^## Write order/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SAVE_RESEARCH" || true; })"
+    if [[ -z "$GXG_WO" ]]; then
+        GXG_WHY+=" GXG-3:no-write-order"
+    else
+        GXG_IDX="$({ printf '%s\n' "$GXG_WO" | grep -nF 'Update researches/INDEX.md' | head -1 | cut -d: -f1 || true; })"
+        GXG_RUN="$({ printf '%s\n' "$GXG_WO" | grep -nF 'run the gate it specifies' | head -1 | cut -d: -f1 || true; })"
+        if [[ -z "$GXG_IDX" || -z "$GXG_RUN" ]]; then
+            GXG_WHY+=" GXG-3:missing-anchor(index=${GXG_IDX:-none},gate=${GXG_RUN:-none})"
+        elif (( GXG_RUN <= GXG_IDX )); then
+            GXG_WHY+=" GXG-3:gate-before-index"
+        fi
+    fi
+    # (GXG-4) both fallback lines
+    grep -qF 'WARN [coherence] reference missing' "$GD_EXPLORE_SAVE_RESEARCH" || GXG_WHY+=" GXG-4:no-reference-missing-warn"
+    grep -qF 'WARN [coherence] fresh-context pass unavailable — running inline' "$GD_COHERENCE" || GXG_WHY+=" GXG-4:no-inline-warn"
+    # (GXG-5) the budget and the contractive-repair fences
+    for gxg_l in 'at most **two passes**' 'and nothing else' 'A repair is **contractive**' 'stopped at budget'; do
+        grep -qF -- "$gxg_l" "$GD_COHERENCE" || GXG_WHY+=" GXG-5:no-literal:${gxg_l}"
+    done
+    # (GXG-6) one dispatch line in the skill, the second alias declared, the model key still once
+    GXG_CALL="$({ grep -cF 'Read <path of references/coherence-gate.md>' "$GD_EXPLORE_SKILL" || true; })"
+    [[ "$GXG_CALL" == "1" ]] || GXG_WHY+=" GXG-6:dispatch-lines=$GXG_CALL"
+    GXG_ALIAS="$({ awk '/^## Delegation agents/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SKILL" | grep -cE '^- \*\*`check-agent`\*\*' || true; })"
+    [[ "$GXG_ALIAS" == "1" ]] || GXG_WHY+=" GXG-6:check-agent-alias=$GXG_ALIAS"
+    GXG_MODEL="$({ grep -cF 'subagents.model.{{agent_id}}' "$GD_EXPLORE_SKILL" || true; })"
+    [[ "$GXG_MODEL" == "1" ]] || GXG_WHY+=" GXG-6:model-key=$GXG_MODEL"
+    if [[ -z "$GXG_WHY" ]]; then
+        pass "GXG-1…6 gd-explore coherence gate ($GXG_CRIT criteria, call after the INDEX step, fallbacks, budget fences, second alias)"
+    else
+        fail "GXG gd-explore coherence gate drift:$GXG_WHY"
+    fi
 fi
 
 # (CS2-5) the GD-IDS.yaml template carries the commented research: pointer on content_types
