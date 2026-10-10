@@ -7249,9 +7249,36 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF 'Carrying the anchor across a commit'    "$TC_COORD"               || TW_WHY+=" TW-11:coordinator-never-carries"
     # (TW-12) a phase writes its tests before its run, or the last phase's tests are never run.
     grep -qF 'A phase that has not run `## Step 3.8` yet writes its tests now' "$TC_TESTRUNS" || TW_WHY+=" TW-12:tests-written-after-run"
+    # (TW-13…TW-15) one scope, one launch: the scope is closed whole before the first launch, and a
+    # repeat after red is one launch of the whole scope. tw_has counts the anchors it checked — a
+    # block that checks none fails, so a renamed file cannot turn these into a silent pass.
+    tw_chk=0
+    tw_has() { # <reason key> <literal> <text to search>
+        tw_chk=$((tw_chk + 1))
+        grep -qF -- "$2" <<< "$3" || TW_WHY+=" $1"
+    }
+    # (TW-13) the subsection and its prohibitions, inside the `## Run width` window.
+    tw_has "TW-13:no-subsection"       '### One scope, one launch'                                 "$TW_SEC"
+    tw_has "TW-13:scope-not-closed"    'closed before the first launch'                            "$TW_SEC"
+    tw_has "TW-13:trial-run-allowed"   'a trial run to see what is red or what exists'             "$TW_SEC"
+    tw_has "TW-13:scope-grows"         'growing the scope after the launch has started'            "$TW_SEC"
+    tw_has "TW-13:doubt-not-full-run"  'one wide run costs less than two narrow ones'              "$TW_SEC"
+    # (TW-14) a repeat after red: one launch of the whole scope, and no narrower check before it.
+    tw_has "TW-14:repeat-not-one-launch" 'A repeat after red is one launch of the whole scope'     "$TW_SEC"
+    tw_has "TW-14:narrow-check-allowed"  'A narrower check of the fixed test before the repeat is forbidden' "$TW_SEC"
+    tw_has "TW-14:task-scope-lost"       "the scope stays the fixtures and classes of that task"   "$TW_SEC"
+    tw_has "TW-14:plan-repeat-narrowed"  'it is every test in the project again'                   "$TW_SEC"
+    # (TW-15) the pointers: Step 3.2 item 6 names the subsection on the very line that repeats the
+    # run, the search loop says it is not a launch, and /unikit-fix points at the same subsection.
+    tw15_line="$( { grep -F 'After the fix the run is repeated' "$TC_TESTRUNS" || true; } | head -1)"
+    [[ -n "$tw15_line" ]] || TW_WHY+=" TW-15:no-repeat-line"
+    tw_has "TW-15:repeat-line-unlinked"  'One scope, one launch'                                   "$tw15_line"
+    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_TESTRUNS")"
+    tw_has "TW-15:fix-unlinked"          'One scope, one launch'                                   "$(cat "$EM_FIX_SKILL")"
+    (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-12 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run"
+    pass "TW-1…TW-15 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi

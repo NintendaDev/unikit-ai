@@ -468,7 +468,7 @@ Run the tests through MCP server `{{engine_mcp_tool}}` at the width the shared r
 - `true` → the affected test suites in one run — or every test, when that section widens the run
 - The file or the section is missing → run every test in the project in one run, and print `WARN [testing] test-run reference missing — every test is run; run unikit-ai update`
 - Wait for results and display them — highlight any failures. A run that is not green by that section — zero tests, no readable counts — is a failed check, not a pass; the one zero that is not a failure is a run of every test in a project that has no tests yet — note `Test run: no tests in the project` and go on
-- If tests fail because of the fix — investigate and fix the regression
+- If tests fail because of the fix — investigate and fix the regression. The repeat after the fix is one launch over the scope recomputed once from all the files changed (`{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width` → `### One scope, one launch`)
 - If MCP server `{{engine_mcp_tool}}` is unavailable — skip and note: `Test run: engine MCP unavailable, skipped`
 
 ### 4.3 Engine Companion Files
