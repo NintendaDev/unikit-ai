@@ -2144,6 +2144,14 @@ else
     [[ "$GXG_ALIAS" == "1" ]] || GXG_WHY+=" GXG-6:check-agent-alias=$GXG_ALIAS"
     GXG_MODEL="$({ grep -cF 'subagents.model.{{agent_id}}' "$GD_EXPLORE_SKILL" || true; })"
     [[ "$GXG_MODEL" == "1" ]] || GXG_WHY+=" GXG-6:model-key=$GXG_MODEL"
+    # (GXG-7) the gate resolves only the record's own ids; the brief is a derived hand-off; a gate that did
+    # not run has a name; material findings are repaired
+    GXG_CR="$({ awk '/^## The criteria/{f=1;next} /^## /{f=0} f' "$GD_COHERENCE" || true; })"
+    GXG_CHK=1
+    grep -qF 'GD-IDS.yaml' <<< "$GXG_CR" || GXG_WHY+=" GXG-7:criteria-check-registry-ids"
+    grep -qF 'derived hand-off' "$GD_COHERENCE" || GXG_WHY+=" GXG-7:brief-not-a-derived-document"
+    grep -qF 'blocking or material findings after pass 1' "$GD_COHERENCE" || GXG_WHY+=" GXG-7:material-not-repaired"
+    grep -qF 'not run —' "$GD_EXPLORE_SAVE_RESEARCH" || GXG_WHY+=" GXG-7:no-gate-not-run-value"
     if [[ -z "$GXG_WHY" ]]; then
         pass "GXG-1…6 gd-explore coherence gate ($GXG_CRIT criteria, call after the INDEX step, fallbacks, budget fences, second alias)"
     else
@@ -2192,6 +2200,18 @@ else
     # (GXU-5) the save does not repeat the collision question; the gate runs after the integrity checks
     grep -qF 'the save does not repeat it' "$GD_EXPLORE_SAVE_RESEARCH" || GXU_WHY+=" GXU-5:no-collision-moved-to-pin"
     grep -qF 'ultra-research.md` → `## Integrity`' "$GD_COHERENCE" || GXU_WHY+=" GXU-5:gate-not-after-integrity"
+    # (GXU-6) the integrity checks come before the gate in the write order; (GXU-7) the zones read the brief
+    GXU_WO="$({ awk '/^## Write order/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SAVE_RESEARCH" || true; })"
+    GXU_INT="$({ printf '%s' "$GXU_WO" | grep -nF 'integrity checks' | head -1 | cut -d: -f1 || true; })"
+    GXU_RUN="$({ printf '%s' "$GXU_WO" | grep -nF 'run the gate it specifies' | head -1 | cut -d: -f1 || true; })"
+    if [[ -z "$GXU_INT" || -z "$GXU_RUN" ]]; then
+        GXU_WHY+=" GXU-6:missing-anchor(integrity=${GXU_INT:-none},gate=${GXU_RUN:-none})"
+    elif (( GXU_RUN <= GXU_INT )); then
+        GXU_WHY+=" GXU-6:gate-before-integrity"
+    fi
+    GXU_TAIL="$({ awk '/^## What ultra research does not change/{f=1;next} /^## /{f=0} f' "$GD_ULTRA" || true; })"
+    grep -qF 'RESEARCH_BRIEF.md' <<< "$GXU_TAIL" || GXU_WHY+=" GXU-7:brief-not-named-as-the-input"
+    ! grep -qF 'Active Summary` is the input' <<< "$GXU_TAIL" || GXU_WHY+=" GXU-7:summary-named-as-the-zones-input"
     if [[ -z "$GXU_WHY" ]]; then
         pass "GXU-1…5 gd-explore ultra research ($GXU_APPLIES ultra-only sections, $GXU_CHECKS integrity checks, one load site)"
     else
@@ -9301,9 +9321,10 @@ if [[ -z "$BX_WHY" ]]; then
     for f in "$TC_COORD" "$TC_WORKER"; do
         bx_has "BM-5:no-measure(${f##*/})" 'Measure:' "$f"
         bx_has "BM-5:no-handback(${f##*/})" 'Hand-back:' "$f"
-        bx_has "BM-5:no-never(${f##*/})" 'never' "$f"
         bx_lacks "BM-5:skills-dir-var(${f##*/})" '{{skills_dir}}' "$f"
     done
+    bx_has "BM-5:coordinator-no-delegation-sentence" 'are never handed to a worker' "$TC_COORD"
+    bx_has "BM-5:worker-not-yours" 'is never yours' "$TC_WORKER"
     bx_has "BM-5:coordinator-no-role-reference" 'balance reference — its path is written in `/unikit-implement` Step 1' "$TC_COORD"
     bx_lacks "BM-5:coordinator-names-the-file" 'balance-measure.md' "$TC_COORD"
     bx_has "BM-5:polisher-no-rule" '`Measure:` and `Hand-back:` tasks carry no `Files:` either' "$TC_POLISHER"
@@ -9391,6 +9412,22 @@ if [[ -z "$BX_WHY" ]]; then
     [[ -z "$BX_HDR" ]] || BX_WHY+=" BX-2:report-header-restated(${BX_HDR##*/})"
     BX_OWN="$({ grep -rlx '## Allowed header combinations' "$ROOT_DIR/skills" "$ROOT_DIR/data" || true; })"
     [[ "$BX_OWN" == "$ROOT_DIR/skills/unikit-gd-balance/references/template-checkpoints.md" ]] || BX_WHY+=" BX-2:combinations-owner(${BX_OWN##*/})"
+    # (BP-5) a new ordinary task never lands after a phase's Measure: tasks; the line kinds and the section are complete
+    bx_has "BP-5:add-mode-no-measure-rule" 'above the `Measure:` tasks of its phase' "$UP_MODE_ADD"
+    bx_has "BP-5:sync-no-measure-rule" 'above the `Measure:` tasks of its phase' "$BS_REF"
+    bx_has "BP-5:ultra-stateful-no-item-line" '`Measure:` / `Hand-back:` / `Item:` line' "$ROOT_DIR/skills/unikit-plan/references/ultra-stateful.md"
+    bx_has "BP-5:measurements-listed-unconditionally" '## Measurements   (only with a `Measure:` task)' "$MP_ULTRA"
+    # (BM-6) a pending result never reaches the delete / archive prompts; the layer runs its tests before its measurements
+    BX_S54="$({ awk '/^[*][*]5[.]4:/{f=1;next} /^[*][*]5[.]5:/{f=0} f' "$UNIKIT_IMPLEMENT_SKILL" | grep -cF 'references/balance-measure.md' || true; })"
+    BX_CNT="$({ awk '/^## Counting/{f=1;next} /^## /{f=0} f' "$BM_REF" || true; })"
+    BX_CHK=$((BX_CHK + 3))
+    (( BX_S54 >= 1 )) || BX_WHY+=" BM-6:step-5.4-ignores-pending"
+    grep -qF '5.4' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.4"
+    grep -qF '5.8' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.8"
+    bx_has "BM-6:coordinator-layer-order" 'the test-checkpoint tasks of the layer → the `Measure:` tasks' "$TC_COORD"
+    bx_max "BM-6:implement-skill-size" 52000 "$UNIKIT_IMPLEMENT_SKILL"
+    # (BC-4) a measurement the user skipped is a skipped row, not a blocker
+    bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     (( BX_CHK > 0 )) || BX_WHY+=" BX-0:nothing-checked"
 fi
 if [[ -z "$BX_WHY" ]]; then
@@ -9634,6 +9671,22 @@ else
         bal_ok "BAL-9:branch-lacks-goal-rule($f.md)" 'named by its goal' "$BAL_REFS/$f.md"
     done
     bal_no "BAL-9:code-in-announcement" 'point BCH-' "$BAL_REFS/resolve-target.md"
+    # (BAL-10) every outcome of a returned report is written down, and none of them by a code
+    bal_ok "BAL-10:close-has-no-writer" 'Status: closed' "$BAL_REFS/mode-ingest.md"
+    bal_ok "BAL-10:none-block-undefined" 'Point: none' "$BAL_REFS/template-checkpoints.md"
+    bal_ok "BAL-10:closing-can-be-refused" 'closing is never refused' "$BAL_REFS/closure-set.md"
+    bal_ok "BAL-10:compose-step-missing-in-ingest" 'Compose the point' "$BAL_REFS/mode-ingest.md"
+    bal_ok "BAL-10:compose-step-missing-in-revise" 'Compose the point' "$BAL_REFS/mode-revise.md"
+    bal_ok "BAL-10:supersede-missing-in-contract" 'Supersedes:' "$BAL_HANDBACK"
+    bal_ok "BAL-10:supersede-missing-in-resolver" 'Supersedes:' "$BAL_REFS/resolve-target.md"
+    BAL_SLUG="$({ awk '/^## One slug/{f=1;next} /^## /{f=0} f' "$BAL_REFS/mode-status.md" || true; })"
+    BAL_CHK=$((BAL_CHK + 3))
+    [[ -n "$BAL_SLUG" ]] || BAL_WHY+=" BAL-10:no-one-slug-window"
+    ! grep -qF 'BCH-' <<< "$BAL_SLUG" || BAL_WHY+=" BAL-10:one-slug-prints-a-code"
+    ! grep -qF 'Current:' <<< "$BAL_SLUG" || BAL_WHY+=" BAL-10:one-slug-prints-the-header"
+    BAL_LIST="$({ awk '/^## Documents exist/{f=1;next} /^## /{f=0} f' "$BAL_REFS/mode-status.md" || true; })"
+    BAL_CHK=$((BAL_CHK + 1))
+    grep -qF 'one action' <<< "$BAL_LIST" || BAL_WHY+=" BAL-10:list-offers-more-than-one-action"
     (( BAL_CHK > 0 )) || BAL_WHY+=" BAL-1:nothing-checked"
 fi
 if [[ -z "$BAL_WHY" ]]; then
