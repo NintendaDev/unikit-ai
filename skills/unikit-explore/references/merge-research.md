@@ -28,7 +28,7 @@ Follow `merge-analysis.md` whole, in its order: pin the three commits, fetch, st
 
 **What this writes, and where.** `git fetch` and `git merge-tree` write into `.git` only — refs and objects. The working tree, the index and the project's files do not change. The rule that an ordinary exploration writes nothing to disk until the user agrees to save (`SKILL.md` → The Stance) is about the research files and the project, and it stands.
 
-**Commands.** Only those the frontmatter allows: they read history, trees and refs. `git fetch` is not among them on purpose — the permission prompt is the user's decision to let it run. **Never** `git merge`, `checkout`, `reset`, `stash`, `worktree`, and never a temporary working tree to build the result: in an engine project it costs a full reimport of the project. The tree `merge-tree` produced is read in place (`git show`, `git grep`, `git ls-tree`).
+**Commands.** Only those the frontmatter allows: they read history, trees and refs. A grant matches the start of a command, not its flags. Never pass a flag that writes a file or starts a program: `--output` makes `git diff`, `git log` and `git show` write a file, and `-O` of `git grep` hands the matching files to a program. `git fetch` is not among the grants on purpose — the permission prompt is the user's decision to let it run. **Never** `git merge`, `checkout`, `reset`, `stash`, `worktree`, and never a temporary working tree to build the result: in an engine project it costs a full reimport of the project. The tree `merge-tree` produced is read in place (`git show`, `git grep`, `git ls-tree`).
 
 ## Forks and blocking questions
 

@@ -9072,6 +9072,11 @@ else
     ma_has "MA-2:no-fetch-permission"   'git fetch'                                                 "$MA_RESEARCH"
     ma_has "MA-2:no-write-boundary"     '`git fetch` and `git merge-tree` write into `.git` only'   "$MA_RESEARCH"
     ma_has "MA-2:no-forbidden-commands" '**Never** `git merge`, `checkout`, `reset`, `stash`, `worktree`' "$MA_RESEARCH"
+    # a grant matches the start of a command, not its flags: `--output=<file>` makes git diff, log
+    # and show write a file (measured on git 2.46), and git grep's `-O` hands files to a program
+    ma_has "MA-2:no-flag-boundary"      'Never pass a flag that writes a file or starts a program' "$MA_RESEARCH"
+    ma_has "MA-2:no-output-flag"        '`--output`'                                            "$MA_RESEARCH"
+    ma_has "MA-2:no-pager-flag"         '`-O`'                                                  "$MA_RESEARCH"
     # (MA-3) the frontmatter grants: exactly the read-only git list, and none of the commands
     # that change the tree, the index or the refs (a plain `git fetch` stays a prompted action)
     MA_FM="$(awk '/^---$/{n++; next} n==1' "$MA_EXPLORE")"
@@ -9117,6 +9122,9 @@ else
     ma_has "MA-5:ordinary-plan-reads-it"      'An ordinary plan does not read that file'        "$MA_PLAN"
     ma_has "MA-5:no-missing-protocol-warn" 'WARN [merge] merge-analysis.md missing — plan is not per protocol; run unikit-ai update' "$MA_PLAN_REF"
     ma_has "MA-5:no-merge-start"           'git merge --no-ff --no-commit'                      "$MA_PLAN_REF"
+    # merging by the pinned SHA names the commit after the SHA alone ("Merge commit '<sha>'"), so
+    # the start task carries the message itself and `git commit --no-edit` later reuses it
+    ma_has "MA-5:merge-message-unnamed"    '-m "Merge branch '"'"'<branch>'"'"' into <current branch>"' "$MA_PLAN_REF"
     ma_has "MA-5:no-merge-commit"          'git commit --no-edit'                               "$MA_PLAN_REF"
     ma_has "MA-5:no-merge-folder"          '.unikit/code/plans/merge-'                          "$MA_PLAN_REF"
     ma_has "MA-5:no-not-ready-line"        'Plan is NOT implementation-ready'                   "$MA_PLAN_REF"
