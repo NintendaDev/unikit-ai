@@ -235,7 +235,7 @@ echo -e "\n${BOLD}=== Validate delegation-alias connectivity ===${NC}\n"
 DELEGATION_SKILLS=(
     "unikit-implement" "unikit-fix" "unikit-verify"
     "unikit-docs" "unikit-explore" "unikit-improve" "unikit-plan" "unikit-review"
-    "unikit-gd-explore" "unikit-gd-recon" "unikit-gd-review"
+    "unikit-gd-explore" "unikit-gd-recon" "unikit-gd-review" "unikit-gd-balance"
 )
 
 for skill in "${DELEGATION_SKILLS[@]}"; do
@@ -1208,6 +1208,7 @@ gd_check_skill_shards "unikit-gd-verify"  "gd-lifecycle" "gd-flow-axis" "gd-cont
 gd_check_skill_shards "unikit-gd-explore" "gd-critique" "gd-provenance"
 gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-content-axis" "gd-provenance" "gd-critique"
 gd_check_skill_shards "unikit-gd-apply"   "gd-authoring" "gd-lifecycle"
+gd_check_skill_shards "unikit-gd-balance" "gd-critique" "gd-provenance"
 # brainstorm loads core ONLY — assert it references none of the 6 shards.
 GD_BRAINSTORM_LEAK=""
 for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do
@@ -9271,6 +9272,131 @@ if [[ -z "$HB_WHY" ]]; then
     pass "HB-1…HB-3 balance hand-back contract is flat and engine-neutral, carries its seven sections and the header, table and receiving literals (${HB_CHK} anchors)"
 else
     fail "HB-1…HB-3 balance hand-back contract:$HB_WHY"
+fi
+
+# BAL-1…BAL-9: the balance master skill — structure, one definition per anchor, neutrality and
+# the language membrane. Variables are declared here, before first use (the script runs under
+# set -u). Headings with a dash are asserted by their ASCII part (no Unicode in an anchor).
+# Every check goes through bal_ok / bal_no, which count: a block that checks nothing fails.
+BAL_DIR="$ROOT_DIR/skills/unikit-gd-balance"
+BAL_SKILL="$BAL_DIR/SKILL.md"
+BAL_REFS="$BAL_DIR/references"
+BAL_HANDBACK="$ROOT_DIR/data/balance-handback.md"
+BAL_WHY=""
+BAL_CHK=0
+bal_ok() { # <reason key> <literal> <file> — a literal starting "## " must be a whole line
+    BAL_CHK=$((BAL_CHK + 1))
+    if [[ "$2" == "## "* ]]; then
+        grep -qxF -- "$2" "$3" || BAL_WHY+=" $1"
+    else
+        grep -qF -- "$2" "$3" || BAL_WHY+=" $1"
+    fi
+}
+bal_no() { # <reason key> <literal> <file>
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -qF -- "$2" "$3" || BAL_WHY+=" $1"
+}
+if [[ ! -s "$BAL_SKILL" ]]; then
+    BAL_WHY+=" BAL-1:missing-skill"
+else
+    # (BAL-1) frontmatter and the section headings
+    BAL_FM="$({ awk '/^---$/{n++; next} n==1' "$BAL_SKILL" || true; })"
+    BAL_CHK=$((BAL_CHK + 1)); grep -qxF 'name: unikit-gd-balance' <<< "$BAL_FM" || BAL_WHY+=" BAL-1:name"
+    for g in 'Agent' 'AskUserQuestion'; do
+        BAL_CHK=$((BAL_CHK + 1)); grep -qxF "  - $g" <<< "$BAL_FM" || BAL_WHY+=" BAL-1:no-tool($g)"
+    done
+    for g in 'Skill' 'WebSearch' 'WebFetch'; do
+        BAL_CHK=$((BAL_CHK + 1)); ! grep -qxF "  - $g" <<< "$BAL_FM" || BAL_WHY+=" BAL-1:forbidden-tool($g)"
+    done
+    BAL_CHK=$((BAL_CHK + 1)); grep -qE '^# Game Design .* Balance Partner$' "$BAL_SKILL" || BAL_WHY+=" BAL-1:no-title"
+    BAL_CHK=$((BAL_CHK + 1)); grep -qE '^## Language Awareness .* BLOCKING PRE-REQUISITE$' "$BAL_SKILL" || BAL_WHY+=" BAL-1:no-language-block"
+    for h in '## Delegation agents' '## Bootstrap Context (MANDATORY)' '## Intent resolution' '## Closing block' \
+             '## Ownership Boundaries' '## Quick Reference'; do
+        bal_ok "BAL-1:no-heading(${h#\#\# })" "$h" "$BAL_SKILL"
+    done
+    BAL_SZ="$(wc -c < "$BAL_SKILL" | tr -d ' ')"
+    BAL_CHK=$((BAL_CHK + 1)); (( BAL_SZ <= 20000 )) || BAL_WHY+=" BAL-1:skill-size=${BAL_SZ}"
+
+    # (BAL-2) five branches and four supporting references named in the skill, nine files exist
+    for f in mode-open mode-ingest mode-revise mode-status resolve-target investigation closure-set \
+             template-balance template-checkpoints; do
+        bal_ok "BAL-2:skill-does-not-name($f.md)" "$f.md" "$BAL_SKILL"
+        BAL_CHK=$((BAL_CHK + 1)); [[ -s "$BAL_REFS/$f.md" ]] || BAL_WHY+=" BAL-2:missing($f.md)"
+    done
+    BAL_REF_N="$({ ls "$BAL_REFS"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_REF_N" == "9" ]] || BAL_WHY+=" BAL-2:reference-count=${BAL_REF_N}"
+
+    # (BAL-3) the plan command once in the whole skill, and in SKILL.md; the Handoff Tail sentence;
+    # the icon in front of the command line (checked through node: no Unicode in a grep anchor)
+    BAL_CMD="$({ grep -rhoF '/unikit-plan full <path to CHECKPOINTS.md>' "$BAL_DIR" || true; } | wc -l | tr -d ' ')"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_CMD" == "1" ]] || BAL_WHY+=" BAL-3:plan-command-count=${BAL_CMD}"
+    bal_ok "BAL-3:command-not-in-skill" '/unikit-plan full <path to CHECKPOINTS.md>' "$BAL_SKILL"
+    bal_ok "BAL-3:no-handoff-tail-sentence" 'Follow the **Handoff Tail contract**' "$BAL_SKILL"
+    BAL_CHK=$((BAL_CHK + 1))
+    node -e "const t=require('fs').readFileSync(process.argv[1],'utf8').split(String.fromCharCode(10));const l=t.find(x=>x.includes('/unikit-plan full <path to CHECKPOINTS.md>'));process.exit(l&&l.startsWith(String.fromCodePoint(0x1F9ED)+' ')?0:1)" "$BAL_SKILL" || BAL_WHY+=" BAL-3:no-icon-before-command"
+
+    # (BAL-4) one definition each
+    BAL_HDR="$({ grep -rlx '## Allowed header combinations' "$BAL_DIR" || true; })"
+    BAL_CLS="$({ grep -rlx '## Closing rule' "$BAL_DIR" || true; })"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_HDR" == "$BAL_REFS/template-checkpoints.md" ]] || BAL_WHY+=" BAL-4:header-combinations-owner(${BAL_HDR##*/})"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_CLS" == "$BAL_REFS/closure-set.md" ]] || BAL_WHY+=" BAL-4:closing-rule-owner(${BAL_CLS##*/})"
+    bal_no "BAL-4:table-copy-in-resolve-target" '| closed | none |' "$BAL_REFS/resolve-target.md"
+    bal_no "BAL-4:table-copy-in-status" '| closed | none |' "$BAL_REFS/mode-status.md"
+
+    # (BAL-5) the boundary: the Ownership window and the investigation literals
+    BAL_OWN="$({ awk '/^## Ownership Boundaries/{f=1;next} /^## /{f=0} f' "$BAL_SKILL" || true; })"
+    for l in '.unikit/code/' 'GD-IDS.yaml' 'coherence gate'; do
+        BAL_CHK=$((BAL_CHK + 1)); grep -qF -- "$l" <<< "$BAL_OWN" || BAL_WHY+=" BAL-5:ownership-lacks(${l})"
+    done
+    bal_no "BAL-5:check-agent-token" 'check-agent' "$BAL_SKILL"
+    bal_ok "BAL-5:no-extracted-tag" 'extracted from code' "$BAL_REFS/investigation.md"
+    bal_ok "BAL-5:no-engine-pointer" 'unikit-gd-recon/references/code-recon.md' "$BAL_REFS/investigation.md"
+    bal_ok "BAL-5:no-missing-engine-warn" 'WARN [balance] code-recon reference missing' "$BAL_REFS/investigation.md"
+
+    # (BAL-6) neutrality: no engine words, no pointer into the maintainers' own records
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -rqwE 'Unity|Godot|Unreal|GDScript' "$BAL_DIR" "$BAL_HANDBACK" || BAL_WHY+=" BAL-6:engine-word"
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -rqF -e 'C# ' -e 'C++ ' "$BAL_DIR" "$BAL_HANDBACK" || BAL_WHY+=" BAL-6:language-word"
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -rqF '.ai-factory' "$BAL_DIR" "$BAL_HANDBACK" || BAL_WHY+=" BAL-6:maintainer-record-pointer"
+    BAL_CHK=$((BAL_CHK + 1))
+    ! grep -rqF '.ai-factory/research' "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/src" || BAL_WHY+=" BAL-6:research-record-pointer"
+
+    # (BAL-7) the skill is named by the boundary and the two shards that list their readers
+    BAL_CHK=$((BAL_CHK + 1))
+    BAL_PR="$({ grep -c 'unikit-gd-balance' "$GD_PRINCIPLES" || true; })"
+    (( BAL_PR >= 4 )) || BAL_WHY+=" BAL-7:principles-mentions=${BAL_PR}"
+    bal_ok "BAL-7:critique-shard" 'unikit-gd-balance' "$GD_CRITIQUE"
+    bal_ok "BAL-7:provenance-shard" 'unikit-gd-balance' "$GD_PROVENANCE"
+
+    # (BAL-8) the anchors the readers rely on (the plan, implement and verify read them by name)
+    for h in '## Roadmap' '## Current Balance Checkpoint' '## Balance Checkpoint Log' '## Allowed header combinations'; do
+        bal_ok "BAL-8:template-lacks(${h#\#\# })" "$h" "$BAL_REFS/template-checkpoints.md"
+    done
+    for l in 'Status: open | closed' 'Current: BCH-<n> | none' 'Updated: YYYY-MM-DD HH:MM'; do
+        bal_ok "BAL-8:template-lacks(${l})" "$l" "$BAL_REFS/template-checkpoints.md"
+    done
+    for l in 'five latest' 'Matching keys' 'INDEX.md'; do
+        bal_ok "BAL-8:resolve-target-lacks(${l})" "$l" "$BAL_REFS/resolve-target.md"
+    done
+
+    # (BAL-9) the language membrane: the paragraph sits inside the Language Awareness block, and
+    # every branch names a point by its goal. The test checks the text, not the model's speech.
+    BAL_LANG="$({ awk '/^## Language Awareness/{f=1;next} /^## /{f=0} f' "$BAL_SKILL" || true; })"
+    for l in 'The membrane' 'TIER B' 'TIER A' 'named by its goal'; do
+        BAL_CHK=$((BAL_CHK + 1)); grep -qF -- "$l" <<< "$BAL_LANG" || BAL_WHY+=" BAL-9:language-block-lacks(${l})"
+    done
+    for f in resolve-target mode-status mode-open mode-ingest mode-revise; do
+        bal_ok "BAL-9:branch-lacks-goal-rule($f.md)" 'named by its goal' "$BAL_REFS/$f.md"
+    done
+    bal_no "BAL-9:code-in-announcement" 'point BCH-' "$BAL_REFS/resolve-target.md"
+    (( BAL_CHK > 0 )) || BAL_WHY+=" BAL-1:nothing-checked"
+fi
+if [[ -z "$BAL_WHY" ]]; then
+    pass "BAL-1…BAL-9 balance skill: structure, nine references, one plan command, single definitions, boundary, neutrality, membrane (${BAL_CHK} checks)"
+else
+    fail "BAL-1…BAL-9 balance skill:$BAL_WHY"
 fi
 
 # MA-2…MA-4: the explore side of the merge mode — a conditional reference, a narrow set of git

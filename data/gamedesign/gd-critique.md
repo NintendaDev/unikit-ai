@@ -3,7 +3,7 @@
 A shard of the `gd-principles` working contract, installed by `unikit-ai init` /
 `unikit-ai update` into `.unikit/system/gamedesign/gd-critique.md` as a flat copy
 (engine-agnostic, no variable substitution, not hash-tracked). Loaded on Bootstrap
-by `unikit-gd-review`, `unikit-gd-verify`, and `unikit-gd-explore`. See the core
+by `unikit-gd-review`, `unikit-gd-verify`, `unikit-gd-explore`, and `unikit-gd-balance`. See the core
 `gd-principles.md` for zone ownership and routing.
 
 ## Critique Stance (Braintrust)
@@ -103,8 +103,8 @@ the stance (a critique can be declined; a consistency conflict cannot):
 ### Handoff Tail contract
 
 The shared shape of the **last thing on screen** when a run ends in a handoff,
-inherited identically by `unikit-gd-review`, `unikit-gd-verify`, and
-`unikit-gd-explore` (all three close on a runnable next step). The terminal's
+inherited identically by `unikit-gd-review`, `unikit-gd-verify`, `unikit-gd-explore`, and
+`unikit-gd-balance` (all four close on a runnable next step). The terminal's
 bottom line is the most visible and the one the user acts on — any prose printed
 *after* a command buries it.
 

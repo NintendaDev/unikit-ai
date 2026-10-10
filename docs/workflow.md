@@ -202,7 +202,7 @@ While the plan has PR checkpoints a run never pushes: the branch reaches the rem
 | `/unikit-evolve` | Distill accumulated patches into rules and skill overrides | No | `RULES.md`, `.unikit/skill-context/`, `.unikit/evolutions/` |
 | `/unikit-todo` | Lightweight task tracking | No | `.unikit/TODO.md` |
 
-This table covers the `code` module. For the parallel `gamedesign` skill set (`/unikit-gd-spec`, `/unikit-gd-system`, `/unikit-gd-flow`, `/unikit-gd-content`, `/unikit-gd-review`, `/unikit-gd-verify`, `/unikit-gd-apply`, `/unikit-gd-docs`, …), see [Game-Design Module](gamedesign.md).
+This table covers the `code` module. For the parallel `gamedesign` skill set (`/unikit-gd-spec`, `/unikit-gd-system`, `/unikit-gd-flow`, `/unikit-gd-content`, `/unikit-gd-balance`, `/unikit-gd-review`, `/unikit-gd-verify`, `/unikit-gd-apply`, `/unikit-gd-docs`, …), see [Game-Design Module](gamedesign.md).
 
 ## Self-Learning Memory Through Evolve
 

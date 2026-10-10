@@ -95,6 +95,8 @@ flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynami
             │                                 picks the wiring mode + re-renders ## Flow Map [gen] / ## Funnel [gen]
 content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *catalog* (typed CT.fields schema,
             │                                 scale bulk|curated) + re-renders ## Content Map [gen]; the editor owns the values
+balance:  /unikit-gd-balance       (optional) per subject: investigate → ONE detailed Balance Checkpoint → /unikit-plan
+            │                                 → /unikit-implement → /unikit-verify → hand-back report → /unikit-gd-balance again
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → verdict → two buckets (apply-ready / research)
             │
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" → 4 tracks → apply-ready

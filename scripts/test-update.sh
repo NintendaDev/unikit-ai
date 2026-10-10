@@ -2173,6 +2173,12 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-recon/references/code-re
     "unikit-gd-recon's shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
     "update --install-new installed the new GDD-render skill (unikit-gd-docs)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/SKILL.md" \
+    "update --install-new installed the new balance skill (unikit-gd-balance)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/references/mode-ingest.md" \
+    "unikit-gd-balance references travel under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
+    "unikit-gd-balance template-checkpoints.md travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
     "update --install-new installed the new plan-archive skill (unikit-archive)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-pr/SKILL.md" \

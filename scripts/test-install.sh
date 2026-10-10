@@ -57,7 +57,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
-                          "unikit-gd-explore", "unikit-gd-recon", "unikit-gd-docs",
+                          "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
                           "unikit-pr"],
       "installedSubagents": ["unikit-architecture-sidecar"]
@@ -325,6 +325,16 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/coherence
   "unikit-gd-explore coherence-gate.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/ultra-research.md" \
   "unikit-gd-explore ultra-research.md reference installed"
+# The balance skill's branches are read only by intent, so a content test cannot see a missing
+# delivery of a reference — the files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/SKILL.md" \
+  "unikit-gd-balance SKILL.md installed (balance partner)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/mode-ingest.md" \
+  "unikit-gd-balance mode-ingest.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/investigation.md" \
+  "unikit-gd-balance investigation.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
+  "unikit-gd-balance template-checkpoints.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks

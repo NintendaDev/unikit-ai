@@ -3,7 +3,7 @@
 # Game-Design Module
 
 UniKit ships a second knowledge module, **`gamedesign`**, dedicated to authoring a
-**Game Design Document (GDD)**. It installs eleven `unikit-gd-*` skills, a
+**Game Design Document (GDD)**. It installs twelve `unikit-gd-*` skills, a
 domain-knowledge rule library, and a set of system-asset contracts. Design artifacts
 live in their own workspace (`.unikit/gamedesign/`) and are authored in the project's
 configured language; **ids / keywords / canonical terms / formulas stay English**.
@@ -40,7 +40,7 @@ and **Review vs Verify** for how the two quality gates hand results onward.
 
 ## Domain-knowledge rules
 
-Alongside the eleven skills, the `gamedesign` module installs a **domain-knowledge rule
+Alongside the twelve skills, the `gamedesign` module installs a **domain-knowledge rule
 library** from the same registry that serves `code` rules — fetched via
 `unikit-ai rules install` / `sync`, module-scoped with `--module gamedesign`. See
 [Dynamic Memory](dynamic-memory.md#modules-code-vs-gamedesign) for how installation and
@@ -323,6 +323,32 @@ and gains a `## Explorations` backlink.
 
 ---
 
+## Balance — `/unikit-gd-balance`
+
+A balance document is a closed, steered loop rather than a one-off report:
+`balance → plan → implement → verify → balance <report>`. `/unikit-gd-balance` reads the
+intent from the request (a topic, a research, a pasted or named hand-back report, a change of
+decision, or "where are we"; no arguments lists the five latest documents), investigates
+itself (code is read-only and tagged `provenance: extracted from code`), keeps the document
+under `.unikit/gamedesign/balance/<slug>/`, and issues **one** detailed Balance Checkpoint at a
+time:
+
+- `BALANCE.md` — what is known, tagged by source (`measured` · `extracted from code` ·
+  `decided by user` · `estimate`), the diagnosis by layer, the levers, the closing set Q1–Q11;
+- `CHECKPOINTS.md` — a header (`Slug`, `Status`, `Current`, `Updated`), a coarse `## Roadmap`,
+  the one detailed `## Current Balance Checkpoint`, and an append-only
+  `## Balance Checkpoint Log`;
+- `results/HB-<n>.md` — received hand-back reports, copied verbatim; `INDEX.md` — a derived list.
+
+The last block of every issuing turn is the ready command `/unikit-plan full <path to
+CHECKPOINTS.md>`: the planner finds the current point itself and builds a plan **only up to it**,
+because the returned data may change what comes next. The report that the executor hands back
+has one owner, `.unikit/system/balance-handback.md`. Closing is soft: unclosed questions block
+neither issuing a point nor saving. A balance document is not registered in `GD-IDS.yaml` and
+never edits the GDD — a design change it proposes goes through `/unikit-gd-system`.
+
+---
+
 ## Multi-zone edits — `/unikit-gd-apply`
 
 A design change that spans more than one zone at once — tune a system **and** add a
@@ -556,8 +582,9 @@ writeback above they make up the boundary's three sanctioned exceptions):
    `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` — never `.unikit/code/` or
    actual source — to flag a design the real tech stack can't support (a Critical
    finding, evidenced by the line it relied on).
-2. The **brownfield research verbs** (`/unikit-gd-recon`, and the `/unikit-gd-explore`
-   code-grounded lens) — covered next.
+2. The **brownfield research verbs** (`/unikit-gd-recon`, the `/unikit-gd-explore`
+   code-grounded lens, and `/unikit-gd-balance` for the slice a balance document names) —
+   covered next.
 
 ---
 
@@ -566,8 +593,8 @@ writeback above they make up the boundary's three sanctioned exceptions):
 A team with a **live game and no GDD** has nothing to import — the only source of design
 facts is the code itself. The module resolves this without reopening the boundary above
 by quantising the crossing into read-only research verbs sitting at the module's I/O
-edges: two inputs (`/unikit-gd-recon`, and the `/unikit-gd-explore` code lens — item 3 in
-the exceptions list above) and one output (`/unikit-gd-docs`, covered at the end of this
+edges: three inputs (`/unikit-gd-recon`, the `/unikit-gd-explore` code lens, and
+`/unikit-gd-balance` — the third exception in the list above) and one output (`/unikit-gd-docs`, covered at the end of this
 section). Each only ever *reads* code into a *document*, or *reads* the workspace into
 human-readable pages — none of them author the GDD.
 
@@ -576,8 +603,10 @@ INPUT (code → design)            CORE (authoring zones)           OUTPUT (desi
   unikit-gd-recon        ┐                                      ┌  unikit-gd-docs
   (cold-start, whole     ├─▶  spec · system · flow · content  ─┤  (workspace → docs/design/)
    project → RECON.md)   │       (these NEVER read code)        │
-  unikit-gd-explore      ┘                                      └
-   (code lens, a slice)
+  unikit-gd-explore      ┤                                      └
+   (code lens, a slice)  │
+  unikit-gd-balance      ┘
+   (a named slice → a balance document)
 ```
 
 ### `unikit-gd-recon` — cold-start reconstruction

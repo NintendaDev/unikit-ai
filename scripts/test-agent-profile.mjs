@@ -418,7 +418,7 @@ await group('C', async () => {
 // The table is built from AGENT_REGISTRY and goes through the real installSkills over the real
 // skills/, so a new agent joins it by itself and the test cannot repeat the installer's logic.
 
-const INSTALL_SKILLS = ['unikit', 'unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-gd-brainstorm', 'unikit-implement', 'unikit-gd-explore', 'unikit-review', 'unikit-fix', 'unikit-verify', 'unikit-docs', 'unikit-improve', 'unikit-gd-recon'];
+const INSTALL_SKILLS = ['unikit', 'unikit-explore', 'unikit-plan', 'unikit-gd-review', 'unikit-gd-brainstorm', 'unikit-implement', 'unikit-gd-explore', 'unikit-review', 'unikit-fix', 'unikit-verify', 'unikit-docs', 'unikit-improve', 'unikit-gd-recon', 'unikit-gd-balance'];
 
 // Forms an installed skill must never hold. The first two are what the invocation rewrite made of a
 // `{{skills_dir}}/unikit-…` path before its pattern learned `}`; the third is the dead call key; the
@@ -453,6 +453,7 @@ await group('I', async () => {
                 unikit: await skill('unikit'),
                 explore: await skill('unikit-explore'),
                 gdExplore: await skill('unikit-gd-explore'),
+                balance: await skill('unikit-gd-balance'),
                 plan: await skill('unikit-plan'),
                 gdReview: await skill('unikit-gd-review'),
                 brainstorm: await skill('unikit-gd-brainstorm'),
@@ -481,6 +482,7 @@ await group('I', async () => {
             const RO = 'You are read-only: edit and write nothing.';
             assertTrue(`I1 ${agent.id}: recon-agent carries its reader call head and the read-only sentence`, texts.explore.includes(`Agent(${h.reader} prompt: "<focused question> ${RO}")`));
             assertTrue(`I1 ${agent.id}: check-agent carries its reader call head`, texts.explore.includes(`Agent(${h.reader} prompt: "Read <path of references/coherence-gate.md>`));
+            assertTrue(`I1 ${agent.id}: the balance skill's recon-agent carries its reader call head and the read-only sentence`, texts.balance.includes(`Agent(${h.reader} prompt: "<focused question> ${RO}")`));
             assertTrue(`I1 ${agent.id}: gd-explore check-agent carries its reader call head`, texts.gdExplore.includes(`Agent(${h.reader} prompt: "Read <path of references/coherence-gate.md>`));
             assertTrue(`I2 ${agent.id}: the recon writer carries its worker call head`, texts.plan.includes(`Agent(${h.worker} prompt: "Reconnaissance for an ultra plan`));
             assertTrue(`I3 ${agent.id}: lens-agent carries its worker call head`, texts.gdReview.includes(`Agent(${h.worker} prompt: "<one lens brief>")`));

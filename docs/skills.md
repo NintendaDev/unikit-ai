@@ -350,7 +350,7 @@ This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the f
 
 ## Game Design Skills
 
-The `gamedesign` module adds eleven `unikit-gd-*` skills for authoring a Game Design
+The `gamedesign` module adds twelve `unikit-gd-*` skills for authoring a Game Design
 Document along three machine-readable axes — **systems** (the rules), **flows** (the
 dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. The quick-reference
 entries below follow the pipeline order (recon/brainstorm → spec → system/flow/content →
@@ -438,6 +438,18 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - `CT.fields` is a typed schema; `ref<>` makes a content↔X link a field; `scale` is `bulk` (a `count`+`spec` descriptor) or `curated` (`fields` rows in the registry)
 - Registers itself (`content_types:` / `content:` + RES/TRACK/KNOB) and re-renders `## Content Map [gen]`
 - `belongs_to` names the consuming system (one-way); a missing system routes to `/unikit-gd-spec` add-system
+
+### `/unikit-gd-balance [<slug> | <topic> | <research path> | <report>]` - the balance loop
+
+```
+/unikit-gd-balance                                  # five latest documents + the next action
+/unikit-gd-balance the economy of the first world   # start a balance document, issue one checkpoint
+/unikit-gd-balance <path to a hand-back report>     # receive results, decide, issue the next checkpoint or close
+```
+- Owns `.unikit/gamedesign/balance/<slug>/` (`BALANCE.md`, `CHECKPOINTS.md`, `results/`) and its `INDEX.md`; the intent is read from the request, there are no flags
+- Investigates by itself (reads code read-only, tags facts `provenance: extracted from code`, runs `recon-agent` for wide questions), issues **one** detailed Balance Checkpoint and closes every issuing turn with `/unikit-plan full <path to CHECKPOINTS.md>`
+- Receives a hand-back report (format: `.unikit/system/balance-handback.md`), matches it to a document or asks, revises the roadmap, issues the next point or closes - softly: unclosed questions block nothing
+- Never edits the GDD or code and does not register in `GD-IDS.yaml`; a design change is left as a proposal for `/unikit-gd-system`
 
 ### `/unikit-gd-review [system name | SYS-slug | path | "all"]` - qualitative design review
 

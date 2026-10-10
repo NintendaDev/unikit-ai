@@ -867,6 +867,7 @@ Game design (optional):
 - /unikit-gd-spec — Author the master GDD (GAME.md) + system map
   The design workspace (.unikit/gamedesign/) is created on first use.
   /unikit-plan then cites the design's acceptance criteria in its ## Design section.
+- /unikit-gd-balance — Balance a game with measurements, checkpoint by checkpoint
 
 Ready when you are!
 ```

@@ -355,6 +355,22 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **Required per content type (the catalog axis).** Before: `/unikit-gd-spec` (+ `/unikit-gd-system`
   for the consuming system). After: `/unikit-gd-review`, `/unikit-gd-verify`.
 
+### unikit-gd-balance
+- **Purpose:** The balance partner — keeps one balance document per subject and closes the loop
+  *checkpoint → plan → report → decision*. It investigates the subject itself (code is read
+  only, facts are tagged), keeps a coarse roadmap of Balance Checkpoints and **one** detailed
+  current checkpoint, receives the hand-back report, revises the roadmap and issues the next
+  checkpoint or closes the document. Never edits the GDD or code.
+- **When:** "balance the economy", "start a balance document", "here are the results of the
+  checkpoint", "what is the next balance step", "where are we with balance".
+- **In:** nothing (lists the five latest documents), a topic, a research, a document slug, or a
+  hand-back report (a path or a pasted table). The intent is read from the request; no flags.
+- **Out:** `.unikit/gamedesign/balance/<slug>/` — `BALANCE.md`, `CHECKPOINTS.md`, `results/` —
+  plus `balance/INDEX.md`; the last block of an issuing turn is the ready `/unikit-plan full`
+  command carrying the path to `CHECKPOINTS.md`.
+- **Optional (balance loop).** Next: `/unikit-plan` → `/unikit-implement` → `/unikit-verify`, then
+  back to `/unikit-gd-balance` with the report.
+
 ### unikit-gd-apply
 - **Purpose:** Dispatch an explicit, **multi-zone** GDD edit (spec + systems + content types +
   flows) in one ordered pass. Writes nothing itself — it resolves each delta to its

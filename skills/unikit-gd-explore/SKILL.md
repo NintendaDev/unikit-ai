@@ -387,8 +387,9 @@ built / what the asset actually has* — separating it from MDA's "another game"
 GDD and **never** writes code. Facts it lifts **directly from code** into the brief carry
 `provenance: extracted from code` (review holds them ≥ Major — `gd-provenance`), exactly
 as a `RECON.md` would; the designer's own options and reasoning in the same brief stay
-**untagged**. This keeps the two read-only research verbs symmetric — code-origin is
-tagged identically whether recon or this lens surfaced it. Say it on entry, as the
+**untagged**. This keeps the three read-only research verbs symmetric — code-origin is
+tagged identically whichever of them — recon, this lens or the balance skill —
+surfaced it. Say it on entry, as the
 internal-design lens does: *"I'll read how it's built and hand you a brief — I won't edit
 the GDD or the code."* Its routing is the internal-design lens's (the slice's
 `doc_status` picks the owner); in **subagent mode** every interactive `AskUserQuestion`
