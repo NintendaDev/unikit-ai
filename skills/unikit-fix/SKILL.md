@@ -144,9 +144,11 @@ git status
 
 Options:
 1. Commit now (recommended)
-2. Stash and continue (git stash)
+2. Stash and continue (git stash — not offered while a merge is unfinished)
 3. Continue as is
 ```
+
+**While a merge is unfinished** — `git rev-parse -q --verify MERGE_HEAD` succeeds — the question has no "Stash and continue": with conflicts unresolved `git stash` fails, and once they are resolved it drops `MERGE_HEAD` for good, so the merge commit would have one parent.
 
 Based on choice:
 - Commit now → invoke `unikit-commit`, then continue

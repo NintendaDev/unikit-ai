@@ -9307,6 +9307,46 @@ else
     fail "CP-1…CP-3 commit push contract:$CP_WHY"
 fi
 
+# MR: an unfinished merge is not lost by the executors. Once its conflicts are resolved, both
+# `git stash` and the `git reset -q` of the commit skill's split path drop MERGE_HEAD for good,
+# and the merge commit would get one parent (research 2026-10-10, C-7). So implement and fix do
+# not offer the stash while MERGE_HEAD exists, and commit does not split — not even a split the
+# caller passed. The mark on the option line is asserted apart from the paragraph: the question
+# is formed "right before Step 3", in another turn, and the paragraph above it is easy to lose.
+MR_WHY=""
+MR_CHK=0
+mr_has() { # <reason key> <literal> <text to search>
+    MR_CHK=$((MR_CHK + 1))
+    grep -qF -- "$2" <<< "$3" || MR_WHY+=" $1"
+}
+mr_stash() { # <id> <file> — implement (Step 0.2) and fix share one shape
+    local id="$1" file="$2" text line
+    if [[ ! -s "$file" ]]; then MR_WHY+=" $id:missing-file"; return; fi
+    text="$(cat "$file")"
+    mr_has "$id:no-merge-head-probe" 'MERGE_HEAD'                              "$text"
+    mr_has "$id:stash-still-offered" 'has no "Stash and continue"'             "$text"
+    line="$( { grep -F '2. Stash and continue' "$file" || true; } | head -1)"
+    mr_has "$id:question-unmarked"   'not offered while a merge is unfinished' "$line"
+}
+mr_stash "MR-1" "$CA_IMPLEMENT"
+mr_stash "MR-2" "$EM_FIX_SKILL"
+if [[ ! -s "$CM_COMMIT_SKILL" ]]; then
+    MR_WHY+=" MR-3:missing-file"
+else
+    MR_AUTO="$(awk '/^## Auto mode/{f=1;next} f&&/^## /{exit} f' "$CM_COMMIT_SKILL")"
+    MR_SPLIT="$(awk '/^## Splitting Unrelated Changes/{f=1;next} f&&/^## /{exit} f' "$CM_COMMIT_SKILL")"
+    mr_has "MR-3:no-merge-head-probe"   'MERGE_HEAD'                                           "$MR_SPLIT"
+    mr_has "MR-3:caller-split-applied"  'a split passed by the caller is not applied'          "$MR_SPLIT"
+    mr_has "MR-3:no-info-line"          'INFO [commit] merge in progress — split not offered'  "$MR_SPLIT"
+    mr_has "MR-3:auto-applies-split"    'except while a merge is in progress'                  "$MR_AUTO"
+fi
+(( MR_CHK > 0 )) || MR_WHY+=" MR-1:nothing-checked"
+if [[ -z "$MR_WHY" ]]; then
+    pass "MR-1…MR-3 an unfinished merge is neither stashed (implement, fix) nor split (commit, caller's split included) (${MR_CHK} anchors)"
+else
+    fail "MR-1…MR-3 unfinished-merge protection:$MR_WHY"
+fi
+
 # UPR: /unikit-pr — the one author of pull requests. Levels capped by the config, the PR is
 # the current state (a question inside a module, never a silent cut), one open PR per branch,
 # a merge only when it brings nothing from the base branch, and a plain-language text.

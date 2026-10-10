@@ -265,7 +265,7 @@ A caller the user has told to commit without asking — `/unikit-implement` once
 **Auto removes the routine questions, never the checks:**
 
 - The message is written by Workflow Step 7, its check before showing included, and printed in full as a block of its own — then committed without the Behavior step 6 question.
-- No split question: everything staged is committed together, unless the caller passed a split — then that split is applied (**Splitting Unrelated Changes**, steps 3-4) without asking.
+- No split question: everything staged is committed together, unless the caller passed a split — then that split is applied (**Splitting Unrelated Changes**, steps 3-4) without asking, except while a merge is in progress.
 - No push, and no question about it, whatever `git.skip_push_after_commit` says — the same as `no-push`.
 - An `ERROR` from the safety checks (a secret, an orphaned companion file, an engine-ignored directory) still stops and asks the Behavior step 4 question: auto skips the confirmation of a good commit, never the guard against a bad one. A `WARN` is printed and does not stop it.
 - After each commit print `INFO [commit] auto: <short sha> <subject>`.
@@ -275,6 +275,8 @@ A caller the user has told to commit without asking — `/unikit-implement` once
 If staged changes contain unrelated work (e.g., a feature + a bugfix, or changes to independent modules), suggest splitting into separate commits. When the caller passes a proposed split — `unikit-implement-coordinator` relays the groups of `unikit-commit-sidecar` — start from that one instead of deriving your own.
 
 A split needs an existing commit to split against: when `git rev-parse --verify -q HEAD` fails (the repository has no commit yet), do not offer it — commit everything together and print `INFO [commit] no HEAD yet — split not offered`.
+
+**While a merge is in progress** — `git rev-parse -q --verify MERGE_HEAD` succeeds — no split is offered and a split passed by the caller is not applied: `git reset -q` below would drop `MERGE_HEAD` and the merge commit would have one parent. Commit everything together and print `INFO [commit] merge in progress — split not offered`.
 
 1. Show which files/hunks belong to which commit
 2. Confirm split plan with the user:

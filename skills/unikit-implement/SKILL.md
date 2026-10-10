@@ -193,10 +193,12 @@ Uncommitted changes detected.
 
 Options:
 1. Commit now (recommended) — /unikit-commit, then continue
-2. Stash and continue — git stash push -m "unikit-implement: stash before execution"
+2. Stash and continue — git stash push -m "unikit-implement: stash before execution" (not offered while a merge is unfinished)
 3. Continue as is — leave the working tree untouched
 4. Cancel — "Implementation cancelled." → STOP
 ```
+
+**While a merge is unfinished** — `git rev-parse -q --verify MERGE_HEAD` succeeds — the question has no "Stash and continue": with conflicts unresolved `git stash` fails, and once they are resolved it drops `MERGE_HEAD` for good, so the merge commit would have one parent.
 
 **Ask it right before Step 3, not here** — in one `AskUserQuestion` call together with the Step 2.5 question when Step 2.5 asks one, alone otherwise (numbered text, then end your turn, when the tool is absent). Carry out its answer first: a commit or a stash happens before any mark is written into the manifest. **After a stash, re-read the manifest** and recompute the scope and its run points (Steps 2 and 2.5) before any mark is written: `git stash push` reverts a tracked, uncommitted manifest underneath the scope already counted.
 
