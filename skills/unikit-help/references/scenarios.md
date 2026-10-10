@@ -118,6 +118,8 @@ There is no single "test" skill — name the kind, then route.
 ```
 UniKit handles testing in a few ways:
   • Automated tests       → ask for them in /unikit-plan (test phase); /unikit-implement writes and runs them
+                            they cover logic and system values — not prefabs, shaders or numbers from configs;
+                            edits you ask for after a hand-over go in without tests until you say "accepted"
   • "Did I build what the plan says + does it compile + is the recorded test run current?" → /unikit-verify [--strict]
   • Failing tests / bugs  → /unikit-fix
 

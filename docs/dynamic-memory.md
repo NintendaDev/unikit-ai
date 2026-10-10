@@ -62,7 +62,7 @@ The developer iteratively improves permanent memory over time by testing rules i
 | `design-principles.md` | SOLID, GRASP, KISS/DRY, SRP decision framework |
 | `folders-structure.md` | Project folder structure, file placement conventions |
 | `performance.md` | ZLinq, pooling, caching, hot path optimization, mobile |
-| `testing.md` | NUnit, AAA pattern, test doubles, boundary conditions |
+| `testing.md` | what to test, NUnit, AAA pattern, test doubles, boundary conditions |
 
 #### Stack rules
 

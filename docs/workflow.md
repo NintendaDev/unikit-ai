@@ -186,10 +186,10 @@ While the plan has PR checkpoints a run never pushes: the branch reaches the rem
 |---------|----------|-----------------|--------|
 | `/unikit-roadmap` | Strategic planning, milestones, long-term vision | No | `.unikit/ROADMAP.md` |
 | `/unikit-roadmap check` | Automated progress scan | No | Reads existing roadmap |
-| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` - the dialogue log is written verbatim as you talk; saving the research is the part that needs your agreement (optional - output can be used directly in the current session for fast planning) |
+| `/unikit-explore` | Research new ideas (broad or focused), option comparison, requirements clarification before planning | No | `.unikit/code/researches/<slug>/` - the dialogue log is written verbatim when you agree to save (in ultra, as you talk); saving the research is the part that needs your agreement (optional - output can be used directly in the current session for fast planning) |
 | `/unikit-plan fast` | Small tasks, quick fixes, experiments | No | `.unikit/code/PLAN.md` |
 | `/unikit-plan full` | Full features, stories, epics | Optional | `.unikit/code/plans/<name>/` |
-| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred | Optional | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
+| `/unikit-plan ultra` | Plans meant to be executed later by a smaller model - opt-in only, never inferred (a merge plan offers it in its mode question) | Optional | `.unikit/code/plans/<name>/` (`PLAN.md` + `phase-NN-*.md`) |
 | `/unikit-plan add` | Extend existing plan with new tasks | No | Modifies existing plan |
 | `/unikit-improve` | Refine plan before implementation | No | Improves existing plan |
 | `/unikit-implement` | Execute plan tasks one by one | No | Updates the plan manifest status |
@@ -276,7 +276,7 @@ Thinking-partner mode for exploring ideas, constraints, and trade-offs without i
 - `SOURCE.md` - the original prompts, agent questions and user answers that drove the research, quoted verbatim rather than summarised; kept separate because it is a log that grows on its own
 - adaptive artifacts in `ultra` - a C4 view, ADRs, a dependency graph, a `CONTRACTS.md`, each written only when the subject actually produced one, and each *named with its reason* when it was not
 
-`SOURCE.md` is written as the conversation happens rather than at the end: the folder appears on disk from the moment the conversation has become a research - a requirement stated, a decision taken, a correction made - and each reply appends what has been said since. A one-off question never reaches that point and leaves nothing behind. Writing the log is not saving the research: it creates no manifest, touches no registry, runs no gate and asks nothing, and the research is still saved only when you agree to it. A folder carrying a log and no manifest is an unfinished research - it stays out of `researches/INDEX.md`, is announced there by name, and resumes with `/unikit-explore <folder>`.
+An ordinary exploration writes nothing to disk until you agree to save: you can just talk, and a conversation you never save leaves no trace. Saving writes `SOURCE.md` first, then the manifest, the registry and the gate. In `ultra` the log is written as the conversation happens: the folder appears on disk from the moment the conversation has become a research - a requirement stated, a decision taken, a correction made - and each reply appends what has been said since. A one-off question never reaches that point and leaves nothing behind. Writing the log is not saving the research: it creates no manifest, touches no registry, runs no gate and asks nothing, and the research is still saved only when you agree to it. A folder carrying a log and no manifest is an unfinished research (an ultra session that ended before it was saved, or a save that stopped after the log) - it stays out of `researches/INDEX.md`, is announced there by name, and resumes with `/unikit-explore <folder>`. The skill's own questions (save this research, the folder name, the gate's question) are not written into the log; if the context was compacted so that your earliest words are gone, the log says so, and the requirements resting on them come back to you in the readback as inferred.
 
 Before the save is confirmed the agent reads back the requirements you have not actually seen: the ones it inferred itself, the ones that depart from what you said, and the ones whose wording admits two different implementations. What you stated unambiguously is not shown. Anything left unconfirmed becomes an open question instead of the planner's input. Each such requirement is asked as a separate question, with the grounds printed above it.
 
@@ -285,6 +285,8 @@ Before the save is confirmed the agent reads back the requirements you have not 
 Re-running `/unikit-explore` on an existing slug **continues** that research rather than opening a second folder: `## Sessions` gains an entry, `Updated:` moves, and the summary above it is rewritten to say what is now true. `researches/INDEX.md` is regenerated from the folders on every save, so it cannot fall behind them - there is no separate rebuild command. When direction is clear, transition to `/unikit-plan`. Uses parallel Explore agents for deep codebase investigation.
 
 When a linked `gamedesign` workspace exists, it also grounds first-class on the design registry - systems, `flows:`, and `content_types:` in `GD-IDS.yaml` - resolving whichever axis the request actually names, so research stays consistent with the GDD (read-only; never edits it).
+
+**Merge mode.** Ask `/unikit-explore` to merge a named branch into the current one and it reads that merge before it happens. It follows the shared protocol in `.unikit/system/merge-analysis.md` — the three commits pinned, `git merge-tree` predicting the result without touching your working tree, a directive for every conflicted file — and saves a research whose anchors (the three SHAs and the predicted conflicts) a later plan checks against. The agent resolves every conflict afterwards; you resolve none. `git fetch` of the named branch asks your permission, and `merge`, `checkout`, `reset`, `stash` and `worktree` are never run.
 
 ### `/unikit-plan [fast|full|ultra|add|--list] <description>` - plan the work
 
@@ -301,12 +303,14 @@ Four planning modes plus list:
 
 - **Fast** - no git branch, saves to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - optional branch creation (`<git.branch_prefix><name>`, skipped when `git.create_branches` is off), asks about testing/docs/roadmap linkage, saves to `.unikit/code/plans/<name>/` with a single `PLAN.md` manifest. The folder name equals the branch name without its prefix; the date lives in the manifest's `Created:` / `Updated:` fields ([why](plan-files.md#why-a-plan-folder-has-no-date-and-a-patch-file-does))
-- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: ask for it, or you get Full. Ultra is **user-named, never model-inferred** — it is recognised wherever the request sits in the sentence and in any language ("ultra plan", "ultraplan", "ультраплан", "make an ultra plan for the inventory"), but it must be an actual request. Size is not a request, and wording that only asks for care — "a deep plan", "plan this thoroughly" — is deliberately *not* ultra: the skill falls through and asks instead, because an unwanted bundle leaves you a folder of phase files you never asked for while a missed one costs you one word. The **shape of what you get** is held separately, by the redirect in `TASK-FORMAT.md` and the `ULTRA-PLAN-FORMAT.md` specification; without that second mechanism, asking for ultra still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
+- **Ultra** - same folder and branch behavior as Full, plus one deeply specified file per phase for later execution by a smaller model. Strictly opt-in: ask for it, or you get Full. Ultra is **user-named, never model-inferred** — it is recognised wherever the request sits in the sentence and in any language ("ultra plan", "ultraplan", "ультраплан", "make an ultra plan for the inventory"), but it must be an actual request (in a merge plan the mode question lists ultra as its third option, and choosing it there is the request). Size is not a request, and wording that only asks for care — "a deep plan", "plan this thoroughly" — is deliberately *not* ultra: the skill falls through and asks instead, because an unwanted bundle leaves you a folder of phase files you never asked for while a missed one costs you one word. The **shape of what you get** is held separately, by the redirect in `TASK-FORMAT.md` and the `ULTRA-PLAN-FORMAT.md` specification; without that second mechanism, asking for ultra still produced an ordinary full plan — so "or you get Full" describes the mode you did not ask for, never a fallback of the mode you did
 - **Add** - extends an existing plan with new tasks; explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that)
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
 
 When a linked `gamedesign` workspace exists, the plan also pulls a `## Design` brief from `GD-IDS.yaml` (citing the relevant system's acceptance criteria and version), plus optional `## Flow Context` (the `GOAL`-steps and wiring mode) and `## Content Context` (the `CT.fields` schema, `scale`, `belongs_to`) briefs when the feature touches those axes. The pull is read-only - the plan never edits the GDD.
+
+**Merge plan.** Ask `/unikit-plan` to merge a named branch into the current one and it does the analysis itself, by the same protocol (or reuses a fresh merge exploration whose SHAs still match), then asks `fast`, `full` or `ultra` — `ultra` last and never recommended — and writes a plan whose first phase merges, resolves and commits. It never creates or switches a branch: `fast` writes `.unikit/code/PLAN.md`, the others `.unikit/code/plans/merge-<slug>/`. The merge commit is made by the last task of the merge phase with `git commit --no-edit`, not by `/unikit-commit`.
 
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
@@ -348,8 +352,8 @@ Tasks carrying an `Editor:` line target the editor's serialized state rather tha
 After phase completion:
 
 - Runs compilation check (through the engine MCP server)
-- Writes tests if `Testing: yes` — inside the tasks that introduce them, and before the phase's test checkpoint, so its run covers them
-- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run; a phase checkpoint runs every test unless `testing.run.use_affected_modules` narrows it, and the final run is closed by reuse when the code has not changed since the last run of every test
+- Writes tests for the logic if `Testing: yes` — inside the tasks that introduce them, and before the phase's test checkpoint, so its run covers them. What gets a test, and what never does, is described under [Tests follow acceptance](#tests-follow-acceptance) below
+- Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run; a phase checkpoint runs every test unless `testing.run.use_affected_modules` narrows it, and the final run is closed by reuse when the code has not changed since the last run of every test. A run's scope is closed before its first launch, and a repeat after red is one launch of the whole scope
 - Creates commit checkpoint
 
 Post-completion, in order:
@@ -361,6 +365,12 @@ Post-completion, in order:
 - **Offers to move MCP findings to the durable log** - if the plan's `## MCP Findings` table has rows, hands the plan path to `/unikit-mcp-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
 - Offers `/unikit-review` then `/unikit-commit` - **invoked as skills, in your session**, not delegated to a subagent. That distinction is real: a subagent carries findings into a context you cannot see, `file:line` references stop being clickable, and you cannot ask a follow-up question about a finding. Of the post-completion steps only the documentation checkpoint is delegated (to `docs-agent`), because its output is a file rather than a conversation
 
+#### Tests follow acceptance
+
+A test is written for a target the code owns. Four classes decide it: **logic and system values** (calculations, state transitions, parsing, contracts between modules; identifiers, keys, format versions) get exact tests on inputs the test supplies; **tunable data** that game design owns (balance, costs, durations, probabilities) is never pinned — at most one validity check per data family, with bounds taken from the design source rather than from today's number; **authored content** (prefabs, scenes, materials, shaders, animation, UI layouts) gets no unit test — the evidence is a frame or a read-back; **lookup by name** gets at most one aggregate reference check per module. Everything else — the engine, trivial accessors, generated code — gets none. A quick smell check: if a designer changing a number, or a new catalog row, turns a test red while the system is intact, the test is pinned to the wrong thing.
+
+Timing follows the same idea. Once `/unikit-implement` hands a result over, you are reviewing it and answering with edits — visuals, feel, layout, tuning and code alike. Inside that **review loop** each edit is made and compiled (a visual or data edit is also checked by a frame or a read-back), no test is written and no suite runs; the first edit prints one line, `INFO [testing] review loop: tests deferred until you accept`. *Accepted* means your own words — "accepted", "ok, next", "write the tests"; silence is not acceptance, and calling `/unikit-verify` or `/unikit-commit` is not either. On acceptance the tests for the logic changed since the last commit are written once and the suite runs once; with `Testing: yes` and a plan manifest that run is recorded like a test checkpoint, so `/unikit-verify` does not ask to repeat it. A plan with `Testing: no` is outside the loop. If the loop is closed by a new request instead — a commit, a verification, a new feature — nothing is written or run, but the remainder is named in one line, `INFO [testing] review loop closed without acceptance: no tests written for <changed logic>`, and `/unikit-commit` prints it too. `/unikit-fix` on a defect of the handed-over result stays inside the loop.
+
 ### `/unikit-fix [bug description]` - fix and learn
 
 ```
@@ -370,10 +380,10 @@ Post-completion, in order:
 
 Two modes - choose when you invoke:
 
-- **Fix now** - investigates codebase with 2-3 Explore agents, applies the fix inline after Bootstrap (rules + engine principles loaded in Step 0.2), verifies (compilation, tests, .meta, asmdef)
+- **Fix now** - investigates codebase with 2-3 Explore agents, applies the fix inline after Bootstrap (rules + engine principles loaded in Step 0.2), verifies (compilation, tests, .meta, asmdef) - the test run is one launch over the scope of all the changed files, and so is its repeat after a red result
 - **Plan first** - creates `.unikit/code/FIX_PLAN.md` with root cause analysis, fix steps, affected files, risks, and test coverage suggestions, then stops for review. When a plan exists, run without arguments to execute it
 
-Recommended to always fix bugs through this skill - every fix creates a **self-improvement patch** in `.unikit/code/patches/` (mandatory), enabling the system to learn from mistakes via `/unikit-evolve`. Can be used during `/unikit-implement` while working through plan phases, or independently when a bug is found in existing functionality - no prior planning stages required. Always suggests NUnit test coverage.
+Recommended to always fix bugs through this skill - every fix creates a **self-improvement patch** in `.unikit/code/patches/` (mandatory), enabling the system to learn from mistakes via `/unikit-evolve`. Can be used during `/unikit-implement` while working through plan phases, or independently when a bug is found in existing functionality - no prior planning stages required. Outside a review loop it suggests a regression test when the defect is in logic or a system value (never for authored content or tunable data); inside a review loop the test waits for acceptance.
 
 ### `/unikit-evolve` - improve skills from experience
 
@@ -459,6 +469,8 @@ Creates conventional commits with engine-aware safety checks. Analyzes staged ch
 - Engine-ignored directories, read from the project's own `.gitignore` (on Unity: `Library`, `Temp`, `Logs`)
 
 Runs read-only context gates against ARCHITECTURE.md and RULES.md. Writes the message for the team rather than as a report of the session: the subject names what changed for the game, a body appears only when the subject cannot carry the point, and at most three lines of technical detail follow it. The plan is linked by a `Plan: <folder>` trailer instead of phase and task numbers. Suggests commit splitting for unrelated staged changes and never lets unstaged edits into a split commit. Offers to push after commit. Conventional prefix is always in English; subject and body use `language.artifacts`.
+
+While a merge is in progress it never splits the commit — not even a split the caller passes — because the reset a split begins with would drop the merge and leave the merge commit with one parent.
 
 ### `/unikit-archive [list | --all | <plan-folder>]` - archive finished plans
 

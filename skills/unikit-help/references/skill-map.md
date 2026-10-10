@@ -70,9 +70,11 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   `design-read` contract) — or the slug of an existing research, which continues that research
   instead of opening a second folder. The researches index is regenerated on every save.
 - **Modes:** default | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
-  dependency graph — written into the research folder by relevance, never by checklist).
-- **During:** the dialogue log is pinned as you talk, not written at save time, so the folder
-  exists before the save; before the save is confirmed the agent asks about each requirement it
+  dependency graph — written into the research folder by relevance, never by checklist). A
+  request to merge a named branch into the current one loads the merge mode instead
+  (`references/merge-research.md`): it predicts the merge and saves a directive per conflict.
+- **During:** an ordinary exploration writes nothing until you agree to save (ultra pins its
+  dialogue log as you talk); before the save is confirmed the agent asks about each requirement it
   inferred, each one that departs from what you said, and each one open to two readings — one
   question per requirement. Every save ends with a coherence gate run in a fresh context: it
   re-reads the written files, and after two passes asks you instead of looping.
@@ -87,8 +89,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "plan this feature", "create tasks". The first **required** step of building.
 - **In:** a feature description, or a research brief, or a roadmap milestone. Modes: `fast`
   (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `ultra`
-  (full plus one deeply specified file per phase — explicit keyword only, never inferred),
-  `add` (extend) — each mode body loads on demand from `references/mode-*.md`.
+  (full plus one deeply specified file per phase — explicit keyword only, never inferred — except in a merge plan's mode question),
+  `add` (extend) — each mode body loads on demand from `references/mode-*.md`. A request to
+  merge a named branch loads `references/merge-plan.md` instead: the planner analyses the merge
+  and writes a merge plan.
   If a game-design workspace exists, planning resolves **flow-first** (*intent decides the
   door* — a flow-named request grounds on the flow, a system-named one on the system,
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the

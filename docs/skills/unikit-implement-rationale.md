@@ -51,6 +51,13 @@ explore save pipeline, on the same criterion — see
 - **A run is one launch.** When the filter cannot name every remaining suite, the run widens to
   every test rather than splitting into several launches. How a server spells a list of suites
   is taken from its live tool schema and written nowhere.
+- **The scope is closed before the first launch, and a repeat is one launch too.** A trial run
+  to see what is red, a scope that grows after the start, and a narrow check of the fixed test
+  before the repeat each add a launch that pays the runner's fixed overhead again. So the scope
+  is settled whole first — coverage, merged and deferred points, dependent modules, the safety
+  valve, the filter — and a repeat after red recomputes it once over all the changed files. When
+  the dependent modules cannot be determined with confidence, one wide run costs less than two
+  narrow ones.
 - **The safety valve is a key, default 30 % of the suites.** A filter that names most of the
   project costs more than one full run, and assembling it is the more error-prone half. The
   skill says the threshold is assigned, not measured, so the next reader does not take it for a

@@ -3116,6 +3116,7 @@ fi
 SF_SKILL="$ROOT_DIR/skills/unikit-explore/SKILL.md"
 SF_SPEC="$ROOT_DIR/skills/unikit-explore/references/ULTRA-RESEARCH-FORMAT.md"
 SF_GATE="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+SF_CONT="$ROOT_DIR/skills/unikit-explore/references/continuing.md"
 # Declared per family rather than borrowed from CG_*: the variable name says which family reads
 # it, so moving a family leaves no dangling reference. Declared above first use — `set -u`
 # makes a forward reference abort the suite instead of failing one guard.
@@ -3133,33 +3134,31 @@ grep -qF 'Offered:' "$SF_SKILL" || SF_WHY+=" SF-1:no-offered-options-block"
 grep -qF '[…]' "$SF_SKILL"         || SF_WHY+=" SF-2:no-elision-marker"
 grep -qF 'noun phrase' "$SF_SKILL" || SF_WHY+=" SF-2:no-noun-phrase-ban"
 
-# (SF-3) Pinning is declared, declared EARLY, targets the research folder itself, announces an
-# unfinished exploration as resumable, keeps its floor, and never brings back the hidden
-# scratch file A1 rejected. Positional by the CG-3 precedent: pinning declared after the saving
-# section is read too late, and the first exchange — the one carrying the original request — is
-# exactly the one that would go unpinned.
-SF3_PIN="$(grep -n '^## Pinning' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
-SF3_SAVE="$(grep -n '^## Saving Research Results' "$SF_SKILL" | head -1 | cut -d: -f1 || true)"
-if [[ -z "$SF3_PIN" ]]; then
-    SF_WHY+=" SF-3:no-pinning-section"
-elif [[ -z "$SF3_SAVE" ]]; then
-    SF_WHY+=" SF-3:no-save-section"
-elif (( SF3_PIN > SF3_SAVE )); then
-    SF_WHY+=" SF-3:pinning-declared-after-saving($SF3_PIN-after-$SF3_SAVE)"
-fi
-grep -qF '<slug>/SOURCE.md' "$SF_SKILL" || SF_WHY+=" SF-3:no-folder-target"
+# (SF-3) Pinning is an ultra-only rule and lives in the ultra reference, which the ultra
+# request loads BEFORE the first exchange (the first exchange is the one that would go
+# unpinned). The section must not drift back into the shared skill: a standard research
+# would carry a rule that is not its own again. Positional guard retired with the move —
+# a heading that is not in SKILL.md has no position there.
+SF3_PIN="$({ grep -n '^## Pinning' "$SF_SPEC" || true; } | head -1 | cut -d: -f1)"
+[[ -n "$SF3_PIN" ]] || SF_WHY+=" SF-3:no-pinning-section-in-the-ultra-reference"
+if grep -q '^## Pinning' "$SF_SKILL"; then SF_WHY+=" SF-3:pinning-section-returned-to-the-skill"; fi
+grep -qF 'references/ULTRA-RESEARCH-FORMAT.md` now and follow it' "$SF_SKILL" || SF_WHY+=" SF-3:ultra-reference-not-loaded-at-the-request"
+grep -qF '<slug>/SOURCE.md' "$SF_SPEC" || SF_WHY+=" SF-3:no-folder-target"
 # The re-render literal `no readable RESEARCH.md` is NOT asserted here on purpose: UR-2 already
 # owns it, in this same file. Two guards on one defect give two failures and the question of
 # which is canonical — the ED-8 precedent. Do not re-add.
 grep -qF 'NOTE [research]' "$SF_SKILL" || SF_WHY+=" SF-3:no-unfinished-branch"
-if grep -qF '.pin.' "$SF_SKILL"; then SF_WHY+=" SF-3:scratch-file-returned"; fi
-# The floor is the half that keeps "the agent decides when" from becoming "the agent defers".
+if grep -qF '.pin.' "$SF_SKILL" || grep -qF '.pin.' "$SF_SPEC"; then SF_WHY+=" SF-3:scratch-file-returned"; fi
+# The floor is the half that keeps "the agent decides when" from becoming "the agent defers"; it
+# stays in the offer rule of the skill and is restated in the reference.
 grep -qF 'When the conversation crystallizes' "$SF_SKILL" || SF_WHY+=" SF-3:no-floor-anchor"
+grep -qF 'no later than the moment you would offer to save' "$SF_SPEC" || SF_WHY+=" SF-3:no-floor-in-the-reference"
 
 # (SF-4) A pin that cannot be written degrades loudly and does not take the conversation with
 # it. One WARN, not two: the two folder states are NOTE-level and belong to SF-3 — an
-# unfinished exploration is resumable work, not a failure.
-grep -qF 'WARN [pin]' "$SF_SKILL" || SF_WHY+=" SF-4:no-write-failure-degradation"
+# unfinished exploration is resumable work, not a failure. The degradation line moved with the
+# section, into the ultra reference.
+grep -qF 'WARN [pin]' "$SF_SPEC" || SF_WHY+=" SF-4:no-write-failure-degradation"
 
 # (SF-5) The auto-save prohibition survives in both places and keeps naming its object.
 # Count the RULE, not the word: `auto-save` occurs three times, one of them a mention inside
@@ -3259,13 +3258,12 @@ grep -qF 'structure, layout, order' "$SF_SKILL" || SF_WHY+=" SF-11:no-trigger-li
 # before, which is the form a half-reverted move would bring back.
 grep -qF 'A standard research does not read this file' "$SF_SPEC" || SF_WHY+=" SF-12:no-ultra-only-statement"
 if grep -qF 'a standard research reads the sections marked' "$SF_SPEC"; then SF_WHY+=" SF-12:shared-load-claim-returned"; fi
-# The write order moved with them and keeps the reason its item 3 was guarded: SOURCE.md is
-# not a step OF the save, phase 1 having moved the first write into the conversation. A negative
-# on the retired FORM plus a positive on its replacement — the pair, never either half: without
-# the negative the old line survives beside the new one, without the positive the item is
-# deleted outright and the save stops describing its own last write.
+# The write order moved with them and now STARTS with SOURCE.md (SF-21). The old third item is
+# asserted absent, and so is the retired claim that the log is already on disk for EVERY
+# research — it is true of an ultra research only, and the claim coming back would hand a
+# standard research a rule that is not its own.
 if grep -qF '3. `SOURCE.md` (prompt-based explorations only).' "$SF_SKILL"; then SF_WHY+=" SF-12:write-order-still-creates-the-log-at-save"; fi
-grep -qF 'already on disk before the save begins' "$SF_SKILL" || SF_WHY+=" SF-12:no-pinned-log-in-write-order"
+if grep -qF 'already on disk before the save begins' "$SF_SKILL"; then SF_WHY+=" SF-12:pinned-log-claimed-for-every-research"; fi
 
 # (SF-13) Every real section carries an applicability line, and the vocabulary is ONE value:
 # `ultra only`. It was two while three sections were shared; with those in SKILL.md, a section
@@ -3328,8 +3326,52 @@ printf '%s' "$SF_RB_WIN" | grep -qF 'end your turn and wait' || SF_WHY+=" SF-18:
 # (SF-19) every readback menu reaches SOURCE.md with its offered options (REQ-006).
 printf '%s' "$SF_RB_WIN" | grep -qF 'with the option labels' || SF_WHY+=" SF-19:menu-not-logged"
 
+# (SF-20) An ordinary exploration writes nothing before the save; pinning is ultra's and a late
+# ultra starts none. Retired forms are asserted ABSENT: the half-reverted skill is the one
+# that keeps both the old claim and the new rule.
+grep -qF 'An ordinary exploration writes nothing to disk until the user agrees to save.' "$SF_SKILL" || SF_WHY+=" SF-20:no-ordinary-writes-nothing-statement"
+grep -qF 'An ordinary exploration pins nothing' "$SF_SPEC" || SF_WHY+=" SF-20:no-ordinary-pins-nothing-in-the-reference"
+grep -qF 'Naming ultra later in the conversation starts no pinning.' "$SF_SPEC" || SF_WHY+=" SF-20:late-ultra-starts-pinning"
+grep -qF 'A **file-based** exploration opens no folder ahead of the save, ultra or not.' "$SF_SKILL" || SF_WHY+=" SF-20:file-based-rule-lost"
+for SF20_OLD in 'Everything before saving — the stance, the exploration itself — is unchanged' \
+                'the mode only changes what is written at save time' \
+                'Writing the dialogue log while you talk'; do
+    if grep -qF "$SF20_OLD" "$SF_SKILL"; then SF_WHY+=" SF-20:retired-claim-returned"; fi
+done
+
+# (SF-21) SOURCE.md is the FIRST item of the write order. Window = the numbered list between
+# `**Write in this order.**` and the sentence that closes it; the first numbered line must
+# name SOURCE.md. An empty window is a fail, not a pass on nothing.
+SF21_WIN="$(awk '/^ *\*\*Write in this order\.\*\*/{f=1;next} /^ *Never write the index/{f=0} f' "$SF_SKILL" || true)"
+if [[ -z "$SF21_WIN" ]]; then
+    SF_WHY+=" SF-21:write-order-window-empty"
+else
+    SF21_FIRST="$({ printf '%s\n' "$SF21_WIN" | grep -m1 -E '^[[:space:]]*[0-9]+\. ' || true; })"
+    printf '%s' "$SF21_FIRST" | grep -qF 'SOURCE.md' || SF_WHY+=" SF-21:log-is-not-the-first-write"
+    printf '%s' "$SF21_WIN" | grep -qF 'it comes first' || SF_WHY+=" SF-21:no-reason-for-the-order"
+fi
+
+# (SF-22) Framework questions stay out of the log, the list is closed, the readback is NOT on it,
+# and the template comment no longer asks for "all questions".
+for SF22_LIT in 'Framework questions are not logged.' 'The list is closed.' 'is **not** on this list' 'ordinary user turn'; do
+    grep -qF "$SF22_LIT" "$SF_SKILL" || SF_WHY+=" SF-22:missing:${SF22_LIT// /-}"
+done
+if grep -qF 'Continue for all questions asked during the exploration' "$SF_SKILL"; then SF_WHY+=" SF-22:template-comment-logs-everything"; fi
+grep -qF 'skipped whole' "$SF_SPEC" || SF_WHY+=" SF-22:pinned-append-does-not-skip-framework-questions"
+
+# (SF-23) A log that lost the user's words says so and downgrades what rests on them.
+for SF23_LIT in '<!-- unikit:not-verbatim -->' 'Earlier turns (not verbatim)' 'no quotation and no anchor'; do
+    grep -qF "$SF23_LIT" "$SF_SKILL" || SF_WHY+=" SF-23:missing:${SF23_LIT// /-}"
+done
+
+# (SF-24) The continuation splits by mode, and the ultra reference states what ultra adds.
+grep -qF 'In an ordinary research nothing was pinned' "$SF_CONT" || SF_WHY+=" SF-24:continuing-has-no-ordinary-branch"
+if grep -qF 'The log is already on disk.' "$SF_CONT"; then SF_WHY+=" SF-24:continuing-claims-pinning-for-every-research"; fi
+grep -qF "The mode is the session's, not the folder's" "$SF_CONT" || SF_WHY+=" SF-24:continuing-does-not-say-the-mode-is-the-sessions"
+grep -qF 'pins its dialogue log while the conversation goes on' "$SF_SPEC" || SF_WHY+=" SF-24:reference-does-not-say-what-ultra-adds"
+
 if [[ -z "$SF_WHY" ]]; then
-    pass "SF-1..SF-19 the dialogue log is quoted and pinned as you talk, the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, a standard research reads nothing from the ultra reference, and the readback asks one question per requirement with a text tier that ends the turn"
+    pass "SF-1..SF-24 the dialogue log is quoted; only an ultra exploration pins it as you talk, an ordinary one writes nothing before the save and writes the log first; framework questions stay out of the log and the readback stays in; a log that lost the user's words says so; the requirement carries its source anchor and provenance, a structural requirement is tested for two readings, the readback runs before the re-render and leaves a counted trace that is never empty, the gate still has exactly five criteria, a standard research reads nothing from the ultra reference, and the readback asks one question per requirement with a text tier that ends the turn"
 else
     fail "SF source fidelity:$SF_WHY"
 fi
@@ -6783,7 +6825,9 @@ if [[ -z "$TC_G5_WHY" ]]; then
     grep -qF 'git rev-parse HEAD; { git diff HEAD --name-only' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
     grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
-    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" && TC_G5_WHY+=" TC-41:engine-names-leaked"
+    # The scope covers unikit-fix too, and the case is spelled out as classes: the plain
+    # lower-case "nunit" let "NUnit" and "[Test]" through, which is how unikit-fix kept both.
+    grep -qE 'asmdef|[Nn][Uu]nit|\[Test\]' "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$EM_FIX_SKILL" && TC_G5_WHY+=" TC-41:engine-names-leaked"
     # (TC-42…TC-44) POSITIVE half: the runner is one per editor, so the scope owner runs.
     grep -qF 'never handed to a worker'    "$TC_COORD"  || TC_G5_WHY+=" TC-42:coordinator-does-not-withhold"
     grep -qF 'once the layer has finished' "$TC_COORD"  || TC_G5_WHY+=" TC-43:no-run-after-layer"
@@ -6872,6 +6916,205 @@ if [[ -z "$TC_G7_WHY" ]]; then
     pass "TC-52…TC-58 merging is one question per call: no key, source named, non-run steps carried, coordinator asks too, deferred work closed where it ran"
 else
     fail "TC-52…TC-58 merge-question contract:$TC_G7_WHY"
+fi
+
+# --- TS: the test-scope policy and the review loop (research 2026-10-09, ADR-0001 / ADR-0002) ---
+# The policy lives in dev-principles.md — the one carrier a studio with its own registry still
+# receives — and the readers follow it. Anchored on body formulations, never on headings: a
+# heading can be reworded without changing the rule. A guard that finds nothing to scan fails.
+# TS-6 / TS-7 read the registry snapshot and come with its refresh.
+TS_DEVPRIN="$ROOT_DIR/data/dev-principles.md"
+TS_FIX="$ROOT_DIR/skills/unikit-fix/SKILL.md"
+TS_IMPL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+TS_TESTRUNS="$ROOT_DIR/skills/unikit-implement/references/test-runs.md"
+TS_REVIEW="$ROOT_DIR/skills/unikit-review/SKILL.md"
+TS_COMMIT="$ROOT_DIR/skills/unikit-commit/SKILL.md"
+TS_ULTRA="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+# The two printed lines are pinned once and applied to every file that carries them, so the
+# text cannot drift between the carrier and its readers.
+TS_INFO_DEFER='INFO [testing] review loop: tests deferred until you accept'
+TS_INFO_CLOSED='INFO [testing] review loop closed without acceptance'
+
+# (TS-1) the carrier: four target classes, the smell check, the review-loop contract.
+TS1_WHY=""
+TS1_ANCHORS=(
+    'loop-heading::Tests follow acceptance'
+    'silence-not-acceptance::silence is never acceptance'
+    'defer-line::'"$TS_INFO_DEFER"
+    'closed-line::'"$TS_INFO_CLOSED"': no tests written for'
+    'no-live-number::A live number is never written into a test'
+    'validity-check::at most one aggregate validity check per data family'
+    'reference-check::at most one aggregate reference check per module'
+    'frame-or-readback::the evidence is a frame or a read-back'
+    'passport-fixture::passport fixture'
+    'smell-check::Smell check'
+    'closing-commit-diff::the diff of the closing commit'
+)
+TS1_N=${#TS1_ANCHORS[@]}
+if [[ -s "$TS_DEVPRIN" ]]; then
+    for ts1 in "${TS1_ANCHORS[@]}"; do
+        grep -qF -- "${ts1#*::}" "$TS_DEVPRIN" || TS1_WHY+=" TS-1:${ts1%%::*}"
+    done
+else
+    TS1_WHY+=" TS-1:dev-principles-missing"
+fi
+if [[ -z "$TS1_WHY" ]]; then
+    pass "TS-1 dev-principles.md carries the target classes, the smell check and the review-loop contract (scanned $TS1_N anchors)"
+else
+    fail "TS-1 test-scope policy carrier:$TS1_WHY"
+fi
+
+# (TS-2) NEGATIVE + the sentence EM-3 and fifteen other guard sites read: the old blanket
+# wording is gone, the GATE LIFTED override stands as it was.
+TS2_WHY=""
+if [[ -s "$TS_DEVPRIN" ]]; then
+    grep -qF 'for all functionality' "$TS_DEVPRIN" && TS2_WHY+=" TS-2:blanket-wording-returned"
+    grep -qF 'marks the tests gate **GATE LIFTED** for the configured server' "$TS_DEVPRIN" || TS2_WHY+=" TS-2:gate-lifted-sentence-lost"
+else
+    TS2_WHY+=" TS-2:dev-principles-missing"
+fi
+if [[ -z "$TS2_WHY" ]]; then
+    pass "TS-2 dev-principles.md no longer asks for tests on all functionality and keeps the GATE LIFTED sentence"
+else
+    fail "TS-2 test-scope wording:$TS2_WHY"
+fi
+
+# (TS-3) NEGATIVE — the policy is engine-neutral: item 5 and 5a name no engine, no engine
+# type and no engine file format (those live in the registry's testing.md). The slice must
+# be non-empty and must reach 5a, or the scan proves nothing.
+TS3_WHY=""
+TS3_ENGINE_RE='Unity|Godot|Unreal|NUnit|GdUnit|ScriptableObject|UDataAsset|DataTable|asmdef|MonoBehaviour|\.tscn|\.umap|\.prefab'
+TS3_SLICE=""
+[[ -s "$TS_DEVPRIN" ]] && TS3_SLICE="$(awk '/^5\. \*\*Tests\.\*\*/{p=1} /^6\. \*\*/{p=0} p' "$TS_DEVPRIN")"
+TS3_N="$(printf '%s\n' "$TS3_SLICE" | { grep -c . || true; })"
+if [[ "$TS3_N" -eq 0 ]]; then
+    TS3_WHY+=" TS-3:slice-empty"
+else
+    printf '%s\n' "$TS3_SLICE" | grep -qF 'Tests follow acceptance' || TS3_WHY+=" TS-3:slice-misses-5a"
+    while IFS= read -r ts3_tok; do
+        [[ -n "$ts3_tok" ]] && TS3_WHY+=" TS-3:engine-name:${ts3_tok}"
+    done < <(printf '%s\n' "$TS3_SLICE" | { grep -oE "$TS3_ENGINE_RE" || true; } | sort -u)
+fi
+if [[ -z "$TS3_WHY" ]]; then
+    pass "TS-3 the test-scope policy (items 5, 5a) names no engine, engine type or engine file format (scanned $TS3_N lines)"
+else
+    fail "TS-3 test-scope policy is engine-neutral:$TS3_WHY"
+fi
+
+# (TS-4) unikit-fix: no engine test framework, no blanket "always suggest", the loop skip
+# on both steps, a regression test for logic.
+TS4_WHY=""
+if [[ -s "$TS_FIX" ]]; then
+    for ts4 in 'NUnit' '[Test]' 'ALWAYS suggest'; do
+        grep -qF -- "$ts4" "$TS_FIX" && TS4_WHY+=" TS-4:leaked:${ts4}"
+    done
+    grep -qF -- "$TS_INFO_DEFER" "$TS_FIX" || TS4_WHY+=" TS-4:no-defer-line"
+    grep -qF 'skip this step with the same single line' "$TS_FIX" || TS4_WHY+=" TS-4:step5-not-skipped-in-loop"
+    grep -qF 'regression test' "$TS_FIX" || TS4_WHY+=" TS-4:no-regression-test"
+else
+    TS4_WHY+=" TS-4:fix-skill-missing"
+fi
+if [[ -z "$TS4_WHY" ]]; then
+    pass "TS-4 unikit-fix skips tests inside a review loop, suggests a regression test for logic and names no test framework"
+else
+    fail "TS-4 unikit-fix test wording:$TS4_WHY"
+fi
+
+# (TS-5) the readers: each one follows the carrier, none restates it.
+TS5_WHY=""
+TS5_N=0
+for ts5 in \
+    "$TS_TESTRUNS::phase-logic::Write tests for the logic created or modified in a phase" \
+    "$TS_TESTRUNS::loop-exception::review loop" \
+    "$TS_TESTRUNS::after-acceptance::after acceptance" \
+    "$TS_IMPL::important-rule::Tests follow acceptance" \
+    "$TS_IMPL::step-5.8-reminder::written and run once" \
+    "$TS_REVIEW::checklist-line::Tests for new logic; none that pin tunable values or authored content" \
+    "$TS_COMMIT::closed-line::$TS_INFO_CLOSED" \
+    "$TS_ULTRA::authored-content-literal::Not applicable — authored content; evidence is a read-back or a frame"; do
+    ts5_file="${ts5%%::*}"; ts5_rest="${ts5#*::}"; ts5_key="${ts5_rest%%::*}"; ts5_anchor="${ts5_rest#*::}"
+    ts5_rel="${ts5_file#"$ROOT_DIR"/}"
+    if [[ -s "$ts5_file" ]]; then
+        TS5_N=$((TS5_N + 1))
+        grep -qF -- "$ts5_anchor" "$ts5_file" || TS5_WHY+=" TS-5:${ts5_rel}:${ts5_key}"
+    else
+        TS5_WHY+=" TS-5:missing:${ts5_rel}"
+    fi
+done
+[[ -s "$TS_REVIEW" ]] && grep -qF 'Test coverage for new code' "$TS_REVIEW" && TS5_WHY+=" TS-5:review-blanket-coverage-returned"
+[[ "$TS5_N" -gt 0 ]] || TS5_WHY+=" TS-5:nothing-scanned"
+if [[ -z "$TS5_WHY" ]]; then
+    pass "TS-5 implement, review, commit and the ultra plan format follow the test-scope policy (scanned $TS5_N anchors)"
+else
+    fail "TS-5 policy readers:$TS5_WHY"
+fi
+
+# (TS-6) the registry snapshot — the engine half of the policy. The SAME anchors in all four
+# copies: that is the guard against the MUST/SHOULD drift between them (before the policy
+# Unity and UE5 said MUST, the Godot pair SHOULD). Reads rules-registry/, so it goes red on a
+# stale snapshot — refresh it with download-rules.sh, never by hand.
+TS6_WHY=""
+TS6_N=0
+TS6_ENGINES=(unity godot godot-net unreal-engine-5)
+TS6_PRESENT=(
+    'what-to-test::## What to Test'
+    'class-logic::| Logic and system values |'
+    'class-tunable::| Tunable data |'
+    'class-authored::| Authored content |'
+    'class-lookup::| Lookup by name |'
+    'smell-check::Smell check'
+    'one-aggregate::at most one aggregate'
+)
+TS6_ABSENT=(
+    'every-method::For **every** method under test'
+    'must-cover::MUST be covered by tests'
+    'should-cover::SHOULD be covered by tests'
+)
+for ts6_engine in "${TS6_ENGINES[@]}"; do
+    ts6_f="$ROOT_DIR/rules-registry/code/$ts6_engine/core/testing.md"
+    if [[ ! -s "$ts6_f" ]]; then
+        TS6_WHY+=" TS-6:${ts6_engine}:snapshot-missing"
+        continue
+    fi
+    TS6_N=$((TS6_N + 1))
+    for ts6 in "${TS6_PRESENT[@]}"; do
+        grep -qF -- "${ts6#*::}" "$ts6_f" || TS6_WHY+=" TS-6:${ts6_engine}:no-${ts6%%::*}"
+    done
+    for ts6 in "${TS6_ABSENT[@]}"; do
+        grep -qF -- "${ts6#*::}" "$ts6_f" && TS6_WHY+=" TS-6:${ts6_engine}:${ts6%%::*}-returned"
+    done
+    # Godot's two scene samples stay in the file but as a smoke-check exception, not a model.
+    if [[ "$ts6_engine" == godot || "$ts6_engine" == godot-net ]]; then
+        grep -qF 'Exception, not a model for scene content' "$ts6_f" || TS6_WHY+=" TS-6:${ts6_engine}:scene-sample-not-marked"
+    fi
+done
+[[ "$TS6_N" -gt 0 ]] || TS6_WHY+=" TS-6:nothing-scanned"
+if [[ -z "$TS6_WHY" ]]; then
+    pass "TS-6 the snapshot's testing rules carry What to Test with the four classes and the smell check, in all engines (scanned $TS6_N files)"
+else
+    fail "TS-6 registry snapshot testing rules:$TS6_WHY"
+fi
+
+# (TS-7) the four copies moved together: each testing.md of the snapshot is at major 2 or later,
+# a 1.x file is the pre-policy text. ">= 2" rather than "== 2", so the next major bump of the
+# registry does not turn the guard red for nothing.
+TS7_WHY=""
+TS7_N=0
+for ts7_engine in "${TS6_ENGINES[@]}"; do
+    ts7_f="$ROOT_DIR/rules-registry/code/$ts7_engine/core/testing.md"
+    if [[ ! -s "$ts7_f" ]]; then
+        TS7_WHY+=" TS-7:${ts7_engine}:snapshot-missing"
+        continue
+    fi
+    TS7_N=$((TS7_N + 1))
+    ts7_ver="$(awk '/^version:/{print $2; exit}' "$ts7_f" | tr -d '\r')"
+    [[ "$ts7_ver" =~ ^([2-9]|[1-9][0-9]+)\. ]] || TS7_WHY+=" TS-7:${ts7_engine}:version-${ts7_ver:-none}"
+done
+[[ "$TS7_N" -gt 0 ]] || TS7_WHY+=" TS-7:nothing-scanned"
+if [[ -z "$TS7_WHY" ]]; then
+    pass "TS-7 every engine's testing rule in the snapshot is at major version 2 or later (scanned $TS7_N files)"
+else
+    fail "TS-7 registry snapshot versions:$TS7_WHY"
 fi
 
 # --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---
@@ -7006,9 +7249,36 @@ if [[ -z "$TW_WHY" ]]; then
     grep -qF 'Carrying the anchor across a commit'    "$TC_COORD"               || TW_WHY+=" TW-11:coordinator-never-carries"
     # (TW-12) a phase writes its tests before its run, or the last phase's tests are never run.
     grep -qF 'A phase that has not run `## Step 3.8` yet writes its tests now' "$TC_TESTRUNS" || TW_WHY+=" TW-12:tests-written-after-run"
+    # (TW-13…TW-15) one scope, one launch: the scope is closed whole before the first launch, and a
+    # repeat after red is one launch of the whole scope. tw_has counts the anchors it checked — a
+    # block that checks none fails, so a renamed file cannot turn these into a silent pass.
+    tw_chk=0
+    tw_has() { # <reason key> <literal> <text to search>
+        tw_chk=$((tw_chk + 1))
+        grep -qF -- "$2" <<< "$3" || TW_WHY+=" $1"
+    }
+    # (TW-13) the subsection and its prohibitions, inside the `## Run width` window.
+    tw_has "TW-13:no-subsection"       '### One scope, one launch'                                 "$TW_SEC"
+    tw_has "TW-13:scope-not-closed"    'closed before the first launch'                            "$TW_SEC"
+    tw_has "TW-13:trial-run-allowed"   'a trial run to see what is red or what exists'             "$TW_SEC"
+    tw_has "TW-13:scope-grows"         'growing the scope after the launch has started'            "$TW_SEC"
+    tw_has "TW-13:doubt-not-full-run"  'one wide run costs less than two narrow ones'              "$TW_SEC"
+    # (TW-14) a repeat after red: one launch of the whole scope, and no narrower check before it.
+    tw_has "TW-14:repeat-not-one-launch" 'A repeat after red is one launch of the whole scope'     "$TW_SEC"
+    tw_has "TW-14:narrow-check-allowed"  'A narrower check of the fixed test before the repeat is forbidden' "$TW_SEC"
+    tw_has "TW-14:task-scope-lost"       "the scope stays the fixtures and classes of that task"   "$TW_SEC"
+    tw_has "TW-14:plan-repeat-narrowed"  'it is every test in the project again'                   "$TW_SEC"
+    # (TW-15) the pointers: Step 3.2 item 6 names the subsection on the very line that repeats the
+    # run, the search loop says it is not a launch, and /unikit-fix points at the same subsection.
+    tw15_line="$( { grep -F 'After the fix the run is repeated' "$TC_TESTRUNS" || true; } | head -1)"
+    [[ -n "$tw15_line" ]] || TW_WHY+=" TW-15:no-repeat-line"
+    tw_has "TW-15:repeat-line-unlinked"  'One scope, one launch'                                   "$tw15_line"
+    tw_has "TW-15:search-looks-like-launch" 'no suite is started while it repeats'                 "$(cat "$TC_TESTRUNS")"
+    tw_has "TW-15:fix-unlinked"          'One scope, one launch'                                   "$(cat "$EM_FIX_SKILL")"
+    (( tw_chk > 0 )) || TW_WHY+=" TW-13:no-anchor-checked"
 fi
 if [[ -z "$TW_WHY" ]]; then
-    pass "TW-1…TW-12 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run"
+    pass "TW-1…TW-15 run width: every test by default, affected runs and their threshold are keys, one launch, zero tests is not green, the final run reused on an unchanged tree, fix reads the same section; one content-aware, index-independent tree hash, carried over the executor's commits; tests written before the phase's run; one scope closed before its single launch, a repeat after red is one launch of the whole scope (${tw_chk:-0} new anchors)"
 else
     fail "TW run-width contract:$TW_WHY"
 fi
@@ -8734,6 +9004,171 @@ else
     fail "PB-1 plan-boundaries contract:$PB_WHY"
 fi
 
+# MA: the merge-analysis protocol — one system asset that /unikit-explore (merge mode) and
+# /unikit-plan (merge plan) both run, so the analysis is written once. Headings are read by name
+# in both readers, so they are asserted as WHOLE lines (-qxF); phrases are file-scoped -qF.
+# Every check goes through ma_has / ma_lacks, which count: a block that checks nothing fails.
+# The helpers and MA_WHY are shared by the MA-2…MA-7 blocks below; each block reports itself.
+MA_WHY=""
+MA_CHK=0
+ma_has() { # <reason key> <literal> <file> — a literal starting "## " must be a whole line
+    MA_CHK=$((MA_CHK + 1))
+    if [[ "$2" == "## "* ]]; then
+        grep -qxF -- "$2" "$3" || MA_WHY+=" $1"
+    else
+        grep -qF -- "$2" "$3" || MA_WHY+=" $1"
+    fi
+}
+ma_lacks() { # <reason key> <literal> <file>
+    MA_CHK=$((MA_CHK + 1))
+    ! grep -qF -- "$2" "$3" || MA_WHY+=" $1"
+}
+MA_PROTOCOL="$ROOT_DIR/data/merge-analysis.md"
+if [[ ! -s "$MA_PROTOCOL" ]]; then
+    MA_WHY+=" MA-1:missing-protocol"
+else
+    for h in '## Pin the three commits' '## Fetch' '## Start state' '## Divergence' '## Predict the result' \
+             '## Surface classes' '## Directive for a conflicted file' '## Anchors and the check after the merge'; do
+        ma_has "MA-1:no-heading(${h#\#\# })" "$h" "$MA_PROTOCOL"
+    done
+    ma_has "MA-1:no-single-owner-rule"   'Do not restate this contract inside a skill'       "$MA_PROTOCOL"
+    ma_has "MA-1:no-merge-tree-form"     'git merge-tree --write-tree --name-only --messages' "$MA_PROTOCOL"
+    ma_has "MA-1:no-ancestor-check"      'git merge-base --is-ancestor'                     "$MA_PROTOCOL"
+    ma_has "MA-1:no-merge-head-probe"    'git rev-parse -q --verify MERGE_HEAD'             "$MA_PROTOCOL"
+    ma_has "MA-1:no-unmerged-probe"      'git diff --name-only --diff-filter=U'             "$MA_PROTOCOL"
+    ma_has "MA-1:no-engine-rules-pointer" 'ENGINE_RULES.md'                                 "$MA_PROTOCOL"
+    ma_has "MA-1:no-service-tag"         '[merge]'                                          "$MA_PROTOCOL"
+    # a flat copy knows no variables, and an engine fact would put engine documentation into UniKit
+    ma_lacks "MA-1:variable-in-flat-copy" '{{'               "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Unity)"    'Unity'            "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Godot)"    'Godot'            "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Unreal)"   'Unreal'           "$MA_PROTOCOL"
+    ma_lacks "MA-1:retired-key"           'merge_checkpoints' "$MA_PROTOCOL"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-1:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-1 merge-analysis protocol carries every section its readers name, flat and engine-neutral (${MA_CHK} anchors)"
+else
+    fail "MA-1 merge-analysis protocol:$MA_WHY"
+fi
+
+# MA-2…MA-4: the explore side of the merge mode — a conditional reference, a narrow set of git
+# grants that cannot change the tree, and the form of the saved research. The reference is read
+# only on a merge request; an ordinary exploration must keep reading nothing extra.
+MA_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+MA_RESEARCH="$ROOT_DIR/skills/unikit-explore/references/merge-research.md"
+MA_WHY=""
+MA_CHK=0
+if [[ ! -s "$MA_EXPLORE" ]]; then
+    MA_WHY+=" MA-2:missing-explore-skill"
+elif [[ ! -s "$MA_RESEARCH" ]]; then
+    MA_WHY+=" MA-2:missing-merge-research"
+else
+    # (MA-2) loaded conditionally, owns the trigger, the write boundary and the "not included" list
+    ma_has "MA-2:skill-never-loads-reference" 'references/merge-research.md'                        "$MA_EXPLORE"
+    ma_has "MA-2:ordinary-exploration-reads-it" 'An ordinary exploration does not read that file'    "$MA_EXPLORE"
+    ma_has "MA-2:no-not-included-list"  '**rebase**, **cherry-pick**, and merging by a pull request number' "$MA_RESEARCH"
+    ma_has "MA-2:no-protocol-pointer"   'merge-analysis.md'                                         "$MA_RESEARCH"
+    ma_has "MA-2:no-fetch-permission"   'git fetch'                                                 "$MA_RESEARCH"
+    ma_has "MA-2:no-write-boundary"     '`git fetch` and `git merge-tree` write into `.git` only'   "$MA_RESEARCH"
+    ma_has "MA-2:no-forbidden-commands" '**Never** `git merge`, `checkout`, `reset`, `stash`, `worktree`' "$MA_RESEARCH"
+    # a grant matches the start of a command, not its flags: `--output=<file>` makes git diff, log
+    # and show write a file (measured on git 2.46), and git grep's `-O` hands files to a program
+    ma_has "MA-2:no-flag-boundary"      'Never pass a flag that writes a file or starts a program' "$MA_RESEARCH"
+    ma_has "MA-2:no-output-flag"        '`--output`'                                            "$MA_RESEARCH"
+    ma_has "MA-2:no-pager-flag"         '`-O`'                                                  "$MA_RESEARCH"
+    # (MA-3) the frontmatter grants: exactly the read-only git list, and none of the commands
+    # that change the tree, the index or the refs (a plain `git fetch` stays a prompted action)
+    MA_FM="$(awk '/^---$/{n++; next} n==1' "$MA_EXPLORE")"
+    for g in 'merge-base' 'log' 'diff' 'show' 'rev-parse' 'rev-list' 'merge-tree' 'grep' 'ls-tree' 'for-each-ref' 'status'; do
+        MA_CHK=$((MA_CHK + 1))
+        grep -qxF "  - Bash(git $g *)" <<< "$MA_FM" || MA_WHY+=" MA-3:no-grant($g)"
+    done
+    for g in 'Bash(git merge ' 'Bash(git checkout ' 'Bash(git reset ' 'Bash(git stash ' 'Bash(git worktree ' 'Bash(git fetch ' 'Bash(git *)'; do
+        MA_CHK=$((MA_CHK + 1))
+        ! grep -qF -- "$g" <<< "$MA_FM" || MA_WHY+=" MA-3:forbidden-grant(${g})"
+    done
+    # (MA-4) the saved research: anchors in the hashed Active Summary, evidence marked, forks blocking
+    ma_has "MA-4:no-merge-anchors"      'Merge anchors: ours=<sha>, theirs=<sha>, base=<sha>, result-tree=<oid>' "$MA_RESEARCH"
+    ma_has "MA-4:no-predicted-conflicts" 'Predicted conflicts: <path>; <path>'                      "$MA_RESEARCH"
+    ma_has "MA-4:actions-not-inferred"  'each marked `inferred`'                                    "$MA_RESEARCH"
+    ma_has "MA-4:evidence-unmarked"     'exists only after the merge'                               "$MA_RESEARCH"
+    ma_has "MA-4:blocking-not-first-word" 'whose first word is `blocking`'                          "$MA_RESEARCH"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-2:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-2…MA-4 explore merge mode: conditional reference, ${MA_CHK} anchors and grants, no command that changes the tree"
+else
+    fail "MA-2…MA-4 explore merge mode:$MA_WHY"
+fi
+
+# MA-5…MA-7: the plan side of the merge mode — a conditional reference that carries the plan's
+# rules, the merge phase's tasks, and the one exception to "ultra is named by the user". MA-7
+# covers the files that state that rule as far as they exist; the help and docs files join it
+# in the documentation task. Where a sentence wraps across lines in the source, it is read on
+# whitespace-collapsed text.
+MA_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+MA_PLAN_REF="$ROOT_DIR/skills/unikit-plan/references/merge-plan.md"
+MA_PLAN_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+MA_WHY=""
+MA_CHK=0
+if [[ ! -s "$MA_PLAN" || ! -s "$MA_PLAN_ULTRA" ]]; then
+    MA_WHY+=" MA-5:missing-plan-skill"
+elif [[ ! -s "$MA_PLAN_REF" ]]; then
+    MA_WHY+=" MA-5:missing-merge-plan"
+else
+    # (MA-5) conditional load, the service lines, the three-way mode question, no branch, the plan's place
+    ma_has "MA-5:skill-never-loads-reference" 'references/merge-plan.md'                       "$MA_PLAN"
+    ma_has "MA-5:ordinary-plan-reads-it"      'An ordinary plan does not read that file'        "$MA_PLAN"
+    ma_has "MA-5:no-missing-protocol-warn" 'WARN [merge] merge-analysis.md missing — plan is not per protocol; run unikit-ai update' "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-start"           'git merge --no-ff --no-commit'                      "$MA_PLAN_REF"
+    # merging by the pinned SHA names the commit after the SHA alone ("Merge commit '<sha>'"), so
+    # the start task carries the message itself and `git commit --no-edit` later reuses it
+    ma_has "MA-5:merge-message-unnamed"    '-m "Merge branch '"'"'<branch>'"'"' into <current branch>"' "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-commit"          'git commit --no-edit'                               "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-folder"          '.unikit/code/plans/merge-'                          "$MA_PLAN_REF"
+    ma_has "MA-5:no-not-ready-line"        'Plan is NOT implementation-ready'                   "$MA_PLAN_REF"
+    ma_has "MA-5:mode-question-changed"    'The question has three options, in this order: fast, full, ultra.' "$MA_PLAN_REF"
+    ma_has "MA-5:branch-may-be-created"    'Never create or switch a branch: the branch step of every mode is skipped.' "$MA_PLAN_REF"
+    # (MA-6) the merge phase: anchors compared with the research, the merge commit made by the plan itself
+    ma_has "MA-6:no-research-anchor-compare" 'Merge anchors:'                                   "$MA_PLAN_REF"
+    ma_has "MA-6:no-readiness-check"       'git merge-base --is-ancestor'                       "$MA_PLAN_REF"
+    ma_has "MA-6:merge-commit-owner-lost"  'The merge commit is made by the last task of the merge phase' "$MA_PLAN_REF"
+    ma_has "MA-6:commit-skill-takes-it"    '/unikit-commit does not make it'                    "$MA_PLAN_REF"
+    ma_has "MA-6:anchors-not-in-constraints" '- MUST:'                                          "$MA_PLAN_REF"
+    ma_has "MA-6:stale-research-silent"    'not used —'                                         "$MA_PLAN_REF"
+    ma_has "MA-6:no-continue-as-is"        'Continue as is'                                     "$MA_PLAN_REF"
+    # (MA-7) "ultra is named by the user" has exactly one exception, said in each place that states it
+    ma_has "MA-7:no-exception-in-skill"    'merge plan'                                         "$MA_PLAN"
+    ma_has "MA-7:no-exception-in-mode-ultra" 'merge plan'                                       "$MA_PLAN_ULTRA"
+    # the help map and the documentation say it too — a file left out would still teach "never offered"
+    for ma_f in skills/unikit-help/references/pipelines.md skills/unikit-help/references/skill-map.md \
+                docs/plan-files.md docs/skills.md docs/workflow.md docs/skills/unikit-plan-rationale.md; do
+        if [[ -s "$ROOT_DIR/$ma_f" ]]; then
+            ma_has "MA-7:no-exception(${ma_f##*/})" 'merge plan' "$ROOT_DIR/$ma_f"
+        else
+            MA_WHY+=" MA-7:missing(${ma_f##*/})"
+        fi
+    done
+    MA_EXC="$(grep -cF 'except in a merge plan, where the mode question offers it' "$MA_PLAN" || true)"
+    MA_CHK=$((MA_CHK + 1))
+    (( MA_EXC >= 3 )) || MA_WHY+=" MA-7:exception-in-skill-x${MA_EXC}-of-3"
+    # the frontmatter sentence is kept, and the description does not gain a merge trigger (DEC-5)
+    MA_PFM="$(awk '/^---$/{n++; next} n==1' "$MA_PLAN")"
+    MA_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-z-]+:/{exit} f' <<< "$MA_PFM" | tr '\n' ' ' | tr -s ' ')"
+    MA_CHK=$((MA_CHK + 1))
+    grep -qF 'Ultra runs only when the user names it' <<< "$MA_DESC" || MA_WHY+=" MA-7:description-sentence-lost"
+    MA_CHK=$((MA_CHK + 1))
+    # plain -qi, never -iF: the MSYS grep aborts on that pair, and an abort here would read as "absent"
+    ! grep -qi 'merge' <<< "$MA_DESC" || MA_WHY+=" MA-7:description-gained-a-merge-trigger"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-5:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-5…MA-7 plan merge mode: conditional reference, the merge phase's tasks and the one exception to user-named ultra (${MA_CHK} anchors)"
+else
+    fail "MA-5…MA-7 plan merge mode:$MA_WHY"
+fi
+
 # VB: /unikit-verify takes its base and range from the plan-boundaries contract, can check
 # one module (a phase scope), and reads a PR checkpoint task from its checkbox — an Explore
 # agent would otherwise search the code for it and honestly report NOT FOUND.
@@ -8887,6 +9322,46 @@ if [[ -z "$CP_WHY" ]]; then
     pass "CP-1…CP-3 commit: no-push token; a manual push takes HEAD and asks inside a module"
 else
     fail "CP-1…CP-3 commit push contract:$CP_WHY"
+fi
+
+# MR: an unfinished merge is not lost by the executors. Once its conflicts are resolved, both
+# `git stash` and the `git reset -q` of the commit skill's split path drop MERGE_HEAD for good,
+# and the merge commit would get one parent (research 2026-10-10, C-7). So implement and fix do
+# not offer the stash while MERGE_HEAD exists, and commit does not split — not even a split the
+# caller passed. The mark on the option line is asserted apart from the paragraph: the question
+# is formed "right before Step 3", in another turn, and the paragraph above it is easy to lose.
+MR_WHY=""
+MR_CHK=0
+mr_has() { # <reason key> <literal> <text to search>
+    MR_CHK=$((MR_CHK + 1))
+    grep -qF -- "$2" <<< "$3" || MR_WHY+=" $1"
+}
+mr_stash() { # <id> <file> — implement (Step 0.2) and fix share one shape
+    local id="$1" file="$2" text line
+    if [[ ! -s "$file" ]]; then MR_WHY+=" $id:missing-file"; return; fi
+    text="$(cat "$file")"
+    mr_has "$id:no-merge-head-probe" 'MERGE_HEAD'                              "$text"
+    mr_has "$id:stash-still-offered" 'has no "Stash and continue"'             "$text"
+    line="$( { grep -F '2. Stash and continue' "$file" || true; } | head -1)"
+    mr_has "$id:question-unmarked"   'not offered while a merge is unfinished' "$line"
+}
+mr_stash "MR-1" "$CA_IMPLEMENT"
+mr_stash "MR-2" "$EM_FIX_SKILL"
+if [[ ! -s "$CM_COMMIT_SKILL" ]]; then
+    MR_WHY+=" MR-3:missing-file"
+else
+    MR_AUTO="$(awk '/^## Auto mode/{f=1;next} f&&/^## /{exit} f' "$CM_COMMIT_SKILL")"
+    MR_SPLIT="$(awk '/^## Splitting Unrelated Changes/{f=1;next} f&&/^## /{exit} f' "$CM_COMMIT_SKILL")"
+    mr_has "MR-3:no-merge-head-probe"   'MERGE_HEAD'                                           "$MR_SPLIT"
+    mr_has "MR-3:caller-split-applied"  'a split passed by the caller is not applied'          "$MR_SPLIT"
+    mr_has "MR-3:no-info-line"          'INFO [commit] merge in progress — split not offered'  "$MR_SPLIT"
+    mr_has "MR-3:auto-applies-split"    'except while a merge is in progress'                  "$MR_AUTO"
+fi
+(( MR_CHK > 0 )) || MR_WHY+=" MR-1:nothing-checked"
+if [[ -z "$MR_WHY" ]]; then
+    pass "MR-1…MR-3 an unfinished merge is neither stashed (implement, fix) nor split (commit, caller's split included) (${MR_CHK} anchors)"
+else
+    fail "MR-1…MR-3 unfinished-merge protection:$MR_WHY"
 fi
 
 # UPR: /unikit-pr — the one author of pull requests. Levels capped by the config, the PR is
@@ -10679,10 +11154,15 @@ echo -e "\n${BOLD}Part 7i: core module file-size guard${NC}"
 
 SIZE_LIMIT=500
 SIZE_VIOLATIONS=""
+# The two command files that deliver the system assets join the list by name: update.ts had
+# grown to 556 lines unguarded, and each new system asset adds a line to both. rules.ts
+# (1493 lines) is deliberately not listed — splitting it is a refactor of its own.
 for f in "$ROOT_DIR"/src/core/*.ts \
          "$ROOT_DIR"/src/core/installer/*.ts \
          "$ROOT_DIR"/src/core/registry/*.ts \
-         "$ROOT_DIR"/src/core/registry/migrations/*.ts; do
+         "$ROOT_DIR"/src/core/registry/migrations/*.ts \
+         "$ROOT_DIR"/src/cli/commands/init.ts \
+         "$ROOT_DIR"/src/cli/commands/update.ts; do
     [[ -f "$f" ]] || continue
     lines=$(wc -l < "$f" | tr -d ' ')
     if [[ "$lines" -gt "$SIZE_LIMIT" ]]; then
@@ -10691,9 +11171,9 @@ for f in "$ROOT_DIR"/src/core/*.ts \
 done
 
 if [[ -z "$SIZE_VIOLATIONS" ]]; then
-    pass "src/core modules within $SIZE_LIMIT-line limit"
+    pass "src/core modules and the init/update commands within $SIZE_LIMIT-line limit"
 else
-    fail "src/core modules exceed $SIZE_LIMIT-line limit"
+    fail "src/core modules or the init/update commands exceed $SIZE_LIMIT-line limit"
     echo -e "$SIZE_VIOLATIONS"
 fi
 

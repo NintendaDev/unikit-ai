@@ -241,6 +241,23 @@ assert_not_contains "$PLAN_BOUNDARIES_PATH" '\{\{' \
   "plan-boundaries.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-ma: merge-analysis.md installed as a system asset (flat copy, no vars)
+# Read by explore (merge mode) and plan (merge plan) to run the same analysis of a merge.
+# Update-path coverage like 1b-pb above; the init.ts call site is SA-1's job.
+# assert_contains is grep -E: the [merge] tag is escaped, or it reads as a class.
+# ─────────────────────────────────────────────────────
+MERGE_ANALYSIS_PATH="$CLAUDE_DIR/.unikit/system/merge-analysis.md"
+assert_exists "$MERGE_ANALYSIS_PATH" "merge-analysis.md created in .unikit/system/"
+assert_contains "$MERGE_ANALYSIS_PATH" '^## Start state$' \
+  "merge-analysis.md carries the ## Start state section its readers name"
+assert_contains "$MERGE_ANALYSIS_PATH" '^## Predict the result$' \
+  "merge-analysis.md carries the ## Predict the result section its readers name"
+assert_contains "$MERGE_ANALYSIS_PATH" 'INFO \[merge\]' \
+  "merge-analysis.md carries the canonical INFO [merge] label"
+assert_not_contains "$MERGE_ANALYSIS_PATH" '\{\{' \
+  "merge-analysis.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
@@ -269,6 +286,13 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/mode-fast.md" \
   "unikit-plan mode reference (mode-fast.md) installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/design-context.md" \
   "unikit-plan design-context.md reference installed"
+# unikit-explore is in this fixture too: its merge-research.md is read only on a merge request,
+# so no content guard sees a missing delivery — this assertion is the one that does.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-research.md" \
+  "unikit-explore merge-research.md reference installed"
+# Same for the planner: merge-plan.md is read only on a merge request.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/merge-plan.md" \
+  "unikit-plan merge-plan.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-brownfield: the two new brownfield/export skills (unikit-gd-recon,

@@ -33,7 +33,7 @@ Skill-specific rules:
 A commit run is short and quiet. In this order, and nothing else:
 
 1. A problem, only when a check finds one — the `WARN` / `ERROR` line and what to do about it. **A check that passes says nothing**: no "all checks pass", no list of what was checked, no retelling of what the diff contains.
-2. The plan line of Workflow Step 4.
+2. The plan line of Workflow Step 4, and the `INFO [testing]` line when it applies.
 3. The message, as a block of its own.
 4. The question — Behavior step 6, or the split question of **Splitting Unrelated Changes**; none in `## Auto mode`.
 5. One result line per commit: `Committed <short sha>: <subject>`, said in `language.ui` — in `## Auto mode`, its `INFO [commit] auto:` line; in a split, the group lines of step 4 there.
@@ -85,6 +85,7 @@ No narration between commands, and **no mention of a setting that merely did its
    - If a plan exists and the staged changes clearly relate to its tasks, the plan is the source of the message's human part (Step 7): read its `## Overview` and the `WHY:` line of every task the staged changes belong to, and add the `Plan: <folder>` trailer. Phase and task numbers never go into the message — the trailer is the link.
    - Print `INFO [commit] plan: <folder> — source of the message` when a plan is linked, or `INFO [commit] no related plan — the message is written from the diff` when none is.
    - A related plan is optional: without one, the human part is written from the effect the diff makes visible.
+   - **Review loop.** The user has been answering a result handed over in this session with edits (`dev-principles.md` item 5a), this commit closes that loop without the user's word of acceptance, and logic changed with no test written → also print `INFO [testing] review loop closed without acceptance: no tests written for <changed logic>`, then commit as usual: write no test and run no suite. A commit that `/unikit-implement` makes itself during its run is not that.
 
    **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: read `.unikit/system/ultra-plan-read.md` now, once, and follow it for reading depth and mutability. A plan without the marker never reads this file. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
    **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
@@ -264,7 +265,7 @@ A caller the user has told to commit without asking — `/unikit-implement` once
 **Auto removes the routine questions, never the checks:**
 
 - The message is written by Workflow Step 7, its check before showing included, and printed in full as a block of its own — then committed without the Behavior step 6 question.
-- No split question: everything staged is committed together, unless the caller passed a split — then that split is applied (**Splitting Unrelated Changes**, steps 3-4) without asking.
+- No split question: everything staged is committed together, unless the caller passed a split — then that split is applied (**Splitting Unrelated Changes**, steps 3-4) without asking, except while a merge is in progress.
 - No push, and no question about it, whatever `git.skip_push_after_commit` says — the same as `no-push`.
 - An `ERROR` from the safety checks (a secret, an orphaned companion file, an engine-ignored directory) still stops and asks the Behavior step 4 question: auto skips the confirmation of a good commit, never the guard against a bad one. A `WARN` is printed and does not stop it.
 - After each commit print `INFO [commit] auto: <short sha> <subject>`.
@@ -274,6 +275,8 @@ A caller the user has told to commit without asking — `/unikit-implement` once
 If staged changes contain unrelated work (e.g., a feature + a bugfix, or changes to independent modules), suggest splitting into separate commits. When the caller passes a proposed split — `unikit-implement-coordinator` relays the groups of `unikit-commit-sidecar` — start from that one instead of deriving your own.
 
 A split needs an existing commit to split against: when `git rev-parse --verify -q HEAD` fails (the repository has no commit yet), do not offer it — commit everything together and print `INFO [commit] no HEAD yet — split not offered`.
+
+**While a merge is in progress** — `git rev-parse -q --verify MERGE_HEAD` succeeds — no split is offered and a split passed by the caller is not applied: `git reset -q` below would drop `MERGE_HEAD` and the merge commit would have one parent. Commit everything together and print `INFO [commit] merge in progress — split not offered`.
 
 1. Show which files/hunks belong to which commit
 2. Confirm split plan with the user:

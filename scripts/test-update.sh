@@ -2099,6 +2099,27 @@ fi
 echo "  ✓ plan-boundaries.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30n: merge-analysis.md is delivered on update — the ONLY mechanical guard for the
+# update.ts wiring of installMergeAnalysisContract. Same shape as 30m: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms it is flat-rewritten from data/ too. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+MERGE_ANALYSIS="$DEVPRIN_DIR/.unikit/system/merge-analysis.md"
+assert_exists "$MERGE_ANALYSIS" "merge-analysis.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$MERGE_ANALYSIS"
+
+DEVPRIN_OUT11="$TMPDIR/update-merge-analysis.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT11" 2>&1)
+
+if ! grep -q "^## Start state$" "$MERGE_ANALYSIS"; then
+    echo "Assertion failed: update did NOT refresh merge-analysis.md from data/ (## Start state missing)"
+    exit 1
+fi
+
+echo "  ✓ merge-analysis.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).

@@ -35,7 +35,7 @@ disable-model-invocation: false
 user-invocable: true
 metadata:
   author: unikit
-  version: "7.5"
+  version: "7.6"
   category: planning
 ---
 
@@ -46,7 +46,7 @@ Create a structured feature plan and roadmap for the current {{engine_name}} pro
 Four modes:
 - **Fast** — quick plan, no git branch, saves to `.unikit/code/PLAN.md`
 - **Full** — optionally creates `<git.branch_prefix><name>` git branch (when `git.enabled` and `git.create_branches`), asks preferences, saves to `.unikit/code/plans/<feature-name>/`
-- **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. **User-named, never model-inferred**: it runs because the user asked for an ultra plan, never because the feature looks big
+- **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. **User-named, never model-inferred**: it runs because the user asked for an ultra plan, never because the feature looks big — except in a merge plan, where the mode question offers it
 - **Add** — modify/extend an existing plan without creating a branch
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
@@ -112,7 +112,9 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 6. If the first word is `add` → add mode, remaining text is what to add/change in the existing plan
 7. Otherwise → ask interactively, entire text is the description
 
-Ultra is **user-named, never model-inferred**. Rule 5 recognises the request wherever it sits in the sentence, but it must be a request: ultra is never offered in Step 0.2 and never chosen because the feature looks large, spans many files, or seems hard — size is not a request. Wording that only asks for care — "a deep plan", "plan this thoroughly", "a detailed plan" — is **not** ultra; fall through to rule 7 and ask.
+Ultra is **user-named, never model-inferred**. Rule 5 recognises the request wherever it sits in the sentence, but it must be a request: ultra is never offered in Step 0.2 (except in a merge plan, where the mode question offers it) and never chosen because the feature looks large, spans many files, or seems hard — size is not a request. Wording that only asks for care — "a deep plan", "plan this thoroughly", "a detailed plan" — is **not** ultra; fall through to rule 7 and ask.
+
+**A merge request** — the user asks to merge a named branch into the current one (not a rebase, a cherry-pick or a merge by pull request number): load `{{skills_dir}}/{{self_name}}/references/merge-plan.md` and follow it. It owns the trigger, the analysis, the mode question — `fast`, `full` or `ultra` (`add` does not apply to a merge) — and the shape of the plan; a branch that is not named is asked for there. An ordinary plan does not read that file.
 
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
@@ -174,7 +176,9 @@ AskUserQuestion:
    b. Fast — quick plan without a branch
 ```
 
-Ultra is deliberately absent from this question — see the parsing rules in Step 0.
+Ultra is deliberately absent from this question — see the parsing rules in Step 0 — except in a merge plan, where the mode question offers it.
+
+For a merge request the mode question is the one in `merge-plan.md`; `ultra` appears there as the third option.
 
 ### Step 0.5: Bootstrap Context (MANDATORY — all modes except List)
 
@@ -504,7 +508,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    **`## Design`**, **`## Flow Context`**, **`## Content Context`** (game-design module) — the snapshots Step 4.5 prepared, placed in this order directly after `## Based on`, each omitted when it was not produced (always, for a pure-code plan). What each one carries — the `SYS-id`, its version and the cited Acceptance Criteria; the `FLOW-id`, its wiring mode and `GOAL` steps; the `CT-id`, its `scale` and `CT.fields` schema — is `design-context.md`'s. `## Design` feeds `/unikit-verify`'s `implemented_version` writeback; `## Flow Context` and `## Content Context` have none.
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
-   - `Testing: yes/no` — whether tests are written at all
+   - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)
    - `Test checkpoints: task | phase | plan` — where the test-checkpoint tasks stand; resolved in the mode file, omitted when `Testing: no`, `task` only in ultra.
    - `Docs: yes/no` — whether to show documentation checkpoint (invokes `/unikit-docs`)
    - `Editor tasks: mcp | manual | direct` — read by `/unikit-implement`: how tasks carrying an `Editor:` line are carried out. Resolved in `mode-full.md` / `mode-fast.md`. **Omit this line entirely when `engine_rules_loaded = false`**.
@@ -570,6 +574,8 @@ Show the user:
 5. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
 6. The reminder: "To start implementation, run: `/unikit-implement`"
 7. Ask whether to adjust anything
+
+**Merge plan:** the closing message is the one `{{skills_dir}}/{{self_name}}/references/merge-plan.md` describes — it names the command that runs the plan.
 
 **Ultra mode:** the items above plus `mode-ultra.md` Step H (phase-file count, task count, integrity result, and the not-implementation-ready line when blocking open questions exist). Under the saved-state protocol its `.planning/` folder is already gone (`plan-bundle.mjs finalize`).
 

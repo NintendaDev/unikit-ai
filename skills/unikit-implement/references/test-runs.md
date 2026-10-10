@@ -44,10 +44,10 @@ A merge adds `INFO [testing] merged <n> point(s) into task <N.M> (scope: <scope>
    - `task N.M` → the fixtures and classes named by that task's `### Tests`;
    - `phase N` / `phases N-M` → every test in the project, or — with `testing.run.use_affected_modules: true` — the affected test suites, plus the coverage of everything merged into this point;
    - `plan` → **every test in the project**, unfiltered — unless the point is closed by reuse (item 4).
-3. **The phase's tests, then the non-run steps, come first.** A phase that has not run `## Step 3.8` yet writes its tests now, for the code its tasks changed so far: a test written after the run reaches no run of this phase, and none at all after the plan's last one. In `unikit-implement-coordinator`, a phase a worker executed has already written its tests with its tasks — that counts as Step 3.8, and the coordinator writes tests here only for a phase it executed itself. Then, before its run, the task performs its own non-run steps and, at a point that others were merged into, the non-run steps of every task merged into it, in checklist order — a negative control (create the temporary probe, see the test go red, remove the probe, see it green) or a manual smoke with the evidence it names. Their text is in each task itself: its checklist line, or in an ultra bundle its `## Task N.M:` section in its phase file, read now. A failed step is a Step 3.3 blocker, exactly like a red run.
+3. **The phase's tests, then the non-run steps, come first.** A phase that has not run `## Step 3.8` yet writes its tests now, for the logic its tasks changed so far: a test written after the run reaches no run of this phase, and none at all after the plan's last one. In `unikit-implement-coordinator`, a phase a worker executed has already written its tests with its tasks — that counts as Step 3.8, and the coordinator writes tests here only for a phase it executed itself. Then, before its run, the task performs its own non-run steps and, at a point that others were merged into, the non-run steps of every task merged into it, in checklist order — a negative control (create the temporary probe, see the test go red, remove the probe, see it green) or a manual smoke with the evidence it names. Their text is in each task itself: its checklist line, or in an ultra bundle its `## Task N.M:` section in its phase file, read now. A failed step is a Step 3.3 blocker, exactly like a red run.
 4. **The final full run may be closed by reuse.** Only for `Test checkpoint: plan`, and only when neither the point nor any task merged into it or carried by it has non-run steps (item 3). Compute the current tree hash by the procedure of item 8. A `Full run:` anchor line in `## Test Runs` whose `tree-sha256` equals that hash — never `unavailable` — and whose count is above zero is a run of every test over exactly this tree, so **no run is started**: record the reuse (item 7) and close the point (item 9). The hash differs, the anchor is missing or cannot be parsed, git is unavailable → run as usual. The final run stays mandatory: it is closed by a run of every test over this very tree, made earlier in the plan.
-5. **Start the run** — **one** launch (`## Run width` → `### One run`) — by the engine's own means, exactly as any other check in this step does (through the engine MCP when one is configured). Wait for the result.
-6. **A red run, or a run that is not green by `## Run width` → `### What counts as green`, goes to the blocker loop (Step 3.3).** After the fix the run is repeated. A red run is never ticked `[x]`, and never quietly demoted to a warning.
+5. **Start the run** — **one** launch (`## Run width` → `### One run`) and `### One scope, one launch` — by the engine's own means, exactly as any other check in this step does (through the engine MCP when one is configured). Wait for the result.
+6. **A red run, or a run that is not green by `## Run width` → `### What counts as green`, goes to the blocker loop (Step 3.3).** After the fix the run is repeated — as one launch of the whole scope (`## Run width` → `### One scope, one launch`). A red run is never ticked `[x]`, and never quietly demoted to a warning.
 7. **A green run is recorded in the manifest**, by the same `Edit` that ticks the checkbox (Step 3.4):
    - append a bullet to `## Test Runs`: `<date> · <coverage> · <what ran> · passed N/N · tree-sha256 <hash>`;
    - **for every run that ran every test in the project, additionally** rewrite the anchor line `Full run: <date> · all tests · passed N/N · tree-sha256 <hash>` — `Test checkpoint: plan`, a phase point under `use_affected_modules: false`, and a narrowed run that `## Run width` widened to every test alike;
@@ -73,14 +73,16 @@ A test-checkpoint task is ticked by the same `Edit` that writes its entry into `
 
 ## Step 3.8 — Writing tests
 
-**This step only WRITES tests and never runs them** (REQ-002). A run is a separate test-checkpoint task in the checklist (Step 3.2). Writing tests is not constrained by the `Test checkpoints` policy: tests are written in any task of any phase, exactly as before.
+**This step only WRITES tests and never runs them** (REQ-002). A run is a separate test-checkpoint task in the checklist (Step 3.2). Writing tests is not constrained by the `Test checkpoints` policy: tests are written in any task of any phase, exactly as before. The one exception is an edit the user makes in answer to a handed-over result — the review loop, `dev-principles.md` item 5a: it gets its tests after acceptance, not here. A phase's own Step 3.8 inside the run is outside that loop.
 
-Write tests for the code created or modified in a phase **before the phase's first test-checkpoint task that runs** (Step 3.2, item 3), so that run covers them; a phase without one gets them after all its tasks are completed, and so does code its tasks changed after that run — usually none, because a phase's checkpoint stands last. Inline by default, or via `develop-agent` for a parallel scope or a deep-dive task, by the same choice as Step 3.2. Use:
+Write tests for the logic created or modified in a phase **before the phase's first test-checkpoint task that runs** (Step 3.2, item 3), so that run covers them; a phase without one gets them after all its tasks are completed, and so does logic its tasks changed after that run — usually none, because a phase's checkpoint stands last. Inline by default, or via `develop-agent` for a parallel scope or a deep-dive task, by the same choice as Step 3.2. Use:
 1. the list of files created or modified in the phase;
 2. the relevant part of the manifest's `## Technical Context` (constraints, interfaces, key patterns, editor targets) — in an ultra bundle the manifest carries only the cross-phase part, and the task's own `### Tests` sits in its phase file;
 3. the rules and principles loaded at Bootstrap (Step 1.5) and in the Phase Rules Refresh (Step 3.0).
 
 Tests written here are included in the phase commit.
+
+**After acceptance.** The classes of target are item 5 of `dev-principles.md`; the tests of the review loop (item 5a) are written once, after acceptance, for the logic changed since the last commit. The run that follows is not part of this step: it is one run recorded by Step 3.2, items 5–9, with coverage `plan` — only in a plan with `Testing: yes` and a manifest, so that `/unikit-verify` does not ask to repeat it. No manifest → one run, no record.
 
 ## Carrying the anchor across a commit
 
@@ -119,7 +121,7 @@ Neither key is recorded into the plan: they set the cost of executing a checkpoi
 
 1. Changed files: `git status --porcelain` plus the list of files this run has accumulated.
 2. Walk up the directories to the nearest module manifest → the set of changed modules.
-3. Find the referrers: search the module manifests for the names in that set. Repeat while the set keeps growing — in practice one or two iterations.
+3. Find the referrers: search the module manifests for the names in that set. Repeat while the set keeps growing — in practice one or two iterations. This repeats the search, not a launch: no suite is started while it repeats.
 4. Keep only the test suites from the result.
 5. **Safety valve: when what remains is ≥ `full_run_threshold_percent` % of all the project's test suites, run everything.** **This threshold is assigned, not measured.**
 6. **Degenerate cases → full run:** the engine has no module graph; the change landed in a default suite almost everything depends on; `testing.md` describes no mechanism for this engine; **nothing remains after step 4** — no test suite covers the changed modules or their referrers, and a run over zero suites would prove nothing.
@@ -133,6 +135,20 @@ Whatever the width, a run is **one** launch.
 - The suites that remain are started in **one** run whose filter names every one of them. Take the filter parameter from the live tool schema of the engine MCP; how a server spells a list of suites is the server's business, not this file's.
 - When that call cannot name every remaining suite in one filter — it takes a single name, or one of the suites has nothing the filter can address — run every test in the project instead, also in one launch.
 - **Starting the suites one after another is forbidden.** Every launch pays the runner's fixed cost again, and a sequence of small runs is slower than one full run.
+
+### One scope, one launch
+
+The scope of a run is **closed before the first launch**, and the run is then started **once**. Close it whole, in this order:
+
+1. The coverage of the run point (`### What a coverage runs`).
+2. The coverage of every task merged into the point and of every deferred point this run carries (`## Step 2.5`).
+3. With `use_affected_modules: true`, the dependent modules (`### Affected test suites`, steps 1-4).
+4. The safety valve and the degenerate cases (`### Affected test suites`, steps 5-6), once, last.
+5. The filter: it names only suites the search found, and it is sent after discovery has finished — otherwise it matches nothing and the run reads `passed 0/0`.
+
+Then launch. Forbidden: a trial run to see what is red or what exists; growing the scope after the launch has started; one launch per merged point or per module. When the dependent modules cannot be determined with confidence, run every test — one wide run costs less than two narrow ones.
+
+**A repeat after red is one launch of the whole scope.** For `phase N` / `phases N-M` and for the run after `/unikit-fix`, recompute the scope once over all the files changed so far, the fix included, and launch once; for `plan` it is every test in the project again; for `task N.M` the scope stays the fixtures and classes of that task's `### Tests`. A narrower check of the fixed test before the repeat is forbidden — the repeat is the check.
 
 ### What counts as green
 

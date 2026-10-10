@@ -179,6 +179,8 @@ Two corrections to the estimates this measurement replaces:
 
 S-59, S-61 and S-62 describe the printed readback block that was later replaced by one question per requirement — see ### Readback.
 
+S-05, S-44, S-69, S-84, S-87 and S-88 describe the state before 2026-10-08: pinning has since been ultra-only, and `SOURCE.md` is the first item of the write order.
+
 ### `ULTRA-RESEARCH-FORMAT.md` → `## Identifiers`, `## Write order`
 
 The input to task 12. These two sections move into `SKILL.md`, and the bytes below are what the
@@ -400,7 +402,7 @@ source of truth — before the coherence gate reads the same files from disk.
   reference: the research has already been done and written.
 - **Confirmation waits for the gate.** A gate that runs after the confirmation is a gate that
   reports on a decision already announced.
-- **Pinning is outside the auto-save ban**, however much a new folder looks like a save.
+- **Ultra pinning is outside the auto-save ban**, however much a new folder looks like a save.
 - **A skipped folder is always announced.** An unreadable manifest and an honestly empty
   registry look identical from the outside, so an unannounced skip reports "no researches" for a
   research that is sitting right there on disk.
@@ -421,11 +423,40 @@ source of truth — before the coherence gate reads the same files from disk.
   named documents, not the conversation, and pinning left on for it would strand a
   manifest-less folder after every such run, which the registry then announces on every later
   save in the project.
-- **When the mode changes mid-way, pinning continues.** The conversation still happened, and
-  there is no reason to drop its record.
+- **When the mode changes mid-way, an ultra pinning that had started continues.** The
+  conversation still happened, and there is no reason to drop its record. An ordinary exploration
+  has nothing pinned: its log is generated at save time under the prompt-based rule.
 
-### Pinning
+### Pinning (ultra only)
 
+- **Why an ordinary exploration pins nothing.** The user's decision of 2026-10-08: a conversation
+  has to be possible without leaving a trace on disk. Pinning created the folder at the first
+  requirement, decision or diagram and cost an `Edit` after every reply. DEC-1 of the fidelity
+  research showed that moving the write earlier closes none of the four compressions by which the
+  user's words reach a requirement: fidelity is held by the format of the log (quotations with the
+  options that were offered, the anchor, the provenance markers, the readback), not by the moment
+  of writing. That argument is about writing earlier. Reading it as "so writing later is safe" is
+  a conclusion, not a measurement — which is why the not-verbatim marker below exists.
+- **Why `SOURCE.md` is the first item of the write order.** A requirement's anchor is grepped
+  against `SOURCE.md` the moment the requirement is written. Pinning hid that in the old order
+  the log came third, after the manifest.
+- **Why ultra keeps pinning.** The user's choice: ultra is something the user names. The agent
+  recommended dropping it everywhere, because the word ultra in this skill does not mean consent
+  to write.
+- **Why the section lives in the ultra reference.** What not every run needs goes into a
+  reference loaded on condition. Ultra loads this one when the request is recognised, before the
+  first exchange, so the first signal is not missed.
+- **A later "ultra" starts no pinning.** Otherwise the first write would land mid-conversation and
+  carry everything said before it.
+- **Why framework questions stay out of the log and the readback stays in.** The test is whether
+  the answer could become or change a requirement. The readback's answer becomes the anchor of a
+  requirement; "save this research?" does not. The list is closed so that no judgement about
+  which words matter is needed, and what is filtered is a whole exchange, never words inside one.
+- **Why a log without verbatim words is marked.** With no pinning in an ordinary exploration, the
+  log is assembled from the context at save time and is only as verbatim as that context; after
+  compaction a digest must not pass for a quotation. A requirement resting on such a stretch goes
+  as `inferred` and through the readback. The model learns of compaction only from the summary
+  block at the start of its context — a heuristic, not a guarantee.
 - **The floor.** The first write happens no later than the moment the save would be offered:
   later than the old behaviour it cannot be, earlier it usually is. Without the floor, "you
   decide when" turns into "you put it off".

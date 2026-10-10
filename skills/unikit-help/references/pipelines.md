@@ -51,7 +51,7 @@ test/docs checkpoints — use it for real features.
 
 **Ultra mode** is Full plus one deeply specified file per phase, so a smaller model can execute
 what a stronger one planned. The manifest keeps the checklist; the phase files carry the detail.
-It is reached only by typing `ultra` — never offered, never inferred.
+It is reached only by typing `ultra` — never offered, never inferred (except in a merge plan, whose mode question offers it).
 
 **Why `/unikit-improve` matters:** an LLM never follows 100% of the rules on the first pass, so
 the first plan always has small (sometimes large) issues — invented APIs, missed rules,

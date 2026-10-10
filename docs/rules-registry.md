@@ -47,7 +47,7 @@ Core membership is **not** a hardcoded whitelist - a rule is core for an engine 
 | `design-principles` | SOLID, GRASP, KISS/DRY, SRP decision framework | all |
 | `folders-structure` | Project folder layout, file placement conventions | all |
 | `performance` | Pooling, caching, ZLinq, hot path optimization, mobile constraints | all |
-| `testing` | NUnit, AAA pattern, test doubles, boundary conditions | all |
+| `testing` | what to test, NUnit, AAA pattern, test doubles, boundary conditions | all |
 | `pipeline` | Spec-driven workflow contract shared across all pipeline skills | Unreal Engine 5 |
 
 These rules are fully customizable - you can rewrite any of them in your own registry to reflect your team's pipeline, naming conventions, or architectural constraints. For the `code` module there is no per-rule fallback: a custom registry that carries your engine replaces the official one wholesale for that engine (see [Transport Chain](#transport-chain)), so it must supply every rule you want - core and stack. Per-id fallback to the official registry exists only for the `gamedesign` `core` tier. A custom registry may also mark *additional* rules `always: true` for an engine - the set is per-engine registry data, not a fixed list.
