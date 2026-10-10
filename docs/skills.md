@@ -131,6 +131,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - On a branch with its own plan, that plan is used while the requested work — the named phases, or the whole plan — is still pending in it, even when a flat `.unikit/code/PLAN.md` also exists; only a finished branch plan next to an unfinished fast plan brings a question: run the fast plan?
 - When the call covers two or more test-checkpoint tasks, asks once — before the first task, together with the uncommitted-changes question — whether to run the tests once at the last point or at every point; words in the call (`tests at the end of phase 6`) answer in advance. A merged point's own non-run steps (a negative control, a manual smoke) are performed at the surviving point
 - A phase's test checkpoint runs every test by default; with `testing.run.use_affected_modules: true` it runs only the changed modules and the modules that depend on them, always in one launch. The plan's final full run is closed by reuse when the code has not changed since the last run of every test
+- Writes tests for logic and system values, never for tunable data or authored content. After the result is handed over, the edits you ask for go in without tests until you say "accepted"; then the tests for the changed logic are written and run once — see [Tests follow acceptance](workflow.md#tests-follow-acceptance)
 - Reads only what the plan needs: the ultra reader contract only for an ultra bundle, the test-run rules only under `Testing: yes`, the editor procedures of `dev-principles.md` only when the plan carries an `Editor:` task
 - `@<path>` bypasses auto-detection for explicit plan targeting
 - At a **PR checkpoint** it commits the module and asks once: check the module (`/unikit-verify` on its phases, `/unikit-review` of its commits), run `/unikit-pr` and continue, stop here, or merge into the next PR — answers can be given in advance (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`). While a plan has PR checkpoints, the run never pushes. In an ultra plan it checks, at a module boundary, whether the evidence the next module was planned on has changed
@@ -142,8 +143,8 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 ```
 - Two modes: **Fix now** (immediate) or **Plan first** (creates `.unikit/code/FIX_PLAN.md`)
 - Investigates codebase to find root cause
-- Applies fix and suggests test coverage
-- Runs the tests after the fix — every test by default, or only the changed modules and the modules that depend on them with `testing.run.use_affected_modules: true`, always in one launch; in a project with no tests yet it notes that instead of failing
+- Applies the fix and, outside a review loop, suggests a regression test when the defect is in logic or a system value; inside a review loop the test waits for acceptance
+- Outside a review loop, runs the tests after the fix — every test by default, or only the changed modules and the modules that depend on them with `testing.run.use_affected_modules: true`, always in one launch; in a project with no tests yet it notes that instead of failing
 - Creates a **self-improvement patch** in `.unikit/code/patches/`
 - Every fix makes the AI smarter through `/unikit-evolve`
 

@@ -33,7 +33,7 @@ Skill-specific rules:
 A commit run is short and quiet. In this order, and nothing else:
 
 1. A problem, only when a check finds one — the `WARN` / `ERROR` line and what to do about it. **A check that passes says nothing**: no "all checks pass", no list of what was checked, no retelling of what the diff contains.
-2. The plan line of Workflow Step 4.
+2. The plan line of Workflow Step 4, and the `INFO [testing]` line when it applies.
 3. The message, as a block of its own.
 4. The question — Behavior step 6, or the split question of **Splitting Unrelated Changes**; none in `## Auto mode`.
 5. One result line per commit: `Committed <short sha>: <subject>`, said in `language.ui` — in `## Auto mode`, its `INFO [commit] auto:` line; in a split, the group lines of step 4 there.
@@ -85,6 +85,7 @@ No narration between commands, and **no mention of a setting that merely did its
    - If a plan exists and the staged changes clearly relate to its tasks, the plan is the source of the message's human part (Step 7): read its `## Overview` and the `WHY:` line of every task the staged changes belong to, and add the `Plan: <folder>` trailer. Phase and task numbers never go into the message — the trailer is the link.
    - Print `INFO [commit] plan: <folder> — source of the message` when a plan is linked, or `INFO [commit] no related plan — the message is written from the diff` when none is.
    - A related plan is optional: without one, the human part is written from the effect the diff makes visible.
+   - **Review loop.** The user has been answering a result handed over in this session with edits (`dev-principles.md` item 5a), this commit closes that loop without the user's word of acceptance, and logic changed with no test written → also print `INFO [testing] review loop closed without acceptance: no tests written for <changed logic>`, then commit as usual: write no test and run no suite. A commit that `/unikit-implement` makes itself during its run is not that.
 
    **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: read `.unikit/system/ultra-plan-read.md` now, once, and follow it for reading depth and mutability. A plan without the marker never reads this file. **Discovery itself does not change** — the folder is found the way it always was; only what is read inside it differs.
    **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.

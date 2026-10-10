@@ -6825,7 +6825,9 @@ if [[ -z "$TC_G5_WHY" ]]; then
     grep -qF 'git rev-parse HEAD; { git diff HEAD --name-only' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-39:no-hash-commands"
     grep -qF 'only WRITES tests and never runs them'      "$TC_TESTRUNS" || TC_G5_WHY+=" TC-40:step-3.8-may-still-run"
     # (TC-41) NEGATIVE — the policy is engine-neutral and the mechanism lives in testing.md.
-    grep -qE 'asmdef|nunit' "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" && TC_G5_WHY+=" TC-41:engine-names-leaked"
+    # The scope covers unikit-fix too, and the case is spelled out as classes: the plain
+    # lower-case "nunit" let "NUnit" and "[Test]" through, which is how unikit-fix kept both.
+    grep -qE 'asmdef|[Nn][Uu]nit|\[Test\]' "$UNIKIT_IMPLEMENT_SKILL" "$TC_TESTRUNS" "$EM_FIX_SKILL" && TC_G5_WHY+=" TC-41:engine-names-leaked"
     # (TC-42…TC-44) POSITIVE half: the runner is one per editor, so the scope owner runs.
     grep -qF 'never handed to a worker'    "$TC_COORD"  || TC_G5_WHY+=" TC-42:coordinator-does-not-withhold"
     grep -qF 'once the layer has finished' "$TC_COORD"  || TC_G5_WHY+=" TC-43:no-run-after-layer"
@@ -6914,6 +6916,205 @@ if [[ -z "$TC_G7_WHY" ]]; then
     pass "TC-52…TC-58 merging is one question per call: no key, source named, non-run steps carried, coordinator asks too, deferred work closed where it ran"
 else
     fail "TC-52…TC-58 merge-question contract:$TC_G7_WHY"
+fi
+
+# --- TS: the test-scope policy and the review loop (research 2026-10-09, ADR-0001 / ADR-0002) ---
+# The policy lives in dev-principles.md — the one carrier a studio with its own registry still
+# receives — and the readers follow it. Anchored on body formulations, never on headings: a
+# heading can be reworded without changing the rule. A guard that finds nothing to scan fails.
+# TS-6 / TS-7 read the registry snapshot and come with its refresh.
+TS_DEVPRIN="$ROOT_DIR/data/dev-principles.md"
+TS_FIX="$ROOT_DIR/skills/unikit-fix/SKILL.md"
+TS_IMPL="$ROOT_DIR/skills/unikit-implement/SKILL.md"
+TS_TESTRUNS="$ROOT_DIR/skills/unikit-implement/references/test-runs.md"
+TS_REVIEW="$ROOT_DIR/skills/unikit-review/SKILL.md"
+TS_COMMIT="$ROOT_DIR/skills/unikit-commit/SKILL.md"
+TS_ULTRA="$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+# The two printed lines are pinned once and applied to every file that carries them, so the
+# text cannot drift between the carrier and its readers.
+TS_INFO_DEFER='INFO [testing] review loop: tests deferred until you accept'
+TS_INFO_CLOSED='INFO [testing] review loop closed without acceptance'
+
+# (TS-1) the carrier: four target classes, the smell check, the review-loop contract.
+TS1_WHY=""
+TS1_ANCHORS=(
+    'loop-heading::Tests follow acceptance'
+    'silence-not-acceptance::silence is never acceptance'
+    'defer-line::'"$TS_INFO_DEFER"
+    'closed-line::'"$TS_INFO_CLOSED"': no tests written for'
+    'no-live-number::A live number is never written into a test'
+    'validity-check::at most one aggregate validity check per data family'
+    'reference-check::at most one aggregate reference check per module'
+    'frame-or-readback::the evidence is a frame or a read-back'
+    'passport-fixture::passport fixture'
+    'smell-check::Smell check'
+    'closing-commit-diff::the diff of the closing commit'
+)
+TS1_N=${#TS1_ANCHORS[@]}
+if [[ -s "$TS_DEVPRIN" ]]; then
+    for ts1 in "${TS1_ANCHORS[@]}"; do
+        grep -qF -- "${ts1#*::}" "$TS_DEVPRIN" || TS1_WHY+=" TS-1:${ts1%%::*}"
+    done
+else
+    TS1_WHY+=" TS-1:dev-principles-missing"
+fi
+if [[ -z "$TS1_WHY" ]]; then
+    pass "TS-1 dev-principles.md carries the target classes, the smell check and the review-loop contract (scanned $TS1_N anchors)"
+else
+    fail "TS-1 test-scope policy carrier:$TS1_WHY"
+fi
+
+# (TS-2) NEGATIVE + the sentence EM-3 and fifteen other guard sites read: the old blanket
+# wording is gone, the GATE LIFTED override stands as it was.
+TS2_WHY=""
+if [[ -s "$TS_DEVPRIN" ]]; then
+    grep -qF 'for all functionality' "$TS_DEVPRIN" && TS2_WHY+=" TS-2:blanket-wording-returned"
+    grep -qF 'marks the tests gate **GATE LIFTED** for the configured server' "$TS_DEVPRIN" || TS2_WHY+=" TS-2:gate-lifted-sentence-lost"
+else
+    TS2_WHY+=" TS-2:dev-principles-missing"
+fi
+if [[ -z "$TS2_WHY" ]]; then
+    pass "TS-2 dev-principles.md no longer asks for tests on all functionality and keeps the GATE LIFTED sentence"
+else
+    fail "TS-2 test-scope wording:$TS2_WHY"
+fi
+
+# (TS-3) NEGATIVE — the policy is engine-neutral: item 5 and 5a name no engine, no engine
+# type and no engine file format (those live in the registry's testing.md). The slice must
+# be non-empty and must reach 5a, or the scan proves nothing.
+TS3_WHY=""
+TS3_ENGINE_RE='Unity|Godot|Unreal|NUnit|GdUnit|ScriptableObject|UDataAsset|DataTable|asmdef|MonoBehaviour|\.tscn|\.umap|\.prefab'
+TS3_SLICE=""
+[[ -s "$TS_DEVPRIN" ]] && TS3_SLICE="$(awk '/^5\. \*\*Tests\.\*\*/{p=1} /^6\. \*\*/{p=0} p' "$TS_DEVPRIN")"
+TS3_N="$(printf '%s\n' "$TS3_SLICE" | { grep -c . || true; })"
+if [[ "$TS3_N" -eq 0 ]]; then
+    TS3_WHY+=" TS-3:slice-empty"
+else
+    printf '%s\n' "$TS3_SLICE" | grep -qF 'Tests follow acceptance' || TS3_WHY+=" TS-3:slice-misses-5a"
+    while IFS= read -r ts3_tok; do
+        [[ -n "$ts3_tok" ]] && TS3_WHY+=" TS-3:engine-name:${ts3_tok}"
+    done < <(printf '%s\n' "$TS3_SLICE" | { grep -oE "$TS3_ENGINE_RE" || true; } | sort -u)
+fi
+if [[ -z "$TS3_WHY" ]]; then
+    pass "TS-3 the test-scope policy (items 5, 5a) names no engine, engine type or engine file format (scanned $TS3_N lines)"
+else
+    fail "TS-3 test-scope policy is engine-neutral:$TS3_WHY"
+fi
+
+# (TS-4) unikit-fix: no engine test framework, no blanket "always suggest", the loop skip
+# on both steps, a regression test for logic.
+TS4_WHY=""
+if [[ -s "$TS_FIX" ]]; then
+    for ts4 in 'NUnit' '[Test]' 'ALWAYS suggest'; do
+        grep -qF -- "$ts4" "$TS_FIX" && TS4_WHY+=" TS-4:leaked:${ts4}"
+    done
+    grep -qF -- "$TS_INFO_DEFER" "$TS_FIX" || TS4_WHY+=" TS-4:no-defer-line"
+    grep -qF 'skip this step with the same single line' "$TS_FIX" || TS4_WHY+=" TS-4:step5-not-skipped-in-loop"
+    grep -qF 'regression test' "$TS_FIX" || TS4_WHY+=" TS-4:no-regression-test"
+else
+    TS4_WHY+=" TS-4:fix-skill-missing"
+fi
+if [[ -z "$TS4_WHY" ]]; then
+    pass "TS-4 unikit-fix skips tests inside a review loop, suggests a regression test for logic and names no test framework"
+else
+    fail "TS-4 unikit-fix test wording:$TS4_WHY"
+fi
+
+# (TS-5) the readers: each one follows the carrier, none restates it.
+TS5_WHY=""
+TS5_N=0
+for ts5 in \
+    "$TS_TESTRUNS::phase-logic::Write tests for the logic created or modified in a phase" \
+    "$TS_TESTRUNS::loop-exception::review loop" \
+    "$TS_TESTRUNS::after-acceptance::after acceptance" \
+    "$TS_IMPL::important-rule::Tests follow acceptance" \
+    "$TS_IMPL::step-5.8-reminder::written and run once" \
+    "$TS_REVIEW::checklist-line::Tests for new logic; none that pin tunable values or authored content" \
+    "$TS_COMMIT::closed-line::$TS_INFO_CLOSED" \
+    "$TS_ULTRA::authored-content-literal::Not applicable — authored content; evidence is a read-back or a frame"; do
+    ts5_file="${ts5%%::*}"; ts5_rest="${ts5#*::}"; ts5_key="${ts5_rest%%::*}"; ts5_anchor="${ts5_rest#*::}"
+    ts5_rel="${ts5_file#"$ROOT_DIR"/}"
+    if [[ -s "$ts5_file" ]]; then
+        TS5_N=$((TS5_N + 1))
+        grep -qF -- "$ts5_anchor" "$ts5_file" || TS5_WHY+=" TS-5:${ts5_rel}:${ts5_key}"
+    else
+        TS5_WHY+=" TS-5:missing:${ts5_rel}"
+    fi
+done
+[[ -s "$TS_REVIEW" ]] && grep -qF 'Test coverage for new code' "$TS_REVIEW" && TS5_WHY+=" TS-5:review-blanket-coverage-returned"
+[[ "$TS5_N" -gt 0 ]] || TS5_WHY+=" TS-5:nothing-scanned"
+if [[ -z "$TS5_WHY" ]]; then
+    pass "TS-5 implement, review, commit and the ultra plan format follow the test-scope policy (scanned $TS5_N anchors)"
+else
+    fail "TS-5 policy readers:$TS5_WHY"
+fi
+
+# (TS-6) the registry snapshot — the engine half of the policy. The SAME anchors in all four
+# copies: that is the guard against the MUST/SHOULD drift between them (before the policy
+# Unity and UE5 said MUST, the Godot pair SHOULD). Reads rules-registry/, so it goes red on a
+# stale snapshot — refresh it with download-rules.sh, never by hand.
+TS6_WHY=""
+TS6_N=0
+TS6_ENGINES=(unity godot godot-net unreal-engine-5)
+TS6_PRESENT=(
+    'what-to-test::## What to Test'
+    'class-logic::| Logic and system values |'
+    'class-tunable::| Tunable data |'
+    'class-authored::| Authored content |'
+    'class-lookup::| Lookup by name |'
+    'smell-check::Smell check'
+    'one-aggregate::at most one aggregate'
+)
+TS6_ABSENT=(
+    'every-method::For **every** method under test'
+    'must-cover::MUST be covered by tests'
+    'should-cover::SHOULD be covered by tests'
+)
+for ts6_engine in "${TS6_ENGINES[@]}"; do
+    ts6_f="$ROOT_DIR/rules-registry/code/$ts6_engine/core/testing.md"
+    if [[ ! -s "$ts6_f" ]]; then
+        TS6_WHY+=" TS-6:${ts6_engine}:snapshot-missing"
+        continue
+    fi
+    TS6_N=$((TS6_N + 1))
+    for ts6 in "${TS6_PRESENT[@]}"; do
+        grep -qF -- "${ts6#*::}" "$ts6_f" || TS6_WHY+=" TS-6:${ts6_engine}:no-${ts6%%::*}"
+    done
+    for ts6 in "${TS6_ABSENT[@]}"; do
+        grep -qF -- "${ts6#*::}" "$ts6_f" && TS6_WHY+=" TS-6:${ts6_engine}:${ts6%%::*}-returned"
+    done
+    # Godot's two scene samples stay in the file but as a smoke-check exception, not a model.
+    if [[ "$ts6_engine" == godot || "$ts6_engine" == godot-net ]]; then
+        grep -qF 'Exception, not a model for scene content' "$ts6_f" || TS6_WHY+=" TS-6:${ts6_engine}:scene-sample-not-marked"
+    fi
+done
+[[ "$TS6_N" -gt 0 ]] || TS6_WHY+=" TS-6:nothing-scanned"
+if [[ -z "$TS6_WHY" ]]; then
+    pass "TS-6 the snapshot's testing rules carry What to Test with the four classes and the smell check, in all engines (scanned $TS6_N files)"
+else
+    fail "TS-6 registry snapshot testing rules:$TS6_WHY"
+fi
+
+# (TS-7) the four copies moved together: each testing.md of the snapshot is at major 2 or later,
+# a 1.x file is the pre-policy text. ">= 2" rather than "== 2", so the next major bump of the
+# registry does not turn the guard red for nothing.
+TS7_WHY=""
+TS7_N=0
+for ts7_engine in "${TS6_ENGINES[@]}"; do
+    ts7_f="$ROOT_DIR/rules-registry/code/$ts7_engine/core/testing.md"
+    if [[ ! -s "$ts7_f" ]]; then
+        TS7_WHY+=" TS-7:${ts7_engine}:snapshot-missing"
+        continue
+    fi
+    TS7_N=$((TS7_N + 1))
+    ts7_ver="$(awk '/^version:/{print $2; exit}' "$ts7_f" | tr -d '\r')"
+    [[ "$ts7_ver" =~ ^([2-9]|[1-9][0-9]+)\. ]] || TS7_WHY+=" TS-7:${ts7_engine}:version-${ts7_ver:-none}"
+done
+[[ "$TS7_N" -gt 0 ]] || TS7_WHY+=" TS-7:nothing-scanned"
+if [[ -z "$TS7_WHY" ]]; then
+    pass "TS-7 every engine's testing rule in the snapshot is at major version 2 or later (scanned $TS7_N files)"
+else
+    fail "TS-7 registry snapshot versions:$TS7_WHY"
 fi
 
 # --- TR: the test-run block lives in a reference read only under `Testing: yes` (DEC-012 b) ---

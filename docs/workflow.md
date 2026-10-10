@@ -348,7 +348,7 @@ Tasks carrying an `Editor:` line target the editor's serialized state rather tha
 After phase completion:
 
 - Runs compilation check (through the engine MCP server)
-- Writes tests if `Testing: yes` — inside the tasks that introduce them, and before the phase's test checkpoint, so its run covers them
+- Writes tests for the logic if `Testing: yes` — inside the tasks that introduce them, and before the phase's test checkpoint, so its run covers them. What gets a test, and what never does, is described under [Tests follow acceptance](#tests-follow-acceptance) below
 - Runs tests only in **test-checkpoint tasks**, placed by the plan under its `Test checkpoints:` policy; when the call covers two or more of them, it asks once whether to run the tests once at the last point or at every point (words in the call answer it in advance). Under `Testing: yes` the plan's last task is a full run; a phase checkpoint runs every test unless `testing.run.use_affected_modules` narrows it, and the final run is closed by reuse when the code has not changed since the last run of every test
 - Creates commit checkpoint
 
@@ -360,6 +360,12 @@ Post-completion, in order:
 - Decides what to do with the plan file
 - **Offers to move MCP findings to the durable log** - if the plan's `## MCP Findings` table has rows, hands the plan path to `/unikit-mcp-trap`; if it has none, says nothing at all. This comes *before* review and commit on purpose: findings are the only part of a run with no other keeper, and placed after a code-quality discussion they end up "later"
 - Offers `/unikit-review` then `/unikit-commit` - **invoked as skills, in your session**, not delegated to a subagent. That distinction is real: a subagent carries findings into a context you cannot see, `file:line` references stop being clickable, and you cannot ask a follow-up question about a finding. Of the post-completion steps only the documentation checkpoint is delegated (to `docs-agent`), because its output is a file rather than a conversation
+
+#### Tests follow acceptance
+
+A test is written for a target the code owns. Four classes decide it: **logic and system values** (calculations, state transitions, parsing, contracts between modules; identifiers, keys, format versions) get exact tests on inputs the test supplies; **tunable data** that game design owns (balance, costs, durations, probabilities) is never pinned — at most one validity check per data family, with bounds taken from the design source rather than from today's number; **authored content** (prefabs, scenes, materials, shaders, animation, UI layouts) gets no unit test — the evidence is a frame or a read-back; **lookup by name** gets at most one aggregate reference check per module. Everything else — the engine, trivial accessors, generated code — gets none. A quick smell check: if a designer changing a number, or a new catalog row, turns a test red while the system is intact, the test is pinned to the wrong thing.
+
+Timing follows the same idea. Once `/unikit-implement` hands a result over, you are reviewing it and answering with edits — visuals, feel, layout, tuning and code alike. Inside that **review loop** each edit is made and compiled (a visual or data edit is also checked by a frame or a read-back), no test is written and no suite runs; the first edit prints one line, `INFO [testing] review loop: tests deferred until you accept`. *Accepted* means your own words — "accepted", "ok, next", "write the tests"; silence is not acceptance, and calling `/unikit-verify` or `/unikit-commit` is not either. On acceptance the tests for the logic changed since the last commit are written once and the suite runs once; with `Testing: yes` and a plan manifest that run is recorded like a test checkpoint, so `/unikit-verify` does not ask to repeat it. A plan with `Testing: no` is outside the loop. If the loop is closed by a new request instead — a commit, a verification, a new feature — nothing is written or run, but the remainder is named in one line, `INFO [testing] review loop closed without acceptance: no tests written for <changed logic>`, and `/unikit-commit` prints it too. `/unikit-fix` on a defect of the handed-over result stays inside the loop.
 
 ### `/unikit-fix [bug description]` - fix and learn
 
@@ -373,7 +379,7 @@ Two modes - choose when you invoke:
 - **Fix now** - investigates codebase with 2-3 Explore agents, applies the fix inline after Bootstrap (rules + engine principles loaded in Step 0.2), verifies (compilation, tests, .meta, asmdef)
 - **Plan first** - creates `.unikit/code/FIX_PLAN.md` with root cause analysis, fix steps, affected files, risks, and test coverage suggestions, then stops for review. When a plan exists, run without arguments to execute it
 
-Recommended to always fix bugs through this skill - every fix creates a **self-improvement patch** in `.unikit/code/patches/` (mandatory), enabling the system to learn from mistakes via `/unikit-evolve`. Can be used during `/unikit-implement` while working through plan phases, or independently when a bug is found in existing functionality - no prior planning stages required. Always suggests NUnit test coverage.
+Recommended to always fix bugs through this skill - every fix creates a **self-improvement patch** in `.unikit/code/patches/` (mandatory), enabling the system to learn from mistakes via `/unikit-evolve`. Can be used during `/unikit-implement` while working through plan phases, or independently when a bug is found in existing functionality - no prior planning stages required. Outside a review loop it suggests a regression test when the defect is in logic or a system value (never for authored content or tunable data); inside a review loop the test waits for acceptance.
 
 ### `/unikit-evolve` - improve skills from experience
 

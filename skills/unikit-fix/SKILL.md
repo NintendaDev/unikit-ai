@@ -360,7 +360,7 @@ Step-by-step plan for implementing the fix:
 
 ## Test Coverage
 
-- What tests should be added (NUnit, AAA pattern)
+- Which regression test of the logic to add (input → expected outcome) — none for a defect of authored content or tunable data
 - What edge cases to cover
 ```
 
@@ -461,6 +461,8 @@ Use MCP server `{{engine_mcp_tool}}` to check that the project compiles after th
 
 ### 4.2 {{engine_name}} Test Run
 
+**Inside a review loop** (`dev-principles.md` item 5a — this fix answers a defect in a result handed over in this session, which the user is reviewing) skip this step: print `INFO [testing] review loop: tests deferred until you accept` — once per loop, not again when an earlier edit of this loop already printed it — and go to Step 4.3. Outside a loop, run it as follows.
+
 Run the tests through MCP server `{{engine_mcp_tool}}` at the width the shared run settings give — `{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width`. Read **that section alone**, once per session, the first time this step runs: it resolves `testing.run.use_affected_modules` and `testing.run.full_run_threshold_percent` from `.unikit/config.yaml`, says how the affected test suites are found, requires one run, and says what counts as green. A fix has no coverage, so its run follows the section's `phase` row; its changed files are `git status --porcelain` plus the files this fix touched.
 - `use_affected_modules: false` (the default) → every test in the project, in one run
 - `true` → the affected test suites in one run — or every test, when that section widens the run
@@ -491,7 +493,9 @@ For any new source files, verify naming/namespace follows the convention table f
 
 ## Step 5: Suggest Test Coverage
 
-**ALWAYS suggest covering this case with a test:**
+**Inside a review loop** (Step 4.2) skip this step with the same single line — the regression test is written after acceptance (`dev-principles.md` item 5a) — and go to Step 6.
+
+**Outside a loop, suggest a regression test only for a defect in logic or in a system value** (`dev-principles.md` item 5). A defect of authored content or of tunable data gets no test: its evidence is a frame or a read-back, and a live number is never written into a test. Then go to Step 6.
 
 ```
 ## Fix Applied
@@ -500,24 +504,12 @@ For any new source files, verify naming/namespace follows the convention table f
 **Root cause:** [root cause]
 **Fix:** [what was changed]
 
-### Recommendation: add a test
+### Recommendation: add a regression test
 
-This bug should be covered with a test to prevent regression:
+This bug should be covered with a regression test so that it does not return:
 
-```csharp
-[Test]
-public void MethodName_WhenCondition_ShouldExpectedBehavior()
-{
-    // Arrange
-    var input = /* the problematic input */;
-
-    // Act
-    var result = sut.MethodName(input);
-
-    // Assert
-    Assert.That(result, Is.EqualTo(expected));
-}
-```
+- **Input:** [the problematic input — supplied by the test]
+- **Expected outcome:** [what the logic must now produce]
 
 Create the test?
 1. Yes — create the test
@@ -679,7 +671,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 4. Trace the data flow — check DI bindings, constructor injection
 5. Add null check or fix the missing binding
 6. Verify compilation
-7. Suggest NUnit test for null case
+7. Suggest a regression test for the null case
 8. Create patch
 
 ### Example 2: MissingReferenceException
@@ -715,7 +707,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 3. **Execute mode = follow the plan** — when FIX_PLAN.md exists, follow it step by step. Deletion happens in Step 7.5
 4. **Load patches and skill-context** — learn from past fixes before investigating
 5. **Code-writing is owned by this skill** — fixes are implemented inline using `Read/Edit/Write/Bash` with the rules loaded in Step 0.2 Bootstrap. Delegate to `develop-agent` ONLY for complex fixes requiring extensive codebase exploration. Never invoke `/unikit-devcontext` via `Skill(...)` from this workflow.
-6. **ALWAYS suggest tests** — NUnit, AAA pattern, fakes in separate files
+6. **Suggest a regression test for logic outside a review loop** — never for authored content or tunable data, and none inside a review loop (Step 5)
 7. **ALWAYS create patch** — every fix generates a `.unikit/code/patches/` entry
 8. **Root cause, not symptoms** — fix the actual problem. Don't refactor unrelated code, don't add features
 9. **Minimal scope** — one fix at a time, no scope creep
