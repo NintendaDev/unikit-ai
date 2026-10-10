@@ -9097,6 +9097,61 @@ else
     fail "MA-2…MA-4 explore merge mode:$MA_WHY"
 fi
 
+# MA-5…MA-7: the plan side of the merge mode — a conditional reference that carries the plan's
+# rules, the merge phase's tasks, and the one exception to "ultra is named by the user". MA-7
+# covers the files that state that rule as far as they exist; the help and docs files join it
+# in the documentation task. Where a sentence wraps across lines in the source, it is read on
+# whitespace-collapsed text.
+MA_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+MA_PLAN_REF="$ROOT_DIR/skills/unikit-plan/references/merge-plan.md"
+MA_PLAN_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+MA_WHY=""
+MA_CHK=0
+if [[ ! -s "$MA_PLAN" || ! -s "$MA_PLAN_ULTRA" ]]; then
+    MA_WHY+=" MA-5:missing-plan-skill"
+elif [[ ! -s "$MA_PLAN_REF" ]]; then
+    MA_WHY+=" MA-5:missing-merge-plan"
+else
+    # (MA-5) conditional load, the service lines, the three-way mode question, no branch, the plan's place
+    ma_has "MA-5:skill-never-loads-reference" 'references/merge-plan.md'                       "$MA_PLAN"
+    ma_has "MA-5:ordinary-plan-reads-it"      'An ordinary plan does not read that file'        "$MA_PLAN"
+    ma_has "MA-5:no-missing-protocol-warn" 'WARN [merge] merge-analysis.md missing — plan is not per protocol; run unikit-ai update' "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-start"           'git merge --no-ff --no-commit'                      "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-commit"          'git commit --no-edit'                               "$MA_PLAN_REF"
+    ma_has "MA-5:no-merge-folder"          '.unikit/code/plans/merge-'                          "$MA_PLAN_REF"
+    ma_has "MA-5:no-not-ready-line"        'Plan is NOT implementation-ready'                   "$MA_PLAN_REF"
+    ma_has "MA-5:mode-question-changed"    'The question has three options, in this order: fast, full, ultra.' "$MA_PLAN_REF"
+    ma_has "MA-5:branch-may-be-created"    'Never create or switch a branch: the branch step of every mode is skipped.' "$MA_PLAN_REF"
+    # (MA-6) the merge phase: anchors compared with the research, the merge commit made by the plan itself
+    ma_has "MA-6:no-research-anchor-compare" 'Merge anchors:'                                   "$MA_PLAN_REF"
+    ma_has "MA-6:no-readiness-check"       'git merge-base --is-ancestor'                       "$MA_PLAN_REF"
+    ma_has "MA-6:merge-commit-owner-lost"  'The merge commit is made by the last task of the merge phase' "$MA_PLAN_REF"
+    ma_has "MA-6:commit-skill-takes-it"    '/unikit-commit does not make it'                    "$MA_PLAN_REF"
+    ma_has "MA-6:anchors-not-in-constraints" '- MUST:'                                          "$MA_PLAN_REF"
+    ma_has "MA-6:stale-research-silent"    'not used —'                                         "$MA_PLAN_REF"
+    ma_has "MA-6:no-continue-as-is"        'Continue as is'                                     "$MA_PLAN_REF"
+    # (MA-7) "ultra is named by the user" has exactly one exception, said in each place that states it
+    ma_has "MA-7:no-exception-in-skill"    'merge plan'                                         "$MA_PLAN"
+    ma_has "MA-7:no-exception-in-mode-ultra" 'merge plan'                                       "$MA_PLAN_ULTRA"
+    MA_EXC="$(grep -cF 'except in a merge plan, where the mode question offers it' "$MA_PLAN" || true)"
+    MA_CHK=$((MA_CHK + 1))
+    (( MA_EXC >= 3 )) || MA_WHY+=" MA-7:exception-in-skill-x${MA_EXC}-of-3"
+    # the frontmatter sentence is kept, and the description does not gain a merge trigger (DEC-5)
+    MA_PFM="$(awk '/^---$/{n++; next} n==1' "$MA_PLAN")"
+    MA_DESC="$(awk '/^description:/{f=1;print;next} f&&/^[a-z-]+:/{exit} f' <<< "$MA_PFM" | tr '\n' ' ' | tr -s ' ')"
+    MA_CHK=$((MA_CHK + 1))
+    grep -qF 'Ultra runs only when the user names it' <<< "$MA_DESC" || MA_WHY+=" MA-7:description-sentence-lost"
+    MA_CHK=$((MA_CHK + 1))
+    # plain -qi, never -iF: the MSYS grep aborts on that pair, and an abort here would read as "absent"
+    ! grep -qi 'merge' <<< "$MA_DESC" || MA_WHY+=" MA-7:description-gained-a-merge-trigger"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-5:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-5…MA-7 plan merge mode: conditional reference, the merge phase's tasks and the one exception to user-named ultra (${MA_CHK} anchors)"
+else
+    fail "MA-5…MA-7 plan merge mode:$MA_WHY"
+fi
+
 # VB: /unikit-verify takes its base and range from the plan-boundaries contract, can check
 # one module (a phase scope), and reads a PR checkpoint task from its checkbox — an Explore
 # agent would otherwise search the code for it and honestly report NOT FOUND.
