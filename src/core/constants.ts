@@ -327,6 +327,8 @@ export const RESEARCH_LINK_FILE = 'research-link.md';
 export const PLAN_BOUNDARIES_FILE = 'plan-boundaries.md';
 /** The merge-analysis protocol explore and plan both run; rationale on `installMergeAnalysisContract`. */
 export const MERGE_ANALYSIS_FILE = 'merge-analysis.md';
+/** The balance hand-back report contract; rationale on `installBalanceHandbackContract`. */
+export const BALANCE_HANDBACK_FILE = 'balance-handback.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

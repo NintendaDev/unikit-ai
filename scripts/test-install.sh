@@ -258,6 +258,18 @@ assert_not_contains "$MERGE_ANALYSIS_PATH" '\{\{' \
   "merge-analysis.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-bh: balance-handback.md installed as a system asset (flat copy, no vars)
+# Read by plan, implement and verify (code group) and unikit-gd-balance (game-design group);
+# a system asset because neither group's skill directory is guaranteed to be installed.
+# ─────────────────────────────────────────────────────
+BALANCE_HANDBACK_PATH="$CLAUDE_DIR/.unikit/system/balance-handback.md"
+assert_exists "$BALANCE_HANDBACK_PATH" "balance-handback.md created in .unikit/system/"
+assert_contains "$BALANCE_HANDBACK_PATH" '^## Header$' \
+  "balance-handback.md carries its header section"
+assert_not_contains "$BALANCE_HANDBACK_PATH" '\{\{' \
+  "balance-handback.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal

@@ -9233,6 +9233,46 @@ else
     fail "MA-1 merge-analysis protocol:$MA_WHY"
 fi
 
+# HB-1…HB-3: the balance hand-back report contract — one system asset that /unikit-plan,
+# /unikit-implement, /unikit-verify and /unikit-gd-balance all name instead of restating. The
+# headings are read by name, so they are asserted as WHOLE lines (-qxF); phrases are -qF.
+# Every check is counted: a block that checks nothing fails.
+HB_FILE="$ROOT_DIR/data/balance-handback.md"
+HB_WHY=""
+HB_CHK=0
+if [[ ! -s "$HB_FILE" ]]; then
+    HB_WHY+=" HB-1:missing-contract"
+else
+    # (HB-1) a flat copy knows no variables, and an engine fact would put engine documentation into UniKit
+    for hb_w in '{{' 'Unity' 'Godot' 'Unreal' 'GDScript'; do
+        HB_CHK=$((HB_CHK + 1))
+        ! grep -qF -- "$hb_w" "$HB_FILE" || HB_WHY+=" HB-1:forbidden(${hb_w})"
+    done
+    # (HB-2) exactly seven second-level headings, each a whole line; the report's own headings
+    # are described inside ## Body as a numbered list and must not become headings of this file
+    for hb_h in '## Readers and ownership' '## Place and name' '## Header' '## Body' '## Matching keys' \
+                '## Receiving' '## What this contract does not say'; do
+        HB_CHK=$((HB_CHK + 1))
+        grep -qxF -- "$hb_h" "$HB_FILE" || HB_WHY+=" HB-2:no-heading(${hb_h#\#\# })"
+    done
+    HB_H2="$({ grep -c '^## ' "$HB_FILE" || true; })"
+    HB_CHK=$((HB_CHK + 1))
+    [[ "$HB_H2" == "7" ]] || HB_WHY+=" HB-2:heading-count=${HB_H2}"
+    # (HB-3) the header lines, the table columns, the receiving names and the single-owner rule
+    for hb_l in 'Balance: <slug>' 'Point: BCH-<n>' 'Plan: <plan folder name>' 'Build: <short sha>' 'Date: YYYY-MM-DD' \
+                'id | stand | runs | summary | valid | band' 'results/HB-<n>.md' 'Supplemented:' \
+                'Do not restate this contract inside a skill'; do
+        HB_CHK=$((HB_CHK + 1))
+        grep -qF -- "$hb_l" "$HB_FILE" || HB_WHY+=" HB-3:no-literal(${hb_l})"
+    done
+    (( HB_CHK > 0 )) || HB_WHY+=" HB-1:nothing-checked"
+fi
+if [[ -z "$HB_WHY" ]]; then
+    pass "HB-1…HB-3 balance hand-back contract is flat and engine-neutral, carries its seven sections and the header, table and receiving literals (${HB_CHK} anchors)"
+else
+    fail "HB-1…HB-3 balance hand-back contract:$HB_WHY"
+fi
+
 # MA-2…MA-4: the explore side of the merge mode — a conditional reference, a narrow set of git
 # grants that cannot change the tree, and the form of the saved research. The reference is read
 # only on a merge request; an ordinary exploration must keep reading nothing extra.
