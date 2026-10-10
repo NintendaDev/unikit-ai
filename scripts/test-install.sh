@@ -286,6 +286,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/mode-fast.md" \
   "unikit-plan mode reference (mode-fast.md) installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/design-context.md" \
   "unikit-plan design-context.md reference installed"
+# unikit-explore is in this fixture too: its merge-research.md is read only on a merge request,
+# so no content guard sees a missing delivery — this assertion is the one that does.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-research.md" \
+  "unikit-explore merge-research.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-brownfield: the two new brownfield/export skills (unikit-gd-recon,

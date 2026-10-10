@@ -25,6 +25,17 @@ allowed-tools:
   - Bash(wc *)
   - Bash(mkdir *)
   - Bash(date *)
+  - Bash(git merge-base *)
+  - Bash(git log *)
+  - Bash(git diff *)
+  - Bash(git show *)
+  - Bash(git rev-parse *)
+  - Bash(git rev-list *)
+  - Bash(git merge-tree *)
+  - Bash(git grep *)
+  - Bash(git ls-tree *)
+  - Bash(git for-each-ref *)
+  - Bash(git status *)
   - Agent
   - AskUserQuestion
   - WebSearch
@@ -32,7 +43,7 @@ allowed-tools:
 user-invocable: true
 metadata:
   author: unikit
-  version: "2.3"
+  version: "2.4"
   category: research
 ---
 
@@ -210,7 +221,8 @@ When the topic involves a library or framework from the project's tech stack (`D
 The argument after `/unikit-explore` can be:
 - **The slug of an existing research folder** in `.unikit/code/researches/` — an **entry into the continuation cycle**, not a new topic: load `{{skills_dir}}/{{self_name}}/references/continuing.md` and follow it.
 - **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts and the pinned dialogue log. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` now and follow it: it owns the pinning of the log while the conversation goes on, and the artifacts at save time. The stance and the exploration itself are unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
-- **Anything else** — a vague idea, a specific problem, a system name, a comparison, a question, or nothing at all — starts an ordinary exploration. A flow (`FLOW-<slug>`, "the onboarding") or a content type (`CT-<slug>`, "the item types") grounds on the design axes (see *Optional reads*).
+- **A merge request** — the user asks to merge a named branch into the current one (not a rebase, a cherry-pick or a merge by pull request number). Load `{{skills_dir}}/{{self_name}}/references/merge-research.md` now and follow it: it owns the analysis, the questions and the form of the saved research. If it cannot be read, print `WARN [merge] merge-research reference missing` and explore normally. An ordinary exploration does not read that file.
+- **Anything else** (other than a merge request) — a vague idea, a specific problem, a system name, a comparison, a question, or nothing at all — starts an ordinary exploration. A flow (`FLOW-<slug>`, "the onboarding") or a content type (`CT-<slug>`, "the item types") grounds on the design axes (see *Optional reads*).
 
 On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode changes what is written while you talk (the pinned log) and at save time. Ultra is recognised when the request is made: naming it later starts no pinning. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: losing the research over a missing reference file is not an acceptable trade.
 

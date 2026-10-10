@@ -9052,6 +9052,51 @@ else
     fail "MA-1 merge-analysis protocol:$MA_WHY"
 fi
 
+# MA-2…MA-4: the explore side of the merge mode — a conditional reference, a narrow set of git
+# grants that cannot change the tree, and the form of the saved research. The reference is read
+# only on a merge request; an ordinary exploration must keep reading nothing extra.
+MA_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+MA_RESEARCH="$ROOT_DIR/skills/unikit-explore/references/merge-research.md"
+MA_WHY=""
+MA_CHK=0
+if [[ ! -s "$MA_EXPLORE" ]]; then
+    MA_WHY+=" MA-2:missing-explore-skill"
+elif [[ ! -s "$MA_RESEARCH" ]]; then
+    MA_WHY+=" MA-2:missing-merge-research"
+else
+    # (MA-2) loaded conditionally, owns the trigger, the write boundary and the "not included" list
+    ma_has "MA-2:skill-never-loads-reference" 'references/merge-research.md'                        "$MA_EXPLORE"
+    ma_has "MA-2:ordinary-exploration-reads-it" 'An ordinary exploration does not read that file'    "$MA_EXPLORE"
+    ma_has "MA-2:no-not-included-list"  '**rebase**, **cherry-pick**, and merging by a pull request number' "$MA_RESEARCH"
+    ma_has "MA-2:no-protocol-pointer"   'merge-analysis.md'                                         "$MA_RESEARCH"
+    ma_has "MA-2:no-fetch-permission"   'git fetch'                                                 "$MA_RESEARCH"
+    ma_has "MA-2:no-write-boundary"     '`git fetch` and `git merge-tree` write into `.git` only'   "$MA_RESEARCH"
+    ma_has "MA-2:no-forbidden-commands" '**Never** `git merge`, `checkout`, `reset`, `stash`, `worktree`' "$MA_RESEARCH"
+    # (MA-3) the frontmatter grants: exactly the read-only git list, and none of the commands
+    # that change the tree, the index or the refs (a plain `git fetch` stays a prompted action)
+    MA_FM="$(awk '/^---$/{n++; next} n==1' "$MA_EXPLORE")"
+    for g in 'merge-base' 'log' 'diff' 'show' 'rev-parse' 'rev-list' 'merge-tree' 'grep' 'ls-tree' 'for-each-ref' 'status'; do
+        MA_CHK=$((MA_CHK + 1))
+        grep -qxF "  - Bash(git $g *)" <<< "$MA_FM" || MA_WHY+=" MA-3:no-grant($g)"
+    done
+    for g in 'Bash(git merge ' 'Bash(git checkout ' 'Bash(git reset ' 'Bash(git stash ' 'Bash(git worktree ' 'Bash(git fetch ' 'Bash(git *)'; do
+        MA_CHK=$((MA_CHK + 1))
+        ! grep -qF -- "$g" <<< "$MA_FM" || MA_WHY+=" MA-3:forbidden-grant(${g})"
+    done
+    # (MA-4) the saved research: anchors in the hashed Active Summary, evidence marked, forks blocking
+    ma_has "MA-4:no-merge-anchors"      'Merge anchors: ours=<sha>, theirs=<sha>, base=<sha>, result-tree=<oid>' "$MA_RESEARCH"
+    ma_has "MA-4:no-predicted-conflicts" 'Predicted conflicts: <path>; <path>'                      "$MA_RESEARCH"
+    ma_has "MA-4:actions-not-inferred"  'each marked `inferred`'                                    "$MA_RESEARCH"
+    ma_has "MA-4:evidence-unmarked"     'exists only after the merge'                               "$MA_RESEARCH"
+    ma_has "MA-4:blocking-not-first-word" 'whose first word is `blocking`'                          "$MA_RESEARCH"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-2:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-2…MA-4 explore merge mode: conditional reference, ${MA_CHK} anchors and grants, no command that changes the tree"
+else
+    fail "MA-2…MA-4 explore merge mode:$MA_WHY"
+fi
+
 # VB: /unikit-verify takes its base and range from the plan-boundaries contract, can check
 # one module (a phase scope), and reads a PR checkpoint task from its checkbox — an Explore
 # agent would otherwise search the code for it and honestly report NOT FOUND.
