@@ -241,6 +241,23 @@ assert_not_contains "$PLAN_BOUNDARIES_PATH" '\{\{' \
   "plan-boundaries.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-ma: merge-analysis.md installed as a system asset (flat copy, no vars)
+# Read by explore (merge mode) and plan (merge plan) to run the same analysis of a merge.
+# Update-path coverage like 1b-pb above; the init.ts call site is SA-1's job.
+# assert_contains is grep -E: the [merge] tag is escaped, or it reads as a class.
+# ─────────────────────────────────────────────────────
+MERGE_ANALYSIS_PATH="$CLAUDE_DIR/.unikit/system/merge-analysis.md"
+assert_exists "$MERGE_ANALYSIS_PATH" "merge-analysis.md created in .unikit/system/"
+assert_contains "$MERGE_ANALYSIS_PATH" '^## Start state$' \
+  "merge-analysis.md carries the ## Start state section its readers name"
+assert_contains "$MERGE_ANALYSIS_PATH" '^## Predict the result$' \
+  "merge-analysis.md carries the ## Predict the result section its readers name"
+assert_contains "$MERGE_ANALYSIS_PATH" 'INFO \[merge\]' \
+  "merge-analysis.md carries the canonical INFO [merge] label"
+assert_not_contains "$MERGE_ANALYSIS_PATH" '\{\{' \
+  "merge-analysis.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal

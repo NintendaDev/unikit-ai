@@ -19,7 +19,7 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE, PLAN_BOUNDARIES_FILE,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE, PLAN_BOUNDARIES_FILE, MERGE_ANALYSIS_FILE,
   GAMEDESIGN_MODULE_ID,
   GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
   MCP_STAMP_SERVER_KEY,
@@ -155,6 +155,15 @@ export async function installResearchLinkContract(projectDir: string): Promise<v
  */
 export async function installPlanBoundariesContract(projectDir: string): Promise<void> {
   await installFlatSystemAsset(projectDir, PLAN_BOUNDARIES_FILE, 'installPlanBoundariesContract');
+}
+
+/**
+ * The merge-analysis protocol — a flat copy from `data/merge-analysis.md`, NO substitution,
+ * NOT hash-tracked. A system asset because TWO skills (/unikit-explore, /unikit-plan) run the
+ * same analysis from it and a per-skill reference would be two copies that drift.
+ */
+export async function installMergeAnalysisContract(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, MERGE_ANALYSIS_FILE, 'installMergeAnalysisContract');
 }
 
 // --- Dev Principles installation ---

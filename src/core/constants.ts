@@ -325,6 +325,8 @@ export const ULTRA_PLAN_READ_FILE = 'ultra-plan-read.md';
 export const RESEARCH_LINK_FILE = 'research-link.md';
 /** Where a plan, a module and a push start and end; rationale on `installPlanBoundariesContract`. */
 export const PLAN_BOUNDARIES_FILE = 'plan-boundaries.md';
+/** The merge-analysis protocol explore and plan both run; rationale on `installMergeAnalysisContract`. */
+export const MERGE_ANALYSIS_FILE = 'merge-analysis.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

@@ -9,7 +9,7 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -425,6 +425,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // Refresh the research-link contract (read by plan/improve/implement/verify when a plan links a research)
     await installResearchLinkContract(projectDir);
     await installPlanBoundariesContract(projectDir);
+
+    // Refresh the merge-analysis protocol (read by explore and plan when asked to merge a branch)
+    await installMergeAnalysisContract(projectDir);
 
     // `update` does not re-ask for servers, but the selection still moves under
     // it: editing `.unikit.json` and re-running is how an engine switch reaches

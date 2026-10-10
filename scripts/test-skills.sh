@@ -9004,6 +9004,54 @@ else
     fail "PB-1 plan-boundaries contract:$PB_WHY"
 fi
 
+# MA: the merge-analysis protocol — one system asset that /unikit-explore (merge mode) and
+# /unikit-plan (merge plan) both run, so the analysis is written once. Headings are read by name
+# in both readers, so they are asserted as WHOLE lines (-qxF); phrases are file-scoped -qF.
+# Every check goes through ma_has / ma_lacks, which count: a block that checks nothing fails.
+# The helpers and MA_WHY are shared by the MA-2…MA-7 blocks below; each block reports itself.
+MA_WHY=""
+MA_CHK=0
+ma_has() { # <reason key> <literal> <file> — a literal starting "## " must be a whole line
+    MA_CHK=$((MA_CHK + 1))
+    if [[ "$2" == "## "* ]]; then
+        grep -qxF -- "$2" "$3" || MA_WHY+=" $1"
+    else
+        grep -qF -- "$2" "$3" || MA_WHY+=" $1"
+    fi
+}
+ma_lacks() { # <reason key> <literal> <file>
+    MA_CHK=$((MA_CHK + 1))
+    ! grep -qF -- "$2" "$3" || MA_WHY+=" $1"
+}
+MA_PROTOCOL="$ROOT_DIR/data/merge-analysis.md"
+if [[ ! -s "$MA_PROTOCOL" ]]; then
+    MA_WHY+=" MA-1:missing-protocol"
+else
+    for h in '## Pin the three commits' '## Fetch' '## Start state' '## Divergence' '## Predict the result' \
+             '## Surface classes' '## Directive for a conflicted file' '## Anchors and the check after the merge'; do
+        ma_has "MA-1:no-heading(${h#\#\# })" "$h" "$MA_PROTOCOL"
+    done
+    ma_has "MA-1:no-single-owner-rule"   'Do not restate this contract inside a skill'       "$MA_PROTOCOL"
+    ma_has "MA-1:no-merge-tree-form"     'git merge-tree --write-tree --name-only --messages' "$MA_PROTOCOL"
+    ma_has "MA-1:no-ancestor-check"      'git merge-base --is-ancestor'                     "$MA_PROTOCOL"
+    ma_has "MA-1:no-merge-head-probe"    'git rev-parse -q --verify MERGE_HEAD'             "$MA_PROTOCOL"
+    ma_has "MA-1:no-unmerged-probe"      'git diff --name-only --diff-filter=U'             "$MA_PROTOCOL"
+    ma_has "MA-1:no-engine-rules-pointer" 'ENGINE_RULES.md'                                 "$MA_PROTOCOL"
+    ma_has "MA-1:no-service-tag"         '[merge]'                                          "$MA_PROTOCOL"
+    # a flat copy knows no variables, and an engine fact would put engine documentation into UniKit
+    ma_lacks "MA-1:variable-in-flat-copy" '{{'               "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Unity)"    'Unity'            "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Godot)"    'Godot'            "$MA_PROTOCOL"
+    ma_lacks "MA-1:engine-name(Unreal)"   'Unreal'           "$MA_PROTOCOL"
+    ma_lacks "MA-1:retired-key"           'merge_checkpoints' "$MA_PROTOCOL"
+    (( MA_CHK > 0 )) || MA_WHY+=" MA-1:nothing-checked"
+fi
+if [[ -z "$MA_WHY" ]]; then
+    pass "MA-1 merge-analysis protocol carries every section its readers name, flat and engine-neutral (${MA_CHK} anchors)"
+else
+    fail "MA-1 merge-analysis protocol:$MA_WHY"
+fi
+
 # VB: /unikit-verify takes its base and range from the plan-boundaries contract, can check
 # one module (a phase scope), and reads a PR checkpoint task from its checkbox — an Explore
 # agent would otherwise search the code for it and honestly report NOT FOUND.
