@@ -2,7 +2,7 @@
 
 # Extensions
 
-Extensions let third-party developers add new capabilities to UniKit AI - custom skills, subagents, skill injections, MCP servers, CLI commands, and skill replacements. Extensions survive `unikit-ai update` (injections are automatically re-applied after base skills are refreshed).
+Extensions let third-party developers add new capabilities to UniKit AI - custom skills, subagents, skill injections (by position, or at a named extension point), MCP servers, CLI commands, and skill replacements. Extensions survive `unikit-ai update` (injections are automatically re-applied after base skills are refreshed).
 
 ---
 
@@ -48,7 +48,7 @@ unikit-ai extension remove unikit-ext-example
 4. Extension files are copied to `.unikit/extensions/<name>/`
 5. Skills are installed into all configured agents (applying agent-specific transformers)
 6. Subagents are installed into agents that support them
-7. Injections are applied to matching skill/subagent files
+7. Injections are applied: position-based text is added to the target file; extension-point text is rendered for each agent and inserted under the point's anchor, and the entry's reference files are copied into the target skill. The command then prints `Injections: N of M applied` and the reason for every skipped entry
 8. MCP servers are merged into each agent's settings file
 9. Extension is recorded in `.unikit.json` under `extensions` - **last**, only once every asset above is on disk, so an interrupted install never leaves a recorded extension whose files never arrived
 10. Command modules are available on next CLI invocation
@@ -59,9 +59,11 @@ Running `unikit-ai update`:
 
 1. **Extension refresh** - every installed extension is re-resolved from its source and compared by manifest `version`; changed ones are re-committed
 2. **Base skill update** - updates installed base skills (hash-based change detection)
-3. **Re-apply injections** - all extension injections are re-applied automatically
+3. **Re-render injections** - one pass over every installed extension and every agent re-applies all injections and reference files after the base skills and MCP grants are refreshed
 
 The extension refresh runs **before** the base-skill update, so a skill an extension replaces is already in place when the base pass walks the skill list.
+
+The injection pass does not depend on the order the extensions were installed in or on earlier runs: it renders everything from the installed extensions each time. `update` does not treat injected text as a local edit of the skill, so adding, updating or removing an extension is never followed by a `Local modifications detected` warning.
 
 `unikit-ai update` does **not** check whether a newer CLI version is on npm. Updating the CLI package itself is a separate, explicitly-invoked command:
 
@@ -98,7 +100,7 @@ unikit-ai extension update --force
 
 ### What Happens on Remove
 
-1. Injection markers are stripped from all skill/subagent files
+1. Injection blocks and copied reference files are removed; the target files return to the bytes they had before the extension was added
 2. MCP server entries are removed from agent settings files
 3. Extension skills and subagents are removed from all agents
 4. Extension directory is deleted from `.unikit/extensions/`
@@ -176,7 +178,7 @@ Only `name` and `version` are required. All other fields are optional.
 | `skills` | `string[]` | No | Paths to skill directories within the extension |
 | `subagents` | `string[]` | No | Paths to subagent `.md` files within the extension |
 | `replaces` | `Record<string, string>` | No | Maps extension skill paths to base skill names they replace |
-| `injections` | `ExtensionInjection[]` | No | Content to inject into existing skill/subagent files |
+| `injections` | `ExtensionInjection[]` | No | Content to inject into existing skill/subagent files, by position or at a named extension point (see [Injections](#injections)) |
 | `mcpServers` | `ExtensionMcpServer[]` | No | MCP server configurations to merge into agent settings |
 
 ### Name Validation
@@ -298,9 +300,99 @@ Subagents are only installed for agents that support them (Claude Code and Kimi 
 
 ### Injections
 
-Injections append or prepend content to existing skill or subagent files. This lets extensions augment built-in workflows without replacing them entirely.
+Injections put extension text into existing skill or subagent files. This lets extensions augment built-in workflows without replacing them entirely.
 
-#### Injection Definition
+#### Two forms
+
+| Form | Declared with | Where the text goes | Use it for |
+|------|---------------|---------------------|------------|
+| Position | `position: "append"` or `"prepend"` | The end of the target file, or right after its frontmatter | Whole sections added to a skill or a subagent |
+| Extension point | `point` + `id` (+ `references`) | Under a named anchor the base skill carries | One short line, or a link to a reference file, at a fixed place of a skill's context loading |
+
+An entry sets exactly one of `position` and `point`. A manifest that uses `point` is rejected by UniKit versions that predate extension points: the `position` field is required there.
+
+#### Extension points
+
+A base skill marks a place where extensions may add text with an anchor line:
+
+```markdown
+<!-- unikit:extension-point:bootstrap -->
+```
+
+An extension asks for that place by naming the point:
+
+```json
+{
+  "id": "spec-line",
+  "target": "unikit-plan",
+  "targetType": "skill",
+  "point": "bootstrap",
+  "file": "./injections/spec-line.md",
+  "references": ["./references/notes.md"]
+}
+```
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `id` | `[a-z0-9][a-z0-9-]*`, up to 64 characters | Required with `point`. Unique inside the extension; part of the block marker |
+| `target` | A skill name from [Available extension points](#available-extension-points) | The skill whose anchor is used |
+| `targetType` | `skill` | Subagent files carry no points yet |
+| `point` | `[a-z][a-z0-9-]*`, not ending in `-agent` | The name of the point. Today every listed skill offers `bootstrap` |
+| `file` | Relative path | The text to insert. Must stay inside the extension directory and exist at install time |
+| `references` | Relative paths | Optional files delivered next to the target skill's own references (see [Reference files](#reference-files)). Same path rules as `file`; two files of one extension may not share a file name unless they are the same file |
+
+#### Where the text goes
+
+The anchor line stays in the skill. The block goes right under it:
+
+```markdown
+<!-- unikit:extension-point:bootstrap -->
+<!-- unikit-ext:my-extension:unikit-plan:bootstrap:spec-line:start -->
+Your text here.
+<!-- unikit-ext:my-extension:unikit-plan:bootstrap:spec-line:end -->
+```
+
+Several blocks in one point are ordered by extension name, then by `id`. The result does not depend on the order the extensions were installed in or on how many times the commands ran.
+
+#### What happens to your text
+
+The text goes through the same steps as the text of the skill itself, in this order:
+
+1. The agent filter: `<!-- unikit:agents … -->` blocks are kept or dropped for the agent.
+2. `{{ext_reference:<file name>}}` becomes the path of the delivered reference file.
+3. The variables from [Template Variables](#template-variables); `{{self_name}}` is the target skill.
+4. The agent's own rewrite of invocations, where it has one - for example `/unikit-*` becomes `$unikit-*` for Codex.
+
+A file may not contain `<!-- unikit-ext:` or an extension-point anchor. An empty file is skipped.
+
+#### Reference files
+
+A file listed in `references` is copied to `<skills dir>/<target>/references/ext/<slug>/<file name>`. The slug is the extension name with `@` replaced by `=` and `/` by `+`, so `@scope/pkg` gives `=scope+pkg`. In the text of the block and in the `.md` reference files themselves `{{ext_reference:<file name>}}` expands to that path, written from the project root. Files of other types are copied unchanged. `.md` files are read as UTF-8 text.
+
+The `references/ext/` directory belongs to UniKit: it is recreated whole on every pass, and nothing in it survives by hand.
+
+#### Skipped insertions
+
+A skipped entry is not an installation error: the extension is installed, the command exits with `0`, and the report says what was not applied.
+
+```
+Injections: 1 of 2 applied, 1 reference file(s)
+  my-extension › spec-line → unikit-plan (bootstrap): the installed skill has no such anchor — run "unikit-ai update" to refresh installed skills [claude]
+```
+
+| Reason | Meaning |
+|--------|---------|
+| `unknown-point` | This UniKit version offers no such point on the target - upgrade `unikit-ai`. Subagent entries with `point` also end here |
+| `anchor-missing` | The installed skill has no such anchor - run `unikit-ai update` to refresh installed skills |
+| `anchor-duplicated` | The installed skill carries the anchor more than once - run `unikit-ai update --force` |
+| `target-not-installed` | The target is not installed for this agent |
+| `source-missing` | A file the entry names is missing in the extension directory |
+| `reference-unresolved` | The text uses `{{ext_reference:<name>}}` for a name that is not in `references` |
+| `render-failed` | The text could not be rendered for this agent (a broken agent-filter marker, a reserved marker in the text) |
+| `target-not-found` | The target file is not installed for this agent (position entries) |
+| `path-outside-extension` | The path leaves the extension directory |
+
+#### Position injections
 
 ```json
 {
@@ -318,8 +410,6 @@ Injections append or prepend content to existing skill or subagent files. This l
 | `position` | `append` or `prepend` | Where to insert the content |
 | `file` | Relative path | Path to the markdown file within the extension directory |
 
-#### How Injections Work
-
 Injected content is wrapped in HTML comment markers for tracking:
 
 ```markdown
@@ -328,10 +418,16 @@ Your injected content here.
 <!-- unikit-ext:my-extension:unikit-implement:append:end -->
 ```
 
+`append` puts the block at the end of the file. `prepend` puts it **right after the frontmatter**, so the file still starts with `---`; a block an earlier version put in front of the frontmatter is moved at the next `update`. A `file` path that leaves the extension directory is skipped when the injection is applied and shows up in the report as `path-outside-extension`.
+
 These markers enable:
 - **Idempotent application** - re-installing the same extension won't duplicate content
-- **Clean removal** - `extension remove` strips exactly the injected blocks
+- **Clean removal** - `extension remove` strips exactly the injected blocks and returns the file to its previous bytes
 - **Update survival** - `unikit-ai update` overwrites base skills, then re-applies all injections
+
+#### Ownership of injected text
+
+The text between the `unikit-ext` markers belongs to the extension and is rewritten on every pass. Edits made inside a block are not kept and are not reported as local modifications of the skill.
 
 #### Example Injection File
 
@@ -343,6 +439,53 @@ After completing each task:
 2. Check for debug statements left in production code
 3. Verify error messages are user-friendly
 ```
+
+#### Available extension points
+
+An anchor is a public contract: adding a point is a minor version of the package; moving or removing one happens only after a release that warns about it. More points - a second point in a skill, points in subagent files - are added on request of an extension, together with a check of the skill size limits and of the tests that read skill sections.
+
+Every skill below offers one point, `bootstrap`, at the end of its context-loading block.
+
+| Skill | Point | Placed | Not reached when |
+|-------|-------|--------|------------------|
+| `unikit` | `bootstrap` | Step 0 (Load Existing Config), before the config-actualization mode | - |
+| `unikit-architecture` | `bootstrap` | Step 1 (Load Existing Context) | - |
+| `unikit-archive` | `bootstrap` | Step 0 (Context) | - |
+| `unikit-commit` | `bootstrap` | Item 3 of the main list (Context Check), indented as part of the item | - |
+| `unikit-devcontext` | `bootstrap` | Rules Loading, the last lines of the file | - |
+| `unikit-docs` | `bootstrap` | Step 0 (Load Project Context) | - |
+| `unikit-evolve` | `bootstrap` | Step 2 (Load Context) | - |
+| `unikit-explore` | `bootstrap` | Step 0 (Bootstrap Context), after the optional reads | - |
+| `unikit-fix` | `bootstrap` | Step 0.2 (Load Fix Context) | - |
+| `unikit-implement` | `bootstrap` | Step 1.5 (Bootstrap Rules & Principles) | `--list`, `status` |
+| `unikit-improve` | `bootstrap` | Step 0.5 (Bootstrap Context) | - |
+| `unikit-mcp-audit` | `bootstrap` | Bootstrap | There is no `.unikit/MCP-RECHECK-NOTES.md` |
+| `unikit-mcp-trap` | `bootstrap` | Bootstrap | - |
+| `unikit-memory` | `bootstrap` | Step 0.5 (Resolve the Active Module) | - |
+| `unikit-plan` | `bootstrap` | Step 0.5 (Bootstrap Context) | `--list`, resuming an ultra plan, a merge plan |
+| `unikit-pr` | `bootstrap` | Step 0 (Context) | - |
+| `unikit-review` | `bootstrap` | Step 1 (Load rules) | - |
+| `unikit-roadmap` | `bootstrap` | Step 0 (Load Project Context) | - |
+| `unikit-rules` | `bootstrap` | Step 0 (Load Skill Context) | - |
+| `unikit-rules-registry` | `bootstrap` | Step 0.5 (Load the Module Registry) | - |
+| `unikit-todo` | `bootstrap` | Step 0 (Load Skill Context) | - |
+| `unikit-verify` | `bootstrap` | Step 0.3 (Load Engine Rules) | Before the plan is resolved (0.1) |
+| `unikit-gd-apply` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-balance` | `bootstrap` | Bootstrap Context | - |
+| `unikit-gd-brainstorm` | `bootstrap` | Bootstrap | - |
+| `unikit-gd-content` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-docs` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-explore` | `bootstrap` | Bootstrap Context | `init` mode |
+| `unikit-gd-flow` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-recon` | `bootstrap` | End of the cold-start gate | The gate stopped the run |
+| `unikit-gd-review` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-spec` | `bootstrap` | Bootstrap - Working Contract & Domain Knowledge | - |
+| `unikit-gd-system` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-verify` | `bootstrap` | Phase 0 - Bootstrap | - |
+
+`unikit-skills-context` and `unikit-help` have no point: they have no context-loading block.
+
+A line in a point is read by the model that runs the skill; whether it acts on the line is up to the model and is not guaranteed. The subagents `unikit-implement-worker` and `unikit-implement-coordinator` do not receive the line from `bootstrap` directly - only the content of the skills they preload reaches them.
 
 ---
 
@@ -546,6 +689,8 @@ Extension skills and subagents can use template variables that are substituted a
 
 The `{{agent_*}}` variables are substituted in skills only (`SKILL.md` and `references/`); in subagent files and system assets they are empty, and `{{agent_skill_call:…}}` stays as written (a guard keeps it out of those files). They come from the agent profile - see [Subagents](subagents.md#subagent-profile-per-agent).
 
+The same variables are available in the text of an injection and in the `.md` reference files of an extension point; `{{self_name}}` is the name of the target skill, and `{{agent_skill_call:<skill>}}` in the text of an injection expands as it does in a skill.
+
 Use these in SKILL.md files to write agent-agnostic skills:
 
 ```markdown
@@ -604,6 +749,7 @@ your-project/
 ├── .unikit.json                       # extensions[] array tracks installed extensions
 ├── .claude/
 │   ├── skills/                        # Extension skills installed here
+│   │   └── <skill>/references/ext/<slug>/   # Reference files delivered by extensions (owned by UniKit, recreated on every update)
 │   └── agents/                        # Extension subagents installed here
 └── .mcp.json                          # MCP servers merged here (Claude Code)
 ```
@@ -653,6 +799,7 @@ The backup and rollback apply to upgrades only and cover only `.unikit/extension
 - **Replacement conflicts** - no two extensions can replace the same base skill
 - **Command modules execute code** - command modules are dynamically imported at CLI startup. Only install extensions you trust, just as you would with npm packages
 - **Command module validation** - module files referenced in `commands` are verified to exist at install time
+- **Injection and reference paths are validated** - for entries with `point`, `file` and `references` may not leave the extension directory (`..`, absolute paths) and must exist at install time; for `position` entries a path that leaves the extension directory is skipped when the injection is applied
 
 ---
 
@@ -695,6 +842,14 @@ An extension with all features:
       "targetType": "subagent",
       "position": "prepend",
       "file": "./injections/agent-preamble.md"
+    },
+    {
+      "id": "checks-line",
+      "target": "unikit-plan",
+      "targetType": "skill",
+      "point": "bootstrap",
+      "file": "./injections/plan-line.md",
+      "references": ["./references/checks.md"]
     }
   ],
   "mcpServers": [
@@ -723,7 +878,10 @@ unikit-ext-complete/
 │   └── web-expert.md
 ├── injections/
 │   ├── extra-checks.md
-│   └── agent-preamble.md
+│   ├── agent-preamble.md
+│   └── plan-line.md
+├── references/
+│   └── checks.md
 └── mcp/
     └── web-server.json
 ```
@@ -733,7 +891,8 @@ unikit-ext-complete/
 - 1 base skill replaced (`unikit-review` with extension's `code-reviewer`)
 - 1 subagent installed (`web-expert`) - for agents that support subagents
 - Content appended to `unikit-implement` skill
-- Content prepended to `unikit-implement-coordinator` subagent
+- Content prepended to `unikit-implement-coordinator` subagent, right after its frontmatter
+- A block inserted under the `bootstrap` anchor of `unikit-plan`, and `references/checks.md` copied to `<skills dir>/unikit-plan/references/ext/unikit-ext-complete/checks.md`
 - `web-mcp` server configured in `.mcp.json`
 - `complete-setup` CLI command registered (available as `unikit-ai complete-setup`)
 

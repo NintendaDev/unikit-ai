@@ -11876,6 +11876,20 @@ ep6_loop=$( { grep -rn 'applyAllInjections' "$ROOT_DIR/src" || true; } | wc -l |
 [[ "$EP6_N" -gt 0 ]] || EP6_WHY+=" EP-6:scanned-nothing"
 if [[ -z "$EP6_WHY" ]]; then pass "EP-6 injection pass call sites ($EP6_N command files)"; else fail "EP-6 injection pass call sites:$EP6_WHY"; fi
 
+# (EP-7) the published list of points: every skill of the registry is named, in backticks, in
+# docs/extensions.md — the anchor is a public contract and its list is part of the contract.
+EP7_DOC="$ROOT_DIR/docs/extensions.md"
+EP7_LIST=$( { node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(Object.keys(r.skills||{}).join("\n"))' "$ROOT_DIR/data/extension-points.json" || true; } )
+EP7_N=0; EP7_WHY=""
+while IFS= read -r ep7_s; do
+    [[ -n "$ep7_s" ]] || continue
+    EP7_N=$((EP7_N + 1))
+    { grep -qF "\`$ep7_s\`" "$EP7_DOC" || false; } || EP7_WHY+=" EP-7:undocumented($ep7_s)"
+done <<< "$EP7_LIST"
+[[ "$EP7_N" -gt 0 ]] || EP7_WHY+=" EP-7:registry-empty"
+[[ -s "$EP7_DOC" ]] || EP7_WHY+=" EP-7:docs-missing"
+if [[ -z "$EP7_WHY" ]]; then pass "EP-7 every registered skill is listed in docs/extensions.md ($EP7_N)"; else fail "EP-7:$EP7_WHY"; fi
+
 # ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke
 # ─────────────────────────────────────────────
