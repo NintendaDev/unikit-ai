@@ -5,6 +5,7 @@ import { AGENT_REGISTRY, getAgentConfig } from './agents.js';
 import { CODE_MODULE_ID, CONFIG_FILE, RULE_CATEGORIES, type Tier } from './constants.js';
 import { getModule, listModules } from './modules.js';
 import { logInfo } from '../utils/log.js';
+import { normalizeSelection, type ExtensionSelection } from './extension-selection.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -47,6 +48,12 @@ export interface ExtensionRecord {
   source: string;
   version: string;
   replacedSkills?: Record<string, string>;
+  /**
+   * The user's decisions on the extension's items: manifest path (skills, subagents) or server
+   * key (MCP) → enabled. A key that is absent is an undecided ("new") item. A record without
+   * the field is legacy: what is installed counts as enabled.
+   */
+  selection?: ExtensionSelection;
 }
 
 export type RuleSource = 'registry' | 'installer' | 'local';
@@ -322,12 +329,29 @@ export function getInstalledGenres(config: UniKitConfig): GenreInstallEntry[] {
 function normalizeExtensions(raw: unknown): ExtensionRecord[] {
   if (!Array.isArray(raw)) return [];
 
-  return raw.filter((ext): ext is ExtensionRecord => {
-    if (!ext || typeof ext !== 'object') return false;
-    const e = ext as Record<string, unknown>;
+  return raw
+    .filter((ext): ext is ExtensionRecord => {
+      if (!ext || typeof ext !== 'object') return false;
+      const e = ext as Record<string, unknown>;
 
-    return typeof e.name === 'string' && typeof e.source === 'string' && typeof e.version === 'string';
-  });
+      return typeof e.name === 'string' && typeof e.source === 'string' && typeof e.version === 'string';
+    })
+    .map(ext => {
+      // Fields this version does not know (written by a newer CLI) are kept; only `selection`
+      // is re-read, so a malformed value reads as "no selection" instead of misleading a caller.
+      const next: ExtensionRecord = { ...ext };
+      const selection = normalizeSelection(ext.selection);
+      if (selection === undefined) {
+        if (ext.selection !== undefined) {
+          logInfo('config', `extension "${ext.name}": selection field has an invalid shape — treated as legacy`);
+        }
+        delete next.selection;
+      } else {
+        next.selection = selection;
+      }
+
+      return next;
+    });
 }
 
 /**

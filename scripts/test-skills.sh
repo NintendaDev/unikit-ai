@@ -11253,6 +11253,26 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f7: extension item selection — unit tests
+# The resolver, the manifest filters, the --skip-* names, the item descriptions and the record
+# field in .unikit.json, all without a terminal (scripts/test-extension-selection.mjs).
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f7: extension selection unit tests${NC}"
+
+set +e
+EXT_SELECTION_OUTPUT=$(node "$ROOT_DIR/scripts/test-extension-selection.mjs" 2>&1)
+EXT_SELECTION_EXIT=$?
+set -e
+
+if [[ $EXT_SELECTION_EXIT -eq 0 ]]; then
+    pass "Extension selection unit tests"
+    echo "$EXT_SELECTION_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Extension selection unit tests"
+    echo "$EXT_SELECTION_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
