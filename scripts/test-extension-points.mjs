@@ -13,6 +13,8 @@ const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 
 const points = await import(dist('core/extension-points.js'));
 const markers = await import(dist('core/extension-markers.js'));
+const schema = await import(dist('core/extension-injections-schema.js'));
+const { validateManifest } = await import(dist('core/extensions.js'));
 
 let passed = 0;
 let failed = 0;
@@ -250,6 +252,121 @@ await group('M', async () => {
         assertTrue('M12 the bare word is not a marker', !markers.containsBlockMarker('the unikit-ext word'));
         assertTrue('M12 an anchor is not a marker', !markers.containsBlockMarker(ANCHOR));
     }
+});
+
+// ── V: the manifest model and its validation ────────────────────────────────
+
+const manifestWith = (injections) => ({ name: 'ext-a', version: '1.0.0', injections });
+const pointEntry = (over = {}) => ({ id: 'spec-line', target: 'unikit-plan', point: 'bootstrap', file: 'inj/a.md', ...over });
+const check = (injections) => validateManifest(manifestWith(injections));
+const errorOf = (injections) => {
+    const result = check(injections);
+    return result.valid ? null : result.error;
+};
+
+await group('V', async () => {
+    // V1 — a valid point entry, normalised.
+    {
+        const result = check([pointEntry({ references: ['references/a.md'] })]);
+        assertTrue('V1 a point entry is valid', result.valid === true, JSON.stringify(result));
+        const entry = result.valid ? result.manifest.injections[0] : null;
+        assertEq('V1 the point is kept', entry?.point, 'bootstrap');
+        assertEq('V1 targetType defaults to skill', entry?.targetType, 'skill');
+        assertEq('V1 references are kept', JSON.stringify(entry?.references), '["references/a.md"]');
+        const bare = check([pointEntry()]);
+        assertEq('V1 missing references become an empty array', JSON.stringify(bare.valid ? bare.manifest.injections[0].references : null), '[]');
+    }
+
+    // V2 — position and point are exclusive and one of them is required.
+    {
+        assertTrue('V2 both position and point are rejected', (errorOf([pointEntry({ position: 'append' })]) ?? '').includes('exactly one'));
+        assertTrue('V2 neither is rejected', (errorOf([{ target: 'unikit-plan', file: 'inj/a.md' }]) ?? '').includes('exactly one'));
+    }
+
+    // V3 — the id.
+    {
+        const noId = pointEntry();
+        delete noId.id;
+        assertTrue('V3 a missing id names injections[0].id', (errorOf([noId]) ?? '').includes('injections[0].id'));
+        for (const id of ['Spec', 'a b', 'a:b']) {
+            assertTrue(`V3 id "${id}" is rejected`, (errorOf([pointEntry({ id })]) ?? '').startsWith('injections[0].id'));
+        }
+    }
+
+    // V4 — the point name.
+    for (const point of ['Bootstrap', '1a', 'x-agent']) {
+        assertTrue(`V4 point "${point}" is rejected`, (errorOf([pointEntry({ point })]) ?? '').startsWith('injections[0].point'));
+    }
+
+    // V5 — ids are unique inside one manifest.
+    assertTrue(
+        'V5 two entries with one id are rejected',
+        (errorOf([pointEntry(), pointEntry({ point: 'other', file: 'inj/b.md' })]) ?? '').includes('duplicates'),
+    );
+
+    // V6 — `file` stays inside the extension directory.
+    for (const file of ['../x.md', '/etc/x', 'C:\\x.md', 'a/../../x']) {
+        assertTrue(`V6 file "${file}" is rejected`, (errorOf([pointEntry({ file })]) ?? '').includes('inside the extension directory'));
+    }
+    for (const file of ['./inj/x.md', 'inj/x.md']) {
+        assertTrue(`V6 file "${file}" is valid`, check([pointEntry({ file })]).valid === true);
+    }
+
+    // V7 — references.
+    {
+        assertTrue('V7 references must be an array', (errorOf([pointEntry({ references: 'a.md' })]) ?? '').includes('references must be an array'));
+        assertTrue('V7 a number is rejected', (errorOf([pointEntry({ references: [1] })]) ?? '').includes('references[0] must be a string'));
+        assertTrue('V7 a basename listed twice is rejected', (errorOf([pointEntry({ references: ['a/x.md', 'b/x.md'] })]) ?? '').includes('twice'));
+        assertTrue(
+            'V7 one basename on two paths is rejected',
+            (errorOf([pointEntry({ references: ['a/x.md'] }), pointEntry({ id: 'second', references: ['b/x.md'] })]) ?? '').includes('conflicts'),
+        );
+        assertTrue('V7 a name with a space is rejected', (errorOf([pointEntry({ references: ['a/my file.md'] })]) ?? '').includes('valid reference file name'));
+        assertTrue(
+            'V7 one file in two entries is valid',
+            check([pointEntry({ references: ['a/x.md'] }), pointEntry({ id: 'second', references: ['a/x.md'] })]).valid === true,
+        );
+    }
+
+    // V8 — references need a point.
+    assertTrue(
+        'V8 references on a position entry are rejected',
+        (errorOf([{ target: 'unikit-plan', file: 'inj/a.md', position: 'append', references: ['a.md'] }]) ?? '').includes('requires "point"'),
+    );
+
+    // V9 — the original form keeps working.
+    {
+        const result = check([
+            { target: 'unikit-plan', file: 'a.md', position: 'append' },
+            { target: 'unikit-plan', file: 'b.md', position: 'prepend', targetType: 'subagent' },
+        ]);
+        assertTrue('V9 legacy entries are valid', result.valid === true, JSON.stringify(result));
+        assertEq('V9 targetType defaults to skill', result.valid ? result.manifest.injections[0].targetType : null, 'skill');
+        assertEq('V9 an explicit subagent is kept', result.valid ? result.manifest.injections[1].targetType : null, 'subagent');
+        assertTrue(
+            'V9 an unknown position keeps the old text',
+            (errorOf([{ target: 'unikit-plan', file: 'a.md', position: 'middle' }]) ?? '').includes('must be "append" or "prepend"'),
+        );
+    }
+
+    // V10 — the files a manifest names.
+    {
+        const parsed = schema.parseInjections([
+            pointEntry({ references: ['r/a.md', 'r/b.md'] }),
+            pointEntry({ id: 'second', file: 'inj/a.md', references: ['r/a.md'] }),
+            { target: 'unikit-plan', file: 'legacy.md', position: 'append' },
+        ]);
+        assertTrue('V10 the manifest parses', parsed.ok === true);
+        const files = parsed.ok ? schema.collectPointInjectionFiles(parsed.injections) : [];
+        assertEq('V10 point files are listed once each', JSON.stringify(files), '["inj/a.md","r/a.md","r/b.md"]');
+        const legacy = schema.parseInjections([{ target: 'unikit-plan', file: 'legacy.md', position: 'append' }]);
+        assertEq('V10 legacy entries name no point files', JSON.stringify(legacy.ok ? schema.collectPointInjectionFiles(legacy.injections) : null), '[]');
+    }
+
+    // V11 — containment.
+    assertEq('V11 a child is inside', schema.isInsideDirectory('/a/b', '/a/b/c'), true);
+    assertEq('V11 a sibling is outside', schema.isInsideDirectory('/a/b', '/a/x'), false);
+    assertEq('V11 the directory itself is not inside', schema.isInsideDirectory('/a/b', '/a/b'), false);
 });
 
 console.log(`\nextension-points: ${passed} passed, ${failed} failed`);

@@ -3,7 +3,7 @@ import { readTextFile, writeTextFile, fileExists } from '../utils/fs.js';
 import type { AgentInstallation } from './config.js';
 import { getAgentConfig } from './agents.js';
 import { getTransformer } from './transformer.js';
-import type { ExtensionInjection } from './extensions.js';
+import { isPointInjection, type ExtensionInjection, type PositionInjection } from './extension-injections-schema.js';
 
 // --- Constants ---
 
@@ -24,7 +24,7 @@ function endMarker(extName: string, target: string, position: string): string {
 function resolveInjectionTargetPath(
   projectDir: string,
   agent: AgentInstallation,
-  injection: ExtensionInjection,
+  injection: Pick<ExtensionInjection, 'target' | 'targetType'>,
 ): string | null {
   if (injection.targetType === 'subagent') {
     return path.join(projectDir, agent.subagentsDir, injection.target + '.md');
@@ -48,7 +48,7 @@ export async function applyInjection(
   projectDir: string,
   agent: AgentInstallation,
   extName: string,
-  injection: ExtensionInjection,
+  injection: PositionInjection,
   injectionContent: string,
 ): Promise<boolean> {
   const targetPath = resolveInjectionTargetPath(projectDir, agent, injection);
@@ -104,7 +104,7 @@ export async function stripInjection(
   projectDir: string,
   agent: AgentInstallation,
   extName: string,
-  injection: ExtensionInjection,
+  injection: PositionInjection,
 ): Promise<boolean> {
   const targetPath = resolveInjectionTargetPath(projectDir, agent, injection);
   if (!targetPath || !(await fileExists(targetPath))) {
@@ -135,7 +135,7 @@ export async function stripAllInjections(
 ): Promise<number> {
   let count = 0;
 
-  for (const injection of injections) {
+  for (const injection of injections.filter(i => !isPointInjection(i)) as PositionInjection[]) {
     const removed = await stripInjection(projectDir, agent, extName, injection);
     if (removed) count++;
   }
@@ -154,7 +154,7 @@ export async function applyAllInjections(
 ): Promise<number> {
   let count = 0;
 
-  for (const injection of injections) {
+  for (const injection of injections.filter(i => !isPointInjection(i)) as PositionInjection[]) {
     const contentPath = path.resolve(extensionDir, injection.file);
     const content = await readTextFile(contentPath);
     if (!content) {

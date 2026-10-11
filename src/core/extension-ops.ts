@@ -17,6 +17,7 @@ import {
 } from './installer/extensions.js';
 import { injectMcpRules } from './installer/mcp-injection.js';
 import { applyAllInjections, stripAllInjections } from './injections.js';
+import { collectPointInjectionFiles } from './extension-injections-schema.js';
 import {
   configureExtensionMcpServers, removeExtensionMcpServers, validateMcpTemplate,
   discoverMcpServers, collectMcpRules,
@@ -213,6 +214,13 @@ export async function commitResolvedExtension(
           `Extension "${manifest.name}" command "${cmd.name}" references missing module: ${cmd.module}`,
         );
       }
+    }
+  }
+
+  // Files named by point injections — the extension is rejected before any disk mutation.
+  for (const relPath of collectPointInjectionFiles(manifest.injections ?? [])) {
+    if (!(await fileExists(path.join(resolved.localPath, relPath)))) {
+      throw new Error(`Extension "${manifest.name}" injection references a missing file: ${relPath}`);
     }
   }
 
