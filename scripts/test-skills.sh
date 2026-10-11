@@ -11233,6 +11233,24 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f6: extension points — registry, name checks and marker primitives
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f6: extension point unit tests${NC}"
+
+set +e
+EXT_POINTS_OUTPUT=$(node "$ROOT_DIR/scripts/test-extension-points.mjs" 2>&1)
+EXT_POINTS_EXIT=$?
+set -e
+
+if [[ $EXT_POINTS_EXIT -eq 0 ]]; then
+    pass "Extension point unit tests"
+    echo "$EXT_POINTS_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Extension point unit tests"
+    echo "$EXT_POINTS_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
