@@ -1924,5 +1924,270 @@ assert_not_exists "$KEXT_KIMI_FILE" "extension remove must delete the adapted su
 
 echo "  ✓ extension subagent: adapted for Kimi, untouched for Claude, removed with the extension"
 
+# ─────────────────────────────────────────────────────
+# Test 41: extension points — block under the anchor, reference files,
+#          order independence, byte-exact removal, no false drift, explained skips
+# ─────────────────────────────────────────────────────
+
+make_points_project() {   # <dir> <agent id> <skills dir> <subagents dir>
+  local dir="$1" agent="$2" skills="$3" agents="$4"
+  mkdir -p "$dir"
+  cat > "$dir/.unikit.json" << EOF
+{
+  "version": "1.0.0", "language": "en", "engine": "unity", "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [ { "id": "$agent", "skillsDir": "$skills", "subagentsDir": "$agents",
+                "installedSkills": ["unikit"], "installedSubagents": [] } ],
+  "rules": { "installed": { "version": "1.0.0", "core": [], "stack": [] }, "declined": [] }
+}
+EOF
+  inject_fake_registry "$dir"
+  (cd "$dir" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+}
+
+make_points_extension() {  # <dir> <name> <version> <id> [body] [reference body]
+  local dir="$1" name="$2" version="$3" id="$4"
+  # Defaults live in variables: a `}` inside a ${5:-...} default would close the expansion early.
+  local default_body='When a spec is attached, read {{ext_reference:notes.md}} first, then run /unikit-plan.'
+  local default_ref='Skills dir: {{skills_dir}}; owner: {{self_name}}. Then /unikit-implement.'
+  local body="${5:-$default_body}"
+  local ref="${6:-$default_ref}"
+  mkdir -p "$dir/injections" "$dir/references"
+  printf '%s\n' "$body" > "$dir/injections/$id.md"
+  printf '%s\n' "$ref" > "$dir/references/notes.md"
+  cat > "$dir/extension.json" << EOF
+{ "name": "$name", "version": "$version",
+  "injections": [ { "id": "$id", "target": "unikit", "targetType": "skill", "point": "bootstrap",
+                    "file": "./injections/$id.md", "references": ["./references/notes.md"] } ] }
+EOF
+}
+
+ext_add() {   # <project> <ext dir> <log>
+  (cd "$1" && node "$ROOT_DIR/dist/cli/index.js" extension add "$2" > "$3" 2>&1)
+}
+
+count_lines() {   # <pattern> <file>  — fixed-string count of matching lines
+  { grep -cF -- "$1" "$2" || true; }
+}
+
+ANCHOR_LINE='<!-- unikit:extension-point:bootstrap -->'
+
+# 41a — lifecycle on Claude: add → update → extension update → remove
+P41A="$TMPDIR/points-a"
+make_points_project "$P41A" claude .claude/skills .claude/agents
+SKILL41A="$P41A/.claude/skills/unikit/SKILL.md"
+EXT41A="$TMPDIR/unikit-ext-points-a"
+make_points_extension "$EXT41A" unikit-ext-points-a 1.0.0 spec-line
+SHA_41A_BEFORE=$(sha_of "$SKILL41A")
+
+ext_add "$P41A" "$EXT41A" "$TMPDIR/p41a-add.log"
+assert_contains "$TMPDIR/p41a-add.log" 'Injections: 1 of 1 applied' "41a: the report says one applied"
+assert_contains "$TMPDIR/p41a-add.log" '1 reference file' "41a: the report counts the reference file"
+
+if [[ "$(count_lines "$ANCHOR_LINE" "$SKILL41A")" != "1" ]]; then
+  echo "Assertion failed: 41a: the anchor must stay in the file exactly once"; exit 1
+fi
+ANCHOR_AT=$(grep -nF -- "$ANCHOR_LINE" "$SKILL41A" | head -1 | cut -d: -f1)
+NEXT_LINE=$(sed -n "$((ANCHOR_AT + 1))p" "$SKILL41A")
+if [[ "$NEXT_LINE" != '<!-- unikit-ext:unikit-ext-points-a:unikit:bootstrap:spec-line:start -->' ]]; then
+  echo "Assertion failed: 41a: the block must start on the line right under the anchor"
+  echo "Line under the anchor: $NEXT_LINE"; exit 1
+fi
+assert_contains "$SKILL41A" '\.claude/skills/unikit/references/ext/unikit-ext-points-a/notes\.md' "41a: the placeholder is the delivered path"
+assert_contains "$SKILL41A" '/unikit-plan' "41a: Claude keeps /unikit-plan"
+assert_not_contains "$SKILL41A" '\{\{ext_reference' "41a: no placeholder is left"
+REF41A="$P41A/.claude/skills/unikit/references/ext/unikit-ext-points-a/notes.md"
+assert_exists "$REF41A" "41a: the reference file is delivered"
+assert_contains "$REF41A" 'Skills dir: \.claude/skills; owner: unikit' "41a: the reference is rendered"
+assert_not_contains "$REF41A" '\{\{' "41a: no variable is left in the reference"
+
+(cd "$P41A" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p41a-update.log" 2>&1)
+assert_not_contains "$TMPDIR/p41a-update.log" 'Local modifications detected' "41a: update right after add reports no drift"
+if [[ "$(count_lines 'unikit-ext:unikit-ext-points-a:unikit:bootstrap:spec-line:start' "$SKILL41A")" != "1" ]]; then
+  echo "Assertion failed: 41a: exactly one block after update"; cat "$TMPDIR/p41a-update.log"; exit 1
+fi
+assert_exists "$REF41A" "41a: the reference survives update"
+
+SHA_41A_WITH=$(sha_of "$SKILL41A")
+(cd "$P41A" && node "$ROOT_DIR/dist/cli/index.js" extension update > "$TMPDIR/p41a-extupdate.log" 2>&1)
+assert_contains "$TMPDIR/p41a-extupdate.log" 'up to date' "41a: extension update finds nothing to do"
+assert_same_sha "$SKILL41A" "$SHA_41A_WITH" "41a: extension update leaves the file as it is"
+
+(cd "$P41A" && node "$ROOT_DIR/dist/cli/index.js" extension remove unikit-ext-points-a > "$TMPDIR/p41a-remove.log" 2>&1)
+assert_same_sha "$SKILL41A" "$SHA_41A_BEFORE" "41a: removal gives the file back byte for byte"
+assert_not_exists "$P41A/.claude/skills/unikit/references/ext" "41a: the reference directory is gone"
+
+echo "  ✓ extension points: block under the anchor, reference delivered, update without drift, removal byte-exact"
+
+# 41b — installation order does not change the result
+P41B1="$TMPDIR/points-b1"
+P41B2="$TMPDIR/points-b2"
+EXT41B_A="$TMPDIR/unikit-ext-order-a"
+EXT41B_B="$TMPDIR/unikit-ext-order-b"
+make_points_extension "$EXT41B_A" unikit-ext-order-a 1.0.0 aaa "Line from extension A."
+make_points_extension "$EXT41B_B" unikit-ext-order-b 1.0.0 bbb "Line from extension B."
+make_points_project "$P41B1" claude .claude/skills .claude/agents
+make_points_project "$P41B2" claude .claude/skills .claude/agents
+ext_add "$P41B1" "$EXT41B_A" "$TMPDIR/p41b1-a.log"
+ext_add "$P41B1" "$EXT41B_B" "$TMPDIR/p41b1-b.log"
+ext_add "$P41B2" "$EXT41B_B" "$TMPDIR/p41b2-b.log"
+ext_add "$P41B2" "$EXT41B_A" "$TMPDIR/p41b2-a.log"
+SKILL41B1="$P41B1/.claude/skills/unikit/SKILL.md"
+SKILL41B2="$P41B2/.claude/skills/unikit/SKILL.md"
+assert_same_sha "$SKILL41B2" "$(sha_of "$SKILL41B1")" "41b: both installation orders give the same file"
+LINE_A=$(grep -nF 'unikit-ext:unikit-ext-order-a:unikit:bootstrap:aaa:start' "$SKILL41B1" | head -1 | cut -d: -f1)
+LINE_B=$(grep -nF 'unikit-ext:unikit-ext-order-b:unikit:bootstrap:bbb:start' "$SKILL41B1" | head -1 | cut -d: -f1)
+if [[ -z "$LINE_A" || -z "$LINE_B" || "$LINE_A" -ge "$LINE_B" ]]; then
+  echo "Assertion failed: 41b: the block of A must come before the block of B"
+  echo "A at: $LINE_A, B at: $LINE_B"; exit 1
+fi
+assert_exists "$P41B1/.claude/skills/unikit/references/ext/unikit-ext-order-a" "41b: reference directory of A"
+assert_exists "$P41B1/.claude/skills/unikit/references/ext/unikit-ext-order-b" "41b: reference directory of B"
+(cd "$P41B1" && node "$ROOT_DIR/dist/cli/index.js" extension remove unikit-ext-order-a > "$TMPDIR/p41b1-rm.log" 2>&1)
+assert_not_contains "$SKILL41B1" 'unikit-ext-order-a' "41b: the block of A is gone"
+assert_contains "$SKILL41B1" 'Line from extension B\.' "41b: the block of B stays"
+assert_not_exists "$P41B1/.claude/skills/unikit/references/ext/unikit-ext-order-a" "41b: the reference directory of A is gone"
+assert_exists "$P41B1/.claude/skills/unikit/references/ext/unikit-ext-order-b" "41b: the reference directory of B stays"
+
+echo "  ✓ extension points: two extensions in one point give one result in any installation order"
+
+# 41c — Codex rewrites invocations in the block and in the reference
+P41C="$TMPDIR/points-c"
+EXT41C="$TMPDIR/unikit-ext-points-c"
+make_points_project "$P41C" codex .codex/skills .codex/agents
+make_points_extension "$EXT41C" unikit-ext-points-c 1.0.0 spec-line
+ext_add "$P41C" "$EXT41C" "$TMPDIR/p41c-add.log"
+SKILL41C="$P41C/.codex/skills/unikit/SKILL.md"
+BLOCK41C=$(awk '/unikit-ext-points-c:unikit:bootstrap:spec-line:start -->/{f=1;next} /unikit-ext-points-c:unikit:bootstrap:spec-line:end -->/{f=0} f' "$SKILL41C")
+if [[ "$BLOCK41C" != *'$unikit-plan'* || "$BLOCK41C" == *'/unikit-plan'* ]]; then
+  echo "Assertion failed: 41c: Codex must see \$unikit-plan, not /unikit-plan, in the block"
+  echo "Block: $BLOCK41C"; exit 1
+fi
+if [[ "$BLOCK41C" != *'.codex/skills/unikit/references/ext/'* ]]; then
+  echo "Assertion failed: 41c: the path in the block must be the Codex skills directory"
+  echo "Block: $BLOCK41C"; exit 1
+fi
+REF41C="$P41C/.codex/skills/unikit/references/ext/unikit-ext-points-c/notes.md"
+assert_exists "$REF41C" "41c: the reference is delivered for Codex"
+if ! grep -qF '$unikit-implement' "$REF41C" || grep -qF '/unikit-implement' "$REF41C"; then
+  echo "Assertion failed: 41c: the reference must carry \$unikit-implement for Codex"
+  cat "$REF41C"; exit 1
+fi
+
+echo "  ✓ extension points: Codex gets \$unikit-* in the block and in the reference"
+
+# 41d — a version change inside `update`
+P41D="$TMPDIR/points-d"
+EXT41D="$TMPDIR/unikit-ext-points-d"
+make_points_project "$P41D" claude .claude/skills .claude/agents
+make_points_extension "$EXT41D" unikit-ext-points-d 1.0.0 spec-line "Old line from extension."
+ext_add "$P41D" "$EXT41D" "$TMPDIR/p41d-add.log"
+make_points_extension "$EXT41D" unikit-ext-points-d 1.1.0 spec-line "New line from extension."
+(cd "$P41D" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p41d-update.log" 2>&1)
+SKILL41D="$P41D/.claude/skills/unikit/SKILL.md"
+assert_contains "$TMPDIR/p41d-update.log" 'Extensions updated' "41d: update refreshed the extension"
+assert_not_contains "$TMPDIR/p41d-update.log" 'Local modifications detected' "41d: a version change is no drift"
+assert_contains "$SKILL41D" 'New line from extension' "41d: the new text is in place"
+assert_not_contains "$SKILL41D" 'Old line from extension' "41d: the old text is gone"
+if [[ "$(count_lines 'unikit-ext:unikit-ext-points-d:unikit:bootstrap:spec-line:start' "$SKILL41D")" != "1" ]]; then
+  echo "Assertion failed: 41d: exactly one block after the version change"; exit 1
+fi
+
+echo "  ✓ extension points: a new version inside update replaces the block without drift"
+
+# 41e — invalid manifests are refused before anything is written
+P41E="$TMPDIR/points-e"
+make_points_project "$P41E" claude .claude/skills .claude/agents
+run_bad_manifest() {   # <label> <regex> <injection json>
+  local label="$1" regex="$2" injection="$3"
+  local dir="$TMPDIR/unikit-ext-bad-$label" log="$TMPDIR/p41e-$label.log" code=0
+  mkdir -p "$dir/injections"
+  printf 'x\n' > "$dir/injections/x.md"
+  printf '{ "name": "unikit-ext-bad-%s", "version": "1.0.0", "injections": [ %s ] }\n' "$label" "$injection" > "$dir/extension.json"
+  ext_add "$P41E" "$dir" "$log" || code=$?
+  if [[ "$code" -eq 0 ]]; then
+    echo "Assertion failed: 41e: $label must be refused (exit code was 0)"; cat "$log"; exit 1
+  fi
+  assert_contains "$log" "$regex" "41e: $label gives the expected message"
+  assert_not_exists "$P41E/.unikit/extensions/unikit-ext-bad-$label" "41e: $label leaves nothing in the extensions directory"
+}
+run_bad_manifest both 'exactly one' '{ "id": "x", "target": "unikit", "position": "append", "point": "bootstrap", "file": "./injections/x.md" }'
+run_bad_manifest noid 'id is required' '{ "target": "unikit", "point": "bootstrap", "file": "./injections/x.md" }'
+run_bad_manifest escape 'relative path inside the extension directory' '{ "id": "x", "target": "unikit", "point": "bootstrap", "file": "../x.md" }'
+run_bad_manifest missingref 'missing file' '{ "id": "x", "target": "unikit", "point": "bootstrap", "file": "./injections/x.md", "references": ["./references/none.md"] }'
+
+echo "  ✓ extension points: both forms at once, no id, an escaping path and a missing reference are refused"
+
+# 41f — a skipped entry is explained, not silent
+P41F="$TMPDIR/points-f"
+EXT41F="$TMPDIR/unikit-ext-points-f"
+make_points_project "$P41F" claude .claude/skills .claude/agents
+mkdir -p "$EXT41F/injections"
+printf 'text\n' > "$EXT41F/injections/t.md"
+cat > "$EXT41F/extension.json" << 'EOF'
+{ "name": "unikit-ext-points-f", "version": "1.0.0",
+  "injections": [
+    { "id": "help-line", "target": "unikit-help", "point": "bootstrap", "file": "./injections/t.md" },
+    { "id": "wrong-point", "target": "unikit", "point": "before-tasks", "file": "./injections/t.md" },
+    { "id": "plan-line", "target": "unikit-plan", "point": "bootstrap", "file": "./injections/t.md" }
+  ] }
+EOF
+ext_add "$P41F" "$EXT41F" "$TMPDIR/p41f-add.log"
+assert_contains "$TMPDIR/p41f-add.log" 'Injections: 0 of 3 applied' "41f: nothing applied"
+assert_contains "$TMPDIR/p41f-add.log" 'offers no such point' "41f: an unknown point is explained"
+assert_contains "$TMPDIR/p41f-add.log" 'not installed for this agent' "41f: a skill that is not installed is explained"
+assert_contains "$P41F/.unikit.json" 'unikit-ext-points-f' "41f: the extension is still recorded"
+assert_not_exists "$P41F/.claude/skills/unikit/references/ext" "41f: no reference directory appears"
+
+echo "  ✓ extension points: skipped entries are reported with a reason and the install still succeeds"
+
+# 41g — a missing anchor is repaired by update
+P41G="$TMPDIR/points-g"
+EXT41G="$TMPDIR/unikit-ext-points-g"
+make_points_project "$P41G" claude .claude/skills .claude/agents
+SKILL41G="$P41G/.claude/skills/unikit/SKILL.md"
+grep -v 'unikit:extension-point:bootstrap' "$SKILL41G" > "$SKILL41G.tmp" && mv "$SKILL41G.tmp" "$SKILL41G"
+make_points_extension "$EXT41G" unikit-ext-points-g 1.0.0 spec-line
+ext_add "$P41G" "$EXT41G" "$TMPDIR/p41g-add.log"
+assert_contains "$TMPDIR/p41g-add.log" 'run "unikit-ai update"' "41g: the hint names the repair"
+assert_contains "$TMPDIR/p41g-add.log" 'Injections: 0 of 1 applied' "41g: nothing applied without the anchor"
+(cd "$P41G" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p41g-update.log" 2>&1)
+assert_contains "$TMPDIR/p41g-update.log" 'Local modifications detected' "41g: removing the anchor by hand is a real local edit"
+assert_contains "$SKILL41G" 'unikit-ext:unikit-ext-points-g:unikit:bootstrap:spec-line:start' "41g: the block lands once the anchor is back"
+ANCHOR_AT_G=$(grep -nF -- "$ANCHOR_LINE" "$SKILL41G" | head -1 | cut -d: -f1)
+if [[ -z "$ANCHOR_AT_G" ]]; then
+  echo "Assertion failed: 41g: update must restore the anchor"; exit 1
+fi
+
+echo "  ✓ extension points: a missing anchor is explained and repaired by update"
+
+# 41h — an original append entry and a point entry together
+P41H="$TMPDIR/points-h"
+EXT41H="$TMPDIR/unikit-ext-points-h"
+make_points_project "$P41H" claude .claude/skills .claude/agents
+SKILL41H="$P41H/.claude/skills/unikit/SKILL.md"
+mkdir -p "$EXT41H/injections" "$EXT41H/references"
+printf 'Tail line from extension.\n' > "$EXT41H/injections/tail.md"
+printf 'Boot line, see {{ext_reference:notes.md}}.\n' > "$EXT41H/injections/boot-line.md"
+printf 'Notes.\n' > "$EXT41H/references/notes.md"
+cat > "$EXT41H/extension.json" << 'EOF'
+{ "name": "unikit-ext-points-h", "version": "1.0.0",
+  "injections": [
+    { "target": "unikit", "targetType": "skill", "position": "append", "file": "./injections/tail.md" },
+    { "id": "boot-line", "target": "unikit", "targetType": "skill", "point": "bootstrap",
+      "file": "./injections/boot-line.md", "references": ["./references/notes.md"] }
+  ] }
+EOF
+SHA_41H_BEFORE=$(sha_of "$SKILL41H")
+ext_add "$P41H" "$EXT41H" "$TMPDIR/p41h-add.log"
+assert_contains "$SKILL41H" 'unikit-ext:unikit-ext-points-h:unikit:append:start' "41h: the append block is present"
+assert_contains "$SKILL41H" 'unikit-ext:unikit-ext-points-h:unikit:bootstrap:boot-line:start' "41h: the point block is present"
+(cd "$P41H" && node "$ROOT_DIR/dist/cli/index.js" update > "$TMPDIR/p41h-update.log" 2>&1)
+assert_not_contains "$TMPDIR/p41h-update.log" 'Local modifications detected' "41h: update reports no drift"
+(cd "$P41H" && node "$ROOT_DIR/dist/cli/index.js" extension remove unikit-ext-points-h > "$TMPDIR/p41h-remove.log" 2>&1)
+assert_same_sha "$SKILL41H" "$SHA_41H_BEFORE" "41h: removing both forms gives the file back byte for byte"
+
+echo "  ✓ extension points: append and point entries coexist and both come out byte-exact"
+
 echo ""
 echo "extension smoke tests passed"

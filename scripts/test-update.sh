@@ -1182,6 +1182,83 @@ assert_exists "$ENGEXT_DIR/.claude/skills/hello-world/SKILL.md" "extension skill
 echo "  ✓ engine switch + extensions: Godot engine applied, extension skill preserved"
 
 # ─────────────────────────────────────────────
+# Test 25b: extension injections do not look like local edits
+#           (both forms, skill and subagent, add → update → remove)
+# ─────────────────────────────────────────────
+DRIFTEXT_DIR="$TMPDIR/update-ext-drift"
+mkdir -p "$DRIFTEXT_DIR"
+
+cat > "$DRIFTEXT_DIR/.unikit.json" << 'EOF'
+{
+  "version": "1.0.0",
+  "language": "en",
+  "engine": "unity",
+  "engineMcpKey": null,
+  "mcp": { "servers": {} },
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "subagentsDir": ".claude/agents",
+      "installedSkills": ["unikit"],
+      "installedSubagents": ["unikit-architecture-sidecar"]
+    }
+  ],
+  "rules": {
+    "installed": { "version": "1.0.0", "modules": { "code": { "core": ["code-style"], "stack": [] } } }
+  }
+}
+EOF
+inject_fake_registry "$DRIFTEXT_DIR"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
+
+DRIFT_SKILL="$DRIFTEXT_DIR/.claude/skills/unikit/SKILL.md"
+DRIFT_AGENT="$DRIFTEXT_DIR/.claude/agents/unikit-architecture-sidecar.md"
+SHA_DRIFT_SKILL_BEFORE=$(sha_of "$DRIFT_SKILL")
+SHA_DRIFT_AGENT_BEFORE=$(sha_of "$DRIFT_AGENT")
+
+DRIFT_EXT="$TMPDIR/unikit-ext-drift"
+mkdir -p "$DRIFT_EXT/injections" "$DRIFT_EXT/references"
+printf 'Tail line from extension.\n' > "$DRIFT_EXT/injections/tail.md"
+printf 'Read {{ext_reference:notes.md}} when a spec is attached.\n' > "$DRIFT_EXT/injections/boot.md"
+printf 'Notes for {{self_name}}.\n' > "$DRIFT_EXT/references/notes.md"
+cat > "$DRIFT_EXT/extension.json" << 'EOF'
+{ "name": "unikit-ext-drift", "version": "1.0.0",
+  "injections": [
+    { "target": "unikit", "targetType": "skill", "position": "append", "file": "./injections/tail.md" },
+    { "id": "boot-line", "target": "unikit", "targetType": "skill", "point": "bootstrap",
+      "file": "./injections/boot.md", "references": ["./references/notes.md"] },
+    { "target": "unikit-architecture-sidecar", "targetType": "subagent", "position": "append", "file": "./injections/tail.md" }
+  ] }
+EOF
+
+DRIFT_ADD_LOG="$TMPDIR/update-ext-drift-add.log"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$DRIFT_EXT" > "$DRIFT_ADD_LOG" 2>&1)
+assert_contains "$DRIFT_ADD_LOG" 'Injections: 3 of 3 applied' "25b: all three entries must be applied"
+
+DRIFT_UPDATE_LOG="$TMPDIR/update-ext-drift-update.log"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DRIFT_UPDATE_LOG" 2>&1)
+assert_not_contains "$DRIFT_UPDATE_LOG" 'Local modifications detected' "25b: update right after add must not report drift"
+assert_contains "$DRIFT_UPDATE_LOG" 'changed: 0' "25b: update right after add must not reinstall anything"
+DRIFT_SKILL_MARKERS=$({ grep -cF 'unikit-ext:unikit-ext-drift:' "$DRIFT_SKILL" || true; })
+DRIFT_AGENT_MARKERS=$({ grep -cF 'unikit-ext:unikit-ext-drift:' "$DRIFT_AGENT" || true; })
+if [[ "$DRIFT_SKILL_MARKERS" != "4" || "$DRIFT_AGENT_MARKERS" != "2" ]]; then
+  echo "Assertion failed: 25b: the blocks must survive update (skill markers: $DRIFT_SKILL_MARKERS, expected 4; agent markers: $DRIFT_AGENT_MARKERS, expected 2)"
+  cat "$DRIFT_UPDATE_LOG"
+  exit 1
+fi
+
+DRIFT_REMOVE_LOG="$TMPDIR/update-ext-drift-remove.log"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension remove unikit-ext-drift > "$DRIFT_REMOVE_LOG" 2>&1)
+assert_same_sha "$DRIFT_SKILL" "$SHA_DRIFT_SKILL_BEFORE" "25b: the skill must come back byte for byte after removal"
+assert_same_sha "$DRIFT_AGENT" "$SHA_DRIFT_AGENT_BEFORE" "25b: the subagent must come back byte for byte after removal"
+DRIFT_UPDATE2_LOG="$TMPDIR/update-ext-drift-update2.log"
+(cd "$DRIFTEXT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DRIFT_UPDATE2_LOG" 2>&1)
+assert_not_contains "$DRIFT_UPDATE2_LOG" 'Local modifications detected' "25b: update after removal must not report drift"
+
+echo "  ✓ extension injections: update right after add/remove reports no drift and removal is byte-exact"
+
+# ─────────────────────────────────────────────
 # Test 26: subagent force reinstall
 # ─────────────────────────────────────────────
 SAFRC_DIR="$TMPDIR/update-sa-force"

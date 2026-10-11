@@ -11853,6 +11853,30 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7g10: EP-6 — the extension injection pass is called from every lifecycle path
+# ─────────────────────────────────────────────
+# `init` cannot be driven by a smoke test (it is a wizard), so its wiring is read, not run: the pass
+# and the restore of the extensions' own assets must be called in init.ts, the pass in update.ts and
+# extension.ts, `extensions` must be carried into the saved config, and the retired per-extension loop
+# must not return. Every object is checked file-scoped; a missing file is a FAIL, not a silent pass.
+echo -e "\n${BOLD}Part 7g10: extension injection pass call sites (EP-6)${NC}"
+EP6_WHY=""
+EP6_N=0
+for ep6_f in init update extension; do
+    ep6_p="$ROOT_DIR/src/cli/commands/$ep6_f.ts"
+    if [[ ! -s "$ep6_p" ]]; then EP6_WHY+=" EP-6:missing($ep6_f.ts)"; continue; fi
+    EP6_N=$((EP6_N + 1))
+    { grep -qF 'await applyExtensionInjections(' "$ep6_p" || false; } || EP6_WHY+=" EP-6:no-pass-call($ep6_f.ts)"
+done
+EP6_INIT="$ROOT_DIR/src/cli/commands/init.ts"
+{ grep -qF 'await reinstallExtensionAssets(' "$EP6_INIT" || false; } || EP6_WHY+=" EP-6:init-does-not-restore-extension-assets"
+{ grep -qF 'extensions: preservedExtensions' "$EP6_INIT" || false; } || EP6_WHY+=" EP-6:init-drops-extensions"
+ep6_loop=$( { grep -rn 'applyAllInjections' "$ROOT_DIR/src" || true; } | wc -l | tr -d ' ')
+[[ "$ep6_loop" -eq 0 ]] || EP6_WHY+=" EP-6:retired-loop-returned(x$ep6_loop)"
+[[ "$EP6_N" -gt 0 ]] || EP6_WHY+=" EP-6:scanned-nothing"
+if [[ -z "$EP6_WHY" ]]; then pass "EP-6 injection pass call sites ($EP6_N command files)"; else fail "EP-6 injection pass call sites:$EP6_WHY"; fi
+
+# ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke
 # ─────────────────────────────────────────────
 # Catch the "forgot to wire a new command into src/cli/index.ts" regression

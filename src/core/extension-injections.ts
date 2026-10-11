@@ -57,6 +57,8 @@ export interface InjectionOutcome {
   targetType: 'skill' | 'subagent';
   agent: string;
   applied: boolean;
+  /** Reference files delivered for this entry (point entries that were applied). */
+  references?: number;
   reason?: InjectionSkipReason;
   detail?: string;
 }
@@ -108,6 +110,7 @@ function pointOutcome(
   applied: boolean,
   reason?: InjectionSkipReason,
   detail?: string,
+  references?: number,
 ): InjectionOutcome {
   return {
     extension: item.extName,
@@ -118,6 +121,7 @@ function pointOutcome(
     targetType: item.entry.targetType,
     agent: agent.id,
     applied,
+    references,
     reason,
     detail,
   };
@@ -280,7 +284,7 @@ async function applyPointsToSkill(
       }
       referencesWritten++;
     }
-    outcomes.push(pointOutcome(entry.item, agent, true));
+    outcomes.push(pointOutcome(entry.item, agent, true, undefined, undefined, entry.references.length));
   }
 
   logInfo(

@@ -687,7 +687,7 @@ await group('F', async () => {
     const clean = formatInjectionReport(reportOf([outcome({}), outcome({ id: 'two' })]));
     assertEq('F1 a clean report is one line', JSON.stringify(clean), '["Injections: 2 of 2 applied"]');
 
-    const withRefs = formatInjectionReport(reportOf([outcome({})], 3));
+    const withRefs = formatInjectionReport(reportOf([outcome({ references: 3 })], 3));
     assertEq('F1 reference files are counted', withRefs[0], 'Injections: 1 of 1 applied, 3 reference file(s)');
 
     const skipped = formatInjectionReport(reportOf([

@@ -57,8 +57,9 @@ export function formatInjectionReport(report: InjectionReport, options: PrintRep
   const appliedCount = outcomes.filter(o => o.applied).length;
 
   let summary = `Injections: ${appliedCount} of ${outcomes.length} applied`;
-  if (!options.onlyExtension && report.referencesWritten > 0) {
-    summary += `, ${report.referencesWritten} reference file(s)`;
+  const references = outcomes.reduce((sum, o) => sum + (o.references ?? 0), 0);
+  if (references > 0) {
+    summary += `, ${references} reference file(s)`;
   }
 
   const lines = [summary];
