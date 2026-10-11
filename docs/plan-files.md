@@ -237,7 +237,7 @@ At that task `/unikit-implement` commits the module and asks one question — ch
 
 While the checklist carries a `PR checkpoint:` line, a run never pushes — every automatic commit passes `no-push`, and the branch reaches the remote through `/unikit-pr` or you. A plan with PR checkpoint tasks but no `PR checkpoints: yes` line (written under a project's own rule) is legacy: its tasks run by their own steps, a `→ skipped` label reads as `⏭️ MERGED`, and a `→ PR` label without a SHA is a boundary found through the commit that added it.
 
-**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`.
+**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Measurements` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`. `## Measurements` is present only in a plan that has a `Measure:` task ([Balance checkpoint plans](#balance-checkpoint-plans)).
 
 ### Ultra bundle — a manifest plus one file per phase
 
@@ -317,7 +317,10 @@ with `## Phase Index` and `## Checklist`.
 **What the bundle does not change.** Plan discovery is untouched, and so is
 `/unikit-plan --list`. The flat fast plan `.unikit/code/PLAN.md` and `.unikit/code/FIX_PLAN.md`
 are never bundles — a fix plan is architecturally a flat file and stays outside the model.
-The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra mode at all.
+The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra plan bundle at all;
+the ultra research mode of `/unikit-gd-explore` (`/unikit-gd-explore ultra <topic>`: a pinned
+dialogue log and adaptive artifacts in the research folder) is a different thing, and not a
+consumer of the bundle model.
 `/unikit-review` is not a consumer either: it is diff/PR-scoped and reads no plan, so a
 broken bundle passes review in silence, while `/unikit-implement`, `/unikit-verify` and `/unikit-improve` block on it (`/unikit-commit` only warns).
 
@@ -363,7 +366,7 @@ A label on the checkbox line of a measuring task whose result cannot be obtained
 
 ### Order and the horizon
 
-Inside a phase: ordinary tasks → the phase's `Test checkpoint:` → `Measure:` tasks → `PR checkpoint:` or `Hand-back:`. The last task is `Hand-back:`; under `Testing: yes` the final `Test checkpoint: plan` stands directly above it. Nothing follows `Hand-back:`, and nothing from the roadmap's later points is in the plan: the returned data may change the decision, and that decision is `/unikit-gd-balance`'s. The plan folder is `.unikit/code/plans/balance-<slug>-bch-<n>/`; the planner creates and switches no branch for such a plan. The executor writes the report to `handback-<point id>.md` in the plan folder (format: `.unikit/system/balance-handback.md`) and prints the return command last.
+Inside a phase: ordinary tasks → the phase's `Test checkpoint:` → `Measure:` tasks → `PR checkpoint:` or `Hand-back:`. The last task is `Hand-back:`; under `Testing: yes` the final `Test checkpoint: plan` stands directly above it. Nothing follows `Hand-back:`, and nothing from the roadmap's later points is in the plan: the returned data may change the decision, and that decision is `/unikit-gd-balance`'s. The plan folder is `.unikit/code/plans/balance-<slug>-bch-<n>/` (a `fast` plan has none: it is `.unikit/code/PLAN.md`, and the report lies next to it, in `.unikit/code/`); the planner creates and switches no branch for such a plan. The executor writes the report to `handback-<point id>.md` in the plan folder (format: `.unikit/system/balance-handback.md`) and prints the return command last: `/unikit-implement` as the last line of its output, the implement coordinator inside the `Hand-back:` line of its summary.
 
 ---
 

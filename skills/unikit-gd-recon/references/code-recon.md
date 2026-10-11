@@ -3,8 +3,9 @@
 The single source of the heuristics that turn an implementation into **candidate**
 design facts. Owned by `unikit-gd-recon` (cold-start, whole project → `RECON.md`); read
 by the `unikit-gd-explore` **code-grounded lens** (targeted — a named slice, with or without a GDD → an explore
-brief). Same heuristics, two consumers, no duplication — the `delegation-contract`
-pattern (provider owns the spec, the other skill reads it).
+brief) and by the `unikit-gd-balance` investigation (a named slice → facts for a balance
+document). Same heuristics, three consumers, no duplication — the `delegation-contract`
+pattern (provider owns the spec, the others read it).
 
 This file is **read-only on code** and **engine-agnostic**. It describes *what to look
 for* and *how to record it*; the output document (RECON.md sections / the explore brief)
@@ -145,11 +146,12 @@ in the Intent Gap instead of the fact list.
 
 - It does **not author**. It produces candidate facts for a *document*; the human and the
   authoring zones turn facts into a GDD.
-- It does **not call any skill** (recon and the explore lens are read-only research verbs
-  with no `Skill` in scope — the dispatch is the consuming skill's recommendation, never
-  an inline call).
+- It does **not call any skill** (recon, the explore lens and the balance investigation are
+  read-only research verbs with no `Skill` in scope — the dispatch is the consuming skill's
+  recommendation, never an inline call).
 - It does **not read flows, infer intent, or invent a missing "why"** — those are the
   Intent Gap.
 - It does **not write anything but the consuming verb's own document** (recon →
-  `RECON.md`; explore lens → its brief). It never touches `GD-IDS`, `GAME.md`, a
+  `RECON.md`; explore lens → its brief; balance investigation → its balance document). It never
+  touches `GD-IDS`, `GAME.md`, a
   `SYSTEM.md`, a `CONTENT-TYPE.md`, or a `FLOW.md`.

@@ -112,7 +112,7 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    current save's own entry, which is filled in after the coherence gate
    (`references/coherence-gate.md`) has run.
 
-   The marker pair of the summary is the one `data/research-link.md` uses, so the format is
+   The marker pair of the summary is the one `.unikit/system/research-link.md` uses, so the format is
    compatible with that contract; a design research is not read by it today and the
    contract does not change. A marker pair with only one marker present is damage: the
    saving session does not guess the boundary, it prints

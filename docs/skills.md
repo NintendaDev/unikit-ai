@@ -358,7 +358,7 @@ The `gamedesign` module adds twelve `unikit-gd-*` skills for authoring a Game De
 Document along three machine-readable axes — **systems** (the rules), **flows** (the
 dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. The quick-reference
 entries below follow the pipeline order (recon/brainstorm → spec → system/flow/content →
-review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
+balance → review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
 treatment - the axis model, the Decision-First authoring contract, review vs. verify, the
 genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 
@@ -450,8 +450,8 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 /unikit-gd-balance the economy of the first world   # start a balance document, issue one checkpoint
 /unikit-gd-balance <path to a hand-back report>     # receive results, decide, issue the next checkpoint or close
 ```
-- Owns `.unikit/gamedesign/balance/<slug>/` (`BALANCE.md`, `CHECKPOINTS.md`, `results/`) and its `INDEX.md`; the intent is read from the request, there are no flags
-- Investigates by itself (reads code read-only, tags facts `provenance: extracted from code`, runs `recon-agent` for wide questions), issues **one** detailed Balance Checkpoint and closes every issuing turn with `/unikit-plan full <path to CHECKPOINTS.md>`
+- Owns `.unikit/gamedesign/balance/<slug>/` (`BALANCE.md`, `CHECKPOINTS.md`, `results/`) and the derived `.unikit/gamedesign/balance/INDEX.md` above the document folders (not inside `<slug>/`); the intent is read from the request, there are no flags
+- Investigates by itself (reads code read-only, tags facts `provenance: extracted from code`, runs `recon-agent` for wide questions), issues **one** detailed Balance Checkpoint and closes every issuing turn with `/unikit-plan full <path to CHECKPOINTS.md>` (`full` by default, `fast` when the point is plainly small, `ultra` only when you name it)
 - Receives a hand-back report (format: `.unikit/system/balance-handback.md`), matches it to a document or asks, revises the roadmap, issues the next point or closes - softly: unclosed questions block nothing
 - Never edits the GDD or code and does not register in `GD-IDS.yaml`; a design change is left as a proposal for `/unikit-gd-system`
 

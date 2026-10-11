@@ -25,7 +25,8 @@ A GDD is authored along three machine-readable axes plus the one-page whole:
 | **flows** | `/unikit-gd-flow` | `flows/FLOW-<slug>.md` | "what the player does over time" (dynamics) |
 | **content** | `/unikit-gd-content` | `content-types/CT-<slug>.md` | "what content exists and by what schema" (the catalog) |
 
-Ideation (`/unikit-gd-brainstorm`), research (`/unikit-gd-explore`), multi-zone dispatch
+Ideation (`/unikit-gd-brainstorm`), research (`/unikit-gd-explore`), measured balance
+(`/unikit-gd-balance` — tunes numbers one measured checkpoint at a time), multi-zone dispatch
 (`/unikit-gd-apply` — carries out an explicit edit spanning several axes by routing each
 delta to its owner, then verifying), quality review (`/unikit-gd-review`), and mechanical
 verification (`/unikit-gd-verify`) round out the module. The machine truth for every axis is `GD-IDS.yaml`; the human-readable maps at
@@ -33,8 +34,9 @@ the bottom of `GAME.md` (`## System Map [gen]` / `## Flow Map [gen]` / `## Funne
 / `## Content Map [gen]`) are **rendered read-only** from it — never hand-edited.
 
 See **The pipeline** below for the order these skills run in, **Research** for
-`/unikit-gd-explore`'s lenses, **Multi-zone edits** for how `/unikit-gd-apply` dispatches,
-and **Review vs Verify** for how the two quality gates hand results onward.
+`/unikit-gd-explore`'s lenses, **Balance** for the measured loop of `/unikit-gd-balance`,
+**Multi-zone edits** for how `/unikit-gd-apply` dispatches, and **Review vs Verify** for how
+the two quality gates hand results onward.
 
 ---
 
@@ -112,6 +114,8 @@ flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynami
             │                                 picks the wiring mode + re-renders ## Flow Map [gen] / ## Funnel [gen]
 content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *catalog* (typed CT.fields schema,
             │                                 scale bulk|curated) + re-renders ## Content Map [gen]; the editor owns the values
+balance:  /unikit-gd-balance       (optional) per subject: investigate → ONE detailed Balance Checkpoint → /unikit-plan
+            │                                 → /unikit-implement → /unikit-verify → hand-back report → /unikit-gd-balance again
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → verdict → two buckets (apply-ready / research)
             │
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" → 4 tracks → apply-ready
@@ -138,6 +142,7 @@ from skipping to implementation.
 | A GDD, want to detail a system | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | A GDD, want a new mechanic | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
 | A named slice of the code, want to know how it is actually built (a GDD is not required) | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| A subject whose numbers need tuning (a GDD is not required) | `/unikit-gd-balance <topic>` | `/unikit-plan full <path to CHECKPOINTS.md>` |
 | A GDD, several decided edits across zones | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | A GDD, want to publish/export it for people to read | `/unikit-gd-docs` (`--web` for HTML) | share the rendered docs |
 
@@ -338,10 +343,14 @@ time:
 - `CHECKPOINTS.md` — a header (`Slug`, `Status`, `Current`, `Updated`), a coarse `## Roadmap`,
   the one detailed `## Current Balance Checkpoint`, and an append-only
   `## Balance Checkpoint Log`;
-- `results/HB-<n>.md` — received hand-back reports, copied verbatim; `INDEX.md` — a derived list.
+- `results/HB-<n>.md` — received hand-back reports, copied verbatim.
+
+`INDEX.md` — the derived list of all documents — is not inside `<slug>/`: it sits one level
+above the document folders, in `.unikit/gamedesign/balance/`.
 
 The last block of every issuing turn is the ready command `/unikit-plan full <path to
-CHECKPOINTS.md>`: the planner finds the current point itself and builds a plan **only up to it**,
+CHECKPOINTS.md>` (`full` by default; `fast` when the point is plainly small, `ultra` only when
+you name it): the planner finds the current point itself and builds a plan **only up to it**,
 because the returned data may change what comes next. The report that the executor hands back
 has one owner, `.unikit/system/balance-handback.md`. Closing is soft: unclosed questions block
 neither issuing a point nor saving. A balance document is not registered in `GD-IDS.yaml` and

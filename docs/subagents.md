@@ -88,6 +88,7 @@ Dependency-aware plan execution.
 - With `Testing: yes` and two or more test-checkpoint tasks in its scope, asks once before the first layer whether to merge their test runs (the same question as `/unikit-implement`; no answer in a non-interactive run → runs as written)
 - **Single ready phase** → executes tasks directly inside the coordinator (no worker overhead). Bootstraps principles + rules (`dev-principles.md`, `RULES.md`, `RULES_INDEX.md`, core rules) before the phase, then writes code inline
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
+- Never hands a `Measure:` or a `Hand-back:` task of a balance plan to a worker - it carries them out itself, in its own session, after the worker has returned the phase's other tasks
 - After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, hands commit checkpoints to the `unikit-commit` skill (it never writes a commit message itself), advances to the next layer
 - Annotates the manifest with layer markers and `[~]` / `[x]` / `[!]` status in real time
 - Under `Testing: yes`, carries the `Full run:` anchor over every commit it makes (the same rule as `/unikit-implement`), and reports a final run closed by reuse apart from a performed one (`Test runs: <n> performed · <m> merged · <r> reused`)
@@ -117,6 +118,7 @@ Executes exactly ONE task from the active plan, then returns control.
 
 - Implements the task, verifies it, runs local quality checks via skill knowledge (no Agent delegation - workers cannot spawn children)
 - Does not create commits; the coordinator owns git state
+- Never executes a `Measure:` or a `Hand-back:` task of a balance plan: one that reaches it is returned unexecuted (`returned: <task id> — Measure/Hand-back belongs to the coordinator`) and no row is written
 - **Writes its own row into the plan's `## MCP Findings` table** when an engine MCP call misled it, rather than returning a candidate to the coordinator. Workers have no worktree isolation, so they all edit the same plan file - which is safe only because a phase carrying an `Editor:` line is alone in its execution layer, leaving one writer at a time. Handing the row back instead would defer the write to the end of the layer and lose it if the coordinator failed
 - Lists `unikit-devcontext` and `unikit-verify` under `skills:` so it has full access to the pipeline knowledge base without spawning anything - Claude Code preloads them, on Kimi Code the installed file starts with a read list (see [Skills listed in an agent file](#skills-listed-in-an-agent-file))
 

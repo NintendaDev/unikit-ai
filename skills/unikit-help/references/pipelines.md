@@ -106,10 +106,11 @@ handoff:  → /unikit-gd-apply (apply-ready, one pass) · /unikit-gd-explore (re
 docs:     /unikit-gd-docs          (optional) the GDD → human-readable docs/design/*.md (the export-out)
 ```
 
-**Read-only verbs at the I/O edges.** Three skills sit on the boundary of the module and are
-**read-only** at that edge: `/unikit-gd-recon` and the `/unikit-gd-explore` **code lens**
-**INPUT** (code → candidate design facts — recon for the whole project at cold start, the
-explore lens for a named slice, with or without a GDD), the authoring zones
+**Read-only verbs at the I/O edges.** Four skills sit on the boundary of the module and are
+**read-only** at that edge: `/unikit-gd-recon`, the `/unikit-gd-explore` **code lens** and
+`/unikit-gd-balance` **INPUT** (code → candidate design facts — recon for the whole project at
+cold start, the explore lens for a named slice, with or without a GDD, balance for the slice a
+balance document names), the authoring zones
 (spec / system / flow / content) are the **core**, and `/unikit-gd-docs` **OUTPUTS**
 (design → a human-readable GDD). Reconstructing design from code is normally forbidden (the
 one-way boundary), so it is quantised into these read-only research verbs — every
@@ -246,6 +247,7 @@ Pick the row that matches what the user already has:
 | **A GDD, wants to detail a system** | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | **A GDD, wants a new mechanic** | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
 | **A named slice of the code, wants to know how it is built (a GDD is not required)** | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| **A subject whose numbers need tuning (a GDD is not required)** | `/unikit-gd-balance <topic>` | `/unikit-plan full <path to CHECKPOINTS.md>` → `/unikit-implement` → `/unikit-gd-balance <report>` |
 | **A GDD, several decided edits across zones** | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | **A GDD, wants to publish/export it for people** | `/unikit-gd-docs` (→ `docs/design/*.md`; `--web` for HTML) | share the rendered docs |
 | **A feature idea, needs direction** | `/unikit-explore <topic>` | `/unikit-plan` |
