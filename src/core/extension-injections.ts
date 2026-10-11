@@ -19,6 +19,7 @@ import {
 import { renderExtensionText, type RenderContext } from './extension-render.js';
 import { extensionSlug, loadExtensionPointRegistry, registeredPoints } from './extension-points.js';
 import { resolveSkillPaths } from './installer/hashing.js';
+import { isMarkdownFile } from './installer/shared.js';
 
 // The project-level injection pass. One function renders EVERY extension block for EVERY agent from
 // scratch — the way `reconcileMcpSettings` does for MCP entries — so the result depends only on the
@@ -176,7 +177,7 @@ async function prepareEntry(
   const references: PreparedReference[] = [];
   for (const { src, name } of sources) {
     const dest = path.join(destDir, name);
-    if (name.endsWith('.md')) {
+    if (isMarkdownFile(name)) {
       const refRaw = await readTextFile(src);
       if (refRaw === null) return { reason: 'source-missing', detail: name };
       const rendered = renderExtensionText(refRaw, ctx, 'reference');
