@@ -218,6 +218,7 @@ Then reconcile plan state with reality:
 - For tasks marked `[x]`, spot-check that the corresponding code actually exists (read a key file or check for expected classes/methods)
 - If code for a completed task is missing (e.g. after reset/rebase), revert the checkbox back to `- [ ]` and inform the user
 - If code exists but the task isn't marked complete, mark it `[x]` and inform the user
+- A task labelled `⏳ AWAITING RESULT` is picked up here, and a ticked `Measure:` / `Hand-back:` task is spot-checked by its row or its report file, not by code — `references/balance-measure.md` → `## Resume (Step 0.3)`.
 
 ### Step 1: Load Plan Context
 
@@ -245,6 +246,8 @@ Drift is printed **once**, here at plan load — not before each task. Execution
 No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the same probe.
 
 **The checklist carries a `PR checkpoint:` line or the manifest has `## Modules`** → read `{{skills_dir}}/{{self_name}}/references/pr-checkpoints.md` now, once — Steps 2, 3.2, 3.4, 3.9, 4, 5.6, 5.8 and the status display follow it. Missing or unreadable → `WARN [pr] PR checkpoint reference missing — PR checkpoint tasks are reported as blockers; run unikit-ai update`, every PR checkpoint task is a Step 3.3 blocker, and the push rule below still holds.
+
+**The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-measure.md` now, once — Steps 0.3, 2, 3.2, 3.4, 3.6-3.9, 4, 5.4, 5.6 and 5.8 follow it. Missing or unreadable → `WARN [balance] balance reference missing — Measure: and Hand-back: tasks are reported as blockers; run unikit-ai update`, and every such task is a Step 3.3 blocker.
 
 **While the checklist carries a `PR checkpoint:` line, every `unikit-commit` call of this run adds `no-push`.**
 
@@ -303,6 +306,8 @@ STOP here.
 A merged test-checkpoint task is the other third outcome, and it counts differently — the counting rule is in `references/test-runs.md` → `## Step 2.5`.
 
 A PR checkpoint carrying a `⏭️ MERGED` label is not pending either — `references/pr-checkpoints.md` → `## Counting (Step 2)`.
+
+A task labelled `⏳ AWAITING RESULT` is **pending**, not out of scope — `references/balance-measure.md` → `## Counting (Step 2)`.
 
 **If `$ARGUMENTS` contains phase/task selectors:**
 
@@ -391,7 +396,9 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
 **A task carrying a `PR checkpoint:` line** closes a module and runs at the Step 3.9 position of its phase, after Steps 3.6-3.8 — `references/pr-checkpoints.md` → `## Step 3.2 — the PR checkpoint`, or `## Legacy` when `## Settings` has no `PR checkpoints: yes`.
 
-**Delegated execution.** `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim**, the already-resolved mode, and the matching `### EDITOR TARGETS` rows — from the manifest's `## Technical Context`, or in an ultra bundle from the task's own `### Required Interfaces and Contracts` in its phase file. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. **In an ultra bundle the whole task section goes into the prompt**, not just the `Editor:` lines: a delegate that receives only the checklist line loses the implementation steps, the contracts and the acceptance criteria along with the targets. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`. A PR checkpoint task is never delegated.
+**A task carrying a `Measure:` or `Hand-back:` line** is carried out in this session and leaves its row or its report in the plan — `references/balance-measure.md` → `## Step 3.2 — a Measure: task` and `## Step 3.2 — the Hand-back: task`.
+
+**Delegated execution.** `<task details>` is a closed hand-off: whatever is not in it, the delegate does not see. When a task with `Editor:` goes to `develop-agent` or to `unikit-implement-worker`, the dispatch prompt MUST carry the `Editor:` lines **verbatim**, the already-resolved mode, and the matching `### EDITOR TARGETS` rows — from the manifest's `## Technical Context`, or in an ultra bundle from the task's own `### Required Interfaces and Contracts` in its phase file. A delegate that receives only the description implements the task as pure code and both mode gates are bypassed silently. **In an ultra bundle the whole task section goes into the prompt**, not just the `Editor:` lines: a delegate that receives only the checklist line loses the implementation steps, the contracts and the acceptance criteria along with the targets. `manual` is **never executed by a delegate** — the task comes back up marked `⏸️ MANUAL`. A PR checkpoint task, a `Measure:` task and a `Hand-back:` task are never delegated.
 
 **3.3: Handle Blockers**
 
@@ -427,6 +434,8 @@ After successful implementation, update the manifest:
 **A test-checkpoint task (Step 3.2)** — ticked and recorded by `references/test-runs.md` → `## Step 3.4`.
 
 **A PR checkpoint task** — ticked and labelled by `references/pr-checkpoints.md` → `## Step 3.4 — labels`.
+
+**A `Measure:` task** — ticked, or labelled `⏳ AWAITING RESULT`, with its `## Measurements` row written in the same `Edit`: `references/balance-measure.md` → `## Step 3.4 — ticking`.
 
 **The task produced a rule candidate** — a further outcome, recorded in the same pass:
 - Append a row to `## Rule Candidates`: `id | rule | full formulation | from | status`, with `status = open` and `from = task <N.M>`.
@@ -538,6 +547,10 @@ Manual (editor targets):
 - Task {N.M}: {[kind] container → target : action}
 ...
 
+Awaiting results:
+- Task {N.M} — {instruction}
+...
+
 Affected files:
 - Created: {list of created files}
 - Modified: {list of modified files}
@@ -557,7 +570,7 @@ The `Research drifted` line appears **only** when the Step 1 drift check emitted
 
 The `Documentation:` line is the one Step 5.3 names; its value follows from `Docs:` and from whether the `Agent` tool exists, both known at Step 1. The `Test checkpoints: legacy` line appears only for a legacy plan under `Testing: yes` (Step 1) and is omitted otherwise.
 
-The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with its exact instruction, and is **omitted entirely** when there are none.
+The `Manual (editor targets)` block lists every task marked `⏸️ MANUAL` with its exact instruction, and is **omitted entirely** when there are none. The `Awaiting results` block appears only when a task carries the label; the `Hand-back: <path>` line — `references/balance-measure.md` → `## Report lines (Step 4)`.
 
 ### Step 5: Post-Completion Actions
 
@@ -610,6 +623,8 @@ The Implementation Summary (Step 4) carries one documentation line: `Documentati
 
 **5.4: Handle plan file after completion**
 
+A plan with `## Balance Context` never gets the archive line at 5.8, and while one of its tasks is pending no deletion is offered here — `references/balance-measure.md` → `## Counting (Step 2)`, `## Step 5.8 — the hand-back command`.
+
 **If using the flat `.unikit/code/PLAN.md`** (fast-mode plan):
 
 ```
@@ -622,7 +637,7 @@ Options:
 
 Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
-**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** A finished folder plan leaves the active list only through `/unikit-archive`, which Step 5.8 names.
+**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** A finished folder plan leaves the active list only through `/unikit-archive`, which Step 5.8 names (not for a balance plan).
 
 **5.5: MCP Findings handoff**
 
@@ -669,7 +684,7 @@ Next steps:
 - {or "All phases completed — feature is done!"}
 ```
 
-When the plan is a folder plan and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself asks about MCP findings never transferred and rule candidates still open.
+When the plan is a folder plan without `## Balance Context` and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself asks about MCP findings never transferred and rule candidates still open.
 
 When the plan has `## Modules` or PR checkpoint tasks and its whole checklist is done, add before that line: `- PR after verification: /unikit-verify, then /unikit-pr` — printed text, not a call.
 

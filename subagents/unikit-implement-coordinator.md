@@ -95,7 +95,7 @@ The user may provide:
    - Phase grouping (Phase 1, Phase 2, ...)
    - Phase dependencies from the dependencies line (supports both English and localized headers, see "Dependency Parsing" below)
    - Task number and description
-   - Completion status (`[ ]`, `[x]`, `[~]`, `[!]`)
+   - Completion status (`[ ]`, `[x]`, `[~]`, `[!]`; and `⏳ AWAITING RESULT` — a label on a `[ ]` checkbox line: the task is waiting, neither complete nor out of scope; dependent tasks and `Hand-back:` wait, independent ones go on — `unikit-implement`'s balance reference → `## Counting (Step 2)`)
    **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged.
 
    **If `.unikit/system/ultra-plan-read.md` is missing or unreadable, do not block:** treat every plan as a single-file plan and continue exactly as before — a project that predates the ultra port has no bundles to read.
@@ -113,6 +113,7 @@ The user may provide:
    - **Module barrier, defensively.** With `## Modules`, never place phases of two modules in one layer: when the dependency lines of a legacy plan would allow it, move the later module's phases to the next layer and print `INFO [coordinator] module barrier: phase <X> (M<b>) waits for M<a>`. A plan written by `/unikit-plan` already carries the barrier.
 6. **Merge question, before the first layer** — only with `Testing: yes`. Read `unikit-implement`'s test-run reference once — the path is written in `/unikit-implement` Step 1, preloaded above — and run its `## Step 2.5` over this session's scope, which is every pending phase of the plan: count the mergeable points, take the answer from the input when it gives one, otherwise ask once with `AskUserQuestion` (without the tool: the numbered text question, then end your turn). No answer → the points run as written. Then write the marks exactly as Step 2.5 does, before any task is dispatched. Here the last point is a point of the last layer that holds one — layers, not checklist order, decide what runs last. A merged point is skipped by the `Test checkpoint:` branch; the surviving one runs when its layer has finished.
 7. **PR checkpoints and modules** — when the checklist carries a `PR checkpoint:` line or the manifest has `## Modules`, read `unikit-implement`'s PR checkpoint reference once — its path is written in `/unikit-implement` Step 1, preloaded above — and follow it for the whole session. An answer to the PR question given in the input (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`) counts for every point, as the test-run answer does.
+8. **Balance plan** — when the manifest has `## Balance Context`, follow `unikit-implement`'s balance reference — its path is written in `/unikit-implement` Step 1, preloaded above — reading it once, for every `Measure:` and `Hand-back:` task of the session.
 
 ## Dependency Parsing
 
@@ -214,6 +215,8 @@ For each task in the phase, sequentially:
    **Seventh branch — a PR checkpoint task.** You are the executor: carry it out by `## Step 3.2 — the PR checkpoint` of the PR checkpoint reference (or `## Legacy`), after every phase of the module's last layer has finished **and after refinement** — the sidecars' fixes and the commit sidecar's `not_ready` / `excluded_files` are handled first, in place of the commit point that closes the module — and mark it by `## Step 3.4 — labels` in the same pass. A worker that hands one back (`returned:` in its output) leaves the task unticked and its phase unfinished; you then execute it here.
 6. If any task fails, stop the phase
 
+   **Eighth branch — a task carrying a `Measure:` or `Hand-back:` line:** never handed to a worker; this agent carries it out itself, in its own session, after the worker has returned the other tasks of the phase and after the layer's test checkpoints — workers → the test-checkpoint tasks of the layer → the `Measure:` tasks — so a measurement runs on a verified build, by the same reference the `/unikit-implement` skill follows (`unikit-implement`'s balance reference — its path is written in `/unikit-implement` Step 1, preloaded above). The one exception is the final `Test checkpoint: plan` of a balance plan: it stands directly above `Hand-back:`, after the last phase's `Measure:` tasks, so it runs after them (it checks the plan's code; the measurements add only rows), and `Hand-back:` follows it.
+
 ## Parallel Phase Dispatch
 
 When multiple independent phases are ready, dispatch one `unikit-implement-worker` per phase.
@@ -230,7 +233,8 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
   - **`editor_mode:`** — the `Editor tasks` value from the plan's `## Settings`. Absent from the plan → pass `manual`, never `direct`
 - **A test-checkpoint task is never handed to a worker.** A task carrying a `Test checkpoint:` line is withheld from the set copied to the worker and stays with the coordinator. The reason is measured: the test runner is one per editor, and two workers of the same layer starting a run at the same moment get a refusal of the "test run already active" kind rather than two results.
 - **A PR checkpoint task is never handed to a worker.** A task carrying a `PR checkpoint:` line is withheld from the set copied to the worker and stays with the coordinator: it asks the user and may end the run.
-- **The run is performed by the scope owner — the coordinator — once the layer has finished.** The order is: every phase of the layer completes → the coordinator executes that layer's test-checkpoint tasks (`## Step 3.2` of the test-run reference) → the next layer. This holds whether or not anything was merged: the single runner decides it, not merging.
+- **A `Measure:` task and a `Hand-back:` task are never handed to a worker.** They are withheld from the set copied to the worker and stay with the coordinator: a measurement owns the game session and the `## Measurements` table alone, and the hand-back builds a document.
+- **The run is performed by the scope owner — the coordinator — once the layer has finished.** The order is: every phase of the layer completes its ordinary tasks → the coordinator executes that layer's test-checkpoint tasks (`## Step 3.2` of the test-run reference) → in a balance plan, the `Measure:` tasks of the layer's phases, after the tests, one phase at a time when it holds a game-session or probe measurement → the next layer; the final `Test checkpoint: plan` of a balance plan is the exception and follows the last layer's `Measure:` tasks. This holds whether or not anything was merged: the single runner decides it, not merging.
 - Maximum **3 parallel workers** per layer. If more phases are ready, split into sub-batches.
 - **Ultra, blocking:** a task present in the manifest's checklist whose `## Task N.M:` section exists in no phase file, or exists in more than one, is an integrity violation. Stop and report it; do not dispatch that phase with a one-line description standing in for the missing specification.
 
@@ -385,6 +389,8 @@ Status: complete | partial | failed
 Remaining tasks: [list if any]
 Test runs: <n> performed · <m> merged · <r> reused
 PR checkpoints: <same form as /unikit-implement Step 4>
+Awaiting results: <n> task(s) — <task id and instruction, one per line>
+Hand-back: <report path> · 🧭 <command from the task's to: field>
 Rule candidates: <n> recorded — /unikit-implement will propose them at the end of the call
 MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them into
   .unikit/MCP-RECHECK-NOTES.md
@@ -396,6 +402,8 @@ MCP findings: <n> recorded — run /unikit-mcp-trap <plan path> to move them int
 The `MCP findings:` line appears **only when the plan's `## MCP Findings` table has rows**, and is omitted entirely otherwise — no "none this run" line. A run without findings is the ordinary case, and announcing it every time is how the line stops being read.
 
 The `PR checkpoints:` line appears only when the session met a PR checkpoint.
+
+The `Awaiting results:` line appears only when a task carries the `⏳ AWAITING RESULT` label; the `Hand-back:` line appears only when this session carried out the `Hand-back:` task. Both stand before the closing line: that line is the agent session's own message, not the plan's output, and step 5.8 of `/unikit-implement` does not run in a coordinator session — which is why the return command travels in the `Hand-back:` line.
 
 The `Test runs:` line follows the same rule: it is omitted entirely under `Testing: no`, and omitted when no run was performed or reused in this session. `reused` counts final runs closed by reuse (the test-run reference, `## Step 3.2`, item 4) — they were not performed, and counting them as performed would claim a run nobody started. Same reasoning — a line printed every time stops being read.
 

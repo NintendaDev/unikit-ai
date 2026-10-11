@@ -3,7 +3,7 @@
 # Game-Design Module
 
 UniKit ships a second knowledge module, **`gamedesign`**, dedicated to authoring a
-**Game Design Document (GDD)**. It installs eleven `unikit-gd-*` skills, a
+**Game Design Document (GDD)**. It installs twelve `unikit-gd-*` skills, a
 domain-knowledge rule library, and a set of system-asset contracts. Design artifacts
 live in their own workspace (`.unikit/gamedesign/`) and are authored in the project's
 configured language; **ids / keywords / canonical terms / formulas stay English**.
@@ -25,7 +25,8 @@ A GDD is authored along three machine-readable axes plus the one-page whole:
 | **flows** | `/unikit-gd-flow` | `flows/FLOW-<slug>.md` | "what the player does over time" (dynamics) |
 | **content** | `/unikit-gd-content` | `content-types/CT-<slug>.md` | "what content exists and by what schema" (the catalog) |
 
-Ideation (`/unikit-gd-brainstorm`), research (`/unikit-gd-explore`), multi-zone dispatch
+Ideation (`/unikit-gd-brainstorm`), research (`/unikit-gd-explore`), measured balance
+(`/unikit-gd-balance` — tunes numbers one measured checkpoint at a time), multi-zone dispatch
 (`/unikit-gd-apply` — carries out an explicit edit spanning several axes by routing each
 delta to its owner, then verifying), quality review (`/unikit-gd-review`), and mechanical
 verification (`/unikit-gd-verify`) round out the module. The machine truth for every axis is `GD-IDS.yaml`; the human-readable maps at
@@ -33,14 +34,15 @@ the bottom of `GAME.md` (`## System Map [gen]` / `## Flow Map [gen]` / `## Funne
 / `## Content Map [gen]`) are **rendered read-only** from it — never hand-edited.
 
 See **The pipeline** below for the order these skills run in, **Research** for
-`/unikit-gd-explore`'s lenses, **Multi-zone edits** for how `/unikit-gd-apply` dispatches,
-and **Review vs Verify** for how the two quality gates hand results onward.
+`/unikit-gd-explore`'s lenses, **Balance** for the measured loop of `/unikit-gd-balance`,
+**Multi-zone edits** for how `/unikit-gd-apply` dispatches, and **Review vs Verify** for how
+the two quality gates hand results onward.
 
 ---
 
 ## Domain-knowledge rules
 
-Alongside the eleven skills, the `gamedesign` module installs a **domain-knowledge rule
+Alongside the twelve skills, the `gamedesign` module installs a **domain-knowledge rule
 library** from the same registry that serves `code` rules — fetched via
 `unikit-ai rules install` / `sync`, module-scoped with `--module gamedesign`. See
 [Dynamic Memory](dynamic-memory.md#modules-code-vs-gamedesign) for how installation and
@@ -112,6 +114,8 @@ flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynami
             │                                 picks the wiring mode + re-renders ## Flow Map [gen] / ## Funnel [gen]
 content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *catalog* (typed CT.fields schema,
             │                                 scale bulk|curated) + re-renders ## Content Map [gen]; the editor owns the values
+balance:  /unikit-gd-balance       (optional) per subject: investigate → ONE detailed Balance Checkpoint → /unikit-plan
+            │                                 → /unikit-implement → /unikit-verify → hand-back report → /unikit-gd-balance again
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → verdict → two buckets (apply-ready / research)
             │
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" → 4 tracks → apply-ready
@@ -137,7 +141,8 @@ from skipping to implementation.
 | A live game / existing code but no GDD | `/unikit-gd-recon` (reconstruct a `RECON.md` skeleton) | `/unikit-gd-spec <RECON.md>` (import) |
 | A GDD, want to detail a system | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | A GDD, want a new mechanic | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
-| A GDD, want to know how a system is actually built in code | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| A named slice of the code, want to know how it is actually built (a GDD is not required) | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| A subject whose numbers need tuning (a GDD is not required) | `/unikit-gd-balance <topic>` | `/unikit-plan full <path to CHECKPOINTS.md>` |
 | A GDD, several decided edits across zones | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | A GDD, want to publish/export it for people to read | `/unikit-gd-docs` (`--web` for HTML) | share the rendered docs |
 
@@ -286,7 +291,7 @@ command.
 |---|---|---|---|
 | **Reference & market** | external references, market signals (`references/market-scan.md`) | dissecting a reference game's mechanics → dynamics → aesthetics, checking a genre/mechanic's market fit | `.unikit/gamedesign/researches/<slug>/` |
 | **Internal design** | the GDD workspace, read-only | improving an existing system, inventing a new mechanic, or working out a flow — for *this* game | a research brief + a routed next command |
-| **Code-grounded** | the named code slice, read-only, post-GDD | "how is our X actually built?" | a brief tagged `provenance: extracted from code` — see **Brownfield adoption** below |
+| **Code-grounded** | the named code slice, read-only, with or without a GDD | "how is our X actually built?" | a brief tagged `provenance: extracted from code` — see **Brownfield adoption** below |
 
 `/unikit-gd-brainstorm` delegates to the reference & market lens at its Phase 3.5 for
 market validation — the brief returns directly into the brainstorm session, with no
@@ -320,6 +325,36 @@ Two research artifacts behave differently on re-entry: a **review file**
 apply-ready fix, closing with one `/unikit-gd-apply reviews/X.md` — while a fresh topic
 gets its own `researches/<slug>/` folder, and a `RECON.md` keeps the reconstruction
 and gains a `## Explorations` backlink.
+
+---
+
+## Balance — `/unikit-gd-balance`
+
+A balance document is a closed, steered loop rather than a one-off report:
+`balance → plan → implement → verify → balance <report>`. `/unikit-gd-balance` reads the
+intent from the request (a topic, a research, a pasted or named hand-back report, a change of
+decision, or "where are we"; no arguments lists the five latest documents), investigates
+itself (code is read-only and tagged `provenance: extracted from code`), keeps the document
+under `.unikit/gamedesign/balance/<slug>/`, and issues **one** detailed Balance Checkpoint at a
+time:
+
+- `BALANCE.md` — what is known, tagged by source (`measured` · `extracted from code` ·
+  `decided by user` · `estimate`), the diagnosis by layer, the levers, the closing set Q1–Q11;
+- `CHECKPOINTS.md` — a header (`Slug`, `Status`, `Current`, `Updated`), a coarse `## Roadmap`,
+  the one detailed `## Current Balance Checkpoint`, and an append-only
+  `## Balance Checkpoint Log`;
+- `results/HB-<n>.md` — received hand-back reports, copied verbatim.
+
+`INDEX.md` — the derived list of all documents — is not inside `<slug>/`: it sits one level
+above the document folders, in `.unikit/gamedesign/balance/`.
+
+The last block of every issuing turn is the ready command `/unikit-plan full <path to
+CHECKPOINTS.md>` (`full` by default; `fast` when the point is plainly small, `ultra` only when
+you name it): the planner finds the current point itself and builds a plan **only up to it**,
+because the returned data may change what comes next. The report that the executor hands back
+has one owner, `.unikit/system/balance-handback.md`. Closing is soft: unclosed questions block
+neither issuing a point nor saving. A balance document is not registered in `GD-IDS.yaml` and
+never edits the GDD — a design change it proposes goes through `/unikit-gd-system`.
 
 ---
 
@@ -556,8 +591,9 @@ writeback above they make up the boundary's three sanctioned exceptions):
    `.unikit/DESCRIPTION.md` and `.unikit/ARCHITECTURE.md` — never `.unikit/code/` or
    actual source — to flag a design the real tech stack can't support (a Critical
    finding, evidenced by the line it relied on).
-2. The **brownfield research verbs** (`/unikit-gd-recon`, and the `/unikit-gd-explore`
-   code-grounded lens) — covered next.
+2. The **brownfield research verbs** (`/unikit-gd-recon`, the `/unikit-gd-explore`
+   code-grounded lens, and `/unikit-gd-balance` for the slice a balance document names) —
+   covered next.
 
 ---
 
@@ -566,8 +602,8 @@ writeback above they make up the boundary's three sanctioned exceptions):
 A team with a **live game and no GDD** has nothing to import — the only source of design
 facts is the code itself. The module resolves this without reopening the boundary above
 by quantising the crossing into read-only research verbs sitting at the module's I/O
-edges: two inputs (`/unikit-gd-recon`, and the `/unikit-gd-explore` code lens — item 3 in
-the exceptions list above) and one output (`/unikit-gd-docs`, covered at the end of this
+edges: three inputs (`/unikit-gd-recon`, the `/unikit-gd-explore` code lens, and
+`/unikit-gd-balance` — the third exception in the list above) and one output (`/unikit-gd-docs`, covered at the end of this
 section). Each only ever *reads* code into a *document*, or *reads* the workspace into
 human-readable pages — none of them author the GDD.
 
@@ -576,8 +612,10 @@ INPUT (code → design)            CORE (authoring zones)           OUTPUT (desi
   unikit-gd-recon        ┐                                      ┌  unikit-gd-docs
   (cold-start, whole     ├─▶  spec · system · flow · content  ─┤  (workspace → docs/design/)
    project → RECON.md)   │       (these NEVER read code)        │
-  unikit-gd-explore      ┘                                      └
-   (code lens, a slice)
+  unikit-gd-explore      ┤                                      └
+   (code lens, a slice)  │
+  unikit-gd-balance      ┘
+   (a named slice → a balance document)
 ```
 
 ### `unikit-gd-recon` — cold-start reconstruction
@@ -604,11 +642,23 @@ Intent-Gap items the code is silent on.
 
 ### `unikit-gd-explore` — the code-grounded lens
 
-The post-GDD, **targeted** counterpart: when a GDD already exists and the question is "how
-is *our* X actually built?", the explore lens reads the named code slice (read-only) and
+The **targeted** counterpart: when the question names a slice of the code — with or without
+a GDD — such as "how is *our* X actually built?", the explore lens reads the named code slice (read-only) and
 folds the findings into a research brief, tagged the same `provenance: extracted from code`.
 Recon and this lens share one extraction engine (`unikit-gd-recon/references/code-recon.md`)
 so the heuristics never diverge.
+
+Every saved research carries an `## Active Summary` (goal, scope, the decisions, risks and
+open questions it cites by id — `F-<n>`, `DEC-<n>`, `RISK-<n>`, `OQ-<n>` — never their values)
+and an append-only `## Sessions` log, and **every save ends with a coherence gate**: a
+fresh-context `check-agent` pass re-reads the record and the brief from disk, checks five
+criteria (the summary stands alone, ids resolve both ways, claims are tagged by evidence, one
+value lives in one place) in at most two passes, and writes its verdict into the session's
+`Gate:` field. Naming `ultra` in the request (`/unikit-gd-explore ultra <topic>`) additionally
+pins the dialogue log (`SOURCE.md`) while the conversation goes on and saves adaptive artifacts
+(decision records, a model, a measurement protocol, phases, a dependency graph) with an
+`## Artifact Index` and nine integrity checks before the gate. Ultra is never inferred from the
+size of a topic.
 
 ### Provenance — code-sourced is *suspect*, not trusted
 

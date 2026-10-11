@@ -300,6 +300,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 
 - Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
 - The plan folder holds `recon/` → read `{{skills_dir}}/{{self_name}}/references/recon-baseline.md` and follow it: it sets the scope of Step 2 from the plan's reconnaissance and adds a report section. No `recon/` → the file is not read.
+- **The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-sync.md` and follow it: it synchronises the plan with the current Balance Checkpoint and never rewrites it. Missing → `WARN [balance] balance-sync reference missing — plan not synchronised; run unikit-ai update`.
 - If the manifest has a `## Based on` section → parse all linked research entries (folder name + the recorded hash field for each — the form it takes is resolved by the research-link contract's ladder in Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH.md` — `## Active Summary` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
 
 Understand:
@@ -464,7 +465,7 @@ Compare the plan against what you found. Categorize issues:
 - Missing test tasks for new systems
 
 **3.2: Task quality issues**
-- Descriptions too vague (no file paths, no specific implementation details) — a test-checkpoint task, and a PR checkpoint task with no `Files:` is normal: neither leaves anything in the project
+- Descriptions too vague (no file paths, no specific implementation details) — a test-checkpoint task, and a PR checkpoint task with no `Files:` is normal: neither leaves anything in the project; in a plan with a `## Balance Context` the `Measure:` and `Hand-back:` tasks carry no `Files:` either — normal, never a finding
 - Missing specific class names or namespaces
 - Incorrect assumptions about existing code
 - Missing reference to existing patterns that should be followed
@@ -503,7 +504,7 @@ Each finding goes into the 🔄 Dependency Fixes group in the format below — i
 Read the setting from the plan's `## Settings` and check the plan against it. Each of these is a finding with a proposed fix, never an automatic change:
 
 - under `phase` or `plan` — a test-run command sitting in a per-task `### Tests` or `### Verification` (Integrity Check 10: in that mode a run lives only in a test-checkpoint task, and a command left here is executed a second time by `/unikit-verify`);
-- under `Testing: yes` — no final task carrying `Test checkpoint: plan` (Integrity Check 11: the final full run has no off switch);
+- under `Testing: yes` — no final task carrying `Test checkpoint: plan` (Integrity Check 11: the final full run has no off switch; in a plan with a `## Balance Context` the final task is `Hand-back:` and the final full run stands directly above it — that is not a finding);
 - a test-checkpoint task standing immediately after another with nothing changed between them;
 - a `## Phase Completion Checklist` that restates the run instead of leaving it to the task's own checkbox.
 
@@ -689,7 +690,7 @@ Based on user's choice, apply changes sequentially.
 
 Use `Edit` for every change. **`Write` over a plan manifest is forbidden** — the file carries `## Technical Context` (and, in an ultra bundle, `## Phase Index`), and a regenerating write silently drops whatever the current pass did not reconstruct. When a change is too large for a single `Edit`, split it into several `Edit` calls; do not fall back to `Write`.
 
-**Executor data is preserved whole.** `## MCP Findings`, `## Rule Candidates` and `## Test Runs` are carried over with all their content — rows, candidate statuses and the run log alike. They are not a draft of the plan: they are what execution recorded, and this skill has no authority to edit or drop them. That is one more reason the `Write` ban above is absolute rather than a preference.
+**Executor data is preserved whole.** `## MCP Findings`, `## Rule Candidates`, `## Test Runs` and `## Measurements` are carried over with all their content — rows, candidate statuses and the run log alike. They are not a draft of the plan: they are what execution recorded, and this skill has no authority to edit or drop them. That is one more reason the `Write` ban above is absolute rather than a preference.
 
 **Editing an ultra bundle.** The manifest and every affected phase file are edited **together** — never regenerate the manifest alone when phase detail changed, and never write a checkbox into a phase file. After the write, re-run the bundle integrity checks named in `.unikit/system/ultra-plan-read.md`; a bundle left inconsistent by an improvement blocks the next consumer that opens it.
 
@@ -706,6 +707,7 @@ For each new task from the report:
 **Test-checkpoint tasks.** When adding tasks, honour the policy the plan itself records — the `Test checkpoints:` line in `## Settings`. The grammar and how a run's width is derived are canonical in `unikit-plan/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate them here**.
 
 - **New tasks are inserted ABOVE the final full run** (`Test checkpoint: plan`). A task that ends up after it will be run by nothing at all: the final full run being last is exactly what REQ-007 rests on.
+  In a plan with a `## Balance Context` new tasks go above `Hand-back:` as well — `references/balance-sync.md` → `## Synchronising by item id`.
 - **No `Test checkpoints:` line in the plan (legacy) → add no test-checkpoint tasks.** The placement was never declared, and guessing it while editing someone else's plan is not this skill's call. Say so as a finding, and print `WARN [testing] plan carries no Test checkpoints: line — no test-checkpoint tasks were added`. The refusal has to be loud: silently adding nothing is indistinguishable from a run not being needed.
 - A new phase that changes executable code, under `Test checkpoints: phase` → give it a checkpoint by the same trigger the planner uses; if the phase does not meet that trigger, its goals pass to the next checkpoint, and the phase text says so in one line.
 - Under `Testing: no`, no test-checkpoint task is added at all.
@@ -715,7 +717,7 @@ At the start of the edit print one line — `INFO [testing] plan policy: checkpo
 **Plans with modules.** When the plan has `## Modules` or any `PR checkpoint:` line, print `INFO [plan] modules: <n>, PR checkpoints: <yes|no|legacy>` next to that line, and insert by the grammar in `unikit-plan/references/TASK-FORMAT.md` → `### Modules section`. Only the insertion decisions are stated here:
 
 - a new task of an existing module goes above that module's PR checkpoint task and its module test-checkpoint task;
-- a new module after the last: under `PR checkpoints: yes` the former last module gets a PR checkpoint task at the end of its closing phase and a `PR: task N.M` field, and under `Testing: yes` the final full run moves to the new last phase;
+- a new module after the last: under `PR checkpoints: yes` the former last module gets a PR checkpoint task at the end of its closing phase and a `PR: task N.M` field, and under `Testing: yes` the final full run moves to the new last phase — except in a plan with a `## Balance Context`, which takes no module after the last: nothing stands after `Hand-back:` (`references/balance-sync.md` → `## Horizon`);
 - a new module before the first gets phase `0` and, under `PR checkpoints: yes`, its own PR checkpoint task;
 - a new module between two modules is not created — its work joins an existing module, above that module's PR checkpoint;
 - `## Modules` and the module barrier in the `**Dependencies:**` lines are updated in the same edit; `PR checkpoints: yes` is never written or removed here; no task is renumbered.

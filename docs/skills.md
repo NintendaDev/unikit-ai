@@ -96,6 +96,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - **Modules** - full and ultra plans are always sliced into modules the base branch can take whole, listed under `## Modules` when there are two or more (or one longer than four phases, with a `why long:` note); a module boundary is a layer barrier, and a commit range never crosses one. With `git.pull_requests.checkpoints: true` every module but the last ends with a **PR checkpoint task**. The manifest records `Planned at:`, the commit the plan's work starts from
 - **Two ultra writing protocols** - standard by default, or with saved state in the plan folder's `.planning/` (chosen by the first ultra question; a standard plan over 12 phases is offered the switch); saved state survives a compaction and resumes with `/unikit-plan ultra <name>`
 - **Merge plan** - asked to merge a named branch into the current one, it analyses the merge itself (or reuses a fresh merge exploration) and writes the plan that carries it out: `fast` in `.unikit/code/PLAN.md`, `full` or `ultra` in `.unikit/code/plans/merge-<slug>/`, always on the current branch. The mode question has three options, `ultra` last and never recommended; the merge commit is made by the plan's own last merge task, not by `/unikit-commit`
+- Given a Balance Checkpoints file (a `CHECKPOINTS.md` path, a folder or slug under `.unikit/gamedesign/balance/`) it finds the current point itself and plans only up to it: a `## Balance Context` snapshot, `Measure:` and `Item:` tasks, a final `Hand-back:`; it never creates or switches a branch for such a plan
 
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
@@ -112,6 +113,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - `--list` shows available plans; `@<path>` targets a specific plan folder
 - **Builds on the plan's reconnaissance** when the plan kept it (`recon/`, an ultra plan written with saved state): each recon file is a topic, with the phases it covers, their open tasks and how fresh it is (paths changed since its `HEAD`). Without a prompt it shows the topics and asks what to improve - all fresh topics with open tasks by default, or chosen ones, or the whole plan as before; with a prompt it takes only the topics the prompt touches. Fresh reconnaissance replaces a new exploration, changed paths are explored again, the plan's logic (dependencies, modules, commit ranges) is checked across the whole plan either way, and only heads and single sections of recon files are read. The reconnaissance itself is never edited
 - `+check` runs the refinements past a **fresh-context validator** before they are applied - a read-only subagent that drops, modifies, or reclassifies findings it cannot substantiate. If the validator fails to launch, the pass is skipped: every finding is kept and a single `WARN [+check]` line is printed
+- A balance plan: synchronises the plan with the current point by small edits keyed on `Item:`, never goes past `Hand-back:`, never touches `## Measurements` or the balance document
 
 ### `/unikit-implement [--list] [@folder] [selector]` - execute the plan
 
@@ -138,6 +140,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - `@<path>` bypasses auto-detection for explicit plan targeting
 - At a **PR checkpoint** it commits the module and asks once: check the module (`/unikit-verify` on its phases, `/unikit-review` of its commits), run `/unikit-pr` and continue, stop here, or merge into the next PR — answers can be given in advance (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`). While a plan has PR checkpoints, the run never pushes. In an ultra plan it checks, at a module boundary, whether the evidence the next module was planned on has changed
 - While a merge is unfinished (a `MERGE_HEAD` exists) the uncommitted-changes question has no stash option: stashing would silently drop the merge
+- A balance plan: `Measure:` tasks write rows into `## Measurements` (route by principle A9 and ladder D3, never `⏸️ MANUAL`), an unobtainable result waits as `⏳ AWAITING RESULT`, and `Hand-back:` builds the report and prints the return command last
 
 ### `/unikit-fix [bug description]` - fix and learn
 
@@ -168,6 +171,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - Takes the base branch from `git.base_branch`, and the plan's changed files from the commit it was planned at as well as from the base — modules already merged into the base branch stay in scope
 - `Phases N-M` checks one module: only its tasks and its range, the module's test state from `## Test Runs` instead of the `Full run:` check (no question under `--strict` either), no design stamp. A PR checkpoint task is read from its checkbox
 - After a clean check of a whole plan it offers **Pull request — run /unikit-pr**
+- A balance plan: checks the validity of the data (runs, build, known-answer check) and the report, not whether the balance is good; reports `WARN [balance-drift]` when the live point has moved on, reading only the header of the checkpoints file
 
 ### `/unikit-commit [scope]` - conventional commits
 
@@ -350,11 +354,11 @@ This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the f
 
 ## Game Design Skills
 
-The `gamedesign` module adds eleven `unikit-gd-*` skills for authoring a Game Design
+The `gamedesign` module adds twelve `unikit-gd-*` skills for authoring a Game Design
 Document along three machine-readable axes — **systems** (the rules), **flows** (the
 dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. The quick-reference
 entries below follow the pipeline order (recon/brainstorm → spec → system/flow/content →
-review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
+balance → review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
 treatment - the axis model, the Decision-First authoring contract, review vs. verify, the
 genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 
@@ -380,16 +384,19 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - Delegates market validation to `/unikit-gd-explore` at Phase 3.5 (a brief returns into the session - no `researches/` file, avoids anchoring on market data too early)
 - Writes a descriptive, CLI-free `genre:` hint into the concept card - see **Genre profiles** in [Game-Design Module](gamedesign.md)
 
-### `/unikit-gd-explore [init | topic | reference | market question | reviews/*.md | RECON.md | "<system> in the code"]` - design research partner
+### `/unikit-gd-explore [init | ultra <topic> | topic | reference | market question | reviews/*.md | RECON.md | "<system> in the code"]` - design research partner
 
 ```
 /unikit-gd-explore how do roguelike deckbuilders handle run-modifiers
 /unikit-gd-explore improve the crafting system                    # internal-design lens
-/unikit-gd-explore how is the inventory system actually built in the code   # code-grounded lens
+/unikit-gd-explore how is the inventory system actually built in the code   # code-grounded lens (no GDD needed)
+/unikit-gd-explore ultra the progression of our economy           # pinned log + artifacts + coherence gate
 /unikit-gd-explore init                                           # rebuild researches index
 ```
 - Read-only research partner - studies references, market fit, or the existing GDD/code; **never authors** the design itself
-- Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
+- Four lenses: reference & market (dissection, market signal), internal design (improve a system / work out a new mechanic, closes with a mode-aware brief), code-grounded (the sanctioned one-way-boundary exception - reads a named code slice with or without a GDD, tags findings `provenance: extracted from code`), and research-bucket (develops a review's open questions in place)
+- Every saved research has an `## Active Summary` (ids cited, values never repeated) and an append-only `## Sessions` log, and ends with a fresh-context coherence gate (`check-agent`, at most two passes, verdict in `Gate:`)
+- `ultra` (named by the user, never inferred) also pins the dialogue log to `SOURCE.md` as you talk and saves adaptive artifacts with an `## Artifact Index` and integrity checks
 - Saves to `.unikit/gamedesign/researches/<slug>/`; a review file is mutated in place instead of getting a new folder
 - Routes onward without asking based on the target's `doc_status` (no doc → spec add-system; `skeleton` → system; `detailed` → system as a delta); flow targets always go to `/unikit-gd-flow` and content types to `/unikit-gd-content`, in any state
 
@@ -435,6 +442,18 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - `CT.fields` is a typed schema; `ref<>` makes a content↔X link a field; `scale` is `bulk` (a `count`+`spec` descriptor) or `curated` (`fields` rows in the registry)
 - Registers itself (`content_types:` / `content:` + RES/TRACK/KNOB) and re-renders `## Content Map [gen]`
 - `belongs_to` names the consuming system (one-way); a missing system routes to `/unikit-gd-spec` add-system
+
+### `/unikit-gd-balance [<slug> | <topic> | <research path> | <report>]` - the balance loop
+
+```
+/unikit-gd-balance                                  # five latest documents + the next action
+/unikit-gd-balance the economy of the first world   # start a balance document, issue one checkpoint
+/unikit-gd-balance <path to a hand-back report>     # receive results, decide, issue the next checkpoint or close
+```
+- Owns `.unikit/gamedesign/balance/<slug>/` (`BALANCE.md`, `CHECKPOINTS.md`, `results/`) and the derived `.unikit/gamedesign/balance/INDEX.md` above the document folders (not inside `<slug>/`); the intent is read from the request, there are no flags
+- Investigates by itself (reads code read-only, tags facts `provenance: extracted from code`, runs `recon-agent` for wide questions), issues **one** detailed Balance Checkpoint and closes every issuing turn with `/unikit-plan full <path to CHECKPOINTS.md>` (`full` by default, `fast` when the point is plainly small, `ultra` only when you name it)
+- Receives a hand-back report (format: `.unikit/system/balance-handback.md`), matches it to a document or asks, revises the roadmap, issues the next point or closes - softly: unclosed questions block nothing
+- Never edits the GDD or code and does not register in `GD-IDS.yaml`; a design change is left as a proposal for `/unikit-gd-system`
 
 ### `/unikit-gd-review [system name | SYS-slug | path | "all"]` - qualitative design review
 

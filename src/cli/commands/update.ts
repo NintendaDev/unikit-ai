@@ -9,7 +9,7 @@ import {
   buildManagedSubagentsState, updateSubagents,
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -328,6 +328,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh the merge-analysis protocol (read by explore and plan when asked to merge a branch)
     await installMergeAnalysisContract(projectDir);
+
+    // Refresh the balance hand-back report contract (read by plan/implement/verify and unikit-gd-balance)
+    await installBalanceHandbackContract(projectDir);
 
     // `update` does not re-ask for servers, but the selection still moves under
     // it: editing `.unikit.json` and re-running is how an engine switch reaches

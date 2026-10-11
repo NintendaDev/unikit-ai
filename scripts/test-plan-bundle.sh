@@ -64,6 +64,26 @@ expect_fail pr-not-last 13
 expect_fail barrier-missing 14
 expect_fail commit-crosses-module 15
 
+# check 11 in a balance plan: Hand-back: is the last task and the full run stands directly above it;
+# the same plan without ## Balance Context, a run that is not directly above, and a Hand-back: whose
+# WHY merely mentions the run (a substring match would let it through) all fail
+run check "$FIXTURES/balance-handback-last"
+check "balance-handback-last: Hand-back last, the full run directly above it — OK 7 checks" '[[ $LAST_CODE -eq 0 ]] && grep -qxF "OK 7 checks" <<< "$LAST_OUT"' "$LAST_OUT"
+expect_fail handback-without-context 11
+expect_fail balance-no-full-run-above 11
+expect_fail handback-why-mentions-run 11
+# the format names ONE form: Hand-back: last, the run directly above it. Hand-back: first with the
+# run last, and an ordinary task above Hand-back: that merely names the run in its WHY, both fail
+expect_fail balance-handback-first 11
+expect_fail balance-ordinary-why-mentions-run 11
+# a balance plan names exactly ONE Hand-back: — a snapshot with none, or with two, is not a balance plan
+# (the plain run-last rule would let both through under Testing: no or with a run last)
+expect_fail balance-without-handback 11
+expect_fail balance-two-handbacks 11
+# the other side of the rule: under Testing: no there is no final run, and one Hand-back: last passes
+run check "$FIXTURES/balance-handback-no-tests"
+check "balance-handback-no-tests: Testing: no, exactly one Hand-back: last, no final run — OK 7 checks" '[[ $LAST_CODE -eq 0 ]] && grep -qxF "OK 7 checks" <<< "$LAST_OUT"' "$LAST_OUT"
+
 run check "$TMP_ROOT/does-not-exist"
 check "a missing folder is an I/O error, exit 1" '[[ $LAST_CODE -eq 1 ]] && grep -q "^ERROR " <<< "$LAST_OUT"' "$LAST_OUT"
 run

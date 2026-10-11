@@ -74,6 +74,8 @@ On Kimi Code the dispatch right comes from the agent file instead: only an agent
 
 If a coordinator detects that it is running as an ordinary subagent, it must stop immediately - that is how `unikit-plan-coordinator` and `unikit-implement-coordinator` are written.
 
+`unikit-implement-coordinator` never hands a `Measure:` or a `Hand-back:` task of a balance plan to `unikit-implement-worker`: it carries them out itself in its own session after the worker has returned the phase's other tasks, and the worker returns such a task unexecuted if one reaches it.
+
 Everything else (`unikit-implement-worker`, `unikit-plan-polisher`, sidecars, delegation aliases) is spawned automatically from the coordinator or a workflow skill. Users normally never launch those by hand.
 
 ## Coordinators
@@ -86,6 +88,7 @@ Dependency-aware plan execution.
 - With `Testing: yes` and two or more test-checkpoint tasks in its scope, asks once before the first layer whether to merge their test runs (the same question as `/unikit-implement`; no answer in a non-interactive run → runs as written)
 - **Single ready phase** → executes tasks directly inside the coordinator (no worker overhead). Bootstraps principles + rules (`dev-principles.md`, `RULES.md`, `RULES_INDEX.md`, core rules) before the phase, then writes code inline
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
+- Never hands a `Measure:` or a `Hand-back:` task of a balance plan to a worker - it carries them out itself, in its own session, after the worker has returned the phase's other tasks
 - After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, hands commit checkpoints to the `unikit-commit` skill (it never writes a commit message itself), advances to the next layer
 - Annotates the manifest with layer markers and `[~]` / `[x]` / `[!]` status in real time
 - Under `Testing: yes`, carries the `Full run:` anchor over every commit it makes (the same rule as `/unikit-implement`), and reports a final run closed by reuse apart from a performed one (`Test runs: <n> performed · <m> merged · <r> reused`)
@@ -115,6 +118,7 @@ Executes exactly ONE task from the active plan, then returns control.
 
 - Implements the task, verifies it, runs local quality checks via skill knowledge (no Agent delegation - workers cannot spawn children)
 - Does not create commits; the coordinator owns git state
+- Never executes a `Measure:` or a `Hand-back:` task of a balance plan: one that reaches it is returned unexecuted (`returned: <task id> — Measure/Hand-back belongs to the coordinator`) and no row is written
 - **Writes its own row into the plan's `## MCP Findings` table** when an engine MCP call misled it, rather than returning a candidate to the coordinator. Workers have no worktree isolation, so they all edit the same plan file - which is safe only because a phase carrying an `Editor:` line is alone in its execution layer, leaving one writer at a time. Handing the row back instead would defer the write to the end of the layer and lose it if the coordinator failed
 - Lists `unikit-devcontext` and `unikit-verify` under `skills:` so it has full access to the pipeline knowledge base without spawning anything - Claude Code preloads them, on Kimi Code the installed file starts with a read list (see [Skills listed in an agent file](#skills-listed-in-an-agent-file))
 
@@ -153,8 +157,8 @@ Skills expose six named aliases in two families. The **skill-loading** two expan
 |-------|------------|---------|-------------|
 | `develop-agent` | `Agent(<call head>, prompt: "<skill call: unikit-devcontext> <task details>", …)` | `/unikit-implement`, `/unikit-fix`, `/unikit-verify` | **Only** for true parallel scopes or deep-dive single tasks after the Bootstrap refactor. Default sequential/fallback work stays inline in the calling skill |
 | `docs-agent` | `Agent(<call head>, prompt: "<skill call: unikit-docs> <context>", …)` | `/unikit-implement` (Step 5.3) | Update or create documentation pages |
-| `recon-agent` | `Agent(<reader call head>, prompt: "<focused question> You are read-only: edit and write nothing.")` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon` | Read-only parallel reconnaissance of a codebase or a reference corpus |
-| `check-agent` | `Agent(<reader call head>, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
+| `recon-agent` | `Agent(<reader call head>, prompt: "<focused question> You are read-only: edit and write nothing.")` | `/unikit-docs`, `/unikit-explore`, `/unikit-fix`, `/unikit-plan`, `/unikit-verify`, `/unikit-improve`, `/unikit-gd-explore`, `/unikit-gd-recon`, `/unikit-gd-balance` | Read-only parallel reconnaissance of a codebase or a reference corpus |
+| `check-agent` | `Agent(<reader call head>, …)` in a fresh context | `/unikit-improve`, `/unikit-review` (`+check`), `/unikit-explore` and `/unikit-gd-explore` (coherence gate) | Validate findings, or a written artifact, from a context that saw none of the work |
 | `lens-agent` | `Agent(<worker call head>, …)` | `/unikit-gd-review` | One adversarial review lens, findings only, never a write |
 | `recon-writer-agent` | `Agent(<worker call head>, …)`; if the call fails or the runtime has no subagent tool, `recon-agent` plus a write by the session | `/unikit-plan ultra` (saved-state protocol) | One reconnaissance question answered straight into its `recon/` file in the form of `references/RECON-TEMPLATE.md`, replying with the file's `## Summary` only, so the full answer never passes through the planning context; the only file it may write is that one, and `/unikit-plan` checks `git status` / `git diff` before and after the batch |
 

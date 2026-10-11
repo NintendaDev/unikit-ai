@@ -237,7 +237,7 @@ At that task `/unikit-implement` commits the module and asks one question — ch
 
 While the checklist carries a `PR checkpoint:` line, a run never pushes — every automatic commit passes `no-push`, and the branch reaches the remote through `/unikit-pr` or you. A plan with PR checkpoint tasks but no `PR checkpoints: yes` line (written under a project's own rule) is legacy: its tasks run by their own steps, a `→ skipped` label reads as `⏭️ MERGED`, and a `→ PR` label without a SHA is a boundary found through the commit that added it.
 
-**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`.
+**Section order in the manifest** is a contract, not layout: `## Commit Plan` → `## MCP Findings` → `## Rule Candidates` → `## Test Runs` → `## Measurements` → `## Dependency Graph` → `## Total Estimated Effort` → `---` → `## Technical Context` → `## Open Questions`. `## Measurements` is present only in a plan that has a `Measure:` task ([Balance checkpoint plans](#balance-checkpoint-plans)).
 
 ### Ultra bundle — a manifest plus one file per phase
 
@@ -317,9 +317,58 @@ with `## Phase Index` and `## Checklist`.
 **What the bundle does not change.** Plan discovery is untouched, and so is
 `/unikit-plan --list`. The flat fast plan `.unikit/code/PLAN.md` and `.unikit/code/FIX_PLAN.md`
 are never bundles — a fix plan is architecturally a flat file and stays outside the model.
-The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra mode at all.
+The design axis (`/unikit-gd-*` and `.unikit/gamedesign/`) has no ultra plan bundle at all;
+the ultra research mode of `/unikit-gd-explore` (`/unikit-gd-explore ultra <topic>`: a pinned
+dialogue log and adaptive artifacts in the research folder) is a different thing, and not a
+consumer of the bundle model.
 `/unikit-review` is not a consumer either: it is diff/PR-scoped and reads no plan, so a
 broken bundle passes review in silence, while `/unikit-implement`, `/unikit-verify` and `/unikit-improve` block on it (`/unikit-commit` only warns).
+
+## Balance checkpoint plans
+
+A plan built from a Balance Checkpoints file (`/unikit-plan full <path to CHECKPOINTS.md>`, printed by `/unikit-gd-balance`) carries the extra vocabulary below. `unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar` is the only owner of the forms; this page describes them and copies them from there.
+
+### `## Balance Context` — the snapshot
+
+A snapshot of one point, placed directly before `## Settings`; the plan works from it, never from the live file:
+
+```markdown
+## Balance Context
+Source: .unikit/gamedesign/balance/<slug>/CHECKPOINTS.md
+Point: BCH-2
+Checkpoints updated: 2026-10-10 18:30
+Work:
+- BCH-2.W1 · tool · — · the sampler reproduces a known answer
+- BCH-2.W2 · measure · sim · metric inside the band
+Report: BCH-2.W2, build-notes
+```
+
+The key is `Checkpoints updated:`, not `Updated:` — `Updated:` is the header field of the plan manifest itself and the "latest plan" resolvers read it.
+
+### Task lines
+
+```markdown
+- [ ] Task 2.1 — Measure the metric
+  WHY: the next decision depends on this number
+  Item: BCH-2.W2
+  Measure: [sim] <stand> → <metric> : <acceptance> · runs: <N>
+```
+
+`Item:` links a task to a `Work` item (synchronisation and verification key on it). A `Measure:` task and the final `Hand-back:` task carry no `Files:`: they leave nothing in the project but a table row and a report. `Measure:` writes a capability class (`sim`, `play`, `probe`), never a tool; the executor picks the route by principle A9 and the degradation ladder D3 of `dev-principles.md`.
+
+### `## Measurements`
+
+Emitted empty by the planner when the plan has at least one `Measure:` task; rows are only appended by `/unikit-implement` (and the implement coordinator, in the main session): `id | what | stand | runs | build | result | accept | valid | band | from`. It stands directly after `## Test Runs` (after `## Rule Candidates` under `Testing: no`), above `## Technical Context`.
+
+### `⏳ AWAITING RESULT`
+
+A label on the checkbox line of a measuring task whose result cannot be obtained now; the checkbox stays `- [ ]`. It is **pending** — dependent tasks and `Hand-back:` wait — unlike `⏸️ MANUAL`, which is ticked and counted as out of scope.
+
+### Order and the horizon
+
+Inside a phase: ordinary tasks → the phase's `Test checkpoint:` → `Measure:` tasks → `PR checkpoint:` or `Hand-back:`. The last task is `Hand-back:`; under `Testing: yes` the final `Test checkpoint: plan` stands directly above it. Nothing follows `Hand-back:`, and nothing from the roadmap's later points is in the plan: the returned data may change the decision, and that decision is `/unikit-gd-balance`'s. The plan folder is `.unikit/code/plans/balance-<slug>-bch-<n>/` (a `fast` plan has none: it is `.unikit/code/PLAN.md`, and the report lies next to it, in `.unikit/code/`); the planner creates and switches no branch for such a plan. The executor writes the report to `handback-<point id>.md` in the plan folder (format: `.unikit/system/balance-handback.md`) and prints the return command last: `/unikit-implement` as the last line of its output, the implement coordinator inside the `Hand-back:` line of its summary.
+
+---
 
 ## Editor tasks
 

@@ -88,6 +88,9 @@ Relevant to the dev pipeline:
 - `merge-analysis.md` — how to read a merge before it happens (the three commits, `git merge-tree`
   prediction, a directive per conflicted file), read by `/unikit-explore` and `/unikit-plan` only
   when asked to merge a named branch.
+- `balance-handback.md` — the format of the report that carries a balance checkpoint's measurements
+  back (header, table, matching keys, receiving), read by `/unikit-plan`, `/unikit-implement`,
+  `/unikit-verify` and `/unikit-gd-balance`.
 
 ---
 

@@ -32,6 +32,8 @@ The two pipelines are decoupled - run either one without the other - but they sh
                 (the ONLY write that crosses back to design)
 ```
 
+The balance loop is a separate hand-off, not a `GD-IDS.yaml` seam: `/unikit-gd-balance` passes a `CHECKPOINTS.md` file to `/unikit-plan` and takes a hand-back report back - see **The balance loop** under `/unikit-plan` below.
+
 If a project has no linked `gamedesign` workspace (no `.unikit/gamedesign/GD-IDS.yaml`), `/unikit-plan` and `/unikit-explore` behave exactly as described below - there's simply nothing to read.
 
 ## Project Configuration
@@ -202,7 +204,7 @@ While the plan has PR checkpoints a run never pushes: the branch reaches the rem
 | `/unikit-evolve` | Distill accumulated patches into rules and skill overrides | No | `RULES.md`, `.unikit/skill-context/`, `.unikit/evolutions/` |
 | `/unikit-todo` | Lightweight task tracking | No | `.unikit/TODO.md` |
 
-This table covers the `code` module. For the parallel `gamedesign` skill set (`/unikit-gd-spec`, `/unikit-gd-system`, `/unikit-gd-flow`, `/unikit-gd-content`, `/unikit-gd-review`, `/unikit-gd-verify`, `/unikit-gd-apply`, `/unikit-gd-docs`, …), see [Game-Design Module](gamedesign.md).
+This table covers the `code` module. For the parallel `gamedesign` skill set (`/unikit-gd-spec`, `/unikit-gd-system`, `/unikit-gd-flow`, `/unikit-gd-content`, `/unikit-gd-balance`, `/unikit-gd-review`, `/unikit-gd-verify`, `/unikit-gd-apply`, `/unikit-gd-docs`, …), see [Game-Design Module](gamedesign.md).
 
 ## Self-Learning Memory Through Evolve
 
@@ -307,6 +309,8 @@ Four planning modes plus list:
 - **Add** - extends an existing plan with new tasks; explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that)
 
 Runs 2-4 parallel Explore agents for architecture analysis, pattern discovery, and dependency mapping. Links to related researches if found. For 5+ tasks, includes commit checkpoints. Uses `--base <branch>` to specify a custom base branch.
+
+**The balance loop.** `/unikit-gd-balance` → `/unikit-plan full <path to CHECKPOINTS.md>` → `/unikit-implement` → `/unikit-verify` → `/unikit-gd-balance <report>`. The planner finds the current Balance Checkpoint itself and builds a plan only up to it — the plan holds no work for later points, because the returned data may change what comes next. The plan folder is `.unikit/code/plans/balance-<slug>-bch-<n>/` (a `fast` plan is the flat `.unikit/code/PLAN.md`); no branch is created or switched for it. `/unikit-implement` prints the return command as the last line of its output; the implement coordinator prints it inside the `Hand-back:` line of its summary, with its other summary lines and its session-closing message after it.
 
 When a linked `gamedesign` workspace exists, the plan also pulls a `## Design` brief from `GD-IDS.yaml` (citing the relevant system's acceptance criteria and version), plus optional `## Flow Context` (the `GOAL`-steps and wiring mode) and `## Content Context` (the `CT.fields` schema, `scale`, `belongs_to`) briefs when the feature touches those axes. The pull is read-only - the plan never edits the GDD.
 

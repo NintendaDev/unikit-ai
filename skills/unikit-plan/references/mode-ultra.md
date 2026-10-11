@@ -105,12 +105,14 @@ The **PR checkpoints** subsection is inherited unchanged.
   phase, after that phase's test-checkpoint task.
 - Give each phase a slug (kebab-case, 2-4 words) → the file name `phase-NN-<slug>.md`,
   zero-padded.
-- **A test-checkpoint task belongs to the phase it closes** and stands last in it — only a PR checkpoint task may follow it. A phase
+- **A test-checkpoint task belongs to the phase it closes** and stands last in it — only a PR checkpoint task may follow it (and, in a balance plan, the phase's `Measure:` tasks and, in the last phase, the final `Hand-back:`; the one order is in `TASK-FORMAT.md` → `### Balance checkpoint grammar`). A phase
   without one is normal, not an oversight (`Test checkpoints` is a ceiling): its goals pass to
   the next test-checkpoint task, whose coverage then names both phases. Say so in one line of
   the phase text, so the hand-over does not read as a loss.
 - **The final full run is the last task of the plan's last phase** under `Testing: yes`. No
-  separate phase is created for it.
+  separate phase is created for it; in a plan with a `## Balance Context` it stands directly
+  above the final `Hand-back:`, which is then the last task, and the last phase's `Measure:`
+  tasks come before it.
 
 ## Step D2: Offer saved state on a large plan
 
@@ -183,7 +185,7 @@ phase.**
 | `EDITOR TARGETS` | the phase, `### Required Interfaces and Contracts` of the task carrying the `Editor:` line |
 | `DI BINDINGS` | the phase, the task that creates the binding |
 
-`## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Commit Plan`, `## Settings` and
+`## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`, `## Commit Plan`, `## Settings` and
 the checkboxes live **only** in the manifest. Phase files are read-only during execution.
 
 ## Step H: Confirm with the user

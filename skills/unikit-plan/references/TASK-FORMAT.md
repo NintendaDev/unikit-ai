@@ -65,6 +65,9 @@ Answer: WHAT is done, WHY it is needed, WHAT GOAL it pursues.
 
 If no research — technical context is in the `## Technical Context` section below.
 
+## Balance Context
+(Only when the plan was built from a Balance Checkpoints file — see `### Balance checkpoint grammar`. It is a snapshot: the plan works from it, not from the live file.)
+
 ## Settings
 - Testing: yes/no
 - Test checkpoints: task | phase | plan
@@ -161,6 +164,13 @@ the executor — or by `/unikit-verify --strict`, when the user has it run the f
 - 2026-09-12 · plan · all tests · passed 3363/3363 · tree-sha256 `e5f6a7b8…`
 
 Full run: 2026-09-12 · all tests · passed 3363/3363 · tree-sha256 `e5f6a7b8…`
+
+## Measurements
+
+(Only when the plan carries at least one `Measure:` task. The planner emits the heading and the header row; every row under it is written by the executor.)
+
+| id | what | stand | runs | build | result | accept | valid | band | from |
+|---|---|---|---|---|---|---|---|---|---|
 
 ## Dependency Graph
 
@@ -281,11 +291,11 @@ coverage ∈ task N.M | phase N | phases N-M | plan
 
 Rules:
 
-- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task leaves nothing behind in the project, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — one of the two forms of task in this format without that line; the other is the PR checkpoint task. A temporary probe it creates and removes within its own steps (a negative control: make a test fail, see red, remove the probe, see green) and a manual smoke are legitimate steps of the task; when the task is merged into a later point, they are performed there (`/unikit-implement` Step 3.2).
+- **One line per test-checkpoint task**, in the position an ordinary task gives to `Files:`. A test-checkpoint task leaves nothing behind in the project, so it carries `WHY:` and `Test checkpoint:` and **carries no `Files:`** — one of the two forms of task in this format without that line; the other is the PR checkpoint task. In a plan with a `## Balance Context` the `Measure:` and `Hand-back:` tasks carry no `Files:` either (`### Balance checkpoint grammar`). A temporary probe it creates and removes within its own steps (a negative control: make a test fail, see red, remove the probe, see green) and a manual smoke are legitimate steps of the task; when the task is merged into a later point, they are performed there (`/unikit-implement` Step 3.2).
 - **A run is never narrower than its coverage, and how much wider it goes is decided when it runs, not here:** `task N.M` → the fixtures and classes that task names, always; `phase N` / `phases N-M` → every test in the project by default, or the test suites of the modules those phases touch plus the suites that depend on them when the executor's run settings allow narrowing; `plan` → every test in the project, always. The run settings belong to the executor and are never recorded in the plan — `unikit-implement/references/test-runs.md` → `## Run width`.
 - **The planner writes no list of suites.** The executor computes the set at run time, from the files actually changed. The planner neither reads nor builds a module graph, so planning time does not grow.
 - `task N.M` exists **only in an ultra bundle**: fast and full have no per-task surface to put it on.
-- **When `Testing: yes`, the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch, and it is never merged away nor deferred.
+- **When `Testing: yes`, the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch, and it is never merged away nor deferred. In a plan with a `## Balance Context` the final run stands directly above the `Hand-back:` task (`### Balance checkpoint grammar`).
 - A checkpoint goes **where the change is worth one, not into every phase**: `Test checkpoints:` is a ceiling, not an obligation. The criterion: a check is needed when the phase changes executable code, or a contract other modules rely on; it is not needed when executable code is untouched — documentation, assets and their service files, data no test covers. What counts as an asset or a service file is engine-specific, and the answer lives where the signals for `Editor:` come from: `references/ENGINE_RULES.md` §3.
 - A phase without a check **does not lose its goals**: they pass to the next test-checkpoint task, whose coverage then names both phases (`Test checkpoint: phases 1-2`), and the phase text says so in one line.
 - **Repeats are forbidden:** the phase completion checklist does not restate the run, and a test-checkpoint task never follows another when nothing changed between them.
@@ -322,7 +332,7 @@ Rules:
 
 - **Written only with `PR checkpoints: yes`.** The planner places it when `git.pull_requests.checkpoints: true`, git is enabled and the plan's branch is not `<base>`.
 - **One per module, except the last** — it is the last task of the module's closing phase.
-- With `Testing: yes` and `Test checkpoints: phase | task`, a test-checkpoint task stands directly before it and covers the module's phases no earlier run covered. With `Test checkpoints: plan` there is none — the user chose one run at the end — and the reminder at the PR checkpoint says the module's tests have not run.
+- With `Testing: yes` and `Test checkpoints: phase | task`, a test-checkpoint task stands directly before it and covers the module's phases no earlier run covered. With `Test checkpoints: plan` there is none — the user chose one run at the end — and the reminder at the PR checkpoint says the module's tests have not run. In a plan with a `## Balance Context` the phase's `Measure:` tasks may stand between them (`### Balance checkpoint grammar`).
 - It stands in the position an ordinary task gives to `Files:`, carries `WHY:` and **carries no `Files:`**: it leaves nothing behind in the project.
 - `<base>` is the branch the plan created its branch from: `--base` > `git.base_branch` > `main`.
 - It is never handed to a coordinator worker.
@@ -333,6 +343,61 @@ Rules:
 - **Counting:** a `[ ]` PR checkpoint carrying `⏭️ MERGED → task <N.M>` is not pending.
 - **Legacy:** a PR checkpoint task in a plan without `PR checkpoints: yes` (a plan written under a project's own rule) is executed by its own steps. A `→ skipped` label reads as `⏭️ MERGED` into the next PR checkpoint; `→ PR` without a SHA is a boundary without a SHA, resolved by `.unikit/system/plan-boundaries.md` → `## Module boundary`.
 - **Push:** while the checklist carries at least one `PR checkpoint:` line — in any plan, legacy included — the automatic commits of a run (`/unikit-implement`, the coordinator) do not push (`no-push`). A push or a pull request a human asked for takes the current state (`HEAD`) by default and, in the middle of a module, asks how far it goes: `.unikit/system/plan-boundaries.md` → `## Push target`.
+
+### Balance checkpoint grammar
+
+**When it applies.** Only in a plan that carries a `## Balance Context`. Outside such a plan the lines `Measure:`, `Item:` and `Hand-back:` are not written.
+
+**`## Balance Context`** — five parts, in this order, a snapshot of one Balance Checkpoint; the plan works from it, never from the live file:
+
+```
+Source: <path to the CHECKPOINTS.md file>
+Point: BCH-<n>
+Checkpoints updated: <the Updated value of the live file's header when it was read>
+Work:
+- <work-item id> · <kind> · <via> · <acceptance>
+Report: <names from the point's Until → Report>
+```
+
+The snapshot key is `Checkpoints updated:`, not `Updated:`. The resolvers of "the last plan" read the manifest's `Updated:` line, and `/unikit-archive` inserts `Archived:` under the first `Updated:` line; a second line starting with `Updated:` inside the snapshot would confuse them. The live header field of `CHECKPOINTS.md` is still called `Updated`; only its value lands here, under another key. The manifest's first line `Updated: YYYY-MM-DD` stays the only one.
+
+**The `Item:` line** — `Item: <work-item id>` links a task to a `Work` item of the snapshot. A task without `Item:` (a supporting task that belongs to no item) is allowed and is not touched by synchronisation. Position: the lines of an ordinary task are `WHY:`, `Files:`, `Editor:`; `Item:` stands directly after `Editor:` when there is one, otherwise directly after `Files:`; a `Measure:` task has no `Files:`, so `Item:` stands directly after `WHY:` and the `Measure:` line follows it.
+
+**The `Measure:` line:**
+
+```
+Measure: [sim | play | probe] <stand> → <metric> : <acceptance> · runs: <N>
+```
+
+`sim` is a run without a game session (a script, a simulation); `play` is a run inside a game session; `probe` is a bounded observation or a feasibility check with a recorded value or a go/no-go. The planner writes a **capability class** ("a run in a game session, with a report"), never a tool and never "a person or an agent": the executor chooses the route by principle A9 ("no rules is not no rights") and the degradation ladder D3 of `.unikit/system/dev-principles.md`. The `by hand` rung of that ladder is `⏸️ MANUAL`; for `Measure:` its role is played by `⏳ AWAITING RESULT`. There is no setting for the route or for the number of runs in `## Settings`: the number of runs is the `runs: <N>` field.
+
+A `Measure:` task carries `WHY:`, `Item:` and `Measure:` and **carries no `Files:`** — it leaves nothing in the project but a table row.
+
+**The `Hand-back:` line:**
+
+```
+Hand-back: <point id> · to: /unikit-gd-balance <slug> <path to report> · report: <names>
+```
+
+The last task of the plan; it carries `WHY:` and `Hand-back:` and **carries no `Files:`**. `<path to report>` is the path `.unikit/system/balance-handback.md` → `## Place and name` defines; `<names>` is the snapshot's `Report:` list.
+
+**The last task.** The rule "under `Testing: yes` the last task is `Test checkpoint: plan`" reads, in a plan with a `## Balance Context`, as follows: `Test checkpoint: plan` stands **directly above** `Hand-back:`, and `Hand-back:` is the last task (under `Testing: no` there is no final run and `Hand-back:` is simply last). New tasks go above both. The bundle script checks this form mechanically (check 11) and accepts no other: a plan with a `## Balance Context` and no `Hand-back:`, or with two, fails it too.
+
+**The horizon.** Nothing follows `Hand-back:`; the work of the roadmap's `planned` rows is not in the plan, and nothing is added "while we are at it".
+
+**Order inside a phase** (one order, no exceptions): ordinary tasks → the phase's `Test checkpoint:` (if it has one) → `Measure:` tasks → `PR checkpoint:` (in a module's closing phase) or `Hand-back:` (the last phase only; directly above it stands the final `Test checkpoint: plan`, and the `Measure:` tasks of the last phase stand before that final run). A `Measure:` task stands at the end of its phase, after that phase's test checkpoint and before its PR checkpoint or the final `Hand-back:`; a task that needs its result belongs to a later phase. The coordinator hands a worker the phase's ordinary tasks and keeps `Measure:` for itself, running it after the worker returns; a phase's own tests run before its measurement so that it runs on a verified build — the final full run alone stands after the last phase's measurements, directly above `Hand-back:`, and the coordinator runs it there.
+
+**A phase with `Measure: [play]` or `Measure: [probe]`** is serialised alone in the execution layer, by the same `**Dependencies:**` wording as a phase with `Editor:` (`### Editor task grammar`): its executor owns the game session and the `## Measurements` table alone.
+
+**The `## Measurements` table:** columns `id | what | stand | runs | build | result | accept | valid | band | from`. `id` equals the id of the item named by the measuring task's `Item:` (a known-answer check of the tool is a row with its own item); there is no separate id field in `Measure:`. `build` is a short SHA; `valid` is `yes` or `no` (the run and the instrument were correct); `band` is `in`, `out` or `n-a`; `from` is `task <N.M>`. Rows are only appended; a repeated measurement is a new row. There are two writers — `/unikit-implement` and the implement coordinator (a `Measure:` task is executed in the main session in both roles and is never handed to a worker); `/unikit-verify` and `/unikit-improve` write no rows. The section stands at `##` level directly after `## Test Runs`; under `Testing: no` (no `## Test Runs`) directly after `## Rule Candidates`, and when that is absent too, above `## Dependency Graph`; in every case above `## Technical Context`.
+
+**The state `⏳ AWAITING RESULT`:** a label on the checkbox line; the checkbox stays `- [ ]`. Form: `- [ ] Task N.M — … ⏳ AWAITING RESULT: <the exact instruction> → <where to put the result>`. It is not `⏸️ MANUAL`: it counts as **waiting** (not "out of scope"), and it blocks dependent tasks and `Hand-back:`.
+
+**A known-answer check** of the instrument is a step of the task; a temporary probe is allowed, as a negative control is for `Test checkpoint:`, and is removed in the same task.
+
+**A tuning loop** has no grammar of its own: an ordinary task with `Files:` and the acceptance "closed by measurement `<item id>`"; the iteration limit and "one lever at a time" are in the task text.
+
+**Modules.** A plan of one point is one module; `## Modules` is written only by the general criteria (`### Modules section`); `Hand-back:` stays the last task of the last module.
 
 ### MCP findings section
 

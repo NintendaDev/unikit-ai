@@ -50,8 +50,8 @@ tasks merged into it: their non-run steps are performed there (`/unikit-implemen
 
 ## What is mutable
 
-- Checkboxes, `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Commit Plan` and
-  `## Settings` are edited **only in the manifest**.
+- Checkboxes, `## MCP Findings`, `## Rule Candidates`, `## Test Runs`, `## Measurements`,
+  `## Commit Plan` and `## Settings` are edited **only in the manifest**.
 - **Phase files are read-only during execution.** A skill executing a plan writes into
   `phase-*.md` under no circumstance.
 - **`Write` over the manifest is forbidden** — use `Edit`. A regenerating write drops
@@ -66,6 +66,14 @@ tasks merged into it: their non-run steps are performed there (`/unikit-implemen
   of the last PR checkpoint — are text of the task's checkbox line in the manifest, written
   with the tick; no phase file changes. The header's `Planned at:` is written once by the
   planner and is never edited by any consumer.
+- The `⏳ AWAITING RESULT` label of a measuring task is likewise text of the task's checkbox line
+  in the manifest: the checkbox stays `- [ ]`, the label is written and removed together with the
+  tick, and no phase file changes (its form is `TASK-FORMAT.md` → `### Balance checkpoint grammar`).
+- `handback-<point id>.md` is a file the executor writes into the plan folder when it carries out
+  the `Hand-back:` task. It is not a phase file and not part of the bundle: `phase-*.md` is the
+  only pattern by which `## Phase Index` is read and orphans are found, so such a file is never an
+  orphan, and "`phase-*.md` is read-only" does not extend to it — `/unikit-verify` and
+  `/unikit-gd-balance` read it.
 
 ## Integrity is blocking
 

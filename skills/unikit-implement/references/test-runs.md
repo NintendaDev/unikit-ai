@@ -55,7 +55,7 @@ A merge adds `INFO [testing] merged <n> point(s) into task <N.M> (scope: <scope>
    - `<date>` comes from `Bash(date *)`; `<hash>` from the procedure below.
    - `<what ran>` names the non-run steps of item 3 and the deferred tasks the run carried as well — e.g. `12 test suites of phases 5-6 + task 5.5: negative control red→green, smoke ✓ + deferred task 4.6`.
 
-   The plan carries no `## Test Runs` section (a legacy plan) → create it at `##` level, under `## Rule Candidates`, or above `## Dependency Graph` when that one is absent too.
+   The plan carries no `## Test Runs` section (a legacy plan) → create it at `##` level, under `## Rule Candidates`, or above `## Dependency Graph` when that one is absent too. A balance plan whose manifest lost its `## Measurements` gets it created the same way, directly after `## Test Runs` — `references/balance-measure.md` → `## Step 3.2 — a Measure: task`.
 8. **`tree-sha256` is computed over a short text**, not over the project, and by the same procedure as `Summary SHA256` — its digest step, `.unikit/system/research-link.md` → `### Digest`. The command below is that step in full: nothing is read for it mid-run:
 
    ```

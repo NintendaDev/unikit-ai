@@ -55,9 +55,9 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "skillsDir": ".claude/skills",
       "subagentsDir": ".claude/agents",
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
-                          "unikit-explore", "unikit-implement", "unikit-memory",
+                          "unikit-explore", "unikit-implement", "unikit-improve", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
-                          "unikit-gd-recon", "unikit-gd-docs",
+                          "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
                           "unikit-pr"],
       "installedSubagents": ["unikit-architecture-sidecar"]
@@ -258,6 +258,18 @@ assert_not_contains "$MERGE_ANALYSIS_PATH" '\{\{' \
   "merge-analysis.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-bh: balance-handback.md installed as a system asset (flat copy, no vars)
+# Read by plan, implement and verify (code group) and unikit-gd-balance (game-design group);
+# a system asset because neither group's skill directory is guaranteed to be installed.
+# ─────────────────────────────────────────────────────
+BALANCE_HANDBACK_PATH="$CLAUDE_DIR/.unikit/system/balance-handback.md"
+assert_exists "$BALANCE_HANDBACK_PATH" "balance-handback.md created in .unikit/system/"
+assert_contains "$BALANCE_HANDBACK_PATH" '^## Header$' \
+  "balance-handback.md carries its header section"
+assert_not_contains "$BALANCE_HANDBACK_PATH" '\{\{' \
+  "balance-handback.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
@@ -293,6 +305,16 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-explore/references/merge-resear
 # Same for the planner: merge-plan.md is read only on a merge request.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/merge-plan.md" \
   "unikit-plan merge-plan.md reference installed"
+# The branch files of the balance checkpoint plans are read only on their branch; a content test
+# cannot see a missing delivery, so the files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-plan/references/balance-plan.md" \
+  "unikit-plan balance-plan.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-implement/references/balance-measure.md" \
+  "unikit-implement balance-measure.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-verify/references/balance-checks.md" \
+  "unikit-verify balance-checks.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-improve/references/balance-sync.md" \
+  "unikit-improve balance-sync.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-brownfield: the two new brownfield/export skills (unikit-gd-recon,
@@ -307,6 +329,22 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-recon/references/code-recon.
   "unikit-gd-recon shared code-recon.md engine travels under references/ (non-flat copyDirectory)"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-docs/SKILL.md" \
   "unikit-gd-docs SKILL.md installed (GDD → docs/design render)"
+# The gate reference is read only at the moment a research is saved, so a content test
+# cannot see a missing delivery — the existence of the file is asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/coherence-gate.md" \
+  "unikit-gd-explore coherence-gate.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-explore/references/ultra-research.md" \
+  "unikit-gd-explore ultra-research.md reference installed"
+# The balance skill's branches are read only by intent, so a content test cannot see a missing
+# delivery of a reference — the files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/SKILL.md" \
+  "unikit-gd-balance SKILL.md installed (balance partner)"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/mode-ingest.md" \
+  "unikit-gd-balance mode-ingest.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/investigation.md" \
+  "unikit-gd-balance investigation.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
+  "unikit-gd-balance template-checkpoints.md reference installed"
 
 # ─────────────────────────────────────────────────────
 # Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks

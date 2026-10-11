@@ -78,6 +78,8 @@ Before writing code:
 2. Load rules (see above).
 3. Implement the target task using direct tool calls.
 
+   **A `Measure:` or `Hand-back:` task is never yours** — return it with `returned: <task id> — Measure/Hand-back belongs to the coordinator`; change nothing and write no row.
+
    **If the task carries one or more `Editor:` lines** (`[kind] <container> → <target> : <action>`) it targets the editor's serialized state, not source files. Branch on the `Editor tasks` mode the coordinator passed:
    - **`mcp`** — carry it out by `dev-principles.md` → **D6**. **No rules file, or no matching check line, changes nothing**: every right you had, you keep, and it is never a reason to mark the target `⏸️ MANUAL` (A9). `⏸️ MANUAL` is reached only by trying, finding no route at all, and having the evidence of that absence to show.
    - **`manual`** — do **not** implement it. Return the task with status `⏸️ MANUAL` and the exact instruction in the form `[kind] container → target : action`.
@@ -113,7 +115,7 @@ Return a concise summary:
 - List of files modified
 - `manual_targets:` — editor targets NOT carried out, each as `[kind] container → target : action`; omit the field when there are none. The coordinator must not mark a phase complete on the strength of a task whose editor targets are still listed here
 - `test_run_deferred:` — the coverage, or the run command, that you did not execute and are handing to the scope owner; omit the field when there is none. **Absent → the coordinator reads it as nothing deferred**, never as a run already done — the same explicit-degradation rule `editor_mode:` carries in the dispatch contract
-- `returned:` — tasks handed back unexecuted, one line each (`returned: <task id> — PR checkpoint belongs to the coordinator`); omitted when none
+- `returned:` — tasks handed back unexecuted, one line each (`returned: <task id> — PR checkpoint belongs to the coordinator`, or `returned: <task id> — Measure/Hand-back belongs to the coordinator`); omitted when none
 - `docs_recommended: yes/no`
 - `commit_recommended: yes/no`
 - `next_task: <task description or "phase complete" or "plan complete">`

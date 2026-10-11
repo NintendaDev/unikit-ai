@@ -95,6 +95,8 @@ flow:     /unikit-gd-flow          per flow  the FLOW-<slug> doc — the *dynami
             │                                 picks the wiring mode + re-renders ## Flow Map [gen] / ## Funnel [gen]
 content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *catalog* (typed CT.fields schema,
             │                                 scale bulk|curated) + re-renders ## Content Map [gen]; the editor owns the values
+balance:  /unikit-gd-balance       (optional) per subject: investigate → ONE detailed Balance Checkpoint → /unikit-plan
+            │                                 → /unikit-implement → /unikit-verify → hand-back report → /unikit-gd-balance again
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → verdict → two buckets (apply-ready / research)
             │
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" → 4 tracks → apply-ready
@@ -104,10 +106,11 @@ handoff:  → /unikit-gd-apply (apply-ready, one pass) · /unikit-gd-explore (re
 docs:     /unikit-gd-docs          (optional) the GDD → human-readable docs/design/*.md (the export-out)
 ```
 
-**Read-only verbs at the I/O edges.** Three skills sit on the boundary of the module and are
-**read-only** at that edge: `/unikit-gd-recon` and the `/unikit-gd-explore` **code lens**
-**INPUT** (code → candidate design facts — recon for the whole project at cold start, the
-explore lens for a targeted slice once a GDD exists), the authoring zones
+**Read-only verbs at the I/O edges.** Four skills sit on the boundary of the module and are
+**read-only** at that edge: `/unikit-gd-recon`, the `/unikit-gd-explore` **code lens** and
+`/unikit-gd-balance` **INPUT** (code → candidate design facts — recon for the whole project at
+cold start, the explore lens for a named slice, with or without a GDD, balance for the slice a
+balance document names), the authoring zones
 (spec / system / flow / content) are the **core**, and `/unikit-gd-docs` **OUTPUTS**
 (design → a human-readable GDD). Reconstructing design from code is normally forbidden (the
 one-way boundary), so it is quantised into these read-only research verbs — every
@@ -218,6 +221,12 @@ one-way boundary, delta discipline, and the "diagnose, don't prescribe" stance a
 - **The one exception:** when every cited AC is met, `/unikit-verify` stamps `implemented_version`
   into the GDD's `GD-IDS.yaml` (a single surface; GAME.md's `## System Map [gen]` renders the
   `implemented` state read-only). That is the only write from code back into design.
+- **Balance loop (code side).** `/unikit-plan` given a Balance Checkpoints file plans only up to the
+  current point (`## Balance Context` snapshot, `Measure:` tasks, a final `Hand-back:`);
+  `/unikit-implement` writes the `## Measurements` rows and the report and prints the return command
+  last; `/unikit-verify` checks the data and the report, not the balance; `/unikit-improve`
+  synchronises by `Item:` and never goes past the horizon. The report goes back to
+  `/unikit-gd-balance` as a document — design never reads the code workspace on its own.
 
 So a "GDD-first" project flows: design track → `GAME.md`/systems → `/unikit-plan` (pulls the AC) →
 `/unikit-implement` → `/unikit-verify` (confirms AC, stamps implemented).
@@ -237,7 +246,8 @@ Pick the row that matches what the user already has:
 | **A live game / existing code but NO GDD** | `/unikit-gd-recon` (reconstruct a RECON.md skeleton from code) | `/unikit-gd-spec <RECON.md>` (import) |
 | **A GDD, wants to detail a system** | `/unikit-gd-system <system>` | `/unikit-gd-review` / `/unikit-gd-verify` |
 | **A GDD, wants a new mechanic** | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
-| **A GDD, wants to know how a system is built in code** | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| **A named slice of the code, wants to know how it is built (a GDD is not required)** | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
+| **A subject whose numbers need tuning (a GDD is not required)** | `/unikit-gd-balance <topic>` | `/unikit-plan full <path to CHECKPOINTS.md>` → `/unikit-implement` → `/unikit-gd-balance <report>` |
 | **A GDD, several decided edits across zones** | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | **A GDD, wants to publish/export it for people** | `/unikit-gd-docs` (→ `docs/design/*.md`; `--web` for HTML) | share the rendered docs |
 | **A feature idea, needs direction** | `/unikit-explore <topic>` | `/unikit-plan` |

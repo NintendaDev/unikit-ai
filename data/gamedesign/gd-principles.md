@@ -20,8 +20,8 @@ loaded on Bootstrap only by the skills that use it:
 | `gd-authoring.md` | Section-Cycle Contract + Delta Discipline (incl. the GAME.md carve-out) | spec, system, flow, content |
 | `gd-lifecycle.md` | Lifecycle & Status | spec, system, flow, verify, content |
 | `gd-flow-axis.md` | Flow Axis | flow, verify, review |
-| `gd-provenance.md` | Provenance (imports) | system, flow, review, explore |
-| `gd-critique.md` | Critique Stance + Severity Rubric | review, verify, explore |
+| `gd-provenance.md` | Provenance (imports) | system, flow, review, explore, balance |
+| `gd-critique.md` | Critique Stance + Severity Rubric | review, verify, explore, balance |
 
 **Domain knowledge** (frameworks, motivation, balance, economy, progression, level
 design, narrative, UX, accessibility, liveops, monetization ethics) lives in the
@@ -70,6 +70,14 @@ owns a thing** (an authoring zone, with the full create+update cycle inside it);
 - `unikit-gd-brainstorm` — ideation (concept).
 - `unikit-gd-explore` — design research (read-only; thinks, briefs, and routes).
 
+**Balance document (owns its own workspace, outside the GDD registry):**
+
+- `unikit-gd-balance` — the **balance** document under `.unikit/gamedesign/balance/<slug>/`
+  (`BALANCE.md`, `CHECKPOINTS.md`, `results/`) and its `INDEX.md`. It is a read-only research verb for code
+  (third exception, One-Way Boundary), it does not register in `GD-IDS.yaml`, and it never edits a GDD
+  document — a design change it proposes goes through `unikit-gd-system`. From the code workspace
+  (`.unikit/code/`) it reads only a document the user named or pasted; it never scans that workspace.
+
 **Zones ⟂ domains.** Zones are **few** (the authoring skills: spec / system / flow /
 content) and orthogonal to **domains**, which are **many** (`core` memory rules + the
 `section-packs`: monetization, liveops, level design, narrative, accessibility, …).
@@ -93,6 +101,9 @@ A request finds its zone by three orthogonal questions:
   - "fix / tune / rework X" → the zone-skill that **owns** X (a system → `unikit-gd-system`,
     a flow → `unikit-gd-flow`, a content type → `unikit-gd-content`, `GAME.md` →
     `unikit-gd-spec`).
+  - "balance it / tune the numbers across measurements / what is the next balance step" →
+    `unikit-gd-balance` (it owns the balance document and the checkpoint loop; the numbers
+    in the GDD still change only through the zone that owns them).
 - **Artifact decides the zone.** `GAME.md` → spec; `SYSTEM.md` → system; `FLOW.md`
   → flow; `CONTENT-TYPE.md` → content. The artifact you are editing names its owner.
 - **Domain rides as rules/packs.** A domain (e.g. `monetization-ethics`) loads
@@ -134,8 +145,9 @@ Code reads design; design knows nothing about code.
 - Game-design **authoring** zones (spec/system/content/flow) and the
   **`unikit-gd-apply`** dispatcher never read the code workspace (`.unikit/code/`),
   project sources, or build artifacts. The **read-only research verbs** —
-  `unikit-gd-recon` (cold-start) and the `unikit-gd-explore` code-grounded lens — are
-  the sole exception (see *Sanctioned exceptions* below): they read code to *extract*
+  `unikit-gd-recon` (cold-start), the `unikit-gd-explore` code-grounded lens, and
+  `unikit-gd-balance` — are the sole exception (see *Sanctioned exceptions* below):
+  they read code to *extract*
   candidate design facts into a document, never to author.
 - The code side consumes design exclusively through the `## Design` section of its
   plan brief — SYS-id, version snapshot, verbatim AC quotes (and, for flow-aware
@@ -169,10 +181,13 @@ Code reads design; design knows nothing about code.
     it and never reads code to learn it.
   - the **read-only research verbs** read code to extract candidate design facts (the
     brownfield-bootstrap carve-out above): `unikit-gd-recon` (cold-start only — no GDD
-    yet) scans the whole project into a passive `RECON.md`, and the `unikit-gd-explore`
-    **code-grounded lens** (post-GDD, targeted) grounds an in-flight slice. Both are
-    read-only on code, call no authoring zone, and emit a *document* (`RECON.md` / an
-    explore brief) — never a GDD edit. The shared extraction engine is
+    yet) scans the whole project into a passive `RECON.md`; the `unikit-gd-explore`
+    **code-grounded lens** (targeted — only the slice the prompt names, with or without
+    a GDD) grounds a design question in how that slice is built; and `unikit-gd-balance`
+    (targeted — only the slice a balance document names) gathers the facts a balance
+    investigation needs. All three are read-only on code, call no authoring zone, and
+    emit a *document* (`RECON.md` / an explore brief / a balance document) — never a GDD
+    edit. The shared extraction engine is
     `unikit-gd-recon/references/code-recon.md`. Facts carry
     `provenance: extracted from code` (review ≥ Major). The authoring zones
     (spec/system/content/flow) and the `unikit-gd-apply` dispatcher are **never** in
@@ -232,7 +247,7 @@ feelings, and outcomes. The codes are **load-bearing on disk**: `unikit-gd-verif
 `unikit-plan`, and the engine read them, so they stay verbatim in **files**. They must
 not leak into **speech**. Every `unikit-gd-*` skill speaks through this membrane — the
 artifact keeps its codes, the conversation carries only the designer language. The
-contract lives here in the core (read on Bootstrap by all eleven skills) and **overrides
+contract lives here in the core (read on Bootstrap by all twelve skills) and **overrides
 any local phrasing**.
 
 **Two tiers of translation.**
@@ -278,9 +293,9 @@ words they are; never dress them as a code, never strip them to a bare badge.
   `unikit-gd-review` (findings — the stable `RF-<date>-n` ids and the `SYS-` / `AC-`
   citations they point at) **speak codes by design**: their job is to address the on-disk
   registry precisely, and a grounded id citation is the whole value. They are **exempt
-  from TIER A/B**. This is why the membrane reaches **5 of the 11** `unikit-gd-*` skills —
-  verify, review, recon, apply, and docs are out of scope; the five authoring/ideation
-  skills are in.
+  from TIER A/B**. This is why the membrane reaches **7 of the 12** `unikit-gd-*` skills —
+  verify, review, recon, apply, and docs are out of scope; the seven skills that speak
+  to the designer (brainstorm, explore, spec, system, flow, content, balance) are in.
   - **The exemption is the tokens, not the prose around them.** What stays English here
     is strictly the stored identifiers and machine values — the id codes
     (`RF-/PIL-/SYS-/ENT-/FORM-/AC-/GOAL-/FLOW-/CT-/CU-…`) and the lifecycle-status
@@ -304,7 +319,7 @@ renders through this membrane; when it writes a file it does not.
 - Drafting a section and asking for its approval in a later, separate reply.
 - Manual edits to approved documents bypassing the owning zone's delta discipline
   (unrecorded delta).
-- A design skill reading `.unikit/code/` or project sources.
+- A design skill reading `.unikit/code/` or project sources — except a document the user named or pasted, read as a document.
 - Changing a GD-IDS value silently because "the document says otherwise".
 - Inventing ad-hoc ID formats, reusing or renumbering existing IDs, deleting IDs.
 - Prescribing solutions in a review nobody asked for.

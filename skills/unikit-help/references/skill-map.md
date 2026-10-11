@@ -105,6 +105,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   compaction and resumes with `/unikit-plan ultra <name>`; a standard plan over 12 phases is
   offered the switch.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
+- **Balance plan.** Given a Balance Checkpoints file (`/unikit-gd-balance` prints the command) it finds the current point itself and builds a plan only up to it, ending in a `Hand-back:` task.
 
 ### unikit-improve
 - **Purpose:** Refine an existing plan — find missing tasks, wrong dependencies, made-up APIs,
@@ -115,6 +116,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   unknown is proposed for a re-link in the report; approving it records the hash that clears
   the `drift unknown` warning.
 - **Optional but strongly recommended.** Before: `/unikit-plan`. After: `/unikit-implement`.
+- **Balance plan.** Synchronises the plan with the current point by `Item:`, stays inside the horizon.
 
 ### unikit-implement
 - **Purpose:** Execute the plan — write the code, mark tasks done, write tests (if the plan asks)
@@ -132,6 +134,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   PR. While the plan has PR checkpoints it never pushes.
 - **Required.** Before: `/unikit-plan` (+`/unikit-improve`). After: `/unikit-review` /
   `/unikit-verify` / `/unikit-commit`.
+- **Balance plan.** `Measure:` tasks write `## Measurements` rows, an unobtainable result waits as `⏳ AWAITING RESULT`, `Hand-back:` writes the report and prints the return command last.
 
 ### unikit-review
 - **Purpose:** Qualitative code review against the project's rules — bugs, security, performance,
@@ -154,6 +157,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   stamps `implemented_version` into the GDD's `GD-IDS.yaml` (a single surface; GAME.md's
   `## System Map [gen]` renders the `implemented` state read-only).
 - **Optional (pre-merge gate).** Before: `/unikit-implement`. After: `/unikit-fix`, `/unikit-commit`.
+- **Balance plan.** Checks the data's validity and the report, not the balance; warns on drift from the header of the checkpoints file.
 
 ### unikit-fix
 - **Purpose:** Fix a specific bug — find the root cause, fix it, run the tests (every test by
@@ -260,12 +264,14 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   Never authors the GDD; it researches, then routes you onward.
 - **When:** "is there a market for X", "break down the combat of <game>", "find a new mechanic",
   "how could we improve our economy".
-- **In:** a topic / game reference / URL / design question; a `reviews/*_review-*.md` report
+- **In:** a topic / game reference / URL / design question; `ultra <topic>` (pinned dialogue
+  log + adaptive artifacts; named by the user, never inferred); a `reviews/*_review-*.md` report
   (develop its research bucket); or a `RECON.md` (work a pre-GDD reconstruction). `init`
   rebuilds the researches index — the game-design side keeps `init` until its own manifest
   port, which is why the code-side `/unikit-explore` no longer has one.
-- **Out:** a research + brief in `.unikit/gamedesign/researches/<slug>/`, then a routed
-  next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
+- **Out:** a research + brief in `.unikit/gamedesign/researches/<slug>/` — the record carries an
+  `## Active Summary` (cited ids) and a `## Sessions` log, and each save ends with a coherence
+  gate — then a routed next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
   skeleton/detailed → `/unikit-gd-system`. **Two file modes differ:** a review
   file is mutated **in place** (research → apply-ready) → one `/unikit-gd-apply reviews/X.md`
   (no `researches/`); a `RECON.md` keeps the research + gets a `## Explorations` backlink →
@@ -352,6 +358,22 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   changelog; the status stays `detailed`.
 - **Required per content type (the catalog axis).** Before: `/unikit-gd-spec` (+ `/unikit-gd-system`
   for the consuming system). After: `/unikit-gd-review`, `/unikit-gd-verify`.
+
+### unikit-gd-balance
+- **Purpose:** The balance partner — keeps one balance document per subject and closes the loop
+  *checkpoint → plan → report → decision*. It investigates the subject itself (code is read
+  only, facts are tagged), keeps a coarse roadmap of Balance Checkpoints and **one** detailed
+  current checkpoint, receives the hand-back report, revises the roadmap and issues the next
+  checkpoint or closes the document. Never edits the GDD or code.
+- **When:** "balance the economy", "start a balance document", "here are the results of the
+  checkpoint", "what is the next balance step", "where are we with balance".
+- **In:** nothing (lists the five latest documents), a topic, a research, a document slug, or a
+  hand-back report (a path or a pasted table). The intent is read from the request; no flags.
+- **Out:** `.unikit/gamedesign/balance/<slug>/` — `BALANCE.md`, `CHECKPOINTS.md`, `results/` —
+  plus `balance/INDEX.md`; the last block of an issuing turn is the ready `/unikit-plan full`
+  command carrying the path to `CHECKPOINTS.md`.
+- **Optional (balance loop).** Next: `/unikit-plan` → `/unikit-implement` → `/unikit-verify`, then
+  back to `/unikit-gd-balance` with the report.
 
 ### unikit-gd-apply
 - **Purpose:** Dispatch an explicit, **multi-zone** GDD edit (spec + systems + content types +
