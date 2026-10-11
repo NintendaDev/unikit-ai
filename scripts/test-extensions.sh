@@ -551,6 +551,8 @@ fi
 # Use the idempotent project (already has extension installed)
 UPDATE_EXT_OUTPUT="$TMPDIR/update-ext-flow.log"
 (cd "$IDEMP_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > "$UPDATE_EXT_OUTPUT" 2>&1)
+assert_not_contains "$UPDATE_EXT_OUTPUT" "Local modifications detected" \
+  "update right after extension add must not report drift on a skill that only carries an extension block"
 
 # Injection should still be present after update
 assert_contains "$IDEMP_PROJECT/.claude/skills/unikit/SKILL.md" \

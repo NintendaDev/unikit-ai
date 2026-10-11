@@ -3,6 +3,7 @@
 // after `ensure_build` in the parent harness. Writes nothing into the repository.
 
 import path from 'path';
+import os from 'os';
 import fs from 'fs/promises';
 import { fileURLToPath, pathToFileURL } from 'url';
 
@@ -13,6 +14,8 @@ const dist = (rel) => pathToFileURL(path.join(ROOT, 'dist', rel)).href;
 
 const points = await import(dist('core/extension-points.js'));
 const markers = await import(dist('core/extension-markers.js'));
+const hashing = await import(dist('core/installer/hashing.js'));
+const { hashFile } = await import(dist('utils/fs.js'));
 const schema = await import(dist('core/extension-injections-schema.js'));
 const { validateManifest } = await import(dist('core/extensions.js'));
 
@@ -251,6 +254,80 @@ await group('M', async () => {
         assertTrue('M12 a marker is detected', markers.containsBlockMarker('x <!-- unikit-ext:a:b:c:d:start --> y'));
         assertTrue('M12 the bare word is not a marker', !markers.containsBlockMarker('the unikit-ext word'));
         assertTrue('M12 an anchor is not a marker', !markers.containsBlockMarker(ANCHOR));
+    }
+});
+
+// ── H: the installed hash does not see extension blocks ─────────────────────
+
+await group('H', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'unikit-ext-hash-'));
+    try {
+        const skillsDir = '.claude/skills';
+        const skillDir = path.join(tmp, skillsDir, 'unikit-x');
+        const skillFile = path.join(skillDir, 'SKILL.md');
+        await fs.mkdir(path.join(skillDir, 'references'), { recursive: true });
+        const base = `---\nname: unikit-x\ndescription: x\n---\n\n# X\n\n${ANCHOR}\n\nBody\n`;
+        await fs.writeFile(skillFile, base);
+        await fs.writeFile(path.join(skillDir, 'references', 'a.md'), 'reference\n');
+
+        const paths = hashing.resolveSkillPaths(tmp, skillsDir, 'claude', 'unikit-x', path.join(tmp, 'source'));
+        const hashNow = () => hashing.hashInstalledSkill(paths);
+        const h0 = await hashNow();
+        assertTrue('H1 a skill directory hashes', typeof h0 === 'string' && h0.length === 64);
+
+        // H2 — a legacy append block.
+        const legacyKey = markers.legacyBlockKey('ext-a', 'unikit-x', 'append');
+        await fs.writeFile(skillFile, `${base.trimEnd()}\n\n${markers.renderBlockRegion(legacyKey, 'appended')}\n`);
+        assertEq('H2 a legacy append block does not move the hash', await hashNow(), h0);
+
+        // H3 — a point block, then back.
+        const withBlock = markers.insertAtAnchor(base, 'bootstrap', [markers.renderBlockRegion(markers.pointBlockKey('ext-a', 'unikit-x', 'bootstrap', 'one'), 'a line')]);
+        await fs.writeFile(skillFile, withBlock);
+        assertEq('H3 a point block does not move the hash', await hashNow(), h0);
+        await fs.writeFile(skillFile, base);
+        assertEq('H3 taking it out does not either', await hashNow(), h0);
+
+        // H4 — prepend before and after the frontmatter.
+        const prependKey = markers.legacyBlockKey('ext-a', 'unikit-x', 'prepend');
+        const prependRegion = markers.renderBlockRegion(prependKey, 'first');
+        await fs.writeFile(skillFile, `${prependRegion}\n${base}`);
+        assertEq('H4 a prepend before the frontmatter does not move the hash', await hashNow(), h0);
+        await fs.writeFile(skillFile, markers.insertAfterFrontmatter(base, prependRegion));
+        assertEq('H4 a prepend after the frontmatter does not move the hash', await hashNow(), h0);
+
+        // H5 — the extension reference directory is invisible, other files are not.
+        await fs.writeFile(skillFile, base);
+        await fs.mkdir(path.join(skillDir, 'references', 'ext', '=scope+pkg'), { recursive: true });
+        await fs.writeFile(path.join(skillDir, 'references', 'ext', '=scope+pkg', 'spec.md'), 'delivered\n');
+        assertEq('H5 a file under references/ext does not move the hash', await hashNow(), h0);
+        await fs.writeFile(path.join(skillDir, 'references', 'other.md'), 'user file\n');
+        assertTrue('H5 another reference file does', (await hashNow()) !== h0);
+        await fs.rm(path.join(skillDir, 'references', 'other.md'));
+
+        // H6 — the base text counts, the block text does not.
+        await fs.writeFile(skillFile, base.replace('Body', 'Edited body'));
+        assertTrue('H6 an edit of the base text moves the hash', (await hashNow()) !== h0);
+        const blockKey = markers.pointBlockKey('ext-a', 'unikit-x', 'bootstrap', 'one');
+        await fs.writeFile(skillFile, markers.insertAtAnchor(base, 'bootstrap', [markers.renderBlockRegion(blockKey, 'text one')]));
+        const hBlock = await hashNow();
+        await fs.writeFile(skillFile, markers.insertAtAnchor(base, 'bootstrap', [markers.renderBlockRegion(blockKey, 'a quite different text two')]));
+        assertEq('H6 an edit inside a block does not move the hash', await hashNow(), hBlock);
+
+        // H7 — subagent files.
+        const agentFile = path.join(tmp, 'agent.md');
+        const agentBase = '---\nname: a\n---\n\nBody\n';
+        await fs.writeFile(agentFile, agentBase);
+        const plainHash = await hashing.hashInstalledSubagent(agentFile);
+        assertEq('H7 a file without markers hashes as raw bytes', plainHash, await hashFile(agentFile));
+        await fs.writeFile(agentFile, `${agentBase}\n${markers.renderBlockRegion(markers.legacyBlockKey('ext-a', 'a', 'append'), 'tail')}\n`);
+        assertEq('H7 a subagent with a block hashes as without', await hashing.hashInstalledSubagent(agentFile), plainHash);
+
+        // H8 — the word in prose is not a marker.
+        const prose = `${agentBase}\nunikit-ext: is a word here\n`;
+        await fs.writeFile(agentFile, prose);
+        assertEq('H8 prose with the word hashes as raw bytes', await hashing.hashInstalledSubagent(agentFile), await hashFile(agentFile));
+    } finally {
+        await fs.rm(tmp, { recursive: true, force: true });
     }
 });
 
