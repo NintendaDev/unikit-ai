@@ -11911,6 +11911,71 @@ done <<< "$EP7_LIST"
 if [[ -z "$EP7_WHY" ]]; then pass "EP-7 every registered skill is listed in docs/extensions.md ($EP7_N)"; else fail "EP-7:$EP7_WHY"; fi
 
 # ─────────────────────────────────────────────
+# Part 7g11: ES-1…ES-4 — extension item selection call sites
+# ─────────────────────────────────────────────
+# What keeps a switched-off item switched off sits in a few call sites: the loop in `update`, the
+# agent removal, the install/remove core; the refresh and the command must hand a temporary clone to
+# `disposeResolvedExtension`; the menu must not load `inquirer` statically (a run without a terminal
+# would pay for it); core must not import from `cli/`. Source files are read (the help output is the
+# one exception, ES-4); a missing file is a FAIL, not a silent pass.
+echo -e "\n${BOLD}Part 7g11: extension selection call sites (ES-1…ES-4)${NC}"
+ES_WHY=""
+ES_N=0
+
+es_need() {   # <path under ROOT_DIR> <fixed string> <reason tag>
+    local es_p="$ROOT_DIR/$1"
+    if [[ ! -s "$es_p" ]]; then ES_WHY+=" $3:missing($1)"; return; fi
+    ES_N=$((ES_N + 1))
+    { grep -qF -- "$2" "$es_p" || false; } || ES_WHY+=" $3"
+}
+
+# (ES-1) the loops that reinstall or remove an extension's files read the narrowed manifest
+es_need src/cli/commands/update.ts 'filterManifest(' "ES-1:update-loop-unfiltered"
+es_need src/core/installer/agent-removal.ts 'filterManifest(' "ES-1:agent-removal-unfiltered"
+es_need src/core/extension-ops.ts 'filterManifest(' "ES-1:extension-ops-unfiltered"
+if [[ -s "$ROOT_DIR/src/cli/commands/update.ts" ]] \
+    && grep -qE 'extManifest\.(skills|subagents)' "$ROOT_DIR/src/cli/commands/update.ts"; then
+    ES_WHY+=" ES-1:update-loop-reads-the-whole-manifest"
+fi
+
+# (ES-2) new items go through the chooser; a temporary clone is always handed back
+es_need src/cli/commands/update.ts 'chooseNewItems' "ES-2:update-has-no-chooser"
+es_need src/cli/commands/extension.ts 'chooseNewItems' "ES-2:extension-update-has-no-chooser"
+es_need src/cli/commands/extension.ts 'disposeResolvedExtension(' "ES-2:extension-add-leaves-the-clone"
+es_need src/core/extension-refresh.ts 'disposeResolvedExtension(' "ES-2:refresh-leaves-the-clone"
+
+# (ES-3) `inquirer` is loaded lazily and only in the interface layer; core knows nothing of cli/
+ES3_UI="$ROOT_DIR/src/cli/commands/extension-selection-ui.ts"
+if [[ -s "$ES3_UI" ]]; then
+    ES_N=$((ES_N + 1))
+    if grep -qE "^import .* from 'inquirer'" "$ES3_UI"; then ES_WHY+=" ES-3:static-inquirer-import"; fi
+    { grep -qF "import('inquirer')" "$ES3_UI" || false; } || ES_WHY+=" ES-3:no-lazy-inquirer"
+else
+    ES_WHY+=" ES-3:missing(extension-selection-ui.ts)"
+fi
+for es3_f in extension-selection extension-selection-query extension-selection-describe extension-select-ops extension-refresh; do
+    es3_p="$ROOT_DIR/src/core/$es3_f.ts"
+    if [[ ! -s "$es3_p" ]]; then ES_WHY+=" ES-3:missing($es3_f.ts)"; continue; fi
+    ES_N=$((ES_N + 1))
+    if grep -qE "from '\.\./cli|from 'inquirer'" "$es3_p"; then ES_WHY+=" ES-3:core-imports-the-interface($es3_f.ts)"; fi
+done
+
+# (ES-4) the flags are on the commands (read from the built CLI)
+set +e
+ES4_ADD=$(node "$ROOT_DIR/dist/cli/index.js" extension add --help 2>&1)
+ES4_SELECT=$(node "$ROOT_DIR/dist/cli/index.js" extension select --help 2>&1)
+ES4_SELECT_EXIT=$?
+set -e
+for es4_flag in --skip-skills --skip-subagents --skip-mcp --yes --install-new --skip-new; do
+    { grep -qF -- "$es4_flag" <<< "$ES4_ADD" || false; } || ES_WHY+=" ES-4:add-help-lacks($es4_flag)"
+done
+[[ $ES4_SELECT_EXIT -eq 0 ]] || ES_WHY+=" ES-4:select-help-exit($ES4_SELECT_EXIT)"
+{ grep -qF -- "--skip-skills" <<< "$ES4_SELECT" || false; } || ES_WHY+=" ES-4:select-help-lacks(--skip-skills)"
+
+[[ "$ES_N" -gt 0 ]] || ES_WHY+=" ES:scanned-nothing"
+if [[ -z "$ES_WHY" ]]; then pass "ES-1…ES-4 extension selection call sites ($ES_N checks)"; else fail "ES-1…ES-4 extension selection call sites:$ES_WHY"; fi
+
+# ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke
 # ─────────────────────────────────────────────
 # Catch the "forgot to wire a new command into src/cli/index.ts" regression
@@ -12113,6 +12178,24 @@ if [[ $EXT_SMOKE_EXIT -eq 0 ]]; then
 else
     fail "extension smoke tests"
     echo "$EXT_SMOKE_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
+# Part 10b: Extension item selection smoke tests
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}=== Extension selection smoke tests ===${NC}\n"
+
+set +e
+EXT_SELECTION_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-extension-selection.sh" 2>&1)
+EXT_SELECTION_SMOKE_EXIT=$?
+set -e
+
+if [[ $EXT_SELECTION_SMOKE_EXIT -eq 0 ]]; then
+    pass "extension selection smoke tests"
+    echo "$EXT_SELECTION_SMOKE_OUTPUT" | grep '✓' | sed 's/^/    /'
+else
+    fail "extension selection smoke tests"
+    echo "$EXT_SELECTION_SMOKE_OUTPUT" | sed 's/^/      /'
 fi
 
 # ─────────────────────────────────────────────
