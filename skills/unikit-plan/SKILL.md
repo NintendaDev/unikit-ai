@@ -116,7 +116,7 @@ Ultra is **user-named, never model-inferred**. Rule 5 recognises the request whe
 
 **A merge request** — the user asks to merge a named branch into the current one (not a rebase, a cherry-pick or a merge by pull request number): load `{{skills_dir}}/{{self_name}}/references/merge-plan.md` and follow it. It owns the trigger, the analysis, the mode question — `fast`, `full` or `ultra` (`add` does not apply to a merge) — and the shape of the plan; a branch that is not named is asked for there. An ordinary plan does not read that file.
 
-**A Balance Checkpoints input** — the argument names a `CHECKPOINTS.md` file, a folder or slug under `.unikit/gamedesign/balance/`, or the request is calibration or measurement work on a balance document (`/unikit-gd-balance` prints this command): load `{{skills_dir}}/{{self_name}}/references/balance-plan.md` and follow it. It owns finding the current point, the snapshot, the horizon and the shape of the plan. An ordinary plan does not read that file.
+**A Balance Checkpoints input** — the argument names a `CHECKPOINTS.md` file, a folder or slug under `.unikit/gamedesign/balance/`, or the request is calibration or measurement work on a balance document (`/unikit-gd-balance` prints this command): load `{{skills_dir}}/{{self_name}}/references/balance-plan.md` and follow it. It owns finding the current point, the snapshot, the horizon and the shape of the plan. An ordinary plan does not read that file. Missing or unreadable → `WARN [balance] balance-plan reference missing — planning as an ordinary plan; run unikit-ai update`, and no `Hand-back:` task is created in such a plan.
 
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
@@ -522,7 +522,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
    - If linked: `Milestone: "<name>"` and `Rationale: "<why>"`
    - If skipped: `Milestone: "none"` and `Rationale: "Skipped by user"`
 
-5. **`## Checklist`** — phases with tasks. Every task MUST include description, `WHY:` line, `Files:` line.
+5. **`## Checklist`** — phases with tasks. Every task MUST include description, `WHY:` line, `Files:` line — except a checkpoint, `Measure:` or `Hand-back:` task, which carries its own line in that position (`TASK-FORMAT.md`).
    The WHY line answers: "what breaks or is missing if we skip this task?"
 
    **When to write `Editor:`** — the criterion is neutral: the change touches the **serialized state of the editor**, not source text. Editing a plain text or config file stays in `Files:`. The concrete signals for the active engine are listed in `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` §3 — read them from there, **do not restate them here**: they are engine facts (a scene, a prefab, a blueprint are not the same concept across engines), and a second inline copy diverges from §3 on its first edit.

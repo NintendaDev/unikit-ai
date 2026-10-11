@@ -21,7 +21,7 @@ The point is never guessed from the text of the request.
 
 ## An existing plan for this point
 
-Look in **both** places: folder plans `.unikit/code/plans/*/PLAN.md` and the fast plan `.unikit/code/PLAN.md` (it does not live under `plans/`, and a walk of `plans/*` alone would miss it). Find a manifest with a `## Balance Context` that has the same `Point`. The same `Checkpoints updated` → say so and offer `/unikit-implement`; another `Checkpoints updated` → offer `/unikit-improve <plan>`. A second plan is not built until the user confirms with one question. Read only the header and the `## Balance Context` of each manifest.
+Look in **both** places: folder plans `.unikit/code/plans/*/PLAN.md` and the fast plan `.unikit/code/PLAN.md` (it does not live under `plans/`, and a walk of `plans/*` alone would miss it). Find a manifest with a `## Balance Context` that has the same `Source:` and the same `Point` (point numbers repeat from one document to another). The same `Checkpoints updated` → say so and offer `/unikit-implement`; another `Checkpoints updated` → offer `/unikit-improve <plan>`. A second plan is not built until the user confirms with one question. Read only the header and the `## Balance Context` of each manifest.
 
 ## The snapshot and the horizon
 
@@ -32,7 +32,7 @@ Write `## Balance Context` by the grammar section. The plan covers the `Work` it
 | Kind in `Work` | Task form |
 |---|---|
 | `tool`, `stand`, `data-edit` | an ordinary task with `Files:` (and `Editor:` where the editor's serialized state changes) + `Item:` |
-| `measure` | a `Measure:` task carrying the item's `via` + `Item:`, no `Files:` |
+| `measure` | a `Measure:` task carrying the item's `via` + `Item:`, no `Files:`; its `runs` is the minimal sample the item's `acceptance` or the point's `Until` → `Stop` states — none stated is a blocking entry in `## Open Questions`, never a guessed number |
 | `probe`, `human-check` | a probe-class `Measure:` task + `Item:`, no `Files:`; the metric is the recorded observation or a go/no-go |
 | `tuning-loop` | an ordinary task with `Files:` + `Item:`; acceptance "closed by measurement `<item id>`"; the iteration limit and one lever at a time in the task text |
 
@@ -50,12 +50,10 @@ All blocking: exactly one `Hand-back:` task and it is the last; every `Measure:`
 
 ## Where the plan goes, and no branch
 
-- `fast` writes `.unikit/code/PLAN.md`. `full` and `ultra` write the folder `.unikit/code/plans/balance-<slug>-bch-<n>/` and do not touch the plan of the current branch. `<slug>` is the name of the document's folder under `.unikit/gamedesign/balance/` in lowercase by the rule of `merge-plan.md` (runs outside `[a-z0-9]` become one `-`, ends trimmed, at most 40 characters); `<n>` is the number from the point's `BCH-<n>`. This name replaces the "invent a name" of Step 1; the collision check of Step 1 holds for `full` and `ultra` unchanged.
+- `fast` writes `.unikit/code/PLAN.md`. `full` and `ultra` write the folder `.unikit/code/plans/balance-<slug>-bch-<n>/` and do not touch the plan of the current branch. `<slug>` is the name of the document's folder under `.unikit/gamedesign/balance/` in lowercase by the rule of `merge-plan.md` (runs outside `[a-z0-9]` become one `-`, ends trimmed, at most 40 characters; a name with nothing left becomes `doc`); `<n>` is the number from the point's `BCH-<n>`. This name replaces the "invent a name" of Step 1; the collision check of Step 1 holds for `full` and `ultra` unchanged.
 - `fast` skips the collision check, so this file asks: `.unikit/code/PLAN.md` exists and still has `- [ ]` tasks → `AskUserQuestion`: overwrite it, or take `full`.
 - Never create or switch a branch: the branch step of every mode is skipped, whatever `git.create_branches` says; the work goes on in the current branch.
 
 ## The closing message
 
 The plan is created. The next step is the executor's command with the folder named explicitly: `/unikit-implement balance-<slug>-bch-<n>` for `full` and `ultra` (a balance plan is not found by branch, as a merge plan is not); for `fast` `/unikit-implement`, with the caveat of `merge-plan.md` → `## The closing message` about an existing folder plan of the branch. The executor prints the hand-back command itself. `ultra` is not offered: only the user names it.
-
-If this file cannot be read, plan as an ordinary plan from the text of the request with `WARN [balance] balance-plan reference missing — planning as an ordinary plan; run unikit-ai update`; no `Hand-back:` task is created in such a plan.
