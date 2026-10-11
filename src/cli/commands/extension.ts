@@ -4,9 +4,10 @@ import {
   resolveExtension, findExtensionRecord, classifySource,
 } from '../../core/extensions.js';
 import {
-  commitResolvedExtension, removeExtension, refreshExtensions,
+  commitResolvedExtension, removeExtension,
   restoreBaseSkills,
 } from '../../core/extension-ops.js';
+import { refreshExtensions } from '../../core/extension-refresh.js';
 import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { printInjectionReport } from './injection-report.js';

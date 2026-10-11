@@ -518,5 +518,153 @@ await group('B', async () => {
         Object.keys(buildExtensionRecord(resolved, sel({ 'skills/c': true }))), ['name', 'source', 'version', 'replacedSkills', 'selection']);
 });
 
+// ── A, I, J: the selection applied in the core ──────────────────────────────
+
+const { collectExtensionSkillNames } = await import(dist('core/installer/agent-removal.js'));
+const { reinstallExtensionAssets } = await import(dist('core/extension-ops.js'));
+const { applyExtensionInjections } = await import(dist('core/extension-injections.js'));
+
+const CLAUDE = { id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents', installedSkills: [], installedSubagents: [] };
+const exists = async (p) => fs.access(p).then(() => true, () => false);
+
+async function writeFiles(root, files) {
+    for (const [rel, text] of Object.entries(files)) {
+        const file = path.join(root, rel);
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(file, text);
+    }
+}
+
+const skillMd = (name, body = name) => `---\nname: ${name}\ndescription: ${name}\n---\n\n${body}\n`;
+
+// A — which skill names an agent removal takes out.
+await group('A', async () => {
+    await withTmp(async (dir) => {
+        await writeFiles(dir, {
+            '.unikit/extensions/ext-a/extension.json': JSON.stringify({
+                name: 'ext-a', version: '1.0.0', skills: ['skills/a', 'skills/b'], replaces: { 'skills/c': 'unikit-commit' },
+            }),
+        });
+        const names = async (record) => (await collectExtensionSkillNames(dir, { extensions: [record] })).sort();
+
+        assertJson('A1 only the enabled skill and no disabled replacement',
+            await names(rec({ selection: sel({ 'skills/a': false, 'skills/b': true, 'skills/c': false }) })), ['b']);
+        assertJson('A2 an enabled replacement names its base skill',
+            await names(rec({ selection: sel({ 'skills/a': true, 'skills/b': false, 'skills/c': true }) })), ['a', 'unikit-commit']);
+        assertJson('A3 a legacy record names everything, as before', await names(rec()), ['a', 'b', 'unikit-commit']);
+        assertJson('A4 replacedSkills of the record still add their base names',
+            await names(rec({
+                replacedSkills: { 'unikit-plan': 'skills/x' },
+                selection: sel({ 'skills/a': false, 'skills/b': false, 'skills/c': false }),
+            })), ['unikit-plan']);
+        assertJson('A5 an undecided skill is not named', await names(rec({ selection: sel({ 'skills/b': true }) })), ['b']);
+    });
+});
+
+// I — what `init` puts back follows the selection.
+await group('I', async () => {
+    await withTmp(async (tmp) => {
+        await writeFiles(tmp, {
+            '.unikit/extensions/ext-a/extension.json': JSON.stringify({
+                name: 'ext-a',
+                version: '1.0.0',
+                skills: ['skills/foo', 'skills/skipped'],
+                subagents: ['subagents/bar.md', 'subagents/off.md'],
+                replaces: { 'skills/my-commit': 'unikit-commit' },
+            }),
+            '.unikit/extensions/ext-a/skills/foo/SKILL.md': skillMd('foo'),
+            '.unikit/extensions/ext-a/skills/skipped/SKILL.md': skillMd('skipped'),
+            '.unikit/extensions/ext-a/skills/my-commit/SKILL.md': skillMd('my-commit', 'REPLACEMENT TEXT'),
+            '.unikit/extensions/ext-a/subagents/bar.md': skillMd('bar'),
+            '.unikit/extensions/ext-a/subagents/off.md': skillMd('off'),
+            '.claude/skills/unikit-commit/SKILL.md': skillMd('unikit-commit', 'BASE TEXT'),
+        });
+
+        const selected = rec({
+            selection: sel(
+                { 'skills/foo': true, 'skills/skipped': false, 'skills/my-commit': false },
+                { 'subagents/bar.md': true, 'subagents/off.md': false },
+            ),
+        });
+        const result = await reinstallExtensionAssets({
+            projectDir: tmp, engine: 'unity', engineMcpKey: null, agents: [CLAUDE], extensions: [selected],
+        });
+        assertEq('I1 the extension is reinstalled', result.reinstalled.join(','), 'ext-a');
+        assertEq('I1 the enabled skill is there', await exists(path.join(tmp, '.claude/skills/foo/SKILL.md')), true);
+        assertEq('I1 the disabled skill is not', await exists(path.join(tmp, '.claude/skills/skipped')), false);
+        assertEq('I1 the enabled subagent is there', await exists(path.join(tmp, '.claude/agents/bar.md')), true);
+        assertEq('I1 the disabled subagent is not', await exists(path.join(tmp, '.claude/agents/off.md')), false);
+        assertTrue('I1 the disabled replacement leaves the base skill alone',
+            (await fs.readFile(path.join(tmp, '.claude/skills/unikit-commit/SKILL.md'), 'utf8')).includes('BASE TEXT'));
+
+        await reinstallExtensionAssets({
+            projectDir: tmp, engine: 'unity', engineMcpKey: null, agents: [CLAUDE], extensions: [rec()],
+        });
+        assertTrue('I2 a legacy record installs everything, replacement included',
+            (await fs.readFile(path.join(tmp, '.claude/skills/unikit-commit/SKILL.md'), 'utf8')).includes('REPLACEMENT TEXT'));
+        assertEq('I2 and the skipped skill comes with it', await exists(path.join(tmp, '.claude/skills/skipped/SKILL.md')), true);
+    });
+});
+
+// J — a position injection into a skill the selection left out.
+await group('J', async () => {
+    const runPass = (tmp, record) => applyExtensionInjections({
+        projectDir: tmp, engine: 'unity', engineMcpKey: null, agents: [CLAUDE], extensions: [record],
+    });
+    const quietly = async (fn) => {
+        const original = console.warn;
+        const lines = [];
+        console.warn = (...args) => { lines.push(args.join(' ')); };
+        try {
+            return { result: await fn(), lines };
+        } finally {
+            console.warn = original;
+        }
+    };
+    const setup = async (tmp, manifestOver, installed) => {
+        await writeFiles(tmp, {
+            '.unikit/extensions/ext-a/extension.json': JSON.stringify({ name: 'ext-a', version: '1.0.0', ...manifestOver }),
+            '.unikit/extensions/ext-a/inj/t.md': 'INJECTED TEXT',
+            ...Object.fromEntries(installed.map(name => [`.claude/skills/${name}/SKILL.md`, skillMd(name)])),
+        });
+    };
+    const append = (target) => ({ target, targetType: 'skill', position: 'append', file: 'inj/t.md' });
+
+    await withTmp(async (tmp) => {
+        await setup(tmp, { skills: ['skills/beta'], injections: [append('beta')] }, ['beta']);
+        const { result, lines } = await quietly(() => runPass(tmp, rec({ selection: sel({ 'skills/beta': false }) })));
+        assertEq('J1 one outcome', result.outcomes.length, 1);
+        assertEq('J1 it is not applied', result.outcomes[0].applied, false);
+        assertEq('J1 with its own reason', result.outcomes[0].reason, 'target-disabled');
+        assertTrue('J1 and no raw "target not found" warning', !lines.some(line => line.includes('Injection target not found')), lines.join('\n'));
+        assertTrue('J1 the installed copy is untouched', !(await fs.readFile(path.join(tmp, '.claude/skills/beta/SKILL.md'), 'utf8')).includes('INJECTED TEXT'));
+    });
+
+    await withTmp(async (tmp) => {
+        await setup(tmp, { skills: ['skills/beta'], injections: [append('beta')] }, ['beta']);
+        const { result } = await quietly(() => runPass(tmp, rec({ selection: sel({ 'skills/beta': true }) })));
+        assertEq('J2 an enabled target is applied', result.applied, 1);
+        assertTrue('J2 the text is in the skill', (await fs.readFile(path.join(tmp, '.claude/skills/beta/SKILL.md'), 'utf8')).includes('INJECTED TEXT'));
+    });
+
+    await withTmp(async (tmp) => {
+        await setup(tmp, { skills: ['skills/beta'], injections: [append('beta')] }, ['beta']);
+        const { result } = await quietly(() => runPass(tmp, rec()));
+        assertEq('J3 a legacy record applies as before', result.applied, 1);
+    });
+
+    await withTmp(async (tmp) => {
+        await setup(tmp, { replaces: { 'skills/my': 'unikit-commit' }, injections: [append('unikit-commit')] }, ['unikit-commit']);
+        const { result } = await quietly(() => runPass(tmp, rec({ selection: sel({ 'skills/my': false }) })));
+        assertEq('J4 an injection into the base skill of a disabled replacement is applied', result.applied, 1);
+    });
+
+    await withTmp(async (tmp) => {
+        await setup(tmp, { skills: ['x/beta', 'y/beta'], injections: [append('beta')] }, ['beta']);
+        const { result } = await quietly(() => runPass(tmp, rec({ selection: sel({ 'x/beta': false, 'y/beta': true }) })));
+        assertEq('J5 an enabled skill of the same name keeps the target', result.applied, 1);
+    });
+});
+
 console.log(`\nextension-selection: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

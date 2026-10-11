@@ -22,7 +22,9 @@ import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { fileExists } from '../../utils/fs.js';
-import { collectReplacedSkills, refreshExtensions } from '../../core/extension-ops.js';
+import { collectReplacedSkills } from '../../core/extension-ops.js';
+import { refreshExtensions } from '../../core/extension-refresh.js';
+import { filterManifest } from '../../core/extension-selection.js';
 import { loadExtensionManifest, getExtensionDir } from '../../core/extensions.js';
 import { createRegistry } from '../../core/registry/index.js';
 import { logInfo } from '../../utils/log.js';
@@ -238,13 +240,15 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
         const extManifest = await loadExtensionManifest(getExtensionDir(projectDir, ext.name));
         if (!extManifest) continue;
 
+        // Only what the selection left on: a skill or subagent the user switched off stays out.
+        const selected = filterManifest(extManifest, ext.selection);
         const extensionDir = getExtensionDir(projectDir, ext.name);
         for (const agent of config.agents) {
-          if (extManifest.skills?.length) {
-            await installExtensionSkills(projectDir, agent, extensionDir, extManifest.skills, engineId, config.engineMcpKey);
+          if (selected.skills?.length) {
+            await installExtensionSkills(projectDir, agent, extensionDir, selected.skills, engineId, config.engineMcpKey);
           }
-          if (extManifest.subagents?.length) {
-            await installExtensionSubagents(projectDir, agent, extensionDir, extManifest.subagents, engineId, config.engineMcpKey);
+          if (selected.subagents?.length) {
+            await installExtensionSubagents(projectDir, agent, extensionDir, selected.subagents, engineId, config.engineMcpKey);
           }
         }
       }

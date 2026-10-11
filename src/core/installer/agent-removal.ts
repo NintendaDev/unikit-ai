@@ -10,6 +10,7 @@
 import path from 'path';
 import type { AgentInstallation, UniKitConfig } from '../config.js';
 import { getExtensionDir, loadExtensionManifest } from '../extensions.js';
+import { filterManifest } from '../extension-selection.js';
 import { cleanupAgentSetup } from '../transformer.js';
 import { removeSkillsByName } from './skills.js';
 import { fileExists, listEntries, removeDirectory } from '../../utils/fs.js';
@@ -26,8 +27,10 @@ export interface AgentRemovalResult {
 
 /**
  * Skill names the installed extensions put into every agent's skills directory — the same set
- * `removeExtension` derives (extension-ops.ts): the extension's own skills (`basename` of each
- * `skills` path) and the base skills it replaced. A replacement is installed under the BASE
+ * `removeExtension` derives (extension-ops.ts): the extension's enabled own skills (`basename` of
+ * each `skills` path the selection leaves on) and the base skills its enabled replacements
+ * replaced. A skill the user left out of the selection was never installed, so a skill of the
+ * same name that belongs to someone else is not named here. A replacement is installed under the BASE
  * skill's name for every agent whether or not the user picked that base skill, so it need not be
  * in `installedSkills`. The agent record lists none of this: the replaced names are on the
  * extension's record, the rest is read from its manifest on disk. An extension whose manifest is
@@ -46,10 +49,11 @@ export async function collectExtensionSkillNames(projectDir: string, config: Uni
       logWarn('agent-removal', `extension "${extension.name}": manifest not found - its own skills are left in place`);
       continue;
     }
-    for (const skillPath of manifest.skills ?? []) {
+    const selected = filterManifest(manifest, extension.selection);
+    for (const skillPath of selected.skills ?? []) {
       names.add(path.basename(skillPath));
     }
-    for (const baseName of Object.values(manifest.replaces ?? {})) {
+    for (const baseName of Object.values(selected.replaces ?? {})) {
       names.add(baseName);
     }
   }
