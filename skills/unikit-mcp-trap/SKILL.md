@@ -94,6 +94,8 @@ WARN [mcp-trap] server in notes header ≠ configured (<notes> ≠ <configured>)
 The existing entries stay in force — they are *suspect*, not void, and suspect entries
 still fail safe. Retiring them is `/unikit-mcp-audit`'s job, not this skill's.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Input
 
 `$ARGUMENTS` takes three forms. Resolve which one this is **before** Step 1 — the branches

@@ -264,6 +264,8 @@ This file contains:
 
 All engine-specific checks in Steps 2 and 3 reference this file. If `ENGINE_RULES.md` is missing, skip engine-specific checks and note: `Engine rules: ENGINE_RULES.md not found, engine-specific checks skipped`.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### 0.4 Detect Base Branch
 
 Read `.unikit/system/plan-boundaries.md` now, once, and resolve the base branch by its `## Base branch`. Save it as `$BASE_BRANCH` — every later git command uses it instead of a hardcoded `main` or `master`.

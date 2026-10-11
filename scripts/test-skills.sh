@@ -11233,9 +11233,11 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 7f6: extension points — registry, name checks and marker primitives
+# Part 7f6: extension points — unit tests and the anchor guard (EP-1…EP-5)
+# The EP-1…EP-5 family runs inside test-extension-points.mjs (registry vs anchors in skills/);
+# EP-6 (call sites) and EP-7 (documented points) are greps in Part 7g10.
 # ─────────────────────────────────────────────
-echo -e "\n${BOLD}Part 7f6: extension point unit tests${NC}"
+echo -e "\n${BOLD}Part 7f6: extension point unit tests and anchor guard (EP-1…EP-5)${NC}"
 
 set +e
 EXT_POINTS_OUTPUT=$(node "$ROOT_DIR/scripts/test-extension-points.mjs" 2>&1)

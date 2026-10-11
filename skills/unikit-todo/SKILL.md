@@ -34,6 +34,8 @@ The TODO file is always `.unikit/TODO.md`.
 
 Read `.unikit/skill-context/unikit-todo/SKILL.md` if it exists. Treat it as project-level overrides — when it conflicts with this SKILL.md, the skill-context wins.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 1: Determine Mode
 
 Parse the arguments to determine the operating mode:

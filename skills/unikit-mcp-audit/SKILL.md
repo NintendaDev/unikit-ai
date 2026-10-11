@@ -76,6 +76,8 @@ Silently load — do not narrate:
 Then pick the run id: `<runid>` is a short token unique to this run (a timestamp is
 enough). Every object, asset, and file this skill creates carries it.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## The asset root is a contract, not a path
 
 When a replay needs an asset, it goes under a **project-relative audit folder**:

@@ -134,6 +134,8 @@ always live at `.unikit/memory/<module>/<tier>/`. Never hardcode these — assem
 them from the module id, its `enginePartitioned` flag, the resolved engine, and the
 tier.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Step 0.6: Registry Write-Capability Gate (create / update only)
 
 Write modes must confirm the target registry is reachable, on the latest schema,

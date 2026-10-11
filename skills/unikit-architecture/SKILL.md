@@ -62,6 +62,8 @@ Extract key conventions but do NOT duplicate them into ARCHITECTURE.md — refer
 
 **Read `.unikit/skill-context/unikit-architecture/SKILL.md`** if it exists — project-specific rules accumulated by `/unikit-evolve`. Treat as overrides: skill-context wins over general rules on conflict.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 2: Scan the Project
 
 Scan the project to discover the actual tech stack. This is the most important step —

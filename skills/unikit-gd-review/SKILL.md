@@ -145,6 +145,8 @@ or any source/build artifact — doing so violates the one-way boundary. A
 feasibility finding cites the line it relied on in DESCRIPTION/ARCHITECTURE as its
 evidence.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Phase 1 — Resolve Scope & Mode (no flags)
 
 **Scope** is a function of the prompt:

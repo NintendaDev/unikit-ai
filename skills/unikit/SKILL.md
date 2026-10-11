@@ -79,6 +79,8 @@ Check whether `.unikit/config.yaml` already exists. This step performs **no user
 - **If it exists** — Read it. Treat its values as the source of truth for `language.*`, `git.*`, `workflow.*`. Mark Steps 1 / 2 / 3 as "merge mode": prefer existing values, prompt only when a critical field is missing or empty.
 - **If it does not exist** — set "bootstrap mode": Steps 1 / 2 / 3 will collect values from the user / git and write a fresh `config.yaml`.
 
+<!-- unikit:extension-point:bootstrap -->
+
 **Mode dispatch — config actualization.** If `.unikit/config.yaml` **exists** and the intent of the prompt is to actualize / update / repair the configuration (for example "update the config", "add missing settings", "actualize configuration", "fix my config"), load `{{skills_dir}}/{{self_name}}/references/mode-config.md` and follow it (it STOPs; Steps 1-11 do not run). On entering the mode print one line, so that skipping nine steps reads as a decision rather than as work breaking off:
 
 `INFO [config] actualization mode — Steps 1-11 skipped`

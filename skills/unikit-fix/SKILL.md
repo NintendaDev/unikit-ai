@@ -226,6 +226,8 @@ codebase conventions, and tech-stack analysis. These rules are tailored to the c
 - If the current problem resembles a past patch — apply the same approach or avoid the same mistakes
 - This is accumulated experience. Use it.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ---
 
 ## Step 1: Understand the Problem & Choose Mode

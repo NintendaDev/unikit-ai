@@ -80,6 +80,8 @@ No narration between commands, and **no mention of a setting that merely did its
    - These are lightweight checks — flag only clear violations as `WARN`, don't block the commit
    - Never modify these files
 
+   <!-- unikit:extension-point:bootstrap -->
+
 4. **Plan Linkage**
    - Check if `.unikit/code/plans/` contains an active plan (look for a `plans/*/PLAN.md` manifest)
    - If a plan exists and the staged changes clearly relate to its tasks, the plan is the source of the message's human part (Step 7): read its `## Overview` and the `WHY:` line of every task the staged changes belong to, and add the `Plan: <folder>` trailer. Phase and task numbers never go into the message — the trailer is the link.

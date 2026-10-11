@@ -128,6 +128,8 @@ Silently load — do not narrate:
 **One-way boundary:** never read `.unikit/code/`, project source, or build
 artifacts. The only external read is `SOURCE.md` during an import (Phase 1).
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Phase 1 — Context
 
 Gather the facts the system must stay consistent with (read-only):

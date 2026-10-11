@@ -126,6 +126,8 @@ Silently load — do not narrate:
 artifacts. Flow is a *read target* for the code side, never a writeback surface — a
 flow's "realized" state is **derived**, never written here.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Phase 1 — Context
 
 Gather the facts the flow must stay consistent with (read-only):

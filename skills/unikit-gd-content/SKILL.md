@@ -137,6 +137,8 @@ Silently load — do not narrate:
 Content crosses to code as a **contract** (the schema + descriptor), never as data —
 the bulk values stay in the editor (`gd-principles` → One-Way Boundary).
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Phase 1 — Context
 
 Gather the facts the content type must stay consistent with (read-only):

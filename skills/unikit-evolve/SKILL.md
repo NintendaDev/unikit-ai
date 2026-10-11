@@ -157,6 +157,8 @@ Read the following files:
 2. **`.unikit/RULES.md`** — current project rules, and every topic file its `## Topics` table lists (`.unikit/rules/<slug>.md`). If it doesn't exist, it will be created in Step 6
 3. **`.unikit/memory/code/RULES_INDEX.md`** — index of knowledge base rule files. If doesn't exist or empty, skip knowledge base cross-check in Step 4 (check only RULES.md)
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 3: Build Prevention Point Registry
 
 Build a flat list of ALL extracted prevention points:

@@ -446,5 +446,138 @@ await group('V', async () => {
     assertEq('V11 the directory itself is not inside', schema.isInsideDirectory('/a/b', '/a/b'), false);
 });
 
+// ── EP-1…EP-5: the registry and the anchors in the shipped skills agree ──────
+// The guard does not know how many points exist: it counts the pairs the registry lists and prints
+// the number, so adding a point (a minor version) needs no edit here, and a registry that vanished
+// is `0 pairs`, never a green run.
+
+const ANCHOR_MARK = '<!-- unikit:extension-point:';
+const escapeRe = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const anchorLine = (point) => new RegExp(`^[ \\t]*${escapeRe(ANCHOR_MARK + point)} -->[ \\t]*$`);
+
+async function listMarkdown(dir) {
+    const out = [];
+    let entries;
+    try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+        return out;
+    }
+    for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) out.push(...await listMarkdown(full));
+        else if (entry.name.endsWith('.md')) out.push(full);
+    }
+    return out;
+}
+
+await group('EP', async () => {
+    // EP-1 — the registry itself.
+    let registry = null;
+    try {
+        registry = JSON.parse(await fs.readFile(path.join(ROOT, 'data', 'extension-points.json'), 'utf8'));
+    } catch (error) {
+        fail('EP-1', `data/extension-points.json cannot be read: ${error instanceof Error ? error.message : String(error)}`);
+        return;
+    }
+    const isObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
+    if (!isObject(registry) || !isObject(registry.skills) || !isObject(registry.subagents)) {
+        fail('EP-1', 'the registry must be an object with "skills" and "subagents" objects');
+        return;
+    }
+    const pairs = [];
+    for (const [target, list] of Object.entries(registry.skills)) {
+        if (!Array.isArray(list)) {
+            fail('EP-1', `skills.${target} is not an array`);
+            continue;
+        }
+        for (const point of list) pairs.push([target, point]);
+    }
+    console.log(`  EP-1: ${pairs.length} (target, point) pair(s) in the registry`);
+    assertTrue('EP-1 the registry lists at least one pair', pairs.length > 0, '0 pairs — the registry is empty or unreadable');
+    assertEq(
+        'EP-1 subagent points are not supported yet — the pass reports them as unknown-point',
+        Object.keys(registry.subagents).length,
+        0,
+    );
+
+    // EP-2 — every registry pair has its anchor exactly once.
+    {
+        let bad = 0;
+        for (const [target, point] of pairs) {
+            const file = path.join(ROOT, 'skills', target, 'SKILL.md');
+            let text;
+            try {
+                text = await fs.readFile(file, 'utf8');
+            } catch {
+                fail('EP-2', `skills/${target}/SKILL.md does not exist`);
+                bad++;
+                continue;
+            }
+            const count = text.split('\n').filter(line => anchorLine(point).test(line)).length;
+            if (count !== 1) {
+                fail('EP-2', `skills/${target}/SKILL.md carries the anchor "${point}" ${count} time(s), expected exactly 1`);
+                bad++;
+            }
+        }
+        if (bad === 0) pass(`EP-2 ${pairs.length} anchors, one per registry pair`);
+    }
+
+    // EP-3 — no anchor anywhere else.
+    {
+        const files = [...await listMarkdown(path.join(ROOT, 'skills')), ...await listMarkdown(path.join(ROOT, 'subagents'))];
+        console.log(`  EP-3: ${files.length} markdown file(s) scanned`);
+        assertTrue('EP-3 some files were scanned', files.length > 0, '0 files scanned');
+        const known = new Set(pairs.map(([target, point]) => `${target}:${point}`));
+        let stray = 0;
+        for (const file of files) {
+            const rel = path.relative(ROOT, file).replaceAll('\\', '/');
+            const lines = (await fs.readFile(file, 'utf8')).split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (!lines[i].includes(ANCHOR_MARK)) continue;
+                const whole = /^[ \t]*<!-- unikit:extension-point:([a-z][a-z0-9-]*) -->[ \t]*$/.exec(lines[i]);
+                const target = /^skills\/([^/]+)\/SKILL\.md$/.exec(rel)?.[1];
+                if (!whole || !target || !known.has(`${target}:${whole[1]}`)) {
+                    fail('EP-3', `${rel}:${i + 1} an anchor that is not a registry pair on its own line of a SKILL.md`);
+                    stray++;
+                }
+            }
+        }
+        if (stray === 0) pass('EP-3 no stray anchors');
+    }
+
+    // EP-4 — the names are valid by the one rule.
+    {
+        const invalid = pairs.filter(([, point]) => points.validatePointName(point) !== null);
+        assertEq('EP-4 every point name passes validatePointName', invalid.map(([t, p]) => `${t}:${p}`).join(', '), '');
+    }
+
+    // EP-5 — precondition of the hash normalisation: one trailing newline.
+    {
+        const files = [
+            ...(await fs.readdir(path.join(ROOT, 'skills'))).map(name => path.join(ROOT, 'skills', name, 'SKILL.md')),
+            ...(await fs.readdir(path.join(ROOT, 'subagents'))).filter(name => name.endsWith('.md')).map(name => path.join(ROOT, 'subagents', name)),
+        ];
+        let scanned = 0;
+        let bad = 0;
+        for (const file of files) {
+            let text;
+            try {
+                text = await fs.readFile(file, 'utf8');
+            } catch {
+                continue;
+            }
+            scanned++;
+            if (!text.endsWith('\n') || text.endsWith('\n\n')) {
+                fail('EP-5', `${path.relative(ROOT, file).replaceAll('\\', '/')} must end with exactly one newline`);
+                bad++;
+            }
+        }
+        console.log(`  EP-5: ${scanned} file(s) scanned`);
+        assertTrue('EP-5 some files were scanned', scanned > 0, '0 files scanned');
+        if (bad === 0) pass('EP-5 every skill and subagent file ends with exactly one newline');
+    }
+});
+
 console.log(`\nextension-points: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

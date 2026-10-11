@@ -74,6 +74,8 @@ Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
 
 Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-level overrides that win over this SKILL.md when conflicting.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Step 2: Route argument and get code
 
 **Parse `+check` first.** If `$ARGUMENTS` contains the `+check` token, strip it out (remember `check = true`) before running the routing chain below, so it is never mistaken for a file path or git ref. `+check` enables the fresh-context findings validator in Step 4.5; without it, that step is skipped entirely.

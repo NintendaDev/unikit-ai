@@ -166,6 +166,8 @@ module's tiers. Concrete tier names, the "what goes in which tier" decision, and
 file-format templates are **always** taken from the module contract — this router
 never hardcodes them.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 1: Parse Input & Classify Intent
 
 Two-phase classification determines both input type and user intent.

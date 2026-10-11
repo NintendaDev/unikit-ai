@@ -102,6 +102,8 @@ It travels with the data, so it instructs even a reader whose skills predate top
 
 Read `.unikit/skill-context/unikit-rules/SKILL.md` if it exists. Treat it as project-level overrides — when it conflicts with this SKILL.md, the skill-context wins.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 1: Determine Mode
 
 ```

@@ -94,6 +94,8 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 4. Read `.unikit/skill-context/unikit-docs/SKILL.md` — **MANDATORY if exists.** Project-specific overrides. Skill-context rules win over general rules on conflict.
 5. Read `AGENTS.md` (if exists) — current documentation index
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 0.1: Parse Flags
 
 ```
