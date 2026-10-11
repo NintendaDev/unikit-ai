@@ -1397,25 +1397,39 @@ inject_fake_registry "$PREPEND_PROJECT"
 # Install base skills first
 (cd "$PREPEND_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" update > /dev/null 2>&1)
 
+# The base skill as `update` left it — what `extension remove` must give back byte for byte
+SKILL_FILE_P="$PREPEND_PROJECT/.claude/skills/unikit/SKILL.md"
+PREPEND_SHA_BEFORE=$(sha_of "$SKILL_FILE_P")
+
 # Add prepend extension
 (cd "$PREPEND_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension add "$PREPEND_EXT" > /dev/null 2>&1)
 
 # Verify injected content is present
-assert_contains "$PREPEND_PROJECT/.claude/skills/unikit/SKILL.md" \
+assert_contains "$SKILL_FILE_P" \
   "PREPENDED CONTENT FROM EXTENSION" \
   "prepend injection content must be present"
 
-# Verify it's at the top (first non-empty line should be the injection marker)
-FIRST_LINE=$(head -1 "$PREPEND_PROJECT/.claude/skills/unikit/SKILL.md")
-if [[ "$FIRST_LINE" == *"unikit-ext:unikit-ext-prepend:unikit:prepend:start"* ]]; then
-  :  # expected
-else
-  echo "Assertion failed: prepend injection must be at the top of the file"
+# The frontmatter fence stays the first line; the block follows the closing fence
+FIRST_LINE=$(head -1 "$SKILL_FILE_P")
+if [[ "$FIRST_LINE" != "---" ]]; then
+  echo "Assertion failed: prepend must keep the frontmatter fence as the first line"
   echo "First line: $FIRST_LINE"
   exit 1
 fi
+FENCE_END=$(awk '/^---$/ { n++; if (n == 2) { print NR; exit } }' "$SKILL_FILE_P")
+AFTER_FENCE=$(sed -n "$((FENCE_END + 1))p" "$SKILL_FILE_P")
+if [[ "$AFTER_FENCE" != *"unikit-ext:unikit-ext-prepend:unikit:prepend:start"* ]]; then
+  echo "Assertion failed: prepend block must follow the frontmatter"
+  echo "Line after fence: $AFTER_FENCE"
+  exit 1
+fi
 
-echo "  ✓ injection prepend: content injected at top of target file"
+# Removal gives the file back byte for byte
+(cd "$PREPEND_PROJECT" && node "$ROOT_DIR/dist/cli/index.js" extension remove unikit-ext-prepend > /dev/null 2>&1)
+assert_same_sha "$SKILL_FILE_P" "$PREPEND_SHA_BEFORE" \
+  "prepend removal must restore the file byte for byte"
+
+echo "  ✓ injection prepend: block sits right after the frontmatter, file still starts with the fence"
 
 # ─────────────────────────────────────────────────────
 # Test 31: commands field accepted in manifest validation

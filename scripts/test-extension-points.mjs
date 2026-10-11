@@ -331,6 +331,344 @@ await group('H', async () => {
     }
 });
 
+// ── L: the original position entries on the shared primitives ───────────────
+
+const injections = await import(dist('core/injections.js'));
+
+await group('L', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'unikit-ext-legacy-'));
+    try {
+        const agent = { id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents', installedSkills: [], installedSubagents: [] };
+        const file = path.join(tmp, '.claude', 'skills', 't', 'SKILL.md');
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        const base = '---\nname: t\ndescription: t\n---\n\n# T\n\nBody\n';
+        const reset = () => fs.writeFile(file, base);
+        const read = () => fs.readFile(file, 'utf8');
+        const prepend = { target: 't', targetType: 'skill', position: 'prepend', file: 'p.md' };
+        const append = { target: 't', targetType: 'skill', position: 'append', file: 'a.md' };
+
+        // L1 — prepend sits after the frontmatter, is idempotent and exactly removable.
+        await reset();
+        assertTrue('L1 prepend applies', await injections.applyInjection(tmp, agent, 'ext-a', prepend, 'top text'));
+        const once = await read();
+        assertTrue('L1 the file still starts with the fence', once.startsWith('---\nname: t'));
+        assertTrue('L1 the marker follows the closing fence', once.includes('---\n<!-- unikit-ext:ext-a:t:prepend:start -->'));
+        await injections.applyInjection(tmp, agent, 'ext-a', prepend, 'top text');
+        assertEq('L1 re-applying changes nothing', await read(), once);
+        assertTrue('L1 strip reports a removal', await injections.stripInjection(tmp, agent, 'ext-a', prepend));
+        assertEq('L1 strip returns the source byte for byte', await read(), base);
+
+        // L2 — append, idempotency, two extensions removed in either order.
+        await reset();
+        await injections.applyInjection(tmp, agent, 'ext-a', append, 'tail a');
+        const appended = await read();
+        assertEq('L2 append is the legacy shape', appended, `${base.trimEnd()}\n\n${markers.renderBlockRegion('ext-a:t:append', 'tail a')}\n`);
+        await injections.applyInjection(tmp, agent, 'ext-a', append, 'tail a');
+        assertEq('L2 re-applying changes nothing', await read(), appended);
+        await injections.stripInjection(tmp, agent, 'ext-a', append);
+        assertEq('L2 strip returns the source byte for byte', await read(), base);
+        for (const order of [['ext-a', 'ext-b'], ['ext-b', 'ext-a']]) {
+            await reset();
+            await injections.applyInjection(tmp, agent, 'ext-a', append, 'tail a');
+            await injections.applyInjection(tmp, agent, 'ext-b', append, 'tail b');
+            for (const name of order) await injections.stripInjection(tmp, agent, name, append);
+            assertEq(`L2 two extensions stripped ${order.join(' then ')} give the source`, await read(), base);
+        }
+
+        // L3 — a block of the old prepend shape is moved after the frontmatter.
+        const oldRegion = markers.renderBlockRegion('ext-a:t:prepend', 'top text');
+        await fs.writeFile(file, `${oldRegion}\n${base}`);
+        await injections.applyInjection(tmp, agent, 'ext-a', prepend, 'top text');
+        const migrated = await read();
+        assertTrue('L3 the file starts with the fence again', migrated.startsWith('---\n'));
+        assertEq('L3 exactly one block remains', migrated.split('unikit-ext:ext-a:t:prepend:start').length - 1, 1);
+        await injections.stripInjection(tmp, agent, 'ext-a', prepend);
+        assertEq('L3 and it comes out byte for byte', await read(), base);
+
+        // L4 — strip-all handles position entries only.
+        await reset();
+        await injections.applyInjection(tmp, agent, 'ext-a', append, 'tail a');
+        const pointEntryForT = { target: 't', targetType: 'skill', point: 'bootstrap', id: 'one', file: 'x.md', references: [] };
+        const count = await injections.stripAllInjections(tmp, agent, 'ext-a', [append, pointEntryForT]);
+        assertEq('L4 one entry was stripped', count, 1);
+
+        // L5 — a missing target is a quiet false and creates nothing.
+        const ghost = { target: 'ghost', targetType: 'skill', position: 'append', file: 'a.md' };
+        const warn = console.warn;
+        console.warn = () => {};
+        let result;
+        try {
+            result = await injections.applyInjection(tmp, agent, 'ext-a', ghost, 'x');
+        } finally {
+            console.warn = warn;
+        }
+        assertEq('L5 a missing target returns false', result, false);
+        let created = true;
+        try {
+            await fs.access(path.join(tmp, '.claude', 'skills', 'ghost'));
+        } catch {
+            created = false;
+        }
+        assertEq('L5 and no directory is created', created, false);
+    } finally {
+        await fs.rm(tmp, { recursive: true, force: true });
+    }
+});
+
+// ── P: the project-level injection pass ─────────────────────────────────────
+
+const { applyExtensionInjections } = await import(dist('core/extension-injections.js'));
+const { renderExtensionText } = await import(dist('core/extension-render.js'));
+
+const CLAUDE = { id: 'claude', skillsDir: '.claude/skills', subagentsDir: '.claude/agents', installedSkills: [], installedSubagents: [] };
+const CODEX = { id: 'codex', skillsDir: '.codex/skills', subagentsDir: '.codex/agents', installedSkills: [], installedSubagents: [] };
+
+const skillText = (name, anchors = 1) => `---\nname: ${name}\ndescription: d\n---\n\n# ${name}\n\nStep\n\n${(ANCHOR + '\n\n').repeat(anchors)}Next\n`;
+
+async function withProject(fn) {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'unikit-ext-pass-'));
+    try {
+        await fn(tmp);
+    } finally {
+        await fs.rm(tmp, { recursive: true, force: true });
+    }
+}
+
+async function writeSkill(tmp, skillsDir, name, text = skillText(name)) {
+    const file = path.join(tmp, skillsDir, name, 'SKILL.md');
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, text);
+    return file;
+}
+
+async function writeExt(tmp, name, injectionsList, files = {}) {
+    const dir = path.join(tmp, '.unikit', 'extensions', ...name.split('/'));
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, 'extension.json'), JSON.stringify({ name, version: '1.0.0', injections: injectionsList }));
+    for (const [rel, text] of Object.entries(files)) {
+        await fs.mkdir(path.dirname(path.join(dir, rel)), { recursive: true });
+        await fs.writeFile(path.join(dir, rel), text);
+    }
+    return { name, source: 'test', version: '1.0.0' };
+}
+
+const runPass = (tmp, agents, extensions) => applyExtensionInjections({ projectDir: tmp, engine: 'unity', engineMcpKey: null, agents, extensions });
+const pointFor = (id, over = {}) => ({ id, target: 'unikit-plan', point: 'bootstrap', file: `inj/${id}.md`, ...over });
+const outcomeById = (report, id) => report.outcomes.find(o => o.id === id);
+const exists = async (p) => fs.access(p).then(() => true, () => false);
+
+await group('P', async () => {
+    // P1 / P2 / P4 — one block, idempotence, and the way back.
+    await withProject(async (tmp) => {
+        const file = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        const base = await fs.readFile(file, 'utf8');
+        const ext = await writeExt(tmp, 'ext-a', [pointFor('one')], { 'inj/one.md': 'line one\n' });
+
+        const first = await runPass(tmp, [CLAUDE], [ext]);
+        assertEq('P1 one entry applied', first.applied, 1);
+        assertEq(
+            'P1 the block sits under the anchor, the rest is untouched',
+            await fs.readFile(file, 'utf8'),
+            markers.insertAtAnchor(base, 'bootstrap', [markers.renderBlockRegion('ext-a:unikit-plan:bootstrap:one', 'line one')]),
+        );
+        const afterFirst = await fs.readFile(file, 'utf8');
+
+        const second = await runPass(tmp, [CLAUDE], [ext]);
+        assertEq('P2 a second pass leaves the file as it is', await fs.readFile(file, 'utf8'), afterFirst);
+        assertEq('P2 and reports the same', `${second.applied}/${second.referencesWritten}`, `${first.applied}/${first.referencesWritten}`);
+
+        await runPass(tmp, [CLAUDE], []);
+        assertEq('P4 a pass with no extensions returns the source byte for byte', await fs.readFile(file, 'utf8'), base);
+        assertEq('P4 and leaves no reference directory', await exists(path.join(tmp, '.claude/skills/unikit-plan/references/ext')), false);
+    });
+
+    // P3 — two extensions in one point: any installation order, one result.
+    await withProject(async (tmp) => {
+        const file = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        const a = await writeExt(tmp, 'ext-a', [pointFor('b-line'), pointFor('a-line')], { 'inj/b-line.md': 'a:b', 'inj/a-line.md': 'a:a' });
+        const b = await writeExt(tmp, 'ext-b', [pointFor('first')], { 'inj/first.md': 'b:first' });
+        await runPass(tmp, [CLAUDE], [a, b]);
+        const ab = await fs.readFile(file, 'utf8');
+        await runPass(tmp, [CLAUDE], [b, a]);
+        const ba = await fs.readFile(file, 'utf8');
+        assertEq('P3 the order of the extensions does not change the file', ba, ab);
+        const order = ['a:a', 'a:b', 'b:first'].map(text => ab.indexOf(text));
+        assertTrue('P3 blocks go by extension, then id', order[0] > 0 && order[0] < order[1] && order[1] < order[2], JSON.stringify(order));
+    });
+
+    // P5 — reference files and placeholders.
+    await withProject(async (tmp) => {
+        const file = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        const ext = await writeExt(tmp, 'ext-a', [pointFor('one', { references: ['refs/spec.md'] })], {
+            'inj/one.md': 'Read {{ext_reference:spec.md}} first',
+            'refs/spec.md': 'In {{skills_dir}} for {{self_name}}; call /unikit-plan\n',
+        });
+        const report = await runPass(tmp, [CLAUDE], [ext]);
+        assertEq('P5 one reference file written', report.referencesWritten, 1);
+        const refFile = path.join(tmp, '.claude/skills/unikit-plan/references/ext/ext-a/spec.md');
+        assertEq('P5 the reference is rendered', await fs.readFile(refFile, 'utf8'), 'In .claude/skills for unikit-plan; call /unikit-plan\n');
+        assertTrue(
+            'P5 the placeholder in the block is the delivered path',
+            (await fs.readFile(file, 'utf8')).includes('Read .claude/skills/unikit-plan/references/ext/ext-a/spec.md first'),
+        );
+    });
+
+    // P6 / P7 — per-agent rendering and the agent filter.
+    await withProject(async (tmp) => {
+        const claudeFile = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        const codexFile = await writeSkill(tmp, '.codex/skills', 'unikit-plan');
+        const ext = await writeExt(tmp, 'ext-a', [pointFor('one', { references: ['refs/spec.md'] })], {
+            'inj/one.md': 'run /unikit-plan\n<!-- unikit:agents codex -->\nonly for codex\n<!-- unikit:end -->',
+            'refs/spec.md': 'see /unikit-verify\n',
+        });
+        await runPass(tmp, [CLAUDE, CODEX], [ext]);
+        const claudeText = await fs.readFile(claudeFile, 'utf8');
+        const codexText = await fs.readFile(codexFile, 'utf8');
+        assertTrue('P6 Claude keeps /unikit-plan', claudeText.includes('run /unikit-plan') && !claudeText.includes('$unikit-plan'));
+        assertTrue('P6 Codex gets $unikit-plan in the block', codexText.includes('run $unikit-plan'));
+        assertEq(
+            'P6 Codex gets $unikit-verify in the reference',
+            await fs.readFile(path.join(tmp, '.codex/skills/unikit-plan/references/ext/ext-a/spec.md'), 'utf8'),
+            'see $unikit-verify\n',
+        );
+        assertTrue('P7 the codex-only text is absent for Claude', !claudeText.includes('only for codex'));
+        assertTrue('P7 and present for Codex', codexText.includes('only for codex'));
+    });
+    await withProject(async (tmp) => {
+        const file = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        const base = await fs.readFile(file, 'utf8');
+        const ext = await writeExt(tmp, 'ext-a', [pointFor('one')], { 'inj/one.md': '<!-- unikit:agents codex -->\nnever closed' });
+        const report = await runPass(tmp, [CLAUDE], [ext]);
+        assertEq('P7 a broken marker is render-failed', outcomeById(report, 'one')?.reason, 'render-failed');
+        assertEq('P7 and the target is untouched', await fs.readFile(file, 'utf8'), base);
+    });
+
+    // P8 — every reason a point is not applied.
+    await withProject(async (tmp) => {
+        await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        await writeSkill(tmp, '.claude/skills', 'unikit', skillText('unikit', 0));
+        await writeSkill(tmp, '.claude/skills', 'unikit-todo', skillText('unikit-todo', 2));
+        await writeSkill(tmp, '.claude/skills', 'unikit-review');
+        await writeSkill(tmp, '.claude/skills', 'unikit-roadmap');
+        await writeSkill(tmp, '.claude/skills', 'unikit-rules');
+        const ext = await writeExt(tmp, 'ext-a', [
+            pointFor('unknown-target', { target: 'not-a-skill', file: 'inj/t.md' }),
+            pointFor('unknown-point', { point: 'before-tasks', file: 'inj/t.md' }),
+            pointFor('no-anchor', { target: 'unikit', file: 'inj/t.md' }),
+            pointFor('two-anchors', { target: 'unikit-todo', file: 'inj/t.md' }),
+            pointFor('not-installed', { target: 'unikit-docs', file: 'inj/t.md' }),
+            pointFor('no-file', { target: 'unikit-review', file: 'inj/missing.md' }),
+            pointFor('no-reference', { target: 'unikit-roadmap', file: 'inj/t.md', references: ['refs/none.md'] }),
+            pointFor('unresolved', { target: 'unikit-rules', file: 'inj/u.md' }),
+            { id: 'subagent', target: 'develop-agent', targetType: 'subagent', point: 'bootstrap', file: 'inj/t.md' },
+        ], { 'inj/t.md': 'text', 'inj/u.md': 'see {{ext_reference:nothing.md}}' });
+        const report = await runPass(tmp, [CLAUDE], [ext]);
+        const expected = {
+            'unknown-target': 'unknown-point', 'unknown-point': 'unknown-point', 'no-anchor': 'anchor-missing',
+            'two-anchors': 'anchor-duplicated', 'not-installed': 'target-not-installed', 'no-file': 'source-missing',
+            'no-reference': 'source-missing', unresolved: 'reference-unresolved', subagent: 'unknown-point',
+        };
+        for (const [id, reason] of Object.entries(expected)) {
+            const outcome = outcomeById(report, id);
+            assertTrue(`P8 ${id} is skipped as ${reason}`, outcome !== undefined && outcome.applied === false && outcome.reason === reason, JSON.stringify(outcome));
+        }
+        assertEq('P8 nothing was applied', report.applied, 0);
+    });
+
+    // P9 — a scoped name keeps one path segment.
+    await withProject(async (tmp) => {
+        await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        const ext = await writeExt(tmp, '@scope/pkg', [pointFor('one', { references: ['refs/spec.md'] })], { 'inj/one.md': 'x', 'refs/spec.md': 'y' });
+        await runPass(tmp, [CLAUDE], [ext]);
+        assertEq('P9 the reference directory is the slug', await exists(path.join(tmp, '.claude/skills/unikit-plan/references/ext/=scope+pkg/spec.md')), true);
+    });
+
+    // P10 — position entries through the pass; both forms in one file.
+    await withProject(async (tmp) => {
+        const file = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        const base = await fs.readFile(file, 'utf8');
+        const ext = await writeExt(tmp, 'ext-a', [
+            pointFor('one'),
+            { target: 'unikit-plan', targetType: 'skill', position: 'append', file: 'inj/tail.md' },
+            { target: 'unikit-plan', targetType: 'skill', position: 'prepend', file: 'inj/head.md' },
+            { target: 'unikit-plan', targetType: 'skill', position: 'append', file: '../outside.md' },
+        ], { 'inj/one.md': 'point text', 'inj/tail.md': 'tail text', 'inj/head.md': 'head text' });
+        const warn = console.warn;
+        console.warn = () => {};
+        let report;
+        try {
+            report = await runPass(tmp, [CLAUDE], [ext]);
+        } finally {
+            console.warn = warn;
+        }
+        const text = await fs.readFile(file, 'utf8');
+        assertTrue('P10 point, append and prepend are all present', ['point text', 'tail text', 'head text'].every(part => text.includes(part)));
+        assertTrue('P10 the file starts with the fence', text.startsWith('---\n'));
+        assertTrue('P10 an entry outside the extension is skipped', report.outcomes.some(o => o.reason === 'path-outside-extension'));
+        console.warn = () => {};
+        try {
+            await runPass(tmp, [CLAUDE], [ext]);
+        } finally {
+            console.warn = warn;
+        }
+        assertEq('P10 a second pass is idempotent', await fs.readFile(file, 'utf8'), text);
+        // Remove the point and position blocks the way the commands do.
+        const stripped = markers.removeBlockByKey(markers.removeBlockByKey(markers.removePointBlocks(text).content, 'ext-a:unikit-plan:append').content, 'ext-a:unikit-plan:prepend').content;
+        assertEq('P10 taking every block out returns the source', stripped, base);
+    });
+
+    // P11 — the pass heals what an absent extension left behind.
+    await withProject(async (tmp) => {
+        const file = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+        const base = await fs.readFile(file, 'utf8');
+        const orphan = markers.insertAtAnchor(base, 'bootstrap', [markers.renderBlockRegion('gone:unikit-plan:bootstrap:x', 'orphan')]);
+        await fs.writeFile(file, orphan);
+        const refDir = path.join(tmp, '.claude/skills/unikit-plan/references/ext/old');
+        await fs.mkdir(refDir, { recursive: true });
+        await fs.writeFile(path.join(refDir, 'x.md'), 'old');
+        await runPass(tmp, [CLAUDE], []);
+        assertEq('P11 the orphan block is gone', await fs.readFile(file, 'utf8'), base);
+        assertEq('P11 and the orphan reference directory too', await exists(path.join(tmp, '.claude/skills/unikit-plan/references/ext')), false);
+    });
+
+    // P12 — CRLF and an indented anchor.
+    await withProject(async (tmp) => {
+        const crlf = `---\r\nname: unikit-plan\r\n---\r\n\r\n1. step\r\n   ${ANCHOR}\r\n2. next\r\n`;
+        const file = await writeSkill(tmp, '.claude/skills', 'unikit-plan', crlf);
+        const ext = await writeExt(tmp, 'ext-a', [pointFor('one')], { 'inj/one.md': 'crlf line' });
+        const report = await runPass(tmp, [CLAUDE], [ext]);
+        assertEq('P12 applied under a CRLF indented anchor', report.applied, 1);
+        await runPass(tmp, [CLAUDE], []);
+        assertEq('P12 and removed byte for byte', await fs.readFile(file, 'utf8'), crlf);
+    });
+
+    // P13 — nothing to do, nothing touched.
+    await withProject(async (tmp) => {
+        const names = ['unikit-plan', 'unikit', 'unikit-fix'];
+        const before = {};
+        for (const name of names) {
+            const file = await writeSkill(tmp, '.claude/skills', name);
+            before[name] = await fs.readFile(file, 'utf8');
+        }
+        const report = await runPass(tmp, [CLAUDE], []);
+        assertEq('P13 an empty pass reports nothing', report.total, 0);
+        for (const name of names) {
+            assertEq(`P13 ${name} is untouched`, await fs.readFile(path.join(tmp, '.claude/skills', name, 'SKILL.md'), 'utf8'), before[name]);
+        }
+    });
+
+    // P14 — the renderer on its own.
+    {
+        const ctx = { agent: CLAUDE, engine: 'unity', engineMcpKey: null, target: 'unikit-plan', referenceBaseDir: 'x/y', referenceNames: new Set() };
+        const unresolved = renderExtensionText('{{ext_reference:a.md}} and {{ext_reference:b.md}} and {{ext_reference:a.md}}', ctx, 'block');
+        assertEq('P14 unresolved names are listed once, in order', unresolved.ok ? 'ok' : `${unresolved.reason}:${unresolved.detail}`, 'reference-unresolved:a.md, b.md');
+        const marker = renderExtensionText('x <!-- unikit-ext:a:b:c:d:start --> y', ctx, 'block');
+        assertEq('P14 a marker in the text is refused', marker.ok ? 'ok' : marker.reason, 'render-failed');
+        const anchor = renderExtensionText(`see ${ANCHOR}`, ctx, 'reference');
+        assertEq('P14 an anchor in the text is refused', anchor.ok ? 'ok' : anchor.reason, 'render-failed');
+    }
+});
+
 // ── V: the manifest model and its validation ────────────────────────────────
 
 const manifestWith = (injections) => ({ name: 'ext-a', version: '1.0.0', injections });

@@ -16,9 +16,8 @@ export const EXTENSION_POINT_ANCHOR_CLOSE = ' -->';
 /** Prefix of the marker that wraps an extension block (the same value the legacy injections used). */
 export const EXTENSION_BLOCK_MARKER_PREFIX = 'unikit-ext';
 
-/** A point block key is `ext:target:point:id`; a legacy (`position`) block key is `ext:target:position`. */
+/** A point block key is `ext:target:point:id` (4 fields); a legacy (`position`) block key is `ext:target:position` (3). */
 export const EXTENSION_POINT_KEY_SEGMENTS = 4;
-export const EXTENSION_LEGACY_KEY_SEGMENTS = 3;
 
 /** File name of the point registry under `data/` — the one list of points that exist. */
 export const EXTENSION_POINTS_FILE = 'extension-points.json';
