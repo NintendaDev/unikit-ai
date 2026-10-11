@@ -780,7 +780,7 @@ Normal mode already checks all items below but tolerates partial results and war
 | TODO/FIXME/HACK | Warning | **Failure** — no leftover markers allowed in changed files |
 | Anti-patterns | Warning | **Failure** — async void, missing CancellationToken, etc. |
 | Design acceptance criteria | Unmet `AC` reported as a finding | **Failure** — every cited `AC` must be met (only when the plan has a `## Design` section) |
-| Balance measurements | `⏳ AWAITING RESULT` is a warning | **Failure** — every `Measure:` task needs a row with `valid = yes` (only for a plan with `## Balance Context`) |
+| Balance measurements | `⏳ AWAITING RESULT` is a warning | **Failure** — every `Measure:` task needs a row with `valid = yes`, except a task skipped at a blocker (`⏭️ SKIPPED`) (only for a plan with `## Balance Context`) |
 
 Items that behave **the same** in both modes (always checked, always fail on violation):
 - Engine-specific checks (per ENGINE_RULES.md strict mode items)

@@ -7,15 +7,15 @@ This branch answers "may these data be returned?", not "is this balance good": t
 ## Step 1 — task status
 
 - A `Measure:` task is done **iff** `## Measurements` has a row with its `Item` and `valid = yes`, and `runs` is not less than the task's `runs:`.
-- A `Measure:` task the user chose to skip at a Step 3.3 blocker (it is listed under `## Not measured` of the report) is `⏭️ SKIPPED`: reported, never `verify-measure-<id>`, and it does not hold back the hand-back command.
+- A `Measure:` task the user chose to skip at a Step 3.3 blocker (it is listed under `## Not measured` of the report) is `⏭️ SKIPPED`: reported, never `verify-measure-<id>`, and it does not hold back the hand-back command — its id stands in `## Not measured`, which accounts for it in the report.
 - `⏳ AWAITING RESULT` means **waiting**: a separate line of the report, not `⏸️ MANUAL`, and not a blocker in the normal mode (in the strict mode it is a failure).
-- A `Hand-back:` task is done **iff** the report file exists and holds the header and every name of its `report:` list (by the contract's `## Header` and `## Body`). Contract missing → `WARN [balance] hand-back contract missing — report checked for existence and header only; run unikit-ai update`.
+- A `Hand-back:` task is done **iff** the report file exists and holds the header and every name of its `report:` list accounted for (by the contract's `## Header`, `## Body` and `**Report fields.**`: a row, a line, or a line of `## Not measured`). Contract missing → `WARN [balance] hand-back contract missing — report checked for existence and header only; run unikit-ai update`.
 
 ## Data validity
 
 A sub-step of the 3.x block, by the plan's snapshot and the plan's own artifacts:
 
-1. the report is complete;
+1. the report is complete (every name accounted for);
 2. by the `## Measurements` rows: `runs` is not less than declared, `build` is present, and the known-answer check row of an instrument has `valid = yes`;
 3. verdicts of different natures: `valid = no` blocks; `band = out` is data for the balance skill and is not a blocker — **except** for tasks whose acceptance is "closed by measurement `<item id>`": there a miss is an unfinished task unless an iteration limit was recorded.
 

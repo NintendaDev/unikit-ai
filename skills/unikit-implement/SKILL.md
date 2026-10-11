@@ -218,7 +218,7 @@ Then reconcile plan state with reality:
 - For tasks marked `[x]`, spot-check that the corresponding code actually exists (read a key file or check for expected classes/methods)
 - If code for a completed task is missing (e.g. after reset/rebase), revert the checkbox back to `- [ ]` and inform the user
 - If code exists but the task isn't marked complete, mark it `[x]` and inform the user
-- A task labelled `⏳ AWAITING RESULT` is picked up here — `references/balance-measure.md` → `## Resume (Step 0.3)`.
+- A task labelled `⏳ AWAITING RESULT` is picked up here, and a ticked `Measure:` / `Hand-back:` task is spot-checked by its row or its report file, not by code — `references/balance-measure.md` → `## Resume (Step 0.3)`.
 
 ### Step 1: Load Plan Context
 
@@ -247,7 +247,7 @@ No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the
 
 **The checklist carries a `PR checkpoint:` line or the manifest has `## Modules`** → read `{{skills_dir}}/{{self_name}}/references/pr-checkpoints.md` now, once — Steps 2, 3.2, 3.4, 3.9, 4, 5.6, 5.8 and the status display follow it. Missing or unreadable → `WARN [pr] PR checkpoint reference missing — PR checkpoint tasks are reported as blockers; run unikit-ai update`, every PR checkpoint task is a Step 3.3 blocker, and the push rule below still holds.
 
-**The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-measure.md` now, once — Steps 0.3, 2, 3.2, 3.4, 4 and 5.8 follow it. Missing or unreadable → `WARN [balance] balance reference missing — Measure: and Hand-back: tasks are reported as blockers; run unikit-ai update`, and every such task is a Step 3.3 blocker.
+**The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-measure.md` now, once — Steps 0.3, 2, 3.2, 3.4, 3.6-3.9, 4, 5.4, 5.6 and 5.8 follow it. Missing or unreadable → `WARN [balance] balance reference missing — Measure: and Hand-back: tasks are reported as blockers; run unikit-ai update`, and every such task is a Step 3.3 blocker.
 
 **While the checklist carries a `PR checkpoint:` line, every `unikit-commit` call of this run adds `no-push`.**
 
@@ -623,7 +623,7 @@ The Implementation Summary (Step 4) carries one documentation line: `Documentati
 
 **5.4: Handle plan file after completion**
 
-While a task of a plan with `## Balance Context` is pending, offer no deletion here and no archive line at 5.8 — `references/balance-measure.md` → `## Counting (Step 2)`.
+A plan with `## Balance Context` never gets the archive line at 5.8, and while one of its tasks is pending no deletion is offered here — `references/balance-measure.md` → `## Counting (Step 2)`, `## Step 5.8 — the hand-back command`.
 
 **If using the flat `.unikit/code/PLAN.md`** (fast-mode plan):
 
@@ -637,7 +637,7 @@ Options:
 
 Yes → delete `.unikit/code/PLAN.md`; No → leave it.
 
-**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** A finished folder plan leaves the active list only through `/unikit-archive`, which Step 5.8 names.
+**If using a folder plan** (`.unikit/code/plans/<folder>/`): keep it. **Never offer to delete `.unikit/code/plans/<folder>/PLAN.md`.** A finished folder plan leaves the active list only through `/unikit-archive`, which Step 5.8 names (not for a balance plan).
 
 **5.5: MCP Findings handoff**
 
@@ -684,7 +684,7 @@ Next steps:
 - {or "All phases completed — feature is done!"}
 ```
 
-When the plan is a folder plan and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself asks about MCP findings never transferred and rule candidates still open.
+When the plan is a folder plan without `## Balance Context` and its whole `## Checklist` is done — not just this call's scope — add one line to those next steps: `- Plan complete — move it out of the active plan list: /unikit-archive <folder>`. It is printed text, not a call: archiving is the user's choice, and `/unikit-archive` itself asks about MCP findings never transferred and rule candidates still open.
 
 When the plan has `## Modules` or PR checkpoint tasks and its whole checklist is done, add before that line: `- PR after verification: /unikit-verify, then /unikit-pr` — printed text, not a call.
 
