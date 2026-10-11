@@ -2147,13 +2147,12 @@ else
     # (GXG-7) the gate resolves only the record's own ids; the brief is a derived hand-off; a gate that did
     # not run has a name; material findings are repaired
     GXG_CR="$({ awk '/^## The criteria/{f=1;next} /^## /{f=0} f' "$GD_COHERENCE" || true; })"
-    GXG_CHK=1
     grep -qF 'GD-IDS.yaml' <<< "$GXG_CR" || GXG_WHY+=" GXG-7:criteria-check-registry-ids"
     grep -qF 'derived hand-off' "$GD_COHERENCE" || GXG_WHY+=" GXG-7:brief-not-a-derived-document"
     grep -qF 'blocking or material findings after pass 1' "$GD_COHERENCE" || GXG_WHY+=" GXG-7:material-not-repaired"
     grep -qF 'not run —' "$GD_EXPLORE_SAVE_RESEARCH" || GXG_WHY+=" GXG-7:no-gate-not-run-value"
     if [[ -z "$GXG_WHY" ]]; then
-        pass "GXG-1…6 gd-explore coherence gate ($GXG_CRIT criteria, call after the INDEX step, fallbacks, budget fences, second alias)"
+        pass "GXG-1…7 gd-explore coherence gate ($GXG_CRIT criteria, call after the INDEX step, fallbacks, budget fences, second alias, scoped ids)"
     else
         fail "GXG gd-explore coherence gate drift:$GXG_WHY"
     fi
@@ -2213,7 +2212,7 @@ else
     grep -qF 'RESEARCH_BRIEF.md' <<< "$GXU_TAIL" || GXU_WHY+=" GXU-7:brief-not-named-as-the-input"
     ! grep -qF 'Active Summary` is the input' <<< "$GXU_TAIL" || GXU_WHY+=" GXU-7:summary-named-as-the-zones-input"
     if [[ -z "$GXU_WHY" ]]; then
-        pass "GXU-1…5 gd-explore ultra research ($GXU_APPLIES ultra-only sections, $GXU_CHECKS integrity checks, one load site)"
+        pass "GXU-1…7 gd-explore ultra research ($GXU_APPLIES ultra-only sections, $GXU_CHECKS integrity checks, one load site, gate after integrity)"
     else
         fail "GXU gd-explore ultra research drift:$GXU_WHY"
     fi
@@ -9219,10 +9218,10 @@ if [[ -z "$BX_WHY" ]]; then
         bx_has "BP-1:owner-lacks(${l})" "$l" "$MP_TASKFMT"
     done
     for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_has "BP-1:owner-lacks-form(${f})" "$f" "$MP_TASKFMT"; done
-    BX_TR="$(grep -n '^## Test Runs' "$MP_TASKFMT" | head -1 | cut -d: -f1)"
-    BX_MS="$(grep -n '^## Measurements' "$MP_TASKFMT" | head -1 | cut -d: -f1)"
-    BX_DG="$(grep -n '^## Dependency Graph' "$MP_TASKFMT" | head -1 | cut -d: -f1)"
-    BX_TC="$(grep -n '^## Technical Context' "$MP_TASKFMT" | head -1 | cut -d: -f1)"
+    BX_TR="$({ grep -n '^## Test Runs' "$MP_TASKFMT" | head -1 | cut -d: -f1 || true; })"
+    BX_MS="$({ grep -n '^## Measurements' "$MP_TASKFMT" | head -1 | cut -d: -f1 || true; })"
+    BX_DG="$({ grep -n '^## Dependency Graph' "$MP_TASKFMT" | head -1 | cut -d: -f1 || true; })"
+    BX_TC="$({ grep -n '^## Technical Context' "$MP_TASKFMT" | head -1 | cut -d: -f1 || true; })"
     BX_CHK=$((BX_CHK + 1))
     if [[ -z "$BX_TR" || -z "$BX_MS" || -z "$BX_DG" || -z "$BX_TC" ]] || \
        ! (( BX_TR < BX_MS && BX_MS < BX_DG && BX_DG < BX_TC )); then
@@ -9253,7 +9252,8 @@ if [[ -z "$BX_WHY" ]]; then
              'handback-why-mentions-run' 'plan-bundle.mjs stays within 500 lines'; do
         bx_has "BP-2:bundle-test-lacks(${l})" "$l" "$ROOT_DIR/scripts/test-plan-bundle.sh"
     done
-    bx_has "BP-2:bundle-test-not-in-chain" 'test-plan-bundle.sh' "$ROOT_DIR/scripts/test-skills.sh"
+    BX_CHK=$((BX_CHK + 1))   # a regex with brackets does not match its own line, so this is not a tautology
+    grep -qE 'bash "[$]SCRIPT_DIR/test-plan-bundle[.]sh"' "$ROOT_DIR/scripts/test-skills.sh" || BX_WHY+=" BP-2:bundle-test-not-in-chain"
     BX_CHK=$((BX_CHK + 1))
     BX_BL="$(wc -l < "$ROOT_DIR/skills/unikit-plan/scripts/plan-bundle.mjs" | tr -d ' ')"
     (( BX_BL <= 500 )) || BX_WHY+=" BP-2:plan-bundle-lines=${BX_BL}"
@@ -9324,7 +9324,7 @@ if [[ -z "$BX_WHY" ]]; then
         bx_lacks "BM-5:skills-dir-var(${f##*/})" '{{skills_dir}}' "$f"
     done
     bx_has "BM-5:coordinator-no-delegation-sentence" 'are never handed to a worker' "$TC_COORD"
-    bx_has "BM-5:worker-not-yours" 'is never yours' "$TC_WORKER"
+    bx_has "BM-5:worker-not-yours" '`Measure:` or `Hand-back:` task is never yours' "$TC_WORKER"
     bx_has "BM-5:coordinator-no-role-reference" 'balance reference — its path is written in `/unikit-implement` Step 1' "$TC_COORD"
     bx_lacks "BM-5:coordinator-names-the-file" 'balance-measure.md' "$TC_COORD"
     bx_has "BM-5:polisher-no-rule" '`Measure:` and `Hand-back:` tasks carry no `Files:` either' "$TC_POLISHER"
@@ -9428,12 +9428,52 @@ if [[ -z "$BX_WHY" ]]; then
     bx_max "BM-6:implement-skill-size" 52000 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
+    # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
+    bx_has "BC-5:verify-completeness-rule" 'a row, a line, or a line of `## Not measured`' "$BC_REF"
+    bx_has "BC-5:verify-accounted-for" 'accounted for' "$BC_REF"
+    bx_has "BC-5:ingest-accounted-for" 'accounted for' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    bx_has "BC-5:strict-row-ignores-skipped" 'except a task skipped at a blocker' "$UNIKIT_VERIFY_SKILL"
+    # (BM-7) the resume spot-check does not un-tick a task that has no code
+    bx_has "BM-7:resume-rule-missing" 'does not apply to a ticked `Measure:` or `Hand-back:` task' "$BM_REF"
+    bx_has "BM-7:skill-pointer-missing" 'spot-checked by its row or its report file' "$UNIKIT_IMPLEMENT_SKILL"
+    # (BM-8) a balance plan never gets the archive line at 5.8; the contract is pointed at, not restated
+    bx_has "BM-8:no-archive-rule-in-reference" 'gets no `/unikit-archive <folder>` line at 5.8' "$BM_REF"
+    bx_has "BM-8:no-archive-rule-in-skill" 'never gets the archive line at 5.8' "$UNIKIT_IMPLEMENT_SKILL"
+    bx_lacks "BM-8:old-archive-before-command" 'after the `/unikit-archive <folder>` line' "$BM_REF"
+    bx_lacks "BM-8:contract-restated" '`Plan` is the plan folder' "$BM_REF"
+    bx_has "BM-8:steps-list-incomplete" 'Steps 0.3, 2, 3.2, 3.4, 3.6-3.9, 4, 5.4, 5.6 and 5.8 follow it' "$UNIKIT_IMPLEMENT_SKILL"
+    # (BM-9) the final full run of a balance plan follows the last phase's measurements, in the coordinator too
+    bx_has "BM-9:coordinator-final-run" 'the final `Test checkpoint: plan` of a balance plan' "$TC_COORD"
+    bx_has "BM-9:grammar-rationale" 'the final full run alone stands after the last phase' "$MP_TASKFMT"
+    # (BP-6) exactly one Hand-back: in a plan with a context — in the script, its test and both formats
+    bx_has "BP-6:script-exactly-one" 'exactly one Hand-back:' "$ROOT_DIR/skills/unikit-plan/scripts/plan-bundle.mjs"
+    for l in 'balance-without-handback' 'balance-two-handbacks' 'balance-handback-no-tests'; do
+        bx_has "BP-6:bundle-test-lacks(${l})" "$l" "$ROOT_DIR/scripts/test-plan-bundle.sh"
+        BX_CHK=$((BX_CHK + 1))
+        [[ -s "$ROOT_DIR/scripts/test-fixtures/plan-bundle/${l}/PLAN.md" ]] || BX_WHY+=" BP-6:fixture-missing(${l})"
+    done
+    bx_has "BP-6:grammar-silent-on-missing-handback" 'a plan with a `## Balance Context` and no `Hand-back:`' "$MP_TASKFMT"
+    bx_has "BP-6:ultra-format-unconditional-run" 'under `Testing: yes`, the task directly above it' "$MP_ULTRA"
+    # (BP-7) the planner matches an existing plan by its document too; where runs comes from; a name with no ASCII left
+    bx_has "BP-7:existing-plan-key" 'the same `Source:` and the same `Point`' "$BP_REF"
+    bx_has "BP-7:runs-source" 'a guessed number' "$BP_REF"
+    bx_has "BP-7:slug-fallback" 'becomes `doc`' "$BP_REF"
+    # (BP-8) the missing-reference fallback sits where it can be read: in the dispatcher, not in the file it is for
+    bx_has "BP-8:dispatcher-fallback" 'balance-plan reference missing' "$UNIKIT_PLAN_SKILL"
+    bx_lacks "BP-8:unreachable-fallback" 'balance-plan reference missing' "$BP_REF"
+    bx_has "BP-8:files-rule-carve-out" 'except a checkpoint, `Measure:` or `Hand-back:` task' "$UNIKIT_PLAN_SKILL"
+    # (BX-3) neighbouring surfaces that named the old facts
+    bx_lacks "BX-3:package-path-in-a-project" 'data/research-link.md' "$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+    bx_has "BX-3:recon-consumers" 'three consumers' "$ROOT_DIR/skills/unikit-gd-recon/references/code-recon.md"
+    BX_PIPE="$({ awk '/Read-only verbs at the I.O edges/{f=1} f&&/^$/{exit} f' "$ROOT_DIR/skills/unikit-help/references/pipelines.md" || true; })"
+    BX_CHK=$((BX_CHK + 1))
+    grep -qF 'unikit-gd-balance' <<< "$BX_PIPE" || BX_WHY+=" BX-3:help-boundary-omits-balance"
     (( BX_CHK > 0 )) || BX_WHY+=" BX-0:nothing-checked"
 fi
 if [[ -z "$BX_WHY" ]]; then
-    pass "BP-1…BX-2 balance checkpoint plans: one grammar owner, dispatchers, branches, no restated forms, no delegation, sizes (${BX_CHK} checks)"
+    pass "BP-1…BX-3 balance checkpoint plans: one grammar owner, dispatchers, branches, no restated forms, no delegation, one Hand-back:, skipped measurements, sizes (${BX_CHK} checks)"
 else
-    fail "BP-1…BX-2 balance checkpoint plans:$BX_WHY"
+    fail "BP-1…BX-3 balance checkpoint plans:$BX_WHY"
 fi
 
 # PB: the plan-boundaries contract — one system asset four skills compute the same SHAs from.
@@ -9546,12 +9586,19 @@ else
         HB_CHK=$((HB_CHK + 1))
         grep -qF -- "$hb_l" "$HB_FILE" || HB_WHY+=" HB-3:no-literal(${hb_l})"
     done
+    # (HB-4) the format says what "complete" means: every name accounted for, a skipped measurement included
+    for hb_l in 'every name of the list is accounted for' 'a measurement the user skipped at a blocker lands there'; do
+        HB_CHK=$((HB_CHK + 1))
+        grep -qF -- "$hb_l" "$HB_FILE" || HB_WHY+=" HB-4:no-literal(${hb_l})"
+    done
+    HB_CHK=$((HB_CHK + 1))
+    ! grep -qF -- 'A report is complete when every name of the list is present' "$HB_FILE" || HB_WHY+=" HB-4:old-completeness-rule"
     (( HB_CHK > 0 )) || HB_WHY+=" HB-1:nothing-checked"
 fi
 if [[ -z "$HB_WHY" ]]; then
-    pass "HB-1…HB-3 balance hand-back contract is flat and engine-neutral, carries its seven sections and the header, table and receiving literals (${HB_CHK} anchors)"
+    pass "HB-1…HB-4 balance hand-back contract is flat and engine-neutral, carries its seven sections and the header, table and receiving literals, and says what complete means (${HB_CHK} anchors)"
 else
-    fail "HB-1…HB-3 balance hand-back contract:$HB_WHY"
+    fail "HB-1…HB-4 balance hand-back contract:$HB_WHY"
 fi
 
 # BAL-1…BAL-9: the balance master skill — structure, one definition per anchor, neutrality and
@@ -9687,12 +9734,38 @@ else
     BAL_LIST="$({ awk '/^## Documents exist/{f=1;next} /^## /{f=0} f' "$BAL_REFS/mode-status.md" || true; })"
     BAL_CHK=$((BAL_CHK + 1))
     grep -qF 'one action' <<< "$BAL_LIST" || BAL_WHY+=" BAL-10:list-offers-more-than-one-action"
+    # (BAL-11) an inconsistent file has a repair route: status offers it, revise holds it, nobody prints a code
+    bal_ok "BAL-11:repair-section-missing" '## Repair an inconsistent file' "$BAL_REFS/mode-revise.md"
+    bal_ok "BAL-11:status-offers-no-repair" 'Repair an inconsistent file' "$BAL_REFS/mode-status.md"
+    bal_ok "BAL-11:resolver-points-nowhere" 'Repair an inconsistent file' "$BAL_REFS/resolve-target.md"
+    bal_ok "BAL-11:intent-table-no-repair" 'repair an inconsistent file' "$BAL_SKILL"
+    bal_no "BAL-11:resolver-promises-an-unwritten-offer" 'revise offers a repair' "$BAL_REFS/resolve-target.md"
+    BAL_REP="$({ awk '/^## Repair an inconsistent file/{f=1;next} /^## /{f=0} f' "$BAL_REFS/mode-revise.md" || true; })"
+    BAL_CHK=$((BAL_CHK + 3))
+    [[ -n "$BAL_REP" ]] || BAL_WHY+=" BAL-11:no-repair-window"
+    ! grep -qF 'BCH-' <<< "$BAL_REP" || BAL_WHY+=" BAL-11:repair-prints-a-code"
+    ! grep -qF 'Current:' <<< "$BAL_REP" || BAL_WHY+=" BAL-11:repair-prints-the-header"
+    # (BAL-12) a drafted document is approved before any file is written
+    bal_ok "BAL-12:open-writes-without-approval" 'Nothing is written before the answer' "$BAL_REFS/mode-open.md"
+    # (BAL-13) a dropped current point is not promoted to done; a late report has its own path; the loading
+    # conditions of the supporting references say what the branches really do
+    bal_ok "BAL-13:dropped-point-becomes-done" 'a dropped point never becomes `done`' "$BAL_REFS/mode-revise.md"
+    bal_ok "BAL-13:late-data-path-undefined" 'Taken as late data' "$BAL_REFS/mode-ingest.md"
+    bal_ok "BAL-13:investigation-self-limit" 'by ingest and revise' "$BAL_REFS/investigation.md"
+    bal_ok "BAL-13:skill-investigation-condition" 'by ingest and revise' "$BAL_SKILL"
+    bal_no "BAL-13:template-read-only-on-create" 'Read only when the file is being created' "$BAL_REFS/template-checkpoints.md"
+    bal_ok "BAL-13:template-citations-unsaid" 'where the branches cite them' "$BAL_REFS/template-checkpoints.md"
+    # (BAL-14) the argument form the executors print; the slug of a document is ASCII; a report cannot start one
+    bal_ok "BAL-14:slug-and-report-form" '/unikit-gd-balance <slug> <path to a hand-back report>' "$BAL_SKILL"
+    bal_ok "BAL-14:resolver-slug-and-report" 'A slug followed by a report' "$BAL_REFS/resolve-target.md"
+    bal_ok "BAL-14:slug-not-ascii" 'ASCII' "$BAL_REFS/mode-open.md"
+    bal_no "BAL-14:report-cannot-start-a-document" 'create a new one' "$BAL_REFS/resolve-target.md"
     (( BAL_CHK > 0 )) || BAL_WHY+=" BAL-1:nothing-checked"
 fi
 if [[ -z "$BAL_WHY" ]]; then
-    pass "BAL-1…BAL-9 balance skill: structure, nine references, one plan command, single definitions, boundary, neutrality, membrane (${BAL_CHK} checks)"
+    pass "BAL-1…BAL-14 balance skill: structure, nine references, one plan command, single definitions, boundary, neutrality, membrane, repair route, approval (${BAL_CHK} checks)"
 else
-    fail "BAL-1…BAL-9 balance skill:$BAL_WHY"
+    fail "BAL-1…BAL-14 balance skill:$BAL_WHY"
 fi
 
 # MA-2…MA-4: the explore side of the merge mode — a conditional reference, a narrow set of git
