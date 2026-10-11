@@ -666,5 +666,81 @@ await group('J', async () => {
     });
 });
 
+// ── M: the interface layer ──────────────────────────────────────────────────
+
+const optionsApi = await import(dist('cli/commands/extension-options.js'));
+const ui = await import(dist('cli/commands/extension-selection-ui.js'));
+
+await group('M', async () => {
+    assertJson('M1 names are split, trimmed and appended', optionsApi.collectNameList('a, b,,c', ['x']), ['x', 'a', 'b', 'c']);
+    assertJson('M1 no previous list', optionsApi.collectNameList('a'), ['a']);
+
+    const show = (over) => optionsApi.shouldShowMenu({ interactive: true, itemCount: 3, installed: false, options: {}, ...over });
+    assertEq('M2 no terminal: no menu', show({ interactive: false }), false);
+    assertEq('M2 nothing to choose: no menu', show({ itemCount: 0 }), false);
+    assertEq('M2 --yes: no menu', show({ options: { yes: true } }), false);
+    assertEq('M2 --skip-skills: no menu', show({ options: { skipSkills: ['x'] } }), false);
+    assertEq('M2 --skip-mcp: no menu', show({ options: { skipMcp: ['x'] } }), false);
+    assertEq('M2 first install with --install-new still shows it', show({ options: { installNew: true } }), true);
+    assertEq('M2 first install with --skip-new still shows it', show({ options: { skipNew: true } }), true);
+    assertEq('M2 installed with --install-new: no menu', show({ installed: true, options: { installNew: true } }), false);
+    assertEq('M2 installed with --skip-new: no menu', show({ installed: true, options: { skipNew: true } }), false);
+    assertEq('M2 a terminal and no flags: the menu', show({}), true);
+    assertEq('M2 installed, terminal, no flags: the menu', show({ installed: true }), true);
+
+    assertEq('M3 no flags change nothing', optionsApi.hasSelectionChange({}), false);
+    assertEq('M3 --yes alone changes nothing', optionsApi.hasSelectionChange({ yes: true }), false);
+    assertEq('M3 --skip-new alone changes nothing', optionsApi.hasSelectionChange({ skipNew: true }), false);
+    assertEq('M3 --install-new changes', optionsApi.hasSelectionChange({ installNew: true }), true);
+    assertEq('M3 --skip-mcp changes', optionsApi.hasSelectionChange({ skipMcp: ['a'] }), true);
+    assertJson('M3 skipFlagsOf maps the three lists', optionsApi.skipFlagsOf({ skipSkills: ['a'], skipMcp: ['m'] }),
+        { skills: ['a'], subagents: [], mcpServers: ['m'] });
+
+    const views = [
+        { id: 'mcpServers:srv', kind: 'mcpServers', key: 'srv', label: 'srv', description: 'npx -y pkg' },
+        { id: 'mcpServers:bad', kind: 'mcpServers', key: 'bad', label: 'bad', unusable: 'template not found: t.json' },
+        { id: 'skills:a', kind: 'skills', key: 'a', label: 'a', description: 'First' },
+        { id: 'skills:b', kind: 'skills', key: 'b', label: 'b' },
+    ];
+    const rows = ui.buildMenuRows(views, sel({ a: false }, {}, {}));
+    assertJson('M4 sections follow Skills, MCP servers and an empty one is not printed',
+        rows.filter(r => r.type === 'separator').map(r => r.text), ['-- Skills --', '-- MCP servers --']);
+    const item = (id) => rows.find(r => r.type === 'item' && r.id === id);
+    assertEq('M4 a decided "off" is unchecked', item('skills:a').checked, false);
+    assertEq('M4 an undecided item is checked', item('skills:b').checked, true);
+    assertEq('M4 the description follows the label', item('skills:a').name, 'a — First');
+    assertEq('M4 an unusable item is unchecked', item('mcpServers:bad').checked, false);
+    assertEq('M4 and disabled with its reason', item('mcpServers:bad').disabled, 'template not found: t.json');
+    assertTrue('M4 a first install checks everything usable', ui.buildMenuRows(views, null).filter(r => r.type === 'item' && r.checked).length === 3);
+
+    const items = S.listExtensionItems(manifest({
+        skills: ['a', 'b', 'c', 'd', 'e'], subagents: ['s1.md', 's2.md'],
+    }));
+    const lines = ui.formatSelectionSummary(items, sel(
+        { a: false, b: false, c: true, d: true, e: true }, { 's1.md': true, 's2.md': true },
+    ));
+    assertJson('M5 skipped items are named and a full kind has no tail', lines, ['Skills: 3 of 5 — skipped: a, b', 'Subagents: 2 of 2']);
+    const withUndecided = ui.formatSelectionSummary(items, sel({ a: false, b: false, d: true, e: true }, { 's1.md': true, 's2.md': true }));
+    assertEq('M5 undecided items are listed', withUndecided[0], 'Skills: 2 of 5 — skipped: a, b — not installed (undecided): c');
+    const dirty = S.listExtensionItems(manifest({ skills: ['x\u001b[31my'] }));
+    assertTrue('M5 labels are cleaned of escape characters', !ui.formatSelectionSummary(dirty, sel({ 'x\u001b[31my': false }))[0].includes('\u001b'));
+
+    assertJson('M6 nothing pending, nothing printed', ui.formatPendingNotice([]), []);
+    const notice = ui.formatPendingNotice([{ extension: 'ext-a', items: ['Skills: c', 'MCP servers: m'] }]);
+    assertEq('M6 one line per extension', notice.length, 1);
+    assertTrue('M6 it names the select command', notice[0].includes('unikit-ai extension select ext-a'));
+    assertTrue('M6 and the flag', notice[0].includes('--install-new'));
+    assertTrue('M6 and the items', notice[0].includes('Skills: c; MCP servers: m'));
+
+    const request = { extension: 'ext-a', version: '2.0.0', sourceDir: '/nowhere', items };
+    const offline = { interactive: () => false };
+    const yes = await ui.buildNewItemsChooser({ installNew: true }, offline)(request);
+    assertTrue('M7 --install-new answers yes to every item', yes.size === items.length && [...yes.values()].every(v => v === true));
+    const both = await ui.buildNewItemsChooser({ skipNew: true, installNew: true }, offline)(request);
+    assertEq('M7 --skip-new wins and answers nothing', both.size, 0);
+    const none = await ui.buildNewItemsChooser({}, offline)(request);
+    assertEq('M7 no terminal and no flag answers nothing', none.size, 0);
+});
+
 console.log(`\nextension-selection: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
