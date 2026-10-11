@@ -40,7 +40,7 @@ An extension can ship skills, subagents and MCP servers. You decide which of the
 
 CLI commands and injections are not part of the list: they always come with the extension (see [Injections and the selection](#injections-and-the-selection)).
 
-**The menu.** In a terminal `unikit-ai extension add` shows one list with the three sections, everything checked. Uncheck what you do not want and confirm. When you add an extension that is already installed, the list is pre-filled with your earlier choices; items the new version added are checked. Closing the list (`Ctrl+C`) changes nothing: no files are written and the temporary git clone is removed. The menu is shown only in a terminal and only when no flag has already decided the question (see below).
+**The menu.** In a terminal `unikit-ai extension add` shows one list with the three sections, everything checked. Uncheck what you do not want and confirm. When you add an extension that is already installed, the list is pre-filled with your earlier choices; items the new version added are checked. Cancelling the list is treated as "no change": nothing is written and the temporary git clone is removed (the cancel path is covered by the code, not yet confirmed in a live terminal). The menu is shown only in a terminal and only when no flag has already decided the question (see below).
 
 **Flags.** The flags only ever switch items off:
 

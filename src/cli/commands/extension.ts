@@ -15,7 +15,10 @@ import {
 } from '../../core/extension-selection.js';
 import { resolveSkipFlags, summarizeSelection } from '../../core/extension-selection-query.js';
 import { describeExtensionItems, sanitizeDisplayText } from '../../core/extension-selection-describe.js';
-import { EXTENSION_ITEM_KINDS, EXTENSION_KIND_TITLES } from '../../core/constants.js';
+import {
+  EXTENSION_ITEM_KINDS, EXTENSION_KIND_TITLES, EXTENSION_ADD_CANCELLED_MESSAGE,
+  EXTENSION_UPDATE_CANCELLED_MESSAGE, EXTENSION_LIST_SKIPPED_LABEL, EXTENSION_LIST_UNDECIDED_LABEL,
+} from '../../core/constants.js';
 import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { printInjectionReport } from './injection-report.js';
@@ -118,7 +121,7 @@ export async function extensionAddCommand(source: string, options: ExtensionAddO
     if (resolved) await disposeResolvedExtension(resolved);
 
     if (error instanceof ExtensionSelectionCancelled) {
-      console.log(chalk.yellow('Installation cancelled — nothing was changed.'));
+      console.log(chalk.yellow(EXTENSION_ADD_CANCELLED_MESSAGE));
 
       return;
     }
@@ -213,9 +216,9 @@ export async function extensionListCommand(): Promise<void> {
           .join('; ');
 
         const skipped = section('disabled');
-        if (skipped) console.log(chalk.dim(`    Skipped: ${skipped}`));
+        if (skipped) console.log(chalk.dim(`    ${EXTENSION_LIST_SKIPPED_LABEL} ${skipped}`));
         const undecided = section('undecided');
-        if (undecided) console.log(chalk.dim(`    Not decided: ${undecided}`));
+        if (undecided) console.log(chalk.dim(`    ${EXTENSION_LIST_UNDECIDED_LABEL} ${undecided}`));
       }
     }
   }
@@ -266,7 +269,7 @@ export async function extensionUpdateCommand(options: ExtensionUpdateOptions = {
       console.log(chalk.yellow(`⚠ Failed to update: ${failed.join(', ')}`));
     }
     if (cancelled) {
-      console.log(chalk.yellow('Update cancelled — the extension being asked about and the ones after it were left as they were.'));
+      console.log(chalk.yellow(EXTENSION_UPDATE_CANCELLED_MESSAGE));
     }
   } catch (error) {
     console.log(chalk.red(`Error updating extensions: ${(error as Error).message}`));

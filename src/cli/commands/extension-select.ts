@@ -10,6 +10,10 @@ import {
 } from '../../core/extension-selection.js';
 import { resolveSkipFlags } from '../../core/extension-selection-query.js';
 import { describeExtensionItems, sanitizeDisplayText } from '../../core/extension-selection-describe.js';
+import {
+  EXTENSION_SELECT_CANCELLED_MESSAGE, EXTENSION_SELECT_UNCHANGED_MESSAGE,
+  EXTENSION_SELECT_NOTHING_TO_CHANGE_MESSAGE,
+} from '../../core/constants.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { printInjectionReport } from './injection-report.js';
 import {
@@ -64,10 +68,7 @@ export async function extensionSelectCommand(name: string, options: ExtensionSel
       next = selectionFromChecked(items, checked);
     } else {
       if (!hasSelectionChange(options)) {
-        fail(
-          'Nothing to change: pass --skip-skills, --skip-subagents, --skip-mcp or --install-new, '
-          + 'or run in a terminal to choose from the menu.',
-        );
+        fail(EXTENSION_SELECT_NOTHING_TO_CHANGE_MESSAGE);
       }
       next = decideSelection({
         items,
@@ -90,7 +91,7 @@ export async function extensionSelectCommand(name: string, options: ExtensionSel
       console.log(chalk.dim(`Restored base skills: ${labels(change.restoredBase)}`));
     }
     if (change.enabled.length === 0 && change.disabled.length === 0 && change.restoredBase.length === 0) {
-      console.log(chalk.dim('Selection unchanged.'));
+      console.log(chalk.dim(EXTENSION_SELECT_UNCHANGED_MESSAGE));
     }
 
     for (const line of formatSelectionSummary(items, record.selection)) {
@@ -106,7 +107,7 @@ export async function extensionSelectCommand(name: string, options: ExtensionSel
     }
   } catch (error) {
     if (error instanceof ExtensionSelectionCancelled) {
-      console.log(chalk.yellow('Selection cancelled — nothing was changed.'));
+      console.log(chalk.yellow(EXTENSION_SELECT_CANCELLED_MESSAGE));
 
       return;
     }

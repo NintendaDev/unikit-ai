@@ -10,8 +10,11 @@ import path from 'path';
 import { readTextFile, readJsonFile } from '../utils/fs.js';
 import { logInfo } from '../utils/log.js';
 import {
-  SKILL_FILE, SUBAGENT_SKILLS_FIELD, EXTENSION_MENU_TEXT_MAX_LENGTH, EXTENSION_MENU_ELLIPSIS,
-  EXTENSION_SELECTION_LOG_COMPONENT,
+  SKILL_FILE, EXTENSION_MENU_TEXT_MAX_LENGTH, EXTENSION_MENU_ELLIPSIS,
+  EXTENSION_SELECTION_LOG_COMPONENT, EXTENSION_FRONTMATTER_FENCE,
+  EXTENSION_FRONTMATTER_DESCRIPTION_FIELD, EXTENSION_FRONTMATTER_SKILLS_FIELD,
+  EXTENSION_BLOCK_SCALAR_INDICATOR, EXTENSION_BLOCK_LIST_ITEM, EXTENSION_CONTROL_CHARACTERS,
+  EXTENSION_WHITESPACE_RUN, EXTENSION_BOM,
 } from './constants.js';
 import { isInsideDirectory } from './extension-injections-schema.js';
 import { validateMcpTemplate } from './mcp.js';
@@ -37,16 +40,6 @@ export interface DanglingPreload {
   skills: string[];
 }
 
-const FRONTMATTER_FENCE = '---';
-const DESCRIPTION_FIELD = 'description:';
-const SKILLS_FIELD_PREFIX = `${SUBAGENT_SKILLS_FIELD}:`;
-const BLOCK_SCALAR_INDICATOR = /^[>|](?:[+-]?\d?|\d[+-]?)$/;
-const BLOCK_LIST_ITEM = /^\s*-\s*(.+?)\s*$/;
-// Built from a string: a control-character class written as a literal trips `no-control-regex`.
-const CONTROL_CHARACTERS = new RegExp('[\\u0000-\\u001F\\u007F-\\u009F]', 'g');
-const WHITESPACE_RUN = /\s+/g;
-const BOM = '﻿';
-
 // --- Text ---
 
 /**
@@ -55,7 +48,7 @@ const BOM = '﻿';
  * to `maxLength - 1` characters plus an ellipsis; without it the text is never cut.
  */
 export function sanitizeDisplayText(raw: string, maxLength?: number): string {
-  const clean = raw.replace(CONTROL_CHARACTERS, ' ').replace(WHITESPACE_RUN, ' ').trim();
+  const clean = raw.replace(EXTENSION_CONTROL_CHARACTERS, ' ').replace(EXTENSION_WHITESPACE_RUN, ' ').trim();
   if (maxLength === undefined || clean.length <= maxLength) return clean;
 
   return clean.slice(0, maxLength - 1) + EXTENSION_MENU_ELLIPSIS;
@@ -73,10 +66,10 @@ function stripQuotes(value: string): string {
 
 /** Lines between the first `---` and the next one; `null` without a frontmatter block. */
 function frontmatterLines(content: string): string[] | null {
-  const lines = content.replace(/\r\n/g, '\n').replace(BOM, '').split('\n');
-  if (lines[0]?.trim() !== FRONTMATTER_FENCE) return null;
+  const lines = content.replace(/\r\n/g, '\n').replace(EXTENSION_BOM, '').split('\n');
+  if (lines[0]?.trim() !== EXTENSION_FRONTMATTER_FENCE) return null;
 
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === FRONTMATTER_FENCE);
+  const end = lines.findIndex((line, index) => index > 0 && line.trim() === EXTENSION_FRONTMATTER_FENCE);
 
   return end === -1 ? null : lines.slice(1, end);
 }
@@ -98,11 +91,11 @@ export function readFrontmatterDescription(content: string): string | null {
   const lines = frontmatterLines(content);
   if (lines === null) return null;
 
-  const index = lines.findIndex(line => line.startsWith(DESCRIPTION_FIELD));
+  const index = lines.findIndex(line => line.startsWith(EXTENSION_FRONTMATTER_DESCRIPTION_FIELD));
   if (index === -1) return null;
 
-  const value = lines[index]!.slice(DESCRIPTION_FIELD.length).trim();
-  const isBlock = value === '' || BLOCK_SCALAR_INDICATOR.test(value);
+  const value = lines[index]!.slice(EXTENSION_FRONTMATTER_DESCRIPTION_FIELD.length).trim();
+  const isBlock = value === '' || EXTENSION_BLOCK_SCALAR_INDICATOR.test(value);
   const text = isBlock
     ? indentedBlock(lines, index + 1).map(line => line.trim()).filter(line => line !== '').join(' ')
     : stripQuotes(value);
@@ -121,16 +114,16 @@ export function readPreloadedSkills(content: string): string[] {
   const lines = frontmatterLines(content);
   if (lines === null) return [];
 
-  const index = lines.findIndex(line => line.startsWith(SKILLS_FIELD_PREFIX));
+  const index = lines.findIndex(line => line.startsWith(EXTENSION_FRONTMATTER_SKILLS_FIELD));
   if (index === -1) return [];
 
-  const value = lines[index]!.slice(SKILLS_FIELD_PREFIX.length).trim();
+  const value = lines[index]!.slice(EXTENSION_FRONTMATTER_SKILLS_FIELD.length).trim();
   let names: string[];
   if (value.startsWith('[') && value.endsWith(']')) {
     names = value.slice(1, -1).split(',').map(stripQuotes);
   } else if (value === '') {
     names = indentedBlock(lines, index + 1)
-      .map(line => BLOCK_LIST_ITEM.exec(line)?.[1])
+      .map(line => EXTENSION_BLOCK_LIST_ITEM.exec(line)?.[1])
       .filter((name): name is string => name !== undefined)
       .map(stripQuotes);
   } else {

@@ -8,6 +8,10 @@
 import {
   EXTENSION_ITEM_KINDS, EXTENSION_KIND_TITLES, EXTENSION_MENU_PAGE_SIZE,
   EXTENSION_CANCEL_MESSAGE_MARKER, EXTENSION_SELECTION_LOG_COMPONENT,
+  EXTENSION_MENU_SECTION_PREFIX, EXTENSION_MENU_SECTION_SUFFIX, EXTENSION_MENU_DESCRIPTION_SEPARATOR,
+  EXTENSION_MENU_QUESTION_HINT, EXTENSION_NEW_ITEMS_QUESTION_HINT,
+  EXTENSION_SUMMARY_SKIPPED_PREFIX, EXTENSION_SUMMARY_UNDECIDED_PREFIX,
+  EXTENSION_NOTICE_MARK, EXTENSION_NOTICE_UNDECIDED, EXTENSION_NOTICE_ITEM_SEPARATOR,
 } from '../../core/constants.js';
 import {
   itemId, ExtensionSelectionCancelled,
@@ -25,8 +29,6 @@ export type MenuRow =
   | { type: 'separator'; text: string }
   | { type: 'item'; id: string; name: string; checked: boolean; disabled?: string };
 
-const DESCRIPTION_SEPARATOR = ' — ';
-
 /**
  * One section per kind that has rows, in the order of `EXTENSION_ITEM_KINDS`. An item is checked
  * unless the prior decision turned it off or it cannot be installed; an undecided item is checked.
@@ -41,13 +43,16 @@ export function buildMenuRows(
     const ofKind = views.filter(view => view.kind === kind);
     if (ofKind.length === 0) continue;
 
-    rows.push({ type: 'separator', text: `-- ${EXTENSION_KIND_TITLES[kind]} --` });
+    rows.push({
+      type: 'separator',
+      text: `${EXTENSION_MENU_SECTION_PREFIX}${EXTENSION_KIND_TITLES[kind]}${EXTENSION_MENU_SECTION_SUFFIX}`,
+    });
     for (const view of ofKind) {
       const decided = prior !== null && Object.hasOwn(prior[kind], view.key);
       const row: MenuRow = {
         type: 'item',
         id: view.id,
-        name: view.description === undefined ? view.label : `${view.label}${DESCRIPTION_SEPARATOR}${view.description}`,
+        name: view.description === undefined ? view.label : `${view.label}${EXTENSION_MENU_DESCRIPTION_SEPARATOR}${view.description}`,
         checked: view.unusable !== undefined ? false : decided ? prior![kind][view.key] === true : true,
       };
       if (view.unusable !== undefined) row.disabled = view.unusable;
@@ -72,8 +77,8 @@ export function formatSelectionSummary(
     if (bucket.total === 0) continue;
 
     let line = `${EXTENSION_KIND_TITLES[kind]}: ${bucket.enabled.length} of ${bucket.total}`;
-    if (bucket.disabled.length > 0) line += ` — skipped: ${clean(bucket.disabled)}`;
-    if (bucket.undecided.length > 0) line += ` — not installed (undecided): ${clean(bucket.undecided)}`;
+    if (bucket.disabled.length > 0) line += `${EXTENSION_SUMMARY_SKIPPED_PREFIX}${clean(bucket.disabled)}`;
+    if (bucket.undecided.length > 0) line += `${EXTENSION_SUMMARY_UNDECIDED_PREFIX}${clean(bucket.undecided)}`;
     lines.push(line);
   }
 
@@ -83,8 +88,8 @@ export function formatSelectionSummary(
 /** One warning line per extension that still has undecided items. */
 export function formatPendingNotice(pending: readonly PendingExtensionItems[]): string[] {
   return pending.map(entry => (
-    `⚠ ${sanitizeDisplayText(entry.extension)}: not installed (undecided): `
-    + `${entry.items.map(item => sanitizeDisplayText(item)).join('; ')}. `
+    `${EXTENSION_NOTICE_MARK} ${sanitizeDisplayText(entry.extension)}: ${EXTENSION_NOTICE_UNDECIDED}`
+    + `${entry.items.map(item => sanitizeDisplayText(item)).join(EXTENSION_NOTICE_ITEM_SEPARATOR)}. `
     + `Run "unikit-ai extension select ${sanitizeDisplayText(entry.extension)}" in a terminal, or pass --install-new.`
   ));
 }
@@ -143,7 +148,7 @@ export async function promptExtensionMenu(args: {
 
   return promptCheckbox(
     `Select what to install from "${sanitizeDisplayText(args.name)}" ${sanitizeDisplayText(args.version)} `
-    + '(all are checked; space toggles, enter confirms):',
+    + EXTENSION_MENU_QUESTION_HINT,
     rows,
   );
 }
@@ -166,7 +171,7 @@ export function buildNewItemsChooser(
     const rows = buildMenuRows(views, null);
     const chosen = await promptCheckbox(
       `New items in "${sanitizeDisplayText(request.extension)}" ${sanitizeDisplayText(request.version)}. `
-      + 'Deselect any you do not want, then confirm:',
+      + EXTENSION_NEW_ITEMS_QUESTION_HINT,
       rows,
     );
 
