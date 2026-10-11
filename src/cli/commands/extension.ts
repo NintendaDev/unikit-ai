@@ -2,16 +2,35 @@ import chalk from 'chalk';
 import { loadConfig, saveConfig } from '../../core/config.js';
 import {
   resolveExtension, findExtensionRecord, classifySource,
+  loadExtensionManifest, getExtensionDir, type ResolvedExtension,
 } from '../../core/extensions.js';
 import {
-  commitResolvedExtension, removeExtension, refreshExtensions,
-  restoreBaseSkills,
+  commitResolvedExtension, removeExtension, restoreBaseSkills, disposeResolvedExtension,
 } from '../../core/extension-ops.js';
+import { refreshExtensions, pendingLabels } from '../../core/extension-refresh.js';
+import {
+  listExtensionItems, priorSelectionOf, decideSelection, selectionFromChecked,
+  filterManifest, pendingItems, ExtensionSelectionCancelled,
+  type ExtensionSelection,
+} from '../../core/extension-selection.js';
+import { resolveSkipFlags, summarizeSelection } from '../../core/extension-selection-query.js';
+import { describeExtensionItems, sanitizeDisplayText } from '../../core/extension-selection-describe.js';
+import {
+  EXTENSION_ITEM_KINDS, EXTENSION_KIND_TITLES, EXTENSION_ADD_CANCELLED_MESSAGE,
+  EXTENSION_UPDATE_CANCELLED_MESSAGE, EXTENSION_LIST_SKIPPED_LABEL, EXTENSION_LIST_UNDECIDED_LABEL,
+} from '../../core/constants.js';
 import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { printInjectionReport } from './injection-report.js';
+import {
+  isInteractive, shouldShowMenu, skipFlagsOf,
+  type ExtensionAddOptions, type ExtensionUpdateOptions,
+} from './extension-options.js';
+import {
+  promptExtensionMenu, formatSelectionSummary, formatPendingNotice, buildNewItemsChooser,
+} from './extension-selection-ui.js';
 
-export async function extensionAddCommand(source: string): Promise<void> {
+export async function extensionAddCommand(source: string, options: ExtensionAddOptions = {}): Promise<void> {
   const projectDir = process.cwd();
   const config = await loadConfig(projectDir);
 
@@ -25,8 +44,11 @@ export async function extensionAddCommand(source: string): Promise<void> {
   const sourceInfo = classifySource(source);
   console.log(chalk.dim(`Resolving extension from ${sourceInfo.type}: ${sourceInfo.resolved}...\n`));
 
+  // Outside the try: the clone of a git source has to be removed on every way out.
+  let resolved: ResolvedExtension | null = null;
+
   try {
-    const resolved = await resolveExtension(source);
+    resolved = await resolveExtension(source);
     const manifest = resolved.manifest;
 
     // Check if already installed
@@ -38,35 +60,76 @@ export async function extensionAddCommand(source: string): Promise<void> {
 
     console.log(chalk.dim(`Installing ${manifest.name}@${manifest.version}...`));
 
-    if (manifest.skills?.length) {
-      console.log(chalk.dim(`  Skills: ${manifest.skills.length}`));
+    // The selection is settled before anything is written: a wrong name or a closed menu leaves no trace.
+    const items = listExtensionItems(manifest);
+    const skip = resolveSkipFlags(items, skipFlagsOf(options));
+    if (!skip.ok) throw new Error(sanitizeDisplayText(skip.error));
+
+    const previousManifest = existing
+      ? await loadExtensionManifest(getExtensionDir(projectDir, manifest.name))
+      : null;
+    const prior = priorSelectionOf(existing, previousManifest);
+    const installed = prior !== null;
+
+    let selection: ExtensionSelection;
+    if (shouldShowMenu({ interactive: isInteractive(), itemCount: items.length, installed, options })) {
+      const views = await describeExtensionItems(resolved.localPath, items);
+      const checked = await promptExtensionMenu({
+        name: manifest.name, version: manifest.version, views, prior,
+      });
+      selection = selectionFromChecked(items, checked);
+    } else {
+      // On a first install --install-new and --skip-new mean nothing: everything is on.
+      selection = decideSelection({
+        items,
+        prior,
+        skip: skip.ids,
+        installNew: installed && Boolean(options.installNew),
+        skipNew: installed && Boolean(options.skipNew),
+      });
     }
-    if (manifest.subagents?.length) {
-      console.log(chalk.dim(`  Subagents: ${manifest.subagents.length}`));
+
+    for (const line of formatSelectionSummary(items, selection)) {
+      console.log(chalk.dim(`  ${line}`));
     }
-    if (manifest.replaces && Object.keys(manifest.replaces).length > 0) {
-      console.log(chalk.dim(`  Replaces: ${Object.values(manifest.replaces).join(', ')}`));
+    const replaces = Object.values(filterManifest(manifest, selection).replaces ?? {});
+    if (replaces.length > 0) {
+      console.log(chalk.dim(`  Replaces: ${replaces.map(name => sanitizeDisplayText(name)).join(', ')}`));
     }
     if (manifest.injections?.length) {
       console.log(chalk.dim(`  Injections: ${manifest.injections.length}`));
-    }
-    if (manifest.mcpServers?.length) {
-      console.log(chalk.dim(`  MCP servers: ${manifest.mcpServers.map(s => s.key).join(', ')}`));
     }
     if (manifest.commands?.length) {
       console.log(chalk.dim(`  Commands: ${manifest.commands.map(c => c.name).join(', ')}`));
     }
 
-    const record = await commitResolvedExtension(projectDir, config, resolved);
+    const record = await commitResolvedExtension(projectDir, config, resolved, selection);
     // One pass over every extension: blocks and reference files go in once the set is final.
     const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
     await saveConfig(projectDir, config);
 
     console.log(chalk.green(`\n✓ Extension "${record.name}" installed (v${record.version})`));
     printInjectionReport(injections, { onlyExtension: record.name });
+
+    const undecided = pendingItems(items, selection);
+    if (undecided.length > 0) {
+      const notice = formatPendingNotice([{ extension: record.name, items: pendingLabels(undecided) }]);
+      for (const line of notice) console.log(chalk.yellow(line));
+    }
   } catch (error) {
+    // `process.exit` below skips `finally`, so the clone goes first.
+    if (resolved) await disposeResolvedExtension(resolved);
+
+    if (error instanceof ExtensionSelectionCancelled) {
+      console.log(chalk.yellow(EXTENSION_ADD_CANCELLED_MESSAGE));
+
+      return;
+    }
+
     console.log(chalk.red(`Error installing extension: ${(error as Error).message}`));
     process.exit(1);
+  } finally {
+    if (resolved) await disposeResolvedExtension(resolved);
   }
 }
 
@@ -141,13 +204,26 @@ export async function extensionListCommand(): Promise<void> {
     if (ext.replacedSkills && Object.keys(ext.replacedSkills).length > 0) {
       console.log(chalk.dim(`    Replaces: ${Object.keys(ext.replacedSkills).join(', ')}`));
     }
+
+    // What the user left out or has not decided on (a legacy record has neither).
+    if (ext.selection) {
+      const manifest = await loadExtensionManifest(getExtensionDir(projectDir, ext.name));
+      if (manifest) {
+        const summary = summarizeSelection(listExtensionItems(manifest), ext.selection);
+        const section = (field: 'disabled' | 'undecided'): string => EXTENSION_ITEM_KINDS
+          .filter(kind => summary[kind][field].length > 0)
+          .map(kind => `${EXTENSION_KIND_TITLES[kind]}: ${summary[kind][field].map(label => sanitizeDisplayText(label)).join(', ')}`)
+          .join('; ');
+
+        const skipped = section('disabled');
+        if (skipped) console.log(chalk.dim(`    ${EXTENSION_LIST_SKIPPED_LABEL} ${skipped}`));
+        const undecided = section('undecided');
+        if (undecided) console.log(chalk.dim(`    ${EXTENSION_LIST_UNDECIDED_LABEL} ${undecided}`));
+      }
+    }
   }
 
   console.log('');
-}
-
-interface ExtensionUpdateOptions {
-  force?: boolean;
 }
 
 export async function extensionUpdateCommand(options: ExtensionUpdateOptions = {}): Promise<void> {
@@ -172,19 +248,28 @@ export async function extensionUpdateCommand(options: ExtensionUpdateOptions = {
   console.log(chalk.dim(`Checking ${extensions.length} extension(s) for updates...\n`));
 
   try {
-    const { updated, failed } = await refreshExtensions(projectDir, config, { force: options.force });
+    const { updated, failed, pending, cancelled } = await refreshExtensions(projectDir, config, {
+      force: options.force,
+      chooseNewItems: buildNewItemsChooser({ installNew: options.installNew, skipNew: options.skipNew }),
+    });
+    // Saved even after a cancel: the extensions committed before it are on disk.
     await saveConfig(projectDir, config);
 
     if (updated.length > 0) {
       const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
       console.log(chalk.green(`✓ Updated: ${updated.join(', ')}`));
       printInjectionReport(injections);
-    } else {
+    } else if (pending.length === 0 && !cancelled) {
       console.log(chalk.dim('All extensions are up to date.'));
     }
 
+    for (const line of formatPendingNotice(pending)) console.log(chalk.yellow(line));
+
     if (failed.length > 0) {
       console.log(chalk.yellow(`⚠ Failed to update: ${failed.join(', ')}`));
+    }
+    if (cancelled) {
+      console.log(chalk.yellow(EXTENSION_UPDATE_CANCELLED_MESSAGE));
     }
   } catch (error) {
     console.log(chalk.red(`Error updating extensions: ${(error as Error).message}`));

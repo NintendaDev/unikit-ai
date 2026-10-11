@@ -120,9 +120,10 @@ unikit-ai rules registry [show|set|reset|init|migrate|status]  # Manage and insp
 ### Extensions
 
 ```bash
-unikit-ai extension add <source>         # Install from local path, git URL, or GitHub shorthand
+unikit-ai extension add <source> [--skip-skills a,b] [--skip-subagents x] [--skip-mcp k] [--yes]  # Install from local path, git URL, or GitHub shorthand (menu in a terminal)
+unikit-ai extension select <name>        # Choose which items of an installed extension are installed
 unikit-ai extension list                 # List installed extensions
-unikit-ai extension update [--force]     # Check and update extensions
+unikit-ai extension update [--force] [--install-new|--skip-new]  # Check and update extensions
 unikit-ai extension remove <name>        # Remove an installed extension
 ```
 

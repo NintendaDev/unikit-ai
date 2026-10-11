@@ -22,13 +22,16 @@ import { swapMcpRecheckNotes } from '../../core/installer/mcp-notes.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
 import { fileExists } from '../../utils/fs.js';
-import { collectReplacedSkills, refreshExtensions } from '../../core/extension-ops.js';
+import { collectReplacedSkills } from '../../core/extension-ops.js';
+import { refreshExtensions } from '../../core/extension-refresh.js';
+import { filterManifest, ExtensionSelectionCancelled } from '../../core/extension-selection.js';
 import { loadExtensionManifest, getExtensionDir } from '../../core/extensions.js';
 import { createRegistry } from '../../core/registry/index.js';
 import { logInfo } from '../../utils/log.js';
 import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
 import { formatReason, groupEntriesByStatus, bootstrapNewSkillModuleRules } from './update-helpers.js';
 import { printInjectionReport } from './injection-report.js';
+import { buildNewItemsChooser, formatPendingNotice } from './extension-selection-ui.js';
 
 interface UpdateCommandOptions {
   force?: boolean;
@@ -151,14 +154,25 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     let extensions = config.extensions ?? [];
     if (extensions.length > 0) {
       console.log(chalk.dim('Checking extensions for updates...\n'));
-      const extRefresh = await refreshExtensions(projectDir, config, { force });
+      // Items an extension offers that have no decision yet are handled like new package skills:
+      // a terminal gets a list (all checked), no terminal installs them only with --install-new.
+      const extRefresh = await refreshExtensions(projectDir, config, {
+        force,
+        chooseNewItems: buildNewItemsChooser({ installNew, skipNew }),
+      });
       if (extRefresh.updated.length > 0) {
         console.log(chalk.green(`✓ Extensions updated: ${extRefresh.updated.join(', ')}`));
       }
       if (extRefresh.failed.length > 0) {
         console.log(chalk.yellow(`⚠ Extension update failed: ${extRefresh.failed.join(', ')}`));
       }
+      for (const line of formatPendingNotice(extRefresh.pending)) {
+        console.log(chalk.yellow(line));
+      }
       await saveConfig(projectDir, config);
+      // Same outcome as closing the prompt about new package skills: the run stops (what was
+      // committed before the cancel is already saved above).
+      if (extRefresh.cancelled) throw new ExtensionSelectionCancelled();
       // Re-read extensions after refresh (commitResolvedExtension replaces config.extensions)
       extensions = config.extensions ?? [];
     }
@@ -238,13 +252,15 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
         const extManifest = await loadExtensionManifest(getExtensionDir(projectDir, ext.name));
         if (!extManifest) continue;
 
+        // Only what the selection left on: a skill or subagent the user switched off stays out.
+        const selected = filterManifest(extManifest, ext.selection);
         const extensionDir = getExtensionDir(projectDir, ext.name);
         for (const agent of config.agents) {
-          if (extManifest.skills?.length) {
-            await installExtensionSkills(projectDir, agent, extensionDir, extManifest.skills, engineId, config.engineMcpKey);
+          if (selected.skills?.length) {
+            await installExtensionSkills(projectDir, agent, extensionDir, selected.skills, engineId, config.engineMcpKey);
           }
-          if (extManifest.subagents?.length) {
-            await installExtensionSubagents(projectDir, agent, extensionDir, extManifest.subagents, engineId, config.engineMcpKey);
+          if (selected.subagents?.length) {
+            await installExtensionSubagents(projectDir, agent, extensionDir, selected.subagents, engineId, config.engineMcpKey);
           }
         }
       }

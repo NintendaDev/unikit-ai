@@ -59,6 +59,7 @@ export type InjectionSkipReason =
   | 'reference-unresolved'
   | 'render-failed'
   | 'target-not-found'
+  | 'target-disabled'
   | 'path-outside-extension';
 
 /** One short hint per skip reason; printed next to the reason in the injection report. */
@@ -71,5 +72,6 @@ export const EXTENSION_SKIP_HINTS: Readonly<Record<InjectionSkipReason, string>>
   'reference-unresolved': 'the text uses {{ext_reference:<name>}} for a name that is not in references[]',
   'render-failed': 'the text could not be rendered for this agent',
   'target-not-found': 'the target file is not installed for this agent',
+  'target-disabled': 'the target is a skill or subagent of this extension that was left out of its selection',
   'path-outside-extension': 'the path leaves the extension directory',
 };

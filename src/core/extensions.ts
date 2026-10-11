@@ -7,6 +7,9 @@ import {
 } from '../utils/fs.js';
 import type { ExtensionRecord } from './config.js';
 import { parseInjections, type ExtensionInjection } from './extension-injections-schema.js';
+import {
+  deriveReplacedSkills, listExtensionItems, normalizeToItems, type ExtensionSelection,
+} from './extension-selection.js';
 
 export type { ExtensionInjection, PositionInjection, PointInjection } from './extension-injections-schema.js';
 
@@ -407,19 +410,26 @@ export async function loadAllExtensions(
 
 // --- Extension record helpers ---
 
-export function buildExtensionRecord(resolved: ResolvedExtension): ExtensionRecord {
-  const replacedSkills = resolved.manifest.replaces
-    ? Object.fromEntries(
-      Object.entries(resolved.manifest.replaces).map(([skillPath, baseName]) => [baseName, skillPath]),
-    )
-    : undefined;
-
-  return {
+/**
+ * Builds the record stored in `.unikit.json`. `replacedSkills` counts only the replacements the
+ * selection leaves on; `selection` (when given) is narrowed to the items this version offers.
+ * Without a selection the record carries no `selection` field — the legacy form.
+ */
+export function buildExtensionRecord(
+  resolved: ResolvedExtension,
+  selection?: ExtensionSelection,
+): ExtensionRecord {
+  const record: ExtensionRecord = {
     name: resolved.manifest.name,
     source: resolved.source.raw,
     version: resolved.manifest.version,
-    replacedSkills,
+    replacedSkills: deriveReplacedSkills(resolved.manifest, selection),
   };
+  if (selection !== undefined) {
+    record.selection = normalizeToItems(selection, listExtensionItems(resolved.manifest));
+  }
+
+  return record;
 }
 
 export function findExtensionRecord(

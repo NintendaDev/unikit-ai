@@ -22,13 +22,71 @@ unikit-ai extension add user/unikit-ext-example
 
 # With a specific branch or tag
 unikit-ai extension add user/unikit-ext-example#v2.0.0
+
+# Choose in a terminal: a list of the extension's skills, subagents and MCP servers, everything checked
+unikit-ai extension add ./my-extension
+
+# Without a menu: install everything except the named items
+unikit-ai extension add ./my-extension --skip-skills noisy-skill --skip-subagents helper --skip-mcp my-server
 ```
+
+### Choosing What to Install
+
+An extension can ship skills, subagents and MCP servers. You decide which of them end up in the project:
+
+- **Skills** - including skills that replace a base skill, listed as `my-commit → unikit-commit`
+- **Subagents**
+- **MCP servers**
+
+CLI commands and injections are not part of the list: they always come with the extension (see [Injections and the selection](#injections-and-the-selection)).
+
+**The menu.** In a terminal `unikit-ai extension add` shows one list with the three sections, everything checked. Uncheck what you do not want and confirm. When you add an extension that is already installed, the list is pre-filled with your earlier choices; items the new version added are checked. Cancelling the list is treated as "no change": nothing is written and the temporary git clone is removed (the cancel path is covered by the code, not yet confirmed in a live terminal). The menu is shown only in a terminal and only when no flag has already decided the question (see below).
+
+**Flags.** The flags only ever switch items off:
+
+| Flag | Takes | Meaning |
+|------|-------|---------|
+| `--skip-skills <names>` | Comma-separated names (repeatable) | Do not install these skills. A name is the skill directory name or its path from the manifest |
+| `--skip-subagents <names>` | Comma-separated names (repeatable) | Do not install these subagents. A name is the file name without `.md` or its path from the manifest |
+| `--skip-mcp <keys>` | Comma-separated keys (repeatable) | Do not install these MCP servers |
+| `--yes`, `-y` | - | Do not show the menu and do not ask anything; follow the rules below |
+| `--install-new` | - | Turn on the items that have no decision yet (see below) |
+| `--skip-new` | - | Leave those items uninstalled without asking; wins over `--install-new` |
+
+An unknown name, or a name that matches two skills (use the manifest path then), is an error with exit code `1`, reported before anything is written.
+
+**Without a terminal** (CI, scripts, `--yes`, or any of the flags above) there is no menu and the rules are:
+
+| | No flags | `--install-new` | `--skip-new` | `--skip-skills` / `--skip-subagents` / `--skip-mcp` |
+|---|----------|-----------------|--------------|--------------------|
+| **First install** | Everything is installed | Ignored: everything is installed | Ignored: everything is installed | Everything except the named items |
+| **Installed extension** (`add` again, `update`, `extension update`) | Earlier choices are kept; items with no decision yet are **not** installed | Items with no decision yet are turned on; an item you switched off stays off | Items with no decision yet stay undecided; no question | The named items are off, an undecided one included; earlier choices are kept |
+
+A flag never turns an item you switched off back on: that is what the menu is for.
+
+**Changing the choice later.**
+
+```bash
+# Menu in a terminal, pre-filled with the current state
+unikit-ai extension select unikit-ext-example
+
+# Without a terminal: switch items off, or turn on the ones with no decision yet
+unikit-ai extension select unikit-ext-example --skip-skills noisy-skill --skip-mcp my-server
+unikit-ai extension select unikit-ext-example --install-new
+```
+
+`extension select` works on the copy in `.unikit/extensions/<name>/`: the source is not needed. It takes out what turned off, installs what turned on, re-applies the injections and, when a replacement is switched off, puts the base skill back at once. Without a terminal and without a flag that changes something it stops with `Nothing to change` and exit code `1`. Turning on an item you switched off earlier needs the menu.
+
+`unikit-ai extension list` shows `Skipped:` (items you switched off) and `Not decided:` (items of the installed version that have no decision yet).
 
 ### Managing Extensions
 
 ```bash
 # List installed extensions
 unikit-ai extension list
+
+# Choose which items of an installed extension are installed
+unikit-ai extension select unikit-ext-example
 
 # Update all extensions from their sources
 unikit-ai extension update
@@ -44,14 +102,15 @@ unikit-ai extension remove unikit-ext-example
 
 1. Extension source is resolved (local path, or a shallow `git clone` for both git and GitHub sources)
 2. Manifest (`extension.json`) is validated
-3. Command module files are verified to exist (if `commands` is defined)
-4. Extension files are copied to `.unikit/extensions/<name>/`
-5. Skills are installed into all configured agents (applying agent-specific transformers)
-6. Subagents are installed into agents that support them
-7. Injections are applied: position-based text is added to the target file; extension-point text is rendered for each agent and inserted under the point's anchor, and the entry's reference files are copied into the target skill. The command then prints `Injections: N of M applied` and the reason for every skipped entry
-8. MCP servers are merged into each agent's settings file
-9. Extension is recorded in `.unikit.json` under `extensions` - **last**, only once every asset above is on disk, so an interrupted install never leaves a recorded extension whose files never arrived
-10. Command modules are available on next CLI invocation
+3. The selection is made: the menu in a terminal, otherwise the flags and rules from [Choosing What to Install](#choosing-what-to-install). A wrong name or a closed menu stops here, before anything is written, and the temporary clone is removed
+4. Command module files are verified to exist (if `commands` is defined)
+5. Extension files are copied to `.unikit/extensions/<name>/` (the whole extension, including the items you left out - `extension select` needs them)
+6. The selected skills are installed into all configured agents (applying agent-specific transformers)
+7. The selected subagents are installed into agents that support them
+8. Injections are applied: position-based text is added to the target file; extension-point text is rendered for each agent and inserted under the point's anchor, and the entry's reference files are copied into the target skill. The command then prints `Injections: N of M applied` and the reason for every skipped entry
+9. The selected MCP servers are merged into each agent's settings file
+10. Extension is recorded in `.unikit.json` under `extensions` (with your `selection`) - **last**, only once every asset above is on disk, so an interrupted install never leaves a recorded extension whose files never arrived
+11. Command modules are available on next CLI invocation
 
 ### What Happens on Update
 
@@ -86,6 +145,22 @@ All three source types are treated **identically**: the source is always re-reso
 
 There is no GitHub-API fast path and no `GITHUB_TOKEN` handling in the refresh flow - a GitHub source is cloned like any other git source, so GitHub API rate limits never apply to `unikit-ai update`.
 
+#### New items of an installed extension
+
+Your earlier choices survive every `update`, `update --force`, `init` and `extension update`: what you switched off is not installed again. An item the extension offers that you have not decided on - typically one a new version added - is called *new* (or *undecided*) and is handled the way new skills of the package are in `unikit-ai update`:
+
+- **In a terminal**, `update` and `extension update` show a list of only those items, everything checked. Items you uncheck are remembered as "not wanted" and are not offered again; `extension select` is the way back.
+- **Without a terminal**, new items are **not** installed. The command says `not installed (undecided)` and names them. Pass `--install-new` to install them (it never turns on an item you switched off), or `--skip-new` to decline explicitly: the items then stay undecided and nothing is asked.
+
+**This changes the behaviour of non-interactive runs.** Before item selection existed, a new version of an extension installed everything it added by itself. Now a run without a terminal installs new items only with `--install-new`. In CI, use for example:
+
+```bash
+unikit-ai extension update --install-new
+unikit-ai update --install-new
+```
+
+A record from before item selection (no `selection` in `.unikit.json`) is read as "what is installed is on": the first update after the upgrade keeps all of it, and only the items the new version adds are undecided.
+
 ### Updating Extensions Separately
 
 Use `unikit-ai extension update` to refresh extensions without updating base skills:
@@ -106,6 +181,8 @@ unikit-ai extension update --force
 4. Extension directory is deleted from `.unikit/extensions/`
 5. Extension record is removed from `.unikit.json`
 6. If the extension replaced base skills, the originals are restored automatically
+
+Only what the extension installed is removed: a skill, a subagent or an MCP key that was left out of the selection is never touched, so a file of the same name that you added yourself stays. The same holds when you deselect an agent on a repeat `init`.
 
 ---
 
@@ -236,14 +313,16 @@ The replacement skill is installed **under the base skill name**. For example, `
 
 **On update** (`unikit-ai update`):
 1. The base-skill pass **skips** every skill an extension replaces, so the replacement survives the update untouched rather than being overwritten by the packaged original
-2. The extension's own `skills` and `subagents` are reinstalled from `.unikit/extensions/`. A `replaces` entry is not itself reinstalled - it is protected by the skip above
+2. The extension's own `skills` and `subagents` you left on are reinstalled from `.unikit/extensions/`. A `replaces` entry is not itself reinstalled - it is protected by the skip above, which covers every skill a *selected* replacement owns
 3. If an extension's manifest is missing or unreadable, that extension is skipped silently in the reinstall and injection passes and the update continues; a source that cannot be resolved during the refresh pass produces a `Could not refresh extension` warning. The base skill is **not** restored - restoring an original is exclusively the job of `unikit-ai extension remove`
 
 **On remove** (`extension remove`):
 1. The replacement skill is removed (by its base name)
 2. The original base skill is **restored** from the package
 
-**Conflict detection:** No two extensions can replace the same base skill. Attempting to install a second extension that replaces an already-replaced skill will produce an error.
+**Conflict detection:** No two extensions can replace the same base skill. Attempting to install a second extension that replaces an already-replaced skill will produce an error. Only replacements you left on count: a replacement that is switched off is neither installed nor a conflict.
+
+**Leaving a replacement out.** A replacement is an item of its own in the selection (`my-commit → unikit-commit`) and can be switched off. The base skill then stays in place and keeps updating with `unikit-ai update`. If a replacement is switched off or dropped later (`extension select`, a new version), the base skill is restored at once, not at the next `update`. The skip in the update pass above is for the replacements you left **on**.
 
 #### Example
 
@@ -295,6 +374,8 @@ Agent instructions here...
 ```
 
 Subagents are only installed for agents that support them (Claude Code and Kimi Code). They are placed in the agent's subagents directory (e.g., `.claude/agents/`). On Kimi Code, which does not read a `skills:` field in an agent file, the installer turns that field into a read list of `SKILL.md` paths at the top of the file - the same adapter runs over extension subagents (see [Subagents](subagents.md#skills-listed-in-an-agent-file)).
+
+A subagent can be left out of the selection like a skill. If a subagent you kept preloads (`skills:`) a skill of the same extension that you left out, the command prints one `[WARN][extension]` line naming both. It is only a warning: nothing is blocked and the skill is not turned on for you.
 
 ---
 
@@ -390,7 +471,16 @@ Injections: 1 of 2 applied, 1 reference file(s)
 | `reference-unresolved` | The text uses `{{ext_reference:<name>}}` for a name that is not in `references` |
 | `render-failed` | The text could not be rendered for this agent (a broken agent-filter marker, a reserved marker in the text) |
 | `target-not-found` | The target file is not installed for this agent (position entries) |
+| `target-disabled` | The target is a skill or subagent of this extension that was left out of its selection (position entries) |
 | `path-outside-extension` | The path leaves the extension directory |
+
+#### Injections and the selection
+
+Injections are applied whatever the user selected. There is no `requires` field: an injection is self-sufficient, and the selection of skills, subagents and MCP servers does not switch injections on or off. So:
+
+- text of an injection that names a skill, subagent or server the user left out is still inserted - write injected text so that it makes sense without the optional items of your extension;
+- an injection into a **base** skill (or into a base skill whose replacement was switched off) is always applied;
+- a `position` injection into a skill or subagent **of this extension** that the user left out is skipped with the reason `target-disabled` and no "target not found" warning.
 
 #### Position injections
 
@@ -546,6 +636,8 @@ The template is written into each agent's settings file under `mcpServers.<key>`
 | Universal / Other | `.mcp.json` |
 
 On `extension remove`, the key is deleted from the settings file.
+
+A server you left out of the selection is not written to the settings files. Switching a server off later (`extension select`) removes only that key from each agent's settings file; the other entries of the file - yours, and those of other tools - are left as they are. The file is shared with you and with other tools (for Codex it is TOML); choose a `key` that is unlikely to collide with an entry of your own.
 
 #### Tool permissions for an extension MCP server
 
@@ -769,13 +861,22 @@ Extensions are tracked in `.unikit.json`:
       "version": "1.0.0",
       "replacedSkills": {
         "unikit-commit": "skills/my-commit"
+      },
+      "selection": {
+        "skills": { "skills/my-skill": true, "skills/my-commit": false },
+        "subagents": { "subagents/my-agent.md": true },
+        "mcpServers": { "my-server": true }
       }
     }
   ]
 }
 ```
 
-The `replacedSkills` field maps base skill names to extension skill paths, enabling automatic restoration of base skills when the extension is removed.
+The `replacedSkills` field maps base skill names to extension skill paths, enabling automatic restoration of base skills when the extension is removed. It lists only the replacements that are switched on.
+
+The `selection` field holds your choices: the key is the path from the manifest (skills and subagents) or the `key` of an MCP server; the value says whether the item is on. An item that is missing from the maps is *undecided*: it has not been installed and is offered the next time (see [New items of an installed extension](#new-items-of-an-installed-extension)). A record without `selection` was written before item selection existed; everything installed counts as on. You do not edit the field by hand - use `unikit-ai extension select`.
+
+An older CLI does not know the field: the next time it re-commits the extension (a version bump, `--force`) it rewrites the record without `selection`, and an `update` then installs everything again. Do not use different CLI versions in one project.
 
 ---
 

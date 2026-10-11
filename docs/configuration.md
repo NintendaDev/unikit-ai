@@ -100,7 +100,7 @@ Two shapes worth calling out:
 | `agents[].installedSubagents` | List of installed subagent names |
 | `agents[].managedSkills` | SHA-256 hash-based change tracking for skill updates |
 | `agents[].managedSubagents` | SHA-256 hash-based change tracking for subagent updates |
-| `extensions` | Array of installed extension records (optional) |
+| `extensions` | Array of installed extension records (optional): `name`, `source`, `version`, `replacedSkills` (the replacements that are on), `selection` (the user's per-item choices - see [Extensions](extensions.md#config-format)) |
 | `rules.installed` | Currently installed dynamic memory, keyed by module then tier (`modules.code.{core,stack}`, `modules.gamedesign.{core,library}`). Each entry is an object `{ name, source, origin?, version?, installed_hash? }`. See [Rules Registry](rules-registry.md#unikitjson-registry-fields) for field descriptions. Legacy `string[]` entries are normalized to `{ name, source: "installer" }` on load, and the pre-2.0.0 flat `{ core, stack }` form is wrapped under the `code` module. |
 | `genres.installed` | Installed genre profiles as a flat list of `{ id, version }` (optional). Written by `unikit-ai genres install` and by `/unikit-gd-spec`'s best-fit resolve; drives which profiles `installGenreProfiles` delivers into `.unikit/system/gamedesign/genres/`. Orthogonal to `rules.installed` - genres are a seed catalog, not a knowledge module. |
 

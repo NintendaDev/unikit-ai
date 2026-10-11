@@ -447,6 +447,8 @@ export * from './constants-transform.js';
 export * from './constants-skill-call.js';
 // Extension points: anchors, block markers, the registry file name and the skip hints (same reason, same re-export).
 export * from './constants-extension-points.js';
+// Extension item selection: kinds, titles, flag names, menu limits (same reason, same re-export).
+export * from './constants-extension-selection.js';
 
 // --- Migration version anchors (`Migration.since`) ---
 //

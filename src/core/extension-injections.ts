@@ -17,6 +17,7 @@ import {
   countAnchors, insertAtAnchor, pointBlockKey, removePointBlocks, renderBlockRegion,
 } from './extension-markers.js';
 import { renderExtensionText, type RenderContext } from './extension-render.js';
+import { disabledOwnTargets } from './extension-selection.js';
 import { extensionSlug, loadExtensionPointRegistry, registeredPoints } from './extension-points.js';
 import { resolveSkillPaths } from './installer/hashing.js';
 import { isMarkdownFile } from './installer/shared.js';
@@ -315,12 +316,20 @@ export async function applyExtensionInjections(input: ExtensionInjectionInput): 
     }
   }
 
+  const recordByName = new Map(input.extensions.map(ext => [ext.name, ext]));
   const pointEntries: PointEntry[] = [];
-  const positionEntries: Array<{ extName: string; extDir: string; entry: PositionInjection }> = [];
+  const positionEntries: Array<{
+    extName: string;
+    extDir: string;
+    entry: PositionInjection;
+    /** Own skills / subagents of this extension the user left out of its selection. */
+    disabled: ReturnType<typeof disabledOwnTargets>;
+  }> = [];
   for (const ext of loaded) {
+    const disabled = disabledOwnTargets(ext.manifest, recordByName.get(ext.name)?.selection);
     for (const entry of ext.manifest.injections ?? []) {
       if (isPointInjection(entry)) pointEntries.push({ extName: ext.name, extDir: ext.dir, entry });
-      else positionEntries.push({ extName: ext.name, extDir: ext.dir, entry });
+      else positionEntries.push({ extName: ext.name, extDir: ext.dir, entry, disabled });
     }
   }
   pointEntries.sort((a, b) => compareCodeUnits(a.extName, b.extName) || compareCodeUnits(a.entry.id, b.entry.id));
@@ -351,11 +360,21 @@ export async function applyExtensionInjections(input: ExtensionInjectionInput): 
     }
 
     // The original position entries.
-    for (const { extName, extDir, entry } of positionEntries) {
+    for (const { extName, extDir, entry, disabled } of positionEntries) {
       const base = {
         extension: extName, id: null, kind: 'position' as const, point: null,
         target: entry.target, targetType: entry.targetType, agent: agent.id,
       };
+      // The target is a skill or subagent of this very extension that the user left out: it is
+      // not installed, so a "target not found" warning would say nothing the report does not.
+      const targetDisabled = entry.targetType === 'subagent'
+        ? disabled.subagents.has(entry.target)
+        : disabled.skills.has(entry.target);
+      if (targetDisabled) {
+        logInfo(LOG_COMPONENT, `skipped ${entry.target}: disabled in the selection of ${extName}`);
+        outcomes.push({ ...base, applied: false, reason: 'target-disabled' });
+        continue;
+      }
       const contentPath = path.resolve(extDir, entry.file);
       if (!isInsideDirectory(extDir, contentPath)) {
         outcomes.push({ ...base, applied: false, reason: 'path-outside-extension', detail: entry.file });
