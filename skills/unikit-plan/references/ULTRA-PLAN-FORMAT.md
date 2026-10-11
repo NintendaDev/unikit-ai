@@ -416,7 +416,7 @@ Each check is **blocking** — check 13 does not apply to a legacy plan (PR chec
     executed a second time by `/unikit-verify`.
 11. Under `Testing: yes` the last task of `## Checklist` is a test-checkpoint task carrying
     `Test checkpoint: plan`. In a plan with a `## Balance Context` the last task is `Hand-back:`,
-    and the task directly above it carries `Test checkpoint: plan`. A missing final full run is
+    exactly one; under `Testing: yes`, the task directly above it carries `Test checkpoint: plan`. A missing final full run is
     not a matter of style — REQ-007 has no off switch.
 12. When `## Modules` is present, its lines cover the phases in order — contiguous ranges,
     every phase exactly once — and every module longer than four phases carries `why long:`.

@@ -7,7 +7,7 @@
 //                         numbers are the same) on the manifest `<dir>/PLAN.md` and its phase files.
 //                         A manifest without the ultra marker is a full plan: only
 //                         checks 6, 9, 11 and 12-15 apply to it.
-//                         Check 11 also accepts Hand-back: as the last task of a plan with a ## Balance Context.
+//                         Check 11 also accepts Hand-back: as the last task of a plan with a ## Balance Context (exactly one).
 //   finalize <plan-dir>   Checks `<plan-dir>`, keeps its `.planning/recon/` as `recon/` of the plan
 //                         folder, then removes the rest of `.planning/` — only one directly inside a
 //                         folder under `.unikit/code/plans/`.
@@ -320,11 +320,11 @@ function runChecks(dir) {
     commits.push({ n: m[1], ids: taskIds.filter((id) => compareIds(id, from) >= 0 && compareIds(id, to) <= 0) });
   }
 
-  // 11 — under Testing: yes the last task is the full run (balance plan: Hand-back: last, the full run directly above it)
-  const tail = tasks[tasks.length - 1];
-  const balance = section(lines, H_BALANCE_CONTEXT) !== null && tasks.some((t) => t.isHandBack);
-  const runTask = balance ? tasks[tasks.length - 2] : tail;
-  if (balance && !tail?.isHandBack) fail(11, 'balance plan: Hand-back: is not the last checklist task');
+  // 11 — under Testing: yes the last task is the full run (balance plan: exactly one Hand-back:, last, the full run directly above it)
+  const tail = tasks[tasks.length - 1], hb = tasks.filter((t) => t.isHandBack).length, ctx = section(lines, H_BALANCE_CONTEXT) !== null;
+  const balance = ctx && hb > 0, runTask = balance ? tasks[tasks.length - 2] : tail;
+  if (ctx && hb !== 1) fail(11, `balance plan: exactly one Hand-back: task is required (found ${hb})`);
+  else if (balance && !tail?.isHandBack) fail(11, 'balance plan: Hand-back: is not the last checklist task');
   else if (setting(lines, SETTING_TESTING) === YES && !runTask?.isFullRun) fail(11, 'Testing: yes, but the last checklist task is not Test checkpoint: plan (balance plan: Hand-back: directly under it)');
 
   // 12-15 — modules
