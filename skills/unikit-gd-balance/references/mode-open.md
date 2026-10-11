@@ -11,7 +11,8 @@ the files.
    record with no summary is read as text. Neither a topic nor a path (the branch was reached
    from an empty status) → ask once, with `AskUserQuestion`: the topic in a few words, or the
    path of a research.
-2. **Slug.** Kebab-case of the topic, at most 40 characters, no date. If
+2. **Slug.** ASCII kebab-case of the topic (translate or transliterate its words), at most 40
+   characters, no date. If
    `balance/<slug>/` already exists, ask: continue it (the revise branch) or another name. An
    automatic suffix is forbidden. `resolve-target.md` owns the list.
 3. **Investigation** — `investigation.md`, when facts from code or data are needed.
@@ -25,7 +26,11 @@ the files.
    named slice (`recon-agent`). Two grades, defined here and nowhere else: *not feasible as
    written* — the item is not issued, it is revised with the user; *feasible with a constraint*
    — the item is issued and the constraint is written into `Constraints`.
-7. **Write**, in this order: `mkdir -p .unikit/gamedesign/balance/<slug>/results` →
+7. **Approve, then write.** Show the draft in the interface language — the subject, the
+   decisions with their sources, the roadmap as goals, the issued point's goal and its work — and
+   ask once (`AskUserQuestion`, the recommended option first): `1.` write it · `2.` change
+   something · `3.` stop. Nothing is written before the answer (`gd-principles` → Collaborative
+   Protocol). On `1.`, in this order: `mkdir -p .unikit/gamedesign/balance/<slug>/results` →
    `BALANCE.md` → `CHECKPOINTS.md` (`Status: open`, `Current: BCH-1`, `Updated` from
    `Bash(date *)`) → redraw `INDEX.md`. If `mkdir` is refused, tell the user the path, write
    nothing, change no state.

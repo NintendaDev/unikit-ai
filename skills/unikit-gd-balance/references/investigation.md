@@ -1,8 +1,9 @@
 # Investigation — facts for a balance document
 
-Loaded by the open branch, and by ingest when a mismatch between a report and the document has
-to be explained. This skill investigates inside itself: there is no separate research step to
-hand off to.
+Loaded by the open branch, by ingest and revise when facts from code or data are needed to
+compose a point, and by ingest when a mismatch between a report and the document has to be
+explained. This skill investigates inside itself: there is no separate research step to hand off
+to.
 
 ## What it may read
 

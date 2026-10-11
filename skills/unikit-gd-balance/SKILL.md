@@ -13,7 +13,7 @@ description: >-
   .unikit/gamedesign/balance/; never edits the GDD or code. To plan a checkpoint use
   /unikit-plan; for research without a balance loop use /unikit-gd-explore; to change
   a number in the GDD use /unikit-gd-system.
-argument-hint: "[<slug> | <topic> | <research path> | <hand-back report path or pasted table>]  (intent read from the request; no flags)"
+argument-hint: "[<slug> | <topic> | <research path> | [<slug>] <hand-back report path or pasted table>]  (intent read from the request; no flags)"
 allowed-tools:
   - Read
   - Write
@@ -124,21 +124,23 @@ file named below from `{{skills_dir}}/{{self_name}}/references/` and follow it:
 |---|---|
 | Start balancing a topic, or from a research | `mode-open.md` |
 | A hand-back report is pasted or named by path | `mode-ingest.md` |
-| Change a decision, a band, the composition of a checkpoint, drop a point; issue the next point, add a point, reopen a closed document | `mode-revise.md` |
+| Change a decision, a band, the composition of a checkpoint, drop a point; issue the next point, add a point, close or reopen a document, repair an inconsistent file | `mode-revise.md` |
 | "What next", "where are we", a list, a slug alone | `mode-status.md` |
 | Called with no arguments | `mode-status.md` (with the next action offered) |
 
 A slug without a verb is read as status. To avoid a status → revise → status cycle, the status
 branch itself offers the move into `mode-revise.md` (through `AskUserQuestion`) for a document
-with no current point and for a closed one; requests such as "issue the next point", "add a
-point" or "reopen the document", said directly, are read as revise and never return to status.
+with no current point, for a closed one and for a file error; requests such as "issue the next
+point", "add a point", "close it", "reopen the document" or "repair it", said directly, are read
+as revise and never return to status.
 
 **Ambiguity.** A request that reads as two branches gets one `AskUserQuestion`, the recommended
 option first. Do not guess. Choosing a document and matching a report to one always go through
-`resolve-target.md`; investigation is `investigation.md` (loaded by the open branch, and by
-ingest when a mismatch has to be explained); the closing question set is `closure-set.md`; the
-templates are `template-balance.md` and `template-checkpoints.md` (loaded only when a file is
-created).
+`resolve-target.md`; investigation is `investigation.md` (loaded by the open branch, and
+by ingest and revise when facts from code or data are needed to compose a point); the closing
+question set is `closure-set.md`; the templates are `template-balance.md` and
+`template-checkpoints.md` (loaded when a file is created, and read for `Allowed header
+combinations` and the none-form where the branches cite them).
 
 ## Closing block
 
@@ -182,5 +184,6 @@ path to the file, and no point code is printed in it.
 /unikit-gd-balance researches/<slug>/                → start from a design research
 /unikit-gd-balance <slug>                            → status of one document
 /unikit-gd-balance <path to a hand-back report>      → receive results, decide, issue the next point or close
+/unikit-gd-balance <slug> <path to a hand-back report> → same, the form the executors print; the slug names the document
 /unikit-gd-balance <pasted results table>            → same; the document is matched, never guessed
 ```

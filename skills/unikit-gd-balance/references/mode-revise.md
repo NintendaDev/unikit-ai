@@ -12,8 +12,9 @@ those too). Confirmation questions name a point by its goal, never by its code o
 - Work-item ids `<point id>.W<n>` are stable: a new item takes the next number, a deleted one is
   never reused (the log records it).
 - **Dropping a point:** its `status` in `## Roadmap` becomes `dropped` and the log gets an
-  entry. If the dropped point was the current one, the next is issued by the ingest rules
-  (`mode-ingest.md`, the decision and `CHECKPOINTS.md` steps).
+  entry. If the dropped point was the current one, no row is `current` until a point is issued
+  (`Current: none`, the block in its none-form); the next is issued by `## Issue the next point,
+  add a point, reopen` below — a dropped point never becomes `done`.
 - A change of design (numbers in the GDD) is not made here: put a proposal into `Design deltas`
   for `/unikit-gd-system`.
 
@@ -33,6 +34,18 @@ as in step 6 of `mode-open.md`; the header's `Current` takes its id. For a close
 same plus `Status: open` (the reopening rule is in `closure-set.md`). The result must fall into
 an allowed header combination (`template-checkpoints.md` → `Allowed header combinations`); the
 log gets an entry as for any roadmap change.
+
+## Repair an inconsistent file
+
+Reached from `mode-status.md` (a file error) or asked for directly. The truth is the `current`
+row of `## Roadmap`: the header's `Current` and the block's `Point` must equal it
+(`template-checkpoints.md` → `Allowed header combinations`). Read `CHECKPOINTS.md` whole once, say
+in words what disagrees (points by their goals, never by a code), and fix it by `Edit`: `Current`
+and `Point` take the one `current` row, or the none-form when there is none. Several `current`
+rows, or none while the header names one, is one `AskUserQuestion`: which point is the current
+one — the one the header names first. A `closed` document with a `current` or `planned` row asks
+before any row is dropped. The log gets one entry; `## Every write` applies; the outcome is told
+as `## End` says.
 
 ## Every write
 

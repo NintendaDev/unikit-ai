@@ -1,8 +1,9 @@
 # Template — CHECKPOINTS.md
 
-Read only when the file is being created. This file is the single definition of the header, of
-the allowed header combinations and of the anchors that `unikit-plan`, `unikit-implement` and
-`unikit-verify` read. The anchors keep their wording; the header sits in the first 12 lines.
+Read when the file is being created, and for its `Allowed header combinations` and the none-form
+where the branches cite them. This file is the single definition of the header, of the allowed
+header combinations and of the anchors that `unikit-plan`, `unikit-implement` and `unikit-verify`
+read. The anchors keep their wording; the header sits in the first 12 lines.
 
 ```markdown
 # Balance Checkpoints: <slug>

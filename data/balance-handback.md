@@ -56,9 +56,12 @@ here as a numbered list, not as headings of this contract:
 4. `## Raw data` — paths to the raw data; when there is none, `none`.
 
 **Report fields.** The `report:` list of a `Hand-back:` task (taken from the point's `Until`)
-holds names of two kinds: a work-item id (then `## Measurements` must have a row with that `id`)
-or a label (then `## Notes and anomalies` must have a line `<label>: <value>`). A report is
-complete when every name of the list is present.
+holds names of two kinds: a work-item id (then `## Measurements` has a row with that `id`, or
+`## Not measured` has a line for it) or a label (then `## Notes and anomalies` has a line
+`<label>: <value>`). A report is complete when every name of the list is accounted for: an id by a
+row or by a line of `## Not measured` (the executor states there what it did not measure, and
+a measurement the user skipped at a blocker lands there), a label by its line. Whether data
+stated as not measured are enough is the receiving skill's decision, never the format's.
 
 ## Matching keys
 

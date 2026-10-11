@@ -21,10 +21,15 @@ tables. A missing item is described in words by its expected result, not by its 
 4. **A report that does not belong to the current point, and a duplicate** — `resolve-target.md`.
    This is decided **before** completeness: a late report has no current `Report:` list to be
    complete against, and the user must not be sent back to execution for a report that is then
-   refused.
+   refused. **Taken as late data** (option 1 there): only step 6 (the copy, with `Supplemented:` /
+   `Supersedes:` as for any copy) and one log entry of step 9 whose decision says `late data`,
+   then `INDEX.md`; `BALANCE.md`, the roadmap, `Current` and the block are not touched, and steps
+   5, 7 and 8 do not run.
 5. **Check completeness.** Five header lines (completed ones count as present but stay listed in
-   `Supplemented:`); every name of the point's `Report:` list is present, by the contract's
-   `## Body`. Incomplete → show what is missing and ask: `1.` go back to execution
+   `Supplemented:`); every name of the point's `Report:` list is accounted for, by the contract's
+   `## Body` and `**Report fields.**`: a name stated in `## Not measured` counts — it is told in
+   the outcome and written to `Unverified and conflicts`, never judged against a band. A name
+   neither measured nor stated → show what is missing and ask: `1.` go back to execution
    (recommended) · `2.` accept as partial (the missing become "not measured").
 6. **Copy** to `results/HB-<n>.md` (`n` is the next number; append only): the report verbatim
    plus the completed header lines; the `Supplemented:` line first in the file (its form is the

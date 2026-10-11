@@ -29,6 +29,10 @@ header:
 - **Closed** → "closed". One `AskUserQuestion`, the recommended option first: `1.` reopen this
   document (a new point; `mode-revise.md`, the reopening rule is in `closure-set.md`) ·
   `2.` start a new balance (`mode-open.md`) · `3.` nothing.
+- **A file error** — a header combination outside the table, or a header, a `current` row and a
+  `Point` block that disagree → report "file inconsistent: <what exactly>" in words and offer the
+  repair: one `AskUserQuestion`, the recommended option first: `1.` repair it (`mode-revise.md` →
+  `Repair an inconsistent file`, loaded in the same turn) · `2.` nothing.
 
 The header values are the key for choosing the action; the user is shown a plain phrase and the
 point's goal.
@@ -40,5 +44,5 @@ the next point, or closed); the roadmap as a short list of **goals** with a word
 state — done, current, planned, dropped — no ids and no table of codes; the summary of the closing
 set from `BALANCE.md` (how many questions are closed, deferred, open — read the status table
 only); the latest log entry in a sentence. The header itself is read, not printed. Then the next
-action as above. A file whose header combination is not allowed is reported as inconsistent and
-not continued.
+action as above. A file whose header combination is not allowed is reported as inconsistent, the
+repair is offered as above, and nothing else continues.

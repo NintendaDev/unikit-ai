@@ -33,7 +33,8 @@ Defined once, in `template-checkpoints.md` → `Allowed header combinations`; no
 A combination outside that table, or a header, a `current` row and a `Point` block that
 disagree, is a file error: status reports "file inconsistent: <what exactly>" in words — "the
 header names one current point, the roadmap another", without a code (the exact codes are
-visible in the file itself); revise offers a repair; the other branches do not continue.
+visible in the file itself), and offers the repair (`mode-revise.md` →
+`Repair an inconsistent file`); the other branches do not continue.
 
 ## The index
 
@@ -45,7 +46,10 @@ by hand; when it disagrees with the folders the headers are the truth:
 ## By an argument
 
 A slug is the exact folder name. An unknown slug: show the five latest and ask which one is
-meant. A slug with no verb is status.
+meant. A slug with no verb is status. A slug followed by a report (a path or a pasted table) is
+the form the executors print: the slug names the document and the report is received into it;
+when the report's own `Balance:` names another document, that is one question, never a silent
+choice.
 
 ## By a report
 
@@ -57,9 +61,10 @@ second and third work.
   language — "receiving into <slug>: <the point's goal in plain words>" — and continue. No point
   code is printed in that line (TIER B, `named by its goal`).
 - **No winner, or several** → the five latest and one question "which document to add this to",
-  with the option "create a new one"; the recommended option first, by topic proximity; the
-  options name a document by its slug and the goal of its current point. **Never guess
-  silently.**
+  with the option "none of these"; the recommended option first, by topic proximity; the
+  options name a document by its slug and the goal of its current point. A report cannot start a
+  document: "none of these" says so, changes nothing and points at `/unikit-gd-balance <topic>`.
+  **Never guess silently.**
 
 ## A late report and a duplicate
 
