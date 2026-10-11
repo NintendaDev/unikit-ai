@@ -669,6 +669,100 @@ await group('P', async () => {
     }
 });
 
+// ── F: the printed report ───────────────────────────────────────────────────
+
+const { formatInjectionReport } = await import(dist('cli/commands/injection-report.js'));
+const { EXTENSION_SKIP_HINTS } = await import(dist('core/constants.js'));
+
+await group('F', async () => {
+    const outcome = (over) => ({
+        extension: 'ext-a', id: 'one', kind: 'point', point: 'bootstrap', target: 'unikit-plan',
+        targetType: 'skill', agent: 'claude', applied: true, ...over,
+    });
+    const reportOf = (outcomes, referencesWritten = 0) => ({
+        outcomes, applied: outcomes.filter(o => o.applied).length,
+        skipped: outcomes.filter(o => !o.applied).length, total: outcomes.length, referencesWritten,
+    });
+
+    const clean = formatInjectionReport(reportOf([outcome({}), outcome({ id: 'two' })]));
+    assertEq('F1 a clean report is one line', JSON.stringify(clean), '["Injections: 2 of 2 applied"]');
+
+    const withRefs = formatInjectionReport(reportOf([outcome({})], 3));
+    assertEq('F1 reference files are counted', withRefs[0], 'Injections: 1 of 1 applied, 3 reference file(s)');
+
+    const skipped = formatInjectionReport(reportOf([
+        outcome({ id: 'b', target: 'unikit', applied: false, reason: 'anchor-missing' }),
+        outcome({ id: 'a', target: 'unikit-todo', applied: false, reason: 'source-missing', detail: 'inj/a.md' }),
+        outcome({ id: 'b', target: 'unikit', agent: 'codex', applied: false, reason: 'anchor-missing' }),
+        outcome({ extension: 'ext-0', id: 'z' }),
+    ]));
+    assertEq('F2 the summary counts every outcome', skipped[0], 'Injections: 1 of 4 applied');
+    assertEq('F2 one line per group of skips', skipped.length, 3);
+    assertTrue('F2 groups are ordered by extension, then id', skipped[1].startsWith('  ext-a › a →') && skipped[2].startsWith('  ext-a › b →'), skipped.join('\n'));
+    assertTrue('F2 the hint of the reason is printed', skipped[2].includes(EXTENSION_SKIP_HINTS['anchor-missing']));
+    assertTrue('F2 the detail is printed', skipped[1].includes('— inj/a.md'));
+    assertTrue('F2 agents of one group are merged', skipped[2].endsWith('[claude, codex]'), skipped[2]);
+
+    const only = formatInjectionReport(reportOf([outcome({}), outcome({ extension: 'ext-b' })]), { onlyExtension: 'ext-b' });
+    assertEq('F3 the report can be limited to one extension', JSON.stringify(only), '["Injections: 1 of 1 applied"]');
+    assertEq('F3 an empty report prints nothing', JSON.stringify(formatInjectionReport(reportOf([]))), '[]');
+});
+
+// ── I: what init needs back after it reinstalled the base skills ────────────
+
+const { reinstallExtensionAssets } = await import(dist('core/extension-ops.js'));
+
+await group('I', async () => {
+    await withProject(async (tmp) => {
+        // The extension on disk: a skill, a replacement of unikit-commit, a subagent, a point and an append.
+        const dir = path.join(tmp, '.unikit', 'extensions', 'ext-a');
+        await fs.mkdir(path.join(dir, 'skills', 'foo'), { recursive: true });
+        await fs.mkdir(path.join(dir, 'skills', 'my-commit'), { recursive: true });
+        await fs.mkdir(path.join(dir, 'subagents'), { recursive: true });
+        await fs.mkdir(path.join(dir, 'inj'), { recursive: true });
+        await fs.writeFile(path.join(dir, 'skills', 'foo', 'SKILL.md'), '---\nname: foo\ndescription: foo\n---\n\nFoo skill\n');
+        await fs.writeFile(path.join(dir, 'skills', 'my-commit', 'SKILL.md'), '---\nname: my-commit\ndescription: c\n---\n\nREPLACEMENT TEXT\n');
+        await fs.writeFile(path.join(dir, 'subagents', 'bar.md'), '---\nname: bar\ndescription: bar\n---\n\nBar agent\n');
+        await fs.writeFile(path.join(dir, 'inj', 'point.md'), 'point text');
+        await fs.writeFile(path.join(dir, 'inj', 'tail.md'), 'tail text');
+        await fs.writeFile(path.join(dir, 'extension.json'), JSON.stringify({
+            name: 'ext-a',
+            version: '1.0.0',
+            skills: ['skills/foo'],
+            subagents: ['subagents/bar.md'],
+            replaces: { 'skills/my-commit': 'unikit-commit' },
+            injections: [
+                { id: 'one', target: 'unikit-plan', point: 'bootstrap', file: 'inj/point.md' },
+                { target: 'unikit-plan', position: 'append', file: 'inj/tail.md' },
+            ],
+        }));
+
+        // "After init": the base skills are back, the replacement and the blocks are gone.
+        await writeSkill(tmp, '.claude/skills', 'unikit-commit', '---\nname: unikit-commit\ndescription: base\n---\n\nBASE TEXT\n');
+        const planFile = await writeSkill(tmp, '.claude/skills', 'unikit-plan');
+
+        const input = {
+            projectDir: tmp, engine: 'unity', engineMcpKey: null, agents: [CLAUDE],
+            extensions: [{ name: 'ext-a', source: 'x', version: '1.0.0' }, { name: 'ghost', source: 'x', version: '1.0.0' }],
+        };
+        const restored = await reinstallExtensionAssets(input);
+        assertEq('I1 the present extension is reinstalled', restored.reinstalled.join(','), 'ext-a');
+        assertEq('I1 the missing one is reported', restored.missing.join(','), 'ghost');
+        assertEq('I1 its skill is back', await exists(path.join(tmp, '.claude/skills/foo/SKILL.md')), true);
+        assertTrue(
+            'I1 the replacement is back under the base name',
+            (await fs.readFile(path.join(tmp, '.claude/skills/unikit-commit/SKILL.md'), 'utf8')).includes('REPLACEMENT TEXT'),
+        );
+        assertEq('I1 its subagent is back', await exists(path.join(tmp, '.claude/agents/bar.md')), true);
+
+        const report = await applyExtensionInjections(input);
+        const plan = await fs.readFile(planFile, 'utf8');
+        assertTrue('I2 the point block is in place', plan.includes('point text'));
+        assertTrue('I2 the append block is in place', plan.includes('tail text'));
+        assertEq('I2 both entries applied', report.applied, 2);
+    });
+});
+
 // ── V: the manifest model and its validation ────────────────────────────────
 
 const manifestWith = (injections) => ({ name: 'ext-a', version: '1.0.0', injections });

@@ -2,7 +2,7 @@ import path from 'path';
 import {
   copyDirectory, removeDirectory, fileExists, readJsonFile,
 } from '../utils/fs.js';
-import type { UniKitConfig, ExtensionRecord } from './config.js';
+import type { UniKitConfig, ExtensionRecord, AgentInstallation } from './config.js';
 import { getAgentConfig } from './agents.js';
 import {
   type ResolvedExtension, type ExtensionManifest,
@@ -16,8 +16,10 @@ import {
   installExtensionSubagents, removeExtensionSubagents,
 } from './installer/extensions.js';
 import { injectMcpRules } from './installer/mcp-injection.js';
-import { applyAllInjections, stripAllInjections } from './injections.js';
+import { stripAllInjections } from './injections.js';
 import { collectPointInjectionFiles } from './extension-injections-schema.js';
+import type { ExtensionInjectionInput } from './extension-injections.js';
+import { logWarn } from '../utils/log.js';
 import {
   configureExtensionMcpServers, removeExtensionMcpServers, validateMcpTemplate,
   discoverMcpServers, collectMcpRules,
@@ -51,53 +53,86 @@ export function assertNoReplacementConflicts(
 
 // --- Install extension assets for all agents ---
 
+/** The extension's own files for one agent: its skills, the replacements of base skills, its subagents. */
+async function installExtensionFilesForAgent(
+  projectDir: string,
+  agent: AgentInstallation,
+  manifest: ExtensionManifest,
+  extensionDir: string,
+  engineId: string,
+  engineMcpKey: string | null | undefined,
+): Promise<void> {
+  // Install extension skills
+  if (manifest.skills && manifest.skills.length > 0) {
+    await installExtensionSkills(projectDir, agent, extensionDir, manifest.skills, engineId, engineMcpKey);
+  }
+
+  // Install replacement skills (under base skill name, not extension path name)
+  if (manifest.replaces) {
+    const agentConfig = getAgentConfig(agent.id);
+
+    for (const [skillPath, baseName] of Object.entries(manifest.replaces)) {
+      const sourceDir = path.join(extensionDir, skillPath);
+      try {
+        await installSkillWithTransformer(
+          sourceDir, baseName, projectDir, agent.skillsDir,
+          agent.id, agentConfig, engineId, engineMcpKey,
+        );
+      } catch (error) {
+        console.warn(`Warning: Could not install replacement skill "${baseName}": ${error}`);
+      }
+    }
+  }
+
+  // Install extension subagents
+  if (manifest.subagents && manifest.subagents.length > 0) {
+    const agentConfig = getAgentConfig(agent.id);
+    if (agentConfig.supportsSubagents) {
+      await installExtensionSubagents(projectDir, agent, extensionDir, manifest.subagents, engineId, engineMcpKey);
+    }
+  }
+}
+
+/**
+ * Put the files of the recorded extensions back for the given agents — what `init` needs after it has
+ * reinstalled the base skills over a replacement. MCP servers and grants are not touched here.
+ */
+export async function reinstallExtensionAssets(
+  input: ExtensionInjectionInput,
+): Promise<{ reinstalled: string[]; missing: string[] }> {
+  const reinstalled: string[] = [];
+  const missing: string[] = [];
+
+  for (const ext of input.extensions) {
+    const extDir = getExtensionDir(input.projectDir, ext.name);
+    const manifest = await loadExtensionManifest(extDir);
+    if (!manifest) {
+      missing.push(ext.name);
+      logWarn('extension-ops', `extension "${ext.name}": manifest not found — its assets were not reinstalled`);
+      continue;
+    }
+
+    for (const agent of input.agents) {
+      await installExtensionFilesForAgent(input.projectDir, agent, manifest, extDir, input.engine, input.engineMcpKey);
+    }
+    reinstalled.push(ext.name);
+  }
+
+  return { reinstalled, missing };
+}
+
 export async function installExtensionAssetsForAllAgents(
   projectDir: string,
   config: UniKitConfig,
   manifest: ExtensionManifest,
   extensionDir: string,
 ): Promise<void> {
+  // Block and reference injections are NOT applied here: the caller runs the project-level pass
+  // (`applyExtensionInjections`) once the set of extensions and base skills is final.
   for (const agent of config.agents) {
-    // Install extension skills
-    if (manifest.skills && manifest.skills.length > 0) {
-      await installExtensionSkills(
-        projectDir, agent, extensionDir, manifest.skills,
-        config.engine, config.engineMcpKey,
-      );
-    }
-
-    // Install replacement skills (under base skill name, not extension path name)
-    if (manifest.replaces) {
-      const agentConfig = getAgentConfig(agent.id);
-
-      for (const [skillPath, baseName] of Object.entries(manifest.replaces)) {
-        const sourceDir = path.join(extensionDir, skillPath);
-        try {
-          await installSkillWithTransformer(
-            sourceDir, baseName, projectDir, agent.skillsDir,
-            agent.id, agentConfig, config.engine, config.engineMcpKey,
-          );
-        } catch (error) {
-          console.warn(`Warning: Could not install replacement skill "${baseName}": ${error}`);
-        }
-      }
-    }
-
-    // Install extension subagents
-    if (manifest.subagents && manifest.subagents.length > 0) {
-      const agentConfig = getAgentConfig(agent.id);
-      if (agentConfig.supportsSubagents) {
-        await installExtensionSubagents(
-          projectDir, agent, extensionDir, manifest.subagents,
-          config.engine, config.engineMcpKey,
-        );
-      }
-    }
-
-    // Apply injections
-    if (manifest.injections && manifest.injections.length > 0) {
-      await applyAllInjections(projectDir, agent, manifest.name, manifest.injections, extensionDir);
-    }
+    await installExtensionFilesForAgent(
+      projectDir, agent, manifest, extensionDir, config.engine, config.engineMcpKey,
+    );
 
     // Configure MCP servers
     if (manifest.mcpServers && manifest.mcpServers.length > 0) {
@@ -364,15 +399,5 @@ export async function restoreBaseSkills(
     await injectMcpRules(projectDir, config.agents, mcpAllowedTools);
   }
 
-  // Re-apply content injections from remaining installed extensions
-  const remainingExtensions = config.extensions ?? [];
-  for (const ext of remainingExtensions) {
-    const extDir = getExtensionDir(projectDir, ext.name);
-    const extManifest = await loadExtensionManifest(extDir);
-    if (!extManifest?.injections?.length) continue;
-
-    for (const agent of config.agents) {
-      await applyAllInjections(projectDir, agent, ext.name, extManifest.injections, extDir);
-    }
-  }
+  // Injections are re-rendered by the caller through applyExtensionInjections — one pass over every extension.
 }

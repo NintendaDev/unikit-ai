@@ -128,35 +128,6 @@ export async function stripAllInjections(
   return count;
 }
 
-// --- Apply all injections for an extension ---
-
-/** Thin wrapper kept until the project-level pass replaces every caller (it applies `position` entries too). */
-export async function applyAllInjections(
-  projectDir: string,
-  agent: AgentInstallation,
-  extName: string,
-  injections: ExtensionInjection[],
-  extensionDir: string,
-): Promise<number> {
-  let count = 0;
-
-  for (const injection of injections) {
-    if (isPointInjection(injection)) continue;
-
-    const contentPath = path.resolve(extensionDir, injection.file);
-    const content = await readTextFile(contentPath);
-    if (!content) {
-      console.warn(`Warning: Injection file not found: ${contentPath}`);
-      continue;
-    }
-
-    const applied = await applyInjection(projectDir, agent, extName, injection, content);
-    if (applied) count++;
-  }
-
-  return count;
-}
-
 // --- Scan for existing injections ---
 
 /** @public Used for injection diagnostics and conflict detection */

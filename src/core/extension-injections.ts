@@ -4,7 +4,7 @@ import {
   ensureDir, fileExists, getSkillsDir, readFileBuffer, readTextFile, removeDirectory, writeTextFile,
 } from '../utils/fs.js';
 import { logInfo, logWarn } from '../utils/log.js';
-import type { AgentInstallation, ExtensionRecord } from './config.js';
+import type { AgentInstallation, ExtensionRecord, UniKitConfig } from './config.js';
 import {
   EXTENSION_REFERENCES_SUBDIR, REFERENCES_DIR_NAME, type InjectionSkipReason,
 } from './constants.js';
@@ -34,6 +34,17 @@ export interface ExtensionInjectionInput {
   engineMcpKey: string | null | undefined;
   agents: AgentInstallation[];
   extensions: ExtensionRecord[];
+}
+
+/** The pass input every command builds the same way from the project's config. */
+export function injectionInputFromConfig(projectDir: string, config: UniKitConfig): ExtensionInjectionInput {
+  return {
+    projectDir,
+    engine: config.engine,
+    engineMcpKey: config.engineMcpKey,
+    agents: config.agents,
+    extensions: config.extensions ?? [],
+  };
 }
 
 export interface InjectionOutcome {
