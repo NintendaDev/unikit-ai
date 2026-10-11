@@ -102,6 +102,8 @@ that *interface*, never explore's engine (`market-scan.md`). General `WebSearch`
 `WebFetch` lookups remain available as read-only advisors — they never write and
 never substitute for the Phase 3.5 scan.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Skill calls
 
 Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user. A call site that names no argument passes none.

@@ -291,6 +291,8 @@ No rules means no known exceptions, never no capabilities. Absence never disable
 
 Keep an in-memory list of loaded rule file paths (`loaded_rules`). Used in Step 3.0 for delta detection.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 2: Determine Work Scope
 
 **If all tasks are completed (`- [x]`):**

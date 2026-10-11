@@ -1,30 +1,28 @@
 import path from 'path';
 import { readTextFile, writeTextFile, fileExists } from '../utils/fs.js';
+import { logInfo } from '../utils/log.js';
 import type { AgentInstallation } from './config.js';
 import { getAgentConfig } from './agents.js';
 import { getTransformer } from './transformer.js';
-import type { ExtensionInjection } from './extensions.js';
+import { EXTENSION_BLOCK_MARKER_PREFIX } from './constants.js';
+import {
+  legacyBlockKey, blockStartMarker, renderBlockRegion, removeBlockByKey, insertAfterFrontmatter,
+} from './extension-markers.js';
+import { isPointInjection, type ExtensionInjection, type PositionInjection } from './extension-injections-schema.js';
 
-// --- Constants ---
+// The original injection form: `position: append | prepend`. Blocks are wrapped in the same markers
+// as point blocks and taken out by the same exact procedure (`extension-markers.ts`); only the place
+// differs — the end of the file, or right after the frontmatter. Point entries are not handled here:
+// the project-level pass (`extension-injections.ts`) renders and strips them.
 
-const MARKER_PREFIX = 'unikit-ext';
-
-// --- Marker format ---
-
-function startMarker(extName: string, target: string, position: string): string {
-  return `<!-- ${MARKER_PREFIX}:${extName}:${target}:${position}:start -->`;
-}
-
-function endMarker(extName: string, target: string, position: string): string {
-  return `<!-- ${MARKER_PREFIX}:${extName}:${target}:${position}:end -->`;
-}
+const LOG_COMPONENT = 'injections';
 
 // --- Path resolution ---
 
 function resolveInjectionTargetPath(
   projectDir: string,
   agent: AgentInstallation,
-  injection: ExtensionInjection,
+  injection: Pick<ExtensionInjection, 'target' | 'targetType'>,
 ): string | null {
   if (injection.targetType === 'subagent') {
     return path.join(projectDir, agent.subagentsDir, injection.target + '.md');
@@ -48,7 +46,7 @@ export async function applyInjection(
   projectDir: string,
   agent: AgentInstallation,
   extName: string,
-  injection: ExtensionInjection,
+  injection: PositionInjection,
   injectionContent: string,
 ): Promise<boolean> {
   const targetPath = resolveInjectionTargetPath(projectDir, agent, injection);
@@ -63,48 +61,32 @@ export async function applyInjection(
     return false;
   }
 
-  const start = startMarker(extName, injection.target, injection.position);
-  const end = endMarker(extName, injection.target, injection.position);
+  const key = legacyBlockKey(extName, injection.target, injection.position);
 
-  // Strip existing injection for idempotent re-application
-  content = stripBlock(content, start, end);
+  // Strip the existing block of this entry for idempotent re-application
+  content = removeBlockByKey(content, key).content;
 
-  const block = `${start}\n${injectionContent}\n${end}`;
+  const region = renderBlockRegion(key, injectionContent);
 
   if (injection.position === 'prepend') {
-    content = block + '\n' + content;
+    content = insertAfterFrontmatter(content, region);
   } else {
-    content = content.trimEnd() + '\n\n' + block + '\n';
+    content = content.trimEnd() + '\n\n' + region + '\n';
   }
 
   await writeTextFile(targetPath, content);
+  logInfo(LOG_COMPONENT, `applied ${injection.position} block of ${extName} to ${injection.target} (${agent.id})`);
 
   return true;
 }
 
 // --- Strip injection ---
 
-function stripBlock(content: string, start: string, end: string): string {
-  const startIdx = content.indexOf(start);
-  if (startIdx === -1) return content;
-
-  const endIdx = content.indexOf(end, startIdx);
-  if (endIdx === -1) return content;
-
-  const before = content.substring(0, startIdx);
-  const after = content.substring(endIdx + end.length);
-
-  // Clean up extra newlines at the boundary
-  const cleaned = before.replace(/\n+$/, '\n') + after.replace(/^\n+/, '\n');
-
-  return cleaned;
-}
-
 export async function stripInjection(
   projectDir: string,
   agent: AgentInstallation,
   extName: string,
-  injection: ExtensionInjection,
+  injection: PositionInjection,
 ): Promise<boolean> {
   const targetPath = resolveInjectionTargetPath(projectDir, agent, injection);
   if (!targetPath || !(await fileExists(targetPath))) {
@@ -114,13 +96,14 @@ export async function stripInjection(
   const content = await readTextFile(targetPath);
   if (!content) return false;
 
-  const start = startMarker(extName, injection.target, injection.position);
-  const end = endMarker(extName, injection.target, injection.position);
+  const key = legacyBlockKey(extName, injection.target, injection.position);
+  if (!content.includes(blockStartMarker(key))) return false;
 
-  if (!content.includes(start)) return false;
+  const stripped = removeBlockByKey(content, key);
+  if (stripped.removed === 0) return false;
 
-  const stripped = stripBlock(content, start, end);
-  await writeTextFile(targetPath, stripped);
+  await writeTextFile(targetPath, stripped.content);
+  logInfo(LOG_COMPONENT, `stripped ${injection.position} block of ${extName} from ${injection.target} (${agent.id})`);
 
   return true;
 }
@@ -136,34 +119,10 @@ export async function stripAllInjections(
   let count = 0;
 
   for (const injection of injections) {
+    if (isPointInjection(injection)) continue;
+
     const removed = await stripInjection(projectDir, agent, extName, injection);
     if (removed) count++;
-  }
-
-  return count;
-}
-
-// --- Apply all injections for an extension ---
-
-export async function applyAllInjections(
-  projectDir: string,
-  agent: AgentInstallation,
-  extName: string,
-  injections: ExtensionInjection[],
-  extensionDir: string,
-): Promise<number> {
-  let count = 0;
-
-  for (const injection of injections) {
-    const contentPath = path.resolve(extensionDir, injection.file);
-    const content = await readTextFile(contentPath);
-    if (!content) {
-      console.warn(`Warning: Injection file not found: ${contentPath}`);
-      continue;
-    }
-
-    const applied = await applyInjection(projectDir, agent, extName, injection, content);
-    if (applied) count++;
   }
 
   return count;
@@ -186,7 +145,7 @@ export async function scanInjections(
   if (!content) return [];
 
   const extNames: string[] = [];
-  const pattern = new RegExp(`<!-- ${MARKER_PREFIX}:([^:]+):${injection.target}:[^:]+:start -->`, 'g');
+  const pattern = new RegExp(`<!-- ${EXTENSION_BLOCK_MARKER_PREFIX}:([^:]+):${injection.target}:[^:]+:start -->`, 'g');
   let match;
 
   while ((match = pattern.exec(content)) !== null) {

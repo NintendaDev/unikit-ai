@@ -104,6 +104,8 @@ Before any authoring, silently load — do NOT narrate the loading:
 **One-way boundary:** this skill never reads `.unikit/code/`, project source, or
 build artifacts. Importing a GDD reads only the document the user points at.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Input
 
 `$ARGUMENTS` — a single positional value, free-form, in any language. It may be a

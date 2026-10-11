@@ -73,6 +73,8 @@ code first). Never invent content to fill a chapter.
 **One-way boundary:** this skill reads only the design workspace — **never** `.unikit/code/`,
 project source, or build artifacts. It is a render of the *design*, not of the code.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Pipeline — RESOLVE → RENDER → (optional) WEB
 
 ### Step 1 — Ensure the output directory

@@ -7,7 +7,9 @@ import {
   commitResolvedExtension, removeExtension, refreshExtensions,
   restoreBaseSkills,
 } from '../../core/extension-ops.js';
+import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
 import { exitOnSharedSkillsDir } from '../guards.js';
+import { printInjectionReport } from './injection-report.js';
 
 export async function extensionAddCommand(source: string): Promise<void> {
   const projectDir = process.cwd();
@@ -56,9 +58,12 @@ export async function extensionAddCommand(source: string): Promise<void> {
     }
 
     const record = await commitResolvedExtension(projectDir, config, resolved);
+    // One pass over every extension: blocks and reference files go in once the set is final.
+    const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
     await saveConfig(projectDir, config);
 
     console.log(chalk.green(`\n✓ Extension "${record.name}" installed (v${record.version})`));
+    printInjectionReport(injections, { onlyExtension: record.name });
   } catch (error) {
     console.log(chalk.red(`Error installing extension: ${(error as Error).message}`));
     process.exit(1);
@@ -100,7 +105,11 @@ export async function extensionRemoveCommand(name: string): Promise<void> {
       await saveConfig(projectDir, config);
     }
 
+    // Always: takes the removed extension's blocks and reference directories out of the skills.
+    const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
+
     console.log(chalk.green(`✓ Extension "${name}" removed`));
+    printInjectionReport(injections);
   } catch (error) {
     console.log(chalk.red(`Error removing extension: ${(error as Error).message}`));
     process.exit(1);
@@ -167,7 +176,9 @@ export async function extensionUpdateCommand(options: ExtensionUpdateOptions = {
     await saveConfig(projectDir, config);
 
     if (updated.length > 0) {
+      const injections = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
       console.log(chalk.green(`✓ Updated: ${updated.join(', ')}`));
+      printInjectionReport(injections);
     } else {
       console.log(chalk.dim('All extensions are up to date.'));
     }

@@ -101,6 +101,8 @@ rules (it authors nothing, so there is no system/flow/content to balance):
 (`gd-principles` → One-Way Boundary). This skill does not load `RULES_INDEX.md` domain
 rules — it dispatches, it does not design.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Skill calls
 
 Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation. Each delta is handed to its zone owner (`unikit-gd-<zone>`; **not** a subagent — a read-only `Agent` could not write the GDD) **inline, one at a time, in the Phase 2 order**, waiting for each to return before starting the next — **never in parallel** (the order is the correctness guarantee). The owner runs its full interactive cycle in the main session, so its collaborative protocol, approvals and writes all hold, and returns control here. A call site that names no argument passes none. Printing the list of `/unikit-gd-*` commands for the user to run, instead of making the calls, is a known failure mode here: every zone is an actual call.

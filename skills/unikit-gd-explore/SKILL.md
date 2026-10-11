@@ -167,6 +167,8 @@ the slice the prompt names, the same sanctioned third exception `unikit-gd-recon
 One-Way Boundary). Outside that lens, do not read `.unikit/code/` or build artifacts.
 Web research **is allowed** here (market and reference scans — `gd-principles`).
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Parallel investigation
 
 For broad topics, launch **inline `recon-agent`** dispatches to

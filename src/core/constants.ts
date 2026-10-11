@@ -445,6 +445,8 @@ export * from './constants-artifacts.js';
 export * from './constants-transform.js';
 // How a skill loads another skill for a subagent, and the call-head fragments (same reason, same re-export).
 export * from './constants-skill-call.js';
+// Extension points: anchors, block markers, the registry file name and the skip hints (same reason, same re-export).
+export * from './constants-extension-points.js';
 
 // --- Migration version anchors (`Migration.since`) ---
 //

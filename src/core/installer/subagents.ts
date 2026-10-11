@@ -13,7 +13,7 @@ import { DEFAULT_ENGINE_ID } from '../constants.js';
 import {
   isMarkdownFile, stripMdExtension, renderSubagent, warnActionFailed,
 } from './shared.js';
-import { computeSubagentSourceHash } from './hashing.js';
+import { computeSubagentSourceHash, hashInstalledSubagent } from './hashing.js';
 
 // --- Types ---
 
@@ -114,7 +114,7 @@ export async function buildManagedSubagentsState(
     if (!sourceHash) continue;
 
     const targetPath = path.join(projectDir, agent.subagentsDir, subagentName + '.md');
-    const installedHash = await hashFile(targetPath);
+    const installedHash = await hashInstalledSubagent(targetPath);
     if (!installedHash) continue;
 
     state[subagentName] = { sourceHash, installedHash };
@@ -166,7 +166,7 @@ export async function updateSubagents(
     const sourcePath = path.join(packageSubagentsDir, sa + '.md');
     const sourceHash = await computeSubagentSourceHash(sourcePath, engineId, agent.id, engineMcpKey, mcpServers);
     const targetPath = path.join(projectDir, agent.subagentsDir, sa + '.md');
-    const installedHash = await hashFile(targetPath);
+    const installedHash = await hashInstalledSubagent(targetPath);
     const previousState = previousManaged[sa];
 
     if (force) {

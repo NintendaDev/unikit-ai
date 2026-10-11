@@ -61,6 +61,8 @@ Skill-specific rule:
 2. Read `git.enabled` from `.unikit/config.yaml`. A missing file or key counts as enabled.
 3. Get today's date: `date +%Y-%m-%d`.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Step 1: Mode
 
 | `$ARGUMENTS` | mode |

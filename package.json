@@ -1,6 +1,6 @@
 {
   "name": "unikit-ai",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "type": "module",
   "description": "CLI tool for installing AI agent skills and knowledge base rules for game development projects",
   "main": "dist/cli/index.js",
@@ -79,6 +79,7 @@
       "scripts/test-agent-filter.mjs",
       "scripts/test-agent-profile.mjs",
       "scripts/test-config-tolerance.mjs",
+      "scripts/test-extension-points.mjs",
       "scripts/test-kimi-transform.mjs",
       "scripts/test-ultra-plan-contract.mjs",
       "scripts/validate-agent-markers.mjs",

@@ -20,6 +20,9 @@ import { getAgentConfig } from '../../core/agents.js';
 import { collectExtensionSkillNames, removeAgentSetup } from '../../core/installer/agent-removal.js';
 import { getAgentOnboarding } from '../../core/transformer.js';
 import { runProjectMemoryMigrations } from '../../core/memory-migrations/index.js';
+import { reinstallExtensionAssets } from '../../core/extension-ops.js';
+import { applyExtensionInjections } from '../../core/extension-injections.js';
+import { printInjectionReport } from './injection-report.js';
 import { logInfo } from '../../utils/log.js';
 
 export async function initCommand(): Promise<void> {
@@ -48,6 +51,12 @@ export async function initCommand(): Promise<void> {
 
   const hasExistingConfig = await configExists(projectDir);
   const existingConfig = hasExistingConfig ? await loadConfig(projectDir) : null;
+  // A re-init rebuilds the config from the wizard's answers; the extensions are not among them and
+  // must be carried over by hand, or the next `update` no longer knows they exist.
+  const preservedExtensions = existingConfig?.extensions ?? [];
+  if (preservedExtensions.length > 0) {
+    logInfo('init', `extensions preserved: ${preservedExtensions.length}`);
+  }
 
   if (hasExistingConfig) {
     console.log(chalk.yellow('Warning: .unikit.json already exists.'));
@@ -147,6 +156,19 @@ export async function initCommand(): Promise<void> {
       });
     }
 
+    // The loop above reinstalled the base skills over whatever an extension had replaced and wiped
+    // its blocks: put the extensions' own skills, their replacement skills and subagents back.
+    if (preservedExtensions.length > 0) {
+      console.log(chalk.dim('\nRestoring extensions...\n'));
+      const restored = await reinstallExtensionAssets({
+        projectDir, engine: engineId, engineMcpKey: answers.engineMcpKey,
+        agents: installedAgents, extensions: preservedExtensions,
+      });
+      if (restored.missing.length > 0) {
+        console.log(chalk.yellow(`⚠ Extension files not found, skipped: ${restored.missing.join(', ')}`));
+      }
+    }
+
     // Write the MCP settings file of every installed agent. Lifted out of the
     // per-agent install loop above so `init` and `update` drive one and the same
     // pass — see `mcp-reconcile.ts`.
@@ -174,6 +196,15 @@ export async function initCommand(): Promise<void> {
     const mcpAllowedTools = collectMcpRules(discoveredServers, answers.mcpServers);
     await injectMcpRules(projectDir, installedAgents, mcpAllowedTools);
 
+    // The same project-level pass `update` and `extension *` run, after the MCP grants like in `update`.
+    if (preservedExtensions.length > 0) {
+      const injectionReport = await applyExtensionInjections({
+        projectDir, engine: engineId, engineMcpKey: answers.engineMcpKey,
+        agents: installedAgents, extensions: preservedExtensions,
+      });
+      printInjectionReport(injectionReport);
+    }
+
     // Rules installation is deferred to the /unikit skill Step 9, which calls
     // `unikit-ai rules install` (no args — core whitelist bootstrap) and then
     // drives stack rule selection through registry lookup + /unikit-memory
@@ -199,6 +230,7 @@ export async function initCommand(): Promise<void> {
         servers: mcpServerMap,
       },
       agents: installedAgents,
+      extensions: preservedExtensions,
       rules: {
         installed: emptyRulesInstallation(),
       },

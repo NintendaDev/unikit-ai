@@ -71,6 +71,8 @@ codebase conventions, and tech-stack analysis. These rules are tailored to the c
 **Enforcement:** After generating any output artifact, verify it against all skill-context rules.
 If any rule is violated — fix the output before presenting it to the user.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 1: Determine Mode
 
 If argument is `check` → Mode 3: Check Progress (requires ROADMAP.md)

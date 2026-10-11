@@ -26,8 +26,9 @@ import { collectReplacedSkills, refreshExtensions } from '../../core/extension-o
 import { loadExtensionManifest, getExtensionDir } from '../../core/extensions.js';
 import { createRegistry } from '../../core/registry/index.js';
 import { logInfo } from '../../utils/log.js';
-import { applyAllInjections } from '../../core/injections.js';
+import { applyExtensionInjections, injectionInputFromConfig } from '../../core/extension-injections.js';
 import { formatReason, groupEntriesByStatus, bootstrapNewSkillModuleRules } from './update-helpers.js';
+import { printInjectionReport } from './injection-report.js';
 
 interface UpdateCommandOptions {
   force?: boolean;
@@ -274,19 +275,12 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       storedMcpCodes,
     );
 
-    // Re-apply extension injections (after base skills updated + MCP injected)
+    // Re-render the extension injections (after the base skills are updated and MCP grants injected):
+    // ONE project-level pass over every extension and agent — the function init and `extension *` call.
     if (extensions.length > 0) {
       console.log(chalk.dim('Re-applying extension injections...\n'));
-
-      for (const ext of extensions) {
-        const extManifest = await loadExtensionManifest(getExtensionDir(projectDir, ext.name));
-        if (!extManifest?.injections?.length) continue;
-
-        const extensionDir = getExtensionDir(projectDir, ext.name);
-        for (const agent of config.agents) {
-          await applyAllInjections(projectDir, agent, ext.name, extManifest.injections, extensionDir);
-        }
-      }
+      const injectionReport = await applyExtensionInjections(injectionInputFromConfig(projectDir, config));
+      printInjectionReport(injectionReport);
     }
 
     // Sync rules (shared) — single call into syncAllModules runs each module's

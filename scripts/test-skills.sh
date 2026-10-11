@@ -11233,6 +11233,26 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 7f6: extension points — unit tests and the anchor guard (EP-1…EP-5)
+# The EP-1…EP-5 family runs inside test-extension-points.mjs (registry vs anchors in skills/);
+# EP-6 (call sites) and EP-7 (documented points) are greps in Part 7g10.
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7f6: extension point unit tests and anchor guard (EP-1…EP-5)${NC}"
+
+set +e
+EXT_POINTS_OUTPUT=$(node "$ROOT_DIR/scripts/test-extension-points.mjs" 2>&1)
+EXT_POINTS_EXIT=$?
+set -e
+
+if [[ $EXT_POINTS_EXIT -eq 0 ]]; then
+    pass "Extension point unit tests"
+    echo "$EXT_POINTS_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "Extension point unit tests"
+    echo "$EXT_POINTS_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7g: validate <!-- unikit:agents --> markers in skills/subagents
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 7g: agent-marker validation${NC}"
@@ -11831,6 +11851,44 @@ if [[ -z "$CB_WHY" ]]; then
 else
     fail "CB-1…CB-6 Codex delegation blocks, the +check doctrine or the validator template weakened:$CB_WHY"
 fi
+
+# ─────────────────────────────────────────────
+# Part 7g10: EP-6 — the extension injection pass is called from every lifecycle path
+# ─────────────────────────────────────────────
+# `init` cannot be driven by a smoke test (it is a wizard), so its wiring is read, not run: the pass
+# and the restore of the extensions' own assets must be called in init.ts, the pass in update.ts and
+# extension.ts, `extensions` must be carried into the saved config, and the retired per-extension loop
+# must not return. Every object is checked file-scoped; a missing file is a FAIL, not a silent pass.
+echo -e "\n${BOLD}Part 7g10: extension injection pass call sites (EP-6)${NC}"
+EP6_WHY=""
+EP6_N=0
+for ep6_f in init update extension; do
+    ep6_p="$ROOT_DIR/src/cli/commands/$ep6_f.ts"
+    if [[ ! -s "$ep6_p" ]]; then EP6_WHY+=" EP-6:missing($ep6_f.ts)"; continue; fi
+    EP6_N=$((EP6_N + 1))
+    { grep -qF 'await applyExtensionInjections(' "$ep6_p" || false; } || EP6_WHY+=" EP-6:no-pass-call($ep6_f.ts)"
+done
+EP6_INIT="$ROOT_DIR/src/cli/commands/init.ts"
+{ grep -qF 'await reinstallExtensionAssets(' "$EP6_INIT" || false; } || EP6_WHY+=" EP-6:init-does-not-restore-extension-assets"
+{ grep -qF 'extensions: preservedExtensions' "$EP6_INIT" || false; } || EP6_WHY+=" EP-6:init-drops-extensions"
+ep6_loop=$( { grep -rn 'applyAllInjections' "$ROOT_DIR/src" || true; } | wc -l | tr -d ' ')
+[[ "$ep6_loop" -eq 0 ]] || EP6_WHY+=" EP-6:retired-loop-returned(x$ep6_loop)"
+[[ "$EP6_N" -gt 0 ]] || EP6_WHY+=" EP-6:scanned-nothing"
+if [[ -z "$EP6_WHY" ]]; then pass "EP-6 injection pass call sites ($EP6_N command files)"; else fail "EP-6 injection pass call sites:$EP6_WHY"; fi
+
+# (EP-7) the published list of points: every skill of the registry is named, in backticks, in
+# docs/extensions.md — the anchor is a public contract and its list is part of the contract.
+EP7_DOC="$ROOT_DIR/docs/extensions.md"
+EP7_LIST=$( { node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(Object.keys(r.skills||{}).join("\n"))' "$ROOT_DIR/data/extension-points.json" || true; } )
+EP7_N=0; EP7_WHY=""
+while IFS= read -r ep7_s; do
+    [[ -n "$ep7_s" ]] || continue
+    EP7_N=$((EP7_N + 1))
+    { grep -qF "\`$ep7_s\`" "$EP7_DOC" || false; } || EP7_WHY+=" EP-7:undocumented($ep7_s)"
+done <<< "$EP7_LIST"
+[[ "$EP7_N" -gt 0 ]] || EP7_WHY+=" EP-7:registry-empty"
+[[ -s "$EP7_DOC" ]] || EP7_WHY+=" EP-7:docs-missing"
+if [[ -z "$EP7_WHY" ]]; then pass "EP-7 every registered skill is listed in docs/extensions.md ($EP7_N)"; else fail "EP-7:$EP7_WHY"; fi
 
 # ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke

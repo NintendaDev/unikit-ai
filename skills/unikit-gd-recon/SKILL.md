@@ -111,6 +111,8 @@ Recon is **strictly cold-start**. Check the workspace **first**:
   exists. Do not proceed.
 - If neither exists → this is the cold-start case recon is for. Continue.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Delegation agents
 
 This skill uses a named delegation alias for `Agent(...)` calls. The alias is the single

@@ -108,6 +108,8 @@ Silently load — do not narrate:
 artifacts. **Web research is forbidden here** (`gd-principles`) — verification must
 stay deterministic. The only `git` use is reading the design-workspace diff.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Phase 1 — Resolve Scope (no flags)
 
 **Loop-guard sentinel (first).** If the argument is exactly **`apply-phase3`** — the

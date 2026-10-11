@@ -75,6 +75,8 @@ Two conditions turn any level into `remind`:
 6. `git fetch origin <base>`. A network error → `WARN [pr] fetch failed — using the local origin/<base>`, and continue.
 7. **Uncommitted changes** — `git status --porcelain` is not empty → they are not part of the pull request: `WARN [pr] <n> uncommitted file(s) are not part of the PR — commit them with /unikit-commit first`. At `create` and `merge` the Step 4 question then offers `Stop — I will commit first`.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Step 1: Boundaries
 
 The pull request is the current state — `HEAD` — unless the user chooses otherwise. That holds with any plan and without one.

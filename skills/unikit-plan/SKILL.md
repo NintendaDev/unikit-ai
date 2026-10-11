@@ -228,6 +228,8 @@ Planning only *reads* design; it never writes to `.unikit/gamedesign/` — desig
 
 Remember loaded rule file paths — pass them to Explore tasks in Step 4.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ### Step 1: Determine Feature Name and Folder
 
 1. Read the description and understand the feature intent.

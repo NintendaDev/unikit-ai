@@ -115,6 +115,8 @@ Before responding — before any analysis — silently load (do not narrate):
 5. **`.unikit/system/balance-handback.md`** — the report format. Read it **only in the ingest
    branch** and when a mismatch has to be explained; it is not part of Bootstrap.
 
+<!-- unikit:extension-point:bootstrap -->
+
 ## Intent resolution
 
 The intent is read from the request and any attachment; there are no flags. Load the branch
