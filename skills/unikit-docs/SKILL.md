@@ -491,7 +491,7 @@ For the complete conversion process, template placeholders, nav_links format, ma
 Summary of the process:
 
 1. Create `docs-html/` directory
-2. Read `templates/html-template.html` (use as base for all pages)
+2. Read `{{skills_dir}}/{{self_name}}/templates/html-template.html` (use as base for all pages)
 3. For each markdown file → convert to HTML following conversion rules from `{{skills_dir}}/{{self_name}}/references/HTML-GENERATION.md`
 4. Replace template placeholders (`{project_name}`, `{page_title}`, `{nav_links}`, `{content}`, `{prev_link}`, `{next_link}`)
 5. Fix `.md` links to `.html`

@@ -18,7 +18,7 @@ Instructions for converting markdown documentation into a static HTML site using
 
 ## Overview
 
-The HTML template (`templates/html-template.html`) uses "The Ledger" theme — warm amber/gold tones with sidebar navigation, auto-generated TOC, dark/light toggle, copy-code buttons, and reading progress bar.
+The HTML template (`{{skills_dir}}/{{self_name}}/templates/html-template.html`) uses "The Ledger" theme — warm amber/gold tones with sidebar navigation, auto-generated TOC, dark/light toggle, copy-code buttons, and reading progress bar.
 
 File mapping: `README.md` → `index.html`, `docs/*.md` → `*.html`.
 
@@ -26,7 +26,7 @@ File mapping: `README.md` → `index.html`, `docs/*.md` → `*.html`.
 
 For each page, do the following:
 
-1. Read `templates/html-template.html` once (cache in memory for all pages)
+1. Read `{{skills_dir}}/{{self_name}}/templates/html-template.html` once (cache in memory for all pages)
 2. Read the source markdown file
 3. Strip the navigation header line (first line with `[<- ...](...) . [Назад ...](...) . [Далее ->](...)`)
 4. Convert markdown body to HTML (see [conversion rules](#markdown-to-html-conversion-rules))

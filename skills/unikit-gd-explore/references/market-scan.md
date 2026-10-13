@@ -293,7 +293,7 @@ The machine fields (`market_signal`, `validation_confidence`, `clone_density`,
 `trend_fit`, `monetization_fit`, `recommendation`) are **machine fields** (underscore)
 the calling session lifts verbatim into the CONCEPT card header; `key_evidence` and
 `go_to_market_risk` distil into its `## Notes`. They are distinct from the human Pugh
-criterion `market-signal` (hyphen) in `brainstorm/references/methods.md` — the
+criterion `market-signal` (hyphen) in `{{skills_dir}}/unikit-gd-brainstorm/references/methods.md` — the
 criterion is a *judgment*; the field is the *evidence* that judgment may now lean on.
 
 ## Subagent mode (deterministic, no questions)

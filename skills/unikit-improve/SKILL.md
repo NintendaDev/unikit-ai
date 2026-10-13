@@ -79,11 +79,11 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   ```
 
   Whether the agent is read-only is this runtime's own claim, so the read-only contract
-  rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
+  rides on the prompt rather than on the dispatch: keep `{{skills_dir}}/{{self_name}}/references/VALIDATOR.md`'s
   read-only paragraph ("You never modify a file and never run a command that changes state") in whatever is sent.
 
   Fallback: the validator is **never** replaced by inline analysis — see
-  `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
+  `{{skills_dir}}/{{self_name}}/references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
 
 - **`develop-agent`** — **not used by this skill.** It belongs to the code-writing skills (`/unikit-implement`, `/unikit-fix`, `/unikit-verify`); plan refinement reads and analyses code, it does not write it. Recorded here so the alias named in "Code Analysis Rules" can be looked up in the one place aliases are documented.
 
@@ -559,7 +559,7 @@ If Step 1.5 produced `research_improvements` (from updated, newly linked or re-l
 
 Run this step **only** when `check = true` (the `+check` flag was parsed in Step 0) and Step 3 produced at least one finding in a validated group. Otherwise skip it entirely — no validator lines appear anywhere in the output and the Step 4 / Step 5.8 Summary keeps its default shape.
 
-Follow the full procedure in **`references/CHECK-MODE.md`**: it dispatches one fresh-context `check-agent` validator over the four codebase-traceable groups (`missing`, `improvements`, `architectural`, `removals`), applies each `keep`/`modify`/`drop` verdict, recomputes the 🔄 Dependency Fixes group on the filtered list (phase b), and tracks the `hidden` / `adjusted` counters. The **Research-Based Findings** (`research_improvements`) and the 🔄 Dependency Fixes group are **not** validated.
+Follow the full procedure in **`{{skills_dir}}/{{self_name}}/references/CHECK-MODE.md`**: it dispatches one fresh-context `check-agent` validator over the four codebase-traceable groups (`missing`, `improvements`, `architectural`, `removals`), applies each `keep`/`modify`/`drop` verdict, recomputes the 🔄 Dependency Fixes group on the filtered list (phase b), and tracks the `hidden` / `adjusted` counters. The **Research-Based Findings** (`research_improvements`) and the 🔄 Dependency Fixes group are **not** validated.
 
 **Fallback (do NOT inline-analyze):** if the validator agent is unavailable/blocked or the dispatch fails, the procedure keeps **all** findings as-is and emits the single line `WARN [+check]: validator failed (<reason>), all items kept as-is` — it never re-does the validator's work with Glob/Grep/Read. An unavailable validator is silently skipped; the user is never asked.
 

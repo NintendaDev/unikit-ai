@@ -390,7 +390,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 
   Once the rollback point exists, edit the serialized format directly, staying inside the bounds §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
 
-  **§6 is owned by the `unikit-plan` skill** — read it from `references/ENGINE_RULES.md` inside that skill's own directory under `{{skills_dir}}`. This skill has no engine template of its own, so there is no local copy of §6 to read and none to keep in sync.
+  **§6 is owned by the `unikit-plan` skill** — read it from `{{skills_dir}}/unikit-plan/references/ENGINE_RULES.md`. This skill has no engine template of its own, so there is no local copy of §6 to read and none to keep in sync.
 
   **If that file is not there**, treat every format as 🔴: refuse `direct`, put the task back on `manual`, and state the reason in one line. Continuing silently is not an option here — a binary serialized format edited as text is not reversible by review, and this gate is the only thing standing in front of that. This is **not** the A9 case: what is missing is not a rule that would grant a right, it is the permission for an irreversible text edit, and withholding it changes nothing about the `mcp` route.
 

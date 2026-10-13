@@ -95,7 +95,7 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 - **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
 
   ```
-  Agent({{agent_call_reader}} prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
+  Agent({{agent_call_reader}} prompt: "Read {{skills_dir}}/{{self_name}}/references/coherence-gate.md and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
   ```
 
   The path travels, never the text. Fallback: if the `Agent` tool is unavailable, read `references/coherence-gate.md` yourself and run the pass inline; print `WARN [coherence] fresh-context pass unavailable — running inline`. The gate is never skipped or delayed.
@@ -423,7 +423,7 @@ marker** — the prompt contains, verbatim, on one line:
 > **"Return the brief into this session as text; do not save any files."**
 
 Detection is by this **exact phrase**, not a loose reading. On a match, **load
-`references/delegation-contract.md`** (this skill's own spec — provider-owns-spec; the
+`{{skills_dir}}/{{self_name}}/references/delegation-contract.md`** (this skill's own spec — provider-owns-spec; the
 engine behavior is `references/market-scan.md` → "Subagent mode") and follow it: run
 **deterministically**, **bypass every interactive `AskUserQuestion`** (the lens
 tie-breaker above, the save-offer under "Saving Research Results", and the
