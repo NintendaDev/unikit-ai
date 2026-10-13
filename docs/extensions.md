@@ -767,6 +767,7 @@ Extension skills and subagents can use template variables that are substituted a
 | `{{home_skills_dir}}` | `~/.claude/skills` | Agent's home skills directory |
 | `{{settings_file}}` | `.mcp.json` | Agent's MCP settings file |
 | `{{skills_cli_agent_flag}}` | `--agent claude-code` | CLI agent flag |
+| `{{self_name}}` | `unikit-plan` | Name of the skill the file belongs to: in a skill's own `references/` files it is that skill; in an injection it is the target skill |
 | `{{engine_name}}` | `Unity` | Game engine name |
 | `{{engine_code_language}}` | `C#` | Engine's programming language |
 | `{{engine_mcp_tool}}` | `unity-biome-mcp` | Vendor code of the engine MCP server — the key it is registered under in the settings file, and the middle segment of its `mcp__<code>__*` grants. Not the server's file id. |
@@ -788,6 +789,17 @@ Use these in SKILL.md files to write agent-agnostic skills:
 ```markdown
 Read the project rules from `{{skills_dir}}/unikit/SKILL.md`.
 ```
+
+**Referencing files of a skill.** Name a file by its full path, built from the variables above. A phrase such as "the references folder of the skill", or a bare `references/<file>.md` as the only mention, does not say where the file is installed.
+
+| You are pointing at | Write |
+|---|---|
+| a file of the same skill (`references/`, `scripts/`, `templates/`, `assets/`) | `{{skills_dir}}/{{self_name}}/references/<file>.md` |
+| a file of another skill | `{{skills_dir}}/<skill>/references/<file>.md`, with the skill name written out |
+| a reference file delivered by an extension point | `{{ext_reference:<file name>}}` |
+| anything from a subagent file or a system asset | no `{{skills_dir}}`: it is empty there |
+
+In a skill's `references/` files `{{self_name}}` is the skill that owns the directory, not the name of the file. A skill that an extension adds is installed the same way, so the same form points at its own files, with the skill's own name as `{{self_name}}`.
 
 ---
 
