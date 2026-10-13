@@ -54,11 +54,11 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
   ```
 
   Whether the agent is read-only is this runtime's own claim, so the read-only contract
-  rides on the prompt rather than on the dispatch: keep `references/VALIDATOR.md`'s
+  rides on the prompt rather than on the dispatch: keep `{{skills_dir}}/{{self_name}}/references/VALIDATOR.md`'s
   read-only paragraph ("You never modify a file and never run a command that changes state") in whatever is sent.
 
   Fallback: the validator is **never** replaced by inline analysis — see
-  `references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
+  `{{skills_dir}}/{{self_name}}/references/CHECK-MODE.md` (`WARN [+check]: validator failed`).
 
 ## Step 1: Load rules
 
@@ -177,7 +177,7 @@ Always run these checks in addition to project rules. If a finding from the chec
 
 ## Step 4.5: Validate Findings (`+check` only)
 
-Run this step **only** when `check = true` (the `+check` flag was parsed in Step 2). Draft the full review internally first (all sections of Step 5, including the gate-result inputs), then — **before** rendering anything to the user — run the procedure in **`references/CHECK-MODE.md`**. It dispatches one fresh-context `check-agent` validator over the **Findings table** rows (one item per row; "Questions", "Positive notes", and per-commit findings are excluded), applies each `keep`/`modify`/`drop` verdict and any severity move across the four levels (🔴 Critical / 🟡 Warning / 🟠 Medium / 🟢 Suggestion), tracks the `hidden` / `adjusted` / `reclassified` counters, and **recomputes** the `unikit-gate-result` block (Step 5 "Machine-readable gate result") from the post-filter table.
+Run this step **only** when `check = true` (the `+check` flag was parsed in Step 2). Draft the full review internally first (all sections of Step 5, including the gate-result inputs), then — **before** rendering anything to the user — run the procedure in **`{{skills_dir}}/{{self_name}}/references/CHECK-MODE.md`**. It dispatches one fresh-context `check-agent` validator over the **Findings table** rows (one item per row; "Questions", "Positive notes", and per-commit findings are excluded), applies each `keep`/`modify`/`drop` verdict and any severity move across the four levels (🔴 Critical / 🟡 Warning / 🟠 Medium / 🟢 Suggestion), tracks the `hidden` / `adjusted` / `reclassified` counters, and **recomputes** the `unikit-gate-result` block (Step 5 "Machine-readable gate result") from the post-filter table.
 
 When `+check` ran successfully, append one line after all review sections and before the `unikit-gate-result` fence:
 

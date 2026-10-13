@@ -2,7 +2,7 @@
 
 Read **only** when the manifest has `## Balance Context`. An ordinary plan does not read this file.
 
-The plan is **not rebuilt**: a new version carries no guarantee of fewer disagreements, and that costs more than an edit. The improver keeps the plan to the current Balance Checkpoint by small edits keyed on item ids, and never goes past the plan's horizon. The grammar is `unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar`.
+The plan is **not rebuilt**: a new version carries no guarantee of fewer disagreements, and that costs more than an edit. The improver keeps the plan to the current Balance Checkpoint by small edits keyed on item ids, and never goes past the plan's horizon. The grammar is `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar`.
 
 ## What is read
 

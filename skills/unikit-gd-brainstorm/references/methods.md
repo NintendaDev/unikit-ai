@@ -42,7 +42,7 @@ strong clone on the target store** is the sweet spot — demand proven elsewhere
 lane on your platform — an excellent bet for fast mobile/web development. Proven on
 Steam **but** the target store is clone-saturated → that lane is a red ocean no matter
 how well the genre does on PC. Brainstorm only *states* this question; the scan engine
-that runs it lives in `unikit-gd-explore/references/market-scan.md` (T7).
+that runs it lives in `{{skills_dir}}/unikit-gd-explore/references/market-scan.md` (T7).
 
 ## Phase 2 — How-Might-We framing (Basadur / NN/g)
 
@@ -52,7 +52,7 @@ and **free of a baked-in solution** ("How might we make the player feel powerful
 not "How might we add a combo system?"). The user picks one to diverge on.
 
 The questions are emitted as a table; its columns and a worked example are the single
-source of truth in `references/tables.md` § Phase 2 — not duplicated here.
+source of truth in `{{skills_dir}}/{{self_name}}/references/tables.md` § Phase 2 — not duplicated here.
 
 ## Phase 3 — Divergence methods (generate 5, five different ways)
 

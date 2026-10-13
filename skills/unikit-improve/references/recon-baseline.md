@@ -2,7 +2,7 @@
 
 Read at Step 1 only when the plan folder holds `recon/` — the reconnaissance an ultra plan written
 with saved state keeps beside its phase files (form and freshness:
-`unikit-plan/references/RECON-TEMPLATE.md`). It sets the scope of Step 2 and adds one section to
+`{{skills_dir}}/unikit-plan/references/RECON-TEMPLATE.md`). It sets the scope of Step 2 and adds one section to
 the report. Without `recon/` the pass runs as the skill describes, and this file is not read.
 
 A recon file can run to hundreds of lines and a plan can hold many of them. Reconnaissance does not

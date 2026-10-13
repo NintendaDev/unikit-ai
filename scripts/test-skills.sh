@@ -2138,7 +2138,7 @@ else
         grep -qF -- "$gxg_l" "$GD_COHERENCE" || GXG_WHY+=" GXG-5:no-literal:${gxg_l}"
     done
     # (GXG-6) one dispatch line in the skill, the second alias declared, the model key still once
-    GXG_CALL="$({ grep -cF 'Read <path of references/coherence-gate.md>' "$GD_EXPLORE_SKILL" || true; })"
+    GXG_CALL="$({ grep -cF 'Read {{skills_dir}}/{{self_name}}/references/coherence-gate.md and run' "$GD_EXPLORE_SKILL" || true; })"
     [[ "$GXG_CALL" == "1" ]] || GXG_WHY+=" GXG-6:dispatch-lines=$GXG_CALL"
     GXG_ALIAS="$({ awk '/^## Delegation agents/{f=1;next} /^## /{f=0} f' "$GD_EXPLORE_SKILL" | grep -cE '^- \*\*`check-agent`\*\*' || true; })"
     [[ "$GXG_ALIAS" == "1" ]] || GXG_WHY+=" GXG-6:check-agent-alias=$GXG_ALIAS"
@@ -3285,7 +3285,7 @@ fi
 # The save is the peak of a session; the gate file is ~11 KB, and sending its criteria in the
 # prompt made the saving session read all of it at exactly that moment, to build a prompt for
 # a context that could have read the file itself. Three halves, each its own failure:
-#   - the dispatch form: the alias prompt names the path, in the alias's ONE definition (a
+#   - the dispatch form: the alias prompt names the path by its full path, in the alias's ONE definition (a
 #     count, not presence — a second, divergent copy of the alias would leave this green by
 #     presence; the claude/!claude pair is gone since the agent profile replaced it), and the
 #     retired form that carried the criteria is gone;
@@ -3293,7 +3293,7 @@ fi
 #     reads the file, has no procedure to act on — no repair rules, no budget, no remainder;
 #   - the consumer: the call site acts on the report's `Next:` line. A contract declared and
 #     never consumed is the RM-1 failure in another place.
-CG12_PATH_FORMS="$(grep -cF 'Read <path of references/coherence-gate.md>' "$CG_SKILL" || true)"
+CG12_PATH_FORMS="$(grep -cF 'Read {{skills_dir}}/{{self_name}}/references/coherence-gate.md and run' "$CG_SKILL" || true)"
 (( CG12_PATH_FORMS == 1 )) || CG_WHY+=" CG-12:dispatch-not-by-path-in-the-one-definition($CG12_PATH_FORMS)"
 if grep -qF 'the criteria from references/coherence-gate.md' "$CG_SKILL"; then CG_WHY+=" CG-12:criteria-sent-in-the-prompt"; fi
 grep -qF '## What the pass returns' "$CG_REF"                   || CG_WHY+=" CG-12:no-report-contract"
@@ -11974,6 +11974,27 @@ done
 
 [[ "$ES_N" -gt 0 ]] || ES_WHY+=" ES:scanned-nothing"
 if [[ -z "$ES_WHY" ]]; then pass "ES-1…ES-4 extension selection call sites ($ES_N checks)"; else fail "ES-1…ES-4 extension selection call sites:$ES_WHY"; fi
+
+# ─────────────────────────────────────────────
+# Part 7g12: RP-1…RP-4 — skills name their reference files by full path
+# The family runs inside test-reference-paths.mjs (pure fs over skills/**/*.md): a file of another skill
+# carries the install directory (RP-1), the pinned sites say the full path (RP-2), a skill's own file named
+# bare also has a full path in the skill (RP-3) and in the same .md (RP-4).
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7g12: skills name their reference files by full path (RP-1…RP-4)${NC}"
+
+set +e
+RP_OUTPUT=$(node "$ROOT_DIR/scripts/test-reference-paths.mjs" 2>&1)
+RP_EXIT=$?
+set -e
+
+if [[ $RP_EXIT -eq 0 ]]; then
+    pass "RP-1…RP-4 reference paths in skills"
+    echo "$RP_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "RP-1…RP-4 reference paths in skills"
+    echo "$RP_OUTPUT" | sed 's/^/      /'
+fi
 
 # ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke

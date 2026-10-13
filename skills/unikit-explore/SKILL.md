@@ -97,7 +97,7 @@ report `WARN [delegation] model "<name>" rejected — retried on the session mod
 - **`check-agent`** — fresh-context, read-only coherence pass. Expands to:
 
   ```
-  Agent({{agent_call_reader}} prompt: "Read <path of references/coherence-gate.md> and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
+  Agent({{agent_call_reader}} prompt: "Read {{skills_dir}}/{{self_name}}/references/coherence-gate.md and run the pass it specifies over <durable file paths> — pass <n> of 2, adjudicated so far: <ledger>. Return the report that file specifies. You are read-only: edit and write nothing.")
   ```
 
   The path travels, never the text. The read-only contract rides on the last sentence of the prompt above, which is never dropped.

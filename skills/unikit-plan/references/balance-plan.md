@@ -10,7 +10,7 @@ A path to `CHECKPOINTS.md` is taken as it is; a folder gets `CHECKPOINTS.md` add
 
 ## Finding the point
 
-Read the header (the first 12 lines), `## Roadmap` and `## Current Balance Checkpoint` — nothing else (never `BALANCE.md` or `results/`). The allowed header combinations are defined in `unikit-gd-balance/references/template-checkpoints.md` → `Allowed header combinations`; in a project without the Game Design group that file may be absent, so this branch relies on the field values themselves:
+Read the header (the first 12 lines), `## Roadmap` and `## Current Balance Checkpoint` — nothing else (never `BALANCE.md` or `results/`). The allowed header combinations are defined in `{{skills_dir}}/unikit-gd-balance/references/template-checkpoints.md` → `Allowed header combinations`; in a project without the Game Design group that file may be absent, so this branch relies on the field values themselves:
 
 - `Status: closed` → say "the balance is closed", build no plan, **STOP**;
 - `Status: open` and `Current: none` → "there is no point to plan: the document waits for a decision of the balance skill — `/unikit-gd-balance <slug>`", **STOP**;

@@ -48,7 +48,7 @@ partiality stays honest.
    ```
 
    When the system's domain has a **section-pack** (Phase 0 table), its sub-sections
-   are appended after K (attached in Phase 4 — see `references/section-packs.md`).
+   are appended after K (attached in Phase 4 — see `{{skills_dir}}/{{self_name}}/references/section-packs.md`).
 2. **Fork-scan (silent).** Walk the in-scope sections (per the picked depth) and
    classify each **without asking** — **seeded** (the Phase 1 context: a SOURCE /
    recon / explore brief, the pillars, the loaded domain rules, or a neighbour already

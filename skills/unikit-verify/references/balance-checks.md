@@ -2,7 +2,7 @@
 
 Read **only** when the manifest has `## Balance Context` (`SKILL.md` → Step 0.2). An ordinary plan does not read this file.
 
-This branch answers "may these data be returned?", not "is this balance good": the decision belongs to `/unikit-gd-balance`. The form of the task lines is `unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar`; the form of the report is `.unikit/system/balance-handback.md`. Neither is restated here.
+This branch answers "may these data be returned?", not "is this balance good": the decision belongs to `/unikit-gd-balance`. The form of the task lines is `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar`; the form of the report is `.unikit/system/balance-handback.md`. Neither is restated here.
 
 ## Step 1 — task status
 

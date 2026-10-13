@@ -312,7 +312,7 @@ Rules:
   `scripts/test-ultra-plan-contract.mjs` and does not change. Its `### Tests` carries the
   literal `Not applicable — this task runs tests, it writes none`; its
   `### Implementation Steps` name the run's coverage and point at the executor's run width —
-  `unikit-implement/references/test-runs.md` → `## Run width` — never a list of suites or a
+  `{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width` — never a list of suites or a
   fixed width, plus any non-run step the task carries (a negative control, a manual smoke);
   its `### Verification` names the entry written into the manifest's `## Test Runs`, the
   rewriting of the `Full run:` anchor line whenever the run covered every test, and for

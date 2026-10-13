@@ -311,7 +311,7 @@ where the model renders the call instead of running it. Instead, invoke `unikit-
 verbatim, and wait for its brief. If its file cannot be read — instead of step 4 of
 `## Skill calls`, which would stop here — run the scan yourself inline with
 `WebSearch` / `WebFetch` against the technique catalogue in
-`unikit-gd-explore/references/market-scan.md` (comparable mapping, demand
+`{{skills_dir}}/unikit-gd-explore/references/market-scan.md` (comparable mapping, demand
 classification, review mining, and the cross-market rule above), and label every
 finding with the same `market_signal` + `validation_confidence` fields so the rest of
 the flow is unchanged.
@@ -333,7 +333,7 @@ for clones, then read the gap — Steam-proven + no strong clone on the target s
 prize; Steam-proven **but** the target store already clone-dense is a red ocean on the
 platform that actually matters. The mechanics of that rule live in
 `references/methods.md` § Phase 1, and the scan engine that runs it in
-`unikit-gd-explore/references/market-scan.md`. Report the read **per platform** in the
+`{{skills_dir}}/unikit-gd-explore/references/market-scan.md`. Report the read **per platform** in the
 brief; it feeds the kill gate below.
 
 **Consume — the calling session owns persistence:**
