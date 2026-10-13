@@ -300,7 +300,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 2.
 
 ### Step 1: Load Feature Plan
 
-- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
+- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md` for a folder plan, `.unikit/code/PLAN.md` for a flat fast-mode plan. In fast and full one file carries everything: `## Overview`, `## Settings`, the `## Checklist` with phases and dependencies, and `## Technical Context` (constraints, interfaces, key patterns, dependency graph, files, editor targets, DI bindings). **In an ultra bundle it does not:** the manifest carries the checklist and only the cross-phase part of `## Technical Context`, while every task's own detail lives in its phase file — the reading depth is stated in `.unikit/system/ultra-plan-read.md`. For the full section list see `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*; it is not restated here.
 - The plan folder holds `recon/` → read `{{skills_dir}}/{{self_name}}/references/recon-baseline.md` and follow it: it sets the scope of Step 2 from the plan's reconnaissance and adds a report section. No `recon/` → the file is not read.
 - **The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-sync.md` and follow it: it synchronises the plan with the current Balance Checkpoint and never rewrites it. Missing → `WARN [balance] balance-sync reference missing — plan not synchronised; run unikit-ai update`.
 - If the manifest has a `## Based on` section → parse all linked research entries (folder name + the recorded hash field for each — the form it takes is resolved by the research-link contract's ladder in Step 1.5). Store as `linked_researches` list for Step 1.5. Also read each linked research's `RESEARCH.md` — `## Active Summary` **alongside** the manifest's `## Technical Context` (not instead of it) — both are needed for cross-referencing in Step 3.8.
@@ -514,7 +514,7 @@ Read the setting from the plan's `## Settings` and check the plan against it. Ea
 
 **3.3c: Modules and PR checkpoints — check the plan against its own grammar**
 
-The grammar is `unikit-plan/references/TASK-FORMAT.md` → `### Modules section` and `### PR checkpoint task grammar`. Each of these is a finding with a proposed fix, never an automatic change:
+The grammar is `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Modules section` and `### PR checkpoint task grammar`. Each of these is a finding with a proposed fix, never an automatic change:
 
 - `## Modules` does not cover the phases in order, or a module longer than four phases carries no `why long:` (Integrity Check 12);
 - a PR checkpoint task that is not the last task of its module, a PR checkpoint task in the last module, `PR checkpoints: yes` with no PR checkpoint task, or a `PR: task N.M` that names another task (Integrity Check 13);
@@ -704,9 +704,9 @@ For each new task from the report:
 3. Include file paths, class names, and a brief WHY context in the description
 4. If the task has dependencies, note them inline (e.g., `(after Phase 1)`)
 5. Add an `Editor:` line — one per editor target, placed after `Files:`, in the form `Editor: [kind] <container> → <target> : <action>` — **only** when the change touches the editor's **serialized state**. A pure code task omits the field, and when `engine_rules_loaded = false` (no `ENGINE_RULES.md` for this engine) it is not generated at all. Match the form already used by the surrounding tasks in the plan.
-6. **Ultra bundle only** — the checklist line is a pointer, so create what it points at: a `## Task N.M:` section in the phase file of that phase, with all seven subsections (`### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`), and append the `([details](phase-NN-<slug>.md#task-nm-<slug>))` link to the checkbox line — the anchor is the GitHub slug of the task heading, per `unikit-plan/references/ULTRA-PLAN-FORMAT.md`. When the task needs a **new** phase, create `phase-NN-<slug>.md` and register it in the manifest's `## Phase Index` with its task range; an unregistered file is an orphan and blocks every consumer.
+6. **Ultra bundle only** — the checklist line is a pointer, so create what it points at: a `## Task N.M:` section in the phase file of that phase, with all seven subsections (`### Intent`, `### Implementation Steps`, `### Required Interfaces and Contracts`, `### Error Handling and Logging`, `### Tests`, `### Acceptance Criteria`, `### Verification`), and append the `([details](phase-NN-<slug>.md#task-nm-<slug>))` link to the checkbox line — the anchor is the GitHub slug of the task heading, per `{{skills_dir}}/unikit-plan/references/ULTRA-PLAN-FORMAT.md`. When the task needs a **new** phase, create `phase-NN-<slug>.md` and register it in the manifest's `## Phase Index` with its task range; an unregistered file is an orphan and blocks every consumer.
 
-**Test-checkpoint tasks.** When adding tasks, honour the policy the plan itself records — the `Test checkpoints:` line in `## Settings`. The grammar and how a run's width is derived are canonical in `unikit-plan/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate them here**.
+**Test-checkpoint tasks.** When adding tasks, honour the policy the plan itself records — the `Test checkpoints:` line in `## Settings`. The grammar and how a run's width is derived are canonical in `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Test checkpoint task grammar`; **do not restate them here**.
 
 - **New tasks are inserted ABOVE the final full run** (`Test checkpoint: plan`). A task that ends up after it will be run by nothing at all: the final full run being last is exactly what REQ-007 rests on.
   In a plan with a `## Balance Context` new tasks go above `Hand-back:` as well — `references/balance-sync.md` → `## Synchronising by item id`.
@@ -716,7 +716,7 @@ For each new task from the report:
 
 At the start of the edit print one line — `INFO [testing] plan policy: checkpoints=<value|legacy>` — so the decision to insert tasks, or not to, is explainable from the output.
 
-**Plans with modules.** When the plan has `## Modules` or any `PR checkpoint:` line, print `INFO [plan] modules: <n>, PR checkpoints: <yes|no|legacy>` next to that line, and insert by the grammar in `unikit-plan/references/TASK-FORMAT.md` → `### Modules section`. Only the insertion decisions are stated here:
+**Plans with modules.** When the plan has `## Modules` or any `PR checkpoint:` line, print `INFO [plan] modules: <n>, PR checkpoints: <yes|no|legacy>` next to that line, and insert by the grammar in `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Modules section`. Only the insertion decisions are stated here:
 
 - a new task of an existing module goes above that module's PR checkpoint task and its module test-checkpoint task;
 - a new module after the last: under `PR checkpoints: yes` the former last module gets a PR checkpoint task at the end of its closing phase and a `PR: task N.M` field, and under `Testing: yes` the final full run moves to the new last phase — except in a plan with a `## Balance Context`, which takes no module after the last: nothing stands after `Hand-back:` (`references/balance-sync.md` → `## Horizon`);
@@ -724,7 +724,7 @@ At the start of the edit print one line — `INFO [testing] plan policy: checkpo
 - a new module between two modules is not created — its work joins an existing module, above that module's PR checkpoint;
 - `## Modules` and the module barrier in the `**Dependencies:**` lines are updated in the same edit; `PR checkpoints: yes` is never written or removed here; no task is renumbered.
 
-In an ultra bundle a new PR checkpoint task gets its `## Task N.M:` section with all seven subsections — its `### Tests` carries `Not applicable — this task closes a module, it runs no tests` — and its `([details](…))` link, per `unikit-plan/references/ULTRA-PLAN-FORMAT.md`.
+In an ultra bundle a new PR checkpoint task gets its `## Task N.M:` section with all seven subsections — its `### Tests` carries `Not applicable — this task closes a module, it runs no tests` — and its `([details](…))` link, per `{{skills_dir}}/unikit-plan/references/ULTRA-PLAN-FORMAT.md`.
 
 **5.2: Improve existing task descriptions in the manifest**
 
@@ -765,7 +765,7 @@ In fast and full every subsection below is edited in the manifest. In an ultra b
 `### CONSTRAINTS` stays there — `### INTERFACES`, `### FILES`, `### DI BINDINGS` and
 `### EDITOR TARGETS` are edited in the phase file of the task that owns them, by the one rule
 that decides every case: cross-phase goes in the manifest, task-scoped goes in the phase
-(`unikit-plan/references/ULTRA-PLAN-FORMAT.md`).
+(`{{skills_dir}}/unikit-plan/references/ULTRA-PLAN-FORMAT.md`).
 
 Only when the applied improvements changed the technical picture:
 1. `### INTERFACES` — add interfaces that appeared in new tasks or from research; remove interfaces for deleted tasks

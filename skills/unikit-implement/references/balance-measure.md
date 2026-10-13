@@ -4,7 +4,7 @@ Read **only** when the manifest has `## Balance Context` (`SKILL.md` → Step 1)
 
 ## What this reference owns
 
-Carrying out `Measure:` and `Hand-back:` tasks, the `⏳ AWAITING RESULT` label, its counting and its resume. The form of those lines is `unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar`; the form of the report is `.unikit/system/balance-handback.md`. Neither is restated here.
+Carrying out `Measure:` and `Hand-back:` tasks, the `⏳ AWAITING RESULT` label, its counting and its resume. The form of those lines is `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Balance checkpoint grammar`; the form of the report is `.unikit/system/balance-handback.md`. Neither is restated here.
 
 ## Step 3.2 — a Measure: task
 

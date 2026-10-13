@@ -222,7 +222,7 @@ Then reconcile plan state with reality:
 
 ### Step 1: Load Plan Context
 
-- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Its section list: `unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*. In an ultra bundle every task's detail lives in its phase file; the reading depth is set by `.unikit/system/ultra-plan-read.md`.
+- Read the **plan manifest** — `.unikit/code/plans/<folder>/PLAN.md`, or the flat `.unikit/code/PLAN.md`. Its section list: `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → *Plan Manifest Template*. In an ultra bundle every task's detail lives in its phase file; the reading depth is set by `.unikit/system/ultra-plan-read.md`.
 - `## Based on` names a research → do **NOT** read its `RESEARCH.md` as a substitute for the plan's own context: the plan's `## Technical Context` supersedes it. The research is read for **one** purpose only — the drift check below.
 - Read **`.unikit/DESCRIPTION.md`** — project specification, tech stack, constraints
 - Read **`.unikit/ARCHITECTURE.md`** — project structure, tech stack, and pointers to detailed rules
@@ -237,7 +237,7 @@ Drift is printed **once**, here at plan load — not before each task. Execution
 
 **Parse Settings** from the manifest's `## Settings`:
 - `Testing: yes | no` — whether tests are written (Step 3.8) and run (test-checkpoint tasks, Steps 2.5 and 3.2). Under `Testing: yes` read `{{skills_dir}}/{{self_name}}/references/test-runs.md` now, once — Steps 2.5, 3.2, 3.4 and 3.8 follow it; under `Testing: no` never read it. File missing or unreadable → print `WARN [testing] test-run reference missing — test-checkpoint tasks are reported as blockers; run unikit-ai update` and then: every test-checkpoint task is a Step 3.3 blocker, Step 2.5 asks nothing and marks nothing (the points stay as written), and Step 3.8 writes tests by the Step 3.2 choice.
-- `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand (Steps 2.5 and 3.2). **Line absent under `Testing: yes` → the plan is legacy:** its placement was never declared; its run points are run commands in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line. Under `Testing: no` the line is omitted by design (`unikit-plan/references/TASK-FORMAT.md`), and such a plan is not legacy.
+- `Test checkpoints: task | phase | plan` → where the test-checkpoint tasks stand (Steps 2.5 and 3.2). **Line absent under `Testing: yes` → the plan is legacy:** its placement was never declared; its run points are run commands in the task text (`### Tests`, `### Verification`, the implementation steps) plus test-checkpoint tasks recognisable only by their heading. Confidence is lower here, and the Step 4 report says so in one line. Under `Testing: no` the line is omitted by design (`{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md`), and such a plan is not legacy.
 - `Docs: yes | no` → the documentation checkpoint of Step 5.3
 - `Editor tasks: mcp | manual | direct` → how tasks carrying an `Editor:` line are carried out (Step 3.2). **Line absent:** `mcp` if MCP server `{{engine_mcp_tool}}` is present in `{{settings_file}}` at the project root (the Step 3.6 probe), otherwise `manual`. Never default to `direct` — it is irreversible and only ever an explicit choice.
 

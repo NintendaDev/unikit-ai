@@ -375,7 +375,7 @@ built / what the asset actually has* — separating it from MDA's "another game"
 **Decision rule:**
 
 - **Code-grounded signal present** → code lens **ON**: load
-  `unikit-gd-recon/references/code-recon.md`, scan **only the named slice** with
+  `{{skills_dir}}/unikit-gd-recon/references/code-recon.md`, scan **only the named slice** with
   `recon-agent` (fallback: inline `Glob`/`Grep`/`Read`), and fold the code findings
   into the brief. With `GAME.md` the lens combines with the internal-design lens;
   without it the result is **pre-spec research** and routes as the internal-design

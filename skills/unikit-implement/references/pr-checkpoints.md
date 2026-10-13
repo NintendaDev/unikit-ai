@@ -1,6 +1,6 @@
 # PR checkpoints and plan modules
 
-Read once, at plan load, by `/unikit-implement` and by `unikit-implement-coordinator` alike, when the checklist carries a `PR checkpoint:` line or the manifest has `## Modules`. Grammar: `unikit-plan/references/TASK-FORMAT.md` → `### Modules section`, `### PR checkpoint task grammar`. Boundaries: `.unikit/system/plan-boundaries.md`. Neither is restated here.
+Read once, at plan load, by `/unikit-implement` and by `unikit-implement-coordinator` alike, when the checklist carries a `PR checkpoint:` line or the manifest has `## Modules`. Grammar: `{{skills_dir}}/unikit-plan/references/TASK-FORMAT.md` → `### Modules section`, `### PR checkpoint task grammar`. Boundaries: `.unikit/system/plan-boundaries.md`. Neither is restated here.
 
 The question texts and option labels below are templates: say them in `language.ui`. `INFO` / `WARN` and their tags stay as they are.
 

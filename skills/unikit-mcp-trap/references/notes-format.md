@@ -4,7 +4,7 @@ The project's log of what has to be re-checked about **this** engine MCP server.
 
 **This file is the specification, and `/unikit-mcp-trap` owns it.** `/unikit-mcp-audit`
 reads the same spec to curate what trap wrote (provider-owns-spec, the same arrangement
-`unikit-gd-explore/references/delegation-contract.md` has with `unikit-gd-brainstorm`).
+`{{skills_dir}}/unikit-gd-explore/references/delegation-contract.md` has with `unikit-gd-brainstorm`).
 Neither skill may drift from it privately — a note is written by one skill and replayed
 by another, months apart.
 
