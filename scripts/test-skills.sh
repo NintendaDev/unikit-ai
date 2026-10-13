@@ -11976,6 +11976,27 @@ done
 if [[ -z "$ES_WHY" ]]; then pass "ES-1…ES-4 extension selection call sites ($ES_N checks)"; else fail "ES-1…ES-4 extension selection call sites:$ES_WHY"; fi
 
 # ─────────────────────────────────────────────
+# Part 7g12: RP-1…RP-4 — skills name their reference files by full path
+# The family runs inside test-reference-paths.mjs (pure fs over skills/**/*.md): a file of another skill
+# carries the install directory (RP-1), the pinned sites say the full path (RP-2), a skill's own file named
+# bare also has a full path in the skill (RP-3) and in the same .md (RP-4).
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 7g12: skills name their reference files by full path (RP-1…RP-4)${NC}"
+
+set +e
+RP_OUTPUT=$(node "$ROOT_DIR/scripts/test-reference-paths.mjs" 2>&1)
+RP_EXIT=$?
+set -e
+
+if [[ $RP_EXIT -eq 0 ]]; then
+    pass "RP-1…RP-4 reference paths in skills"
+    echo "$RP_OUTPUT" | tail -1 | sed 's/^/    /'
+else
+    fail "RP-1…RP-4 reference paths in skills"
+    echo "$RP_OUTPUT" | sed 's/^/      /'
+fi
+
+# ─────────────────────────────────────────────
 # Part 7h: CLI command registration smoke
 # ─────────────────────────────────────────────
 # Catch the "forgot to wire a new command into src/cli/index.ts" regression
