@@ -5,7 +5,7 @@ demand when a prompt carries **market intent**. The *when/what* — the market-s
 table and the decision rule that triggers this load — lives in
 `unikit-gd-explore/SKILL.md` → "Market lens — when it engages". The cross-skill
 **delegation contract** that lets `unikit-gd-brainstorm` pull a scan without owning
-this engine lives in `references/delegation-contract.md` (Explore owns the spec).
+this engine lives in `{{skills_dir}}/{{self_name}}/references/delegation-contract.md` (Explore owns the spec).
 This file is **method, not process** — the same split methods.md keeps for
 `unikit-gd-brainstorm`.
 

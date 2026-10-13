@@ -3,7 +3,7 @@
 Loaded on demand by `unikit-gd-explore/SKILL.md` → "Input modes" when the argument
 resolves to an existing `reviews/*_review-*.md` file. This is the body; the SKILL
 keeps only the switch. Develops each finding through the internal-design lens
-(`references/internal-design-lens.md`).
+(`{{skills_dir}}/{{self_name}}/references/internal-design-lens.md`).
 
 ## Research-bucket mode — developing a review's open questions IN PLACE
 

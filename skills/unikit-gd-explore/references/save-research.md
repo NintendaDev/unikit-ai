@@ -4,7 +4,7 @@ Loaded on demand by `unikit-gd-explore/SKILL.md` → "Saving Research Results" w
 research crystallizes and the user accepts the save offer. The SKILL keeps the offer +
 the trigger; this file holds the artifact templates, the Next Steps routing, and the
 index format. The **mode-aware brief blocks** are NOT duplicated here — their field
-lists are owned by `references/internal-design-lens.md` → "Mode-aware brief".
+lists are owned by `{{skills_dir}}/{{self_name}}/references/internal-design-lens.md` → "Mode-aware brief".
 
 ## Saving Research Results
 
@@ -215,4 +215,4 @@ If `references/coherence-gate.md` does not exist, or the pass reports that it ca
 A report without a `Next:` line is treated as `hold`: say that the gate report is incomplete, do not confirm, and do not start another pass on your own.
 The save is confirmed to the user only after the gate has finished (passed, or stopped at its budget with the user's answer in hand). The gate verdict is printed above the Next Steps routing and the handoff tail, which stay the last blocks of the reply.
 
-This is the order of a standard research. An ultra research inserts its own steps into it (references/ultra-research.md); every save ends with the coherence gate (references/coherence-gate.md). The index of artifacts is never written before the artifacts, and the gate never runs before researches/INDEX.md is re-rendered.
+This is the order of a standard research. An ultra research inserts its own steps into it ({{skills_dir}}/{{self_name}}/references/ultra-research.md); every save ends with the coherence gate (references/coherence-gate.md). The index of artifacts is never written before the artifacts, and the gate never runs before researches/INDEX.md is re-rendered.

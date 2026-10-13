@@ -52,7 +52,7 @@ and **free of a baked-in solution** ("How might we make the player feel powerful
 not "How might we add a combo system?"). The user picks one to diverge on.
 
 The questions are emitted as a table; its columns and a worked example are the single
-source of truth in `references/tables.md` § Phase 2 — not duplicated here.
+source of truth in `{{skills_dir}}/{{self_name}}/references/tables.md` § Phase 2 — not duplicated here.
 
 ## Phase 3 — Divergence methods (generate 5, five different ways)
 

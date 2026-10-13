@@ -29,7 +29,7 @@ folder name carries no date.
      `## Session <YYYY-MM-DD HH:MM>` at the end of the file, by the rules for the log in
      `SKILL.md` (framework questions left out; the *not verbatim* section when the user's
      words are gone). An ultra session pinned its dialogue as you talked (`## Pinning` in
-     `references/ULTRA-RESEARCH-FORMAT.md`): append the remainder only where pinning did not
+     `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md`): append the remainder only where pinning did not
      run — it was switched off for the session (`WARN [pin]`), or the session started before
      it was in effect. Appending an ultra session unconditionally writes the same dialogue
      into the file twice, and a doubled log is indistinguishable from a session that said

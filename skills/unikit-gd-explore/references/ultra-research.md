@@ -1,7 +1,7 @@
 # unikit-gd-explore — Ultra Research Format
 
 Ultra only. A standard research does not read this file: the record template, the identifier
-rules and the write order bind every research, and they live in `references/save-research.md`.
+rules and the write order bind every research, and they live in `{{skills_dir}}/{{self_name}}/references/save-research.md`.
 An ultra research loads this file whole, from `## Ultra research (user-named)` in `SKILL.md` on
 the leading token. An ultra research differs from a standard one in two ways: it pins its
 dialogue log while the conversation goes on (`## Pinning`), and at save time it writes adaptive
@@ -33,7 +33,7 @@ the research marker are **different strings**, and no consumer may treat one as 
 plan reaches a research through `researches/INDEX.md`, never through this marker. The line is
 declared here and nowhere else.
 
-The marker has a second consumer: `references/init-index.md` reads the first line of every
+The marker has a second consumer: `{{skills_dir}}/{{self_name}}/references/init-index.md` reads the first line of every
 record to fill the `**Mode**` field of the index entry it adds, so the first line of
 `RESEARCH_RESULT.md` is read on every rebuild, not only when ultra is requested.
 
@@ -128,7 +128,7 @@ answer) pinning writes into the same file, into that session's
 Applies to: ultra only
 
 `SOURCE.md` is a **log, not a derived representation of the research.** Two consequences, both
-deliberate: it is not a durable-scope file of the coherence gate (`references/coherence-gate.md`
+deliberate: it is not a durable-scope file of the coherence gate (`{{skills_dir}}/{{self_name}}/references/coherence-gate.md`
 keeps it outside), and a log is allowed to be redundant with `RESEARCH_RESULT.md`.
 
 **Template**:

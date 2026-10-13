@@ -4,7 +4,7 @@ The cross-skill contract that lets `unikit-gd-brainstorm` pull a market scan
 without owning the engine. **Explore owns this spec** (provider-owns-spec):
 brainstorm reads the *interface* here — what the delegate must be told and what
 it must return — while the *how* (the scan techniques, modes, and evidence
-discipline) lives in `references/market-scan.md`. This file is the only
+discipline) lives in `{{skills_dir}}/{{self_name}}/references/market-scan.md`. This file is the only
 sanctioned brainstorm→explore coupling.
 
 The discipline mirrors the design→code boundary: brainstorm depends on this

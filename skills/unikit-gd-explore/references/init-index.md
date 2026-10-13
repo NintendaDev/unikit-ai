@@ -19,7 +19,7 @@ maintenance command, no exploration:
    field** (internal-design
    lens researches — see "Research tags"; omit the field when the header has none).
    The **first line** of the file equals `<!-- unikit:research-mode:ultra -->` (the marker
-   `references/ultra-research.md` defines) → add `**Mode**: ultra` to the entry; no such
+   `{{skills_dir}}/{{self_name}}/references/ultra-research.md` defines) → add `**Mode**: ultra` to the entry; no such
    line → the field is not written. A marker on any other line does not set the mode and
    prints nothing — the record is a valid standard one. The entry's title comes from the
    first line that starts with `# `; the mode marker never plays that role.
