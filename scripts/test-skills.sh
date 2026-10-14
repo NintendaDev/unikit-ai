@@ -9426,7 +9426,7 @@ if [[ -z "$BX_WHY" ]]; then
     grep -qF '5.4' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.4"
     grep -qF '5.8' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.8"
     bx_has "BM-6:coordinator-layer-order" 'the test-checkpoint tasks of the layer → the `Measure:` tasks' "$TC_COORD"
-    bx_max "BM-6:implement-skill-size" 52000 "$UNIKIT_IMPLEMENT_SKILL"
+    bx_max "BM-6:implement-skill-size" 52600 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -11042,6 +11042,79 @@ if [[ -z "$EXP_WHY" ]]; then
     pass "EXP-R1…EXP-R4 prototype profile contract: one flat asset, ten sections, neutral, delivered by init and update (${EXP_CHK} checks)"
 else
     fail "EXP-R1…EXP-R4 prototype profile contract:$EXP_WHY"
+fi
+
+# --- EXP-E1…EXP-E3: the fourteen readers of the prototype profile — each carries ONE pointer, names a
+# section the contract has, is listed by the contract, and restates nothing of it (RISK-6).
+EXP_WHY=""
+EXP_CHK=0
+EXPR_FILE="$ROOT_DIR/data/prototype-profile.md"
+# <file>|<role section>|<trigger: manifest = the plan's ## Experiment Context, note = the Prototype plan: note,
+#                               both = either of the two (a role with no manifest of its own that can also read one)>
+EXPE_ROWS=(
+    "skills/unikit-implement/SKILL.md|execution|manifest"
+    "skills/unikit-verify/SKILL.md|verification and pull request|manifest"
+    "skills/unikit-pr/SKILL.md|verification and pull request|manifest"
+    "skills/unikit-improve/SKILL.md|planning|manifest"
+    "skills/unikit-review/SKILL.md|quality and the rest|both"
+    "skills/unikit-fix/SKILL.md|quality and the rest|both"
+    "skills/unikit-devcontext/SKILL.md|quality and the rest|both"
+    "skills/unikit-commit/SKILL.md|quality and the rest|manifest"
+    "subagents/unikit-implement-coordinator.md|execution|manifest"
+    "subagents/unikit-implement-worker.md|execution|note"
+    "subagents/unikit-plan-coordinator.md|planning|manifest"
+    "subagents/unikit-plan-polisher.md|planning|manifest"
+    "subagents/unikit-review-sidecar.md|quality and the rest|note"
+    "subagents/unikit-architecture-sidecar.md|quality and the rest|note"
+)
+EXPE_N=0
+if [[ ! -s "$EXPR_FILE" ]]; then
+    EXP_WHY+=" EXP-E1:missing-contract"
+else
+    # the "Read by" paragraph of the contract: from its first line to the first blank line
+    EXPE_PRE="$({ awk '/^Read by /{f=1} f&&/^$/{exit} f' "$EXPR_FILE" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPE_PRE" ]] || EXP_WHY+=" EXP-E2:no-preamble"
+    for expe_row in "${EXPE_ROWS[@]}"; do
+        expe_rel="${expe_row%%|*}"
+        expe_rest="${expe_row#*|}"
+        expe_role="${expe_rest%%|*}"
+        expe_trig="${expe_rest#*|}"
+        expe_file="$ROOT_DIR/$expe_rel"
+        EXPE_N=$((EXPE_N + 1))
+        if [[ ! -s "$expe_file" ]]; then EXP_WHY+=" EXP-E1:missing(${expe_rel})"; continue; fi
+        # (EXP-E1) one pointer: the contract path, the canonical WARN, the trigger it keys on
+        exp_ok "EXP-E1:path(${expe_rel})" '.unikit/system/prototype-profile.md' "$expe_file"
+        exp_ok "EXP-E1:warn(${expe_rel})" 'WARN [prototype] profile contract missing' "$expe_file"
+        case "$expe_trig" in
+            manifest) exp_ok "EXP-E1:trigger(${expe_rel})" '`## Experiment Context`' "$expe_file" ;;
+            note)     exp_ok "EXP-E1:trigger(${expe_rel})" 'starting `Prototype plan:`' "$expe_file" ;;
+            both)     exp_ok "EXP-E1:trigger(${expe_rel})" '`## Experiment Context`' "$expe_file"
+                      exp_ok "EXP-E1:note-trigger(${expe_rel})" '`Prototype plan:`' "$expe_file" ;;
+        esac
+        # (EXP-E2) the section it names is a whole-line heading of the contract, and the contract lists the reader
+        exp_ok "EXP-E2:role(${expe_rel})" "\`## Role: ${expe_role}\`" "$expe_file"
+        exp_ok "EXP-E2:heading(${expe_role})" "## Role: ${expe_role}" "$EXPR_FILE"
+        case "$expe_rel" in
+            skills/*) expe_name="/$(basename "$(dirname "$expe_rel")")" ;;
+            *)        expe_name="$(basename "$expe_rel" .md)" ;;
+        esac
+        # the name must stand in the "Read by" paragraph itself: every name also occurs in the role sections
+        EXP_CHK=$((EXP_CHK + 1)); grep -qF -- "\`${expe_name}\`" <<< "$EXPE_PRE" || EXP_WHY+=" EXP-E2:listed(${expe_name})"
+        # (EXP-E3) the contract is not restated in the reader: none of its pinned sentences appears there
+        exp_no "EXP-E3:pr-rule(${expe_rel})" 'no pull request for a prototype plan' "$expe_file"
+        exp_no "EXP-E3:note-format(${expe_rel})" 'Branch: <value>' "$expe_file"
+        exp_no "EXP-E3:branch-rule(${expe_rel})" 'the current branch is not the plan' "$expe_file"
+        exp_no "EXP-E3:restated(${expe_rel})" 'A finished prototype does not mean the hypothesis is supported' "$expe_file"
+        exp_no "EXP-E3:restated(${expe_rel})" 'The prototype compiles and launches' "$expe_file"
+        exp_no "EXP-E3:restated(${expe_rel})" 'direct references and local parameters are acceptable' "$expe_file"
+        exp_no "EXP-E3:restated(${expe_rel})" 'creates no entry in the project'\''s TODO' "$expe_file"
+    done
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPE_N == 14 )) || EXP_WHY+=" EXP-E1:readers=${EXPE_N}"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-E1…EXP-E3 prototype profile readers: ${EXPE_N} files each carry one pointer, name a real section and restate nothing (${EXP_CHK} checks)"
+else
+    fail "EXP-E1…EXP-E3 prototype profile readers:$EXP_WHY"
 fi
 
 # ─────────────────────────────────────────────

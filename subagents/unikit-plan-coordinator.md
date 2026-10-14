@@ -162,6 +162,8 @@ After each iteration, compare the current issues list with the previous one. If 
 
 The plan-polisher applies engine-specific checks by loading `.unikit/memory/code/RULES_INDEX.md`. The coordinator ensures this by passing the plan path — the polisher reads project rules from `.unikit/` automatically.
 
+**A prototype plan.** When the manifest of the plan folder has `## Experiment Context`, read `.unikit/system/prototype-profile.md` once and judge the remaining issues by its `## Role: planning`: an issue that asks for what that section rules out is not an issue. Missing or unreadable → `WARN [prototype] profile contract missing — plan polished as an ordinary plan; run unikit-ai update`. When no issue is left after that judgement, stop as for `needs_further_refinement: no`; find the section with `Grep` on the manifest at `plan_path`.
+
 ## Output
 
 After each iteration, print a progress line:

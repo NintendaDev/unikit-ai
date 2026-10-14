@@ -74,6 +74,8 @@ Read `.unikit/memory/code/RULES_INDEX.md`. Load rules:
 
 Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-level overrides that win over this SKILL.md when conflicting.
 
+**The review is of work on a plan whose manifest has `## Experiment Context`** (the session started from such a plan, or the prompt carries a `Prototype plan:` note) → read `.unikit/system/prototype-profile.md` and follow its `## Role: quality and the rest` for the whole review. Missing or unreadable → `WARN [prototype] profile contract missing — reviewing as for an ordinary plan; run unikit-ai update`.
+
 <!-- unikit:extension-point:bootstrap -->
 
 ## Step 2: Route argument and get code
