@@ -64,6 +64,7 @@ Keep it to one question + one follow-up. Never fan out into a questionnaire.
 | "detail / spec out a system" | per-system GDD | `/unikit-gd-system <system>` | is the system on the map? |
 | "find / invent a new mechanic" | design research | `/unikit-gd-explore <intent>` (routes onward) | genre, target emotion, constraints, refs |
 | "balance it across measurements / next balance step / here are the results of the checkpoint" | balance loop | `/unikit-gd-balance [<topic>, <slug> or <report>]` | start from a topic / a research / a hand-back report? |
+| "the first minutes are boring, what can we test / design an experiment / compare three hints / here is the playtest feedback / which experiments failed" | experiments | `/unikit-gd-experiment [<problem>, <feedback> or list]` | a cheap hypothesis test on players → `/unikit-gd-experiment`; picking numbers from measurements → `/unikit-gd-balance`; a problem to explore / an idea to specify / feedback to evaluate? |
 | "improve / tune / rework a system" | design delta | `/unikit-gd-system <system> "<change>"` | a number in one system → `/unikit-gd-system`; picking numbers from measurements across a checkpoint loop → `/unikit-gd-balance`; tuning vs rework? |
 | "design the flow / onboarding / pacing / player journey / funnel" | per-flow GDD (dynamics) | `/unikit-gd-flow <flow>` | create vs revise (inferred) |
 | "retune the pacing / add a branch / rework the onboarding" | flow delta | `/unikit-gd-flow <flow> "<change>"` | tuning vs rework? |

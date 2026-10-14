@@ -68,6 +68,9 @@ If no research — technical context is in the `## Technical Context` section be
 ## Balance Context
 (Only when the plan was built from a Balance Checkpoints file — see `### Balance checkpoint grammar`. It is a snapshot: the plan works from it, not from the live file.)
 
+## Experiment Context
+(Only when the plan was built from experiment cards — see `### Experiment context section`. It is a snapshot: the plan works from it, not from the live cards. A plan has this section or `## Balance Context`, never both.)
+
 ## Settings
 - Testing: yes/no
 - Test checkpoints: task | phase | plan
@@ -398,6 +401,35 @@ The last task of the plan; it carries `WHY:` and `Hand-back:` and **carries no `
 **A tuning loop** has no grammar of its own: an ordinary task with `Files:` and the acceptance "closed by measurement `<item id>`"; the iteration limit and "one lever at a time" are in the task text.
 
 **Modules.** A plan of one point is one module; `## Modules` is written only by the general criteria (`### Modules section`); `Hand-back:` stays the last task of the last module.
+
+### Experiment context section
+
+**When it applies.** Only in a plan built from experiment cards (`experiment-plan.md`). No task kind, phase or check belongs to it.
+
+**`## Experiment Context`** — a snapshot of the cards; the plan works from it, never from the live files. It stands in the slot of `## Balance Context`: after `## Based on` and after any snapshot of the design module, directly before `## Settings`. A plan has this section or `## Balance Context`, never both.
+
+  ```
+  Branch: <the plan's branch name | none>
+  Base: <the branch the plan's branch was cut from | none>
+  Cards:
+  - <EXP-nnn> · v<version> · <path to experiment.md> · variants: <variant names | single version>
+
+  ### <EXP-nnn> · <card title> (v<version>)
+  #### 2. Problem
+  …
+  #### 11. Success Criteria
+  …
+  ```
+
+The block above is shown indented by two spaces only so that this file carries no line that starts with a field name; in the manifest its lines start at the margin.
+
+**`Branch:` and `Base:`.** `Branch:` is the branch the plan lives on — the one created for it, or the current one when none was created; `none` when git is off. `Base:` is the branch the plan's branch was cut from; `none` when no branch was cut. Executors compare the current branch with `Branch:` before they write, and take the base of every diff and check from `Base:` (`.unikit/system/prototype-profile.md`; `.unikit/system/plan-boundaries.md` → `## Base branch`).
+
+**What is copied.** For every card, in the order of the `Cards:` list: sections 2 to 11 of `experiment.md` in full (Problem, Hypothesis, What We Test, Design, Gameplay Flow, Variants, Interface and Feedback, Minimum Scope, How to Test, Success Criteria), with their headings lowered by two levels. Section 12 (Risks) is copied only when it changes what is built; sections 13 and 14 (Follow-up Decisions, Evaluation Summary) are never copied. A path without the content is not a snapshot.
+
+**What stays out.** Technical decisions: they belong to `## Technical Context`, where the planner reads the code itself. The card's `Out of Scope` is the boundary of the prototype and is repeated in `### OUT OF SCOPE` of `## Technical Context`.
+
+**Mutability.** The section is written once by the planner. `/unikit-implement`, `/unikit-verify`, `/unikit-improve` and `add` mode never rewrite it.
 
 ### MCP findings section
 

@@ -42,6 +42,7 @@ const SECTION_RULE_CANDIDATES = '## Rule Candidates';
 const SECTION_TEST_RUNS = '## Test Runs';
 const SECTION_MEASUREMENTS = '## Measurements';
 const SECTION_BALANCE_CONTEXT = '## Balance Context';
+const SECTION_EXPERIMENT_CONTEXT = '## Experiment Context';
 const SECTION_CONTENT_CONTEXT = '## Content Context';
 const SECTION_SETTINGS = '## Settings';
 const SECTION_DEPENDENCY_GRAPH = '## Dependency Graph';
@@ -456,6 +457,12 @@ if (manifest) {
         balIdx.length === 1 && contentIdx.length === 1 && settingsIdx.length >= 1
             && contentIdx[0] < balIdx[0] && balIdx[0] < settingsIdx[0],
         `${balIdx.length} ${SECTION_BALANCE_CONTEXT} line(s); at ${balIdx[0]}, ${SECTION_CONTENT_CONTEXT} at ${contentIdx[0]}, ${SECTION_SETTINGS} at ${settingsIdx[0]}`);
+
+    const expIdx = lineIdx(SECTION_EXPERIMENT_CONTEXT);
+    assertTrue('T30 experiment-context-after-balance-context-before-settings',
+        expIdx.length === 1 && balIdx.length === 1 && settingsIdx.length >= 1
+            && balIdx[0] < expIdx[0] && expIdx[0] < settingsIdx[0],
+        `${expIdx.length} ${SECTION_EXPERIMENT_CONTEXT} line(s); at ${expIdx[0]}, ${SECTION_BALANCE_CONTEXT} at ${balIdx[0]}, ${SECTION_SETTINGS} at ${settingsIdx[0]}`);
 }
 
 // --- T7..T10: the phase file template ---

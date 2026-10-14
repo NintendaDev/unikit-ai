@@ -104,6 +104,7 @@ Planned at: <short sha>
 ## Flow Context      (optional)
 ## Content Context   (optional)
 ## Balance Context   (only for a plan built from a Balance Checkpoints file)
+## Experiment Context   (only for a plan built from experiment cards)
 ## Settings
 ## Roadmap Linkage   (optional)
 ## Modules           (only with two or more modules, or one longer than four phases)

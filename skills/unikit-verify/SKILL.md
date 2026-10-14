@@ -203,6 +203,8 @@ Every `WARN [research-drift]` line reaches the Step 4 report **and** the `unikit
 
 **The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-checks.md` now, once — Steps 1, 4.4 and 5 and the Strict Mode table follow it. Missing → `WARN [balance] balance-checks reference missing — plan verified as an ordinary plan; run unikit-ai update`.
 
+**The manifest has `## Experiment Context`** → read `.unikit/system/prototype-profile.md` now, once, and follow its `## Role: verification and pull request` — Steps 2.3, 3.2-3.7, 3.9 and 5 follow it. Missing or unreadable → `WARN [prototype] profile contract missing — plan verified as an ordinary plan; run unikit-ai update`.
+
 Bootstrap loads coding rules and principles ONCE upfront so Step 4.3 fixes can be applied inline without re-loading on each delegation.
 
 **Read in parallel (rules + principles, for inline fix execution in Step 4.3):**

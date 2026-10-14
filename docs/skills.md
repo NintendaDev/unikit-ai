@@ -88,7 +88,7 @@ These skills form the core development loop. See [Development Workflow](workflow
 Four modes:
 - **Fast** - no git branch, saves plan to `.unikit/code/PLAN.md` (single flat file)
 - **Full** - optionally creates a git branch (`<git.branch_prefix><name>`), asks about tests, documentation and roadmap linkage, saves plan
-- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered (except in a merge plan, where the mode question offers it) and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
+- **Ultra** - same folder and branch behavior as Full, plus one file per phase. Strictly opt-in: **user-named, never model-inferred**. Recognised wherever the request sits in the sentence and in any language ("ultra plan", "ультраплан", "make an ultra plan for the inventory"), but never offered (except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where it recommends it) and never chosen because a feature looks big. Wording that only asks for care ("plan this thoroughly") is not ultra - the skill asks instead
 - **Add** - extends an existing plan with new tasks (never creates a branch)
 
 Fast, Full and Ultra modes explore your codebase for patterns, create dependency-ordered tasks with effort estimates and file paths. Includes commit checkpoints for 5+ tasks. Generates one `PLAN.md` manifest carrying both the checklist and `## Technical Context`. Ultra additionally splits the plan into one file per phase, each satisfying a Required Detail Gate, so a smaller model can execute what a stronger one planned; its manifest also carries an optional `## Architecture and Decisions` for decisions that bind two or more phases. Add mode extends an existing plan in place: it explores the codebase only when the change needs it, and refuses an ultra bundle (use `/unikit-improve` for that).
@@ -97,6 +97,7 @@ Fast, Full and Ultra modes explore your codebase for patterns, create dependency
 - **Two ultra writing protocols** - standard by default, or with saved state in the plan folder's `.planning/` (chosen by the first ultra question; a standard plan over 12 phases is offered the switch); saved state survives a compaction and resumes with `/unikit-plan ultra <name>`
 - **Merge plan** - asked to merge a named branch into the current one, it analyses the merge itself (or reuses a fresh merge exploration) and writes the plan that carries it out: `fast` in `.unikit/code/PLAN.md`, `full` or `ultra` in `.unikit/code/plans/merge-<slug>/`, always on the current branch. The mode question has three options, `ultra` last and never recommended; the merge commit is made by the plan's own last merge task, not by `/unikit-commit`
 - Given a Balance Checkpoints file (a `CHECKPOINTS.md` path, a folder or slug under `.unikit/gamedesign/balance/`) it finds the current point itself and plans only up to it: a `## Balance Context` snapshot, `Measure:` and `Item:` tasks, a final `Hand-back:`; it never creates or switches a branch for such a plan
+- Given experiment cards (a path to an `experiment.md`, an `EXP-<nnn>`, a folder, or several of them) it builds **one** plan from a `## Experiment Context` snapshot of the cards, on its own `experiment/<date>-<topic>` branch (`full` and `ultra` always ask, `fast` only when the current branch is not an experiment branch - unlike any other fast plan); the defaults are `Testing: no`, `Docs: no`, no PR checkpoint tasks and no roadmap milestone
 
 ### `/unikit-improve [--list] [@plan-folder] [+check] [prompt]` - refine the plan
 
@@ -354,11 +355,11 @@ This skill is the counterpart to `unikit-ai rules *` CLI - it orchestrates the f
 
 ## Game Design Skills
 
-The `gamedesign` module adds twelve `unikit-gd-*` skills for authoring a Game Design
+The `gamedesign` module adds thirteen `unikit-gd-*` skills for authoring a Game Design
 Document along three machine-readable axes — **systems** (the rules), **flows** (the
 dynamics), and **content** (the catalog) — plus the one-page `GAME.md`. The quick-reference
 entries below follow the pipeline order (recon/brainstorm → spec → system/flow/content →
-balance → review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
+balance/experiment → review/verify → apply/docs); see **[Game-Design Module](gamedesign.md)** for the full
 treatment - the axis model, the Decision-First authoring contract, review vs. verify, the
 genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 
@@ -454,6 +455,22 @@ genre-profile seed layer, and the brownfield recon/code-lens/docs boundary.
 - Investigates by itself (reads code read-only, tags facts `provenance: extracted from code`, runs `recon-agent` for wide questions), issues **one** detailed Balance Checkpoint and closes every issuing turn with `/unikit-plan full <path to CHECKPOINTS.md>` (`full` by default, `fast` when the point is plainly small, `ultra` only when you name it)
 - Receives a hand-back report (format: `.unikit/system/balance-handback.md`), matches it to a document or asks, revises the roadmap, issues the next point or closes - softly: unclosed questions block nothing
 - Never edits the GDD or code and does not register in `GD-IDS.yaml`; a design change is left as a proposal for `/unikit-gd-system`
+- At each checkpoint recommends a route - direct measurement (the plan above) or an experiment (`/unikit-gd-experiment`) - and says plainly that an experiment takes much longer; if you choose it, asks whether to call the skill now or print the command for later. The results come back as a `results/PT-<n>.md` copy and a finding tagged `from playtest`, never as a number in a measurement table
+
+### `/unikit-gd-experiment [<problem or idea> | <feedback> | <experiment> | <path to CHECKPOINTS.md> | list]` - the experiment record
+
+```
+/unikit-gd-experiment                                    # a short conversation: what to test (nothing is saved)
+/unikit-gd-experiment the first five minutes are boring  # at least five ideas, a table, a choice
+/unikit-gd-experiment <pasted feedback or a file path>   # attribute, keep the originals, assess
+/unikit-gd-experiment list                               # the catalog (also: untested, best, failed, retest, archive)
+/unikit-gd-experiment <path to CHECKPOINTS.md>           # experiments for the current balance checkpoint
+```
+- Four modes read from the request, no flags: **Discover** (at least five ideas that differ by hypothesis), **Specify** (the card a planner can build from), **Evaluate** (feedback in any form, several experiments and rounds at once; originals kept verbatim, doubtful comments stay unassigned until confirmed, a score always has a source and a basis) and **Manage** (list, filters, compare, best, failed, retest, edit, archive)
+- Owns `.unikit/gamedesign/experiments/` - `index.md` and per experiment `EXP-<nnn>-<slug>/{experiment,feedback,results}.md`; nothing is saved before you approve it, and an experiment is not registered in `GD-IDS.yaml`
+- Reads the named slice of the project read-only (`recon-agent`) only to learn what the game already does, and writes it down in the designer's words - never class names, code or file paths; a GDD is not required
+- The last block of a save is the ready `/unikit-plan <path to experiment.md>` command for cards marked ready; after an evaluation of a card that came from a balance checkpoint it is the return command `/unikit-gd-balance <slug> "<path to results.md>"`
+- Never edits the GDD, a balance document or code, and calls no other skill
 
 ### `/unikit-gd-review [system name | SYS-slug | path | "all"]` - qualitative design review
 

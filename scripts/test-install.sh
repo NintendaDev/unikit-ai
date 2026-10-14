@@ -57,7 +57,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-improve", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
-                          "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-recon", "unikit-gd-docs",
+                          "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-experiment", "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
                           "unikit-pr"],
       "installedSubagents": ["unikit-architecture-sidecar"]
@@ -270,6 +270,23 @@ assert_not_contains "$BALANCE_HANDBACK_PATH" '\{\{' \
   "balance-handback.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-pp: prototype-profile.md installed as a system asset (flat copy, no vars)
+# Read by the executors, verifiers, reviewers and committers of a plan built from experiment
+# cards (a manifest with ## Experiment Context). Update-path coverage like 1b-bh above; the
+# init.ts call site is SA-1's job. assert_contains is grep -E: the [prototype] tag is escaped.
+# ─────────────────────────────────────────────────────
+PROTOTYPE_PROFILE_PATH="$CLAUDE_DIR/.unikit/system/prototype-profile.md"
+assert_exists "$PROTOTYPE_PROFILE_PATH" "prototype-profile.md created in .unikit/system/"
+assert_contains "$PROTOTYPE_PROFILE_PATH" '^## Role: execution$' \
+  "prototype-profile.md carries the ## Role: execution section its readers name"
+assert_contains "$PROTOTYPE_PROFILE_PATH" '^## Branch and base$' \
+  "prototype-profile.md carries the ## Branch and base section its readers name"
+assert_contains "$PROTOTYPE_PROFILE_PATH" 'WARN \[prototype\]' \
+  "prototype-profile.md carries the canonical WARN [prototype] label"
+assert_not_contains "$PROTOTYPE_PROFILE_PATH" '\{\{' \
+  "prototype-profile.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
@@ -345,6 +362,16 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/investiga
   "unikit-gd-balance investigation.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
   "unikit-gd-balance template-checkpoints.md reference installed"
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/experiment-route.md" \
+  "unikit-gd-balance experiment-route.md reference installed (the experiment route)"
+# The experiment skill's branches are read only by intent, so a content test cannot see a missing
+# delivery of a reference — all nine files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
+  "unikit-gd-experiment SKILL.md installed (experiment partner)"
+for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index context-and-research planning-handoff balance-link; do
+  assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/references/${exp_ref}.md" \
+    "unikit-gd-experiment ${exp_ref}.md reference installed"
+done
 
 # ─────────────────────────────────────────────────────
 # Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks

@@ -19,7 +19,7 @@ import { processTemplate } from '../template.js';
 import { logInfo, logWarn } from '../../utils/log.js';
 import {
   REFERENCES_DIR_NAME, ENGINE_RULES_FILE, CLI_CONTRACT_FILE, DEV_PRINCIPLES_FILE,
-  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE, PLAN_BOUNDARIES_FILE, MERGE_ANALYSIS_FILE, BALANCE_HANDBACK_FILE,
+  GD_PRINCIPLES_FILE, GATE_RESULT_CONTRACT_FILE, ULTRA_PLAN_READ_FILE, RESEARCH_LINK_FILE, PLAN_BOUNDARIES_FILE, MERGE_ANALYSIS_FILE, BALANCE_HANDBACK_FILE, PROTOTYPE_PROFILE_FILE,
   GAMEDESIGN_MODULE_ID,
   GAMEDESIGN_GENRES_DIR_NAME, MODULES_YML_FILE, ENGINE_MCP_DIR_NAME, MCP_RULES_INDEX_FILE,
   MCP_STAMP_SERVER_KEY,
@@ -175,6 +175,16 @@ export async function installMergeAnalysisContract(projectDir: string): Promise<
  */
 export async function installBalanceHandbackContract(projectDir: string): Promise<void> {
   await installFlatSystemAsset(projectDir, BALANCE_HANDBACK_FILE, 'installBalanceHandbackContract');
+}
+
+/**
+ * The prototype-profile contract — a flat copy from `data/prototype-profile.md`, NO
+ * substitution, NOT hash-tracked. A system asset because fourteen skills and subagents of the
+ * code group read the same rules for a plan built from experiment cards, and a per-skill copy
+ * would be fourteen copies that drift.
+ */
+export async function installPrototypeProfileContract(projectDir: string): Promise<void> {
+  await installFlatSystemAsset(projectDir, PROTOTYPE_PROFILE_FILE, 'installPrototypeProfileContract');
 }
 
 // --- Dev Principles installation ---

@@ -114,6 +114,7 @@ The user may provide:
 6. **Merge question, before the first layer** — only with `Testing: yes`. Read `unikit-implement`'s test-run reference once — the path is written in `/unikit-implement` Step 1, preloaded above — and run its `## Step 2.5` over this session's scope, which is every pending phase of the plan: count the mergeable points, take the answer from the input when it gives one, otherwise ask once with `AskUserQuestion` (without the tool: the numbered text question, then end your turn). No answer → the points run as written. Then write the marks exactly as Step 2.5 does, before any task is dispatched. Here the last point is a point of the last layer that holds one — layers, not checklist order, decide what runs last. A merged point is skipped by the `Test checkpoint:` branch; the surviving one runs when its layer has finished.
 7. **PR checkpoints and modules** — when the checklist carries a `PR checkpoint:` line or the manifest has `## Modules`, read `unikit-implement`'s PR checkpoint reference once — its path is written in `/unikit-implement` Step 1, preloaded above — and follow it for the whole session. An answer to the PR question given in the input (`combine PRs`, `stop at PR points`, `run /unikit-pr at PR points`) counts for every point, as the test-run answer does.
 8. **Balance plan** — when the manifest has `## Balance Context`, follow `unikit-implement`'s balance reference — its path is written in `/unikit-implement` Step 1, preloaded above — reading it once, for every `Measure:` and `Hand-back:` task of the session.
+9. **Prototype plan** — when the manifest has `## Experiment Context`, read `.unikit/system/prototype-profile.md` once and follow its `## Role: execution` for the whole session: the branch check before any mark is written and before the first dispatch, and the note it prescribes in the prompt of every worker, review sidecar and architecture sidecar you dispatch (the contract names the recipients). Missing or unreadable → `WARN [prototype] profile contract missing — treating the plan as ordinary; run unikit-ai update`, and no note is added.
 
 ## Dependency Parsing
 
@@ -231,6 +232,7 @@ When multiple independent phases are ready, dispatch one `unikit-implement-worke
   - `commit_policy: skip` (coordinator handles commits centrally)
   - **any `Editor:` lines of those tasks, verbatim** — a worker that receives only the description implements an editor target as pure code
   - **`editor_mode:`** — the `Editor tasks` value from the plan's `## Settings`. Absent from the plan → pass `manual`, never `direct`
+  - **the prototype note** of Plan Parsing item 9, when it prescribes one — the hand-off is closed, so the worker sees the note only if it is passed here
 - **A test-checkpoint task is never handed to a worker.** A task carrying a `Test checkpoint:` line is withheld from the set copied to the worker and stays with the coordinator. The reason is measured: the test runner is one per editor, and two workers of the same layer starting a run at the same moment get a refusal of the "test run already active" kind rather than two results.
 - **A PR checkpoint task is never handed to a worker.** A task carrying a `PR checkpoint:` line is withheld from the set copied to the worker and stays with the coordinator: it asks the user and may end the run.
 - **A `Measure:` task and a `Hand-back:` task are never handed to a worker.** They are withheld from the set copied to the worker and stay with the coordinator: a measurement owns the game session and the `## Measurements` table alone, and the hand-back builds a document.
@@ -303,7 +305,7 @@ Agent(unikit-docs-sidecar):         "Check docs drift for layer N: [all changed 
 Agent(unikit-commit-sidecar):       "Assess commit readiness for layer N: [all changed files]"
 ```
 
-All run in background (`run_in_background: true`). Continue to next refinement step when results arrive.
+All run in background (`run_in_background: true`). Continue to next refinement step when results arrive. The prompts of the review sidecar and of the architecture sidecar carry the prototype note of Plan Parsing item 9, when it prescribes one; the documentation and commit sidecars get none.
 
 For single-phase execution (direct mode), sidecars can also be launched after each individual task if the phase has many tasks — use judgement based on scope of changes.
 

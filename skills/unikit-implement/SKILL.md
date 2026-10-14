@@ -249,6 +249,8 @@ No `## Settings` at all → `Testing: no`, `Docs: no`, and `Editor tasks` by the
 
 **The manifest has `## Balance Context`** → read `{{skills_dir}}/{{self_name}}/references/balance-measure.md` now, once — Steps 0.3, 2, 3.2, 3.4, 3.6-3.9, 4, 5.4, 5.6 and 5.8 follow it. Missing or unreadable → `WARN [balance] balance reference missing — Measure: and Hand-back: tasks are reported as blockers; run unikit-ai update`, and every such task is a Step 3.3 blocker.
 
+**The manifest has `## Experiment Context`** → read `.unikit/system/prototype-profile.md` now, once, and follow its `## Role: execution` — the branch check at the end of Step 1, before Step 1.5, and Steps 3.2 (the note to a delegate), 3.7, 3.10, 5.1, 5.3 and 5.8 follow it. Missing or unreadable → `WARN [prototype] profile contract missing — treating the plan as ordinary; run unikit-ai update`, and carry on as for an ordinary plan.
+
 **While the checklist carries a `PR checkpoint:` line, every `unikit-commit` call of this run adds `no-push`.**
 
 **Under `Testing: yes`, every `unikit-commit` call of this run is wrapped by `references/test-runs.md` → `## Carrying the anchor across a commit`** — the tree hash before the call, the carried `Full run:` anchor after it — or every committed plan reads as stale to `/unikit-verify`.

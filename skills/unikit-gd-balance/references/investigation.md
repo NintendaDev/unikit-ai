@@ -32,13 +32,15 @@ itself is written there once and not here.
 
 ## Tags on facts
 
-`measured` · `extracted from code` · `decided by user` · `estimate`. A fact with no tag is not
-written into `BALANCE.md`.
+`measured` · `extracted from code` · `decided by user` · `estimate` · `from playtest`. A fact with
+no tag is not written into `BALANCE.md`. `from playtest` is a qualitative finding from a playtest
+of an experiment (`experiment-route.md` → `## Receiving experiment results`): never a number, and
+written only there.
 
-These four are the balance document's own working vocabulary, not a second provenance system:
+These five are the balance document's own working vocabulary, not a second provenance system:
 `gd-provenance` does not define them, on purpose — a balance document is not a GDD and is not
 registered in `GD-IDS.yaml`. `extracted from code` is the **same** tag as in `gd-provenance`
-and is written the same way (review holds it at Major or higher); the other three live only in
+and is written the same way (review holds it at Major or higher); the other four live only in
 `BALANCE.md` and `results/` and do not pass into the GDD.
 
 ## Conflicts

@@ -5,7 +5,7 @@ import { buildManagedSkillsState, installSkills, removeSkillsByName } from '../.
 import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
-import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
@@ -282,6 +282,9 @@ export async function initCommand(): Promise<void> {
 
     // Install the balance hand-back report contract (read by plan/implement/verify and unikit-gd-balance)
     await installBalanceHandbackContract(projectDir);
+
+    // Install the prototype-profile contract (read by the executors of a plan built from experiment cards)
+    await installPrototypeProfileContract(projectDir);
 
     // Deliver the rules tree of the selected engine MCP server
     await installEngineMcpRules(projectDir, selectedEngineServer);

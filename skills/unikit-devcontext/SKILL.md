@@ -50,6 +50,8 @@ Then, in the same pass:
 
 These describe the MCP server actually configured for this project: its bootstrap protocol, which tools are real, and which report success without doing anything. They override generic assumptions about the engine MCP tool.
 
+**The session started from a plan whose manifest has `## Experiment Context`, or the prompt carries a `Prototype plan:` note** → read `.unikit/system/prototype-profile.md` and follow its `## Role: quality and the rest` for the conventions above. Missing or unreadable → `WARN [prototype] profile contract missing — conventions applied as for an ordinary plan; run unikit-ai update`.
+
 ## Rules Loading
 
 Before writing code, load the project rules from `.unikit/`:

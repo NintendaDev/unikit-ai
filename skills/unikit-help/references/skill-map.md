@@ -89,10 +89,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "plan this feature", "create tasks". The first **required** step of building.
 - **In:** a feature description, or a research brief, or a roadmap milestone. Modes: `fast`
   (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `ultra`
-  (full plus one deeply specified file per phase — explicit keyword only, never inferred — except in a merge plan's mode question),
+  (full plus one deeply specified file per phase — explicit keyword only, never inferred — except in a merge plan's mode question and in the mode question of two or more experiment cards, which recommends it),
   `add` (extend) — each mode body loads on demand from `references/mode-*.md`. A request to
   merge a named branch loads `references/merge-plan.md` instead: the planner analyses the merge
-  and writes a merge plan.
+  and writes a merge plan. Experiment cards (`/unikit-gd-experiment` prints the command) load `references/experiment-plan.md`: one plan, on its own `experiment/` branch.
   If a game-design workspace exists, planning resolves **flow-first** (*intent decides the
   door* — a flow-named request grounds on the flow, a system-named one on the system,
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the
@@ -106,6 +106,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   offered the switch.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 - **Balance plan.** Given a Balance Checkpoints file (`/unikit-gd-balance` prints the command) it finds the current point itself and builds a plan only up to it, ending in a `Hand-back:` task.
+- **Experiment plan.** Given experiment cards (`/unikit-gd-experiment` prints the command: a path to an `experiment.md`, an `EXP-<nnn>`, a folder, or several) it builds **one** plan for the set from a snapshot of the cards (`## Experiment Context`), on its own `experiment/<date>-<topic>` branch; tests and docs default to off, no PR checkpoint tasks are written, and the executors read `.unikit/system/prototype-profile.md`.
 
 ### unikit-improve
 - **Purpose:** Refine an existing plan — find missing tasks, wrong dependencies, made-up APIs,
@@ -374,6 +375,27 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   command carrying the path to `CHECKPOINTS.md`.
 - **Optional (balance loop).** Next: `/unikit-plan` → `/unikit-implement` → `/unikit-verify`, then
   back to `/unikit-gd-balance` with the report.
+- **Route.** At each checkpoint it recommends direct measurement (the loop above) or an experiment
+  (`/unikit-gd-experiment`) and says that an experiment takes much longer; the results of an
+  experiment come back as a finding tagged `from playtest`.
+
+### unikit-gd-experiment
+- **Purpose:** The experiment partner — turns a design problem into cheap, testable experiments
+  and keeps an honest record of what real play showed. It finds ideas (at least five distinct
+  hypotheses), writes a specification card a planner can build from, evaluates player feedback
+  (pasted text, a forwarded chat, files; several experiments and several rounds) and manages
+  the catalog. It reads the project only to learn what the game already does, never writes it
+  down in development terms, and never edits the GDD or code.
+- **When:** "the first minutes are boring, what can we test", "design an experiment", "compare
+  three hints", "here is the playtest feedback", "which experiments failed".
+- **In:** nothing (a short conversation), a design problem, a chosen idea, pasted feedback or a
+  file, a list request, or a path to a balance `CHECKPOINTS.md`. The intent is read from the
+  request; no flags.
+- **Out:** `.unikit/gamedesign/experiments/` — `index.md` and per experiment
+  `EXP-<nnn>-<slug>/{experiment,feedback,results}.md`; the last block of a save is the ready
+  `/unikit-plan <path to experiment.md>` command for cards marked ready.
+- **Optional (experiment loop).** Next: `/unikit-plan` → `/unikit-implement` → `/unikit-verify`,
+  play the prototype, then back to `/unikit-gd-experiment` with the feedback.
 
 ### unikit-gd-apply
 - **Purpose:** Dispatch an explicit, **multi-zone** GDD edit (spec + systems + content types +

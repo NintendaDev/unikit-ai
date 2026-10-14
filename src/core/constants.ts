@@ -329,6 +329,8 @@ export const PLAN_BOUNDARIES_FILE = 'plan-boundaries.md';
 export const MERGE_ANALYSIS_FILE = 'merge-analysis.md';
 /** The balance hand-back report contract; rationale on `installBalanceHandbackContract`. */
 export const BALANCE_HANDBACK_FILE = 'balance-handback.md';
+/** The prototype-profile contract for plans built from experiment cards; rationale on `installPrototypeProfileContract`. */
+export const PROTOTYPE_PROFILE_FILE = 'prototype-profile.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

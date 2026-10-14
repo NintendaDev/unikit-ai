@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/NintendaDev/unikit-ai/tests.yml?branch=main&label=tests" alt="Tests" />
   </a>
   <a href="https://github.com/NintendaDev/unikit-ai/blob/main/docs/skills.md">
-    <img src="https://img.shields.io/badge/skills-36-8b5cf6" alt="Skills" />
+    <img src="https://img.shields.io/badge/skills-37-8b5cf6" alt="Skills" />
   </a>
   <a href="https://unikit.nintenda.dev/">
     <img src="https://img.shields.io/badge/official%20site-unikit.nintenda.dev-0ea5e9" alt="Official Site" />
@@ -194,6 +194,7 @@ Beyond code, UniKit AI helps author the game design itself, so that planning sta
 - **Ideate and research** - brainstorm a concept, check the market and references
 - **Author** - the one-page game overview, then systems, player flows and content schemas
 - **Balance** - tune numbers in a measured loop: one checkpoint at a time, a plan, a report, the next decision
+- **Experiments** - test a hypothesis about the game on real players with the smallest prototype: ideas, a specification a planner can build from, playtest feedback, an honest evaluation
 - **Review and verify** - a qualitative review and a consistency check of the whole design
 - **Start from existing code** - reconstruct design facts from a project that has no design document yet
 - **Genre starters** - a bundled catalog of genre profiles seeds a new design
@@ -230,7 +231,7 @@ UniKit AI works alongside any other AI framework - it uses its own config direct
 | [Agents](docs/agents.md)                        | Supported AI agents and their known limitations          |
 | [Best Practices](docs/best-practices.md)        | Practical tips for working with the agent                |
 | [Development Workflow](docs/workflow.md)        | Workflow diagram, skill pipeline, spec-driven approach   |
-| [Skills Reference](docs/skills.md)              | All 36 skills - 24 code-pipeline + 12 game-design        |
+| [Skills Reference](docs/skills.md)              | All 37 skills - 24 code-pipeline + 13 game-design        |
 | [Subagents](docs/subagents.md)                  | Coordinators, workers and sidecars                       |
 | [Plan Files](docs/plan-files.md)                | Plans, editor tasks, patches                             |
 | [Game-Design Module](docs/gamedesign.md)        | Game design authoring and genre profiles                 |

@@ -139,6 +139,12 @@ git:
   # Default: feature/
   branch_prefix: feature/
 
+  # Branch name prefix for experiment plans (/unikit-plan given experiment cards).
+  # Applies only when create_branches = true. The branch is <prefix><YYYY-MM-DD>-<topic>.
+  # A project without this key uses the default silently.
+  # Default: experiment/
+  experiment_branch_prefix: experiment/
+
   # Skip push prompt after /unikit-commit creates a commit.
   # If true:
   #   - /unikit-commit ends after successful local commit

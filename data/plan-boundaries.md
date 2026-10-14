@@ -31,6 +31,10 @@ INFO [plan-range] git.base_branch not set — base is <branch> (<origin/HEAD | f
 At a PR checkpoint, the `→ <base>` of its `PR checkpoint:` line names the base of that module;
 for `/unikit-pr` at that checkpoint it outranks the chain above.
 
+A plan whose manifest has `## Experiment Context` takes its base from the `Base:` line of that
+section when the value is not `none`: the plan's branch was cut from it, so it outranks the chain
+above for every diff and check of that plan. `Base: none` leaves the chain as it is.
+
 No local branch `<base>` → compare with `origin/<base>`. The test is `git rev-parse --verify --quiet refs/heads/<base>` returning nothing.
 
 ## Plan start

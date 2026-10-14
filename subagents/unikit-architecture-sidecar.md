@@ -29,6 +29,7 @@ Purpose:
    - **Core**: read the Core table. For EACH row where Required By = `all` or contains `{{self_name}}` — read that file from `.unikit/memory/code/core/` using the Read tool. Do NOT skip any matching row. Always re-read at skill start, never rely on prior conversation cache
    - **Stack**: load dynamically when the current task or context matches "Load When" column, or when a need arises during work
 3. Read `.unikit/skill-context/unikit-review/SKILL.md` if it exists
+4. **Your prompt carries a note starting `Prototype plan:`** → read `.unikit/system/prototype-profile.md` and report by its `## Role: quality and the rest` (the bullet that names you). Missing or unreadable → `WARN [prototype] profile contract missing — audited as for an ordinary plan; run unikit-ai update` as the first line of the findings.
 
 ## What to Check
 

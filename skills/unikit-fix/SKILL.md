@@ -180,6 +180,8 @@ Bootstrap loads coding rules and principles ONCE upfront so the fix can be imple
 
 Stack rules are loaded on-demand later — when investigation reveals which framework is involved (e.g. R3, Zenject, UniTask). At the same point, load the topic files listed under `## Topics` in `.unikit/RULES.md` whose `Load when` matches the area the investigation localized — the files, types or feature the bug lives in; when unsure, load (`RULES_INDEX.md` → Step 1).
 
+**The fix runs against a plan whose manifest has `## Experiment Context`** (the session started from such a plan, or the prompt carries a `Prototype plan:` note) → read `.unikit/system/prototype-profile.md` now, once, and follow its `## Role: quality and the rest` — Steps 5 and 7.3, and the prompt of a delegate, follow it. Missing or unreadable → `WARN [prototype] profile contract missing — fixing as for an ordinary plan; run unikit-ai update`.
+
 **Engine-MCP rules (conditional, engine-neutral) — once per session, zero calls:**
 
 5. `.unikit/system/engine-mcp/INDEX.md`, **base section only** — the delivery stamp (`server:`) plus every section **except** the `## Check` table — access, the live failure classes, shape and cost, what is irreversible, the lane, and what to do when the file is silent. Those are the exceptions that hold for every task here. **Do not read the `## Check` table now** — it is grepped per editor task, by area (Step 3).

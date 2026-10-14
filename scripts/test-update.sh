@@ -2217,6 +2217,26 @@ fi
 echo "  ✓ balance-handback.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30p: prototype-profile.md is delivered on update — same shape as 30o: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms the flat rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+PROTOTYPE_PROFILE="$DEVPRIN_DIR/.unikit/system/prototype-profile.md"
+assert_exists "$PROTOTYPE_PROFILE" "prototype-profile.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$PROTOTYPE_PROFILE"
+
+DEVPRIN_OUT13="$TMPDIR/update-prototype-profile.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT13" 2>&1)
+
+if ! grep -q "^## Branch and base$" "$PROTOTYPE_PROFILE"; then
+    echo "Assertion failed: update did NOT refresh prototype-profile.md from data/ (## Branch and base missing)"
+    exit 1
+fi
+
+echo "  ✓ prototype-profile.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).
@@ -2256,6 +2276,12 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/references/mode-
     "unikit-gd-balance references travel under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
     "unikit-gd-balance template-checkpoints.md travels under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
+    "update --install-new installed the new experiment skill (unikit-gd-experiment)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/storage-and-index.md" \
+    "unikit-gd-experiment references travel under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/template-experiment.md" \
+    "unikit-gd-experiment template-experiment.md travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
     "update --install-new installed the new plan-archive skill (unikit-archive)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-pr/SKILL.md" \

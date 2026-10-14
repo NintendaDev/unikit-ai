@@ -68,7 +68,7 @@ Two conditions turn any level into `remind`:
 ## Step 0: Context
 
 1. **The branch** — `git rev-parse --abbrev-ref HEAD`.
-2. **The branch's plan** — the folder found by the branch-match rule of `/unikit-implement` Step 0.1 (the three name formats); the flat fast plan is never a PR's plan. No plan is a normal case: the skill works without one.
+2. **The branch's plan** — the folder found by the branch-match rule of `/unikit-implement` Step 0.1 (the three name formats); the flat fast plan is never a PR's plan. No plan is a normal case: the skill works without one. **A plan whose `## Experiment Context` has a `Branch:` line equal to the current branch** (look in `.unikit/code/plans/*/PLAN.md` and `.unikit/code/PLAN.md`; this lookup serves this check only) → read `.unikit/system/prototype-profile.md` and follow its `## Role: verification and pull request` before item 3. Missing or unreadable → `WARN [prototype] profile contract missing — treating the plan as ordinary; run unikit-ai update`, and continue.
 3. **The boundaries contract** — read `.unikit/system/plan-boundaries.md`. Missing or unreadable → `WARN [pr] plan-boundaries contract missing — module boundaries unknown, the PR is the current state; run unikit-ai update`, and continue.
 4. **The base** — at a PR checkpoint, the `→ <base>` of its `PR checkpoint:` line; otherwise the contract's `## Base branch`. The current branch is the base → `WARN [pr] you are on the base branch <base> — nothing to open a PR from`, and stop.
 5. **owner/repo** — from the URL of `origin`: `git@github.com:<owner>/<repo>.git` or `https://github.com/<owner>/<repo>(.git)`.

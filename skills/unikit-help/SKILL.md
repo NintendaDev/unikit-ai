@@ -146,6 +146,7 @@ canonical intent list and the full routing table live in
 | Find or invent a new mechanic | `/unikit-gd-explore` (then it routes onward) | pipelines.md |
 | Improve / tune / rework a design system | `/unikit-gd-system` | skill-map.md |
 | Balance a game / next balance step / hand-back results | `/unikit-gd-balance` | skill-map.md |
+| Test a game idea cheaply on players / evaluate playtest feedback / which experiments failed | `/unikit-gd-experiment` | skill-map.md |
 | Edit the master GDD (`GAME.md`) content | `/unikit-gd-spec` | skill-map.md |
 | Export / publish the GDD for people to read | `/unikit-gd-docs` (→ `docs/design/`) | pipelines.md |
 | Research a technical solution before coding | `/unikit-explore` | pipelines.md |

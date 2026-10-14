@@ -3,8 +3,8 @@
 A shard of the `gd-principles` working contract, installed by `unikit-ai init` /
 `unikit-ai update` into `.unikit/system/gamedesign/gd-provenance.md` as a flat copy
 (engine-agnostic, no variable substitution, not hash-tracked). Loaded on Bootstrap
-by `unikit-gd-system`, `unikit-gd-flow`, `unikit-gd-review`, `unikit-gd-explore`, and
-`unikit-gd-balance`. See the core `gd-principles.md` for zone ownership and routing.
+by `unikit-gd-system`, `unikit-gd-flow`, `unikit-gd-review`, `unikit-gd-explore`,
+`unikit-gd-balance`, and `unikit-gd-experiment`. See the core `gd-principles.md` for zone ownership and routing.
 
 ## Provenance (imports)
 
@@ -23,7 +23,7 @@ they describe:
   source and the registry at **≥ Major**.
 - `<!-- provenance: extracted from code -->` — the fact was **reconstructed from the
   codebase** by a read-only research verb (`unikit-gd-recon` cold-start, the
-  `unikit-gd-explore` code-grounded lens, or `unikit-gd-balance`), not from a designer or an authored source
+  `unikit-gd-explore` code-grounded lens, `unikit-gd-balance`, or `unikit-gd-experiment`), not from a designer or an authored source
   document. Code expresses *structure* (a roster, a `depends_on` graph, a `CT.fields`
   schema), never *intent* (pillars, fantasy, the "why") — so a code-extracted claim is
   **inference about design from an implementation**, held by the provenance lens at
@@ -61,7 +61,7 @@ Rules:
   `RECON.md` would — the designer's own options and reasoning in the same brief stay
   untagged. So `unikit-gd-system` / `unikit-gd-content`, when seeding a draft from a
   code-grounded explore brief, marks the code-lifted sections `extracted from code` and
-  leaves the rest untagged. This keeps the three read-only research verbs symmetric:
+  leaves the rest untagged. This keeps the read-only research verbs symmetric:
   code-origin is tagged identically no matter which verb surfaced it.
 - **Code reconstruction is held at `extracted from code`, and the import membrane must
   not launder it.** A `unikit-gd-recon` `RECON.md` carries a **durable code-provenance

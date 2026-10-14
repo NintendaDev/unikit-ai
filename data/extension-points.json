@@ -42,6 +42,9 @@
     "unikit-gd-docs": [
       "bootstrap"
     ],
+    "unikit-gd-experiment": [
+      "bootstrap"
+    ],
     "unikit-gd-explore": [
       "bootstrap"
     ],
