@@ -11213,6 +11213,48 @@ else
     fail "EXP-B1…EXP-B3 balance experiment route:$EXP_WHY"
 fi
 
+# --- EXP-D1…EXP-D2: the documentation and the help describe the experiment skill and its seams, and the old
+# counters are gone. Source assertions over pinned formulations; no heading is pinned except the new sections.
+EXP_WHY=""
+EXP_CHK=0
+exp_ok "EXP-D:X5-01" 'It installs thirteen `unikit-gd-*` skills' "$ROOT_DIR/docs/gamedesign.md"
+exp_ok "EXP-D:X5-02" 'An *experiment* here is a hypothesis about the game tested on real players' "$ROOT_DIR/docs/gamedesign.md"
+exp_ok "EXP-D:X5-03" 'edges: four inputs (`/unikit-gd-recon`' "$ROOT_DIR/docs/gamedesign.md"
+exp_ok "EXP-D:X5-04" '**The route of a checkpoint.**' "$ROOT_DIR/docs/gamedesign.md"
+exp_ok "EXP-D:X5-05" 'adds thirteen `unikit-gd-*` skills' "$ROOT_DIR/docs/skills.md"
+exp_ok "EXP-D:X5-06" '- the experiment record' "$ROOT_DIR/docs/skills.md"
+exp_ok "EXP-D:X5-07" '37 skills (24 code-pipeline + 13 game-design)' "$ROOT_DIR/docs/getting-started.md"
+exp_ok "EXP-D:X5-08" '13 game-design skills, one dir each' "$ROOT_DIR/docs/configuration.md"
+exp_ok "EXP-D:X5-09" '**Experiments** - test a hypothesis about the game on real players' "$ROOT_DIR/README.md"
+exp_ok "EXP-D:X5-10" '**Experiment plan.**' "$ROOT_DIR/docs/workflow.md"
+exp_ok "EXP-D:X5-11" '## Experiment plans' "$ROOT_DIR/docs/plan-files.md"
+exp_ok "EXP-D:X5-12" 'Sections 2-11 of each card are copied in full with their headings lowered two levels' "$ROOT_DIR/docs/plan-files.md"
+exp_ok "EXP-D:X5-13" '`/unikit-gd-balance` makes one such call - `unikit-gd-experiment`' "$ROOT_DIR/docs/subagents.md"
+exp_ok "EXP-D:X5-14" '`/unikit-gd-experiment` | skill-map.md' "$ROOT_DIR/skills/unikit-help/SKILL.md"
+exp_ok "EXP-D:X5-15" 'Five skills sit on the boundary of the module' "$ROOT_DIR/skills/unikit-help/references/pipelines.md"
+exp_ok "EXP-D:X5-16" '**Experiment loop (code side).**' "$ROOT_DIR/skills/unikit-help/references/pipelines.md"
+exp_ok "EXP-D:X5-17" '| experiments | `/unikit-gd-experiment [<problem>, <feedback> or list]` |' "$ROOT_DIR/skills/unikit-help/references/scenarios.md"
+exp_ok "EXP-D:X5-18" '- **Experiment plan.** Given experiment cards' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+exp_ok "EXP-D:X5-19" '- **Route.** At each checkpoint it recommends direct measurement' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+exp_ok "EXP-D:X5-20" '- Given experiment cards (a path to an `experiment.md`' "$ROOT_DIR/docs/skills.md"
+# (EXP-D2) the counters of the old state are not left behind
+exp_no "EXP-D2:twelve-skills-gamedesign" 'twelve `unikit-gd-' "$ROOT_DIR/docs/gamedesign.md"
+exp_no "EXP-D2:twelve-skills-skills" 'twelve `unikit-gd-' "$ROOT_DIR/docs/skills.md"
+exp_no "EXP-D2:old-total-getting-started" '36 skills' "$ROOT_DIR/docs/getting-started.md"
+exp_no "EXP-D2:old-group-configuration" '12 game-design skills' "$ROOT_DIR/docs/configuration.md"
+exp_no "EXP-D2:four-skills-pipelines" 'Four skills sit on the boundary' "$ROOT_DIR/skills/unikit-help/references/pipelines.md"
+exp_no "EXP-D2:alongside-twelve-gamedesign" 'Alongside the twelve skills' "$ROOT_DIR/docs/gamedesign.md"
+exp_no "EXP-D2:skills-36-getting-started" '### Skills (36)' "$ROOT_DIR/docs/getting-started.md"
+exp_no "EXP-D2:twelve-gd-getting-started" '12 `unikit-gd-*`' "$ROOT_DIR/docs/getting-started.md"
+exp_no "EXP-D2:twelve-design-skills-getting-started" 'the 12 Game Design skills' "$ROOT_DIR/docs/getting-started.md"
+exp_no "EXP-D2:plus-twelve-configuration" '+ 12 unikit-gd-*' "$ROOT_DIR/docs/configuration.md"
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-D1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-D1…EXP-D2 documentation and help: the experiment skill, the experiment plan and the route are described, the old counters are gone (${EXP_CHK} checks)"
+else
+    fail "EXP-D1…EXP-D2 documentation and help:$EXP_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

@@ -97,6 +97,8 @@ content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *
             │                                 scale bulk|curated) + re-renders ## Content Map [gen]; the editor owns the values
 balance:  /unikit-gd-balance       (optional) per subject: investigate → ONE detailed Balance Checkpoint → /unikit-plan
             │                                 → /unikit-implement → /unikit-verify → hand-back report → /unikit-gd-balance again
+experiment: /unikit-gd-experiment  (optional) a hypothesis about the game: cards → /unikit-plan (own branch) → prototype
+            │                                 → playtest → feedback back to /unikit-gd-experiment → evaluation
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → verdict → two buckets (apply-ready / research)
             │
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" → 4 tracks → apply-ready
@@ -106,11 +108,11 @@ handoff:  → /unikit-gd-apply (apply-ready, one pass) · /unikit-gd-explore (re
 docs:     /unikit-gd-docs          (optional) the GDD → human-readable docs/design/*.md (the export-out)
 ```
 
-**Read-only verbs at the I/O edges.** Four skills sit on the boundary of the module and are
-**read-only** at that edge: `/unikit-gd-recon`, the `/unikit-gd-explore` **code lens** and
-`/unikit-gd-balance` **INPUT** (code → candidate design facts — recon for the whole project at
-cold start, the explore lens for a named slice, with or without a GDD, balance for the slice a
-balance document names), the authoring zones
+**Read-only verbs at the I/O edges.** Five skills sit on the boundary of the module and are
+**read-only** at that edge: `/unikit-gd-recon`, the `/unikit-gd-explore` **code lens**,
+`/unikit-gd-balance` and `/unikit-gd-experiment` **INPUT** (code → candidate design facts — recon
+for the whole project at cold start, the explore lens for a named slice, with or without a GDD,
+balance for the slice a balance document names, experiment for what a card needs to know), the authoring zones
 (spec / system / flow / content) are the **core**, and `/unikit-gd-docs` **OUTPUTS**
 (design → a human-readable GDD). Reconstructing design from code is normally forbidden (the
 one-way boundary), so it is quantised into these read-only research verbs — every
@@ -227,6 +229,10 @@ one-way boundary, delta discipline, and the "diagnose, don't prescribe" stance a
   last; `/unikit-verify` checks the data and the report, not the balance; `/unikit-improve`
   synchronises by `Item:` and never goes past the horizon. The report goes back to
   `/unikit-gd-balance` as a document — design never reads the code workspace on its own.
+- **Experiment loop (code side).** `/unikit-plan` given experiment cards plans them as one prototype
+  on its own branch (an `## Experiment Context` snapshot, `Testing: no`, `Docs: no`); the executors
+  read `.unikit/system/prototype-profile.md` and leave the roadmap, the project documents and the
+  TODO list alone; the playtest feedback goes back to `/unikit-gd-experiment`.
 
 So a "GDD-first" project flows: design track → `GAME.md`/systems → `/unikit-plan` (pulls the AC) →
 `/unikit-implement` → `/unikit-verify` (confirms AC, stamps implemented).
@@ -248,6 +254,7 @@ Pick the row that matches what the user already has:
 | **A GDD, wants a new mechanic** | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
 | **A named slice of the code, wants to know how it is built (a GDD is not required)** | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
 | **A subject whose numbers need tuning (a GDD is not required)** | `/unikit-gd-balance <topic>` | `/unikit-plan full <path to CHECKPOINTS.md>` → `/unikit-implement` → `/unikit-gd-balance <report>` |
+| **A design problem or a hypothesis to test on players (a GDD is not required)** | `/unikit-gd-experiment <problem>` | `/unikit-plan <path to experiment.md>` → `/unikit-implement experiment-<topic>` → `/unikit-gd-experiment <feedback>` |
 | **A GDD, several decided edits across zones** | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | **A GDD, wants to publish/export it for people** | `/unikit-gd-docs` (→ `docs/design/*.md`; `--web` for HTML) | share the rendered docs |
 | **A feature idea, needs direction** | `/unikit-explore <topic>` | `/unikit-plan` |

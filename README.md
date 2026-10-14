@@ -194,6 +194,7 @@ Beyond code, UniKit AI helps author the game design itself, so that planning sta
 - **Ideate and research** - brainstorm a concept, check the market and references
 - **Author** - the one-page game overview, then systems, player flows and content schemas
 - **Balance** - tune numbers in a measured loop: one checkpoint at a time, a plan, a report, the next decision
+- **Experiments** - test a hypothesis about the game on real players with the smallest prototype: ideas, a specification a planner can build from, playtest feedback, an honest evaluation
 - **Review and verify** - a qualitative review and a consistency check of the whole design
 - **Start from existing code** - reconstruct design facts from a project that has no design document yet
 - **Genre starters** - a bundled catalog of genre profiles seeds a new design

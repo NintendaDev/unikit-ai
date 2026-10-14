@@ -368,6 +368,34 @@ A label on the checkbox line of a measuring task whose result cannot be obtained
 
 Inside a phase: ordinary tasks → the phase's `Test checkpoint:` → `Measure:` tasks → `PR checkpoint:` or `Hand-back:`. The last task is `Hand-back:`; under `Testing: yes` the final `Test checkpoint: plan` stands directly above it. Nothing follows `Hand-back:`, and nothing from the roadmap's later points is in the plan: the returned data may change the decision, and that decision is `/unikit-gd-balance`'s. The plan folder is `.unikit/code/plans/balance-<slug>-bch-<n>/` (a `fast` plan has none: it is `.unikit/code/PLAN.md`, and the report lies next to it, in `.unikit/code/`); the planner creates and switches no branch for such a plan. The executor writes the report to `handback-<point id>.md` in the plan folder (format: `.unikit/system/balance-handback.md`) and prints the return command last: `/unikit-implement` as the last line of its output, the implement coordinator inside the `Hand-back:` line of its summary.
 
+## Experiment plans
+
+A plan built from experiment cards (`/unikit-plan <path to experiment.md>`, printed by `/unikit-gd-experiment`) is an ordinary plan plus one section. `unikit-plan/references/TASK-FORMAT.md` → `### Experiment context section` is the only owner of its form; this page describes it.
+
+### `## Experiment Context` — the snapshot
+
+A snapshot of the cards, placed directly before `## Settings`, in the slot of `## Balance Context` (a plan has one or the other); the plan works from it, never from the live files:
+
+```markdown
+## Experiment Context
+Branch: experiment/2026-10-13-timer-variant
+Base: main
+Cards:
+- EXP-003 · v1 · .unikit/gamedesign/experiments/EXP-003-timer-variant/experiment.md · variants: single version
+
+### EXP-003 · Timer variant (v1)
+#### 2. Problem
+…
+#### 11. Success Criteria
+…
+```
+
+`Branch:` is the branch the plan lives on (`none` when git is off) and `Base:` the branch it was cut from (`none` when none was cut): the executors compare the current branch with `Branch:` before they write and take the base of every diff and check from `Base:`. Sections 2-11 of each card are copied in full with their headings lowered two levels, so a card is never read by the executors; the card's `Out of Scope` is repeated in `### OUT OF SCOPE` of `## Technical Context`. Nothing else is special: no new task kinds, phases or checks, no `Measure:` or `Hand-back:`, no PR checkpoint tasks.
+
+### What an executor does differently
+
+The section is the trigger. `/unikit-implement` (and its coordinator and worker), `/unikit-verify`, `/unikit-pr`, `/unikit-improve` (and the plan polisher and coordinator), `/unikit-review` (and its sidecars), `/unikit-fix`, `/unikit-devcontext` and `/unikit-commit` read the section of their role in `.unikit/system/prototype-profile.md` and nothing else of it. In short: what stays mandatory is a project that builds and runs, a legible interface, intact data, the written project constraints and the card's `Out of Scope`; architecture, scalability, documentation after a method change, error handling and TODO entries are softened; and the project documents, the roadmap, the TODO list, pull requests and the experiment storage itself are left alone. The profile file is the only owner of these rules.
+
 ---
 
 ## Editor tasks

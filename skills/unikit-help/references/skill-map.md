@@ -106,6 +106,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   offered the switch.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 - **Balance plan.** Given a Balance Checkpoints file (`/unikit-gd-balance` prints the command) it finds the current point itself and builds a plan only up to it, ending in a `Hand-back:` task.
+- **Experiment plan.** Given experiment cards (`/unikit-gd-experiment` prints the command: a path to an `experiment.md`, an `EXP-<nnn>`, a folder, or several) it builds **one** plan for the set from a snapshot of the cards (`## Experiment Context`), on its own `experiment/<date>-<topic>` branch; tests and docs default to off, no PR checkpoint tasks are written, and the executors read `.unikit/system/prototype-profile.md`.
 
 ### unikit-improve
 - **Purpose:** Refine an existing plan — find missing tasks, wrong dependencies, made-up APIs,
@@ -374,6 +375,9 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   command carrying the path to `CHECKPOINTS.md`.
 - **Optional (balance loop).** Next: `/unikit-plan` → `/unikit-implement` → `/unikit-verify`, then
   back to `/unikit-gd-balance` with the report.
+- **Route.** At each checkpoint it recommends direct measurement (the loop above) or an experiment
+  (`/unikit-gd-experiment`) and says that an experiment takes much longer; the results of an
+  experiment come back as a finding tagged `from playtest`.
 
 ### unikit-gd-experiment
 - **Purpose:** The experiment partner — turns a design problem into cheap, testable experiments

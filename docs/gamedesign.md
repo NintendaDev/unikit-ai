@@ -3,7 +3,7 @@
 # Game-Design Module
 
 UniKit ships a second knowledge module, **`gamedesign`**, dedicated to authoring a
-**Game Design Document (GDD)**. It installs twelve `unikit-gd-*` skills, a
+**Game Design Document (GDD)**. It installs thirteen `unikit-gd-*` skills, a
 domain-knowledge rule library, and a set of system-asset contracts. Design artifacts
 live in their own workspace (`.unikit/gamedesign/`) and are authored in the project's
 configured language; **ids / keywords / canonical terms / formulas stay English**.
@@ -26,7 +26,8 @@ A GDD is authored along three machine-readable axes plus the one-page whole:
 | **content** | `/unikit-gd-content` | `content-types/CT-<slug>.md` | "what content exists and by what schema" (the catalog) |
 
 Ideation (`/unikit-gd-brainstorm`), research (`/unikit-gd-explore`), measured balance
-(`/unikit-gd-balance` — tunes numbers one measured checkpoint at a time), multi-zone dispatch
+(`/unikit-gd-balance` — tunes numbers one measured checkpoint at a time), experiments
+(`/unikit-gd-experiment` — tests a hypothesis about the game on real players), multi-zone dispatch
 (`/unikit-gd-apply` — carries out an explicit edit spanning several axes by routing each
 delta to its owner, then verifying), quality review (`/unikit-gd-review`), and mechanical
 verification (`/unikit-gd-verify`) round out the module. The machine truth for every axis is `GD-IDS.yaml`; the human-readable maps at
@@ -34,7 +35,7 @@ the bottom of `GAME.md` (`## System Map [gen]` / `## Flow Map [gen]` / `## Funne
 / `## Content Map [gen]`) are **rendered read-only** from it — never hand-edited.
 
 See **The pipeline** below for the order these skills run in, **Research** for
-`/unikit-gd-explore`'s lenses, **Balance** for the measured loop of `/unikit-gd-balance`,
+`/unikit-gd-explore`'s lenses, **Balance** for the measured loop of `/unikit-gd-balance`, **Experiments** for `/unikit-gd-experiment`,
 **Multi-zone edits** for how `/unikit-gd-apply` dispatches, and **Review vs Verify** for how
 the two quality gates hand results onward.
 
@@ -42,7 +43,7 @@ the two quality gates hand results onward.
 
 ## Domain-knowledge rules
 
-Alongside the twelve skills, the `gamedesign` module installs a **domain-knowledge rule
+Alongside the thirteen skills, the `gamedesign` module installs a **domain-knowledge rule
 library** from the same registry that serves `code` rules — fetched via
 `unikit-ai rules install` / `sync`, module-scoped with `--module gamedesign`. See
 [Dynamic Memory](dynamic-memory.md#modules-code-vs-gamedesign) for how installation and
@@ -116,6 +117,8 @@ content:  /unikit-gd-content       per content type  the CT-<slug> doc — the *
             │                                 scale bulk|curated) + re-renders ## Content Map [gen]; the editor owns the values
 balance:  /unikit-gd-balance       (optional) per subject: investigate → ONE detailed Balance Checkpoint → /unikit-plan
             │                                 → /unikit-implement → /unikit-verify → hand-back report → /unikit-gd-balance again
+experiment: /unikit-gd-experiment  (optional) a hypothesis about the game: cards → /unikit-plan (own branch) → prototype
+            │                                 → playtest → feedback back to /unikit-gd-experiment → evaluation
 review:   /unikit-gd-review        (optional) "is it good/fun/balanced?" → verdict → two buckets (apply-ready / research)
             │
 verify:   /unikit-gd-verify        (optional, recommended) "is it consistent with itself?" → 4 tracks → apply-ready
@@ -143,6 +146,7 @@ from skipping to implementation.
 | A GDD, want a new mechanic | `/unikit-gd-explore <mechanic>` (routes onward) | spec add-system → system |
 | A named slice of the code, want to know how it is actually built (a GDD is not required) | `/unikit-gd-explore <system> in the code` (code lens, read-only) | the routed owner |
 | A subject whose numbers need tuning (a GDD is not required) | `/unikit-gd-balance <topic>` | `/unikit-plan full <path to CHECKPOINTS.md>` |
+| A design problem or a hypothesis to test on real players (a GDD is not required) | `/unikit-gd-experiment <problem>` | `/unikit-plan <path to experiment.md>` |
 | A GDD, several decided edits across zones | `/unikit-gd-apply "<the edits>"` | `/unikit-gd-verify` |
 | A GDD, want to publish/export it for people to read | `/unikit-gd-docs` (`--web` for HTML) | share the rendered docs |
 
@@ -356,6 +360,62 @@ because the returned data may change what comes next. The report that the execut
 has one owner, `.unikit/system/balance-handback.md`. Closing is soft: unclosed questions block
 neither issuing a point nor saving. A balance document is not registered in `GD-IDS.yaml` and
 never edits the GDD — a design change it proposes goes through `/unikit-gd-system`.
+
+**The route of a checkpoint.** At each checkpoint the skill recommends how to get its data — a
+direct measurement (the loop above) or an experiment (`/unikit-gd-experiment`) — and explains why.
+Whenever an experiment is offered or chosen it says plainly that an experiment takes much longer
+than the direct route; if you choose it, it asks whether to call the experiment skill now or to
+print the command for later. The results come back with `/unikit-gd-balance <slug> "<path to
+results.md>"`, are kept as `results/PT-<n>.md` and enter the document as a finding tagged
+`from playtest` - never as a number in a measurement table.
+
+---
+
+## Experiments — `/unikit-gd-experiment`
+
+An *experiment* here is a hypothesis about the game tested on real players with the smallest
+prototype that can answer it - not a variant of a number in a balance document.
+`/unikit-gd-experiment` keeps the record. A bare call starts a short conversation and saves
+nothing; the intent is read from the request, in four modes:
+
+- **Discover** - "the first minutes feel boring, what can we test?" gives a table of at least five
+  ideas that differ by their causal hypothesis (with the cost of the prototype and the value of
+  what it teaches) and a recommendation. Ideas you do not choose get no number and no index row; a
+  request to compare variants of one question goes straight to one experiment with variants.
+- **Specify** - writes the card, `experiment.md`: the problem, one testable hypothesis, what is
+  tested, the design and the flow, the variants, the minimum interface, the minimum scope (Must
+  Have / Can Be Simplified / Out of Scope), how to test, success criteria (preliminary targets, not
+  facts), risks, follow-up decisions and an evaluation summary. Nothing is saved before you approve.
+- **Evaluate** - takes feedback in any form: pasted text, a forwarded chat, a file; several
+  experiments and several rounds at once. A comment is attributed only by explicit signs, a doubtful
+  one waits in `unassigned-feedback.md` until you confirm it, and the originals are kept verbatim,
+  apart from the observation and the interpretation. A score (0-10) always has a source and a
+  basis; the outcome (Supported / Partially Supported / Not Supported / Inconclusive) follows the
+  hypothesis, not the score; an evaluation belongs to the version of the card it was made on.
+- **Manage** - list, filters, comparison, best, failed, retests, edits, archive and lessons across
+  several experiments. The saved files are the source of truth; history is never guessed.
+
+Everything lives under `.unikit/gamedesign/experiments/`: `index.md` (one derived row per
+experiment), `unassigned-feedback.md` (only when needed) and
+`EXP-<nnn>-<slug>/{experiment,feedback,results}.md`. A number is the highest found plus one and is
+never reused; the folder is created without `-p` and checked afterwards. Experiments are not
+registered in `GD-IDS.yaml`, and the skill never edits the GDD or code.
+
+**Reading the project.** To learn what the game already does, the skill reads the named slice
+read-only (`recon-agent`), tags the fact `provenance: extracted from code` with a confidence level
+and writes it in the designer's words: a check before every write removes class names, code, file
+paths, engine terms and architecture words from the artifacts. A GDD is not required.
+
+**Planning.** `/unikit-plan <path to experiment.md>` plans a card - or a set of cards, as **one**
+plan - from a `## Experiment Context` snapshot, on a separate branch, with `Testing: no` and
+`Docs: no` by default; see **Experiment plan** under `/unikit-plan` in [Workflow](workflow.md).
+The executors of such a plan read the disposable-prototype profile,
+`.unikit/system/prototype-profile.md`: the prototype must build, run and stay legible, its
+architecture and error handling are softened, and the project documents, the roadmap and the TODO
+list are left alone.
+
+**With balance.** A card made from a balance checkpoint carries an origin block copied from the
+checkpoint; see **The route of a checkpoint** above for the way back.
 
 ---
 
@@ -593,7 +653,8 @@ writeback above they make up the boundary's three sanctioned exceptions):
    actual source — to flag a design the real tech stack can't support (a Critical
    finding, evidenced by the line it relied on).
 2. The **brownfield research verbs** (`/unikit-gd-recon`, the `/unikit-gd-explore`
-   code-grounded lens, and `/unikit-gd-balance` for the slice a balance document names) —
+   code-grounded lens, `/unikit-gd-balance` for the slice a balance document names, and
+   `/unikit-gd-experiment` for what an experiment card needs to know) —
    covered next.
 
 ---
@@ -603,8 +664,8 @@ writeback above they make up the boundary's three sanctioned exceptions):
 A team with a **live game and no GDD** has nothing to import — the only source of design
 facts is the code itself. The module resolves this without reopening the boundary above
 by quantising the crossing into read-only research verbs sitting at the module's I/O
-edges: three inputs (`/unikit-gd-recon`, the `/unikit-gd-explore` code lens, and
-`/unikit-gd-balance` — the third exception in the list above) and one output (`/unikit-gd-docs`, covered at the end of this
+edges: four inputs (`/unikit-gd-recon`, the `/unikit-gd-explore` code lens,
+`/unikit-gd-balance` and `/unikit-gd-experiment` — the research verbs of the list above) and one output (`/unikit-gd-docs`, covered at the end of this
 section). Each only ever *reads* code into a *document*, or *reads* the workspace into
 human-readable pages — none of them author the GDD.
 
@@ -615,8 +676,10 @@ INPUT (code → design)            CORE (authoring zones)           OUTPUT (desi
    project → RECON.md)   │       (these NEVER read code)        │
   unikit-gd-explore      ┤                                      └
    (code lens, a slice)  │
-  unikit-gd-balance      ┘
+  unikit-gd-balance      ┤
    (a named slice → a balance document)
+  unikit-gd-experiment   ┘
+   (what a card needs → an experiment card)
 ```
 
 ### `unikit-gd-recon` — cold-start reconstruction
