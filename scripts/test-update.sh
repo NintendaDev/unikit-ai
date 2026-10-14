@@ -2256,6 +2256,12 @@ assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/references/mode-
     "unikit-gd-balance references travel under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
     "unikit-gd-balance template-checkpoints.md travels under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
+    "update --install-new installed the new experiment skill (unikit-gd-experiment)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/storage-and-index.md" \
+    "unikit-gd-experiment references travel under references/ (non-flat copyDirectory)"
+assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-gd-experiment/references/template-experiment.md" \
+    "unikit-gd-experiment template-experiment.md travels under references/ (non-flat copyDirectory)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-archive/SKILL.md" \
     "update --install-new installed the new plan-archive skill (unikit-archive)"
 assert_exists "$INSTALLNEW_DIR/.claude/skills/unikit-pr/SKILL.md" \

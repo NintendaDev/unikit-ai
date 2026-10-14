@@ -57,7 +57,7 @@ cat > "$CLAUDE_DIR/.unikit.json" << 'EOF'
       "installedSkills": ["unikit", "unikit-plan", "unikit-devcontext", "unikit-evolve",
                           "unikit-explore", "unikit-implement", "unikit-improve", "unikit-memory",
                           "unikit-rules", "unikit-skills-context", "unikit-verify",
-                          "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-recon", "unikit-gd-docs",
+                          "unikit-gd-explore", "unikit-gd-balance", "unikit-gd-experiment", "unikit-gd-recon", "unikit-gd-docs",
                           "unikit-gd-flow", "unikit-gd-content", "unikit-gd-verify",
                           "unikit-pr"],
       "installedSubagents": ["unikit-architecture-sidecar"]
@@ -345,6 +345,14 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/investiga
   "unikit-gd-balance investigation.md reference installed"
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/template-checkpoints.md" \
   "unikit-gd-balance template-checkpoints.md reference installed"
+# The experiment skill's branches are read only by intent, so a content test cannot see a missing
+# delivery of a reference — all nine files are asserted here.
+assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
+  "unikit-gd-experiment SKILL.md installed (experiment partner)"
+for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index context-and-research planning-handoff balance-link; do
+  assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/references/${exp_ref}.md" \
+    "unikit-gd-experiment ${exp_ref}.md reference installed"
+done
 
 # ─────────────────────────────────────────────────────
 # Test 1b-gd-refs: the context-cost refactor extracted per-mode bodies + axis-checks

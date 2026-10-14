@@ -565,6 +565,7 @@ Every skill below offers one point, `bootstrap`, at the end of its context-loadi
 | `unikit-gd-brainstorm` | `bootstrap` | Bootstrap | - |
 | `unikit-gd-content` | `bootstrap` | Phase 0 - Bootstrap | - |
 | `unikit-gd-docs` | `bootstrap` | Phase 0 - Bootstrap | - |
+| `unikit-gd-experiment` | `bootstrap` | Bootstrap Context | - |
 | `unikit-gd-explore` | `bootstrap` | Bootstrap Context | `init` mode |
 | `unikit-gd-flow` | `bootstrap` | Phase 0 - Bootstrap | - |
 | `unikit-gd-recon` | `bootstrap` | End of the cold-start gate | The gate stopped the run |

@@ -235,7 +235,7 @@ echo -e "\n${BOLD}=== Validate delegation-alias connectivity ===${NC}\n"
 DELEGATION_SKILLS=(
     "unikit-implement" "unikit-fix" "unikit-verify"
     "unikit-docs" "unikit-explore" "unikit-improve" "unikit-plan" "unikit-review"
-    "unikit-gd-explore" "unikit-gd-recon" "unikit-gd-review" "unikit-gd-balance"
+    "unikit-gd-explore" "unikit-gd-recon" "unikit-gd-review" "unikit-gd-balance" "unikit-gd-experiment"
 )
 
 for skill in "${DELEGATION_SKILLS[@]}"; do
@@ -1209,6 +1209,7 @@ gd_check_skill_shards "unikit-gd-explore" "gd-critique" "gd-provenance"
 gd_check_skill_shards "unikit-gd-review"  "gd-flow-axis" "gd-content-axis" "gd-provenance" "gd-critique"
 gd_check_skill_shards "unikit-gd-apply"   "gd-authoring" "gd-lifecycle"
 gd_check_skill_shards "unikit-gd-balance" "gd-critique" "gd-provenance"
+gd_check_skill_shards "unikit-gd-experiment" "gd-critique" "gd-provenance"
 # brainstorm loads core ONLY — assert it references none of the 6 shards.
 GD_BRAINSTORM_LEAK=""
 for shard in gd-authoring gd-lifecycle gd-flow-axis gd-content-axis gd-provenance gd-critique; do

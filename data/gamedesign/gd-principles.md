@@ -20,8 +20,8 @@ loaded on Bootstrap only by the skills that use it:
 | `gd-authoring.md` | Section-Cycle Contract + Delta Discipline (incl. the GAME.md carve-out) | spec, system, flow, content |
 | `gd-lifecycle.md` | Lifecycle & Status | spec, system, flow, verify, content |
 | `gd-flow-axis.md` | Flow Axis | flow, verify, review |
-| `gd-provenance.md` | Provenance (imports) | system, flow, review, explore, balance |
-| `gd-critique.md` | Critique Stance + Severity Rubric | review, verify, explore, balance |
+| `gd-provenance.md` | Provenance (imports) | system, flow, review, explore, balance, experiment |
+| `gd-critique.md` | Critique Stance + Severity Rubric | review, verify, explore, balance, experiment |
 
 **Domain knowledge** (frameworks, motivation, balance, economy, progression, level
 design, narrative, UX, accessibility, liveops, monetization ethics) lives in the
@@ -78,6 +78,15 @@ owns a thing** (an authoring zone, with the full create+update cycle inside it);
   document — a design change it proposes goes through `unikit-gd-system`. From the code workspace
   (`.unikit/code/`) it reads only a document the user named or pasted; it never scans that workspace.
 
+**Experiment record (owns its own workspace, outside the GDD registry):**
+
+- `unikit-gd-experiment` — the **experiment** record under `.unikit/gamedesign/experiments/`
+  (`index.md`, `EXP-<nnn>-<slug>/{experiment,feedback,results}.md` and, when a comment cannot be
+  attributed, `unassigned-feedback.md`). It is a read-only research verb for code (third exception,
+  One-Way Boundary), it does not register in `GD-IDS.yaml` (an `EXP-<nnn>` lives in its own files),
+  and it never edits a GDD document or code. From the code workspace (`.unikit/code/`) it reads only
+  a document the user named; it never scans that workspace.
+
 **Zones ⟂ domains.** Zones are **few** (the authoring skills: spec / system / flow /
 content) and orthogonal to **domains**, which are **many** (`core` memory rules + the
 `section-packs`: monetization, liveops, level design, narrative, accessibility, …).
@@ -104,6 +113,10 @@ A request finds its zone by three orthogonal questions:
   - "balance it / tune the numbers across measurements / what is the next balance step" →
     `unikit-gd-balance` (it owns the balance document and the checkpoint loop; the numbers
     in the GDD still change only through the zone that owns them).
+  - "try this idea cheaply / compare variants of one question / is this fun for players / here is
+    the playtest feedback / which experiments failed" → `unikit-gd-experiment` (it owns the
+    experiment cards and their records — a hypothesis about the game tested on players; choosing
+    numbers by measurement stays with `unikit-gd-balance`).
 - **Artifact decides the zone.** `GAME.md` → spec; `SYSTEM.md` → system; `FLOW.md`
   → flow; `CONTENT-TYPE.md` → content. The artifact you are editing names its owner.
 - **Domain rides as rules/packs.** A domain (e.g. `monetization-ethics`) loads
@@ -145,8 +158,8 @@ Code reads design; design knows nothing about code.
 - Game-design **authoring** zones (spec/system/content/flow) and the
   **`unikit-gd-apply`** dispatcher never read the code workspace (`.unikit/code/`),
   project sources, or build artifacts. The **read-only research verbs** —
-  `unikit-gd-recon` (cold-start), the `unikit-gd-explore` code-grounded lens, and
-  `unikit-gd-balance` — are the sole exception (see *Sanctioned exceptions* below):
+  `unikit-gd-recon` (cold-start), the `unikit-gd-explore` code-grounded lens,
+  `unikit-gd-balance` and `unikit-gd-experiment` — are the sole exception (see *Sanctioned exceptions* below):
   they read code to *extract*
   candidate design facts into a document, never to author.
 - The code side consumes design exclusively through the `## Design` section of its
@@ -183,12 +196,14 @@ Code reads design; design knows nothing about code.
     brownfield-bootstrap carve-out above): `unikit-gd-recon` (cold-start only — no GDD
     yet) scans the whole project into a passive `RECON.md`; the `unikit-gd-explore`
     **code-grounded lens** (targeted — only the slice the prompt names, with or without
-    a GDD) grounds a design question in how that slice is built; and `unikit-gd-balance`
+    a GDD) grounds a design question in how that slice is built; `unikit-gd-balance`
     (targeted — only the slice a balance document names) gathers the facts a balance
-    investigation needs. All three are read-only on code, call no authoring zone, and
-    emit a *document* (`RECON.md` / an explore brief / a balance document) — never a GDD
-    edit. The shared extraction engine is
-    `unikit-gd-recon/references/code-recon.md`. Facts carry
+    investigation needs; and `unikit-gd-experiment` (targeted — only the slice a card
+    needs, through its own reference) learns what the game already does, in a designer's
+    words. All four are read-only on code, call no authoring zone, and
+    emit a *document* (`RECON.md` / an explore brief / a balance document / an experiment
+    card) — never a GDD edit. The shared extraction engine of the first three is
+    `unikit-gd-recon/references/code-recon.md`; the experiment skill does not use it. Facts carry
     `provenance: extracted from code` (review ≥ Major). The authoring zones
     (spec/system/content/flow) and the `unikit-gd-apply` dispatcher are **never** in
     this exception.
@@ -214,6 +229,7 @@ user is the arbiter of every conflict.
 | `RES-<slug>` | Resource (currency / consumable fact) | GD-IDS `resources` |
 | `TRACK-<slug>` | Progression track (season / battle-pass fact) | GD-IDS `tracks` |
 | `KNOB-<slug>` | Global tuning knob (cross-system balance fact) | GD-IDS `knobs` |
+| `EXP-<nnn>` | Experiment (a card and its records) | `.unikit/gamedesign/experiments/EXP-<nnn>-<slug>/` — outside `GD-IDS.yaml` |
 
 - IDs are English lowercase slugs, stable across versions.
 - Never delete an ID — mark it deprecated. Dangling references are verify
@@ -247,7 +263,7 @@ feelings, and outcomes. The codes are **load-bearing on disk**: `unikit-gd-verif
 `unikit-plan`, and the engine read them, so they stay verbatim in **files**. They must
 not leak into **speech**. Every `unikit-gd-*` skill speaks through this membrane — the
 artifact keeps its codes, the conversation carries only the designer language. The
-contract lives here in the core (read on Bootstrap by all twelve skills) and **overrides
+contract lives here in the core (read on Bootstrap by all thirteen skills) and **overrides
 any local phrasing**.
 
 **Two tiers of translation.**
@@ -293,9 +309,9 @@ words they are; never dress them as a code, never strip them to a bare badge.
   `unikit-gd-review` (findings — the stable `RF-<date>-n` ids and the `SYS-` / `AC-`
   citations they point at) **speak codes by design**: their job is to address the on-disk
   registry precisely, and a grounded id citation is the whole value. They are **exempt
-  from TIER A/B**. This is why the membrane reaches **7 of the 12** `unikit-gd-*` skills —
-  verify, review, recon, apply, and docs are out of scope; the seven skills that speak
-  to the designer (brainstorm, explore, spec, system, flow, content, balance) are in.
+  from TIER A/B**. This is why the membrane reaches **8 of the 13** `unikit-gd-*` skills —
+  verify, review, recon, apply, and docs are out of scope; the eight skills that speak
+  to the designer (brainstorm, explore, spec, system, flow, content, balance, experiment) are in.
   - **The exemption is the tokens, not the prose around them.** What stays English here
     is strictly the stored identifiers and machine values — the id codes
     (`RF-/PIL-/SYS-/ENT-/FORM-/AC-/GOAL-/FLOW-/CT-/CU-…`) and the lifecycle-status
