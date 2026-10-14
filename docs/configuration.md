@@ -135,6 +135,7 @@ git:
   base_branch: main
   create_branches: true
   branch_prefix: feature/
+  experiment_branch_prefix: experiment/
   skip_push_after_commit: false
   pull_requests:
     checkpoints: false
@@ -199,6 +200,7 @@ Existing projects receive the key by either of the two paths in [How new keys re
 | `base_branch` | Default branch for diff/review/merge targets (e.g. `main`, `master`, `develop`). | auto-detected, fallback `main` |
 | `create_branches` | Automatically create feature branches for plans. Applies only when `git.enabled = true`. | `true` |
 | `branch_prefix` | Branch name prefix for new features. Applies only when `create_branches = true`. | `feature/` |
+| `experiment_branch_prefix` | Branch name prefix for experiment plans (a plan built from experiment cards): the branch is `<prefix><YYYY-MM-DD>-<topic>`. Applies only when `create_branches = true`. A project without the key uses the default. | `experiment/` |
 | `skip_push_after_commit` | If `true`, `/unikit-commit` ends after a successful local commit with no push prompt. | `false` |
 | `pull_requests.checkpoints` | Write a PR checkpoint task at the end of every plan module but the last. Recorded into the plan as `PR checkpoints: yes`. Not written when git is off or when the plan is on the base branch. | `false` |
 | `pull_requests.max_level` | `remind` \| `create` \| `merge` — how far `/unikit-pr` goes. A ceiling for any request, and the action taken at a PR checkpoint. Without the GitHub MCP every level acts as `remind`. | `create` |

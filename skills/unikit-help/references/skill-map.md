@@ -89,10 +89,10 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "plan this feature", "create tasks". The first **required** step of building.
 - **In:** a feature description, or a research brief, or a roadmap milestone. Modes: `fast`
   (flat `.unikit/code/PLAN.md`, no branch), `full` (folder + git branch + brief), `ultra`
-  (full plus one deeply specified file per phase — explicit keyword only, never inferred — except in a merge plan's mode question),
+  (full plus one deeply specified file per phase — explicit keyword only, never inferred — except in a merge plan's mode question and in the mode question of two or more experiment cards, which recommends it),
   `add` (extend) — each mode body loads on demand from `references/mode-*.md`. A request to
   merge a named branch loads `references/merge-plan.md` instead: the planner analyses the merge
-  and writes a merge plan.
+  and writes a merge plan. Experiment cards (`/unikit-gd-experiment` prints the command) load `references/experiment-plan.md`: one plan, on its own `experiment/` branch.
   If a game-design workspace exists, planning resolves **flow-first** (*intent decides the
   door* — a flow-named request grounds on the flow, a system-named one on the system,
   ambiguous → ask) and pulls a `## Design` (+ optional `## Flow Context`) brief citing the

@@ -249,7 +249,7 @@ symbols, ordered edits, interfaces, error handling, acceptance criteria, verific
 commands) is simply too long to live inside `## Checklist`.
 
 **Ultra is strictly opt-in — user-named, never model-inferred.** It is never offered in
-the interactive mode question (except in a merge plan, where the mode question offers it)
+the interactive mode question (except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where it recommends it)
 and never chosen because a feature looks big. You do have to
 ask for it, but you can ask in your own words and in any language ("ultra plan",
 "ультраплан", "make an ultra plan for the inventory") — the request is recognised wherever

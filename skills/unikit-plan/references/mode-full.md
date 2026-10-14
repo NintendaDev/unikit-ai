@@ -12,6 +12,8 @@ These steps run **only in full mode**, before the shared planning workflow.
 
 ### Step A: Decide on Git Branch
 
+**An experiment plan** (the input was experiment cards — `{{skills_dir}}/{{self_name}}/references/experiment-plan.md`): this step is replaced by that file's `## The branch and the base`; do not apply the rest of this step.
+
 **If `git.enabled = false` or `git.create_branches = false`:**
 - Skip this step entirely
 - Mark `branch_created = false`, continue to next step
@@ -69,6 +71,8 @@ recon-agent(prompt:
 - Recon results are used to write **targeted** Phase A prompts — require structured output: list of discovered file paths, class/interface names, and module directories. This data feeds directly into Phase A to avoid redundant broad scanning
 
 ### Step C: Ask About Preferences
+
+**An experiment plan** asks none of the questions below: its settings are fixed by `experiment-plan.md` → `## Settings`; the editor-mode resolution further down still runs.
 
 ```
 AskUserQuestion: Before planning:

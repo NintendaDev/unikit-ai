@@ -8,6 +8,8 @@
 
 This step runs **only in fast mode**, before the shared planning workflow.
 
+**An experiment plan** (`{{skills_dir}}/{{self_name}}/references/experiment-plan.md`) asks none of the questions of Step A and takes the branch step of that file (`## The branch and the base`); the editor-mode resolution below still runs.
+
 ### Step A: Ask About Preferences
 
 ```

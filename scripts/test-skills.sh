@@ -10875,6 +10875,86 @@ else
     fail "EXP-1…EXP-10 experiment skill:$EXP_WHY"
 fi
 
+# --- EXP-P1…EXP-P4: the planner side of the experiment plan — one conditional reference, the
+# second exception to "ultra is named by the user" (said in each place that states the first
+# one), the manifest section and its place, the branch key, the base rule. Source assertions,
+# like MA-5…MA-7. The helpers and accumulators of the EXP block are reused after a reset.
+EXP_WHY=""
+EXP_CHK=0
+EXPP_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+EXPP_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+if [[ ! -s "$EXPP_REF" ]]; then
+    EXP_WHY+=" EXP-P1:missing-reference"
+else
+    # (EXP-P1) the reference: load line, size, the ten sections, neutrality
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPP_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-P1:load-line"
+    EXPP_SZ="$(wc -c < "$EXPP_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPP_SZ <= 12000 )) || EXP_WHY+=" EXP-P1:size=${EXPP_SZ}"
+    for h in '## Resolving the input' '## Checking the cards' '## The snapshot comes first' '## The mode question' \
+             '## Settings' '## The branch and the base' '## The plan folder and the closing message' \
+             '## One plan for a set' '## What the planner does not do' '## Self-check before saving'; do
+        exp_ok "EXP-P1:no-heading(${h#\#\# })" "$h" "$EXPP_REF"
+    done
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXPP_REF" || EXP_WHY+=" EXP-P1:engine-word"
+    exp_no "EXP-P1:agent-variable" '{{agent_' "$EXPP_REF"
+    exp_no "EXP-P1:agent-call" 'Agent(' "$EXPP_REF"
+    # (EXP-P2) pinned commitments and the second exception, said wherever the first one is
+    exp_ok "EXP-P:X1-01" 'An ordinary plan does not read this file' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-02" 'The word "experiment" in free text is not a selector' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-03" 'the snapshot is taken before any git command' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-04" 'ultra is recommended for a set of two or more cards' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-05" 'An explicit request in the user'\''s words for tests or documentation is kept' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-06" 'git.experiment_branch_prefix' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-07" 'defaults to experiment/' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-08" 'full and ultra always ask, even on an experiment branch' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-09" 'Branch: none' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-10" 'experiment-<topic>' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-11" '/unikit-implement experiment-<topic>' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-12" 'no PR checkpoint task is written' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-13" 'Milestone: "none"' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-14" 'does not redesign the game idea' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-15" 'Step 4.5 does not run' "$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+    exp_ok "EXP-P:X1-21" '**An experiment input**' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-22" '{{skills_dir}}/{{self_name}}/references/experiment-plan.md' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-23" 'WARN [experiment] experiment-plan reference missing' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-24" '`## Experiment Context`' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-25" 'For an experiment input the mode question is the one in' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-26" '**Experiment plan:**' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-27" 'An experiment plan skips this step' "$ROOT_DIR/skills/unikit-plan/SKILL.md"
+    exp_ok "EXP-P:X1-41" 'references/experiment-plan.md' "$ROOT_DIR/skills/unikit-plan/references/mode-full.md"
+    exp_ok "EXP-P:X1-42" 'references/experiment-plan.md' "$ROOT_DIR/skills/unikit-plan/references/mode-fast.md"
+    exp_ok "EXP-P:X1-43" 'two or more experiment cards' "$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+    exp_ok "EXP-P:X1-31" '### Experiment context section' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    exp_ok "EXP-P:X1-32" '## Experiment Context' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    exp_ok "EXP-P:X1-33" 'Branch: <the plan'\''s branch name | none>' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    exp_ok "EXP-P:X1-34" 'A path without the content is not a snapshot' "$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+    exp_ok "EXP-P:X1-35" '## Experiment Context   (only for a plan built from experiment cards)' "$ROOT_DIR/skills/unikit-plan/references/ULTRA-PLAN-FORMAT.md"
+    exp_ok "EXP-P:X1-36" 'T30 experiment-context-after-balance-context-before-settings' "$ROOT_DIR/scripts/test-ultra-plan-contract.mjs"
+    exp_ok "EXP-P:X1-51" 'experiment_branch_prefix: experiment/' "$ROOT_DIR/skills/unikit/references/config-template.yaml"
+    exp_ok "EXP-P:X1-52" 'experiment_branch_prefix' "$ROOT_DIR/docs/configuration.md"
+    exp_ok "EXP-P:X1-61" 'takes its base from the `Base:` line' "$ROOT_DIR/data/plan-boundaries.md"
+    EXPP_EXC="$({ grep -cF 'where the mode question offers it, and in a set of two or more experiment cards, where the mode question recommends it' "$EXPP_PLAN" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPP_EXC >= 3 )) || EXP_WHY+=" EXP-P2:second-exception-x${EXPP_EXC}-of-3"
+    EXPP_OLD="$({ grep -cF 'except in a merge plan, where the mode question offers it' "$EXPP_PLAN" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPP_OLD >= 3 )) || EXP_WHY+=" EXP-P2:merge-exception-x${EXPP_OLD}-of-3"
+    # (EXP-P3) the six help and documentation files of MA-7 and mode-ultra say the second exception too
+    for f in skills/unikit-help/references/pipelines.md skills/unikit-help/references/skill-map.md docs/plan-files.md \
+             docs/skills.md docs/workflow.md docs/skills/unikit-plan-rationale.md; do
+        exp_ok "EXP-P3:no-second-exception(${f##*/})" 'experiment cards' "$ROOT_DIR/$f"
+    done
+    # (EXP-P4) the branch key is read by skills only; the bundle script knows nothing about the section
+    EXPP_CFG_N="$({ grep -cF 'experiment_branch_prefix' "$ROOT_DIR/docs/configuration.md" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPP_CFG_N >= 2 )) || EXP_WHY+=" EXP-P4:config-docs-mentions=${EXPP_CFG_N}"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF 'experiment_branch_prefix' "$ROOT_DIR/src" || EXP_WHY+=" EXP-P4:key-read-by-code"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qF 'Experiment' "$ROOT_DIR/skills/unikit-plan/scripts/plan-bundle.mjs" || EXP_WHY+=" EXP-P4:bundle-script-knows-the-section"
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-P1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-P1…EXP-P4 experiment plan, planner side: one reference, the second ultra exception said everywhere the first is, section and place, branch key, base rule (${EXP_CHK} checks)"
+else
+    fail "EXP-P1…EXP-P4 experiment plan, planner side:$EXP_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────
