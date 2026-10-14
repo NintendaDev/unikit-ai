@@ -10955,6 +10955,95 @@ else
     fail "EXP-P1…EXP-P4 experiment plan, planner side:$EXP_WHY"
 fi
 
+# --- EXP-R1…EXP-R4: the prototype-profile contract — one flat asset, ten sections, neutral, not
+# restated, delivered. Source assertions, like HB-1…HB-4 for the hand-back contract.
+EXP_WHY=""
+EXP_CHK=0
+EXPR_FILE="$ROOT_DIR/data/prototype-profile.md"
+if [[ ! -s "$EXPR_FILE" ]]; then
+    EXP_WHY+=" EXP-R1:missing-contract"
+else
+    # (EXP-R1) flat and neutral; the policy carrier of the code group is untouched
+    exp_no "EXP-R1:unresolved-variable" '{{' "$EXPR_FILE"
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qwE 'Unity|Godot|Unreal|GDScript' "$EXPR_FILE" || EXP_WHY+=" EXP-R1:engine-word"
+    exp_no "EXP-R1:maintainer-record-pointer" '.ai-factory' "$EXPR_FILE"
+    exp_no "EXP-R1:profile-in-dev-principles" 'Experiment Context' "$ROOT_DIR/data/dev-principles.md"
+    EXPR_H="$({ grep -c '^## ' "$EXPR_FILE" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPR_H" == "10" ]] || EXP_WHY+=" EXP-R1:section-count=${EXPR_H}"
+    # (EXP-R2) pinned commitments — the ten headings (whole lines) and the key sentences
+    exp_ok "EXP-R:X2-01" 'Do not restate this contract inside a skill' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-02" 'The manifest has `## Experiment Context`' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-03" 'WARN [prototype] profile contract missing' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-04" '## Trigger and fallback' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-05" '## Mandatory' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-06" '## Softened' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-07" '## Switched off' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-08" '## Branch and base' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-09" '## Role: execution' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-10" '## Role: verification and pull request' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-11" '## Role: planning' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-12" '## Role: quality and the rest' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-13" '## Not this contract' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-14" 'Prototype plan: read the section for your role in .unikit/system/prototype-profile.md' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-15" 'INFO [prototype] no pull request for a prototype plan' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-16" 'A finished prototype does not mean the hypothesis is supported' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-17" 'The prototype compiles and launches' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-18" 'direct references and local parameters are acceptable' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-19" 'creates no entry in the project'\''s TODO' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-20" 'is never rewritten' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-21" 'the current branch is not the plan'\''s branch' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-22" 'continue here · switch to the plan'\''s branch · stop' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-23" 'Branch: <value>. Base: <value>. Testing: <yes|no>. Docs: <yes|no>.' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-24" 'Step 3.7' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-25" 'Step 3.10' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-26" 'Step 5.1' "$ROOT_DIR/data/prototype-profile.md"
+    exp_ok "EXP-R:X2-27" 'Step 7.3' "$ROOT_DIR/data/prototype-profile.md"
+    # (EXP-R3) delivered: the constant, the wrapper, both call sites, the size ceilings
+    exp_ok "EXP-R3:constant" "PROTOTYPE_PROFILE_FILE = 'prototype-profile.md'" "$ROOT_DIR/src/core/constants.ts"
+    exp_ok "EXP-R3:wrapper" 'export async function installPrototypeProfileContract(' "$ROOT_DIR/src/core/installer/system-assets.ts"
+    exp_ok "EXP-R3:init-call" 'await installPrototypeProfileContract(projectDir);' "$ROOT_DIR/src/cli/commands/init.ts"
+    exp_ok "EXP-R3:update-call" 'await installPrototypeProfileContract(projectDir);' "$ROOT_DIR/src/cli/commands/update.ts"
+    exp_ok "EXP-R3:install-test" 'Test 1b-pp' "$ROOT_DIR/scripts/test-install.sh"
+    exp_ok "EXP-R3:update-test" 'Test 30p' "$ROOT_DIR/scripts/test-update.sh"
+    # (EXP-R4) the steps the contract names exist in the readers where it names them: a renamed or
+    # renumbered step fails here, not silently. <file>|<heading as an ERE>|<label>
+    EXPR_STEPS=(
+        "skills/unikit-implement/SKILL.md|^### Step 1: |implement:1"
+        "skills/unikit-implement/SKILL.md|^### Step 1\.5: |implement:1.5"
+        "skills/unikit-implement/SKILL.md|^\*\*3\.2: |implement:3.2"
+        "skills/unikit-implement/SKILL.md|^\*\*3\.7: |implement:3.7"
+        "skills/unikit-implement/SKILL.md|^\*\*3\.10: |implement:3.10"
+        "skills/unikit-implement/SKILL.md|^\*\*5\.1: |implement:5.1"
+        "skills/unikit-implement/SKILL.md|^\*\*5\.3: |implement:5.3"
+        "skills/unikit-implement/SKILL.md|^\*\*5\.8: |implement:5.8"
+        "skills/unikit-verify/SKILL.md|^### 2\.3 |verify:2.3"
+        "skills/unikit-verify/SKILL.md|^### 3\.2 |verify:3.2"
+        "skills/unikit-verify/SKILL.md|^### 3\.3 |verify:3.3"
+        "skills/unikit-verify/SKILL.md|^### 3\.4 |verify:3.4"
+        "skills/unikit-verify/SKILL.md|^### 3\.5 |verify:3.5"
+        "skills/unikit-verify/SKILL.md|^### 3\.6 |verify:3.6"
+        "skills/unikit-verify/SKILL.md|^### 3\.7 |verify:3.7"
+        "skills/unikit-verify/SKILL.md|^### 3\.9 |verify:3.9"
+        "skills/unikit-verify/SKILL.md|^## Step 5: |verify:5"
+        "skills/unikit-fix/SKILL.md|^## Step 5: |fix:5"
+        "skills/unikit-fix/SKILL.md|^### 7\.3 |fix:7.3"
+        "skills/unikit-pr/SKILL.md|^## Step 0: |pr:0"
+    )
+    for expr_row in "${EXPR_STEPS[@]}"; do
+        expr_file="$ROOT_DIR/${expr_row%%|*}"
+        expr_rest="${expr_row#*|}"
+        expr_re="${expr_rest%|*}"
+        expr_lab="${expr_rest##*|}"
+        EXP_CHK=$((EXP_CHK + 1)); grep -qE -- "$expr_re" "$expr_file" || EXP_WHY+=" EXP-R4:step-missing(${expr_lab})"
+    done
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-R1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-R1…EXP-R4 prototype profile contract: one flat asset, ten sections, neutral, delivered by init and update (${EXP_CHK} checks)"
+else
+    fail "EXP-R1…EXP-R4 prototype profile contract:$EXP_WHY"
+fi
+
 # ─────────────────────────────────────────────
 # Part 7: Codebase integrity checks
 # ─────────────────────────────────────────────

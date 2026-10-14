@@ -270,6 +270,23 @@ assert_not_contains "$BALANCE_HANDBACK_PATH" '\{\{' \
   "balance-handback.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-pp: prototype-profile.md installed as a system asset (flat copy, no vars)
+# Read by the executors, verifiers, reviewers and committers of a plan built from experiment
+# cards (a manifest with ## Experiment Context). Update-path coverage like 1b-bh above; the
+# init.ts call site is SA-1's job. assert_contains is grep -E: the [prototype] tag is escaped.
+# ─────────────────────────────────────────────────────
+PROTOTYPE_PROFILE_PATH="$CLAUDE_DIR/.unikit/system/prototype-profile.md"
+assert_exists "$PROTOTYPE_PROFILE_PATH" "prototype-profile.md created in .unikit/system/"
+assert_contains "$PROTOTYPE_PROFILE_PATH" '^## Role: execution$' \
+  "prototype-profile.md carries the ## Role: execution section its readers name"
+assert_contains "$PROTOTYPE_PROFILE_PATH" '^## Branch and base$' \
+  "prototype-profile.md carries the ## Branch and base section its readers name"
+assert_contains "$PROTOTYPE_PROFILE_PATH" 'WARN \[prototype\]' \
+  "prototype-profile.md carries the canonical WARN [prototype] label"
+assert_not_contains "$PROTOTYPE_PROFILE_PATH" '\{\{' \
+  "prototype-profile.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
