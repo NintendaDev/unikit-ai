@@ -26,6 +26,7 @@ allowed-tools:
   - Bash(date *)
   - Bash(mkdir *)
   - Agent
+  - Skill
   - AskUserQuestion
 disable-model-invocation: false
 user-invocable: true
@@ -125,8 +126,8 @@ file named below from `{{skills_dir}}/{{self_name}}/references/` and follow it:
 | Intent (from the request and any attachment) | Branch file |
 |---|---|
 | Start balancing a topic, or from a research | `mode-open.md` |
-| A hand-back report is pasted or named by path | `mode-ingest.md` |
-| Change a decision, a band, the composition of a checkpoint, drop a point; issue the next point, add a point, close or reopen a document, repair an inconsistent file | `mode-revise.md` |
+| A hand-back report is pasted or named by path, or the result of an experiment (`results.md`) is named by path | `mode-ingest.md` |
+| Change a decision, a band, the composition of a checkpoint, drop a point; issue the next point, add a point, close or reopen a document, repair an inconsistent file, change the route of the current point | `mode-revise.md` |
 | "What next", "where are we", a list, a slug alone | `mode-status.md` |
 | Called with no arguments | `mode-status.md` (with the next action offered) |
 
@@ -140,7 +141,10 @@ as revise and never return to status.
 option first. Do not guess. Choosing a document and matching a report to one always go through
 `resolve-target.md`; investigation is `investigation.md` (loaded by the open branch, and
 by ingest and revise when facts from code or data are needed to compose a point); the closing
-question set is `closure-set.md`; the templates are `template-balance.md` and
+question set is `closure-set.md`; the route of a point and the receiving of experiment
+results are `experiment-route.md` (loaded by the open, ingest and revise branches when a point
+is issued, by status for a point on the experiment route, and by ingest for the result of an
+experiment); the templates are `template-balance.md` and
 `template-checkpoints.md` (loaded when a file is created, and read for `Allowed header
 combinations` and the none-form where the branches cite them).
 
@@ -163,19 +167,39 @@ there is no plan command — say why instead. Per the membrane, the lines before
 the point by its goal in words of the interface language; the command itself carries only the
 path to the file, and no point code is printed in it.
 
+When the current point goes by the experiment route (`experiment-route.md`), the plan command is
+not printed. After the user chose "later" the last block is
+
+```
+🧭 /unikit-gd-experiment <path to CHECKPOINTS.md>
+```
+
+and after "now" the called skill ends the turn with its own command, so nothing follows it from here.
+
+## Skill calls
+
+Where this skill says to **invoke `unikit-gd-experiment`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation. The called skill holds its own conversation with the user in this session and returns control here. A call site that names no argument passes none. Only `experiment-route.md` makes this call, and only after the user chose "now" there.
+
+1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
+2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/unikit-gd-experiment/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
+3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
+4. Only if that file cannot be read: print `Run: /unikit-gd-experiment <arguments>` for the user and stop.
+
 ## Ownership Boundaries
 
 - **Owns:** `.unikit/gamedesign/balance/` — `INDEX.md`, and per document
-  `<slug>/BALANCE.md`, `<slug>/CHECKPOINTS.md`, `<slug>/results/HB-<n>.md`.
+  `<slug>/BALANCE.md`, `<slug>/CHECKPOINTS.md`, `<slug>/results/HB-<n>.md`, `<slug>/results/PT-<n>.md`.
 - **Reads (only):** the GDD (`GAME.md`, `GD-IDS.yaml`, system documents); `researches/` by an
-  explicit path; the project source of the named slice, as a research verb.
+  explicit path; the result of an experiment named by path (`results.md` under
+  `.unikit/gamedesign/experiments/`), as a document; the project source of the named slice, as a research verb.
 - **Never:** edit the GDD, `GD-IDS.yaml` or code; scan the code workspace `.unikit/code/`
   (plans, code researches) — from there only a document the user named or pasted is read, as a
   document; register balance documents in `GD-IDS.yaml` (first slice); apply the coherence gate
-  to a balance document (first slice); call another skill (there is no `Skill` tool) — commands
+  to a balance document (first slice); call another skill — except `unikit-gd-experiment`, and only after the user chose "now"
+  (`## Skill calls`) — commands
   are only printed. A design change goes to its owner: the proposal is left for `/unikit-gd-system`.
 - **Provenance:** a fact lifted from code carries `provenance: extracted from code` and never
-  edits the GDD; the other tags (`measured`, `decided by user`, `estimate`) live only in the
+  edits the GDD; the other tags (`measured`, `decided by user`, `estimate`, `from playtest`) live only in the
   balance document.
 
 ## Quick Reference
@@ -188,4 +212,6 @@ path to the file, and no point code is printed in it.
 /unikit-gd-balance <path to a hand-back report>      → receive results, decide, issue the next point or close
 /unikit-gd-balance <slug> <path to a hand-back report> → same, the form the executors print; the slug names the document
 /unikit-gd-balance <pasted results table>            → same; the document is matched, never guessed
+/unikit-gd-balance <path to an experiment's results.md> → receive the results of an experiment, decide, issue the next point or close
+/unikit-gd-balance <slug> <path to an experiment's results.md> → same, the form the experiment skill prints
 ```

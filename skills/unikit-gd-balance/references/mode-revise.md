@@ -17,6 +17,8 @@ those too). Confirmation questions name a point by its goal, never by its code o
   add a point, reopen` below — a dropped point never becomes `done`.
 - A change of design (numbers in the GDD) is not made here: put a proposal into `Design deltas`
   for `/unikit-gd-system`.
+- **The route of the current point** is changed on request through `experiment-route.md` →
+  `## Weighing the route`; the log gets the entry that `## Recording the route` describes.
 
 ## Close the document
 

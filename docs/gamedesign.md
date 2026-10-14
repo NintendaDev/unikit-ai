@@ -339,11 +339,12 @@ under `.unikit/gamedesign/balance/<slug>/`, and issues **one** detailed Balance 
 time:
 
 - `BALANCE.md` — what is known, tagged by source (`measured` · `extracted from code` ·
-  `decided by user` · `estimate`), the diagnosis by layer, the levers, the closing set Q1–Q11;
+  `decided by user` · `estimate` · `from playtest`), the diagnosis by layer, the levers, the closing set Q1–Q11;
 - `CHECKPOINTS.md` — a header (`Slug`, `Status`, `Current`, `Updated`), a coarse `## Roadmap`,
   the one detailed `## Current Balance Checkpoint`, and an append-only
   `## Balance Checkpoint Log`;
-- `results/HB-<n>.md` — received hand-back reports, copied verbatim.
+- `results/HB-<n>.md` — received hand-back reports, copied verbatim;
+- `results/PT-<n>.md` — accepted results of experiments: the assessment and the excerpts of the originals it rests on.
 
 `INDEX.md` — the derived list of all documents — is not inside `<slug>/`: it sits one level
 above the document folders, in `.unikit/gamedesign/balance/`.

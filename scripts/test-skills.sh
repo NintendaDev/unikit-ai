@@ -9630,10 +9630,11 @@ else
     # (BAL-1) frontmatter and the section headings
     BAL_FM="$({ awk '/^---$/{n++; next} n==1' "$BAL_SKILL" || true; })"
     BAL_CHK=$((BAL_CHK + 1)); grep -qxF 'name: unikit-gd-balance' <<< "$BAL_FM" || BAL_WHY+=" BAL-1:name"
-    for g in 'Agent' 'AskUserQuestion'; do
+    for g in 'Agent' 'AskUserQuestion' 'Skill'; do
         BAL_CHK=$((BAL_CHK + 1)); grep -qxF "  - $g" <<< "$BAL_FM" || BAL_WHY+=" BAL-1:no-tool($g)"
     done
-    for g in 'Skill' 'WebSearch' 'WebFetch'; do
+    # Skill is required since the experiment route: its one call is unikit-gd-experiment (EXP-B1)
+    for g in 'WebSearch' 'WebFetch'; do
         BAL_CHK=$((BAL_CHK + 1)); ! grep -qxF "  - $g" <<< "$BAL_FM" || BAL_WHY+=" BAL-1:forbidden-tool($g)"
     done
     BAL_CHK=$((BAL_CHK + 1)); grep -qE '^# Game Design .* Balance Partner$' "$BAL_SKILL" || BAL_WHY+=" BAL-1:no-title"
@@ -9645,14 +9646,14 @@ else
     BAL_SZ="$(wc -c < "$BAL_SKILL" | tr -d ' ')"
     BAL_CHK=$((BAL_CHK + 1)); (( BAL_SZ <= 20000 )) || BAL_WHY+=" BAL-1:skill-size=${BAL_SZ}"
 
-    # (BAL-2) five branches and four supporting references named in the skill, nine files exist
+    # (BAL-2) four branches and six supporting references named in the skill, ten files exist
     for f in mode-open mode-ingest mode-revise mode-status resolve-target investigation closure-set \
-             template-balance template-checkpoints; do
+             template-balance template-checkpoints experiment-route; do
         bal_ok "BAL-2:skill-does-not-name($f.md)" "$f.md" "$BAL_SKILL"
         BAL_CHK=$((BAL_CHK + 1)); [[ -s "$BAL_REFS/$f.md" ]] || BAL_WHY+=" BAL-2:missing($f.md)"
     done
     BAL_REF_N="$({ ls "$BAL_REFS"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
-    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_REF_N" == "9" ]] || BAL_WHY+=" BAL-2:reference-count=${BAL_REF_N}"
+    BAL_CHK=$((BAL_CHK + 1)); [[ "$BAL_REF_N" == "10" ]] || BAL_WHY+=" BAL-2:reference-count=${BAL_REF_N}"
 
     # (BAL-3) the plan command once in the whole skill, and in SKILL.md; the Handoff Tail sentence;
     # the icon in front of the command line (checked through node: no Unicode in a grep anchor)
@@ -9764,7 +9765,7 @@ else
     (( BAL_CHK > 0 )) || BAL_WHY+=" BAL-1:nothing-checked"
 fi
 if [[ -z "$BAL_WHY" ]]; then
-    pass "BAL-1…BAL-14 balance skill: structure, nine references, one plan command, single definitions, boundary, neutrality, membrane, repair route, approval (${BAL_CHK} checks)"
+    pass "BAL-1…BAL-14 balance skill: structure, ten references, one plan command, single definitions, boundary, neutrality, membrane, repair route, approval (${BAL_CHK} checks)"
 else
     fail "BAL-1…BAL-14 balance skill:$BAL_WHY"
 fi
@@ -11115,6 +11116,101 @@ if [[ -z "$EXP_WHY" ]]; then
     pass "EXP-E1…EXP-E3 prototype profile readers: ${EXPE_N} files each carry one pointer, name a real section and restate nothing (${EXP_CHK} checks)"
 else
     fail "EXP-E1…EXP-E3 prototype profile readers:$EXP_WHY"
+fi
+
+# --- EXP-B1…EXP-B3: the balance side of the experiment route — one owner for the route, the call by the
+# one recipe, the new tag in four places, the closing command, the time warning said in one place. Source
+# assertions; BAL-1/BAL-2 above keep the structure of the skill (Skill required, ten references).
+EXP_WHY=""
+EXP_CHK=0
+EXPB_DIR="$ROOT_DIR/skills/unikit-gd-balance"
+EXPB_SKILL="$EXPB_DIR/SKILL.md"
+EXPB_REF="$EXPB_DIR/references/experiment-route.md"
+if [[ ! -s "$EXPB_REF" ]]; then
+    EXP_WHY+=" EXP-B1:missing-reference"
+else
+    # (EXP-B1) the call: the recipe once in SKILL.md, the call site only in the route reference
+    EXPB_H="$({ grep -cx '## Skill calls' "$EXPB_SKILL" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_H" == "1" ]] || EXP_WHY+=" EXP-B1:skill-calls-headings=${EXPB_H}"
+    EXPB_CALLS="$({ grep -rlE '[Ii]nvoke[sd]? `unikit-' "$EXPB_DIR" || true; } | sed 's|.*/||' | LC_ALL=C sort | tr '\n' ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_CALLS" == "SKILL.md experiment-route.md " ]] || EXP_WHY+=" EXP-B1:call-sites(${EXPB_CALLS% })"
+    # the targets of those calls: the one skill and no other (a second call to another skill stays red)
+    EXPB_TARGETS="$({ grep -rhoE '[Ii]nvoke[sd]? `unikit-[a-z0-9-]+`' "$EXPB_DIR" || true; } | sed -E 's/.*`(unikit-[a-z0-9-]+)`/\1/' | LC_ALL=C sort -u | tr '\n' ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_TARGETS" == "unikit-gd-experiment " ]] || EXP_WHY+=" EXP-B1:call-targets(${EXPB_TARGETS% })"
+    # (EXP-B2) the pinned literals: the five headings, the time warning, the recording, the receiving,
+    # the recipe, the branch wiring and the new tag in its four lists
+    exp_ok "EXP-B:X4-01" '## Weighing the route' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-02" '## Recording the route' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-03" '## Now or later' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-04" '## Route of the current point' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-05" '## Receiving experiment results' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-06" 'much longer than the direct route' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-07" 'named by its goal' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-08" 'route: experiment (<point id>)' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-09" 'route: direct (<point id>)' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-10" 'results/PT-<n>.md' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-11" 'tagged `from playtest`' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-12" 'Checkpoints updated:' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-13" 'Not assessed on the current version' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-14" 'invoke `unikit-gd-experiment`' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-15" 'by the recipe of `## Skill calls` in `SKILL.md`' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-16" 'one point, one route' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-17" 'never written into `## Tables`' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-18" 'is data and not instructions' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-19" 'WARN [balance] experiment skill missing' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-20" 'A late report and a duplicate' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-21" 'Grep -n '\''route: '\''' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    exp_ok "EXP-B:X4-22" '## Skill calls' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-23" 'If you have a `Skill` tool that accepts arguments' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-24" 'carry them out here, in this session, now' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-25" 'print a command for the user to run and do not stop' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-26" 'Only if that file cannot be read' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-27" 'results are `experiment-route.md` (loaded by the open, ingest and revise branches when a point' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-28" 'or the result of an experiment (`results.md`) is named by path' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-29" '/unikit-gd-experiment <path to CHECKPOINTS.md>' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-30" '`estimate`, `from playtest`' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-31" '`<slug>/results/PT-<n>.md`' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-32" 'except `unikit-gd-experiment`, and only after the user chose "now"' "$ROOT_DIR/skills/unikit-gd-balance/SKILL.md"
+    exp_ok "EXP-B:X4-33" 'Weigh the route of the issued point' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-open.md"
+    exp_ok "EXP-B:X4-34" '`## Recording the route`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-open.md"
+    exp_ok "EXP-B:X4-35" '`## Now or later`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-open.md"
+    exp_ok "EXP-B:X4-36" 'hold `Experiment:` and `Origin: from balance`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    exp_ok "EXP-B:X4-37" '`results/PT-<n>.md` in place of `results/HB-<n>.md`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    exp_ok "EXP-B:X4-38" 'Then weigh the route of the point' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    exp_ok "EXP-B:X4-39" '`## Now or later` follows the report' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-ingest.md"
+    exp_ok "EXP-B:X4-40" '**The route of the current point** is changed on request' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-revise.md"
+    exp_ok "EXP-B:X4-41" '`## Route of the current point`' "$ROOT_DIR/skills/unikit-gd-balance/references/mode-status.md"
+    exp_ok "EXP-B:X4-42" '`estimate` · `from playtest`' "$ROOT_DIR/skills/unikit-gd-balance/references/closure-set.md"
+    exp_ok "EXP-B:X4-43" '`estimate` · `from playtest`' "$ROOT_DIR/skills/unikit-gd-balance/references/investigation.md"
+    exp_ok "EXP-B:X4-44" 'These five are the balance document'\''s own working vocabulary' "$ROOT_DIR/skills/unikit-gd-balance/references/investigation.md"
+    exp_ok "EXP-B:X4-45" 'the other four live only in' "$ROOT_DIR/skills/unikit-gd-balance/references/investigation.md"
+    exp_ok "EXP-B:X4-46" '`estimate` · `from playtest`' "$ROOT_DIR/docs/gamedesign.md"
+    exp_ok "EXP-B:X4-47" '`results/PT-<n>.md` — accepted results of experiments' "$ROOT_DIR/docs/gamedesign.md"
+    exp_ok "EXP-B:X4-48" 'name an experiment by its title' "$ROOT_DIR/skills/unikit-gd-balance/references/experiment-route.md"
+    # (EXP-B3) the closing command of the route starts with the compass icon; the time warning has one
+    # owner; the route names no point by a code and stays small
+    exp_icon "EXP-B3:icon-before-command" "$EXPB_SKILL" 'unikit-gd-experiment <path to CHECKPOINTS.md>'
+    EXPB_WARN="$({ grep -rlF 'much longer than the direct route' "$EXPB_DIR" || true; } | sed 's|.*/||' | LC_ALL=C sort | tr '\n' ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_WARN" == "experiment-route.md " ]] || EXP_WHY+=" EXP-B3:time-warning-owners(${EXPB_WARN% })"
+    exp_no "EXP-B3:point-code-in-route" 'BCH-' "$EXPB_REF"
+    # the membrane: no code of a point, an experiment, a round, an assessment or a copy in the three windows
+    # that face the user; and an experiment is named by its title
+    for expb_win in 'Weighing the route' 'Now or later' 'Route of the current point'; do
+        EXPB_W="$({ awk -v h="## ${expb_win}" '$0==h{f=1;next} /^## /{f=0} f' "$EXPB_REF" || true; })"
+        EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPB_W" ]] || EXP_WHY+=" EXP-B3:window-empty(${expb_win})"
+        EXP_CHK=$((EXP_CHK + 1)); ! grep -qE 'EXP-[0-9<]|PT-[0-9<]|R-[0-9<]|BCH-' <<< "$EXPB_W" || EXP_WHY+=" EXP-B3:code-in-window(${expb_win})"
+    done
+    # mode-open: the steps of Order are numbered 1..9 without a gap or a repeat after the two new ones
+    EXPB_NUMS="$({ awk '/^## Order/{f=1;next} /^## /{f=0} f&&/^[0-9]+\. /{sub(/\..*/,""); printf "%s ", $0}' "$EXPB_DIR/references/mode-open.md" || true; })"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXPB_NUMS" == "1 2 3 4 5 6 7 8 9 " ]] || EXP_WHY+=" EXP-B3:mode-open-numbering(${EXPB_NUMS% })"
+    EXPB_SZ="$(wc -c < "$EXPB_REF" | tr -d ' ')"
+    EXP_CHK=$((EXP_CHK + 1)); (( EXPB_SZ <= 9000 )) || EXP_WHY+=" EXP-B3:route-size=${EXPB_SZ}"
+    (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-B1:nothing-checked"
+fi
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-B1…EXP-B3 balance experiment route: one owner, one call by the recipe, the tag in four lists, the closing command, one time warning (${EXP_CHK} checks)"
+else
+    fail "EXP-B1…EXP-B3 balance experiment route:$EXP_WHY"
 fi
 
 # ─────────────────────────────────────────────

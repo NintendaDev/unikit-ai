@@ -18,7 +18,7 @@ interview of the open branch asks Q1–Q5 first; the rest are filled as points r
 | Q11 | Out of scope |
 
 Every answer carries a tag — `measured` · `extracted from code` · `decided by user` ·
-`estimate` — or an explicit deferral with an owner.
+`estimate` · `from playtest` — or an explicit deferral with an owner.
 
 ## Closing rule
 

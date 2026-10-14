@@ -4,6 +4,8 @@ The branch for a report pasted or named by path. Say points by their goal in eve
 menu and status line (`named by its goal`, TIER B of the membrane); codes stay in files and
 tables. A missing item is described in words by its expected result, not by its `<id>.W<n>`.
 
+**Which kind of file.** If the first 12 lines of the named file hold `Experiment:` and `Origin: from balance`, it is the result of an experiment and not a hand-back report: steps 1–7 below are replaced by `experiment-route.md` → `## Receiving experiment results`, and steps 8–11 apply as written, with `results/PT-<n>.md` in place of `results/HB-<n>.md`. A file with `Experiment:` and `Origin: none` did not come from a checkpoint: say so in one line and change no state.
+
 ## Order
 
 1. **Get the report.** A path the person named, or pasted text. A paste with no header (only a
@@ -58,10 +60,13 @@ tables. A missing item is described in words by its expected result, not by its 
    (`closure-set.md`); write `Why`, `Done so far` (it points at the reports), `Start from`,
    `Work`, `Until`, `Not in this point`, `Constraints`, `Capabilities needed`, `Design deltas`;
    grade every `Work` item for feasibility exactly as step 6 of `mode-open.md` does; new item ids
-   take the next `W<n>`, a used number is never reused.
+   take the next `W<n>`, a used number is never reused. Then weigh the route of the point
+   (`experiment-route.md` → `## Weighing the route`); the log entry of this decision says what
+   `## Recording the route` says.
 10. **Write order:** `results/HB-<n>.md` → `BALANCE.md` → `CHECKPOINTS.md` → `INDEX.md`. A write
     error at any step stops the chain and the user is told the last file written. If the copy
     into `results/` was not written, the chain stops before `BALANCE.md` and the cause is named.
 11. **Report** (the terminal block, TIER A): the outcome — the point by its goal (the code only
     as a secondary tag in parentheses); the closing set status by `closure-set.md`; the plan
-    command last (`SKILL.md` → `## Closing block`), or the reason there is none.
+    command last (`SKILL.md` → `## Closing block`), or the reason there is none. On the experiment
+    route `experiment-route.md` → `## Now or later` follows the report, instead of the plan command.

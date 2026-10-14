@@ -26,16 +26,21 @@ the files.
    named slice (`recon-agent`). Two grades, defined here and nowhere else: *not feasible as
    written* — the item is not issued, it is revised with the user; *feasible with a constraint*
    — the item is issued and the constraint is written into `Constraints`.
-7. **Approve, then write.** Show the draft in the interface language — the subject, the
-   decisions with their sources, the roadmap as goals, the issued point's goal and its work — and
+7. **Route.** Weigh the route of the issued point — `experiment-route.md` → `## Weighing the
+   route`; the draft of the next step shows the route that was chosen.
+8. **Approve, then write.** Show the draft in the interface language — the subject, the
+   decisions with their sources, the roadmap as goals, the issued point's goal, its work and its
+   route — and
    ask once (`AskUserQuestion`, the recommended option first): `1.` write it · `2.` change
    something · `3.` stop. Nothing is written before the answer (`gd-principles` → Collaborative
    Protocol). On `1.`, in this order: `mkdir -p .unikit/gamedesign/balance/<slug>/results` →
    `BALANCE.md` → `CHECKPOINTS.md` (`Status: open`, `Current: BCH-1`, `Updated` from
-   `Bash(date *)`) → redraw `INDEX.md`. If `mkdir` is refused, tell the user the path, write
+   `Bash(date *)`; on the experiment route its log holds the entry of `experiment-route.md` →
+   `## Recording the route`) → redraw `INDEX.md`. If `mkdir` is refused, tell the user the path, write
    nothing, change no state.
-8. **Report** (the terminal block, TIER A): what was created — the document by name, the issued
+9. **Report** (the terminal block, TIER A): what was created — the document by name, the issued
    point by its goal (the code only as a secondary tag in parentheses); the closing set status;
-   the plan command last (`SKILL.md` → `## Closing block`).
+   the plan command last (`SKILL.md` → `## Closing block`); on the experiment route, instead of it,
+   `experiment-route.md` → `## Now or later`.
 
 Questions of the interview (step 4) and status lines along the way are TIER B: no codes.

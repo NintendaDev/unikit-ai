@@ -21,7 +21,10 @@ actions for any other document belong to `## One slug`. The action is chosen by 
 header:
 
 - **Open, with a current point** → "run the plan" and the plan command — its form is defined
-  once, in `SKILL.md` → `## Closing block`; it is printed last, and nothing follows it.
+  once, in `SKILL.md` → `## Closing block`; it is printed last, and nothing follows it. On the
+  experiment route (`experiment-route.md` → `## Route of the current point`) the action is
+  "continue with the experiments of the point" and the command is the one the closing block gives
+  for that route.
 - **Open, no current point** → "the next point is needed". One `AskUserQuestion`, the
   recommended option first: `1.` issue the next point (recommended) · `2.` revise the roadmap ·
   `3.` nothing. A choice of `1` or `2` loads `mode-revise.md` in the same turn. A command
