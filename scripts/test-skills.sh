@@ -11237,6 +11237,9 @@ exp_ok "EXP-D:X5-17" '| experiments | `/unikit-gd-experiment [<problem>, <feedba
 exp_ok "EXP-D:X5-18" '- **Experiment plan.** Given experiment cards' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
 exp_ok "EXP-D:X5-19" '- **Route.** At each checkpoint it recommends direct measurement' "$ROOT_DIR/skills/unikit-help/references/skill-map.md"
 exp_ok "EXP-D:X5-20" '- Given experiment cards (a path to an `experiment.md`' "$ROOT_DIR/docs/skills.md"
+# the one gap of the profile readers is said where the readers are listed: commit does not see a fast plan
+exp_ok "EXP-D:X5-21" 'so it commits a flat `.unikit/code/PLAN.md` as an ordinary plan' "$ROOT_DIR/docs/workflow.md"
+exp_ok "EXP-D:X5-22" 'so it commits a flat `.unikit/code/PLAN.md` (a `fast` plan) as an ordinary plan' "$ROOT_DIR/docs/plan-files.md"
 # (EXP-D2) the counters of the old state are not left behind
 exp_no "EXP-D2:twelve-skills-gamedesign" 'twelve `unikit-gd-' "$ROOT_DIR/docs/gamedesign.md"
 exp_no "EXP-D2:twelve-skills-skills" 'twelve `unikit-gd-' "$ROOT_DIR/docs/skills.md"
