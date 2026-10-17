@@ -134,9 +134,12 @@ reference files named below from `{{skills_dir}}/{{self_name}}/references/` and 
 | An idea was chosen; a direct request for a specification; a request to compare variants of one question; edit a draft | `mode-specify.md`, `template-experiment.md`, `storage-and-index.md` |
 | Feedback from real play: pasted text, a forwarded chat, a file; "evaluate", "re-evaluate", "score" | `mode-evaluate.md`, `storage-and-index.md` |
 | List, filter, compare, best, failed, retest, update, archive, lessons across several, repair the index | `mode-manage.md`, `storage-and-index.md` |
+| An experiment is named by words instead of a number: "the latest", "the one about onboarding" | `lookup.md` |
 | A fact about what the game already does is needed | `context-and-research.md` |
 | Cards are to be handed to the planner | `planning-handoff.md` |
 | A path to a `CHECKPOINTS.md` file, or a card or an evaluation that carries an origin block | `balance-link.md` |
+
+**Readers outside this skill.** `lookup.md` is also read — through its path, `{{skills_dir}}/{{self_name}}/references/lookup.md` — by the planner and by the code and design explorations when a request names an experiment by words; each of them words the confirmation in its own voice and keeps no matching of its own.
 
 **Ambiguity.** A request that reads as two branches gets one `AskUserQuestion`, the
 recommended option first. Do not guess. A reference that cannot be read: print

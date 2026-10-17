@@ -365,10 +365,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/template-
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/experiment-route.md" \
   "unikit-gd-balance experiment-route.md reference installed (the experiment route)"
 # The experiment skill's branches are read only by intent, so a content test cannot see a missing
-# delivery of a reference — all nine files are asserted here.
+# delivery of a reference — all ten files are asserted here.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
   "unikit-gd-experiment SKILL.md installed (experiment partner)"
-for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index context-and-research planning-handoff balance-link; do
+for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index context-and-research planning-handoff balance-link lookup; do
   assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/references/${exp_ref}.md" \
     "unikit-gd-experiment ${exp_ref}.md reference installed"
 done

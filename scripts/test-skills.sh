@@ -10592,7 +10592,7 @@ else
     fail "KM-1/KM-3 Kimi Code source contracts violated:$KM_WHY"
 fi
 
-# --- EXP-1…EXP-10: the experiment master skill — structure, nine references, single owners,
+# --- EXP-1…EXP-10: the experiment master skill — structure, ten references, single owners,
 # the boundary, neutrality, the language membrane, pinned commitments, the lexicon and the
 # scenario fixtures. Variables are declared here, before first use (the script runs under
 # set -u). Every check goes through exp_ok / exp_no / exp_owner / exp_icon, which count: a
@@ -10669,9 +10669,9 @@ else
     EXP_SZ="$(wc -c < "$EXP_SKILL" | tr -d ' ')"
     EXP_CHK=$((EXP_CHK + 1)); (( EXP_SZ <= 16000 )) || EXP_WHY+=" EXP-1:skill-size=${EXP_SZ}"
 
-    # (EXP-2) nine references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
+    # (EXP-2) ten references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
     for f in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index \
-             context-and-research planning-handoff balance-link; do
+             context-and-research planning-handoff balance-link lookup; do
         exp_ok "EXP-2:skill-does-not-name($f.md)" "$f.md" "$EXP_SKILL"
         EXP_CHK=$((EXP_CHK + 1)); [[ -s "$EXP_REFS/$f.md" ]] || EXP_WHY+=" EXP-2:missing($f.md)"
         EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXP_REFS/$f.md" 2>/dev/null)" == "Read **only** when"* ]] || EXP_WHY+=" EXP-2:load-line($f.md)"
@@ -10679,7 +10679,7 @@ else
         EXP_CHK=$((EXP_CHK + 1)); (( ${EXP_RSZ:-0} <= 12000 )) || EXP_WHY+=" EXP-2:size($f.md=${EXP_RSZ})"
     done
     EXP_REF_N="$({ ls "$EXP_REFS"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
-    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "9" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "10" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
 
     # (EXP-3) lazy loading and delegation hygiene: the call form lives only in SKILL.md, one alias only
     EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF 'Agent(' "$EXP_REFS" || EXP_WHY+=" EXP-3:agent-call-in-reference"
@@ -10871,7 +10871,7 @@ else
     (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-1:nothing-checked"
 fi
 if [[ -z "$EXP_WHY" ]]; then
-    pass "EXP-1…EXP-10 experiment skill: structure, nine references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, ten scenarios checked by text only (${EXP_CHK} checks)"
+    pass "EXP-1…EXP-10 experiment skill: structure, ten references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, ten scenarios checked by text only (${EXP_CHK} checks)"
 else
     fail "EXP-1…EXP-10 experiment skill:$EXP_WHY"
 fi
@@ -11256,6 +11256,65 @@ if [[ -z "$EXP_WHY" ]]; then
     pass "EXP-D1…EXP-D2 documentation and help: the experiment skill, the experiment plan and the route are described, the old counters are gone (${EXP_CHK} checks)"
 else
     fail "EXP-D1…EXP-D2 documentation and help:$EXP_WHY"
+fi
+
+# --- EXP-L1…EXP-L6: an experiment named in words is resolved to ONE card through ONE reference. L1 — the
+# owner (lookup.md): when it is read, what is the source of truth, "the latest", the topic, the always-shown
+# confirmation, the result. L2 — the planner names it and picks researches up by an `Experiment:` line.
+# L3/L4 — the code and design explorations ground on a card and write that line. L5 — the help and the docs.
+# L6 — the manage branch reads it as its last step. Source assertions over pinned formulations, like EXP-P;
+# the helpers and accumulators of the EXP block are reused after a reset.
+EXP_WHY=""
+EXP_CHK=0
+EXPL_REF="$ROOT_DIR/skills/unikit-gd-experiment/references/lookup.md"
+EXPL_PATH='{{skills_dir}}/unikit-gd-experiment/references/lookup.md'
+EXPL_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+EXPL_PLAN_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+EXPL_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+EXPL_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+EXPL_EXPLORE_GATE="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+EXPL_GD_EXPLORE="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+EXPL_GD_SAVE="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+EXPL_GD_GATE="$ROOT_DIR/skills/unikit-gd-explore/references/coherence-gate.md"
+EXPL_MANAGE="$ROOT_DIR/skills/unikit-gd-experiment/references/mode-manage.md"
+EXPL_SKILLMAP="$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+EXPL_DOCS_SKILLS="$ROOT_DIR/docs/skills.md"
+EXPL_DOCS_PLANFILES="$ROOT_DIR/docs/plan-files.md"
+if [[ ! -s "$EXPL_REF" ]]; then
+    EXP_WHY+=" EXP-L1:missing-reference"
+else
+    # (EXP-L1) the owner
+    exp_ok "EXP-L1:01" 'holds at least one `experiment.md`' "$EXPL_REF"
+    exp_ok "EXP-L1:02" 'A selector (`EXP-<nnn>`, a path to a card, a folder) never needs this file' "$EXPL_REF"
+    exp_ok "EXP-L1:03" 'The folders and the cards are the source of truth' "$EXPL_REF"
+    exp_ok "EXP-L1:04" 'Two folders with one number are not settled by a guess' "$EXPL_REF"
+    exp_ok "EXP-L1:05" 'A card with `Status: Archived` never answers "the latest"' "$EXPL_REF"
+    exp_ok "EXP-L1:06" 'Cross-check `index.md` last, and only to cross-check' "$EXPL_REF"
+    exp_ok "EXP-L1:07" 'WARN [experiment] index out of date' "$EXPL_REF"
+    exp_ok "EXP-L1:08" '**the newest by number**' "$EXPL_REF"
+    exp_ok "EXP-L1:09" '**the newest by update**' "$EXPL_REF"
+    exp_ok "EXP-L1:10" 'one question with at most five titles, best first' "$EXPL_REF"
+    exp_ok "EXP-L1:11" 'Whatever was found, even one card, the user sees one line before anything else is loaded' "$EXPL_REF"
+    exp_ok "EXP-L1:12" 'The number is shown unless the caller speaks through the game-design membrane' "$EXPL_REF"
+    exp_ok "EXP-L1:13" 'which the caller treats exactly like a selector the user typed' "$EXPL_REF"
+    exp_ok "EXP-L1:14" 'searches no other branch and moves no file' "$EXPL_REF"
+    exp_ok "EXP-L1:15" '**Readers outside this skill.**' "$EXP_SKILL"
+    exp_ok "EXP-L1:16" '| An experiment is named by words instead of a number: "the latest", "the one about onboarding" | `lookup.md` |' "$EXP_SKILL"
+    # C-001: the planner's sentence about the bare word stays in experiment-plan.md and is not copied here
+    exp_no "EXP-L1:17" 'free text is not a selector' "$EXPL_REF"
+    # the sources of truth are the cards: the file never tells the reader to take the answer from the index
+    exp_no "EXP-L1:18" 'take the answer from the index' "$EXPL_REF"
+    # the owner states its own exception: a caller that only prints a result skips the line (manage applies it, Task 8)
+    exp_ok "EXP-L1:19" 'A caller that only prints a result' "$EXPL_REF"
+    # the third line is the load condition and the file is nowhere near the cap: EXP-2 checks both after `lookup` joined its list
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPL_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-L1:load-line"
+    # (EXP-L2…EXP-L6) are added next to the texts they pin — see the tasks of phases 2-4
+fi
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-L1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-L1…EXP-L6 experiment lookup: one owner, the planner and both explorations point at it, the help and the docs describe it (${EXP_CHK} checks)"
+else
+    fail "EXP-L1…EXP-L6 experiment lookup:$EXP_WHY"
 fi
 
 # ─────────────────────────────────────────────
