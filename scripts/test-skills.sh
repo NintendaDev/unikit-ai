@@ -11332,6 +11332,32 @@ else
     exp_ok "EXP-L2:19" '(names v<k>)' "$EXPL_TASKFMT"
     # NM-2 stays true: the grammar block is indented, no line of the file starts with `Branch:`
     EXP_CHK=$((EXP_CHK + 1)); ! grep -qE '^Branch:' "$EXPL_TASKFMT" || EXP_WHY+=" EXP-L2:20-branch-field-at-margin"
+    # (EXP-L3) the code exploration grounds on a card, writes the line, and the gate does not look for the id
+    exp_ok "EXP-L3:01" '- **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card)' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:02" "$EXPL_PATH" "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:03" 'read its `experiment.md` **in full**' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:04" '`feedback.md` and `results.md` only when the user asks' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:05" 'nothing is written to the store and no status changes' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:06" '- **An experiment** — the topic is' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:07" 'Experiment: <EXP-<nnn> v<Version>' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:08" '**The `Experiment:` line** exists only in a research grounded on an experiment card' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:09" '| An exploration grounded on an experiment card |' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:10" 'An `EXP-<nnn>` on the `Experiment:` line names a card of the experiment store' "$EXPL_EXPLORE_GATE"
+    # the extension anchor is still the last line of the load block: the new bullet stands before it
+    EXPL_ANCHOR_AT="$({ grep -nF '<!-- unikit:extension-point:bootstrap -->' "$EXPL_EXPLORE" | head -1 | cut -d: -f1; } || true)"
+    EXPL_GROUND_AT="$({ grep -nF '**Experiment grounding**' "$EXPL_EXPLORE" | head -1 | cut -d: -f1; } || true)"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPL_ANCHOR_AT" && -n "$EXPL_GROUND_AT" && "$EXPL_GROUND_AT" -lt "$EXPL_ANCHOR_AT" ]] || EXP_WHY+=" EXP-L3:11-grounding-after-anchor"
+    # (EXP-L4) the design exploration: the same grounding worded through the membrane; the line in the record; routing by the card's state
+    exp_ok "EXP-L4:01" '9. **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card)' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:02" "$EXPL_PATH" "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:03" 'which this skill words through the membrane' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:04" 'nothing is written to the store and no status changes' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:05" 'Experiment: <EXP-<nnn> v<Version>' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:06" '**The `Experiment:` line** is written only by a research grounded on a card' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:07" '| **Grounded on an experiment card** — the card is ready for planning |' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:08" '| **Grounded on an experiment card** — any other state |' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:09" 'An `EXP-<nnn>` on the `Experiment:` line is defined by its card' "$EXPL_GD_GATE"
+    exp_ok "EXP-L4:10" 'are read-only too: that store is written only by `unikit-gd-experiment`' "$EXPL_GD_EXPLORE"
     # (EXP-L2…EXP-L6) are added next to the texts they pin — see the tasks of phases 2-4
 fi
 (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-L1:nothing-checked"

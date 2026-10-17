@@ -36,7 +36,7 @@ even when you wrote them minutes ago — what you meant to write is not what is 
 
 1. `## Active Summary` is understandable without the conversation that produced it.
 2. **Forward resolvability.** Every ID cited in `## Active Summary` is defined below — in
-   `## Findings`, or in an artifact listed in `## Artifact Index`.
+   `## Findings`, or in an artifact listed in `## Artifact Index`. An `EXP-<nnn>` on the `Experiment:` line names a card of the experiment store: the card defines it, so it is not looked for below.
 3. **Backward resolvability.** Every requirement-bearing ID defined in `## Findings` or in an
    artifact is present in `## Active Summary`. A superseded item is named superseded
    explicitly and keeps its own number.

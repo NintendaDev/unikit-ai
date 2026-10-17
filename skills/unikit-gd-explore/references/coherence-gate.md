@@ -55,7 +55,7 @@ and from then on every criterion applies.
    `## Findings`, `DEC-<n>` and `RISK-<n>` in `## Conclusions`, `OQ-<n>` in `## Open Questions`,
    or in an artifact listed in `## Artifact Index`. An identifier of the design registry (`SYS-`,
    `FLOW-`, `CT-`, `PIL-`, `RF-`, …) is defined in `GD-IDS.yaml`, not in the record, and is not
-   checked here.
+   checked here. An `EXP-<nnn>` on the `Experiment:` line is defined by its card in the experiment store and is not checked here either.
 3. **Backward resolvability.** Every `DEC-`, `RISK-` and `OQ-` identifier defined in
    `## Conclusions`, in `## Open Questions` or in an artifact (registry ids are out of scope, as
    in criterion 2) is present in

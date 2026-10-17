@@ -160,6 +160,8 @@ Before responding — before any analysis — silently load (do not narrate):
    systems / P1 content, the per-fact `confidence` + source-pointer + `provenance:
    extracted from code` record).
 
+9. **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card) — a topic that names an experiment — `EXP-<nnn>` (`Glob` `.unikit/gamedesign/experiments/EXP-<nnn>-*`, exactly one folder), a path to an `experiment.md`, or an experiment folder — grounds on that card: read its `experiment.md` **in full**; `feedback.md` and `results.md` only when the user asks. A topic that names an experiment by its description ("how to improve the latest experiment", "the experiment about onboarding") is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md` — read it only then; it ends in the user's confirmation, which this skill words through the membrane (the title and plain words, no code). The card is context only: nothing is written to the store and no status changes. That file missing or unreadable → `WARN [experiment] lookup reference missing — asking for a selector`, and the user is asked which experiment is meant.
+
 **One-way boundary (with the code-lens exception):** the authoring zones never read
 code, but this skill is a **read-only research verb** — its **code-grounded lens**
 (below) *does* read project source and asset definitions to ground a design question in
@@ -499,7 +501,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
   `unikit-gd-content` for a **content type** — there is no add-flow / add-content).
   Explore only **tags** its own research (`Target:` / `Kind:`).
 - **Read-only:** `GAME.md`, `GD-IDS.yaml`, systems, flows, content types, concepts —
-  route any design change to its owner skill, never edit them here.
+  route any design change to its owner skill, never edit them here. The experiment cards of `.unikit/gamedesign/experiments/` are read-only too: that store is written only by `unikit-gd-experiment`.
 - **Research-bucket mode (in-place promotion).** Developing a `unikit-gd-review`
   report's `## Research` bucket turns each open finding into a decided edit and **promotes
   it in place** — moving the line into the report's `## Apply-ready` bucket (reformatted as
