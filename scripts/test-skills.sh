@@ -12372,6 +12372,36 @@ APX_PTR_DISTINCT=$(printf '%s' "$APX_PTR_SUMS" | sort -u | { grep -c . || true; 
 APX_CHK=$((APX_CHK + APX_PTR_N))
 [[ "$APX_PTR_N" -gt 0 ]] || APX_WHY+=" AP-17:no-pointer"
 [[ "$APX_PTR_DISTINCT" -le 1 ]] || APX_WHY+=" AP-17:pointers-differ(x$APX_PTR_DISTINCT)"
+# (AP-18) the docs describe the effort setting, the rule file, the order of values and what is established for Antigravity
+APX_DOC_CFG="$ROOT_DIR/docs/configuration.md"
+APX_DOC_SUB="$ROOT_DIR/docs/subagents.md"
+APX_DOC_AGENTS="$ROOT_DIR/docs/agents.md"
+apx_doc() { # <reason key> <literal> <file>
+    APX_CHK=$((APX_CHK + 1))
+    grep -qF -- "$2" "$3" || APX_WHY+=" AP-18:$1"
+}
+apx_doc "cfg-effort-claude" '| `effort.claude` |' "$APX_DOC_CFG"
+apx_doc "cfg-effort-codex" '| `effort.codex` |' "$APX_DOC_CFG"
+apx_doc "cfg-rule-file" '`.unikit/system/subagent-arguments.md`, which `unikit-ai init` and `unikit-ai update` install' "$APX_DOC_CFG"
+apx_doc "cfg-order" '**Which value wins** is decided for the model and for the effort separately' "$APX_DOC_CFG"
+apx_doc "cfg-overrides" 'the environment variable `CLAUDE_CODE_EFFORT_LEVEL` overrides the level of a subagent call' "$APX_DOC_CFG"
+apx_doc "cfg-unverified" 'by its documentation - not checked by a probe' "$APX_DOC_CFG"
+apx_doc "cfg-min-version" 'documented from Claude Code v2.1.292' "$APX_DOC_CFG"
+apx_doc "cfg-antigravity" '**Antigravity has no effort key:**' "$APX_DOC_CFG"
+apx_doc "cfg-tree" 'subagent-arguments.md  # How the model and the effort of a subagent are settled' "$APX_DOC_CFG"
+apx_doc "sub-heading" '### Subagent arguments' "$APX_DOC_SUB"
+apx_doc "sub-names" 'Antigravity `Model` and **no effort argument**' "$APX_DOC_SUB"
+apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried on the session effort' "$APX_DOC_SUB"
+apx_doc "agents-established" '**Subagents and effort - what is established (client `agy` 1.3.0, probes of 2026-10-16).**' "$APX_DOC_AGENTS"
+apx_doc "agents-observation" 'so it is an observation - it does not show that a subagent follows `/effort` of the session' "$APX_DOC_AGENTS"
+apx_doc "agents-not-measured" 'whether that depends on `/effort` was not measured' "$APX_DOC_AGENTS"
+apx_doc "agents-codex" 'The call also takes `model` and `reasoning_effort`' "$APX_DOC_AGENTS"
+# the help index of the system files names the new one (the help test does not guard that list)
+APX_HELP_KB="$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
+apx_doc "help-kb" '`subagent-arguments.md` — how the model and the effort of a subagent are settled' "$APX_HELP_KB"
+APX_DOC_OLD=$( { grep -cF '### Model argument' "$APX_DOC_SUB" || true; } )
+APX_CHK=$((APX_CHK + 1))
+[[ "${APX_DOC_OLD:-0}" -eq 0 ]] || APX_WHY+=" AP-18:retired-heading-left"
 # (AP-17, AP-18) are added next to the texts they pin — see the tasks of phases 7 and 8
 (( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
 if [[ -z "$APX_WHY" ]]; then
