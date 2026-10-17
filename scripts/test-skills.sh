@@ -7662,12 +7662,15 @@ if [[ -z "$MC_WHY" ]]; then
     grep -qF 'is explicitly **not** written' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-6:no-language-rules-negation"
 
-    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>`.
+    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>`
+    # and `subagents.effort.<agent>` the same way.
     # Without the exception, bucket 3 refills a deliberately emptied key with the template's
     # value — for Claude `sonnet` — and the user's "pass no model" is undone by the very mode
     # that was asked to repair the config.
     grep -qF 'subagents.model.<agent>' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:carveout-not-named"
+    grep -qF 'subagents.effort.<agent>' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:effort-carveout-not-named"
     grep -qF 'is a deliberate choice' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:no-deliberate-empty-reading"
 fi

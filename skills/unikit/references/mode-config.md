@@ -63,10 +63,11 @@ Assign every paired key to exactly one bucket. Write nothing and ask nothing in 
    "missing **or empty**", and the bootstrap deliberately leaves a placeholder-backed key
    empty when the run has nothing to resolve it from — the no-git case, for instance.
 
-   **Exception — `subagents.model.<agent>`.** An empty value there is a deliberate choice
-   (pass no model argument), not a missing one: keep it, never fill it from the template, and
-   report it as kept. An absent key is appended with its template value (`inherit` for
-   Codex), together with its comment.
+   **Exception — `subagents.model.<agent>` and `subagents.effort.<agent>`.** An empty value there
+   is a deliberate choice (pass no model argument, pass no effort argument), not a missing one:
+   keep it, never fill it from the template, and report it as kept. An absent key is appended
+   with its template value (`inherit` for the Codex model, `medium` for the Claude Code and
+   Codex effort), together with its comment.
 4. **Present, value outside a declared domain** → ask. A domain is declared by exactly one
    thing: an inline `# a | b` comment standing beside the value on the same line. Nothing
    else declares one — an `Options:` or `Examples:` list inside a comment block is prose for
