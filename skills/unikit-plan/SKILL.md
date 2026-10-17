@@ -118,7 +118,7 @@ Ultra is **user-named, never model-inferred**. Rule 5 recognises the request whe
 
 **A Balance Checkpoints input** — the argument names a `CHECKPOINTS.md` file, a folder or slug under `.unikit/gamedesign/balance/`, or the request is calibration or measurement work on a balance document (`/unikit-gd-balance` prints this command): load `{{skills_dir}}/{{self_name}}/references/balance-plan.md` and follow it. It owns finding the current point, the snapshot, the horizon and the shape of the plan. An ordinary plan does not read that file. Missing or unreadable → `WARN [balance] balance-plan reference missing — planning as an ordinary plan; run unikit-ai update`, and no `Hand-back:` task is created in such a plan.
 
-**An experiment input** — the argument names an experiment (`EXP-<nnn>`), a path to an `experiment.md` card, an experiment folder under `.unikit/gamedesign/experiments/`, or a set of them (`/unikit-gd-experiment` prints this command): load `{{skills_dir}}/{{self_name}}/references/experiment-plan.md` and follow it. It owns reading and checking the cards, the snapshot, the mode question, the settings, the branch and the base, the folder name and the shape of the plan. The word "experiment" in free text is not a selector. An ordinary plan does not read that file. Missing or unreadable → `WARN [experiment] experiment-plan reference missing — planning as an ordinary plan; run unikit-ai update`.
+**An experiment input** — the argument names an experiment (`EXP-<nnn>`), a path to an `experiment.md` card, an experiment folder under `.unikit/gamedesign/experiments/`, or a set of them (`/unikit-gd-experiment` prints this command): load `{{skills_dir}}/{{self_name}}/references/experiment-plan.md` and follow it. It owns reading and checking the cards, the snapshot, the mode question, the settings, the branch and the base, the folder name and the shape of the plan. The word "experiment" in free text is not a selector. An ordinary plan does not read that file. Missing or unreadable → `WARN [experiment] experiment-plan reference missing — planning as an ordinary plan; run unikit-ai update`. A request that names an experiment by its description — "the latest experiment", "the experiment about onboarding" — while `.unikit/gamedesign/experiments/` holds at least one `experiment.md` is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md`, read only for such a request: the card the user confirms becomes the selector and this branch goes on as for `EXP-<nnn>`. That file missing or unreadable → `WARN [experiment] lookup reference missing — asking for a selector`, and the user is asked for an `EXP-<nnn>`.
 
 `--base <branch>` — the branch to create the feature branch from (full mode only). `--base` flag overrides `git.base_branch` from config. Priority: `--base` flag > `git.base_branch` from `.unikit/config.yaml` > fallback `main`.
 
@@ -309,6 +309,8 @@ Load only the selected mode's body — never all of them at once:
 ## Shared Steps (all planning modes)
 
 ### Step 2: Check for Related Researches
+
+**An experiment plan** runs no topic matching in this step (points 1-6): a research reaches it only through an `Experiment:` line (`{{skills_dir}}/{{self_name}}/references/experiment-plan.md` → `## The snapshot comes first`), and point 7 reads what that finds.
 
 **The research-link contract — read at the first link, and only then.** The moment this step links its first research — through the `research_pre_linked` shortcut below or through point 7 — read `.unikit/system/research-link.md`. For each research linked here, compute its `Summary SHA256` over the `## Active Summary` just read, by `## Computing the hash`, and keep the digest for Step 5 (`## Writing an entry`).
 
@@ -519,7 +521,7 @@ applies to the manifest, minus the task-level subsections of `## Technical Conte
 
    **`## Balance Context`** — only for a plan built from a Balance Checkpoints file (`references/balance-plan.md`): the snapshot of the point, placed after `## Based on` and after any of the three snapshots above, directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Balance checkpoint grammar`).
 
-   **`## Experiment Context`** — only for a plan built from experiment cards (`references/experiment-plan.md`): the snapshot of the cards and the lines `Branch:` and `Base:`, placed in the slot of `## Balance Context` (a plan has one of them), directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Experiment context section`).
+   **`## Experiment Context`** — only for a plan built from experiment cards (`references/experiment-plan.md`): the snapshot of the cards (and of the design researches that name them) and the lines `Branch:` and `Base:`, placed in the slot of `## Balance Context` (a plan has one of them), directly before `## Settings`; omitted in every other plan. What it carries is `TASK-FORMAT.md`'s (`### Experiment context section`).
 
 3. **`## Settings`** — User preferences (`/unikit-implement` reads this):
    - `Testing: yes/no` — whether tests are written at all: tests for logic and system values (`dev-principles.md` item 5)

@@ -11308,6 +11308,30 @@ else
     exp_ok "EXP-L1:19" 'A caller that only prints a result' "$EXPL_REF"
     # the third line is the load condition and the file is nowhere near the cap: EXP-2 checks both after `lookup` joined its list
     EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPL_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-L1:load-line"
+    # (EXP-L2) the planner: a card named in words is resolved through the lookup before anything of it is read
+    exp_ok "EXP-L2:01" "$EXPL_PATH" "$EXPL_PLAN"
+    exp_ok "EXP-L2:02" 'A request that names an experiment by its description' "$EXPL_PLAN"
+    exp_ok "EXP-L2:03" 'WARN [experiment] lookup reference missing — asking for a selector' "$EXPL_PLAN"
+    exp_ok "EXP-L2:04" "$EXPL_PATH" "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:05" 'is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md`' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:06" 'The lookup finds a card; whether it may be planned is decided by' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:07" '(g) A card the user named in words was confirmed through the lookup' "$EXPL_PLAN_REF"
+    # (EXP-L2, continued) a research reaches an experiment plan only by its `Experiment:` line, from both stores
+    exp_ok "EXP-L2:08" 'A research belongs to a card only when its Active Summary' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:09" '`.unikit/gamedesign/researches/*/RESEARCH_RESULT.md`' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:10" 'the topic is never guessed' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:11" 'with no hash and no drift tracking' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:12" 'WARN [experiment] <folder> was written against v<k> of the card' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:13" 'Step 2 does not match researches by topic either' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:14" '(h) A research was linked to a card only by its `Experiment:` line' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:21" 'a hit outside the markers does not count' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:15" '**An experiment plan** runs no topic matching in this step' "$EXPL_PLAN"
+    exp_ok "EXP-L2:16" 'the snapshot of the cards (and of the design researches that name them)' "$EXPL_PLAN"
+    exp_ok "EXP-L2:17" '**Design researches.** A research of the design store' "$EXPL_TASKFMT"
+    exp_ok "EXP-L2:18" 'No hash is kept and the plan never re-reads it for drift' "$EXPL_TASKFMT"
+    exp_ok "EXP-L2:19" '(names v<k>)' "$EXPL_TASKFMT"
+    # NM-2 stays true: the grammar block is indented, no line of the file starts with `Branch:`
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qE '^Branch:' "$EXPL_TASKFMT" || EXP_WHY+=" EXP-L2:20-branch-field-at-margin"
     # (EXP-L2…EXP-L6) are added next to the texts they pin — see the tasks of phases 2-4
 fi
 (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-L1:nothing-checked"
