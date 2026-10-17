@@ -12121,7 +12121,7 @@ fi
 # (the call heads `{{agent_call_reader}}`, `{{agent_call_worker}}`, `{{agent_call_worker_quoted}}`,
 # `{{agent_id}}`, `{{agent_model_default}}`).
 # So the sources must name NO runtime's type and NO model; what they may carry is the variable
-# and, once per skill, the rule that settles the model argument from `.unikit/config.yaml`.
+# and, once per skill, the pointer to the rule that settles the model and the effort argument (data/subagent-arguments.md).
 # Fifteen guards, each closing a different way that rots (AP-1…AP-7 the profile, AP-8…AP-15
 # the delivery of a skill to a subagent):
 #
@@ -12132,10 +12132,10 @@ fi
 #         that used to be the literal. The bare words `Explore` / `coder` stay legal as a skill
 #         name and a role ("Explore tasks"): only a backticked type name is a stale spelling.
 #   AP-3  no `model: <word>` and none of the retired per-branch rationale sentences.
-#   AP-4  the model rule stands once in every SKILL.md that declares a model-carrying alias,
-#         and nowhere else (a second copy drifts; a copy without an alias is dead text).
-#   AP-5  the rule says everything its reader needs — the reader is the model, not a compiler,
-#         and a rule with a clause missing is followed with that clause missing.
+#   AP-4  the pointer to the arguments rule stands once in every SKILL.md that declares an alias that
+#         carries the arguments (the model key once there), and nowhere else; the retired paragraph is gone.
+#   AP-5  the pointer is whole: the contract path, both keys, the built-in default and the missing-contract
+#         line — the rule itself is pinned in the contract file (AP-16).
 #   AP-6  a delegation call never lives behind a non-codex agent-filter branch: the profile
 #         replaced those branches, so one coming back means a second definition has appeared.
 #   AP-7  the variables are a skills-only mechanism. Subagent files and system assets render
@@ -12206,27 +12206,35 @@ ap_tier=$( { grep -rhoF -e 'tier alias' -e 'No model is named' "$AP_SCOPE" --inc
 [[ "$ap_model" -eq 0 ]] || AP_WHY+=" AP-3:model-literal(x$ap_model)"
 [[ "$ap_tier" -eq 0 ]] || AP_WHY+=" AP-3:retired-rationale(x$ap_tier)"
 
-# (AP-4)
+# (AP-4) the pointer stands once in every skill that declares an alias carrying the arguments, and nowhere else;
+# the key literal stays once there (GXG-6 pins it too); the retired paragraph is gone everywhere
 AP_RULE_SKILLS=0
 for ap_f in "$AP_SCOPE"/*/SKILL.md; do
     [[ -f "$ap_f" ]] || continue
     ap_alias=$( { grep -cE '^- \*\*`(recon-agent|check-agent|lens-agent|recon-writer-agent)`\*\*' "$ap_f" || true; } )
+    ap_ptr=$( { grep -cF '**Subagent arguments.**' "$ap_f" || true; } )
     ap_rule=$( { grep -cF 'subagents.model.{{agent_id}}' "$ap_f" || true; } )
+    ap_old=$( { grep -cF '**Model argument.**' "$ap_f" || true; } )
+    [[ "${ap_old:-0}" -eq 0 ]] || AP_WHY+=" AP-4:old-paragraph-left:${ap_f#"$ROOT_DIR"/}"
     if [[ "${ap_alias:-0}" -gt 0 ]]; then
         AP_RULE_SKILLS=$((AP_RULE_SKILLS + 1))
+        [[ "${ap_ptr:-0}" -eq 1 ]] || AP_WHY+=" AP-4:pointer-count(${ap_ptr:-0}):${ap_f#"$ROOT_DIR"/}"
         [[ "${ap_rule:-0}" -eq 1 ]] || AP_WHY+=" AP-4:rule-count(${ap_rule:-0}):${ap_f#"$ROOT_DIR"/}"
     else
+        [[ "${ap_ptr:-0}" -eq 0 ]] || AP_WHY+=" AP-4:pointer-without-alias:${ap_f#"$ROOT_DIR"/}"
         [[ "${ap_rule:-0}" -eq 0 ]] || AP_WHY+=" AP-4:rule-without-alias:${ap_f#"$ROOT_DIR"/}"
     fi
 done
 [[ "$AP_RULE_SKILLS" -gt 0 ]] || AP_WHY+=" AP-4:no-skill-with-alias"
 
-# (AP-5)
+# (AP-5) the pointer is whole: the contract path, both keys, the built-in default and the missing-contract line,
+# each on one physical line; the rule itself is pinned in the contract file (AP-16)
 for ap_f in "$AP_SCOPE"/*/SKILL.md; do
-    grep -qF 'subagents.model.{{agent_id}}' "$ap_f" || continue
-    for ap_lit in 'pass no model argument' 'repeat that call once without the model argument' \
-                  'WARN [delegation] model' 'built-in default `"{{agent_model_default}}"`' '`inherit`'; do
-        grep -qF -- "$ap_lit" "$ap_f" || AP_WHY+=" AP-5:rule-incomplete(${ap_lit:0:24}):${ap_f#"$ROOT_DIR"/}"
+    grep -qF '**Subagent arguments.**' "$ap_f" || continue
+    for ap_lit in '`.unikit/system/subagent-arguments.md`' 'subagents.effort.{{agent_id}}' \
+                  'built-in default `"{{agent_model_default}}"`' \
+                  'WARN [delegation] subagent-arguments contract missing' 'as that file says'; do
+        grep -qF -- "$ap_lit" "$ap_f" || AP_WHY+=" AP-5:pointer-incomplete(${ap_lit:0:24}):${ap_f#"$ROOT_DIR"/}"
     done
 done
 
@@ -12312,7 +12320,7 @@ ap_call_lines=$( { grep -rhE '^[[:space:]]*prompt: "\{\{agent_skill_call:[a-z0-9
 [[ "$ap_call_lines" -eq "$AP_N_CALL" ]] || AP_WHY+=" AP-14:call-not-one-prompt-line($ap_call_lines!=$AP_N_CALL)"
 
 if [[ -z "$AP_WHY" ]]; then
-    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_HEAD_TOTAL call heads on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
+    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_HEAD_TOTAL call heads on profile variables, the subagent-arguments pointer in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
 else
     fail "AP-1…AP-15 agent profile in skills and skill delivery:$AP_WHY"
     # Each diagnostic pipeline is wrapped: under `set -euo pipefail` an empty grep in a
@@ -12352,6 +12360,18 @@ else
     done
     APX_CHK=$((APX_CHK + 1)); ! grep -qF '{{' "$APX_ARGS_FILE" || APX_WHY+=" AP-16:variable-in-contract"
 fi
+# (AP-17) the pointers are ONE text: the block from its first line to the blank line after it is byte-identical in every skill
+APX_PTR_SUMS=""
+APX_PTR_N=0
+for apx_f in "$AP_SCOPE"/*/SKILL.md; do
+    grep -qF '**Subagent arguments.**' "$apx_f" || continue
+    APX_PTR_N=$((APX_PTR_N + 1))
+    APX_PTR_SUMS+="$(awk '/^\*\*Subagent arguments\.\*\*/{f=1} f&&/^$/{exit} f' "$apx_f" | cksum | cut -d' ' -f1)"$'\n'
+done
+APX_PTR_DISTINCT=$(printf '%s' "$APX_PTR_SUMS" | sort -u | { grep -c . || true; })
+APX_CHK=$((APX_CHK + APX_PTR_N))
+[[ "$APX_PTR_N" -gt 0 ]] || APX_WHY+=" AP-17:no-pointer"
+[[ "$APX_PTR_DISTINCT" -le 1 ]] || APX_WHY+=" AP-17:pointers-differ(x$APX_PTR_DISTINCT)"
 # (AP-17, AP-18) are added next to the texts they pin — see the tasks of phases 7 and 8
 (( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
 if [[ -z "$APX_WHY" ]]; then

@@ -57,18 +57,13 @@ This skill uses a named delegation alias for `Agent(...)` calls. The alias is th
 place where its delegate's agent type and call arguments are declared — call sites name
 the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first dispatch of an alias below, read
+`.unikit/system/subagent-arguments.md` and `.unikit/config.yaml` once and settle the model and
+the effort argument as that file says. This agent's keys are `subagents.model.{{agent_id}}` and
+`subagents.effort.{{agent_id}}`; with no model key use the built-in default `"{{agent_model_default}}"`.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use the built-in default model and no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 

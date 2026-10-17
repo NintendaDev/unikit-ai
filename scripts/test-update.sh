@@ -2560,8 +2560,8 @@ seed_rule "$UC_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 
 UC_CLAUDE_SKILL="$UC_DIR/.claude/skills/unikit-implement/SKILL.md"
 UC_UNI_SKILL="$UC_DIR/.agents/skills/unikit-implement/SKILL.md"
-# The model rule (`subagents.model.<agent>`) is carried by ten skills and unikit-implement is not one of
-# them; unikit-plan is, and it is in both agents' installedSkills.
+# The subagent-arguments pointer (it names `subagents.model.<agent>`) is carried by twelve skills and
+# unikit-implement is not one of them; unikit-plan is, and it is in both agents' installedSkills.
 UC_CLAUDE_PLAN="$UC_DIR/.claude/skills/unikit-plan/SKILL.md"
 UC_UNI_PLAN="$UC_DIR/.agents/skills/unikit-plan/SKILL.md"
 UC_MCP="$UC_DIR/.mcp.json"
@@ -2587,8 +2587,8 @@ assert_contains "$UC_CLAUDE_SKILL" 'Call the Skill tool with skill "unikit-devco
 assert_not_contains "$UC_CLAUDE_SKILL" 'Read \.claude/skills/unikit-devcontext/SKILL\.md in full' "claude copy: no file-read form"
 assert_contains "$UC_UNI_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' "universal copy: develop-agent reads the skill file"
 assert_not_contains "$UC_UNI_SKILL" 'Call the Skill tool with skill' "universal copy: no Skill-tool form"
-assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the model rule)"
-assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the model rule)"
+assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the subagent-arguments pointer)"
+assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the subagent-arguments pointer)"
 assert_contains "$UC_CLAUDE_PLAN" 'subagents\.model\.claude' "claude copy: its own config key"
 assert_contains "$UC_UNI_PLAN" 'subagents\.model\.universal' "universal copy: its own config key"
 assert_not_contains "$UC_UNI_PLAN" 'subagents\.model\.claude' "universal copy: not the Claude key"
