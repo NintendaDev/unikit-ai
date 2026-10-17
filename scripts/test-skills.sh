@@ -6183,7 +6183,7 @@ else
     fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
 fi
 
-# (SA-1) Every system-asset installer in system-assets.ts is called from BOTH init.ts and
+# (SA-1) Every system-asset installer in system-assets.ts and system-contracts.ts is called from BOTH init.ts and
 # update.ts. Derivative, not a name list: a new `export async function installX` is covered
 # by construction, and the overlap with EM-5 above is deliberate — EM-5 pins two specific
 # functions for a stronger reason (silent findings-log corruption on a missed call), SA-1
@@ -6191,9 +6191,9 @@ fi
 # Anchored on the call LINE (`await installX(`), not the substring `installX(`: a plain
 # grep -F would count a commented-out `// await installX(` as wiring, missing the most
 # natural way to disable a call. All of today's calls have the form `    await installX(`.
-SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts")"
+SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts" "$ROOT_DIR/src/core/installer/system-contracts.ts")"
 if [[ -z "$SA_INSTALLERS" ]]; then
-    fail "SA-1 no install* exports found in system-assets.ts — the guard has no object"
+    fail "SA-1 no install* exports found in system-assets.ts and system-contracts.ts — the guard has no object"
 else
     SA_WHY=""
     SA_COUNT=0
@@ -12320,6 +12320,44 @@ else
     { grep -rnF 'subagent_type' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
     { grep -rnE -e '^[[:space:]]*skills:[[:space:]]*\[' -e 'prompt:[[:space:]]*"/unikit' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
     { grep -rnF '{{agent_skill_call:' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -F '$' | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
+fi
+
+# --- AP-16…AP-18: the subagent-arguments contract. AP-16 — the contract file carries the formulations the
+# pointers rely on and no variable; AP-17 — the twelve pointers are one text; AP-18 — the docs describe the
+# setting. Source assertions over pinned formulations, like AP-1…AP-15 above ($AP_SCOPE is theirs); the
+# block has its own accumulators and its own pass/fail, so the AP-1…AP-15 label stays true.
+APX_WHY=""
+APX_CHK=0
+APX_ARGS_FILE="$ROOT_DIR/data/subagent-arguments.md"
+# (AP-16) the contract file says the rule with the formulations the pointers rely on, and carries no variable
+if [[ ! -s "$APX_ARGS_FILE" ]]; then
+    APX_WHY+=" AP-16:contract-missing"
+else
+    for apx_lit in \
+        '`develop-agent` and `docs-agent` load a skill and take neither' \
+        'explicit word.** The request that started the skill asks for the argument in so many words' \
+        'is not an instruction' \
+        '**The config key.**' \
+        '**No key.**' \
+        'The effort has no built-in default' \
+        'is compared without regard to case' \
+        'in lower case' \
+        '`reasoning_effort`' \
+        'WARN [delegation] effort "<value>" is not supported by this runtime' \
+        'WARN [delegation] effort "<value>" rejected — retried on the session effort' \
+        'WARN [delegation] model "<name>" rejected — retried on the session model' \
+        'repeat it **once** without the effort'; do
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "$apx_lit" "$APX_ARGS_FILE" || APX_WHY+=" AP-16:contract-lacks(${apx_lit:0:28})"
+    done
+    APX_CHK=$((APX_CHK + 1)); ! grep -qF '{{' "$APX_ARGS_FILE" || APX_WHY+=" AP-16:variable-in-contract"
+fi
+# (AP-17, AP-18) are added next to the texts they pin — see the tasks of phases 7 and 8
+(( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
+if [[ -z "$APX_WHY" ]]; then
+    pass "AP-16…AP-18 subagent-arguments contract: the contract file, the twelve pointers as one text, the docs (${APX_CHK} checks)"
+else
+    fail "AP-16…AP-18 subagent-arguments contract:$APX_WHY"
 fi
 
 # ─────────────────────────────────────────────

@@ -9,11 +9,14 @@
 // the TS-level copies.
 
 import { createHash } from 'crypto';
+import path from 'path';
 import { readSourceForAgent } from '../agent-filter.js';
+import { systemDir } from '../constants.js';
 import { buildEngineVars, processTemplate } from '../template.js';
 import type { TemplateVars } from '../template.js';
 import { getTransformer } from '../transformer.js';
-import { logInfo } from '../../utils/log.js';
+import { getDataDir, readTextFile, writeTextFile } from '../../utils/fs.js';
+import { logInfo, logWarn } from '../../utils/log.js';
 
 // --- Content hashing ---
 
@@ -117,4 +120,23 @@ export async function renderSubagent(
  */
 export function warnActionFailed(action: string, name: string, error: unknown): void {
   console.warn(`Warning: Could not ${action} "${name}": ${error}`);
+}
+
+// --- Flat system assets ---
+
+/**
+ * Copy one `data/<fileName>` into `.unikit/system/<fileName>` verbatim — the shared body of
+ * every flat, substitution-free, non-hash-tracked contract (`system-assets.ts`,
+ * `system-contracts.ts`). A missing source is a skip with a warning, never an abort: one absent
+ * contract is not a reason to fail init/update.
+ */
+export async function installFlatSystemAsset(projectDir: string, fileName: string, component: string): Promise<void> {
+  const content = await readTextFile(path.join(getDataDir(), fileName));
+  if (!content) {
+    logWarn(component, `${fileName} not found in data/, skipping`);
+    return;
+  }
+
+  await writeTextFile(path.join(systemDir(projectDir), fileName), content);
+  logInfo(component, `installed .unikit/system/${fileName}`);
 }

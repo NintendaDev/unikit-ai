@@ -2237,6 +2237,26 @@ fi
 echo "  ✓ prototype-profile.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30s: subagent-arguments.md is delivered on update — same shape as 30p: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms the flat rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+SUBAGENT_ARGS="$DEVPRIN_DIR/.unikit/system/subagent-arguments.md"
+assert_exists "$SUBAGENT_ARGS" "subagent-arguments.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$SUBAGENT_ARGS"
+
+DEVPRIN_OUT14="$TMPDIR/update-subagent-arguments.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT14" 2>&1)
+
+if ! grep -q "^## Argument names per runtime$" "$SUBAGENT_ARGS"; then
+    echo "Assertion failed: update did NOT refresh subagent-arguments.md from data/ (## Argument names per runtime missing)"
+    exit 1
+fi
+
+echo "  ✓ subagent-arguments.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).

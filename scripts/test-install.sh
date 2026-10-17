@@ -287,6 +287,24 @@ assert_not_contains "$PROTOTYPE_PROFILE_PATH" '\{\{' \
   "prototype-profile.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-sa: subagent-arguments.md installed as a system asset (flat copy, no vars)
+# Read before the first dispatch of a model-carrying subagent by the skills that carry its pointer;
+# a system asset so that it reaches a project whichever skills the wizard installed. Update-path
+# coverage like 1b-pp above; the init.ts call site is SA-1's job. assert_contains is grep -E:
+# the [delegation] tag is escaped.
+# ─────────────────────────────────────────────────────
+SUBAGENT_ARGS_PATH="$CLAUDE_DIR/.unikit/system/subagent-arguments.md"
+assert_exists "$SUBAGENT_ARGS_PATH" "subagent-arguments.md created in .unikit/system/"
+assert_contains "$SUBAGENT_ARGS_PATH" '^## Argument names per runtime$' \
+  "subagent-arguments.md carries the section that names the argument of each runtime"
+assert_contains "$SUBAGENT_ARGS_PATH" 'reasoning_effort' \
+  "subagent-arguments.md names the Codex effort argument"
+assert_contains "$SUBAGENT_ARGS_PATH" 'WARN \[delegation\] effort' \
+  "subagent-arguments.md carries the canonical WARN [delegation] effort label"
+assert_not_contains "$SUBAGENT_ARGS_PATH" '\{\{' \
+  "subagent-arguments.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
