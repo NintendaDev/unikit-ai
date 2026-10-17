@@ -390,7 +390,7 @@ Cards:
 …
 ```
 
-`Branch:` is the branch the plan lives on (`none` when git is off) and `Base:` the branch it was cut from (`none` when none was cut): the executors compare the current branch with `Branch:` before they write and take the base of every diff and check from `Base:`. Sections 2-11 of each card are copied in full with their headings lowered two levels, so a card is never read by the executors; the card's `Out of Scope` is repeated in `### OUT OF SCOPE` of `## Technical Context`. Nothing else is special: no new task kinds, phases or checks, no `Measure:` or `Hand-back:`, no PR checkpoint tasks.
+`Branch:` is the branch the plan lives on (`none` when git is off) and `Base:` the branch it was cut from (`none` when none was cut): the executors compare the current branch with `Branch:` before they write and take the base of every diff and check from `Base:`. Sections 2-11 of each card are copied in full with their headings lowered two levels, so a card is never read by the executors; the card's `Out of Scope` is repeated in `### OUT OF SCOPE` of `## Technical Context`. Nothing else is special: no new task kinds, phases or checks, no `Measure:` or `Hand-back:`, no PR checkpoint tasks. A design research whose summary names a card by an `Experiment:` line is copied as one more block of that card (`#### Design research · <folder> (names v<k>)`, after section 11) with no hash and no drift tracking; a code research is linked under `## Based on` instead.
 
 ### What an executor does differently
 

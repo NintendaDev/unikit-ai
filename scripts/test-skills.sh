@@ -11358,6 +11358,23 @@ else
     exp_ok "EXP-L4:08" '| **Grounded on an experiment card** — any other state |' "$EXPL_GD_SAVE"
     exp_ok "EXP-L4:09" 'An `EXP-<nnn>` on the `Experiment:` line is defined by its card' "$EXPL_GD_GATE"
     exp_ok "EXP-L4:10" 'are read-only too: that store is written only by `unikit-gd-experiment`' "$EXPL_GD_EXPLORE"
+    # (EXP-L5) the help and the docs describe the lookup, the grounding and the pick-up of researches
+    exp_ok "EXP-L5:01" 'or an experiment card (an `EXP-<nnn>`, a path, or "the latest experiment")' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:02" 'is first resolved to one card through the `lookup.md` reference of `/unikit-gd-experiment`' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:03" 'grounds the research on that card, read-only' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:04" 'an experiment named in words ("the latest", "the one about onboarding"' "$EXPL_SKILLMAP"
+    exp_no "EXP-L5:05-bare-path" 'unikit-gd-experiment/references/lookup.md' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:06" '- **Experiment grounding** - a topic that names an experiment' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:07" '- An experiment named in words ("make a plan for the latest experiment")' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:08" 'grounds the research on that card, read-only; the saved summary carries an `Experiment:` line' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:09" '- Finds a card by words - "the latest", "the one about onboarding"' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:10" 'A design research whose summary names a card by an `Experiment:` line is copied as one more block of that card' "$EXPL_DOCS_PLANFILES"
+    # (EXP-L6) the manage branch reads the lookup as its last step; the pinned commitments of the branch are untouched
+    exp_ok "EXP-L6:01" 'and `{{skills_dir}}/{{self_name}}/references/lookup.md` when the request names an experiment by words' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:02" 'the matching is the rule of `{{skills_dir}}/{{self_name}}/references/lookup.md`' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:03" 'does not ask the lookup'\''s confirmation' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:04" 'a request that acts on one card found by words (update, archive, retest) keeps it' "$EXPL_MANAGE"
+    exp_no "EXP-L6:05-old-matching" 'matches `Category`, `Summary` and `What We Test`; relevance the text does not support is not claimed' "$EXPL_MANAGE"
     # (EXP-L2…EXP-L6) are added next to the texts they pin — see the tasks of phases 2-4
 fi
 (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-L1:nothing-checked"

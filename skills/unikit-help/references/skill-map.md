@@ -68,7 +68,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **In:** a topic / question / system name — or, when a design workspace exists, a **flow**
   / player sequence (a *first-class flow input* grounded on the dynamics axis via the shared
   `design-read` contract) — or the slug of an existing research, which continues that research
-  instead of opening a second folder. The researches index is regenerated on every save.
+  instead of opening a second folder — or an experiment card (an `EXP-<nnn>`, a path, or "the latest experiment"), which grounds the research and is recorded as an `Experiment:` line of its summary. The researches index is regenerated on every save.
 - **Modes:** default | `ultra` (adaptive research artifacts — a C4 view, ADRs, a
   dependency graph — written into the research folder by relevance, never by checklist). A
   request to merge a named branch into the current one loads the merge mode instead
@@ -106,7 +106,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   offered the switch.
 - **Required.** Before: `/unikit-explore` (optional). After: `/unikit-improve`, `/unikit-implement`.
 - **Balance plan.** Given a Balance Checkpoints file (`/unikit-gd-balance` prints the command) it finds the current point itself and builds a plan only up to it, ending in a `Hand-back:` task.
-- **Experiment plan.** Given experiment cards (`/unikit-gd-experiment` prints the command: a path to an `experiment.md`, an `EXP-<nnn>`, a folder, or several) it builds **one** plan for the set from a snapshot of the cards (`## Experiment Context`), on its own `experiment/<date>-<topic>` branch; tests and docs default to off, no PR checkpoint tasks are written, and the executors read `.unikit/system/prototype-profile.md`.
+- **Experiment plan.** Given experiment cards (`/unikit-gd-experiment` prints the command: a path to an `experiment.md`, an `EXP-<nnn>`, a folder, or several) it builds **one** plan for the set from a snapshot of the cards (`## Experiment Context`), on its own `experiment/<date>-<topic>` branch; tests and docs default to off, no PR checkpoint tasks are written, and the executors read `.unikit/system/prototype-profile.md`. An experiment named in words ("the latest experiment") is first resolved to one card through the `lookup.md` reference of `/unikit-gd-experiment` and confirmed by you; researches whose summary carries an `Experiment:` line for a card join the plan.
 
 ### unikit-improve
 - **Purpose:** Refine an existing plan — find missing tasks, wrong dependencies, made-up APIs,
@@ -270,6 +270,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
   (develop its research bucket); or a `RECON.md` (work a pre-GDD reconstruction). `init`
   rebuilds the researches index — the game-design side keeps `init` until its own manifest
   port, which is why the code-side `/unikit-explore` no longer has one.
+  A topic that names an experiment (an `EXP-<nnn>`, a path, or "the latest experiment") grounds the research on that card, read-only; the saved summary then carries an `Experiment:` line and the next command follows the card's state.
 - **Out:** a research + brief in `.unikit/gamedesign/researches/<slug>/` — the record carries an
   `## Active Summary` (cited ids) and a `## Sessions` log, and each save ends with a coherence
   gate — then a routed next command: no doc/not-started → `/unikit-gd-spec` add-system → `/unikit-gd-system`;
@@ -389,7 +390,7 @@ Legend: **Required** = part of the minimum path · **Optional** = quality/extra 
 - **When:** "the first minutes are boring, what can we test", "design an experiment", "compare
   three hints", "here is the playtest feedback", "which experiments failed".
 - **In:** nothing (a short conversation), a design problem, a chosen idea, pasted feedback or a
-  file, a list request, or a path to a balance `CHECKPOINTS.md`. The intent is read from the
+  file, a list request, an experiment named in words ("the latest", "the one about onboarding" — found by its `lookup.md` reference, which the planner and both explorations read too), or a path to a balance `CHECKPOINTS.md`. The intent is read from the
   request; no flags.
 - **Out:** `.unikit/gamedesign/experiments/` — `index.md` and per experiment
   `EXP-<nnn>-<slug>/{experiment,feedback,results}.md`; the last block of a save is the ready

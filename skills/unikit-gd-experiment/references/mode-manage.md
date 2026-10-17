@@ -1,6 +1,6 @@
 # Manage — the catalog
 
-Read **only** when the request manages saved experiments — list, filter, compare, best, failed, retest, update, archive, lessons across several, or repair the index. Load also `{{skills_dir}}/{{self_name}}/references/storage-and-index.md` in the same turn.
+Read **only** when the request manages saved experiments — list, filter, compare, best, failed, retest, update, archive, lessons across several, or repair the index. Load also `{{skills_dir}}/{{self_name}}/references/storage-and-index.md` in the same turn, and `{{skills_dir}}/{{self_name}}/references/lookup.md` when the request names an experiment by words.
 
 ## Source of truth
 
@@ -9,7 +9,7 @@ The saved files are the source of truth. Do not fabricate missing history: a cla
 ## Requests
 
 - **List all** — every experiment, archived ones included (marked as archived).
-- **Filter** — not yet evaluated (`Evaluation status: Not Tested`); ready for planning; by topic ("find experiments related to onboarding" matches `Category`, `Summary` and `What We Test`; relevance the text does not support is not claimed).
+- **Filter** — not yet evaluated (`Evaluation status: Not Tested`); ready for planning; by topic or "the latest" — the matching is the rule of `{{skills_dir}}/{{self_name}}/references/lookup.md` (it also matches the variant names; relevance the text does not support is not claimed). A request that shows a list or a comparison does not ask the lookup's confirmation: it prints a result, it does not change course; a request that acts on one card found by words (update, archive, retest) keeps it.
 - **Compare several** — side by side: hypothesis, what is tested, status, outcome, score, confidence; only comparable ones are compared and an invalid comparison is flagged.
 - **Highest-rated** — by the current score (`Evaluation status: Evaluated`); ties are listed together; `Outdated` ones are marked.
 - **Failed hypotheses** — assessments `Not Supported` and what each taught.
