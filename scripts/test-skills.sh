@@ -7011,7 +7011,11 @@ if [[ -z "$TC_G5_WHY" ]]; then
     grep -qF '### Step 2.5' "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-29:no-step-2.5"
     grep -qF '⏭️ MERGED'    "$TC_TESTRUNS"                                  || TC_G5_WHY+=" TC-30:no-merge-marker"
     grep -qF 'does not count as pending for its own run' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:no-counting-rule"
-    grep -qF 'never merged and never moved' "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-31:final-run-mergeable"
+    # The final full run is the preferred merge TARGET: it counts as a point (so "phase point +
+    # final run" is already two and the question is asked), it is never itself marked merged and
+    # never moved. Pinning the old exclusion from the count (`other than ...plan`) is the negative half.
+    grep -qF 'is the merge target, never merged away and never moved' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:final-run-not-target"
+    grep -qF 'other than `Test checkpoint: plan`' "$TC_TESTRUNS" && TC_G5_WHY+=" TC-31:final-run-excluded-from-count"
     grep -qF 'mark first, then execute'     "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-32:no-order-contract"
     # (TC-33) one marker form across two files — a second spelling is a marker nobody reads.
     grep -qF '⏭️ MERGED → task' "$TC_READER" || TC_G5_WHY+=" TC-33:marker-form-drifted-in-reader"
