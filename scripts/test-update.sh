@@ -1855,7 +1855,14 @@ inject_fake_registry "$NARROW_DIR"
 # if the recipient were absent there rather than wildcarded, run 2 would inject nothing,
 # the removal branch would never be exercised, and the dead names would survive a test
 # that reads as if it had proved they do not.
-FIXTURE_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
+#
+# The doctored file is a COPY of the fixture catalog under $TMPDIR, selected through
+# UNIKIT_MCP_DIR: the suites run in parallel (test-skills.sh), and a git-tracked fixture
+# edited in place is visible to the install suite that reads the same catalog.
+NARROW_CATALOG="$TMPDIR/mcp-two-unity-servers"
+cp -r "$ROOT_DIR/scripts/test-fixtures/mcp/two-unity-servers" "$NARROW_CATALOG"
+export UNIKIT_MCP_DIR="$(normalize_path_for_json "$NARROW_CATALOG")"
+FIXTURE_JSON="$UNIKIT_MCP_DIR/unity/fixture-treed-mcp.json"
 FIXTURE_JSON_BACKUP="$TMPDIR/fixture-treed-mcp.json.orig"
 cp "$FIXTURE_JSON" "$FIXTURE_JSON_BACKUP"
 

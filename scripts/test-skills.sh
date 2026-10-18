@@ -24,6 +24,50 @@ source "$SCRIPT_DIR/test-fixtures.sh"
 ensure_build
 export UNIKIT_TEST_SKIP_BUILD=1
 
+# The nested suites each work in their own temp project and only read the package, so they
+# run in the background while the inline guards below go on, and each result is collected at
+# the Part that used to run it (the printed order does not change). A suite must never edit
+# a tracked file in place — copy it and point UNIKIT_MCP_DIR at the copy (test-update.sh,
+# test-migrations.sh do). UNIKIT_TEST_SERIAL=1 runs them one after another, as before.
+CHILD_DIR="$(mktemp -d)"
+trap 'kill $(jobs -p) 2>/dev/null || true; rm -rf "$CHILD_DIR"' EXIT
+
+child_start() {
+    local name="$1"; shift
+    if [[ "${UNIKIT_TEST_SERIAL:-0}" == "1" ]]; then
+        local code=0
+        "$@" > "$CHILD_DIR/$name.out" 2>&1 || code=$?
+        echo "$code" > "$CHILD_DIR/$name.exit"
+        return 0
+    fi
+    ( code=0; "$@" > "$CHILD_DIR/$name.out" 2>&1 || code=$?; echo "$code" > "$CHILD_DIR/$name.exit" ) &
+    echo "$!" > "$CHILD_DIR/$name.pid"
+}
+
+# child_wait <name> — sets CHILD_EXIT and CHILD_OUTPUT.
+child_wait() {
+    local name="$1"
+    if [[ -f "$CHILD_DIR/$name.pid" ]]; then
+        wait "$(<"$CHILD_DIR/$name.pid")" 2>/dev/null || true
+    fi
+    CHILD_EXIT="$(<"$CHILD_DIR/$name.exit")"
+    CHILD_OUTPUT="$(<"$CHILD_DIR/$name.out")"
+}
+
+# Longest first, so the critical path starts at once.
+child_start rules       bash "$SCRIPT_DIR/test-rules.sh"
+child_start update      bash "$SCRIPT_DIR/test-update.sh"
+child_start extensions  bash "$SCRIPT_DIR/test-extensions.sh"
+child_start install     bash "$SCRIPT_DIR/test-install.sh"
+child_start migrations  bash "$SCRIPT_DIR/test-migrations.sh"
+child_start extsel      bash "$SCRIPT_DIR/test-extension-selection.sh"
+child_start layout      bash "$SCRIPT_DIR/test-rules-layout.sh"
+child_start planbundle  bash "$SCRIPT_DIR/test-plan-bundle.sh"
+child_start genres      bash "$SCRIPT_DIR/test-genres.sh"
+child_start skillgroups bash "$SCRIPT_DIR/test-skill-groups.sh"
+child_start helpskill   bash "$SCRIPT_DIR/test-help-skill.sh"
+child_start grepshim    bash "$SCRIPT_DIR/test-grep-shim.sh"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -13042,10 +13086,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Update command smoke tests ===${NC}\n"
 
-set +e
-UPDATE_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-update.sh" 2>&1)
-UPDATE_SMOKE_EXIT=$?
-set -e
+child_wait update
+UPDATE_SMOKE_OUTPUT="$CHILD_OUTPUT"
+UPDATE_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $UPDATE_SMOKE_EXIT -eq 0 ]]; then
     pass "update smoke tests"
@@ -13060,10 +13103,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Install smoke tests ===${NC}\n"
 
-set +e
-INSTALL_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-install.sh" 2>&1)
-INSTALL_SMOKE_EXIT=$?
-set -e
+child_wait install
+INSTALL_SMOKE_OUTPUT="$CHILD_OUTPUT"
+INSTALL_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $INSTALL_SMOKE_EXIT -eq 0 ]]; then
     pass "install smoke tests"
@@ -13080,10 +13122,9 @@ fi
 # proves the version matrix and the settings-file write rules underneath them.
 echo -e "\n${BOLD}=== Migration + MCP reconciliation smoke tests ===${NC}\n"
 
-set +e
-MIGRATIONS_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-migrations.sh" 2>&1)
-MIGRATIONS_SMOKE_EXIT=$?
-set -e
+child_wait migrations
+MIGRATIONS_SMOKE_OUTPUT="$CHILD_OUTPUT"
+MIGRATIONS_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $MIGRATIONS_SMOKE_EXIT -eq 0 ]]; then
     pass "migration + MCP reconciliation smoke tests"
@@ -13098,10 +13139,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Extension smoke tests ===${NC}\n"
 
-set +e
-EXT_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-extensions.sh" 2>&1)
-EXT_SMOKE_EXIT=$?
-set -e
+child_wait extensions
+EXT_SMOKE_OUTPUT="$CHILD_OUTPUT"
+EXT_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $EXT_SMOKE_EXIT -eq 0 ]]; then
     pass "extension smoke tests"
@@ -13116,10 +13156,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Extension selection smoke tests ===${NC}\n"
 
-set +e
-EXT_SELECTION_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-extension-selection.sh" 2>&1)
-EXT_SELECTION_SMOKE_EXIT=$?
-set -e
+child_wait extsel
+EXT_SELECTION_SMOKE_OUTPUT="$CHILD_OUTPUT"
+EXT_SELECTION_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $EXT_SELECTION_SMOKE_EXIT -eq 0 ]]; then
     pass "extension selection smoke tests"
@@ -13356,7 +13395,9 @@ fi
 # Part 13: Rules registry tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13: Rules registry tests${NC}"
-if bash "$SCRIPT_DIR/test-rules.sh"; then
+child_wait rules
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Rules registry tests passed"
 else
     fail "Rules registry tests failed"
@@ -13366,7 +13407,9 @@ fi
 # Part 13c: rules-layout.mjs — the optimise helper, run for real on fixture projects
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13c: rules-layout helper tests${NC}"
-if bash "$SCRIPT_DIR/test-rules-layout.sh"; then
+child_wait layout
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "rules-layout helper tests passed"
 else
     fail "rules-layout helper tests failed"
@@ -13376,7 +13419,9 @@ fi
 # Part 13d: plan-bundle.mjs — the ultra bundle check, run for real on fixture bundles
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13d: plan-bundle helper tests${NC}"
-if bash "$SCRIPT_DIR/test-plan-bundle.sh"; then
+child_wait planbundle
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "plan-bundle helper tests passed"
 else
     fail "plan-bundle helper tests failed"
@@ -13386,7 +13431,9 @@ fi
 # Part 13b: Genre profile tests (catalog + CLI + schema)
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13b: Genre profile tests${NC}"
-if bash "$SCRIPT_DIR/test-genres.sh"; then
+child_wait genres
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Genre profile tests passed"
 else
     fail "Genre profile tests failed"
@@ -13451,7 +13498,9 @@ fi
 # Part 15: Skill grouping guard
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 15: Skill grouping guard${NC}"
-if bash "$SCRIPT_DIR/test-skill-groups.sh"; then
+child_wait skillgroups
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Skill grouping guard passed"
 else
     fail "Skill grouping guard failed"
@@ -13461,10 +13510,24 @@ fi
 # Part 16: unikit-help navigator guard
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 16: unikit-help navigator guard${NC}"
-if bash "$SCRIPT_DIR/test-help-skill.sh"; then
+child_wait helpskill
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "unikit-help navigator guard passed"
 else
     fail "unikit-help navigator guard failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 17: the `grep -qF` shortcut answers like real grep
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 17: grep shim equivalence${NC}"
+child_wait grepshim
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
+    pass "grep shim equivalence passed"
+else
+    fail "grep shim equivalence failed"
 fi
 
 # ─────────────────────────────────────────────

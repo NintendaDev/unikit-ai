@@ -15,6 +15,11 @@
 #
 # shellcheck disable=SC2034  # consumers source this file; vars look unused here
 
+# `grep -qF <text> <file>` answered inside the shell (see grep-shim.sh): the suites ask it
+# ~1400 times and a process start is most of their cost on Windows.
+# shellcheck source=./grep-shim.sh
+source "$(dirname "${BASH_SOURCE[0]}")/grep-shim.sh"
+
 # ─────────────────────────────────────────────
 # Engine: unity
 # ─────────────────────────────────────────────
