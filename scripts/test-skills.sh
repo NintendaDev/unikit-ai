@@ -7489,6 +7489,27 @@ else
     fail "TW run-width contract:$TW_WHY"
 fi
 
+# --- PV: /unikit-verify checks what was executed, and reads only the phases of that work ---
+# A half-executed ultra bundle used to cost every phase file, and the tasks nobody had started
+# came back as `NOT FOUND` blockers. The reading depth now follows the audited phases.
+PV_WHY=""
+PV_RD="$(grep -F '| `/unikit-verify` |' "$ROOT_DIR/data/ultra-plan-read.md" || true)"
+PV_DOC="$(grep -F '| `/unikit-verify` |' "$ROOT_DIR/docs/plan-files.md" || true)"
+[[ -n "$PV_RD" && -n "$PV_DOC" ]] || PV_WHY+=" PV-0:reader-row-missing"
+grep -qF 'phases that hold at least one executed' "$UNIKIT_VERIFY_SKILL"  || PV_WHY+=" PV-1:depth-not-by-executed-work"
+grep -qF 'read the manifest plus **every** phase file' "$UNIKIT_VERIFY_SKILL" && PV_WHY+=" PV-1:old-read-all-depth"
+grep -qF 'every phase file is still read' "$UNIKIT_VERIFY_SKILL"          && PV_WHY+=" PV-1:old-read-all-closing-line"
+grep -qF '**Unfinished plan.**' "$UNIKIT_VERIFY_SKILL"                     || PV_WHY+=" PV-2:no-unfinished-plan-paragraph"
+grep -qF 'NOT EXECUTED' "$UNIKIT_VERIFY_SKILL"                             || PV_WHY+=" PV-2:no-not-executed-status"
+grep -qF 'executed task' <<<"$PV_RD"                                       || PV_WHY+=" PV-3:reader-contract-depth"
+grep -qF 'every** phase file' <<<"$PV_RD"                                  && PV_WHY+=" PV-3:reader-contract-reads-all"
+grep -qF 'every phase file' <<<"$PV_DOC"                                   && PV_WHY+=" PV-4:docs-read-all"
+if [[ -z "$PV_WHY" ]]; then
+    pass "PV-1…PV-4 verify reads the phases of executed work only; an unexecuted task is reported, never searched for or blocking"
+else
+    fail "PV partial-plan verify contract:$PV_WHY"
+fi
+
 # --- EO: the execution overview reaches the screen on every run that executes a task ---
 # Real runs showed `## Implementation Progress` on some starts and not on others: it was an
 # unnumbered paragraph between 3.0 and 3.1, and a Step 0.2 / 2.5 question asked "right before

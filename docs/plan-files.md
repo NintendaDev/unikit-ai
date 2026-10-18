@@ -295,7 +295,7 @@ specification is incomplete.
 | Consumer | Reads |
 |----------|-------|
 | `/unikit-implement` | the manifest plus the phase file of the active task |
-| `/unikit-verify` | the manifest plus every phase file |
+| `/unikit-verify` | the manifest plus the phase files of the phases with executed tasks |
 | `/unikit-improve` | the manifest plus every phase file |
 | `/unikit-commit` | the manifest plus the phase files of the current commit group |
 | `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the current layer |
@@ -640,7 +640,7 @@ The rule is about the **class** of artifact, not a list of exceptions: a list wo
 
 Plan creates one manifest — `.unikit/code/PLAN.md` for a fast plan, `.unikit/code/plans/<folder>/PLAN.md` for a folder plan — carrying the checklist and `## Technical Context` in the same file. Implement discovers plans via the [Plan Discovery](#plan-discovery) priority order, reads the checklist for task ordering and the technical context alongside it, Bootstraps rules + engine principles once, then executes tasks sequentially inline (`Read/Edit/Write/Bash`). Parallel phases and deep-dive tasks are offloaded to the `develop-agent` alias. After each task, implement marks `- [x]` in the plan file. After phase completion: compilation check (engine MCP), optional tests, commit checkpoint.
 
-In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ per consumer: implement reads the manifest plus the phase file of the **active task**; verify and improve read the manifest plus **every** phase file; commit reads the manifest plus the phase files of the current commit group; and `unikit-implement-coordinator` — the parallel execution path, a separate entry point that does its own detection — reads the manifest plus the phase files of the phases it dispatches in the current layer. The full table lives in `.unikit/system/ultra-plan-read.md`.
+In an [ultra bundle](#ultra-bundle--a-manifest-plus-one-file-per-phase) the depths differ per consumer: implement reads the manifest plus the phase file of the **active task**; verify reads the manifest plus the phase files of the phases with executed tasks (an unfinished plan is not read past what was done), and improve reads the manifest plus **every** phase file; commit reads the manifest plus the phase files of the current commit group; and `unikit-implement-coordinator` — the parallel execution path, a separate entry point that does its own detection — reads the manifest plus the phase files of the phases it dispatches in the current layer. The full table lives in `.unikit/system/ultra-plan-read.md`.
 
 ### /unikit-fix ↔ /unikit-implement
 
