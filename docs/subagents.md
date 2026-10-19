@@ -223,7 +223,7 @@ Which type a skill launches and how it reaches a skill is data, not text: every 
 | Kimi Code | `explore` | `coder` | `inherit` | `read` | the type is matched by exact name, case included |
 | Universal / Other | `Explore` | `general-purpose` | `inherit` | `read` | Claude Code's type names for a runtime that is not known in advance; a runtime that does not know them returns an unknown-type error |
 
-A skill body names none of these - no type, no model, no Codex argument, no call form: adding an agent means one registry entry (plus one key per setting in the config template, only when the runtime's call takes the argument without a setting of its own - the profile's `modelParam` for the model, `effortParam` for the effort), with no edit under `skills/`.
+A skill body names none of these - no type, no model, no Codex argument, no call form: adding an agent means one registry entry (plus one key per setting in the config template, only when the runtime's call takes the argument without a setting of its own - a non-empty `modelArg` in the profile for the model, a non-empty `effortArg` for the effort), with no edit under `skills/`.
 
 Every `recon-agent` call also says in words that it only reads (`You are read-only: edit and write nothing.`): for Codex, which has no read-only type, that sentence is the only protection against a write.
 

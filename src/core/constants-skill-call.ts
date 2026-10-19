@@ -20,6 +20,7 @@ export const SKILLTOOL_CALL_FORM: SkillCallForm = 'skilltool';
 /** Keys of the optional profile components in a source hash (`hashing.ts`). */
 export const SKILL_CALL_HASH_KEY = 'call';
 export const SPAWN_ARGS_HASH_KEY = 'spawn';
+export const ARGS_HASH_KEY = 'args';
 
 /**
  * `{{agent_skill_call:<skill>}}` and the rest of its line up to the closing quote of the
@@ -40,6 +41,14 @@ export const READ_CALL_NO_ARGS_NOTE = '(empty — no arguments were given)';
 
 /** The keyword of an `Agent(...)` call argument that names the subagent type. */
 export const SUBAGENT_TYPE_KEY = 'subagent_type';
+
+/**
+ * The slots a call head leaves for the model and the effort of a launch. They are not values: the skill
+ * settles each one at run time (`data/subagent-arguments.md`) and takes the slot out of the call when there
+ * is nothing to pass. The name before the colon is the runtime's own — `modelArg` / `effortArg` of the profile.
+ */
+export const MODEL_SLOT = '<model>';
+export const EFFORT_SLOT = '<effort>';
 
 /**
  * Extra arguments of every Codex agent call (`spawn_agent`). Codex has no subagent type parameter, so the

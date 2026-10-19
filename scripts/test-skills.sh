@@ -12529,7 +12529,7 @@ if grep -qF 'There is no `/unikit-*` slash command' "$UA_AGENTS_DOC"; then UA_WH
 # (UA-4) the universal agent rides on the defaults: no code branches on its id (its MCP writer and
 # its transformer are the default ones, apart from the welcome text), and the two places that must
 # agree — registry entry, transformer registration — both carry it. It has no config-template key:
-# its profile says `modelParam: false`, which test-agent-profile.mjs group C checks.
+# its profile names no model argument (`modelArg: ''`), which test-agent-profile.mjs group C checks.
 [[ "$({ grep -rnE "(agentId|agent\.id|\.id) === 'universal'" "$ROOT_DIR/src" || true; } | wc -l | tr -d ' ')" -eq 0 ]] || UA_WHY+=" UA-4:code-branches-on-the-universal-id"
 [[ "$({ grep -c "'universal'" "$ROOT_DIR/src/core/mcp-writers/index.ts" || true; })" -eq 0 ]] || UA_WHY+=" UA-4:mcp-writer-has-a-universal-branch"
 { grep -qF "universal: {" "$ROOT_DIR/src/core/agents.ts" || false; } || UA_WHY+=" UA-4:registry-entry-missing"
