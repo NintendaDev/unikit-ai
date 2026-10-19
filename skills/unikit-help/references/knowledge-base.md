@@ -95,6 +95,9 @@ Relevant to the dev pipeline:
   mandatory, what is softened, what is switched off, the branch check), read by `/unikit-implement`,
   `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `/unikit-review`, `/unikit-fix`,
   `/unikit-devcontext`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
+- `subagent-arguments.md` — how the model and the effort of a subagent are settled (your word in the
+  request, then the config key, then the built-in value; the argument name of each runtime), read by
+  the skills that launch a subagent before their first dispatch.
 
 ---
 

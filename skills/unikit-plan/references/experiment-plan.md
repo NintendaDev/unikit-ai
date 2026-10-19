@@ -5,9 +5,10 @@ Read **only** when the input is an experiment: `EXP-<nnn>`, a path to an `experi
 ## Resolving the input
 
 - The selector is `EXP-<nnn>` (`Glob` `.unikit/gamedesign/experiments/EXP-<nnn>-*` — exactly one folder), a path to `experiment.md`, an experiment folder, or several of them in one request. The word "experiment" in free text is not a selector: otherwise any "A/B experiment" mentioned in code would start this branch. Cards given together with free text: the cards are the input, the text is read as the user's constraints.
+- A request that names a card by its description — "the latest experiment", "the experiment about onboarding" — is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md`, read only for such a request and only when the store holds a card: the card the user confirms is the selector from here on, and everything below works as for `EXP-<nnn>`. The lookup finds a card; whether it may be planned is decided by `## Checking the cards`.
 - A card is not found → `ERROR [experiment] <selector>: no such card — plan not built; see /unikit-gd-experiment` and **STOP**. Two folders with one number → the same, with the explanation (the experiment skill blocks such numbers).
 - Every `experiment.md` is read **in full**. `feedback.md` and `results.md` are not read unless the user asks. The experiments store is never written.
-- The plan description comes from the cards: the search over `researches/INDEX.md` (Step 0.2) does not run. Step 4.5 does not run: a plan of an experiment has no `## Design`, `## Flow Context` or `## Content Context`, and a prototype does not feed `implemented_version`.
+- The plan description comes from the cards: the search over `researches/INDEX.md` (Step 0.2) does not run. Step 4.5 does not run: a plan of an experiment has no `## Design`, `## Flow Context` or `## Content Context`, and a prototype does not feed `implemented_version`. Step 2 does not match researches by topic either: a research reaches the plan only by an `Experiment:` line, see `## The snapshot comes first`.
 
 ## Checking the cards
 
@@ -18,6 +19,8 @@ Read **only** when the input is an experiment: `EXP-<nnn>`, a path to an `experi
 ## The snapshot comes first
 
 Order matters here: the snapshot is taken before any git command, because on a new branch cut from the base the card file may be missing, and the executor reads no cards. Cards stay where they were saved: the planner neither moves them between branches nor copies them whole into the plan, and the evaluation (the experiment skill) reads the files of the working tree — where it runs is told by `{{skills_dir}}/unikit-gd-experiment/references/planning-handoff.md`. The content of the snapshot follows `TASK-FORMAT.md` → `### Experiment context section`; a path without the content is not a snapshot.
+
+**Researches of a card.** A research belongs to a card only when its Active Summary (between the `## Active Summary` markers) holds a line `Experiment: EXP-<nnn> v<k> — <title>` with that card's number; the topic is never guessed. Search both stores, one `Grep` each — `.unikit/code/researches/*/RESEARCH.md` and `.unikit/gamedesign/researches/*/RESEARCH_RESULT.md` — for `^Experiment: EXP-<nnn> v`; a hit outside the markers does not count. A research of the code store is linked as Step 2 links one: `research_linked = true`, an entry under `## Based on` hashed by `.unikit/system/research-link.md`. A research of the design store is not read by that contract: its Active Summary is copied as it stands into the block of its card in `## Experiment Context`, with no hash and no drift tracking. When `v<k>` is older than the card's `Version`, print `WARN [experiment] <folder> was written against v<k> of the card, now v<n> — it may describe an older test`; the research is still used.
 
 ## The mode question
 
@@ -56,6 +59,6 @@ It adds no acceptance phases, no task kinds (`Measure:`, `Item:` and `Hand-back:
 
 ## Self-check before saving
 
-(a) The manifest has exactly one `## Experiment Context` section before `## Settings`, the lines `Branch:` and `Base:` are in place, and every card has the snapshot of sections 2-11. (b) `Testing` and `Docs` follow `## Settings`. (c) There is no `PR checkpoints:` line and no `Hand-back:` or `Measure:` task. (d) The mode question was shown. (e) The folder name is `experiment-<topic>`. (f) The commands name the folder. A violation is fixed before saving.
+(a) The manifest has exactly one `## Experiment Context` section before `## Settings`, the lines `Branch:` and `Base:` are in place, and every card has the snapshot of sections 2-11. (b) `Testing` and `Docs` follow `## Settings`. (c) There is no `PR checkpoints:` line and no `Hand-back:` or `Measure:` task. (d) The mode question was shown. (e) The folder name is `experiment-<topic>`. (f) The commands name the folder. (g) A card the user named in words was confirmed through the lookup before anything of it was read. (h) A research was linked to a card only by its `Experiment:` line. A violation is fixed before saving.
 
 Missing or unreadable file → the line of `SKILL.md` (`WARN [experiment] experiment-plan reference missing — …`) and an ordinary plan.

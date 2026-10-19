@@ -27,7 +27,7 @@ import {
 } from '../constants.js';
 import type { SelectedEngineServer } from '../mcp-rules.js';
 import { listModules } from '../modules.js';
-import { buildSubagentTemplateVars } from './shared.js';
+import { buildSubagentTemplateVars, installFlatSystemAsset } from './shared.js';
 
 // --- Engine template installation ---
 
@@ -86,23 +86,7 @@ export async function installCliContract(projectDir: string): Promise<void> {
   logInfo('installCliContract', 'installed .unikit/system/cli-contract.md');
 }
 
-// --- Flat system assets ---
-
-/**
- * Copy one `data/<fileName>` into `.unikit/system/<fileName>` verbatim — the shared body of
- * every flat, substitution-free, non-hash-tracked contract below. A missing source is a skip
- * with a warning, never an abort: one absent contract is not a reason to fail init/update.
- */
-async function installFlatSystemAsset(projectDir: string, fileName: string, component: string): Promise<void> {
-  const content = await readTextFile(path.join(getDataDir(), fileName));
-  if (!content) {
-    logWarn(component, `${fileName} not found in data/, skipping`);
-    return;
-  }
-
-  await writeTextFile(path.join(systemDir(projectDir), fileName), content);
-  logInfo(component, `installed .unikit/system/${fileName}`);
-}
+// --- Flat system assets (the shared body, installFlatSystemAsset, lives in shared.ts) ---
 
 // --- Gate-result contract installation ---
 

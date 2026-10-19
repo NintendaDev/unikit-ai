@@ -151,6 +151,9 @@ subagents:
     antigravity: flash
     kimi:
     universal:
+  effort:
+    claude: medium
+    codex: medium
 ```
 
 ### `language` section
@@ -180,7 +183,7 @@ Where **test runs** are placed in a plan (`plan`), and how wide a run goes when 
 | `testing.run.use_affected_modules` | How a phase test checkpoint and a `/unikit-fix` test run choose their tests. `false` runs every test in the project; `true` runs only the test suites of the changed modules and of the modules that depend on them, found by name search, in one run — and every test when narrowing is not possible. `task N.M` checkpoints always run their own fixtures, and the plan's final checkpoint always runs everything. | `false` |
 | `testing.run.full_run_threshold_percent` | With `use_affected_modules: true`: when the affected suites reach this share of all the project's test suites, every test is run instead. An integer from 1 to 100; any other value falls back to the default with a `WARN [testing]` line. Assigned, not measured — tune it on your project. | `30` |
 
-**Merging runs is a question, not a key.** When a `/unikit-implement` call covers two or more test-checkpoint tasks that can be merged, it asks once, before the first task, whether to run the tests once at the last of them or at every point as planned; words in the call itself (`Phases 5-6, tests at the end of phase 6`) answer it in advance. The answer holds for that call only — on disk it survives as the `⏭️ MERGED` marks in the plan. The plan's final full run is never merged. A config written by an earlier version may still carry the executor's old merge key; nothing reads it any more.
+**Merging runs is a question, not a key.** When a `/unikit-implement` call covers two or more test-checkpoint tasks that can be merged, it asks once, before the first task, whether to run the tests once at the last of them or at every point as planned; words in the call itself (`Phases 5-6, tests at the end of phase 6`) answer it in advance. The answer holds for that call only — on disk it survives as the `⏭️ MERGED` marks in the plan. The plan's final full run is never merged into another point; it is the point the others merge into, so a phase run plus the final run already counts as two. A config written by an earlier version may still carry the executor's old merge key; nothing reads it any more.
 
 **The placement key is recorded, not re-read.** `plan.checkpoints` is read by the planner and **recorded into the plan** as a `Test checkpoints:` line, so changing it later never reinterprets a plan already written.
 
@@ -211,23 +214,31 @@ Existing projects receive the key by either of the two paths in [How new keys re
 
 ### `subagents` section
 
-Which model the subagents that skills launch run on, one value per agent. The block lists the agents whose subagent call takes a model without any setting of the runtime itself; the other agents have no key.
+Which model, and how much reasoning effort, the subagents that skills launch use - one value per agent, in two blocks, `model` and `effort`. Each block lists the agents whose subagent call takes that argument without any setting of the runtime itself; the other agents have no key.
 
 | Key | Description | Default |
 |-----|-------------|---------|
 | `model.claude` | Claude Code. A tier name: `sonnet`, `opus` or `haiku`. | `sonnet` |
 | `model.codex` | Codex CLI. A model identifier as the model parameter of Codex's `spawn_agent` accepts it - its schema lists the valid names, and they change, so you write it yourself. | `inherit` |
-| `model.antigravity` | Antigravity. `flash`, `pro` or `inherit`. | `flash` |
+| `model.antigravity` | Antigravity. `inherit`, `flash_lite`, `flash` or `pro` - the values of the `Model` argument of its subagent call; a tier sets the size of the model, not the depth. | `flash` |
+| `effort.claude` | Claude Code. A level of the `effort` argument of its subagent call: `low`, `medium`, `high`, `xhigh` or `max`. Which levels a model supports differs. | `medium` |
+| `effort.codex` | Codex CLI. A level of the `reasoning_effort` argument of `spawn_agent`. The valid levels depend on the model of the subagent, and a wrong one fails with an error that lists them, so no list is kept here. | `medium` |
 
 A value means:
 
 - **a model name** - passed to the subagent with every call, exactly as written;
 - **`inherit`, or an empty value** - nothing is passed: the subagent runs on the model of the session. `inherit` is what the template ships for Codex CLI, whose identifiers go stale; an empty value written by hand means the same, is a deliberate choice and is never filled in again;
-- **no key at all** (including no file, or no `subagents` block) - the built-in default noted above.
+- **no key at all** (including no file, or no `subagents` block) - a model falls back to the built-in default noted above; an effort is not passed at all, so a project without the `effort` block behaves as it did before.
 
-**The skills read this block at run time**, once per skill before the first dispatch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Only the aliases that name a model read it (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`); `develop-agent` and `docs-agent` load a skill and never pass a model.
+**The skills read this block at run time**, once per skill before the first dispatch, so an edit takes effect on the next command - `unikit-ai update` is not needed, and the installer never reads the file. Only the aliases that name a model read it (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`); `develop-agent` and `docs-agent` load a skill and never pass a model or an effort. What to pass, and in which order, is the rule in `.unikit/system/subagent-arguments.md`, which `unikit-ai init` and `unikit-ai update` install whichever skills you chose.
 
-UniKit keeps no list of model names. A name the runtime does not accept makes the launch fail, and the skill repeats the call once on the model of the session with a `WARN [delegation]` line. Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key in the template, and a missing key means `inherit`: nothing is passed and the subagent runs on the model of the session. The reason is that their subagent call takes no model at all (Cursor, OpenCode), takes one only after you set up the client itself (Kimi Code `[secondary_model]`, Qwen Code `agents.modelGrades`), or belongs to a runtime UniKit does not know in advance (Universal / Other). If you did enable it, add `subagents.model.<agent>` to the file by hand and the skills will pass it. The format comes from the vendor's documentation and has not been checked in a live session: for Kimi Code an alias from `[secondary_model.models]` in `~/.kimi-code/config.toml`, or `primary`; for Qwen Code a grade name from `agents.modelGrades`; for Universal / Other whatever the subagent tool of your agent accepts. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
+**Which value wins** is decided for the model and for the effort separately: what you ask for in the request that started the skill ("use opus for the subagents", "effort high for the subagents") comes first, then the config key, then the built-in default (a model) or nothing (an effort). A remark about depth in general ("think deeper") is not such a request. An effort level is passed in lower case. If an effort makes the launch fail, the skill repeats the call once without it (`WARN [delegation] effort ...`) and, if that fails too, once without the model.
+
+**What can override the effort (Claude Code, by its documentation - not checked by a probe):** the environment variable `CLAUDE_CODE_EFFORT_LEVEL` overrides the level of a subagent call, and the setting `maxEffortLevel` or a limit of your organisation caps it, so the level written here may not be the one that runs; a level the model does not support falls to the nearest one below it. For a model the documentation does not list, what the argument does is not known. The argument itself is documented from Claude Code v2.1.292 (the probe of 2026-10-16 ran on 2.1.301); what an older client does with it was not checked - the call can fail, and the skill then repeats it without the effort.
+
+**Antigravity has no effort key:** the subagent call of its client takes no effort argument, so what you can set is the effort of the session itself (`/effort` or `--effort`) and the tier in `subagents.model.antigravity` - see [Agents](agents.md#antigravity).
+
+UniKit keeps no list of model names or effort levels. A value the runtime does not accept makes the launch fail, and the skill repeats the call with a `WARN [delegation]` line. Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key in the template, and a missing key means `inherit`: nothing is passed and the subagent runs on the model of the session. The reason is that their subagent call takes no model at all (Cursor, OpenCode), takes one only after you set up the client itself (Kimi Code `[secondary_model]`, Qwen Code `agents.modelGrades`), or belongs to a runtime UniKit does not know in advance (Universal / Other). If you did enable it, add `subagents.model.<agent>` to the file by hand and the skills will pass it. The format comes from the vendor's documentation and has not been checked in a live session: for Kimi Code an alias from `[secondary_model.models]` in `~/.kimi-code/config.toml`, or `primary`; for Qwen Code a grade name from `agents.modelGrades`; for Universal / Other whatever the subagent tool of your agent accepts. The agent types the skills launch come from the agent profile, not from this file - see [Subagents](subagents.md#subagent-profile-per-agent).
 
 ### How new keys reach an existing project
 
@@ -244,7 +255,7 @@ The actualization mode sorts every leaf key of the template into one of six buck
 
 1. Absent, template value is a literal → appended **silently**.
 2. Absent, template value is a `{{PLACEHOLDER}}` → **asked**.
-3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode. Exception: an empty `subagents.model.<agent>` is a deliberate choice (pass no model), so it is kept as it is.
+3. Present but empty → treated exactly as absent. An empty value is a normal state, not a fault: `git.base_branch` is deliberately left empty in no-git mode. Exception: an empty `subagents.model.<agent>` or `subagents.effort.<agent>` is a deliberate choice (pass no model, pass no effort), so it is kept as it is; an absent effort key is appended with the template value `medium`.
 4. Present but outside a **declared** domain → asked. A domain is declared by exactly one thing: an inline `# a | b` comment standing beside the value. An `Options:` or `Examples:` list inside a comment block is prose for the reader, not a domain. Which keys carry one is settled by the template alone — this page deliberately does not list them, so the two cannot drift apart.
 5. Present in your file but absent from the template → **reported, never deleted**. This is usually a key you added on purpose.
 6. `language.rules` and `language.technical_terms` → **not touched at all**.
@@ -700,6 +711,7 @@ your-unity-project/
 │   │   ├── merge-analysis.md      # How to read a merge before it happens - read by explore and plan when asked to merge a branch
 │   │   ├── balance-handback.md    # The balance hand-back report contract - read by plan, implement, verify and unikit-gd-balance
 │   │   ├── prototype-profile.md   # How a plan built from experiment cards is executed - read by implement, verify, pr, improve, review, fix, devcontext, commit and their subagents
+│   │   ├── subagent-arguments.md  # How the model and the effort of a subagent are settled - read by the skills that launch a model-carrying subagent
 │   │   ├── gamedesign/            # Game-design system assets
 │   │   │   ├── gd-principles.md    # The design working contract - slim core
 │   │   │   ├── gd-authoring.md     # + 6 shards, each read only by the skills that need it

@@ -76,18 +76,13 @@ This skill uses a named delegation alias for `Agent(...)` calls. The alias is th
 place where its delegate's agent type and call arguments are declared — call sites name
 the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first dispatch of an alias below, read
+`.unikit/system/subagent-arguments.md` and `.unikit/config.yaml` once and settle the model and
+the effort argument as that file says. This agent's keys are `subagents.model.{{agent_id}}` and
+`subagents.effort.{{agent_id}}`; with no model key use the built-in default `"{{agent_model_default}}"`.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use the built-in default model and no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -134,9 +129,12 @@ reference files named below from `{{skills_dir}}/{{self_name}}/references/` and 
 | An idea was chosen; a direct request for a specification; a request to compare variants of one question; edit a draft | `mode-specify.md`, `template-experiment.md`, `storage-and-index.md` |
 | Feedback from real play: pasted text, a forwarded chat, a file; "evaluate", "re-evaluate", "score" | `mode-evaluate.md`, `storage-and-index.md` |
 | List, filter, compare, best, failed, retest, update, archive, lessons across several, repair the index | `mode-manage.md`, `storage-and-index.md` |
+| An experiment is named by words instead of a number: "the latest", "the one about onboarding" | `lookup.md` |
 | A fact about what the game already does is needed | `context-and-research.md` |
 | Cards are to be handed to the planner | `planning-handoff.md` |
 | A path to a `CHECKPOINTS.md` file, or a card or an evaluation that carries an origin block | `balance-link.md` |
+
+**Readers outside this skill.** `lookup.md` is also read — through its path, `{{skills_dir}}/{{self_name}}/references/lookup.md` — by the planner and by the code and design explorations when a request names an experiment by words; each of them words the confirmation in its own voice and keeps no matching of its own.
 
 **Ambiguity.** A request that reads as two branches gets one `AskUserQuestion`, the
 recommended option first. Do not guess. A reference that cannot be read: print

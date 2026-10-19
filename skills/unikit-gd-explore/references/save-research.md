@@ -57,6 +57,7 @@ mkdir -p .unikit/gamedesign/researches/<slug>
    ## Artifact Index   — ultra only, immediately after the Table of Contents (see ultra-research.md); the first line of an ultra record is the mode marker defined there
    ## Active Summary   — the region between the two markers below; what a reader needs without the chat
    <!-- unikit:active-summary:start -->
+   Experiment: <EXP-<nnn> v<Version> — <card title>; one line per card, only for a research grounded on an experiment card — omit it otherwise>
    Goal: <what this research is for>
    Scope: <what it covers, and what it does not>
    Constraints: <known limits; one line each>
@@ -85,6 +86,8 @@ mkdir -p .unikit/gamedesign/researches/<slug>
 
    The text after each `—` in the template is a note to you; it is not copied into the
    record.
+
+   **The `Experiment:` line** is written only by a research grounded on a card (`SKILL.md`, Bootstrap Context → Experiment grounding), one line per card. `EXP-<nnn>` is defined by the card, not by the record, so the coherence gate does not look for it. A planner picks the research up by this line and reads its Active Summary as context; the routing row for an experiment card, below, outranks the lens rows.
 
    The Table of Contents is **mandatory** and reflects the real sections. The
    **`Target:` / `Kind:`** lines are written **only** by the internal design lens
@@ -168,6 +171,8 @@ mkdir -p .unikit/gamedesign/researches/<slug>
 | **Internal lens** — a new / `skeleton` content type | 📦 `/unikit-gd-content` (consumes `## Content Feature Plan`) |
 | A balance/economy/UX convention worth keeping | 🧠 `/unikit-memory --module gamedesign` |
 | A consistency concern in the current design | ✅ `/unikit-gd-verify` |
+| **Grounded on an experiment card** — the card is ready for planning | 🧭 `/unikit-plan EXP-<nnn>` |
+| **Grounded on an experiment card** — any other state | 🧪 `/unikit-gd-experiment` (finish the card, or its assessment, in the light of this research) |
 
 3. **Update `researches/INDEX.md`** — **prepend** (newest first) after the header
    (create with `> Auto-maintained by /unikit-gd-explore. Do not edit manually.`

@@ -6,6 +6,7 @@ import { resolveSkillPrune } from '../../core/skill-groups.js';
 import { buildManagedSubagentsState, installSubagents } from '../../core/installer/subagents.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installEngineMcpRules, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
+import { installSubagentArgumentsContract } from '../../core/installer/system-contracts.js';
 import { memoryDir } from '../../core/constants.js';
 import {
   saveConfig, configExists, loadConfig, readConfigVersion, getCurrentVersion, emptyRulesInstallation,
@@ -285,6 +286,9 @@ export async function initCommand(): Promise<void> {
 
     // Install the prototype-profile contract (read by the executors of a plan built from experiment cards)
     await installPrototypeProfileContract(projectDir);
+
+    // Install the subagent-arguments contract (read by the skills that launch a model-carrying subagent: how its model and effort are settled)
+    await installSubagentArgumentsContract(projectDir);
 
     // Deliver the rules tree of the selected engine MCP server
     await installEngineMcpRules(projectDir, selectedEngineServer);

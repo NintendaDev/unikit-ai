@@ -1855,7 +1855,14 @@ inject_fake_registry "$NARROW_DIR"
 # if the recipient were absent there rather than wildcarded, run 2 would inject nothing,
 # the removal branch would never be exercised, and the dead names would survive a test
 # that reads as if it had proved they do not.
-FIXTURE_JSON="$(fake_mcp_catalog_path two-unity-servers)/unity/fixture-treed-mcp.json"
+#
+# The doctored file is a COPY of the fixture catalog under $TMPDIR, selected through
+# UNIKIT_MCP_DIR: the suites run in parallel (test-skills.sh), and a git-tracked fixture
+# edited in place is visible to the install suite that reads the same catalog.
+NARROW_CATALOG="$TMPDIR/mcp-two-unity-servers"
+cp -r "$ROOT_DIR/scripts/test-fixtures/mcp/two-unity-servers" "$NARROW_CATALOG"
+export UNIKIT_MCP_DIR="$(normalize_path_for_json "$NARROW_CATALOG")"
+FIXTURE_JSON="$UNIKIT_MCP_DIR/unity/fixture-treed-mcp.json"
 FIXTURE_JSON_BACKUP="$TMPDIR/fixture-treed-mcp.json.orig"
 cp "$FIXTURE_JSON" "$FIXTURE_JSON_BACKUP"
 
@@ -2237,6 +2244,26 @@ fi
 echo "  ✓ prototype-profile.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30s: subagent-arguments.md is delivered on update — same shape as 30p: DEVPRIN_DIR ran
+# `update` with no prior `init`, so the file existing proves update.ts calls the installer;
+# tamper-refresh confirms the flat rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+SUBAGENT_ARGS="$DEVPRIN_DIR/.unikit/system/subagent-arguments.md"
+assert_exists "$SUBAGENT_ARGS" "subagent-arguments.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$SUBAGENT_ARGS"
+
+DEVPRIN_OUT14="$TMPDIR/update-subagent-arguments.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT14" 2>&1)
+
+if ! grep -q "^## Argument names per runtime$" "$SUBAGENT_ARGS"; then
+    echo "Assertion failed: update did NOT refresh subagent-arguments.md from data/ (## Argument names per runtime missing)"
+    exit 1
+fi
+
+echo "  ✓ subagent-arguments.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).
@@ -2540,8 +2567,8 @@ seed_rule "$UC_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 
 UC_CLAUDE_SKILL="$UC_DIR/.claude/skills/unikit-implement/SKILL.md"
 UC_UNI_SKILL="$UC_DIR/.agents/skills/unikit-implement/SKILL.md"
-# The model rule (`subagents.model.<agent>`) is carried by ten skills and unikit-implement is not one of
-# them; unikit-plan is, and it is in both agents' installedSkills.
+# The subagent-arguments pointer (it names `subagents.model.<agent>`) is carried by twelve skills and
+# unikit-implement is not one of them; unikit-plan is, and it is in both agents' installedSkills.
 UC_CLAUDE_PLAN="$UC_DIR/.claude/skills/unikit-plan/SKILL.md"
 UC_UNI_PLAN="$UC_DIR/.agents/skills/unikit-plan/SKILL.md"
 UC_MCP="$UC_DIR/.mcp.json"
@@ -2567,8 +2594,8 @@ assert_contains "$UC_CLAUDE_SKILL" 'Call the Skill tool with skill "unikit-devco
 assert_not_contains "$UC_CLAUDE_SKILL" 'Read \.claude/skills/unikit-devcontext/SKILL\.md in full' "claude copy: no file-read form"
 assert_contains "$UC_UNI_SKILL" 'Read \.agents/skills/unikit-devcontext/SKILL\.md in full' "universal copy: develop-agent reads the skill file"
 assert_not_contains "$UC_UNI_SKILL" 'Call the Skill tool with skill' "universal copy: no Skill-tool form"
-assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the model rule)"
-assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the model rule)"
+assert_exists "$UC_CLAUDE_PLAN" "claude must have unikit-plan installed (it carries the subagent-arguments pointer)"
+assert_exists "$UC_UNI_PLAN" "universal must have unikit-plan installed (it carries the subagent-arguments pointer)"
 assert_contains "$UC_CLAUDE_PLAN" 'subagents\.model\.claude' "claude copy: its own config key"
 assert_contains "$UC_UNI_PLAN" 'subagents\.model\.universal' "universal copy: its own config key"
 assert_not_contains "$UC_UNI_PLAN" 'subagents\.model\.claude' "universal copy: not the Claude key"

@@ -69,18 +69,13 @@ This skill uses two named delegation aliases for `Agent(...)` calls. The aliases
 single place where each delegate's agent type and call arguments are declared — call sites
 name the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first dispatch of an alias below, read
+`.unikit/system/subagent-arguments.md` and `.unikit/config.yaml` once and settle the model and
+the effort argument as that file says. This agent's keys are `subagents.model.{{agent_id}}` and
+`subagents.effort.{{agent_id}}`; with no model key use the built-in default `"{{agent_model_default}}"`.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use the built-in default model and no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -159,6 +154,8 @@ Before responding — before any analysis — silently load (do not narrate):
    — when it engages"). It supplies the extraction heuristics (engine inference, P0
    systems / P1 content, the per-fact `confidence` + source-pointer + `provenance:
    extracted from code` record).
+
+9. **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card) — a topic that names an experiment — `EXP-<nnn>` (`Glob` `.unikit/gamedesign/experiments/EXP-<nnn>-*`, exactly one folder), a path to an `experiment.md`, or an experiment folder — grounds on that card: read its `experiment.md` **in full**; `feedback.md` and `results.md` only when the user asks. A topic that names an experiment by its description ("how to improve the latest experiment", "the experiment about onboarding") is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md` — read it only then; it ends in the user's confirmation, which this skill words through the membrane (the title and plain words, no code). The card is context only: nothing is written to the store and no status changes. That file missing or unreadable → `WARN [experiment] lookup reference missing — asking for a selector`, and the user is asked which experiment is meant.
 
 **One-way boundary (with the code-lens exception):** the authoring zones never read
 code, but this skill is a **read-only research verb** — its **code-grounded lens**
@@ -499,7 +496,7 @@ crystallize, you might summarize the findings — but the thinking is often the 
   `unikit-gd-content` for a **content type** — there is no add-flow / add-content).
   Explore only **tags** its own research (`Target:` / `Kind:`).
 - **Read-only:** `GAME.md`, `GD-IDS.yaml`, systems, flows, content types, concepts —
-  route any design change to its owner skill, never edit them here.
+  route any design change to its owner skill, never edit them here. The experiment cards of `.unikit/gamedesign/experiments/` are read-only too: that store is written only by `unikit-gd-experiment`.
 - **Research-bucket mode (in-place promotion).** Developing a `unikit-gd-review`
   report's `## Research` bucket turns each open finding into a decided edit and **promotes
   it in place** — moving the line into the report's `## Apply-ready` bucket (reformatted as

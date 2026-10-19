@@ -71,18 +71,13 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias is t
 place where its delegate's agent type and call arguments are declared — call sites name
 the alias and never carry a type or a model argument of their own.
 
-**Model argument.** Before the first dispatch of an alias below, read `.unikit/config.yaml`
-(a missing file, block or key is not an error) and settle the model argument once:
-
-1. `subagents.model.{{agent_id}}` holds a model name — pass `model: <name>` with every call,
-   exactly as written (this runtime's own spelling of the model argument, if it differs).
-2. It holds `inherit`, or is present and empty — pass no model argument; the agent runs on the
-   model of this session.
-3. The key is absent — use the built-in default `"{{agent_model_default}}"`; an empty string
-   means pass no model argument.
-
-If the runtime rejects the model name, repeat that call once without the model argument and
-report `WARN [delegation] model "<name>" rejected — retried on the session model`.
+**Subagent arguments.** Before the first dispatch of an alias below, read
+`.unikit/system/subagent-arguments.md` and `.unikit/config.yaml` once and settle the model and
+the effort argument as that file says. This agent's keys are `subagents.model.{{agent_id}}` and
+`subagents.effort.{{agent_id}}`; with no model key use the built-in default `"{{agent_model_default}}"`.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use the built-in default model and no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
@@ -126,6 +121,7 @@ but tag them mentally so that `Next step:` carries a concrete follow-up action:
 | Assumption invalidated | Relevant owner skill |
 | Bug / broken behavior found | `/unikit-fix` |
 | Game-design idea / GDD gap | `/unikit-gd-brainstorm`, `/unikit-gd-explore`, `/unikit-gd-spec`, or `/unikit-gd-system` |
+| An exploration grounded on an experiment card | `/unikit-plan EXP-<nnn>` when the card is ready for planning, otherwise `/unikit-gd-experiment` |
 
 The `Next step:` field of `## Active Summary` names a concrete follow-up from this table, never a generic "update other files".
 
@@ -215,6 +211,7 @@ When the topic involves a library or framework from the project's tech stack (`D
 - `.unikit/code/plans/` — active feature plans (if any)
 - `.unikit/code/archive/plans/` — plans moved there by `/unikit-archive`: how a feature was already built. One whose `Archived:` line says `unfinished` was dropped part-way — its unchecked tasks were never built. When the topic touches existing functionality, list the folder names and read `.unikit/code/archive/plans/<folder>/PLAN.md` of at most three whose name matches the topic — goal, decisions, files touched. History, never a plan to continue: the code may have changed since its `Archived:` date, so confirm against the code anything you rely on, and never offer to implement or resume an archived plan.
 - **Game-design grounding** (only if a design workspace exists) — `.unikit/gamedesign/GD-IDS.yaml` MUST be `version: 2`; on `version: 1` skip design grounding with a loud `ERROR [design] GD-IDS.yaml is version 1 (pre-v2 layout); design grounding skipped`. When valid, load the shared READ contract `.unikit/system/gamedesign/design-read.md` and apply it — its read surfaces, its Flow-First Resolution (*intent decides the door*), its one-way boundary. **First-class flow input:** a topic that names or implies a flow — a player-facing sequence, onboarding, pacing, a `FLOW-<slug>` id — grounds first on that flow; the systems it depends on are the secondary read; ambiguous → ask. **First-class content input:** a topic that names or implies a content type — a catalog, "the item types", a `CT-<slug>` id — grounds on it: its `CT.fields`, `scale`, `belongs_to`. An empty `flows: []` or `content_types: []` (or no such key) → skip that read silently. Explore reads design and never writes it — that flows through the `/unikit-gd-*` skills.
+- **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card) — a topic that names an experiment — `EXP-<nnn>` (`Glob` `.unikit/gamedesign/experiments/EXP-<nnn>-*`, exactly one folder), a path to an `experiment.md`, or an experiment folder — grounds on that card: read its `experiment.md` **in full** (the hypothesis, `Minimum Scope`, the minimum interface, the success criteria); `feedback.md` and `results.md` only when the user asks. A topic that names an experiment by its description ("how to implement the latest experiment", "the experiment about onboarding") is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md` — read it only then, and let it end in the user's confirmation. The card is context only: nothing is written to the store and no status changes. It holds no technical instructions, so how to build it in this code is exactly the question the exploration answers. A card that cannot be found → say so in one line and explore as usual; that file missing or unreadable → `WARN [experiment] lookup reference missing — asking for a selector` and ask for an `EXP-<nnn>`.
 
 <!-- unikit:extension-point:bootstrap -->
 
@@ -224,6 +221,7 @@ The argument after `/unikit-explore` can be:
 - **The slug of an existing research folder** in `.unikit/code/researches/` — an **entry into the continuation cycle**, not a new topic: load `{{skills_dir}}/{{self_name}}/references/continuing.md` and follow it.
 - **An ultra request** — the leading `ultra` token, or the same request in the user's own wording ("ultra research", "ultraresearch", "ultra explore", "ультраисследование", "run an ultra research on the save system") — switches on adaptive research artifacts and the pinned dialogue log. Load `{{skills_dir}}/{{self_name}}/references/ULTRA-RESEARCH-FORMAT.md` now and follow it: it owns the pinning of the log while the conversation goes on, and the artifacts at save time. The stance and the exploration itself are unchanged. Ultra is **user-named, never model-inferred**: it is never chosen because the topic is large or difficult, and wording that only asks for care ("research this deeply", "a thorough investigation") is not an ultra request — explore normally.
 - **A merge request** — the user asks to merge a named branch into the current one (not a rebase, a cherry-pick or a merge by pull request number). Load `{{skills_dir}}/{{self_name}}/references/merge-research.md` now and follow it: it owns the analysis, the questions and the form of the saved research. If it cannot be read, print `WARN [merge] merge-research reference missing` and explore normally. An ordinary exploration does not read that file.
+- **An experiment** — the topic is `EXP-<nnn>`, a path to an `experiment.md`, an experiment folder, or an experiment named by its description ("how do we implement the latest experiment"): an ordinary exploration grounded on the card (*Optional reads* → Experiment grounding). It is not a mode of its own: the stance, the dialogue and the save are unchanged; only the saved summary gains an `Experiment:` line and a `Next step:` in selector form (see the template).
 - **Anything else** (other than a merge request) — a vague idea, a specific problem, a system name, a comparison, a question, or nothing at all — starts an ordinary exploration. A flow (`FLOW-<slug>`, "the onboarding") or a content type (`CT-<slug>`, "the item types") grounds on the design axes (see *Optional reads*).
 
 On an ultra request, strip the ultra wording and the verb that carried it, treat the rest as the topic and explore normally; the mode changes what is written while you talk (the pinned log) and at save time. Ultra is recognised when the request is made: naming it later starts no pinning. An ultra request with no topic falls into the ordinary no-topic branch — ask for the topic, then work in ultra. If `references/ULTRA-RESEARCH-FORMAT.md` cannot be read, **degrade to a standard research** and print one line `WARN [ultra] reference missing — saving a standard research`: losing the research over a missing reference file is not an acceptable trade.
@@ -375,6 +373,7 @@ Supersedes: <slug>                                   (optional)
 ## Active Summary
 <!-- unikit:active-summary:start -->
 Topic: <1-2 sentences: what was explored>
+Experiment: <EXP-<nnn> v<Version> — <card title>; one line per card, only when the exploration was grounded on a card — otherwise omit the line>
 Goal: <what this research is for — the decision it has to enable>
 Scope: <in / out — the out-half carries the stop condition>
 Constraints: <`C-<n>` — what the subject imposes>
@@ -450,6 +449,8 @@ produced it; the summary holds the conclusion. A fact belongs to exactly one of 
 other refers to it by ID, never by retelling it. A requirement pointing at a `## Findings`
 sub-heading for its layout is that same reference by ID in another form — ordinary forward
 resolvability, not a new mechanism.
+
+**The `Experiment:` line** exists only in a research grounded on an experiment card, one line per card. It links the research to the card: `/unikit-plan` picks a research up by this line, never by topic. The `EXP-<nnn>` there is defined by the card, not by the record, so the coherence gate does not look for it below. `Next step:` of such a research is a command in selector form — `/unikit-plan EXP-<nnn>` when the card was ready for planning when it was read, otherwise `/unikit-gd-experiment` — not a sentence.
 
 **A requirement the user stated carries their own words and an anchor into the log.** The line
 has three parts, and they do not substitute for one another:

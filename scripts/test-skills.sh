@@ -24,6 +24,50 @@ source "$SCRIPT_DIR/test-fixtures.sh"
 ensure_build
 export UNIKIT_TEST_SKIP_BUILD=1
 
+# The nested suites each work in their own temp project and only read the package, so they
+# run in the background while the inline guards below go on, and each result is collected at
+# the Part that used to run it (the printed order does not change). A suite must never edit
+# a tracked file in place — copy it and point UNIKIT_MCP_DIR at the copy (test-update.sh,
+# test-migrations.sh do). UNIKIT_TEST_SERIAL=1 runs them one after another, as before.
+CHILD_DIR="$(mktemp -d)"
+trap 'kill $(jobs -p) 2>/dev/null || true; rm -rf "$CHILD_DIR"' EXIT
+
+child_start() {
+    local name="$1"; shift
+    if [[ "${UNIKIT_TEST_SERIAL:-0}" == "1" ]]; then
+        local code=0
+        "$@" > "$CHILD_DIR/$name.out" 2>&1 || code=$?
+        echo "$code" > "$CHILD_DIR/$name.exit"
+        return 0
+    fi
+    ( code=0; "$@" > "$CHILD_DIR/$name.out" 2>&1 || code=$?; echo "$code" > "$CHILD_DIR/$name.exit" ) &
+    echo "$!" > "$CHILD_DIR/$name.pid"
+}
+
+# child_wait <name> — sets CHILD_EXIT and CHILD_OUTPUT.
+child_wait() {
+    local name="$1"
+    if [[ -f "$CHILD_DIR/$name.pid" ]]; then
+        wait "$(<"$CHILD_DIR/$name.pid")" 2>/dev/null || true
+    fi
+    CHILD_EXIT="$(<"$CHILD_DIR/$name.exit")"
+    CHILD_OUTPUT="$(<"$CHILD_DIR/$name.out")"
+}
+
+# Longest first, so the critical path starts at once.
+child_start rules       bash "$SCRIPT_DIR/test-rules.sh"
+child_start update      bash "$SCRIPT_DIR/test-update.sh"
+child_start extensions  bash "$SCRIPT_DIR/test-extensions.sh"
+child_start install     bash "$SCRIPT_DIR/test-install.sh"
+child_start migrations  bash "$SCRIPT_DIR/test-migrations.sh"
+child_start extsel      bash "$SCRIPT_DIR/test-extension-selection.sh"
+child_start layout      bash "$SCRIPT_DIR/test-rules-layout.sh"
+child_start planbundle  bash "$SCRIPT_DIR/test-plan-bundle.sh"
+child_start genres      bash "$SCRIPT_DIR/test-genres.sh"
+child_start skillgroups bash "$SCRIPT_DIR/test-skill-groups.sh"
+child_start helpskill   bash "$SCRIPT_DIR/test-help-skill.sh"
+child_start grepshim    bash "$SCRIPT_DIR/test-grep-shim.sh"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -6183,7 +6227,7 @@ else
     fail "EM-5 rules-tree delivery NOT wired in:$EM5_WHY"
 fi
 
-# (SA-1) Every system-asset installer in system-assets.ts is called from BOTH init.ts and
+# (SA-1) Every system-asset installer in system-assets.ts and system-contracts.ts is called from BOTH init.ts and
 # update.ts. Derivative, not a name list: a new `export async function installX` is covered
 # by construction, and the overlap with EM-5 above is deliberate — EM-5 pins two specific
 # functions for a stronger reason (silent findings-log corruption on a missed call), SA-1
@@ -6191,9 +6235,9 @@ fi
 # Anchored on the call LINE (`await installX(`), not the substring `installX(`: a plain
 # grep -F would count a commented-out `// await installX(` as wiring, missing the most
 # natural way to disable a call. All of today's calls have the form `    await installX(`.
-SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts")"
+SA_INSTALLERS="$(sed -n 's/^export async function \(install[A-Za-z]*\)(.*/\1/p' "$ROOT_DIR/src/core/installer/system-assets.ts" "$ROOT_DIR/src/core/installer/system-contracts.ts")"
 if [[ -z "$SA_INSTALLERS" ]]; then
-    fail "SA-1 no install* exports found in system-assets.ts — the guard has no object"
+    fail "SA-1 no install* exports found in system-assets.ts and system-contracts.ts — the guard has no object"
 else
     SA_WHY=""
     SA_COUNT=0
@@ -7011,7 +7055,11 @@ if [[ -z "$TC_G5_WHY" ]]; then
     grep -qF '### Step 2.5' "$UNIKIT_IMPLEMENT_SKILL"                       || TC_G5_WHY+=" TC-29:no-step-2.5"
     grep -qF '⏭️ MERGED'    "$TC_TESTRUNS"                                  || TC_G5_WHY+=" TC-30:no-merge-marker"
     grep -qF 'does not count as pending for its own run' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:no-counting-rule"
-    grep -qF 'never merged and never moved' "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-31:final-run-mergeable"
+    # The final full run is the preferred merge TARGET: it counts as a point (so "phase point +
+    # final run" is already two and the question is asked), it is never itself marked merged and
+    # never moved. Pinning the old exclusion from the count (`other than ...plan`) is the negative half.
+    grep -qF 'is the merge target, never merged away and never moved' "$TC_TESTRUNS" || TC_G5_WHY+=" TC-31:final-run-not-target"
+    grep -qF 'other than `Test checkpoint: plan`' "$TC_TESTRUNS" && TC_G5_WHY+=" TC-31:final-run-excluded-from-count"
     grep -qF 'mark first, then execute'     "$TC_TESTRUNS"                  || TC_G5_WHY+=" TC-32:no-order-contract"
     # (TC-33) one marker form across two files — a second spelling is a marker nobody reads.
     grep -qF '⏭️ MERGED → task' "$TC_READER" || TC_G5_WHY+=" TC-33:marker-form-drifted-in-reader"
@@ -7485,6 +7533,27 @@ else
     fail "TW run-width contract:$TW_WHY"
 fi
 
+# --- PV: /unikit-verify checks what was executed, and reads only the phases of that work ---
+# A half-executed ultra bundle used to cost every phase file, and the tasks nobody had started
+# came back as `NOT FOUND` blockers. The reading depth now follows the audited phases.
+PV_WHY=""
+PV_RD="$(grep -F '| `/unikit-verify` |' "$ROOT_DIR/data/ultra-plan-read.md" || true)"
+PV_DOC="$(grep -F '| `/unikit-verify` |' "$ROOT_DIR/docs/plan-files.md" || true)"
+[[ -n "$PV_RD" && -n "$PV_DOC" ]] || PV_WHY+=" PV-0:reader-row-missing"
+grep -qF 'phases that hold at least one executed' "$UNIKIT_VERIFY_SKILL"  || PV_WHY+=" PV-1:depth-not-by-executed-work"
+grep -qF 'read the manifest plus **every** phase file' "$UNIKIT_VERIFY_SKILL" && PV_WHY+=" PV-1:old-read-all-depth"
+grep -qF 'every phase file is still read' "$UNIKIT_VERIFY_SKILL"          && PV_WHY+=" PV-1:old-read-all-closing-line"
+grep -qF '**Unfinished plan.**' "$UNIKIT_VERIFY_SKILL"                     || PV_WHY+=" PV-2:no-unfinished-plan-paragraph"
+grep -qF 'NOT EXECUTED' "$UNIKIT_VERIFY_SKILL"                             || PV_WHY+=" PV-2:no-not-executed-status"
+grep -qF 'executed task' <<<"$PV_RD"                                       || PV_WHY+=" PV-3:reader-contract-depth"
+grep -qF 'every** phase file' <<<"$PV_RD"                                  && PV_WHY+=" PV-3:reader-contract-reads-all"
+grep -qF 'every phase file' <<<"$PV_DOC"                                   && PV_WHY+=" PV-4:docs-read-all"
+if [[ -z "$PV_WHY" ]]; then
+    pass "PV-1…PV-4 verify reads the phases of executed work only; an unexecuted task is reported, never searched for or blocking"
+else
+    fail "PV partial-plan verify contract:$PV_WHY"
+fi
+
 # --- EO: the execution overview reaches the screen on every run that executes a task ---
 # Real runs showed `## Implementation Progress` on some starts and not on others: it was an
 # unnumbered paragraph between 3.0 and 3.1, and a Step 0.2 / 2.5 question asked "right before
@@ -7662,12 +7731,15 @@ if [[ -z "$MC_WHY" ]]; then
     grep -qF 'is explicitly **not** written' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-6:no-language-rules-negation"
 
-    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>`.
+    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>`
+    # and `subagents.effort.<agent>` the same way.
     # Without the exception, bucket 3 refills a deliberately emptied key with the template's
     # value — for Claude `sonnet` — and the user's "pass no model" is undone by the very mode
     # that was asked to repair the config.
     grep -qF 'subagents.model.<agent>' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:carveout-not-named"
+    grep -qF 'subagents.effort.<agent>' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:effort-carveout-not-named"
     grep -qF 'is a deliberate choice' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:no-deliberate-empty-reading"
 fi
@@ -10592,7 +10664,7 @@ else
     fail "KM-1/KM-3 Kimi Code source contracts violated:$KM_WHY"
 fi
 
-# --- EXP-1…EXP-10: the experiment master skill — structure, nine references, single owners,
+# --- EXP-1…EXP-10: the experiment master skill — structure, ten references, single owners,
 # the boundary, neutrality, the language membrane, pinned commitments, the lexicon and the
 # scenario fixtures. Variables are declared here, before first use (the script runs under
 # set -u). Every check goes through exp_ok / exp_no / exp_owner / exp_icon, which count: a
@@ -10669,9 +10741,9 @@ else
     EXP_SZ="$(wc -c < "$EXP_SKILL" | tr -d ' ')"
     EXP_CHK=$((EXP_CHK + 1)); (( EXP_SZ <= 16000 )) || EXP_WHY+=" EXP-1:skill-size=${EXP_SZ}"
 
-    # (EXP-2) nine references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
+    # (EXP-2) ten references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
     for f in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index \
-             context-and-research planning-handoff balance-link; do
+             context-and-research planning-handoff balance-link lookup; do
         exp_ok "EXP-2:skill-does-not-name($f.md)" "$f.md" "$EXP_SKILL"
         EXP_CHK=$((EXP_CHK + 1)); [[ -s "$EXP_REFS/$f.md" ]] || EXP_WHY+=" EXP-2:missing($f.md)"
         EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXP_REFS/$f.md" 2>/dev/null)" == "Read **only** when"* ]] || EXP_WHY+=" EXP-2:load-line($f.md)"
@@ -10679,7 +10751,7 @@ else
         EXP_CHK=$((EXP_CHK + 1)); (( ${EXP_RSZ:-0} <= 12000 )) || EXP_WHY+=" EXP-2:size($f.md=${EXP_RSZ})"
     done
     EXP_REF_N="$({ ls "$EXP_REFS"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
-    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "9" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "10" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
 
     # (EXP-3) lazy loading and delegation hygiene: the call form lives only in SKILL.md, one alias only
     EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF 'Agent(' "$EXP_REFS" || EXP_WHY+=" EXP-3:agent-call-in-reference"
@@ -10871,7 +10943,7 @@ else
     (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-1:nothing-checked"
 fi
 if [[ -z "$EXP_WHY" ]]; then
-    pass "EXP-1…EXP-10 experiment skill: structure, nine references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, ten scenarios checked by text only (${EXP_CHK} checks)"
+    pass "EXP-1…EXP-10 experiment skill: structure, ten references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, ten scenarios checked by text only (${EXP_CHK} checks)"
 else
     fail "EXP-1…EXP-10 experiment skill:$EXP_WHY"
 fi
@@ -11256,6 +11328,132 @@ if [[ -z "$EXP_WHY" ]]; then
     pass "EXP-D1…EXP-D2 documentation and help: the experiment skill, the experiment plan and the route are described, the old counters are gone (${EXP_CHK} checks)"
 else
     fail "EXP-D1…EXP-D2 documentation and help:$EXP_WHY"
+fi
+
+# --- EXP-L1…EXP-L6: an experiment named in words is resolved to ONE card through ONE reference. L1 — the
+# owner (lookup.md): when it is read, what is the source of truth, "the latest", the topic, the always-shown
+# confirmation, the result. L2 — the planner names it and picks researches up by an `Experiment:` line.
+# L3/L4 — the code and design explorations ground on a card and write that line. L5 — the help and the docs.
+# L6 — the manage branch reads it as its last step. Source assertions over pinned formulations, like EXP-P;
+# the helpers and accumulators of the EXP block are reused after a reset.
+EXP_WHY=""
+EXP_CHK=0
+EXPL_REF="$ROOT_DIR/skills/unikit-gd-experiment/references/lookup.md"
+EXPL_PATH='{{skills_dir}}/unikit-gd-experiment/references/lookup.md'
+EXPL_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+EXPL_PLAN_REF="$ROOT_DIR/skills/unikit-plan/references/experiment-plan.md"
+EXPL_TASKFMT="$ROOT_DIR/skills/unikit-plan/references/TASK-FORMAT.md"
+EXPL_EXPLORE="$ROOT_DIR/skills/unikit-explore/SKILL.md"
+EXPL_EXPLORE_GATE="$ROOT_DIR/skills/unikit-explore/references/coherence-gate.md"
+EXPL_GD_EXPLORE="$ROOT_DIR/skills/unikit-gd-explore/SKILL.md"
+EXPL_GD_SAVE="$ROOT_DIR/skills/unikit-gd-explore/references/save-research.md"
+EXPL_GD_GATE="$ROOT_DIR/skills/unikit-gd-explore/references/coherence-gate.md"
+EXPL_MANAGE="$ROOT_DIR/skills/unikit-gd-experiment/references/mode-manage.md"
+EXPL_SKILLMAP="$ROOT_DIR/skills/unikit-help/references/skill-map.md"
+EXPL_DOCS_SKILLS="$ROOT_DIR/docs/skills.md"
+EXPL_DOCS_PLANFILES="$ROOT_DIR/docs/plan-files.md"
+if [[ ! -s "$EXPL_REF" ]]; then
+    EXP_WHY+=" EXP-L1:missing-reference"
+else
+    # (EXP-L1) the owner
+    exp_ok "EXP-L1:01" 'holds at least one `experiment.md`' "$EXPL_REF"
+    exp_ok "EXP-L1:02" 'A selector (`EXP-<nnn>`, a path to a card, a folder) never needs this file' "$EXPL_REF"
+    exp_ok "EXP-L1:03" 'The folders and the cards are the source of truth' "$EXPL_REF"
+    exp_ok "EXP-L1:04" 'Two folders with one number are not settled by a guess' "$EXPL_REF"
+    exp_ok "EXP-L1:05" 'A card with `Status: Archived` never answers "the latest"' "$EXPL_REF"
+    exp_ok "EXP-L1:06" 'Cross-check `index.md` last, and only to cross-check' "$EXPL_REF"
+    exp_ok "EXP-L1:07" 'WARN [experiment] index out of date' "$EXPL_REF"
+    exp_ok "EXP-L1:08" '**the newest by number**' "$EXPL_REF"
+    exp_ok "EXP-L1:09" '**the newest by update**' "$EXPL_REF"
+    exp_ok "EXP-L1:10" 'one question with at most five titles, best first' "$EXPL_REF"
+    exp_ok "EXP-L1:11" 'Whatever was found, even one card, the user sees one line before anything else is loaded' "$EXPL_REF"
+    exp_ok "EXP-L1:12" 'The number is shown unless the caller speaks through the game-design membrane' "$EXPL_REF"
+    exp_ok "EXP-L1:13" 'which the caller treats exactly like a selector the user typed' "$EXPL_REF"
+    exp_ok "EXP-L1:14" 'searches no other branch and moves no file' "$EXPL_REF"
+    exp_ok "EXP-L1:15" '**Readers outside this skill.**' "$EXP_SKILL"
+    exp_ok "EXP-L1:16" '| An experiment is named by words instead of a number: "the latest", "the one about onboarding" | `lookup.md` |' "$EXP_SKILL"
+    # C-001: the planner's sentence about the bare word stays in experiment-plan.md and is not copied here
+    exp_no "EXP-L1:17" 'free text is not a selector' "$EXPL_REF"
+    # the sources of truth are the cards: the file never tells the reader to take the answer from the index
+    exp_no "EXP-L1:18" 'take the answer from the index' "$EXPL_REF"
+    # the owner states its own exception: a caller that only prints a result skips the line (manage applies it, Task 8)
+    exp_ok "EXP-L1:19" 'A caller that only prints a result' "$EXPL_REF"
+    # the third line is the load condition and the file is nowhere near the cap: EXP-2 checks both after `lookup` joined its list
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$(sed -n '3p' "$EXPL_REF")" == "Read **only** when"* ]] || EXP_WHY+=" EXP-L1:load-line"
+    # (EXP-L2) the planner: a card named in words is resolved through the lookup before anything of it is read
+    exp_ok "EXP-L2:01" "$EXPL_PATH" "$EXPL_PLAN"
+    exp_ok "EXP-L2:02" 'A request that names an experiment by its description' "$EXPL_PLAN"
+    exp_ok "EXP-L2:03" 'WARN [experiment] lookup reference missing — asking for a selector' "$EXPL_PLAN"
+    exp_ok "EXP-L2:04" "$EXPL_PATH" "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:05" 'is resolved first through `{{skills_dir}}/unikit-gd-experiment/references/lookup.md`' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:06" 'The lookup finds a card; whether it may be planned is decided by' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:07" '(g) A card the user named in words was confirmed through the lookup' "$EXPL_PLAN_REF"
+    # (EXP-L2, continued) a research reaches an experiment plan only by its `Experiment:` line, from both stores
+    exp_ok "EXP-L2:08" 'A research belongs to a card only when its Active Summary' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:09" '`.unikit/gamedesign/researches/*/RESEARCH_RESULT.md`' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:10" 'the topic is never guessed' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:11" 'with no hash and no drift tracking' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:12" 'WARN [experiment] <folder> was written against v<k> of the card' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:13" 'Step 2 does not match researches by topic either' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:14" '(h) A research was linked to a card only by its `Experiment:` line' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:21" 'a hit outside the markers does not count' "$EXPL_PLAN_REF"
+    exp_ok "EXP-L2:15" '**An experiment plan** runs no topic matching in this step' "$EXPL_PLAN"
+    exp_ok "EXP-L2:16" 'the snapshot of the cards (and of the design researches that name them)' "$EXPL_PLAN"
+    exp_ok "EXP-L2:17" '**Design researches.** A research of the design store' "$EXPL_TASKFMT"
+    exp_ok "EXP-L2:18" 'No hash is kept and the plan never re-reads it for drift' "$EXPL_TASKFMT"
+    exp_ok "EXP-L2:19" '(names v<k>)' "$EXPL_TASKFMT"
+    # NM-2 stays true: the grammar block is indented, no line of the file starts with `Branch:`
+    EXP_CHK=$((EXP_CHK + 1)); ! grep -qE '^Branch:' "$EXPL_TASKFMT" || EXP_WHY+=" EXP-L2:20-branch-field-at-margin"
+    # (EXP-L3) the code exploration grounds on a card, writes the line, and the gate does not look for the id
+    exp_ok "EXP-L3:01" '- **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card)' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:02" "$EXPL_PATH" "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:03" 'read its `experiment.md` **in full**' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:04" '`feedback.md` and `results.md` only when the user asks' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:05" 'nothing is written to the store and no status changes' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:06" '- **An experiment** — the topic is' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:07" 'Experiment: <EXP-<nnn> v<Version>' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:08" '**The `Experiment:` line** exists only in a research grounded on an experiment card' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:09" '| An exploration grounded on an experiment card |' "$EXPL_EXPLORE"
+    exp_ok "EXP-L3:10" 'An `EXP-<nnn>` on the `Experiment:` line names a card of the experiment store' "$EXPL_EXPLORE_GATE"
+    # the extension anchor is still the last line of the load block: the new bullet stands before it
+    EXPL_ANCHOR_AT="$({ grep -nF '<!-- unikit:extension-point:bootstrap -->' "$EXPL_EXPLORE" | head -1 | cut -d: -f1; } || true)"
+    EXPL_GROUND_AT="$({ grep -nF '**Experiment grounding**' "$EXPL_EXPLORE" | head -1 | cut -d: -f1; } || true)"
+    EXP_CHK=$((EXP_CHK + 1)); [[ -n "$EXPL_ANCHOR_AT" && -n "$EXPL_GROUND_AT" && "$EXPL_GROUND_AT" -lt "$EXPL_ANCHOR_AT" ]] || EXP_WHY+=" EXP-L3:11-grounding-after-anchor"
+    # (EXP-L4) the design exploration: the same grounding worded through the membrane; the line in the record; routing by the card's state
+    exp_ok "EXP-L4:01" '9. **Experiment grounding** (only if `.unikit/gamedesign/experiments/` holds a card)' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:02" "$EXPL_PATH" "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:03" 'which this skill words through the membrane' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:04" 'nothing is written to the store and no status changes' "$EXPL_GD_EXPLORE"
+    exp_ok "EXP-L4:05" 'Experiment: <EXP-<nnn> v<Version>' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:06" '**The `Experiment:` line** is written only by a research grounded on a card' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:07" '| **Grounded on an experiment card** — the card is ready for planning |' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:08" '| **Grounded on an experiment card** — any other state |' "$EXPL_GD_SAVE"
+    exp_ok "EXP-L4:09" 'An `EXP-<nnn>` on the `Experiment:` line is defined by its card' "$EXPL_GD_GATE"
+    exp_ok "EXP-L4:10" 'are read-only too: that store is written only by `unikit-gd-experiment`' "$EXPL_GD_EXPLORE"
+    # (EXP-L5) the help and the docs describe the lookup, the grounding and the pick-up of researches
+    exp_ok "EXP-L5:01" 'or an experiment card (an `EXP-<nnn>`, a path, or "the latest experiment")' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:02" 'is first resolved to one card through the `lookup.md` reference of `/unikit-gd-experiment`' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:03" 'grounds the research on that card, read-only' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:04" 'an experiment named in words ("the latest", "the one about onboarding"' "$EXPL_SKILLMAP"
+    exp_no "EXP-L5:05-bare-path" 'unikit-gd-experiment/references/lookup.md' "$EXPL_SKILLMAP"
+    exp_ok "EXP-L5:06" '- **Experiment grounding** - a topic that names an experiment' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:07" '- An experiment named in words ("make a plan for the latest experiment")' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:08" 'grounds the research on that card, read-only; the saved summary carries an `Experiment:` line' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:09" '- Finds a card by words - "the latest", "the one about onboarding"' "$EXPL_DOCS_SKILLS"
+    exp_ok "EXP-L5:10" 'A design research whose summary names a card by an `Experiment:` line is copied as one more block of that card' "$EXPL_DOCS_PLANFILES"
+    # (EXP-L6) the manage branch reads the lookup as its last step; the pinned commitments of the branch are untouched
+    exp_ok "EXP-L6:01" 'and `{{skills_dir}}/{{self_name}}/references/lookup.md` when the request names an experiment by words' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:02" 'the matching is the rule of `{{skills_dir}}/{{self_name}}/references/lookup.md`' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:03" 'does not ask the lookup'\''s confirmation' "$EXPL_MANAGE"
+    exp_ok "EXP-L6:04" 'a request that acts on one card found by words (update, archive, retest) keeps it' "$EXPL_MANAGE"
+    exp_no "EXP-L6:05-old-matching" 'matches `Category`, `Summary` and `What We Test`; relevance the text does not support is not claimed' "$EXPL_MANAGE"
+    # (EXP-L2…EXP-L6) are added next to the texts they pin — see the tasks of phases 2-4
+fi
+(( EXP_CHK > 0 )) || EXP_WHY+=" EXP-L1:nothing-checked"
+if [[ -z "$EXP_WHY" ]]; then
+    pass "EXP-L1…EXP-L6 experiment lookup: one owner, the planner and both explorations point at it, the help and the docs describe it (${EXP_CHK} checks)"
+else
+    fail "EXP-L1…EXP-L6 experiment lookup:$EXP_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -11992,7 +12190,7 @@ fi
 # (the call heads `{{agent_call_reader}}`, `{{agent_call_worker}}`, `{{agent_call_worker_quoted}}`,
 # `{{agent_id}}`, `{{agent_model_default}}`).
 # So the sources must name NO runtime's type and NO model; what they may carry is the variable
-# and, once per skill, the rule that settles the model argument from `.unikit/config.yaml`.
+# and, once per skill, the pointer to the rule that settles the model and the effort argument (data/subagent-arguments.md).
 # Fifteen guards, each closing a different way that rots (AP-1…AP-7 the profile, AP-8…AP-15
 # the delivery of a skill to a subagent):
 #
@@ -12003,10 +12201,10 @@ fi
 #         that used to be the literal. The bare words `Explore` / `coder` stay legal as a skill
 #         name and a role ("Explore tasks"): only a backticked type name is a stale spelling.
 #   AP-3  no `model: <word>` and none of the retired per-branch rationale sentences.
-#   AP-4  the model rule stands once in every SKILL.md that declares a model-carrying alias,
-#         and nowhere else (a second copy drifts; a copy without an alias is dead text).
-#   AP-5  the rule says everything its reader needs — the reader is the model, not a compiler,
-#         and a rule with a clause missing is followed with that clause missing.
+#   AP-4  the pointer to the arguments rule stands once in every SKILL.md that declares an alias that
+#         carries the arguments (the model key once there), and nowhere else; the retired paragraph is gone.
+#   AP-5  the pointer is whole: the contract path, both keys, the built-in default and the missing-contract
+#         line — the rule itself is pinned in the contract file (AP-16).
 #   AP-6  a delegation call never lives behind a non-codex agent-filter branch: the profile
 #         replaced those branches, so one coming back means a second definition has appeared.
 #   AP-7  the variables are a skills-only mechanism. Subagent files and system assets render
@@ -12077,27 +12275,35 @@ ap_tier=$( { grep -rhoF -e 'tier alias' -e 'No model is named' "$AP_SCOPE" --inc
 [[ "$ap_model" -eq 0 ]] || AP_WHY+=" AP-3:model-literal(x$ap_model)"
 [[ "$ap_tier" -eq 0 ]] || AP_WHY+=" AP-3:retired-rationale(x$ap_tier)"
 
-# (AP-4)
+# (AP-4) the pointer stands once in every skill that declares an alias carrying the arguments, and nowhere else;
+# the key literal stays once there (GXG-6 pins it too); the retired paragraph is gone everywhere
 AP_RULE_SKILLS=0
 for ap_f in "$AP_SCOPE"/*/SKILL.md; do
     [[ -f "$ap_f" ]] || continue
     ap_alias=$( { grep -cE '^- \*\*`(recon-agent|check-agent|lens-agent|recon-writer-agent)`\*\*' "$ap_f" || true; } )
+    ap_ptr=$( { grep -cF '**Subagent arguments.**' "$ap_f" || true; } )
     ap_rule=$( { grep -cF 'subagents.model.{{agent_id}}' "$ap_f" || true; } )
+    ap_old=$( { grep -cF '**Model argument.**' "$ap_f" || true; } )
+    [[ "${ap_old:-0}" -eq 0 ]] || AP_WHY+=" AP-4:old-paragraph-left:${ap_f#"$ROOT_DIR"/}"
     if [[ "${ap_alias:-0}" -gt 0 ]]; then
         AP_RULE_SKILLS=$((AP_RULE_SKILLS + 1))
+        [[ "${ap_ptr:-0}" -eq 1 ]] || AP_WHY+=" AP-4:pointer-count(${ap_ptr:-0}):${ap_f#"$ROOT_DIR"/}"
         [[ "${ap_rule:-0}" -eq 1 ]] || AP_WHY+=" AP-4:rule-count(${ap_rule:-0}):${ap_f#"$ROOT_DIR"/}"
     else
+        [[ "${ap_ptr:-0}" -eq 0 ]] || AP_WHY+=" AP-4:pointer-without-alias:${ap_f#"$ROOT_DIR"/}"
         [[ "${ap_rule:-0}" -eq 0 ]] || AP_WHY+=" AP-4:rule-without-alias:${ap_f#"$ROOT_DIR"/}"
     fi
 done
 [[ "$AP_RULE_SKILLS" -gt 0 ]] || AP_WHY+=" AP-4:no-skill-with-alias"
 
-# (AP-5)
+# (AP-5) the pointer is whole: the contract path, both keys, the built-in default and the missing-contract line,
+# each on one physical line; the rule itself is pinned in the contract file (AP-16)
 for ap_f in "$AP_SCOPE"/*/SKILL.md; do
-    grep -qF 'subagents.model.{{agent_id}}' "$ap_f" || continue
-    for ap_lit in 'pass no model argument' 'repeat that call once without the model argument' \
-                  'WARN [delegation] model' 'built-in default `"{{agent_model_default}}"`' '`inherit`'; do
-        grep -qF -- "$ap_lit" "$ap_f" || AP_WHY+=" AP-5:rule-incomplete(${ap_lit:0:24}):${ap_f#"$ROOT_DIR"/}"
+    grep -qF '**Subagent arguments.**' "$ap_f" || continue
+    for ap_lit in '`.unikit/system/subagent-arguments.md`' 'subagents.effort.{{agent_id}}' \
+                  'built-in default `"{{agent_model_default}}"`' \
+                  'WARN [delegation] subagent-arguments contract missing' 'as that file says'; do
+        grep -qF -- "$ap_lit" "$ap_f" || AP_WHY+=" AP-5:pointer-incomplete(${ap_lit:0:24}):${ap_f#"$ROOT_DIR"/}"
     done
 done
 
@@ -12183,7 +12389,7 @@ ap_call_lines=$( { grep -rhE '^[[:space:]]*prompt: "\{\{agent_skill_call:[a-z0-9
 [[ "$ap_call_lines" -eq "$AP_N_CALL" ]] || AP_WHY+=" AP-14:call-not-one-prompt-line($ap_call_lines!=$AP_N_CALL)"
 
 if [[ -z "$AP_WHY" ]]; then
-    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_HEAD_TOTAL call heads on profile variables, the model rule in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
+    pass "AP-1…AP-15 agent profile in skills and skill delivery ($AP_HEAD_TOTAL call heads on profile variables, the subagent-arguments pointer in $AP_RULE_SKILLS skills, no literal type or model; the skill-call variable on $AP_N_CALL call sites naming $AP_REF_N skills)"
 else
     fail "AP-1…AP-15 agent profile in skills and skill delivery:$AP_WHY"
     # Each diagnostic pipeline is wrapped: under `set -euo pipefail` an empty grep in a
@@ -12191,6 +12397,86 @@ else
     { grep -rnF 'subagent_type' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
     { grep -rnE -e '^[[:space:]]*skills:[[:space:]]*\[' -e 'prompt:[[:space:]]*"/unikit' "$AP_SCOPE" --include='*.md' 2>/dev/null | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
     { grep -rnF '{{agent_skill_call:' "$AP_SCOPE" --include='*.md' 2>/dev/null | grep -F '$' | cut -c1-160 | sed 's/^/      /' | head -5 || true; }
+fi
+
+# --- AP-16…AP-18: the subagent-arguments contract. AP-16 — the contract file carries the formulations the
+# pointers rely on and no variable; AP-17 — the twelve pointers are one text; AP-18 — the docs describe the
+# setting. Source assertions over pinned formulations, like AP-1…AP-15 above ($AP_SCOPE is theirs); the
+# block has its own accumulators and its own pass/fail, so the AP-1…AP-15 label stays true.
+APX_WHY=""
+APX_CHK=0
+APX_ARGS_FILE="$ROOT_DIR/data/subagent-arguments.md"
+# (AP-16) the contract file says the rule with the formulations the pointers rely on, and carries no variable
+if [[ ! -s "$APX_ARGS_FILE" ]]; then
+    APX_WHY+=" AP-16:contract-missing"
+else
+    for apx_lit in \
+        '`develop-agent` and `docs-agent` load a skill and take neither' \
+        'explicit word.** The request that started the skill asks for the argument in so many words' \
+        'is not an instruction' \
+        '**The config key.**' \
+        '**No key.**' \
+        'The effort has no built-in default' \
+        'is compared without regard to case' \
+        'in lower case' \
+        '`reasoning_effort`' \
+        'WARN [delegation] effort "<value>" is not supported by this runtime' \
+        'WARN [delegation] effort "<value>" rejected — retried on the session effort' \
+        'WARN [delegation] model "<name>" rejected — retried on the session model' \
+        'repeat it **once** without the effort'; do
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "$apx_lit" "$APX_ARGS_FILE" || APX_WHY+=" AP-16:contract-lacks(${apx_lit:0:28})"
+    done
+    APX_CHK=$((APX_CHK + 1)); ! grep -qF '{{' "$APX_ARGS_FILE" || APX_WHY+=" AP-16:variable-in-contract"
+fi
+# (AP-17) the pointers are ONE text: the block from its first line to the blank line after it is byte-identical in every skill
+APX_PTR_SUMS=""
+APX_PTR_N=0
+for apx_f in "$AP_SCOPE"/*/SKILL.md; do
+    grep -qF '**Subagent arguments.**' "$apx_f" || continue
+    APX_PTR_N=$((APX_PTR_N + 1))
+    APX_PTR_SUMS+="$(awk '/^\*\*Subagent arguments\.\*\*/{f=1} f&&/^$/{exit} f' "$apx_f" | cksum | cut -d' ' -f1)"$'\n'
+done
+APX_PTR_DISTINCT=$(printf '%s' "$APX_PTR_SUMS" | sort -u | { grep -c . || true; })
+APX_CHK=$((APX_CHK + APX_PTR_N))
+[[ "$APX_PTR_N" -gt 0 ]] || APX_WHY+=" AP-17:no-pointer"
+[[ "$APX_PTR_DISTINCT" -le 1 ]] || APX_WHY+=" AP-17:pointers-differ(x$APX_PTR_DISTINCT)"
+# (AP-18) the docs describe the effort setting, the rule file, the order of values and what is established for Antigravity
+APX_DOC_CFG="$ROOT_DIR/docs/configuration.md"
+APX_DOC_SUB="$ROOT_DIR/docs/subagents.md"
+APX_DOC_AGENTS="$ROOT_DIR/docs/agents.md"
+apx_doc() { # <reason key> <literal> <file>
+    APX_CHK=$((APX_CHK + 1))
+    grep -qF -- "$2" "$3" || APX_WHY+=" AP-18:$1"
+}
+apx_doc "cfg-effort-claude" '| `effort.claude` |' "$APX_DOC_CFG"
+apx_doc "cfg-effort-codex" '| `effort.codex` |' "$APX_DOC_CFG"
+apx_doc "cfg-rule-file" '`.unikit/system/subagent-arguments.md`, which `unikit-ai init` and `unikit-ai update` install' "$APX_DOC_CFG"
+apx_doc "cfg-order" '**Which value wins** is decided for the model and for the effort separately' "$APX_DOC_CFG"
+apx_doc "cfg-overrides" 'the environment variable `CLAUDE_CODE_EFFORT_LEVEL` overrides the level of a subagent call' "$APX_DOC_CFG"
+apx_doc "cfg-unverified" 'by its documentation - not checked by a probe' "$APX_DOC_CFG"
+apx_doc "cfg-min-version" 'documented from Claude Code v2.1.292' "$APX_DOC_CFG"
+apx_doc "cfg-antigravity" '**Antigravity has no effort key:**' "$APX_DOC_CFG"
+apx_doc "cfg-tree" 'subagent-arguments.md  # How the model and the effort of a subagent are settled' "$APX_DOC_CFG"
+apx_doc "sub-heading" '### Subagent arguments' "$APX_DOC_SUB"
+apx_doc "sub-names" 'Antigravity `Model` and **no effort argument**' "$APX_DOC_SUB"
+apx_doc "sub-retry" 'WARN [delegation] effort "<value>" rejected - retried on the session effort' "$APX_DOC_SUB"
+apx_doc "agents-established" '**Subagents and effort - what is established (client `agy` 1.3.0, probes of 2026-10-16).**' "$APX_DOC_AGENTS"
+apx_doc "agents-observation" 'so it is an observation - it does not show that a subagent follows `/effort` of the session' "$APX_DOC_AGENTS"
+apx_doc "agents-not-measured" 'whether that depends on `/effort` was not measured' "$APX_DOC_AGENTS"
+apx_doc "agents-codex" 'The call also takes `model` and `reasoning_effort`' "$APX_DOC_AGENTS"
+# the help index of the system files names the new one (the help test does not guard that list)
+APX_HELP_KB="$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
+apx_doc "help-kb" '`subagent-arguments.md` — how the model and the effort of a subagent are settled' "$APX_HELP_KB"
+APX_DOC_OLD=$( { grep -cF '### Model argument' "$APX_DOC_SUB" || true; } )
+APX_CHK=$((APX_CHK + 1))
+[[ "${APX_DOC_OLD:-0}" -eq 0 ]] || APX_WHY+=" AP-18:retired-heading-left"
+# (AP-17, AP-18) are added next to the texts they pin — see the tasks of phases 7 and 8
+(( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
+if [[ -z "$APX_WHY" ]]; then
+    pass "AP-16…AP-18 subagent-arguments contract: the contract file, the twelve pointers as one text, the docs (${APX_CHK} checks)"
+else
+    fail "AP-16…AP-18 subagent-arguments contract:$APX_WHY"
 fi
 
 # ─────────────────────────────────────────────
@@ -12800,10 +13086,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Update command smoke tests ===${NC}\n"
 
-set +e
-UPDATE_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-update.sh" 2>&1)
-UPDATE_SMOKE_EXIT=$?
-set -e
+child_wait update
+UPDATE_SMOKE_OUTPUT="$CHILD_OUTPUT"
+UPDATE_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $UPDATE_SMOKE_EXIT -eq 0 ]]; then
     pass "update smoke tests"
@@ -12818,10 +13103,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Install smoke tests ===${NC}\n"
 
-set +e
-INSTALL_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-install.sh" 2>&1)
-INSTALL_SMOKE_EXIT=$?
-set -e
+child_wait install
+INSTALL_SMOKE_OUTPUT="$CHILD_OUTPUT"
+INSTALL_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $INSTALL_SMOKE_EXIT -eq 0 ]]; then
     pass "install smoke tests"
@@ -12838,10 +13122,9 @@ fi
 # proves the version matrix and the settings-file write rules underneath them.
 echo -e "\n${BOLD}=== Migration + MCP reconciliation smoke tests ===${NC}\n"
 
-set +e
-MIGRATIONS_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-migrations.sh" 2>&1)
-MIGRATIONS_SMOKE_EXIT=$?
-set -e
+child_wait migrations
+MIGRATIONS_SMOKE_OUTPUT="$CHILD_OUTPUT"
+MIGRATIONS_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $MIGRATIONS_SMOKE_EXIT -eq 0 ]]; then
     pass "migration + MCP reconciliation smoke tests"
@@ -12856,10 +13139,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Extension smoke tests ===${NC}\n"
 
-set +e
-EXT_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-extensions.sh" 2>&1)
-EXT_SMOKE_EXIT=$?
-set -e
+child_wait extensions
+EXT_SMOKE_OUTPUT="$CHILD_OUTPUT"
+EXT_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $EXT_SMOKE_EXIT -eq 0 ]]; then
     pass "extension smoke tests"
@@ -12874,10 +13156,9 @@ fi
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== Extension selection smoke tests ===${NC}\n"
 
-set +e
-EXT_SELECTION_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-extension-selection.sh" 2>&1)
-EXT_SELECTION_SMOKE_EXIT=$?
-set -e
+child_wait extsel
+EXT_SELECTION_SMOKE_OUTPUT="$CHILD_OUTPUT"
+EXT_SELECTION_SMOKE_EXIT="$CHILD_EXIT"
 
 if [[ $EXT_SELECTION_SMOKE_EXIT -eq 0 ]]; then
     pass "extension selection smoke tests"
@@ -13114,7 +13395,9 @@ fi
 # Part 13: Rules registry tests
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13: Rules registry tests${NC}"
-if bash "$SCRIPT_DIR/test-rules.sh"; then
+child_wait rules
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Rules registry tests passed"
 else
     fail "Rules registry tests failed"
@@ -13124,7 +13407,9 @@ fi
 # Part 13c: rules-layout.mjs — the optimise helper, run for real on fixture projects
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13c: rules-layout helper tests${NC}"
-if bash "$SCRIPT_DIR/test-rules-layout.sh"; then
+child_wait layout
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "rules-layout helper tests passed"
 else
     fail "rules-layout helper tests failed"
@@ -13134,7 +13419,9 @@ fi
 # Part 13d: plan-bundle.mjs — the ultra bundle check, run for real on fixture bundles
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13d: plan-bundle helper tests${NC}"
-if bash "$SCRIPT_DIR/test-plan-bundle.sh"; then
+child_wait planbundle
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "plan-bundle helper tests passed"
 else
     fail "plan-bundle helper tests failed"
@@ -13144,7 +13431,9 @@ fi
 # Part 13b: Genre profile tests (catalog + CLI + schema)
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 13b: Genre profile tests${NC}"
-if bash "$SCRIPT_DIR/test-genres.sh"; then
+child_wait genres
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Genre profile tests passed"
 else
     fail "Genre profile tests failed"
@@ -13209,7 +13498,9 @@ fi
 # Part 15: Skill grouping guard
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 15: Skill grouping guard${NC}"
-if bash "$SCRIPT_DIR/test-skill-groups.sh"; then
+child_wait skillgroups
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "Skill grouping guard passed"
 else
     fail "Skill grouping guard failed"
@@ -13219,10 +13510,24 @@ fi
 # Part 16: unikit-help navigator guard
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}Part 16: unikit-help navigator guard${NC}"
-if bash "$SCRIPT_DIR/test-help-skill.sh"; then
+child_wait helpskill
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
     pass "unikit-help navigator guard passed"
 else
     fail "unikit-help navigator guard failed"
+fi
+
+# ─────────────────────────────────────────────
+# Part 17: the `grep -qF` shortcut answers like real grep
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}Part 17: grep shim equivalence${NC}"
+child_wait grepshim
+printf '%s\n' "$CHILD_OUTPUT"
+if [[ $CHILD_EXIT -eq 0 ]]; then
+    pass "grep shim equivalence passed"
+else
+    fail "grep shim equivalence failed"
 fi
 
 # ─────────────────────────────────────────────

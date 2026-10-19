@@ -287,6 +287,24 @@ assert_not_contains "$PROTOTYPE_PROFILE_PATH" '\{\{' \
   "prototype-profile.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-sa: subagent-arguments.md installed as a system asset (flat copy, no vars)
+# Read before the first dispatch of a model-carrying subagent by the skills that carry its pointer;
+# a system asset so that it reaches a project whichever skills the wizard installed. Update-path
+# coverage like 1b-pp above; the init.ts call site is SA-1's job. assert_contains is grep -E:
+# the [delegation] tag is escaped.
+# ─────────────────────────────────────────────────────
+SUBAGENT_ARGS_PATH="$CLAUDE_DIR/.unikit/system/subagent-arguments.md"
+assert_exists "$SUBAGENT_ARGS_PATH" "subagent-arguments.md created in .unikit/system/"
+assert_contains "$SUBAGENT_ARGS_PATH" '^## Argument names per runtime$' \
+  "subagent-arguments.md carries the section that names the argument of each runtime"
+assert_contains "$SUBAGENT_ARGS_PATH" 'reasoning_effort' \
+  "subagent-arguments.md names the Codex effort argument"
+assert_contains "$SUBAGENT_ARGS_PATH" 'WARN \[delegation\] effort' \
+  "subagent-arguments.md carries the canonical WARN [delegation] effort label"
+assert_not_contains "$SUBAGENT_ARGS_PATH" '\{\{' \
+  "subagent-arguments.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal
@@ -365,10 +383,10 @@ assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/template-
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-balance/references/experiment-route.md" \
   "unikit-gd-balance experiment-route.md reference installed (the experiment route)"
 # The experiment skill's branches are read only by intent, so a content test cannot see a missing
-# delivery of a reference — all nine files are asserted here.
+# delivery of a reference — all ten files are asserted here.
 assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/SKILL.md" \
   "unikit-gd-experiment SKILL.md installed (experiment partner)"
-for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index context-and-research planning-handoff balance-link; do
+for exp_ref in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index context-and-research planning-handoff balance-link lookup; do
   assert_exists "$CLAUDE_DIR/.claude/skills/unikit-gd-experiment/references/${exp_ref}.md" \
     "unikit-gd-experiment ${exp_ref}.md reference installed"
 done

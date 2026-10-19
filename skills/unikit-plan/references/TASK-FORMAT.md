@@ -298,7 +298,7 @@ Rules:
 - **A run is never narrower than its coverage, and how much wider it goes is decided when it runs, not here:** `task N.M` → the fixtures and classes that task names, always; `phase N` / `phases N-M` → every test in the project by default, or the test suites of the modules those phases touch plus the suites that depend on them when the executor's run settings allow narrowing; `plan` → every test in the project, always. The run settings belong to the executor and are never recorded in the plan — `{{skills_dir}}/unikit-implement/references/test-runs.md` → `## Run width`.
 - **The planner writes no list of suites.** The executor computes the set at run time, from the files actually changed. The planner neither reads nor builds a module graph, so planning time does not grow.
 - `task N.M` exists **only in an ultra bundle**: fast and full have no per-task surface to put it on.
-- **When `Testing: yes`, the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch, and it is never merged away nor deferred. In a plan with a `## Balance Context` the final run stands directly above the `Hand-back:` task (`### Balance checkpoint grammar`).
+- **When `Testing: yes`, the last task of the plan is `Test checkpoint: plan`** — a full run of every test. It has no off switch, and it is never merged away nor deferred (other test-run points may be merged into it). In a plan with a `## Balance Context` the final run stands directly above the `Hand-back:` task (`### Balance checkpoint grammar`).
 - A checkpoint goes **where the change is worth one, not into every phase**: `Test checkpoints:` is a ceiling, not an obligation. The criterion: a check is needed when the phase changes executable code, or a contract other modules rely on; it is not needed when executable code is untouched — documentation, assets and their service files, data no test covers. What counts as an asset or a service file is engine-specific, and the answer lives where the signals for `Editor:` come from: `references/ENGINE_RULES.md` §3.
 - A phase without a check **does not lose its goals**: they pass to the next test-checkpoint task, whose coverage then names both phases (`Test checkpoint: phases 1-2`), and the phase text says so in one line.
 - **Repeats are forbidden:** the phase completion checklist does not restate the run, and a test-checkpoint task never follows another when nothing changed between them.
@@ -419,6 +419,8 @@ The last task of the plan; it carries `WHY:` and `Hand-back:` and **carries no `
   …
   #### 11. Success Criteria
   …
+  #### Design research · <folder> (names v<k>)
+  <the Active Summary of that research, as it stands>
   ```
 
 The block above is shown indented by two spaces only so that this file carries no line that starts with a field name; in the manifest its lines start at the margin.
@@ -426,6 +428,8 @@ The block above is shown indented by two spaces only so that this file carries n
 **`Branch:` and `Base:`.** `Branch:` is the branch the plan lives on — the one created for it, or the current one when none was created; `none` when git is off. `Base:` is the branch the plan's branch was cut from; `none` when no branch was cut. Executors compare the current branch with `Branch:` before they write, and take the base of every diff and check from `Base:` (`.unikit/system/prototype-profile.md`; `.unikit/system/plan-boundaries.md` → `## Base branch`).
 
 **What is copied.** For every card, in the order of the `Cards:` list: sections 2 to 11 of `experiment.md` in full (Problem, Hypothesis, What We Test, Design, Gameplay Flow, Variants, Interface and Feedback, Minimum Scope, How to Test, Success Criteria), with their headings lowered by two levels. Section 12 (Risks) is copied only when it changes what is built; sections 13 and 14 (Follow-up Decisions, Evaluation Summary) are never copied. A path without the content is not a snapshot.
+
+**Design researches.** A research of the design store (`.unikit/gamedesign/researches/`) whose Active Summary names the card by an `Experiment:` line goes in as one more block of that card, after section 11, under the heading shown above, its Active Summary copied as it stands. No hash is kept and the plan never re-reads it for drift; the version in the heading is the one the research named. A research of the code store is not copied: it is linked under `## Based on` like any other research.
 
 **What stays out.** Technical decisions: they belong to `## Technical Context`, where the planner reads the code itself. The card's `Out of Scope` is the boundary of the prototype and is repeated in `### OUT OF SCOPE` of `## Technical Context`.
 

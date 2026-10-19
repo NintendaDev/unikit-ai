@@ -34,7 +34,7 @@ human, never a branch condition for a skill — read the marker.
 | Consumer | Reads | Why this depth |
 |----------|-------|----------------|
 | `/unikit-implement` | the manifest plus the phase file of the **active task** | one task is executed at a time; holding every phase in context means holding what is not being executed |
-| `/unikit-verify` | the manifest plus **every** phase file | verification validates the plan as a whole and checks the implementation against per-task criteria |
+| `/unikit-verify` | the manifest plus the phase files of the phases that hold an executed task (`- [x]`), or of the phases named by a phase scope | verification checks what was executed against per-task criteria; a phase nobody has started has no code to check. Integrity is still checked over the whole folder, by listing and heading search |
 | `/unikit-improve` | the manifest plus **every** phase file | improvement is not local — moving a task between phases touches two of them |
 | `/unikit-commit` | the manifest plus the phase files of the **current commit group** | staged paths are mapped onto groups; the rest of the bundle is not needed |
 | `unikit-implement-coordinator` | the manifest plus the phase files of the phases it dispatches in the **current layer** | layers execute one at a time, so the phases of future layers have no business in the context; the hand-off to a worker is closed, so what it does not read, it cannot pass on |

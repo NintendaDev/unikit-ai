@@ -7,6 +7,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# `<producer> | grep -q` must not race its producer under pipefail (see grep-shim.sh).
+# shellcheck source=./grep-shim.sh
+source "$SCRIPT_DIR/grep-shim.sh"
+
 # Ensure the bundled rules snapshot exists (rules-registry/ is not tracked in
 # git; it is cloned on demand by scripts/download-rules.sh).
 if [ ! -f "$ROOT_DIR/rules-registry/manifest.json" ]; then

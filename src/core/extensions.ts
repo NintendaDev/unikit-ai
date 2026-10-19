@@ -238,7 +238,7 @@ export async function resolveFromLocal(localPath: string): Promise<ResolvedExten
 
 export async function resolveFromGit(gitUrl: string): Promise<ResolvedExtension> {
   const { tmpdir } = await import('os');
-  const tmpDir = path.join(tmpdir(), `unikit-ext-${Date.now()}`);
+  const tmpDir = path.join(tmpdir(), `unikit-ext-${process.pid}-${Date.now()}`);
 
   try {
     const [url, ref] = gitUrl.split('#');

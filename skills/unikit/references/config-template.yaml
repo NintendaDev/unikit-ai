@@ -171,23 +171,27 @@ git:
 # =============================================================================
 # Subagent Settings
 # =============================================================================
-# Which model the subagents that skills launch run on — one value per agent.
-# Skills read this block at run time, so an edit takes effect on the next
-# command; no `unikit-ai update` is needed.
+# Which model, and how much reasoning effort, the subagents that skills launch
+# use — one value per agent in each of two blocks, model and effort. Skills read
+# this block at run time, so an edit takes effect on the next command; no
+# `unikit-ai update` is needed.
 #
 # Only the delegation aliases that name a model read it: recon-agent,
 # check-agent, lens-agent and recon-writer-agent. The two that load a skill
-# (develop-agent, docs-agent) never pass a model.
+# (develop-agent, docs-agent) never pass a model or an effort.
 #
-# A value is a model name exactly as that agent's own tool accepts it. UniKit
-# keeps no list of names: a stale name makes the launch fail, and the skill
-# then repeats the call once on the model of the session.
-#   <name>   — pass this model to the subagent
-#   inherit  — pass nothing; the subagent runs on the model of the session
+# A value is exactly what that agent's own tool accepts. UniKit keeps no list of
+# names or levels: a wrong value makes the launch fail, and the skill then
+# repeats the call once without the effort and, if it still fails, without the
+# model.
+#   <value>  — pass it to the subagent
+#   inherit  — pass nothing; the subagent runs on the model — or the effort — of the session
 #   (empty)  — the same as inherit; a deliberate choice, never filled in again
-# A key that is missing altogether falls back to the built-in default noted
-# below. The block lists the agents whose subagent call takes a model without
-# any setting of the runtime itself.
+# A model key that is missing altogether falls back to the built-in default noted
+# below; an effort key that is missing passes nothing. Each block lists the agents
+# whose subagent call takes that argument without any setting of the runtime itself.
+# What you ask for in a request wins over both blocks for that run: "use opus for
+# the subagents" or "effort high for the subagents".
 
 subagents:
   model:
@@ -200,8 +204,9 @@ subagents:
     # default: inherit (identifiers go stale, so choose your own).
     codex: inherit
 
-    # Antigravity. flash | pro | inherit.
-    # Built-in default: flash.
+    # Antigravity. inherit | flash_lite | flash | pro — the values of the Model
+    # argument of its subagent call; a tier sets the size of the model, not the
+    # depth. Built-in default: flash.
     antigravity: flash
 
     # Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key:
@@ -213,3 +218,29 @@ subagents:
     # [secondary_model.models] in ~/.kimi-code/config.toml, or primary; Qwen
     # Code - a grade name from agents.modelGrades in settings.json; Universal /
     # Other - whatever the subagent tool of your agent accepts.
+
+  effort:
+    # Claude Code. low | medium | high | xhigh | max — the levels the effort
+    # argument of its subagent call lists. Which levels a model supports differs,
+    # and the runtime may cap a level (the setting maxEffortLevel) or override it
+    # (the environment variable CLAUDE_CODE_EFFORT_LEVEL): the value written here
+    # is then not the one that runs. The argument exists only in a Claude Code
+    # version that has it; on an older client the call can fail and the skill
+    # repeats it without the effort. Written in lower case.
+    claude: medium
+
+    # Codex CLI. The reasoning_effort argument of spawn_agent. The valid levels
+    # depend on the model of the subagent, and a wrong one fails with an error
+    # that lists them, so this template keeps no list. Pair it with the model
+    # chosen for codex above. Written in lower case.
+    codex: medium
+
+    # Antigravity has no key: the subagent call of its client takes no effort
+    # argument, and a call that adds one is rejected whole. What you can set is
+    # the effort of the session itself (/effort or --effort) and, in the model
+    # block above, the tier of the subagent.
+
+    # Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other have no key
+    # either: their subagent call takes no effort argument, or takes one only
+    # after you set up the client itself. If you did enable it, add
+    # subagents.effort.<agent> by hand and the skills will pass it.
