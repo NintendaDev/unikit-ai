@@ -288,17 +288,17 @@ assert_not_contains "$PROTOTYPE_PROFILE_PATH" '\{\{' \
 
 # ─────────────────────────────────────────────────────
 # Test 1b-sa: subagent-arguments.md installed as a system asset (flat copy, no vars)
-# Read before the first dispatch of a model-carrying subagent by the skills that carry its pointer;
+# Read before the first subagent launch of a run by the skills that carry its pointer and by the two coordinators;
 # a system asset so that it reaches a project whichever skills the wizard installed. Update-path
 # coverage like 1b-pp above; the init.ts call site is SA-1's job. assert_contains is grep -E:
 # the [delegation] tag is escaped.
 # ─────────────────────────────────────────────────────
 SUBAGENT_ARGS_PATH="$CLAUDE_DIR/.unikit/system/subagent-arguments.md"
 assert_exists "$SUBAGENT_ARGS_PATH" "subagent-arguments.md created in .unikit/system/"
-assert_contains "$SUBAGENT_ARGS_PATH" '^## Argument names per runtime$' \
-  "subagent-arguments.md carries the section that names the argument of each runtime"
-assert_contains "$SUBAGENT_ARGS_PATH" 'reasoning_effort' \
-  "subagent-arguments.md names the Codex effort argument"
+assert_contains "$SUBAGENT_ARGS_PATH" '^## The two arguments, settled separately$' \
+  "subagent-arguments.md carries the section that settles the model and the effort"
+assert_contains "$SUBAGENT_ARGS_PATH" '^## Filling the slots$' \
+  "subagent-arguments.md carries the section that says how the slots of a call head are filled"
 assert_contains "$SUBAGENT_ARGS_PATH" 'WARN \[delegation\] effort' \
   "subagent-arguments.md carries the canonical WARN [delegation] effort label"
 assert_not_contains "$SUBAGENT_ARGS_PATH" '\{\{' \
@@ -1053,7 +1053,7 @@ assert_contains "$UNIVERSAL_SKILLS/unikit-fix/SKILL.md" 'subagent_type: Explore,
   "universal: recon-agent launches the reader type Explore"
 assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'subagents\.model\.universal' \
   "universal: the model rule names its own config key"
-assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in default `"inherit"`' \
+assert_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'built-in model of a reader and a validator: `"inherit"`' \
   "universal: the built-in model default is inherit (no model argument)"
 assert_not_contains "$UNIVERSAL_SKILLS/unikit-explore/SKILL.md" 'Subagent Delegation.*BLOCKING PRE-REQUISITE' \
   "universal: no Codex ask-the-user block (DEC-008)"

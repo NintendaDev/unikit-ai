@@ -9498,7 +9498,8 @@ if [[ -z "$BX_WHY" ]]; then
     grep -qF '5.4' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.4"
     grep -qF '5.8' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.8"
     bx_has "BM-6:coordinator-layer-order" 'the test-checkpoint tasks of the layer → the `Measure:` tasks' "$TC_COORD"
-    bx_max "BM-6:implement-skill-size" 52600 "$UNIKIT_IMPLEMENT_SKILL"
+    # 52600 -> 53100: unikit-implement gained the 552-byte subagent-arguments pointer (it had none)
+    bx_max "BM-6:implement-skill-size" 53100 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -12201,9 +12202,9 @@ fi
 #         that used to be the literal. The bare words `Explore` / `coder` stay legal as a skill
 #         name and a role ("Explore tasks"): only a backticked type name is a stale spelling.
 #   AP-3  no `model: <word>` and none of the retired per-branch rationale sentences.
-#   AP-4  the pointer to the arguments rule stands once in every SKILL.md that declares an alias that
-#         carries the arguments (the model key once there), and nowhere else; the retired paragraph is gone.
-#   AP-5  the pointer is whole: the contract path, both keys, the built-in default and the missing-contract
+#   AP-4  the pointer to the arguments rule stands once in every SKILL.md whose frontmatter allows the `Agent` tool
+#         (the model key once there), and nowhere else; the retired paragraph is gone.
+#   AP-5  the pointer is whole: the contract path, both keys, the built-in model of the roles and the missing-contract
 #         line — the rule itself is pinned in the contract file (AP-16).
 #   AP-6  a delegation call never lives behind a non-codex agent-filter branch: the profile
 #         replaced those branches, so one coming back means a second definition has appeared.
@@ -12275,34 +12276,38 @@ ap_tier=$( { grep -rhoF -e 'tier alias' -e 'No model is named' "$AP_SCOPE" --inc
 [[ "$ap_model" -eq 0 ]] || AP_WHY+=" AP-3:model-literal(x$ap_model)"
 [[ "$ap_tier" -eq 0 ]] || AP_WHY+=" AP-3:retired-rationale(x$ap_tier)"
 
-# (AP-4) the pointer stands once in every skill that declares an alias carrying the arguments, and nowhere else;
-# the key literal stays once there (GXG-6 pins it too); the retired paragraph is gone everywhere
+# (AP-4) the pointer stands once in every skill whose frontmatter allows the `Agent` tool, and nowhere else: a skill that
+# can launch a subagent owes the reader the rule, one that cannot owes nothing; the key literal stays once there
+# (GXG-6 pins it too); the retired paragraph is gone everywhere
 AP_RULE_SKILLS=0
 for ap_f in "$AP_SCOPE"/*/SKILL.md; do
     [[ -f "$ap_f" ]] || continue
-    ap_alias=$( { grep -cE '^- \*\*`(recon-agent|check-agent|lens-agent|recon-writer-agent)`\*\*' "$ap_f" || true; } )
+    ap_agent=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - Agent$/ {c++} END {print c+0}' "$ap_f")
     ap_ptr=$( { grep -cF '**Subagent arguments.**' "$ap_f" || true; } )
     ap_rule=$( { grep -cF 'subagents.model.{{agent_id}}' "$ap_f" || true; } )
     ap_old=$( { grep -cF '**Model argument.**' "$ap_f" || true; } )
     [[ "${ap_old:-0}" -eq 0 ]] || AP_WHY+=" AP-4:old-paragraph-left:${ap_f#"$ROOT_DIR"/}"
-    if [[ "${ap_alias:-0}" -gt 0 ]]; then
+    if [[ "${ap_agent:-0}" -gt 0 ]]; then
         AP_RULE_SKILLS=$((AP_RULE_SKILLS + 1))
         [[ "${ap_ptr:-0}" -eq 1 ]] || AP_WHY+=" AP-4:pointer-count(${ap_ptr:-0}):${ap_f#"$ROOT_DIR"/}"
         [[ "${ap_rule:-0}" -eq 1 ]] || AP_WHY+=" AP-4:rule-count(${ap_rule:-0}):${ap_f#"$ROOT_DIR"/}"
     else
-        [[ "${ap_ptr:-0}" -eq 0 ]] || AP_WHY+=" AP-4:pointer-without-alias:${ap_f#"$ROOT_DIR"/}"
-        [[ "${ap_rule:-0}" -eq 0 ]] || AP_WHY+=" AP-4:rule-without-alias:${ap_f#"$ROOT_DIR"/}"
+        [[ "${ap_ptr:-0}" -eq 0 ]] || AP_WHY+=" AP-4:pointer-without-agent:${ap_f#"$ROOT_DIR"/}"
+        [[ "${ap_rule:-0}" -eq 0 ]] || AP_WHY+=" AP-4:rule-without-agent:${ap_f#"$ROOT_DIR"/}"
     fi
 done
-[[ "$AP_RULE_SKILLS" -gt 0 ]] || AP_WHY+=" AP-4:no-skill-with-alias"
+[[ "$AP_RULE_SKILLS" -gt 0 ]] || AP_WHY+=" AP-4:no-skill-with-agent"
 
-# (AP-5) the pointer is whole: the contract path, both keys, the built-in default and the missing-contract line,
-# each on one physical line; the rule itself is pinned in the contract file (AP-16)
+# (AP-5) the pointer is whole: the contract path, both keys, the built-in model of the roles and the missing-contract
+# line, each on one physical line; the rule itself is pinned in the contract file (AP-16)
 for ap_f in "$AP_SCOPE"/*/SKILL.md; do
     grep -qF '**Subagent arguments.**' "$ap_f" || continue
-    for ap_lit in '`.unikit/system/subagent-arguments.md`' 'subagents.effort.{{agent_id}}' \
-                  'built-in default `"{{agent_model_default}}"`' \
-                  'WARN [delegation] subagent-arguments contract missing' 'as that file says'; do
+    for ap_lit in '`.unikit/system/subagent-arguments.md`' \
+                  'settle the model and effort of every launch as that file says' \
+                  'subagents.model.{{agent_id}}.<role>' 'subagents.effort.{{agent_id}}.<role>' \
+                  'built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none' \
+                  'WARN [delegation] subagent-arguments contract missing' \
+                  'and use that model, no effort'; do
         grep -qF -- "$ap_lit" "$ap_f" || AP_WHY+=" AP-5:pointer-incomplete(${ap_lit:0:24}):${ap_f#"$ROOT_DIR"/}"
     done
 done
@@ -12400,27 +12405,33 @@ else
 fi
 
 # --- AP-16…AP-18: the subagent-arguments contract. AP-16 — the contract file carries the formulations the
-# pointers rely on and no variable; AP-17 — the twelve pointers are one text; AP-18 — the docs describe the
+# pointers rely on and no variable; AP-17 — the pointers are one text; AP-18 — the docs describe the
 # setting. Source assertions over pinned formulations, like AP-1…AP-15 above ($AP_SCOPE is theirs); the
 # block has its own accumulators and its own pass/fail, so the AP-1…AP-15 label stays true.
 # AP-19 — the roles table is complete.
 APX_WHY=""
 APX_CHK=0
 APX_ARGS_FILE="$ROOT_DIR/data/subagent-arguments.md"
-# (AP-16) the contract file says the rule with the formulations the pointers rely on, and carries no variable
+# (AP-16) the contract file says the rule with the formulations the pointers and the coordinators rely on, and carries no variable
 if [[ ! -s "$APX_ARGS_FILE" ]]; then
     APX_WHY+=" AP-16:contract-missing"
 else
     for apx_lit in \
-        '`develop-agent` and `docs-agent` load a skill and take neither' \
-        'explicit word.** The request that started the skill asks for the argument in so many words' \
+        'Every subagent a skill launches takes a model and an effort argument' \
+        'together with `.unikit/system/subagent-roles.md` and `.unikit/config.yaml`' \
+        'The role of a launch — reader, validator or executor — decides which config key it reads' \
+        'WARN [delegation] subagent-roles table missing — every launch treated as an executor' \
+        'explicit word.** The user has asked for the argument in so many words' \
         'is not an instruction' \
         '**The config key.**' \
         '**No key.**' \
         'The effort has no built-in default' \
+        'A key that does not hold a map of roles' \
+        'A slot with nothing to pass is removed from the call together with its comma' \
         'is compared without regard to case' \
         'in lower case' \
-        '`reasoning_effort`' \
+        'runs on the effort of the agent that launched it' \
+        'The user asked for effort <level> for every subagent.' \
         'WARN [delegation] effort "<value>" is not supported by this runtime' \
         'WARN [delegation] effort "<value>" rejected — retried on the session effort' \
         'WARN [delegation] model "<name>" rejected — retried on the session model' \

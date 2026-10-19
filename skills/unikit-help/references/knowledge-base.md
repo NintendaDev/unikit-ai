@@ -96,8 +96,8 @@ Relevant to the dev pipeline:
   `/unikit-verify`, `/unikit-pr`, `/unikit-improve`, `/unikit-review`, `/unikit-fix`,
   `/unikit-devcontext`, `/unikit-commit` and their subagents, only when the plan has `## Experiment Context`.
 - `subagent-arguments.md` — how the model and the effort of a subagent are settled (your word in the
-  request, then the config key, then the built-in value; the argument name of each runtime), read by
-  the skills that launch a subagent before their first dispatch.
+  request or earlier in the session, then the config key of the launch's role, then the built-in value),
+  read by the skills that launch a subagent, and by the two coordinators, before their first launch.
 - `subagent-roles.md` — which role (reader, validator or executor) each subagent launch has, so that its
   model and effort are read from the right config key; read together with `subagent-arguments.md`.
 

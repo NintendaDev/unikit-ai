@@ -553,8 +553,13 @@ await group('I', async () => {
             for (const [label, files] of damaged) {
                 assertTrue(`I9 ${agent.id}: no installed .md holds ${label}`, files.length === 0, `found in: ${files.slice(0, 3).join(', ')}`);
             }
-            assertTrue(`I4 ${agent.id}: the model rule names its own config key`, texts.explore.includes(`subagents.model.${agent.id}`));
-            assertTrue(`I4 ${agent.id}: the model rule carries the built-in default "${modelDefault}"`, texts.explore.includes('built-in default `"' + modelDefault + '"`'));
+            assertTrue(`I4 ${agent.id}: the arguments rule names its own model key by role`, texts.explore.includes(`subagents.model.${agent.id}.<role>`));
+            assertTrue(`I4 ${agent.id}: the arguments rule names its own effort key by role`, texts.explore.includes(`subagents.effort.${agent.id}.<role>`));
+            assertTrue(`I4 ${agent.id}: the arguments rule carries the built-in model "${modelDefault}" of a reader and a validator`, texts.explore.includes('built-in model of a reader and a validator: `"' + modelDefault + '"`, of an executor: none'));
+            assertTrue(
+                `I11 ${agent.id}: the skills without a delegation alias carry the same pointer (unikit, implement, brainstorm)`,
+                [texts.unikit, texts.implement, texts.brainstorm].every((t) => t.includes('**Subagent arguments.**') && t.includes(`subagents.model.${agent.id}.<role>`)),
+            );
             assertEq(`I6 ${agent.id}: no unresolved {{agent_…}} in any installed .md`, leaked, 0);
             assertEq(`I7 ${agent.id}: no installed skill carries the retired Subagent Delegation block`, texts.explore.includes('Subagent Delegation — BLOCKING PRE-REQUISITE'), false);
             assertEq(`I7 ${agent.id}: the gd-review handoff auto-invoke block is present for codex alone`, texts.gdReview.includes('Auto-invoke the handoff — BLOCKING PRE-REQUISITE'), agent.id === 'codex');

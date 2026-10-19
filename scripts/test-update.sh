@@ -2256,8 +2256,8 @@ echo "tampered" > "$SUBAGENT_ARGS"
 DEVPRIN_OUT14="$TMPDIR/update-subagent-arguments.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT14" 2>&1)
 
-if ! grep -q "^## Argument names per runtime$" "$SUBAGENT_ARGS"; then
-    echo "Assertion failed: update did NOT refresh subagent-arguments.md from data/ (## Argument names per runtime missing)"
+if ! grep -q "^## The two arguments, settled separately$" "$SUBAGENT_ARGS"; then
+    echo "Assertion failed: update did NOT refresh subagent-arguments.md from data/ (## The two arguments, settled separately missing)"
     exit 1
 fi
 
@@ -2587,8 +2587,8 @@ seed_rule "$UC_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 
 UC_CLAUDE_SKILL="$UC_DIR/.claude/skills/unikit-implement/SKILL.md"
 UC_UNI_SKILL="$UC_DIR/.agents/skills/unikit-implement/SKILL.md"
-# The subagent-arguments pointer (it names `subagents.model.<agent>`) is carried by twelve skills and
-# unikit-implement is not one of them; unikit-plan is, and it is in both agents' installedSkills.
+# The subagent-arguments pointer (it names `subagents.model.<agent>.<role>`) is carried by every skill that can
+# launch a subagent, unikit-implement included; unikit-plan is the one checked here, and it is in both agents' installedSkills.
 UC_CLAUDE_PLAN="$UC_DIR/.claude/skills/unikit-plan/SKILL.md"
 UC_UNI_PLAN="$UC_DIR/.agents/skills/unikit-plan/SKILL.md"
 UC_MCP="$UC_DIR/.mcp.json"
