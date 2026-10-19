@@ -38,15 +38,15 @@ The subagent layer exists for six reasons:
 
 +-------------------------------------------------------------+
 |  Delegation aliases (from inside skills)                    |
-|   skill-loading (call head + skill call per agent form)     |
+|   skill-loading, executors (call head + skill call)         |
 |    - develop-agent   (parallel/deep-dive only after         |
 |                       the Bootstrap refactor)               |
 |    - docs-agent      (update or create documentation)       |
-|   model-carrying (call head from profile, model: config)    |
-|    - recon-agent     (read-only parallel reconnaissance)    |
-|    - check-agent     (fresh-context findings validator)     |
-|    - lens-agent      (adversarial review lens)              |
-|    - recon-writer-agent (ultra recon, writes its own file)  |
+|   launched with a prompt (call head from the profile)       |
+|    - recon-agent     (reader: read-only reconnaissance)     |
+|    - recon-writer-agent (reader: ultra recon, own file)     |
+|    - check-agent     (validator: fresh-context check)       |
+|    - lens-agent      (validator: adversarial review lens)   |
 +-------------------------------------------------------------+
 ```
 
@@ -55,11 +55,11 @@ The subagent layer exists for six reasons:
 | Coordinator | `unikit-implement-coordinator`, `unikit-plan-coordinator` | `claude --agent <name>` / `kimi --agent <name>` (top-level session) | Yes |
 | Internal worker | `unikit-implement-worker`, `unikit-plan-polisher` | Spawned by coordinator | No |
 | Sidecar (background, read-only) | `unikit-review-sidecar`, `unikit-architecture-sidecar`, `unikit-commit-sidecar`, `unikit-docs-sidecar` | Spawned by `unikit-implement-coordinator` | No |
-| Delegation alias | `develop-agent`, `docs-agent` (skill-loading) · `recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent` (model-carrying) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
+| Delegation alias | `develop-agent`, `docs-agent` (skill-loading, executors) · `recon-agent`, `recon-writer-agent` (readers) · `check-agent`, `lens-agent` (validators) | `Agent(...)` from a skill; the expansion is declared in that skill's `## Delegation agents` | Depends on the skill loaded - aliases do not carry the top-level privilege |
 
 ## Top-Level Agent Sessions
 
-Claude Code enforces an important rule: **ordinary subagents cannot spawn other subagents**. Coordinators that need to dispatch workers or run multiple sidecars must therefore start as a **top-level custom agent session**:
+Claude Code lets a subagent launch subagents only when its agent file lists the `Agent` tool: in the probe of 2026-10-18 a file agent with a bare `Agent` entry in `tools` launched two subagents itself (depth 2, see [Nested launches](#nested-launches-and-effort---what-is-established)), and an agent without that entry cannot. The list form `Agent(unikit-implement-worker, …)` that the coordinators use was not tried for a coordinator started as a subagent, so the coordinators still must start as a **top-level custom agent session**:
 
 ```bash
 claude --agent unikit-implement-coordinator
@@ -90,6 +90,7 @@ Dependency-aware plan execution.
 - **Multiple independent phases** → dispatches one `unikit-implement-worker` per phase (up to 3 in parallel per layer)
 - Never hands a `Measure:` or a `Hand-back:` task of a balance plan to a worker - it carries them out itself, in its own session, after the worker has returned the phase's other tasks
 - After each layer: launches background sidecars (review, architecture, commit, docs), merges material findings, hands commit checkpoints to the `unikit-commit` skill (it never writes a commit message itself), advances to the next layer
+- Settles the model and the effort of every worker and sidecar it launches by the role of that agent (the table in `.unikit/system/subagent-roles.md`) and passes them as the `model` and `effort` call parameters; with no config key it passes nothing and the `model:` of the agent's own file applies. On Kimi Code it passes neither - see [Subagent arguments](#subagent-arguments)
 - Annotates the manifest with layer markers and `[~]` / `[x]` / `[!]` status in real time
 - Under `Testing: yes`, carries the `Full run:` anchor over every commit it makes (the same rule as `/unikit-implement`), and reports a final run closed by reuse apart from a performed one (`Test runs: <n> performed · <m> merged · <r> reused`)
 - **Is itself a writer of `## MCP Findings`** in the single-phase branch, where no worker exists to do it - same rules as everywhere else (`F<n>` = highest present + 1, `observed` = the date, semantic dedup), and never touches `.unikit/MCP-RECHECK-NOTES.md`
@@ -105,6 +106,7 @@ Iterative plan polishing.
 - Stops when the plan meets implementation-readiness criteria or the iteration budget (default: 3) is exhausted
 - Detects stagnation (same issues across two iterations) and stops early
 - Each iteration spawns a fresh `unikit-plan-polisher` to avoid context bloat
+- Settles the model and the effort of every polisher it launches by the role of that agent and passes them as the `model` and `effort` call parameters, like the implement coordinator
 
 Frontmatter highlights: `permissionMode: acceptEdits`, `model: inherit`, `maxTurns: 30`. Can spawn: `unikit-plan-polisher`.
 
@@ -151,7 +153,7 @@ All sidecars return their findings in English so the coordinator can parse them 
 
 ## Delegation Aliases
 
-Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(<call head>, prompt: "<skill call> <arguments>", …)` calls whose prompt makes the subagent load the skill - a Skill-tool call on Claude Code, a read of the skill file on every other agent, see [How a skill reaches a subagent](#how-a-skill-reaches-a-subagent); `<call head>` is the type argument and the agent's extra arguments, built from the agent profile (see [Subagent profile per agent](#subagent-profile-per-agent)); the other four launch a subagent whose model comes from `subagents.model` in `.unikit/config.yaml`; each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
+Skills expose six named aliases in two families. The **skill-loading** two expand to `Agent(<call head>, prompt: "<skill call> <arguments>", …)` calls whose prompt makes the subagent load the skill - a Skill-tool call on Claude Code, a read of the skill file on every other agent, see [How a skill reaches a subagent](#how-a-skill-reaches-a-subagent); `<call head>` is the type argument and the agent's extra arguments, built from the agent profile (see [Subagent profile per agent](#subagent-profile-per-agent)); the other four launch a subagent with a prompt of their own; every alias takes a model and an effort by the role of its launch (see [Subagent arguments](#subagent-arguments)); each row below states its own read-only expectation. Neither family is a subagent file on disk - they live inside the skill prompts. `/unikit-plan ultra` spawns no planning subagents: the session writes every phase; reconnaissance goes through `recon-agent`, and under the saved-state protocol through `recon-writer-agent`.
 
 | Alias | Expands to | Used by | When to use |
 |-------|------------|---------|-------------|
@@ -164,7 +166,7 @@ Skills expose six named aliases in two families. The **skill-loading** two expan
 
 Rule capture has no alias: `/unikit-implement` Step 5.2 and `/unikit-verify` Step 5 put the candidates to the user in the calling session and invoke `/unikit-rules` only with the batch the user selected — a background agent could not have asked.
 
-Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The model-carrying four fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session, `recon-writer-agent` asks through `recon-agent` and the session writes the answer into the file itself - it falls back when the call fails, when the agent returns without its file, or when the runtime has no subagent tool, and the file is checked on disk before the plan is synthesised.
+Fallback: if `Agent` is unavailable, `docs-agent` invokes its skill inline. `develop-agent` does **not** fall back to inline `/unikit-devcontext` - after the Bootstrap refactor, the calling skill already has rules and engine principles loaded and continues inline itself. The other four fall back per skill: `recon-agent` degrades to inline `Glob`/`Grep`/`Read`, `check-agent` is skipped in `+check` (one `WARN [+check]` line, never inline analysis) and run inline in the coherence gate, `lens-agent` runs its lenses sequentially in the calling session, `recon-writer-agent` asks through `recon-agent` and the session writes the answer into the file itself - it falls back when the call fails, when the agent returns without its file, or when the runtime has no subagent tool, and the file is checked on disk before the plan is synthesised.
 
 ### How a skill reaches a subagent
 
@@ -210,7 +212,7 @@ The `skills:` field in the frontmatter of an agent file (`unikit-implement-worke
 
 ### Subagent profile per agent
 
-Which type a skill launches and how it reaches a skill is data, not text: every agent in `AGENT_REGISTRY` (`src/core/agents.ts`) carries a profile - reader type, worker type, built-in model, skill-call form and extra call arguments - and the installer substitutes it into the skills (`{{agent_call_reader}}`, `{{agent_call_worker}}`, `{{agent_call_worker_quoted}}`, `{{agent_skill_call:<skill>}}`, `{{agent_model_default}}`). The reader type is a read-only agent (reconnaissance, validation); the worker type can create files. The values were built from each runtime's documentation and source and are not confirmed in a live session, except for Claude Code, for the call forms and the Codex arguments (the probes of 2026-10-06), and for the Antigravity types and model argument (the probes of 2026-10-07).
+Which type a skill launches and how it reaches a skill is data, not text: every agent in `AGENT_REGISTRY` (`src/core/agents.ts`) carries a profile - reader type, worker type, built-in model, the names of the model and effort arguments, skill-call form and extra call arguments - and the installer substitutes it into the skills (`{{agent_call_reader}}`, `{{agent_call_worker}}`, `{{agent_call_worker_quoted}}`, `{{agent_skill_call:<skill>}}`, `{{agent_model_default}}`). The reader type is a read-only agent (reconnaissance, validation); the worker type can create files. The values were built from each runtime's documentation and source and are not confirmed in a live session, except for Claude Code, for the call forms and the Codex arguments (the probes of 2026-10-06), and for the Antigravity types and model argument (the probes of 2026-10-07).
 
 | Agent | Reader | Worker | Built-in model | Skill call | Notes |
 |-------|--------|--------|----------------|------------|-------|
@@ -231,19 +233,28 @@ Codex needs no text of its own to launch a subagent: a skill step that names an 
 
 ### Subagent arguments
 
-The four aliases that carry arguments (`recon-agent`, `check-agent`, `lens-agent`, `recon-writer-agent`) settle a model and an effort once per skill, before the first dispatch, by one rule: `.unikit/system/subagent-arguments.md`, which `init` and `update` install whichever skills you chose. Each skill carries only a short pointer to it, with its agent's keys - `subagents.model.<agent>` and `subagents.effort.<agent>` in `.unikit/config.yaml` - and the built-in model (a missing file, block or key is not an error). For the model and for the effort **separately**:
+Every launch of a subagent - through one of the six delegation aliases, through a launch without an alias, or on a skill's own decision - settles a model and an effort by one rule: `.unikit/system/subagent-arguments.md`, which `init` and `update` install whichever skills you chose. Each skill that can launch a subagent carries only a short pointer to it, with its agent's keys - `subagents.model.<agent>.<role>` and `subagents.effort.<agent>.<role>` in `.unikit/config.yaml` - and the built-in model; the two coordinators have a section of their own. The role of a launch - **reader**, **validator** or **executor** - comes from the table in `.unikit/system/subagent-roles.md`, which lists every alias, every launch without an alias and every agent file of the package. For the model and for the effort **separately**:
 
-1. what you ask for in the request that started the skill ("use opus for the subagents", "effort high for the subagents") - passed as written, the effort level in lower case; a remark about depth in general ("think deeper") is not such a request;
-2. otherwise the config key: a value - passed; `inherit`, or present and empty - nothing is passed and the subagent runs on the model, or the effort, of the session;
-3. no key - the built-in model of the agent (Claude Code `sonnet`, Antigravity `flash`, `inherit` elsewhere - no model argument); for the effort, nothing: a project without an effort key behaves as it did before.
+1. what you ask for - in the request that started the skill or earlier in the session ("use opus for the subagents", "launch every subagent with effort high") - passed as written, the effort level in lower case, to every launch whatever its role; a remark about depth in general ("think deeper") is not such a request;
+2. otherwise the config key of the role: a value - passed; `inherit`, or present and empty - nothing is passed and the subagent runs on the model, or the effort, of the agent that launched it;
+3. no key - the built-in model of the role (a reader and a validator: Claude Code `sonnet`, Antigravity `flash`, `inherit` elsewhere - no model argument; an executor: none, the model of the session); for the effort, nothing: a project without an effort key behaves as it did before.
 
-The argument names are written in that file: Claude Code `model` and `effort`, Codex `model` and `reasoning_effort`, Antigravity `Model` and **no effort argument** - its `invoke_subagent` has none, and a call that adds a field of its own is rejected whole (the tool schema and the call result of the probe of 2026-10-16, client `agy` 1.3.0; what else is established is in [Agents](agents.md#antigravity)). If the launch fails, the skill repeats the call once without the effort and reports `WARN [delegation] effort "<value>" rejected - retried on the session effort`; if that fails too and a model was passed, once more without the model (`WARN [delegation] model "<name>" rejected - retried on the session model`). UniKit keeps no list of models or levels: a version-specific name goes stale, so you write it into the config yourself. See [Configuration](configuration.md#subagents-section).
+The argument names are not in the rule: they are part of the agent profile (`modelArg` and `effortArg`), and the installer draws them into the call head of every skill as slots - `model: <model>, effort: <effort>` on Claude Code, `model: <model>, reasoning_effort: <effort>` on Codex, `Model: <model>` on Antigravity, none on Cursor, OpenCode, Kimi Code, Qwen Code and Universal / Other. The skill fills a slot with the value it settled and removes a slot that has nothing to pass; a runtime without an effort slot gets `WARN [delegation] effort "<value>" is not supported by this runtime's subagent call - not passed` when you asked for an effort in words. A subagent that is itself started by a subagent runs on the effort of its launcher, so a launcher puts the level you named into the prompt of a nested launch that can launch further subagents. If the launch fails, the skill repeats the call once without the effort and reports `WARN [delegation] effort "<value>" rejected - retried on the session effort`; if that fails too and a model was passed, once more without the model (`WARN [delegation] model "<name>" rejected - retried on the session model`). A missing roles table is `WARN [delegation] subagent-roles table missing - every launch treated as an executor`. UniKit keeps no list of models or levels: a version-specific name goes stale, so you write it into the config yourself. See [Configuration](configuration.md#subagents-section).
+
+### Nested launches and effort - what is established
+
+Measured in the probes of 2026-10-16, 2026-10-18 and 2026-10-19 from the journals of the sessions and of the subagents (the metadata of a subagent records its effort), not from what a model said about itself, unless a line says so.
+
+- **Claude Code.** A subagent started without an `effort` parameter runs on the effort of the agent that started it, not on the effort of the session: a file agent at `medium` started two subagents without the parameter and they ran at `medium` while the main session ran higher. The order seen is the `effort` parameter of the call, then the `effort:` field of the agent file, then the effort of the launcher (each overriding step was seen in a separate probe). A file agent whose `tools` lists a bare `Agent` launched two subagents itself (depth 2). A level the user named in the main session did not reach a nested launch: the nested subagents ran at the level they got from the config, which is why the rule has the launcher put a named level into the prompt of a nested launch. The `effort:` field of an agent file started as a top-level session (`claude --agent`) was not applied in the probe that could tell it from the model setting: the main thread ran at the level of the model setting, not at the level of the field. That is one probe and its cause was not isolated, so the two coordinators do not rely on the field and pass `effort` to the agents they launch. `CLAUDE_CODE_EFFORT_LEVEL` and `maxEffortLevel` sit above all of this by the documentation and were not probed.
+- **Codex.** A subagent started with `reasoning_effort` ran at that level, and it started a subagent of its own with another `reasoning_effort` (depth 2, the parameter applied at each level). A nested launch without the parameter was not measured.
+- **Antigravity.** A subagent of type `self` started a nested subagent (its journal holds the `invoke_subagent` call, depth 2); a subagent of type `research` made no such call in its journal and answered that it had no such tool - that reason is its own report and was not checked. Whether a subagent follows `/effort` of the session was not measured: the journals do not record the response model. See [Agents](agents.md#antigravity).
+- **Kimi Code, Cursor, OpenCode, Qwen Code, Universal / Other.** UniKit passes neither argument; see [Agents](agents.md).
 
 ## Design Principles
 
 1. **Read-only where possible.** All four sidecars declare only `Read/Glob/Grep`. They exist to observe the codebase after a change, not to mutate it.
 2. **Writers are few.** Only `unikit-implement-coordinator`, `unikit-implement-worker`, and `unikit-plan-polisher` carry `Write/Edit`. `unikit-plan-coordinator` can edit plan artifacts via its polisher, not directly.
-3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` and `unikit-docs-sidecar` pin `model: sonnet`. A subagent definition file is the **right** place for a model name - it is runtime-native and reaches only the agents that receive subagent files (Claude Code, and Kimi Code, which ignores the `model` field). A skill body reaches all eight runtimes, so it names no model at all: the type comes from the agent profile in `src/core/agents.ts`, the model from `subagents.model` and the effort from `subagents.effort` in `.unikit/config.yaml`, with a built-in model default only where the vendor keeps a stable alias (Claude Code `sonnet`, Antigravity `flash`). A version-specific model id is never written into UniKit - you write it into the config yourself.
+3. **Model inheritance.** Most subagents use `model: inherit` so the project's default model applies. `unikit-commit-sidecar` and `unikit-docs-sidecar` pin `model: sonnet`. A subagent definition file is the **right** place for a model name - it is runtime-native and reaches only the agents that receive subagent files (Claude Code, and Kimi Code, which ignores the `model` field). A skill body reaches all eight runtimes, so it names no model at all: the type comes from the agent profile in `src/core/agents.ts`, the model from `subagents.model` and the effort from `subagents.effort` in `.unikit/config.yaml` by the role of the launch, with a built-in model default for a reader and a validator only where the vendor keeps a stable alias (Claude Code `sonnet`, Antigravity `flash`). A version-specific model id is never written into UniKit - you write it into the config yourself.
 4. **Strict output contracts.** Sidecars return structured JSON or markdown the coordinator can parse. Workers return a single task result block. Coordinators are the only place free-form prose appears.
 5. **English output for parsing, project language for artifacts.** Sidecars and workers return English summaries; plan and documentation artifacts they write follow `language.artifacts` from `.unikit/config.yaml`.
 6. **Rules loaded inside the subagent.** Every subagent with domain concerns (architecture, review, implement, plan) reads its own slice of `RULES_INDEX.md` - there is no implicit inheritance from the caller's context.
