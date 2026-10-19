@@ -7731,17 +7731,20 @@ if [[ -z "$MC_WHY" ]]; then
     grep -qF 'is explicitly **not** written' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-6:no-language-rules-negation"
 
-    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>`
-    # and `subagents.effort.<agent>` the same way.
+    # (MC-7) the one empty value that is a choice and not a gap: `subagents.model.<agent>.<role>`
+    # and `subagents.effort.<agent>.<role>` the same way.
     # Without the exception, bucket 3 refills a deliberately emptied key with the template's
     # value — for Claude `sonnet` — and the user's "pass no model" is undone by the very mode
-    # that was asked to repair the config.
-    grep -qF 'subagents.model.<agent>' "$MC_MODE_CONFIG" \
+    # that was asked to repair the config. A scalar where the template has a map of roles is the form of
+    # earlier releases: the mode leaves it as it is, because a key cannot be a value and a map at once.
+    grep -qF 'subagents.model.<agent>.<role>' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:carveout-not-named"
-    grep -qF 'subagents.effort.<agent>' "$MC_MODE_CONFIG" \
+    grep -qF 'subagents.effort.<agent>.<role>' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:effort-carveout-not-named"
     grep -qF 'is a deliberate choice' "$MC_MODE_CONFIG" \
         || MC_WHY+=" MC-7:no-deliberate-empty-reading"
+    grep -qF 'is left as it is and listed under skipped' "$MC_MODE_CONFIG" \
+        || MC_WHY+=" MC-7:scalar-parent-not-named"
 fi
 if [[ -z "$MC_WHY" ]]; then
     pass "MC-1…MC-7 /unikit config actualization mode — triggered in the description, dispatched inside Step 0, three contract carve-outs, capability-bounded body"

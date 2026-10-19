@@ -399,49 +399,58 @@ await group('Q', async () => {
 });
 
 // ── C: the config template against the registry (Task 26) ───────────────────
-// The template holds the user-facing `subagents.model` block and the `effort` block next to it; the registry holds the profile.
-// The Claude and Antigravity defaults are written in both places (the installer never reads the
-// config), so only this comparison keeps them from drifting apart. There is no YAML parser in
-// the project: the block has a fixed shape and is read line by line.
+// The template holds the user-facing `subagents.model` block and the `effort` block next to it: one map of roles per agent.
+// The registry holds the profile. The Claude and Antigravity defaults are written in both places (the installer never reads
+// the config), so only this comparison keeps them from drifting apart. There is no YAML parser in the project: the blocks
+// have a fixed shape — `  model:` / `  effort:` at 2 spaces, the agent at 4, the role at 6 — and are read line by line.
+
+const ROLES = ['reader', 'validator', 'executor'];
 
 await group('C', async () => {
     const template = await fs.readFile(path.join(ROOT, 'skills', 'unikit', 'references', 'config-template.yaml'), 'utf8');
     const lines = template.split(/\r?\n/);
     const start = lines.findIndex((l) => /^subagents:\s*$/.test(l));
     assertTrue('C1 the template has a top-level subagents: block', start >= 0);
-    const modelAt = lines.findIndex((l, i) => i > start && /^  model:\s*$/.test(l));
-    assertTrue('C2 subagents: holds a model: mapping', modelAt > start);
 
-    const entries = {};
-    for (let i = modelAt + 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (/^\s*#/.test(line) || line.trim() === '') continue;
-        const m = /^ {4}([a-z]+):\s*([A-Za-z0-9_.-]*)\s*(?:#.*)?$/.exec(line);
-        if (!m) break; // the first line that is not a 4-space key ends the block
-        entries[m[1]] = m[2];
-    }
+    // One block: `{ at, agents: { <agent>: { <role>: <value> } } }`. Comments and blank lines are skipped; the first
+    // line that is neither an agent key nor a role key ends the block.
+    const readBlock = (header, from) => {
+        const at = lines.findIndex((l, i) => i > from && header.test(l));
+        const agents = {};
+        if (at < 0) return { at, agents };
+        let agent = null;
+        for (let i = at + 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (/^\s*#/.test(line) || line.trim() === '') continue;
+            const a = /^ {4}([a-z]+):\s*(?:#.*)?$/.exec(line);
+            if (a) { agent = a[1]; agents[agent] = {}; continue; }
+            const r = /^ {6}([a-z]+):\s*([A-Za-z0-9_.-]*)\s*(?:#.*)?$/.exec(line);
+            if (r && agent) { agents[agent][r[1]] = r[2]; continue; }
+            break;
+        }
+        return { at, agents };
+    };
+
+    const model = readBlock(/^ {2}model:\s*$/, start);
+    assertTrue('C2 subagents: holds a model: mapping', model.at > start);
     const keyed = Object.entries(AGENT_REGISTRY).filter(([, agent]) => agent.subagentProfile.modelArg !== '');
-    assertEq('C3 the template carries a key for exactly the agents whose call takes a model', Object.keys(entries).sort().join(','), keyed.map(([id]) => id).sort().join(','));
+    assertEq('C3 the template carries a model block for exactly the agents whose call takes a model', Object.keys(model.agents).sort().join(','), keyed.map(([id]) => id).sort().join(','));
     for (const [id, agent] of keyed) {
-        assertEq(`C4 ${id}: the template default equals the profile's modelDefault`, entries[id], agent.subagentProfile.modelDefault);
+        assertEq(`C3 ${id}: the model block holds the three roles, in order`, Object.keys(model.agents[id] ?? {}).join(','), ROLES.join(','));
+        assertEq(`C4 ${id}: reader and validator default to the profile's modelDefault`, [model.agents[id]?.reader, model.agents[id]?.validator].join(','), `${agent.subagentProfile.modelDefault},${agent.subagentProfile.modelDefault}`);
+        assertEq(`C4 ${id}: the executor model is inherit`, model.agents[id]?.executor, 'inherit');
     }
     assertTrue('C5 the block carries no {{placeholder}}', !lines.slice(start).some((l) => l.includes('{{')));
 
-    // The effort block follows the model block: a 2-space `effort:` mapping with 4-space keys, read the same way.
-    const effortAt = lines.findIndex((l, i) => i > modelAt && /^  effort:\s*$/.test(l));
-    assertTrue('C6 subagents: holds an effort: mapping after the model: block', effortAt > modelAt);
-    const effortEntries = {};
-    for (let i = effortAt + 1; effortAt > modelAt && i < lines.length; i++) {
-        const line = lines[i];
-        if (/^\s*#/.test(line) || line.trim() === '') continue;
-        const m = /^ {4}([a-z]+):\s*([A-Za-z0-9_.-]*)\s*(?:#.*)?$/.exec(line);
-        if (!m) break;
-        effortEntries[m[1]] = m[2];
-    }
+    // The effort block follows the model block, read the same way.
+    const effort = readBlock(/^ {2}effort:\s*$/, model.at);
+    assertTrue('C6 subagents: holds an effort: mapping after the model: block', effort.at > model.at);
     const effortKeyed = Object.entries(AGENT_REGISTRY).filter(([, agent]) => agent.subagentProfile.effortArg !== '');
-    assertEq('C7 the template carries an effort key for exactly the agents whose call takes an effort argument', Object.keys(effortEntries).sort().join(','), effortKeyed.map(([id]) => id).sort().join(','));
+    assertEq('C7 the template carries an effort block for exactly the agents whose call takes an effort argument', Object.keys(effort.agents).sort().join(','), effortKeyed.map(([id]) => id).sort().join(','));
     for (const [id] of effortKeyed) {
-        assertEq(`C8 ${id}: the template effort is medium`, effortEntries[id], 'medium');
+        assertEq(`C7 ${id}: the effort block holds the three roles, in order`, Object.keys(effort.agents[id] ?? {}).join(','), ROLES.join(','));
+        assertEq(`C8 ${id}: reader and validator default to medium`, [effort.agents[id]?.reader, effort.agents[id]?.validator].join(','), 'medium,medium');
+        assertEq(`C8 ${id}: the executor effort is inherit`, effort.agents[id]?.executor, 'inherit');
     }
 });
 
