@@ -12411,7 +12411,7 @@ fi
 # pointers rely on and no variable; AP-17 — the pointers are one text; AP-18 — the docs describe the
 # setting. Source assertions over pinned formulations, like AP-1…AP-15 above ($AP_SCOPE is theirs); the
 # block has its own accumulators and its own pass/fail, so the AP-1…AP-15 label stays true.
-# AP-19 — the roles table is complete.
+# AP-19 — the roles table is complete. AP-20 — the coordinators settle their launches by role.
 APX_WHY=""
 APX_CHK=0
 APX_ARGS_FILE="$ROOT_DIR/data/subagent-arguments.md"
@@ -12553,12 +12553,43 @@ else
         grep -qF -- "$apx_lit" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:assignment-changed(${apx_lit:0:34})"
     done
 fi
-# (AP-20, AP-21) are added next to the texts they pin — see the tasks of phases 5 and 6
+# (AP-20) the file agents that launch other agents settle the model and the effort of their launches by role: each reads the
+# contract, the roles table and the config, names its keys, passes the result as call parameters and says what Kimi Code does.
+# Which file agents launch is derived (a `  - Agent` entry in the frontmatter `tools:` list), not listed: a new launcher gets the
+# rule by construction, and one that launches nothing must not carry a section it cannot use.
+APX_COORD_N=0
+for apx_f in "$ROOT_DIR"/subagents/*.md; do
+    apx_can=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - Agent(\(|$)/ {c++} END {print c+0}' "$apx_f")
+    apx_has=$( { grep -cF '## Subagent arguments' "$apx_f" || true; } )
+    APX_CHK=$((APX_CHK + 1))
+    if [[ "${apx_can:-0}" -gt 0 ]]; then
+        APX_COORD_N=$((APX_COORD_N + 1))
+        [[ "${apx_has:-0}" -ge 1 ]] || APX_WHY+=" AP-20:launcher-without-section:${apx_f#"$ROOT_DIR"/}"
+        for apx_lit in \
+            '`.unikit/system/subagent-arguments.md`, `.unikit/system/subagent-roles.md` and `.unikit/config.yaml`' \
+            'On Claude Code the keys are `subagents.model.claude.<role>` and `subagents.effort.claude.<role>`' \
+            'as the `model` and `effort` call parameters of the launch' \
+            'A parameter with nothing to pass is left out of the call' \
+            'WARN [delegation] subagent-arguments contract missing' \
+            'skip this section and pass nothing'; do
+            APX_CHK=$((APX_CHK + 1))
+            grep -qF -- "$apx_lit" "$apx_f" || APX_WHY+=" AP-20:launcher-lacks(${apx_lit:0:28}):${apx_f#"$ROOT_DIR"/}"
+        done
+    else
+        [[ "${apx_has:-0}" -eq 0 ]] || APX_WHY+=" AP-20:non-launcher-with-section:${apx_f#"$ROOT_DIR"/}"
+    fi
+done
+APX_CHK=$((APX_CHK + 1))
+[[ "$APX_COORD_N" -eq 2 ]] || APX_WHY+=" AP-20:launchers(${APX_COORD_N}!=2)"
+APX_CHK=$((APX_CHK + 2))
+grep -qF 'also carries the `model` and `effort` call parameters of its role' "$ROOT_DIR/subagents/unikit-implement-coordinator.md" || APX_WHY+=" AP-20:implement-dispatch-not-parameterised"
+grep -qF 'Pass the `model` and `effort` call parameters of the polisher' "$ROOT_DIR/subagents/unikit-plan-coordinator.md" || APX_WHY+=" AP-20:plan-dispatch-not-parameterised"
+# (AP-21) is added next to the texts it pins — see the tasks of phase 6
 (( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
 if [[ -z "$APX_WHY" ]]; then
-    pass "AP-16…AP-19 subagent arguments and roles: the contract file, the pointers as one text, the docs, the roles table (${APX_CHK} checks)"
+    pass "AP-16…AP-20 subagent arguments and roles: the contract file, the pointers as one text, the docs, the roles table, the coordinators (${APX_CHK} checks)"
 else
-    fail "AP-16…AP-19 subagent arguments and roles:$APX_WHY"
+    fail "AP-16…AP-20 subagent arguments and roles:$APX_WHY"
 fi
 
 # ─────────────────────────────────────────────
