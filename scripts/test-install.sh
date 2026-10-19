@@ -305,6 +305,23 @@ assert_not_contains "$SUBAGENT_ARGS_PATH" '\{\{' \
   "subagent-arguments.md is a flat copy — no unresolved {{vars}}"
 
 # ─────────────────────────────────────────────────────
+# Test 1b-sr: subagent-roles.md installed as a system asset (flat copy, no vars)
+# Read with subagent-arguments.md before the first subagent launch of a run; a system asset so that it
+# reaches a project whichever skills the wizard installed. Update-path coverage like 1b-sa above; the init.ts
+# call site is SA-1's job.
+# ─────────────────────────────────────────────────────
+SUBAGENT_ROLES_PATH="$CLAUDE_DIR/.unikit/system/subagent-roles.md"
+assert_exists "$SUBAGENT_ROLES_PATH" "subagent-roles.md created in .unikit/system/"
+assert_contains "$SUBAGENT_ROLES_PATH" '^## The three roles$' \
+  "subagent-roles.md carries the section that defines the roles"
+assert_contains "$SUBAGENT_ROLES_PATH" '^## The table decides$' \
+  "subagent-roles.md carries the table section"
+assert_contains "$SUBAGENT_ROLES_PATH" '\| executor \|' \
+  "subagent-roles.md carries the executor role in a table row"
+assert_not_contains "$SUBAGENT_ROLES_PATH" '\{\{' \
+  "subagent-roles.md is a flat copy — no unresolved {{vars}}"
+
+# ─────────────────────────────────────────────────────
 # Test 1b-mcp: engine-mcp shard EMPTY branch — this fixture selects zero MCP
 # servers (mcp.servers = {}), so nothing contributes a shard and the directory
 # must NOT be created. installEngineMcpShards treats an empty set as a normal

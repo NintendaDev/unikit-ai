@@ -12403,6 +12403,7 @@ fi
 # pointers rely on and no variable; AP-17 — the twelve pointers are one text; AP-18 — the docs describe the
 # setting. Source assertions over pinned formulations, like AP-1…AP-15 above ($AP_SCOPE is theirs); the
 # block has its own accumulators and its own pass/fail, so the AP-1…AP-15 label stays true.
+# AP-19 — the roles table is complete.
 APX_WHY=""
 APX_CHK=0
 APX_ARGS_FILE="$ROOT_DIR/data/subagent-arguments.md"
@@ -12471,12 +12472,79 @@ apx_doc "help-kb" '`subagent-arguments.md` — how the model and the effort of a
 APX_DOC_OLD=$( { grep -cF '### Model argument' "$APX_DOC_SUB" || true; } )
 APX_CHK=$((APX_CHK + 1))
 [[ "${APX_DOC_OLD:-0}" -eq 0 ]] || APX_WHY+=" AP-18:retired-heading-left"
-# (AP-17, AP-18) are added next to the texts they pin — see the tasks of phases 7 and 8
+# (AP-19) the roles table is complete and honest: every alias the skills declare, every file agent of the package
+# and every launch without an alias has a row, every row names something that exists, and the assignments the
+# user made are pinned. The table is data/subagent-roles.md; a launch is found by its first cell.
+APX_ROLES_FILE="$ROOT_DIR/data/subagent-roles.md"
+if [[ ! -s "$APX_ROLES_FILE" ]]; then
+    APX_WHY+=" AP-19:roles-file-missing"
+else
+    for apx_lit in \
+        'Do not restate this table inside a skill' \
+        '- **reader** — collects facts and returns them' \
+        '- **validator** — checks a finished result' \
+        '- **executor** — does work whose result becomes part of the project' \
+        'The table is primary: a launch it names has the role of its row' \
+        'every other launch, and any launch you cannot place, is an executor'; do
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "$apx_lit" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:roles-lack(${apx_lit:0:28})"
+    done
+    APX_CHK=$((APX_CHK + 1)); ! grep -qF '{{' "$APX_ROLES_FILE" || APX_WHY+=" AP-19:variable-in-roles"
+    APX_ROWS="$({ awk '/^## The table decides/{f=1;next} /^## /{f=0} f && /^\|/' "$APX_ROLES_FILE" || true; })"
+    # the aliases: declared in the skills == named in the table
+    APX_SKILL_ALIASES="$(for apx_f in "$AP_SCOPE"/*/SKILL.md; do awk '/^## Delegation agents/{f=1;next} /^## /{f=0} f' "$apx_f" | { grep -oE '^- \*\*`[a-z]+(-[a-z]+)*-agent`\*\*' || true; }; done | sed -e 's/^- \*\*`//' -e 's/`\*\*$//' | LC_ALL=C sort -u | tr '\n' ' ')"
+    APX_TABLE_ALIASES="$(printf '%s\n' "$APX_ROWS" | { grep -oE '^\| `[a-z]+(-[a-z]+)*-agent` \|' || true; } | sed -e 's/^| `//' -e 's/` |$//' | LC_ALL=C sort -u | tr '\n' ' ')"
+    APX_CHK=$((APX_CHK + 1))
+    [[ -n "$APX_SKILL_ALIASES" && "$APX_SKILL_ALIASES" == "$APX_TABLE_ALIASES" ]] || APX_WHY+=" AP-19:aliases-differ(skills=[${APX_SKILL_ALIASES% }] table=[${APX_TABLE_ALIASES% }])"
+    # the file agents: every file of subagents/ has a row, every `unikit-…` row has a file
+    for apx_f in "$ROOT_DIR"/subagents/*.md; do
+        apx_name="$(basename "$apx_f" .md)"
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "| \`$apx_name\` |" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:file-agent-without-row:$apx_name"
+    done
+    while IFS= read -r apx_row_name; do
+        [[ -n "$apx_row_name" ]] || continue
+        APX_CHK=$((APX_CHK + 1))
+        [[ -f "$ROOT_DIR/subagents/$apx_row_name.md" ]] || APX_WHY+=" AP-19:row-without-file-agent:$apx_row_name"
+    done <<< "$(printf '%s\n' "$APX_ROWS" | { grep -oE '^\| `unikit-[a-z-]+` \|' || true; } | sed -e 's/^| `//' -e 's/` |$//')"
+    # the second cell of every row is a role, and only the two coordinators have none (APX_ROWS holds the header and
+    # the separator line too, hence NR>2)
+    APX_BAD_ROLE="$(printf '%s\n' "$APX_ROWS" | awk -F'|' 'NR>2 { r=$3; gsub(/^ +| +$/, "", r); if (r != "reader" && r != "validator" && r != "executor" && r != "none") print r }' | tr '\n' ' ')"
+    APX_CHK=$((APX_CHK + 1))
+    [[ -z "$APX_BAD_ROLE" ]] || APX_WHY+=" AP-19:unknown-role($APX_BAD_ROLE)"
+    APX_NONE_ROWS="$(printf '%s\n' "$APX_ROWS" | awk -F'|' 'NR>2 { r=$3; gsub(/^ +| +$/, "", r); if (r == "none") { c=$2; gsub(/^ +| +$/, "", c); print c } }' | LC_ALL=C sort | tr '\n' ' ')"
+    APX_CHK=$((APX_CHK + 1))
+    [[ "$APX_NONE_ROWS" == '`unikit-implement-coordinator` `unikit-plan-coordinator` ' ]] || APX_WHY+=" AP-19:none-rows-differ($APX_NONE_ROWS)"
+    # the launches without an alias: a file that has call heads and no alias bullet is such a site. A new one, or one
+    # that went, is a conscious edit of the table AND of this list.
+    APX_UNALIASED="$({ grep -rlE '\{\{agent_call_(reader|worker|worker_quoted)\}\}' "$AP_SCOPE" --include='*.md' 2>/dev/null || true; } | while IFS= read -r apx_f; do
+        apx_al="$({ grep -cE '^- \*\*`[a-z]+(-[a-z]+)*-agent`\*\*' "$apx_f" || true; })"
+        if [[ "${apx_al:-0}" -eq 0 ]]; then
+            apx_hd="$({ grep -oE '\{\{agent_call_(reader|worker|worker_quoted)\}\}' "$apx_f" || true; } | wc -l | tr -d ' ')"
+            printf '%s:%s\n' "${apx_f#"$ROOT_DIR"/}" "$apx_hd"
+        fi
+    done | LC_ALL=C sort | tr '\n' ' ')"
+    APX_CHK=$((APX_CHK + 1))
+    [[ "$APX_UNALIASED" == 'skills/unikit-gd-brainstorm/SKILL.md:1 skills/unikit-gd-explore/references/delegation-contract.md:1 skills/unikit/SKILL.md:2 ' ]] \
+        || APX_WHY+=" AP-19:launches-without-alias-changed(${APX_UNALIASED% }) — add or remove their rows in data/subagent-roles.md and update this list"
+    # the assignments, pinned: the ones the user named and the ones the research proposed. A role changes only by a conscious edit here.
+    for apx_lit in \
+        '| `recon-agent` | reader |' '| `recon-writer-agent` | reader |' '| `check-agent` | validator |' '| `lens-agent` | validator |' \
+        '| `develop-agent` | executor |' '| `docs-agent` | executor |' \
+        '| `/unikit` Step 9.8 | executor |' '| `/unikit` Step 10 | executor |' '| `/unikit-gd-brainstorm` Phase 3.5 | executor |' \
+        '| `unikit-implement-worker` | executor |' '| `unikit-plan-polisher` | executor |' \
+        '| `unikit-review-sidecar` | validator |' '| `unikit-architecture-sidecar` | validator |' '| `unikit-docs-sidecar` | validator |' \
+        '| `unikit-commit-sidecar` | reader |'; do
+        APX_CHK=$((APX_CHK + 1))
+        grep -qF -- "$apx_lit" "$APX_ROLES_FILE" || APX_WHY+=" AP-19:assignment-changed(${apx_lit:0:34})"
+    done
+fi
+# (AP-20, AP-21) are added next to the texts they pin — see the tasks of phases 5 and 6
 (( APX_CHK > 0 )) || APX_WHY+=" AP-16:nothing-checked"
 if [[ -z "$APX_WHY" ]]; then
-    pass "AP-16…AP-18 subagent-arguments contract: the contract file, the twelve pointers as one text, the docs (${APX_CHK} checks)"
+    pass "AP-16…AP-19 subagent arguments and roles: the contract file, the pointers as one text, the docs, the roles table (${APX_CHK} checks)"
 else
-    fail "AP-16…AP-18 subagent-arguments contract:$APX_WHY"
+    fail "AP-16…AP-19 subagent arguments and roles:$APX_WHY"
 fi
 
 # ─────────────────────────────────────────────

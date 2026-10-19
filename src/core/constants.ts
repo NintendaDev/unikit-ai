@@ -333,6 +333,8 @@ export const BALANCE_HANDBACK_FILE = 'balance-handback.md';
 export const PROTOTYPE_PROFILE_FILE = 'prototype-profile.md';
 /** The rule for the model and effort arguments of a subagent call; rationale on `installSubagentArgumentsContract`. */
 export const SUBAGENT_ARGUMENTS_FILE = 'subagent-arguments.md';
+/** The table of which role (reader, validator, executor) a subagent launch has; rationale on `installSubagentRolesContract`. */
+export const SUBAGENT_ROLES_FILE = 'subagent-roles.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

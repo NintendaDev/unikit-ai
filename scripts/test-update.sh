@@ -2264,6 +2264,26 @@ fi
 echo "  ✓ subagent-arguments.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30r: subagent-roles.md is delivered on update — same shape as 30s: DEVPRIN_DIR ran `update` with no
+# prior `init`, so the file existing proves update.ts calls the installer; tamper-refresh confirms the flat
+# rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+SUBAGENT_ROLES="$DEVPRIN_DIR/.unikit/system/subagent-roles.md"
+assert_exists "$SUBAGENT_ROLES" "subagent-roles.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$SUBAGENT_ROLES"
+
+DEVPRIN_OUT15="$TMPDIR/update-subagent-roles.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT15" 2>&1)
+
+if ! grep -q "^## The three roles$" "$SUBAGENT_ROLES"; then
+    echo "Assertion failed: update did NOT refresh subagent-roles.md from data/ (## The three roles missing)"
+    exit 1
+fi
+
+echo "  ✓ subagent-roles.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).
