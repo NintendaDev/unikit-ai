@@ -72,27 +72,27 @@ async function walk(dir) {
 // The profile as the research package states it (ASP-REQ-001, ASP-REQ-008). Writing the table
 // out here is the point: a changed registry value shows up as a red test, never silently.
 const EXPECTED = {
-    claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', modelParam: true, effortParam: true, skillCall: 'skilltool', spawnArgs: '' },
-    codex: { readerType: '', workerType: '', modelDefault: 'inherit', modelParam: true, effortParam: true, skillCall: 'read', spawnArgs: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
-    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: 'inherit', modelParam: false, effortParam: false, skillCall: 'read', spawnArgs: '' },
-    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelParam: false, effortParam: false, skillCall: 'read', spawnArgs: '' },
-    opencode: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', modelParam: false, effortParam: false, skillCall: 'read', spawnArgs: '' },
+    claude: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'sonnet', modelArg: 'model', effortArg: 'effort', skillCall: 'skilltool', spawnArgs: '' },
+    codex: { readerType: '', workerType: '', modelDefault: 'inherit', modelArg: 'model', effortArg: 'reasoning_effort', skillCall: 'read', spawnArgs: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
+    cursor: { readerType: 'explore', workerType: 'generalPurpose', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
+    qwen: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
+    opencode: { readerType: 'explore', workerType: 'general', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
     // no effort argument in invoke_subagent (probe 2026-10-16, DEC-108)
-    antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', modelParam: true, effortParam: false, skillCall: 'read', spawnArgs: '' },
-    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelParam: false, effortParam: false, skillCall: 'read', spawnArgs: '' },
-    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelParam: false, effortParam: false, skillCall: 'read', spawnArgs: '' },
+    antigravity: { readerType: 'research', workerType: 'self', modelDefault: 'flash', modelArg: 'Model', effortArg: '', skillCall: 'read', spawnArgs: '' },
+    kimi: { readerType: 'explore', workerType: 'coder', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
+    universal: { readerType: 'Explore', workerType: 'general-purpose', modelDefault: 'inherit', modelArg: '', effortArg: '', skillCall: 'read', spawnArgs: '' },
 };
 
 // The leading arguments of an Agent(...) call, written out per agent for the same reason: a changed
 // type or extra argument must turn this table red. Module level because the installed-text group
 // (I) reads it too.
 const HEADS = {
-    claude: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
-    codex: { reader: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",', worker: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",', workerQuoted: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",' },
+    claude: { reader: 'subagent_type: Explore, model: <model>, effort: <effort>,', worker: 'subagent_type: general-purpose, model: <model>, effort: <effort>,', workerQuoted: 'subagent_type: "general-purpose", model: <model>, effort: <effort>,' },
+    codex: { reader: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>", model: <model>, reasoning_effort: <effort>,', worker: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>", model: <model>, reasoning_effort: <effort>,', workerQuoted: 'fork_turns: "none", task_name: "<a short name no other subagent of this session has used>", model: <model>, reasoning_effort: <effort>,' },
     cursor: { reader: 'subagent_type: explore,', worker: 'subagent_type: generalPurpose,', workerQuoted: 'subagent_type: "generalPurpose",' },
     qwen: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
     opencode: { reader: 'subagent_type: explore,', worker: 'subagent_type: general,', workerQuoted: 'subagent_type: "general",' },
-    antigravity: { reader: 'subagent_type: research,', worker: 'subagent_type: self,', workerQuoted: 'subagent_type: "self",' },
+    antigravity: { reader: 'subagent_type: research, Model: <model>,', worker: 'subagent_type: self, Model: <model>,', workerQuoted: 'subagent_type: "self", Model: <model>,' },
     kimi: { reader: 'subagent_type: explore,', worker: 'subagent_type: coder,', workerQuoted: 'subagent_type: "coder",' },
     universal: { reader: 'subagent_type: Explore,', worker: 'subagent_type: general-purpose,', workerQuoted: 'subagent_type: "general-purpose",' },
 };
@@ -119,8 +119,9 @@ await group('P', async () => {
             typeof profile.modelDefault === 'string' && /^[a-z]+$/.test(profile.modelDefault),
             JSON.stringify(profile.modelDefault),
         );
-        assertTrue(`P7 ${agent.id}: modelParam is a boolean`, typeof profile.modelParam === 'boolean', JSON.stringify(profile.modelParam));
-        assertTrue(`P8 ${agent.id}: effortParam is a boolean`, typeof profile.effortParam === 'boolean', JSON.stringify(profile.effortParam));
+        assertTrue(`P7 ${agent.id}: modelArg is the name of the model argument or empty`, typeof profile.modelArg === 'string' && /^[A-Za-z_]*$/.test(profile.modelArg), JSON.stringify(profile.modelArg));
+        assertTrue(`P8 ${agent.id}: effortArg is the name of the effort argument or empty`, typeof profile.effortArg === 'string' && /^[A-Za-z_]*$/.test(profile.effortArg), JSON.stringify(profile.effortArg));
+        assertTrue(`P9 ${agent.id}: an agent whose call takes no model argument has the built-in model inherit`, profile.modelArg !== '' || profile.modelDefault === 'inherit', JSON.stringify(profile));
     }
 
     for (const agent of agents) {
@@ -141,7 +142,7 @@ await group('P', async () => {
     }
 
     assertEq(
-        'P5 the registry holds exactly the eight known agents (a new agent needs a conscious edit here; a config-template key only when its profile says modelParam, and an effort key only when it says effortParam)',
+        'P5 the registry holds exactly the eight known agents (a new agent needs a conscious edit here; a config-template key only when its profile names a model argument, and an effort key only when it names an effort argument)',
         Object.keys(AGENT_REGISTRY).sort().join(','),
         Object.keys(EXPECTED).sort().join(','),
     );
@@ -192,7 +193,7 @@ await group('V4', async () => {
     const before = await hash();
     assertTrue('V4a the skill hash is computed', typeof before === 'string' && before.length > 0);
 
-    for (const field of ['modelDefault', 'readerType', 'workerType', 'skillCall', 'spawnArgs']) {
+    for (const field of ['modelDefault', 'readerType', 'workerType', 'skillCall', 'spawnArgs', 'modelArg', 'effortArg']) {
         const original = profile[field];
         try {
             profile[field] = original + 'x';
@@ -204,38 +205,22 @@ await group('V4', async () => {
         assertEq(`V4c restoring ${field} restores the skill hash`, await hash(), before);
     }
 
-    // modelParam only decides whether the config template carries a key: it reaches no installed file,
-    // so flipping it must not reinstall every skill of every project.
-    const modelParam = profile.modelParam;
-    try {
-        profile.modelParam = !modelParam;
-        assertEq('V4d changing modelParam leaves the skill hash alone', await hash(), before);
-    } finally {
-        profile.modelParam = modelParam;
-    }
-
-    // effortParam, like modelParam, decides only whether the template carries a key.
-    const effortParam = profile.effortParam;
-    try {
-        profile.effortParam = !effortParam;
-        assertEq('V4e changing effortParam leaves the skill hash alone', await hash(), before);
-    } finally {
-        profile.effortParam = effortParam;
-    }
+    // modelArg and effortArg are in the loop above: their names are drawn into every call head as slots and so reach
+    // the installed text. Renaming one has to reinstall the skills of that agent - the hash carries them (args=).
 });
 
 // ── H: the profile component of the hash ────────────────────────────────────
-// The skill-call form and the extra call arguments join the tag only for a value that is not the
+// The skill-call form, the extra call arguments and the argument names join the tag only for a value that is not the
 // default, so the agents that have neither keep the hash they had. Written out by hand: a changed
 // component is a red line here, and the codex row is copied from the real output, not typed.
 
 const COMPONENTS = {
-    claude: 'profile:Explore|general-purpose|sonnet|call=skilltool',
-    codex: 'profile:||inherit|spawn=fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",',
+    claude: 'profile:Explore|general-purpose|sonnet|call=skilltool|args=model/effort',
+    codex: 'profile:||inherit|spawn=fork_turns: "none", task_name: "<a short name no other subagent of this session has used>",|args=model/reasoning_effort',
     cursor: 'profile:explore|generalPurpose|inherit',
     qwen: 'profile:Explore|general-purpose|inherit',
     opencode: 'profile:explore|general|inherit',
-    antigravity: 'profile:research|self|flash',
+    antigravity: 'profile:research|self|flash|args=Model/',
     kimi: 'profile:explore|coder|inherit',
     universal: 'profile:Explore|general-purpose|inherit',
 };
@@ -246,6 +231,24 @@ await group('H', async () => {
     }
     assertEq('H2 the table covers exactly the registry', Object.keys(COMPONENTS).sort().join(','), Object.keys(AGENT_REGISTRY).sort().join(','));
     assertEq('H3 an unknown agent gives profile:none', profileHashComponent('no-such-agent'), 'profile:none');
+});
+
+// ── S: the slots of the call head ───────────────────────────────────────────
+// A slot is drawn for each argument the profile names, spelled with the runtime's own name, in the order
+// type, spawn arguments, model, effort. An agent whose call takes neither keeps the head it always had.
+
+await group('S', async () => {
+    for (const [id, agent] of Object.entries(AGENT_REGISTRY)) {
+        const { modelArg, effortArg } = agent.subagentProfile;
+        const vars = buildTemplateVars(agent);
+        const heads = [vars.agent_call_reader, vars.agent_call_worker, vars.agent_call_worker_quoted];
+        assertTrue(`S1 ${id}: the model slot stands in every call head iff the profile names a model argument`, heads.every((h) => h.includes('<model>') === (modelArg !== '')), JSON.stringify(heads));
+        assertTrue(`S2 ${id}: the effort slot stands in every call head iff the profile names an effort argument`, heads.every((h) => h.includes('<effort>') === (effortArg !== '')), JSON.stringify(heads));
+        if (modelArg !== '') assertTrue(`S3 ${id}: the model slot is spelled with the name from the profile`, heads.every((h) => h.includes(`${modelArg}: <model>,`)), JSON.stringify(heads));
+        if (effortArg !== '') assertTrue(`S4 ${id}: the effort slot is spelled with the name from the profile`, heads.every((h) => h.includes(`${effortArg}: <effort>,`)), JSON.stringify(heads));
+        if (modelArg !== '' && effortArg !== '') assertTrue(`S5 ${id}: the model slot comes before the effort slot`, heads.every((h) => h.indexOf('<model>') < h.indexOf('<effort>')), JSON.stringify(heads));
+        assertTrue(`S6 ${id}: every call head ends with a comma, so the call text goes straight on`, heads.every((h) => h.endsWith(',')), JSON.stringify(heads));
+    }
 });
 
 // ── K: the call head and the skill-call expansion ───────────────────────────
@@ -396,49 +399,58 @@ await group('Q', async () => {
 });
 
 // ── C: the config template against the registry (Task 26) ───────────────────
-// The template holds the user-facing `subagents.model` block and the `effort` block next to it; the registry holds the profile.
-// The Claude and Antigravity defaults are written in both places (the installer never reads the
-// config), so only this comparison keeps them from drifting apart. There is no YAML parser in
-// the project: the block has a fixed shape and is read line by line.
+// The template holds the user-facing `subagents.model` block and the `effort` block next to it: one map of roles per agent.
+// The registry holds the profile. The Claude and Antigravity defaults are written in both places (the installer never reads
+// the config), so only this comparison keeps them from drifting apart. There is no YAML parser in the project: the blocks
+// have a fixed shape — `  model:` / `  effort:` at 2 spaces, the agent at 4, the role at 6 — and are read line by line.
+
+const ROLES = ['reader', 'validator', 'executor'];
 
 await group('C', async () => {
     const template = await fs.readFile(path.join(ROOT, 'skills', 'unikit', 'references', 'config-template.yaml'), 'utf8');
     const lines = template.split(/\r?\n/);
     const start = lines.findIndex((l) => /^subagents:\s*$/.test(l));
     assertTrue('C1 the template has a top-level subagents: block', start >= 0);
-    const modelAt = lines.findIndex((l, i) => i > start && /^  model:\s*$/.test(l));
-    assertTrue('C2 subagents: holds a model: mapping', modelAt > start);
 
-    const entries = {};
-    for (let i = modelAt + 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (/^\s*#/.test(line) || line.trim() === '') continue;
-        const m = /^ {4}([a-z]+):\s*([A-Za-z0-9_.-]*)\s*(?:#.*)?$/.exec(line);
-        if (!m) break; // the first line that is not a 4-space key ends the block
-        entries[m[1]] = m[2];
-    }
-    const keyed = Object.entries(AGENT_REGISTRY).filter(([, agent]) => agent.subagentProfile.modelParam);
-    assertEq('C3 the template carries a key for exactly the agents whose call takes a model', Object.keys(entries).sort().join(','), keyed.map(([id]) => id).sort().join(','));
+    // One block: `{ at, agents: { <agent>: { <role>: <value> } } }`. Comments and blank lines are skipped; the first
+    // line that is neither an agent key nor a role key ends the block.
+    const readBlock = (header, from) => {
+        const at = lines.findIndex((l, i) => i > from && header.test(l));
+        const agents = {};
+        if (at < 0) return { at, agents };
+        let agent = null;
+        for (let i = at + 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (/^\s*#/.test(line) || line.trim() === '') continue;
+            const a = /^ {4}([a-z]+):\s*(?:#.*)?$/.exec(line);
+            if (a) { agent = a[1]; agents[agent] = {}; continue; }
+            const r = /^ {6}([a-z]+):\s*([A-Za-z0-9_.-]*)\s*(?:#.*)?$/.exec(line);
+            if (r && agent) { agents[agent][r[1]] = r[2]; continue; }
+            break;
+        }
+        return { at, agents };
+    };
+
+    const model = readBlock(/^ {2}model:\s*$/, start);
+    assertTrue('C2 subagents: holds a model: mapping', model.at > start);
+    const keyed = Object.entries(AGENT_REGISTRY).filter(([, agent]) => agent.subagentProfile.modelArg !== '');
+    assertEq('C3 the template carries a model block for exactly the agents whose call takes a model', Object.keys(model.agents).sort().join(','), keyed.map(([id]) => id).sort().join(','));
     for (const [id, agent] of keyed) {
-        assertEq(`C4 ${id}: the template default equals the profile's modelDefault`, entries[id], agent.subagentProfile.modelDefault);
+        assertEq(`C3 ${id}: the model block holds the three roles, in order`, Object.keys(model.agents[id] ?? {}).join(','), ROLES.join(','));
+        assertEq(`C4 ${id}: reader and validator default to the profile's modelDefault`, [model.agents[id]?.reader, model.agents[id]?.validator].join(','), `${agent.subagentProfile.modelDefault},${agent.subagentProfile.modelDefault}`);
+        assertEq(`C4 ${id}: the executor model is inherit`, model.agents[id]?.executor, 'inherit');
     }
     assertTrue('C5 the block carries no {{placeholder}}', !lines.slice(start).some((l) => l.includes('{{')));
 
-    // The effort block follows the model block: a 2-space `effort:` mapping with 4-space keys, read the same way.
-    const effortAt = lines.findIndex((l, i) => i > modelAt && /^  effort:\s*$/.test(l));
-    assertTrue('C6 subagents: holds an effort: mapping after the model: block', effortAt > modelAt);
-    const effortEntries = {};
-    for (let i = effortAt + 1; effortAt > modelAt && i < lines.length; i++) {
-        const line = lines[i];
-        if (/^\s*#/.test(line) || line.trim() === '') continue;
-        const m = /^ {4}([a-z]+):\s*([A-Za-z0-9_.-]*)\s*(?:#.*)?$/.exec(line);
-        if (!m) break;
-        effortEntries[m[1]] = m[2];
-    }
-    const effortKeyed = Object.entries(AGENT_REGISTRY).filter(([, agent]) => agent.subagentProfile.effortParam);
-    assertEq('C7 the template carries an effort key for exactly the agents whose call takes an effort argument', Object.keys(effortEntries).sort().join(','), effortKeyed.map(([id]) => id).sort().join(','));
+    // The effort block follows the model block, read the same way.
+    const effort = readBlock(/^ {2}effort:\s*$/, model.at);
+    assertTrue('C6 subagents: holds an effort: mapping after the model: block', effort.at > model.at);
+    const effortKeyed = Object.entries(AGENT_REGISTRY).filter(([, agent]) => agent.subagentProfile.effortArg !== '');
+    assertEq('C7 the template carries an effort block for exactly the agents whose call takes an effort argument', Object.keys(effort.agents).sort().join(','), effortKeyed.map(([id]) => id).sort().join(','));
     for (const [id] of effortKeyed) {
-        assertEq(`C8 ${id}: the template effort is medium`, effortEntries[id], 'medium');
+        assertEq(`C7 ${id}: the effort block holds the three roles, in order`, Object.keys(effort.agents[id] ?? {}).join(','), ROLES.join(','));
+        assertEq(`C8 ${id}: reader and validator default to medium`, [effort.agents[id]?.reader, effort.agents[id]?.validator].join(','), 'medium,medium');
+        assertEq(`C8 ${id}: the executor effort is inherit`, effort.agents[id]?.executor, 'inherit');
     }
 });
 
@@ -550,8 +562,13 @@ await group('I', async () => {
             for (const [label, files] of damaged) {
                 assertTrue(`I9 ${agent.id}: no installed .md holds ${label}`, files.length === 0, `found in: ${files.slice(0, 3).join(', ')}`);
             }
-            assertTrue(`I4 ${agent.id}: the model rule names its own config key`, texts.explore.includes(`subagents.model.${agent.id}`));
-            assertTrue(`I4 ${agent.id}: the model rule carries the built-in default "${modelDefault}"`, texts.explore.includes('built-in default `"' + modelDefault + '"`'));
+            assertTrue(`I4 ${agent.id}: the arguments rule names its own model key by role`, texts.explore.includes(`subagents.model.${agent.id}.<role>`));
+            assertTrue(`I4 ${agent.id}: the arguments rule names its own effort key by role`, texts.explore.includes(`subagents.effort.${agent.id}.<role>`));
+            assertTrue(`I4 ${agent.id}: the arguments rule carries the built-in model "${modelDefault}" of a reader and a validator`, texts.explore.includes('built-in model of a reader and a validator: `"' + modelDefault + '"`, of an executor: none'));
+            assertTrue(
+                `I11 ${agent.id}: the skills without a delegation alias carry the same pointer (unikit, implement, brainstorm)`,
+                [texts.unikit, texts.implement, texts.brainstorm].every((t) => t.includes('**Subagent arguments.**') && t.includes(`subagents.model.${agent.id}.<role>`)),
+            );
             assertEq(`I6 ${agent.id}: no unresolved {{agent_…}} in any installed .md`, leaked, 0);
             assertEq(`I7 ${agent.id}: no installed skill carries the retired Subagent Delegation block`, texts.explore.includes('Subagent Delegation — BLOCKING PRE-REQUISITE'), false);
             assertEq(`I7 ${agent.id}: the gd-review handoff auto-invoke block is present for codex alone`, texts.gdReview.includes('Auto-invoke the handoff — BLOCKING PRE-REQUISITE'), agent.id === 'codex');

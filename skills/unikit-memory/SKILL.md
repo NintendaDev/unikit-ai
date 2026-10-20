@@ -84,6 +84,16 @@ Where this skill says to **invoke `<skill>`** — optionally "with the argument 
 3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
 4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
 
+## Subagent launches
+
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
+
 ## Workflow
 
 ### Step 0: Load Configuration (silent — do NOT print or announce any of these values)

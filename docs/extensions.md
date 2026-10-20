@@ -377,6 +377,8 @@ Subagents are only installed for agents that support them (Claude Code and Kimi 
 
 A subagent can be left out of the selection like a skill. If a subagent you kept preloads (`skills:`) a skill of the same extension that you left out, the command prints one `[WARN][extension]` line naming both. It is only a warning: nothing is blocked and the skill is not turned on for you.
 
+A skill or a subagent of your extension that launches subagents settles their model and effort like the bundled ones: the rule is `.unikit/system/subagent-arguments.md`, the role of a launch your extension adds is placed by the nature of its work (the last section of `.unikit/system/subagent-roles.md`), and the project's `subagents.model.<agent>.<role>` and `subagents.effort.<agent>.<role>` keys apply. Do not copy the rule into your skill; point to the file.
+
 ---
 
 ### Injections

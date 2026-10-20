@@ -52,6 +52,14 @@ Do not announce, confirm, or mention the language setting.
 
 ## Delegation agents
 
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
+
 - **`develop-agent`** — only for a true parallel scope or a deep-dive single task. Expands to:
 
   ```

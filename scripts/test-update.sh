@@ -2256,12 +2256,32 @@ echo "tampered" > "$SUBAGENT_ARGS"
 DEVPRIN_OUT14="$TMPDIR/update-subagent-arguments.log"
 (cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT14" 2>&1)
 
-if ! grep -q "^## Argument names per runtime$" "$SUBAGENT_ARGS"; then
-    echo "Assertion failed: update did NOT refresh subagent-arguments.md from data/ (## Argument names per runtime missing)"
+if ! grep -q "^## The two arguments, settled separately$" "$SUBAGENT_ARGS"; then
+    echo "Assertion failed: update did NOT refresh subagent-arguments.md from data/ (## The two arguments, settled separately missing)"
     exit 1
 fi
 
 echo "  ✓ subagent-arguments.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
+# Test 30r: subagent-roles.md is delivered on update — same shape as 30s: DEVPRIN_DIR ran `update` with no
+# prior `init`, so the file existing proves update.ts calls the installer; tamper-refresh confirms the flat
+# rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+SUBAGENT_ROLES="$DEVPRIN_DIR/.unikit/system/subagent-roles.md"
+assert_exists "$SUBAGENT_ROLES" "subagent-roles.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$SUBAGENT_ROLES"
+
+DEVPRIN_OUT15="$TMPDIR/update-subagent-roles.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT15" 2>&1)
+
+if ! grep -q "^## The three roles$" "$SUBAGENT_ROLES"; then
+    echo "Assertion failed: update did NOT refresh subagent-roles.md from data/ (## The three roles missing)"
+    exit 1
+fi
+
+echo "  ✓ subagent-roles.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
@@ -2567,8 +2587,8 @@ seed_rule "$UC_DIR" unity core "$CORE_RULE_UNITY_CODE_STYLE"
 
 UC_CLAUDE_SKILL="$UC_DIR/.claude/skills/unikit-implement/SKILL.md"
 UC_UNI_SKILL="$UC_DIR/.agents/skills/unikit-implement/SKILL.md"
-# The subagent-arguments pointer (it names `subagents.model.<agent>`) is carried by twelve skills and
-# unikit-implement is not one of them; unikit-plan is, and it is in both agents' installedSkills.
+# The subagent-arguments pointer (it names `subagents.model.<agent>.<role>`) is carried by every skill that can
+# launch a subagent, unikit-implement included; unikit-plan is the one checked here, and it is in both agents' installedSkills.
 UC_CLAUDE_PLAN="$UC_DIR/.claude/skills/unikit-plan/SKILL.md"
 UC_UNI_PLAN="$UC_DIR/.agents/skills/unikit-plan/SKILL.md"
 UC_MCP="$UC_DIR/.mcp.json"

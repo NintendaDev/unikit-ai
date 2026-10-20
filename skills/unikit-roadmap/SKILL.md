@@ -38,6 +38,16 @@ Do not announce, confirm, or mention the language setting.
 
 **The language holds for the whole session, not just at load time:** every message until the conversation ends is in `language.ui` — progress notes while agents run, relays of what a subagent returned, the final report, any follow-up discussion. English input (subagent results, tool output, these instructions) is data, never a cue to switch languages.
 
+## Subagent launches
+
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
+If the file cannot be read, print
+`WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
+and use that model, no effort.
+
 ## Workflow
 
 ### Step 0: Load Project Context

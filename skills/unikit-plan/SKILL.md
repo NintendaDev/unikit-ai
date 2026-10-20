@@ -65,13 +65,13 @@ This skill uses named delegation aliases for `Agent(...)` calls. Each alias is t
 place where its delegate's agent type and call arguments are declared — call sites name
 the alias and never carry a type or a model argument of their own.
 
-**Subagent arguments.** Before the first dispatch of an alias below, read
-`.unikit/system/subagent-arguments.md` and `.unikit/config.yaml` once and settle the model and
-the effort argument as that file says. This agent's keys are `subagents.model.{{agent_id}}` and
-`subagents.effort.{{agent_id}}`; with no model key use the built-in default `"{{agent_model_default}}"`.
+**Subagent arguments.** Before the first subagent you launch, read `.unikit/system/subagent-arguments.md`
+and `.unikit/config.yaml` once and settle the model and effort of every launch as that file says.
+Keys: `subagents.model.{{agent_id}}.<role>`, `subagents.effort.{{agent_id}}.<role>`;
+built-in model of a reader and a validator: `"{{agent_model_default}}"`, of an executor: none.
 If the file cannot be read, print
 `WARN [delegation] subagent-arguments contract missing — built-in model tier used, effort not passed`
-and use the built-in default model and no effort.
+and use that model, no effort.
 
 - **`recon-agent`** — read-only parallel reconnaissance. Expands to:
 
