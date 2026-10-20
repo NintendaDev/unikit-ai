@@ -10668,7 +10668,7 @@ else
     fail "KM-1/KM-3 Kimi Code source contracts violated:$KM_WHY"
 fi
 
-# --- EXP-1…EXP-10: the experiment master skill — structure, ten references, single owners,
+# --- EXP-1…EXP-10: the experiment master skill — structure, eleven references, single owners,
 # the boundary, neutrality, the language membrane, pinned commitments, the lexicon and the
 # scenario fixtures. Variables are declared here, before first use (the script runs under
 # set -u). Every check goes through exp_ok / exp_no / exp_owner / exp_icon, which count: a
@@ -10745,8 +10745,8 @@ else
     EXP_SZ="$(wc -c < "$EXP_SKILL" | tr -d ' ')"
     EXP_CHK=$((EXP_CHK + 1)); (( EXP_SZ <= 16000 )) || EXP_WHY+=" EXP-1:skill-size=${EXP_SZ}"
 
-    # (EXP-2) ten references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
-    for f in mode-discover mode-specify mode-evaluate mode-manage template-experiment storage-and-index \
+    # (EXP-2) eleven references named in the skill, each non-empty, <= 12000 bytes, line 3 is its load condition
+    for f in mode-discover mode-specify mode-evaluate mode-manage template-experiment card-draft-view storage-and-index \
              context-and-research planning-handoff balance-link lookup; do
         exp_ok "EXP-2:skill-does-not-name($f.md)" "$f.md" "$EXP_SKILL"
         EXP_CHK=$((EXP_CHK + 1)); [[ -s "$EXP_REFS/$f.md" ]] || EXP_WHY+=" EXP-2:missing($f.md)"
@@ -10755,7 +10755,7 @@ else
         EXP_CHK=$((EXP_CHK + 1)); (( ${EXP_RSZ:-0} <= 12000 )) || EXP_WHY+=" EXP-2:size($f.md=${EXP_RSZ})"
     done
     EXP_REF_N="$({ ls "$EXP_REFS"/*.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
-    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "10" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
+    EXP_CHK=$((EXP_CHK + 1)); [[ "$EXP_REF_N" == "11" ]] || EXP_WHY+=" EXP-2:reference-count=${EXP_REF_N}"
 
     # (EXP-3) lazy loading and delegation hygiene: the call form lives only in SKILL.md, one alias only
     EXP_CHK=$((EXP_CHK + 1)); ! grep -rqF 'Agent(' "$EXP_REFS" || EXP_WHY+=" EXP-3:agent-call-in-reference"
@@ -10859,6 +10859,10 @@ else
     exp_ok "EXP-8:P5-05" 'Version rises by one' "$EXP_REFS/mode-specify.md"
     exp_ok "EXP-8:P5-06" 'preliminary acceptance targets' "$EXP_REFS/mode-specify.md"
     exp_ok "EXP-8:P5-07" 'as your own message' "$EXP_REFS/mode-specify.md"
+    exp_ok "EXP-8:P5-08" 'is a table, never a numbered or bulleted list of sections' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:P5-09" '| № | Section | Content |' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:P5-10" 'review view only' "$EXP_REFS/card-draft-view.md"
+    exp_ok "EXP-8:P5-11" 'card-draft-view.md' "$EXP_REFS/mode-specify.md"
     exp_ok "EXP-8:P6-01" 'explicit sign only' "$EXP_REFS/mode-evaluate.md"
     exp_ok "EXP-8:P6-02" 'stays unassigned' "$EXP_REFS/mode-evaluate.md"
     exp_ok "EXP-8:P6-03" 'split the export' "$EXP_REFS/mode-evaluate.md"
@@ -10947,7 +10951,7 @@ else
     (( EXP_CHK > 0 )) || EXP_WHY+=" EXP-1:nothing-checked"
 fi
 if [[ -z "$EXP_WHY" ]]; then
-    pass "EXP-1…EXP-10 experiment skill: structure, ten references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, ten scenarios checked by text only (${EXP_CHK} checks)"
+    pass "EXP-1…EXP-10 experiment skill: structure, eleven references, single owners, boundary, neutrality, membrane, pinned commitments, lexicon, ten scenarios checked by text only (${EXP_CHK} checks)"
 else
     fail "EXP-1…EXP-10 experiment skill:$EXP_WHY"
 fi

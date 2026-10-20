@@ -1,13 +1,13 @@
 # Specify — write the experiment card
 
-Read **only** when an experiment card is to be written or changed — an idea was chosen, the user asks for a specification directly, asks to compare variants of one question, or asks to edit a draft. Load also `{{skills_dir}}/{{self_name}}/references/template-experiment.md` and `{{skills_dir}}/{{self_name}}/references/storage-and-index.md` in the same turn, before drafting.
+Read **only** when an experiment card is to be written or changed — an idea was chosen, the user asks for a specification directly, asks to compare variants of one question, or asks to edit a draft. Load also `{{skills_dir}}/{{self_name}}/references/template-experiment.md`, `{{skills_dir}}/{{self_name}}/references/card-draft-view.md` and `{{skills_dir}}/{{self_name}}/references/storage-and-index.md` in the same turn, before drafting.
 
 ## Order
 
 1. **Input.** A chosen idea (from Discover), a direct request, a request to compare variants, or an existing draft. When the input is a path to `CHECKPOINTS.md`, read `{{skills_dir}}/{{self_name}}/references/balance-link.md` first.
 2. **Understand.** Ask only what the card cannot be written without, section by section, together: Question, Options, Decision (the `gd-principles` protocol); the recommended option first with its reason; at most four questions per `AskUserQuestion` call. The card is not interrogated "from cover to cover": what is known is filled in, and what is asked is what the planner could not decide alone.
 3. **Facts about the existing game** (what exists, what can be reused) → `{{skills_dir}}/{{self_name}}/references/context-and-research.md`; the answer enters the card in game words.
-4. **Draft** the whole card in the conversation and print it as your own message.
+4. **Draft** the whole card in the conversation and print it as your own message, in the table form owned by `{{skills_dir}}/{{self_name}}/references/card-draft-view.md`.
 5. **Check** it by `## Quality of a card` below, by the technical-traces self-check (`storage-and-index.md`) and by `Readiness for planning` (`template-experiment.md`).
 6. **Approve, then write.** One question (`AskUserQuestion`, the recommended option first): `1.` save · `2.` change · `3.` stop. Nothing is written before the answer. After `1.`: `storage-and-index.md` → `Creating an experiment folder`, then the order of writes. Several chosen ideas → several cards, each with its own chain of writes, in the user's order.
 7. **Report** (terminal block, TIER A): the saved cards by title (the code as a secondary parenthesis), each with its status; for a `Draft`, what is missing; then the closing block.
@@ -28,7 +28,7 @@ Read **only** when an experiment card is to be written or changed — an idea wa
 
 - A rewording updates `Updated`; `Version` does not change. A material change (hypothesis, rules, parameters, variants, protocol, criteria): Version rises by one; on an assessed card `Evaluation status` becomes `Outdated` (the only write of this branch into section 14; the rest of it is written by the evaluate branch); say in one line that the earlier assessments belong to the earlier version.
 - Archived cards are not edited (lift the archive first — the manage branch).
-- Every change goes through the same path: show, approve, write; the index last.
+- Every change goes through the same path: show (the table of `card-draft-view.md`), approve, write; the index last.
 
 ## Closing block
 

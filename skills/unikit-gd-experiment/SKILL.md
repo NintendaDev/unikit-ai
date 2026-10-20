@@ -126,7 +126,7 @@ reference files named below from `{{skills_dir}}/{{self_name}}/references/` and 
 |---|---|
 | A bare call, or a request too vague to understand | none — hold the short conversation described above |
 | A design problem to explore: "what can we test for…", "the first minutes are boring" | `mode-discover.md` |
-| An idea was chosen; a direct request for a specification; a request to compare variants of one question; edit a draft | `mode-specify.md`, `template-experiment.md`, `storage-and-index.md` |
+| An idea was chosen; a direct request for a specification; a request to compare variants of one question; edit a draft | `mode-specify.md`, `template-experiment.md`, `card-draft-view.md`, `storage-and-index.md` |
 | Feedback from real play: pasted text, a forwarded chat, a file; "evaluate", "re-evaluate", "score" | `mode-evaluate.md`, `storage-and-index.md` |
 | List, filter, compare, best, failed, retest, update, archive, lessons across several, repair the index | `mode-manage.md`, `storage-and-index.md` |
 | An experiment is named by words instead of a number: "the latest", "the one about onboarding" | `lookup.md` |
