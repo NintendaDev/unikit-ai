@@ -2284,6 +2284,26 @@ fi
 echo "  ✓ subagent-roles.md: update installs + refreshes from data/ (update.ts wiring)"
 
 # ─────────────────────────────────────────────
+# Test 30u: user-questions.md is delivered on update — same shape as 30s: DEVPRIN_DIR ran `update` with no
+# prior `init`, so the file existing proves update.ts calls the installer; tamper-refresh confirms the flat
+# rewrite from data/. init.ts is SA-1's job.
+# ─────────────────────────────────────────────
+USER_QUESTIONS="$DEVPRIN_DIR/.unikit/system/user-questions.md"
+assert_exists "$USER_QUESTIONS" "user-questions.md must be installed on update (system asset, update.ts wiring)"
+
+echo "tampered" > "$USER_QUESTIONS"
+
+DEVPRIN_OUT16="$TMPDIR/update-user-questions.log"
+(cd "$DEVPRIN_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$DEVPRIN_OUT16" 2>&1)
+
+if ! grep -q "^## How to ask$" "$USER_QUESTIONS"; then
+    echo "Assertion failed: update did NOT refresh user-questions.md from data/ (## How to ask missing)"
+    exit 1
+fi
+
+echo "  ✓ user-questions.md: update installs + refreshes from data/ (update.ts wiring)"
+
+# ─────────────────────────────────────────────
 # Test 31: `update --install-new` installs newly added package skills
 # non-interactively AND bootstraps the rules of a module whose first skill just
 # arrived (closes the gap: opting into game-design skills delivers gd rules).

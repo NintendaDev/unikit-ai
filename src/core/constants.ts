@@ -335,6 +335,8 @@ export const PROTOTYPE_PROFILE_FILE = 'prototype-profile.md';
 export const SUBAGENT_ARGUMENTS_FILE = 'subagent-arguments.md';
 /** The table of which role (reader, validator, executor) a subagent launch has; rationale on `installSubagentRolesContract`. */
 export const SUBAGENT_ROLES_FILE = 'subagent-roles.md';
+/** How a skill asks the user a question and waits for the answer; rationale on `installUserQuestionsContract`. */
+export const USER_QUESTIONS_FILE = 'user-questions.md';
 export const MODULES_YML_FILE = 'modules.yml';
 export const ENGINE_RULES_FILE = 'ENGINE_RULES.md';
 

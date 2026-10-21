@@ -12611,6 +12611,96 @@ else
     fail "AP-16…AP-20 subagent arguments and roles:$APX_WHY"
 fi
 
+# >>> UQ block
+# ─────────────────────────────────────────────
+# Part 7g3b: UQ-1…UQ-7 — the user-questions contract and its pointer
+# ─────────────────────────────────────────────
+# One flat contract, data/user-questions.md, says how every question to the user is asked and
+# waited for. A skill moved onto it carries ONE pointer line, right above its first `## ` heading,
+# names the tool only as "the question tool of your agent (`AskUserQuestion`)" and restates none
+# of the contract. The pilot moves unikit-plan alone (UQ_MOVED); every other rule is written over
+# "each skill that carries the pointer", so the next skill joins by carrying it. Own accumulators
+# UQ_*, own pass/fail; every grep inside $( … ) is wrapped in { … || true; } — under `set -e` an
+# empty match would abort the suite. Texts are read as whitespace-normalized streams, so a
+# reflowed paragraph does not hide a formulation.
+echo -e "\n${BOLD}Part 7g3b: the user-questions contract and its pointer (UQ)${NC}"
+
+UQ_WHY=""
+UQ_CHK=0
+UQ_FILE="$ROOT_DIR/data/user-questions.md"
+UQ_POINTER='**User questions.** Before your first question to the user, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.'
+UQ_CANON='question tool of your agent (`AskUserQuestion`)'
+UQ_MOVED=(unikit-plan)
+
+uq_stream() { tr '\n' ' ' < "$1" | tr -s ' '; }
+uq_body_stream() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {f=0; b=1; next} b' "$1" | tr '\n' ' ' | tr -s ' '; }
+uq_count() { # <text> <literal> → number of occurrences
+    local n
+    n="$(printf '%s' "$1" | grep -oF -- "$2" | wc -l | tr -d ' ')" || n=0
+    printf '%s' "$n"
+}
+uq_has() { # <reason key> <literal> <file>
+    UQ_CHK=$((UQ_CHK + 1))
+    [[ "$(uq_count "$(uq_stream "$3")" "$2")" -gt 0 ]] || UQ_WHY+=" $1"
+}
+uq_lacks() { # <reason key> <literal> <file>
+    UQ_CHK=$((UQ_CHK + 1))
+    [[ "$(uq_count "$(uq_stream "$3")" "$2")" -eq 0 ]] || UQ_WHY+=" $1"
+}
+
+# (UQ-1) the contract: flat, its formulations in place, universal — no agent and no other tool
+#        named (D-7) — and the tool named once, as the example in brackets (D-12)
+if [[ ! -s "$UQ_FILE" ]]; then
+    UQ_WHY+=" UQ-1:missing-contract"
+else
+    for uq_h in '## The question tool' '## A turn that waits for the user ends with a question' '## How to ask' '## A question with no fixed answers'; do
+        UQ_CHK=$((UQ_CHK + 1))
+        grep -qxF -- "$uq_h" "$UQ_FILE" || UQ_WHY+=" UQ-1:heading(${uq_h:3:24})"
+    done
+    for uq_lit in \
+        'once per run and never at Bootstrap' \
+        'Do not restate this contract inside a skill' \
+        'question tool of your agent (`AskUserQuestion`)' \
+        'Skill text names it with the name in brackets' \
+        'A turn never ends on an explanation, a summary or a recommendation' \
+        'as a visible message of your own' \
+        'each with its concrete consequence, the recommended option first' \
+        'is printed in full in this message' \
+        'Do not add a second list of the bare option names' \
+        'with "(Recommended)" in its label, short labels without numbers' \
+        'The question carries the options and nothing else' \
+        'four at most' \
+        'do not end your turn, do not give a final answer and do not write status lines' \
+        'say nothing and do nothing else while you wait' \
+        'There is no time limit: time passing is not an answer' \
+        '`WARN [questions] no question tool — asking as numbered text`' \
+        'and end your turn' \
+        'never as plain text while the tool works' \
+        'two short examples of the expected answer' \
+        'in the free-text answer of the tool' \
+        'An answer the user sends as a message of their own counts the same'; do
+        uq_has "UQ-1:contract-lacks(${uq_lit:0:28})" "$uq_lit" "$UQ_FILE"
+    done
+    for uq_ban in '{{' 'Claude' 'Codex' 'Cursor' 'Kimi' 'Antigravity' 'Qwen' 'OpenCode' 'Gemini' 'request_user_input' 'ask_question' 'AskQuestion' 'ToolSearch'; do
+        UQ_CHK=$((UQ_CHK + 1))
+        ! grep -qF -- "$uq_ban" "$UQ_FILE" || UQ_WHY+=" UQ-1:names($uq_ban)"
+    done
+    UQ_CHK=$((UQ_CHK + 1))
+    uq_n=$(uq_count "$(uq_stream "$UQ_FILE")" 'AskUserQuestion')
+    [[ "$uq_n" -eq 1 ]] || UQ_WHY+=" UQ-1:tool-named(x$uq_n)"
+    uq_has "UQ-1:example-not-in-brackets" '(`AskUserQuestion`)' "$UQ_FILE"
+fi
+
+# (UQ-2…UQ-6) are added by Task 6 of the plan, (UQ-7) by Task 7
+
+(( UQ_CHK > 0 )) || UQ_WHY+=" UQ-1:nothing-checked"
+if [[ -z "$UQ_WHY" ]]; then
+    pass "UQ-1 user questions: the contract file (${UQ_CHK} checks)"
+else
+    fail "UQ-1 user questions:$UQ_WHY"
+fi
+# <<< UQ block
+
 # ─────────────────────────────────────────────
 # Part 7g4: UA-1…UA-4 — the agent directory rules and the universal agent (source level)
 # ─────────────────────────────────────────────

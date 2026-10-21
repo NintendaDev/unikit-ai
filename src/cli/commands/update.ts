@@ -10,7 +10,7 @@ import {
   type SubagentUpdateEntry,
 } from '../../core/installer/subagents.js';
 import { installEngineTemplates, installCliContract, installGateResultContract, installUltraPlanReadContract, installResearchLinkContract, installPlanBoundariesContract, installMergeAnalysisContract, installBalanceHandbackContract, installPrototypeProfileContract, installDevPrinciples, installEngineMcpRules, readDeliveredEngineMcpServer, installGamedesignSystemAssets, installGenreProfiles, installModulesYml } from '../../core/installer/system-assets.js';
-import { installSubagentArgumentsContract, installSubagentRolesContract } from '../../core/installer/system-contracts.js';
+import { installSubagentArgumentsContract, installSubagentRolesContract, installUserQuestionsContract } from '../../core/installer/system-contracts.js';
 import { injectMcpRules } from '../../core/installer/mcp-injection.js';
 import { installExtensionSkills, installExtensionSubagents } from '../../core/installer/extensions.js';
 import { syncAllModules } from '../../core/installer/rules-sync.js';
@@ -351,6 +351,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
 
     // Refresh the subagent-roles table (read together with the contract above: which role each launch has)
     await installSubagentRolesContract(projectDir);
+
+    // Refresh the user-questions contract (read before their first question by the skills that carry its pointer)
+    await installUserQuestionsContract(projectDir);
 
     // `update` does not re-ask for servers, but the selection still moves under
     // it: editing `.unikit.json` and re-running is how an engine switch reaches
