@@ -13,7 +13,7 @@ This step runs **only in fast mode**, before the shared planning workflow.
 ### Step A: Ask About Preferences
 
 ```
-AskUserQuestion: Before planning:
+The question tool of your agent (`AskUserQuestion`): Before planning:
 
 1. Include tests in the plan?
    a. Yes
@@ -77,7 +77,7 @@ When `engine_rules_loaded = true`:
 3. **MCP not configured → ask:**
 
 ```
-AskUserQuestion: This plan contains editor work (scenes, UI, VFX, animation, assets).
+The question tool of your agent (`AskUserQuestion`): This plan contains editor work (scenes, UI, VFX, animation, assets).
 No engine MCP is configured. How should those tasks be carried out?
 
    a. manual — the task is marked `⏸️ MANUAL`; no files are touched, and you get the

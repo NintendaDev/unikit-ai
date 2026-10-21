@@ -49,6 +49,8 @@ Four modes:
 - **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. **User-named, never model-inferred**: it runs because the user asked for an ultra plan, never because the feature looks big — except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where the mode question recommends it
 - **Add** — modify/extend an existing plan without creating a branch
 
+**User questions.** Before your first question to the user, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -148,7 +150,7 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
 
 2. **Check recent researches** — if no session context, read `.unikit/code/researches/INDEX.md` (if it exists). The index is sorted newest-first. Take the first entry whose `Lifecycle` is `active` — a record carrying no `Lifecycle` line counts as `active` — and ask:
    ```
-   AskUserQuestion: Found recent research: "<Title>" (<Created>)
+   The question tool of your agent (`AskUserQuestion`): Found recent research: "<Title>" (<Created>)
    Use as basis for planning?
 
    Options:
@@ -163,12 +165,12 @@ If the description is empty (user only typed a mode keyword like `full` or `fast
 
 3. **No context available** — if neither session context nor researches exist, ask the user for a description:
    ```
-   AskUserQuestion: Describe the feature you want to plan.
+   The question tool of your agent (`AskUserQuestion`): Describe the feature you want to plan.
    ```
 
 **If no mode keyword** was found by the Step 0 parsing rules, ask one question, adding the description question when the description is still missing:
 ```
-AskUserQuestion:
+The question tool of your agent (`AskUserQuestion`):
 1. Describe the feature you want to plan.     ← only when the description is still missing
 2. Which planning mode?
    a. Full (recommended) — creates git branch, codebase reconnaissance, full plan
@@ -248,7 +250,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
    - A match in `.unikit/code/plans/` that has no manifest `.unikit/code/plans/<name>/PLAN.md` → a plan that was not finished:
 
    ```
-   AskUserQuestion: A plan named "<name>" was not finished (.unikit/code/plans/<name>/ has no manifest).
+   The question tool of your agent (`AskUserQuestion`): A plan named "<name>" was not finished (.unikit/code/plans/<name>/ has no manifest).
 
    Options:
    1. Continue it
@@ -263,7 +265,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
    - A match in `.unikit/code/plans/` → ask, and do not decide it yourself:
 
    ```
-   AskUserQuestion: A plan named "<name>" already exists (<matched folder>).
+   The question tool of your agent (`AskUserQuestion`): A plan named "<name>" already exists (<matched folder>).
 
    Options:
    1. Refine the existing plan — hand over to add mode
@@ -275,7 +277,7 @@ Remember loaded rule file paths — pass them to Explore tasks in Step 4.
    - A match **only in `.unikit/code/archive/plans/`** → the name belongs to an archived plan. An archived plan is not refined in place, and a second folder of that name would collide when this one is archived:
 
    ```
-   AskUserQuestion: A plan named "<name>" is archived (<matched folder>).
+   The question tool of your agent (`AskUserQuestion`): A plan named "<name>" is archived (<matched folder>).
 
    Options:
    1. Choose another name — I'll enter a different slug
@@ -344,7 +346,7 @@ Before exploring code, check if `/unikit-explore` has produced relevant research
 6. If **1 or more relevant** researches found — ask the user:
 
 ```
-AskUserQuestion: Found related researches:
+The question tool of your agent (`AskUserQuestion`): Found related researches:
 
 1. <Title> (<Date>) — <Summary>
 2. <Title> (<Date>) — <Summary>
@@ -357,7 +359,7 @@ Options:
 
 Based on choice:
 - Use all → load all listed researches as planning context
-- Let me pick → wait for user to specify numbers, load only selected
+- Let me pick → ask which ones: the user writes their numbers (`1, 3`), and the recommended set is the first option; load only the selected
 - Skip all → proceed without research context, mark `research_linked = false`
 
 Highlight the most relevant entries in the question text (e.g., "Recommended: #1, #3").
@@ -373,11 +375,10 @@ Before exploring code, analyze the feature description for completeness.
 
 **If requirements are clear** — proceed to Step 4.
 
-**If requirements are ambiguous or incomplete** — ask clarifying questions:
+**If requirements are ambiguous or incomplete** — ask clarifying questions, each with its likely answers as the options:
 
 ```
-Before planning, a few things need clarification:
-
+The question tool of your agent (`AskUserQuestion`):
 1. [Specific question about feature scope]
 2. [Question about implementation approach]
 3. [Question about edge cases]
@@ -586,7 +587,7 @@ Show the user:
 4. The modules — `N modules, M PR checkpoints` (or `one module`) — one line
 5. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
 6. The reminder: "To start implementation, run: `/unikit-implement`"
-7. Ask whether to adjust anything
+7. The closing question, with the question tool of your agent (`AskUserQuestion`): `The plan is ready` (recommended) · `Adjust it` — the user writes what to change. `Adjust it` → change the plan as written and show this step again; `The plan is ready` → Step 7.
 
 **Merge plan:** the closing message is the one `{{skills_dir}}/{{self_name}}/references/merge-plan.md` describes — it names the command that runs the plan.
 

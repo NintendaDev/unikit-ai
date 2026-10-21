@@ -38,7 +38,7 @@ Step A0 is the first action of an ultra run — before Step A, before any reconn
 - Otherwise ask:
 
   ```
-  AskUserQuestion: How should this ultra plan be written?
+  The question tool of your agent (`AskUserQuestion`): How should this ultra plan be written?
 
   Options:
   1. Standard (Recommended) — the session writes the whole plan in one go; the fastest; a context compaction may lose details of early decisions
@@ -122,7 +122,7 @@ The standard protocol and more phases than the threshold this line names → pri
 and ask:
 
 ```
-AskUserQuestion: The plan has <N> phases. Switch to writing with saved state?
+The question tool of your agent (`AskUserQuestion`): The plan has <N> phases. Switch to writing with saved state?
 
 Options:
 1. Switch to saved state (Recommended) — what is decided so far goes to disk now, the rest as it appears
@@ -191,7 +191,7 @@ the checkboxes live **only** in the manifest. Phase files are read-only during e
 
 ## Step H: Confirm with the user
 
-In addition to the Step 6 items, show:
+In addition to the Step 6 items, show, before the closing question of item 7:
 
 1. The bundle folder path.
 2. The number of phase files.
@@ -200,7 +200,7 @@ In addition to the Step 6 items, show:
 5. When blocking open questions exist, the line
    `Plan is NOT implementation-ready: N blocking open question(s)`.
 
-Then **STOP**.
+Then the closing question of Step 6 item 7; **STOP** once its answer is `The plan is ready`.
 
 ## Not part of ultra
 

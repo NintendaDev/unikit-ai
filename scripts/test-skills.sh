@@ -4239,8 +4239,11 @@ vq_expect "AQ-1 unikit-gd-system — question payload printed first"   "$VQ_GD_S
 
 # (AQ-2) family B — design-context carries TWO ask sites (axis door, flow door). The third
 #        family-B site lives in unikit-improve and is asserted by IR-1 with its own total.
-vq_expect "AQ-2 mode-add — both plan paths printed first" "$VQ_MODE_ADD" "$VQ_K1" 1
-vq_expect "AQ-2 design-context — both ask sites print their candidates" "$VQ_DESIGN_CTX" "$VQ_K1" 2
+#        unikit-plan moved onto .unikit/system/user-questions.md, which owns the K1 clause now
+#        (UQ-1 pins it there, UQ-5 forbids a copy), so its sites are counted by their own print line.
+VQ_K4='to the screen as plain markdown first'
+vq_expect "AQ-2 mode-add — both plan paths printed first" "$VQ_MODE_ADD" "$VQ_K4" 1
+vq_expect "AQ-2 design-context — both ask sites print their candidates" "$VQ_DESIGN_CTX" "$VQ_K4" 2
 
 # (AQ-3) family C — the two module-resolution asks in the registry router.
 vq_expect "AQ-3 unikit-rules-registry — module ids printed first" "$VQ_RULES_REG" "$VQ_K1" 2
@@ -12691,13 +12694,88 @@ else
     uq_has "UQ-1:example-not-in-brackets" '(`AskUserQuestion`)' "$UQ_FILE"
 fi
 
-# (UQ-2…UQ-6) are added by Task 6 of the plan, (UQ-7) by Task 7
+# (UQ-2) the pointer: at most once in a SKILL.md and nowhere else, only in a skill whose
+#        frontmatter allows the tool, as the paragraph right above the first `## ` heading of
+#        the body (before any question the skill asks); every moved skill carries it
+UQ_PTR_N=0
+for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    uq_n=$( { grep -cF '**User questions.**' "$uq_f" || true; } )
+    [[ "${uq_n:-0}" -eq 0 ]] && continue
+    uq_rel="${uq_f#"$ROOT_DIR"/}"
+    UQ_PTR_N=$((UQ_PTR_N + 1))
+    UQ_CHK=$((UQ_CHK + 3))
+    [[ "$uq_n" -eq 1 ]] || UQ_WHY+=" UQ-2:pointer-count($uq_n):$uq_rel"
+    uq_tool=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {print c+0}' "$uq_f")
+    [[ "$uq_tool" -gt 0 ]] || UQ_WHY+=" UQ-2:pointer-without-tool:$uq_rel"
+    uq_place=$(awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {f=0; b=1; next} b && /^## / {print ((p2 ~ /^\*\*User questions\.\*\*/ && p1 == "") ? "ok" : "off"); exit} {p2=p1; p1=$0}' "$uq_f")
+    [[ "$uq_place" == "ok" ]] || UQ_WHY+=" UQ-2:pointer-not-above-first-heading:$uq_rel"
+done
+for uq_s in "${UQ_MOVED[@]}"; do
+    UQ_CHK=$((UQ_CHK + 1))
+    grep -qF '**User questions.**' "$ROOT_DIR/skills/$uq_s/SKILL.md" || UQ_WHY+=" UQ-2:moved-skill-without-pointer:$uq_s"
+done
+[[ "$UQ_PTR_N" -gt 0 ]] || UQ_WHY+=" UQ-2:no-pointer"
+UQ_CHK=$((UQ_CHK + 1))
+uq_stray=$( { grep -rlF '**User questions.**' "$ROOT_DIR/skills" "$ROOT_DIR/data" "$ROOT_DIR/subagents" 2>/dev/null || true; } | { grep -v '/SKILL\.md$' || true; } | wc -l | tr -d ' ')
+[[ "$uq_stray" -eq 0 ]] || UQ_WHY+=" UQ-2:pointer-outside-SKILL.md(x$uq_stray)"
+
+# (UQ-3) every pointer is the one pinned line, byte for byte
+for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    grep -qF '**User questions.**' "$uq_f" || continue
+    UQ_CHK=$((UQ_CHK + 1))
+    uq_line=$( { grep -F '**User questions.**' "$uq_f" || true; } | head -n 1 | tr -d '\r')
+    [[ "$uq_line" == "$UQ_POINTER" ]] || UQ_WHY+=" UQ-3:pointer-text:${uq_f#"$ROOT_DIR"/}"
+done
+
+# (UQ-4) a skill that carries the pointer names the tool only in the canonical form, in the body
+#        of SKILL.md and in every reference (the frontmatter tool list is a permission, not text)
+for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    grep -qF '**User questions.**' "$uq_f" || continue
+    while IFS= read -r uq_doc; do
+        [[ -n "$uq_doc" ]] || continue
+        if [[ "$uq_doc" == */SKILL.md ]]; then uq_txt="$(uq_body_stream "$uq_doc")"; else uq_txt="$(uq_stream "$uq_doc")"; fi
+        uq_all=$(uq_count "$uq_txt" 'AskUserQuestion')
+        uq_can=$(uq_count "$uq_txt" "$UQ_CANON")
+        UQ_CHK=$((UQ_CHK + 1))
+        [[ "$uq_all" -eq "$uq_can" ]] || UQ_WHY+=" UQ-4:bare-name(${uq_all}/${uq_can}):${uq_doc#"$ROOT_DIR"/}"
+    done < <( { find "$(dirname "$uq_f")" -name '*.md' -type f || true; } | sort)
+done
+
+# (UQ-5) a skill that carries the pointer restates none of the contract: no copy of its clause,
+#        no text tier and no turn rule of its own
+for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    grep -qF '**User questions.**' "$uq_f" || continue
+    uq_all_txt="$( { find "$(dirname "$uq_f")" -name '*.md' -type f -exec cat {} + || true; } | tr '\n' ' ' | tr -s ' ')"
+    for uq_lit in 'carries the options and nothing else' 'numbered text' 'question widget' 'structured-question tool' 'end your turn' 'end the turn'; do
+        UQ_CHK=$((UQ_CHK + 1))
+        [[ "$(uq_count "$uq_all_txt" "$uq_lit")" -eq 0 ]] || UQ_WHY+=" UQ-5:restated(${uq_lit:0:24}):${uq_f#"$ROOT_DIR"/}"
+    done
+done
+
+# (UQ-6) the planner's own question sites: the clarifying questions, the pick of researches and
+#        the closing question go through the tool; the closing question is the end of the run
+UQ_PLAN="$ROOT_DIR/skills/unikit-plan/SKILL.md"
+UQ_PLAN_ULTRA="$ROOT_DIR/skills/unikit-plan/references/mode-ultra.md"
+UQ_PLAN_ADD="$ROOT_DIR/skills/unikit-plan/references/mode-add.md"
+uq_has "UQ-6:clarifying-without-options" 'ask clarifying questions, each with its likely answers as the options' "$UQ_PLAN"
+uq_lacks "UQ-6:clarifying-as-text" 'Before planning, a few things need clarification' "$UQ_PLAN"
+uq_has "UQ-6:pick-not-asked" 'Let me pick → ask which ones: the user writes their numbers' "$UQ_PLAN"
+uq_lacks "UQ-6:pick-waits-for-text" 'wait for user to specify numbers' "$UQ_PLAN"
+uq_has "UQ-6:closing-question" '7. The closing question, with the question tool of your agent (`AskUserQuestion`): `The plan is ready` (recommended) · `Adjust it`' "$UQ_PLAN"
+uq_has "UQ-6:closing-adjust" '`Adjust it` → change the plan as written and show this step again' "$UQ_PLAN"
+uq_lacks "UQ-6:closing-as-prose" 'Ask whether to adjust anything' "$UQ_PLAN"
+uq_has "UQ-6:ultra-closing" 'Then the closing question of Step 6 item 7; **STOP** once its answer is `The plan is ready`.' "$UQ_PLAN_ULTRA"
+uq_has "UQ-6:ultra-closing-order" 'show, before the closing question of item 7:' "$UQ_PLAN_ULTRA"
+uq_has "UQ-6:add-closing" 'Then the closing question, with the question tool of your agent (`AskUserQuestion`): `The plan is ready` (recommended) · `Adjust it`' "$UQ_PLAN_ADD"
+uq_lacks "UQ-6:add-closing-as-prose" 'Ask if anything needs adjustment' "$UQ_PLAN_ADD"
+
+# (UQ-7) is added by Task 7 of the plan
 
 (( UQ_CHK > 0 )) || UQ_WHY+=" UQ-1:nothing-checked"
 if [[ -z "$UQ_WHY" ]]; then
-    pass "UQ-1 user questions: the contract file (${UQ_CHK} checks)"
+    pass "UQ-1…UQ-6 user questions: the contract file, the pointer as one line above the first heading, the canonical tool name, no restated rule, the planner's question sites (${UQ_CHK} checks)"
 else
-    fail "UQ-1 user questions:$UQ_WHY"
+    fail "UQ-1…UQ-6 user questions:$UQ_WHY"
 fi
 # <<< UQ block
 
