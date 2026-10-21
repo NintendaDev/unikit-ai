@@ -12769,13 +12769,16 @@ uq_has "UQ-6:ultra-closing-order" 'show, before the closing question of item 7:'
 uq_has "UQ-6:add-closing" 'Then the closing question, with the question tool of your agent (`AskUserQuestion`): `The plan is ready` (recommended) · `Adjust it`' "$UQ_PLAN_ADD"
 uq_lacks "UQ-6:add-closing-as-prose" 'Ask if anything needs adjustment' "$UQ_PLAN_ADD"
 
-# (UQ-7) is added by Task 7 of the plan
+# (UQ-7) the docs: the system tree, the planner's page and the help index name the contract
+uq_has "UQ-7:configuration-tree" 'user-questions.md # How a skill asks you a question and waits for the answer' "$ROOT_DIR/docs/configuration.md"
+uq_has "UQ-7:skills-page" '- **Questions** - every question the planner asks follows `.unikit/system/user-questions.md`' "$ROOT_DIR/docs/skills.md"
+uq_has "UQ-7:help-index" '- `user-questions.md` — how a skill asks you a question' "$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
 
 (( UQ_CHK > 0 )) || UQ_WHY+=" UQ-1:nothing-checked"
 if [[ -z "$UQ_WHY" ]]; then
-    pass "UQ-1…UQ-6 user questions: the contract file, the pointer as one line above the first heading, the canonical tool name, no restated rule, the planner's question sites (${UQ_CHK} checks)"
+    pass "UQ-1…UQ-7 user questions: the contract file, the pointer as one line above the first heading, the canonical tool name, no restated rule, the planner's question sites, the docs (${UQ_CHK} checks)"
 else
-    fail "UQ-1…UQ-6 user questions:$UQ_WHY"
+    fail "UQ-1…UQ-7 user questions:$UQ_WHY"
 fi
 # <<< UQ block
 
