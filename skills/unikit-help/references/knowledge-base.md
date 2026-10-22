@@ -102,7 +102,7 @@ Relevant to the dev pipeline:
   model and effort are read from the right config key; read together with `subagent-arguments.md`.
 - `user-questions.md` — how a skill asks you a question (what is chosen and what each option changes
   printed first, then the question tool of your agent, the run waiting in the same turn for your
-  answer, numbered text only without that tool); read by `/unikit-plan` before its first question.
+  answer); read by the skills that ask you a question, before their first question.
 
 ---
 

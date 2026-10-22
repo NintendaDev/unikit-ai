@@ -29,6 +29,8 @@ metadata:
 
 Analyze accumulated patches (past mistakes) and propose new rules: coding rules → `.unikit/RULES.md`, workflow rules → `.unikit/skill-context/<skill>/SKILL.md`.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Core Idea
 
 ```
@@ -229,16 +231,16 @@ Based on N patches analyzed, M uncovered prevention points found:
 - **Proposed rule:** "[specific, actionable instruction]"
 ```
 
-AskUserQuestion: Apply proposed rules?
+The question tool of your agent (`AskUserQuestion`): Apply proposed rules?
 
 Options:
 1. ✅ Apply all
-2. 🔍 Let me pick — present in batches of up to 4
+2. 🔍 Let me pick — decide rule by rule
 3. 🚫 Skip all
 
 Based on choice:
 - Apply all → send every code rule to /unikit-rules in one batch, add workflow rules to skill-context
-- Let me pick → present batches of up to 4, Apply/Skip per rule
+- Let me pick → ask for each rule with the question tool of your agent (`AskUserQuestion`): `Apply` or `Skip`
 - Skip all → skip rule creation, proceed to cursor update
 
 **Do NOT add any rules until the user answers.**
@@ -384,5 +386,5 @@ After completing evolution, suggest `/clear` or `/compact` — context is heavy 
 > 1. "Constructor null checks MUST be symmetric..." <- patch-2026-03-10-12.00.md
 > 2. "Event subscriptions before fallible operations..." <- patch-2026-03-10-12.00.md
 >
-> Apply all / Let me pick / Skip all?
+> [question] Apply proposed rules? — Apply all / Let me pick / Skip all
 ```

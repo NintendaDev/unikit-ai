@@ -37,7 +37,7 @@ Set up AI agent context for a game project by:
 6. Delegating architecture generation to `/unikit-architecture`
 7. Printing the setup summary as the final, user-facing confirmation that all artifacts are in place
 
-The architecture sub-skill is invoked **before** the summary so the summary can honestly list `.unikit/ARCHITECTURE.md` alongside the other artifacts. When `/unikit-architecture` returns, do not end the turn — immediately print the Step 11 summary in the same response.
+The architecture sub-skill is invoked **before** the summary so the summary can honestly list `.unikit/ARCHITECTURE.md` alongside the other artifacts. When `/unikit-architecture` returns, do not stop in between — immediately print the Step 11 summary in the same response.
 
 This skill is the entry point for the unikit ecosystem. It creates the foundational
 context that other unikit skills (`unikit-devcontext`, `unikit-plan`, `unikit-implement`, etc.)
@@ -46,15 +46,17 @@ read at the start of every command.
 
 ---
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Execution Contract
 
 This skill must be executed as a strict workflow, not as guidance.
 
 1. Steps are numbered 0-11; execute in order. Do not skip, merge, reorder, or compress steps unless the step explicitly says it may be skipped. **Carve-out for a mode declared in Step 0:** such a mode is entitled to finish with a STOP before Step 1, and Steps 1-11 then do not run for it at all.
-2. Do not infer user answers from context when the workflow requires an AskUserQuestion step.
+2. Do not infer user answers from context when the workflow requires a question to the user.
 3. Do not substitute a recommendation, summary, or "seems fine" confirmation for a required question. A generic approval ("yes", "ok", "go ahead") only answers the immediately pending question — it does not retroactively authorize skipped selections or unanswered follow-ups.
 4. Do not create, edit, or install anything outside `.unikit/config.yaml` and `.unikit/system/LANGUAGE_RULES.md` before Step 4 is complete. After Step 4, every write must satisfy its own step's prerequisites (e.g., Step 9 rule installs require the missing-rules list from Step 9.3 and user confirmation from Step 9.4). **Narrowed for the config actualization mode:** its single writable artifact is `.unikit/config.yaml`, and `.unikit/system/LANGUAGE_RULES.md` is excluded from it explicitly — Step 3.1 is marked "Both bootstrap and merge mode" and must not be read as permission for that mode.
-5. If the environment prevents a required step (tool unavailable, file missing, subagent unreachable), stop and print `BLOCKED at Step N: <reason>`. Do not silently substitute an approximation.
+5. If the environment prevents a required step (tool unavailable, file missing, subagent unreachable), stop and print `BLOCKED at Step N: <reason>`. Do not silently substitute an approximation. The one exception is the question tool of your agent (`AskUserQuestion`): its absence is not a block, the questions are then asked as `.unikit/system/user-questions.md` says.
 6. Every user-facing output of this skill is plain markdown — no HTML tags, in any step. Step 7 states the contract in full.
 
 ## Skill calls
@@ -107,7 +109,7 @@ Determine the language used for AI-agent communication and generated artifacts. 
 
 **Bootstrap mode** (no existing `config.yaml`):
 
-AskUserQuestion: What language should I use for communication and artifacts?
+The question tool of your agent (`AskUserQuestion`): What language should I use for communication and artifacts?
 
 Options:
 1. English (en) — Default
@@ -121,7 +123,7 @@ Map the answer to an ISO code (`en`, `ru`, `zh`, or user-supplied).
 
 **If the user selected a non-English language (`<lang>`), ask the follow-up:**
 
-AskUserQuestion: What should be translated?
+The question tool of your agent (`AskUserQuestion`): What should be translated?
 
 Options:
 1. Communication only — AI responds in selected language, artifacts in English
@@ -155,7 +157,7 @@ git rev-parse --is-inside-work-tree 2>/dev/null && echo "git" || echo "no-git"
 
   After detection, confirm with the user only when the detected branch is unusual (not one of `main`, `master`, `develop`, `trunk`). For usual branches and for the `main` fallback, accept silently without asking.
 
-  AskUserQuestion (only for unusual branches): Detected base branch `<branch>`. Use it for diff/review/merge targets?
+  Only for unusual branches, the question tool of your agent (`AskUserQuestion`): Detected base branch `<branch>`. Use it for diff/review/merge targets?
   Options: 1. Yes, 2. Use a different branch (free text).
 
 - **`no-git`** → set `git.enabled = false`. Skip the base-branch prompt; leave `git.base_branch` empty in the generated config.
@@ -228,8 +230,8 @@ Check $ARGUMENTS:
 
 If no arguments:
 
-AskUserQuestion: What kind of game are you building? Briefly describe the genre and core idea.
-(e.g., "2D mobile tycoon game where you run a pawnshop", "3D first-person horror", "top-down RPG with crafting")
+The question tool of your agent (`AskUserQuestion`): What kind of game are you building? Briefly describe the genre and core idea.
+Options: two or three short examples of the expected answer — "2D mobile tycoon game where you run a pawnshop", "3D first-person horror", "top-down RPG with crafting"; the user picks one or writes their own description in the free-text answer.
 
 Save the user's answer as project description, then proceed to Step 5.
 
@@ -335,7 +337,7 @@ Then proceed to Stack Selection — the scan results pre-fill answers, so alread
 
 ### Step 7: Interactive Stack Selection
 
-Ask each category as a separate `AskUserQuestion`. **Skip any question where the answer was already determined by the Project Scan** (e.g., if a DI framework was found during plugin scan, skip the DI Framework question). For skipped questions, note the detected value in the analysis output.
+Ask each category as a separate question with the question tool of your agent (`AskUserQuestion`), after its full table is printed (see below): the options are the recommended row first and the next likely rows, and the user writes any other row — its number or name — in the free-text answer; the `Other` row of a table is that free-text answer, never an option of its own. **Skip any question where the answer was already determined by the Project Scan** (e.g., if a DI framework was found during plugin scan, skip the DI Framework question). For skipped questions, note the detected value in the analysis output.
 
 Read the **"Stack Selection Options"** section of `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` — it contains the available options for each category with engine-specific descriptions and notes.
 
@@ -343,7 +345,7 @@ Based on the project description and scan results, recommend a tech stack. Show 
 
 Present ALL options from ENGINE_RULES.md for each category in order. Never truncate or summarize option lists — show every row from the table exactly as written, so the user sees the complete set of choices.
 
-**Plain markdown only.** That "exactly as written" governs the *rows* — it is not licence to invent a wrapper around them. Render every option list as a plain markdown table or a plain `1.` / `2.` numbered list, and nothing else. Never wrap a category, a table, or a progress summary in HTML: `<details>`, `<summary>`, `<b>`, `<br>` and friends are GitHub-flavoured markup that a terminal renderer does not interpret, so the tags print literally and the user reads markup instead of a question. The same ban covers decorative unicode (circled glyphs ①②③, 🅰), which smudge in terminals. Bold, short cells and plain headings carry all the structure a category list needs. This matters most where the list is long — a `numbered-multi-select` subsection has to be printed in full because `AskUserQuestion` cannot hold it, and length is exactly when a collapsible wrapper looks tempting. (Same contract as `unikit-gd-brainstorm` — see its "Readable plain markdown only".)
+**Plain markdown only.** That "exactly as written" governs the *rows* — it is not licence to invent a wrapper around them. Render every option list as a plain markdown table or a plain `1.` / `2.` numbered list, and nothing else. Never wrap a category, a table, or a progress summary in HTML: `<details>`, `<summary>`, `<b>`, `<br>` and friends are GitHub-flavoured markup that a terminal renderer does not interpret, so the tags print literally and the user reads markup instead of a question. The same ban covers decorative unicode (circled glyphs ①②③, 🅰), which smudge in terminals. Bold, short cells and plain headings carry all the structure a category list needs. This matters most where the list is long — a `numbered-multi-select` subsection has to be printed in full because the question tool of your agent (`AskUserQuestion`) cannot hold it, and length is exactly when a collapsible wrapper looks tempting. (Same contract as `unikit-gd-brainstorm` — see its "Readable plain markdown only".)
 
 **1. Architecture** — present options from the "Architecture" table.
 
@@ -373,7 +375,7 @@ Based on choice:
 
 **5. UI Architecture:**
 
-AskUserQuestion: UI Architecture?
+The question tool of your agent (`AskUserQuestion`): UI Architecture?
 
 Options:
 1. MVVM (recommended for data-driven UI with reactive bindings)
@@ -391,24 +393,24 @@ Based on choice:
 - Built-in/default framework → note as UI framework, do not add to stack
 - Third-party or advanced framework → add to stack
 
-**7. Additional engine-specific sections** — scan `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` for a block delimited by `<!-- unikit-additional-sections -->` and `<!-- /unikit-additional-sections -->` HTML comments. If the opening tag is absent — or the block between the tags has no subsections — skip this step silently and move to step 9. Otherwise, for every subsection (`### …`) inside that block that contains a markdown table with a `| # | Option | Description |` header, ask the subsection as a separate `AskUserQuestion` in the order it appears in the file. Subsections without such a table are skipped silently.
+**7. Additional engine-specific sections** — scan `{{skills_dir}}/{{self_name}}/references/ENGINE_RULES.md` for a block delimited by `<!-- unikit-additional-sections -->` and `<!-- /unikit-additional-sections -->` HTML comments. If the opening tag is absent — or the block between the tags has no subsections — skip this step silently and move to step 9. Otherwise, for every subsection (`### …`) inside that block that contains a markdown table with a `| # | Option | Description |` header, ask the subsection as a separate question with the question tool of your agent (`AskUserQuestion`) in the order it appears in the file. Subsections without such a table are skipped silently.
 
 - **Default rendering (single-select):** one numbered option per table row. User picks exactly one.
-- **Multi-select rendering:** if the subsection body starts with `**Presentation:** numbered-multi-select`, present two-step interaction. **Step 1** — single `AskUserQuestion` with three options: `All` (select every row), `Select some` (pick specific numbers), `Skip` (select none). **Step 2** — only if the user chose `Select some`: a second `AskUserQuestion` asking for the list of row numbers; the user types the list (e.g. `2, 5, 9`) through the tool's built-in "Other" free-text slot. Parse comma-separated integers, look up each corresponding row's `Option` column, and treat every resolved option as a selected value.
+- **Multi-select rendering:** if the subsection body starts with `**Presentation:** numbered-multi-select`, present two-step interaction. **Step 1** — a single question with the question tool of your agent (`AskUserQuestion`) with three options: `All` (select every row), `Select some` (pick specific numbers), `Skip` (select none). **Step 2** — only if the user chose `Select some`: a second question with the same tool asking for the list of row numbers: its options are two example lists (`1, 3` and `2, 5, 9`), and the user writes their own list in the free-text answer. Parse comma-separated integers, look up each corresponding row's `Option` column, and treat every resolved option as a selected value.
 - Every selected option (single- or multi-select) is added to the required set directly with its label as-is; `Package Display Names` is consulted only for short aliases of UPM-package rows from the Step 6 scan.
 
 **8. Additional frameworks and plugins?**
 
-AskUserQuestion: Any additional frameworks, plugins, or libraries you plan to use?
+The question tool of your agent (`AskUserQuestion`): Any additional frameworks, plugins, or libraries you plan to use?
 (e.g., inventory system, dialogue, AI trees, animation, networking — show examples from ENGINE_RULES.md "Additional Frameworks Examples")
 
 Options:
 1. Skip — proceed without adding anything
-2. Specify (free text — list everything you want to add)
+2. One example answer from the "Additional Frameworks Examples" of ENGINE_RULES.md — the user writes their own list of everything they want to add in the free-text answer
 
 Based on choice:
 - Skip → proceed
-- Specify → add each user-listed framework/plugin to stack
+- A written list (the example or the user's own) → add each listed framework/plugin to stack
 
 ---
 
@@ -503,7 +505,7 @@ This is strictly a transform applied at the call-site (set-difference comparison
 
 **Three-layer principle — display raw, compare canonical, store canonical:**
 
-- **UI layer** — Step 9.3 presenting, Step 9.4 `AskUserQuestion`, Step 9.5 `Technology` column: names stay in display-raw form (a multi-word framework like `"Input Manager"`, a plugin folder like `"Databrain"`, an aliased package id like `"URP"`).
+- **UI layer** — Step 9.3 presenting, Step 9.4 question, Step 9.5 `Technology` column: names stay in display-raw form (a multi-word framework like `"Input Manager"`, a plugin folder like `"Databrain"`, an aliased package id like `"URP"`).
 - **Comparison layer** — Step 9.3 set-difference, Step 9.5 registry cross-reference, Step 9.7 `rules install` argv: apply `toCanonicalRuleId` to both sides. Arrays are never mutated in place.
 - **Storage layer** — `.unikit/memory/code/stack/*.md` filenames and `.unikit.json` `entry.name` are always canonical lowercase-hyphen. The writers (`rules install` CLI and the `/unikit-memory` subagent) enforce that filename form themselves — this skill does not need to rename anything on disk.
 
@@ -589,7 +591,7 @@ Before presenting the question, partition `missing` into three blocks and number
 - **(b) Detected dependencies** — `detected_from_scan` items that remained as raw folder / package identifiers because no confident framework identification was possible.
 - **(c) Specified manually** — `picked_from_qs` and `free_text` entries (Step 7 choices marked `add to stack`, Q1–Q7 `Other` free-text, Q8/Q9 free-text).
 
-AskUserQuestion: The following stack rules are missing and should be created. Proceed?
+Print the list as plain markdown first, in the three blocks, numbered continuously:
 
 Frameworks:
   1. Odin Inspector
@@ -605,16 +607,18 @@ Detected dependencies:
 Specified manually:
   8. MyCustomPlugin
 
+Then ask with the question tool of your agent (`AskUserQuestion`): The following stack rules are missing and should be created. Proceed?
+
 Options:
 1. All — create rules for every item on the list
 2. Select — pick specific items from the list (comma-separated numbers across all groups)
 3. Skip — do nothing, proceed without touching stack rules
 
-(The block above is an illustrative example — only groups that actually have entries are shown at runtime; numbering is continuous across the ones that remain.)
+(The list above is an illustrative example — only groups that actually have entries are shown at runtime; numbering is continuous across the ones that remain.)
 
 Based on choice, build the `targets` list:
 - **Skip** → `targets = ∅`, jump to Step 9.9.
-- **Select** → parse the comma-separated numbers as one continuous range across whichever blocks were rendered; `targets` = the chosen subset (display-raw labels preserved).
+- **Select** → ask which items with the question tool of your agent (`AskUserQuestion`): its options are two example lists (`1, 2` and `1, 3, 5`), and the user writes their own list of numbers in the free-text answer; parse the comma-separated numbers as one continuous range across whichever blocks were rendered; `targets` = the chosen subset (display-raw labels preserved).
 - **All** → `targets` = the full missing list.
 
 #### 9.5: Registry lookup — semantic matching
@@ -652,7 +656,7 @@ Databrain              ✗ not found           —
 
 Otherwise, ask the user how to produce the rules:
 
-AskUserQuestion: How should I create these rules?
+The question tool of your agent (`AskUserQuestion`): How should I create these rules?
 
 Options:
 1. Install matches from registry, generate the rest — use the registry for {matched.length} rule(s) and generate {unmatched.length} locally. **Recommended when matched rules look appropriate.**
@@ -662,7 +666,7 @@ Options:
 Based on choice:
 - **Option 1** → `registry_set = matched`, `generate_set = unmatched`.
 - **Option 2** → `registry_set = ∅`, `generate_set = targets` (includes matched entries — the user explicitly wants to regenerate them).
-- **Option 3** → For each item in `matched`, ask a per-item AskUserQuestion:
+- **Option 3** → For each item in `matched`, ask a per-item question with the question tool of your agent (`AskUserQuestion`):
   - Prompt: `How should I create the rule for {name}?`
   - Options: `1. Install from registry (v{version})`, `2. Generate locally`
   - Route the item into `registry_set` or `generate_set` based on the answer.
@@ -685,7 +689,7 @@ The summary line `Rules: N installed, M already-installed, K failed` is the auth
 
 Exit code handling for the variadic call:
 - `0` — at least one rule installed or already-installed; K failures are per-rule and have already been surfaced in the report. Continue.
-- `1` — every requested id failed (no successes, no already-installed). Show the full output and ask `AskUserQuestion: "rules install {ids}" failed for every id — abort Step 9, or continue without stack rules?` with options `1. Continue without stack rules`, `2. Abort step`. Route accordingly.
+- `1` — every requested id failed (no successes, no already-installed). Show the full output and ask with the question tool of your agent (`AskUserQuestion`): `"rules install {ids}" failed for every id — abort Step 9, or continue without stack rules?` with options `1. Continue without stack rules`, `2. Abort step`. Route accordingly.
 - `2` — registry chain unreachable (fatal). Show the CLI output and abort the step with the same prompt as above.
 - `5` — engine missing from manifest or empty core whitelist (fatal). Show the CLI output and abort.
 
@@ -834,7 +838,7 @@ as the basis for the structure section, but only include directories and files t
 
 ### Step 10: Delegate Architecture Generation
 
-After Step 9 finishes, generate `.unikit/ARCHITECTURE.md` by delegating to `/unikit-architecture`. Step 11 (Print Setup Summary) runs in the same response immediately after `/unikit-architecture` returns — do not end your turn in between.
+After Step 9 finishes, generate `.unikit/ARCHITECTURE.md` by delegating to `/unikit-architecture`. Step 11 (Print Setup Summary) runs in the same response immediately after `/unikit-architecture` returns — do not stop in between.
 
 **Invariant — always via subagent:** route `/unikit-architecture` through an `Agent()` call. Never invoke it inline in this skill's own context. Architecture generation is token-heavy (ENGINE_RULES, project scan, DESCRIPTION, RULES, RULES_INDEX, existing ARCHITECTURE) and must not pollute the `/unikit` context before Step 11 runs.
 
@@ -912,7 +916,7 @@ instead); do not gate on "gd-skills are installed" — the wizard installs all s
 2. **Do NOT implement** — this skill only sets up context. No project code, no feature code
 3. **Do NOT modify existing code** — only create/update context files
 4. **Skip defaults** — don't list default engine packages (per filter in ENGINE_RULES.md)
-5. **Confirm before executing** — show the analysis and plan, wait for user approval
+5. **Confirm before executing** — show the analysis and plan, and get the user's approval, with the question tool of your agent (`AskUserQuestion`), at every step that asks for it (Stack Selection, Step 9.4)
 6. **Delegate architecture** — `/unikit-architecture` for architecture doc, don't generate it here
 7. **Never overwrite an existing `.unikit/config.yaml`** — merge mode only adds missing keys via targeted `Edit`, never a full rewrite
 

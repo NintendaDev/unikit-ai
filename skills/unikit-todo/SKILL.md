@@ -8,11 +8,14 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
+  - AskUserQuestion
 ---
 
 # UniKit TODO — Task List Manager
 
 Manage a lightweight TODO checklist stored in `.unikit/TODO.md`.
+
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
@@ -102,7 +105,7 @@ The user wants to mark tasks as done. The argument after `complete` is a descrip
 1. Read the TODO file
 2. Find all unchecked tasks (`- [ ]`) that are relevant to the description — match by semantic similarity, not exact string match. A task about "fix inventory duplication" should match "completed the inventory bug fix"
 3. If exactly one match is found, mark it done: change `- [ ]` to `- [x]`
-4. If multiple matches are found, show them to the user and ask which to complete (or offer to complete all)
+4. If multiple matches are found, print them as a numbered list and ask which to complete with the question tool of your agent (`AskUserQuestion`): its options are the closest match (recommended), `Complete all` and the next closest match; the user writes the numbers of any others from the printed list in the free-text answer
 5. If no matches are found, tell the user no relevant tasks were found
 6. Confirm what was completed
 
@@ -128,21 +131,21 @@ The user typed `complete` with no description. Instead of asking what to complet
 5. **If the task appears resolved:**
    - Show the task text to the user
    - Briefly explain what you found in the code that indicates the task is done (include file path and relevant code snippet)
-   - Ask: should this task be marked as complete? Wait for the user's response
+   - Ask with the question tool of your agent (`AskUserQuestion`): should this task be marked as complete? Options: `Mark complete` (recommended) · `Keep open`
    - If the user confirms → mark it done (`- [ ]` → `- [x]`) and proceed to the next unchecked task
    - If the user declines → leave it open and proceed to the next unchecked task
 
 6. **If the task appears NOT resolved:**
    - Show the task text to the user
    - Briefly explain what you found (or didn't find) and why the task still seems open
-   - Ask: should this task be marked as complete anyway, or keep it open? Wait for the user's response
+   - Ask with the question tool of your agent (`AskUserQuestion`): should this task be marked as complete anyway, or kept open? Options: `Keep open` (recommended) · `Mark complete anyway`
    - Act on the user's decision, then proceed to the next task
 
 7. **If the relevant code cannot be found** (file deleted, renamed, etc.):
    - Show the task text and explain that the referenced code couldn't be located
-   - Ask the user what to do: mark complete, keep open, or remove the task entirely
+   - Ask what to do with the question tool of your agent (`AskUserQuestion`): `Keep open` (recommended) · `Mark complete` · `Remove the task entirely`
 
-8. Repeat steps 3–7 for each remaining unchecked task. **Always wait for the user's response before moving to the next task.**
+8. Repeat steps 3–7 for each remaining unchecked task, one task at a time.
 
 9. After all tasks have been reviewed, show a summary of what changed (how many marked complete, how many kept open, how many skipped)
 
@@ -162,13 +165,13 @@ Remove all completed tasks (`- [x]`) from the TODO file to keep it clean.
 1. Read the TODO file
 2. Collect all completed tasks (`- [x]`)
 3. If no completed tasks exist, tell the user there's nothing to purge
-4. Show the list of completed tasks that will be removed and ask for confirmation
+4. Show the list of completed tasks that will be removed and ask for confirmation with the question tool of your agent (`AskUserQuestion`): `Remove them` (recommended) · `Keep them`
 5. On confirmation, read the entire file, filter out all `- [x]` lines, collapse any resulting consecutive blank lines into a single blank line, and write the cleaned content back using `Write`
 6. Confirm how many tasks were purged
 
 #### Mode: Interactive
 
-No arguments were provided. Ask the user what task they'd like to add. Then proceed as Mode: Add.
+No arguments were provided. Ask what task they'd like to add with the question tool of your agent (`AskUserQuestion`): its options are two short examples of a task (`Fix item duplication in inventory on rapid sell button clicks`, `Refactor the save system to async`), and the user writes their own task in the free-text answer. Then proceed as Mode: Add.
 
 ## Date Handling
 

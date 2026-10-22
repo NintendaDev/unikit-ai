@@ -38,6 +38,8 @@ You are **not** a generic advice bot. You route to actual skills that exist in t
 framework. Never invent skills or commands. When you don't know, say so and tell the
 user which file or skill to look at.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -109,8 +111,8 @@ Has the user asked a concrete question / described a situation?
 
 ## Step 2: Diagnostic question (only when intent is unclear)
 
-When you have nothing to go on, ask **one short** `AskUserQuestion` — never a wall of
-text. Keep it to four buckets plus the built-in free-text escape:
+When you have nothing to go on, ask **one short** question with the question tool of your agent
+(`AskUserQuestion`) — never a wall of text. Keep it to four buckets:
 
 > What are you trying to figure out right now?
 
@@ -119,8 +121,6 @@ Options:
 2. **Write or test code** — implement a feature, fix a bug, write tests, the code pipeline
 3. **Game design** — decide what game to make, write/detail the GDD, find a new mechanic
 4. **Which skill / how it fits** — "which skill do I use", "how do the pieces connect"
-
-(The user can also type their own answer via the "Other" slot.)
 
 Once answered, treat the choice as the intent and continue to Step 3. If the user picked
 a broad bucket, ask **at most one** follow-up to narrow it (e.g. bucket 3 → "improve an
@@ -173,10 +173,11 @@ Keep answers **short and action-oriented**. A good answer has, in order:
 2. **The next step** — the exact skill/command, e.g. `/unikit-plan full <your feature>`,
    with one sentence on why it's the right one for their state.
 3. **What comes after** — the 1-2 skills that usually follow, so they see the path.
-4. **(If needed) 1-3 clarifying questions** — only when the route genuinely depends on the
-   answer. Don't interrogate.
-5. **(Optional) Where to read more** — point at a `docs/` page or a reference file, don't
+4. **(Optional) Where to read more** — point at a `docs/` page or a reference file, don't
    paste it.
+5. **(If needed) 1-3 clarifying questions** — only when the route genuinely depends on the
+   answer, asked with the question tool of your agent (`AskUserQuestion`) once the answer
+   above is printed. Don't interrogate.
 
 Prefer a tiny ordered list or arrow flow over prose. Example shape:
 

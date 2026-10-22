@@ -12616,7 +12616,7 @@ fi
 
 # >>> UQ block
 # ─────────────────────────────────────────────
-# Part 7g3b: UQ-1…UQ-8 — the user-questions contract and its pointer
+# Part 7g3b: UQ-1…UQ-9 — the user-questions contract and its pointer
 # ─────────────────────────────────────────────
 # One flat contract, data/user-questions.md, says how every question to the user is asked and
 # waited for. A skill moved onto it carries ONE pointer line, right above its first `## ` heading,
@@ -12639,7 +12639,7 @@ UQ_CANON='question tool of your agent (`AskUserQuestion`)'
 uq_grants() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {exit (c > 0 ? 0 : 1)}' "$1"; }
 # Which files carry the pointer is kept as a list while the skills move one group at a time (the last
 # phase derives it from the grants).
-UQ_MOVED=(unikit-plan)
+UQ_MOVED=(unikit-plan unikit unikit-architecture unikit-docs unikit-evolve unikit-skills-context unikit-help unikit-todo)
 UQ_AGENT_FILES=()
 # every file that has to carry the pointer: the SKILL.md of each moved skill, then the agent files
 UQ_CARRIERS=()
@@ -12820,11 +12820,16 @@ UQ_CHK=$((UQ_CHK + 1))
 [[ "$UQ_DATA_N" -gt 0 ]] || UQ_WHY+=" UQ-8:no-data-file-scanned"
 uq_lacks "UQ-8:agent-named-in-the-principles" 'on Claude Code' "$ROOT_DIR/data/gamedesign/gd-principles.md"
 
+# (UQ-9) question sites other skills settled with this move — each decided once, pinned once
+uq_grants "$ROOT_DIR/skills/unikit-todo/SKILL.md" || UQ_WHY+=" UQ-9:todo-has-no-grant"
+uq_has "UQ-9:unikit-missing-tool-is-no-block" 'its absence is not a block, the questions are then asked as `.unikit/system/user-questions.md` says' "$ROOT_DIR/skills/unikit/SKILL.md"
+uq_lacks "UQ-9:unikit-tool-named-in-the-rule" 'requires an AskUserQuestion step' "$ROOT_DIR/skills/unikit/SKILL.md"
+
 (( UQ_CHK > 0 )) || UQ_WHY+=" UQ-1:nothing-checked"
 if [[ -z "$UQ_WHY" ]]; then
-    pass "UQ-1…UQ-8 user questions: the contract file, the pointer as one line above the first heading in every file that grants the tool, the canonical tool name, no restated or retired way of asking, the shared texts, the settled sites, the docs (${UQ_CHK} checks)"
+    pass "UQ-1…UQ-9 user questions: the contract file, the pointer as one line above the first heading in every file that grants the tool, the canonical tool name, no restated or retired way of asking, the shared texts, the settled sites, the docs (${UQ_CHK} checks)"
 else
-    fail "UQ-1…UQ-8 user questions:$UQ_WHY"
+    fail "UQ-1…UQ-9 user questions:$UQ_WHY"
 fi
 # <<< UQ block
 
