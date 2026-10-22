@@ -3563,12 +3563,14 @@ SF_RB_WIN="$(awk '/^### Step 3\.5/{f=1;next} /^### Step 4/{f=0} f' "$SF_SKILL")"
 # (SF-16) NEGATIVE — the retired contract that forbade the question tool.
 grep -qF 'It is a printed block, not' "$SF_SKILL" && SF_WHY+=" SF-16:printed-block-returned"
 # (SF-17) one question per item, the tool, print-first, the class menus and the recommendation policy.
-for sf17 in 'One question per requirement' 'AskUserQuestion' 'carries the options and nothing else' \
+for sf17 in 'One question per requirement' 'AskUserQuestion' \
              'Mine (DEC-<n>)' 'Finding only' 'only on a two-readings question'; do
     printf '%s' "$SF_RB_WIN" | grep -qF "$sf17" || SF_WHY+=" SF-17:no-${sf17// /-}"
 done
-# (SF-18) the text tier stops the turn — otherwise every item silently demotes to OQ (RISK-004).
-printf '%s' "$SF_RB_WIN" | grep -qF 'end your turn and wait' || SF_WHY+=" SF-18:text-tier-does-not-stop"
+# (SF-18) the text tier is the contract's now (UQ-1 pins its stop, UQ-5 forbids a copy here); what
+# stays in this window is the branch that keeps a question nobody answered from silently demoting
+# every item to OQ (RISK-004).
+printf '%s' "$SF_RB_WIN" | grep -qF 'A readback question left unanswered' || SF_WHY+=" SF-18:unanswered-readback-branch-lost"
 # (SF-19) every readback menu reaches SOURCE.md with its offered options (REQ-006).
 printf '%s' "$SF_RB_WIN" | grep -qF 'with the option labels' || SF_WHY+=" SF-19:menu-not-logged"
 
@@ -4246,14 +4248,14 @@ vq_expect "AQ-2 mode-add — both plan paths printed first" "$VQ_MODE_ADD" "$VQ_
 vq_expect "AQ-2 design-context — both ask sites print their candidates" "$VQ_DESIGN_CTX" "$VQ_K4" 2
 
 # (AQ-3) family C — the two module-resolution asks in the registry router.
-vq_expect "AQ-3 unikit-rules-registry — module ids printed first" "$VQ_RULES_REG" "$VQ_K1" 2
+vq_expect "AQ-3 unikit-rules-registry — module ids printed first" "$VQ_RULES_REG" "$VQ_K4" 2
 
 # (AQ-4) families C + D share one file: two module-resolution asks plus the
 #        "Multiple matches" branch of the rule-lookup tree.
-vq_expect "AQ-4 unikit-memory — module ids + rule candidates printed first" "$VQ_MEMORY" "$VQ_K1" 3
+vq_expect "AQ-4 unikit-memory — module ids + rule candidates printed first" "$VQ_MEMORY" "$VQ_K4" 3
 
 # (AQ-5) family E — Tier 1 / Tier 2 reference-extraction candidates.
-vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_MODULE_GD" "$VQ_K1" 1
+vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_MODULE_GD" "$VQ_K4" 1
 
 # (AQ-6) family F — the review interview batches findings; a finding the user cannot read
 #        cannot be classified.
@@ -8667,7 +8669,8 @@ if [[ -s "$PRT_OPTIMISE_REF" ]]; then
         grep -qF "\`$prt_o\`" "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-option-${prt_o// /-}"
     done
     grep -qF 'No topic proposed → no question' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:offer-without-topics"
-    grep -qF 'end your turn and wait' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:text-tier-does-not-stop"
+    # the text tier and its stop are the contract's now (UQ-1, UQ-5); what stays is what no answer does
+    grep -qF 'No answer → `Not now`' "$PRT_OPTIMISE_REF" || PRT_WHY+=" PRT-4:no-answer-is-not-now"
 fi
 # (PRT-5) Mode C keeps the layout and the tag, and offers the reorganization on a legacy file.
 grep -qF 'compact never removes or rewrites it' "$EV_RULES_SKILL" || PRT_WHY+=" PRT-5:compact-may-strip-layout"
@@ -8830,7 +8833,8 @@ else
     grep -qF 'A separate question, never folded into the first' "$PRT_PRUNE_REF" || PRT10_WHY+=" conflicts-share-the-delete-question"
     grep -qF '`Resolve as proposed`' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-resolve-option"
     grep -qF '**`stale-ref` only when nothing of the rule still applies.**' "$PRT_PRUNE_REF" || PRT10_WHY+=" half-live-rule-may-go"
-    grep -qF 'end your turn and wait' "$PRT_PRUNE_REF" || PRT10_WHY+=" text-tier-does-not-stop"
+    # the text tier and its stop are the contract's now (UQ-1, UQ-5); what stays is what no answer does
+    grep -qF 'No answer, or both declined' "$PRT_PRUNE_REF" || PRT10_WHY+=" no-answer-deletes"
     grep -qF '**only on confirmation**' "$PRT_PRUNE_REF" || PRT10_WHY+=" unconfirmed"
 fi
 if [[ -z "$PRT10_WHY" ]]; then
@@ -12643,7 +12647,7 @@ UQ_CANON='question tool of your agent (`AskUserQuestion`)'
 uq_grants() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {exit (c > 0 ? 0 : 1)}' "$1"; }
 # Which files carry the pointer is kept as a list while the skills move one group at a time (the last
 # phase derives it from the grants).
-UQ_MOVED=(unikit-plan unikit unikit-architecture unikit-docs unikit-evolve unikit-skills-context unikit-help unikit-todo unikit-implement unikit-fix unikit-verify unikit-improve unikit-review unikit-commit unikit-pr unikit-archive)
+UQ_MOVED=(unikit-plan unikit unikit-architecture unikit-docs unikit-evolve unikit-skills-context unikit-help unikit-todo unikit-implement unikit-fix unikit-verify unikit-improve unikit-review unikit-commit unikit-pr unikit-archive unikit-explore unikit-roadmap unikit-memory unikit-rules unikit-rules-registry unikit-mcp-audit unikit-mcp-trap)
 UQ_AGENT_FILES=("$ROOT_DIR/subagents/unikit-implement-coordinator.md")
 # every file that has to carry the pointer: the SKILL.md of each moved skill, then the agent files
 UQ_CARRIERS=()
@@ -12828,6 +12832,10 @@ uq_lacks "UQ-8:agent-named-in-the-principles" 'on Claude Code' "$ROOT_DIR/data/g
 uq_grants "$ROOT_DIR/skills/unikit-todo/SKILL.md" || UQ_WHY+=" UQ-9:todo-has-no-grant"
 uq_has "UQ-9:unikit-missing-tool-is-no-block" 'its absence is not a block, the questions are then asked as `.unikit/system/user-questions.md` says' "$ROOT_DIR/skills/unikit/SKILL.md"
 uq_lacks "UQ-9:unikit-tool-named-in-the-rule" 'requires an AskUserQuestion step' "$ROOT_DIR/skills/unikit/SKILL.md"
+uq_has "UQ-9:audit-consent-through-the-tool" '`Editor ready?`, with the options' "$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
+uq_has "UQ-9:trap-review-through-the-tool" 'ask once with the question tool of your agent (`AskUserQuestion`): `Review them?`' "$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
+uq_has "UQ-9:rules-mode-b-through-the-tool" 'What rule or convention would you like to add?' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
+uq_has "UQ-9:roadmap-asks-after-the-report" 'Then the question, with the question tool of your agent (`AskUserQuestion`): `Mark them as completed`' "$ROOT_DIR/skills/unikit-roadmap/SKILL.md"
 
 (( UQ_CHK > 0 )) || UQ_WHY+=" UQ-1:nothing-checked"
 if [[ -z "$UQ_WHY" ]]; then

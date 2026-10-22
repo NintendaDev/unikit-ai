@@ -53,6 +53,8 @@ Enter explore mode. Think deeply. Visualize freely. Follow the conversation wher
 
 **IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER implement features or modify project code. If the user asks to implement something, remind them to exit explore mode first (e.g., start with `/unikit-plan`).
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -280,7 +282,7 @@ All researches live in `.unikit/code/researches/`. Each research gets its own fo
 Ask:
 
 ```
-Save this research to .unikit/code/researches/?
+The question tool of your agent (`AskUserQuestion`): Save this research to .unikit/code/researches/?
 
 Research name: <generated-folder-name>
 
@@ -307,11 +309,11 @@ If the user agrees:
    than this exploration's own pinned one (ultra only) — do not resolve it silently. Ask:
 
    ```
-   AskUserQuestion: A research named <slug> already exists. What should happen?
+   The question tool of your agent (`AskUserQuestion`): A research named <slug> already exists. What should happen?
 
    Options:
    1. Continue the existing research — append a session to it
-   2. Use another name — you type the slug
+   2. Use another name — the slug arrives as the free-text answer; picked without one, ask for it again the same way
    ```
 
    - *Continue* → load `{{skills_dir}}/{{self_name}}/references/continuing.md` and follow it; print
@@ -733,9 +735,9 @@ requirements they have not actually seen.
 A requirement marked `stated` that passed the test is **not shown**. Out of twenty-two
 requirements it typically prints three.
 
-**One question per requirement, at most four per `AskUserQuestion` call** — `k` requirements take ⌈k/4⌉ calls, in ID order.
+**One question per requirement, at most four per call of the question tool of your agent (`AskUserQuestion`)** — `k` requirements take ⌈k/4⌉ calls, in ID order.
 
-1. **Print the grounds first, then ask.** Before each call, print the grounds of every requirement that call carries, as plain markdown in a block of their own — the question mechanism carries the options and nothing else:
+1. **Print the grounds first, then ask.** Before each call, print the grounds of every requirement that call carries, as plain markdown in a block of their own:
 
    ```
    Before saving — <N> requirements out of <M>. The rest go as they are.
@@ -758,13 +760,6 @@ requirements it typically prints three.
 
    The free answer ("Other") is added by the tool itself — never list it as an option.
 3. **"Recommended" only on a two-readings question**, and only on the reading your code or log evidence supports — that evidence is its `Grounds:` line. The `diverges` and `inferred` menus stay neutral: no option is marked.
-4. **No `AskUserQuestion` → the same questions as numbered text**, one block per requirement, answered by number (`REQ-8 — 1, OQ-5 — B`). Print them, then **end your turn and wait for the answer** — do not go on with the save:
-
-   ```
-   REQ-8  inferred
-     1) Requirement   2) Finding only   3) Open question
-   ```
-
 **What the answers do:**
 
 - `Mine (DEC-<n>)` → the requirement keeps its marker and its `DEC-`; nothing is rewritten.
@@ -780,7 +775,7 @@ requirements it typically prints three.
 
 **Counting for the `Readback` field of `## Sessions`.** `Yours`, `Finding only`, `Open question` on an item that was not already an `OQ-<n>`, `A` / `B` / `C` and an "Other" correction count as `corrected`; `Mine` and `Requirement` do not. `<K> demoted to OQ` counts only what **Nobody answered** demoted — never an item that already was an `OQ-<n>`.
 
-**A text-tier question left unanswered** — the next message is about something else — applies **Nobody answered** and continues the save from Step 4: `RESEARCH.md` is already on disk and must not stay unchecked by the registry and the gate.
+**A readback question left unanswered** — the next message is about something else — applies **Nobody answered** and continues the save from Step 4: `RESEARCH.md` is already on disk and must not stay unchecked by the registry and the gate.
 
 **Log every readback question in `SOURCE.md`** (prompt-based explorations; a file-based one has no log) like any other menu: the question, `Offered:` with the option labels — for `A` / `B` / `C` each label together with the text of its reading, since a letter alone resolves to nothing — and the chosen label verbatim; a free answer is a blockquote, as every answer is.
 
@@ -962,7 +957,7 @@ The other entries take the same shape:
 
 There's no required ending. Discovery might:
 
-- **Flow into action**: "Ready to plan? Run `/unikit-plan`"
+- **Flow into action**: the next step is printed, not asked — "Run `/unikit-plan` to plan it"
 - **Result in saved research**: "Saved to `.unikit/code/researches/inventory-decoupling/`"
 - **Just provide clarity**: User has what they need, moves on
 - **Continue later**: "We can pick this up anytime"

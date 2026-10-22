@@ -45,6 +45,8 @@ is lost, and lost silently).
 `references/notes-format.md`; this skill reads it as the interface and curates against
 it.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md` and
@@ -163,7 +165,7 @@ The message carries, in this order:
 4. **Everything that will be created:** the sandbox root `UNIKIT_AUDIT_<runid>`, the asset
    folder if one is needed, the filename prefix — plus which rows will be replayed and
    which will only be shown.
-5. **The question:** `Editor ready? [y/N]`.
+5. **The question** — not part of the message: asked right after it with the question tool of your agent (`AskUserQuestion`), `Editor ready?`, with the options `Yes, the editor is ready` · `No, stop`.
 
 Anything other than an explicit yes ends the run. Nothing has been touched at this point,
 so there is nothing to undo.

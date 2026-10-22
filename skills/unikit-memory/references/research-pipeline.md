@@ -213,7 +213,7 @@ not stay silent about it.
 **If 1+ candidates found** — present them **grouped into Tier 1 and Tier 2** (each
 proposed reference file with what it contains, which of the three signals fired, and
 the split strategy, per the contract's format) before writing anything, then use
-`AskUserQuestion`:
+the question tool of your agent (`AskUserQuestion`):
 
 Options:
 1. Extract **Tier 1 only** — the clear wins
