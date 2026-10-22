@@ -12646,10 +12646,14 @@ UQ_CANON='question tool of your agent (`AskUserQuestion`)'
 
 # The grant is the frontmatter line `  - AskUserQuestion` (skills: allowed-tools, agent files: tools).
 uq_grants() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {exit (c > 0 ? 0 : 1)}' "$1"; }
-# Which files carry the pointer is kept as a list while the skills move one group at a time (the last
-# phase derives it from the grants).
-UQ_MOVED=(unikit-plan unikit unikit-architecture unikit-docs unikit-evolve unikit-skills-context unikit-help unikit-todo unikit-implement unikit-fix unikit-verify unikit-improve unikit-review unikit-commit unikit-pr unikit-archive unikit-explore unikit-roadmap unikit-memory unikit-rules unikit-rules-registry unikit-mcp-audit unikit-mcp-trap unikit-gd-brainstorm unikit-gd-explore unikit-gd-spec unikit-gd-system unikit-gd-flow unikit-gd-content unikit-gd-apply unikit-gd-docs unikit-gd-review unikit-gd-verify unikit-gd-recon unikit-gd-balance unikit-gd-experiment)
-UQ_AGENT_FILES=("$ROOT_DIR/subagents/unikit-implement-coordinator.md")
+UQ_MOVED=()
+for uq_f in "$ROOT_DIR"/skills/*/SKILL.md; do
+    if uq_grants "$uq_f"; then UQ_MOVED+=("$(basename "$(dirname "$uq_f")")"); fi
+done
+UQ_AGENT_FILES=()
+for uq_f in "$ROOT_DIR"/subagents/*.md; do
+    if uq_grants "$uq_f"; then UQ_AGENT_FILES+=("$uq_f"); fi
+done
 # every file that has to carry the pointer: the SKILL.md of each moved skill, then the agent files
 UQ_CARRIERS=()
 for uq_s in ${UQ_MOVED[@]+"${UQ_MOVED[@]}"}; do UQ_CARRIERS+=("$ROOT_DIR/skills/$uq_s/SKILL.md"); done
@@ -12807,9 +12811,10 @@ uq_has "UQ-6:add-next-steps" 'Then print the next steps of Step 6 item 7 and **S
 uq_lacks "UQ-6:add-closing-as-prose" 'Ask if anything needs adjustment' "$UQ_PLAN_ADD"
 uq_lacks "UQ-6:no-skill-call" 'invoke `unikit-implement`' "$UQ_PLAN"
 
-# (UQ-7) the docs: the system tree, the planner's page and the help index name the contract
+# (UQ-7) the docs: the system tree, the skills page and the help index name the contract
 uq_has "UQ-7:configuration-tree" 'user-questions.md # How a skill asks you a question and waits for the answer' "$ROOT_DIR/docs/configuration.md"
-uq_has "UQ-7:skills-page" '- **Questions** - every question the planner asks follows `.unikit/system/user-questions.md`' "$ROOT_DIR/docs/skills.md"
+uq_has "UQ-7:skills-page" 'Every skill that asks you a question follows `.unikit/system/user-questions.md`' "$ROOT_DIR/docs/skills.md"
+uq_lacks "UQ-7:skills-page-pilot-wording" 'The other skills keep their own wording for now' "$ROOT_DIR/docs/skills.md"
 uq_has "UQ-7:help-index" '- `user-questions.md` — how a skill asks you a question' "$ROOT_DIR/skills/unikit-help/references/knowledge-base.md"
 
 # (UQ-8) the shared texts under data/ say what to ask, never how: besides the contract no file there
