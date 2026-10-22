@@ -40,6 +40,8 @@ metadata:
 
 Execute the tasks of a feature plan stored in `.unikit/code/plans/`, inline, after a one-time Bootstrap of rules and principles.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -183,7 +185,7 @@ interactive question.
 
 **If both `.unikit/code/PLAN.md` and a folder plan resolved by the branch match exist**, the requested work decides — the tasks named by the selectors of item 4, or every task when there are none. Pending means at least one of those tasks is `- [ ]` in the plan's manifest checklist.
 - **Pending in the folder plan** → use the folder plan without asking: the branch names it and the work is there. Announce `branch match: <branch>`, then print `INFO [plan] fast plan .unikit/code/PLAN.md not used — the branch plan has pending work (<selectors | all tasks>)`.
-- **Nothing pending in the folder plan, but pending in the fast plan** → ask once: `Branch plan <folder> has nothing pending<, for the selectors>. Run the fast plan .unikit/code/PLAN.md?` — `Run the fast plan` (announce `fast plan`) · `Stop` (STOP). Without `AskUserQuestion`, the same two options as numbered text; end your turn and wait.
+- **Nothing pending in the folder plan, but pending in the fast plan** → ask once: `Branch plan <folder> has nothing pending<, for the selectors>. Run the fast plan .unikit/code/PLAN.md?` — `Run the fast plan` (announce `fast plan`) · `Stop` (STOP).
 - **Pending in neither** → use the folder plan; Step 2 reports that nothing is left.
 
 **Ultra bundle check.** Read the first line of the resolved plan manifest. If it equals `<!-- unikit:plan-mode:ultra -->`, this is an ultra bundle: follow `.unikit/system/ultra-plan-read.md` for reading depth, integrity and mutability. Otherwise continue unchanged.
@@ -208,7 +210,7 @@ Options:
 
 **While a merge is unfinished** — `git rev-parse -q --verify MERGE_HEAD` succeeds — the question has no "Stash and continue": with conflicts unresolved `git stash` fails, and once they are resolved it drops `MERGE_HEAD` for good, so the merge commit would have one parent.
 
-**Ask it right before Step 3, not here** — in one `AskUserQuestion` call together with the Step 2.5 question when Step 2.5 asks one, alone otherwise (numbered text, then end your turn, when the tool is absent). Carry out its answer first: a commit or a stash happens before any mark is written into the manifest. **After a stash, re-read the manifest** and recompute the scope and its run points (Steps 2 and 2.5) before any mark is written: `git stash push` reverts a tracked, uncommitted manifest underneath the scope already counted.
+**Ask it right before Step 3, not here** — in one call of the question tool of your agent (`AskUserQuestion`) together with the Step 2.5 question when Step 2.5 asks one, alone otherwise. Carry out its answer first: a commit or a stash happens before any mark is written into the manifest. **After a stash, re-read the manifest** and recompute the scope and its run points (Steps 2 and 2.5) before any mark is written: `git stash push` reverts a tracked, uncommitted manifest underneath the scope already counted.
 
 #### 0.3: Resume / Recovery (after `/clear` or session break)
 
@@ -396,7 +398,7 @@ When implementing inline, use the rules from Bootstrap + Phase Rules Refresh, th
 - **`direct`** — **a rollback point must exist before editing** (this is mandatory and the whole reason the mode is gated):
   - Files this run changed and has not committed yet → stage only those and commit them: invoke `unikit-commit`, like every other commit of this run — never with a `git commit` of your own; with auto-commit on (Step 3.9) it passes `auto` too. The user cancels that commit, or it does not complete → do not edit: put the task back on `manual` and print `WARN [editor] <task>: no pre-edit commit — direct edit skipped, task back on manual` — without that commit there is no rollback point.
   - Nothing of this run is uncommitted → `HEAD` already is the rollback point: no commit is needed.
-  - The target file itself has uncommitted changes this run did not make → a rollback would erase them. Before anything is staged, ask once with `AskUserQuestion` (numbered text, then end your turn, without the tool): `<target> has uncommitted changes that are not from this run` — `Commit them with the pre-edit commit` / `Leave this task on manual`. The first adds the target to the pre-edit commit; the second puts the task back on `manual` with that reason.
+  - The target file itself has uncommitted changes this run did not make → a rollback would erase them. Before anything is staged, ask once with the question tool of your agent (`AskUserQuestion`): `<target> has uncommitted changes that are not from this run` — `Commit them with the pre-edit commit` / `Leave this task on manual`. The first adds the target to the pre-edit commit; the second puts the task back on `manual` with that reason.
 
   Once the rollback point exists, edit the serialized format directly, staying inside the bounds §6 allows for that format. Never use `direct` for a format §6 rates 🔴.
 
@@ -429,7 +431,7 @@ Options:
 
 Based on choice:
 - Skip → mark task as blocked in the manifest, continue to next task
-- Change approach → discuss alternative with user, retry task
+- Change approach → ask which approach with the question tool of your agent (`AskUserQuestion`): its options are the alternatives you see, the user writes their own in the free-text answer; retry the task with the chosen one
 - Stop → pause implementation → **STOP**
 
 **3.4: Mark task as completed**
@@ -611,13 +613,11 @@ The candidates are already collected: the rows whose status is `open` in the man
       from: task 4.1
    ```
 
-   **Print first, ask second: the question mechanism carries the options and nothing else.**
-4. **Ask once, with `AskUserQuestion` and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"** — four options at most, the tool's limit. Keep the option label short; the full rule text goes in the option's `description`.
-5. **No `AskUserQuestion` → the same list as a numbered text question**, answered by number. An agent without a structured-question tool presents the same options as plain text; that is the second and last tier.
-6. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
-7. **What was selected goes to `unikit-rules` as one numbered batch** — invoke `unikit-rules` with the batch as its argument (`## Skill calls`). This is **a real call, not text in backticks**.
-8. **Show the user the `## Batch result` table** the skill returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
-9. Only then proceed to Step 5.3.
+4. **Ask once, with the question tool of your agent (`AskUserQuestion`) and `multiSelect`:** one option per candidate plus an explicit **"Add nothing"** — four options at most, the tool's limit. Keep the option label short; the full rule text goes in the option's `description`.
+5. **Nothing is written without an answer. Do NOT add any rules until the user answers.**
+6. **What was selected goes to `unikit-rules` as one numbered batch** — invoke `unikit-rules` with the batch as its argument (`## Skill calls`). This is **a real call, not text in backticks**.
+7. **Show the user the `## Batch result` table** the skill returned, and update the statuses in `## Rule Candidates` from it: `added` for the rules it marked `added`, `declined` for those the user did not select. **`declined` is durable:** such a candidate is never offered again on a later run.
+8. Only then proceed to Step 5.3.
 
 **Verbose.** `INFO [rules] open candidates: <n>, proposed: <m>` before the block is printed. If the skill could not be invoked (its file was unreadable, so only the `Run:` line was printed), the statuses are **not** set to `added` — the rule was not written; print `WARN [rules] /unikit-rules was not invoked — candidate statuses unchanged`. If the skill returned no table, the statuses stand as well: `WARN [rules] the /unikit-rules report could not be parsed — candidate statuses unchanged`.
 

@@ -4336,7 +4336,7 @@ fi
 # (IR-1) unikit-improve carries the clause exactly twice: Step 0 Priority 4 (which plan) and
 #        the Step 4 gate (which findings). An exact number catches both the loss of one and
 #        an accidental duplicate.
-vq_expect "IR-1 unikit-improve — print-first clause at both decision points" "$VQ_IMPROVE" "$VQ_K1" 2
+vq_expect "IR-1 unikit-improve — print-first clause at both decision points" "$VQ_IMPROVE" "$VQ_K4" 2
 
 # (IR-2) the structural half IR-1 cannot express. A grep pair stays green through the exact
 #        regression this fixes: both strings present, report template and question welded
@@ -7133,16 +7133,16 @@ if [[ -z "$TC_G7_WHY" ]]; then
     # (TC-52) the success signal: the key is gone from everything that ships or documents.
     TC52_HITS="$(grep -rlF 'merge_checkpoints' "$ROOT_DIR/skills" "$ROOT_DIR/subagents" "$ROOT_DIR/docs" "$ROOT_DIR/data" 2>/dev/null || true)"
     [[ -z "$TC52_HITS" ]] || TC_G7_WHY+=" TC-52:key-survives:$(echo "$TC52_HITS" | sed "s|$ROOT_DIR/||" | tr '\n' ',')"
-    # (TC-53) Step 2.5 asks once, prints the points first, stops the turn on the text tier, names the source.
+    # (TC-53) Step 2.5 asks once, prints the points first and names the source; the text tier and its stop are the contract's.
     TC53_WIN="$(awk '/^## Step 2\.5/{f=1;next} /^## Step 3\.2/{f=0} f' "$TC_TESTRUNS")"
-    for tc53 in 'AskUserQuestion' 'One run at the end' 'end your turn and wait' \
+    for tc53 in 'AskUserQuestion' 'One run at the end' \
                 '(<asked|arguments|no answer|nothing to merge>)' 'Fewer than two' \
                 'whatever the answer below' 'last one in execution order' 'drops the answer'; do
         printf '%s' "$TC53_WIN" | grep -qF "$tc53" || TC_G7_WHY+=" TC-53:no-${tc53// /-}"
     done
     # (TC-54) the instruction in the arguments is recognised, and the Step 0.2 question rides the same call.
     grep -qF 'A test-run instruction' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:no-argument-instruction"
-    grep -qF 'in one `AskUserQuestion` call together with the Step 2.5 question' "$UNIKIT_IMPLEMENT_SKILL" \
+    grep -qF 'in one call of the question tool of your agent (`AskUserQuestion`) together with the Step 2.5 question' "$UNIKIT_IMPLEMENT_SKILL" \
         || TC_G7_WHY+=" TC-54:start-questions-not-combined"
     grep -qF 'the phase number inside it names a run point' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:instruction-parsed-as-selector"
     grep -qF 'After a stash, re-read the manifest' "$UNIKIT_IMPLEMENT_SKILL" || TC_G7_WHY+=" TC-54:stash-leaves-stale-scope"
@@ -7800,11 +7800,12 @@ else
     # (RCA-3) the step proposes what is RECORDED; it no longer formulates rules at the end
     # of a run, which is the one moment the session has most likely already ended.
     grep -qF 'The candidates are already collected' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-3:not-sourced-from-manifest"
-    # (RCA-4) EXACT count, on the AQ convention (vq_count): the payload is printed before
-    # the question, because a question that carries the payload is invisible on a runtime
-    # with no such mechanism — measured, not assumed.
-    [[ "$(vq_count "$UNIKIT_IMPLEMENT_SKILL" 'carries the options and nothing else')" == "1" ]] \
-        || RCA_G2_WHY+=" RCA-4:print-before-ask-anchor-count"
+    # (RCA-4) the payload is printed before the question, because a question that carries the
+    # payload is invisible on a runtime with no such mechanism — measured, not assumed. The
+    # general rule is the contract's now (UQ-1 pins it, UQ-5 forbids a copy here); what stays
+    # is the site's own print line, counted EXACTLY on the AQ convention (vq_count).
+    [[ "$(vq_count "$UNIKIT_IMPLEMENT_SKILL" 'Print the candidates as plain markdown, in a block of their own')" == "1" ]] \
+        || RCA_G2_WHY+=" RCA-4:print-of-the-candidates-count"
     # (RCA-5…RCA-6) the question itself, and the exit that makes refusing a first-class answer.
     grep -qF 'multiSelect'   "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-5:no-multiselect"
     grep -qF '"Add nothing"' "$UNIKIT_IMPLEMENT_SKILL" || RCA_G2_WHY+=" RCA-6:no-refusal-option"
@@ -7835,9 +7836,10 @@ else
     # (RCA-11) SHARED — one string per formulation applied to BOTH skills in one loop. The
     # two questions must read identically; a contract only one side still states is not one.
     # Since DEC-012 d verify's half lives in references/rule-candidates.md — the pair is implement ↔ that reference.
-    for rca11 in 'the question mechanism carries the options and nothing else' \
-                 'Do NOT add any rules until the user answers' \
-                 'presents the same options as plain text'; do
+    # The general how-to-ask text (print first, the text tier) is the contract's now (UQ-1, UQ-5);
+    # the pair keeps what is site-specific: the print line of the candidates and the write gate.
+    for rca11 in 'Print the candidates as plain markdown, in a block of their own' \
+                 'Do NOT add any rules until the user answers'; do
         grep -qF "$rca11" "$UNIKIT_IMPLEMENT_SKILL" || RCA_G3_WHY+=" RCA-11:implement-drifted"
         grep -qF "$rca11" "$VR_RULES_REF" 2>/dev/null || RCA_G3_WHY+=" RCA-11:verify-drifted"
     done
@@ -7859,7 +7861,7 @@ fi
 VR_WHY=""
 # (VR-1) present, carrying the procedure.
 [[ -s "$VR_RULES_REF" ]] || VR_WHY+=" VR-1:reference-missing"
-for vr1 in 'multiSelect' '"Add nothing"' 'Print first, ask second'; do
+for vr1 in 'multiSelect' '"Add nothing"'; do
     grep -qF "$vr1" "$VR_RULES_REF" 2>/dev/null || VR_WHY+=" VR-1:no-${vr1// /-}"
 done
 # (VR-2) NEGATIVE — not inline in the body any more.
@@ -9424,7 +9426,8 @@ if [[ -z "$BX_WHY" ]]; then
     BX_FO="$({ grep -cF 'excluded from the fan-out too' "$UNIKIT_VERIFY_SKILL" || true; })"
     (( BX_FO >= 2 )) || BX_WHY+=" BC-1:fan-out-exclusions=${BX_FO}"
     for f in "${BAL_GRAMMAR_FORMS[@]}"; do bx_lacks "BC-1:form-restated-in-skill(${f})" "$f" "$UNIKIT_VERIFY_SKILL"; done
-    bx_max "BC-1:skill-size" 65000 "$UNIKIT_VERIFY_SKILL"
+    # 65000 -> 65400: unikit-verify gained the 397-byte user-questions pointer and lost its inline text tier
+    bx_max "BC-1:skill-size" 65400 "$UNIKIT_VERIFY_SKILL"
 
     # (BC-2) verify's branch: headings, the two level sentences, and the one place of suggested_next
     BX_CHK=$((BX_CHK + 1))
@@ -9505,7 +9508,8 @@ if [[ -z "$BX_WHY" ]]; then
     grep -qF '5.8' <<< "$BX_CNT" || BX_WHY+=" BM-6:counting-silent-on-5.8"
     bx_has "BM-6:coordinator-layer-order" 'the test-checkpoint tasks of the layer → the `Measure:` tasks' "$TC_COORD"
     # 52600 -> 53100: unikit-implement gained the 552-byte subagent-arguments pointer (it had none)
-    bx_max "BM-6:implement-skill-size" 53100 "$UNIKIT_IMPLEMENT_SKILL"
+    # 53100 -> 53200: it gained the 397-byte user-questions pointer and lost its inline text tier
+    bx_max "BM-6:implement-skill-size" 53200 "$UNIKIT_IMPLEMENT_SKILL"
     # (BC-4) a measurement the user skipped is a skipped row, not a blocker
     bx_has "BC-4:skipped-measure-is-a-blocker" '⏭️ SKIPPED' "$BC_REF"
     # (BC-5) a name stated in ## Not measured is accounted for — a measurement the user skipped is not a blocker
@@ -10254,7 +10258,7 @@ else
                'Disable checkpoints does not skip the module commit' \
                'is not committed — PR checkpoint' 'checkpoint: task <N.M>, no-push' \
                'do not stash it, or the checkpoint runs again' '/unikit-pr is not installed' \
-               'printed as its own block before the question, never inside it'; do
+               'printed as its own block before the question'; do
         grep -qF -- "$lit" "$IP_REF" || IP_WHY+=" IP-2:missing(${lit:0:32})"
     done
     grep -qF 'MERGED → final' "$IP_REF" && IP_WHY+=" IP-2:final-target"
@@ -12639,8 +12643,8 @@ UQ_CANON='question tool of your agent (`AskUserQuestion`)'
 uq_grants() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {exit (c > 0 ? 0 : 1)}' "$1"; }
 # Which files carry the pointer is kept as a list while the skills move one group at a time (the last
 # phase derives it from the grants).
-UQ_MOVED=(unikit-plan unikit unikit-architecture unikit-docs unikit-evolve unikit-skills-context unikit-help unikit-todo)
-UQ_AGENT_FILES=()
+UQ_MOVED=(unikit-plan unikit unikit-architecture unikit-docs unikit-evolve unikit-skills-context unikit-help unikit-todo unikit-implement unikit-fix unikit-verify unikit-improve unikit-review unikit-commit unikit-pr unikit-archive)
+UQ_AGENT_FILES=("$ROOT_DIR/subagents/unikit-implement-coordinator.md")
 # every file that has to carry the pointer: the SKILL.md of each moved skill, then the agent files
 UQ_CARRIERS=()
 for uq_s in ${UQ_MOVED[@]+"${UQ_MOVED[@]}"}; do UQ_CARRIERS+=("$ROOT_DIR/skills/$uq_s/SKILL.md"); done

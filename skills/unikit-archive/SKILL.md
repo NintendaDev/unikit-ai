@@ -27,6 +27,8 @@ disable-model-invocation: false
 
 Move finished folder plans out of `.unikit/code/plans/` into `.unikit/code/archive/plans/`. Plan lookup in `/unikit-implement`, `/unikit-verify` and `/unikit-improve`, the plan lists and the "latest plan" choice walk `.unikit/code/plans/*/` and nothing else, so an archived plan simply stops being offered — there is no index to update. Nothing is deleted and nothing is committed.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -117,7 +119,7 @@ Print one line per folder as it is classified: `INFO [archive] <folder>: <verdic
 Asked once per run, for every plan about to be archived that has a follow-up left. First print, per plan, the findings rows that have no back-reference and the open rule candidates, then:
 
 ```
-AskUserQuestion: <folder list> still have follow-ups: <k> MCP findings not transferred to .unikit/MCP-RECHECK-NOTES.md, <m> rule candidates never proposed.
+The question tool of your agent (`AskUserQuestion`): <folder list> still have follow-ups: <k> MCP findings not transferred to .unikit/MCP-RECHECK-NOTES.md, <m> rule candidates never proposed.
 
 Options:
 1. Handle them first — leave these plans in place
@@ -136,7 +138,7 @@ Name only the kinds that are present.
 Asked once per run, for every chosen plan whose verdict is `incomplete`. First print, per plan, what is left: each unfinished checkbox line — its task id and the start of its text; more than five → the first five and `… and <k> more`. Then:
 
 ```
-AskUserQuestion: <n> of the chosen plans are unfinished: <folder list>. Archived, they are no longer offered to /unikit-implement and /unikit-verify, and their open tasks go with them.
+The question tool of your agent (`AskUserQuestion`): <n> of the chosen plans are unfinished: <folder list>. Archived, they are no longer offered to /unikit-implement and /unikit-verify, and their open tasks go with them.
 
 Options:
 1. Archive them unfinished — the manifest says so
@@ -161,7 +163,7 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
 3. Ask which plans. A plan with follow-ups is marked in the table with them, e.g. `(2 MCP findings not transferred, 1 open rule candidate)`.
 
    ```
-   AskUserQuestion: Archive which plans?
+   The question tool of your agent (`AskUserQuestion`): Archive which plans?
 
    Options:
    1. All <n> completed — only when there are completed plans
@@ -169,7 +171,7 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
    3. Cancel
    ```
 
-   Option 2 asks the user to type: say its label by that meaning, never as "the listed ones". Its answer arrives as the free-text answer; picked without any text → ask once, as plain text, and end your turn. A date rule is matched against the table's `created` or `last change` column, the given day included; print the folders it selects before anything moves.
+   Option 2 asks the user to type: say its label by that meaning, never as "the listed ones". Its answer arrives as the free-text answer; picked without any text → ask once with the question tool of your agent (`AskUserQuestion`), its options two short examples of the answer (`3, 5-7`, `not changed since 2026-09-01`) — the user writes their own in the free-text answer. A date rule is matched against the table's `created` or `last change` column, the given day included; print the folders it selects before anything moves.
 4. Chosen `incomplete` plans → [the unfinished question](#the-unfinished-question). Chosen `completed` plans with follow-ups → [the follow-up question](#the-follow-up-question).
 5. Archive the chosen folders (Step 4).
 
@@ -178,7 +180,7 @@ Glob `.unikit/code/archive/plans/*/`. None → `Archive is empty — no plan has
 Classify every folder in `.unikit/code/plans/`. Print the `completed` ones as your own message, with their created and last-change dates, marked as in interactive mode, and ask:
 
 ```
-AskUserQuestion: Archive all <n> completed plans?
+The question tool of your agent (`AskUserQuestion`): Archive all <n> completed plans?
 
 Options:
 1. Yes, archive all <n>
@@ -189,7 +191,7 @@ Options:
 
 ### one plan
 
-1. Resolve the name inside `.unikit/code/plans/`: an exact folder name; else the one folder ending in `_<name>`, or in `-<name>` after three digits; else the one folder whose name contains `<name>` — a match by this last rule is confirmed before anything moves (`AskUserQuestion: Archive <matched folder>?` — `Yes` / `Cancel`). None → `Plan not found: <name>` — with `(already archived)` added when `.unikit/code/archive/plans/<name>/` exists — and stop. More than one → list them, ask for a more specific name, and stop.
+1. Resolve the name inside `.unikit/code/plans/`: an exact folder name; else the one folder ending in `_<name>`, or in `-<name>` after three digits; else the one folder whose name contains `<name>` — a match by this last rule is confirmed before anything moves (ask with the question tool of your agent (`AskUserQuestion`): `Archive <matched folder>?` — `Yes` / `Cancel`). None → `Plan not found: <name>` — with `(already archived)` added when `.unikit/code/archive/plans/<name>/` exists — and stop. More than one → list them and ask which one with the question tool of your agent (`AskUserQuestion`) — the matching folders are the options, the user writes a more specific name in the free-text answer — then resolve the answer by this step.
 2. Classify it. `incomplete` → [the unfinished question](#the-unfinished-question) for this one plan, its option 2 read as `Leave it in place`. `empty`, `broken bundle` or `not a plan` → print the verdict and stop.
 3. Follow-ups → [the follow-up question](#the-follow-up-question); "Handle them first" stops here.
 4. Archive it (Step 4).

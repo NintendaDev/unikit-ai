@@ -18,6 +18,8 @@ allowed-tools:
 
 Analyze {{engine_code_language}} code against the project's coding rules and produce a structured review report.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -85,7 +87,7 @@ Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-lev
 4. **Contains `.cs`** → File mode (explicit files)
 5. **Other** → `git rev-parse --verify <arg>`:
    - Valid → Commits mode
-   - Invalid → `AskUserQuestion` (staged / cancel / corrected ref)
+   - Invalid → the question tool of your agent (`AskUserQuestion`) (staged / cancel / corrected ref)
 
 > `@` disambiguates folder paths from git refs with `/`.
 
@@ -104,7 +106,7 @@ Read `.unikit/skill-context/{{self_name}}/SKILL.md` if it exists — project-lev
 
 1. Validate ref via `git rev-parse --verify`. Invalid → ask user
 2. `git log --oneline --reverse <ref>..HEAD` → if empty, inform and **stop**
-3. If >20 commits → `AskUserQuestion` (all / last 20 / cancel)
+3. If >20 commits → the question tool of your agent (`AskUserQuestion`) (all / last 20 / cancel)
 4. `git diff --name-only <ref>..HEAD -- '*.cs'` → read full content for stack rule detection
 5. For each commit: `git show <hash> --stat` and `git show <hash>`
 

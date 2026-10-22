@@ -18,7 +18,7 @@ The order matters: "the whole plan is closed" is checked **before** any boundary
 6. `B` is an ancestor of `HEAD` but not `HEAD` → print `WARN [commit] HEAD is inside module <name of the module after B> — pushing it now puts that unfinished part into an open PR of <name of B's module>, if there is one`, then ask:
 
    ```
-   AskUserQuestion: Where should the push end?
+   The question tool of your agent (`AskUserQuestion`): Where should the push end?
 
    Options:
    1. Push everything up to now (HEAD)
@@ -31,8 +31,6 @@ The order matters: "the whole plan is closed" is checked **before** any boundary
    - **Skip push** → end the workflow.
 
    `HEAD` comes first because the current state is the default; the boundary is the choice that keeps the base branch whole if the open pull request is merged now.
-
-Without a question widget, print the options as a numbered list and end the turn — the answer arrives as the next message.
 
 ## Never
 

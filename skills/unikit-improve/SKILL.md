@@ -33,6 +33,8 @@ metadata:
 
 Refine an existing feature plan by re-analyzing it against the codebase. Finds gaps, missing tasks, wrong assumptions, architectural issues, and enhances plan quality.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -217,7 +219,7 @@ What would you like to do?
 2. Create a new feature plan
 ```
 
-→ **STOP here.** Wait for user response.
+→ Ask it with the question tool of your agent (`AskUserQuestion`), the two options as listed: `Choose one of the existing features` → take the folder the user names and go on from Priority 3; `Create a new feature plan` → print `/unikit-plan <description>` and **STOP**.
 
 #### Priority 4: No arguments — auto-detect by fast plan, fix plan, git branch, then latest
 
@@ -251,7 +253,7 @@ If `$ARGUMENTS` is empty (no parameters):
      - /unikit-fix <bug description> — for a bugfix plan
      ```
    - If **exactly one candidate** → use it
-   - If **multiple candidates** (e.g., PLAN.md + FIX_PLAN.md, or a flat plan + folder plans, or multiple flat plans + branch-matching folder) → **ask the user** which plan to improve via `AskUserQuestion`, listing all candidates. Print the candidate plans, each with its `Updated:` and tasks remaining, to the screen as plain markdown first — the question mechanism carries the options and nothing else
+   - If **multiple candidates** (e.g., PLAN.md + FIX_PLAN.md, or a flat plan + folder plans, or multiple flat plans + branch-matching folder) → **ask the user** which plan to improve via the question tool of your agent (`AskUserQuestion`), listing all candidates. Print the candidate plans, each with its `Updated:` and tasks remaining, to the screen as plain markdown first.
 
 3. **Use the resolved plan.**
 
@@ -338,7 +340,7 @@ Check whether research context has changed since the plan was created or if new 
    - Take up to 5 entries, check relevance against the plan's feature scope (compare Summary against plan Overview)
    - If relevant entries found → ask user:
      ```
-     AskUserQuestion: Found new researches since the plan was created:
+     The question tool of your agent (`AskUserQuestion`): Found new researches since the plan was created:
 
      1. <Title> (<Date>) — <Summary>
      2. <Title> (<Date>) — <Summary>
@@ -347,7 +349,7 @@ Check whether research context has changed since the plan was created or if new 
 
      Options:
      1. Yes — use all
-     2. Let me pick (specify numbers)
+     2. Let me pick — then ask which ones: the user writes their numbers (`1, 3`)
      3. Skip — improve without new researches
      ```
    - If user selects researches → read their `RESEARCH.md` (`## Active Summary` first, then `CONTRACTS.md` when it exists), add findings to `research_improvements`, compute each one's `Summary SHA256` over the summary just read and keep the digest for Step 5.5, and prepare to attach them to `## Based on` in Step 5
@@ -569,8 +571,7 @@ Show the user what you found. When `research_improvements` is non-empty, the rep
 Render every group below in full as visible output — the findings themselves, not a count
 of them — and only then ask the decision question. **Never ask about improvements the user
 has not seen:** a bare "Apply improvements?" with nothing above it is the failure this rule
-exists to prevent. Print the findings to the screen as plain markdown first — the question
-mechanism carries the options and nothing else. The same holds for the `Choose which`
+exists to prevent. Print the findings to the screen as plain markdown first. The same holds for the `Choose which`
 follow-up below: its `#N` labels mean something only because the numbered report is already
 on screen.
 
@@ -653,9 +654,7 @@ Source: [research folder name(s)]
 - Adjusted by +check: M    (only when +check ran successfully — see Step 3.5)
 ```
 
-The decision question is asked **after** that report is on screen, as its own block.
-When it goes through an interactive question mechanism, that is a separate call issued
-once the report text has been emitted — never a replacement for it:
+The decision question is asked **after** that report is on screen, as its own block:
 
 ```
 Apply improvements?
@@ -666,7 +665,7 @@ Apply improvements?
 
 Based on choice:
 - **Apply all** → apply all improvements to the manifest, proceed to Step 5
-- **Choose which** → use `AskUserQuestion` with `multiSelect: true` to let the user pick items. Group options by category (Research-Based, Missing Tasks, Task Improvements, Dependency Fixes, Architectural Notes, Removals). Each option label = `"#N: short description"`. After the user selects → proceed to Step 5, applying **only the selected items**. Unselected items are skipped without comment.
+- **Choose which** → use the question tool of your agent (`AskUserQuestion`) with `multiSelect: true` to let the user pick items. Group options by category (Research-Based, Missing Tasks, Task Improvements, Dependency Fixes, Architectural Notes, Removals). Each option label = `"#N: short description"`. After the user selects → proceed to Step 5, applying **only the selected items**. Unselected items are skipped without comment.
 - **No** → keep plan as is → **STOP**
 
 **If no improvements found:**
@@ -939,5 +938,5 @@ Available features:
 - 2026-03-09_customer-config-refactor
 - 2026-03-10_customers-service-pool
 
-What would you like to do?
+→ Asks what to do, with the question tool of your agent (`AskUserQuestion`): Choose one of the existing features · Create a new feature plan
 ```
