@@ -12761,12 +12761,13 @@ uq_has "UQ-6:clarifying-without-options" 'ask clarifying questions, each with it
 uq_lacks "UQ-6:clarifying-as-text" 'Before planning, a few things need clarification' "$UQ_PLAN"
 uq_has "UQ-6:pick-not-asked" 'Let me pick → ask which ones: the user writes their numbers' "$UQ_PLAN"
 uq_lacks "UQ-6:pick-waits-for-text" 'wait for user to specify numbers' "$UQ_PLAN"
-uq_has "UQ-6:closing-question" '7. The closing question, with the question tool of your agent (`AskUserQuestion`): `The plan is ready` (recommended) · `Adjust it`' "$UQ_PLAN"
-uq_has "UQ-6:closing-adjust" '`Adjust it` → change the plan as written and show this step again' "$UQ_PLAN"
+uq_has "UQ-6:closing-question" '7. The closing question, with the question tool of your agent (`AskUserQuestion`): `Finish` (recommended) · `Implement now` · `Adjust it`' "$UQ_PLAN"
+uq_has "UQ-6:closing-implement" '`Implement now` → invoke `unikit-implement` with the argument of the command that the closing message names' "$UQ_PLAN"
+uq_has "UQ-6:closing-adjust" '`Adjust it` → the user writes what to change, change the plan as written and show this step again' "$UQ_PLAN"
 uq_lacks "UQ-6:closing-as-prose" 'Ask whether to adjust anything' "$UQ_PLAN"
-uq_has "UQ-6:ultra-closing" 'Then the closing question of Step 6 item 7; **STOP** once its answer is `The plan is ready`.' "$UQ_PLAN_ULTRA"
+uq_has "UQ-6:ultra-closing" 'Then the closing question of Step 6 item 7; **STOP** once its answer is `Finish`, or once `Implement now` has run.' "$UQ_PLAN_ULTRA"
 uq_has "UQ-6:ultra-closing-order" 'show, before the closing question of item 7:' "$UQ_PLAN_ULTRA"
-uq_has "UQ-6:add-closing" 'Then the closing question, with the question tool of your agent (`AskUserQuestion`): `The plan is ready` (recommended) · `Adjust it`' "$UQ_PLAN_ADD"
+uq_has "UQ-6:add-closing" 'Then the closing question of Step 6 item 7 (its `Adjust it` shows this step again)' "$UQ_PLAN_ADD"
 uq_lacks "UQ-6:add-closing-as-prose" 'Ask if anything needs adjustment' "$UQ_PLAN_ADD"
 
 # (UQ-7) the docs: the system tree, the planner's page and the help index name the contract

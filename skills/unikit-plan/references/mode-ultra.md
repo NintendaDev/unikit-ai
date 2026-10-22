@@ -200,7 +200,7 @@ In addition to the Step 6 items, show, before the closing question of item 7:
 5. When blocking open questions exist, the line
    `Plan is NOT implementation-ready: N blocking open question(s)`.
 
-Then the closing question of Step 6 item 7; **STOP** once its answer is `The plan is ready`.
+Then the closing question of Step 6 item 7; **STOP** once its answer is `Finish`, or once `Implement now` has run.
 
 ## Not part of ultra
 

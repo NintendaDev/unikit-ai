@@ -88,4 +88,4 @@ Apply changes with Edit tool, preserving unaffected content (this list applies t
 
 ### Add Step 3: Confirm
 
-Show: plan path, what changed, updated effort. When `engine_rules_loaded = false`, also show the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` — Add mode never reaches Step 6, so this is its **only** confirmation point for the skipped editor fields. Then the closing question, with the question tool of your agent (`AskUserQuestion`): `The plan is ready` (recommended) · `Adjust it` — the user writes what to change; `Adjust it` → change the plan as written and show this step again. **STOP after confirmation.**
+Show: plan path, what changed, updated effort. When `engine_rules_loaded = false`, also show the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped` — Add mode never reaches Step 6, so this is its **only** confirmation point for the skipped editor fields. Then the closing question of Step 6 item 7 (its `Adjust it` shows this step again). **STOP after confirmation.**
