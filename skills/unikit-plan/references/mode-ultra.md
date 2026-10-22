@@ -191,7 +191,7 @@ the checkboxes live **only** in the manifest. Phase files are read-only during e
 
 ## Step H: Confirm with the user
 
-In addition to the Step 6 items, show, before the closing question of item 7:
+In addition to the Step 6 items, show:
 
 1. The bundle folder path.
 2. The number of phase files.
@@ -200,7 +200,7 @@ In addition to the Step 6 items, show, before the closing question of item 7:
 5. When blocking open questions exist, the line
    `Plan is NOT implementation-ready: N blocking open question(s)`.
 
-Then the closing question of Step 6 item 7; **STOP** once its answer is `Finish`, or once `Implement now` has run.
+Then **STOP**.
 
 ## Not part of ultra
 

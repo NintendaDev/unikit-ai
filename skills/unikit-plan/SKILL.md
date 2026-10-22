@@ -95,15 +95,6 @@ and use that model, no effort.
 
   Fallback: if the call fails, the runtime has no agent tool, or the agent returns without its file, ask that question through `recon-agent` — it only reads and cannot save a file — then, the moment the answer returns and before anything else, create `recon/` if it is missing and write the answer into the file yourself, whole, in the form of `RECON-TEMPLATE.md`; take `pending` off only once the file is on disk (`ultra-stateful.md` → `## Recon files` → *Without a writing agent*).
 
-## Skill calls
-
-Where this skill says to **invoke `<skill>`** — optionally "with the argument `<text>`" — it means one call, made in this session, now, on every runtime: not a command printed for the user and not a delegation (delegations are the aliases of `## Delegation agents`). A call site that names no argument passes none.
-
-1. If you have a `Skill` tool that accepts arguments, call it with that skill and the arguments of the call site, in full and unchanged, then follow the skill.
-2. Otherwise — no `Skill` tool, or one that takes only a name — Read `{{skills_dir}}/<skill>/SKILL.md` in full, treat it as the instructions of this step and carry them out here, in this session, now, with the arguments of the call site as the skill's arguments.
-3. When the skill has run, go on to the step the call site names. Do not print a command for the user to run and do not stop.
-4. Only if that file cannot be read: print `Run: /unikit-<skill> <arguments>` for the user and stop.
-
 ## Input
 
 `$ARGUMENTS` — optional keyword `full`, `fast`, `ultra`, or `add`, optional `--base <branch>` flag, followed by free-form description in any language. The mode may also be named inside that free-form text rather than as a leading token.
@@ -596,7 +587,7 @@ Show the user:
 4. The modules — `N modules, M PR checkpoints` (or `one module`) — one line
 5. When `engine_rules_loaded = false` — the line `Engine rules: ENGINE_RULES.md not found, Editor: fields skipped`
 6. The reminder: "To start implementation, run: `/unikit-implement`"
-7. The closing question, with the question tool of your agent (`AskUserQuestion`): `Finish` (recommended) · `Implement now` · `Adjust it`. `Finish` → Step 7; `Implement now` → invoke `unikit-implement` with the argument of the command that the closing message names (none when it names none) and stop after it; `Adjust it` → the user writes what to change, change the plan as written and show this step again.
+7. The other next steps, printed as a short list and not asked as a question: `/unikit-plan add <what to change>` changes this plan, `/unikit-improve` refines it before the work starts
 
 **Merge plan:** the closing message is the one `{{skills_dir}}/{{self_name}}/references/merge-plan.md` describes — it names the command that runs the plan.
 
