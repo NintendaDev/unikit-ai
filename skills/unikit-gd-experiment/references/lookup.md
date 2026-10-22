@@ -32,7 +32,7 @@ One card in both roles is one candidate. Two different cards are one question th
 Compare the request with the title, `Category`, `Summary`, `What We Test` (section 4) and the variant names (section 7) of each card; sections 4 and 7 are read only for the cards the identification fields did not settle. Rank a title or slug match first, then `What We Test`, `Summary`, `Category`, the variant names. A relevance the text does not support is not claimed.
 
 - One match → the confirmation below.
-- Several → one question with at most five titles, best first; when more matched, it says how many were left out and offers to narrow the request.
+- Several → one question with at most four titles, best first; when more matched, it says how many were left out and the user narrows the request in the free-text answer.
 - None → one line saying so, then the titles of the cards with their states in words, and no other question.
 
 ## The confirmation

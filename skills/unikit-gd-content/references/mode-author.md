@@ -60,14 +60,14 @@ so it is settled before section C is generated:
 - **Explain → Capture:** state the candidate and the trade-offs (bulk = the registry
   stays a contract, the editor owns churn, but per-unit balancing is out of the GDD;
   curated = every unit is in the registry and reviewable, but it does not scale to
-  hundreds), then confirm with one `AskUserQuestion` — never assume on ambiguity.
+  hundreds), then confirm it with the question tool of your agent (`AskUserQuestion`), one question — never assume on ambiguity.
 - **Record `scale:`** in the `GD-IDS.yaml` `content_types[]` entry and the
   `CONTENT-TYPE.md` header `> Scale:` token. `unikit-gd-verify` checks `scale:` ↔ the
   document's structure (the count + spec descriptor for `bulk`, the catalog rows for
   `curated`) — exactly as it checks a flow's `mode:` ↔ structure. A scale change is a
   schema delta (Revision).
 
-Then ask **only the remaining real forks**, batched (1–2 `AskUserQuestion` rounds) —
+Then ask **only the remaining real forks**, batched (1–2 rounds of the question tool of your agent (`AskUserQuestion`)) —
 never one gate per section. Options are **grounded** in the loaded domain theory and
 the consuming system, **never a blank page** (a grounded **form** + an open "my own —
 I'll describe it"); a truly-blank section becomes a **flagged open question** (section
@@ -136,7 +136,7 @@ it captures · its source — drawn from the CONTENT-TYPE template's `[]`-hints 
 structural group gate**:
 
 ```
-AskUserQuestion: <group> review — <n>/<m> sections done.
+The question tool of your agent (`AskUserQuestion`): <group> review — <n>/<m> sections done.
 Options: Accept & continue · Fix this · Defer this · Accept all the rest
 ```
 

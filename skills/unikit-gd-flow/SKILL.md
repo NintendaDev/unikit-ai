@@ -49,6 +49,8 @@ blocks in `GAME.md` — there is **no add-flow in `unikit-gd-spec`**. It never a
 a system, never edits the `GAME.md` one-pager content, and never adds a system to the
 roster — those are `unikit-gd-system` and `unikit-gd-spec`.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -92,7 +94,7 @@ Silently load — do not narrate:
    for this flow's **purpose**, on demand by `Load When`, plus any studio `library`
    rule on the same topic. Read the purpose from the flow's name and Overview (the
    dynamics it shapes), **not** from a coarse label; when the purpose is ambiguous,
-   confirm the domain with one `AskUserQuestion` rather than guessing. Domains are
+   confirm the domain with one question, asked with the question tool of your agent (`AskUserQuestion`), rather than guessing. Domains are
    opt-in and combinable — a flow may match more than one. Every flow shapes
    **pacing + guidance**, so `core-loops` is always relevant; `ux-onboarding` rides
    along whenever the flow teaches or guides:
@@ -177,16 +179,16 @@ Check `.unikit/gamedesign/flows/FLOW-<slug>.md` and read the intent in the promp
 4. **Exists, complete, no change described** → authoring is done; nothing to write.
    Offer review / verify (Handoff) and stop.
 
-If the flow name is ambiguous (matches several entries, or none) → `AskUserQuestion`
+If the flow name is ambiguous (matches several entries, or none) → the question tool of your agent (`AskUserQuestion`)
 listing candidates. Never guess the target. Print the candidates to the screen as plain
-markdown first — the question mechanism carries the options and nothing else.
+markdown first.
 
 **Depth gate (Create / Fill only).** Once the mode is Create or Fill, present **one**
 depth picker — the named tiers `core/standard/full`, each with what it adds, not bare
 letters:
 
 ```
-AskUserQuestion: How deep should this pass go?
+The question tool of your agent (`AskUserQuestion`): How deep should this pass go?
 Options:
 1. core (recommended) — the floor that gets the flow to a solid, usable base: Overview,
    Objective Flow (the run of objectives the player works through).

@@ -42,6 +42,8 @@ registry), **resolves the facts inline**, and **writes** only into `docs/design/
 truth stays the workspace; `docs/design/` is a generated, throwaway view (re-render any
 time).
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md` and apply

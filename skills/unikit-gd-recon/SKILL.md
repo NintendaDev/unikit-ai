@@ -69,6 +69,8 @@ becomes ordinary trusted source content). Recon still reads code, still writes o
 `RECON.md`, still calls no one. It has **no `WebFetch`** — links are recorded, not opened (if
 their content matters, ask the user to paste it).
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md` and apply
@@ -177,7 +179,7 @@ kinds at once, and none is required:
 - **A folder path** — record it as a reference and use it as a **scan-focus** for Step 3
   (still one whole-project `RECON.md`).
 - **A link (URL)** — record it as-is. There is **no `WebFetch`**: do not pretend to read it;
-  if its content matters, say so and ask the user to paste the relevant part.
+  if its content matters, say so and ask with the question tool of your agent (`AskUserQuestion`): `I'll paste the relevant part` (recommended) · `Go on without it`; the pasted text is the free-text answer.
 - **A bare subsystem name** (e.g. `combat`) — the existing scan-focus behaviour; this is a
   Step 3 hint, not author-intent, so it gets no `## Provided Context` entry.
 

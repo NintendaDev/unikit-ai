@@ -1,7 +1,7 @@
 # The closing set and the closing rule
 
 The single definition of what a balance document must answer, and of when it is closed. The
-interview of the open branch asks Q1–Q5 first; the rest are filled as points return data.
+interview of the open branch asks Q1–Q5 first; the rest are filled as points return data. Every question of the table is asked with the question tool of your agent (`AskUserQuestion`): its options are the likely answers drawn from the investigation and from what the document already holds, the recommended one first, and the user writes their own answer in the free-text answer.
 
 | Q | Question |
 |---|----------|

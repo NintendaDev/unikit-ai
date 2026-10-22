@@ -13,7 +13,7 @@ Once for every issued point: at the end of **Compose the point** (`mode-ingest.m
    - **Direct measurement** — the criterion or the numbers are known, or the effect shows only at scale (an economy, a long chain of systems).
    - A question that is both is cut into two points by the slicing principle of `mode-open.md` step 5: one point, one route.
 2. Before the question, say the time warning below: the experiment route is offered in it, whichever route is recommended.
-3. Ask once with `AskUserQuestion`, the recommended route first and its reason in one or two sentences, the point named by its goal: `1.` the recommended route · `2.` the other. The experiment route is worded `an experiment on real players` there, so that it is not taken for Q7 of the closing set. The user may choose against the recommendation; that is accepted without argument.
+3. Ask once with the question tool of your agent (`AskUserQuestion`), the recommended route first and its reason in one or two sentences, the point named by its goal: `1.` the recommended route · `2.` the other. The experiment route is worded `an experiment on real players` there, so that it is not taken for Q7 of the closing set. The user may choose against the recommendation; that is accepted without argument.
 
 **The time warning.** Whenever the experiment route is offered or chosen — as an option in the question, or by the user against the recommendation — say plainly that it takes much longer than the direct route: a prototype is built, players test it, and their feedback is collected and assessed, instead of one plan with one measurement run. It is said once for a point; if it already sounded, it is not repeated before `## Now or later`.
 
@@ -23,7 +23,7 @@ The route goes into the log entry of the write that issues the point — the dec
 
 ## Now or later
 
-For a point on this route, after the files are written and the report is printed — not before: ask once with `AskUserQuestion`, the point named by its goal: `1.` now — design the experiments in this conversation (recommended) · `2.` later — print the command. The time warning has sounded for this point already and is not repeated here.
+For a point on this route, after the files are written and the report is printed — not before: ask once with the question tool of your agent (`AskUserQuestion`), the point named by its goal: `1.` now — design the experiments in this conversation (recommended) · `2.` later — print the command. The time warning has sounded for this point already and is not repeated here.
 
 - **Now** — invoke `unikit-gd-experiment` with the argument `.unikit/gamedesign/balance/<slug>/CHECKPOINTS.md`, by the recipe of `## Skill calls` in `SKILL.md`. The skill reads the point from the file written a moment ago. Nothing is printed after it returns: its own closing command is the last block. If it returns with no experiment designed, say so in one line and print the command of **Later** as the last block; the point stays current.
 - **Later** — the last block is the command that `SKILL.md` → `## Closing block` gives for this route.

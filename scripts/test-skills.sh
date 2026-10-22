@@ -4203,7 +4203,9 @@ vq_count() {
     printf '%s' "$n"
 }
 
-VQ_K1='carries the options and nothing else'
+# The clause 'the question mechanism carries the options and nothing else' lives in data/user-questions.md now
+# (UQ-1 pins it there, UQ-5 forbids a copy in any skill), so a site is counted by its own print line.
+VQ_K4='to the screen as plain markdown first'
 VQ_K2='INFO [plan] resolved:'
 VQ_K3='is a guess, not a resolution'
 
@@ -4235,15 +4237,14 @@ vq_expect() {  # $1=label  $2=file  $3=anchor  $4=expected
 }
 
 # (AQ-1) family A — "listing candidates. Never guess the target." in the three zone skills.
-vq_expect "AQ-1 unikit-gd-content — question payload printed first"  "$VQ_GD_CONTENT" "$VQ_K1" 1
-vq_expect "AQ-1 unikit-gd-flow — question payload printed first"     "$VQ_GD_FLOW"    "$VQ_K1" 1
-vq_expect "AQ-1 unikit-gd-system — question payload printed first"   "$VQ_GD_SYSTEM"  "$VQ_K1" 1
+vq_expect "AQ-1 unikit-gd-content — question payload printed first"  "$VQ_GD_CONTENT" "$VQ_K4" 1
+vq_expect "AQ-1 unikit-gd-flow — question payload printed first"     "$VQ_GD_FLOW"    "$VQ_K4" 1
+vq_expect "AQ-1 unikit-gd-system — question payload printed first"   "$VQ_GD_SYSTEM"  "$VQ_K4" 1
 
 # (AQ-2) family B — design-context carries TWO ask sites (axis door, flow door). The third
 #        family-B site lives in unikit-improve and is asserted by IR-1 with its own total.
 #        unikit-plan moved onto .unikit/system/user-questions.md, which owns the K1 clause now
 #        (UQ-1 pins it there, UQ-5 forbids a copy), so its sites are counted by their own print line.
-VQ_K4='to the screen as plain markdown first'
 vq_expect "AQ-2 mode-add — both plan paths printed first" "$VQ_MODE_ADD" "$VQ_K4" 1
 vq_expect "AQ-2 design-context — both ask sites print their candidates" "$VQ_DESIGN_CTX" "$VQ_K4" 2
 
@@ -4259,7 +4260,7 @@ vq_expect "AQ-5 module-gamedesign — reference candidates printed first" "$VQ_M
 
 # (AQ-6) family F — the review interview batches findings; a finding the user cannot read
 #        cannot be classified.
-vq_expect "AQ-6 unikit-gd-review — interview findings printed first" "$VQ_GD_REVIEW" "$VQ_K1" 1
+vq_expect "AQ-6 unikit-gd-review — interview findings printed first" "$VQ_GD_REVIEW" "$VQ_K4" 1
 
 # (PR-1…PR-4) every resolver announces what it resolved, and says that *latest* is a guess.
 # (PX-11) the coordinator is a fifth entry point and owes the same announcement.
@@ -11384,7 +11385,7 @@ else
     exp_ok "EXP-L1:07" 'WARN [experiment] index out of date' "$EXPL_REF"
     exp_ok "EXP-L1:08" '**the newest by number**' "$EXPL_REF"
     exp_ok "EXP-L1:09" '**the newest by update**' "$EXPL_REF"
-    exp_ok "EXP-L1:10" 'one question with at most five titles, best first' "$EXPL_REF"
+    exp_ok "EXP-L1:10" 'one question with at most four titles, best first' "$EXPL_REF"
     exp_ok "EXP-L1:11" 'Whatever was found, even one card, the user sees one line before anything else is loaded' "$EXPL_REF"
     exp_ok "EXP-L1:12" 'The number is shown unless the caller speaks through the game-design membrane' "$EXPL_REF"
     exp_ok "EXP-L1:13" 'which the caller treats exactly like a selector the user typed' "$EXPL_REF"
@@ -12647,7 +12648,7 @@ UQ_CANON='question tool of your agent (`AskUserQuestion`)'
 uq_grants() { awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f && /^  - AskUserQuestion$/ {c++} END {exit (c > 0 ? 0 : 1)}' "$1"; }
 # Which files carry the pointer is kept as a list while the skills move one group at a time (the last
 # phase derives it from the grants).
-UQ_MOVED=(unikit-plan unikit unikit-architecture unikit-docs unikit-evolve unikit-skills-context unikit-help unikit-todo unikit-implement unikit-fix unikit-verify unikit-improve unikit-review unikit-commit unikit-pr unikit-archive unikit-explore unikit-roadmap unikit-memory unikit-rules unikit-rules-registry unikit-mcp-audit unikit-mcp-trap)
+UQ_MOVED=(unikit-plan unikit unikit-architecture unikit-docs unikit-evolve unikit-skills-context unikit-help unikit-todo unikit-implement unikit-fix unikit-verify unikit-improve unikit-review unikit-commit unikit-pr unikit-archive unikit-explore unikit-roadmap unikit-memory unikit-rules unikit-rules-registry unikit-mcp-audit unikit-mcp-trap unikit-gd-brainstorm unikit-gd-explore unikit-gd-spec unikit-gd-system unikit-gd-flow unikit-gd-content unikit-gd-apply unikit-gd-docs unikit-gd-review unikit-gd-verify unikit-gd-recon unikit-gd-balance unikit-gd-experiment)
 UQ_AGENT_FILES=("$ROOT_DIR/subagents/unikit-implement-coordinator.md")
 # every file that has to carry the pointer: the SKILL.md of each moved skill, then the agent files
 UQ_CARRIERS=()
@@ -12832,10 +12833,14 @@ uq_lacks "UQ-8:agent-named-in-the-principles" 'on Claude Code' "$ROOT_DIR/data/g
 uq_grants "$ROOT_DIR/skills/unikit-todo/SKILL.md" || UQ_WHY+=" UQ-9:todo-has-no-grant"
 uq_has "UQ-9:unikit-missing-tool-is-no-block" 'its absence is not a block, the questions are then asked as `.unikit/system/user-questions.md` says' "$ROOT_DIR/skills/unikit/SKILL.md"
 uq_lacks "UQ-9:unikit-tool-named-in-the-rule" 'requires an AskUserQuestion step' "$ROOT_DIR/skills/unikit/SKILL.md"
+uq_has "UQ-9:spec-menu-has-a-recommended-first" '1. Edit GAME.md content — change a pillar / fantasy / loop / stance (Recommended)' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
+uq_lacks "UQ-9:spec-menu-has-five-options" '5. Import a different GDD' "$ROOT_DIR/skills/unikit-gd-spec/SKILL.md"
 uq_has "UQ-9:audit-consent-through-the-tool" '`Editor ready?`, with the options' "$ROOT_DIR/skills/unikit-mcp-audit/SKILL.md"
 uq_has "UQ-9:trap-review-through-the-tool" 'ask once with the question tool of your agent (`AskUserQuestion`): `Review them?`' "$ROOT_DIR/skills/unikit-mcp-trap/SKILL.md"
 uq_has "UQ-9:rules-mode-b-through-the-tool" 'What rule or convention would you like to add?' "$ROOT_DIR/skills/unikit-rules/SKILL.md"
 uq_has "UQ-9:roadmap-asks-after-the-report" 'Then the question, with the question tool of your agent (`AskUserQuestion`): `Mark them as completed`' "$ROOT_DIR/skills/unikit-roadmap/SKILL.md"
+uq_has "UQ-9:balance-documents-are-four-options" 'the four latest as the options' "$ROOT_DIR/skills/unikit-gd-balance/references/resolve-target.md"
+uq_has "UQ-9:experiment-balance-link-four-options" 'the four latest as the options' "$ROOT_DIR/skills/unikit-gd-experiment/references/balance-link.md"
 
 (( UQ_CHK > 0 )) || UQ_WHY+=" UQ-1:nothing-checked"
 if [[ -z "$UQ_WHY" ]]; then

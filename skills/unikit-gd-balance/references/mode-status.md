@@ -9,7 +9,7 @@ of the membrane): states are spoken as plain phrases, not as the header's tokens
 
 ## No documents at all
 
-One `AskUserQuestion`, the recommended option first: what to balance — `1.` start from a topic
+One question with the question tool of your agent (`AskUserQuestion`), the recommended option first: what to balance — `1.` start from a topic
 (recommended) · `2.` start from an existing research · `3.` nothing. A choice of `1` or `2`
 loads `mode-open.md` in the same turn.
 
@@ -25,16 +25,16 @@ header:
   experiment route (`experiment-route.md` → `## Route of the current point`) the action is
   "continue with the experiments of the point" and the command is the one the closing block gives
   for that route.
-- **Open, no current point** → "the next point is needed". One `AskUserQuestion`, the
+- **Open, no current point** → "the next point is needed". One question with the question tool of your agent (`AskUserQuestion`), the
   recommended option first: `1.` issue the next point (recommended) · `2.` revise the roadmap ·
   `3.` nothing. A choice of `1` or `2` loads `mode-revise.md` in the same turn. A command
   `/unikit-gd-balance <slug>` is not printed as advice — it would come back here and loop.
-- **Closed** → "closed". One `AskUserQuestion`, the recommended option first: `1.` reopen this
+- **Closed** → "closed". One question with the question tool of your agent (`AskUserQuestion`), the recommended option first: `1.` reopen this
   document (a new point; `mode-revise.md`, the reopening rule is in `closure-set.md`) ·
   `2.` start a new balance (`mode-open.md`) · `3.` nothing.
 - **A file error** — a header combination outside the table, or a header, a `current` row and a
   `Point` block that disagree → report "file inconsistent: <what exactly>" in words and offer the
-  repair: one `AskUserQuestion`, the recommended option first: `1.` repair it (`mode-revise.md` →
+  repair: one question with the question tool of your agent (`AskUserQuestion`), the recommended option first: `1.` repair it (`mode-revise.md` →
   `Repair an inconsistent file`, loaded in the same turn) · `2.` nothing.
 
 The header values are the key for choosing the action; the user is shown a plain phrase and the

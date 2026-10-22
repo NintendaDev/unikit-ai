@@ -34,7 +34,7 @@ When the scale is unclear between two levels (e.g. a "tweak" that actually adds 
 **Tuning / Tweak — targeted edit**
 1. Show the **old → new** for each goal/beat/cue changing, with the WHY (theory from
    the loaded rules, pillar alignment) — Explain → Capture.
-2. Get **one approval** (`AskUserQuestion`).
+2. Get **one approval** with the question tool of your agent (`AskUserQuestion`).
 3. `Edit` the affected section(s) anchored on the unique heading. Approved text
    elsewhere is never touched.
 

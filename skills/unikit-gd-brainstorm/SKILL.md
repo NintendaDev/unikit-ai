@@ -49,6 +49,8 @@ This skill **generates new ideas**. Analyzing an existing game or market
 (reference dissection, trade-off tables) is `unikit-gd-explore`. The distinguishing
 test: *five concept cards → brainstorm; a comparison table → explore.*
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -136,7 +138,7 @@ and the last phase reached. Semantically match the user's hint against the rows:
 - A live `in-progress` concept matches the hint →
 
   ```
-  AskUserQuestion: Found "<title>" — you left off at phase <N>. What now?
+  The question tool of your agent (`AskUserQuestion`): Found "<title>" — you left off at phase <N>. What now?
   Options:
   1. Continue "<title>" from phase <N> (recommended)
   2. Start a fresh concept

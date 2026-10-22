@@ -76,7 +76,7 @@ The prompt MUST contain, verbatim, on one line:
 
 Explore detects subagent / delegation mode by this **exact phrase** —
 deterministically, not by heuristic — and in that mode skips every
-`AskUserQuestion` and writes no file. The marker is duplicated verbatim wherever
+call of the question tool of your agent (`AskUserQuestion`) and writes no file. The marker is duplicated verbatim wherever
 delegation is wired (brainstorm's delegate prompt, Explore's detector); it is a
 shared token, not a single-home string.
 

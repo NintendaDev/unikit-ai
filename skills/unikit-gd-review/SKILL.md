@@ -64,6 +64,8 @@ zones), while a review delivers *quality* — a severity-graded verdict + the re
 (`reviews/*_review-*.md`). "Is this design good?" is answered by running a review (or
 reading the last report / git), never by a status value.
 
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+
 ## Language Awareness — BLOCKING PRE-REQUISITE
 
 **BEFORE producing ANY output**, silently read `.unikit/system/LANGUAGE_RULES.md`
@@ -152,8 +154,8 @@ evidence.
 3. Empty argument and several systems are detailed → **ask**:
 
    ```
-   AskUserQuestion: What should I review?
-   Options: <each detailed system> · All systems (cross-review) · None
+   The question tool of your agent (`AskUserQuestion`): What should I review?
+   Options: the two detailed systems changed most recently · All systems (cross-review) · None — the full list of detailed systems is printed first, any other system is named in the free-text answer
    ```
 
 **Mode** is the user's call — **critique** (iterate on a draft) or **review**
@@ -264,9 +266,8 @@ criterion:
 
 Then run the **interview** (Braintrust — the user decides). Offer one **per-run**
 choice up front — **[Run the interview]** or **[Send everything to research]** —
-then, when interviewing, batch the pool through `AskUserQuestion` (**≤ 4 findings
-per call**). Print the findings in this batch to the screen as plain markdown first —
-the question mechanism carries the options and nothing else. Per finding: **[I decide: <fix>]** → apply-ready · **[To research]** →
+then, when interviewing, batch the pool through the question tool of your agent (`AskUserQuestion`), one question per finding.
+Print the findings in this batch to the screen as plain markdown first. Per finding: **[I decide: <fix>]** (the user writes the fix in the free-text answer) → apply-ready · **[To research]** →
 research · **[Decline]** → dropped. The interview **only classifies** and records
 the decision text; it **writes nothing** to the GDD (review stays non-authoring). A
 finding whose fix the user already holds in their head lands in apply-ready directly
@@ -333,7 +334,7 @@ first **show the apply-ready edits** on screen and let the user confirm or adjus
 them (the entailed fixes were sorted by the rule, but the user owns the call). Then:
 
 ```
-AskUserQuestion: <K> apply-ready fix(es) are ready. Apply them now?
+The question tool of your agent (`AskUserQuestion`): <K> apply-ready fix(es) are ready. Apply them now?
 Options:
 1. Apply now — runs /unikit-gd-apply on the apply-ready bucket, then verify
 2. Not now — I'll read the file first
