@@ -49,7 +49,7 @@ Four modes:
 - **Ultra** — full mode plus one deeply specified file per phase, for later execution by a smaller model. **User-named, never model-inferred**: it runs because the user asked for an ultra plan, never because the feature looks big — except in a merge plan, where the mode question offers it, and in a set of two or more experiment cards, where the mode question recommends it
 - **Add** — modify/extend an existing plan without creating a branch
 
-**User questions.** Before your first question to the user, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
+**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.
 
 ## Language Awareness — BLOCKING PRE-REQUISITE
 

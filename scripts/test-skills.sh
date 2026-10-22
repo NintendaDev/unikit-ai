@@ -12631,7 +12631,7 @@ echo -e "\n${BOLD}Part 7g3b: the user-questions contract and its pointer (UQ)${N
 UQ_WHY=""
 UQ_CHK=0
 UQ_FILE="$ROOT_DIR/data/user-questions.md"
-UQ_POINTER='**User questions.** Before your first question to the user, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.'
+UQ_POINTER='**User questions.** Right before your first question to the user, not earlier, read `.unikit/system/user-questions.md` once and ask every question as it says, with the question tool of your agent (`AskUserQuestion`). If the file cannot be read, print `WARN [questions] user-questions contract missing — asking with the question tool` and still ask with that tool, the recommended option first.'
 UQ_CANON='question tool of your agent (`AskUserQuestion`)'
 UQ_MOVED=(unikit-plan)
 
@@ -12677,6 +12677,8 @@ else
         'say nothing and do nothing else while you wait' \
         'There is no time limit: time passing is not an answer' \
         '`WARN [questions] no question tool — asking as numbered text`' \
+        'Look through the tools your agent offers before you decide it has none' \
+        'the question tool has a different name in different agents' \
         'and end your turn' \
         'never as plain text while the tool works' \
         'two short examples of the expected answer' \
